@@ -38,15 +38,15 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 16px 24px; }
 
 .field { display: block; margin: 16px 0; } .field.small { margin: 18px 0 6px; }
 .lab { display: block; font-weight: 800; margin-bottom: 6px; }
-select, input[type=email], input:not([type]), #p-answer { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 12px; background: #fff; }
+select, input[type=email], input:not([type]), #p-answer { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 12px; background: var(--surface); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .seg { display: inline-flex; background: var(--surface2); border-radius: 999px; padding: 4px; gap: 4px; flex-wrap: wrap; }
 .seg button { border: 0; background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 700; }
-.seg button.on { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.seg button.on { background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
 .seg.sm button { padding: 4px 10px; font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chips button { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-weight: 700; font-size: 15px; }
-.chips button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chips button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-weight: 700; font-size: 15px; }
+.chips button.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .chips button small { opacity: .7; font-weight: 600; }
 .check { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .sub { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
@@ -55,7 +55,7 @@ details summary { cursor: pointer; }
 .tones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .tones button.sw { width: 32px; height: 32px; border-radius: 50%; padding: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
 .tones button.on { box-shadow: 0 0 0 3px var(--accent); }
-.tones button.rnd { border-radius: 999px; padding: 5px 12px; border: 1.5px solid var(--line); background: #fff; cursor: pointer; font-weight: 700; }
+.tones button.rnd { border-radius: 999px; padding: 5px 12px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 700; }
 .tones button.rnd.on { box-shadow: 0 0 0 3px var(--accent); }
 
 /* speed slider: slow on the left, fast on the right, four labelled marks (Colleen) */
@@ -70,7 +70,7 @@ details summary { cursor: pointer; }
 .play { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
 .stage-slot { position: sticky; top: 12px; }
 .stage { position: relative; }
-.stage canvas { width: 100%; height: auto; aspect-ratio: 1; display: block; background: #fff; border-radius: var(--r); box-shadow: 0 2px 10px rgba(60, 40, 20, .08); }
+.stage canvas { width: 100%; height: auto; aspect-ratio: 1; display: block; background: var(--surface); border-radius: var(--r); box-shadow: 0 2px 10px rgba(60, 40, 20, .08); }
 body > .stage { position: absolute; left: -9999px; width: 400px; }      /* parked off screen when no screen shows it */
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-weight: 700; }
 /* letter support: always the same spot, centred, its bottom just above the hand's square (Colleen: students never chase it) */
@@ -101,7 +101,7 @@ table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px 
 .shot ul { padding-left: 20px; } .shot li { margin: 4px 0; }
 
 .chart .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-.chart .t { position: relative; display: block; padding: 0; background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; cursor: pointer; }
+.chart .t { position: relative; display: block; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; cursor: pointer; }
 .chart .t:hover { border-color: var(--accent); }
 .chart .t .L { position: absolute; top: 6px; left: 10px; font: 700 28px var(--display); }
 .chart .t img { width: 94%; aspect-ratio: 1; display: block; margin: 10% auto 0; }
@@ -121,7 +121,7 @@ table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px 
 
 /* choices (Pick the word, Look-alike letters) */
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; }
-.choices button { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 14px 8px; font: 600 24px var(--display); letter-spacing: 1px; cursor: pointer; }
+.choices button { border: 2px solid var(--line); background: var(--surface); border-radius: 14px; padding: 14px 8px; font: 600 24px var(--display); letter-spacing: 1px; cursor: pointer; }
 .choices button:hover:not(:disabled) { border-color: var(--accent); }
 .choices button.right { background: var(--good-soft); border-color: var(--good); } .choices button.wrong { background: var(--bad-soft); border-color: var(--bad); }
 .ladder { display: flex; justify-content: space-between; font-weight: 800; background: var(--surface2); border-radius: 12px; padding: 8px 12px; margin: 6px 0; }
@@ -177,7 +177,7 @@ table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px 
 .scno { text-align: right; font-size: 13px; color: var(--muted); margin: -6px 2px 8px; }      /* small, bottom right, like the printed cards */
 .sgrid { display: grid; gap: 0; border: 3px solid var(--bc, #2F6BFF); border-radius: 12px; overflow: hidden; margin: 10px 0; touch-action: manipulation; }
 .sgrid .sh { background: var(--bc, #2F6BFF); color: #fff; font: 700 clamp(18px, 6vw, 30px) var(--display); text-align: center; padding: 4px 0; }
-.sgrid button { position: relative; aspect-ratio: 1; min-width: 0; font-family: inherit; border: 1.5px solid var(--bc, #2F6BFF); background: #fff; font-weight: 800; font-size: 17px; line-height: 1.1; padding: 3px; overflow: hidden; cursor: pointer; color: var(--ink); }
+.sgrid button { position: relative; aspect-ratio: 1; min-width: 0; font-family: inherit; border: 1.5px solid var(--bc, #2F6BFF); background: var(--surface); font-weight: 800; font-size: 17px; line-height: 1.1; padding: 3px; overflow: hidden; cursor: pointer; color: var(--ink); }
 .sgrid button span { display: block; }
 .sgrid button.free { background: color-mix(in srgb, var(--bc, #2F6BFF) 14%, white); font-family: var(--display); }
 .sgrid button.on::after { content: ''; position: absolute; inset: 12%; border-radius: 50%; background: color-mix(in srgb, var(--bc, #2F6BFF) 45%, transparent); }
@@ -241,3 +241,13 @@ table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px 
   body { background: #fff; } .card { box-shadow: none; border: 0; padding: 0; }
   .chart .cgrid { grid-template-columns: repeat(6, 1fr); gap: 6px; } .chart .t { break-inside: avoid; }
 }
+
+/* Colors, Text size and Font: the same choices (and saved settings) as the Hearing and the Ear site, so a choice made on either site is used on both */
+body.dark { --bg: #1d1930; --surface: #28223f; --surface2: #362e55; --ink: #f4effa; --muted: #c3b9da; --line: #453c6b; --accent: #8aa8ff; --accent-ink: #1d1930; --good: #6fdca4; --good-soft: #1f3b30; --bad: #ff8a80; --bad-soft: #4a2430; }
+body.contrast { --bg: #000; --surface: #000; --surface2: #111; --ink: #fff; --muted: #fff; --line: #fff; --accent: #ffe600; --accent-ink: #000; --good: #7CFF9B; --good-soft: #002a10; --bad: #ff8080; --bad-soft: #2a0000; }
+body.contrast .card, body.contrast .gcard, body.contrast .chips button, body.contrast .seg { border: 2px solid #fff; }
+body.dark .stage canvas, body.contrast .stage canvas { background: #fff; }      /* the hand keeps its light backdrop so skin tones read true */
+body.big { zoom: 1.15; }
+.look { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 14px; color: var(--muted); }
+.look select { width: auto; padding: 4px 8px; border-radius: 999px; font-size: 14px; }
+@media print { .look { display: none !important; } }

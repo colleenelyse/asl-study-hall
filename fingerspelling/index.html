@@ -7,12 +7,13 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=37">
+<link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 <header class="top">
   <a class="brand" href="#/"><span class="logo" aria-hidden="true">🤟</span> ASL Fingerspelling Practice</a>
   <nav><a href="../" title="Back to the ASL Study Hall home page">&larr; All activities</a><a href="#/games">Games</a><a href="#/show">Show me how</a><a href="#/class">Classroom</a><a href="#/progress">My progress</a><a href="#/chart">Alphabet</a></nav>
+  <div class="look" id="look" aria-label="Colors, text size and font"></div>
 </header>
 
 <main>
@@ -90,7 +91,8 @@
   <!-- Setup (fields show or hide for each game) -->
   <section data-screen="setup" class="screen">
     <div class="card">
-      <div class="row between"><h2 id="s-title">Set up</h2><a class="link" href="#/games">All games</a></div>
+      <div class="row between"><h2 id="s-title">Set up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
+      <div id="s-fields">
       <p class="hint" id="s-about"></p>
       <div class="field" data-for="type pick fill pairs flash ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
@@ -140,12 +142,12 @@
       <div class="field"><span class="lab">Skin tone</span><div class="tones" id="s-tones"></div></div>
       <div class="field" data-for="type pick fill ladder pairs flash sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
+      </div>
       <button class="btn big" id="s-go">Start</button>
+      <p class="hint" id="s-live" hidden>Change any setting while you play: speed, paper and letter count change right away; the words, lists and limits change from the next word.</p>
     </div>
-  </section>
-
-  <!-- Play (every student game) -->
-  <section data-screen="play" class="screen">
+    <!-- the game, right under its settings (Colleen: change settings while you play) -->
+    <div id="game-area" hidden>
     <div class="play">
       <div class="stage-slot" id="play-slot"></div>
       <div class="card panel">
@@ -170,13 +172,11 @@
         <div class="feedback" id="p-feedback" aria-live="polite"></div>
         <div class="meaning" id="p-meaning" hidden></div>
         <button class="btn big" id="p-next" hidden>Next word</button>
-        <div class="field small" id="p-speedbox"><span class="lab">Speed</span>
-          <div class="speed"><input id="p-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
-            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div></div>
-        <div class="seg sm" id="p-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div>
       </div>
     </div>
+    </div>
   </section>
+
 
   <!-- Results -->
   <section data-screen="results" class="screen">
@@ -381,9 +381,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
-<script src="words.js?v=37"></script>
-<script src="themes.js?v=37"></script>
-<script src="hand.js?v=37"></script>
-<script src="app.js?v=37"></script>
+<script src="words.js?v=40"></script>
+<script src="themes.js?v=40"></script>
+<script src="hand.js?v=40"></script>
+<script src="look.js?v=40"></script>
+<script src="app.js?v=40"></script>
 </body>
 </html>
