@@ -84,6 +84,7 @@ body > .stage { position: absolute; left: -9999px; width: 400px; }      /* parke
 .clue-box { min-width: 200px; min-height: 120px; display: grid; place-items: center; border-radius: 14px; background: var(--surface2); font: 700 30px var(--display); padding: 10px 18px; }
 .clue-box img { max-width: 240px; max-height: 200px; border-radius: 10px; }
 .clue-lab { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.meaning { background: var(--surface2); border-radius: 14px; padding: 10px 14px; margin: 6px 0; } .meaning p { margin: 4px 0; } .meaning .note { color: var(--muted); font-size: 14px; }
 .feedback { min-height: 30px; font-weight: 800; font-size: 20px; }
 .feedback.good { color: var(--good); } .feedback.bad { color: var(--bad); }
 .feedback .ans { display: block; font: 600 24px var(--display); color: var(--ink); }
