@@ -1,12 +1,19 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ASL Study Hall</title><meta name="description" content="Free ASL practice tools: fingerspelling games and more.">
+<title>ASL Study Hall</title><meta name="description" content="Free ASL and Deaf studies tools: fingerspelling games, a word search maker, and hearing loss and cochlear implant simulators.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
 <style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
 h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}p{color:#5A6185}
 a.tool{display:block;background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06)}
 a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}</style></head>
-<body><main><h1>🤟 ASL Study Hall</h1><p>Free ASL practice tools for students and teachers.</p>
-<a class="tool" href="fingerspelling/"><b>ASL Fingerspelling Practice</b>Read fingerspelling from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
-<a class="tool" href="wordsearch/"><b>WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
+<body><main><h1>🤟 ASL Study Hall</h1><p>Free ASL and Deaf studies tools for students and teachers.</p>
+<a class="tool" href="fingerspelling/"><b>🤟 ASL Fingerspelling Practice</b>Read fingerspelling from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
+<a class="tool" href="wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
+<a class="tool" href="hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
+<a class="tool" href="ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
+<a class="tool" href="ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
+<script>
+/* On asl.cool the hearing pages live at /hearing/, /ci/ and /ear/ (a Cloudflare Worker serves them from the Hearing site). Anywhere else (the github.io copy), go straight to the Hearing site. */
+if (location.hostname !== 'asl.cool' && location.hostname !== 'www.asl.cool') document.querySelectorAll('a[data-alt]').forEach(a => { a.href = 'https://colleenelyse.github.io/Hearingandcis/' + a.dataset.alt; });
+</script>
 </main></body></html>
