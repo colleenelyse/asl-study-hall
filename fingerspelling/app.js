@@ -32,7 +32,7 @@ const statBox = (v, lab) => '<div class="stat"><b>' + esc(v) + '</b><span>' + es
 /* ---------- the games ---------- */
 const GAMES = {
   type: { name: 'Read the word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
-  tricky: { name: 'Spell It?!', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' },
+  tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' },
   sound: { name: 'Sound it out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. Start here.', tag: 'Start here' },
   pick: { name: 'Pick the word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   fill: { name: 'Fill in the blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
@@ -164,7 +164,7 @@ function setupInit() {
   const drawFl = chipsInit($('#s-flash'), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'flash', x => x, () => drawPool());
   $('#s-fl-all').onclick = () => { S.flash = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); saveS(); drawFl(); };
   $('#s-fl-none').onclick = () => { S.flash = []; saveS(); drawFl(); };
-  const tl = $('#s-tlevels');      // Spell It?! levels, by name
+  const tl = $('#s-tlevels');      // Silent Letters & Strange Spellings levels, by name
   tl.innerHTML = Object.keys(window.TRICKY_LEVELS || {}).map(k => '<button data-l="' + k + '">' + k + '. ' + esc(window.TRICKY_LEVELS[k]) + '</button>').join('');
   const markTL = () => tl.querySelectorAll('button').forEach(b => b.classList.toggle('on', S.tlevels.indexOf(b.dataset.l) >= 0));
   tl.onclick = e => { const b = e.target.closest('button'); if (!b) return; const i = S.tlevels.indexOf(b.dataset.l); if (i >= 0) S.tlevels.splice(i, 1); else S.tlevels.push(b.dataset.l); saveS(); markTL(); drawPool(); }; markTL();
@@ -324,7 +324,7 @@ function showFeedback(ok, skip, w) {
   fb.className = 'feedback ' + (ok ? 'good' : 'bad');
   fb.innerHTML = (ok ? 'Yes!' : skip ? 'It was:' : 'Not quite. It was:') + (ok ? '' : '<span class="ans">' + esc(w.length === 1 ? w.toUpperCase() : w) + '</span>');
 }
-/* Spell It?!: after the answer, the meaning and a button to hear the word said (the device's own English voice) */
+/* Silent Letters & Strange Spellings: after the answer, the meaning and a button to hear the word said (the device's own English voice) */
 function showMeaning(it) {
   const m = $('#p-meaning');
   m.innerHTML = (it.def ? '<p><b>' + esc(it.w) + ':</b> ' + esc(it.def) + '</p>' : '') + (it.note ? '<p class="note">' + esc(it.note) + '</p>' : '') +

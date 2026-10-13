@@ -49,7 +49,7 @@ window.LOOK_GROUPS = {
   'I Y J': { letters: 'IYJ', sets: [['die', 'dye', 'lie', 'lye']] }
 };
 
-/* Spell It?! (Colleen): the opposite of Sound it out: words with ridiculous spellings. From her list (Ridiculous_Spelling_Fingerspelling_Word_Bank, 2026-10-13).
+/* Silent Letters & Strange Spellings (Colleen): the opposite of Sound it out: words with ridiculous spellings. From her list (Ridiculous_Spelling_Fingerspelling_Word_Bank, 2026-10-13).
    Each word: [word, level, definition (shown after the answer), note]. */
 window.TRICKY_LEVELS = { 1: 'A Little Sneaky', 2: 'Wait, What?', 3: 'Who Approved This Spelling?', 4: 'English Has Lost Its Mind' };
 window.TRICKY = [["knee", 1, "A leg joint", "The K is silent."],
