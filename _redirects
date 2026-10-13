@@ -1,0 +1,9 @@
+# SHORT LINKS FOR asl.cool
+# Each line: the short link, where it goes, and 301 (a permanent move).
+# Rules: lowercase letters, numbers and dashes only; never a slug that matches a real folder or page
+# (fingerspelling, wordsearch, credits, index, bingo, privacy) and never /hearing (a Cloudflare Worker serves that).
+# Add each slug twice, without and with a slash at the end, because Cloudflare treats them as different addresses.
+# Looked after by the "Hearing test website" Claude session (agreed with the ASL Study Hall App session, 2026-10-13).
+
+/fingerspeling   /fingerspelling/   301
+/fingerspeling/  /fingerspelling/   301
