@@ -1,19 +1,63 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ASL Study Hall</title><meta name="description" content="Free ASL and Deaf studies tools: fingerspelling games, a word search maker, and hearing loss and cochlear implant simulators.">
+<title>ASL Study Hall</title><meta name="description" content="ASL Study Hall: free American Sign Language and Deaf studies practice for students and teachers.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
 <style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
-h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}p{color:#5A6185}
+h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p{color:#5A6185}
+.card{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 2px 10px rgba(60,40,20,.06)}
 a.tool{display:block;background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06)}
-a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}</style></head>
-<body><main><h1>🤟 ASL Study Hall</h1><p>Free ASL and Deaf studies tools for students and teachers.</p>
-<a class="tool" href="fingerspelling/"><b>🤟 ASL Fingerspelling Practice</b>Read fingerspelling from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
-<a class="tool" href="wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
-<a class="tool" href="hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
-<a class="tool" href="ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
-<a class="tool" href="ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
+a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}
+form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input{font:inherit;padding:10px 14px;border:1.5px solid #E3D9CC;border-radius:12px;min-width:0;flex:1 1 200px}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
+.msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}</style></head>
+<body><main>
+<h1>🤟 ASL Study Hall</h1>
+<p>Welcome! ASL Study Hall is a free place to practice American Sign Language and learn about Deaf culture and hearing. It is made by an ASL teacher for her students and for learners everywhere.</p>
+<div class="card" id="welcome">
+  <h2>What you can do here</h2>
+  <p>Practice reading fingerspelling from a realistic hand at real speeds, build vocabulary with games and puzzles, and explore how hearing, hearing loss and cochlear implants work. Everything is free, and nothing you do here is saved on our end.</p>
+  <p>Got a link from your teacher? It takes you straight to your activity.</p>
+</div>
+<div class="card" id="gate" hidden>
+  <h2>Teacher and class page</h2>
+  <form id="unlock"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></form>
+  <p class="msg" id="msg" aria-live="polite"></p>
+</div>
+<div id="tools"></div>
+<p class="foot"><a href="credits.html">Credits and sources</a></p>
 <script>
-/* On asl.cool the hearing pages live at /hearing/, /ci/ and /ear/ (a Cloudflare Worker serves them from the Hearing site). Anywhere else (the github.io copy), go straight to the Hearing site. */
-if (location.hostname !== 'asl.cool' && location.hostname !== 'www.asl.cool') document.querySelectorAll('a[data-alt]').forEach(a => { a.href = 'https://colleenelyse.github.io/Hearingandcis/' + a.dataset.alt; });
+/* The tool boxes are stored scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code does not show them.
+   Made by dev/home-lock/lock-home.js on Colleen's Mac. The individual tool links themselves stay public. */
+const LOCK = /*LOCK*/null/*END LOCK*/;
+(function () {
+  const $ = s => document.querySelector(s), KEY = 'aslHomeKey';
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const onAsl = location.hostname === 'asl.cool' || location.hostname === 'www.asl.cool';
+  function show(tools) {
+    $('#gate').hidden = true;
+    $('#tools').innerHTML = tools.map(t => '<a class="tool" href="' + esc(!onAsl && t.alt ? 'https://colleenelyse.github.io/Hearingandcis/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
+      '<p style="text-align:right"><button class="lock" id="lockit">Lock this page on this device</button></p>';
+    $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#pw').value = ''; };
+  }
+  async function open(key) { const out = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(LOCK.iv) }, key, b64(LOCK.data)); return JSON.parse(new TextDecoder().decode(out)); }
+  async function fromPassword(pw) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(LOCK.salt), iterations: LOCK.iter }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
+  }
+  if (!LOCK || !window.crypto || !crypto.subtle) return;
+  $('#gate').hidden = false;
+  (async () => {      // this device already opened it: no password needed
+    let saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
+    if (!saved) return;
+    try { show(await open(await crypto.subtle.importKey('raw', b64(saved), 'AES-GCM', false, ['decrypt']))); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} }
+  })();
+  $('#unlock').onsubmit = async e => {
+    e.preventDefault(); const pw = $('#pw').value; if (!pw) return;
+    $('#msg').textContent = 'Checking…';
+    try { const key = await fromPassword(pw), tools = await open(key); try { localStorage.setItem(KEY, tob64(await crypto.subtle.exportKey('raw', key))); } catch (e2) {} $('#msg').textContent = ''; show(tools); }
+    catch (err) { $('#msg').textContent = "That's not it. Try again."; $('#pw').select(); }
+  };
+})();
 </script>
 </main></body></html>
