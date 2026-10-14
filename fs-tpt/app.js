@@ -455,11 +455,24 @@ async function nextWord() {
   if (R.game === 'type' && S.mode === 'clue') await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
   if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
 }
-function diffPairs(right, chosen) {      // which letters were mixed up: [right letter, letter chosen]
-  const a = letters(right), b = letters(chosen), out = [];
-  if (a.length === b.length) for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) out.push(a[i] + b[i]);
-  return out.length <= 2 ? out : [];      // a whole different word is not a mix-up of letters
+function letterDiff(right, chosen) {      // { mix: [right letter + letter chosen, ...], swaps: how many pairs of letters were exchanged }
+  const a = letters(right), b = letters(chosen);
+  if (!a || a.length !== b.length) return { mix: [], swaps: 0 };
+  const left = []; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) left.push(i);
+  /* Colleen (3.90): "if students invert 2 letters, it is unlikely that this was a letter mixup but a letter order mixup". Two places whose letters
+     were exchanged (BRAD read as BARD, FORM as FROM; next to each other or not) are a letter-order slip, not a mix-up: they are dropped first. */
+  let swaps = 0;
+  for (let x = 0; x < left.length; x++) for (let y = x + 1; y < left.length; y++) { const i = left[x], j = left[y];
+    if (a[i] === b[j] && a[j] === b[i]) { left.splice(y, 1); left.splice(x, 1); x--; swaps++; break; } }
+  if (left.length > 2) return { mix: [], swaps: 0 };      // a whole different word is not a mix-up of letters
+  return { mix: left.map(i => a[i] + b[i]), swaps };
 }
+const diffPairs = (right, chosen) => letterDiff(right, chosen).mix;      // which letters were mixed up: [right letter, letter chosen]
+/* 3.90 (Colleen: "add letter order"): the words answered with two letters in the wrong order, [{ w, typed }] */
+const orderList = items => items.filter(x => !x.ok && x.typed && !/^\d+$/.test(String(x.w)) && letterDiff(x.w, x.typed).swaps > 0);
+const orderLine = (items, html) => { const o = orderList(items || []); if (!o.length) return '';
+  const t = o.slice(0, 6).map(x => html ? '<b>' + esc(showW(x.w)) + '</b> read as <b>' + esc(x.typed) + '</b>' : showW(x.w) + ' read as ' + x.typed).join(html ? ' · ' : ', ');
+  return 'Letter order slips: ' + t + (o.length > 6 ? (html ? ' · ' : ', ') + 'and ' + (o.length - 6) + ' more' : ''); };
 function record(ok, typed, extra) {
   const it = R.list[R.i];
   const row = Object.assign({ w: it.w, c: it.c || '', n: it.n || lettersCount(it.w), ok, typed, replays: R.cur.replays, ms: Date.now() - R.cur.shownAt, speed: R.game === 'ladder' ? R.lspeed : S.speed }, extra || {});
@@ -565,6 +578,9 @@ function sendToStudy(res, round) {
     lps: num ? null : lps(k), top: res.game === 'ladder' && res.top !== null && res.top !== undefined ? res.topLps : null,
     letters: num ? 0 : res.items.reduce((a, x) => a + (x.ok ? (x.n || lettersCount(x.w)) : 0), 0),      // letters read correctly
     items: num ? [] : res.items.filter(x => x.c && !/^LEVEL/.test(x.c)).map(x => ({ w: x.w, c: x.c, ok: !!x.ok })).slice(0, 300) };
+  if (num) msg.nums = res.items.slice(0, 60).map(x => [String(x.w), x.ok ? 1 : 0, String(x.typed || '').slice(0, 13)]);      // ASL Study 3.90 Class Problem Spots: each number, right or not, and the answer given
+  else { msg.mix = mixList(res.items).slice(0, 30).map(x => [x.right, x.saw, x.times]);      // 3.90: the round's letter mix-ups [right, saw, times]
+    const ord = orderList(res.items); msg.orderN = ord.length; msg.order = ord.slice(0, 20).map(x => [String(x.w).slice(0, 40), String(x.typed).slice(0, 40)]); }      // 3.90: letter order slips
   try { window.parent.postMessage(msg, '*'); } catch (e) {}
 }
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
@@ -596,7 +612,7 @@ if (EMBED) try { window.parent.postMessage({ type: 'fsp-ready' }, '*'); } catch 
 
 /* ---------- results ---------- */
 function mixList(items) {
-  const m = {}; items.forEach(x => (x.mix || []).forEach(p => { m[p] = (m[p] || 0) + 1; }));
+  const m = {}; items.forEach(x => (!x.ok && x.typed && !/^\d+$/.test(String(x.w)) ? diffPairs(x.w, x.typed) : x.mix || []).forEach(p => { m[p] = (m[p] || 0) + 1; }));      // worked out again from the answer, so rounds saved before 3.90 follow the letter-swap rule too
   return Object.keys(m).sort((a, b) => m[b] - m[a]).map(p => ({ right: p[0], saw: p[1], times: m[p] }));
 }
 function resultsShow() {
@@ -621,7 +637,8 @@ function resultsShow() {
       statBox(r.speedName, 'speed') + (g === 'type' || g === 'fill' || g === 'pick' ? statBox(r.limit ? r.limit + ' or fewer' : 'No limit', 'letter limit') : '') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
   }
   const mix = mixList(r.items);
-  $('#r-extra').innerHTML = mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '';
+  $('#r-extra').innerHTML = (mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '') +
+    (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '');
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
@@ -694,6 +711,7 @@ function reportLines(r) {
   if (g === 'type') out.push('Mode: ' + (r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only'));
   out.push('Used paper: ' + (r.paper === 'yes' ? 'Yes' : 'No'));
   if (r.supports) out.push('Supports: ' + r.supports);
+  if (orderList(r.items || []).length) out.push(orderLine(r.items, false));      // 3.90
   return out;
 }
 function reportText(r, name, link, cmp) {
@@ -704,7 +722,7 @@ function reportText(r, name, link, cmp) {
 
 /* ---------- ASL Study 3.82 (Colleen): the diagnostic report. Inside the app the report reads like a standardized test report: the student on top,
    and below it how they compare with every student in their program level (ASL 1, ASL 2 ...) in all class periods (the app's api_fsCompare). ---------- */
-const BANDS = [['Behind', 'behind', 'below 20th'], ['Approaching', 'near', '20th–39th'], ['On track', 'on', '40th–74th'], ['Above', 'above', '75th and up']];
+const BANDS = [['Beginning', 'behind', 'below 20th'], ['Developing', 'near', '20th–39th'], ['Meeting', 'on', '40th–74th'], ['Exceeding', 'above', '75th and up']];
 const bandOf = p => p < 20 ? 0 : p < 40 ? 1 : p < 75 ? 2 : 3;
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 const CMP_NAMES = { letters: { top: 'Top Speed ladder speed', pct: '% right', perMin: 'Words right per minute', speed: 'Average speed (1–10)', minutes: 'Minutes practiced' },
@@ -728,16 +746,12 @@ function cmpWords(d, name, r) {
   else if (sum) sum += '.';
   if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
   const sp = Math.round((r.game === 'ladder' && r.top !== null && r.top !== undefined ? r.top : r.speed || 0) * 3), slower = SPEEDS[Math.max(0, sp - 1)], mix = mixList(r.items || []).slice(0, 2).map(x => x.right + '/' + x.saw);
-  /* why this area, from the student's own numbers (Colleen: "... is the area to grow because ___") */
-  const unit = m => m.k === 'top' ? cmpVal('top', m.avg).replace(' / sec', ' letters a second') : cmpVal(m.k, m.avg);
-  const why = m => 'because ' + (core.length > 1 && m === worst ? 'it is ' + first + '’s lowest area: ' : '') + first + (m.k === 'pct' ? ' got ' + cmpVal(m.k, m.me) + ' right' : m.k === 'top' ? '’s top Speed Ladder speed is ' + cmpVal('top', m.me).replace(' / sec', ' letters a second') : m.k === 'perMin' ? ' reads ' + cmpVal(m.k, m.me) + (num ? ' numbers' : ' words') + ' right a minute' : m.k === 'mastered' ? ' has mastered ' + cmpVal(m.k, m.me) + ' signs' : ' has practiced ' + cmpVal(m.k, m.me) + ' minutes') + ' (' + L + ' average ' + unit(m) + ', ' + (m.p < 1 ? 'the lowest in ' + L : ordinal(m.p) + ' percentile') + ')';
-  const keep = worst ? ', because ' + first + ' is above most ' + L + ' students in every area (lowest: ' + ((num && worst.k === 'perMin' ? 'numbers a minute' : {top: 'speed', pct: 'accuracy', perMin: 'words a minute'}[worst.k])) + ', ' + ordinal(worst.p) + ' percentile)' : '';
   let next = '';
-  if (!worst || worst.p >= 75) next = 'keep it up' + keep + '. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
-  else if (worst.k === 'pct') next = 'accuracy is the area to grow ' + why(worst) + '. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
-  else if (worst.k === 'top') next = 'speed is the area to grow ' + why(worst) + '. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
-  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow ' + why(worst) + '. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
-  if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too, ' + why(mins) + ': a few short rounds (5 to 10 minutes) each week.';
+  if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
+  else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
+  else if (worst.k === 'top') next = 'speed is the area to grow. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
+  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
+  if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too: a few short rounds (5 to 10 minutes) each week.';
   return { sum, next: '<b>Next step:</b> ' + next };
 }
 /* 3.83 (Colleen: "so parents can see who's doing the work"): minutes spent, compared with the student's own class period, kept separate:
@@ -845,7 +859,7 @@ function reportSheet(r, name, cmp) {
     '<h2 class="rs-h">' + (cmp ? 'Student' : 'Round') + '</h2><div class="rs-info">' + (cmp ? info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : cmp.state === 'loading' ? '…' : STUDY.level) : info('Speed', r.speedName) + info('Used paper', r.paper === 'yes' ? 'Yes' : 'No')) + info('Activity', GAMES[g].name) + info(wt ? wt[0] : 'Word type', wt ? wt[1] : '') + '</div>' +
     '<h2 class="rs-h">Today’s Results</h2><div class="rs-boxes four">' + results + '</div>' +
     (rest ? '<p class="rs-sets">Settings: ' + rest + '</p>' : '') +
-    (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + bottom + (cmp ? sofar + cmpHalf(cmp, name, r) : '') + '</div>';
+    (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + (orderList(r.items).length ? '<p class="rs-sets">' + orderLine(r.items, true) + '</p>' : '') + bottom + (cmp ? sofar + cmpHalf(cmp, name, r) : '') + '</div>';
 }
 /* "My report" (Colleen: students can always open their current report compared with others): inside ASL Study, #/report/now (or /numbers)
    shows the student's running totals and the program comparison, without a round. */
