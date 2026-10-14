@@ -9,11 +9,11 @@ label{display:block;font-weight:800;margin:10px 0 4px}input,textarea{font:inheri
 textarea{min-height:56px;resize:vertical}button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
 button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font-size:14px}button:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tool{border:1.5px solid #E3D9CC;border-radius:14px;padding:12px;margin:10px 0;background:#FDFBF7}
-.tool .grid{display:grid;grid-template-columns:90px 1fr;gap:0 10px}.msg{font-weight:800;min-height:24px;margin-top:8px}.bad{color:#C7362E}.good{color:#14804D}</style></head>
+.tool .grid{display:grid;grid-template-columns:90px 1fr;gap:0 10px}.who{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:15px}.who label{display:inline-flex;gap:6px;align-items:center;margin:0;font-weight:700}.who input{width:auto}.share{border:1.5px solid #E3D9CC;border-radius:14px;padding:12px;margin:10px 0;background:#FDFBF7}.share code{font-size:15px;word-break:break-all}.msg{font-weight:800;min-height:24px;margin-top:8px}.bad{color:#C7362E}.good{color:#14804D}</style></head>
 <body><main>
 <p><a href="/" style="color:#2F6BFF;font-weight:700;text-decoration:none">&larr; asl.cool</a></p>
 <h1>Admin</h1>
-<p>Change the asl.cool password, and the buttons people see after typing it (the same buttons show on asl.cool/mytools).</p>
+<p>Your buttons, which ones students see on asl.cool (no password), private links for other teachers, and your password.</p>
 
 <form class="card" id="step1">
   <h2>1. Your current password</h2>
@@ -26,8 +26,15 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   <div class="card">
     <h2>2. The buttons</h2>
     <p class="hint">Emoji, name, a short description, and the address (for a page on asl.cool, just the part after asl.cool/, like <b>fingerspelling/</b>; for another site, the whole address starting with https://).</p>
+    <p class="hint">You always see every button after typing your password. Tick <b>Students</b> to show a button on asl.cool for everyone (no password), and tick a teacher link to put it on that link.</p>
     <div id="tools"></div>
     <button class="ghost" type="button" id="add">+ Add a button</button>
+  </div>
+  <div class="card">
+    <h2>Teacher Links</h2>
+    <p class="hint">Each link has a random code nobody can guess, and shows only the buttons you tick for it. Remove a link and it stops working right away. The names are only for you; teachers never see them.</p>
+    <div id="shares"></div>
+    <button class="ghost" type="button" id="addshare">+ New teacher link</button>
   </div>
   <form class="card" id="step3">
     <h2>3. New password (optional)</h2>
@@ -48,7 +55,9 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const hex = buf => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let state = null, tools = [], curPw = '';
+  let state = null, tools = [], shares = [], curPw = '';
+  const newCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789', r = crypto.getRandomValues(new Uint8Array(10)); return [...r].map(x => a[x % a.length]).join(''); };
+  const shareUrl = c => 'https://asl.cool/t/' + c;
   const pbkdf2 = async (pw, salt, iter) => crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']), 256);
   const aesKey = (bits, use) => crypto.subtle.importKey('raw', bits, 'AES-GCM', false, [use]);
   async function decryptList(pw, lock) { const k = await aesKey(await pbkdf2(pw, b64(lock.salt), lock.iter), 'decrypt'); return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(lock.iv) }, k, b64(lock.data)))); }
@@ -62,8 +71,21 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       <div class="grid"><div><label>Emoji</label><input data-k="icon" value="${esc(t.icon)}" maxlength="8"></div><div><label>Name</label><input data-k="title" value="${esc(t.title)}" maxlength="120"></div></div>
       <label>Description</label><textarea data-k="desc" maxlength="400">${esc(t.desc)}</textarea>
       <label>Address</label><input data-k="href" value="${esc(t.href)}" maxlength="300">
+      <div class="who"><label><input type="checkbox" data-s ${t.s ? 'checked' : ''}> Students (asl.cool)</label>${shares.map(x => `<label><input type="checkbox" data-sh="${x.code}" ${(t.sh || []).indexOf(x.code) >= 0 ? 'checked' : ''}> ${esc(x.name || 'Teacher link')}</label>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-mv="-1" ${i ? '' : 'disabled'}>↑ Up</button><button type="button" class="ghost small" data-mv="1" ${i < tools.length - 1 ? '' : 'disabled'}>↓ Down</button><button type="button" class="ghost small" data-del>Remove</button></div></div>`).join('');
   }
+  function drawShares() {
+    $('#shares').innerHTML = shares.length ? shares.map((x, i) => `<div class="share" data-i="${i}"><label>Name (only you see it)</label><input data-n value="${esc(x.name)}" maxlength="80" placeholder="Mrs. Lee, ASL 1 teachers…">
+      <p style="margin:8px 0 4px"><code>${shareUrl(x.code)}</code></p><div class="row"><button type="button" class="ghost small" data-copy>Copy link</button><button type="button" class="ghost small" data-rm>Remove link</button><span class="hint">${(tools.filter(t => (t.sh || []).indexOf(x.code) >= 0)).length} buttons</span></div></div>`).join('') : '<p class="hint">No teacher links yet.</p>';
+  }
+  $('#shares').addEventListener('input', e => { const box = e.target.closest('.share'); if (box && e.target.hasAttribute('data-n')) { shares[+box.dataset.i].name = e.target.value; draw(); } });
+  $('#shares').addEventListener('click', e => { const box = e.target.closest('.share'); if (!box) return; const x = shares[+box.dataset.i];
+    if (e.target.hasAttribute('data-copy')) { navigator.clipboard.writeText(shareUrl(x.code)).then(() => { e.target.textContent = 'Copied!'; }, () => prompt('Copy this link:', shareUrl(x.code))); }
+    if (e.target.hasAttribute('data-rm') && confirm('Remove the link for "' + (x.name || 'this teacher') + '"? It stops working after you save.')) { shares.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.sh) t.sh = t.sh.filter(c => c !== x.code); }); drawShares(); draw(); } });
+  $('#addshare').onclick = () => { shares.push({ code: newCode(), name: '' }); drawShares(); draw(); $('#shares .share:last-child input').focus(); };
+  $('#tools').addEventListener('change', e => { const box = e.target.closest('.tool'); if (!box) return; const t = tools[+box.dataset.i];
+    if (e.target.hasAttribute('data-s')) t.s = e.target.checked;
+    if (e.target.dataset.sh) { const c = e.target.dataset.sh; t.sh = (t.sh || []).filter(x => x !== c); if (e.target.checked) t.sh.push(c); drawShares(); } });
   $('#tools').addEventListener('input', e => { const box = e.target.closest('.tool'), k = e.target.dataset.k; if (box && k) tools[+box.dataset.i][k] = e.target.value; });
   $('#tools').addEventListener('click', e => {
     const box = e.target.closest('.tool'); if (!box) return; const i = +box.dataset.i;
@@ -75,8 +97,12 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     e.preventDefault(); $('#m1').textContent = 'Checking…';
     try {
       const r = await fetch('/lock.json', { cache: 'no-store' }); if (!r.ok) throw new Error('nolock');
-      state = await r.json(); tools = await decryptList($('#cur').value, state.lock); curPw = $('#cur').value;
-      $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw();
+      state = await r.json(); const got = await decryptList($('#cur').value, state.lock); curPw = $('#cur').value;
+      if (Array.isArray(got)) {      // the first time: the old one-list format; the buttons already on asl.cool/mytools become the students' buttons
+        tools = got; let open = []; try { const m = await (await fetch('/mytools.json', { cache: 'no-store' })).json(); open = (m.tools || []).map(t => t.href); } catch (e2) {}
+        tools.forEach(t => { t.s = open.indexOf(t.href) >= 0; }); shares = [];
+      } else { tools = got.tools || []; shares = got.shares || []; }
+      $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw(); drawShares();
     } catch (err) { $('#m1').textContent = err.message === 'nolock' ? 'Could not reach asl.cool. Check the internet connection.' : "That's not the current password."; }
   };
   $('#step3').onsubmit = async e => {
@@ -84,17 +110,19 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     const n1 = $('#new1').value, n2 = $('#new2').value;
     if (n1 !== n2) { m.className = 'msg bad'; m.textContent = 'The two new passwords do not match.'; return; }
     if (n1 && n1.length < 6) { m.className = 'msg bad'; m.textContent = 'Please use at least 6 characters.'; return; }
-    const clean = tools.map(t => ({ icon: String(t.icon || '').trim(), title: String(t.title || '').trim(), desc: String(t.desc || '').trim(), href: String(t.href || '').trim(), alt: t.alt })).filter(t => t.title || t.href);
+    const clean = tools.map(t => ({ icon: String(t.icon || '').trim(), title: String(t.title || '').trim(), desc: String(t.desc || '').trim(), href: String(t.href || '').trim(), alt: t.alt, s: !!t.s, sh: (t.sh || []).filter(c => shares.some(x => x.code === c)) })).filter(t => t.title || t.href);
     const missing = clean.find(t => !t.title || !t.href); if (missing) { m.className = 'msg bad'; m.textContent = 'Every button needs a name and an address.'; return; }
     clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
+    const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
+    const shareOut = shares.map(x => ({ code: x.code, tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
     const pw = n1 || curPw; $('#save').disabled = true; m.textContent = 'Saving…';
     try {
       const vsalt = crypto.getRandomValues(new Uint8Array(16));
-      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, clean), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: clean };
+      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim() })) }), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: clean.filter(t => t.s).map(pub), shares: shareOut };
       const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not save.');
-      curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); $('#new1').value = ''; $('#new2').value = '';
-      m.className = 'msg good'; m.textContent = 'Saved! It is live on asl.cool and asl.cool/mytools now.' + (n1 ? ' Use the new password from now on.' : '');
+      curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); drawShares(); $('#new1').value = ''; $('#new2').value = '';
+      m.className = 'msg good'; m.textContent = 'Saved! Students see ' + clean.filter(t => t.s).length + ' buttons on asl.cool' + (shares.length ? ', and your ' + shares.length + ' teacher link' + (shares.length === 1 ? ' is' : 's are') + ' up to date' : '') + '.' + (n1 ? ' Use the new password from now on.' : '');
     } catch (err) { m.className = 'msg bad'; m.textContent = err.message; }
     $('#save').disabled = false;
   };

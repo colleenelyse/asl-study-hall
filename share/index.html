@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="/ily-o.png"><link rel="apple-touch-icon" href="/ily-180-o.png"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASL Study Hall</title><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
+<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
+h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p{color:#5A6185}
+.card{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 2px 10px rgba(60,40,20,.06)}
+a.tool{display:block;background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06)}
+a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}
+form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input{font:inherit;padding:10px 14px;border:1.5px solid #E3D9CC;border-radius:12px;min-width:0;flex:1 1 200px}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
+.msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}</style></head>
+<body><main>
+<h1>🤟 ASL Study Hall</h1>
+<p>Free ASL and Deaf studies activities, shared with you by an ASL teacher. Pick one to start.</p>
+<div id="tools"><p>Loading…</p></div>
+<p class="foot"><a href="/credits.html">Credits and sources</a></p>
+<script>
+/* asl.cool/t/<code>: a list Colleen shares with one teacher or group (she picks the buttons in /admin; the code cannot be guessed). */
+(async function () {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const code = (location.pathname.match(/^\/t\/([a-z0-9]{8,16})\/?$/) || [])[1], box = document.getElementById('tools');
+  const off = () => { box.innerHTML = '<div class="card"><h2>This link is not active</h2><p>Ask the teacher who shared it for a new one.</p></div>'; };
+  if (!code) return off();
+  try {
+    const r = await fetch('/share.json?c=' + code, { cache: 'no-store' }); if (!r.ok) return off(); const d = await r.json();
+    if (!d.tools || !d.tools.length) return off();
+    box.innerHTML = d.tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : '/' + t.href.replace(/^\//, '')) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>').join('');
+  } catch (e) { box.innerHTML = '<p>Could not load the list. Check the internet connection and reload.</p>'; }
+})();
+</script>
+</main></body></html>

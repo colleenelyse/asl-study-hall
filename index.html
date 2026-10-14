@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="ily-o.png"><link rel="apple-touch-icon" href="ily-180-o.png"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ASL Study Hall</title><meta name="description" content="ASL Study Hall: free American Sign Language and Deaf studies practice for students and teachers.">
+<script>if (/(^|\.)asl\.cool$/.test(location.hostname)) document.documentElement.className = "wait";</script><style>html.wait #stu{visibility:hidden}</style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
 <style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
 h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p{color:#5A6185}
@@ -12,18 +13,23 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
 .msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}</style></head>
 <body><main>
 <h1>🤟 ASL Study Hall</h1>
-<p>Welcome! ASL Study Hall is a free place to practice American Sign Language and learn about Deaf culture and hearing. It is made by an ASL teacher for her students and for learners everywhere.</p>
-<div class="card" id="welcome">
-  <h2>What you can do here</h2>
-  <p>Practice reading fingerspelling from a realistic hand at real speeds, build vocabulary with games and puzzles, and explore how hearing, hearing loss and cochlear implants work. Everything is free, and nothing you do here is saved on our end.</p>
-  <p><b>Students:</b> each activity has its own address, like <b>asl.cool/</b> followed by a word. Ask your teacher for today's address, then type it in the address bar at the top of the screen, or tap the link or QR code your teacher shares.</p>
-</div>
-<div class="card" id="gate" hidden>
-  <h2>Full access</h2>
-  <form id="unlock"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></form>
-  <p class="msg" id="msg" aria-live="polite"></p>
+<p>Free ASL and Deaf studies practice, made by an ASL teacher for her students and for learners everywhere. Pick an activity to start. Nothing you do here is saved on our end.</p>
+<div id="stu">
+<a class="tool" href="study/"><b>🎓 ASL Study Hall</b>Our class app: vocab games, signs, points and reports. Sign in with your school Google account.</a>
+<a class="tool" href="fingerspelling/"><b>🤟 ASL Fingerspelling and Numbers Practice</b>Read fingerspelling and numbers 0–20 from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
+<a class="tool" href="numbers/"><b>🔢 ASL Numbers Practice</b>Read ASL numbers from a realistic hand: 0–99, hundreds, thousands and millions. Games, a quiz, Show me numbers and Build a number.</a>
+<a class="tool" href="bingo/"><b>🎱 Fingerspelling Bingo</b>Make Bingo cards from your own word list, print them or share digital cards, and let the hand call the words (or spell them yourself).</a>
+<a class="tool" href="wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
+<a class="tool" href="hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
+<a class="tool" href="ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
+<a class="tool" href="ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
 </div>
 <div id="tools"></div>
+<details class="card" id="gate" hidden><summary style="cursor:pointer;font-weight:800;color:#5A6185">Teacher</summary>
+  <p style="margin:10px 0">Type your password to see your full list.</p>
+  <form id="unlock"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></form>
+  <p class="msg" id="msg" aria-live="polite"></p>
+</details>
 <script>
 /* The tool boxes are stored scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code does not show them.
    Made by dev/home-lock/lock-home.js on Colleen's Mac. The individual tool links themselves stay public. */
@@ -33,11 +39,17 @@ let LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"VG0/CRFXz8WsNJSUJSxtYA==","iv":"
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const onAsl = location.hostname === 'asl.cool' || location.hostname === 'www.asl.cool';
-  function show(tools) {
-    $('#gate').hidden = true;
-    $('#tools').innerHTML = tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
+  const link = t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>';
+  /* asl.cool is the students' page (Colleen, 2026-10-14: "i want the students to only need to type asl.cool"): the buttons she ticks for Students in /admin, no password.
+     The list written into this page is the fallback (the school-safe GitHub copy uses it). */
+  if (onAsl) fetch('/mytools.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d && Array.isArray(d.tools) && d.tools.length) $('#stu').innerHTML = d.tools.map(link).join(''); }).catch(() => {}).then(() => { document.documentElement.className = ''; });      // the page's own list never flashes on asl.cool
+  else document.querySelectorAll('#stu a[data-alt]').forEach(a => { a.href = 'https://hearing-84j.pages.dev/' + a.dataset.alt; });
+  function show(got) {
+    const tools = Array.isArray(got) ? got : (got && got.tools) || [];      // the lock holds { tools, shares } since teacher links (2026-10-14)
+    $('#gate').hidden = true; $('#stu').hidden = true;
+    $('#tools').innerHTML = '<h2>Your Full List</h2>' + tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
       '<p style="text-align:right"><button class="lock" id="lockit">Forget the password on this device</button></p>';
-    $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#pw').value = ''; };
+    $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#stu').hidden = false; $('#pw').value = ''; };
   }
   async function open(key) { const out = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(LOCK.iv) }, key, b64(LOCK.data)); return JSON.parse(new TextDecoder().decode(out)); }
   async function fromPassword(pw) {
