@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><link rel="icon" type="image/png" href="ily-o.png"><link rel="apple-touch-icon" href="ily-180-o.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>ASL Fingerspelling Practice</title>
+<meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
+<link rel="stylesheet" href="style.css?v=57">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/"><span class="logo" aria-hidden="true">🤟</span> ASL Fingerspelling Practice</a>
+  <nav><a href="../" title="Back to the ASL Study Hall home page">&larr; All activities</a><a href="#/games">Games</a><a href="#/show">Show me how</a><a href="#/class">Classroom</a><a href="#/progress">My progress</a><a href="#/chart">Alphabet</a></nav>
+  <div class="look" id="look" aria-label="Colors, text size and font"></div>
+</header>
+
+<main>
+  <!-- Home -->
+  <section data-screen="home" class="screen">
+    <div class="hero card">
+      <h1>Read Fingerspelling Like a Pro</h1>
+      <p>A realistic hand spells words at real speeds, from Beginner to Deaf conversation speed. Read it, then show what you saw.</p>
+      <a class="btn big" href="#/games">Start practicing</a>
+      <ul class="points">
+        <li>Names, brands, cities, movies and more, the words people really fingerspell</li>
+        <li>Games for every level, a speed ladder, and classroom Bingo</li>
+        <li>Your progress stays on this device. No sign-in.</li>
+      </ul>
+    </div>
+    <div class="ad" data-ad="home" hidden></div>
+  </section>
+
+  <!-- Games -->
+  <section data-screen="games" class="screen">
+    <h2 class="pad" data-only="letters">Fingerspelling Games</h2>
+    <div class="gamegrid" id="g-grid" data-only="letters"></div>
+    <h2 class="pad" data-only="numbers">Numbers</h2>
+    <div class="gamegrid" id="g-numgrid" data-only="numbers"></div>
+    <h2 class="pad" data-only="letters">For the Classroom</h2>
+    <div class="gamegrid" data-only="letters">
+      <a class="gcard" href="#/class"><span class="gi" aria-hidden="true">📽️</span><b>Projector mode</b><span>You run it on the board. The hand spells, students write on whiteboards, you reveal.</span></a>
+      <a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show me how to spell</b><span>Type any word or name and watch the hand spell it.</span></a>
+      <a class="gcard" href="#/bingo"><span class="gi" aria-hidden="true">🎱</span><b>Fingerspelling Bingo</b><span>Use your own word list or a theme, print the cards, and the hand calls the words.</span></a>
+    </div>
+  </section>
+
+  <!-- Show me how to spell: any word, typed by the student or teacher -->
+  <section data-screen="show" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="show-slot"></div>
+      <div class="card panel">
+        <h2>Show Me How to Spell</h2>
+        <p class="hint">Type any word, name or sentence. The hand spells it for you.</p>
+        <label class="lab" for="sh-word">Your word</label>
+        <input id="sh-word" autocomplete="off" spellcheck="false" maxlength="80" placeholder="Your name, a word, anything">
+        <div class="row"><button class="btn big" id="sh-go">Spell it</button><button class="btn ghost" id="sh-again">Again</button></div>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="sh-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div></div>
+        <div class="sub"><span>Show each letter:</span><div class="seg" id="sh-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
+        <div class="field"><span class="lab">Skin Tone</span><div class="tones" id="sh-tones"></div></div>
+        <p class="hint" id="sh-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Show me numbers: type any number and watch the hand sign it, with all of Colleen's number rules -->
+  <section data-screen="shownum" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="shownum-slot"></div>
+      <div class="card panel">
+        <h2>Show Me Numbers</h2>
+        <p class="hint">Type any number up to 999,999,999. The hand signs it the way it is said, with HUNDRED, THOUSAND and MILLION.</p>
+        <label class="lab" for="sn-num">Your number</label>
+        <input id="sn-num" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Like 2026 or 1,250">
+        <div class="row"><button class="btn big" id="sn-go">Sign it</button><button class="btn ghost" id="sn-again">Again</button></div>
+        <div class="blocks" id="sn-blocks" aria-live="polite"></div>
+        <p class="hint" id="sn-note"></p>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="sn-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+        </div>
+        <div class="field small"><span class="lab">16–19</span><div class="seg sm" id="sn-teens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div></div>
+        <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sn-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
+        <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sn-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Build a number: line up number-sign blocks (0-99 and HUNDRED) and watch them play as one number (Colleen) -->
+  <section data-screen="build" class="screen">
+    <div class="play wide">
+      <div class="stage-slot" id="build-slot"></div>
+      <div class="card panel">
+        <h2>Build a Number</h2>
+        <div class="bd-cols">
+          <!-- next to the hands: type a number; the blocks build as you type (Colleen) -->
+          <div class="bd-type">
+            <h3>Type It In</h3>
+            <input id="bd-whole" class="bd-big" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="3840" aria-label="Type a whole number">
+            <p class="hint">The blocks build as you type. Up to 999,999,999.</p>
+            <button class="btn big" id="bd-show">▶ Sign it</button>
+            <div class="field small"><span class="lab">Speed</span>
+              <div class="speed"><input id="bd-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+                <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+            </div>
+            <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="bd-hstyle"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+          </div>
+          <!-- the far side: the number building blocks -->
+          <div class="bd-blockpanel">
+            <h3>Number Building Blocks</h3>
+            <div class="blocks" id="bd-blocks" aria-live="polite"></div>
+            <p class="bd-total" id="bd-total"></p>
+            <p class="hint" id="bd-note"></p>
+            <span class="lab">Add a Block</span>
+            <div class="bd-pad" id="bd-pad"></div>
+            <div class="row"><input id="bd-num" type="number" min="0" max="99" inputmode="numeric" placeholder="10–99" aria-label="A number from 10 to 99"><button class="btn ghost" id="bd-add">Add</button></div>
+            <div class="row bd-big3"><button class="btn ghost bd-h" id="bd-hund">+ HUNDRED</button><button class="btn ghost bd-h" id="bd-thou">+ THOUSAND</button><button class="btn ghost bd-h" id="bd-mill">+ MILLION</button></div>
+            <div class="row"><button class="btn" id="bd-play">▶ Play the blocks</button><button class="btn ghost" id="bd-back">⌫ Remove last</button></div>
+          </div>
+        </div>
+        <button class="btn ghost bd-clearall" id="bd-clear">✕ Clear all</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- A student's digital Bingo card, opened from the teacher's link or QR code -->
+  <section data-screen="card" class="screen">
+    <div class="card scard-wrap">
+      <h2 id="sc-title">Bingo</h2>
+      <div class="field" id="sc-ask" hidden><span class="lab">What Is Your Card Number?</span>
+        <p class="hint">Your teacher gives each student a different number from 1 to 999 (for example, your seat number).</p>
+        <div class="row"><input id="sc-first" type="number" min="1" max="999" inputmode="numeric" placeholder="1 to 999" style="max-width:140px;font-size:24px"><button class="btn big" id="sc-first-go">Show my card</button></div>
+        <div class="alert" id="sc-first-bad" hidden>Type a number from 1 to 999.</div></div>
+      <div id="sc-body">
+      <p class="hint" id="sc-sub"></p>
+      <div class="sgrid" id="sc-grid"></div>
+      <div class="scno" id="sc-no"></div>
+      <div class="sbingo" id="sc-bingo" hidden>BINGO!<span>Tell your teacher your card number.</span></div>
+      <p class="hint" id="sc-dup" hidden>Same card number as a classmate? <button class="link" id="sc-new">Get a different number</button></p>
+      <p class="hint">Tap a square to put a marker on it; tap again to take it off. When you have Bingo, tell your teacher your card number.</p>
+      <div class="field"><span class="lab">Use Card Number</span>
+        <div class="row"><input id="sc-own" type="number" min="1" max="999" inputmode="numeric" placeholder="1 to 999" style="max-width:180px"><button class="btn ghost" id="sc-own-go">Use this card</button></div>
+        <p class="hint">Opened the link on another device, or typed the wrong number? Type your card number (1 to 999) to get your card.</p></div>
+      <button class="link" id="sc-clear">Clear my markers</button>
+      </div>
+      <div class="alert" id="sc-bad" hidden>This Bingo link is not complete. Ask your teacher for the link or QR code again.</div>
+    </div>
+  </section>
+
+  <!-- Setup (fields show or hide for each game) -->
+  <section data-screen="setup" class="screen">
+    <div class="card">
+      <div class="row between"><h2 id="s-title">Set Up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
+      <div id="s-fields">
+      <p class="hint" id="s-about"></p>
+      <div class="field" data-for="type pick fill pairs flash numbers nquiz ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
+        <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+          <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+      </div>
+      <div class="field" data-for="ladder"><span class="lab">Hearts</span>
+        <div class="seg sm" id="s-hearts"><button data-v="1">1 heart</button><button data-v="3">3 hearts</button><button data-v="5">5 hearts</button><button data-v="off">Off (keep going)</button></div>
+        <p class="hint">Each miss costs a heart; the game ends when they run out. Off: no game over, students tap End round when they are done.</p>
+      </div>
+      <div class="grid2" data-for="type pick fill ladder">
+        <label class="field"><span class="lab">Letter Limit</span><select id="s-limit"></select></label>
+        <label class="field" data-for="type pick fill"><span class="lab">Words in a Round</span><select id="s-count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+      </div>
+      <div class="field" data-for="type"><span class="lab">Game</span>
+        <div class="seg" id="s-mode"><button data-v="plain">Fingerspelling only</button><button data-v="clue">Category clue first</button></div>
+      </div>
+      <div class="field" data-for="sound"><span class="lab">Levels</span>
+        <div class="row"><button class="link" data-allnone="levels" data-v="all">Choose all</button><button class="link" data-allnone="levels" data-v="none">Choose none</button></div>
+        <div class="chips" id="s-levels"><button data-l="1">Level 1: three letters (sat, Pam)</button><button data-l="2">Level 2: four or five letters (stop, Brad)</button><button data-l="3">Level 3: two parts (sun-set)</button></div>
+        <label class="field"><span class="lab">Words in a Round</span><select id="s-scount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+      </div>
+      <div class="field" data-for="tricky"><span class="lab">Levels</span>
+        <div class="row"><button class="link" data-allnone="tlevels" data-v="all">Choose all</button><button class="link" data-allnone="tlevels" data-v="none">Choose none</button></div>
+        <div class="chips" id="s-tlevels"></div>
+        <label class="field"><span class="lab">Words in a Round</span><select id="s-tcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+      </div>
+      <div class="field" data-for="pairs"><span class="lab">Letters That Look Alike</span>
+        <div class="row"><button class="link" data-allnone="pairs" data-v="all">Choose all</button><button class="link" data-allnone="pairs" data-v="none">Choose none</button></div>
+        <div class="chips" id="s-pairs"></div>
+        <div class="seg sm" id="s-pairkind" style="margin-top:8px"><button data-v="words">In words</button><button data-v="letters">Letters alone</button></div>
+      </div>
+      <div class="field" data-for="flash"><span class="lab">Letters</span>
+        <p class="hint" style="margin:0 0 6px">Green letters are in the game; white ones are not. Tap a letter to add it or take it out.</p>
+        <div class="row"><button class="link" id="s-fl-all">Choose all 26</button><button class="link" id="s-fl-none">Choose none</button></div>
+        <div class="chips letters" id="s-flash"></div>
+        <label class="field"><span class="lab">Letters in a Round</span><select id="s-flcount"><option>10</option><option selected>20</option><option>30</option></select></label>
+      </div>
+      <div class="field" data-for="numbers"><span class="lab">Numbers</span>
+        <p class="hint" style="margin:0 0 6px">Green numbers are in the game; white ones are not. Tap a number to add it or take it out.</p>
+        <div class="row"><button class="link" id="s-nm-all">Choose all</button><button class="link" id="s-nm-none">Choose none</button></div>
+        <div id="s-nums"></div>
+      </div>
+      <div class="field" data-for="nquiz"><span class="lab">Numbers From</span>
+        <div class="seg sm" id="s-qrange"><button data-v="0">0–100</button><button data-v="1">0–1,000</button><button data-v="2">0–10,000</button><button data-v="3">0–100,000</button><button data-v="4">0–1,000,000</button><button data-v="5">Up to 999 million</button><button data-v="custom">My own range</button></div>
+        <div class="row" id="s-qcustom"><label>From <input id="s-qmin" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label><label>to <input id="s-qmax" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label></div>
+      </div>
+      <div class="field" data-for="nquiz"><span class="lab">HUNDRED</span>
+        <div class="seg sm" id="s-nhund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div>
+      </div>
+      <div class="field" data-for="numbers nquiz"><span class="lab">16–19</span>
+        <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
+        <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
+      </div>
+      <div class="field" data-for="numbers nquiz"><span class="lab">23 &amp; 25</span>
+        <div class="seg sm" id="s-nform"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div>
+        <p class="hint">Formal: the L changes into 3 or 5. Slang: the middle finger bends twice.</p>
+      </div>
+      <div class="grid2" data-for="numbers nquiz">
+        <div class="field"><span class="lab">Answer By</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
+        <label class="field" data-for="nquiz"><span class="lab">Numbers in a Round</span><select id="s-qcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+        <label class="field" data-for="numbers"><span class="lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+      </div>
+      <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word Type</span>
+        <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
+        <p class="hint" id="s-bank-hint"></p>
+      </div>
+      <div class="field" data-for="type pick fill ladder" data-bank="everyday"><span class="lab">Word Lists</span>
+        <div class="row"><button class="link" data-allnone="fcats" data-v="all">Choose all</button><button class="link" data-allnone="fcats" data-v="none">Choose none</button></div>
+        <div class="chips" id="s-fcats"></div>
+      </div>
+      <div class="field" data-for="type pick fill ladder" data-bank="proper"><span class="lab">Categories</span>
+        <div class="row"><button class="link" id="s-all">Choose all</button><button class="link" id="s-none">Choose none</button></div>
+        <div class="chips" id="s-cats"></div>
+      </div>
+      <div class="field" data-for="type ladder sound tricky"><span class="lab">Letter Count</span>
+        <div class="seg" id="s-countseg"><button data-v="off">Hide</button><button data-v="on">Show the number of letters</button></div></div>
+      <details class="field" data-for="type pick fill ladder sound tricky"><summary class="lab">Supports</summary>
+        <label class="check" data-for="type pick ladder" data-bank="proper"><input type="checkbox" id="s-one"> One word only (no names with two or more words)</label>
+        <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
+      </details>
+      <div class="field"><span class="lab">Skin Tone</span><div class="tones" id="s-tones"></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers nquiz sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <p class="pool" id="s-pool" aria-live="polite"></p>
+      </div>
+      <button class="btn big" id="s-go">Start</button>
+      <p class="hint" id="s-live" hidden>Change any setting while you play: speed, paper and letter count change right away; the words, lists and limits change from the next word.</p>
+    </div>
+    <!-- the game, right under its settings (Colleen: change settings while you play) -->
+    <div id="game-area" hidden>
+    <div class="play">
+      <div class="stage-slot" id="play-slot"></div>
+      <div class="card panel">
+        <div class="row between"><span class="count" id="p-count"></span><button class="link" id="p-quit">End round</button></div>
+        <div class="ladder" id="p-ladder" hidden><span id="p-lspeed"></span><span id="p-lives"></span></div>
+        <div class="clue" id="p-clue" hidden><div class="clue-box" id="p-clue-box"></div><span class="clue-lab">Category</span></div>
+        <div class="blanks" id="p-blanks" aria-hidden="true"></div>
+        <div id="p-typebox">
+          <label class="lab" for="p-answer" id="p-ask">What did the hand spell?</label>
+          <input id="p-answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <div class="row" id="p-typebtns">
+            <button class="btn" id="p-check">Check</button>
+            <button class="btn ghost" id="p-replay">Watch again</button>
+            <button class="btn ghost" id="p-skip">I don't know</button>
+          </div>
+        </div>
+        <div id="p-choicebox" hidden>
+          <span class="lab" id="p-cask">Which word did the hand spell?</span>
+          <div class="choices" id="p-choices"></div>
+          <div class="row"><button class="btn ghost" id="p-replay2">Watch again</button></div>
+        </div>
+        <div class="feedback" id="p-feedback" aria-live="polite"></div>
+        <div class="meaning" id="p-meaning" hidden></div>
+        <button class="btn big" id="p-next" hidden>Next word</button>
+      </div>
+    </div>
+    </div>
+  </section>
+
+
+  <!-- Results -->
+  <section data-screen="results" class="screen">
+    <div class="card">
+      <h2 id="r-title">Round Results</h2>
+      <div class="big-score" id="r-score"></div>
+      <div class="stats" id="r-stats"></div>
+      <div id="r-extra"></div>
+      <ol class="words" id="r-words"></ol>
+      <div class="row">
+        <a class="btn" href="#/setup" id="r-again">Play again</a>
+        <a class="btn ghost" href="#/review" id="r-review">Review missed words</a>
+        <a class="btn ghost" href="#/report">Make my report</a>
+        <a class="btn ghost" href="#/games">Other games</a>
+      </div>
+    </div>
+    <div class="ad" data-ad="results" hidden></div>
+  </section>
+
+  <!-- Review missed words -->
+  <section data-screen="review" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="review-slot"></div>
+      <div class="card panel">
+        <h2 id="v-title">Missed Words</h2>
+        <p class="hint">Tap one to watch it again.</p>
+        <div class="chips" id="v-list"></div>
+        <div class="row"><button class="btn" id="v-again">Practice these again</button><a class="btn ghost" href="#/results" id="v-back">Back to results</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Report -->
+  <section data-screen="report" class="screen">
+    <div class="card noprint">
+      <h2>Make My Report</h2>
+      <p class="row" id="rp-kind" hidden><b>My report:</b> <a class="link" data-k="letters" href="#/report/now">Fingerspelling</a> <a class="link" data-k="numbers" href="#/report/numbers">Numbers</a></p>
+      <div class="grid2">
+        <label class="field"><span class="lab">Your Name</span><input id="rp-name" autocomplete="name" placeholder="First and last name"></label>
+        <label class="field"><span class="lab">Teacher's Email (To Send It)</span><input id="rp-email" type="email" autocomplete="off" placeholder="teacher@school.org"></label>
+      </div>
+      <div class="alert" id="rp-need" hidden>Type your name first, so your teacher knows whose report it is.</div>
+      <div class="alert" id="rp-sent" hidden aria-live="polite"></div>
+      <div class="row">
+        <button class="btn" id="rp-mail">Email to my teacher</button>
+        <button class="btn ghost" id="rp-print">Download (PDF) or print</button>
+        <a class="link" id="rp-mailto" href="#">Use my email app instead</a>
+      </div>
+      <details class="shot"><summary>How to take a screenshot instead</summary>
+        <ul>
+          <li><b>Chromebook:</b> press Ctrl + Show windows (the key with boxes). For part of the screen: Ctrl + Shift + Show windows.</li>
+          <li><b>Windows:</b> press Windows key + Shift + S, then drag over the report.</li>
+          <li><b>Mac:</b> press Command + Shift + 4, then drag over the report.</li>
+          <li><b>iPad:</b> press the top button and a volume button at the same time.</li>
+          <li><b>iPhone:</b> press the side button and volume up at the same time (older iPhones: side and Home).</li>
+          <li><b>Android phone:</b> press power and volume down at the same time.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="rsheet" id="rp-sheet"></div>
+  </section>
+
+  <!-- Online report: what the QR code on a report opens (the report is inside the address) -->
+  <section data-screen="view" class="screen">
+    <div class="card noprint">
+      <h2>Fingerspelling Practice Report</h2>
+      <p class="hint">This report was opened from its QR code or link. Nothing is saved on this device.</p>
+      <div class="row"><button class="btn ghost" id="vw-print">Download (PDF) or print</button><a class="link" href="#/games">Practice fingerspelling yourself</a></div>
+    </div>
+    <div class="rsheet" id="vw-sheet"></div>
+  </section>
+
+  <!-- Progress -->
+  <section data-screen="progress" class="screen">
+    <div class="card">
+      <h2>My Progress</h2>
+      <p class="hint">Kept on this device only.</p>
+      <div id="g-body"></div>
+      <button class="link danger" id="g-reset">Clear my progress</button>
+    </div>
+    <div class="ad" data-ad="progress" hidden></div>
+  </section>
+
+  <!-- Alphabet chart -->
+  <section data-screen="chart" class="screen">
+    <div class="card chart">
+      <div class="row between"><div><h2>ASL Fingerspelling Alphabet</h2><p class="hint">As you see it when a signer faces you. Tap a letter to watch it move.</p></div>
+        <button class="btn ghost noprint" id="c-print">Print</button></div>
+      <div class="cgrid" id="c-grid"><p class="hint">Getting the hand ready…</p></div>
+    </div>
+  </section>
+
+  <!-- Classroom projector mode -->
+  <section data-screen="class" class="screen">
+    <div class="teach">
+      <div class="stage-slot" id="class-slot"></div>
+      <div class="card panel">
+        <h2>Projector Mode</h2>
+        <div id="cl-setup">
+          <div class="field"><span class="lab">Words</span>
+            <div class="seg" id="cl-src"><button data-v="cats">Names &amp; fingerspelled</button><button data-v="everyday">Everyday words</button><button data-v="list">My list</button></div></div>
+          <div id="cl-cats-box"><p class="hint">Uses the categories (or word lists) and letter limit from the game setup. <a href="#/setup/type">Change them</a></p></div>
+          <div id="cl-list-box" class="wordlist" data-list="class"></div>
+          <button class="btn big" id="cl-start">Start</button>
+        </div>
+        <div id="cl-run" hidden>
+          <div class="count" id="cl-count"></div>
+          <div class="reveal" id="cl-reveal"></div>
+          <div class="row">
+            <button class="btn big" id="cl-next">Next word</button>
+            <button class="btn ghost" id="cl-again">Watch again</button>
+            <button class="btn ghost" id="cl-show">Show answer</button>
+          </div>
+          <p class="hint">Keys: Enter = next word, Space = watch again, A = show answer.</p>
+          <div class="field small"><span class="lab">Speed</span>
+            <div class="speed"><input id="cl-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+              <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div></div>
+          <details><summary class="lab">Words So Far</summary><ol class="done" id="cl-done"></ol></details>
+          <button class="link" id="cl-stop">Change the words</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bingo -->
+  <section data-screen="bingo" class="screen">
+    <div class="card" id="bg-setup">
+      <h2>Fingerspelling Bingo</h2>
+      <p class="hint">Paste or upload your own word list, for example your current unit (about 100 words is best; a 5 × 5 card needs at least 24). Print the cards, then the hand calls the words at random and keeps track of which ones it has called.</p>
+      <label class="field"><span class="lab">Game Title (Printed on the Cards)</span><input id="bg-title" placeholder="Fingerspelling Bingo"></label>
+      <div class="wordlist" data-list="bingo"></div>
+      <h3>Cards</h3>
+      <div class="grid3">
+        <label class="field"><span class="lab">How Many Cards</span><input id="bg-ncards" type="number" min="1" max="300" value="30"></label>
+        <label class="field"><span class="lab">Card Size</span><select id="bg-size"><option value="3">3 × 3</option><option value="4">4 × 4</option><option value="5" selected>5 × 5</option></select></label>
+        <label class="field"><span class="lab">Cards on Each Page</span><select id="bg-perpage"><option value="1">1 (big)</option><option value="2" selected>2</option><option value="4">4 (small)</option></select></label>
+        <label class="field"><span class="lab">Font</span><select id="bg-font"><option value="">Standard</option><option value="Fredoka">Rounded (Fredoka)</option><option value="Nunito">Clean (Nunito)</option><option value="Lexend">Easy to read (Lexend)</option><option value="Patrick Hand">Handwritten (Patrick Hand)</option><option value="Merriweather">Classic (Merriweather)</option><option value="Arial">Plain (Arial)</option><option value="ASL">ASL font</option></select></label>
+        <label class="field"><span class="lab">Letters Across the Top</span><select id="bg-header"><option value="BINGO">B I N G O</option><option value="">None</option><option value="custom">My own word…</option></select></label>
+        <label class="field" id="bg-header-own-box" hidden><span class="lab">My Own Word (One Letter for Each Column)</span><input id="bg-header-own" maxlength="5" placeholder="SIGNS"></label>
+        <label class="field"><span class="lab">Middle Square</span><select id="bg-free"><option value="free" selected>Free space</option><option value="word">A word, like the rest</option></select></label>
+        <label class="field" id="bg-freetext-box"><span class="lab">Free Space Says</span><input id="bg-freetext" value="FREE" maxlength="14"></label>
+        <label class="field"><span class="lab">Words on the Cards</span><select id="bg-case"><option value="as">As typed</option><option value="upper">ALL CAPITALS</option><option value="lower">all lowercase</option></select></label>
+        <label class="field"><span class="lab">Color</span><select id="bg-color"><option value="#2F6BFF">Blue</option><option value="#c2410c">Orange</option><option value="#14804D">Green</option><option value="#7c3aed">Purple</option><option value="#be185d">Pink</option><option value="#1B1E3C">Black</option></select></label>
+      </div>
+      <label class="field"><span class="lab">Line Under the Title (Optional)</span><input id="bg-sub" placeholder="Watch the hand. Mark the word you see."></label>
+      <label class="check"><input type="checkbox" id="bg-caller" checked> Also print a caller's list (every word, to check off)</label>
+      <div class="field"><span class="lab">Who Spells the Words?</span>
+        <div class="seg" id="bg-who"><button data-v="hand">Generate the spelling for me</button><button data-v="live">Teacher or student spells live</button></div>
+        <p class="hint" id="bg-who-hint"></p></div>
+      <label class="field" id="bg-speed-box"><span class="lab">Calling Speed</span><select id="bg-speed"><option value="0">Beginner</option><option value="0.333">Intermediate</option><option value="0.666">Advanced</option><option value="1">Deaf</option></select></label>
+      <div class="alert" id="bg-msg" role="alert" hidden></div>
+      <div class="row"><button class="btn" id="bg-print">Print or save the cards as a PDF</button><button class="btn" id="bg-share">Share digital cards</button><button class="btn big" id="bg-play">Play</button></div>
+      <p class="hint">To save a PDF: click Print, then choose "Save as PDF" as the printer.</p>
+      <h3>Preview (Card 1, as It Prints)</h3>
+      <div class="bpreview" id="bg-preview" aria-label="Card preview"></div>
+    </div>
+    <div class="teach" id="bg-run" hidden>
+      <div class="stage-slot" id="bingo-slot"></div>
+      <div class="card panel">
+        <div class="row between"><h2 id="bg-run-title">Bingo</h2><button class="link" id="bg-back">Back to words and cards</button></div>
+        <div class="count" id="bg-count"></div>
+        <div class="alert warn" id="bg-livenote" hidden>Before you call a word, turn off or freeze your projector so the class cannot see the screen. Then click <b>Call a word</b>.</div>
+        <div class="reveal" id="bg-reveal"></div>
+        <div class="row">
+          <button class="btn big" id="bg-next">Call a word</button>
+          <button class="btn ghost" id="bg-again">Watch again</button>
+          <button class="btn ghost" id="bg-peek" hidden>Hold to peek</button>
+          <button class="btn ghost" id="bg-show">Show the word</button>
+        </div>
+        <p class="hint" id="bg-keys">Keys: Enter = call a word, Space = watch again, A = show the word.</p>
+        <div class="field"><span class="lab">Check a Card</span>
+          <div class="row"><input id="bg-cardno" type="number" min="1" placeholder="Card number" style="max-width:160px"><button class="btn ghost" id="bg-check">Check</button></div>
+          <div id="bg-cardview"></div></div>
+        <details><summary class="lab">Called Words</summary><ol class="done" id="bg-called"></ol></details>
+        <button class="btn ghost" id="bg-share2">Share digital cards</button>
+        <button class="link danger" id="bg-reset">Start a new game (same cards)</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- sharing digital Bingo cards -->
+<div class="modal" id="share-box" hidden><div class="card modal-card">
+  <div class="row between"><h2>Share Digital Cards</h2><button class="link" id="share-x">Close</button></div>
+  <div class="field"><span class="lab">Card Numbers</span>
+    <div class="seg" id="share-mode"><button data-v="teacher">I give each student a number</button><button data-v="random">Pick a random number (1 to 999)</button></div></div>
+  <div id="share-qr" class="qr"></div>
+  <div class="row"><input id="share-link" readonly><button class="btn" id="share-copy">Copy link</button></div>
+  <p class="hint" id="share-note"></p>
+</div></div>
+
+<!-- printed Bingo cards -->
+<div id="print-cards" class="printonly"></div>
+
+<!-- the one hand, moved into whichever screen needs it -->
+<div class="stage" id="stage">
+  <div class="assist" id="assist" aria-hidden="true"></div>
+  <div class="cv"><canvas id="hand" width="800" height="800" aria-label="A hand fingerspelling"></canvas><div class="frost" id="frost" aria-hidden="true"></div></div>
+  <div class="loading" id="loading">Getting the hand ready…</div>
+</div>
+
+<footer class="foot">Made by an ASL teacher for students everywhere. Inspired by <a href="https://www.lifeprint.com" target="_blank" rel="noopener">Lifeprint</a>'s fingerspelling practice by Dr. Bill Vicars. Hand model: WebXR Input Profiles (MIT). <a href="../credits.html">Credits</a> · <a href="privacy.html">Privacy</a></footer>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/RoomEnvironment.js"></script>
+<script src="words.js?v=40"></script>
+<script src="themes.js?v=40"></script>
+<script src="hand.js?v=75"></script>
+<script src="look.js?v=2"></script>
+<script src="app.js?v=71"></script>
+</body>
+</html>

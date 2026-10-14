@@ -34,12 +34,12 @@
 
   <!-- Games -->
   <section data-screen="games" class="screen">
-    <h2 class="pad">Fingerspelling Games</h2>
-    <div class="gamegrid" id="g-grid"></div>
-    <h2 class="pad">Numbers</h2>
-    <div class="gamegrid" id="g-numgrid"></div>
-    <h2 class="pad">For the Classroom</h2>
-    <div class="gamegrid">
+    <h2 class="pad" data-only="letters">Fingerspelling Games</h2>
+    <div class="gamegrid" id="g-grid" data-only="letters"></div>
+    <h2 class="pad" data-only="numbers">Numbers</h2>
+    <div class="gamegrid" id="g-numgrid" data-only="numbers"></div>
+    <h2 class="pad" data-only="letters">For the Classroom</h2>
+    <div class="gamegrid" data-only="letters">
       <a class="gcard" href="#/class"><span class="gi" aria-hidden="true">📽️</span><b>Projector mode</b><span>You run it on the board. The hand spells, students write on whiteboards, you reveal.</span></a>
       <a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show me how to spell</b><span>Type any word or name and watch the hand spell it.</span></a>
       <a class="gcard" href="#/bingo"><span class="gi" aria-hidden="true">🎱</span><b>Fingerspelling Bingo</b><span>Use your own word list or a theme, print the cards, and the hand calls the words.</span></a>
@@ -483,6 +483,6 @@
 <script src="themes.js?v=40"></script>
 <script src="hand.js?v=75"></script>
 <script src="look.js?v=2"></script>
-<script src="app.js?v=70"></script>
+<script src="app.js?v=71"></script>
 </body>
 </html>

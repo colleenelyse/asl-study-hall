@@ -24,6 +24,12 @@ if (EMBED) try {
 
 /* switches for later: ads (never during a word) and Google Analytics. Both off until the site is ready for them. */
 const CFG = { ads: false, ga: '' };
+/* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
+   The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
+const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers)\b/) || [])[1]) || '';
+const NUM_PAGES = ['shownum', 'build'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|nquiz)$/.test(sub || '')) :
+  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|nquiz)$/.test(sub || '')) : false;
 
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const store = {
@@ -722,12 +728,16 @@ function cmpWords(d, name, r) {
   else if (sum) sum += '.';
   if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
   const sp = Math.round((r.game === 'ladder' && r.top !== null && r.top !== undefined ? r.top : r.speed || 0) * 3), slower = SPEEDS[Math.max(0, sp - 1)], mix = mixList(r.items || []).slice(0, 2).map(x => x.right + '/' + x.saw);
+  /* why this area, from the student's own numbers (Colleen: "... is the area to grow because ___") */
+  const unit = m => m.k === 'top' ? cmpVal('top', m.avg).replace(' / sec', ' letters a second') : cmpVal(m.k, m.avg);
+  const why = m => 'because ' + (core.length > 1 && m === worst ? 'it is ' + first + '’s lowest area: ' : '') + first + (m.k === 'pct' ? ' got ' + cmpVal(m.k, m.me) + ' right' : m.k === 'top' ? '’s top Speed Ladder speed is ' + cmpVal('top', m.me).replace(' / sec', ' letters a second') : m.k === 'perMin' ? ' reads ' + cmpVal(m.k, m.me) + (num ? ' numbers' : ' words') + ' right a minute' : m.k === 'mastered' ? ' has mastered ' + cmpVal(m.k, m.me) + ' signs' : ' has practiced ' + cmpVal(m.k, m.me) + ' minutes') + ' (' + L + ' average ' + unit(m) + ', ' + (m.p < 1 ? 'the lowest in ' + L : ordinal(m.p) + ' percentile') + ')';
+  const keep = worst ? ', because ' + first + ' is above most ' + L + ' students in every area (lowest: ' + ((num && worst.k === 'perMin' ? 'numbers a minute' : {top: 'speed', pct: 'accuracy', perMin: 'words a minute'}[worst.k])) + ', ' + ordinal(worst.p) + ' percentile)' : '';
   let next = '';
-  if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
-  else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
-  else if (worst.k === 'top') next = 'speed is the area to grow. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
-  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
-  if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too: a few short rounds (5 to 10 minutes) each week.';
+  if (!worst || worst.p >= 75) next = 'keep it up' + keep + '. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
+  else if (worst.k === 'pct') next = 'accuracy is the area to grow ' + why(worst) + '. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
+  else if (worst.k === 'top') next = 'speed is the area to grow ' + why(worst) + '. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
+  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow ' + why(worst) + '. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
+  if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too, ' + why(mins) + ': a few short rounds (5 to 10 minutes) each week.';
   return { sum, next: '<b>Next step:</b> ' + next };
 }
 /* 3.83 (Colleen: "so parents can see who's doing the work"): minutes spent, compared with the student's own class period, kept separate:
@@ -883,7 +893,7 @@ function reportShow() {
   /* inside ASL Study (Colleen): the app knows the teacher and sends the report itself; the email box and "your email app" are not needed */
   $('#rp-email').closest('.field').hidden = EMBED; $('#rp-mailto').hidden = EMBED; $('#rp-mail').textContent = EMBED ? 'Send to my teacher' : 'Email to my teacher';
   if (EMBED && !$('#rp-name').value && STUDY.name) $('#rp-name').value = STUDY.name;
-  if (EMBED) { $('#rp-mail').onclick = async () => { if (!r || !named()) return; const p = await parts(); const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…'; const img = await sheetPicture($('#rp-sheet')); try { window.parent.postMessage({ type: 'fsp-report', subject: p.su, text: p.body, img }, '*'); } catch (e) { b.disabled = false; } }; }
+  if (EMBED) { $('#rp-mail').onclick = async () => { if (!r || !named()) return; const p = await parts(); const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…'; m.textContent = 'Making the picture of your report…'; const img = await sheetPicture($('#rp-sheet')); if (!img) { b.disabled = false; m.className = 'alert bad'; m.textContent = 'The picture of your report could not be made. Wait a moment and tap Send again.'; return; } m.textContent = 'Sending…'; try { window.parent.postMessage({ type: 'fsp-report', subject: p.su, text: p.body, img }, '*'); } catch (e) { b.disabled = false; } }; }
   else $('#rp-mail').onclick = async () => { if (!r || !named()) return; const tab = window.open('', '_blank'); const p = await parts(); const url = 'https:' + '//mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(p.to) + '&su=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); if (tab) { tab.opener = null; tab.location.href = url; } else window.open(url, '_blank', 'noopener'); };
   $('#rp-mailto').onclick = async e => { e.preventDefault(); if (!r || !named()) return; const p = await parts(); location.href = 'mailto:' + encodeURIComponent(p.to) + '?subject=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); };
   $('#rp-print').onclick = () => {
@@ -909,7 +919,9 @@ function standingShow(kind) {
     if (!CMP || CMP.state !== 'ok') return;
     const lines = [(kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: where I stand now', 'Name: ' + name, 'Date: ' + new Date().toLocaleString()].concat(cmpLines(CMP, name, { game: kind === 'numbers' ? 'numbers' : '', items: [] }));
     const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…';
-    const img = await sheetPicture($('#rp-sheet'));
+    m.textContent = 'Making the picture of your report…'; const img = await sheetPicture($('#rp-sheet'));
+    if (!img) { b.disabled = false; m.className = 'alert bad'; m.textContent = 'The picture of your report could not be made. Wait a moment and tap Send again.'; return; }
+    m.textContent = 'Sending…';
     try { window.parent.postMessage({ type: 'fsp-report', subject: (kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: ' + name + (CMP.data.band ? ' - ' + CMP.data.band : ''), text: lines.join('\n'), img }, '*'); } catch (e) { b.disabled = false; }
   };
   $('#rp-print').onclick = () => { document.body.classList.add('printing-report'); const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); }; window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000); };
@@ -919,10 +931,16 @@ function standingShow(kind) {
    made here with html2canvas (cdnjs, loaded the first time), goes with the text; ASL Study puts the picture in the body of the email. */
 let snapLib = null;
 const snapLoad = () => snapLib || (snapLib = new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; sc.onload = ok; sc.onerror = () => { snapLib = null; bad(new Error('no picture')); }; document.head.appendChild(sc); }));
+/* wait until the report is complete before the picture (Colleen: "today's batch didn't have all the info"): the class comparison and the QR code arrive a few seconds after the page */
+async function sheetReady(el) {
+  const until = Date.now() + 20000, wait = ms => new Promise(r => setTimeout(r, ms));
+  while (Date.now() < until && ((CMP && CMP.state === 'loading') || [...el.querySelectorAll('.rs-qrfail')].some(x => /Making/.test(x.textContent)) || el.querySelector('.rs-wait'))) await wait(250);
+  await wait(400);
+}
 async function sheetPicture(el) {
-  try { await snapLoad(); const cv = await window.html2canvas(el, { scale: 1.5, backgroundColor: '#ffffff', logging: false, useCORS: true });
-    const max = 1600; let out = cv; if (cv.width > max) { out = document.createElement('canvas'); out.width = max; out.height = Math.round(cv.height * max / cv.width); out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height); }
-    return out.toDataURL('image/jpeg', 0.85); } catch (e) { return ''; }      // no picture: the email still has the text
+  try { await snapLoad(); await sheetReady(el); const cv = await window.html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true, windowWidth: 900 });
+    const max = 1700; let out = cv; if (cv.width > max) { out = document.createElement('canvas'); out.width = max; out.height = Math.round(cv.height * max / cv.width); out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height); }
+    return out.toDataURL('image/jpeg', 0.9); } catch (e) { return ''; }      // no picture: the student is asked to try again
 }
 
 /* ---------- the online report (opened from a report's QR code or link) ---------- */
@@ -1440,6 +1458,7 @@ document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#
 const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
+  if (offPage(name, parts[1])) { location.replace('#/games'); return; }
   if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
   if (name !== 'build' && name !== 'shownum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
@@ -1469,6 +1488,11 @@ if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as it
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
   $$('.top nav a').forEach((x, i) => { if (i) x.remove(); });
+}
+if (ONLY) {
+  $$('[data-only]').forEach(x => { if (x.dataset.only !== ONLY) x.remove(); });
+  $$('.top nav a').forEach(x => { const m = (x.getAttribute('href') || '').match(/^#\/(\w+)/); if (m && offPage(m[1])) x.remove(); });
+  if (ONLY === 'numbers') { const br = $('.top .brand'); if (br) br.innerHTML = '<span class="logo" aria-hidden="true">🔢</span> ASL Numbers Practice'; document.title = 'ASL Numbers Practice'; }
 }
 window.addEventListener('hashchange', route);
 route();
