@@ -491,6 +491,7 @@ function finishRound() {
   if (g === 'flash') res.avgMs = items.length ? Math.round(items.reduce((a, x) => a + x.ms, 0) / items.length) : 0;
   if (items.length) { const all = store.get('sessions', []); all.push(res); store.set('sessions', all.slice(-400)); }
   store.set('last', res);
+  sendToStudy(res, R);
   track('round_end', { game: g, pct: res.pct, words: res.n });
   R = null; location.hash = '#/results';
 }
@@ -507,6 +508,26 @@ $('#p-answer').addEventListener('input', e => {      // Letter flash: one key is
   const v = letters(e.target.value); if (!v) return;
   R.answered = R.i; const it = R.list[R.i], ok = v === it.w;
   record(ok, v); showFeedback(ok, false, it.w); e.target.disabled = true; afterAnswer();
+});
+
+/* ---------- ASL Study (Colleen): opened inside the ASL Study app (?embed=aslstudy), each finished round is sent to the app, which saves
+   it under the student's school sign-in (running totals, points). Nothing is sent when the site is used on its own. ---------- */
+const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== window;
+if (EMBED) document.documentElement.classList.add('embedded');
+function sendToStudy(res, round) {
+  if (!EMBED || !res.items.length) return;
+  const num = isNumGame(res.game), k = res.speed;      // k: the speed slider, 0 Beginner .. 1 Deaf
+  const scale = Math.round((1 + 9 * Math.max(0, Math.min(1, k))) * 10) / 10;      // speed on a 1-10 scale (Colleen)
+  const msg = { type: 'fsp-round', v: 1, kind: num ? 'numbers' : 'letters', game: res.game, name: GAMES[res.game] ? GAMES[res.game].name : res.game,
+    rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: res.n, right: res.right, secs: res.secs, speed: scale,
+    lps: num ? null : lps(k), top: res.game === 'ladder' && res.top !== null && res.top !== undefined ? res.topLps : null,
+    letters: num ? 0 : res.items.reduce((a, x) => a + (x.ok ? (x.n || lettersCount(x.w)) : 0), 0),      // letters read correctly
+    items: num ? [] : res.items.filter(x => x.c && !/^LEVEL/.test(x.c)).map(x => ({ w: x.w, c: x.c, ok: !!x.ok })).slice(0, 300) };
+  try { window.parent.postMessage(msg, '*'); } catch (e) {}
+}
+window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
+  if (!EMBED || e.source !== window.parent || !e.data || e.data.type !== 'fsp-open') return;
+  if (/^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
 });
 
 /* ---------- results ---------- */

@@ -289,3 +289,6 @@ body.big { zoom: 1.15; }
 /* the typed number lines up with the row of blocks (Colleen) */
 .bd-blockpanel .blocks { min-height: 66px; align-content: center; }
 .bd-type .bd-big { height: 66px; padding-top: 0; padding-bottom: 0; }
+
+/* inside ASL Study: the app has its own Back button, so the site header links that leave are hidden */
+html.embedded header nav a[href="../"] { display: none; }
