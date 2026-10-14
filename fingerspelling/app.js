@@ -48,15 +48,15 @@ const statBox = (v, lab) => '<div class="stat"><b>' + esc(v) + '</b><span>' + es
 
 /* ---------- the games ---------- */
 const GAMES = {      /* basics first, extras later (Colleen): letters, look-alike letters, simple words, then whole words, then the challenges */
-  flash: { name: 'Letter flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
-  pairs: { name: 'Look-alike letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
-  sound: { name: 'Sound it out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
+  flash: { name: 'Letter Flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
+  pairs: { name: 'Look-Alike Letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
+  sound: { name: 'Sound It Out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
   numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, doubles like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
-  nquiz: { section: 'numbers', name: 'Numbers quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
-  pick: { name: 'Pick the word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
-  type: { name: 'Read the word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
-  fill: { name: 'Fill in the blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
-  ladder: { name: 'Speed ladder', icon: '🪜', about: 'Every right answer speeds the hand up; a miss slows it down. With hearts on, the game ends when you run out of hearts. How fast can you read?' },
+  nquiz: { section: 'numbers', name: 'Numbers Quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
+  pick: { name: 'Pick the Word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
+  type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
+  fill: { name: 'Fill in the Blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
+  ladder: { name: 'Speed Ladder', icon: '🪜', about: 'Every right answer speeds the hand up; a miss slows it down. With hearts on, the game ends when you run out of hearts. How fast can you read?' },
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
@@ -245,7 +245,7 @@ function setupInit() {
     else if (g === 'numbers') { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
     else if (g === 'nquiz') { const [lo, hi] = qRange(); n = hi >= lo ? 1 : 0; msg = n ? 'Numbers from ' + lo.toLocaleString('en-US') + ' to ' + hi.toLocaleString('en-US') + '.' : 'The highest number must be at least the lowest.'; }
     else if (g === 'pairs') { n = S.pairs.length; msg = n ? '' : 'Choose at least one pair.'; }
-    else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
+    else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' || bankOf(g) === 'everyday' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
     $('#s-pool').textContent = msg; $('#s-go').disabled = !n;
     if (R && R.game === g && location.hash === '#/play') refreshRound();      // changed while playing: the next words follow the new settings
   };
@@ -253,16 +253,16 @@ function setupInit() {
   $('#s-all').onclick = () => { S.cats = CATS.slice(); saveS(); drawCats(); };
   $('#s-none').onclick = () => { S.cats = []; saveS(); drawCats(); };
   const fc = Object.keys(window.FAMILIAR || {}); S.fcats = (S.fcats || []).filter(c => fc.indexOf(c) >= 0); if (!S.fcats.length) S.fcats = fc.slice(0, 2);
-  chipsInit($('#s-fcats'), fc, 'fcats', c => esc(c) + ' <small>' + window.FAMILIAR[c].length + '</small>', () => drawPool());
-  chipsInit($('#s-pairs'), PAIRS, 'pairs', p => p.split(' ').join(' · '), () => drawPool());
+  const drawFc = chipsInit($('#s-fcats'), fc, 'fcats', c => esc(c) + ' <small>' + window.FAMILIAR[c].length + '</small>', () => drawPool());
+  const drawPr = chipsInit($('#s-pairs'), PAIRS, 'pairs', p => p.split(' ').join(' · '), () => drawPool());
   const drawFl = chipsInit($('#s-flash'), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'flash', x => x, () => drawPool());
   $('#s-fl-all').onclick = () => { S.flash = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); saveS(); drawFl(); };
   $('#s-fl-none').onclick = () => { S.flash = []; saveS(); drawFl(); };
   const nb = $('#s-nums');      /* one row of number chips for each group, each with its own Choose all */
-  nb.innerHTML = NUM_GROUPS.map(([name], i) => '<p class="nmg"><b>' + esc(name) + '</b> <button class="link" data-g="' + i + '">Choose all</button></p><div class="chips letters" data-chips="' + i + '"></div>').join('');
+  nb.innerHTML = NUM_GROUPS.map(([name], i) => '<p class="nmg"><b>' + esc(name) + '</b> <button class="link" data-g="' + i + '">Choose all</button><button class="link" data-g="' + i + '" data-off="1">Choose none</button></p><div class="chips letters" data-chips="' + i + '"></div>').join('');
   const drawNms = NUM_GROUPS.map(([, g], i) => chipsInit(nb.querySelector('[data-chips="' + i + '"]'), g, 'nums', x => x, () => drawPool()));
   const drawNm = () => drawNms.forEach(f => f());
-  nb.addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; NUM_GROUPS[+b.dataset.g][1].forEach(x => { if (S.nums.indexOf(x) < 0) S.nums.push(x); }); saveS(); drawNm(); });
+  nb.addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = NUM_GROUPS[+b.dataset.g][1]; if (b.dataset.off) S.nums = S.nums.filter(x => g.indexOf(x) < 0); else g.forEach(x => { if (S.nums.indexOf(x) < 0) S.nums.push(x); }); saveS(); drawNm(); drawPool(); });      // each group: Choose all / Choose none (Colleen)
   $('#s-nm-all').onclick = () => { S.nums = NUMS.slice(); saveS(); drawNm(); };
   $('#s-nm-none').onclick = () => { S.nums = []; saveS(); drawNm(); };
   $('#s-ncount').value = String(S.ncount); $('#s-ncount').onchange = e => { S.ncount = +e.target.value || 20; saveS(); drawPool(); };
@@ -279,6 +279,8 @@ function setupInit() {
   tl.innerHTML = Object.keys(window.TRICKY_LEVELS || {}).map(k => '<button data-l="' + k + '">' + k + '. ' + esc(window.TRICKY_LEVELS[k]) + '</button>').join('');
   const markTL = () => tl.querySelectorAll('button').forEach(b => b.classList.toggle('on', S.tlevels.indexOf(b.dataset.l) >= 0));
   tl.onclick = e => { const b = e.target.closest('button'); if (!b) return; const i = S.tlevels.indexOf(b.dataset.l); if (i >= 0) S.tlevels.splice(i, 1); else S.tlevels.push(b.dataset.l); saveS(); markTL(); drawPool(); }; markTL();
+  const markAll = { levels: () => markL(), tlevels: markTL, pairs: () => drawPr(), fcats: () => drawFc() }, every = { levels: ['1', '2', '3'], tlevels: Object.keys(window.TRICKY_LEVELS || {}), pairs: PAIRS, fcats: fc };
+  $$('[data-allnone]').forEach(b => b.onclick = () => { const k = b.dataset.allnone; S[k] = b.dataset.v === 'all' ? every[k].slice() : []; saveS(); markAll[k](); drawPool(); });      // Choose all / Choose none on every pick list (Colleen)
   $('#s-tcount').value = String(S.tcount); $('#s-tcount').onchange = e => { S.tcount = +e.target.value || 10; saveS(); drawPool(); };
   const lv = $('#s-levels'), markL = () => lv.querySelectorAll('button').forEach(b => b.classList.toggle('on', S.levels.indexOf(b.dataset.l) >= 0));
   lv.onclick = e => { const b = e.target.closest('button'); if (!b) return; const i = S.levels.indexOf(b.dataset.l); if (i >= 0) S.levels.splice(i, 1); else S.levels.push(b.dataset.l); saveS(); markL(); drawPool(); }; markL();
@@ -599,7 +601,7 @@ function resultsShow() {
       statBox(r.speedName, 'speed') + (g === 'type' || g === 'fill' || g === 'pick' ? statBox(r.limit ? r.limit + ' or fewer' : 'No limit', 'letter limit') : '') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
   }
   const mix = mixList(r.items);
-  $('#r-extra').innerHTML = mix.length ? '<h3>Letters you mixed up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '';
+  $('#r-extra').innerHTML = mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '';
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
@@ -723,7 +725,7 @@ function timeHalf(d, name) {
   const rows = a.rows.map(x => '<tr><td>' + esc(TIME_NAMES[x.k] || x.k) + '</td><td class="num"><b>' + x.me + ' min</b></td><td class="num">' + (x.avg === null ? '—' : x.avg + ' min') + '</td><td><div class="rs-bar">' +
     (x.avg === null ? '' : '<i style="width:' + at(x.avg) + '%"></i>') + '<span class="me" style="left:' + at(x.me) + '%"></span></div></td><td class="num">' + (x.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(x.p)][1] + '">' + ordinal(x.p) + '</span>') + '</td></tr>').join('');
   const all = a.rows.find(x => x.k === 'app'), line = all && all.p !== null ? first + ' has spent ' + all.me + ' minutes in ' + esc(STUDY.app || 'ASL Study') + ' so far, more than about ' + Math.round(all.p) + '% of ' + esc(a.cls) + ' (class average ' + all.avg + ' minutes).' : '';
-  return '<h2 class="rs-h">Time spent, compared with ' + esc(a.cls) + ' (' + a.rows[0].n + ' student' + (a.rows[0].n === 1 ? '' : 's') + ')</h2>' +
+  return '<h2 class="rs-h">Time Spent, Compared With ' + esc(a.cls) + ' (' + a.rows[0].n + ' Student' + (a.rows[0].n === 1 ? '' : 's') + ')</h2>' +
     '<table class="rs-cmp"><tr><th>Where</th><th>' + esc(first) + '</th><th>Class average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + (line ? '<p class="rs-sets">' + line + ' Time counts toward the class comparison only; it does not change the Overall rating.</p>' : '');
 }
 /* the comparison lines for the emailed report (Send to my teacher) */
@@ -751,7 +753,7 @@ function cmpHalf(cmp, name, r) {
     return '<tr><td>' + esc(names[m.k]) + '</td><td class="num"><b>' + esc(cmpVal(m.k, m.me)) + '</b></td><td class="num">' + esc(cmpVal(m.k, m.avg)) + '</td><td>' + bar + '</td><td class="num">' +
       (m.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(m.p)][1] + '">' + ordinal(m.p) + '</span>') + '</td></tr>';
   }).join('');
-  let out = '<div class="rs-half"><h2 class="rs-h">Compared with ' + esc(L) + ' (all classes, ' + d.n + ' student' + (d.n === 1 ? '' : 's') + ')</h2>' +
+  let out = '<div class="rs-half"><h2 class="rs-h">Compared With ' + esc(L) + ' (All Classes, ' + d.n + ' Student' + (d.n === 1 ? '' : 's') + ')</h2>' +
     (d.small ? '<p class="rs-small">Only ' + d.n + ' ' + esc(L) + ' student' + (d.n === 1 ? ' has' : 's have') + ' played ' + d.min + ' or more rounds so far, so this comparison is based on few students and may change a lot.</p>' : '') +
     (d.me.rounds < d.min ? '<p class="rs-small">' + esc(first) + ' has played ' + d.me.rounds + ' round' + (d.me.rounds === 1 ? '' : 's') + ' so far; the numbers settle down after a few more.</p>' : '') +
     '<table class="rs-cmp"><tr><th>Measure</th><th>' + esc(first) + '</th><th>' + esc(L) + ' average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + timeHalf(d, name);
@@ -793,11 +795,11 @@ function reportSheet(r, name, cmp) {
   sets.push(['Supports', r.supports || 'None']);
   const settings = sets.map(x => box(x[0], x[1])).join('');
   const mix = mixList(r.items);
-  const mixBox = mix.length ? '<div class="rs-box wide"><h3>Letters mixed up</h3><p class="rs-mix">' + mix.slice(0, 6).map(x => '<span><b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '') + '</span>').join('') + '</p></div>' : '';
+  const mixBox = mix.length ? '<div class="rs-box wide"><h3>Letters Mixed Up</h3><p class="rs-mix">' + mix.slice(0, 6).map(x => '<span><b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '') + '</span>').join('') + '</p></div>' : '';
   const bottom = '<div class="rs-bottom">' +
-      '<div class="rs-box wide"><h3>' + (g === 'flash' ? 'Letters' : isNumGame(g) ? 'Numbers' : 'Words') + ' (' + r.right + ' of ' + r.n + ' right)</h3>' +
+      '<div class="rs-box wide"><h3>' + (g === 'flash' ? 'Letters' : isNumGame(g) ? 'Numbers' : 'Words') + ' (' + r.right + ' of ' + r.n + ' Right)</h3>' +
         '<ol class="rs-words">' + r.items.map(x => '<li class="' + (x.ok ? 'ok' : 'no') + '">' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(' + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('') + '</ol></div>' +
-      '<div class="rs-box rs-qrbox"><h3>Online report</h3><div class="rs-qr" data-qr><span class="rs-qrfail">Making the QR code…</span></div><span>Scan to open this report on a phone or computer.</span></div>' +
+      '<div class="rs-box rs-qrbox"><h3>Online Report</h3><div class="rs-qr" data-qr><span class="rs-qrfail">Making the QR code…</span></div><span>Scan to open this report on a phone or computer.</span></div>' +
     '</div>';
   if (!cmp) return '<div class="rs-head"><div><div class="rs-kicker">ASL Fingerspelling Practice · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
     '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
@@ -815,14 +817,14 @@ function reportSheet(r, name, cmp) {
   let sofar = '';
   if (d && d.me) {
     const m = k => d.measures.find(x => x.k === k) || {}, t = new Date(), today = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
-    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'number practice' : 'fingerspelling') + ' so far</h2><div class="rs-boxes four">' +
+    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'Number Practice' : 'Fingerspelling') + ' So Far</h2><div class="rs-boxes four">' +
       box('Rounds', d.me.rounds, d.me.answered + (num ? ' numbers' : ' words') + ' answered') + box('% right', cmpVal('pct', m('pct').me), num ? 'all number games' : 'all games') +
       box('Average speed', cmpVal('speed', m('speed').me), 'on a 1–10 scale') + box('Minutes practiced', cmpVal('minutes', m('minutes').me), d.me.last ? 'last played ' + (d.me.last === today ? 'today' : d.me.last) : '') + '</div>';
   }
   return '<div class="rs-diag"><div class="rs-head"><div><div class="rs-kicker">' + esc(STUDY.app || 'ASL Study') + ' · ' + (num ? 'Numbers' : 'Fingerspelling') + ' Diagnostic · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
     '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
     '<h2 class="rs-h">Student</h2><div class="rs-info">' + info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : cmp.state === 'loading' ? '…' : STUDY.level) + info('Activity', GAMES[g].name) + info(wt ? wt[0] : 'Word type', wt ? wt[1] : '') + '</div>' +
-    '<h2 class="rs-h">Today’s results</h2><div class="rs-boxes four">' + results + '</div>' +
+    '<h2 class="rs-h">Today’s Results</h2><div class="rs-boxes four">' + results + '</div>' +
     (rest ? '<p class="rs-sets">Settings: ' + rest + '</p>' : '') +
     (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + bottom + sofar + cmpHalf(cmp, name, r) + '</div>';
 }
@@ -835,7 +837,7 @@ function standingSheet(kind, name, cmp) {
   let sofar = '';
   if (d && d.me) {
     const m = k => d.measures.find(x => x.k === k) || {}, top = m('top');
-    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'number practice' : 'fingerspelling') + ' so far</h2><div class="rs-boxes four">' +
+    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'Number Practice' : 'Fingerspelling') + ' So Far</h2><div class="rs-boxes four">' +
       box('Rounds', d.me.rounds, d.me.answered + (num ? ' numbers' : ' words') + ' answered') + box('% right', cmpVal('pct', m('pct').me), num ? 'all number games' : 'all games') +
       (num ? box('Numbers right a minute', cmpVal('perMin', m('perMin').me), '') : box('Top Speed ladder', cmpVal('top', top.me), top.me ? 'letters a second' : 'play Speed ladder to add this')) +
       box('Minutes practiced', cmpVal('minutes', m('minutes').me), d.me.last ? 'last played ' + d.me.last : '') + '</div>';
@@ -935,14 +937,14 @@ function progressShow() {
   const games = {}; all.forEach(s => { const k = GAMES[s.game || 'type'].name; games[k] = (games[k] || 0) + 1; });
   const mix = mixList(all.flatMap(s => s.items));
   $('#g-body').innerHTML = '<div class="stats">' + (tot ? statBox(Math.round(right / tot * 100) + '%', 'words right overall') + statBox(tot, 'words read') : '') + statBox(all.length, 'rounds') + (best ? statBox(best, 'top speed (letters a second)') : '') + '</div>' +
-    (mix.length ? '<h3>Letters you mix up most</h3><p>' + mix.slice(0, 10).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b> (' + m.times + '×)').join(' · ') + '</p>' : '') +
-    (ladders.length ? '<h3>Speed ladder</h3><table class="t"><tr><th>Date</th><th>Top speed</th><th>Letters a second</th></tr>' + ladders.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(s.topName) + '</td><td>' + s.topLps + '</td></tr>').join('') + '</table>' : '') +
+    (mix.length ? '<h3>Letters You Mix Up Most</h3><p>' + mix.slice(0, 10).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b> (' + m.times + '×)').join(' · ') + '</p>' : '') +
+    (ladders.length ? '<h3>Speed Ladder</h3><table class="t"><tr><th>Date</th><th>Top speed</th><th>Letters a second</th></tr>' + ladders.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(s.topName) + '</td><td>' + s.topLps + '</td></tr>').join('') + '</table>' : '') +
     table('By word length', words, x => lenGroup(x.n) + ' letters', LEN_GROUPS.map(g => (g[1] === 99 ? g[0] + '+' : g[0] + '–' + g[1]) + ' letters')) +
     table('By speed', words, x => x.sp, SPEEDS) + table('By category', words.filter(x => x.c && !/^LEVEL/.test(x.c)), x => niceCat(x.c)) +
     table('Letter flash', all.filter(s => s.game === 'flash').flatMap(s => s.items), x => x.w) +
     table('Numbers', all.filter(s => s.game === 'numbers').flatMap(s => s.items), x => x.w, NUMS) +
-    '<h3>Games played</h3><table class="t">' + Object.keys(games).map(k => '<tr><td>' + esc(k) + '</td><td>' + games[k] + ' rounds</td></tr>').join('') + '</table>' +
-    '<h3>Recent rounds</h3><table class="t"><tr><th>Date</th><th>Game</th><th>Score</th><th>Speed</th></tr>' + all.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(GAMES[s.game || 'type'].name) + '</td><td>' + (s.game === 'ladder' ? (s.topLps || 0) + ' l/s' : s.pct + '%') + '</td><td>' + esc(s.speedName) + '</td></tr>').join('') + '</table>';
+    '<h3>Games Played</h3><table class="t">' + Object.keys(games).map(k => '<tr><td>' + esc(k) + '</td><td>' + games[k] + ' rounds</td></tr>').join('') + '</table>' +
+    '<h3>Recent Rounds</h3><table class="t"><tr><th>Date</th><th>Game</th><th>Score</th><th>Speed</th></tr>' + all.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(GAMES[s.game || 'type'].name) + '</td><td>' + (s.game === 'ladder' ? (s.topLps || 0) + ' l/s' : s.pct + '%') + '</td><td>' + esc(s.speedName) + '</td></tr>').join('') + '</table>';
 }
 $('#g-reset').onclick = () => { if (confirm('Clear all your progress on this device? This cannot be undone.')) { store.set('sessions', []); store.set('last', null); progressShow(); } };
 
@@ -1258,7 +1260,7 @@ async function bgPrint() {
   if (BG.font && document.fonts) { try { await document.fonts.load("700 20px '" + BG.font + "'"); } catch (e) {} }
   const words = bgWords.get(), per = BG.perpage || 2, n = Math.max(1, Math.min(300, BG.ncards)); let h = '';
   for (let i = 1; i <= n; i += per) { h += '<div class="ppage n' + per + '">'; for (let k = i; k < i + per && k <= n; k++) h += cardHtml(k, words); h += '</div>'; }
-  if (BG.caller) h += '<div class="caller"><h4>' + esc(BG.title || 'Fingerspelling Bingo') + ': caller\'s list</h4>' + words.slice().sort((a, b) => a.localeCompare(b)).map(w => '<div>☐ ' + esc(w) + '</div>').join('') + '</div>';
+  if (BG.caller) h += '<div class="caller"><h4>' + esc(BG.title || 'Fingerspelling Bingo') + ': Caller\'s List</h4>' + words.slice().sort((a, b) => a.localeCompare(b)).map(w => '<div>☐ ' + esc(w) + '</div>').join('') + '</div>';
   $('#print-cards').innerHTML = h;
   document.body.classList.add('printing');
   const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
