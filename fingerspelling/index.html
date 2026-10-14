@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=51">
 </head>
 <body>
 <header class="top">
@@ -66,6 +66,66 @@
     </div>
   </section>
 
+  <!-- Show me numbers: type any number and watch the hand sign it, with all of Colleen's number rules -->
+  <section data-screen="shownum" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="shownum-slot"></div>
+      <div class="card panel">
+        <h2>Show me numbers</h2>
+        <p class="hint">Type any number up to 999,999,999. The hand signs it the way it is said, with HUNDRED, THOUSAND and MILLION.</p>
+        <label class="lab" for="sn-num">Your number</label>
+        <input id="sn-num" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Like 2026 or 1,250">
+        <div class="row"><button class="btn big" id="sn-go">Sign it</button><button class="btn ghost" id="sn-again">Again</button></div>
+        <div class="blocks" id="sn-blocks" aria-live="polite"></div>
+        <p class="hint" id="sn-note"></p>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="sn-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+        </div>
+        <div class="field small"><span class="lab">16–19</span><div class="seg sm" id="sn-teens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div></div>
+        <div class="field small"><span class="lab">23 and 25</span><div class="seg sm" id="sn-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
+        <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sn-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Build a number: line up number-sign blocks (0-99 and HUNDRED) and watch them play as one number (Colleen) -->
+  <section data-screen="build" class="screen">
+    <div class="play wide">
+      <div class="stage-slot" id="build-slot"></div>
+      <div class="card panel">
+        <h2>Build a number</h2>
+        <div class="bd-cols">
+          <!-- next to the hands: type a number; the blocks build as you type (Colleen) -->
+          <div class="bd-type">
+            <h3>Type it in</h3>
+            <input id="bd-whole" class="bd-big" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="3840" aria-label="Type a whole number">
+            <p class="hint">The blocks build as you type. Up to 999,999,999.</p>
+            <button class="btn big" id="bd-show">▶ Sign it</button>
+            <div class="field small"><span class="lab">Speed</span>
+              <div class="speed"><input id="bd-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+                <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+            </div>
+            <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="bd-hstyle"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+          </div>
+          <!-- the far side: the number building blocks -->
+          <div class="bd-blockpanel">
+            <h3>Number building blocks</h3>
+            <div class="blocks" id="bd-blocks" aria-live="polite"></div>
+            <p class="bd-total" id="bd-total"></p>
+            <p class="hint" id="bd-note"></p>
+            <span class="lab">Add a block</span>
+            <div class="bd-pad" id="bd-pad"></div>
+            <div class="row"><input id="bd-num" type="number" min="0" max="99" inputmode="numeric" placeholder="10–99" aria-label="A number from 10 to 99"><button class="btn ghost" id="bd-add">Add</button></div>
+            <div class="row bd-big3"><button class="btn ghost bd-h" id="bd-hund">+ HUNDRED</button><button class="btn ghost bd-h" id="bd-thou">+ THOUSAND</button><button class="btn ghost bd-h" id="bd-mill">+ MILLION</button></div>
+            <div class="row"><button class="btn" id="bd-play">▶ Play the blocks</button><button class="btn ghost" id="bd-back">⌫ Remove last</button></div>
+          </div>
+        </div>
+        <button class="btn ghost bd-clearall" id="bd-clear">✕ Clear all</button>
+      </div>
+    </div>
+  </section>
+
   <!-- A student's digital Bingo card, opened from the teacher's link or QR code -->
   <section data-screen="card" class="screen">
     <div class="card scard-wrap">
@@ -96,7 +156,7 @@
       <div class="row between"><h2 id="s-title">Set up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
       <div id="s-fields">
       <p class="hint" id="s-about"></p>
-      <div class="field" data-for="type pick fill pairs flash numbers ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
+      <div class="field" data-for="type pick fill pairs flash numbers nquiz ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
@@ -128,17 +188,25 @@
         <div class="row"><button class="link" id="s-nm-all">All</button><button class="link" id="s-nm-none">None</button></div>
         <div id="s-nums"></div>
       </div>
-      <div class="field" data-for="numbers"><span class="lab">16–19</span>
+      <div class="field" data-for="nquiz"><span class="lab">Numbers from</span>
+        <div class="seg sm" id="s-qrange"><button data-v="0">0–100</button><button data-v="1">0–1,000</button><button data-v="2">0–10,000</button><button data-v="3">0–100,000</button><button data-v="4">0–1,000,000</button><button data-v="5">Up to 999 million</button><button data-v="custom">My own range</button></div>
+        <div class="row" id="s-qcustom"><label>From <input id="s-qmin" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label><label>to <input id="s-qmax" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label></div>
+      </div>
+      <div class="field" data-for="nquiz"><span class="lab">HUNDRED</span>
+        <div class="seg sm" id="s-nhund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div>
+      </div>
+      <div class="field" data-for="numbers nquiz"><span class="lab">16–19</span>
         <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
         <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
       </div>
-      <div class="field" data-for="numbers"><span class="lab">23 and 25</span>
+      <div class="field" data-for="numbers nquiz"><span class="lab">23 and 25</span>
         <div class="seg sm" id="s-nform"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div>
         <p class="hint">Formal: the L changes into 3 or 5. Slang: the middle finger bends twice.</p>
       </div>
-      <div class="grid2" data-for="numbers">
+      <div class="grid2" data-for="numbers nquiz">
         <div class="field"><span class="lab">Answer by</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
-        <label class="field"><span class="lab">Numbers in a round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+        <label class="field" data-for="nquiz"><span class="lab">Numbers in a round</span><select id="s-qcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
+        <label class="field" data-for="numbers"><span class="lab">Numbers in a round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
       <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word type</span>
         <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
@@ -158,7 +226,7 @@
         <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
       </details>
       <div class="field"><span class="lab">Skin tone</span><div class="tones" id="s-tones"></div></div>
-      <div class="field" data-for="type pick fill ladder pairs flash numbers sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers nquiz sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
       </div>
       <button class="btn big" id="s-go">Start</button>
@@ -401,8 +469,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="themes.js?v=40"></script>
-<script src="hand.js?v=43"></script>
+<script src="hand.js?v=70"></script>
 <script src="look.js?v=2"></script>
-<script src="app.js?v=45"></script>
+<script src="app.js?v=57"></script>
 </body>
 </html>

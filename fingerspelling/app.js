@@ -34,7 +34,8 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   flash: { name: 'Letter flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
   pairs: { name: 'Look-alike letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
   sound: { name: 'Sound it out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
-  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, doubles like 22 and 77, and rocking numbers like 67 and 98. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, doubles like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  nquiz: { section: 'numbers', name: 'Numbers quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
   pick: { name: 'Pick the word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
@@ -42,13 +43,15 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
-const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || (g === 'numbers' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
+const isNumGame = g => g === 'numbers' || g === 'nquiz';      // the two number games: answers are numbers
+const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || (isNumGame(g) && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
 const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
   ['Tens', ['30', '40', '50', '60', '70', '80', '90']],
   ['Doubles', ['22', '33', '44', '55', '66', '77', '88', '99']],
-  ['Rocking numbers', ['67', '68', '69', '76', '78', '79', '86', '87', '89', '96', '97', '98']]
+  ['Rocking numbers', ['67', '68', '69', '76', '78', '79', '86', '87', '89', '96', '97', '98']],
+  ['Other two-digit numbers', (() => { const o = []; for (let a = 3; a <= 9; a++) for (let b = 1; b <= 9; b++) { const n = a * 10 + b; if (a !== b && !(a >= 6 && b >= 6)) o.push(String(n)); } return o; })()]      /* 31-99 that are not doubles, rocking numbers or tens */
 ];
 const NUMS = Array.from(new Set(NUM_GROUPS.flatMap(g => g[1])));      // 22 is in both The 20s and Doubles
 /* how a set of numbers is named on results and reports: whole groups by name, the rest one by one */
@@ -56,7 +59,29 @@ const numsLabel = list => { const left = new Set(list), parts = []; NUM_GROUPS.f
 const isNum = w => /^\d+$/.test(String(w));
 const numKey = s => { const d = String(s).replace(/\D/g, ''); return d ? String(parseInt(d, 10)) : ''; };
 const answerKey = (s, num) => num ? numKey(s) : letters(s);
+/* Numbers quiz (Colleen): any number in a range, signed with all of her number rules (spoken order, HUNDRED, THOUSAND, MILLION) */
+const Q_RANGES = [[0, 100], [0, 1000], [0, 10000], [0, 100000], [0, 1000000], [0, 999999999]];
+const qRange = () => S.qrange === 'custom' ? [Math.max(0, Math.floor(+S.qmin || 0)), Math.min(999999999, Math.floor(+S.qmax || 0))] : (Q_RANGES[+S.qrange] || Q_RANGES[1]);
+const nfmt = n => Number(n).toLocaleString('en-US');
+const showW = w => /^\d{4,}$/.test(String(w)) ? nfmt(w) : w;      // big numbers show with commas (1,464)
+function quizItem(list) {
+  const [lo, hi] = qRange(); let x, tries = 0;
+  do { x = lo + Math.floor(Math.random() * (hi - lo + 1)); } while (tries++ < 20 && list.some(it => +it.w === x));      // no repeats in a round when there is room
+  return { w: String(x), n: 1, teens: teensFor(), form: formFor() };
+}
+/* Numbers quiz, picking: three wrong numbers that look close when signed (one digit changed, two digits swapped, a place off) */
+function bigChoices(w) {
+  const n = +w, d = String(n).split(''), out = new Set(), [lo, hi] = qRange(), ok = x => x !== n && x >= lo && x <= hi;
+  const tries = [];
+  for (let i = 0; i < d.length; i++) for (const k of [1, -1]) { const e = d.slice(); e[i] = String((+e[i] + k + 10) % 10); if (i || e[0] !== '0') tries.push(+e.join('')); }
+  for (let i = 0; i + 1 < d.length; i++) { const e = d.slice(); [e[i], e[i + 1]] = [e[i + 1], e[i]]; if (e[0] !== '0') tries.push(+e.join('')); }
+  [10, 100, 1000].forEach(k => { tries.push(n + k, n - k); });
+  shuffle(tries).forEach(x => { if (out.size < 3 && ok(x)) out.add(x); });
+  while (out.size < 3) { const x = lo + Math.floor(Math.random() * (hi - lo + 1)); if (ok(x)) out.add(x); if (hi - lo < 4) break; }
+  return shuffle([n].concat(Array.from(out))).map(String);
+}
 const TEENS_NAME = { mix: 'Mixed', ten: '10 + number', twist: 'Twist' };
+const HUND_NAME = { mix: 'Mixed', c: 'C', curl: 'Curl' };
 const FORM_NAME = { mix: 'Mixed', alt: 'Formal', main: 'Slang' };      // 23 and 25: formal (L to the number) or slang (the middle finger bends) (Colleen)
 const formFor = () => S.nform === 'mix' ? pick1(['alt', 'main']) : S.nform;
 const teensFor = () => S.nteens === 'mix' ? pick1(['ten', 'twist']) : S.nteens;      // Mixed: each 16-19 picks a way at random (Colleen)
@@ -82,7 +107,7 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 /* ---------- settings ---------- */
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
-  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'];      // old letter pairs became letter groups
@@ -110,7 +135,8 @@ async function spellWord(w, blur, teens, form) {
   assist.textContent = ''; stage.classList.remove('frosted');
   if (isNum(w)) {      // a number (0-20) is signed, not spelled; the answer is never shown while it signs
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow())));      // Beginner 1 s a beat ... Deaf 0.35 s (the numbers' moves need more time than a letter)
-    spelling = hand.sign(+w, { per, teens: teens || teensFor(), form: form || formFor(), stop: () => stopFlag });
+    const so = { per, teens: teens || teensFor(), form: form || formFor(), hund: S.nhund === 'mix' ? undefined : S.nhund, stop: () => stopFlag };
+    spelling = +w < 100 ? hand.sign(+w, so) : hand.signParts(bdBlocksFor(+w), so);      // bigger numbers in spoken order: 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45
     try { await spelling; } finally { spelling = null; }
     return;
   }
@@ -182,7 +208,9 @@ function chipsInit(el, items, arr, label, after) {
 function gamesInit() {
   const card = k => { const g = GAMES[k]; return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
-  $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('');      // numbers in their own section (Colleen)
+  $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
+    '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show me numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
+    '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
 }
 let drawCats, drawPool;
 function setupInit() {
@@ -195,6 +223,7 @@ function setupInit() {
     const g = S.game; let n, msg;
     if (g === 'flash') { n = S.flash.length; msg = n ? n + ' letters chosen.' : 'Choose at least one letter.'; }
     else if (g === 'numbers') { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
+    else if (g === 'nquiz') { const [lo, hi] = qRange(); n = hi >= lo ? 1 : 0; msg = n ? 'Numbers from ' + lo.toLocaleString('en-US') + ' to ' + hi.toLocaleString('en-US') + '.' : 'The highest number must be at least the lowest.'; }
     else if (g === 'pairs') { n = S.pairs.length; msg = n ? '' : 'Choose at least one pair.'; }
     else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
     $('#s-pool').textContent = msg; $('#s-go').disabled = !n;
@@ -217,6 +246,13 @@ function setupInit() {
   $('#s-nm-all').onclick = () => { S.nums = NUMS.slice(); saveS(); drawNm(); };
   $('#s-nm-none').onclick = () => { S.nums = []; saveS(); drawNm(); };
   $('#s-ncount').value = String(S.ncount); $('#s-ncount').onchange = e => { S.ncount = +e.target.value || 20; saveS(); drawPool(); };
+  segInit('s-nhund', 'nhund', () => drawPool());
+  const qc = () => { $('#s-qcustom').hidden = S.qrange !== 'custom'; hand.helper(S.game === 'nquiz' && qRange()[1] >= 1000); };
+  segInit('s-qrange', 'qrange', () => { if (S.qrange === 'custom' && !(+S.qmax > 0)) { S.qmin = 0; S.qmax = 1000; } $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax; saveS(); qc(); drawPool(); }); qc();
+  $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax;
+  $('#s-qmin').oninput = e => { S.qmin = Math.max(0, Math.floor(+e.target.value || 0)); saveS(); drawPool(); };
+  $('#s-qmax').oninput = e => { S.qmax = Math.min(999999999, Math.floor(+e.target.value || 0)); saveS(); qc(); drawPool(); };
+  $('#s-qcount').value = String(S.qcount); $('#s-qcount').onchange = e => { S.qcount = +e.target.value || 10; saveS(); drawPool(); };
   segInit('s-nteens', 'nteens', () => drawPool()); segInit('s-nform', 'nform', () => drawPool()); segInit('s-nkind', 'nkind', () => drawPool());
   const tl = $('#s-tlevels');      // Silent Letters & Strange Spellings levels, by name
   tl.innerHTML = Object.keys(window.TRICKY_LEVELS || {}).map(k => '<button data-l="' + k + '">' + k + '. ' + esc(window.TRICKY_LEVELS[k]) + '</button>').join('');
@@ -253,6 +289,8 @@ function setupShow(game) {
   $$('[data-screen=setup] [data-for]').forEach(el => { el.hidden = el.dataset.for.split(' ').indexOf(g) < 0 || (el.dataset.bank && el.dataset.bank !== bankOf(g)); });
   const b = $('#s-bank'); b.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === bankOf(g)));
   $('#s-bank-hint').textContent = g === 'sound' ? (bankOf(g) === 'everyday' ? 'Everyday words like sat, stop and sunset.' : 'Simple names like Pam, Brad and Benson.') : bankOf(g) === 'everyday' ? 'Regular words like apple, library and friend, even ones that have a sign.' : 'Names, brands, cities, movies and more: the words people really fingerspell.';
+  $('#s-qcustom').hidden = S.qrange !== 'custom';
+  hand.helper(g === 'nquiz' && qRange()[1] >= 1000);      /* the left hand waits in its corner when a quiz number may need THOUSAND or MILLION */
   drawPool();
 }
 
@@ -299,6 +337,7 @@ function startRound(fixedWords) {
   let list;
   if (fixedWords) list = shuffle(fixedWords);
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
+  else if (g === 'nquiz') { list = []; for (let i = 0; i < S.qcount; i++) list.push(quizItem(list)); }
   else if (g === 'numbers') { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
@@ -315,11 +354,12 @@ function refreshRound() {
   R.pool = poolFor(g);
   if (g === 'ladder') R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))));
   else if (g === 'flash') { const more = []; for (let k = done.length; k < S.flcount && S.flash.length; k++) more.push({ w: pick1(S.flash), n: 1 }); R.list = done.concat(more); }
+  else if (g === 'nquiz') { const more = []; for (let k = done.length; k < S.qcount; k++) more.push(quizItem(done.concat(more))); R.list = done.concat(more); }
   else if (g === 'numbers') { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
   else if (g === 'pairs') { const more = []; for (let k = done.length; k < S.count && S.pairs.length; k++) more.push(pairTrial()); R.list = done.concat(more); }
   else { const total = g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count; R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))).slice(0, Math.max(0, total - done.length))); }
-  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : g2 === 'numbers' ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
-  assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || g === 'numbers' ? '' : ' ' + S.assist);
+  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
+  assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || isNumGame(g) ? '' : ' ' + S.assist);
   if (R.i >= 0 && R.answered !== R.i) drawBlanks(R.list[R.i]);
 }
 function playShow() {
@@ -329,7 +369,7 @@ function playShow() {
   putStage('play-slot');
   if (first || R.i < 0) setTimeout(() => $('#game-area').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   const g = R.game;
-  assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || g === 'numbers' ? '' : ' ' + S.assist);
+  assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || isNumGame(g) ? '' : ' ' + S.assist);
   speedNow = g === 'ladder' ? () => R ? R.lspeed : S.speed : g === 'fill' ? () => S.speed - FILL_SLOWER : () => S.speed;
   $('#p-ladder').hidden = g !== 'ladder';
   if (R.i < 0) nextWord(); else drawWord();
@@ -344,7 +384,7 @@ function drawBlanks(it) {
 }
 function drawWord() {
   const g = R.game, it = R.list[R.i];
-  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : g === 'numbers' ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
+  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
   ladderBar();
   $('#p-feedback').textContent = ''; $('#p-feedback').className = 'feedback'; $('#p-next').hidden = true; $('#p-meaning').hidden = true;
   const choice = isChoice(g);
@@ -352,12 +392,13 @@ function drawWord() {
   if (choice) {
     if (g === 'pick' && !it.shown) it.shown = shuffle([it.w].concat(lookAlikes(it.w, R.pool)));
     if (g === 'numbers' && !it.shown) it.shown = numChoices(it.w);
-    const opts = g === 'pick' || g === 'numbers' ? it.shown : it.opts;
-    $('#p-cask').textContent = g === 'numbers' ? 'Which number did the hand sign?' : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
-    $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(o.toUpperCase()) + '</button>').join('');
+    if (g === 'nquiz' && !it.shown) it.shown = bigChoices(it.w);
+    const opts = g === 'pick' || isNumGame(g) ? it.shown : it.opts;
+    $('#p-cask').textContent = isNumGame(g) ? 'Which number did the hand sign?' : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
+    $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.maxLength = g === 'flash' ? 1 : g === 'numbers' ? 2 : 200; a.inputMode = g === 'numbers' ? 'numeric' : 'text';
-    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : g === 'numbers' ? 'What number did the hand sign?' : g === 'fill' ? 'Put the word together:' : 'What did the hand spell?';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.maxLength = g === 'flash' ? 1 : g === 'numbers' ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? 'What number did the hand sign?' : g === 'fill' ? 'Put the word together:' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
   drawBlanks(it);
@@ -400,7 +441,7 @@ function record(ok, typed, extra) {
 function showFeedback(ok, skip, w) {
   const fb = $('#p-feedback');
   fb.className = 'feedback ' + (ok ? 'good' : 'bad');
-  fb.innerHTML = (ok ? 'Yes!' : skip ? 'It was:' : 'Not quite. It was:') + (ok ? '' : '<span class="ans">' + esc(w.length === 1 ? w.toUpperCase() : w) + '</span>');
+  fb.innerHTML = (ok ? 'Yes!' : skip ? 'It was:' : 'Not quite. It was:') + (ok ? '' : '<span class="ans">' + esc(w.length === 1 ? w.toUpperCase() : showW(w)) + '</span>');
 }
 /* Silent Letters & Strange Spellings: after the answer, the meaning and a button to hear the word said (the device's own English voice) */
 function showMeaning(it) {
@@ -413,7 +454,7 @@ function showMeaning(it) {
 function afterAnswer() {
   const last = R.game === 'ladder' ? R.lives <= 0 : R.i + 1 >= R.list.length;
   if (R.game === 'flash') { setTimeout(() => { if (R && location.hash === '#/play') nextWord(); }, 650); return; }      // letters keep coming
-  $('#p-next').hidden = false; $('#p-next').textContent = last ? 'See my results' : R.game === 'numbers' ? 'Next number' : 'Next word'; $('#p-next').focus();
+  $('#p-next').hidden = false; $('#p-next').textContent = last ? 'See my results' : isNumGame(R.game) ? 'Next number' : 'Next word'; $('#p-next').focus();
   if (last && R.game === 'ladder') R.done = true;
 }
 function answerTyped(skip) {
@@ -421,7 +462,7 @@ function answerTyped(skip) {
   const it = R.list[R.i], typed = $('#p-answer').value.trim();
   if (!skip && !typed) { $('#p-answer').focus(); return; }
   R.answered = R.i;
-  const ok = !skip && answerKey(typed, R.game === 'numbers') === answerKey(it.w, R.game === 'numbers');      // Numbers: only the digits count      // only the letters count: apostrophes, spaces, capitals and punctuation are allowed but never required (Colleen)
+  const ok = !skip && answerKey(typed, isNumGame(R.game)) === answerKey(it.w, isNumGame(R.game));      // Numbers: only the digits count      // only the letters count: apostrophes, spaces, capitals and punctuation are allowed but never required (Colleen)
   record(ok, skip ? '' : typed);
   showFeedback(ok, skip, it.w);
   if (R.game === 'tricky') showMeaning(it);
@@ -431,7 +472,7 @@ function answerTyped(skip) {
 function answerChoice(o) {
   if (!R || R.answered === R.i) return;
   R.answered = R.i;
-  const num = R.game === 'numbers', it = R.list[R.i], right = R.game === 'pairs' ? it.target : it.w, ok = answerKey(o, num) === answerKey(right, num);
+  const num = isNumGame(R.game), it = R.list[R.i], right = R.game === 'pairs' ? it.target : it.w, ok = answerKey(o, num) === answerKey(right, num);
   record(ok, o, { w: right, pair: it.pair, picked: true });
   $$('#p-choices button').forEach(b => { b.disabled = true; if (answerKey(b.dataset.o, num) === answerKey(right, num)) b.classList.add('right'); else if (b.dataset.o === o) b.classList.add('wrong'); });
   showFeedback(ok, false, right);
@@ -443,9 +484,9 @@ function finishRound() {
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
     speed: Math.round(S.speed * 100) / 100, speedName: speedName(S.speed), limit: R.settings.limit, mode: R.settings.mode, paper: S.paper,
-    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : g === 'numbers' ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
-    supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && g !== 'numbers' ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
-  res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || g === 'numbers' ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
+    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : g === 'numbers' ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
+    supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && !isNumGame(g) ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
+  res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || isNumGame(g) ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
   if (g === 'ladder') { res.top = R.top; res.topLps = R.top === null ? 0 : lps(R.top); res.topName = R.top === null ? '' : speedName(R.top); }
   if (g === 'flash') res.avgMs = items.length ? Math.round(items.reduce((a, x) => a + x.ms, 0) / items.length) : 0;
   if (items.length) { const all = store.get('sessions', []); all.push(res); store.set('sessions', all.slice(-400)); }
@@ -483,7 +524,7 @@ function resultsShow() {
   if (g === 'ladder') {
     $('#r-score').textContent = r.top === null ? 'Keep climbing!' : r.topLps + ' letters a second';
     $('#r-stats').innerHTML = statBox(r.topName || '—', 'top speed') + statBox(r.right + ' of ' + r.n, 'words right') + statBox(r.avgLen, 'letters per word') + statBox(time, 'time');
-  } else if (g === 'numbers') {
+  } else if (isNumGame(g)) {
     $('#r-score').textContent = r.pct + '%';
     $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, 'numbers right') + statBox(r.speedName, 'speed') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
   } else if (g === 'flash') {
@@ -496,7 +537,7 @@ function resultsShow() {
   }
   const mix = mixList(r.items);
   $('#r-extra').innerHTML = mix.length ? '<h3>Letters you mixed up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '';
-  $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(x.w) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
+  $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
 
@@ -504,7 +545,7 @@ function resultsShow() {
 function reviewShow() {
   const r = store.get('last', null), miss = r ? r.items.filter(x => !x.ok) : [];
   putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
-  $('#v-title').textContent = r && r.game === 'numbers' ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
+  $('#v-title').textContent = r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
   $('#v-list').innerHTML = miss.length ? miss.map((x, i) => '<button data-i="' + i + '">' + esc(x.w) + '</button>').join('') : '<p class="hint">No missed words. Nice!</p>';
   $('#v-list').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#v-list button').forEach(x => x.classList.toggle('on', x === b)); spellWord(miss[+b.dataset.i].w, null, teensFor()); };
   $('#v-again').hidden = false; $('#v-again').disabled = !miss.length;
@@ -561,9 +602,9 @@ function reportLines(r) {
   const g = r.game || 'type', out = ['Game: ' + GAMES[g].name];
   if (g === 'ladder') out.push('Top speed: ' + (r.top === null ? 'none yet' : r.topLps + ' letters a second (' + r.topName + ')'));
   out.push('Score: ' + r.pct + '% (' + r.right + ' of ' + r.n + ')');
-  if (CHOICE_GAMES.indexOf(g) < 0 && g !== 'flash' && g !== 'numbers') out.push('Words right per minute: ' + r.wpm + ' (average ' + r.avgLen + ' letters a word)');
+  if (CHOICE_GAMES.indexOf(g) < 0 && g !== 'flash' && !isNumGame(g)) out.push('Words right per minute: ' + r.wpm + ' (average ' + r.avgLen + ' letters a word)');
   if (g !== 'ladder') out.push('Speed: ' + r.speedName);
-  if (g === 'numbers') out.push('Numbers: ' + r.cats);
+  if (isNumGame(g)) out.push((g === 'nquiz' ? 'Range: ' : 'Numbers: ') + r.cats);
   if (g === 'type' || g === 'fill' || g === 'pick') out.push('Letter limit: ' + (r.limit ? r.limit + ' or fewer' : 'No limit'));
   if (g === 'type') out.push('Mode: ' + (r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only'));
   out.push('Used paper: ' + (r.paper === 'yes' ? 'Yes' : 'No'));
@@ -585,7 +626,7 @@ function reportSheet(r, name) {
   if (g === 'ladder') results = box('Top speed', r.top === null ? '—' : r.topLps + ' / sec', r.top === null ? 'no level passed yet' : 'letters a second · ' + r.topName, true) + box('Words right', r.right + ' of ' + r.n) + box('Time', time);
   else if (g === 'flash') results = box('Score', r.pct + '%', r.right + ' of ' + r.n + ' letters right', true) + box('Average answer time', (r.avgMs / 1000).toFixed(1) + ' s', 'per letter') + box('Speed', r.speedName);
   else if (CHOICE_GAMES.indexOf(g) >= 0) results = box('Score', r.pct + '%', r.right + ' of ' + r.n + ' right', true) + box('Speed', r.speedName) + box('Time', time);
-  else if (g === 'numbers') results = box('Score', r.pct + '%', r.right + ' of ' + r.n + ' numbers right', true) + box('Speed', r.speedName) + box('Time', time);
+  else if (isNumGame(g)) results = box('Score', r.pct + '%', r.right + ' of ' + r.n + ' numbers right', true) + box('Speed', r.speedName) + box('Time', time);
   else results = box('Score', r.pct + '%', r.right + ' of ' + r.n + ' words right', true) + box('Words right per minute', r.wpm, r.avgLen ? 'average ' + r.avgLen + ' letters a word' : '') + box('Speed', r.speedName) + box('Time', time);
   if (r.replays) results += box('Watched again', r.replays, r.replays === 1 ? 'time' : 'times');
   // Settings
@@ -598,7 +639,7 @@ function reportSheet(r, name) {
   if (g === 'sound') settings += box('Levels', String(r.cats).replace(/^Levels /, ''));
   if (g === 'tricky') settings += box('Levels', String(r.cats));
   if (g === 'flash') settings += box('Letters', r.cats);
-  if (g === 'numbers') { const c = String(r.cats).split(' · '); settings += box('Numbers', c[0]) + c.slice(1).map(x => { const k = x.indexOf(': '); return box(x.slice(0, k), x.slice(k + 2)); }).join(''); }
+  if (isNumGame(g)) { const c = String(r.cats).split(' · '); settings += box(g === 'nquiz' ? 'Range' : 'Numbers', c[0]) + c.slice(1).map(x => { const k = x.indexOf(': '); return box(x.slice(0, k), x.slice(k + 2)); }).join(''); }
   settings += box('Used paper', r.paper === 'yes' ? 'Yes' : 'No');
   settings += box('Supports', r.supports || 'None');
   const mix = mixList(r.items);
@@ -609,8 +650,8 @@ function reportSheet(r, name) {
     '<h2 class="rs-h">Settings</h2><div class="rs-boxes settings">' + settings + '</div>' +
     (mix.length ? '<div class="rs-box wide"><h3>Letters mixed up</h3><p class="rs-mix">' + mix.slice(0, 6).map(x => '<span><b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '') + '</span>').join('') + '</p></div>' : '') +
     '<div class="rs-bottom">' +
-      '<div class="rs-box wide"><h3>' + (g === 'flash' ? 'Letters' : g === 'numbers' ? 'Numbers' : 'Words') + ' (' + r.right + ' of ' + r.n + ' right)</h3>' +
-        '<ol class="rs-words">' + r.items.map(x => '<li class="' + (x.ok ? 'ok' : 'no') + '">' + esc(x.w) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(' + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('') + '</ol></div>' +
+      '<div class="rs-box wide"><h3>' + (g === 'flash' ? 'Letters' : isNumGame(g) ? 'Numbers' : 'Words') + ' (' + r.right + ' of ' + r.n + ' right)</h3>' +
+        '<ol class="rs-words">' + r.items.map(x => '<li class="' + (x.ok ? 'ok' : 'no') + '">' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(' + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('') + '</ol></div>' +
       '<div class="rs-box rs-qrbox"><h3>Online report</h3><div class="rs-qr" data-qr><span class="rs-qrfail">Making the QR code…</span></div><span>Scan to open this report on a phone or computer.</span></div>' +
     '</div>';
 }
@@ -757,6 +798,134 @@ function showShow() {
   const q = decodeURIComponent((location.hash.split('/')[2] || '')).trim();      // a link like #/show/Colleen spells that word
   if (q) { $('#sh-word').value = q; spellWord(q); }
 }
+
+/* ---------- Show me numbers (Colleen): type any number, the hand signs it with all of the number rules ---------- */
+function snShow() { hand.helper(true); putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
+function shownumInit() {
+  const go = () => {
+    const raw = $('#sn-num').value.trim(), digits = raw.replace(/[,\s]/g, '');
+    if (!/^\d+$/.test(digits) || +digits > 999999999) { $('#sn-note').textContent = 'Type a whole number from 0 to 999,999,999 (commas are fine).'; $('#sn-blocks').innerHTML = ''; $('#sn-num').focus(); return; }
+    const n = +digits, blocks = bdBlocksFor(n);
+    $('#sn-note').textContent = nfmt(n);
+    const draw = playing => { $('#sn-blocks').innerHTML = blocks.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + ((playing || []).indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>'); };
+    draw();
+    (async () => {
+      await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
+      if (S.tone === 'random') hand.setTone(toneHex());
+      const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+      spelling = hand.signParts(blocks, { per, teens: S.snteens === 'mix' ? teensFor() : S.snteens, form: S.snform === 'mix' ? formFor() : S.snform, hund: S.snhund === 'mix' ? undefined : S.snhund, stop: () => stopFlag, onPart: b => draw(b) });
+      try { await spelling; } finally { spelling = null; draw(); }
+    })();
+  };
+  $('#sn-go').onclick = go; $('#sn-again').onclick = go;
+  $('#sn-num').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  $('#sn-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';
+  segInit('sn-teens', 'snteens'); segInit('sn-form', 'snform'); segInit('sn-hund', 'snhund');
+}
+
+/* ---------- Build a number (Colleen): blocks 0-99 and HUNDRED, lined up and played as one number ---------- */
+const BD = { tokens: [] };
+/* a group under 1000: [n] (0-99), [d, HUNDRED] or [d, HUNDRED, n] (d 1-9, n 1-99). Returns its value, or a message saying what is wrong */
+function bdGroup(t) {
+  if (!t.length) return { v: 0 };
+  const h = t.indexOf('H');
+  if (h < 0) return t.length === 1 ? { v: t[0] } : { bad: 'Two number blocks in a row need HUNDRED or THOUSAND between them (like 3 + HUNDRED + 45).' };
+  if (h !== 1 || !(t[0] >= 1 && t[0] <= 9)) return { bad: 'HUNDRED goes right after a number from 1 to 9.' };
+  if (t.lastIndexOf('H') !== h) return { bad: 'Use HUNDRED only once in each part.' };
+  if (t.length > 3) return { bad: 'After HUNDRED, add just one block (1 to 99).' };
+  if (t[2] === 0) return { bad: 'Leave out the 0: 300 is just 3 + HUNDRED.' };
+  return { v: t[0] * 100 + (t.length === 3 ? t[2] : 0) };
+}
+/* the whole row: [group, MILLION]? [group, THOUSAND]? [group]? (Colleen's rules: spoken order, no zeroes that are not spoken) */
+function bdThousands(t) {
+  const k = t.indexOf('T');
+  if (k < 0) return bdGroup(t);
+  if (t.lastIndexOf('T') !== k) return { bad: 'Use THOUSAND only once.' };
+  if (!k) return { bad: 'Put how many thousands before THOUSAND (like 5 + THOUSAND).' };
+  const a = bdGroup(t.slice(0, k)), b = bdGroup(t.slice(k + 1));
+  if (a.bad || b.bad) return { bad: a.bad || b.bad };
+  if (!a.v) return { bad: 'Leave out the 0 before THOUSAND.' };
+  if (t.length > k + 1 && b.v === 0) return { bad: 'Leave out the 0: 4,000 is just 4 + THOUSAND.' };
+  return { v: a.v * 1000 + b.v };
+}
+function bdParse(t) {
+  if (!t.length) return { v: null };
+  const m = t.indexOf('M');
+  if (m < 0) return bdThousands(t);
+  if (t.lastIndexOf('M') !== m) return { bad: 'Use MILLION only once.' };
+  if (!m) return { bad: 'Put how many millions before MILLION (like 2 + MILLION).' };
+  if (t.indexOf('T') >= 0 && t.indexOf('T') < m) return { bad: 'MILLION comes before THOUSAND.' };
+  const a = bdGroup(t.slice(0, m)), b = t.length > m + 1 ? bdThousands(t.slice(m + 1)) : { v: 0 };
+  if (a.bad || b.bad) return { bad: a.bad || b.bad };
+  if (!a.v) return { bad: 'Leave out the 0 before MILLION.' };
+  if (t.length > m + 1 && b.v === 0) return { bad: 'Leave out the 0: 3,000,000 is just 3 + MILLION.' };
+  return { v: a.v * 1000000 + b.v };
+}
+const bdCheck = t => bdParse(t).bad || '';
+const bdValue = t => bdParse(t).v;
+const bdName = n => n === 'H' ? 'HUNDRED' : n === 'T' ? 'THOUSAND' : n === 'M' ? 'MILLION' : String(n);
+function bdDraw(playing, fromBlocks) {
+  playing = playing || [];
+  $('#bd-blocks').innerHTML = BD.tokens.length ? BD.tokens.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + (playing.indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>') : '<span class="hint">Your blocks show up here.</span>';
+  const bad = bdCheck(BD.tokens);
+  $('#bd-note').textContent = bad; $('#bd-play').disabled = !BD.tokens.length || !!bad;
+  $('#bd-total').textContent = BD.tokens.length && !bad ? '= ' + bdValue(BD.tokens).toLocaleString('en-US') : '';
+  if (fromBlocks) { $('#bd-whole').value = BD.tokens.length && !bad ? String(bdValue(BD.tokens)) : ''; bdFitType(); }      /* built by hand: the typed box shows the number */
+}
+/* the blocks for a whole number 0-999, in spoken order: 345 = 3 + HUNDRED + 45 */
+const bdUnder = n => n < 100 ? [n] : [Math.floor(n / 100), 'H'].concat(n % 100 ? [n % 100] : []);
+const bdBlocksFor = n => { if (n < 1000) return bdUnder(n); const m = Math.floor(n / 1e6), th = Math.floor(n / 1000) % 1000, r = n % 1000;      /* 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45 */
+  return (m ? bdUnder(m).concat(['M']) : []).concat(th ? bdUnder(th).concat(['T']) : [], r ? bdUnder(r) : []); };
+async function bdPlay() {
+  if (!BD.tokens.length || bdCheck(BD.tokens)) return;
+  await hand.ready;
+  stopFlag = true; while (spelling) await spelling; stopFlag = false;
+  if (S.tone === 'random') hand.setTone(toneHex());
+  const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+  spelling = hand.signParts(BD.tokens.slice(), { per, hund: S.bdh === 'mix' ? undefined : S.bdh, stop: () => stopFlag, onPart: b => bdDraw(b) });
+  try { await spelling; } finally { spelling = null; bdDraw(); }
+}
+function buildInit() {
+  S.bdh = S.bdh || 'mix';
+  $('#bd-pad').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => '<button class="btn ghost" data-n="' + n + '">' + n + '</button>').join('');
+  const add = t => { if (BD.tokens.length >= 12) return; BD.tokens.push(t); BD.lastPad = false; bdDraw(null, true); };
+  /* number pad: a digit right after a one-digit block joins it (8 then 5 makes 85, Colleen); otherwise it starts a new block */
+  $('#bd-pad').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; const d = +b.dataset.n, last = BD.tokens[BD.tokens.length - 1];
+    if (typeof last === 'number' && last < 10 && BD.lastPad) { BD.tokens[BD.tokens.length - 1] = last * 10 + d; BD.lastPad = false; bdDraw(null, true); return; }
+    add(d); BD.lastPad = true; };
+  $('#bd-add').onclick = () => { const v = $('#bd-num').value.trim(); const n = +v; if (v === '' || !(n >= 0 && n <= 99) || n % 1) { $('#bd-num').focus(); return; } add(n); $('#bd-num').value = ''; };
+  $('#bd-num').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#bd-add').click(); } });
+  $('#bd-hund').onclick = () => add('H');
+  $('#bd-thou').onclick = () => add('T');
+  $('#bd-mill').onclick = () => add('M');
+  $('#bd-back').onclick = () => { BD.tokens.pop(); BD.lastPad = false; bdDraw(null, true); };
+  $('#bd-clear').onclick = () => { BD.tokens = []; bdDraw(null, true); };
+  $('#bd-play').onclick = bdPlay;
+  /* typing builds the blocks live (Colleen): 3840 shows 3, then 38, then 3 + HUNDRED + 84, then 3 + THOUSAND + 8 + HUNDRED + 40 */
+  const typed = () => { const d = $('#bd-whole').value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 9); return d === '' ? null : +d; };
+  $('#bd-whole').addEventListener('input', () => { bdFitType(); const n = typed(); BD.tokens = n === null ? [] : bdBlocksFor(n); BD.lastPad = false; bdDraw(); });
+  $('#bd-show').onclick = () => { const n = typed(); if (n === null) { $('#bd-whole').focus(); return; } BD.tokens = bdBlocksFor(n); bdDraw(); bdPlay(); };
+  $('#bd-whole').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#bd-show').click(); } });
+  $('#bd-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  segInit('bd-hstyle', 'bdh');
+  bdDraw();
+}
+/* the hand panel as tall as the two boxes, kept square so the hand is never stretched (Colleen) */
+let bdRO = null;
+function bdFitStage() {
+  const card = $('[data-screen=build] .card.panel'), cols = $('[data-screen=build] .bd-cols'), slot = $('#build-slot'), wrap = $('[data-screen=build] .play');
+  if (!card || !cols || !slot || !wrap) return;
+  if (window.innerWidth <= 1000) { slot.style.width = ''; slot.style.marginTop = ''; return; }      /* stacked on narrow screens */
+  const h = cols.getBoundingClientRect().height, max = wrap.getBoundingClientRect().width - 560;      /* leave the boxes their room */
+  slot.style.width = Math.round(Math.max(260, Math.min(h, max))) + 'px';      /* square: as tall as the two boxes */
+  slot.style.marginTop = Math.round(cols.getBoundingClientRect().top - card.getBoundingClientRect().top) + 'px';      /* lined up with the boxes */
+}
+/* longer numbers get a smaller font so they always fit in the box */
+function bdFitType() { const el = $('#bd-whole'); let f = 40; el.style.fontSize = f + 'px'; while (f > 14 && el.scrollWidth > el.clientWidth) { f -= 2; el.style.fontSize = f + 'px'; } }      /* shrink until it fits */
+function buildShow() { hand.helper(true); putStage('build-slot');
+  if (!bdRO && window.ResizeObserver) { bdRO = new ResizeObserver(bdFitStage); bdRO.observe($('[data-screen=build] .bd-cols')); window.addEventListener('resize', bdFitStage); }
+  setTimeout(bdFitStage, 30); speedNow = () => S.speed; assist.className = 'assist'; $('#bd-speed').value = Math.round(S.speed * 100); bdDraw(); }
 
 /* ---------- classroom projector mode ---------- */
 const CL = { list: [], i: -1, shown: false };
@@ -1021,10 +1190,11 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   stopFlag = true;
+  if (name !== 'build' && name !== 'shownum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
   if (name === 'letter') {      // a letter from the chart, with the hand
     showScreen('review'); putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
     $('#v-title').textContent = 'Letter ' + (parts[1] || ''); $('#v-back').hidden = true; $('#v-again').hidden = true;
@@ -1034,7 +1204,7 @@ function route() {
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum)$/.test(name)) parkStage();
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (SHOW[name]) SHOW[name]();
@@ -1045,7 +1215,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
-gamesInit(); setupInit(); showInit(); classInit(); bingoInit();
+gamesInit(); setupInit(); showInit(); shownumInit(); buildInit(); classInit(); bingoInit();
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }

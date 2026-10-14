@@ -255,3 +255,37 @@ body.big { zoom: 1.15; }
 /* Numbers: a label and Choose all above each group of number chips */
 .nmg { margin: 12px 0 6px; display: flex; gap: 10px; align-items: baseline; }
 .nmg:first-child { margin-top: 4px; }
+
+/* Build a number: the row of blocks and the number pad */
+.blocks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 52px; padding: 8px 0; }
+.blocks .blk { display: inline-block; min-width: 44px; text-align: center; padding: 10px 14px; border-radius: 12px; background: var(--surface); border: 2px solid var(--line); font-weight: 800; font-size: 22px; }
+.blocks .blk.h { font-size: 16px; letter-spacing: .04em; }
+.blocks .blk.now { border-color: var(--accent, #2f6f5e); box-shadow: 0 0 0 3px rgba(47, 111, 94, .25); }
+.blocks .plus { font-weight: 800; opacity: .5; }
+.bd-total { font-size: 28px; font-weight: 800; margin: 2px 0 10px; min-height: 1.2em; }
+.bd-pad { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin: 6px 0 10px; }      /* one row, so the wider Build it box stays short */
+.bd-pad .btn { padding: 10px 0; font-size: 18px; font-weight: 800; }
+#bd-num { width: 130px; font: inherit; padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+
+/* Build a number: the hand, then "Type it in" next to it, then the number building blocks on the far side (Colleen) */
+.play.wide { grid-template-columns: auto minmax(520px, 1fr); }      /* the hand column's width is set to the boxes' height (bdFitStage), so the square hand panel matches their height */
+.play.wide .stage-slot { width: 360px; }
+.bd-cols { display: grid; grid-template-columns: minmax(190px, 0.7fr) minmax(300px, 1.45fr); gap: 18px; align-items: stretch; }      /* the two boxes the same height; Build it wider (Colleen) */
+.bd-clearall { display: block; width: 100%; margin-top: 16px; padding: 16px; font-size: 20px; font-weight: 800; }
+.bd-cols h3 { margin: 0 0 8px; }
+.bd-type, .bd-blockpanel { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.bd-big { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 40px; font-weight: 800; line-height: 1.1; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); letter-spacing: .03em; }
+.bd-type .btn.big { width: 100%; margin: 6px 0 10px; }
+@media (max-width: 1000px) { .play.wide { grid-template-columns: 1fr; } .play.wide .stage-slot { width: auto; } }
+@media (max-width: 640px) { .bd-cols { grid-template-columns: 1fr; } }
+.bd-type .speed .marks span { font-size: 10px; }      /* the narrow Type it in box: the speed names fit without overlapping */
+.bd-big3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex-wrap: nowrap; }
+.bd-big3 .btn { padding: 10px 4px; font-size: 14px; white-space: nowrap; min-width: 0; }      /* HUNDRED, THOUSAND and MILLION on one line (Colleen) */
+/* blocks a little smaller on the Build page, so most numbers fit on one or two rows and the boxes stay as tall as the hand */
+.bd-blockpanel .blocks .blk { padding: 6px 10px; font-size: 18px; min-width: 34px; border-radius: 10px; }
+.bd-blockpanel .blocks .blk.h { font-size: 13px; }
+.bd-blockpanel .blocks { gap: 4px; min-height: 40px; padding: 4px 0; }
+.bd-blockpanel .bd-total { font-size: 24px; margin: 0 0 6px; }
+/* the typed number lines up with the row of blocks (Colleen) */
+.bd-blockpanel .blocks { min-height: 66px; align-content: center; }
+.bd-type .bd-big { height: 66px; padding-top: 0; padding-bottom: 0; }

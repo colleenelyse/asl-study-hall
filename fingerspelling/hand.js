@@ -95,7 +95,7 @@ const TONE_SET = [
 ];
 function setTone(hex) {
   toneNow = hex; const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
-  if (H.mesh) { H.mesh.material.color.set(hex).convertSRGBToLinear(); H.mesh.material.envMapIntensity = T.env; H.mesh.material.clearcoat = T.coat; }
+  [H1, H2].forEach(h => { if (h && h.mesh) { h.mesh.material.color.set(hex).convertSRGBToLinear(); h.mesh.material.envMapIntensity = T.env; h.mesh.material.clearcoat = T.coat; } });      /* both hands the same tone */
   renderer.toneMappingExposure = T.exp; hemi.intensity = T.fill; key.intensity = T.key;
   SKU.skPalm.value.fromArray(T.palm); SKU.skRed.value = T.red; SKU.skSSS.value.fromArray(T.sss); SKU.skEdge.value.fromArray(T.edge); SKU.skEdgeK.value = T.edgeK; SKU.skRim.value.fromArray(T.rim);
 }
@@ -108,8 +108,11 @@ const dealTone = () => {
     if (toneDeck[toneDeck.length - 1] === toneNow) toneDeck.unshift(toneDeck.pop()); }
   return toneDeck.pop();
 };
-const H = {};
-new THREE.GLTFLoader().load('https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.19/dist/profiles/generic-hand/right.glb', g => {
+/* H is the hand being worked on: the signing (right) hand, or, briefly, the helper (left) hand for THOUSAND (withHand) */
+let H = {}; const H1 = H; let H2 = null;
+const withHand = (h, fn) => { const keep = H; H = h; try { return fn(); } finally { H = keep; } };
+const HAND_URL = 'https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.19/dist/profiles/generic-hand/right.glb';
+function dressHand(g) {
   const root = g.scene; scene.add(root); H.root = root; H.bones = {};
   root.traverse(o => { if (o.isBone) H.bones[o.name] = o; if (o.isMesh || o.isSkinnedMesh) { H.mesh = o;
       /* "a real hand printed on the glove": no nails, no new shapes; the skin is PAINTED in the shader from values worked out once at rest in skin(),
@@ -129,11 +132,47 @@ new THREE.GLTFLoader().load('https://cdn.jsdelivr.net/npm/@webxr-input-profiles/
       }; o.frustumCulled = false; o.castShadow = true; o.receiveShadow = true; } });
   Object.values(H.bones).forEach(b => { b.userData.q0 = b.quaternion.clone(); });
   setup(root);
+  return root;
+}
+new THREE.GLTFLoader().load(HAND_URL, g => {
+  const root = dressHand(g);
   const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
   H.center = c; H.size = s;
   (function loop() { renderer.render(scene, cam); requestAnimationFrame(loop); })();
   readyOk();
+  loadHelper();
 }, undefined, e => { readyErr(e); if (opts.onError) opts.onError(e); });
+/* THE HELPER HAND (Colleen, 2026-10-13): the signer's left hand, for THOUSAND. The same hand model, dressed the same way, then mirrored, so it
+   matches the right hand exactly. It waits in the bottom right corner of the screen in activities that may need THOUSAND (helper(true)),
+   rises to take part, then goes back. Its poses are written as right-hand poses; the mirror turns them into the left hand. */
+let helperOn = false, h2from = null, h2to = null, h2st = 0, h2dur = 1, h2cur = null;
+const HELPER_REST = { f: Array(4).fill([8, 10, 5, 0]), t: [10, 0, 0, 5, 5], w: [160, 40, -90], p: [-0.155, -0.125, 0] };      /* pulled further off screen into the corner (Colleen) */      /* the resting shape, turned 90 degrees at the wrist so the hand stands vertical (perpendicular to the ground), fingertips between forward and to the left (toward the signing hand); low in the bottom right corner (Colleen) */
+function loadHelper() {
+  new THREE.GLTFLoader().load(HAND_URL, g => {
+    const h = {}; withHand(h, () => dressHand(g));
+    h.mirror = new THREE.Group(); h.mirror.scale.x = -1; scene.add(h.mirror); h.mirror.add(h.pivot);
+    h.mirror.visible = helperOn; H2 = h;
+    h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur));
+    if (toneNow !== null) setTone(toneNow);
+  });
+}
+function helperMove(P, ms) { if (!H2) return; h2from = h2cur; h2to = norm(P); h2st = performance.now(); h2dur = ms || 1; }
+function helperTick(now) {
+  if (!H2 || !H2.mirror.visible) return;
+  const k = ease(Math.min(1, (now - h2st) / h2dur));
+  const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(h2from.w[0] * D, h2from.w[1] * D, h2from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(h2to.w[0] * D, h2to.w[1] * D, h2to.w[2] * D));
+  h2cur = { f: lerp(h2from.f, h2to.f, k), t: lerp(h2from.t, h2to.t, k), w: lerp(h2from.w, h2to.w, k), p: lerp(h2from.p, h2to.p, k), q: qf.slerp(qt, k) };
+  withHand(H2, () => apply(h2cur));
+}
+/* with the helper showing, the camera steps back a little and over, so both hands fit */
+const camFor = on => { camTw = null; CAM_LAST = on ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }; if (on) { cam.position.set(0.02, 0.075, 0.62); cam.lookAt(0.02, 0.075, 0); }      /* straight on, stepped back a little so both hands fit (a higher view was tried for MILLION and did not help) */ else { cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0); } };
+/* camera easing (camTo), kept for later; THOUSAND and MILLION no longer turn the camera (Colleen: not needed once the z bug was fixed) */
+const CAM_FRONT = { pos: [0.02, 0.075, 0.62], at: [0.02, 0.075, 0] }, CAM_TOUCH = { pos: [-0.2, 0.2, 0.55], at: [0.03, 0.03, 0] };
+let camTw = null;
+function camTo(T, ms) { camTw = { p0: cam.position.toArray(), a0: CAM_LAST.at, T, st: performance.now(), ms }; }
+let CAM_LAST = CAM_FRONT;
+function camTick(now) { if (!camTw) return; const k = ease(Math.min(1, (now - camTw.st) / camTw.ms)); const P = lerp(camTw.p0, camTw.T.pos, k), A = lerp(camTw.a0, camTw.T.at, k); cam.position.set(P[0], P[1], P[2]); cam.lookAt(A[0], A[1], A[2]); if (k >= 1) { CAM_LAST = camTw.T; camTw = null; } }
+const helper = on => { helperOn = !!on; camFor(helperOn); if (H2) { H2.mirror.visible = helperOn; if (helperOn) { h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur)); } } };
 /* turn the hand upright, palm to the camera, and work out each joint's bend and spread axes in its own frame */
 const V = () => new THREE.Vector3(), wp = n => H.bones[n].getWorldPosition(V());
 const FING = ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'];
@@ -231,7 +270,7 @@ function setup(root) {
   axes('thumb-metacarpal', 'thumb-metacarpal', 'thumb-phalanx-proximal'); axes('thumb-phalanx-proximal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal'); axes('thumb-phalanx-distal', 'thumb-phalanx-distal', 'thumb-tip');
   skin(); setTone(TONES[3]);      /* opens on the middle tone (Colleen) */
   const box = new THREE.Box3().setFromObject(H.pivot), c = box.getCenter(V());
-  cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0);
+  camFor(helperOn);      /* the view for one hand, or for two hands if the helper is already asked for */
 }
 /* values for the painted skin, worked out once at rest (so they bend with the hand): position in mm, distance along each finger to the nearest joint,
    which side is the back, how wrinkled that joint is, redness, and palm coordinates for the palm lines */
@@ -301,7 +340,7 @@ function apply(p) {
   m.quaternion.copy(m.userData.q0).multiply(qa(m.userData.spread, t[0])).multiply(qa(m.userData.bend, t[1])).multiply(qa(m.userData.twist, t[2]));
   t1.quaternion.copy(t1.userData.q0).multiply(qa(t1.userData.twist, t[5] || 0)).multiply(qa(t1.userData.bend, Math.max(0, t[3])));      /* optional 6th thumb value: the thumb turns on its length from the middle knuckle, so the heel of the hand stays still (21: Colleen) */      /* the thumb's joints never bend backward (Colleen: they looked bent back) */
   t2.quaternion.copy(t2.userData.q0).multiply(qa(t2.userData.bend, Math.max(0, t[4])));
-  const pp = p.p || [0, 0]; H.pivot.position.set(pp[0], 0.07 + pp[1], 0);
+  const pp = p.p || [0, 0]; H.pivot.position.set(pp[0] || 0, 0.07 + (pp[1] || 0), pp[2] || 0);      /* p = [x, y, z]: z moves the hand toward (+) or away from (-) the student (HUNDRED pulls away) */
   if (p.q) { H.pivot.quaternion.copy(p.q); return; }
   H.pivot.rotation.set((p.w || [0, 0, 0])[0] * D, (p.w || [0, 0, 0])[1] * D, (p.w || [0, 0, 0])[2] * D);
 }
@@ -355,7 +394,7 @@ const SLIDE = new Set('LBCDEGHIOPRUVW'.split(''));      /* as Colleen's Z photo 
 /* double letters: by default the fingers and thumb relax part of the way toward an open hand (Colleen: for B the thumb partly opens and closes again) */
 const loosen = (P, k) => { const R = norm(POSE.rest), Q = norm(P); return { f: lerp(Q.f, R.f, k), t: lerp(Q.t, R.t, k), w: Q.w, p: Q.p }; };
 const DOUBLE = {};      /* letter: P => the in-between shape, for letters that should double differently */
-const norm = p => ({ f: p.f, t: p.t, w: p.w || [0, 0, 0], p: p.p || [0, 0], under: !!p.under, over: !!p.over, stage: p.stage || 0 });
+const norm = p => ({ f: p.f, t: p.t, w: p.w || [0, 0, 0], p: [0, 1, 2].map(i => (p.p && p.p[i]) || 0), under: !!p.under, over: !!p.over, stage: p.stage || 0 });      /* p always has x, y and z: a missing z made the smooth paths lose all forward/back movement (MILLION, Colleen) */
 const lerp = (a, b, k) => Array.isArray(a) ? (b && b.length > a.length ? b : a).map((_, i) => lerp(a[i] === undefined ? 0 : a[i], b[i] === undefined ? 0 : b[i], k)) : a + (b - a) * k;      /* a missing 5th finger value counts as 0 */
 const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
 let cur = norm(POSE.rest), from = cur, to = cur, st = 0, dur = 1;
@@ -411,7 +450,7 @@ function moveTo(p, ms) { PATH = null; from = cur; to = norm(p); PLAN = planMove(
 let PATH = null;
 const eQw = c => { if (!c.q) return c.w; const e = new THREE.Euler().setFromQuaternion(c.q, 'XYZ'); return [e.x / D, e.y / D, e.z / D]; };
 function playPath(keys, ms, ez) { PATH = { keys: keys.map(norm), st: performance.now(), dur: ms, ez: ez || ease }; }      /* ez: how the speed changes along the path (default: slow, fast, slow) */
-const cr = (a, b, c, d, s) => Array.isArray(b) ? b.map((_, i) => cr(a[i], b[i], c[i], d[i], s)) : 0.5 * ((2 * b) + (-a + c) * s + (2 * a - 5 * b + 4 * c - d) * s * s + (-a + 3 * b - 3 * c + d) * s * s * s);
+const cr = (a, b, c, d, s) => Array.isArray(b) ? b.map((_, i) => cr(a[i] === undefined ? b[i] : a[i], b[i], c[i] === undefined ? b[i] : c[i], d[i] === undefined ? (c[i] === undefined ? b[i] : c[i]) : d[i], s)) : 0.5 * ((2 * b) + (-a + c) * s + (2 * a - 5 * b + 4 * c - d) * s * s + (-a + 3 * b - 3 * c + d) * s * s * s);
 function pathAt(now) {
   const K = PATH.keys, n = K.length, u = PATH.ez(Math.min(1, (now - PATH.st) / PATH.dur)), x = u * (n - 1), i = Math.min(n - 2, Math.floor(x)), sg = x - i, g = j => K[Math.max(0, Math.min(n - 1, j))];
   const A = g(i - 1), B = g(i), C = g(i + 1), E = g(i + 2), o = {};
@@ -422,7 +461,7 @@ function pathAt(now) {
   return o;
 }
 function tick(now) { if (H.bones && PATH) { cur = pathAt(now); apply(cur); } else if (H.bones) { const k = Math.min(1, (now - st) / dur); const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(from.w[0] * D, from.w[1] * D, from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(to.w[0] * D, to.w[1] * D, to.w[2] * D));
-    const kk = ease(k); cur = { f: lerp(from.f, to.f, kk), t: lerp(from.t, to.t, kk), under: to.under, over: to.over, stage: to.stage, w: lerp(from.w, to.w, ease(k)), p: lerp(from.p, to.p, ease(k)), q: qf.slerp(qt, ease(k)) };      /* the hand always turns the short way (Q used to spin around) */ if (PLAN && k < 1) cur = nudge(cur, planAt(PLAN, kk)); apply(cur); } requestAnimationFrame(tick); }
+    const kk = ease(k); cur = { f: lerp(from.f, to.f, kk), t: lerp(from.t, to.t, kk), under: to.under, over: to.over, stage: to.stage, w: lerp(from.w, to.w, ease(k)), p: lerp(from.p, to.p, ease(k)), q: qf.slerp(qt, ease(k)) };      /* the hand always turns the short way (Q used to spin around) */ if (PLAN && k < 1) cur = nudge(cur, planAt(PLAN, kk)); apply(cur); } helperTick(now); camTick(now); requestAnimationFrame(tick); }
 requestAnimationFrame(tick);
 /* speeds (Colleen, 2026-10-13): Beginner 1 letter a second, Intermediate 2, Advanced 4, Deaf 8 (evenly spaced in between) */
 const SPEED_SLOW = 1000, SPEED_FAST = 125;
@@ -575,12 +614,34 @@ for (let d = 6; d <= 9; d++) NUM[20 + d] = fromL(SH[d]);
    LOCKED by Colleen (2026-10-13) with the sock-puppet 0 below. */
 const ZERO_OUT = { f: SH[0].f.slice(0, 3).map((g, i) => [g[0], g[1] + 10, g[2] + 7, [-4, 6, 14][i], [0, 8, 16][i]]).concat([[24, 66, 44, 6, 6, 10]]), t: SH[0].t, w: [15, 0, 0] };      /* Colleen's closest version: fingers leaning in on top of the thumb and rounded, the wrist tilted down a little; the pinky lifted up level with the ring finger, beside it (never under it) */
 for (let d = 3; d <= 9; d++) { const P = Object.assign({}, SH[d], { w: OUT }); NUM[d * 10] = { start: P, steps: [[P, 0.3], [ZERO_OUT, 0.5]] }; }
+/* PLAIN TWO-DIGIT NUMBERS 31-99 (Colleen, 2026-10-13): the first digit palm out (1-5 stay palm out inside a number), then the hand slides
+   slightly toward the left of the frame (the signer's right) while changing into the second digit, landing in it, as in the 20s.
+   Doubles, rocking numbers and tens keep their own forms. LOCKED by Colleen (2026-10-13). */
+const DIGIT_OUT = d => Object.assign({}, SH[d], { w: OUT });
+for (let a = 3; a <= 9; a++) for (let b = 1; b <= 9; b++) {
+  const n = a * 10 + b; if (NUM[n]) continue;
+  NUM[n] = { start: DIGIT_OUT(a), steps: [[DIGIT_OUT(a), 0.3], [Object.assign({}, DIGIT_OUT(b), { p: [SLIDE20 * 1.5, 0] }), 0.55]] };
+}
+/* HUNDREDS 100-900 (Colleen, 2026-10-13): the digit palm forward, then the hand pulls away from the student while changing, two ways:
+   'c' = into a full C handshape; 'curl' = only the fingers that were up for the digit hook like the letter X (100 = 1 back into an X). LOCKED by Colleen (2026-10-13). */
+const BACK = [0, 0, -0.045];
+const C_TURN = [0, 8, 0];      /* only a hint of a turn (Colleen: turning it was a bad idea; 35 and 20 were too much) */
+const C_OUT = { f: POSE.C.f, t: [31, 6, -44, 17, 46], w: C_TURN };      /* the letter C with the thumb a little lower (Colleen) */
+const curlUp = P => Object.assign({}, P, { f: P.f.map(g => g[0] < 20 && g[1] < 30 ? [POSE.X.f[0][0], POSE.X.f[0][1], POSE.X.f[0][2], g[3]] : g),
+  t: P.t === THUMB_OUT ? [THUMB_OUT[0], THUMB_OUT[1], THUMB_OUT[2], 45 * 0.7, 62 * 0.7, -96 * 0.7] : P.t });      /* 70% of the way along the 21-style curl (the turn shrinks with the bend, so the joint does not tip down) (Colleen) */      /* if the thumb is out (3, 5), it curls too, UP the way the 21 thumb curls (Colleen: curling in was the wrong way) */      /* the up fingers hook like the letter X (Colleen: 100 = 1 back into an X shape) */
+for (let d = 1; d <= 9; d++) {
+  const A = Object.assign({}, SH[d], { w: OUT, p: [0, 0, 0] });
+  const pullTo = Q => ({ start: A, steps: [[A, 0.3], [Object.assign({}, Q, { w: Q.w || OUT, p: BACK }), 0.55]] });
+  NUM[d * 100] = Object.assign(pullTo(C_OUT), { hund: { c: pullTo(C_OUT), curl: pullTo(curlUp(A)) } });
+}
 async function sign(n, o) {
   o = o || {};
   const N = NUM[n]; if (!N) return;
   const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
   let use = (o.teens !== 'twist' && N.ten) ? N.ten : N;      /* 10 + number unless the twist is asked for (Colleen: 10 + number is the default) */
   if (N.alt && (o.form === 'alt' || (o.form !== 'main' && Math.random() < 0.5))) use = N.alt;      /* 23, 25: either way, mixed unless asked (Colleen) */
+  if (N.hund) use = N.hund[o.hund === 'c' || o.hund === 'curl' ? o.hund : (Math.random() < 0.5 ? 'c' : 'curl')];      /* HUNDRED: the C or the curl, mixed unless asked */
+  if (o.series && n >= 1 && n <= 5) use = { start: DIGIT_OUT(n), steps: [] };      /* inside a longer number, 1-5 face palm out (Colleen) */
   if (o.onLetter) o.onLetter(String(n));
   if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }
@@ -595,6 +656,56 @@ async function sign(n, o) {
   moveTo(POSE.rest, 500); await wait(520);
   if (o.onLetter) o.onLetter('');
 }
+/* THOUSAND (Colleen's rules and photo, 2026-10-13): two hands, little movement. The left hand turns in its corner so its fingers point at the
+   student (still standing vertical, palm toward the signing hand), then just lifts up a little while the right hand, a flattened, slightly bent B
+   with the back of the hand to the student, comes in from the left and its fingertips land on the left palm with a clear stop (once, no tapping).
+   Then the left hand goes back to its corner. The fingers stay at least 2 cm from the left thumb (Colleen: the pointer passed through it). LOCKED by Colleen (2026-10-13). */
+const TH_LEFT = [-180, 90, -105];      /* fingers toward the student, palm toward the signing hand, thumb up */
+const HELPER_TURN = { f: HELPER_REST.f, t: HELPER_REST.t, w: TH_LEFT, p: HELPER_REST.p }, HELPER_UP = { f: HELPER_REST.f, t: HELPER_REST.t, w: TH_LEFT, p: [-0.12, -0.04, 0] };
+const TH_B = [[35, 25, 10, 2], [35, 25, 10, 0], [35, 25, 10, -2], [35, 25, 10, -4]], TH_T = [50, -45, -60, 50, 20];
+const TH_ABOVE = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.056, -0.056, 0] }, TH_TOUCH = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.021, -0.054, 0] };      /* z 0: exactly what Colleen saw and locked (a bug then dropped the -0.03) */      /* the fingertips land in the center of the palm, clear of the thumb, stopping right at the skin (both hands are solid, measured from the skin itself) */
+/* MILLION (Colleen, 2026-10-13): the THOUSAND move, then the hand pulls back twice as far and moves toward the student, and the fingertips land
+   a second time on the very tips of the left fingers (palm side), then return. LOCKED by Colleen (2026-10-14). */
+const TM_ABOVE1 = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.056, -0.046, 0.01] }, TM_TOUCH1 = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.021, -0.044, 0.01] };      /* MILLION's first tap: the true center of the left palm, below the left thumb (checked from above; THOUSAND keeps its locked spot) */
+const TH_ABOVE2 = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.044, -0.019, 0.063] }, TH_TOUCH2 = { f: TH_B, t: TH_T, w: [157, 48, -91], p: [-0.022, -0.023, 0.083] };      /* after tap 1 the hand pushes forward toward the student and its fingertips land on the pads of the left fingertips (aimed from the right fingertip's skin to the left fingertip pad's skin) (Colleen) */
+async function thousand(o, last, million) {
+  const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (o.onLetter) o.onLetter(million ? 'MILLION' : 'THOUSAND');
+  /* one fluid movement: the left hand turns to point at the student and lifts, while the right hand sweeps in and its fingertips land on the palm */
+  helperMove(HELPER_UP, per * 0.45);
+  playPath([Object.assign({}, cur, { w: eQw(cur) }), million ? TM_ABOVE1 : TH_ABOVE, million ? TM_TOUCH1 : TH_TOUCH], per * 0.55, EASE_IN); await wait(per * 0.57);      /* fastest at the end: an abrupt stop, as if contact happened */
+  await wait(per * (million ? 0.22 : 0.35));      /* a clear stop on the palm */
+  if (million) {      /* lift off a little and land again, near the knuckles */
+    playPath([Object.assign({}, cur, { w: eQw(cur) }), TH_ABOVE2, TH_TOUCH2], per * 0.55, EASE_IN); await wait(per * 0.57);
+    await wait(per * 0.35);
+  }
+  if (last) { moveTo(million ? TH_ABOVE2 : TH_ABOVE, per * 0.25); await wait(per * 0.28); }
+  helperMove(HELPER_REST, per * 0.6);      /* back to the corner while the number goes on */
+}
+/* a whole number from blocks, in spoken order (Colleen's rules): tokens are numbers 0-99 and 'H' (HUNDRED, after a digit 1-9).
+   The parts flow into each other with no return to rest in between; onPart(i) tells which block is playing. */
+function partsOf(tokens) {
+  const out = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (tokens[i + 1] === 'H' && t >= 1 && t <= 9) { out.push({ n: t * 100, blocks: [i, i + 1] }); i++; }
+    else if (t === 'T' || t === 'M') out.push({ n: t, blocks: [i] });
+    else if (t !== 'H') out.push({ n: t, blocks: [i] });
+  }
+  return out;
+}
+async function signParts(tokens, o) {
+  o = o || {};
+  const parts = partsOf(tokens);
+  for (let k = 0; k < parts.length; k++) {
+    if (o.stop && o.stop()) break;
+    if (o.onPart) o.onPart(parts[k].blocks);
+    if (parts[k].n === 'T' || parts[k].n === 'M') { await thousand(o, k === parts.length - 1, parts[k].n === 'M'); continue; }
+    await sign(parts[k].n, Object.assign({}, o, { stay: k < parts.length - 1, series: parts.length > 1 }));      /* inside a longer number, 1-5 face palm out */
+  }
+  if (o.onPart) o.onPart([]);
+  if (tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
+}
 /* every pair of still letters (and rest) was planned ahead of time (PRE_PLANS, made with planMove); load them so words start right away.
    Pairs not listed need no dodge. Anything else (doubles, habits) is planned the first time it comes up. */
 (function preload() {
@@ -604,11 +715,15 @@ async function sign(n, o) {
 /* every letter as a still picture, to review the whole alphabet at once; tap one to see it move */
 /* the alphabet chart: every letter framed the same way on its own card, with motion arrows for J and Z; tap a card to see it move; printable */
 function chartImage(still) {
+  if (H2) H2.mirror.visible = false;      /* stills show the signing hand only */
+  try { return chartShot(still); } finally { if (H2) H2.mirror.visible = helperOn; }
+}
+function chartShot(still) {
   apply(Object.assign({ w: [0, 0, 0], p: [0, 0] }, norm(still), { q: null })); scene.updateMatrixWorld(true);
   const box = new THREE.Box3(); Object.values(H.bones).forEach(b => box.expandByPoint(b.getWorldPosition(new THREE.Vector3())));
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()), r = Math.max(size.x, size.y) * 0.5 + 0.025;      /* room around the hand, so nothing is cut off */
   const keep = cam.position.clone(); cam.position.set(c.x, c.y - 0.006, c.z + r / Math.tan(15 * Math.PI / 180) * 1.06); cam.lookAt(c);
-  const url = snap(); cam.position.copy(keep); cam.lookAt(0, 0.085, 0); return url;
+  const url = snap(); cam.position.copy(keep); camFor(helperOn); return url;
 }
 const ARROW = {      /* drawn over the card, as the student sees the movement */
   J: '<path d="M30 18 C 30 60, 34 80, 55 82 C 70 83, 78 72, 80 62" />',
@@ -616,8 +731,8 @@ const ARROW = {      /* drawn over the card, as the student sees the movement */
 };
 const snap = () => { renderer.render(scene, cam); return renderer.domElement.toDataURL(); };
 const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] : P0; };
-if (opts.debug) window.__hand = { H, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH };      /* dev pages only: lets the review tools reach the joints */
-return { ready, spell, sign, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+if (opts.debug) window.__hand = { get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
+return { ready, spell, sign, signParts, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();
