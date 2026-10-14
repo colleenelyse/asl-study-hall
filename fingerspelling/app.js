@@ -815,14 +815,9 @@ function reportSheet(r, name, cmp) {
         '<ol class="rs-words">' + r.items.map(x => '<li class="' + (x.ok ? 'ok' : 'no') + '">' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(' + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('') + '</ol></div>' +
       '<div class="rs-box rs-qrbox"><h3>Online Report</h3><div class="rs-qr" data-qr><span class="rs-qrfail">Making the QR code…</span></div><span>Scan to open this report on a phone or computer.</span></div>' +
     '</div>';
-  if (!cmp) return '<div class="rs-head"><div><div class="rs-kicker">ASL Fingerspelling Practice · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
-    '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
-    '<div class="rs-game">Game: <b>' + esc(GAMES[g].name) + '</b></div>' +
-    '<h2 class="rs-h">Results</h2><div class="rs-boxes">' + results + '</div>' +
-    '<h2 class="rs-h">Settings</h2><div class="rs-boxes settings">' + settings + '</div>' +
-    mixBox + bottom;
+  /* every report uses the diagnostic design (Colleen: "i don't want any report to use the old look"); outside ASL Study there is no class to compare with, so the bottom half is left off */
   // the diagnostic report (inside ASL Study)
-  const num = isNumGame(g), d = cmp.state === 'ok' ? cmp.data : null, first = firstName(name);
+  const num = isNumGame(g), d = cmp && cmp.state === 'ok' ? cmp.data : null, first = firstName(name);
   if (g === 'ladder') results = box('Top speed', r.top === null ? '—' : r.topLps + ' / sec', r.top === null ? 'no level passed yet' : 'letters a second · ' + r.topName, true) + box('Words right', r.right + ' of ' + r.n, r.pct + '% right') +
     box('Words right per minute', r.wpm, r.avgLen ? 'average ' + r.avgLen + ' letters a word' : '') + box('Time', time, r.replays ? 'watched again ' + r.replays + ' time' + (r.replays === 1 ? '' : 's') : '');
   const wt = sets.find(x => x[0] === 'Word type' || x[0] === 'Numbers' || x[0] === 'Range' || x[0] === 'Letters' || x[0] === 'Levels');
@@ -835,12 +830,12 @@ function reportSheet(r, name, cmp) {
       box('Rounds', d.me.rounds, d.me.answered + (num ? ' numbers' : ' words') + ' answered') + box('% right', cmpVal('pct', m('pct').me), num ? 'all number games' : 'all games') +
       box('Average speed', cmpVal('speed', m('speed').me), 'on a 1–10 scale') + box('Minutes practiced', cmpVal('minutes', m('minutes').me), d.me.last ? 'last played ' + (d.me.last === today ? 'today' : d.me.last) : '') + '</div>';
   }
-  return '<div class="rs-diag"><div class="rs-head"><div><div class="rs-kicker">' + esc(STUDY.app || 'ASL Study') + ' · ' + (num ? 'Numbers' : 'Fingerspelling') + ' Diagnostic · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
+  return '<div class="rs-diag"><div class="rs-head"><div><div class="rs-kicker">' + (cmp ? esc(STUDY.app || 'ASL Study') + ' · ' + (num ? 'Numbers' : 'Fingerspelling') + ' Diagnostic' : 'ASL Fingerspelling Practice · ' + (num ? 'Numbers' : 'Fingerspelling')) + ' · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
     '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
-    '<h2 class="rs-h">Student</h2><div class="rs-info">' + info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : cmp.state === 'loading' ? '…' : STUDY.level) + info('Activity', GAMES[g].name) + info(wt ? wt[0] : 'Word type', wt ? wt[1] : '') + '</div>' +
+    '<h2 class="rs-h">' + (cmp ? 'Student' : 'Round') + '</h2><div class="rs-info">' + (cmp ? info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : cmp.state === 'loading' ? '…' : STUDY.level) : info('Speed', r.speedName) + info('Used paper', r.paper === 'yes' ? 'Yes' : 'No')) + info('Activity', GAMES[g].name) + info(wt ? wt[0] : 'Word type', wt ? wt[1] : '') + '</div>' +
     '<h2 class="rs-h">Today’s Results</h2><div class="rs-boxes four">' + results + '</div>' +
     (rest ? '<p class="rs-sets">Settings: ' + rest + '</p>' : '') +
-    (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + bottom + sofar + cmpHalf(cmp, name, r) + '</div>';
+    (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + bottom + (cmp ? sofar + cmpHalf(cmp, name, r) : '') + '</div>';
 }
 /* "My report" (Colleen: students can always open their current report compared with others): inside ASL Study, #/report/now (or /numbers)
    shows the student's running totals and the program comparison, without a round. */
