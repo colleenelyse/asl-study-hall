@@ -56,7 +56,7 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   pick: { name: 'Pick the word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
-  ladder: { name: 'Speed ladder', icon: '🪜', about: 'Every right answer speeds the hand up; a miss slows it down. Three misses and you are done. How fast can you read?' },
+  ladder: { name: 'Speed ladder', icon: '🪜', about: 'Every right answer speeds the hand up; a miss slows it down. With hearts on, the game ends when you run out of hearts. How fast can you read?' },
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
@@ -124,7 +124,7 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 /* ---------- settings ---------- */
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
-  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'];      // old letter pairs became letter groups
@@ -265,6 +265,7 @@ function setupInit() {
   $('#s-nm-none').onclick = () => { S.nums = []; saveS(); drawNm(); };
   $('#s-ncount').value = String(S.ncount); $('#s-ncount').onchange = e => { S.ncount = +e.target.value || 20; saveS(); drawPool(); };
   segInit('s-nhund', 'nhund', () => drawPool());
+  segInit('s-hearts', 'hearts');
   const qc = () => { $('#s-qcustom').hidden = S.qrange !== 'custom'; hand.helper(S.game === 'nquiz' && qRange()[1] >= 1000); };
   segInit('s-qrange', 'qrange', () => { if (S.qrange === 'custom' && !(+S.qmax > 0)) { S.qmin = 0; S.qmax = 1000; } $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax; saveS(); qc(); drawPool(); }); qc();
   $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax;
@@ -362,7 +363,7 @@ function startRound(fixedWords) {
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
   if (!list.length) return;
   R = { game: g, list, i: -1, items: [], started: Date.now(), settings: JSON.parse(JSON.stringify(S)), review: !!fixedWords, pool };
-  if (g === 'ladder') { R.lspeed = S.speed; R.top = null; R.lives = 3; }
+  if (g === 'ladder') { R.lspeed = S.speed; R.top = null; R.hearts = S.hearts === 'off' ? 0 : +S.hearts || 3; R.lives = R.hearts || Infinity; }      /* Hearts: 1, 3 or 5, or off (no game over; End round finishes) (Colleen) */
   track('round_start', { game: g, speed: speedName(S.speed), words: list.length });
   if (location.hash === '#/play') { setupShow(g); playShow(); } else location.hash = '#/play';
 }
@@ -392,7 +393,7 @@ function playShow() {
   $('#p-ladder').hidden = g !== 'ladder';
   if (R.i < 0) nextWord(); else drawWord();
 }
-function ladderBar() { if (!R || R.game !== 'ladder') return; $('#p-lspeed').textContent = speedName(R.lspeed) + ' · ' + lps(R.lspeed) + ' letters a second'; $('#p-lives').textContent = '❤️'.repeat(Math.max(0, R.lives)) + '🤍'.repeat(3 - Math.max(0, R.lives)); }
+function ladderBar() { if (!R || R.game !== 'ladder') return; $('#p-lspeed').textContent = speedName(R.lspeed) + ' · ' + lps(R.lspeed) + ' letters a second'; $('#p-lives').textContent = R.hearts ? '❤️'.repeat(Math.max(0, R.lives)) + '🤍'.repeat(R.hearts - Math.max(0, R.lives)) : 'No hearts: tap End round when you are done'; }
 function drawBlanks(it) {
   const g = R.game;
   let blanks = '';
@@ -429,7 +430,7 @@ function drawWord() {
 }
 async function nextWord() {
   R.i++;
-  if (R.game === 'ladder' && R.i >= R.list.length) R.list = R.list.concat(shuffle(R.pool));      // the ladder goes on until three misses
+  if (R.game === 'ladder' && R.i >= R.list.length) R.list = R.list.concat(shuffle(R.pool));      // the ladder goes on until the hearts run out (or forever with hearts off)
   if (R.i >= R.list.length) return finishRound();
   const it = R.list[R.i];
   R.cur = { replays: 0, shownAt: Date.now(), blur: R.game === 'fill' ? blurSet(it.w) : null };
@@ -450,8 +451,8 @@ function record(ok, typed, extra) {
   R.items.push(row);
   track('word_answer', { game: R.game, ok, letters: row.n });
   if (R.game === 'ladder') {
-    if (ok) { R.top = R.top === null ? R.lspeed : Math.max(R.top, R.lspeed); R.lspeed = Math.min(1, R.lspeed + 0.07); }
-    else { R.lives--; R.lspeed = Math.max(0, R.lspeed - 0.1); }
+    if (ok) { R.top = R.top === null ? R.lspeed : Math.max(R.top, R.lspeed); R.lspeed = Math.min(1, R.lspeed + 0.04 * (1 - 0.6 * R.lspeed)); }      /* gentler steps, smaller still near the top (Colleen: slower climb to the fast speeds) */
+    else { R.lives--; R.lspeed = Math.max(0, R.lspeed - 0.06); }
     ladderBar();
   }
   return row;
@@ -545,7 +546,14 @@ function sendToStudy(res, round) {
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
-  if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
+  if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); STUDY.cls = String(e.data.cls || '').slice(0, 80); STUDY.app = String(e.data.app || '').slice(0, 60); STUDY.level = String(e.data.level || '').slice(0, 40); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
+  if (e.data.type === 'fsp-compare-data' && CMP && CMP.kind === e.data.kind && CMP.state === 'loading') {      /* ASL Study 3.82: the program comparison for the diagnostic report */
+    const d = e.data.data;
+    if (e.data.error || !d || d.teacher) { CMP.state = 'error'; const msg = String(e.data.error || '').slice(0, 200); CMP.error = /^Teacher/.test(msg) ? msg : 'The program comparison could not load right now' + (msg ? ' (' + msg.replace(/\.$/, '') + ')' : '') + '. Make the report again in a minute.'; }
+    else { CMP.state = 'ok'; CMP.data = d; }
+    if (/^#\/report/.test(location.hash) && reportRedraw) reportRedraw();
+    return;
+  }
   if (e.data.type === 'fsp-words') {      /* ASL Study 3.81: the sheet's lists; a page built from other words reloads once to use them */
     const clean = { proper: goodLists(e.data.proper) ? e.data.proper : null, everyday: goodLists(e.data.everyday) ? e.data.everyday : null };
     if (!clean.proper && !clean.everyday) return;
@@ -558,7 +566,8 @@ window.addEventListener('message', e => {      /* the app can open a given game:
   }
   if (e.data.type === 'fsp-report-done') { const m = $('#rp-sent'); if (m) { m.hidden = false; m.className = 'alert' + (e.data.ok ? ' good' : ' bad'); m.textContent = e.data.msg || (e.data.ok ? 'Sent!' : 'Not sent.'); } const b = $('#rp-mail'); if (b) b.disabled = false; }
 });
-const STUDY = { name: '' };
+const STUDY = { name: '', cls: '', app: '', level: '' };
+let CMP = null, reportRedraw = null;      // 3.82: { kind, at, state: 'loading' | 'ok' | 'error', data, error } for the round on the report page
 if (EMBED) try { window.parent.postMessage({ type: 'fsp-ready' }, '*'); } catch (e) {}
 
 /* ---------- results ---------- */
@@ -663,13 +672,99 @@ function reportLines(r) {
   if (r.supports) out.push('Supports: ' + r.supports);
   return out;
 }
-function reportText(r, name, link) {
-  return ['ASL Fingerspelling Practice report', 'Name: ' + (name || '(no name)'), 'Date: ' + new Date(r.at).toLocaleString()].concat(reportLines(r),
+function reportText(r, name, link, cmp) {
+  return ['ASL Fingerspelling Practice report', 'Name: ' + (name || '(no name)'), 'Date: ' + new Date(r.at).toLocaleString()].concat(reportLines(r), cmpLines(cmp, name, r),
     ['', 'Answers:'], r.items.map(x => (x.ok ? 'RIGHT  ' : 'MISSED ') + x.w + (x.ok ? '' : x.typed ? '  (answered ' + x.typed + ')' : '  (skipped)')),
     ['', 'Open this report online (teacher spreadsheets can read this link too):', link || dataCode(r, name)]).join('\n');
 }
-/* the report: one clean page with the student's name, and each number in its own box under a heading (Colleen) */
-function reportSheet(r, name) {
+
+/* ---------- ASL Study 3.82 (Colleen): the diagnostic report. Inside the app the report reads like a standardized test report: the student on top,
+   and below it how they compare with every student in their program level (ASL 1, ASL 2 ...) in all class periods (the app's api_fsCompare). ---------- */
+const BANDS = [['Behind', 'behind', 'below 20th'], ['Approaching', 'near', '20th–39th'], ['On track', 'on', '40th–74th'], ['Above', 'above', '75th and up']];
+const bandOf = p => p < 20 ? 0 : p < 40 ? 1 : p < 75 ? 2 : 3;
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+const CMP_NAMES = { letters: { top: 'Top Speed ladder speed', pct: '% right', perMin: 'Words right per minute', speed: 'Average speed (1–10)', minutes: 'Minutes practiced' },
+  numbers: { pct: '% right', perMin: 'Numbers right per minute', speed: 'Average speed (1–10)', minutes: 'Minutes practiced' } };
+const CMP_AREA = { top: 'speed', pct: 'accuracy', perMin: 'words a minute', minutes: 'practice time' };
+const r1 = v => Math.round(v * 10) / 10;
+const cmpVal = (k, v) => v === null || v === undefined ? '—' : k === 'top' ? r1(v).toFixed(1) + ' / sec' : k === 'pct' ? Math.round(v) + '%' : k === 'minutes' ? String(Math.round(v)) : String(r1(v));
+const firstName = name => String(name || '').trim().split(/\s+/)[0] || 'This student';
+const share = p => p >= 88 ? '9 in 10' : p >= 72 ? '3 in 4' : p >= 60 ? '2 in 3' : 'half of';
+const standing = p => p >= 75 ? 'well above average' : p >= 60 ? 'above average' : p >= 40 ? 'about average' : p >= 20 ? 'a little below average' : 'below most of the class';
+/* the plain-words summary and the next step, from the numbers (HTML with <b> for the report; the email takes the tags out) */
+function cmpWords(d, name, r) {
+  const first = firstName(name), L = d.level || 'the program', num = d.kind === 'numbers', ms = d.measures.filter(m => m.p !== null && m.p !== undefined);
+  const core = ms.filter(m => m.core).sort((a, b) => b.p - a.p), best = core[0], worst = core[core.length - 1], mins = ms.find(m => m.k === 'minutes');
+  const did = { top: 'reads fingerspelling faster than', pct: num ? 'reads numbers more accurately than' : 'reads fingerspelling more accurately than', perMin: num ? 'reads more numbers right a minute than' : 'reads more words right a minute than' };
+  const detail = m => m.k === 'top' ? ' (top speed ' + cmpVal('top', m.me).replace(' / sec', '') + ' letters a second, ' + L + ' average ' + cmpVal('top', m.avg).replace(' / sec', '') + ')' : ' (' + cmpVal(m.k, m.me) + ', ' + L + ' average ' + cmpVal(m.k, m.avg) + ')';
+  let sum = '';
+  if (best && best.p >= 50) sum = first + ' ' + did[best.k] + ' about ' + share(best.p) + ' ' + L + ' students' + detail(best);
+  else if (best) sum = first + '’s strongest area is ' + (num && best.k === 'perMin' ? 'numbers a minute' : CMP_AREA[best.k]) + ' (' + ordinal(best.p) + ' percentile' + detail(best).replace(' (', ': ');
+  if (worst && worst !== best) sum += ' and is ' + standing(worst.p) + ' for ' + (num && worst.k === 'perMin' ? 'numbers a minute' : CMP_AREA[worst.k]) + '.';
+  else if (sum) sum += '.';
+  if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
+  const sp = Math.round((r.game === 'ladder' && r.top !== null && r.top !== undefined ? r.top : r.speed || 0) * 3), slower = SPEEDS[Math.max(0, sp - 1)], mix = mixList(r.items || []).slice(0, 2).map(x => x.right + '/' + x.saw);
+  let next = '';
+  if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
+  else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
+  else if (worst.k === 'top') next = 'speed is the area to grow. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
+  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
+  if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too: a few short rounds (5 to 10 minutes) each week.';
+  return { sum, next: '<b>Next step:</b> ' + next };
+}
+/* 3.83 (Colleen: "so parents can see who's doing the work"): minutes spent, compared with the student's own class period, kept separate:
+   all of ASL Study, fingerspelling, numbers. data.app = { cls, rows: [{ k, me, avg, n, p }] } from the app. */
+const TIME_NAMES = { app: 'All of ASL Study (every activity)', fs: 'Fingerspelling games', num: 'Number games' };
+function timeHalf(d, name) {
+  const a = d && d.app; if (!a || !a.rows || !a.rows.length) return '';
+  const first = firstName(name), max = Math.max(1, ...a.rows.map(x => Math.max(x.me || 0, x.avg || 0))) * 1.3, at = v => Math.max(0, Math.min(98, 100 * v / max)).toFixed(0);
+  const rows = a.rows.map(x => '<tr><td>' + esc(TIME_NAMES[x.k] || x.k) + '</td><td class="num"><b>' + x.me + ' min</b></td><td class="num">' + (x.avg === null ? '—' : x.avg + ' min') + '</td><td><div class="rs-bar">' +
+    (x.avg === null ? '' : '<i style="width:' + at(x.avg) + '%"></i>') + '<span class="me" style="left:' + at(x.me) + '%"></span></div></td><td class="num">' + (x.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(x.p)][1] + '">' + ordinal(x.p) + '</span>') + '</td></tr>').join('');
+  const all = a.rows.find(x => x.k === 'app'), line = all && all.p !== null ? first + ' has spent ' + all.me + ' minutes in ' + esc(STUDY.app || 'ASL Study') + ' so far, more than about ' + Math.round(all.p) + '% of ' + esc(a.cls) + ' (class average ' + all.avg + ' minutes).' : '';
+  return '<h2 class="rs-h">Time spent, compared with ' + esc(a.cls) + ' (' + a.rows[0].n + ' student' + (a.rows[0].n === 1 ? '' : 's') + ')</h2>' +
+    '<table class="rs-cmp"><tr><th>Where</th><th>' + esc(first) + '</th><th>Class average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + (line ? '<p class="rs-sets">' + line + ' Time counts toward the class comparison only; it does not change the Overall rating.</p>' : '');
+}
+/* the comparison lines for the emailed report (Send to my teacher) */
+function cmpLines(cmp, name, r) {
+  if (!cmp || cmp.state !== 'ok' || !cmp.data || !cmp.data.me) return [];
+  const d = cmp.data, L = d.level || 'all students', names = CMP_NAMES[d.kind] || CMP_NAMES.letters, out = ['', 'Compared with ' + L + ' (all classes, ' + d.n + ' student' + (d.n === 1 ? '' : 's') + '):'];
+  d.measures.forEach(m => { if (m.me === null && m.avg === null) return; out.push(names[m.k] + ': ' + cmpVal(m.k, m.me) + ' (' + L + ' average ' + cmpVal(m.k, m.avg) + ')' + (m.p === null ? '' : ', ' + ordinal(m.p) + ' percentile')); });
+  if (d.overall !== null) out.push('Overall: ' + d.band + ' (' + ordinal(d.overall) + ' percentile in ' + L + ')');
+  if (d.small) out.push('Only ' + d.n + ' ' + L + ' student' + (d.n === 1 ? ' has' : 's have') + ' played ' + d.min + ' or more rounds so far, so this comparison is based on few students.');
+  if (d.overall !== null) { const w = cmpWords(d, name, r || {}), plain = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&'); out.push(plain(w.sum), plain(w.next)); }
+  if (d.app && d.app.rows) { out.push('', 'Time spent, compared with ' + d.app.cls + ' (' + d.app.rows[0].n + ' students):'); d.app.rows.forEach(x => out.push(TIME_NAMES[x.k] + ': ' + x.me + ' minutes (class average ' + (x.avg === null ? '—' : x.avg) + ')' + (x.p === null ? '' : ', ' + ordinal(x.p) + ' percentile'))); }
+  return out;
+}
+/* the bottom half of the diagnostic report: compared with the program */
+function cmpHalf(cmp, name, r) {
+  const first = firstName(name), waitLevel = STUDY.level || 'program';
+  if (!cmp || cmp.state === 'loading') return '<div class="rs-half"><p class="rs-wait">Loading the ' + esc(waitLevel) + ' comparison…</p></div>';
+  if (cmp.state === 'error') return '<div class="rs-half"><p class="rs-note">' + esc(cmp.error) + '</p></div>';
+  const d = cmp.data, L = d.level || 'all students', names = CMP_NAMES[d.kind] || CMP_NAMES.letters;
+  if (!d.me) return '<div class="rs-half"><p class="rs-note">No saved ' + (d.kind === 'numbers' ? 'number' : 'fingerspelling') + ' rounds yet, so there is nothing to compare. Play at least ' + d.min + ' rounds here in ' + esc(STUDY.app || 'ASL Study') + ', then make your report again.</p></div>';
+  const rows = d.measures.filter(m => m.me !== null || m.avg !== null).map(m => {
+    const max = m.k === 'pct' ? 100 : m.k === 'speed' ? 10 : Math.max(m.me || 0, m.avg || 0, m.k === 'top' ? 1 : 0.5) * 1.3;
+    const at = v => Math.max(0, Math.min(98, 100 * v / max)).toFixed(0);
+    const bar = '<div class="rs-bar">' + (m.avg === null ? '' : '<i style="width:' + at(m.avg) + '%"></i>') + (m.me === null ? '' : '<span class="me" style="left:' + at(m.me) + '%"></span>') + '</div>';
+    return '<tr><td>' + esc(names[m.k]) + '</td><td class="num"><b>' + esc(cmpVal(m.k, m.me)) + '</b></td><td class="num">' + esc(cmpVal(m.k, m.avg)) + '</td><td>' + bar + '</td><td class="num">' +
+      (m.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(m.p)][1] + '">' + ordinal(m.p) + '</span>') + '</td></tr>';
+  }).join('');
+  let out = '<div class="rs-half"><h2 class="rs-h">Compared with ' + esc(L) + ' (all classes, ' + d.n + ' student' + (d.n === 1 ? '' : 's') + ')</h2>' +
+    (d.small ? '<p class="rs-small">Only ' + d.n + ' ' + esc(L) + ' student' + (d.n === 1 ? ' has' : 's have') + ' played ' + d.min + ' or more rounds so far, so this comparison is based on few students and may change a lot.</p>' : '') +
+    (d.me.rounds < d.min ? '<p class="rs-small">' + esc(first) + ' has played ' + d.me.rounds + ' round' + (d.me.rounds === 1 ? '' : 's') + ' so far; the numbers settle down after a few more.</p>' : '') +
+    '<table class="rs-cmp"><tr><th>Measure</th><th>' + esc(first) + '</th><th>' + esc(L) + ' average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + timeHalf(d, name);
+  if (d.overall !== null) {
+    const b = bandOf(d.overall), w = cmpWords(d, name, r);
+    out += '<div class="rs-summary b-' + BANDS[b][1] + '"><p class="rs-verdict">Overall: ' + esc(d.band || BANDS[b][0]) + ' (' + ordinal(d.overall) + ' percentile in ' + esc(L) + ')</p>' +
+      '<div class="rs-scale">' + BANDS.map((x, i) => '<span class="p-' + x[1] + (i === b ? ' on' : '') + '">' + x[0] + '<br>' + x[2] + '</span>').join('') + '</div>' +
+      '<p>' + w.sum + '</p><p>' + w.next + '</p></div>';
+  } else out += '<p class="rs-note">No other ' + esc(L) + ' students have played enough rounds to compare with yet.</p>';
+  const core = d.kind === 'numbers' ? '% right and numbers right per minute' : 'top speed, % right and words right per minute';
+  return out + '<p class="rs-foot">Averages and percentiles come from every ' + esc(L) + ' student’s running totals in ' + esc(STUDY.app || 'ASL Study') + ' as of this report (' + d.n + ' student' + (d.n === 1 ? '' : 's') + '; students with fewer than ' + d.min + ' rounds are left out). ' +
+    'Percentile = the share of the other ' + esc(L) + ' students this student scored higher than. Overall = the average of the percentiles for ' + core + '.' + (d.kind === 'numbers' ? '' : ' Letter flash is not counted.') + '</p></div>';
+}
+/* the report: one clean page with the student's name, and each number in its own box under a heading (Colleen). cmp (inside ASL Study only) makes it the diagnostic report. */
+function reportSheet(r, name, cmp) {
   const g = r.game || 'type', when = new Date(r.at), mm = Math.floor(r.secs / 60), ss = r.secs % 60, time = mm + ':' + String(ss).padStart(2, '0');
   const box = (head, value, detail, main) => '<div class="rs-box' + (main ? ' main' : '') + '"><h3>' + esc(head) + '</h3><b>' + esc(value) + '</b>' + (detail ? '<span>' + esc(detail) + '</span>' : '') + '</div>';
   const unit = g === 'flash' ? 'letters' : 'words';
@@ -683,43 +778,95 @@ function reportSheet(r, name) {
   if (r.replays) results += box('Watched again', r.replays, r.replays === 1 ? 'time' : 'times');
   // Settings
   const kind = r.bank === 'everyday' ? 'Everyday words' : r.bank === 'proper' ? 'Names & fingerspelled words' : '';
-  let settings = '';
-  if (kind) settings += box('Word type', kind);
-  if (g === 'type' || g === 'fill' || g === 'pick' || g === 'ladder') settings += box('Letter limit', r.limit ? r.limit + ' or fewer' : 'No limit');
-  if (g === 'type') settings += box('Mode', r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only');
-  if (g === 'pairs') settings += box('Letters', r.cats);
-  if (g === 'sound') settings += box('Levels', String(r.cats).replace(/^Levels /, ''));
-  if (g === 'tricky') settings += box('Levels', String(r.cats));
-  if (g === 'flash') settings += box('Letters', r.cats);
-  if (isNumGame(g)) { const c = String(r.cats).split(' · '); settings += box(g === 'nquiz' ? 'Range' : 'Numbers', c[0]) + c.slice(1).map(x => { const k = x.indexOf(': '); return box(x.slice(0, k), x.slice(k + 2)); }).join(''); }
-  settings += box('Used paper', r.paper === 'yes' ? 'Yes' : 'No');
-  settings += box('Supports', r.supports || 'None');
+  const sets = [];
+  if (kind) sets.push(['Word type', kind]);
+  if (g === 'type' || g === 'fill' || g === 'pick' || g === 'ladder') sets.push(['Letter limit', r.limit ? r.limit + ' or fewer' : 'No limit']);
+  if (g === 'type') sets.push(['Mode', r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only']);
+  if (g === 'pairs') sets.push(['Letters', r.cats]);
+  if (g === 'sound') sets.push(['Levels', String(r.cats).replace(/^Levels /, '')]);
+  if (g === 'tricky') sets.push(['Levels', String(r.cats)]);
+  if (g === 'flash') sets.push(['Letters', r.cats]);
+  if (isNumGame(g)) { const c = String(r.cats).split(' · '); sets.push([g === 'nquiz' ? 'Range' : 'Numbers', c[0]]); c.slice(1).forEach(x => { const k = x.indexOf(': '); sets.push([x.slice(0, k), x.slice(k + 2)]); }); }
+  sets.push(['Used paper', r.paper === 'yes' ? 'Yes' : 'No']);
+  sets.push(['Supports', r.supports || 'None']);
+  const settings = sets.map(x => box(x[0], x[1])).join('');
   const mix = mixList(r.items);
-  return '<div class="rs-head"><div><div class="rs-kicker">ASL Fingerspelling Practice · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
-    '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
-    '<div class="rs-game">Game: <b>' + esc(GAMES[g].name) + '</b></div>' +
-    '<h2 class="rs-h">Results</h2><div class="rs-boxes">' + results + '</div>' +
-    '<h2 class="rs-h">Settings</h2><div class="rs-boxes settings">' + settings + '</div>' +
-    (mix.length ? '<div class="rs-box wide"><h3>Letters mixed up</h3><p class="rs-mix">' + mix.slice(0, 6).map(x => '<span><b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '') + '</span>').join('') + '</p></div>' : '') +
-    '<div class="rs-bottom">' +
+  const mixBox = mix.length ? '<div class="rs-box wide"><h3>Letters mixed up</h3><p class="rs-mix">' + mix.slice(0, 6).map(x => '<span><b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '') + '</span>').join('') + '</p></div>' : '';
+  const bottom = '<div class="rs-bottom">' +
       '<div class="rs-box wide"><h3>' + (g === 'flash' ? 'Letters' : isNumGame(g) ? 'Numbers' : 'Words') + ' (' + r.right + ' of ' + r.n + ' right)</h3>' +
         '<ol class="rs-words">' + r.items.map(x => '<li class="' + (x.ok ? 'ok' : 'no') + '">' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(' + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('') + '</ol></div>' +
       '<div class="rs-box rs-qrbox"><h3>Online report</h3><div class="rs-qr" data-qr><span class="rs-qrfail">Making the QR code…</span></div><span>Scan to open this report on a phone or computer.</span></div>' +
     '</div>';
+  if (!cmp) return '<div class="rs-head"><div><div class="rs-kicker">ASL Fingerspelling Practice · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
+    '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
+    '<div class="rs-game">Game: <b>' + esc(GAMES[g].name) + '</b></div>' +
+    '<h2 class="rs-h">Results</h2><div class="rs-boxes">' + results + '</div>' +
+    '<h2 class="rs-h">Settings</h2><div class="rs-boxes settings">' + settings + '</div>' +
+    mixBox + bottom;
+  // the diagnostic report (inside ASL Study)
+  const num = isNumGame(g), d = cmp.state === 'ok' ? cmp.data : null, first = firstName(name);
+  if (g === 'ladder') results = box('Top speed', r.top === null ? '—' : r.topLps + ' / sec', r.top === null ? 'no level passed yet' : 'letters a second · ' + r.topName, true) + box('Words right', r.right + ' of ' + r.n, r.pct + '% right') +
+    box('Words right per minute', r.wpm, r.avgLen ? 'average ' + r.avgLen + ' letters a word' : '') + box('Time', time, r.replays ? 'watched again ' + r.replays + ' time' + (r.replays === 1 ? '' : 's') : '');
+  const wt = sets.find(x => x[0] === 'Word type' || x[0] === 'Numbers' || x[0] === 'Range' || x[0] === 'Letters' || x[0] === 'Levels');
+  const info = (lab, v) => '<div><small>' + esc(lab) + '</small>' + esc(v || '—') + '</div>';
+  const rest = sets.filter(x => x !== wt).map(x => esc(x[0]) + ': <b>' + esc(x[1]) + '</b>').join(' · ');
+  let sofar = '';
+  if (d && d.me) {
+    const m = k => d.measures.find(x => x.k === k) || {}, t = new Date(), today = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'number practice' : 'fingerspelling') + ' so far</h2><div class="rs-boxes four">' +
+      box('Rounds', d.me.rounds, d.me.answered + (num ? ' numbers' : ' words') + ' answered') + box('% right', cmpVal('pct', m('pct').me), num ? 'all number games' : 'all games') +
+      box('Average speed', cmpVal('speed', m('speed').me), 'on a 1–10 scale') + box('Minutes practiced', cmpVal('minutes', m('minutes').me), d.me.last ? 'last played ' + (d.me.last === today ? 'today' : d.me.last) : '') + '</div>';
+  }
+  return '<div class="rs-diag"><div class="rs-head"><div><div class="rs-kicker">' + esc(STUDY.app || 'ASL Study') + ' · ' + (num ? 'Numbers' : 'Fingerspelling') + ' Diagnostic · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
+    '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
+    '<h2 class="rs-h">Student</h2><div class="rs-info">' + info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : cmp.state === 'loading' ? '…' : STUDY.level) + info('Activity', GAMES[g].name) + info(wt ? wt[0] : 'Word type', wt ? wt[1] : '') + '</div>' +
+    '<h2 class="rs-h">Today’s results</h2><div class="rs-boxes four">' + results + '</div>' +
+    (rest ? '<p class="rs-sets">Settings: ' + rest + '</p>' : '') +
+    (mix.length ? '<p class="rs-sets">Letters mixed up: ' + mix.slice(0, 6).map(x => '<b>' + esc(x.right) + '</b> read as <b>' + esc(x.saw) + '</b>' + (x.times > 1 ? ' (' + x.times + '×)' : '')).join(' · ') + '</p>' : '') + bottom + sofar + cmpHalf(cmp, name, r) + '</div>';
+}
+/* "My report" (Colleen: students can always open their current report compared with others): inside ASL Study, #/report/now (or /numbers)
+   shows the student's running totals and the program comparison, without a round. */
+function standingSheet(kind, name, cmp) {
+  const num = kind === 'numbers', d = cmp && cmp.state === 'ok' ? cmp.data : null, first = firstName(name), when = new Date();
+  const box = (head, value, detail) => '<div class="rs-box"><h3>' + esc(head) + '</h3><b>' + esc(value) + '</b>' + (detail ? '<span>' + esc(detail) + '</span>' : '') + '</div>';
+  const info = (lab, v) => '<div><small>' + esc(lab) + '</small>' + esc(v || '—') + '</div>';
+  let sofar = '';
+  if (d && d.me) {
+    const m = k => d.measures.find(x => x.k === k) || {}, top = m('top');
+    sofar = '<h2 class="rs-h">All of ' + esc(first) + '’s ' + (num ? 'number practice' : 'fingerspelling') + ' so far</h2><div class="rs-boxes four">' +
+      box('Rounds', d.me.rounds, d.me.answered + (num ? ' numbers' : ' words') + ' answered') + box('% right', cmpVal('pct', m('pct').me), num ? 'all number games' : 'all games') +
+      (num ? box('Numbers right a minute', cmpVal('perMin', m('perMin').me), '') : box('Top Speed ladder', cmpVal('top', top.me), top.me ? 'letters a second' : 'play Speed ladder to add this')) +
+      box('Minutes practiced', cmpVal('minutes', m('minutes').me), d.me.last ? 'last played ' + d.me.last : '') + '</div>';
+  }
+  const r = { game: num ? 'numbers' : '', items: [], speed: d && d.me ? Math.max(0, ((d.measures.find(x => x.k === 'speed') || {}).me || 1) - 1) / 9 : 0 };
+  return '<div class="rs-diag"><div class="rs-head"><div><div class="rs-kicker">' + esc(STUDY.app || 'ASL Study') + ' · ' + (num ? 'Numbers' : 'Fingerspelling') + ' Progress · Report</div><h1 class="rs-name' + (name ? '' : ' empty') + '">' + esc(name || 'Your name') + '</h1></div>' +
+    '<div class="rs-date">' + esc(when.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) + '<br>' + esc(when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '</div></div>' +
+    '<h2 class="rs-h">Student</h2><div class="rs-info">' + info('Class', (d && d.cls) || STUDY.cls) + info('Program level', d ? d.level : STUDY.level) + info('Report', 'Where I stand now') + info('Counts', num ? 'All number games' : 'All fingerspelling games but Letter flash') + '</div>' +
+    sofar + cmpHalf(cmp, name, r) + '</div>';
 }
 function reportShow() {
+  const nowKind = EMBED && /^#\/report\/(now|numbers)$/.test(location.hash) ? (/numbers$/.test(location.hash) ? 'numbers' : 'letters') : '';
+  const pick = $('#rp-kind'); if (pick) { pick.hidden = !nowKind; pick.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.k === nowKind)); }
+  if (nowKind) return standingShow(nowKind);
   const r = store.get('last', null);
   $('#rp-name').value = store.get('name', ''); $('#rp-email').value = store.get('teacher', ''); $('#rp-need').hidden = true;
+  if (EMBED && STUDY.name) { $('#rp-name').value = STUDY.name; $('#rp-name').readOnly = true; }      // 3.82: inside ASL Study the name comes from the student's sign-in
+  if (EMBED && r && (!CMP || CMP.at !== r.at || CMP.state === 'error')) {      // 3.82: ask the app for the program comparison for this round's kind
+    const kind = isNumGame(r.game) ? 'numbers' : 'letters', want = { kind, at: r.at, state: 'loading' }; CMP = want;
+    try { window.parent.postMessage({ type: 'fsp-compare', kind }, '*'); } catch (e) {}
+    setTimeout(() => { if (CMP === want && want.state === 'loading') { want.state = 'error'; want.error = 'The comparison did not load. Try making the report again in a minute.'; if (location.hash === '#/report' && reportRedraw) reportRedraw(); } }, 30000);
+  }
   const draw = () => {
     const name = $('#rp-name').value.trim();
-    $('#rp-sheet').innerHTML = r ? reportSheet(r, name) : '<p>Play a round first, then make your report here.</p>';
+    $('#rp-sheet').innerHTML = r ? reportSheet(r, name, EMBED ? CMP : null) : '<p>Play a round first, then make your report here.</p>';
     if (r) fillReportQR($('#rp-sheet'), r, name);
   };
+  reportRedraw = draw;
   draw();
   $('#rp-name').oninput = () => { store.set('name', $('#rp-name').value.trim()); $('#rp-need').hidden = true; draw(); };
   $('#rp-email').oninput = () => store.set('teacher', $('#rp-email').value.trim());
   const named = () => { if ($('#rp-name').value.trim()) return true; $('#rp-need').hidden = false; $('#rp-name').focus(); return false; };
-  const parts = async () => { const name = $('#rp-name').value.trim(); return { to: $('#rp-email').value.trim(), su: 'Fingerspelling practice: ' + name + (r ? ' - ' + GAMES[r.game || 'type'].name + ' ' + (r.game === 'ladder' && r.top !== null ? r.topLps + ' letters a second' : r.pct + '%') : ''), body: r ? reportText(r, name, await reportLink(r, name)) : '' }; };
+  const parts = async () => { const name = $('#rp-name').value.trim(); return { to: $('#rp-email').value.trim(), su: 'Fingerspelling practice: ' + name + (r ? ' - ' + GAMES[r.game || 'type'].name + ' ' + (r.game === 'ladder' && r.top !== null ? r.topLps + ' letters a second' : r.pct + '%') : ''), body: r ? reportText(r, name, await reportLink(r, name), EMBED ? CMP : null) : '' }; };
   /* inside ASL Study (Colleen): the app knows the teacher and sends the report itself; the email box and "your email app" are not needed */
   $('#rp-email').closest('.field').hidden = EMBED; $('#rp-mailto').hidden = EMBED; $('#rp-mail').textContent = EMBED ? 'Send to my teacher' : 'Email to my teacher';
   if (EMBED && !$('#rp-name').value && STUDY.name) $('#rp-name').value = STUDY.name;
@@ -732,6 +879,26 @@ function reportShow() {
     const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); };
     window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000);
   };
+}
+
+function standingShow(kind) {
+  const name = STUDY.name || store.get('name', '');
+  $('#rp-name').value = name; $('#rp-name').readOnly = true; $('#rp-need').hidden = true;
+  $('#rp-email').closest('.field').hidden = true; $('#rp-mailto').hidden = true; $('#rp-mail').textContent = 'Send to my teacher';
+  if (!CMP || CMP.at !== 'now-' + kind || CMP.state === 'error') {
+    const want = { kind, at: 'now-' + kind, state: 'loading' }; CMP = want;
+    try { window.parent.postMessage({ type: 'fsp-compare', kind }, '*'); } catch (e) {}
+    setTimeout(() => { if (CMP === want && want.state === 'loading') { want.state = 'error'; want.error = 'The comparison did not load. Try again in a minute.'; if (reportRedraw) reportRedraw(); } }, 30000);
+  }
+  const draw = () => { $('#rp-sheet').innerHTML = standingSheet(kind, name, CMP); };
+  reportRedraw = draw; draw();
+  $('#rp-mail').onclick = () => {
+    if (!CMP || CMP.state !== 'ok') return;
+    const lines = [(kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: where I stand now', 'Name: ' + name, 'Date: ' + new Date().toLocaleString()].concat(cmpLines(CMP, name, { game: kind === 'numbers' ? 'numbers' : '', items: [] }));
+    const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…';
+    try { window.parent.postMessage({ type: 'fsp-report', subject: (kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: ' + name + (CMP.data.band ? ' - ' + CMP.data.band : ''), text: lines.join('\n') }, '*'); } catch (e) { b.disabled = false; }
+  };
+  $('#rp-print').onclick = () => { document.body.classList.add('printing-report'); const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); }; window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000); };
 }
 
 /* ---------- the online report (opened from a report's QR code or link) ---------- */
