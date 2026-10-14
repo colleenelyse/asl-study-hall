@@ -34,8 +34,10 @@
 
   <!-- Games -->
   <section data-screen="games" class="screen">
-    <h2 class="pad">Choose a game</h2>
+    <h2 class="pad">Fingerspelling games</h2>
     <div class="gamegrid" id="g-grid"></div>
+    <h2 class="pad">Numbers</h2>
+    <div class="gamegrid" id="g-numgrid"></div>
     <h2 class="pad">For the classroom</h2>
     <div class="gamegrid">
       <a class="gcard" href="#/class"><span class="gi" aria-hidden="true">📽️</span><b>Projector mode</b><span>You run it on the board. The hand spells, students write on whiteboards, you reveal.</span></a>
@@ -94,7 +96,7 @@
       <div class="row between"><h2 id="s-title">Set up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
       <div id="s-fields">
       <p class="hint" id="s-about"></p>
-      <div class="field" data-for="type pick fill pairs flash ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
+      <div class="field" data-for="type pick fill pairs flash numbers ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
@@ -122,6 +124,18 @@
         <div class="chips letters" id="s-flash"></div>
         <label class="field"><span class="lab">Letters in a round</span><select id="s-flcount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
+      <div class="field" data-for="numbers"><span class="lab">Numbers</span>
+        <div class="row"><button class="link" id="s-nm-all">All 0–20</button><button class="link" id="s-nm-none">None</button></div>
+        <div class="chips letters" id="s-nums"></div>
+      </div>
+      <div class="field" data-for="numbers"><span class="lab">16–19</span>
+        <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
+        <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
+      </div>
+      <div class="grid2" data-for="numbers">
+        <div class="field"><span class="lab">Answer by</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
+        <label class="field"><span class="lab">Numbers in a round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+      </div>
       <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word type</span>
         <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
         <p class="hint" id="s-bank-hint"></p>
@@ -140,7 +154,7 @@
         <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
       </details>
       <div class="field"><span class="lab">Skin tone</span><div class="tones" id="s-tones"></div></div>
-      <div class="field" data-for="type pick fill ladder pairs flash sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
       </div>
       <button class="btn big" id="s-go">Start</button>
@@ -383,8 +397,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="themes.js?v=40"></script>
-<script src="hand.js?v=40"></script>
+<script src="hand.js?v=41"></script>
 <script src="look.js?v=2"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
