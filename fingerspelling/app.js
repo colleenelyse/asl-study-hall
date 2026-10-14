@@ -1450,6 +1450,7 @@ function route() {
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (SHOW[name]) SHOW[name]();
+  if (name === 'games' && /[?&]focus=numbers\b/.test(location.search)) setTimeout(() => { const g = $('#g-numgrid'), h = g && (g.previousElementSibling || g); if (h) h.scrollIntoView({ block: 'start' }); }, 50);      // asl.cool/numbers opens on the numbers games
   track('page_view', { page_title: name, page_location: name === 'view' ? location.href.split('#')[0] + '#/view' : location.href });   // never send a report (it holds a name) to the visit counter
 }
 function showScreen(name) {
