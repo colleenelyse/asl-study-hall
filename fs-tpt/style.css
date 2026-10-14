@@ -347,3 +347,26 @@ html.embedded header nav a[href="../"] { display: none; }
 #rp-sent:not(.good) { background: var(--surface); color: var(--ink); border-color: var(--line); }
 #rp-sent.bad { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
 #rp-kind a.on { font-weight: 800; text-decoration: none; background: var(--ink); color: var(--bg); padding: 2px 10px; border-radius: 999px; }
+
+/* the approved sample look for every report (Colleen, 2026-10-14: "make them look like the samples"; dev/fs-report-sample.html): plain system text, a gray kicker, a 2px dark rule, small gray headings, simple boxes */
+.rsheet, .rsheet * { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important; }
+.rsheet { color: #1f2340 !important; background: #fff !important; border: 1px solid #e3d9cc !important; border-radius: 14px !important; box-shadow: 0 2px 12px rgba(60, 40, 20, .08) !important; }
+.rsheet .rs-head { border-bottom: 2px solid #1f2340 !important; padding-bottom: 10px !important; }
+.rsheet .rs-kicker { font-size: 12px !important; font-weight: 700 !important; letter-spacing: .08em !important; text-transform: uppercase !important; color: #5a6185 !important; }
+.rsheet .rs-name { font-size: 30px !important; font-weight: 700 !important; line-height: 1.15 !important; color: #1f2340 !important; letter-spacing: 0 !important; }
+.rsheet .rs-date { color: #5a6185 !important; font-size: 14px !important; }
+.rsheet .rs-h, .rsheet h4, .rsheet .rpart { font-size: 13px !important; font-weight: 700 !important; letter-spacing: .08em !important; text-transform: uppercase !important; color: #5a6185 !important; border: 0 !important; padding: 0 !important; margin: 18px 0 8px !important; }
+.rsheet .rpart { font-size: 16px !important; color: #1f2340 !important; padding-top: 12px !important; border-top: 3px double #e3d9cc !important; }
+.rsheet .rs-info small { color: #5a6185 !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; }
+.rsheet .rs-info div { font-weight: 500 !important; font-size: 14px !important; border-bottom: 1px dashed #e3d9cc !important; }
+.rsheet .rs-box { border: 1px solid #e3d9cc !important; border-radius: 10px !important; padding: 10px 12px !important; background: #fff !important; }
+.rsheet .rs-box h3, .rsheet .rs-box h5 { margin: 0 0 2px !important; padding: 0 !important; background: none !important; border-radius: 0 !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: uppercase !important; color: #5a6185 !important; }
+.rsheet .rs-box b { font-size: 24px !important; font-weight: 700 !important; line-height: 1.15 !important; color: #1f2340 !important; }
+.rsheet .rs-box > span, .rsheet .rs-box span { font-size: 12px !important; color: #5a6185 !important; }
+.rsheet .rs-box.main { background: #eef3ff !important; border-color: #c9d8ff !important; }
+.rsheet .rs-box.main b { font-size: 24px !important; color: #1f2340 !important; }
+.rsheet .rs-box.wide b, .rsheet .rs-words b, .rsheet .rs-mix b { font-size: inherit !important; }
+.rsheet table.rs-cmp th { font-size: 11px !important; color: #5a6185 !important; }
+.rsheet .rs-summary .rs-verdict { font-size: 20px !important; font-weight: 800 !important; }
+.rsheet .rs-half { border-top: 3px double #e3d9cc !important; }
+.rsheet .rs-foot, .rsheet .rs-sets { color: #5a6185 !important; }

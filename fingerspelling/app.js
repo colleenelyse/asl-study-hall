@@ -28,8 +28,8 @@ const CFG = { ads: false, ga: '' };
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers)\b/) || [])[1]) || '';
 const NUM_PAGES = ['shownum', 'build'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
-const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|nquiz)$/.test(sub || '')) :
-  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|nquiz)$/.test(sub || '')) : false;
+const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
+  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const store = {
@@ -883,7 +883,7 @@ function standingSheet(kind, name, cmp) {
 }
 function reportShow() {
   const nowKind = EMBED && /^#\/report\/(now|numbers)$/.test(location.hash) ? (/numbers$/.test(location.hash) ? 'numbers' : 'letters') : '';
-  const pick = $('#rp-kind'); if (pick) { pick.hidden = !nowKind; pick.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.k === nowKind)); }
+  const pick = $('#rp-kind'); if (pick) { pick.hidden = !nowKind || !!ONLY;      /* one product: no switch to the other one's report (Colleen) */ pick.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.k === nowKind)); }
   if (nowKind) return standingShow(nowKind);
   const r = store.get('last', null);
   $('#rp-name').value = store.get('name', ''); $('#rp-email').value = store.get('teacher', ''); $('#rp-need').hidden = true;
