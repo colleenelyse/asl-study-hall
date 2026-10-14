@@ -19,12 +19,11 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
   <p><b>Students:</b> each activity has its own address, like <b>asl.cool/</b> followed by a word. Ask your teacher for today's address, then type it in the address bar at the top of the screen, or tap the link or QR code your teacher shares.</p>
 </div>
 <div class="card" id="gate" hidden>
-  <h2>Teacher and class page</h2>
+  <h2>Full access</h2>
   <form id="unlock"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></form>
   <p class="msg" id="msg" aria-live="polite"></p>
 </div>
 <div id="tools"></div>
-<p class="foot"><a href="credits.html">Credits and sources</a></p>
 <script>
 /* The tool boxes are stored scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code does not show them.
    Made by dev/home-lock/lock-home.js on Colleen's Mac. The individual tool links themselves stay public. */
@@ -37,7 +36,7 @@ const LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"Gcm3EQw+2LnmOdzIfSfqAw==","iv"
   function show(tools) {
     $('#gate').hidden = true;
     $('#tools').innerHTML = tools.map(t => '<a class="tool" href="' + esc(!onAsl && t.alt ? 'https://colleenelyse.github.io/Hearingandcis/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
-      '<p style="text-align:right"><button class="lock" id="lockit">Lock this page on this device</button></p>';
+      '<p style="text-align:right"><button class="lock" id="lockit">Forget the password on this device</button></p>';
     $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#pw').value = ''; };
   }
   async function open(key) { const out = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(LOCK.iv) }, key, b64(LOCK.data)); return JSON.parse(new TextDecoder().decode(out)); }
