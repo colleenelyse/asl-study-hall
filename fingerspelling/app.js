@@ -4,6 +4,23 @@
 (function () {
 'use strict';
 
+/* inside the ASL Study app (?embed=aslstudy), the word lists come from the teacher's sheet (ASL Study 3.81, Colleen): the app sends them
+   ('fsp-words'), they are kept for this browser tab (sessionStorage), and every later load starts from them. Each list is used only when it
+   looks right (a non-empty set of non-empty word lists); otherwise the built-in words (words.js, themes.js) stay. */
+const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== window;
+const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
+  Object.keys(o).every(k => Array.isArray(o[k]) && o[k].length > 0 && o[k].every(w => typeof w === 'string' && w.trim() !== ''));
+const SHEET_KEY = 'fsp.sheetWords';
+let sheetStart = '';      // the sheet lists this page was built from ('' = the built-in words)
+if (EMBED) try {
+  const raw = sessionStorage.getItem(SHEET_KEY), got = raw ? JSON.parse(raw) : null;
+  if (got && (goodLists(got.proper) || goodLists(got.everyday))) {
+    if (goodLists(got.proper)) window.FS_WORDS = got.proper;
+    if (goodLists(got.everyday)) window.FAMILIAR = got.everyday;
+    sheetStart = raw;
+  }
+} catch (e) {}
+
 /* switches for later: ads (never during a word) and Google Analytics. Both off until the site is ready for them. */
 const CFG = { ads: false, ga: '' };
 
@@ -114,6 +131,7 @@ S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p
 /* the grade lists are vocabulary for that level, not words about school (Colleen): saved choices under the old names carry over */
 const FCAT_RENAMED = { 'K–2': 'K–2 level vocab', 'Grades 3–5': 'Grades 3–5 level vocab', 'Grades 6–8': 'Grades 6–8 level vocab', 'High School': 'High school level vocab' };
 S.fcats = (S.fcats || []).map(c => FCAT_RENAMED[c] || c);
+{ const fc = Object.keys(window.FAMILIAR || {}); S.fcats = S.fcats.filter(c => fc.indexOf(c) >= 0); if (!S.fcats.length) S.fcats = fc.slice(0, 2); }      // lists from the teacher's sheet may have other names (ASL Study 3.81)
 if (!GAMES[S.game]) S.game = 'type';
 const saveS = () => store.set('settings', S);
 
@@ -512,7 +530,6 @@ $('#p-answer').addEventListener('input', e => {      // Letter flash: one key is
 
 /* ---------- ASL Study (Colleen): opened inside the ASL Study app (?embed=aslstudy), each finished round is sent to the app, which saves
    it under the student's school sign-in (running totals, points). Nothing is sent when the site is used on its own. ---------- */
-const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== window;
 if (EMBED) document.documentElement.classList.add('embedded');
 function sendToStudy(res, round) {
   if (!EMBED || !res.items.length) return;
@@ -529,6 +546,16 @@ window.addEventListener('message', e => {      /* the app can open a given game:
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
   if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
+  if (e.data.type === 'fsp-words') {      /* ASL Study 3.81: the sheet's lists; a page built from other words reloads once to use them */
+    const clean = { proper: goodLists(e.data.proper) ? e.data.proper : null, everyday: goodLists(e.data.everyday) ? e.data.everyday : null };
+    if (!clean.proper && !clean.everyday) return;
+    const s = JSON.stringify(clean);
+    try {
+      sessionStorage.setItem(SHEET_KEY, s);
+      if (s !== sheetStart && sessionStorage.getItem(SHEET_KEY + '.reloaded') !== s) { sessionStorage.setItem(SHEET_KEY + '.reloaded', s); location.reload(); }
+    } catch (x) {}
+    return;
+  }
   if (e.data.type === 'fsp-report-done') { const m = $('#rp-sent'); if (m) { m.hidden = false; m.className = 'alert' + (e.data.ok ? ' good' : ' bad'); m.textContent = e.data.msg || (e.data.ok ? 'Sent!' : 'Not sent.'); } const b = $('#rp-mail'); if (b) b.disabled = false; }
 });
 const STUDY = { name: '' };

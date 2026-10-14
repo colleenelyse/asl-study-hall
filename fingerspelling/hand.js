@@ -649,7 +649,7 @@ for (let a = 3; a <= 9; a++) for (let b = 1; b <= 9; b++) {
    'c' = into a full C handshape; 'curl' = only the fingers that were up for the digit hook like the letter X (100 = 1 back into an X). LOCKED by Colleen (2026-10-13). */
 const BACK = [0, 0, -0.045];
 const C_TURN = [0, 8, 0];      /* only a hint of a turn (Colleen: turning it was a bad idea; 35 and 20 were too much) */
-const C_OUT = { f: POSE.C.f, t: [31, 6, -44, 17, 46], w: C_TURN };      /* the letter C with the thumb a little lower (Colleen) */
+const C_OUT = { f: [[30, 45, 25, 0], [30, 45, 25, 0], [30, 45, 25, 0], [30, 45, 25, 0]], t: [31, 6, -44, 17, 46], w: C_TURN };      /* the hundreds keep their own locked C (the letter C's fingers were pulled together later) */      /* the letter C with the thumb a little lower (Colleen) */
 const curlUp = P => Object.assign({}, P, { f: P.f.map(g => g[0] < 20 && g[1] < 30 ? [POSE.X.f[0][0], POSE.X.f[0][1], POSE.X.f[0][2], g[3]] : g),
   t: P.t === THUMB_OUT ? [THUMB_OUT[0], THUMB_OUT[1], THUMB_OUT[2], 45 * 0.7, 62 * 0.7, -96 * 0.7] : P.t });      /* 70% of the way along the 21-style curl (the turn shrinks with the bend, so the joint does not tip down) (Colleen) */      /* if the thumb is out (3, 5), it curls too, UP the way the 21 thumb curls (Colleen: curling in was the wrong way) */      /* the up fingers hook like the letter X (Colleen: 100 = 1 back into an X shape) */
 for (let d = 1; d <= 9; d++) {
