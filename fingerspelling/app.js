@@ -52,7 +52,7 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   flash: { name: 'Letter Flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
   pairs: { name: 'Look-Alike Letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
   sound: { name: 'Sound It Out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
-  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, doubles like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
   nquiz: { section: 'numbers', name: 'Numbers Quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
   pick: { name: 'Pick the Word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
@@ -67,11 +67,11 @@ const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the se
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
   ['Tens', ['30', '40', '50', '60', '70', '80', '90']],
-  ['Doubles', ['22', '33', '44', '55', '66', '77', '88', '99']],
+  ['Multiples of 11', ['22', '33', '44', '55', '66', '77', '88', '99']],
   ['Rocking numbers', ['67', '68', '69', '76', '78', '79', '86', '87', '89', '96', '97', '98']],
   ['Other two-digit numbers', (() => { const o = []; for (let a = 3; a <= 9; a++) for (let b = 1; b <= 9; b++) { const n = a * 10 + b; if (a !== b && !(a >= 6 && b >= 6)) o.push(String(n)); } return o; })()]      /* 31-99 that are not doubles, rocking numbers or tens */
 ];
-const NUMS = Array.from(new Set(NUM_GROUPS.flatMap(g => g[1])));      // 22 is in both The 20s and Doubles
+const NUMS = Array.from(new Set(NUM_GROUPS.flatMap(g => g[1])));      // 22 is in both The 20s and Multiples of 11
 /* how a set of numbers is named on results and reports: whole groups by name, the rest one by one */
 const numsLabel = list => { const left = new Set(list), parts = []; NUM_GROUPS.forEach(([name, g]) => { if (g.every(x => left.has(x))) { parts.push(name); g.forEach(x => left.delete(x)); } }); return parts.concat(NUMS.filter(x => left.has(x))).join(', '); };
 const isNum = w => /^\d+$/.test(String(w));

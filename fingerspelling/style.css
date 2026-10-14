@@ -46,7 +46,9 @@ select, input[type=email], input:not([type]), #p-answer { width: 100%; border: 1
 .seg.sm button { padding: 4px 10px; font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-weight: 700; font-size: 15px; }
-.chips button.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chips button { color: var(--muted); }
+.chips button.on { background: var(--good); border-color: var(--good); color: var(--accent-ink); }      /* chosen = green with a check, not chosen = white (Colleen: dark vs white was unclear) */
+.chips button.on::before { content: '✓ '; } .chips.letters button.on::before { content: none; }
 .chips button small { opacity: .7; font-weight: 600; }
 .check { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .sub { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
