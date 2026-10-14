@@ -6,27 +6,43 @@
 function create(canvas, opts) {
 opts = opts || {};
 let readyOk, readyErr; const ready = new Promise((a, b) => { readyOk = a; readyErr = b; });
-const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+/* LIGHT: school Chromebooks and other low-power devices get a lighter hand (Colleen: 25 Chromebooks froze): a simpler model, no shadows,
+   lighter skin detail, no planning in the middle of a word. Same shapes and movements. ?light=1 / ?light=0 in the address forces it either way. */
+const LIGHT = /[?&]light=1\b/.test(location.search) || (!/[?&]light=0\b/.test(location.search) && (/\bCrOS\b/.test(navigator.userAgent) || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || !!opts.light));
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !LIGHT, alpha: true, preserveDrawingBuffer: true, powerPreference: LIGHT ? 'low-power' : 'default' });
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;      /* film-like light, for a photo look */
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;      /* soft shadows: a thumb crossing the fingers shades them, so the overlap reads clearly */
+renderer.shadowMap.enabled = !LIGHT; renderer.shadowMap.type = THREE.PCFSoftShadowMap;      /* soft shadows: a thumb crossing the fingers shades them, so the overlap reads clearly */
+/* the drawing size follows the size the hand is shown at (not a fixed 800 x 800), and slow devices (school Chromebooks) step down (Colleen: 25 froze) */
+let quality = 1, slowN = 0, slowT = 0;
+const gl = renderer.getContext();
+function fitRes() {
+  const shown = canvas.clientWidth || 400, ratio = Math.min(window.devicePixelRatio || 1, quality < 1 ? 1 : 1.5);
+  const px = Math.max(320, Math.min(800, Math.round(shown * ratio * quality)));
+  if (canvas.width !== px) { renderer.setSize(px, px, false); dirty = true; }
+}
+function slowCheck(ms) {      /* the first 30 drawings: if they average over 25 ms, draw smaller and with softer shadows */
+  if (quality < 1 || slowN >= 30) return; slowN++; slowT += ms;
+  if (slowN === 30 && slowT / 30 > 25) { quality = 0.7; key.shadow.mapSize.set(1024, 1024); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } fitRes(); }
+}
 const scene = new THREE.Scene();
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture;      /* soft room light all around, for natural reflections on the skin */
 const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x998877, 0.2); scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff4ea, 2.3); key.position.set(-0.35, 0.8, 1); scene.add(key);
-key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.0015; key.shadow.radius = 4;
+key.castShadow = true; key.shadow.mapSize.set(1536, 1536); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.0015; key.shadow.radius = 4;
 Object.assign(key.shadow.camera, { left: -0.15, right: 0.15, top: 0.2, bottom: -0.1, near: 0.1, far: 3 }); key.shadow.camera.updateProjectionMatrix();
 /* ---- the painted skin (GLSL). Units: vRest is millimetres in the resting hand ---- */
 const SKIN = 0xc68c6c;
 const SKU = { skDbg: { value: 0 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
-const SKIN_HEAD = `varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; uniform vec3 skO; uniform vec3 skAx; uniform vec2 skW; uniform vec3 skPalm; uniform float skRed; uniform vec3 skSSS; uniform vec3 skEdge; uniform float skEdgeK; uniform vec3 skRim; uniform float skDbg;
+const SKIN_HEAD = `#define SK_OCT ${LIGHT ? 2 : 4}
+varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; uniform vec3 skO; uniform vec3 skAx; uniform vec2 skW; uniform vec3 skPalm; uniform float skRed; uniform vec3 skSSS; uniform vec3 skEdge; uniform float skEdgeK; uniform vec3 skRim; uniform float skDbg;
 float skinH = 0.0; float skinRough = 0.0;
 float hash3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vnoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
              mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
-float fbm(vec3 p) { float s = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { s += a * vnoise(p); p = p * 2.03 + 17.1; a *= 0.5; } return s; }
+float fbm(vec3 p) { float s = 0.0, a = 0.5; for (int k = 0; k < SK_OCT; k++) { s += a * vnoise(p); p = p * 2.03 + 17.1; a *= 0.5; } return s; }
 float fadeFine(vec3 p) { return 1.0 - smoothstep(0.35, 0.9, length(fwidth(p))); }      /* detail finer than a pixel fades out instead of shimmering */
 float lineD(float d, float w) { return exp(-d * d / (w * w)); }`;
 const SKIN_COLOR = `{
@@ -94,7 +110,7 @@ const TONE_SET = [
   { exp: 1.11, fill: 0.52, key: 2.10, env: 0.58, coat: 0.11, palm: [1.41, 1.27, 1.19], red: 0.30, sss: [0.42, 0.20, 0.13], edge: [0.62, 0.55, 0.53], edgeK: 0.76, rim: [0.087, 0.063, 0.048] }
 ];
 function setTone(hex) {
-  toneNow = hex; const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
+  toneNow = hex; dirty = true; const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
   [H1, H2].forEach(h => { if (h && h.mesh) { h.mesh.material.color.set(hex).convertSRGBToLinear(); h.mesh.material.envMapIntensity = T.env; h.mesh.material.clearcoat = T.coat; } });      /* both hands the same tone */
   renderer.toneMappingExposure = T.exp; hemi.intensity = T.fill; key.intensity = T.key;
   SKU.skPalm.value.fromArray(T.palm); SKU.skRed.value = T.red; SKU.skSSS.value.fromArray(T.sss); SKU.skEdge.value.fromArray(T.edge); SKU.skEdgeK.value = T.edgeK; SKU.skRim.value.fromArray(T.rim);
@@ -138,14 +154,16 @@ new THREE.GLTFLoader().load(HAND_URL, g => {
   const root = dressHand(g);
   const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
   H.center = c; H.size = s;
-  (function loop() { renderer.render(scene, cam); requestAnimationFrame(loop); })();
+  fitRes(); window.addEventListener('resize', () => { fitRes(); });
+  if (window.ResizeObserver) new ResizeObserver(() => fitRes()).observe(canvas);
+  (function loop() { if (dirty) { dirty = false; const t0 = performance.now(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
   readyOk();
-  loadHelper();
+  if (helperOn && !helperWanted) { helperWanted = true; loadHelper(); }      /* the left hand loads the first time a page needs it (helper(true)) */
 }, undefined, e => { readyErr(e); if (opts.onError) opts.onError(e); });
 /* THE HELPER HAND (Colleen, 2026-10-13): the signer's left hand, for THOUSAND. The same hand model, dressed the same way, then mirrored, so it
    matches the right hand exactly. It waits in the bottom right corner of the screen in activities that may need THOUSAND (helper(true)),
    rises to take part, then goes back. Its poses are written as right-hand poses; the mirror turns them into the left hand. */
-let helperOn = false, h2from = null, h2to = null, h2st = 0, h2dur = 1, h2cur = null;
+let helperOn = false, h2from = null, h2to = null, h2st = 0, h2dur = 1, h2cur = null, h2done = false;
 const HELPER_REST = { f: Array(4).fill([8, 10, 5, 0]), t: [10, 0, 0, 5, 5], w: [160, 40, -90], p: [-0.155, -0.125, 0] };      /* pulled further off screen into the corner (Colleen) */      /* the resting shape, turned 90 degrees at the wrist so the hand stands vertical (perpendicular to the ground), fingertips between forward and to the left (toward the signing hand); low in the bottom right corner (Colleen) */
 function loadHelper() {
   new THREE.GLTFLoader().load(HAND_URL, g => {
@@ -156,23 +174,25 @@ function loadHelper() {
     if (toneNow !== null) setTone(toneNow);
   });
 }
-function helperMove(P, ms) { if (!H2) return; h2from = h2cur; h2to = norm(P); h2st = performance.now(); h2dur = ms || 1; }
+function helperMove(P, ms) { if (!H2) return; h2from = h2cur; h2to = norm(P); h2st = performance.now(); h2dur = ms || 1; h2done = false; }
 function helperTick(now) {
   if (!H2 || !H2.mirror.visible) return;
-  const k = ease(Math.min(1, (now - h2st) / h2dur));
+  const raw = Math.min(1, (now - h2st) / h2dur); if (raw >= 1 && h2done) return; h2done = raw >= 1;      /* settled: nothing to redo */
+  const k = ease(raw);
   const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(h2from.w[0] * D, h2from.w[1] * D, h2from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(h2to.w[0] * D, h2to.w[1] * D, h2to.w[2] * D));
   h2cur = { f: lerp(h2from.f, h2to.f, k), t: lerp(h2from.t, h2to.t, k), w: lerp(h2from.w, h2to.w, k), p: lerp(h2from.p, h2to.p, k), q: qf.slerp(qt, k) };
   withHand(H2, () => apply(h2cur));
 }
 /* with the helper showing, the camera steps back a little and over, so both hands fit */
-const camFor = on => { camTw = null; CAM_LAST = on ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }; if (on) { cam.position.set(0.02, 0.075, 0.62); cam.lookAt(0.02, 0.075, 0); }      /* straight on, stepped back a little so both hands fit (a higher view was tried for MILLION and did not help) */ else { cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0); } };
+const camFor = on => { dirty = true; camTw = null; CAM_LAST = on ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }; if (on) { cam.position.set(0.02, 0.075, 0.62); cam.lookAt(0.02, 0.075, 0); }      /* straight on, stepped back a little so both hands fit (a higher view was tried for MILLION and did not help) */ else { cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0); } };
 /* camera easing (camTo), kept for later; THOUSAND and MILLION no longer turn the camera (Colleen: not needed once the z bug was fixed) */
 const CAM_FRONT = { pos: [0.02, 0.075, 0.62], at: [0.02, 0.075, 0] }, CAM_TOUCH = { pos: [-0.2, 0.2, 0.55], at: [0.03, 0.03, 0] };
 let camTw = null;
 function camTo(T, ms) { camTw = { p0: cam.position.toArray(), a0: CAM_LAST.at, T, st: performance.now(), ms }; }
 let CAM_LAST = CAM_FRONT;
-function camTick(now) { if (!camTw) return; const k = ease(Math.min(1, (now - camTw.st) / camTw.ms)); const P = lerp(camTw.p0, camTw.T.pos, k), A = lerp(camTw.a0, camTw.T.at, k); cam.position.set(P[0], P[1], P[2]); cam.lookAt(A[0], A[1], A[2]); if (k >= 1) { CAM_LAST = camTw.T; camTw = null; } }
-const helper = on => { helperOn = !!on; camFor(helperOn); if (H2) { H2.mirror.visible = helperOn; if (helperOn) { h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur)); } } };
+function camTick(now) { if (!camTw) return; dirty = true; const k = ease(Math.min(1, (now - camTw.st) / camTw.ms)); const P = lerp(camTw.p0, camTw.T.pos, k), A = lerp(camTw.a0, camTw.T.at, k); cam.position.set(P[0], P[1], P[2]); cam.lookAt(A[0], A[1], A[2]); if (k >= 1) { CAM_LAST = camTw.T; camTw = null; } }
+let helperWanted = false;
+const helper = on => { helperOn = !!on; dirty = true; h2done = false; if (helperOn && !H2 && !helperWanted && H1.bones) { helperWanted = true; loadHelper(); } camFor(helperOn); if (H2) { H2.mirror.visible = helperOn; if (helperOn) { h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur)); } } };
 /* turn the hand upright, palm to the camera, and work out each joint's bend and spread axes in its own frame */
 const V = () => new THREE.Vector3(), wp = n => H.bones[n].getWorldPosition(V());
 const FING = ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'];
@@ -236,7 +256,7 @@ function widen() {
   pos.needsUpdate = true; g.computeBoundingSphere();
 }
 function setup(root) {
-  subdivide(2);
+  subdivide(LIGHT ? 1 : 2);
   widen();
   root.updateMatrixWorld(true);
   /* this model's joints all hang off the armature: chain them (wrist > metacarpal > proximal > intermediate > distal > tip) so a bend carries the rest of the finger. attach() keeps every joint where it is */
@@ -329,7 +349,9 @@ const D = Math.PI / 180, qa = (ax, deg) => new THREE.Quaternion().setFromAxisAng
 /* pose: f = index..pinky [knuckle, middle, tip, spread]; t = thumb [swing across palm, out from palm, twist, bend1, bend2]; w = [x, y, z] turn of the whole hand */
 /* the model's resting hand fans its fingers out; this closes them so 0 spread means fingers side by side (as in B and C) */
 const TOG = [-9, -2, 6, 13];
+let dirty = true;      /* the picture needs drawing again */
 function apply(p) {
+  dirty = true;
   FING.forEach((f, i) => {
     const a = p.f[i], b1 = H.bones[f + '-phalanx-proximal'], b2 = H.bones[f + '-phalanx-intermediate'], b3 = H.bones[f + '-phalanx-distal'];
     b1.quaternion.copy(b1.userData.q0).multiply(qa(b1.userData.spread, -((a[3] || 0) + TOG[i]))).multiply(qa(b1.userData.bend, a[0])).multiply(qa(b1.userData.twist, a[5] || 0));      /* optional 6th value: the finger twists on its own length (the 0 in 30-90: Colleen) */
@@ -445,7 +467,7 @@ function planMove(A, B) {
 }
 const planAt = (plan, k) => plan ? plan.slice(0, 6).map(v => v * bump(k, plan[6], plan[7])) : [0, 0, 0, 0, 0, 0];
 let PLAN = null;
-function moveTo(p, ms) { PATH = null; from = cur; to = norm(p); PLAN = planMove(from, to); apply(cur); st = performance.now(); dur = ms; }
+function moveTo(p, ms) { settled = false; PATH = null; from = cur; to = norm(p); PLAN = LIGHT && !PLANS.has(planKey(from, to)) ? null : planMove(from, to);      /* light: no planning mid-word (it froze Chromebooks) */ apply(cur); st = performance.now(); dur = ms; }
 /* a smooth path through several shapes (J): a curve through all of them, with no stops on the way */
 let PATH = null;
 const eQw = c => { if (!c.q) return c.w; const e = new THREE.Euler().setFromQuaternion(c.q, 'XYZ'); return [e.x / D, e.y / D, e.z / D]; };
@@ -460,7 +482,8 @@ function pathAt(now) {
   if (u >= 1) { PATH = null; from = to = o; dur = 1; }
   return o;
 }
-function tick(now) { if (H.bones && PATH) { cur = pathAt(now); apply(cur); } else if (H.bones) { const k = Math.min(1, (now - st) / dur); const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(from.w[0] * D, from.w[1] * D, from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(to.w[0] * D, to.w[1] * D, to.w[2] * D));
+let settled = false;      /* the right hand has reached its pose and was drawn there: no work until the next move */
+function tick(now) { if (H.bones && PATH) { settled = false; cur = pathAt(now); apply(cur); } else if (H.bones && !settled) { const k = Math.min(1, (now - st) / dur); if (k >= 1) settled = true; const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(from.w[0] * D, from.w[1] * D, from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(to.w[0] * D, to.w[1] * D, to.w[2] * D));
     const kk = ease(k); cur = { f: lerp(from.f, to.f, kk), t: lerp(from.t, to.t, kk), under: to.under, over: to.over, stage: to.stage, w: lerp(from.w, to.w, ease(k)), p: lerp(from.p, to.p, ease(k)), q: qf.slerp(qt, ease(k)) };      /* the hand always turns the short way (Q used to spin around) */ if (PLAN && k < 1) cur = nudge(cur, planAt(PLAN, kk)); apply(cur); } helperTick(now); camTick(now); requestAnimationFrame(tick); }
 requestAnimationFrame(tick);
 /* speeds (Colleen, 2026-10-13): Beginner 1 letter a second, Intermediate 2, Advanced 4, Deaf 8 (evenly spaced in between) */
@@ -487,7 +510,7 @@ async function spell(word, o) {
     const prevP = n > 0 ? POSE[chars[n - 1]] : null;
     if (prevP && pinkyOut(prevP) && pinkyIn(P) && Math.random() < 0.25) { const f = P.f.slice(); f[3] = lerpA(P.f[3], prevP.f[3], 0.5); targets[n] = Object.assign({}, P, { f }); habit = 'lazy pinky'; }
   });
-  { let prevP = norm(cur); for (const T of targets) { if (!T) continue; if (Array.isArray(T)) { prevP = norm(T[T.length - 1]); continue; } const N = norm(T); planMove(prevP, N); prevP = N; await wait(0); } planMove(prevP, norm(POSE.rest)); }      /* plan every move of the word before it starts */
+  if (!LIGHT) { let prevP = norm(cur); for (const T of targets) { if (!T) continue; if (Array.isArray(T)) { prevP = norm(T[T.length - 1]); continue; } const N = norm(T); planMove(prevP, N); prevP = N; await wait(0); } planMove(prevP, norm(POSE.rest)); }      /* plan every move of the word before it starts */
   for (let n = 0; n < chars.length; n++) {
     if (o.stop && o.stop()) break;      /* the game can stop a word part-way (leaving the screen) */
     const per = perNow();      /* the current speed, for this letter */
