@@ -27,7 +27,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
 <script>
 /* The tool boxes are stored scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code does not show them.
    Made by dev/home-lock/lock-home.js on Colleen's Mac. The individual tool links themselves stay public. */
-const LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"SIa4x0Pyt1dVkUB8e9HV+A==","iv":"qi12V7S6xCxSwN6N","data":"CW+lgAIXfkrT0yvzblLvBKkvZYlyc+hXmciYDNATi/V4SkK0+IgRX8pjzWRRlCv175KTifXKjS7v/QdhcFCjltkHHvQkmP+xMJrz2Pkm5bHpSx02/WNxBr1HD16bb2yxr1RvHWQrZKxH9cozy0GJuqA8ifQDjKFtlPdfn3q9q1voDBbY49oCDYY9ZPT3cuMtdYEerwYFg9+vb8aUXsevgsnr4wZmq4AAHITMH3wZM6nvGAeLCA+k7aHIQxq30t5Ixafqrkkl1Pk3TAsFrklqswWu98omeWMx2mx3D+DuWm3D2o5trNyH8gOT6C/eMHBD/0bF8nmUvYqduluPoIVgLHf3O7rAoNUUSKTttPU6O9C00hN7Iz9kbWhdTqDUTpXENHC1YGizgvhuxCquf1zXjRkOk+BDpMJ7IyZZgAExowVodOEfkXefwQclcz0LTOo7JSAC1NSHON2685ycfbdKDmmAkjqpt0cLEVypVuz/muaWHJSAhlw7nJrJhfS+iBVL+ezybLgQ+XrKlMl7kg6BJpv9fIUho3X+QpToGWgQ5vw6fKYcdE1JSAvrsuQ313g3lsCFh5dbX/Fj/YuE1K2AHBk4DxStOT4nKQ4CoNaLWYKXNKqeVF42oe6sMFzF5ANZ5WBVAQhPdfxAGCW9HhcKxTgnYu5yZ69FLd2MY6CfrOUdl/B9pnR+BOp6Eg9DvkDBoNQbzpXRA6Tq91QHBkHZT2jXVPqG2yT0DCWTX2c20Y2G6ojKwFvI0ppucAFSPY99cON20Cfw6NOQwTfh4us7m1VndtMBUK50MDwRfzi/nkl5h1lWsZrplAWLCKnC3v7iucJzOPUrgkc8FvqUTpvHbJ1Uz5VSr7TTOdsfkShGXkT7lpi1pbKEzrPkIdpc7phye5hTHqOEU+REWNeFz5z4ZO7uhZNC1Ch4NWVERbKe5TlroVEoxe3EQHpZTTn2180EgseqeaPPzip/wFqdtoGd3fSysJDCF8KSkm0ta3/KlBLCsnsSgUiwmzYKH0/QrPi3AiQ5mvy6qUyqmQ1gHbiZTIp+VStG+EGZyxOcYdJs7yPxshes5MbItgGz0rFyxmCXDTrYjpy/nrOkBZzwBVt2uiCbY8rwZNfjM94t1uje0U9fBwNiLQUHtR8eeS5NvExDo6YrVOaHM4cooGjs7EQP4+ipcXiF89h77iwg46U705yqbp7n0yOmTXx04I4VpwVsH9IUveWk7zQoFjClUVxL8NlAwxLaqTglua52uMlXx3DYsb1auVKE3sOjSXY5DxrqAq+TCZs2m3fnvdVfLFQmcSjB4feZqEM0XWY8+DWvHMOq8+Sb/bK7BnhSVTi7ueTy5iNQiVYCGjTo3qAD332e1EkQVYr9Oll7ApA2kd5aan3PPGGQUNVzYY0vaMdbHsuVXBm7vi2AR5NCMlgHXtby5TUSCDkaQPdaC/SCzzdACLM2EOSYwB1g32yMPs4ft41Ry30Hqao3SCOSMutcU6DplBAz5kcI2Yn6U2NY0jbSXDaZG1Wr59OuvVOBofgSi1bvmb/LRiTTZ69vr4aA5mwkdcbKvZqkFCMs7RguG/WALFw3BvvSOqQSNIqCdswGV+QsFkSXyQMGH3BqW3kLf3W5E5197ze2i3ao0xFMUQ2C2Q8NNoXhjEFoBegCGc6xwEDyIXjJM6qpmDPbhR7HZA=="}/*END LOCK*/;
+let LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"SIa4x0Pyt1dVkUB8e9HV+A==","iv":"qi12V7S6xCxSwN6N","data":"CW+lgAIXfkrT0yvzblLvBKkvZYlyc+hXmciYDNATi/V4SkK0+IgRX8pjzWRRlCv175KTifXKjS7v/QdhcFCjltkHHvQkmP+xMJrz2Pkm5bHpSx02/WNxBr1HD16bb2yxr1RvHWQrZKxH9cozy0GJuqA8ifQDjKFtlPdfn3q9q1voDBbY49oCDYY9ZPT3cuMtdYEerwYFg9+vb8aUXsevgsnr4wZmq4AAHITMH3wZM6nvGAeLCA+k7aHIQxq30t5Ixafqrkkl1Pk3TAsFrklqswWu98omeWMx2mx3D+DuWm3D2o5trNyH8gOT6C/eMHBD/0bF8nmUvYqduluPoIVgLHf3O7rAoNUUSKTttPU6O9C00hN7Iz9kbWhdTqDUTpXENHC1YGizgvhuxCquf1zXjRkOk+BDpMJ7IyZZgAExowVodOEfkXefwQclcz0LTOo7JSAC1NSHON2685ycfbdKDmmAkjqpt0cLEVypVuz/muaWHJSAhlw7nJrJhfS+iBVL+ezybLgQ+XrKlMl7kg6BJpv9fIUho3X+QpToGWgQ5vw6fKYcdE1JSAvrsuQ313g3lsCFh5dbX/Fj/YuE1K2AHBk4DxStOT4nKQ4CoNaLWYKXNKqeVF42oe6sMFzF5ANZ5WBVAQhPdfxAGCW9HhcKxTgnYu5yZ69FLd2MY6CfrOUdl/B9pnR+BOp6Eg9DvkDBoNQbzpXRA6Tq91QHBkHZT2jXVPqG2yT0DCWTX2c20Y2G6ojKwFvI0ppucAFSPY99cON20Cfw6NOQwTfh4us7m1VndtMBUK50MDwRfzi/nkl5h1lWsZrplAWLCKnC3v7iucJzOPUrgkc8FvqUTpvHbJ1Uz5VSr7TTOdsfkShGXkT7lpi1pbKEzrPkIdpc7phye5hTHqOEU+REWNeFz5z4ZO7uhZNC1Ch4NWVERbKe5TlroVEoxe3EQHpZTTn2180EgseqeaPPzip/wFqdtoGd3fSysJDCF8KSkm0ta3/KlBLCsnsSgUiwmzYKH0/QrPi3AiQ5mvy6qUyqmQ1gHbiZTIp+VStG+EGZyxOcYdJs7yPxshes5MbItgGz0rFyxmCXDTrYjpy/nrOkBZzwBVt2uiCbY8rwZNfjM94t1uje0U9fBwNiLQUHtR8eeS5NvExDo6YrVOaHM4cooGjs7EQP4+ipcXiF89h77iwg46U705yqbp7n0yOmTXx04I4VpwVsH9IUveWk7zQoFjClUVxL8NlAwxLaqTglua52uMlXx3DYsb1auVKE3sOjSXY5DxrqAq+TCZs2m3fnvdVfLFQmcSjB4feZqEM0XWY8+DWvHMOq8+Sb/bK7BnhSVTi7ueTy5iNQiVYCGjTo3qAD332e1EkQVYr9Oll7ApA2kd5aan3PPGGQUNVzYY0vaMdbHsuVXBm7vi2AR5NCMlgHXtby5TUSCDkaQPdaC/SCzzdACLM2EOSYwB1g32yMPs4ft41Ry30Hqao3SCOSMutcU6DplBAz5kcI2Yn6U2NY0jbSXDaZG1Wr59OuvVOBofgSi1bvmb/LRiTTZ69vr4aA5mwkdcbKvZqkFCMs7RguG/WALFw3BvvSOqQSNIqCdswGV+QsFkSXyQMGH3BqW3kLf3W5E5197ze2i3ao0xFMUQ2C2Q8NNoXhjEFoBegCGc6xwEDyIXjJM6qpmDPbhR7HZA=="}/*END LOCK*/;
 (function () {
   const $ = s => document.querySelector(s), KEY = 'aslHomeKey';
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
@@ -35,7 +35,7 @@ const LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"SIa4x0Pyt1dVkUB8e9HV+A==","iv"
   const onAsl = location.hostname === 'asl.cool' || location.hostname === 'www.asl.cool';
   function show(tools) {
     $('#gate').hidden = true;
-    $('#tools').innerHTML = tools.map(t => '<a class="tool" href="' + esc(!onAsl && t.alt ? 'https://colleenelyse.github.io/Hearingandcis/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
+    $('#tools').innerHTML = tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://colleenelyse.github.io/Hearingandcis/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
       '<p style="text-align:right"><button class="lock" id="lockit">Forget the password on this device</button></p>';
     $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#pw').value = ''; };
   }
@@ -44,9 +44,13 @@ const LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"SIa4x0Pyt1dVkUB8e9HV+A==","iv"
     const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(LOCK.salt), iterations: LOCK.iter }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
   }
-  if (!LOCK || !window.crypto || !crypto.subtle) return;
-  $('#gate').hidden = false;
-  (async () => {      // this device already opened it: no password needed
+  if (!window.crypto || !crypto.subtle) return;
+  (async () => {
+    /* the newest lock comes from asl.cool (saved by the admin page); the copy inside this page is the fallback */
+    try { const r = await fetch('/lock.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d && d.lock && d.lock.data) LOCK = d.lock; } } catch (e) {}
+    if (!LOCK) return;
+    $('#gate').hidden = false;
+    // this device already opened it: no password needed
     let saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
     if (!saved) return;
     try { show(await open(await crypto.subtle.importKey('raw', b64(saved), 'AES-GCM', false, ['decrypt']))); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} }

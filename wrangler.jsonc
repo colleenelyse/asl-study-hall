@@ -1,0 +1,10 @@
+{
+  // asl.cool. The name must stay "asl-study-hall": it is the Worker that owns the asl.cool domain.
+  "name": "asl-study-hall",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  // the site's files (everything in this folder except what .assetsignore lists); the Worker runs only for paths with no file (/lock.json, /mytools.json, /admin/save)
+  "assets": { "directory": ".", "binding": "ASSETS" },
+  // Workers KV for the locked home page and its admin page (namespace ASL_COOL)
+  "kv_namespaces": [ { "binding": "LOCKS", "id": "KV_NAMESPACE_ID" } ]
+}

@@ -13,15 +13,23 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
 <body><main>
 <h1>🤟 ASL Study Hall</h1>
 <p>Free ASL and Deaf studies activities. Pick one to start.</p>
+<div id="tools">
 <a class="tool" href="../fingerspelling/"><b>🤟 ASL Fingerspelling Practice</b>Read fingerspelling from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
 <a class="tool" href="../bingo/"><b>🎱 Fingerspelling Bingo</b>Make Bingo cards from your own word list, print them or share digital cards, and let the hand call the words (or spell them yourself).</a>
 <a class="tool" href="../wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
 <a class="tool" href="../hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
 <a class="tool" href="../ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
 <a class="tool" href="../ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
+</div>
 <p class="foot"><a href="../credits.html">Credits and sources</a></p>
 <script>
-/* On asl.cool the hearing pages live at /hearing/, /ci/ and /ear/; anywhere else (the github.io copy) go straight to the Hearing site. */
-if (location.hostname !== 'asl.cool' && location.hostname !== 'www.asl.cool') document.querySelectorAll('a[data-alt]').forEach(a => { a.href = 'https://colleenelyse.github.io/Hearingandcis/' + a.dataset.alt; });
+/* The buttons come from asl.cool (saved by the admin page); the list written into this page is the fallback. */
+(async function () {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  try {
+    const r = await fetch('/mytools.json', { cache: 'no-store' }); if (!r.ok) return; const d = await r.json(); if (!d || !Array.isArray(d.tools) || !d.tools.length) return;
+    document.getElementById('tools').innerHTML = d.tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : '../' + t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>').join('');
+  } catch (e) {}
+})();
 </script>
 </main></body></html>

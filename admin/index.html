@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · ASL Study Hall</title><meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
+<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:820px;margin:0 auto;padding:28px 16px 60px}
+h1{font:600 34px Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p,.hint{color:#5A6185}.hint{font-size:14px}
+.card{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:18px 20px;margin:14px 0;box-shadow:0 2px 10px rgba(60,40,20,.06)}
+label{display:block;font-weight:800;margin:10px 0 4px}input,textarea{font:inherit;width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #E3D9CC;border-radius:12px;background:#fff}
+textarea{min-height:56px;resize:vertical}button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
+button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font-size:14px}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tool{border:1.5px solid #E3D9CC;border-radius:14px;padding:12px;margin:10px 0;background:#FDFBF7}
+.tool .grid{display:grid;grid-template-columns:90px 1fr;gap:0 10px}.msg{font-weight:800;min-height:24px;margin-top:8px}.bad{color:#C7362E}.good{color:#14804D}</style></head>
+<body><main>
+<p><a href="/" style="color:#2F6BFF;font-weight:700;text-decoration:none">&larr; asl.cool</a></p>
+<h1>Admin</h1>
+<p>Change the asl.cool password, and the buttons people see after typing it (the same buttons show on asl.cool/mytools).</p>
+
+<form class="card" id="step1">
+  <h2>1. Your current password</h2>
+  <label for="cur">Current password</label><input id="cur" type="password" autocomplete="current-password">
+  <div class="row" style="margin-top:12px"><button type="submit">Open</button></div>
+  <p class="msg bad" id="m1" aria-live="polite"></p>
+</form>
+
+<div id="step2" hidden>
+  <div class="card">
+    <h2>2. The buttons</h2>
+    <p class="hint">Emoji, name, a short description, and the address (for a page on asl.cool, just the part after asl.cool/, like <b>fingerspelling/</b>; for another site, the whole address starting with https://).</p>
+    <div id="tools"></div>
+    <button class="ghost" type="button" id="add">+ Add a button</button>
+  </div>
+  <form class="card" id="step3">
+    <h2>3. New password (optional)</h2>
+    <p class="hint">Leave both empty to keep the current password.</p>
+    <label for="new1">New password</label><input id="new1" type="password" autocomplete="new-password">
+    <label for="new2">Type it again</label><input id="new2" type="password" autocomplete="new-password">
+    <div class="row" style="margin-top:14px"><button type="submit" id="save">Save and put it live</button></div>
+    <p class="msg" id="m3" aria-live="polite"></p>
+  </form>
+</div>
+
+<script>
+/* Everything secret happens here in the browser: the password never leaves this page.
+   It decrypts the current list with the current password, then encrypts the new list with the new (or same) password,
+   and sends the Worker only the encrypted list plus a proof of the current password (PBKDF2 of it, which the Worker checks against a stored hash). */
+(function () {
+  const $ = s => document.querySelector(s), ITER = 200000, enc = new TextEncoder();
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const hex = buf => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let state = null, tools = [], curPw = '';
+  const pbkdf2 = async (pw, salt, iter) => crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']), 256);
+  const aesKey = (bits, use) => crypto.subtle.importKey('raw', bits, 'AES-GCM', false, [use]);
+  async function decryptList(pw, lock) { const k = await aesKey(await pbkdf2(pw, b64(lock.salt), lock.iter), 'decrypt'); return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(lock.iv) }, k, b64(lock.data)))); }
+  async function encryptList(pw, list) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const k = await aesKey(await pbkdf2(pw, salt, ITER), 'encrypt');
+    return { v: 1, iter: ITER, salt: tob64(salt), iv: tob64(iv), data: tob64(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, enc.encode(JSON.stringify(list)))) };
+  }
+  function draw() {
+    $('#tools').innerHTML = tools.map((t, i) => `<div class="tool" data-i="${i}">
+      <div class="grid"><div><label>Emoji</label><input data-k="icon" value="${esc(t.icon)}" maxlength="8"></div><div><label>Name</label><input data-k="title" value="${esc(t.title)}" maxlength="120"></div></div>
+      <label>Description</label><textarea data-k="desc" maxlength="400">${esc(t.desc)}</textarea>
+      <label>Address</label><input data-k="href" value="${esc(t.href)}" maxlength="300">
+      <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-mv="-1" ${i ? '' : 'disabled'}>↑ Up</button><button type="button" class="ghost small" data-mv="1" ${i < tools.length - 1 ? '' : 'disabled'}>↓ Down</button><button type="button" class="ghost small" data-del>Remove</button></div></div>`).join('');
+  }
+  $('#tools').addEventListener('input', e => { const box = e.target.closest('.tool'), k = e.target.dataset.k; if (box && k) tools[+box.dataset.i][k] = e.target.value; });
+  $('#tools').addEventListener('click', e => {
+    const box = e.target.closest('.tool'); if (!box) return; const i = +box.dataset.i;
+    if (e.target.dataset.mv) { const j = i + +e.target.dataset.mv; [tools[i], tools[j]] = [tools[j], tools[i]]; draw(); }
+    if (e.target.hasAttribute('data-del') && confirm('Remove "' + (tools[i].title || 'this button') + '"?')) { tools.splice(i, 1); draw(); }
+  });
+  $('#add').onclick = () => { tools.push({ icon: '⭐', title: '', desc: '', href: '' }); draw(); $('#tools .tool:last-child input[data-k=title]').focus(); };
+  $('#step1').onsubmit = async e => {
+    e.preventDefault(); $('#m1').textContent = 'Checking…';
+    try {
+      const r = await fetch('/lock.json', { cache: 'no-store' }); if (!r.ok) throw new Error('nolock');
+      state = await r.json(); tools = await decryptList($('#cur').value, state.lock); curPw = $('#cur').value;
+      $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw();
+    } catch (err) { $('#m1').textContent = err.message === 'nolock' ? 'Could not reach asl.cool. Check the internet connection.' : "That's not the current password."; }
+  };
+  $('#step3').onsubmit = async e => {
+    e.preventDefault(); const m = $('#m3'); m.className = 'msg';
+    const n1 = $('#new1').value, n2 = $('#new2').value;
+    if (n1 !== n2) { m.className = 'msg bad'; m.textContent = 'The two new passwords do not match.'; return; }
+    if (n1 && n1.length < 6) { m.className = 'msg bad'; m.textContent = 'Please use at least 6 characters.'; return; }
+    const clean = tools.map(t => ({ icon: String(t.icon || '').trim(), title: String(t.title || '').trim(), desc: String(t.desc || '').trim(), href: String(t.href || '').trim(), alt: t.alt })).filter(t => t.title || t.href);
+    const missing = clean.find(t => !t.title || !t.href); if (missing) { m.className = 'msg bad'; m.textContent = 'Every button needs a name and an address.'; return; }
+    clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
+    const pw = n1 || curPw; $('#save').disabled = true; m.textContent = 'Saving…';
+    try {
+      const vsalt = crypto.getRandomValues(new Uint8Array(16));
+      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, clean), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: clean };
+      const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not save.');
+      curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); $('#new1').value = ''; $('#new2').value = '';
+      m.className = 'msg good'; m.textContent = 'Saved! It is live on asl.cool and asl.cool/mytools now.' + (n1 ? ' Use the new password from now on.' : '');
+    } catch (err) { m.className = 'msg bad'; m.textContent = err.message; }
+    $('#save').disabled = false;
+  };
+})();
+</script>
+</main></body></html>
