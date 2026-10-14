@@ -7,6 +7,7 @@
 /* inside the ASL Study app (?embed=aslstudy), the word lists come from the teacher's sheet (ASL Study 3.81, Colleen): the app sends them
    ('fsp-words'), they are kept for this browser tab (sessionStorage), and every later load starts from them. Each list is used only when it
    looks right (a non-empty set of non-empty word lists); otherwise the built-in words (words.js, themes.js) stay. */
+const SOLO = /[?&]solo=bingo\b/.test(location.search);
 const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== window;
 const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
   Object.keys(o).every(k => Array.isArray(o[k]) && o[k].length > 0 && o[k].every(w => typeof w === 'string' && w.trim() !== ''));
@@ -1420,6 +1421,7 @@ document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#
 const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
+  if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
   if (name !== 'build' && name !== 'shownum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
   if (name === 'letter') {      // a letter from the chart, with the hand
@@ -1443,6 +1445,11 @@ function showScreen(name) {
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
 gamesInit(); setupInit(); showInit(); shownumInit(); buildInit(); classInit(); bingoInit();
+if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
+  document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
+  const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
+  $$('.top nav a').forEach((x, i) => { if (i) x.remove(); });
+}
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
