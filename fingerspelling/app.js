@@ -888,7 +888,7 @@ function reportShow() {
   /* inside ASL Study (Colleen): the app knows the teacher and sends the report itself; the email box and "your email app" are not needed */
   $('#rp-email').closest('.field').hidden = EMBED; $('#rp-mailto').hidden = EMBED; $('#rp-mail').textContent = EMBED ? 'Send to my teacher' : 'Email to my teacher';
   if (EMBED && !$('#rp-name').value && STUDY.name) $('#rp-name').value = STUDY.name;
-  if (EMBED) { $('#rp-mail').onclick = async () => { if (!r || !named()) return; const p = await parts(); const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…'; try { window.parent.postMessage({ type: 'fsp-report', subject: p.su, text: p.body }, '*'); } catch (e) { b.disabled = false; } }; }
+  if (EMBED) { $('#rp-mail').onclick = async () => { if (!r || !named()) return; const p = await parts(); const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…'; const img = await sheetPicture($('#rp-sheet')); try { window.parent.postMessage({ type: 'fsp-report', subject: p.su, text: p.body, img }, '*'); } catch (e) { b.disabled = false; } }; }
   else $('#rp-mail').onclick = async () => { if (!r || !named()) return; const tab = window.open('', '_blank'); const p = await parts(); const url = 'https:' + '//mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(p.to) + '&su=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); if (tab) { tab.opener = null; tab.location.href = url; } else window.open(url, '_blank', 'noopener'); };
   $('#rp-mailto').onclick = async e => { e.preventDefault(); if (!r || !named()) return; const p = await parts(); location.href = 'mailto:' + encodeURIComponent(p.to) + '?subject=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); };
   $('#rp-print').onclick = () => {
@@ -910,13 +910,24 @@ function standingShow(kind) {
   }
   const draw = () => { $('#rp-sheet').innerHTML = standingSheet(kind, name, CMP); };
   reportRedraw = draw; draw();
-  $('#rp-mail').onclick = () => {
+  $('#rp-mail').onclick = async () => {
     if (!CMP || CMP.state !== 'ok') return;
     const lines = [(kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: where I stand now', 'Name: ' + name, 'Date: ' + new Date().toLocaleString()].concat(cmpLines(CMP, name, { game: kind === 'numbers' ? 'numbers' : '', items: [] }));
     const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…';
-    try { window.parent.postMessage({ type: 'fsp-report', subject: (kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: ' + name + (CMP.data.band ? ' - ' + CMP.data.band : ''), text: lines.join('\n') }, '*'); } catch (e) { b.disabled = false; }
+    const img = await sheetPicture($('#rp-sheet'));
+    try { window.parent.postMessage({ type: 'fsp-report', subject: (kind === 'numbers' ? 'Numbers' : 'Fingerspelling') + ' progress report: ' + name + (CMP.data.band ? ' - ' + CMP.data.band : ''), text: lines.join('\n'), img }, '*'); } catch (e) { b.disabled = false; }
   };
   $('#rp-print').onclick = () => { document.body.classList.add('printing-report'); const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); }; window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000); };
+}
+
+/* Send to my teacher (Colleen: the teacher opens the email and sees the whole report, not an attachment): a picture of the report sheet as shown,
+   made here with html2canvas (cdnjs, loaded the first time), goes with the text; ASL Study puts the picture in the body of the email. */
+let snapLib = null;
+const snapLoad = () => snapLib || (snapLib = new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; sc.onload = ok; sc.onerror = () => { snapLib = null; bad(new Error('no picture')); }; document.head.appendChild(sc); }));
+async function sheetPicture(el) {
+  try { await snapLoad(); const cv = await window.html2canvas(el, { scale: 1.5, backgroundColor: '#ffffff', logging: false, useCORS: true });
+    const max = 1600; let out = cv; if (cv.width > max) { out = document.createElement('canvas'); out.width = max; out.height = Math.round(cv.height * max / cv.width); out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height); }
+    return out.toDataURL('image/jpeg', 0.85); } catch (e) { return ''; }      // no picture: the email still has the text
 }
 
 /* ---------- the online report (opened from a report's QR code or link) ---------- */
