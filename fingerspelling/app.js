@@ -402,8 +402,13 @@ function ladderBar() { if (!R || R.game !== 'ladder') return; $('#p-lspeed').tex
 function drawBlanks(it) {
   const g = R.game;
   let blanks = '';
-  if (g === 'fill') { const L = letters(it.w); blanks = L.charAt(0) + '_'.repeat(L.length - 2) + L.charAt(L.length - 1); }      // the first and last letters are given; no gaps between letters
-  else if (S.showCount && (g === 'type' || g === 'ladder' || g === 'sound' || g === 'tricky')) blanks = it.w.trim().split(/\s+/).map(x => '_'.repeat(lettersCount(x))).filter(Boolean).join(' ');      // a gap only where there is a real space
+  if (g === 'fill') {      /* the first and last letters are given; a box for each letter between, to type what you saw while it spells (Colleen) */
+    const L = letters(it.w), el = $('#p-blanks');
+    el.innerHTML = '<span class="fbl">' + L.charAt(0) + '</span>' + Array.from({ length: L.length - 2 }, (_, i) => '<input class="fbox" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Letter ' + (i + 2) + '" data-i="' + i + '">').join('') + '<span class="fbl">' + L.charAt(L.length - 1) + '</span>';
+    el.removeAttribute('aria-hidden'); return;
+  }
+  $('#p-blanks').setAttribute('aria-hidden', 'true');
+  if (S.showCount && (g === 'type' || g === 'ladder' || g === 'sound' || g === 'tricky')) blanks = it.w.trim().split(/\s+/).map(x => '_'.repeat(lettersCount(x))).filter(Boolean).join(' ');      // a gap only where there is a real space
   $('#p-blanks').textContent = blanks;
 }
 function drawWord() {
@@ -490,7 +495,7 @@ function answerTyped(skip) {
   record(ok, skip ? '' : typed);
   showFeedback(ok, skip, it.w);
   if (R.game === 'tricky') showMeaning(it);
-  $('#p-answer').disabled = true; $('#p-check').hidden = true; $('#p-skip').hidden = true; $('#p-replay').hidden = R.game === 'flash';
+  fboxes().forEach(b => { b.disabled = true; }); $('#p-answer').disabled = true; $('#p-check').hidden = true; $('#p-skip').hidden = true; $('#p-replay').hidden = R.game === 'flash';
   afterAnswer();
 }
 function answerChoice(o) {
@@ -520,6 +525,14 @@ function finishRound() {
   R = null; location.hash = '#/results';
 }
 $('#p-check').onclick = () => answerTyped(false);
+/* Fill in the Blanks boxes: one letter each, the cursor moves on by itself; what is typed goes into the answer (first + boxes + last) */
+const fboxes = () => $$('#p-blanks .fbox');
+const fboxSync = () => { const it = R && R.list[R.i]; if (!it || R.game !== 'fill') return; const L = letters(it.w), mid = fboxes().map(b => b.value).join(''); $('#p-answer').value = mid ? L.charAt(0) + mid + L.charAt(L.length - 1) : ''; };
+$('#p-blanks').addEventListener('input', e => { const b = e.target.closest('.fbox'); if (!b) return; b.value = b.value.replace(/[^a-z]/gi, '').slice(-1).toUpperCase(); fboxSync(); if (b.value) { const nx = fboxes()[+b.dataset.i + 1]; if (nx) nx.focus(); } });
+$('#p-blanks').addEventListener('keydown', e => { const b = e.target.closest('.fbox'); if (!b) return; const all = fboxes(), i = +b.dataset.i;
+  if (e.key === 'Backspace' && !b.value && i) { e.preventDefault(); all[i - 1].value = ''; all[i - 1].focus(); fboxSync(); }
+  else if (e.key === 'ArrowLeft' && i) all[i - 1].focus(); else if (e.key === 'ArrowRight' && all[i + 1]) all[i + 1].focus();
+  else if (e.key === 'Enter') { e.preventDefault(); if (!$('#p-check').hidden) $('#p-check').click(); } });
 $('#p-skip').onclick = () => { if (R && R.game === 'flash') { if (R.answered === R.i) return; R.answered = R.i; record(false, ''); showFeedback(false, true, R.list[R.i].w); $('#p-answer').disabled = true; afterAnswer(); } else answerTyped(true); };
 $('#p-next').onclick = () => { if (R && R.done) finishRound(); else if (R) nextWord(); };
 const replay = () => { if (!R) return; R.cur.replays++; spellWord(R.list[R.i].w, R.cur.blur, R.list[R.i].teens, R.list[R.i].form); if (!isChoice(R.game)) $('#p-answer').focus(); };
