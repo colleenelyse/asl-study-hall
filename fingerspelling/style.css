@@ -292,3 +292,6 @@ body.big { zoom: 1.15; }
 
 /* inside ASL Study: the app has its own Back button, so the site header links that leave are hidden */
 html.embedded header nav a[href="../"] { display: none; }
+.alert.good { background: #e7f6ec; color: #17633a; border-color: #2f9e5f; }
+#rp-sent:not(.good) { background: var(--surface); color: var(--ink); border-color: var(--line); }
+#rp-sent.bad { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }

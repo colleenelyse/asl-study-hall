@@ -526,9 +526,13 @@ function sendToStudy(res, round) {
   try { window.parent.postMessage(msg, '*'); } catch (e) {}
 }
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
-  if (!EMBED || e.source !== window.parent || !e.data || e.data.type !== 'fsp-open') return;
-  if (/^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
+  if (!EMBED || e.source !== window.parent || !e.data) return;
+  if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
+  if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
+  if (e.data.type === 'fsp-report-done') { const m = $('#rp-sent'); if (m) { m.hidden = false; m.className = 'alert' + (e.data.ok ? ' good' : ' bad'); m.textContent = e.data.msg || (e.data.ok ? 'Sent!' : 'Not sent.'); } const b = $('#rp-mail'); if (b) b.disabled = false; }
 });
+const STUDY = { name: '' };
+if (EMBED) try { window.parent.postMessage({ type: 'fsp-ready' }, '*'); } catch (e) {}
 
 /* ---------- results ---------- */
 function mixList(items) {
@@ -689,7 +693,11 @@ function reportShow() {
   $('#rp-email').oninput = () => store.set('teacher', $('#rp-email').value.trim());
   const named = () => { if ($('#rp-name').value.trim()) return true; $('#rp-need').hidden = false; $('#rp-name').focus(); return false; };
   const parts = async () => { const name = $('#rp-name').value.trim(); return { to: $('#rp-email').value.trim(), su: 'Fingerspelling practice: ' + name + (r ? ' - ' + GAMES[r.game || 'type'].name + ' ' + (r.game === 'ladder' && r.top !== null ? r.topLps + ' letters a second' : r.pct + '%') : ''), body: r ? reportText(r, name, await reportLink(r, name)) : '' }; };
-  $('#rp-mail').onclick = async () => { if (!r || !named()) return; const tab = window.open('', '_blank'); const p = await parts(); const url = 'https:' + '//mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(p.to) + '&su=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); if (tab) { tab.opener = null; tab.location.href = url; } else window.open(url, '_blank', 'noopener'); };
+  /* inside ASL Study (Colleen): the app knows the teacher and sends the report itself; the email box and "your email app" are not needed */
+  $('#rp-email').closest('.field').hidden = EMBED; $('#rp-mailto').hidden = EMBED; $('#rp-mail').textContent = EMBED ? 'Send to my teacher' : 'Email to my teacher';
+  if (EMBED && !$('#rp-name').value && STUDY.name) $('#rp-name').value = STUDY.name;
+  if (EMBED) { $('#rp-mail').onclick = async () => { if (!r || !named()) return; const p = await parts(); const b = $('#rp-mail'); b.disabled = true; const m = $('#rp-sent'); m.hidden = false; m.className = 'alert'; m.textContent = 'Sending…'; try { window.parent.postMessage({ type: 'fsp-report', subject: p.su, text: p.body }, '*'); } catch (e) { b.disabled = false; } }; }
+  else $('#rp-mail').onclick = async () => { if (!r || !named()) return; const tab = window.open('', '_blank'); const p = await parts(); const url = 'https:' + '//mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(p.to) + '&su=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); if (tab) { tab.opener = null; tab.location.href = url; } else window.open(url, '_blank', 'noopener'); };
   $('#rp-mailto').onclick = async e => { e.preventDefault(); if (!r || !named()) return; const p = await parts(); location.href = 'mailto:' + encodeURIComponent(p.to) + '?subject=' + encodeURIComponent(p.su) + '&body=' + encodeURIComponent(p.body); };
   $('#rp-print').onclick = () => {
     if (!r || !named()) return;
