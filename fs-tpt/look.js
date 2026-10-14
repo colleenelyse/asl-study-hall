@@ -26,8 +26,10 @@
       document.head.appendChild(l);
     }
   }
+  const SCHEMES = [['neon', 'Neon Night (dark)'], ['galaxy', 'Galaxy (dark)'], ['arcade', 'Retro Arcade (dark)'], ['matcha', 'Matcha'], ['latte', 'Iced Latte'], ['sunset', 'Sunset'], ['ocean', 'Ocean'], ['mono', 'Minimal Black & White']];      // more color schemes (Colleen); this site only
   function apply() {
     const c = get('simulatorColors'), t = get('simulatorText'), f = get('simulatorFont') || '';
+    SCHEMES.forEach(x => document.body.classList.toggle('sch-' + x[0], c === x[0]));
     document.body.classList.toggle('dark', c === 'dark');
     document.body.classList.toggle('contrast', c === 'contrast');
     document.body.classList.toggle('big', t === 'big');
@@ -35,13 +37,13 @@
     if (font[2]) { loadFonts(font[0]); document.documentElement.style.setProperty('--body', font[2]); document.documentElement.style.setProperty('--display', font[2]); }
     else { document.documentElement.style.removeProperty('--body'); document.documentElement.style.removeProperty('--display'); }
     const sc = document.getElementById('lookColors'), st = document.getElementById('lookText'), sf = document.getElementById('lookFont');
-    if (sc) sc.value = ['dark', 'contrast'].indexOf(c) >= 0 ? c : 'light'; if (st) st.value = t === 'big' ? 'big' : ''; if (sf) sf.value = font[0];
+    if (sc) sc.value = ['dark', 'contrast'].concat(SCHEMES.map(x => x[0])).indexOf(c) >= 0 ? c : 'light'; if (st) st.value = t === 'big' ? 'big' : ''; if (sf) sf.value = font[0];
     window.dispatchEvent(new Event('resize'));
   }
   window.FSLook = { apply };
   document.addEventListener('DOMContentLoaded', () => {
     const box = document.getElementById('look'); if (!box) return apply();
-    box.innerHTML = '<label>Colors: <select id="lookColors"><option value="light">Light</option><option value="dark">Dark</option><option value="contrast">High contrast</option></select></label>' +
+    box.innerHTML = '<label>Colors: <select id="lookColors"><option value="light">Light</option><option value="dark">Dark</option><option value="contrast">High contrast</option>' + SCHEMES.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>' +
       '<label>Text size: <select id="lookText"><option value="">Normal</option><option value="big">Large</option></select></label>' +
       '<label>Font: <select id="lookFont">' + FONTS.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('') + '</select></label>';
     document.getElementById('lookColors').onchange = e => { put('simulatorColors', e.target.value); apply(); };

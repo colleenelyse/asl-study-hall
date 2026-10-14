@@ -297,7 +297,18 @@ table.rs-cmp td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 body.dark { --bg: #1d1930; --surface: #28223f; --surface2: #362e55; --ink: #f4effa; --muted: #c3b9da; --line: #453c6b; --accent: #8aa8ff; --accent-ink: #1d1930; --good: #6fdca4; --good-soft: #1f3b30; --bad: #ff8a80; --bad-soft: #4a2430; }
 body.contrast { --bg: #000; --surface: #000; --surface2: #111; --ink: #fff; --muted: #fff; --line: #fff; --accent: #ffe600; --accent-ink: #000; --good: #7CFF9B; --good-soft: #002a10; --bad: #ff8080; --bad-soft: #2a0000; }
 body.contrast .card, body.contrast .gcard, body.contrast .chips button, body.contrast .seg { border: 2px solid #fff; }
-body.dark .stage canvas, body.contrast .stage canvas { background: #fff; }      /* the hand keeps its light backdrop so skin tones read true */
+body.dark .stage canvas, body.contrast .stage canvas { background: #fff; }
+/* more color schemes (Colleen, 2026-10-14: "more variety to select color schemes for both letters and numbers ... that high schoolers would appreciate"); body.sch-<name>, chosen in the Colors menu */
+body.sch-neon { --bg: #0D0D1A; --surface: #16162B; --surface2: #222240; --ink: #F2F2FF; --muted: #A9A9D0; --line: #34345C; --accent: #FF3EA5; --accent-ink: #0D0D1A; --good: #39FFB6; --good-soft: #0F3A2E; --bad: #FF6B6B; --bad-soft: #3D1A24; --sun: #F9F871; }
+body.sch-galaxy { --bg: #14102B; --surface: #1F1940; --surface2: #2B2356; --ink: #EFE9FF; --muted: #B7A9E0; --line: #3C3170; --accent: #9D7CFF; --accent-ink: #14102B; --good: #6FE3C1; --good-soft: #193A36; --bad: #FF8FA3; --bad-soft: #3E1F33; --sun: #FFD166; }
+body.sch-arcade { --bg: #0B0F0C; --surface: #121A14; --surface2: #1B271E; --ink: #E8FFE9; --muted: #9DC7A2; --line: #284232; --accent: #3DFF6E; --accent-ink: #0B0F0C; --good: #3DFF6E; --good-soft: #10331C; --bad: #FF5A5F; --bad-soft: #3A1517; --sun: #FFE14D; }
+body.sch-matcha { --bg: #EEF2E6; --surface: #FBFCF7; --surface2: #DDE6CF; --ink: #24301E; --muted: #5F6E55; --line: #CCD9BB; --accent: #5E8C4A; --accent-ink: #fff; --sun: #E8C468; }
+body.sch-latte { --bg: #F3EBE2; --surface: #FFFCF8; --surface2: #E6D7C6; --ink: #3B2A20; --muted: #7A6455; --line: #DCC8B3; --accent: #9C6644; --accent-ink: #fff; --sun: #E9B872; }
+body.sch-sunset { --bg: #FFF0E8; --surface: #FFFFFF; --surface2: #FFDCCB; --ink: #3A1F2B; --muted: #7D5563; --line: #F6C8B7; --accent: #F2545B; --accent-ink: #fff; --sun: #FFB347; }
+body.sch-ocean { --bg: #E7F4F6; --surface: #FFFFFF; --surface2: #D0EAEF; --ink: #0E2A36; --muted: #4A6B78; --line: #B9DCE4; --accent: #0FA3B1; --accent-ink: #fff; --sun: #FFD166; }
+body.sch-mono { --bg: #F4F4F4; --surface: #FFFFFF; --surface2: #E6E6E6; --ink: #111111; --muted: #5C5C5C; --line: #D4D4D4; --accent: #111111; --accent-ink: #fff; --sun: #FFD400; }
+body.sch-neon .stage canvas, body.sch-galaxy .stage canvas, body.sch-arcade .stage canvas { background: #fff; }      /* the hand keeps its light backdrop so skin tones read true */
+      /* the hand keeps its light backdrop so skin tones read true */
 body.big { zoom: 1.15; }
 .look { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 14px; color: var(--muted); }
 .look select { width: auto; padding: 4px 8px; border-radius: 999px; font-size: 14px; }
@@ -383,3 +394,8 @@ html.embedded .top nav a.tptlink { display: none; }
 .rsheet .rs-summary.b-above { border-color: #2F9E5F !important; background: #F1FAF4 !important; }
 .rsheet .rs-summary.b-near { border-color: #F2C230 !important; background: #FFF9E0 !important; }
 .rsheet .rs-summary.b-behind { border-color: #C7362E !important; background: #FDF1F0 !important; }
+.rsheet .rs-scale span { opacity: 1 !important; }      /* the other bands: pale with colored text, easy to read (was faded white text) */
+.rsheet .rs-scale span.p-behind:not(.on) { background: #FDF1F0 !important; color: #C7362E !important; box-shadow: inset 0 0 0 2px #EBB9B6; }
+.rsheet .rs-scale span.p-near:not(.on) { background: #FFF9E0 !important; color: #8A6A00 !important; box-shadow: inset 0 0 0 2px #EED68A; }
+.rsheet .rs-scale span.p-on:not(.on) { background: #F4F7FF !important; color: #2F6BFF !important; box-shadow: inset 0 0 0 2px #B6CBFF; }
+.rsheet .rs-scale span.p-above:not(.on) { background: #F1FAF4 !important; color: #1E7B45 !important; box-shadow: inset 0 0 0 2px #B6DDC7; }
