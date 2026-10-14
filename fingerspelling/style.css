@@ -251,3 +251,7 @@ body.big { zoom: 1.15; }
 .look { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 14px; color: var(--muted); }
 .look select { width: auto; padding: 4px 8px; border-radius: 999px; font-size: 14px; }
 @media print { .look { display: none !important; } }
+
+/* Numbers: a label and Choose all above each group of number chips */
+.nmg { margin: 12px 0 6px; display: flex; gap: 10px; align-items: baseline; }
+.nmg:first-child { margin-top: 4px; }

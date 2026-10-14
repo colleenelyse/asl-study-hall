@@ -34,7 +34,7 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   flash: { name: 'Letter flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
   pairs: { name: 'Look-alike letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
   sound: { name: 'Sound it out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
-  numbers: { section: 'numbers', name: 'Numbers 0–20', icon: '🔢', about: 'The hand signs a number from 0 to 20. Type it or pick it. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, doubles like 22 and 77, and rocking numbers like 67 and 98. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
   pick: { name: 'Pick the word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
@@ -43,22 +43,37 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
 const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || (g === 'numbers' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
-const NUMS = Array.from({ length: 21 }, (_, i) => String(i));
+const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
+  ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
+  ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
+  ['Tens', ['30', '40', '50', '60', '70', '80', '90']],
+  ['Doubles', ['22', '33', '44', '55', '66', '77', '88', '99']],
+  ['Rocking numbers', ['67', '68', '69', '76', '78', '79', '86', '87', '89', '96', '97', '98']]
+];
+const NUMS = Array.from(new Set(NUM_GROUPS.flatMap(g => g[1])));      // 22 is in both The 20s and Doubles
+/* how a set of numbers is named on results and reports: whole groups by name, the rest one by one */
+const numsLabel = list => { const left = new Set(list), parts = []; NUM_GROUPS.forEach(([name, g]) => { if (g.every(x => left.has(x))) { parts.push(name); g.forEach(x => left.delete(x)); } }); return parts.concat(NUMS.filter(x => left.has(x))).join(', '); };
 const isNum = w => /^\d+$/.test(String(w));
 const numKey = s => { const d = String(s).replace(/\D/g, ''); return d ? String(parseInt(d, 10)) : ''; };
 const answerKey = (s, num) => num ? numKey(s) : letters(s);
 const TEENS_NAME = { mix: 'Mixed', ten: '10 + number', twist: 'Twist' };
+const FORM_NAME = { mix: 'Mixed', alt: 'Formal', main: 'Slang' };      // 23 and 25: formal (L to the number) or slang (the middle finger bends) (Colleen)
+const formFor = () => S.nform === 'mix' ? pick1(['alt', 'main']) : S.nform;
 const teensFor = () => S.nteens === 'mix' ? pick1(['ten', 'twist']) : S.nteens;      // Mixed: each 16-19 picks a way at random (Colleen)
 /* Numbers: three wrong choices that look close when signed (same hand shape, the teen or the single number, the numbers next to it) */
 function numChoices(w) {
-  const n = +w, near = new Set();
-  [n + 10, n - 10, n + 1, n - 1, n + 2, n - 2].forEach(x => { if (x >= 0 && x <= 20) near.add(x); });
-  if (n >= 6 && n <= 9) [6, 7, 8, 9].forEach(x => near.add(x)); if (n >= 16 && n <= 19) [16, 17, 18, 19].forEach(x => near.add(x));
-  if (n >= 11 && n <= 15) [11, 12, 13, 14, 15].forEach(x => near.add(x));
-  near.delete(n);
-  const wrong = shuffle(Array.from(near)).slice(0, 3);
-  while (wrong.length < 3) { const x = Math.floor(Math.random() * 21); if (x !== n && wrong.indexOf(x) < 0) wrong.push(x); }
-  return shuffle([n].concat(wrong)).map(String);
+  const n = +w, pool = R && R.settings && R.settings.nums && R.settings.nums.length >= 4 ? NUMS : NUMS;
+  const digits = x => String(x).split('').sort().join(''), grp = x => (NUM_GROUPS.find(g => g[1].indexOf(String(x)) >= 0) || [''])[0];
+  const score = x => { x = +x; let sc = 3 + Math.random();
+    if (String(x).split('').reverse().join('') === String(n) && x !== n) sc -= 3;      // 67 and 76
+    if (digits(x) === digits(n)) sc -= 1;
+    if (String(x).split('').some(c => String(n).indexOf(c) >= 0)) sc -= 1;      // shares a digit (7, 17, 77)
+    if (Math.abs(x - n) === 10 || Math.abs(x - n) <= 2) sc -= 1;
+    if (grp(x) === grp(n)) sc -= 0.5;
+    if (n >= 6 && n <= 9 && x >= 6 && x <= 9 || n >= 16 && n <= 19 && x >= 16 && x <= 19 || n >= 11 && n <= 15 && x >= 11 && x <= 15) sc -= 1.5;      // same hand shape family
+    return sc; };
+  const wrong = pool.filter(x => +x !== n).map(x => ({ x, s: score(x) })).sort((a, b) => a.s - b.s).slice(0, 5);
+  return shuffle([String(n)].concat(shuffle(wrong).slice(0, 3).map(r => r.x)));      // three of the five closest, so the choices change
 }
 /* letters that look alike when fingerspelled (for wrong answers in Pick the word, and the Look-alike drills) */
 const LOOK = { A: 'SET', S: 'ATE', T: 'ASN', E: 'ASO', M: 'NT', N: 'MT', O: 'CE', C: 'O', R: 'UV', U: 'RV', V: 'UK', K: 'PV', P: 'KQ', G: 'HQ', H: 'GU', Q: 'GP', I: 'JY', J: 'I', Y: 'I', D: 'F', F: 'D', X: 'T' };
@@ -67,7 +82,7 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 /* ---------- settings ---------- */
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
-  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nkind: 'type', fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'];      // old letter pairs became letter groups
@@ -87,7 +102,7 @@ hand.ready.then(() => hand.setTone(S.tone === 'random' ? hand.TONES[3] : toneHex
 let speedNow = () => S.speed;
 let spelling = null, stopFlag = false;
 /* spells one word; blur = a Set of letter positions (0-based) to hide behind frosted glass (Fill in the blanks) */
-async function spellWord(w, blur, teens) {
+async function spellWord(w, blur, teens, form) {
   await hand.ready;
   stopFlag = true; while (spelling) await spelling;      // finish (stop) the word before
   stopFlag = false;
@@ -95,7 +110,7 @@ async function spellWord(w, blur, teens) {
   assist.textContent = ''; stage.classList.remove('frosted');
   if (isNum(w)) {      // a number (0-20) is signed, not spelled; the answer is never shown while it signs
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow())));      // Beginner 1 s a beat ... Deaf 0.35 s (the numbers' moves need more time than a letter)
-    spelling = hand.sign(+w, { per, teens: teens || teensFor(), stop: () => stopFlag });
+    spelling = hand.sign(+w, { per, teens: teens || teensFor(), form: form || formFor(), stop: () => stopFlag });
     try { await spelling; } finally { spelling = null; }
     return;
   }
@@ -194,11 +209,15 @@ function setupInit() {
   const drawFl = chipsInit($('#s-flash'), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'flash', x => x, () => drawPool());
   $('#s-fl-all').onclick = () => { S.flash = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); saveS(); drawFl(); };
   $('#s-fl-none').onclick = () => { S.flash = []; saveS(); drawFl(); };
-  const drawNm = chipsInit($('#s-nums'), NUMS, 'nums', x => x, () => drawPool());
+  const nb = $('#s-nums');      /* one row of number chips for each group, each with its own Choose all */
+  nb.innerHTML = NUM_GROUPS.map(([name], i) => '<p class="nmg"><b>' + esc(name) + '</b> <button class="link" data-g="' + i + '">Choose all</button></p><div class="chips letters" data-chips="' + i + '"></div>').join('');
+  const drawNms = NUM_GROUPS.map(([, g], i) => chipsInit(nb.querySelector('[data-chips="' + i + '"]'), g, 'nums', x => x, () => drawPool()));
+  const drawNm = () => drawNms.forEach(f => f());
+  nb.addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; NUM_GROUPS[+b.dataset.g][1].forEach(x => { if (S.nums.indexOf(x) < 0) S.nums.push(x); }); saveS(); drawNm(); });
   $('#s-nm-all').onclick = () => { S.nums = NUMS.slice(); saveS(); drawNm(); };
   $('#s-nm-none').onclick = () => { S.nums = []; saveS(); drawNm(); };
   $('#s-ncount').value = String(S.ncount); $('#s-ncount').onchange = e => { S.ncount = +e.target.value || 20; saveS(); drawPool(); };
-  segInit('s-nteens', 'nteens', () => drawPool()); segInit('s-nkind', 'nkind', () => drawPool());
+  segInit('s-nteens', 'nteens', () => drawPool()); segInit('s-nform', 'nform', () => drawPool()); segInit('s-nkind', 'nkind', () => drawPool());
   const tl = $('#s-tlevels');      // Silent Letters & Strange Spellings levels, by name
   tl.innerHTML = Object.keys(window.TRICKY_LEVELS || {}).map(k => '<button data-l="' + k + '">' + k + '. ' + esc(window.TRICKY_LEVELS[k]) + '</button>').join('');
   const markTL = () => tl.querySelectorAll('button').forEach(b => b.classList.toggle('on', S.tlevels.indexOf(b.dataset.l) >= 0));
@@ -280,7 +299,7 @@ function startRound(fixedWords) {
   let list;
   if (fixedWords) list = shuffle(fixedWords);
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
-  else if (g === 'numbers') { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor() }); } }
+  else if (g === 'numbers') { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
@@ -296,7 +315,7 @@ function refreshRound() {
   R.pool = poolFor(g);
   if (g === 'ladder') R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))));
   else if (g === 'flash') { const more = []; for (let k = done.length; k < S.flcount && S.flash.length; k++) more.push({ w: pick1(S.flash), n: 1 }); R.list = done.concat(more); }
-  else if (g === 'numbers') { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor() }); R.list = done.concat(more); }
+  else if (g === 'numbers') { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
   else if (g === 'pairs') { const more = []; for (let k = done.length; k < S.count && S.pairs.length; k++) more.push(pairTrial()); R.list = done.concat(more); }
   else { const total = g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count; R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))).slice(0, Math.max(0, total - done.length))); }
   if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : g2 === 'numbers' ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
@@ -358,7 +377,7 @@ async function nextWord() {
   drawWord();
   if (!isChoice(R.game)) setTimeout(() => $('#p-answer').focus(), 50);
   if (R.game === 'type' && S.mode === 'clue') await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
-  if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens); }
+  if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
 }
 function diffPairs(right, chosen) {      // which letters were mixed up: [right letter, letter chosen]
   const a = letters(right), b = letters(chosen), out = [];
@@ -424,7 +443,7 @@ function finishRound() {
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
     speed: Math.round(S.speed * 100) / 100, speedName: speedName(S.speed), limit: R.settings.limit, mode: R.settings.mode, paper: S.paper,
-    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : g === 'numbers' ? (R.settings.nums.length === 21 ? '0–20' : R.settings.nums.slice().sort((a, b) => a - b).join(', ')) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
+    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : g === 'numbers' ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
     supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && g !== 'numbers' ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
   res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || g === 'numbers' ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
   if (g === 'ladder') { res.top = R.top; res.topLps = R.top === null ? 0 : lps(R.top); res.topName = R.top === null ? '' : speedName(R.top); }
@@ -437,7 +456,7 @@ function finishRound() {
 $('#p-check').onclick = () => answerTyped(false);
 $('#p-skip').onclick = () => { if (R && R.game === 'flash') { if (R.answered === R.i) return; R.answered = R.i; record(false, ''); showFeedback(false, true, R.list[R.i].w); $('#p-answer').disabled = true; afterAnswer(); } else answerTyped(true); };
 $('#p-next').onclick = () => { if (R && R.done) finishRound(); else if (R) nextWord(); };
-const replay = () => { if (!R) return; R.cur.replays++; spellWord(R.list[R.i].w, R.cur.blur, R.list[R.i].teens); if (!isChoice(R.game)) $('#p-answer').focus(); };
+const replay = () => { if (!R) return; R.cur.replays++; spellWord(R.list[R.i].w, R.cur.blur, R.list[R.i].teens, R.list[R.i].form); if (!isChoice(R.game)) $('#p-answer').focus(); };
 $('#p-replay').onclick = replay; $('#p-replay2').onclick = replay;
 $('#p-choices').onclick = e => { const b = e.target.closest('button'); if (b) answerChoice(b.dataset.o); };
 $('#p-quit').onclick = () => { if (R && R.items.length) finishRound(); else { R = null; stopFlag = true; location.hash = '#/games'; } };
@@ -579,7 +598,7 @@ function reportSheet(r, name) {
   if (g === 'sound') settings += box('Levels', String(r.cats).replace(/^Levels /, ''));
   if (g === 'tricky') settings += box('Levels', String(r.cats));
   if (g === 'flash') settings += box('Letters', r.cats);
-  if (g === 'numbers') { const c = String(r.cats).split(' · '); settings += box('Numbers', c[0]) + (c[1] ? box('16–19', c[1].replace('16–19: ', '')) : ''); }
+  if (g === 'numbers') { const c = String(r.cats).split(' · '); settings += box('Numbers', c[0]) + c.slice(1).map(x => { const k = x.indexOf(': '); return box(x.slice(0, k), x.slice(k + 2)); }).join(''); }
   settings += box('Used paper', r.paper === 'yes' ? 'Yes' : 'No');
   settings += box('Supports', r.supports || 'None');
   const mix = mixList(r.items);
@@ -655,7 +674,7 @@ function progressShow() {
     table('By word length', words, x => lenGroup(x.n) + ' letters', LEN_GROUPS.map(g => (g[1] === 99 ? g[0] + '+' : g[0] + '–' + g[1]) + ' letters')) +
     table('By speed', words, x => x.sp, SPEEDS) + table('By category', words.filter(x => x.c && !/^LEVEL/.test(x.c)), x => niceCat(x.c)) +
     table('Letter flash', all.filter(s => s.game === 'flash').flatMap(s => s.items), x => x.w) +
-    table('Numbers 0–20', all.filter(s => s.game === 'numbers').flatMap(s => s.items), x => x.w, NUMS) +
+    table('Numbers', all.filter(s => s.game === 'numbers').flatMap(s => s.items), x => x.w, NUMS) +
     '<h3>Games played</h3><table class="t">' + Object.keys(games).map(k => '<tr><td>' + esc(k) + '</td><td>' + games[k] + ' rounds</td></tr>').join('') + '</table>' +
     '<h3>Recent rounds</h3><table class="t"><tr><th>Date</th><th>Game</th><th>Score</th><th>Speed</th></tr>' + all.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(GAMES[s.game || 'type'].name) + '</td><td>' + (s.game === 'ladder' ? (s.topLps || 0) + ' l/s' : s.pct + '%') + '</td><td>' + esc(s.speedName) + '</td></tr>').join('') + '</table>';
 }

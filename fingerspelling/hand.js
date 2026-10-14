@@ -293,13 +293,13 @@ const TOG = [-9, -2, 6, 13];
 function apply(p) {
   FING.forEach((f, i) => {
     const a = p.f[i], b1 = H.bones[f + '-phalanx-proximal'], b2 = H.bones[f + '-phalanx-intermediate'], b3 = H.bones[f + '-phalanx-distal'];
-    b1.quaternion.copy(b1.userData.q0).multiply(qa(b1.userData.spread, -((a[3] || 0) + TOG[i]))).multiply(qa(b1.userData.bend, a[0]));
+    b1.quaternion.copy(b1.userData.q0).multiply(qa(b1.userData.spread, -((a[3] || 0) + TOG[i]))).multiply(qa(b1.userData.bend, a[0])).multiply(qa(b1.userData.twist, a[5] || 0));      /* optional 6th value: the finger twists on its own length (the 0 in 30-90: Colleen) */
     b2.quaternion.copy(b2.userData.q0).multiply(qa(b2.userData.spread, -(a[4] || 0))).multiply(qa(b2.userData.bend, a[1]));      /* optional 5th value: the finger's end tilts sideways toward the thumb (6: Colleen) */
     b3.quaternion.copy(b3.userData.q0).multiply(qa(b3.userData.bend, a[2]));
   });
   const t = p.t, m = H.bones['thumb-metacarpal'], t1 = H.bones['thumb-phalanx-proximal'], t2 = H.bones['thumb-phalanx-distal'];
   m.quaternion.copy(m.userData.q0).multiply(qa(m.userData.spread, t[0])).multiply(qa(m.userData.bend, t[1])).multiply(qa(m.userData.twist, t[2]));
-  t1.quaternion.copy(t1.userData.q0).multiply(qa(t1.userData.bend, Math.max(0, t[3])));      /* the thumb's joints never bend backward (Colleen: they looked bent back) */
+  t1.quaternion.copy(t1.userData.q0).multiply(qa(t1.userData.twist, t[5] || 0)).multiply(qa(t1.userData.bend, Math.max(0, t[3])));      /* optional 6th thumb value: the thumb turns on its length from the middle knuckle, so the heel of the hand stays still (21: Colleen) */      /* the thumb's joints never bend backward (Colleen: they looked bent back) */
   t2.quaternion.copy(t2.userData.q0).multiply(qa(t2.userData.bend, Math.max(0, t[4])));
   const pp = p.p || [0, 0]; H.pivot.position.set(pp[0], 0.07 + pp[1], 0);
   if (p.q) { H.pivot.quaternion.copy(p.q); return; }
@@ -410,10 +410,10 @@ function moveTo(p, ms) { PATH = null; from = cur; to = norm(p); PLAN = planMove(
 /* a smooth path through several shapes (J): a curve through all of them, with no stops on the way */
 let PATH = null;
 const eQw = c => { if (!c.q) return c.w; const e = new THREE.Euler().setFromQuaternion(c.q, 'XYZ'); return [e.x / D, e.y / D, e.z / D]; };
-function playPath(keys, ms) { PATH = { keys: keys.map(norm), st: performance.now(), dur: ms }; }
+function playPath(keys, ms, ez) { PATH = { keys: keys.map(norm), st: performance.now(), dur: ms, ez: ez || ease }; }      /* ez: how the speed changes along the path (default: slow, fast, slow) */
 const cr = (a, b, c, d, s) => Array.isArray(b) ? b.map((_, i) => cr(a[i], b[i], c[i], d[i], s)) : 0.5 * ((2 * b) + (-a + c) * s + (2 * a - 5 * b + 4 * c - d) * s * s + (-a + 3 * b - 3 * c + d) * s * s * s);
 function pathAt(now) {
-  const K = PATH.keys, n = K.length, u = ease(Math.min(1, (now - PATH.st) / PATH.dur)), x = u * (n - 1), i = Math.min(n - 2, Math.floor(x)), sg = x - i, g = j => K[Math.max(0, Math.min(n - 1, j))];
+  const K = PATH.keys, n = K.length, u = PATH.ez(Math.min(1, (now - PATH.st) / PATH.dur)), x = u * (n - 1), i = Math.min(n - 2, Math.floor(x)), sg = x - i, g = j => K[Math.max(0, Math.min(n - 1, j))];
   const A = g(i - 1), B = g(i), C = g(i + 1), E = g(i + 2), o = {};
   ['f', 't', 'w', 'p'].forEach(k => { o[k] = cr(A[k], B[k], C[k], E[k], sg); });
   const qB = new THREE.Quaternion().setFromEuler(new THREE.Euler(B.w[0] * D, B.w[1] * D, B.w[2] * D)), qC = new THREE.Quaternion().setFromEuler(new THREE.Euler(C.w[0] * D, C.w[1] * D, C.w[2] * D));
@@ -533,15 +533,62 @@ const TEN_B = { f: POSE.A.f, t: [-10, -11, 60, -10, -10], w: [0, -140, 30] };   
 for (let n = 16; n <= 19; n++) { const P = SH[n - 10], F = Object.assign({}, P, { w: [28, 0, 0] }), A = Object.assign({}, P, { w: [25, 45, 0] }), B = Object.assign({}, P, { w: [6, 30, 0] }); NUM[n] = { start: A, steps: [[F, 0.22], [B, 0.28], [F, 0.22]],      /* each push forward tips the palm about 25 degrees toward the floor (not palm down) */ ten: { start: TEN_B, steps: [[P, 0.3]] }      /* ends facing forward, as in 6-9 (Colleen) */ }; }
 const O20 = { f: [[35, 0, 0, 0], FIST, FIST, FIST], t: lerp(C20.t, POSE.L.t, 0.5), w: OUT };      /* partly open, not all the way to L, fingers straight (Colleen) */
 NUM[20] = { start: O20, steps: rep(O20, C20, 2, 0.22) };      /* partly open, then pinch, pinch */
+/* DOUBLES 22-99 (Colleen, 2026-10-13; 11 keeps its own locked flick): the number's handshape, palm down but tipped (not flat), fingertips
+   toward the student. Only the hand moves, bending at the wrist (the wrist and arm stay still). The emphasis is DOWN: a firm placing into
+   the first down position, then one big, elegant arc: the hand lifts high at the wrist while turning toward the signer's right (the
+   student's left), speeding up into a firm placing in the second down position. Keys: [w, p], p keeping the wrist in place. LOCKED by Colleen (2026-10-13). */
+const PLACE = [[[60.4, 34.2, -44.7], [-0.048, 0.02]], [[74.7, 18.7, -49.5], [-0.039, 0]], [[30.2, 36, -18.8], [-0.071, 0.035]], [[67.1, 7.2, -16.5], [-0.069, 0]]];
+const EASE_IN = k => 1 - Math.cos(k * Math.PI / 2);      /* starts gently, lands firmly */
+for (let d = 2; d <= 9; d++) {
+  const K = PLACE.map(([w, p]) => Object.assign({}, SH[d], { w, p }));
+  NUM[d * 11] = { start: K[0], steps: [[K[1], 0.2], [K[1], 0.3]], arc: { keys: [K[1], K[2], K[3]], beats: 1 } };      /* down (firm), hold, the arc into the second down */
+}
+/* ROCKING NUMBERS (Colleen, 2026-10-13): 67 68 69 76 78 79 86 87 89 96 97 98. The hand rocks in the plane of the palm while the thumb moves
+   to the second digit's finger, one smooth movement. The smaller digit is in the DOWN position (turned counterclockwise as the
+   student sees it, 35 degrees, the arm a little lower), the bigger digit upright: 67 rises from down to up, 76 goes from up to down. LOCKED by Colleen (2026-10-13). */
+const ROCK_DOWN = [0, 0, 35], ROCK_DROP = [0, -0.015];      /* down: turned 35 degrees, and the whole arm a little lower (Colleen) */
+for (const a of [6, 7, 8, 9]) for (const b of [6, 7, 8, 9]) {
+  if (a === b) continue;
+  const at = (d, low) => Object.assign({}, SH[d], { w: low ? ROCK_DOWN : OUT, p: low ? ROCK_DROP : [0, 0] });
+  const A = at(a, a < b), B = at(b, b < a);
+  NUM[a * 10 + b] = { start: A, steps: [[A, 0.25], [B, 0.55]] };      /* show the first digit, then rock into the second */
+}
+/* THE 20s (Colleen, 2026-10-13; 20 and 22 are locked already). The 'twenty' is an L, palm out; 1-5 face palm out inside a number (her rule).
+   21: the L, the thumb bends twice. 24, 26-29: the L changes into the number. 23 and 25 come two ways (Colleen: a mix of both):
+   SLANG: the 3 or 5 shape with the middle finger bending twice; FORMAL (alt): the L changing into 3 or 5. ALL of the 20s LOCKED by Colleen (2026-10-13). */
+const L2 = Object.assign({}, POSE.L, { w: OUT });
+const L21 = L2, L21b = Object.assign({}, L2, { t: [L2.t[0], L2.t[1], L2.t[2], 45, 62, -96] }      /* the curl turned 20 degrees up from the version that leaned forward, between it and straight up (Colleen) */);      /* 21: the open thumb is exactly the L thumb; it curls up (the turn that makes the curl go up happens in the thumb itself, so the heel of the hand does not ripple), like a finger beckoning "come here"; never bent back past straight (Colleen) */
+const OUT3 = Object.assign({}, SH[3], { w: OUT }), OUT4 = Object.assign({}, SH[4], { w: OUT }), OUT5 = Object.assign({}, SH[5], { w: OUT });
+/* 23, 25: the middle finger is pulled forward from the palm knuckle and draws its neighbors along in a cascade (index and ring partly, pinky a little);
+   it starts already partly down and dips well below pointing up (Colleen). share = how much each finger follows the middle finger. */
+const pull = (P, mcp, share) => Object.assign({}, P, { f: P.f.map((g, i) => share[i] ? [g[0] + mcp * share[i], g[1] + mcp * share[i] * 0.25, g[2] + mcp * share[i] * 0.12, g[3]] : g) });
+const twoBends = (P, share) => { const up = pull(P, 22, share), down = pull(P, 62, share), part = pull(P, 28, share); return { start: up, steps: [[down, 0.25], [part, 0.22], [down, 0.25], [up, 0.25]] }; };      /* between the dips the finger comes back only about 85% of the way */
+/* the L-to-number 20s slide slightly toward the left of the frame (the signer's right) as they change (Colleen); 21 and the bending 23 and 25 stay in place */
+const SLIDE20 = -0.02;
+const fromL = P => ({ start: L2, steps: [[L2, 0.3], [Object.assign({}, P, { p: [SLIDE20 * 1.5, 0] }), 0.55]] });      /* show the L, then slide and change in one move, landing in the second digit (Colleen) */
+NUM[21] = { start: L21, steps: rep(L21, L21b, 2, 0.45) };      /* no slide; soft and even, not a snap (Colleen) */
+NUM[23] = Object.assign(twoBends(OUT3, [0.35, 1, 0, 0]), { alt: fromL(OUT3) });      /* the bending 23 and 25 do not slide; the L versions do (Colleen) */
+NUM[24] = fromL(OUT4);
+NUM[25] = Object.assign(twoBends(OUT5, [0.35, 1, 0.5, 0.25]), { alt: fromL(OUT5) });
+for (let d = 6; d <= 9; d++) NUM[20 + d] = fromL(SH[d]);
+/* TENS 30-90 (Colleen, 2026-10-13): the number palm out, no slide, then it closes into a 0 that stays palm out (no wrist twist).
+   LOCKED by Colleen (2026-10-13) with the sock-puppet 0 below. */
+const ZERO_OUT = { f: SH[0].f.slice(0, 3).map((g, i) => [g[0], g[1] + 10, g[2] + 7, [-4, 6, 14][i], [0, 8, 16][i]]).concat([[24, 66, 44, 6, 6, 10]]), t: SH[0].t, w: [15, 0, 0] };      /* Colleen's closest version: fingers leaning in on top of the thumb and rounded, the wrist tilted down a little; the pinky lifted up level with the ring finger, beside it (never under it) */
+for (let d = 3; d <= 9; d++) { const P = Object.assign({}, SH[d], { w: OUT }); NUM[d * 10] = { start: P, steps: [[P, 0.3], [ZERO_OUT, 0.5]] }; }
 async function sign(n, o) {
   o = o || {};
   const N = NUM[n]; if (!N) return;
   const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
-  const use = (o.teens !== 'twist' && N.ten) ? N.ten : N;      /* 10 + number unless the twist is asked for (Colleen: 10 + number is the default) */
+  let use = (o.teens !== 'twist' && N.ten) ? N.ten : N;      /* 10 + number unless the twist is asked for (Colleen: 10 + number is the default) */
+  if (N.alt && (o.form === 'alt' || (o.form !== 'main' && Math.random() < 0.5))) use = N.alt;      /* 23, 25: either way, mixed unless asked (Colleen) */
   if (o.onLetter) o.onLetter(String(n));
   if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }
-  for (const [P, b] of use.steps) { if (o.stop && o.stop()) break; moveTo(P, per * b * 0.95); await wait(per * b); }
+  if (use.hold) await wait(per * use.hold);
+  if (use.arc) { for (const [P, b] of use.steps) { moveTo(P, per * b * 0.95); await wait(per * b); } playPath(use.arc.keys, per * use.arc.beats, EASE_IN); await wait(per * use.arc.beats); }
+  else
+  if (use.path) { const total = use.steps.reduce((t, x) => t + x[1], 0); playPath([use.start].concat(use.steps.map(x => x[0])), per * total); await wait(per * total); }
+  else for (const [P, b] of use.steps) { if (o.stop && o.stop()) break; moveTo(P, per * b * 0.95); await wait(per * b); }
   await wait(per * 0.7);
   if (o.stay) return;
   if (use.via) { moveTo(use.via, 250); await wait(260); }
