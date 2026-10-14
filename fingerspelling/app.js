@@ -124,7 +124,7 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 /* ---------- settings ---------- */
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
-  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'proper', pick: 'proper', ladder: 'proper', pairs: 'proper', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'];      // old letter pairs became letter groups
@@ -133,7 +133,9 @@ const FCAT_RENAMED = { 'K–2': 'K–2 level vocab', 'Grades 3–5': 'Grades 3�
 S.fcats = (S.fcats || []).map(c => FCAT_RENAMED[c] || c);
 { const fc = Object.keys(window.FAMILIAR || {}); S.fcats = S.fcats.filter(c => fc.indexOf(c) >= 0); if (!S.fcats.length) S.fcats = fc.slice(0, 2); }      // lists from the teacher's sheet may have other names (ASL Study 3.81)
 if (!GAMES[S.game]) S.game = 'type';
+if (!S.bankV2) { S.banks = { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }; S.bankV2 = 1; }      /* once: everyone starts on everyday words (Colleen); a later choice of names sticks */
 const saveS = () => store.set('settings', S);
+saveS();
 
 /* ---------- the hand ---------- */
 const stage = $('#stage');
@@ -189,7 +191,7 @@ function soundWords() {
   return out;
 }
 /* two kinds of words (Colleen): everyday words, even ones that have a sign (FAMILIAR, from her word search lists), and names and other words people really fingerspell (FS_WORDS) */
-const bankOf = g => (S.banks && S.banks[g]) || (g === 'fill' || g === 'sound' ? 'everyday' : 'proper');
+const bankOf = g => (S.banks && S.banks[g]) || 'everyday';      // everyday words are the default in every game (Colleen, 2026-10-14)
 function everydayWords(min) {
   const out = [], seen = new Set();
   S.fcats.forEach(c => (window.FAMILIAR[c] || []).forEach(w => { const n = lettersCount(w), k = letters(w); if (n < (min || 2) || (S.limit && n > S.limit) || seen.has(k)) return; seen.add(k); out.push({ w, c, n }); }));
@@ -1156,7 +1158,7 @@ let clWords;
 function classInit() {
   clWords = wordList($('[data-list=class]'), 'class');
   const src = () => { $('#cl-cats-box').hidden = S.clsrc === 'list'; $('#cl-list-box').hidden = S.clsrc !== 'list'; };      // cats = names and fingerspelled words; everyday; list
-  S.clsrc = S.clsrc || 'cats'; segInit('cl-src', 'clsrc', src); src();
+  S.clsrc = S.clsrc || 'everyday'; segInit('cl-src', 'clsrc', src); src();
   $('#cl-start').onclick = () => {
     const words = S.clsrc === 'list' ? clWords.get() : S.clsrc === 'everyday' ? everydayWords(2).map(x => x.w) : poolWords().map(x => x.w);
     if (!words.length) { alert(S.clsrc === 'list' ? 'Type or paste some words first.' : 'No words match the game setup. Choose categories there first.'); return; }
