@@ -370,3 +370,16 @@ html.embedded header nav a[href="../"] { display: none; }
 .rsheet .rs-summary .rs-verdict { font-size: 20px !important; font-weight: 800 !important; }
 .rsheet .rs-half { border-top: 3px double #e3d9cc !important; }
 .rsheet .rs-foot, .rsheet .rs-sets { color: #5a6185 !important; }
+
+.top nav a.tptlink { background: #FFC83D; color: #1B1E3C !important; border-radius: 999px; padding: 3px 10px; font-weight: 800; }      /* Colleen's TpT store, on every page of the public site */
+html.embedded .top nav a.tptlink { display: none; }
+
+/* band colors (Colleen, 2026-10-14): Beginning red, Developing yellow, Meeting blue, Exceeding green; dark text on yellow */
+.rsheet .p-behind, .rsheet .rs-scale span.p-behind { background: #C7362E !important; color: #fff !important; }
+.rsheet .p-near, .rsheet .rs-scale span.p-near { background: #F2C230 !important; color: #1f2340 !important; }
+.rsheet .p-on, .rsheet .rs-scale span.p-on { background: #2F6BFF !important; color: #fff !important; }
+.rsheet .p-above, .rsheet .rs-scale span.p-above { background: #2F9E5F !important; color: #fff !important; }
+.rsheet .rs-summary { border-color: #2F6BFF !important; background: #F4F7FF !important; }
+.rsheet .rs-summary.b-above { border-color: #2F9E5F !important; background: #F1FAF4 !important; }
+.rsheet .rs-summary.b-near { border-color: #F2C230 !important; background: #FFF9E0 !important; }
+.rsheet .rs-summary.b-behind { border-color: #C7362E !important; background: #FDF1F0 !important; }

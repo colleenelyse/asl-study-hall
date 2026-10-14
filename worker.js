@@ -2,7 +2,9 @@
    Workers KV (binding LOCKS) holds one key, "state": { lock, vsalt, vhash, mytools, shares, updated }.
    - lock: the home page's tool list, encrypted in the browser (AES-GCM, key from the password with PBKDF2-SHA256).
    - vsalt / vhash: proof check. The browser sends PBKDF2(password, vsalt) (never the password); the Worker compares SHA-256 of it with vhash.
-   - mytools: the student list, open to everyone: asl.cool itself and asl.cool/mytools (2026-10-14, Colleen: "i want the students to only need to type asl.cool").
+   - slocks: student lists, each encrypted with its own CLASS password (2026-10-14, Colleen: "a class password and my admin password. allow for multiple class passwords.
+     one box should accept both and know the difference"). The home page's one password box tries her lock, then each class lock.
+   - mytools: the old open student list; empty once a class password is set (then nothing about the buttons is public).
    - shares: [{ code, tools }]: a teacher's list at asl.cool/t/<code> (a random code nobody can guess; Colleen picks the buttons and the teacher's
      name in /admin; the name stays inside the encrypted lock). A code that is not in the list shows "This link is not active".
    Until KV has a state, lock-seed.json (written by dev/home-lock/lock-home.js on Colleen's Mac) is used. */
@@ -36,7 +38,10 @@ async function save(req, env) {
   const L = body.lock;
   if (!L || !okStr(L.salt, 100) || !okStr(L.iv, 100) || !okStr(L.data, 150000) || !(L.iter >= 100000) || !okStr(body.vsalt, 100) || !/^[0-9a-f]{64}$/.test(body.vhash || '') || !okTools(body.mytools) || (body.shares !== undefined && !okShares(body.shares)))
     return json({ error: 'Something in the new list was not right.' }, 400);
-  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, vsalt: body.vsalt, vhash: body.vhash, mytools: body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools })), updated: new Date().toISOString() };
+  const SL = Array.isArray(body.slocks) ? body.slocks : [], okLock = x => x && okStr(x.salt, 100) && okStr(x.iv, 100) && okStr(x.data, 150000) && x.iter >= 100000;
+  if (SL.length > 30 || !SL.every(okLock)) return json({ error: 'Something in the class passwords was not right.' }, 400);
+  const slocks = SL.map(x => ({ v: 1, iter: x.iter, salt: x.salt, iv: x.iv, data: x.data }));
+  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, slocks, vsalt: body.vsalt, vhash: body.vhash, mytools: slocks.length ? [] : body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools })), updated: new Date().toISOString() };
   await env.LOCKS.put('state', JSON.stringify(next));
   const log = (await env.LOCKS.get('log', 'json')) || []; log.push([next.updated, ip, body.mytools.length]); await env.LOCKS.put('log', JSON.stringify(log.slice(-50)));
   await env.LOCKS.delete(failKey);
@@ -47,7 +52,7 @@ export default {
     const url = new URL(req.url), p = url.pathname;
     if (p === '/lock.json' || p === '/mytools.json') {
       const st = await state(env, req); if (!st) return json({}, 404);
-      return json(p === '/lock.json' ? { lock: st.lock, vsalt: st.vsalt } : { tools: st.mytools || [] });
+      return json(p === '/lock.json' ? { lock: st.lock, slocks: st.slocks || [], vsalt: st.vsalt } : { tools: (st.slocks || []).length ? [] : (st.mytools || []) });      // with class passwords the student lists are only in slocks
     }
     if (p === '/share.json') {      // one teacher's list, only with its code
       const st = await state(env, req), c = url.searchParams.get('c') || '', sh = st && (st.shares || []).find(x => x.code === c);

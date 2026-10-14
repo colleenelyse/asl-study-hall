@@ -1,77 +1,99 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="ily-o.png"><link rel="apple-touch-icon" href="ily-180-o.png"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ASL Study Hall</title><meta name="description" content="ASL Study Hall: free American Sign Language and Deaf studies practice for students and teachers.">
-<script>if (/(^|\.)asl\.cool$/.test(location.hostname)) document.documentElement.className = "wait";</script><style>html.wait #stu{visibility:hidden}</style>
+<title>ASL Study Hall</title><meta name="description" content="ASL Study Hall: ASL fingerspelling, numbers and Deaf studies practice with a realistic animated 3D hand, made by an ASL teacher.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
-<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
+<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:820px;margin:0 auto;padding:28px 16px 40px}
 h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p{color:#5A6185}
 .card{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 2px 10px rgba(60,40,20,.06)}
 a.tool{display:block;background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06)}
 a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}
 form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input{font:inherit;padding:10px 14px;border:1.5px solid #E3D9CC;border-radius:12px;min-width:0;flex:1 1 200px}
 button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
-.msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}</style></head>
+.msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.tpt{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:14px;color:#1B1E3C;background:#FFC83D;border-radius:999px;padding:6px 14px;text-decoration:none;white-space:nowrap}.tpt:hover{filter:brightness(.95)}
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.shots figure{margin:0;background:#fff;border:1px solid #E3D9CC;border-radius:14px;padding:10px;box-shadow:0 2px 10px rgba(60,40,20,.06)}.shots img{width:100%;height:auto;display:block;border-radius:8px}.shots figcaption{font-size:14px;color:#5A6185;margin-top:6px;text-align:center}.shots .wide{grid-column:1/-1}
+.list{list-style:none;padding:0;margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}.list li{line-height:1.35}.list b{display:block;color:#1B1E3C}.list span{font-size:14px;color:#5A6185}
+.big{display:inline-block;margin-top:6px;font-weight:800;color:#fff;background:#2F6BFF;border-radius:999px;padding:10px 20px;text-decoration:none}
+@media (max-width:620px){.shots,.list{grid-template-columns:1fr}}</style></head>
 <body><main>
-<h1>🤟 ASL Study Hall</h1>
-<p>Free ASL and Deaf studies practice, made by an ASL teacher for her students and for learners everywhere. Pick an activity to start. Nothing you do here is saved on our end.</p>
-<div id="stu">
-<a class="tool" href="study/"><b>🎓 ASL Study Hall</b>Our class app: vocab games, signs, points and reports. Sign in with your school Google account.</a>
-<a class="tool" href="fingerspelling/"><b>🤟 ASL Fingerspelling and Numbers Practice</b>Read fingerspelling and numbers 0–20 from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
-<a class="tool" href="numbers/"><b>🔢 ASL Numbers Practice</b>Read ASL numbers from a realistic hand: 0–99, hundreds, thousands and millions. Games, a quiz, Show me numbers and Build a number.</a>
-<a class="tool" href="bingo/"><b>🎱 Fingerspelling Bingo</b>Make Bingo cards from your own word list, print them or share digital cards, and let the hand call the words (or spell them yourself).</a>
-<a class="tool" href="wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
-<a class="tool" href="hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
-<a class="tool" href="ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
-<a class="tool" href="ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
-</div>
-<div id="tools"></div>
-<details class="card" id="gate" hidden><summary style="cursor:pointer;font-weight:800;color:#5A6185">Teacher</summary>
-  <p style="margin:10px 0">Type your password to see your full list.</p>
-  <form id="unlock"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></form>
+<div class="top"><h1>🤟 ASL Study Hall</h1><a class="tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></div>
+<p>ASL practice made by an ASL teacher: a realistic, animated 3D hand that fingerspells and signs numbers the way a real signer does, moving smoothly from one letter to the next, with games, reports and classroom tools.</p>
+
+<form class="card" id="unlock" style="display:block"><h2>Students and Teachers</h2>
+  <p style="margin:0 0 10px">Type your class password (students) or your password (teacher).</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><label for="pw" style="position:absolute;left:-9999px">Password</label><input id="pw" type="password" autocomplete="current-password" placeholder="Password"><button type="submit">Open</button></div>
   <p class="msg" id="msg" aria-live="polite"></p>
-</details>
+</form>
+<div id="tools"></div>
+
+<div id="welcome">
+<div class="shots">
+  <figure class="wide"><img src="img/welcome-hand.jpg" alt="The 3D hand fingerspelling A, S and L" width="1100" height="436"><figcaption>A realistic 3D hand fingerspells at real speeds, from Beginner to Deaf conversational speed.</figcaption></figure>
+  <figure><img src="img/welcome-games.jpg" alt="Fingerspelling games: Letter Flash, Look-Alike Letters, Pick the Word, Speed Ladder and more" loading="lazy"><figcaption>Games for every level, from Letter Flash to Speed Ladder.</figcaption></figure>
+  <figure><img src="img/welcome-report.jpg" alt="A sample student fingerspelling report" loading="lazy"><figcaption>Reports show what each student got right, what they mixed up, and what to practice next.</figcaption></figure>
+</div>
+
+<div class="card"><h2>What's Here</h2>
+  <p style="margin:0">Students and teachers open these with a password:</p>
+  <ul class="list">
+    <li><b>🎓 ASL Study Hall</b><span>A class app: vocab games, signs, points and progress reports.</span></li>
+    <li><b>🤟 ASL Fingerspelling Practice</b><span>Eight fingerspelling games, Show Me How to Spell, projector mode and reports.</span></li>
+    <li><b>🔢 ASL Numbers Practice</b><span>0–99, hundreds, thousands and millions: games, a quiz, Show Me Numbers and Build a Number.</span></li>
+    <li><b>🎱 Fingerspelling Bingo</b><span>Print Bingo cards or share digital ones, and let the hand call the words.</span></li>
+    <li><b>🔎 WordSearch Studio</b><span>Printable word searches with answer keys, or play on screen.</span></li>
+    <li><b>🦻 Hearing Loss Simulator</b><span>Hear a story with mild to profound hearing loss on an audiogram.</span></li>
+    <li><b>🔊 Cochlear Implant Simulator</b><span>Hear how an implant sounds, from 1 electrode to 22.</span></li>
+    <li><b>👂 Parts of the Ear</b><span>Explore the ear, then label it and quiz yourself.</span></li>
+  </ul>
+</div>
+
+<div class="card"><h2>For Teachers</h2>
+  <p style="margin:0">Want the fingerspelling games and diagnostic reports for your own classes? <b>ASL Spellbound</b> comes with a Google Sheet that tracks every student and makes individual reports.</p>
+  <a class="big" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 See my products on Teachers Pay Teachers</a>
+</div>
+</div>
+<p class="foot"><a href="credits.html">Credits and sources</a> · <a href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">Teachers Pay Teachers store</a></p>
 <script>
-/* The tool boxes are stored scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code does not show them.
-   Made by dev/home-lock/lock-home.js on Colleen's Mac. The individual tool links themselves stay public. */
+/* asl.cool (2026-10-14, Colleen: "a class password and my admin password. allow for multiple class passwords. one box should accept both and know the difference"):
+   one password box. Colleen's password opens her full list (LOCK); a class password opens that class's student list (one of SLOCKS). Each list is stored
+   scrambled (AES-GCM; key from the password with PBKDF2-SHA256), so reading this page's code shows neither. The newest locks come from asl.cool (saved
+   in /admin); the copies in this page are the fallback (the school-safe GitHub copy uses them). This device remembers the key after the first time. */
 let LOCK = /*LOCK*/{"v":1,"iter":200000,"salt":"VG0/CRFXz8WsNJSUJSxtYA==","iv":"OVvLHAkAYhRRh+T7","data":"7fE9HN2taiz75xtalcWOzbtWg0vpR6R0kMFO44bIGM4H7oTUm/Y05exqtXwgcfNNxhGhPkjl18MWcBtY7HDx0wNiZ2k9Padf6vkKwJ8iYzMPtE9ai1ncZRuwnABPR7QL9zyGgDqWPMhTj7V1KIx9wFjVW8vEtHq0wYqcwK57N+JNg4wyNqHA1dgLnt7E4cVcl37zhDJ1Kt+RU9K+DQAwNvLEB8RqNRx0uc9xc+vaWn8WlTn6/799FD88nZDzlw3a9mW2Jw/X1K0ApeN1ZvOeqL3nKSDP3LLvNbCpWTFOUNS6aS/l56XThaoYOtU81Y7MhcYTdBbmeGUo1EOMqF+RcA6y9/N2uIlivSzxfJg1kyVwWGGqUV7HTv6SuuIznGYLpH4p/FsCcpgIrM64VGQ63X+JtLtwLNLfW4sRAqxzAfJQQJzu4BQC3zxtrGqg59i8GGfRoQYe09gZeEjSEhdwQNTccyknh4XsvXsJOkodhcSMdQXamhVlECPkodz3I9fWy0y0wte+X9mnZxrp8GVuDOZyAE6b5pxO9/Y5IW5mipAFIkmAKKXj9GQI+W3UiTEBKpTFeV9wDuge7QwPxhPOwrrr8OKy5D0I10Kyvkxp/85sUze82ExWUZbru/F8qbV7QE0NaGhfCM/JzrqEk3vv+cVZa/lsqEzZqorp4LIS6NhleyJoCe5qe1VYWrNMWQk+ZjGFR1i72LEwf5pEAwRgmvJTkctvhIy1AAGjS9XrHhig6AwiNR/hEYKnr6E8NeWr5xQeH4OykvM/tzdJ9TaqBaKw6f8SPevNYGFbl0SwSG6JiF01Qdg+VZIUymydpo2e0Si576YjHSTJ1QJQfCT4yMYuxivHCYF/Qbf4F4g56FoqSezJAV9DiXSpTAHh4ZBdD4YYsEz5ELMJYdMXONYiLrUhGyeNWkoQlN1TX2NtPobC+WTMqlB9Q6VuAlZXATEY8IJjTZJbmilp/gb6KPJUioqDsPfN2EYZBnleZsIxmqFKTn6UjQUKL6P1Vg0Rjv001UnJuDLlVUuBr0kT/vXCQN15nEfG0ZiPPmUFuOv4tadt0yQ93rvj2Gf6GhcpfdQzjVt1hOYwzQqdOs4i/mWuABQAOTvcwQY2/0oJvOg0+WZsTh0tzHCCoCt1OjnQf/vexjiM5nG9aFFmF76KUaObZxG9Uyhy2QDA6YsEEIIdcx+YbNCbbhJSyWkEV7l7/ctecvTh9egtEN4Oarj8A0U+OaiRJf0DMrG4eFeh0C83OffY6ajeh+hzMO74xRGugn1X3rHAQ1tfg4p4bBEq3UuidF9xYdCeJznHWeMWAXrLHXVo8mCj2+yEZaPERX8/dwyRZIlEB4Ze5ZnySdTvehFC29jtZ30JP7nrH7s1CC75EsxJCnnnKY5t1P6qUkakilSHNaTgagKrPhRC0Vtwm6tFrN+773Eqd7ESwLW/9EqsbxjAyTfeYo4urqJXbt3nVxOkhfq4AK2CUt3lGmVb4fZARca4m87oulD7HR6FRWYlAoz2LxI28ygT1kTlMUWtLtjgYAWX+77UJlTj4Z78A/oq1GarPGIjwEoU0p92KEn/JkduHZJ+z6Pgnwfbu+3CFHLt+/9L1OKvbQRIXAwzGw2PLgZGmP55oZ0tU7f8A7z1UGuBA38lK8SmzCGUHic87IljAiXgS1+TjyIrxPCdFg=="}/*END LOCK*/;
+let SLOCKS = /*SLOCKS*/[]/*END SLOCKS*/;
 (function () {
-  const $ = s => document.querySelector(s), KEY = 'aslHomeKey';
+  const $ = s => document.querySelector(s), KEY = 'aslHomeKey', CKEY = 'aslClassKey';
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const onAsl = location.hostname === 'asl.cool' || location.hostname === 'www.asl.cool';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const onAsl = /(^|\.)asl\.cool$/.test(location.hostname), get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   const link = t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>';
-  /* asl.cool is the students' page (Colleen, 2026-10-14: "i want the students to only need to type asl.cool"): the buttons she ticks for Students in /admin, no password.
-     The list written into this page is the fallback (the school-safe GitHub copy uses it). */
-  if (onAsl) fetch('/mytools.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d && Array.isArray(d.tools) && d.tools.length) $('#stu').innerHTML = d.tools.map(link).join(''); }).catch(() => {}).then(() => { document.documentElement.className = ''; });      // the page's own list never flashes on asl.cool
-  else document.querySelectorAll('#stu a[data-alt]').forEach(a => { a.href = 'https://hearing-84j.pages.dev/' + a.dataset.alt; });
-  function show(got) {
-    const tools = Array.isArray(got) ? got : (got && got.tools) || [];      // the lock holds { tools, shares } since teacher links (2026-10-14)
-    $('#gate').hidden = true; $('#stu').hidden = true;
-    $('#tools').innerHTML = '<h2>Your Full List</h2>' + tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc) + '</a>').join('') +
-      '<p style="text-align:right"><button class="lock" id="lockit">Forget the password on this device</button></p>';
-    $('#lockit').onclick = () => { try { localStorage.removeItem(KEY); } catch (e) {} $('#tools').innerHTML = ''; $('#gate').hidden = false; $('#stu').hidden = false; $('#pw').value = ''; };
+  function show(got, admin) {
+    const tools = Array.isArray(got) ? got : (got && got.tools) || [];
+    $('#unlock').hidden = true; $('#welcome').hidden = true;
+    $('#tools').innerHTML = (admin ? '<h2>Your Full List</h2>' : '') + (tools.length ? tools.map(link).join('') : '<div class="card"><p style="margin:0">Your teacher has not added any activities to this password yet.</p></div>') +
+      '<p style="text-align:right"><button class="lock" id="lockit">' + (admin ? 'Forget my password on this device' : 'Use a different password') + '</button></p>';
+    $('#lockit').onclick = () => { put(KEY, null); put(CKEY, null); $('#tools').innerHTML = ''; $('#unlock').hidden = false; $('#welcome').hidden = false; $('#pw').value = ''; };
   }
-  async function open(key) { const out = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(LOCK.iv) }, key, b64(LOCK.data)); return JSON.parse(new TextDecoder().decode(out)); }
-  async function fromPassword(pw) {
+  const openWith = async (key, L) => JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(L.iv) }, key, b64(L.data))));
+  async function keyFor(pw, L) {
     const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(LOCK.salt), iterations: LOCK.iter }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(L.salt), iterations: L.iter }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
   }
+  const rawKey = s => crypto.subtle.importKey('raw', b64(s), 'AES-GCM', false, ['decrypt']);
   if (!window.crypto || !crypto.subtle) return;
-  (async () => {
-    /* the newest lock comes from asl.cool (saved by the admin page); the copy inside this page is the fallback */
-    try { const r = await fetch('/lock.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d && d.lock && d.lock.data) LOCK = d.lock; } } catch (e) {}
-    if (!LOCK) return;
-    $('#gate').hidden = false;
-    // this device already opened it: no password needed
-    let saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
-    if (!saved) return;
-    try { show(await open(await crypto.subtle.importKey('raw', b64(saved), 'AES-GCM', false, ['decrypt']))); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} }
+  const ready = (async () => {
+    try { const r = await fetch('/lock.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d && d.lock && d.lock.data) LOCK = d.lock; if (d && Array.isArray(d.slocks)) SLOCKS = d.slocks; } } catch (e) {}
+    const k = get(KEY), c = get(CKEY);      // this device already opened it: no password needed
+    if (k && LOCK) { try { return show(await openWith(await rawKey(k), LOCK), true); } catch (e) { put(KEY, null); } }
+    if (c) { for (const L of SLOCKS) { try { return show(await openWith(await rawKey(c), L), false); } catch (e) {} } put(CKEY, null); }
   })();
   $('#unlock').onsubmit = async e => {
-    e.preventDefault(); const pw = $('#pw').value; if (!pw) return;
+    e.preventDefault(); const pw = $('#pw').value; if (!pw) return; await ready;
     $('#msg').textContent = 'Checking…';
-    try { const key = await fromPassword(pw), tools = await open(key); try { localStorage.setItem(KEY, tob64(await crypto.subtle.exportKey('raw', key))); } catch (e2) {} $('#msg').textContent = ''; show(tools); }
-    catch (err) { $('#msg').textContent = "That's not it. Try again."; $('#pw').select(); }
+    try { const key = await keyFor(pw, LOCK), got = await openWith(key, LOCK); put(KEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, true); } catch (err) {}
+    for (const L of SLOCKS) {
+      try { const key = await keyFor(pw, L), got = await openWith(key, L); put(CKEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, false); } catch (err) {}
+    }
+    $('#msg').textContent = "That's not it. Check with your teacher and try again."; $('#pw').select();
   };
 })();
 </script>

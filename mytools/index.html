@@ -1,41 +1,4 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="../ily-o.png"><link rel="apple-touch-icon" href="../ily-180-o.png"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ASL Study Hall</title><meta name="robots" content="noindex">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700&display=swap">
-<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:32px 16px}
-h1{font:600 clamp(30px,6vw,44px) Fredoka,system-ui,sans-serif;margin:0 0 6px}h2{font:600 22px Fredoka,system-ui,sans-serif;margin:0 0 8px}p{color:#5A6185}
-.card{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 2px 10px rgba(60,40,20,.06)}
-a.tool{display:block;background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:20px;margin:14px 0;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06)}
-a.tool:hover{border-color:#2F6BFF}a.tool b{font:600 22px Fredoka,system-ui,sans-serif;display:block}
-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input{font:inherit;padding:10px 14px;border:1.5px solid #E3D9CC;border-radius:12px;min-width:0;flex:1 1 200px}
-button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:#2F6BFF;color:#fff;cursor:pointer}
-.msg{min-height:24px;margin:8px 0 0;font-weight:700;color:#C7362E}.lock{background:none;color:#2F6BFF;padding:2px 4px;font-weight:700}.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:24px}.foot a{color:#2F6BFF}</style></head>
-<body><main>
-<h1>🤟 ASL Study Hall</h1>
-<p>Free ASL and Deaf studies activities. Pick one to start.</p>
-<div id="tools">
-<a class="tool" href="../study/"><b>🎓 ASL Study Hall</b>Our class app: vocab games, signs, points and reports. Sign in with your school Google account.</a>
-<a class="tool" href="../fingerspelling/"><b>🤟 ASL Fingerspelling and Numbers Practice</b>Read fingerspelling and numbers 0–20 from a realistic hand at real speeds: games, a speed ladder, and classroom Bingo.</a>
-<a class="tool" href="../numbers/"><b>🔢 ASL Numbers Practice</b>Read ASL numbers from a realistic hand: 0–99, hundreds, thousands and millions. Games, a quiz, Show me numbers and Build a number.</a>
-<a class="tool" href="../bingo/"><b>🎱 Fingerspelling Bingo</b>Make Bingo cards from your own word list, print them or share digital cards, and let the hand call the words (or spell them yourself).</a>
-<a class="tool" href="../wordsearch/"><b>🔎 WordSearch Studio</b>Make printable word search puzzles with answer keys, or play them on screen. Free, nothing saved. Download as PDF.</a>
-<a class="tool" href="../hearing/" data-alt="hearing-loss-simulator.html"><b>🦻 Hearing loss simulator</b>Hear a story with mild to profound hearing loss on an audiogram: each ear, noise, tinnitus, a hearing aid, and three games.</a>
-<a class="tool" href="../ci/" data-alt="cochlear-implant-simulator.html"><b>🔊 Cochlear implant simulator</b>Hear an implant, and how it changes from 1 electrode to 22. How implants work, surgery, mapping, and Deaf culture.</a>
-<a class="tool" href="../ear/" data-alt="ear-quiz.html"><b>👂 Parts of the ear</b>Explore the ear and where each type of hearing loss happens, then label it and quiz yourself. No sound.</a>
-</div>
-<p class="foot"><a href="../credits.html">Credits and sources</a></p>
-<script>
-/* The buttons come from asl.cool (saved by the admin page); the list written into this page is the fallback.
-   Off asl.cool (the github.io copy, for schools whose filter blocks asl.cool, Colleen 2026-10-14) the hearing tools open from their
-   own Cloudflare address, which is not on asl.cool. */
-const HEAR_ALT = 'https:' + '//hearing-84j.pages.dev/';
-(async function () {
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  if (!/(^|.)asl.cool$/.test(location.hostname)) { document.querySelectorAll('#tools a[data-alt]').forEach(a => { a.href = HEAR_ALT + a.dataset.alt; }); return; }
-  try {
-    const r = await fetch('/mytools.json', { cache: 'no-store' }); if (!r.ok) return; const d = await r.json(); if (!d || !Array.isArray(d.tools) || !d.tools.length) return;
-    document.getElementById('tools').innerHTML = d.tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : '../' + t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>').join('');
-  } catch (e) {}
-})();
-</script>
-</main></body></html>
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="../ily-o.png"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ASL Study Hall</title><meta name="robots" content="noindex">
+<script>location.replace('../');</script><noscript><meta http-equiv="refresh" content="0; url=../"></noscript></head>
+<body><p><a href="../">Open ASL Study Hall</a></p></body></html>
