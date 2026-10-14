@@ -17,7 +17,7 @@
   function loadFonts(key) {
     if (key === 'dyslexic' && !document.getElementById('dysFont')) {
       const st = document.createElement('style'); st.id = 'dysFont';
-      const base = 'https://colleenelyse.github.io/Hearingandcis/';      // OpenDyslexic comes with the Hearing site
+      const base = /(^|\.)asl\.cool$/.test(location.hostname) ? '/hearing/' : 'https://colleenelyse.github.io/Hearingandcis/';      // OpenDyslexic comes with the Hearing site (asl.cool/hearing/ on asl.cool)
       st.textContent = "@font-face{font-family:'OpenDyslexic';src:url('" + base + "OpenDyslexic-Regular.otf')}@font-face{font-family:'OpenDyslexic';font-weight:700;src:url('" + base + "OpenDyslexic-Bold.otf')}";
       document.head.appendChild(st);
     } else if (key && !document.getElementById('lookFonts')) {
