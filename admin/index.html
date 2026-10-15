@@ -42,6 +42,12 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     <div id="shares"></div>
     <button class="ghost" type="button" id="addshare">+ New teacher link</button>
   </div>
+  <div class="card">
+    <h2>Featured Products (shown on asl.cool)</h2>
+    <p class="hint">Product cards visitors see on asl.cool (at the bottom of the welcome page, and at the end of a round on the public fingerspelling site; never inside ASL Study or your TpT products). For each: a name, the link (your Shopify or TpT product page), and a picture address (in Shopify or TpT, right-click the product picture › Copy Image Address). Price, a short description and a label (like "On TpT" or "New") are optional. <b>Leave this empty to show every product in your Shopify store automatically</b> (new products appear by themselves). Add cards here only to choose specific ones or to add TpT listings. While the shop links are hidden on asl.cool, these are hidden too.</p>
+    <div id="products"></div>
+    <button class="ghost" type="button" id="addprod">+ Add a product</button>
+  </div>
   <form class="card" id="step3">
     <h2>3. New password (optional)</h2>
     <p class="hint">Leave both empty to keep the current password.</p>
@@ -103,6 +109,27 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     if (!confirm('Remove the password "' + (c.pw || '') + '"? Students using it will need a new one after you save.')) return; classes.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.cl) t.cl = t.cl.filter(x => x !== c.id); }); drawClasses(); draw(); });
   $('#addclass').onclick = () => { const c = { id: newCode(), name: classes.length ? '' : 'All students', pw: '' }; if (!classes.length) tools.forEach(t => { if (t.s) t.cl = (t.cl || []).concat(c.id); });      // the first one starts with the buttons that were open for students
     classes.push(c); drawClasses(); draw(); $('#classes .share:last-child input[data-cp]').focus(); };
+  function drawProducts() {
+    $('#products').innerHTML = (products || []).map((x, i) => `<div class="tool" data-i="${i}">
+      <div class="grid" style="grid-template-columns:1fr 140px"><div><label>Name</label><input data-pk="title" value="${esc(x.title)}" maxlength="120"></div><div><label>Price</label><input data-pk="price" value="${esc(x.price)}" maxlength="30" placeholder="$5.00"></div></div>
+      <label>Link (Shopify or TpT product page)</label><div class="row" style="flex-wrap:nowrap"><input data-pk="link" value="${esc(x.link)}" maxlength="500" placeholder="Paste the product link, then click Fill in"><button type="button" class="small" data-pfill style="white-space:nowrap">Fill in from link</button></div><p class="hint" data-pmsg style="margin:4px 0 0"></p>
+      <label>Picture address</label><input data-pk="img" value="${esc(x.img)}" maxlength="500" placeholder="https://… (optional)">
+      <div class="grid" style="grid-template-columns:1fr 160px"><div><label>Short description</label><input data-pk="desc" value="${esc(x.desc)}" maxlength="300"></div><div><label>Label</label><input data-pk="tag" value="${esc(x.tag)}" maxlength="40" placeholder="On TpT"></div></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-pmv="-1" ${i ? '' : 'disabled'}>↑ Up</button><button type="button" class="ghost small" data-pmv="1" ${i < products.length - 1 ? '' : 'disabled'}>↓ Down</button><button type="button" class="ghost small" data-pdel>Remove</button></div></div>`).join('') || '<p class="hint">None picked: asl.cool shows every product in your Shopify store.</p>';
+  }
+  $('#products').addEventListener('input', e => { const box = e.target.closest('.tool'), k = e.target.dataset.pk; if (box && k) products[+box.dataset.i][k] = e.target.value; });
+  $('#products').addEventListener('click', e => { const box = e.target.closest('.tool'); if (!box) return; const i = +box.dataset.i;
+    if (e.target.dataset.pmv) { const j = i + +e.target.dataset.pmv; [products[i], products[j]] = [products[j], products[i]]; drawProducts(); }
+    if (e.target.hasAttribute('data-pfill')) {      // name, price, picture and description from the listing (Colleen: "can i just upload the listing link")
+      const x = products[i], msg = box.querySelector('[data-pmsg]'); if (!x.link) { msg.textContent = 'Paste the product link first.'; return; }
+      e.target.disabled = true; msg.textContent = 'Reading the listing…';
+      fetch('/lookup?u=' + encodeURIComponent(x.link)).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error);
+        ['title', 'price', 'img', 'desc', 'link'].forEach(k => { if (d[k]) x[k] = d[k]; }); if (!x.tag && d.tag) x.tag = d.tag; drawProducts();
+        const m2 = $('#products').children[i] && $('#products').children[i].querySelector('[data-pmsg]'); if (m2) m2.textContent = 'Filled in. Check it, change anything you like, then save.'; })
+        .catch(err => { e.target.disabled = false; msg.textContent = err.message; });
+    }
+    if (e.target.hasAttribute('data-pdel') && confirm('Remove "' + (products[i].title || 'this product') + '"?')) { products.splice(i, 1); drawProducts(); } });
+  $('#addprod').onclick = () => { products = products || []; products.push({ title: '', price: '', link: '', img: '', desc: '', tag: '' }); drawProducts(); $('#products .tool:last-child input[data-pk=title]').focus(); };
   $('#tools').addEventListener('change', e => { const box = e.target.closest('.tool'); if (!box) return; const t = tools[+box.dataset.i];
     if (e.target.dataset.cl) { const c = e.target.dataset.cl; t.cl = (t.cl || []).filter(x => x !== c); if (e.target.checked) t.cl.push(c); drawClasses(); }
     if (e.target.dataset.sh) { const c = e.target.dataset.sh; t.sh = (t.sh || []).filter(x => x !== c); if (e.target.checked) t.sh.push(c); drawShares(); } });
@@ -122,7 +149,8 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
         tools = got; let open = []; try { const m = await (await fetch('/mytools.json', { cache: 'no-store' })).json(); open = (m.tools || []).map(t => t.href); } catch (e2) {}
         tools.forEach(t => { t.s = open.indexOf(t.href) >= 0; }); shares = [];
       } else { tools = got.tools || []; shares = got.shares || []; classes = got.classes || []; }
-      $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw(); drawShares(); drawClasses();
+      try { const pr = await (await fetch('/products.json', { cache: 'no-store' })).json(); products = (pr && pr.products) || []; } catch (e3) { products = []; }
+      $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw(); drawShares(); drawClasses(); drawProducts();
     } catch (err) { $('#m1').textContent = err.message === 'nolock' ? 'Could not reach asl.cool. Check the internet connection.' : "That's not the current password."; }
   };
   $('#step3').onsubmit = async e => {
@@ -138,11 +166,13 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim() }));      // exact, capitals count (Colleen: LTHS and lths can be two passwords)
     const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
-    /* products for the old storefront were removed from this page (Colleen: the shop is on Shopify now); saving leaves any saved ones as they are */
+    const prods = (products || []).map(x => ({ title: String(x.title || '').trim(), link: String(x.link || '').trim(), img: String(x.img || '').trim(), price: String(x.price || '').trim(), desc: String(x.desc || '').trim(), tag: String(x.tag || '').trim() })).filter(x => x.title || x.link);
+    const badP = prods.find(x => !x.title || !/^https:\/\//.test(x.link) || (x.img && !/^https:\/\//.test(x.img)));
+    if (badP) { m.className = 'msg bad'; m.textContent = 'Each product needs a name and a link starting with https:// (and a picture address starting with https://, or none).'; return; }
     $('#save').disabled = true; m.textContent = 'Saving…';
     try {
       const vsalt = crypto.getRandomValues(new Uint8Array(16));
-      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim() })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut };
+      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim() })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut, products: prods };
       const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not save.');
       curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); drawShares(); $('#new1').value = ''; $('#new2').value = '';

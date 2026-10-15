@@ -51,13 +51,50 @@ async function save(req, env) {
   await env.LOCKS.delete(failKey);
   return json({ ok: true, updated: next.updated });
 }
+/* every product in her Shopify store, from its public products.json (cached 10 minutes by Cloudflare) */
+async function shopProducts() {
+  try {
+    const r = await fetch('https://aslstudyhall.com/products.json?limit=50', { headers: { accept: 'application/json' }, cf: { cacheTtl: 600, cacheEverything: true } });
+    if (!r.ok) return [];
+    const d = await r.json();
+    return (d.products || []).map(x => { const v = (x.variants || [])[0] || {}, img = (x.images || [])[0];
+      return { title: x.title || '', price: v.price ? '$' + (+v.price).toFixed(2) : '', img: img && img.src ? img.src : '', desc: strip(x.body_html).slice(0, 160), link: 'https://aslstudyhall.com/products/' + x.handle, tag: '' }; });
+  } catch (e) { return []; }
+}
+/* /lookup?u=<listing link>: the name, price, picture and description of one of Colleen's listings (Shopify: the product's .js data; TpT: the page's share tags).
+   Only her shop and TpT, so this is not an open proxy. */
+const strip = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+async function lookup(u) {
+  let x; try { x = new URL(u); } catch (e) { return json({ error: 'That is not a link.' }, 400); }
+  const h = x.hostname.toLowerCase(), shop = h === 'aslstudyhall.com' || h === 'www.aslstudyhall.com' || h.endsWith('.myshopify.com'), tpt = h === 'www.teacherspayteachers.com' || h === 'teacherspayteachers.com';
+  if (x.protocol !== 'https:' || !(shop || tpt)) return json({ error: 'Paste a link to a product on aslstudyhall.com or Teachers Pay Teachers.' }, 400);
+  try {
+    if (shop) {
+      const m = x.pathname.match(/\/products\/([^/?#]+)/); if (!m) return json({ error: 'That is not a product page (it needs /products/ in the link).' }, 400);
+      const r = await fetch('https://' + h + '/products/' + m[1] + '.js', { headers: { accept: 'application/json' } });
+      if (!r.ok) return json({ error: 'Shopify did not share that product. If your store still has a password, remove it first (Online Store > Preferences).' }, 502);
+      const d = await r.json(), img = d.featured_image || (d.images || [])[0] || '';
+      return json({ title: d.title || '', price: d.price ? '$' + (d.price / 100).toFixed(2) : '', img: img ? (img.startsWith('//') ? 'https:' + img : img) : '', desc: strip(d.description).slice(0, 220), link: 'https://aslstudyhall.com/products/' + m[1], tag: '' });
+    }
+    const r = await fetch(x.toString(), { headers: { 'user-agent': 'Mozilla/5.0 (compatible; ASLStudyHall/1.0)', accept: 'text/html' } });
+    const t = await r.text(), meta = k => ((t.match(new RegExp('<meta[^>]+(?:property|name)=["\']' + k + '["\'][^>]+content=["\']([^"\']*)', 'i')) || [])[1] || '');
+    const title = strip(meta('og:title')), img = meta('og:image'), price = meta('product:price:amount');
+    if (!title) return json({ error: 'TpT did not share that listing. Fill in the name and picture by hand.' }, 502);
+    return json({ title: title.replace(/\s*\|\s*Teachers Pay Teachers\s*$/i, ''), price: price ? '$' + (+price).toFixed(2) : '', img, desc: strip(meta('og:description')).slice(0, 220), link: x.toString(), tag: 'On TpT' });
+  } catch (e) { return json({ error: 'Could not read that listing. Try again, or fill it in by hand.' }, 502); }
+}
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), p = url.pathname;
     const host = url.hostname.toLowerCase();
     if (host === 'www.aslstudyhall.com') return Response.redirect('https://aslstudyhall.com' + p + url.search, 301);
     if (host === 'aslstudyhall.com' && (p === '/' || p === '/index.html')) return env.ASSETS.fetch(new Request(new URL('/store/', req.url)));      // the storefront
-    if (p === '/products.json') { const st = await state(env, req); return json({ products: (st && st.products) || [] }); }
+    if (p === '/lookup') return lookup(url.searchParams.get('u') || '');      // admin > Featured Products: fill a card from a Shopify or TpT listing link
+    if (p === '/products.json') {      // featured products: Colleen's picks in admin, or else every product in her Shopify store (Colleen: "i'll feature all of them")
+      const st = await state(env, req), picked = (st && st.products) || [];
+      if (picked.length) return json({ products: picked, source: 'admin' });
+      return json({ products: await shopProducts(), source: 'shopify' });
+    }
     if (p === '/lock.json' || p === '/mytools.json') {
       const st = await state(env, req); if (!st) return json({}, 404);
       return json(p === '/lock.json' ? { lock: st.lock, slocks: st.slocks || [], vsalt: st.vsalt } : { tools: (st.slocks || []).length ? [] : (st.mytools || []) });      // with class passwords the student lists are only in slocks

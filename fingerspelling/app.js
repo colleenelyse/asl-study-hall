@@ -615,7 +615,17 @@ function mixList(items) {
   const m = {}; items.forEach(x => (!x.ok && x.typed && !/^\d+$/.test(String(x.w)) ? diffPairs(x.w, x.typed) : x.mix || []).forEach(p => { m[p] = (m[p] || 0) + 1; }));      // worked out again from the answer, so rounds saved before 3.90 follow the letter-swap rule too
   return Object.keys(m).sort((a, b) => m[b] - m[a]).map(p => ({ right: p[0], saw: p[1], times: m[p] }));
 }
+/* "Enjoying this? Teachers, take it further" (Colleen): after a round on the public site only (never inside ASL Study, never in the TpT products); featured products come from asl.cool/products.json (admin > Featured Products) */
+let teachProducts = null;
+async function teachCard() {
+  const box = $('#r-teach'); if (!box) return;
+  if (EMBED || CFG.only) { box.hidden = true; return; }
+  box.hidden = false;
+  if (teachProducts === null) { teachProducts = []; try { if (/(^|\.)asl\.cool$/.test(location.hostname)) { const r = await fetch('/products.json', { cache: 'no-store' }); if (r.ok) teachProducts = ((await r.json()).products || []); } } catch (e) {} }
+  $('#r-products').innerHTML = teachProducts.slice(0, 6).map(x => '<a class="teach-product" href="' + esc(x.link) + '" target="_blank" rel="noopener">' + (x.img ? '<img src="' + esc(x.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc(x.title) + '</b>' + (x.price ? '<span>' + esc(x.price) + '</span>' : '') + '</a>').join('');
+}
 function resultsShow() {
+  teachCard();
   const r = store.get('last', null);
   if (!r) { $('#r-score').textContent = 'No round yet'; $('#r-stats').innerHTML = ''; $('#r-words').innerHTML = ''; $('#r-extra').innerHTML = ''; return; }
   const g = r.game || 'type';

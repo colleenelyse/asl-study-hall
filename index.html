@@ -14,7 +14,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
 .shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.shots figure{margin:0;background:#fff;border:1px solid #E3D9CC;border-radius:14px;padding:10px;box-shadow:0 2px 10px rgba(60,40,20,.06)}.shots img{width:100%;height:auto;display:block;border-radius:8px}.shots figcaption{font-size:14px;color:#5A6185;margin-top:6px;text-align:center}.shots .wide{grid-column:1/-1}
 .list{list-style:none;padding:0;margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}.list li{line-height:1.35}.list b{display:block;color:#1B1E3C}.list span{font-size:14px;color:#5A6185}
 .big{display:inline-block;margin-top:6px;font-weight:800;color:#fff;background:#2F6BFF;border-radius:999px;padding:10px 20px;text-decoration:none}
-@media (max-width:620px){.shots,.list{grid-template-columns:1fr}}</style><!-- temporary (Colleen, 2026-10-14): shop links hidden until her school approves the domain; delete the next line to show them --> <style>[data-shop]{display:none!important}</style></head>
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:6px}.pcard{display:flex;flex-direction:column;background:#FBF8F2;border:1px solid #E3D9CC;border-radius:14px;overflow:hidden;color:#1B1E3C;text-decoration:none}.pcard:hover{border-color:#2F6BFF}.pcard .pic{aspect-ratio:1;background:#EFE8DC center/cover no-repeat;display:grid;place-items:center;font-size:48px}.pcard .b{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;flex:1}.pcard b{font:600 17px/1.25 Fredoka,system-ui,sans-serif}.pcard small{color:#5A6185;font-size:14px;flex:1}.pcard .go{font-weight:800;color:#2F6BFF;font-size:15px}@media (max-width:620px){.shots,.list{grid-template-columns:1fr}}</style><!-- temporary (Colleen, 2026-10-14): shop links hidden until her school approves the domain; delete the next line to show them --> <style>[data-shop]{display:none!important}</style></head>
 <body><main>
 <div class="top"><h1 style="margin:0"><img src="img/logo.png" alt="ASL Study Hall" width="640" height="449" style="height:96px;width:auto;display:block"></h1><span style="display:flex;gap:10px;flex-wrap:wrap"><a data-shop class="tpt" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="background:#05274C;color:#fff">🛍️ Shop ASL Study Hall</a><a data-shop class="tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></span></div>
 <p>ASL practice made by an ASL teacher: a realistic, animated 3D hand that fingerspells and signs numbers the way a real signer does, moving smoothly from one letter to the next, with games, reports and classroom tools.</p>
@@ -41,6 +41,9 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
   </ul>
 </div>
 
+<div class="card" data-shop id="featured"><h2>From the ASL Study Hall Shop</h2>
+  <div class="pgrid" id="pgrid"></div>
+</div>
 <div class="card" data-shop><h2>For Teachers</h2>
   <p style="margin:0">Want these tools for your own classes? <b>ASL Spellbound</b> and other ASL Study Hall products are in my shop at aslstudyhall.com and on Teachers Pay Teachers, including the fingerspelling games with a Google Sheet that tracks every student and makes individual reports.</p>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><a data-shop class="big" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="margin-top:0">🛍️ Shop at aslstudyhall.com</a><a data-shop class="big" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener" style="margin-top:0;background:#FFC83D;color:#1B1E3C">🛒 Shop on Teachers Pay Teachers</a></div>
@@ -73,6 +76,12 @@ let SLOCKS = /*SLOCKS*/[{"v":1,"iter":100000,"salt":"sH9f+KNbWwlaPYEkfciQSQ==","
     return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(L.salt), iterations: L.iter }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
   }
   const rawKey = s => crypto.subtle.importKey('raw', b64(s), 'AES-GCM', false, ['decrypt']);
+  /* featured products (admin > Featured Products), shown to visitors; hidden with the other shop links for now (Colleen) */
+  (async () => { let list = [];
+    try { if (onAsl) { const r = await fetch('/products.json', { cache: 'no-store' }); if (r.ok) list = (await r.json()).products || []; } } catch (e) {}
+    if (!list.length) list = [{ title: 'ASL Spellbound: Receptive Fingerspelling Games', desc: 'The fingerspelling games with student tracking and Google Sheets diagnostic reports.', link: 'https://www.teacherspayteachers.com/store/jaq-joey-boutique', img: '', price: '' }];
+    $('#pgrid').innerHTML = list.map(x => { const tpt = /teacherspayteachers/i.test(x.link); return '<a class="pcard" href="' + esc(x.link) + '" target="_blank" rel="noopener"><div class="pic"' + (x.img ? ' style="background-image:url(&quot;' + esc(x.img) + '&quot;)"' : '') + '>' + (x.img ? '' : '🤟') + '</div><div class="b"><b>' + esc(x.title) + '</b>' + (x.desc ? '<small>' + esc(x.desc) + '</small>' : '<small></small>') + '<span class="go">' + (x.price ? esc(x.price) + ' · ' : '') + (tpt ? 'View on TpT →' : 'Shop →') + '</span></div></a>'; }).join('');
+  })();
   if (!window.crypto || !crypto.subtle) return;
   const ready = (async () => {
     try { const r = await fetch('/lock.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d && d.lock && d.lock.data) LOCK = d.lock; if (d && Array.isArray(d.slocks)) SLOCKS = d.slocks; } } catch (e) {}
