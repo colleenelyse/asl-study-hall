@@ -668,7 +668,7 @@ async function sign(n, o) {
   if (o.onLetter) o.onLetter(String(n));
   if (o.series) {      /* the same handshape twice in a row (the 7 of 17 and the 7 of 76 in 1776, Colleen): the touching fingers open a little and tap closed again */
     const A = norm(cur), B = norm(use.via || use.start), diff = A.f.reduce((t, F, i) => t + F.reduce((u, v, j) => u + Math.abs(v - B.f[i][j]), 0), 0) + A.t.reduce((t, v, j) => t + Math.abs(v - B.t[j]), 0);
-    if (diff < 40) { moveTo(loosen(B, 0.3), per * 0.22); await wait(per * 0.25); }
+    if (diff < 40) { const tap = Math.max(170, per * 0.3); moveTo(loosen(B, 0.42), tap * 0.9); await wait(tap); moveTo(B, tap * 0.9); await wait(tap); }      /* big and slow enough to see, even on a small hand at a fast speed (Colleen) */
   }
   if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }

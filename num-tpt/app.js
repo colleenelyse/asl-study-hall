@@ -1743,5 +1743,5 @@ if (ONLY) {
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
-window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
+window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();
