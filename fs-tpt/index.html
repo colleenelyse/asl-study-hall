@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=74">
+<link rel="stylesheet" href="style.css?v=77">
 </head>
 <body>
 <header class="top">
@@ -112,6 +112,31 @@
         <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sg-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
         <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sg-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
         <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timeline (Colleen): hands signing years go under proportional ticks in order; events go above their years -->
+  <section data-screen="timeline" class="screen">
+    <div class="card tl-card">
+      <h2>Timeline</h2>
+      <p class="tl-turn" role="note">📱↻ Turn your phone sideways for a bigger timeline.</p>
+      <p class="hint" id="tl-how">Tap a hand to watch its year. Drag each hand to a spot under the timeline, earliest on the left. Then drag each event above its year. (Or tap a hand or an event, then tap a spot.)</p>
+      <div class="tl-board" id="tl-board">
+        <div class="tl-row tl-top" id="tl-top"></div>
+        <div class="tl-axis" id="tl-axis"></div>
+        <div class="tl-row tl-bottom" id="tl-bottom"></div>
+        <svg class="tl-links" id="tl-links" aria-hidden="true"></svg>
+      </div>
+      <h3 class="tl-lab">Years</h3>
+      <div class="tl-tray" id="tl-hands" data-tray="hand"></div>
+      <h3 class="tl-lab">Events</h3>
+      <div class="tl-tray" id="tl-events" data-tray="ev"></div>
+      <div class="row"><button class="btn big" id="tl-check">Check</button><button class="btn ghost" id="tl-show" hidden>Show the years</button><button class="btn ghost" id="tl-new">New timeline</button></div>
+      <p class="hint" id="tl-msg" aria-live="polite"></p>
+      <div class="field small"><span class="lab">Speed</span>
+        <div class="speed"><input id="tl-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+          <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
     </div>
   </section>
@@ -528,9 +553,9 @@
 <script src="lib/GLTFLoader.js"></script>
 <script src="lib/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
-<script src="themes.js?v=40"></script>
+<script src="themes.js?v=41"></script>
 <script src="hand.js?v=79"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=88"></script>
+<script src="app.js?v=91"></script>
 </body>
 </html>

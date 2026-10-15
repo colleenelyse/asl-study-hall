@@ -34,7 +34,7 @@ const CFG = { ads: false, ga: '', only: 'letters' };      /* TpT edition: one pr
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
@@ -273,7 +273,8 @@ function gamesInit() {
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
-    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>';
+    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Hands sign five years. Put them in order on the timeline, then put each event above its year.</span></a>';
 }
 let drawCats, drawPool;
 function setupInit() {
@@ -1244,6 +1245,93 @@ function signnumInit() {
   document.addEventListener('keydown', e => { if (location.hash !== '#/signnum' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return; if (e.key === 'Enter') { e.preventDefault(); sgNext(); } else if (e.key === ' ') { e.preventDefault(); sgPlay(); } });
 }
 
+/* ---------- Timeline (Colleen, 2026-10-15): 5 events, no year twice, fairly spread apart (two may be close). Proportional ticks on a line;
+   below each tick a spot for a hand that signs a year, above it a spot for the event. Drag (or tap, then tap a spot), then Check. ---------- */
+const TL = { n: 5, ev: [], hands: [], sel: null, drag: null };
+function tlPick() {
+  const bank = (window.EVENTS || []).filter(e => e.year >= 1000 && e.year <= 2099); if (bank.length < TL.n) return bank.slice().sort((a, b) => a.year - b.year);
+  const ys = bank.map(e => e.year), close = Math.max(15, (Math.max(...ys) - Math.min(...ys)) / 25); let best = null;
+  for (let t = 0; t < 400; t++) {
+    const pick = [], used = new Set();
+    for (const e of shuffle(bank)) { if (pick.length >= TL.n) break; if (!used.has(e.year)) { used.add(e.year); pick.push(e); } }
+    pick.sort((a, b) => a.year - b.year);
+    const tight = pick.slice(1).filter((e, i) => e.year - pick[i].year < close).length;
+    if (tight <= 1) return pick;
+    if (!best || tight < best.t) best = { pick, t: tight };
+  }
+  return best.pick;
+}
+const tlPer = () => Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+function tlHandItem(k, year) {
+  if (!TL.hands[k]) { const c = document.createElement('canvas'); TL.hands[k] = { canvas: c, hand: window.FSHand.create(c, {}) }; }
+  const it = document.createElement('div'); it.className = 'tl-item tl-hand'; it.dataset.kind = 'hand'; it.dataset.year = year; it.dataset.k = k;
+  it.setAttribute('aria-label', 'A hand signing a year. Tap to watch it.'); it.appendChild(TL.hands[k].canvas);
+  it.insertAdjacentHTML('beforeend', '<span class="tl-play">▶ tap</span>'); return it;
+}
+function tlEventItem(e) {
+  const it = document.createElement('div'); it.className = 'tl-item tl-ev'; it.dataset.kind = 'ev'; it.dataset.year = e.year;
+  it.innerHTML = e.img ? '<img src="events/' + esc(e.img) + '" alt="' + esc(e.title) + '">' : '<span class="ic" aria-hidden="true">' + esc(e.icon || '📅') + '</span>' + esc(e.title);
+  it.title = e.title; return it;
+}
+function tlNew() {
+  const ev = TL.ev = tlPick(); TL.sel = null; $('#tl-msg').textContent = ''; $('#tl-show').hidden = true;
+  const lo = ev[0].year, hi = ev[ev.length - 1].year, pct = y => 6 + 88 * (y - lo) / ((hi - lo) || 1);
+  const W = $('#tl-board').clientWidth || 800, slot = Math.max(54, Math.min(W < 640 ? 84 : 118, Math.floor(W / ev.length) - 8)), minSep = Math.min(100 * (slot + 6) / W, 100 / ev.length);
+  $('#tl-board').style.setProperty('--slot', slot + 'px');      /* the spots shrink to fit a narrow screen (a phone) */
+  let xs = ev.map(e => pct(e.year));
+  for (let it = 0; it < 60; it++) { for (let i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] < minSep) { const m = (xs[i] + xs[i - 1]) / 2; xs[i - 1] = m - minSep / 2; xs[i] = m + minSep / 2; }
+    xs = xs.map(x => Math.min(100 - minSep / 2, Math.max(minSep / 2, x))); }      /* close years: the spots move apart; a dashed line still points to the true tick */
+  $('#tl-axis').innerHTML = ev.map(e => '<span class="tick" style="left:' + pct(e.year).toFixed(2) + '%"></span>').join('');
+  $('#tl-top').innerHTML = xs.map((x, i) => '<div class="tl-slot" data-kind="ev" data-i="' + i + '" style="left:' + x.toFixed(2) + '%" aria-label="Event spot ' + (i + 1) + '"></div>').join('');
+  $('#tl-bottom').innerHTML = xs.map((x, i) => '<div class="tl-slot" data-kind="hand" data-i="' + i + '" style="left:' + x.toFixed(2) + '%" aria-label="Year spot ' + (i + 1) + '"></div>').join('');
+  requestAnimationFrame(() => {      /* dashed lines from each tick to its two spots */
+    const b = $('#tl-board').getBoundingClientRect(), ax = $('#tl-axis').getBoundingClientRect(), ay = ax.top - b.top + 2;
+    $('#tl-links').innerHTML = ev.map((e, i) => { const tx = b.width * pct(e.year) / 100, top = $$('#tl-top .tl-slot')[i].getBoundingClientRect(), bot = $$('#tl-bottom .tl-slot')[i].getBoundingClientRect();
+      return '<line x1="' + tx + '" y1="' + (ay - 10) + '" x2="' + (top.left - b.left + top.width / 2) + '" y2="' + (top.bottom - b.top) + '"/><line x1="' + tx + '" y1="' + (ay + 10) + '" x2="' + (bot.left - b.left + bot.width / 2) + '" y2="' + (bot.top - b.top) + '"/>'; }).join('');
+  });
+  const handTray = $('#tl-hands'), evTray = $('#tl-events'); handTray.innerHTML = ''; evTray.innerHTML = '';
+  shuffle(ev.map((e, k) => k)).forEach((k, j) => handTray.appendChild(tlHandItem(j, ev[k].year)));
+  shuffle(ev).forEach(e => evTray.appendChild(tlEventItem(e)));
+}
+function tlPlay(it) { const H = TL.hands[+it.dataset.k]; if (!H || H.busy) return; H.busy = true; H.hand.ready.then(() => H.hand.signYear(+it.dataset.year, { per: tlPer() })).finally(() => { H.busy = false; }); }      // a second tap waits until the year is done
+const tlFits = (it, t) => !!t && (t.dataset.kind || t.dataset.tray) === it.dataset.kind;
+function tlTargetAt(x, y, it) { const el = document.elementFromPoint(x, y), t = el && el.closest('.tl-slot, .tl-tray'); return tlFits(it, t) ? t : null; }
+function tlHot(t) { $$('.tl-slot.hot, .tl-tray.hot').forEach(x => x !== t && x.classList.remove('hot')); if (t) t.classList.add('hot'); }
+function tlSelect(it) { $$('.tl-item.sel').forEach(x => x.classList.remove('sel')); TL.sel = it; if (it) it.classList.add('sel'); }
+function tlPlace(it, t) {
+  const from = it.parentElement;
+  if (t.classList.contains('tl-slot')) { const other = t.querySelector('.tl-item'); if (other && other !== it) { if (from.classList.contains('tl-slot')) from.appendChild(other); else (other.dataset.kind === 'hand' ? $('#tl-hands') : $('#tl-events')).appendChild(other); } }
+  t.appendChild(it); $$('.tl-slot.ok, .tl-slot.no').forEach(x => x.classList.remove('ok', 'no'));
+}
+function tlCheck() {
+  let yr = 0, evn = 0, filled = 0;
+  ['#tl-bottom', '#tl-top'].forEach(sel => $$(sel + ' .tl-slot').forEach((slot, i) => { const it = slot.querySelector('.tl-item'); slot.classList.remove('ok', 'no'); if (!it) return; filled++;
+    const ok = +it.dataset.year === TL.ev[i].year; slot.classList.add(ok ? 'ok' : 'no'); if (ok) { if (sel === '#tl-bottom') yr++; else evn++; } }));
+  const n = TL.ev.length;
+  $('#tl-msg').textContent = !filled ? 'Put the hands and the events on the timeline first.' : yr === n && evn === n ? 'All right! Every year and every event is in its place. 🎉' :
+    'Years in the right spot: ' + yr + ' of ' + n + '. Events above the right year: ' + evn + ' of ' + n + '. Green is right; red needs another look.';
+  $('#tl-show').hidden = false;
+  if (yr === n && evn === n && window.confetti) window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+}
+function tlReveal() { $$('.tl-hand').forEach(it => { if (!it.querySelector('.tl-year')) it.insertAdjacentHTML('beforeend', '<span class="tl-year">' + it.dataset.year + '</span>'); }); }
+function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); }
+function timelineInit() {
+  const root = document.querySelector('[data-screen=timeline]'); if (!root) return;
+  root.addEventListener('pointerdown', e => { const it = e.target.closest('.tl-item'); if (!it) return; e.preventDefault(); TL.drag = { it, x0: e.clientX, y0: e.clientY, moved: false }; try { it.setPointerCapture(e.pointerId); } catch (x) {} });
+  root.addEventListener('pointermove', e => { const d = TL.drag; if (!d) return;
+    if (!d.moved) { if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 8) return; const r = d.it.getBoundingClientRect(); d.dx = d.x0 - r.left; d.dy = d.y0 - r.top; d.moved = true; d.it.style.width = r.width + 'px'; d.it.style.height = r.height + 'px'; d.it.classList.add('dragging'); }
+    d.it.style.left = (e.clientX - d.dx) + 'px'; d.it.style.top = (e.clientY - d.dy) + 'px'; tlHot(tlTargetAt(e.clientX, e.clientY, d.it)); });
+  const end = e => { const d = TL.drag; if (!d) return; TL.drag = null;
+    if (d.moved) { d.it.classList.remove('dragging'); ['left', 'top', 'width', 'height'].forEach(k => { d.it.style[k] = ''; }); const t = e.type === 'pointerup' ? tlTargetAt(e.clientX, e.clientY, d.it) : null; tlHot(null); if (t) tlPlace(d.it, t); tlSelect(null); return; }
+    if (e.type !== 'pointerup') return;
+    if (d.it.dataset.kind === 'hand') tlPlay(d.it);
+    tlSelect(TL.sel === d.it ? null : d.it); };
+  root.addEventListener('pointerup', end); root.addEventListener('pointercancel', end);
+  root.addEventListener('click', e => { if (e.target.closest('.tl-item') || !TL.sel) return; const t = e.target.closest('.tl-slot, .tl-tray'); if (tlFits(TL.sel, t)) { tlPlace(TL.sel, t); tlSelect(null); } });
+  $('#tl-check').onclick = tlCheck; $('#tl-new').onclick = tlNew; $('#tl-show').onclick = tlReveal;
+  $('#tl-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
 /* ---------- Build a number (Colleen): blocks 0-99 and HUNDRED, lined up and played as one number ---------- */
 const BD = { tokens: [] };
 let bdMarks = [];
@@ -1612,7 +1700,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
@@ -1640,7 +1728,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
-gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); buildInit(); classInit(); bingoInit();
+gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }

@@ -431,3 +431,33 @@ html.embedded .top nav a.tptlink { display: none; }
 .p-speedf[hidden] { display: none; }
 /* a deeper shade of the accent for the chosen option where the accent is pale (white words stay readable) */
 body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sch-matcha { --pick: #456E35; }
+
+/* Timeline (Colleen): proportional ticks; an event spot above each tick, a year (signing hand) spot below */
+.tl-board { position: relative; height: 330px; margin: 10px 0 6px; }
+.tl-row { position: absolute; left: 0; right: 0; height: 128px; }
+.tl-top { top: 0; } .tl-bottom { bottom: 0; }
+.tl-axis { position: absolute; left: 0; right: 0; top: 163px; height: 4px; border-radius: 2px; background: var(--ink); }
+.tl-axis .tick { position: absolute; top: -9px; width: 4px; height: 22px; margin-left: -2px; border-radius: 2px; background: var(--ink); }
+.tl-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tl-links line { stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 3; }
+.tl-slot { position: absolute; width: var(--slot, 118px); height: var(--slot, 118px); margin-left: calc(var(--slot, 118px) / -2); border: 2px dashed var(--line); border-radius: 14px; background: var(--surface); display: flex; align-items: center; justify-content: center; }
+.tl-top .tl-slot { top: 0; } .tl-bottom .tl-slot { bottom: 0; }
+.tl-slot.hot { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 0, 0, .06); }
+.tl-slot.ok { border: 3px solid var(--good, #2F9E5F); } .tl-slot.no { border: 3px solid var(--bad, #C7362E); }
+.tl-tray { display: flex; flex-wrap: wrap; gap: 10px; min-height: 124px; padding: 8px; border-radius: 14px; background: var(--surface2); }
+.tl-item { width: 110px; height: 110px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--line); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); cursor: grab; touch-action: none; user-select: none; position: relative; overflow: hidden; }
+.tl-item.sel { outline: 3px solid var(--accent); }
+.tl-item.dragging { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+.tl-hand canvas { width: 100%; height: 100%; display: block; }
+.tl-hand .tl-play { position: absolute; left: 6px; bottom: 4px; font-size: 13px; font-weight: 800; color: var(--muted); pointer-events: none; }
+.tl-hand .tl-year { position: absolute; right: 6px; top: 4px; font: 700 15px var(--display); background: var(--surface); border-radius: 6px; padding: 0 4px; pointer-events: none; }
+.tl-ev { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6px; font-size: 12.5px; line-height: 1.2; font-weight: 700; }
+.tl-ev .ic { font-size: 34px; line-height: 1; margin-bottom: 4px; }
+.tl-ev img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+.tl-slot .tl-item { width: calc(var(--slot, 118px) - 8px); height: calc(var(--slot, 118px) - 8px); }
+.tl-slot .tl-ev { font-size: 11px; } .tl-slot .tl-ev .ic { font-size: 26px; }
+.tl-lab { margin: 10px 0 4px; }
+@media (max-width: 640px) { .tl-item { width: 78px; height: 78px; } .tl-row { height: 92px; } .tl-board { height: 250px; } .tl-axis { top: 123px; } .tl-ev { font-size: 10px; } .tl-ev .ic { font-size: 24px; } }
+/* on a phone held upright, a note to turn it sideways (Colleen) */
+.tl-turn { display: none; margin: 4px 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--surface2); font-weight: 800; }
+@media (orientation: portrait) and (max-width: 640px) { .tl-turn { display: block; } }

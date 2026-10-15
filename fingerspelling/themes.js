@@ -144,3 +144,31 @@ window.TRICKY = [["knee", 1, "A leg joint", "The K is silent."],
   ["quinoa", 4, "An edible seed commonly prepared like a grain", "Pronounced KEEN-wah despite the spelling."],
   ["Worcestershire", 4, "An English county name also used for a savory sauce", "Its pronunciation drops or merges several written syllables."],
   ["bourgeoisie", 4, "The middle class considered as a social group", "Its French-derived spelling and pronunciation are very different."]];
+
+/* Historic events for the Years games (Colleen, 2026-10-15). SAMPLE events in words until her pictures are ready: each { year, title, icon, img }.
+   When a picture is added, put it in events/ and give its file name as img (it then shows instead of the icon). The same year may appear
+   twice in the bank; one game never uses a year twice. */
+window.EVENTS = [
+  { year: 1066, title: 'The Battle of Hastings', icon: '⚔️' },
+  { year: 1215, title: 'The Magna Carta is signed', icon: '📜' },
+  { year: 1492, title: 'Columbus sails to the Americas', icon: '⛵' },
+  { year: 1620, title: 'The Mayflower lands at Plymouth', icon: '🚢' },
+  { year: 1776, title: 'The Declaration of Independence', icon: '🖋️' },
+  { year: 1803, title: 'The Louisiana Purchase', icon: '🗺️' },
+  { year: 1817, title: 'The first American school for the Deaf opens in Hartford', icon: '🏫' },
+  { year: 1864, title: 'Gallaudet University is founded', icon: '🎓' },
+  { year: 1865, title: 'The Civil War ends', icon: '🕊️' },
+  { year: 1876, title: 'The telephone is patented', icon: '☎️' },
+  { year: 1903, title: 'The first airplane flight', icon: '✈️' },
+  { year: 1920, title: 'Women win the right to vote (19th Amendment)', icon: '🗳️' },
+  { year: 1929, title: 'The stock market crashes', icon: '📉' },
+  { year: 1955, title: 'The Montgomery bus boycott begins', icon: '🚌' },
+  { year: 1964, title: 'The Civil Rights Act is signed', icon: '⚖️' },
+  { year: 1969, title: 'People walk on the moon', icon: '🌕' },
+  { year: 1988, title: 'Deaf President Now at Gallaudet', icon: '✊' },
+  { year: 1990, title: 'The Americans with Disabilities Act is signed', icon: '♿' },
+  { year: 2001, title: 'Wikipedia goes online', icon: '🌐' },
+  { year: 2007, title: 'The first iPhone', icon: '📱' },
+  { year: 2008, title: 'The first Black U.S. president is elected', icon: '🇺🇸' },
+  { year: 2020, title: 'The COVID-19 pandemic', icon: '😷' }
+];
