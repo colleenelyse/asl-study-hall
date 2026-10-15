@@ -26,13 +26,13 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   <div class="card">
     <h2>2. The buttons</h2>
     <p class="hint">Emoji, name, a short description, and the address (for a page on asl.cool, just the part after asl.cool/, like <b>fingerspelling/</b>; for another site, the whole address starting with https://).</p>
-    <p class="hint">You always see every button after typing your own password. Under each button, tick 🔑 the passwords that should open it, and tick a teacher link to put it on that link.</p>
+    <p class="hint">You always see every button after typing your own password. Choose who sees each button in the Passwords and Teacher Links boxes below (the Opens: ticks).</p>
     <div id="tools"></div>
     <button class="ghost" type="button" id="add">+ Add a button</button>
   </div>
   <div class="card">
     <h2>Passwords (for classes, teachers or anyone)</h2>
-    <p class="hint">Make a password for anyone: a class, a class period, another teacher, a family. Whoever types it on asl.cool sees only the buttons you tick for that password (the 🔑 ticks under each button). Each must be different, and different from your own password. Remove a password and it stops working right away. You type your own password in the same box to see everything.</p>
+    <p class="hint">Make a password for anyone: a class, a class period, another teacher, a family. Whoever types it on asl.cool sees only the buttons you tick for that password (the Opens: ticks in its box). Each must be different, and different from your own password. Remove a password and it stops working right away. You type your own password in the same box to see everything.</p>
     <div id="classes"></div>
     <button class="ghost" type="button" id="addclass">+ New password</button>
   </div>
@@ -89,16 +89,18 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       <div class="grid"><div><label>Emoji</label><input data-k="icon" value="${esc(t.icon)}" maxlength="8"></div><div><label>Name</label><input data-k="title" value="${esc(t.title)}" maxlength="120"></div></div>
       <label>Description</label><textarea data-k="desc" maxlength="400">${esc(t.desc)}</textarea>
       <label>Address</label><input data-k="href" value="${esc(t.href)}" maxlength="300">
-      <div class="who">${classes.map(c => `<label><input type="checkbox" data-cl="${c.id}" ${(t.cl || []).indexOf(c.id) >= 0 ? 'checked' : ''}> 🔑 ${esc(c.name || 'Class password')}</label>`).join('')}${shares.map(x => `<label><input type="checkbox" data-sh="${x.code}" ${(t.sh || []).indexOf(x.code) >= 0 ? 'checked' : ''}> ${esc(x.name || 'Teacher link')}</label>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-mv="-1" ${i ? '' : 'disabled'}>↑ Up</button><button type="button" class="ghost small" data-mv="1" ${i < tools.length - 1 ? '' : 'disabled'}>↓ Down</button><button type="button" class="ghost small" data-del>Remove</button></div></div>`).join('');
   }
   function drawShares() {
     $('#shares').innerHTML = shares.length ? shares.map((x, i) => `<div class="share" data-i="${i}"><label>Name (only you see it)</label><input data-n value="${esc(x.name)}" maxlength="80" placeholder="Mrs. Lee, ASL 1 teachers…">
       <label style="display:flex;gap:8px;align-items:center;margin:8px 0 0;font-weight:700"><input type="checkbox" data-sshop style="width:auto" ${x.shop ? 'checked' : ''}> 🛍️ Show the shop</label>
+      <div class="who" style="margin-top:10px"><b style="width:100%">Opens:</b>${tools.map((t, k) => `<label><input type="checkbox" data-sopen="${k}" ${(t.sh || []).indexOf(x.code) >= 0 ? 'checked' : ''}> ${esc(t.icon || '')} ${esc(t.title || '(no name yet)')}</label>`).join('')}</div>
       <p style="margin:8px 0 4px"><code>${shareUrl(x.code)}</code></p><div class="row"><button type="button" class="ghost small" data-copy>Copy link</button><button type="button" class="ghost small" data-rm>Remove link</button><span class="hint">${(tools.filter(t => (t.sh || []).indexOf(x.code) >= 0)).length} buttons</span></div></div>`).join('') : '<p class="hint">No teacher links yet.</p>';
   }
   $('#shares').addEventListener('input', e => { const box = e.target.closest('.share'); if (box && e.target.hasAttribute('data-n')) { shares[+box.dataset.i].name = e.target.value; draw(); } });
-  $('#shares').addEventListener('change', e => { const box = e.target.closest('.share'); if (box && e.target.hasAttribute('data-sshop')) shares[+box.dataset.i].shop = e.target.checked; });
+  $('#shares').addEventListener('change', e => { const box = e.target.closest('.share'); if (!box) return; const x = shares[+box.dataset.i];
+    if (e.target.hasAttribute('data-sshop')) x.shop = e.target.checked;
+    if (e.target.dataset.sopen !== undefined) { const t = tools[+e.target.dataset.sopen]; t.sh = (t.sh || []).filter(c => c !== x.code); if (e.target.checked) t.sh.push(x.code); drawShares(); } });      // tick what this link shows, right in its box (Colleen)
   $('#shares').addEventListener('click', e => { const box = e.target.closest('.share'); if (!box) return; const x = shares[+box.dataset.i];
     if (e.target.hasAttribute('data-copy')) { navigator.clipboard.writeText(shareUrl(x.code)).then(() => { e.target.textContent = 'Copied!'; }, () => prompt('Copy this link:', shareUrl(x.code))); }
     if (e.target.hasAttribute('data-rm') && confirm('Remove the link for "' + (x.name || 'this teacher') + '"? It stops working after you save.')) { shares.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.sh) t.sh = t.sh.filter(c => c !== x.code); }); drawShares(); draw(); } });
