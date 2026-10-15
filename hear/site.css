@@ -37,3 +37,22 @@ body.game a.helpButton { display: none; }
 
 /* On touch screens, the menus and buttons at the top are at least 44 pixels tall, so they are easy to tap */
 @media (pointer: coarse) { .pageTools select, .pageTools button, .pageTools a.helpButton { min-height: 44px; } }
+
+/* More color schemes, the same as the ASL Study Hall games (Colleen, 2026-10-15: "give all pages all options"); the Colors menu saves them in simulatorColors like Light / Dark */
+html body.sch-neon { --page: #0D0D1A; --card: #16162B; --raised: #222240; --line: #34345C; --ink: #F2F2FF; --quiet: #A9A9D0; --accent: #FF3EA5; --onAccent: #0D0D1A; --right: #39FFB6; --pink: #FF3EA5; --mint: #39FFB6; --amber: #ffc94d; --wrong: #FF6B6B; --shadow: none; }
+html body.sch-galaxy { --page: #14102B; --card: #1F1940; --raised: #2B2356; --line: #3C3170; --ink: #EFE9FF; --quiet: #B7A9E0; --accent: #9D7CFF; --onAccent: #14102B; --right: #6FE3C1; --pink: #9D7CFF; --mint: #6FE3C1; --amber: #ffc94d; --wrong: #FF8FA3; --shadow: none; }
+html body.sch-arcade { --page: #0B0F0C; --card: #121A14; --raised: #1B271E; --line: #284232; --ink: #E8FFE9; --quiet: #9DC7A2; --accent: #3DFF6E; --onAccent: #0B0F0C; --right: #3DFF6E; --pink: #3DFF6E; --mint: #3DFF6E; --amber: #ffc94d; --wrong: #FF5A5F; --shadow: none; }
+html body.sch-matcha { --page: #EEF2E6; --card: #FBFCF7; --raised: #DDE6CF; --line: #CCD9BB; --ink: #24301E; --quiet: #5F6E55; --accent: #5E8C4A; --onAccent: #ffffff; --right: #1a7f37; --pink: #5E8C4A; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-latte { --page: #F3EBE2; --card: #FFFCF8; --raised: #E6D7C6; --line: #DCC8B3; --ink: #3B2A20; --quiet: #7A6455; --accent: #9C6644; --onAccent: #ffffff; --right: #1a7f37; --pink: #9C6644; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-sunset { --page: #FFF0E8; --card: #FFFFFF; --raised: #FFDCCB; --line: #F6C8B7; --ink: #3A1F2B; --quiet: #7D5563; --accent: #F2545B; --onAccent: #ffffff; --right: #1a7f37; --pink: #F2545B; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-ocean { --page: #E7F4F6; --card: #FFFFFF; --raised: #D0EAEF; --line: #B9DCE4; --ink: #0E2A36; --quiet: #4A6B78; --accent: #0FA3B1; --onAccent: #ffffff; --right: #1a7f37; --pink: #0FA3B1; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-mono { --page: #F4F4F4; --card: #FFFFFF; --raised: #E6E6E6; --line: #D4D4D4; --ink: #111111; --quiet: #5C5C5C; --accent: #111111; --onAccent: #ffffff; --right: #1a7f37; --pink: #111111; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+/* Hearing Loss draws its colored pages with its dark-mode rules, so a scheme turns those on (class dark) and, for the light schemes (class schL),
+   these keep the few fixed dark-page colors readable on a light page */
+.schL a { color: var(--accent); }
+.schL .mysteryBox { border-color: var(--accent); }
+.schL .switch span { background: var(--line); }
+.schL .presets button.on, .schL .chartCard .presets button.on { background: var(--raised); }
+.schL .transport button:disabled { color: var(--quiet); }
+.schL .chart { box-shadow: 0 0 0 6px var(--raised), 0 8px 24px rgba(0, 0, 0, .12); }
+.schL .script { border-color: var(--line); }

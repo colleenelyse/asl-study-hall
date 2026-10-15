@@ -213,9 +213,10 @@
     (function () {
       let colors = null, text = null;
       try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
-      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (['dark', 'light', 'contrast', 'neon', 'galaxy', 'arcade', 'matcha', 'latte', 'sunset', 'ocean', 'mono'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
       if (colors === 'dark') document.body.classList.add('dark');
       if (colors === 'contrast') document.body.classList.add('contrast');
+      if (['neon', 'galaxy', 'arcade', 'matcha', 'latte', 'sunset', 'ocean', 'mono'].indexOf(colors) >= 0) document.body.classList.add('sch-' + colors);      // the extra schemes (site.css)
       if (text === 'big') document.body.classList.add('big');
     })();
   </script>
@@ -232,7 +233,7 @@
     </div>
     <div class="pageTools">
       <label>Colors:
-        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option><option value="neon">Neon Night (dark)</option><option value="galaxy">Galaxy (dark)</option><option value="arcade">Retro Arcade (dark)</option><option value="matcha">Matcha</option><option value="latte">Iced Latte</option><option value="sunset">Sunset</option><option value="ocean">Ocean</option><option value="mono">Minimal Black &amp; White</option></select>
       </label>
       <label>Text size:
         <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
@@ -1278,6 +1279,7 @@
     function showLook() {
       document.body.classList.toggle('dark', themeChoice.value === 'dark');
       document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      ['neon', 'galaxy', 'arcade', 'matcha', 'latte', 'sunset', 'ocean', 'mono'].forEach(k => document.body.classList.toggle('sch-' + k, themeChoice.value === k));
       document.body.classList.toggle('big', textChoice.value === 'big');
       fitWords();
     }
