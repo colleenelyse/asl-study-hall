@@ -714,26 +714,27 @@ function packedReport(r, name) {
   return { v: 2, nm: name, g: r.game || 'type', at: r.at, n: r.n, rt: r.right, p: r.pct, s: r.secs, w: r.wpm, al: r.avgLen, sp: r.speed, li: r.limit, mo: r.mode, pa: r.paper,
     ca: r.cats, su: r.supports, b: r.bank, rp: r.replays, t: r.top, tl: r.topLps, tn: r.topName, am: r.avgMs, it: r.items.map(x => [x.w, x.ok ? 1 : 0, x.typed || '', x.replays || 0]) };
 }
-async function reportCode(r, name) {
-  const json = JSON.stringify(packedReport(r, name));
+async function reportCode(r, name, cmp) {      /* cmp (inside ASL Study): the comparison travels in the link too, so the online report has the colors and percentiles (Colleen) */
+  const pk = packedReport(r, name); if (cmp && cmp.state === 'ok' && cmp.data) { pk.c = cmp.data; pk.ap = STUDY.app || ''; }
+  const json = JSON.stringify(pk);
   try { if (window.CompressionStream) return 'FSP2z.' + b64bytes(await squeeze(new TextEncoder().encode(json), 'in')); } catch (e) { /* fall through to the plain form */ }
   return 'FSP2.' + b64(json);
 }
-async function reportLink(r, name) { return location.origin + location.pathname + '#/view/' + await reportCode(r, name); }
+async function reportLink(r, name, cmp) { return location.origin + location.pathname + '#/view/' + await reportCode(r, name, cmp); }
 async function readReportCode(code) {
   let d;
   if (code.indexOf('FSP2z.') === 0) d = JSON.parse(new TextDecoder().decode(await squeeze(unb64bytes(code.slice(6)), 'out')));
   else if (code.indexOf('FSP2.') === 0) d = JSON.parse(decodeURIComponent(escape(atob(code.slice(5).replace(/-/g, '+').replace(/_/g, '/')))));
   else return null;
   const items = (d.it || []).map(x => { const row = { w: x[0], ok: !!x[1], typed: x[2], replays: x[3] }; if (!row.ok && row.typed) row.mix = diffPairs(row.w, row.typed); return row; });
-  return { name: d.nm || '', r: { game: d.g, at: d.at, n: d.n, right: d.rt, pct: d.p, secs: d.s, wpm: d.w, avgLen: d.al, speed: d.sp, speedName: speedName(d.sp), limit: d.li, mode: d.mo, paper: d.pa,
+  return { name: d.nm || '', cmp: d.c && typeof d.c === 'object' ? { state: 'ok', data: d.c, at: d.at } : null, app: String(d.ap || ''), r: { game: d.g, at: d.at, n: d.n, right: d.rt, pct: d.p, secs: d.s, wpm: d.w, avgLen: d.al, speed: d.sp, speedName: speedName(d.sp), limit: d.li, mode: d.mo, paper: d.pa,
     cats: d.ca, supports: d.su, bank: d.b, replays: d.rp, top: d.t, topLps: d.tl, topName: d.tn, avgMs: d.am, items } };
 }
 /* Put the QR code for the online report into the report's QR box */
-async function fillReportQR(sheet, r, name) {
+async function fillReportQR(sheet, r, name, cmp) {
   const box = sheet.querySelector('[data-qr]'); if (!box) return;
   try {
-    const link = await reportLink(r, name);
+    const link = await reportLink(r, name, cmp);
     if (!window.QRCode) await loadScript('lib/qrcode.min.js');
     if (!sheet.contains(box)) return;          // the report was redrawn while this was getting ready
     box.innerHTML = ''; new window.QRCode(box, { text: link, width: 512, height: 512, correctLevel: window.QRCode.CorrectLevel.L });
@@ -939,14 +940,14 @@ function reportShow() {
   const draw = () => {
     const name = $('#rp-name').value.trim();
     $('#rp-sheet').innerHTML = r ? reportSheet(r, name, EMBED ? CMP : null) : '<p>Play a round first, then make your report here.</p>';
-    if (r) fillReportQR($('#rp-sheet'), r, name);
+    if (r) fillReportQR($('#rp-sheet'), r, name, EMBED ? CMP : null);
   };
   reportRedraw = draw;
   draw();
   $('#rp-name').oninput = () => { store.set('name', $('#rp-name').value.trim()); $('#rp-need').hidden = true; draw(); };
   $('#rp-email').oninput = () => store.set('teacher', $('#rp-email').value.trim());
   const named = () => { if ($('#rp-name').value.trim()) return true; $('#rp-need').hidden = false; $('#rp-name').focus(); return false; };
-  const parts = async () => { const name = $('#rp-name').value.trim(); return { to: $('#rp-email').value.trim(), su: 'Fingerspelling practice: ' + name + (r ? ' - ' + GAMES[r.game || 'type'].name + ' ' + (r.game === 'ladder' && r.top !== null ? r.topLps + ' letters a second' : r.pct + '%') : ''), body: r ? reportText(r, name, await reportLink(r, name), EMBED ? CMP : null) : '' }; };
+  const parts = async () => { const name = $('#rp-name').value.trim(); return { to: $('#rp-email').value.trim(), su: 'Fingerspelling practice: ' + name + (r ? ' - ' + GAMES[r.game || 'type'].name + ' ' + (r.game === 'ladder' && r.top !== null ? r.topLps + ' letters a second' : r.pct + '%') : ''), body: r ? reportText(r, name, await reportLink(r, name, EMBED ? CMP : null), EMBED ? CMP : null) : '' }; };
   /* inside ASL Study (Colleen): the app knows the teacher and sends the report itself; the email box and "your email app" are not needed */
   $('#rp-email').closest('.field').hidden = EMBED; $('#rp-mailto').hidden = EMBED; $('#rp-mail').textContent = EMBED ? 'Send to my teacher' : 'Email to my teacher';
   if (EMBED && !$('#rp-name').value && STUDY.name) $('#rp-name').value = STUDY.name;
@@ -1007,8 +1008,9 @@ async function viewShow() {
   let got = null;
   try { got = await readReportCode(code); } catch (e) { got = null; }
   if (!got) { sheet.innerHTML = '<p>This report link is not complete. Ask the student to send it again, or scan the QR code on the printed report.</p>'; return; }
-  sheet.innerHTML = reportSheet(got.r, got.name);
-  fillReportQR(sheet, got.r, got.name);
+  if (got.app && !STUDY.app) STUDY.app = got.app;
+  sheet.innerHTML = reportSheet(got.r, got.name, got.cmp);
+  fillReportQR(sheet, got.r, got.name, got.cmp);
   $('#vw-print').onclick = () => {
     document.body.classList.add('printing-report');
     const done = () => { document.body.classList.remove('printing-report'); window.removeEventListener('afterprint', done); };
@@ -1602,5 +1604,5 @@ if (ONLY) {
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
-window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
+window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();
