@@ -14,9 +14,9 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
 .shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.shots figure{margin:0;background:#fff;border:1px solid #E3D9CC;border-radius:14px;padding:10px;box-shadow:0 2px 10px rgba(60,40,20,.06)}.shots img{width:100%;height:auto;display:block;border-radius:8px}.shots figcaption{font-size:14px;color:#5A6185;margin-top:6px;text-align:center}.shots .wide{grid-column:1/-1}
 .list{list-style:none;padding:0;margin:8px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}.list li{line-height:1.35}.list b{display:block;color:#1B1E3C}.list span{font-size:14px;color:#5A6185}
 .big{display:inline-block;margin-top:6px;font-weight:800;color:#fff;background:#2F6BFF;border-radius:999px;padding:10px 20px;text-decoration:none}
-@media (max-width:620px){.shots,.list{grid-template-columns:1fr}}</style></head>
+@media (max-width:620px){.shots,.list{grid-template-columns:1fr}}</style><!-- temporary (Colleen, 2026-10-14): shop links hidden until her school approves the domain; delete the next line to show them --> <style>[data-shop]{display:none!important}</style></head>
 <body><main>
-<div class="top"><h1 style="margin:0"><img src="img/logo.png" alt="ASL Study Hall" width="640" height="449" style="height:96px;width:auto;display:block"></h1><span style="display:flex;gap:10px;flex-wrap:wrap"><a class="tpt" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="background:#05274C;color:#fff">🛍️ Shop ASL Study Hall</a><a class="tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></span></div>
+<div class="top"><h1 style="margin:0"><img src="img/logo.png" alt="ASL Study Hall" width="640" height="449" style="height:96px;width:auto;display:block"></h1><span style="display:flex;gap:10px;flex-wrap:wrap"><a data-shop class="tpt" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="background:#05274C;color:#fff">🛍️ Shop ASL Study Hall</a><a data-shop class="tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></span></div>
 <p>ASL practice made by an ASL teacher: a realistic, animated 3D hand that fingerspells and signs numbers the way a real signer does, moving smoothly from one letter to the next, with games, reports and classroom tools.</p>
 
 <form class="card" id="unlock" style="display:block"><h2>Have a Password?</h2>
@@ -41,12 +41,12 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
   </ul>
 </div>
 
-<div class="card"><h2>For Teachers</h2>
+<div class="card" data-shop><h2>For Teachers</h2>
   <p style="margin:0">Want these tools for your own classes? <b>ASL Spellbound</b> and other ASL Study Hall products are in my shop at aslstudyhall.com and on Teachers Pay Teachers, including the fingerspelling games with a Google Sheet that tracks every student and makes individual reports.</p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><a class="big" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="margin-top:0">🛍️ Shop at aslstudyhall.com</a><a class="big" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener" style="margin-top:0;background:#FFC83D;color:#1B1E3C">🛒 Shop on Teachers Pay Teachers</a></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><a data-shop class="big" href="https://aslstudyhall.com" target="_blank" rel="noopener" style="margin-top:0">🛍️ Shop at aslstudyhall.com</a><a data-shop class="big" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener" style="margin-top:0;background:#FFC83D;color:#1B1E3C">🛒 Shop on Teachers Pay Teachers</a></div>
 </div>
 </div>
-<p class="foot"><a href="credits.html">Credits and sources</a> · <a href="https://aslstudyhall.com" target="_blank" rel="noopener">ASL Study Hall shop</a> · <a href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">Teachers Pay Teachers</a></p>
+<p class="foot"><a href="credits.html">Credits and sources</a> <span data-shop>·</span> <a data-shop href="https://aslstudyhall.com" target="_blank" rel="noopener">ASL Study Hall shop</a> <span data-shop>·</span> <a data-shop href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">Teachers Pay Teachers</a></p>
 <script>
 /* asl.cool (2026-10-14, Colleen: "a class password and my admin password. allow for multiple class passwords. one box should accept both and know the difference"):
    one password box. Colleen's password opens her full list (LOCK); a class password opens that class's student list (one of SLOCKS). Each list is stored
@@ -84,8 +84,8 @@ let SLOCKS = /*SLOCKS*/[{"v":1,"iter":100000,"salt":"sH9f+KNbWwlaPYEkfciQSQ==","
     e.preventDefault(); const pw = $('#pw').value; if (!pw) return; await ready;
     $('#msg').textContent = 'Checking…';
     try { const key = await keyFor(pw, LOCK), got = await openWith(key, LOCK); put(KEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, true); } catch (err) {}
-    for (const L of SLOCKS) {
-      try { const key = await keyFor(pw, L), got = await openWith(key, L); put(CKEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, false); } catch (err) {}
+    for (const L of SLOCKS) for (const p of [...new Set([pw.trim().toLowerCase(), pw])]) {      // passwords for people ignore capital letters (saved in lowercase since 2026-10-14)
+      try { const key = await keyFor(p, L), got = await openWith(key, L); put(CKEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, false); } catch (err) {}
     }
     $('#msg').textContent = "That's not it. Check with your teacher and try again."; $('#pw').select();
   };

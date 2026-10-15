@@ -98,10 +98,13 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   $('#addshare').onclick = () => { shares.push({ code: newCode(), name: '' }); drawShares(); draw(); $('#shares .share:last-child input').focus(); };
   function drawClasses() {
     $('#classes').innerHTML = classes.length ? classes.map((c, i) => `<div class="share" data-i="${i}"><div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div><label>Name (only you see it)</label><input data-cn value="${esc(c.name)}" maxlength="60" placeholder="Period 1, Mrs. Lee, Families…"></div><div><label>Password</label><input data-cp value="${esc(c.pw)}" maxlength="60" autocomplete="off" spellcheck="false"></div></div>
+      <div class="who" style="margin-top:10px"><b style="width:100%">Opens:</b>${tools.map((t, k) => `<label><input type="checkbox" data-copen="${k}" ${(t.cl || []).indexOf(c.id) >= 0 ? 'checked' : ''}> ${esc(t.icon || '')} ${esc(t.title || '(no name yet)')}</label>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-rm>Remove</button><span class="hint">${tools.filter(t => (t.cl || []).indexOf(c.id) >= 0).length} buttons</span></div></div>`).join('') : '<p class="hint">No passwords yet: only you can open buttons on asl.cool.</p>';
   }
   $('#classes').addEventListener('input', e => { const box = e.target.closest('.share'); if (!box) return; const c = classes[+box.dataset.i];
     if (e.target.hasAttribute('data-cn')) { c.name = e.target.value; draw(); } if (e.target.hasAttribute('data-cp')) c.pw = e.target.value; });
+  $('#classes').addEventListener('change', e => { const box = e.target.closest('.share'); if (!box || e.target.dataset.copen === undefined) return;      // tick what this password opens, right in its box (Colleen)
+    const c = classes[+box.dataset.i], t = tools[+e.target.dataset.copen]; t.cl = (t.cl || []).filter(x => x !== c.id); if (e.target.checked) t.cl.push(c.id); draw(); drawClasses(); });
   $('#classes').addEventListener('click', e => { const box = e.target.closest('.share'); if (!box || !e.target.hasAttribute('data-rm')) return; const c = classes[+box.dataset.i];
     if (!confirm('Remove the password "' + (c.pw || '') + '"? Students using it will need a new one after you save.')) return; classes.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.cl) t.cl = t.cl.filter(x => x !== c.id); }); drawClasses(); draw(); });
   $('#addclass').onclick = () => { const c = { id: newCode(), name: classes.length ? '' : 'All students', pw: '' }; if (!classes.length) tools.forEach(t => { if (t.s) t.cl = (t.cl || []).concat(c.id); });      // the first one starts with the buttons that were open for students
@@ -152,8 +155,8 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
     const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
     const shareOut = shares.map(x => ({ code: x.code, tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
-    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim() }));
-    const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
+    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim().toLowerCase() }));      // passwords for people ignore capital letters (LTHS = lths)
+    const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw.toLowerCase()) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
     const prods = (products || []).map(x => ({ title: String(x.title || '').trim(), link: String(x.link || '').trim(), img: String(x.img || '').trim(), price: String(x.price || '').trim(), desc: String(x.desc || '').trim(), tag: String(x.tag || '').trim() })).filter(x => x.title || x.link);
     const badP = prods.find(x => !x.title || !/^https:\/\//.test(x.link) || (x.img && !/^https:\/\//.test(x.img)));
