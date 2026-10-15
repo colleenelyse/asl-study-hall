@@ -385,7 +385,7 @@ const POSE = {  /* thumb angles found by solving for where the thumb tip sits in
   O: {f: [[45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0]], t: [32, -2, -47, 20, 12], w: [0, 70, 0]},
   P: {f: [[0, 0, 0, 6], [45, 0, 0, -6], [85, 100, 55, 0], [85, 100, 55, 0]], t: [56, -13, 5, -5, 8], w: [104, -14, -43]},
   Q: {f: [[0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [26, -20, 41, -10, 15], w: [166, 8, -32]},
-  R: {f: [[-21, 0, 0, -10], [36, 0, 0, 12], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [0, 0, 0]},      /* 2026-10-15 (Colleen, choice H): same cross, but the middle finger rests in front of the index (index back, middle forward) so the knuckles no longer melt together */
+  R: {f: [[28, 0, 0, -16], [-16, 0, 0, 6], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [0, 0, 0]},      /* 2026-10-15 (Colleen, choice B): the index crosses IN FRONT of the middle finger (the right way), the pair upright, and the two fingers rest on each other instead of melting together */
   S: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [4, 8, -60, 84, 77], w: [0, 0, 0]},
   T: {f: [[60, 85, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [38, -35, -11, 78, 9], w: [0, 0, 0]},
   U: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [0, 0, 0]},

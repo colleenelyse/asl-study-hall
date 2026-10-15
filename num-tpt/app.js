@@ -12,13 +12,19 @@ const SOLO = /[?&]solo=bingo\b/.test(location.search);
 const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== window;
 const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
   Object.keys(o).every(k => Array.isArray(o[k]) && o[k].length > 0 && o[k].every(w => typeof w === 'string' && w.trim() !== ''));
+/* 3.96: the sheet's Silent Letters Words ([[word, level 1-4, meaning, note]]) and Look-Alike Words ({ 'M N S T': [[2 to 4 words]] }) tabs */
+const goodTricky = a => Array.isArray(a) && a.length > 0 && a.every(x => Array.isArray(x) && typeof x[0] === 'string' && x[0].trim() !== '' && [1, 2, 3, 4].indexOf(+x[1]) >= 0);
+const goodLook = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
+  Object.keys(o).every(k => /^[A-Z]( [A-Z])+$/.test(k) && Array.isArray(o[k]) && o[k].every(set => Array.isArray(set) && set.length >= 2 && set.length <= 4 && set.every(w => typeof w === 'string' && w.trim() !== '')));
 const SHEET_KEY = 'fsp.sheetWords';
 let sheetStart = '';      // the sheet lists this page was built from ('' = the built-in words)
 if (EMBED) try {
   const raw = sessionStorage.getItem(SHEET_KEY), got = raw ? JSON.parse(raw) : null;
-  if (got && (goodLists(got.proper) || goodLists(got.everyday))) {
+  if (got && (goodLists(got.proper) || goodLists(got.everyday) || goodTricky(got.tricky) || goodLook(got.look))) {
     if (goodLists(got.proper)) window.FS_WORDS = got.proper;
     if (goodLists(got.everyday)) window.FAMILIAR = got.everyday;
+    if (goodTricky(got.tricky)) window.TRICKY = got.tricky.map(x => [String(x[0]), +x[1], String(x[2] || ''), String(x[3] || '')]);
+    if (goodLook(got.look)) window.LOOK_GROUPS = Object.fromEntries(Object.entries(got.look).map(([k, sets]) => [k, { letters: k.replace(/ /g, ''), sets }]));
     sheetStart = raw;
   }
 } catch (e) {}
@@ -137,7 +143,7 @@ const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CA
   levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
-S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'];      // old letter pairs became letter groups
+S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'].filter(p => window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = Object.keys(window.LOOK_GROUPS || {}).slice(0, 2);      // the sheet's groups may differ (3.96)      // old letter pairs became letter groups
 /* the grade lists are vocabulary for that level, not words about school (Colleen): saved choices under the old names carry over */
 const FCAT_RENAMED = { 'K–2': 'K–2 level vocab', 'Grades 3–5': 'Grades 3–5 level vocab', 'Grades 6–8': 'Grades 6–8 level vocab', 'High School': 'High school level vocab' };
 S.fcats = (S.fcats || []).map(c => FCAT_RENAMED[c] || c);
@@ -237,7 +243,8 @@ function chipsInit(el, items, arr, label, after) {
 }
 function gamesInit() {
   const card = k => { const g = GAMES[k]; return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
-  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
+  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') +      // Show Me How to Spell sits with the fingerspelling games (Colleen)
+    '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name and watch the hand spell it.</span></a>';
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
     '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
@@ -299,7 +306,8 @@ function setupInit() {
   $('#s-count').onchange = e => { S.count = +e.target.value || 10; saveS(); drawPool(); };
   $('#s-scount').onchange = e => { S.scount = +e.target.value || 10; saveS(); drawPool(); };
   $('#s-flcount').onchange = e => { S.flcount = +e.target.value || 20; saveS(); drawPool(); };
-  $('#s-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  $('#s-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); $('#p-speed').value = e.target.value; };
+  $('#p-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); $('#s-speed').value = e.target.value; };      // the speed by the question (Colleen) and the setup slider stay together
   $('#s-one').onchange = e => { S.one = e.target.checked; saveS(); drawPool(); };
   S.countSeg = S.showCount ? 'on' : 'off'; segInit('s-countseg', 'countSeg', () => { S.showCount = S.countSeg === 'on'; saveS(); drawPool(); });      // letter count: a switch you can see (Colleen)
   $('#s-bank').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.banks = S.banks || {}; S.banks[S.game] = b.dataset.v; saveS(); setupShow(); };
@@ -362,7 +370,12 @@ function pairTrial() {
 /* Fill in the blanks is harder than real life (a missed letter can never be seen), so it plays about a third slower than the chosen speed (Colleen) */
 const FILL_SLOWER = 0.15;      // about 1.35 times as long a letter
 const blurCount = n => n <= 3 ? 0 : n <= 5 ? 1 : n <= 7 ? 2 : n <= 10 ? 3 : 4;
-function blurSet(w) { const n = lettersCount(w), mid = []; for (let i = 1; i < n - 1; i++) mid.push(i); return new Set(shuffle(mid).slice(0, blurCount(n))); }
+function blurSet(w) {      /* never two blurred letters in a row (Colleen) */
+  const n = lettersCount(w), want = blurCount(n), mid = []; for (let i = 1; i < n - 1; i++) mid.push(i);
+  let best = new Set();
+  for (let t = 0; t < 30 && best.size < want; t++) { const out = new Set(); for (const i of shuffle(mid)) { if (out.size >= want) break; if (!out.has(i - 1) && !out.has(i + 1)) out.add(i); } if (out.size > best.size) best = out; }
+  return best;
+}
 
 /* ---------- a round ---------- */
 let R = null;      // the round being played
@@ -415,6 +428,7 @@ function drawBlanks(it) {
   if (g === 'fill') {      /* the first and last letters are given; a box for each letter between, to type what you saw while it spells (Colleen) */
     const L = letters(it.w), el = $('#p-blanks');
     el.innerHTML = '<span class="fbl">' + L.charAt(0) + '</span>' + Array.from({ length: L.length - 2 }, (_, i) => '<input class="fbox" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Letter ' + (i + 2) + '" data-i="' + i + '">').join('') + '<span class="fbl">' + L.charAt(L.length - 1) + '</span>';
+    if (R.cur && R.cur.blur) fboxes().forEach(b => { const on = R.cur.blur.has(+b.dataset.i + 1); b.classList.toggle('fblur', on); b.placeholder = on ? '?' : ''; if (on) b.setAttribute('aria-label', b.getAttribute('aria-label') + ', blurred'); });      // which boxes were blurred (Colleen)
     el.removeAttribute('aria-hidden'); return;
   }
   $('#p-blanks').setAttribute('aria-hidden', 'true');
@@ -423,6 +437,7 @@ function drawBlanks(it) {
 }
 function drawWord() {
   const g = R.game, it = R.list[R.i];
+  $('#p-speedf').hidden = g === 'ladder'; $('#p-speed').value = Math.round(S.speed * 100);
   $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
   ladderBar();
   $('#p-feedback').textContent = ''; $('#p-feedback').className = 'feedback'; $('#p-next').hidden = true; $('#p-meaning').hidden = true;
@@ -436,8 +451,8 @@ function drawWord() {
     $('#p-cask').textContent = isNumGame(g) ? 'Which number did the hand sign?' : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
-    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? 'What number did the hand sign?' : g === 'fill' ? 'Put the word together:' : 'What did the hand spell?';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
   drawBlanks(it);
@@ -455,7 +470,7 @@ async function nextWord() {
   const it = R.list[R.i];
   R.cur = { replays: 0, shownAt: Date.now(), blur: R.game === 'fill' ? blurSet(it.w) : null };
   drawWord();
-  if (!isChoice(R.game)) setTimeout(() => $('#p-answer').focus(), 50);
+  if (!isChoice(R.game)) setTimeout(answerFocus, 50);
   if (R.game === 'type' && S.mode === 'clue') await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
   if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
 }
@@ -512,7 +527,7 @@ function afterAnswer() {
 function answerTyped(skip) {
   if (!R || R.answered === R.i) return;
   const it = R.list[R.i], typed = $('#p-answer').value.trim();
-  if (!skip && !typed) { $('#p-answer').focus(); return; }
+  if (!skip && !typed) { answerFocus(); return; }
   R.answered = R.i;
   const ok = !skip && answerKey(typed, isNumGame(R.game)) === answerKey(it.w, isNumGame(R.game));      // Numbers: only the digits count      // only the letters count: apostrophes, spaces, capitals and punctuation are allowed but never required (Colleen)
   record(ok, skip ? '' : typed);
@@ -550,6 +565,7 @@ function finishRound() {
 $('#p-check').onclick = () => answerTyped(false);
 /* Fill in the Blanks boxes: one letter each, the cursor moves on by itself; what is typed goes into the answer (first + boxes + last) */
 const fboxes = () => $$('#p-blanks .fbox');
+const answerFocus = () => { const b = R && R.game === 'fill' ? fboxes().find(x => !x.value) || fboxes()[0] : null; (b || $('#p-answer')).focus(); };      // the first empty box in Fill in the blanks
 const fboxSync = () => { const it = R && R.list[R.i]; if (!it || R.game !== 'fill') return; const L = letters(it.w), mid = fboxes().map(b => b.value).join(''); $('#p-answer').value = mid ? L.charAt(0) + mid + L.charAt(L.length - 1) : ''; };
 $('#p-blanks').addEventListener('input', e => { const b = e.target.closest('.fbox'); if (!b) return; b.value = b.value.replace(/[^a-z]/gi, '').slice(-1).toUpperCase(); fboxSync(); if (b.value) { const nx = fboxes()[+b.dataset.i + 1]; if (nx) nx.focus(); } });
 $('#p-blanks').addEventListener('keydown', e => { const b = e.target.closest('.fbox'); if (!b) return; const all = fboxes(), i = +b.dataset.i;
@@ -558,7 +574,7 @@ $('#p-blanks').addEventListener('keydown', e => { const b = e.target.closest('.f
   else if (e.key === 'Enter') { e.preventDefault(); if (!$('#p-check').hidden) $('#p-check').click(); } });
 $('#p-skip').onclick = () => { if (R && R.game === 'flash') { if (R.answered === R.i) return; R.answered = R.i; record(false, ''); showFeedback(false, true, R.list[R.i].w); $('#p-answer').disabled = true; afterAnswer(); } else answerTyped(true); };
 $('#p-next').onclick = () => { if (R && R.done) finishRound(); else if (R) nextWord(); };
-const replay = () => { if (!R) return; R.cur.replays++; spellWord(R.list[R.i].w, R.cur.blur, R.list[R.i].teens, R.list[R.i].form); if (!isChoice(R.game)) $('#p-answer').focus(); };
+const replay = () => { if (!R) return; R.cur.replays++; spellWord(R.list[R.i].w, R.cur.blur, R.list[R.i].teens, R.list[R.i].form); if (!isChoice(R.game)) answerFocus(); };
 $('#p-replay').onclick = replay; $('#p-replay2').onclick = replay;
 $('#p-choices').onclick = e => { const b = e.target.closest('button'); if (b) answerChoice(b.dataset.o); };
 $('#p-quit').onclick = () => { if (R && R.items.length) finishRound(); else { R = null; stopFlag = true; location.hash = '#/games'; } };
@@ -599,8 +615,9 @@ window.addEventListener('message', e => {      /* the app can open a given game:
     return;
   }
   if (e.data.type === 'fsp-words') {      /* ASL Study 3.81: the sheet's lists; a page built from other words reloads once to use them */
-    const clean = { proper: goodLists(e.data.proper) ? e.data.proper : null, everyday: goodLists(e.data.everyday) ? e.data.everyday : null };
-    if (!clean.proper && !clean.everyday) return;
+    const clean = { proper: goodLists(e.data.proper) ? e.data.proper : null, everyday: goodLists(e.data.everyday) ? e.data.everyday : null,
+      tricky: goodTricky(e.data.tricky) ? e.data.tricky : null, look: goodLook(e.data.look) ? e.data.look : null };
+    if (!clean.proper && !clean.everyday && !clean.tricky && !clean.look) return;
     const s = JSON.stringify(clean);
     try {
       sessionStorage.setItem(SHEET_KEY, s);

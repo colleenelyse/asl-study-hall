@@ -84,6 +84,8 @@ body > .stage { position: absolute; left: -9999px; width: 400px; }      /* parke
 .blanks:empty { display: none; }
 .blanks .fbl { display: inline-block; width: 1.4em; text-align: center; color: var(--ink, inherit); }
 .blanks .fbox { width: 1.4em; height: 1.6em; margin: 0 2px; padding: 0; text-align: center; font: 700 24px var(--display); text-transform: uppercase; border: 0; border-bottom: 3px solid var(--muted); border-radius: 6px 6px 0 0; background: rgba(127, 127, 127, .1); color: inherit; vertical-align: bottom; }
+.blanks .fbox.fblur { background: repeating-linear-gradient(135deg, rgba(120, 130, 160, .16) 0 6px, rgba(120, 130, 160, .05) 6px 12px); border-bottom-style: dashed; }      /* a blurred letter (Fill in the blanks) */
+.blanks .fbox.fblur::placeholder { color: var(--muted); opacity: .9; }
 .blanks .fbox:focus { outline: 2px solid var(--accent); border-bottom-color: var(--accent); }
 .clue { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 6px 0 12px; }
 .clue-box { min-width: 200px; min-height: 120px; display: grid; place-items: center; border-radius: 14px; background: var(--surface2); font: 700 30px var(--display); padding: 10px 18px; }
@@ -132,7 +134,7 @@ table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px 
 .ladder { display: flex; justify-content: space-between; font-weight: 800; background: var(--surface2); border-radius: 12px; padding: 8px 12px; margin: 6px 0; }
 
 /* Fill in the blanks: frosted glass over the hand for the hidden letters */
-.frost { position: absolute; inset: 0; border-radius: var(--r); backdrop-filter: blur(48px) saturate(.6); -webkit-backdrop-filter: blur(48px) saturate(.6); background: rgba(240, 236, 228, .82); opacity: 0; transition: opacity .06s linear; pointer-events: none; }
+.frost { position: absolute; inset: 0; border-radius: var(--r); backdrop-filter: blur(30px) saturate(.75); -webkit-backdrop-filter: blur(30px) saturate(.75); background: rgba(240, 236, 228, .55); opacity: 0; transition: opacity .06s linear; pointer-events: none; }
 .stage.frosted .frost { opacity: 1; }
 .cv { position: relative; }
 
@@ -422,3 +424,7 @@ html.embedded .top nav a.tptlink { display: none; }
 .bd-shared .field { margin: 0; }
 .bd-shared .bd-speedf { flex: 1 1 260px; max-width: 360px; }
 .blocks-why { margin: 16px 0 0; padding: 12px 16px; border-radius: 14px; background: var(--surface2, rgba(0,0,0,.04)); border: 1px solid var(--line, #e3d9cc); font-size: 15px; line-height: 1.45; }
+
+/* the speed slider by the question (Colleen) */
+.p-speedf { margin: 6px 0 10px; }
+.p-speedf[hidden] { display: none; }
