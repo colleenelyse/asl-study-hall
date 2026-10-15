@@ -155,8 +155,8 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
     const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
     const shareOut = shares.map(x => ({ code: x.code, tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
-    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim().toLowerCase() }));      // passwords for people ignore capital letters (LTHS = lths)
-    const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw.toLowerCase()) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
+    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim() }));      // exact, capitals count (Colleen: LTHS and lths can be two passwords)
+    const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
     const prods = (products || []).map(x => ({ title: String(x.title || '').trim(), link: String(x.link || '').trim(), img: String(x.img || '').trim(), price: String(x.price || '').trim(), desc: String(x.desc || '').trim(), tag: String(x.tag || '').trim() })).filter(x => x.title || x.link);
     const badP = prods.find(x => !x.title || !/^https:\/\//.test(x.link) || (x.img && !/^https:\/\//.test(x.img)));

@@ -84,8 +84,8 @@ let SLOCKS = /*SLOCKS*/[{"v":1,"iter":100000,"salt":"sH9f+KNbWwlaPYEkfciQSQ==","
     e.preventDefault(); const pw = $('#pw').value; if (!pw) return; await ready;
     $('#msg').textContent = 'Checking…';
     try { const key = await keyFor(pw, LOCK), got = await openWith(key, LOCK); put(KEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, true); } catch (err) {}
-    for (const L of SLOCKS) for (const p of [...new Set([pw.trim().toLowerCase(), pw])]) {      // passwords for people ignore capital letters (saved in lowercase since 2026-10-14)
-      try { const key = await keyFor(p, L), got = await openWith(key, L); put(CKEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, false); } catch (err) {}
+    for (const L of SLOCKS) {      // exact: capitals count
+      try { const key = await keyFor(pw, L), got = await openWith(key, L); put(CKEY, tob64(await crypto.subtle.exportKey('raw', key))); $('#msg').textContent = ''; return show(got, false); } catch (err) {}
     }
     $('#msg').textContent = "That's not it. Check with your teacher and try again."; $('#pw').select();
   };
