@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" type="image/png" href="/ily-o.png"><link rel="apple-touch-icon" href="/ily-180-o.png"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASL Study Hall: ASL Teaching Resources</title><meta name="description" content="ASL teaching resources by an ASL teacher: fingerspelling and numbers practice with an animated 3D hand, diagnostic reports, classroom tools and more.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700;800&display=swap">
+<style>body{margin:0;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.5 Nunito,system-ui,sans-serif}main{max-width:1040px;margin:0 auto;padding:22px 16px 40px}
+h1{font:600 clamp(30px,6vw,46px)/1.1 Fredoka,system-ui,sans-serif;margin:0}h2{font:600 26px Fredoka,system-ui,sans-serif;margin:0 0 10px}h3{font:600 20px/1.25 Fredoka,system-ui,sans-serif;margin:0}p{color:#5A6185}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}.brand{font:600 24px Fredoka,system-ui,sans-serif;color:#1B1E3C;text-decoration:none}
+.btns{display:flex;gap:10px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:17px;border-radius:999px;padding:11px 20px;text-decoration:none;box-shadow:0 2px 8px rgba(60,40,20,.15)}
+.shop{background:#2F6BFF;color:#fff}.tpt{background:#FFC83D;color:#1B1E3C}.btn:hover{filter:brightness(.95)}
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;align-items:center;background:#fff;border:1px solid #E3D9CC;border-radius:22px;padding:26px;box-shadow:0 2px 12px rgba(60,40,20,.06)}.hero img{width:100%;height:auto;border-radius:12px}
+.hero p{font-size:19px;margin:12px 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.card{display:flex;flex-direction:column;background:#fff;border:1px solid #E3D9CC;border-radius:18px;overflow:hidden;color:#1B1E3C;text-decoration:none;box-shadow:0 2px 10px rgba(60,40,20,.06);transition:transform .12s}.card:hover{transform:translateY(-2px);border-color:#2F6BFF}
+.card .pic{aspect-ratio:1;background:#EFE8DC center/cover no-repeat;display:grid;place-items:center;font-size:56px}.card .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .tag{align-self:flex-start;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1D46B8;background:#DCE6FF;border-radius:999px;padding:2px 10px}.card .tag.tpt{color:#6B4E00;background:#FFF0C2}
+.card .desc{font-size:15px;color:#5A6185;margin:0;flex:1}.card .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}.card .price{font-weight:800;font-size:18px}.card .go{font-weight:800;color:#2F6BFF}
+section{margin-top:30px}.tools{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tools figure{margin:0;background:#fff;border:1px solid #E3D9CC;border-radius:16px;padding:10px}.tools img{width:100%;height:auto;border-radius:10px;display:block}.tools figcaption{font-size:14px;color:#5A6185;margin-top:6px;text-align:center}
+.foot{text-align:center;font-size:14px;color:#5A6185;margin-top:34px}.foot a{color:#2F6BFF}
+@media (max-width:760px){.hero,.tools{grid-template-columns:1fr}}</style></head>
+<body><main>
+<div class="top"><a class="brand" href="/">🤟 ASL Study Hall</a>
+  <div class="btns"><a class="btn shop" id="shopBtn" href="https://aslstudyhall.myshopify.com" target="_blank" rel="noopener">🛍️ Shop</a><a class="btn tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></div></div>
+
+<div class="hero">
+  <div><h1>ASL resources made by an ASL teacher</h1>
+    <p>Fingerspelling and numbers practice with a realistic animated 3D hand that moves from letter to letter like a real signer, plus diagnostic reports, classroom tools and more.</p>
+    <div class="btns"><a class="btn shop" href="#products">See the products</a></div></div>
+  <img src="/img/welcome-hand.jpg" alt="The 3D hand fingerspelling A, S and L" width="1100" height="436">
+</div>
+
+<section id="products"><h2>Products</h2><div class="grid" id="grid"></div></section>
+
+<section><h2>See It in Action</h2>
+  <div class="tools">
+    <figure><img src="/img/welcome-games.jpg" alt="Fingerspelling games" loading="lazy"><figcaption>Games for every level, from Letter Flash to Speed Ladder.</figcaption></figure>
+    <figure><img src="/img/welcome-report.jpg" alt="A sample student report" loading="lazy"><figcaption>Reports show what each student got right, mixed up, and should practice next.</figcaption></figure>
+  </div>
+</section>
+
+<p class="foot">Students: your class activities are at <a href="https://asl.cool">asl.cool</a> · <a href="/credits.html">Credits</a> · <a href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">Teachers Pay Teachers</a></p>
+<script>
+/* aslstudyhall.com: the storefront (Colleen, 2026-10-14). Product cards come from /products.json (edited in /admin > Products); the list below is the fallback. */
+(async function () {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let list = [
+    { title: 'ASL Spellbound: Receptive Fingerspelling Games', tag: 'On TpT', desc: '8 games with an animated 3D hand, plus Google Sheets diagnostic reports and class problem spots.', link: 'https://www.teacherspayteachers.com/store/jaq-joey-boutique', img: '/img/welcome-hand.jpg', price: '' },
+    { title: 'Shop All ASL Study Hall Products', tag: 'Shop', desc: 'Classroom resources and more in the ASL Study Hall shop.', link: 'https://aslstudyhall.myshopify.com', img: '', price: '' }
+  ];
+  try { const r = await fetch('/products.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d && Array.isArray(d.products) && d.products.length) list = d.products; } } catch (e) {}
+  document.getElementById('grid').innerHTML = list.map(x => { const tpt = /teacherspayteachers/i.test(x.link);
+    return '<a class="card" href="' + esc(x.link) + '" target="_blank" rel="noopener"><div class="pic"' + (x.img ? ' style="background-image:url(&quot;' + esc(x.img) + '&quot;)"' : '') + '>' + (x.img ? '' : '🤟') + '</div>' +
+      '<div class="body">' + (x.tag || tpt ? '<span class="tag' + (tpt ? ' tpt' : '') + '">' + esc(x.tag || 'On TpT') + '</span>' : '') + '<h3>' + esc(x.title) + '</h3>' + (x.desc ? '<p class="desc">' + esc(x.desc) + '</p>' : '<p class="desc"></p>') +
+      '<div class="row"><span class="price">' + esc(x.price || '') + '</span><span class="go">' + (tpt ? 'View on TpT →' : 'View →') + '</span></div></div></a>'; }).join('');
+})();
+</script>
+</main></body></html>

@@ -26,7 +26,7 @@ if (EMBED) try {
 const CFG = { ads: false, ga: '' };
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
-const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers)\b/) || [])[1]) || '';
+const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
 const NUM_PAGES = ['shownum', 'build'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
@@ -1503,7 +1503,7 @@ if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as it
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
   $$('.top nav a').forEach((x, i) => { if (i) x.remove(); });
 }
-if (ONLY) { const t = $('.top nav a.tptlink'); if (t) t.remove(); }      // the TpT products themselves do not advertise the store
+if (CFG.only) { const t = $('.top nav a.tptlink'); if (t) t.remove(); }      // the TpT products themselves (built with CFG.only) do not advertise the store
 if (ONLY) {
   $$('[data-only]').forEach(x => { if (x.dataset.only !== ONLY) x.remove(); });
   $$('.top nav a').forEach(x => { const m = (x.getAttribute('href') || '').match(/^#\/(\w+)/); if (m && offPage(m[1])) x.remove(); });

@@ -1,5 +1,5 @@
 @font-face { font-family: 'ASL'; src: url('fonts/asl.ttf') format('truetype'); font-display: block; }      /* ASL font: each letter shows as its handshape */
-/* ASL Fingerspelling Practice: light and warm, rounded cards, ASL Study's fonts and colors (and nothing like asl.ms's black page) */
+/* ASL Fingerspelling Practice: light and warm, rounded cards, ASL Study's fonts and colors */
 :root {
   --bg: #F6F2EA; --surface: #FFFFFF; --surface2: #EFE8DC; --ink: #1B1E3C; --muted: #5A6185; --line: #E3D9CC;
   --accent: #2F6BFF; --accent-ink: #FFFFFF; --sun: #FFC83D; --good: #14804D; --good-soft: #DCF4E7; --bad: #C7362E; --bad-soft: #FBE3E1;
@@ -382,7 +382,7 @@ html.embedded header nav a[href="../"] { display: none; }
 .rsheet .rs-half { border-top: 3px double #e3d9cc !important; }
 .rsheet .rs-foot, .rsheet .rs-sets { color: #5a6185 !important; }
 
-.top nav a.tptlink { background: #FFC83D; color: #1B1E3C !important; border-radius: 999px; padding: 3px 10px; font-weight: 800; }      /* Colleen's TpT store, on every page of the public site */
+.top nav a.tptlink { background: #FFC83D; color: #1B1E3C !important; border-radius: 999px; padding: 7px 16px; font-weight: 800; font-size: 16px; box-shadow: 0 2px 6px rgba(60,40,20,.15); }      /* Colleen's TpT store, on every page of the public site */
 html.embedded .top nav a.tptlink { display: none; }
 
 /* band colors (Colleen, 2026-10-14): Beginning red, Developing yellow, Meeting blue, Exceeding green; dark text on yellow */
