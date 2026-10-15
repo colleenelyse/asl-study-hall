@@ -42,7 +42,8 @@ select, input[type=email], input:not([type]), #p-answer { width: 100%; border: 1
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .seg { display: inline-flex; background: var(--surface2); border-radius: 999px; padding: 4px; gap: 4px; flex-wrap: wrap; }
 .seg button { border: 0; background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 700; }
-.seg button.on { background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.seg button { color: var(--ink); }
+.seg button.on { background: var(--pick, var(--accent)); color: var(--accent-ink); box-shadow: 0 1px 4px rgba(0, 0, 0, .18); }      /* the chosen one is filled with the scheme's accent, clear in every color scheme (Colleen) */
 .seg.sm button { padding: 4px 10px; font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-weight: 700; font-size: 15px; }
@@ -428,3 +429,5 @@ html.embedded .top nav a.tptlink { display: none; }
 /* the speed slider by the question (Colleen) */
 .p-speedf { margin: 6px 0 10px; }
 .p-speedf[hidden] { display: none; }
+/* a deeper shade of the accent for the chosen option where the accent is pale (white words stay readable) */
+body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sch-matcha { --pick: #456E35; }
