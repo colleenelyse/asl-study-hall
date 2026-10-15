@@ -35,8 +35,8 @@ const CFG = { ads: false, ga: '', only: 'numbers' };      /* TpT edition: one pr
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
 const NUM_PAGES = ['shownum', 'build', 'signnum'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
-const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
-  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
+const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
+  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const store = {
@@ -68,6 +68,8 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   numbers: { section: 'numbers', name: 'Read the Number', icon: '🔢', about: 'The hand signs a number. Type it. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
   npick: { section: 'numbers', name: 'Pick the Number', icon: '👆', about: 'The hand signs a number. Pick it from four. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },      /* Colleen: typing and picking are two games */
   nquiz: { section: 'numbers', name: 'Numbers Quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
+  yread: { section: 'years', name: 'Read the Year', icon: '📅', about: 'The hand signs a year. Type it. Choose teen years like 1776, 2000–2009, or 2010–2099.' },      /* years (Colleen, 2026-10-15) */
+  ypick: { section: 'years', name: 'Pick the Year', icon: '🗓️', about: 'The hand signs a year. Pick it from four years that look alike when signed, like 1969 and 1996.' },
   pick: { name: 'Pick the Word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the Blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
@@ -75,9 +77,10 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
-const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz';      // the number games: answers are numbers
+const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick';
+const isYear = g => g === 'yread' || g === 'ypick';      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
 const isNums = g => g === 'numbers' || g === 'npick';      // Read the Number (typed) and Pick the Number (picked): the same numbers and settings
-const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
+const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || g === 'ypick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
 const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
@@ -96,11 +99,29 @@ const answerKey = (s, num) => num ? numKey(s) : letters(s);
 const Q_RANGES = [[0, 99], [0, 999], [0, 9999], [0, 99999], [0, 999999], [0, 999999999]];      /* Colleen: ranges end in 9s, so 0–999 never needs the THOUSAND hand */
 const qRange = () => S.qrange === 'custom' ? [Math.max(0, Math.floor(+S.qmin || 0)), Math.min(999999999, Math.floor(+S.qmax || 0))] : (Q_RANGES[+S.qrange] || Q_RANGES[1]);
 const nfmt = n => Number(n).toLocaleString('en-US');
-const showW = w => /^\d{4,}$/.test(String(w)) ? nfmt(w) : w;      // big numbers show with commas (1,464)
+const showW = w => /^\d{4,}$/.test(String(w)) && !(typeof R !== 'undefined' && R && isYear(R.game)) ? nfmt(w) : w;      // big numbers show with commas (1,464); years never do (1776)      // big numbers show with commas (1,464)
 function quizItem(list) {
   const [lo, hi] = qRange(); let x, tries = 0;
   do { x = lo + Math.floor(Math.random() * (hi - lo + 1)); } while (tries++ < 20 && list.some(it => +it.w === x));      // no repeats in a round when there is room
   return { w: String(x), n: 1, teens: teensFor(), form: formFor() };
+}
+/* YEARS (Colleen, 2026-10-15): three kinds, as she signs them (hand.js yearParts). A round picks years of the kinds chosen. */
+const YTYPES = [['teen', 'Teen years (1000–1999)', 1000, 1999], ['200x', '2000–2009', 2000, 2009], ['20xx', '2010–2099', 2010, 2099]];
+function yearItem(list) {
+  const kinds = YTYPES.filter(t => (S.ytypes || []).indexOf(t[0]) >= 0), use = kinds.length ? kinds : [YTYPES[0]]; let x, tries = 0;
+  do { const T = pick1(use); x = T[2] + Math.floor(Math.random() * (T[3] - T[2] + 1)); } while (tries++ < 20 && list.some(it => +it.w === x));
+  return { w: String(x), n: 1, form: 'year' };
+}
+/* Pick the Year: three wrong years that look alike when signed: the last two digits swapped (1969 / 1996), the same ending a century off
+   (1865 / 1965), one digit off, ten years off */
+function yearChoices(w) {
+  const n = +w, out = new Set(), ok = x => x !== n && x >= 1000 && x <= 2099, a = Math.floor(n / 100), b = n % 100, tries = [];
+  if (b >= 10 && b % 11) tries.push(a * 100 + (b % 10) * 10 + Math.floor(b / 10));
+  tries.push(n + 100, n - 100, n + 10, n - 10, n + 1, n - 1);
+  if (n >= 2001 && n <= 2009) tries.unshift(2000 + (n % 10) * 10, 1900 + n % 100);      // 2005 looks like 2050 (TWENTY FIFTY) and 1905
+  tries.forEach((x, k) => { if (out.size < 3 && ok(x) && (k < 2 || Math.random() < 0.8)) out.add(x); });
+  while (out.size < 3) { const x = n + Math.round((Math.random() - 0.5) * 60); if (ok(x)) out.add(x); }
+  return shuffle([n].concat(Array.from(out))).map(String);
 }
 /* Numbers quiz, picking: three wrong numbers that look close when signed (one digit changed, two digits swapped, a place off) */
 function bigChoices(w) {
@@ -141,6 +162,7 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
   levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+if (!Array.isArray(S.ytypes) || !S.ytypes.length) S.ytypes = ['teen', '200x', '20xx'];      // years: all three kinds to start
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'].filter(p => window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = Object.keys(window.LOOK_GROUPS || {}).slice(0, 2);      // the sheet's groups may differ (3.96)      // old letter pairs became letter groups
@@ -172,7 +194,7 @@ async function spellWord(w, blur, teens, form) {
   if (isNum(w)) {      // a number (0-20) is signed, not spelled; the answer is never shown while it signs
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow())));      // Beginner 1 s a beat ... Deaf 0.35 s (the numbers' moves need more time than a letter)
     const so = { per, teens: teens || teensFor(), form: form || formFor(), hund: S.nhund === 'mix' ? undefined : S.nhund, stop: () => stopFlag };
-    spelling = +w < 100 ? hand.sign(+w, so) : hand.signParts(bdBlocksFor(+w), so);      // bigger numbers in spoken order: 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45
+    spelling = form === 'year' && hand.signYear && +w >= 1000 && +w <= 2099 ? hand.signYear(+w, so) : +w < 100 ? hand.sign(+w, so) : hand.signParts(bdBlocksFor(+w), so);      // a year is signed as a year (hand.js YEARS)      // bigger numbers in spoken order: 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45
     try { await spelling; } finally { spelling = null; }
     return;
   }
@@ -249,6 +271,9 @@ function gamesInit() {
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
     '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
+  $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
+    '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
+    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>';
 }
 let drawCats, drawPool;
 function setupInit() {
@@ -261,6 +286,7 @@ function setupInit() {
     const g = S.game; let n, msg;
     if (g === 'flash') { n = S.flash.length; msg = n ? n + ' letters chosen.' : 'Choose at least one letter.'; }
     else if (isNums(g)) { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
+    else if (isYear(g)) { n = (S.ytypes || []).length; msg = n ? '' : 'Choose at least one kind of year.'; }
     else if (g === 'nquiz') { const [lo, hi] = qRange(); n = hi >= lo ? 1 : 0; msg = n ? 'Numbers from ' + lo.toLocaleString('en-US') + ' to ' + hi.toLocaleString('en-US') + '.' : 'The highest number must be at least the lowest.'; }
     else if (g === 'pairs') { n = S.pairs.length; msg = n ? '' : 'Choose at least one pair.'; }
     else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' || bankOf(g) === 'everyday' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
@@ -273,6 +299,7 @@ function setupInit() {
   const fc = Object.keys(window.FAMILIAR || {}); S.fcats = (S.fcats || []).filter(c => fc.indexOf(c) >= 0); if (!S.fcats.length) S.fcats = fc.slice(0, 2);
   const drawFc = chipsInit($('#s-fcats'), fc, 'fcats', c => esc(c) + ' <small>' + window.FAMILIAR[c].length + '</small>', () => drawPool());
   const drawPr = chipsInit($('#s-pairs'), PAIRS, 'pairs', p => p.split(' ').join(' · '), () => drawPool());
+  chipsInit($('#s-ytypes'), YTYPES.map(t => t[0]), 'ytypes', k => esc(YTYPES.find(t => t[0] === k)[1]), () => drawPool());
   const drawFl = chipsInit($('#s-flash'), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'flash', x => x, () => drawPool());
   $('#s-fl-all').onclick = () => { S.flash = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); saveS(); drawFl(); };
   $('#s-fl-none').onclick = () => { S.flash = []; saveS(); drawFl(); };
@@ -325,6 +352,7 @@ function setupShow(game) {
   if (game && GAMES[game]) { S.game = game; saveS(); }
   const g = S.game;
   $('#s-title').textContent = GAMES[g].name; $('#s-about').textContent = GAMES[g].about;
+  $('#s-ncount-lab').textContent = isYear(g) ? 'Years in a Round' : 'Numbers in a Round';
   $('#s-speed-lab').textContent = g === 'ladder' ? 'Starting speed' : g === 'fill' ? 'Speed (this game plays a little slower than the speed you pick)' : 'Speed';
   const playing = !!(R && R.game === g && location.hash === '#/play');
   $('#game-area').hidden = !playing; $('#s-live').hidden = !playing; $('#s-go').textContent = playing ? 'Start over with these settings' : 'Start';
@@ -385,6 +413,7 @@ function startRound(fixedWords) {
   if (fixedWords) list = shuffle(fixedWords);
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
   else if (g === 'nquiz') { list = []; for (let i = 0; i < S.qcount; i++) list.push(quizItem(list)); }
+  else if (isYear(g)) { list = []; for (let i = 0; i < S.ncount; i++) list.push(yearItem(list)); }
   else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
@@ -402,10 +431,11 @@ function refreshRound() {
   if (g === 'ladder') R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))));
   else if (g === 'flash') { const more = []; for (let k = done.length; k < S.flcount && S.flash.length; k++) more.push({ w: pick1(S.flash), n: 1 }); R.list = done.concat(more); }
   else if (g === 'nquiz') { const more = []; for (let k = done.length; k < S.qcount; k++) more.push(quizItem(done.concat(more))); R.list = done.concat(more); }
+  else if (isYear(g)) { const more = []; for (let k = done.length; k < S.ncount; k++) more.push(yearItem(done.concat(more))); R.list = done.concat(more); }
   else if (isNums(g)) { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
   else if (g === 'pairs') { const more = []; for (let k = done.length; k < S.count && S.pairs.length; k++) more.push(pairTrial()); R.list = done.concat(more); }
   else { const total = g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count; R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))).slice(0, Math.max(0, total - done.length))); }
-  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
+  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? (isYear(g2) ? 'Year ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
   assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || isNumGame(g) ? '' : ' ' + S.assist);
   if (R.i >= 0 && R.answered !== R.i) drawBlanks(R.list[R.i]);
 }
@@ -438,7 +468,7 @@ function drawBlanks(it) {
 function drawWord() {
   const g = R.game, it = R.list[R.i];
   $('#p-speedf').hidden = g === 'ladder'; $('#p-speed').value = Math.round(S.speed * 100);
-  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
+  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? (isYear(g) ? 'Year ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
   ladderBar();
   $('#p-feedback').textContent = ''; $('#p-feedback').className = 'feedback'; $('#p-next').hidden = true; $('#p-meaning').hidden = true;
   const choice = isChoice(g);
@@ -447,12 +477,13 @@ function drawWord() {
     if (g === 'pick' && !it.shown) it.shown = shuffle([it.w].concat(lookAlikes(it.w, R.pool)));
     if (isNums(g) && !it.shown) it.shown = numChoices(it.w);
     if (g === 'nquiz' && !it.shown) it.shown = bigChoices(it.w);
+    if (g === 'ypick' && !it.shown) it.shown = yearChoices(it.w);
     const opts = g === 'pick' || isNumGame(g) ? it.shown : it.opts;
-    $('#p-cask').textContent = isNumGame(g) ? 'Which number did the hand sign?' : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
+    $('#p-cask').textContent = isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
-    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? isYear(g) ? 'What year did the hand sign?' : 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
   drawBlanks(it);
@@ -551,7 +582,7 @@ function finishRound() {
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
     speed: Math.round(S.speed * 100) / 100, speedName: speedName(S.speed), limit: R.settings.limit, mode: R.settings.mode, paper: S.paper,
-    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : isNums(g) ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
+    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : isYear(g) ? 'Years: ' + YTYPES.filter(t => (R.settings.ytypes || []).indexOf(t[0]) >= 0).map(t => t[1]).join(', ') : isNums(g) ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
     supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && !isNumGame(g) ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
   res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || isNumGame(g) ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
   if (g === 'ladder') { res.top = R.top; res.topLps = R.top === null ? 0 : lps(R.top); res.topName = R.top === null ? '' : speedName(R.top); }
@@ -667,7 +698,7 @@ function resultsShow() {
     $('#r-stats').innerHTML = statBox(r.topName || '—', 'top speed') + statBox(r.right + ' of ' + r.n, 'words right') + statBox(r.avgLen, 'letters per word') + statBox(time, 'time');
   } else if (isNumGame(g)) {
     $('#r-score').textContent = r.pct + '%';
-    $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, 'numbers right') + statBox(r.speedName, 'speed') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
+    $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, isYear(g) ? 'years right' : 'numbers right') + statBox(r.speedName, 'speed') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
   } else if (g === 'flash') {
     $('#r-score').textContent = r.pct + '%';
     $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, 'letters right') + statBox((r.avgMs / 1000).toFixed(1) + ' s', 'to answer (average)') + statBox(r.speedName, 'speed') + statBox(time, 'time');
@@ -679,7 +710,7 @@ function resultsShow() {
   const mix = mixList(r.items);
   $('#r-extra').innerHTML = (mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '') +
     (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '');
-  $('#r-review').textContent = isNumGame(g) ? 'Review missed numbers' : 'Review missed words';      // Colleen: number games say number, not word
+  $('#r-review').textContent = isNumGame(g) ? (isYear(g) ? 'Review missed years' : 'Review missed numbers') : 'Review missed words';      // Colleen: number games say number, not word
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
@@ -688,7 +719,7 @@ function resultsShow() {
 function reviewShow() {
   const r = store.get('last', null), miss = r ? r.items.filter(x => !x.ok) : [];
   putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
-  $('#v-title').textContent = r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
+  $('#v-title').textContent = r && isYear(r.game) ? 'Missed years' : r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
   $('#v-list').innerHTML = miss.length ? miss.map((x, i) => '<button data-i="' + i + '">' + esc(x.w) + '</button>').join('') : '<p class="hint">No missed ' + (r && isNumGame(r.game) ? 'numbers' : 'words') + '. Nice!</p>';
   $('#v-list').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#v-list button').forEach(x => x.classList.toggle('on', x === b)); spellWord(miss[+b.dataset.i].w, null, teensFor()); };
   $('#v-again').hidden = false; $('#v-again').disabled = !miss.length;
@@ -1123,13 +1154,23 @@ function showShow() {
   if (q) { $('#sh-word').value = q; spellWord(q); }
 }
 
+/* a year's parts as blocks: 17 + 76, or 2 + 0 → + 5 (the 0 that slides) */
+const yearBlocks = y => (hand.yearParts ? hand.yearParts(y) || [] : []).map(([n, how]) => how === 'n' ? String(n) : '0 →');
+const blocksHtml = (labels, now) => labels.map((t, i) => '<span class="blk' + (/[A-Z]/.test(t) ? ' h' : '') + (i === now ? ' now' : '') + '">' + esc(t) + '</span>').join('<span class="plus">+</span>');
 /* ---------- Show me numbers (Colleen): type any number, the hand signs it with all of the number rules ---------- */
-function snShow() { hand.helper(true); putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
+function snShow() { if (/^#\/shownum\/year/.test(location.hash)) { S.snyear = true; saveS(); } $('#sn-year').checked = !!S.snyear; hand.helper(!S.snyear);      /* the extra hand is never needed for years (Colleen) */ putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
 function shownumInit() {
   const go = () => {
     const raw = $('#sn-num').value.trim(), digits = raw.replace(/[,\s]/g, '');
     if (!/^\d+$/.test(digits) || +digits > 999999999) { $('#sn-note').textContent = 'Type a whole number from 0 to 999,999,999 (commas are fine).'; $('#sn-blocks').innerHTML = ''; $('#sn-num').focus(); return; }
-    const n = +digits, blocks = bdBlocksFor(n);
+    const n = +digits, asYear = !!S.snyear && n >= 1000 && n <= 2099, blocks = bdBlocksFor(n);
+    hand.helper(!asYear && n >= 1000);      // the left hand waits only for a number that needs THOUSAND or MILLION
+    if (asYear) { $('#sn-note').textContent = String(n) + ' (signed as a year)'; const yb = yearBlocks(n), drawY = k => { $('#sn-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
+      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+        const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+        spelling = hand.signYear(n, { per, form: S.snform === 'mix' ? formFor() : S.snform, stop: () => stopFlag, onPart: drawY }); try { await spelling; } finally { spelling = null; drawY(-1); } })();
+      return; }
+    if (S.snyear && !asYear) $('#sn-note').textContent = nfmt(n) + ' (years go from 1000 to 2099, so this is signed as a number)'; else
     $('#sn-note').textContent = nfmt(n);
     const draw = playing => { $('#sn-blocks').innerHTML = blocks.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + ((playing || []).indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>'); };
     draw();
@@ -1146,26 +1187,35 @@ function shownumInit() {
   $('#sn-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
   S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';
   segInit('sn-teens', 'snteens'); segInit('sn-form', 'snform'); segInit('sn-hund', 'snhund');
+  $('#sn-year').checked = !!S.snyear; $('#sn-year').onchange = e => { S.snyear = e.target.checked; saveS(); hand.helper(!S.snyear); };      // Show Me Years (Colleen)
 }
 
 /* ---------- Sign the number (Colleen): a random number pops up for the student to sign, then the hand checks them ---------- */
 const SG_BIG = [['100–999', 100, 999], ['1,000–9,999', 1000, 9999], ['10,000–999,999', 10000, 999999], ['Millions', 1000000, 999999999]];      // past 99, by size, like the quiz ranges
 const SG = { n: null, count: 0 };
-const sgGroups = () => NUM_GROUPS.map(g => g[0]).concat(SG_BIG.map(g => g[0]));
+const SG_YEARS = YTYPES.map(t => ['Years ' + t[1].replace(/^Teen years \((.*)\)$/, '$1'), t[2], t[3]]);      // Sign the Year (Colleen)
+const sgGroups = () => NUM_GROUPS.map(g => g[0]).concat(SG_BIG.map(g => g[0]), SG_YEARS.map(g => g[0]));
 const sgNeedsHelper = () => S.sgroups.some(k => SG_BIG.some(g => g[0] === k && g[2] >= 1000));
 function sgPick() {
-  const k = pick1(S.sgroups.length ? S.sgroups : ['0–20']), big = SG_BIG.find(g => g[0] === k);
+  const k = pick1(S.sgroups.length ? S.sgroups : ['0–20']), big = SG_BIG.find(g => g[0] === k), yr = SG_YEARS.find(g => g[0] === k);
+  SG.yearNext = !!yr;
+  if (yr) return yr[1] + Math.floor(Math.random() * (yr[2] - yr[1] + 1));
   if (big) return big[1] + Math.floor(Math.random() * (big[2] - big[1] + 1));
   return +pick1((NUM_GROUPS.find(g => g[0] === k) || NUM_GROUPS[0])[1]);
 }
 function sgCover(on) { $('#sg-cover').hidden = !on; $('#sg-check').hidden = !on; $('#sg-again').hidden = on; $('#sg-blocks').hidden = on; }
 function sgNext() {
   stopFlag = true; let n, tries = 0; do { n = sgPick(); } while (n === SG.n && tries++ < 5);
-  SG.n = n; SG.count++; $('#sg-num').textContent = nfmt(n); sgCover(true);
+  SG.n = n; SG.year = !!SG.yearNext; SG.count++; $('#sg-num').textContent = SG.year ? String(n) : nfmt(n); sgCover(true);
   $('#sg-count').textContent = SG.count === 1 ? '' : SG.count - 1 + (SG.count === 2 ? ' number' : ' numbers') + ' signed so far.';
 }
 function sgPlay() {
   if (SG.n === null) return; sgCover(false);
+  if (SG.year) { const yb = yearBlocks(SG.n), drawY = k => { $('#sg-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
+    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+      const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+      spelling = hand.signYear(SG.n, { per, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, stop: () => stopFlag, onPart: drawY }); try { await spelling; } finally { spelling = null; drawY(-1); } })();
+    return; }
   const blocks = bdBlocksFor(SG.n), draw = playing => { $('#sg-blocks').innerHTML = blocks.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + ((playing || []).indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>'); };
   draw();
   (async () => {
@@ -1178,6 +1228,7 @@ function sgPlay() {
 }
 let sgMarks = [];
 function sgShow() {
+  if (/^#\/signnum\/year/.test(location.hash) && !S.sgroups.some(k => SG_YEARS.some(g => g[0] === k))) { S.sgroups = SG_YEARS.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }      // Sign the Year: the year groups
   putStage('signnum-slot'); hand.helper(sgNeedsHelper()); speedNow = () => S.speed; assist.className = 'assist';
   $('#sg-speed').value = Math.round(S.speed * 100); sgMarks.forEach(m => m());
   if (SG.n === null) sgNext(); else sgCover(true);
@@ -1185,7 +1236,7 @@ function sgShow() {
 function signnumInit() {
   if (!Array.isArray(S.sgroups)) S.sgroups = ['0–20'];
   const hint = () => { $('#sg-hint').textContent = S.sgroups.length ? '' : 'Choose at least one group (0–20 is used until you do).'; if (location.hash === '#/signnum') hand.helper(sgNeedsHelper()); };
-  chipsInit($('#sg-groups'), sgGroups(), 'sgroups', x => esc(x), hint);
+  window.__sgDraw = chipsInit($('#sg-groups'), sgGroups(), 'sgroups', x => esc(x), hint);
   $('#sg-check').onclick = sgPlay; $('#sg-check2').onclick = sgPlay; $('#sg-again').onclick = sgPlay; $('#sg-next').onclick = sgNext;
   $('#sg-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
   S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';

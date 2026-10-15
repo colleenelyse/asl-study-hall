@@ -666,6 +666,10 @@ async function sign(n, o) {
   if (N.hund) use = N.hund[o.hund === 'c' || o.hund === 'curl' ? o.hund : (Math.random() < 0.5 ? 'c' : 'curl')];      /* HUNDRED: the C or the curl, mixed unless asked */
   if (o.series && n >= 1 && n <= 5) use = { start: DIGIT_OUT(n), steps: [] };      /* inside a longer number, 1-5 face palm out (Colleen) */
   if (o.onLetter) o.onLetter(String(n));
+  if (o.series) {      /* the same handshape twice in a row (the 7 of 17 and the 7 of 76 in 1776, Colleen): the touching fingers open a little and tap closed again */
+    const A = norm(cur), B = norm(use.via || use.start), diff = A.f.reduce((t, F, i) => t + F.reduce((u, v, j) => u + Math.abs(v - B.f[i][j]), 0), 0) + A.t.reduce((t, v, j) => t + Math.abs(v - B.t[j]), 0);
+    if (diff < 40) { moveTo(loosen(B, 0.3), per * 0.22); await wait(per * 0.25); }
+  }
   if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }
   if (use.hold) await wait(per * use.hold);
@@ -729,6 +733,42 @@ async function signParts(tokens, o) {
   if (o.onPart) o.onPart([]);
   if (tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
 }
+/* YEARS (Colleen, 2026-10-15; dev/ASL-number-rules.md "Years"). Three types:
+   1000-1999: the first two digits (10-19, always the 10 + number form) + the last two as ONE number (76 rocks, 22 double-bounces);
+              01-09 at the end: 0 then the digit, no slide (1906 = 19, 0, 6); 00 at the end: a 0 that slides (1900 = 19, sliding 0).
+   2000-2009: 2 palm out, a 0 that slides toward the signer's right, the last digit palm out; 2000 = 2 and a slightly longer slide.
+   2010-2099: TWENTY + the last two as ONE number. Any 16-19 in a year uses the 10 + number form. */
+const SLIDE_X = -0.085, SLIDE_LONG = -0.12;      /* toward the signer's right (the student's left), like the doubles' arc */
+async function zeroSlide(o, long, last) {
+  const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  const Z = Object.assign({}, NUM[0].start, { p: [0, 0] }), Z2 = Object.assign({}, NUM[0].start, { p: [long ? SLIDE_LONG : SLIDE_X, 0] });
+  if (o.onLetter) o.onLetter('0');
+  moveTo(Z, per * 0.45); await wait(per * 0.5);
+  playPath([Z, Z2], per * (long ? 1.0 : 0.75)); await wait(per * (long ? 1.05 : 0.8));
+  await wait(per * 0.5);
+  if (last) { moveTo(POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter(''); }
+}
+function yearParts(y) {      /* [[part, how]]: how 'n' (a number), 'z' (sliding 0), 'zl' (longer sliding 0) */
+  y = Math.floor(+y); if (!(y >= 1000 && y <= 2099)) return null;
+  const a = Math.floor(y / 100), b = y % 100;
+  if (y >= 2000 && y <= 2009) return b ? [[2, 'n'], [0, 'z'], [b, 'n']] : [[2, 'n'], [0, 'zl']];
+  if (y >= 2010) return [[20, 'n'], [b, 'n']];
+  if (b === 0) return [[a, 'n'], [0, 'z']];
+  if (b < 10) return [[a, 'n'], [0, 'n'], [b, 'n']];
+  return [[a, 'n'], [b, 'n']];
+}
+async function signYear(y, o) {
+  o = o || {};
+  const parts = yearParts(y); if (!parts) return;
+  for (let k = 0; k < parts.length; k++) {
+    if (o.stop && o.stop()) break;
+    const [n, how] = parts[k], last = k === parts.length - 1;
+    if (o.onPart) o.onPart(k);
+    if (how !== 'n') { await zeroSlide(o, how === 'zl', last); continue; }
+    await sign(n, Object.assign({}, o, { teens: 'ten', stay: !last, series: true }));      /* 1-5 palm out inside a year; 16-19 always 10 + number */
+  }
+  if (o.onPart) o.onPart(-1);
+}
 /* every pair of still letters (and rest) was planned ahead of time (PRE_PLANS, made with planMove); load them so words start right away.
    Pairs not listed need no dodge. Anything else (doubles, habits) is planned the first time it comes up. */
 (function preload() {
@@ -755,7 +795,7 @@ const ARROW = {      /* drawn over the card, as the student sees the movement */
 const snap = () => { renderer.render(scene, cam); return renderer.domElement.toDataURL(); };
 const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] : P0; };
 if (opts.debug) window.__hand = { get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, spell, sign, signParts, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+return { ready, spell, sign, signParts, signYear, yearParts, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();

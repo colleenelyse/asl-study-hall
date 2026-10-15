@@ -38,6 +38,8 @@
     <div class="gamegrid" id="g-grid" data-only="letters"></div>
     <h2 class="pad" data-only="numbers">Numbers</h2>
     <div class="gamegrid" id="g-numgrid" data-only="numbers"></div>
+    <h2 class="pad" data-only="numbers">Years</h2>
+    <div class="gamegrid" id="g-yeargrid" data-only="numbers"></div>
     <h2 class="pad" data-only="letters">Teacher Tools</h2>
     <div class="gamegrid" data-only="letters">
       <a class="gcard" href="#/class"><span class="gi" aria-hidden="true">📽️</span><b>Projector Mode</b><span>You run it on the board. The hand spells, students write on whiteboards, you reveal.</span></a>
@@ -75,6 +77,7 @@
         <label class="lab" for="sn-num">Your number</label>
         <input id="sn-num" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Like 2026 or 1,250">
         <div class="row"><button class="btn big" id="sn-go">Sign it</button><button class="btn ghost" id="sn-again">Again</button></div>
+        <label class="check" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="sn-year" style="width:auto"> Sign it as a year (1000–2099), like 1776 = 17 + 76</label>
         <div class="blocks" id="sn-blocks" aria-live="polite"></div>
         <p class="hint" id="sn-note"></p>
         <div class="field small"><span class="lab">Speed</span>
@@ -186,7 +189,7 @@
       <div class="row between"><h2 id="s-title">Set Up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
       <div id="s-fields">
       <p class="hint" id="s-about"></p>
-      <div class="field" data-for="type pick fill pairs flash numbers npick nquiz ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
+      <div class="field" data-for="type pick fill pairs flash numbers npick nquiz ladder sound tricky yread ypick"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
@@ -222,6 +225,10 @@
         <div class="chips letters" id="s-flash"></div>
         <label class="field"><span class="lab">Letters in a Round</span><select id="s-flcount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
+      <div class="field" data-for="yread ypick"><span class="lab">Years</span>
+        <p class="hint" style="margin:0 0 6px">Choose the kinds of years. Teen years split in two (17 + 76); 2000–2009 slide the 0; 2010–2099 are TWENTY + the last two.</p>
+        <div class="chips" id="s-ytypes"></div>
+      </div>
       <div class="field" data-for="numbers npick"><span class="lab">Numbers</span>
         <p class="hint" style="margin:0 0 6px">Green numbers are in the game; white ones are not. Tap a number to add it or take it out.</p>
         <div class="row"><button class="link" id="s-nm-all">Choose all</button><button class="link" id="s-nm-none">Choose none</button></div>
@@ -238,14 +245,14 @@
         <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
         <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
       </div>
-      <div class="field" data-for="numbers npick nquiz"><span class="lab">23 &amp; 25</span>
+      <div class="field" data-for="numbers npick nquiz yread ypick"><span class="lab">23 &amp; 25</span>
         <div class="seg sm" id="s-nform"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div>
         <p class="hint">Formal: the L changes into 3 or 5. Slang: the middle finger bends twice.</p>
       </div>
-      <div class="grid2" data-for="numbers npick nquiz">
+      <div class="grid2" data-for="numbers npick nquiz yread ypick">
         <div class="field" data-for="nquiz"><span class="lab">Answer By</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
         <label class="field" data-for="nquiz"><span class="lab">Numbers in a Round</span><select id="s-qcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
-        <label class="field" data-for="numbers npick"><span class="lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+        <label class="field" data-for="numbers npick yread ypick"><span class="lab" id="s-ncount-lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
       <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word Type</span>
         <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
@@ -266,7 +273,7 @@
         <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
       </details>
       <div class="field"><span class="lab">Skin Tone</span><div class="tones" id="s-tones"></div></div>
-      <div class="field" data-for="type pick fill ladder pairs flash numbers npick nquiz sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers npick nquiz sound tricky yread ypick"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
       </div>
       <button class="btn big" id="s-go">Start</button>
@@ -522,8 +529,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="themes.js?v=40"></script>
-<script src="hand.js?v=77"></script>
+<script src="hand.js?v=79"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=86"></script>
+<script src="app.js?v=88"></script>
 </body>
 </html>
