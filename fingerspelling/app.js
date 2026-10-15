@@ -615,13 +615,22 @@ function mixList(items) {
   const m = {}; items.forEach(x => (!x.ok && x.typed && !/^\d+$/.test(String(x.w)) ? diffPairs(x.w, x.typed) : x.mix || []).forEach(p => { m[p] = (m[p] || 0) + 1; }));      // worked out again from the answer, so rounds saved before 3.90 follow the letter-swap rule too
   return Object.keys(m).sort((a, b) => m[b] - m[a]).map(p => ({ right: p[0], saw: p[1], times: m[p] }));
 }
+/* the products: Colleen's picks in admin (asl.cool/products.json), or else every product in her Shopify store, read straight from Shopify
+   (aslstudyhall.com/products.json allows this): picture, name, price, description, link to the product on aslstudyhall.com */
+async function aslProducts() {
+  const strip = h => { const d = document.createElement('div'); d.innerHTML = String(h || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
+  try { const r = await fetch((/(^|\.)asl\.cool$/.test(location.hostname) ? '' : 'https:' + '/' + '/asl.cool') + '/products.json', { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (d.source === 'admin' && d.products && d.products.length) return d.products; } } catch (e) {}
+  try { const r = await fetch('https:' + '/' + '/aslstudyhall.com/products.json?limit=50'); if (r.ok) return ((await r.json()).products || []).map(x => { const v = (x.variants || [])[0] || {}, img = (x.images || [])[0];
+    return { title: x.title || '', price: v.price ? '$' + (+v.price).toFixed(2) : '', img: img && img.src ? img.src : '', desc: strip(x.body_html).slice(0, 180), link: 'https:' + '/' + '/aslstudyhall.com/products/' + x.handle }; }); } catch (e) {}
+  return [];
+}
 /* "Enjoying this? Teachers, take it further" (Colleen): after a round on the public site only (never inside ASL Study, never in the TpT products); featured products come from asl.cool/products.json (admin > Featured Products) */
 let teachProducts = null;
 async function teachCard() {
   const box = $('#r-teach'); if (!box) return;
   if (EMBED || CFG.only) { box.hidden = true; return; }
   box.hidden = false;
-  if (teachProducts === null) { teachProducts = []; try { if (/(^|\.)asl\.cool$/.test(location.hostname)) { const r = await fetch('/products.json', { cache: 'no-store' }); if (r.ok) teachProducts = ((await r.json()).products || []); } } catch (e) {} }
+  if (teachProducts === null) teachProducts = await aslProducts();
   $('#r-products').innerHTML = teachProducts.slice(0, 6).map(x => '<a class="teach-product" href="' + esc(x.link) + '" target="_blank" rel="noopener">' + (x.img ? '<img src="' + esc(x.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc(x.title) + '</b>' + (x.price ? '<span>' + esc(x.price) + '</span>' : '') + '</a>').join('');
 }
 function resultsShow() {

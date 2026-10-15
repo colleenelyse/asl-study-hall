@@ -45,7 +45,7 @@ async function save(req, env) {
   const SL = Array.isArray(body.slocks) ? body.slocks : [], okLock = x => x && okStr(x.salt, 100) && okStr(x.iv, 100) && okStr(x.data, 150000) && x.iter >= 100000;
   if (SL.length > 30 || !SL.every(okLock)) return json({ error: 'Something in the class passwords was not right.' }, 400);
   const slocks = SL.map(x => ({ v: 1, iter: x.iter, salt: x.salt, iv: x.iv, data: x.data }));
-  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, slocks, products: body.products !== undefined ? body.products.map(x => ({ title: x.title, link: x.link, img: x.img || '', price: x.price || '', desc: x.desc || '', tag: x.tag || '' })) : (st.products || []), vsalt: body.vsalt, vhash: body.vhash, mytools: slocks.length ? [] : body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools })), updated: new Date().toISOString() };
+  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, slocks, products: body.products !== undefined ? body.products.map(x => ({ title: x.title, link: x.link, img: x.img || '', price: x.price || '', desc: x.desc || '', tag: x.tag || '' })) : (st.products || []), vsalt: body.vsalt, vhash: body.vhash, mytools: slocks.length ? [] : body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools, shop: !!x.shop })), shopOn: body.shopOn !== undefined ? !!body.shopOn : !!st.shopOn, updated: new Date().toISOString() };
   await env.LOCKS.put('state', JSON.stringify(next));
   const log = (await env.LOCKS.get('log', 'json')) || []; log.push([next.updated, ip, body.mytools.length]); await env.LOCKS.put('log', JSON.stringify(log.slice(-50)));
   await env.LOCKS.delete(failKey);
@@ -97,14 +97,25 @@ export default {
     }
     if (p === '/lock.json' || p === '/mytools.json') {
       const st = await state(env, req); if (!st) return json({}, 404);
-      return json(p === '/lock.json' ? { lock: st.lock, slocks: st.slocks || [], vsalt: st.vsalt } : { tools: (st.slocks || []).length ? [] : (st.mytools || []) });      // with class passwords the student lists are only in slocks
+      return json(p === '/lock.json' ? { lock: st.lock, slocks: st.slocks || [], vsalt: st.vsalt, shopOn: !!st.shopOn } : { tools: (st.slocks || []).length ? [] : (st.mytools || []) });      // with class passwords the student lists are only in slocks
     }
     if (p === '/share.json') {      // one teacher's list, only with its code
       const st = await state(env, req), c = url.searchParams.get('c') || '', sh = st && (st.shares || []).find(x => x.code === c);
-      return sh ? json({ tools: sh.tools }) : json({ error: 'This link is not active.' }, 404);
+      return sh ? json({ tools: sh.tools, shop: !!sh.shop }) : json({ error: 'This link is not active.' }, 404);      // shop: show Colleen's shop links and products (teachers yes, students no)
     }
     if (/^\/t\/[a-z0-9]{8,16}\/?$/.test(p)) return env.ASSETS.fetch(new Request(new URL('/share/', req.url)));      // the share page reads the code from the address
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
-    return env.ASSETS.fetch(req);
+    const res = await env.ASSETS.fetch(req);
+    return shopSwitch(req, env, res, p);
   }
 };
+/* Admin > Show the shop to everyone (Colleen: "a show/hide toggle that's universal on the admin page"). The pages ship with the shop hidden;
+   when the switch is on, the Worker takes the hide rule out as it serves them. Never in the TpT copies (fs-tpt, num-tpt). */
+async function shopSwitch(req, env, res, p) {
+  const type = res.headers.get('content-type') || '';
+  if (res.status !== 200 || /^\/(fs|num)-tpt\//.test(p) || !/text\/(html|css)/.test(type)) return res;
+  const st = await state(env, req); if (!st || !st.shopOn) return res;
+  const body = (await res.text()).replace('[data-shop]{display:none!important}', '[data-shop-off]{display:none!important}').replace('.top nav a.tptlink, .shopcard { display: none !important; }', '.shop-hide-off { display: none !important; }');
+  const h = new Headers(res.headers); h.delete('content-length'); h.delete('etag'); h.set('cache-control', 'no-cache');
+  return new Response(body, { status: 200, headers: h });
+}

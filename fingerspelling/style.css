@@ -400,7 +400,7 @@ html.embedded .top nav a.tptlink { display: none; }
 .rsheet .rs-scale span.p-on:not(.on) { background: #F4F7FF !important; color: #2F6BFF !important; box-shadow: inset 0 0 0 2px #B6CBFF; }
 .rsheet .rs-scale span.p-above:not(.on) { background: #F1FAF4 !important; color: #1E7B45 !important; box-shadow: inset 0 0 0 2px #B6DDC7; }
 .top nav a.tptlink.shoplink { background: #05274C; color: #fff !important; }      /* Shopify (navy) next to TpT (yellow) */
-.shop-hide-off { display: none !important; }      /* TEMPORARY-SHOP-HIDE (off for a 10-minute look) (Colleen, 2026-10-14): shop links hidden until her school approves the domain; delete this line to show them */
+.top nav a.tptlink, .shopcard { display: none !important; }      /* SHOP-HIDE (Colleen, 2026-10-14): shop links hidden until her school approves the domain; on asl.cool the Worker removes this line when admin > Show the shop to everyone is on */
 #r-teach { margin-top: 16px; border: 2px solid var(--sun); }      /* the teacher card after a round (Colleen) */
 #r-teach h2 { margin-top: 0; }
 .teach-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 12px; }
