@@ -66,10 +66,27 @@ let SLOCKS = /*SLOCKS*/[{"v":1,"iter":100000,"salt":"386Q5phIrB4BVTogtrLYCg==","
   const onAsl = /(^|\.)asl\.cool$/.test(location.hostname), get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   const link = t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : !onAsl && t.alt ? 'https://hearing-84j.pages.dev/' + t.alt : t.href) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>';
   /* "More from ASL Study Hall" (Colleen): the What's Here list without what this password already opens */
-  const norm = h => String(h || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\.?\//, '').replace(/index\.html$/, '');
+  /* Which What's Here items a password already opens (Colleen: "numbers is still there"): match a button by its address written any way
+     (full or short, with or without the last slash, the old page names, links into the games for numbers or Bingo) or by its name */
+  const ALIAS = { 'hearing-loss-simulator.html': 'hearing', 'cochlear-implant-simulator.html': 'ci', 'ear-quiz.html': 'ear' };
+  const keyOf = t => {
+    const raw = String(t.href || ''), h = raw.replace(/^https?:\/\/[^/]+/i, '').replace(/^[.\/]+/, '').toLowerCase(), path = h.split(/[?#]/)[0].replace(/index\.html$/, '').replace(/\/+$/, '');
+    const name = String(t.title || '').toLowerCase(), keys = new Set([path.split('/')[0], ALIAS[path] || '', ALIAS[String(t.alt || '').toLowerCase()] || '']);
+    if (/only=numbers|focus=numbers/.test(h) || /\bnumbers?\b/.test(name)) keys.add('numbers');
+    if (/bingo/.test(h) || /bingo/.test(name)) keys.add('bingo');
+    if (/word ?search/.test(name)) keys.add('wordsearch');
+    if (/fingerspelling practice/.test(name)) keys.add('fingerspelling');
+    if (/study hall/.test(name)) keys.add('study');
+    if (/hearing/.test(name)) keys.add('hearing');
+    if (/cochlear/.test(name)) keys.add('ci');
+    if (/parts of the ear|\bear\b/.test(name)) keys.add('ear');
+    if (keys.has('numbers') || keys.has('bingo')) keys.delete('fingerspelling');      // numbers and Bingo live inside the fingerspelling site
+    return keys;
+  };
   function moreHtml(tools, admin) {
     if (admin) return '';
-    const have = new Set(tools.map(t => norm(t.href))), rest = [...document.querySelectorAll('#welcome .list li')].filter(li => !have.has(li.dataset.href));
+    const have = new Set(); tools.forEach(t => keyOf(t).forEach(k => k && have.add(k)));
+    const rest = [...document.querySelectorAll('#welcome .list li')].filter(li => !have.has(String(li.dataset.href || '').replace(/\/+$/, '')));
     return rest.length ? '<div class="card"><h2>More from ASL Study Hall</h2><p style="margin:0">Ask your teacher about these too:</p><ul class="list">' + rest.map(li => li.outerHTML).join('') + '</ul></div>' : '';
   }
   function show(got, admin) {
