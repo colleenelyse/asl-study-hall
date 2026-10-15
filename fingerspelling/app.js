@@ -28,9 +28,9 @@ const CFG = { ads: false, ga: '' };
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
-const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
-  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
+const NUM_PAGES = ['shownum', 'build', 'signnum'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
+  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const store = {
@@ -59,7 +59,8 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   flash: { name: 'Letter Flash', icon: '⚡', about: 'One letter at a time. Type each letter you see. A quick warm-up.', tag: 'Start here' },
   pairs: { name: 'Look-Alike Letters', icon: '👀', about: 'M or N? A, S, T or E? Learn to tell apart the letters that look alike.' },
   sound: { name: 'Sound It Out', icon: '🔤', about: 'Short, simple words where every letter keeps its sound, so you can "hear" the letters. A great first word game.' },
-  numbers: { section: 'numbers', name: 'Numbers', icon: '🔢', about: 'The hand signs a number. Type it or pick it. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  numbers: { section: 'numbers', name: 'Read the Number', icon: '🔢', about: 'The hand signs a number. Type it. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },
+  npick: { section: 'numbers', name: 'Pick the Number', icon: '👆', about: 'The hand signs a number. Pick it from four. Choose 0–20, the 20s, tens, multiples of 11 like 22 and 77, rocking numbers like 67 and 98, and every other two-digit number. People sign 16–19 in a variety of ways; practice them mixed or one way at a time.' },      /* Colleen: typing and picking are two games */
   nquiz: { section: 'numbers', name: 'Numbers Quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
   pick: { name: 'Pick the Word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
@@ -68,8 +69,9 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
-const isNumGame = g => g === 'numbers' || g === 'nquiz';      // the two number games: answers are numbers
-const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || (isNumGame(g) && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
+const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz';      // the number games: answers are numbers
+const isNums = g => g === 'numbers' || g === 'npick';      // Read the Number (typed) and Pick the Number (picked): the same numbers and settings
+const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
 const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
@@ -85,7 +87,7 @@ const isNum = w => /^\d+$/.test(String(w));
 const numKey = s => { const d = String(s).replace(/\D/g, ''); return d ? String(parseInt(d, 10)) : ''; };
 const answerKey = (s, num) => num ? numKey(s) : letters(s);
 /* Numbers quiz (Colleen): any number in a range, signed with all of her number rules (spoken order, HUNDRED, THOUSAND, MILLION) */
-const Q_RANGES = [[0, 100], [0, 1000], [0, 10000], [0, 100000], [0, 1000000], [0, 999999999]];
+const Q_RANGES = [[0, 99], [0, 999], [0, 9999], [0, 99999], [0, 999999], [0, 999999999]];      /* Colleen: ranges end in 9s, so 0–999 never needs the THOUSAND hand */
 const qRange = () => S.qrange === 'custom' ? [Math.max(0, Math.floor(+S.qmin || 0)), Math.min(999999999, Math.floor(+S.qmax || 0))] : (Q_RANGES[+S.qrange] || Q_RANGES[1]);
 const nfmt = n => Number(n).toLocaleString('en-US');
 const showW = w => /^\d{4,}$/.test(String(w)) ? nfmt(w) : w;      // big numbers show with commas (1,464)
@@ -237,8 +239,9 @@ function gamesInit() {
   const card = k => { const g = GAMES[k]; return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
-    '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show me numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
-    '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
+    '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
+    '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
 }
 let drawCats, drawPool;
 function setupInit() {
@@ -250,7 +253,7 @@ function setupInit() {
   drawPool = () => {
     const g = S.game; let n, msg;
     if (g === 'flash') { n = S.flash.length; msg = n ? n + ' letters chosen.' : 'Choose at least one letter.'; }
-    else if (g === 'numbers') { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
+    else if (isNums(g)) { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
     else if (g === 'nquiz') { const [lo, hi] = qRange(); n = hi >= lo ? 1 : 0; msg = n ? 'Numbers from ' + lo.toLocaleString('en-US') + ' to ' + hi.toLocaleString('en-US') + '.' : 'The highest number must be at least the lowest.'; }
     else if (g === 'pairs') { n = S.pairs.length; msg = n ? '' : 'Choose at least one pair.'; }
     else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' || bankOf(g) === 'everyday' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
@@ -277,7 +280,7 @@ function setupInit() {
   segInit('s-nhund', 'nhund', () => drawPool());
   segInit('s-hearts', 'hearts');
   const qc = () => { $('#s-qcustom').hidden = S.qrange !== 'custom'; hand.helper(S.game === 'nquiz' && qRange()[1] >= 1000); };
-  segInit('s-qrange', 'qrange', () => { if (S.qrange === 'custom' && !(+S.qmax > 0)) { S.qmin = 0; S.qmax = 1000; } $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax; saveS(); qc(); drawPool(); }); qc();
+  segInit('s-qrange', 'qrange', () => { if (S.qrange === 'custom' && !(+S.qmax > 0)) { S.qmin = 0; S.qmax = 999; } $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax; saveS(); qc(); drawPool(); }); qc();
   $('#s-qmin').value = S.qmin; $('#s-qmax').value = S.qmax;
   $('#s-qmin').oninput = e => { S.qmin = Math.max(0, Math.floor(+e.target.value || 0)); saveS(); drawPool(); };
   $('#s-qmax').oninput = e => { S.qmax = Math.min(999999999, Math.floor(+e.target.value || 0)); saveS(); qc(); drawPool(); };
@@ -369,7 +372,7 @@ function startRound(fixedWords) {
   if (fixedWords) list = shuffle(fixedWords);
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
   else if (g === 'nquiz') { list = []; for (let i = 0; i < S.qcount; i++) list.push(quizItem(list)); }
-  else if (g === 'numbers') { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
+  else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
@@ -386,7 +389,7 @@ function refreshRound() {
   if (g === 'ladder') R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))));
   else if (g === 'flash') { const more = []; for (let k = done.length; k < S.flcount && S.flash.length; k++) more.push({ w: pick1(S.flash), n: 1 }); R.list = done.concat(more); }
   else if (g === 'nquiz') { const more = []; for (let k = done.length; k < S.qcount; k++) more.push(quizItem(done.concat(more))); R.list = done.concat(more); }
-  else if (g === 'numbers') { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
+  else if (isNums(g)) { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
   else if (g === 'pairs') { const more = []; for (let k = done.length; k < S.count && S.pairs.length; k++) more.push(pairTrial()); R.list = done.concat(more); }
   else { const total = g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count; R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))).slice(0, Math.max(0, total - done.length))); }
   if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? 'Number ' : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
@@ -427,13 +430,13 @@ function drawWord() {
   $('#p-typebox').hidden = choice; $('#p-choicebox').hidden = !choice;
   if (choice) {
     if (g === 'pick' && !it.shown) it.shown = shuffle([it.w].concat(lookAlikes(it.w, R.pool)));
-    if (g === 'numbers' && !it.shown) it.shown = numChoices(it.w);
+    if (isNums(g) && !it.shown) it.shown = numChoices(it.w);
     if (g === 'nquiz' && !it.shown) it.shown = bigChoices(it.w);
     const opts = g === 'pick' || isNumGame(g) ? it.shown : it.opts;
     $('#p-cask').textContent = isNumGame(g) ? 'Which number did the hand sign?' : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.maxLength = g === 'flash' ? 1 : g === 'numbers' ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
     $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? 'What number did the hand sign?' : g === 'fill' ? 'Put the word together:' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
@@ -533,7 +536,7 @@ function finishRound() {
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
     speed: Math.round(S.speed * 100) / 100, speedName: speedName(S.speed), limit: R.settings.limit, mode: R.settings.mode, paper: S.paper,
-    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : g === 'numbers' ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
+    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : isNums(g) ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
     supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && !isNumGame(g) ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
   res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || isNumGame(g) ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
   if (g === 'ladder') { res.top = R.top; res.topLps = R.top === null ? 0 : lps(R.top); res.topName = R.top === null ? '' : speedName(R.top); }
@@ -659,6 +662,7 @@ function resultsShow() {
   const mix = mixList(r.items);
   $('#r-extra').innerHTML = (mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '') +
     (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '');
+  $('#r-review').textContent = isNumGame(g) ? 'Review missed numbers' : 'Review missed words';      // Colleen: number games say number, not word
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
@@ -668,7 +672,7 @@ function reviewShow() {
   const r = store.get('last', null), miss = r ? r.items.filter(x => !x.ok) : [];
   putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
   $('#v-title').textContent = r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
-  $('#v-list').innerHTML = miss.length ? miss.map((x, i) => '<button data-i="' + i + '">' + esc(x.w) + '</button>').join('') : '<p class="hint">No missed words. Nice!</p>';
+  $('#v-list').innerHTML = miss.length ? miss.map((x, i) => '<button data-i="' + i + '">' + esc(x.w) + '</button>').join('') : '<p class="hint">No missed ' + (r && isNumGame(r.game) ? 'numbers' : 'words') + '. Nice!</p>';
   $('#v-list').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#v-list button').forEach(x => x.classList.toggle('on', x === b)); spellWord(miss[+b.dataset.i].w, null, teensFor()); };
   $('#v-again').hidden = false; $('#v-again').disabled = !miss.length;
   $('#v-again').onclick = () => { if (r) { S.game = r.game === 'ladder' ? 'type' : r.game; } startRound(miss.map(x => ({ w: x.w, c: x.c, n: x.n }))); };
@@ -768,20 +772,22 @@ function cmpWords(d, name, r) {
   const sp = Math.round((r.game === 'ladder' && r.top !== null && r.top !== undefined ? r.top : r.speed || 0) * 3), slower = SPEEDS[Math.max(0, sp - 1)], mix = mixList(r.items || []).slice(0, 2).map(x => x.right + '/' + x.saw);
   let next = '';
   if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
-  else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? 'Practice <b>Numbers</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
+  else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? 'Practice <b>Read the Number</b> at ' + slower + ' speed with a few numbers at a time' : mix.length ? 'Practice <b>Look-alike letters</b> (' + esc(mix.join(' and ')) + ' ' + (mix.length > 1 ? 'were' : 'was') + ' mixed up today) and <b>Read the word</b> at ' + slower + ' speed' : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
   else if (worst.k === 'top') next = 'speed is the area to grow. Play <b>Speed ladder</b> a few times a week and try to pass one more level each time.';
-  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow. Play ' + (num ? '<b>Numbers</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
+  else next = (num ? 'numbers a minute' : 'words a minute') + ' is the area to grow. Play ' + (num ? '<b>Read the Number</b>' : '<b>Read the word</b>') + ' at a speed you get mostly right, and answer a little faster each round.';
   if (mins && mins.p < 25 && (!worst || worst.k !== 'minutes')) next += ' More practice time will help too: a few short rounds (5 to 10 minutes) each week.';
   return { sum, next: '<b>Next step:</b> ' + next };
 }
 /* 3.83 (Colleen: "so parents can see who's doing the work"): minutes spent, compared with the student's own class period, kept separate:
    all of ASL Study, fingerspelling, numbers. data.app = { cls, rows: [{ k, me, avg, n, p }] } from the app. */
 const TIME_NAMES = { app: 'All of ASL Study (every activity)', fs: 'Fingerspelling games', num: 'Number games' };
+/* the report bars are a percentile scale (Colleen: the graph must match the number): the line sits at the student's percentile, on the same four color zones as the Overall rating */
+const pctAt = p => Math.max(1, Math.min(99, +p)).toFixed(0);
 function timeHalf(d, name) {
   const a = d && d.app; if (!a || !a.rows || !a.rows.length) return '';
   const first = firstName(name), max = Math.max(1, ...a.rows.map(x => Math.max(x.me || 0, x.avg || 0))) * 1.3, at = v => Math.max(0, Math.min(98, 100 * v / max)).toFixed(0);
   const rows = a.rows.map(x => '<tr><td>' + esc(TIME_NAMES[x.k] || x.k) + '</td><td class="num"><b>' + x.me + ' min</b></td><td class="num">' + (x.avg === null ? '—' : x.avg + ' min') + '</td><td><div class="rs-bar">' +
-    (x.avg === null ? '' : '<i style="width:' + at(x.avg) + '%"></i>') + '<span class="me" style="left:' + at(x.me) + '%"></span></div></td><td class="num">' + (x.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(x.p)][1] + '">' + ordinal(x.p) + '</span>') + '</td></tr>').join('');
+    (x.p === null || x.p === undefined ? '' : '<span class="me" style="left:' + pctAt(x.p) + '%"></span>') + '</div></td><td class="num">' + (x.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(x.p)][1] + '">' + ordinal(x.p) + '</span>') + '</td></tr>').join('');
   const all = a.rows.find(x => x.k === 'app'), line = all && all.p !== null ? first + ' has spent ' + all.me + ' minutes in ' + esc(STUDY.app || 'ASL Study') + ' so far, more than about ' + Math.round(all.p) + '% of ' + esc(a.cls) + ' (class average ' + all.avg + ' minutes).' : '';
   return '<h2 class="rs-h">Time Spent, Compared With ' + esc(a.cls) + ' (' + a.rows[0].n + ' Student' + (a.rows[0].n === 1 ? '' : 's') + ')</h2>' +
     '<table class="rs-cmp"><tr><th>Where</th><th>' + esc(first) + '</th><th>Class average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + (line ? '<p class="rs-sets">' + line + ' Time counts toward the class comparison only; it does not change the Overall rating.</p>' : '');
@@ -807,7 +813,7 @@ function cmpHalf(cmp, name, r) {
   const rows = d.measures.filter(m => m.me !== null || m.avg !== null).map(m => {
     const max = m.k === 'pct' ? 100 : m.k === 'speed' ? 10 : Math.max(m.me || 0, m.avg || 0, m.k === 'top' ? 1 : 0.5) * 1.3;
     const at = v => Math.max(0, Math.min(98, 100 * v / max)).toFixed(0);
-    const bar = '<div class="rs-bar">' + (m.avg === null ? '' : '<i style="width:' + at(m.avg) + '%"></i>') + (m.me === null ? '' : '<span class="me" style="left:' + at(m.me) + '%"></span>') + '</div>';
+    const bar = '<div class="rs-bar">' + (m.p === null || m.p === undefined ? '' : '<span class="me" style="left:' + pctAt(m.p) + '%"></span>') + '</div>';
     return '<tr><td>' + esc(names[m.k]) + '</td><td class="num"><b>' + esc(cmpVal(m.k, m.me)) + '</b></td><td class="num">' + esc(cmpVal(m.k, m.avg)) + '</td><td>' + bar + '</td><td class="num">' +
       (m.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(m.p)][1] + '">' + ordinal(m.p) + '</span>') + '</td></tr>';
   }).join('');
@@ -823,7 +829,7 @@ function cmpHalf(cmp, name, r) {
   } else out += '<p class="rs-note">No other ' + esc(L) + ' students have played enough rounds to compare with yet.</p>';
   const core = d.kind === 'numbers' ? '% right and numbers right per minute' : 'top speed, % right and words right per minute';
   return out + '<p class="rs-foot">Averages and percentiles come from every ' + esc(L) + ' student’s running totals in ' + esc(STUDY.app || 'ASL Study') + ' as of this report (' + d.n + ' student' + (d.n === 1 ? '' : 's') + '; students with fewer than ' + d.min + ' rounds are left out). ' +
-    'Percentile = the share of the other ' + esc(L) + ' students this student scored higher than. Overall = the average of the percentiles for ' + core + '.' + (d.kind === 'numbers' ? '' : ' Letter flash is not counted.') + '</p></div>';
+    'Percentile = the share of the other ' + esc(L) + ' students this student scored higher than; the line on each bar sits at that percentile (left = lowest, right = highest). Overall = the average of the percentiles for ' + core + '.' + (d.kind === 'numbers' ? '' : ' Letter flash is not counted.') + '</p></div>';
 }
 /* the report: one clean page with the student's name, and each number in its own box under a heading (Colleen). cmp (inside ASL Study only) makes it the diagnostic report. */
 function reportSheet(r, name, cmp) {
@@ -1014,7 +1020,7 @@ function progressShow() {
     table('By word length', words, x => lenGroup(x.n) + ' letters', LEN_GROUPS.map(g => (g[1] === 99 ? g[0] + '+' : g[0] + '–' + g[1]) + ' letters')) +
     table('By speed', words, x => x.sp, SPEEDS) + table('By category', words.filter(x => x.c && !/^LEVEL/.test(x.c)), x => niceCat(x.c)) +
     table('Letter flash', all.filter(s => s.game === 'flash').flatMap(s => s.items), x => x.w) +
-    table('Numbers', all.filter(s => s.game === 'numbers').flatMap(s => s.items), x => x.w, NUMS) +
+    table('Numbers', all.filter(s => isNums(s.game)).flatMap(s => s.items), x => x.w, NUMS) +
     '<h3>Games Played</h3><table class="t">' + Object.keys(games).map(k => '<tr><td>' + esc(k) + '</td><td>' + games[k] + ' rounds</td></tr>').join('') + '</table>' +
     '<h3>Recent Rounds</h3><table class="t"><tr><th>Date</th><th>Game</th><th>Score</th><th>Speed</th></tr>' + all.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(GAMES[s.game || 'type'].name) + '</td><td>' + (s.game === 'ladder' ? (s.topLps || 0) + ' l/s' : s.pct + '%') + '</td><td>' + esc(s.speedName) + '</td></tr>').join('') + '</table>';
 }
@@ -1123,8 +1129,54 @@ function shownumInit() {
   segInit('sn-teens', 'snteens'); segInit('sn-form', 'snform'); segInit('sn-hund', 'snhund');
 }
 
+/* ---------- Sign the number (Colleen): a random number pops up for the student to sign, then the hand checks them ---------- */
+const SG_BIG = [['100–999', 100, 999], ['1,000–9,999', 1000, 9999], ['10,000–999,999', 10000, 999999], ['Millions', 1000000, 999999999]];      // past 99, by size, like the quiz ranges
+const SG = { n: null, count: 0 };
+const sgGroups = () => NUM_GROUPS.map(g => g[0]).concat(SG_BIG.map(g => g[0]));
+const sgNeedsHelper = () => S.sgroups.some(k => SG_BIG.some(g => g[0] === k && g[2] >= 1000));
+function sgPick() {
+  const k = pick1(S.sgroups.length ? S.sgroups : ['0–20']), big = SG_BIG.find(g => g[0] === k);
+  if (big) return big[1] + Math.floor(Math.random() * (big[2] - big[1] + 1));
+  return +pick1((NUM_GROUPS.find(g => g[0] === k) || NUM_GROUPS[0])[1]);
+}
+function sgCover(on) { $('#sg-cover').hidden = !on; $('#sg-check').hidden = !on; $('#sg-again').hidden = on; $('#sg-blocks').hidden = on; }
+function sgNext() {
+  stopFlag = true; let n, tries = 0; do { n = sgPick(); } while (n === SG.n && tries++ < 5);
+  SG.n = n; SG.count++; $('#sg-num').textContent = nfmt(n); sgCover(true);
+  $('#sg-count').textContent = SG.count === 1 ? '' : SG.count - 1 + (SG.count === 2 ? ' number' : ' numbers') + ' signed so far.';
+}
+function sgPlay() {
+  if (SG.n === null) return; sgCover(false);
+  const blocks = bdBlocksFor(SG.n), draw = playing => { $('#sg-blocks').innerHTML = blocks.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + ((playing || []).indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>'); };
+  draw();
+  (async () => {
+    await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
+    if (S.tone === 'random') hand.setTone(toneHex());
+    const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+    spelling = hand.signParts(blocks, { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, hund: S.snhund === 'mix' ? undefined : S.snhund, stop: () => stopFlag, onPart: b => draw(b) });
+    try { await spelling; } finally { spelling = null; draw(); }
+  })();
+}
+let sgMarks = [];
+function sgShow() {
+  putStage('signnum-slot'); hand.helper(sgNeedsHelper()); speedNow = () => S.speed; assist.className = 'assist';
+  $('#sg-speed').value = Math.round(S.speed * 100); sgMarks.forEach(m => m());
+  if (SG.n === null) sgNext(); else sgCover(true);
+}
+function signnumInit() {
+  if (!Array.isArray(S.sgroups)) S.sgroups = ['0–20'];
+  const hint = () => { $('#sg-hint').textContent = S.sgroups.length ? '' : 'Choose at least one group (0–20 is used until you do).'; if (location.hash === '#/signnum') hand.helper(sgNeedsHelper()); };
+  chipsInit($('#sg-groups'), sgGroups(), 'sgroups', x => esc(x), hint);
+  $('#sg-check').onclick = sgPlay; $('#sg-check2').onclick = sgPlay; $('#sg-again').onclick = sgPlay; $('#sg-next').onclick = sgNext;
+  $('#sg-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';
+  sgMarks = [segInit('sg-teens', 'snteens'), segInit('sg-form', 'snform'), segInit('sg-hund', 'snhund')];
+  document.addEventListener('keydown', e => { if (location.hash !== '#/signnum' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return; if (e.key === 'Enter') { e.preventDefault(); sgNext(); } else if (e.key === ' ') { e.preventDefault(); sgPlay(); } });
+}
+
 /* ---------- Build a number (Colleen): blocks 0-99 and HUNDRED, lined up and played as one number ---------- */
 const BD = { tokens: [] };
+let bdMarks = [];
 /* a group under 1000: [n] (0-99), [d, HUNDRED] or [d, HUNDRED, n] (d 1-9, n 1-99). Returns its value, or a message saying what is wrong */
 function bdGroup(t) {
   if (!t.length) return { v: 0 };
@@ -1182,7 +1234,7 @@ async function bdPlay() {
   stopFlag = true; while (spelling) await spelling; stopFlag = false;
   if (S.tone === 'random') hand.setTone(toneHex());
   const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
-  spelling = hand.signParts(BD.tokens.slice(), { per, hund: S.bdh === 'mix' ? undefined : S.bdh, stop: () => stopFlag, onPart: b => bdDraw(b) });
+  spelling = hand.signParts(BD.tokens.slice(), { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, hund: S.bdh === 'mix' ? undefined : S.bdh, stop: () => stopFlag, onPart: b => bdDraw(b) });
   try { await spelling; } finally { spelling = null; bdDraw(); }
 }
 function buildInit() {
@@ -1207,6 +1259,7 @@ function buildInit() {
   $('#bd-show').onclick = () => { const n = typed(); if (n === null) { $('#bd-whole').focus(); return; } BD.tokens = bdBlocksFor(n); bdDraw(); bdPlay(); };
   $('#bd-whole').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#bd-show').click(); } });
   $('#bd-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; bdMarks = [segInit('bd-teens', 'snteens'), segInit('bd-form', 'snform')];      // shared with Show Me Numbers and Sign the Number
   segInit('bd-hstyle', 'bdh');
   bdDraw();
 }
@@ -1224,7 +1277,7 @@ function bdFitStage() {
 function bdFitType() { const el = $('#bd-whole'); let f = 40; el.style.fontSize = f + 'px'; while (f > 14 && el.scrollWidth > el.clientWidth) { f -= 2; el.style.fontSize = f + 'px'; } }      /* shrink until it fits */
 function buildShow() { hand.helper(true); putStage('build-slot');
   if (!bdRO && window.ResizeObserver) { bdRO = new ResizeObserver(bdFitStage); bdRO.observe($('[data-screen=build] .bd-cols')); window.addEventListener('resize', bdFitStage); }
-  setTimeout(bdFitStage, 30); speedNow = () => S.speed; assist.className = 'assist'; $('#bd-speed').value = Math.round(S.speed * 100); bdDraw(); }
+  setTimeout(bdFitStage, 30); speedNow = () => S.speed; assist.className = 'assist'; $('#bd-speed').value = Math.round(S.speed * 100); bdMarks.forEach(m => m()); bdDraw(); }
 
 /* ---------- classroom projector mode ---------- */
 const CL = { list: [], i: -1, shown: false };
@@ -1489,13 +1542,13 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
   if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
-  if (name !== 'build' && name !== 'shownum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
+  if (name !== 'build' && name !== 'shownum' && name !== 'signnum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
   if (name === 'letter') {      // a letter from the chart, with the hand
     showScreen('review'); putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
     $('#v-title').textContent = 'Letter ' + (parts[1] || ''); $('#v-back').hidden = true; $('#v-again').hidden = true;
@@ -1505,7 +1558,7 @@ function route() {
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show|build|shownum)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum|signnum)$/.test(name)) parkStage();
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (SHOW[name]) SHOW[name]();
@@ -1517,7 +1570,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
-gamesInit(); setupInit(); showInit(); shownumInit(); buildInit(); classInit(); bingoInit();
+gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }

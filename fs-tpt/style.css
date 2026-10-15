@@ -242,7 +242,7 @@ table.rs-cmp { width: 100%; border-collapse: collapse; font-size: 14px; color: #
 table.rs-cmp th, table.rs-cmp td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 table.rs-cmp th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #5A6185; font-weight: 800; }
 table.rs-cmp td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rs-bar { position: relative; height: 14px; background: #F0EBE3; border-radius: 7px; min-width: 130px; }
+.rs-bar { position: relative; height: 14px; background: linear-gradient(to right, #F6D3CF 0 20%, #FBEEC2 20% 40%, #DCE5FF 40% 75%, #D3EEDD 75% 100%); border-radius: 7px; min-width: 130px; }      /* percentile zones: Beginning, Developing, Meeting, Exceeding */
 .rs-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: #C9D8FF; }
 .rs-bar .me { position: absolute; top: -4px; width: 4px; height: 22px; margin-left: -2px; background: #1B1E3C; border-radius: 2px; }
 .rs-pill { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #fff; }
@@ -409,3 +409,16 @@ html.embedded .top nav a.tptlink { display: none; }
 .teach-product img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #fff; }
 .teach-product span { color: var(--muted); }
 .btn.teach-tpt { background: #FFC83D; color: #1B1E3C; }
+
+/* Sign the number (Colleen): the number in big print; the hand stays covered until Check me */
+.sg-num { font: 700 clamp(56px, 12vw, 110px)/1.1 Fredoka, system-ui, sans-serif; text-align: center; margin: 10px 0 14px; letter-spacing: .02em; }
+.sg-cover { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--surface, #fff); border-radius: 18px; border: 2px dashed var(--line, #ddd); text-align: center; padding: 16px; }
+.sg-cover[hidden] { display: none; }
+.sg-cover p { font-weight: 800; font-size: 20px; margin: 0; }
+#signnum-slot { min-height: 240px; position: relative; }
+
+/* Build a number: speed and the signing choices are for both panels (Colleen), centered under them */
+.bd-shared { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 6px 28px; margin: 16px 0 6px; padding: 14px; border-radius: 16px; background: var(--surface2, rgba(0,0,0,.03)); }
+.bd-shared .field { margin: 0; }
+.bd-shared .bd-speedf { flex: 1 1 260px; max-width: 360px; }
+.blocks-why { margin: 16px 0 0; padding: 12px 16px; border-radius: 14px; background: var(--surface2, rgba(0,0,0,.04)); border: 1px solid var(--line, #e3d9cc); font-size: 15px; line-height: 1.45; }

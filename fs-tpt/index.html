@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=67">
+<link rel="stylesheet" href="style.css?v=71">
 </head>
 <body>
 <header class="top">
@@ -85,6 +85,31 @@
         <div class="field small"><span class="lab">16–19</span><div class="seg sm" id="sn-teens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div></div>
         <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sn-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
         <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sn-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+        <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sign the number (Colleen): a random number pops up, the student signs it, then reveals the hand to check -->
+  <section data-screen="signnum" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="signnum-slot"><div class="sg-cover" id="sg-cover"><p>Sign it yourself first.</p><button class="btn big" id="sg-check2">👀 Check me</button></div></div>
+      <div class="card panel">
+        <h2>Sign the Number</h2>
+        <p class="hint">A number pops up. Sign it on your own, then tap <b>Check me</b> to watch the hand sign it.</p>
+        <div class="sg-num" id="sg-num" aria-live="polite">–</div>
+        <div class="row"><button class="btn big" id="sg-check">👀 Check me</button><button class="btn ghost" id="sg-again" hidden>Watch again</button><button class="btn" id="sg-next">Next number</button></div>
+        <div class="blocks" id="sg-blocks" hidden></div>
+        <p class="hint" id="sg-count"></p>
+        <div class="field small"><span class="lab">Numbers</span><div class="chips" id="sg-groups"></div><p class="hint" id="sg-hint" style="margin:6px 0 0"></p></div>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="sg-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+        </div>
+        <div class="field small"><span class="lab">16–19</span><div class="seg sm" id="sg-teens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div></div>
+        <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sg-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
+        <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sg-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+        <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
       </div>
     </div>
   </section>
@@ -102,11 +127,6 @@
             <input id="bd-whole" class="bd-big" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="3840" aria-label="Type a whole number">
             <p class="hint">The blocks build as you type. Up to 999,999,999.</p>
             <button class="btn big" id="bd-show">▶ Sign it</button>
-            <div class="field small"><span class="lab">Speed</span>
-              <div class="speed"><input id="bd-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
-                <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
-            </div>
-            <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="bd-hstyle"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
           </div>
           <!-- the far side: the number building blocks -->
           <div class="bd-blockpanel">
@@ -121,7 +141,18 @@
             <div class="row"><button class="btn" id="bd-play">▶ Play the blocks</button><button class="btn ghost" id="bd-back">⌫ Remove last</button></div>
           </div>
         </div>
+        <!-- for both panels (Colleen): speed and the ways to sign 16-19, 23 & 25 and HUNDRED -->
+        <div class="bd-shared">
+          <div class="field small bd-speedf"><span class="lab">Speed</span>
+            <div class="speed"><input id="bd-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+              <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+          </div>
+          <div class="field small"><span class="lab">16–19</span><div class="seg sm" id="bd-teens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div></div>
+          <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="bd-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
+          <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="bd-hstyle"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
+        </div>
         <button class="btn ghost bd-clearall" id="bd-clear">✕ Clear all</button>
+        <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Tap the blocks to build a number, then play it. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
       </div>
     </div>
   </section>
@@ -156,7 +187,7 @@
       <div class="row between"><h2 id="s-title">Set Up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
       <div id="s-fields">
       <p class="hint" id="s-about"></p>
-      <div class="field" data-for="type pick fill pairs flash numbers nquiz ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
+      <div class="field" data-for="type pick fill pairs flash numbers npick nquiz ladder sound tricky"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
@@ -192,30 +223,30 @@
         <div class="chips letters" id="s-flash"></div>
         <label class="field"><span class="lab">Letters in a Round</span><select id="s-flcount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
-      <div class="field" data-for="numbers"><span class="lab">Numbers</span>
+      <div class="field" data-for="numbers npick"><span class="lab">Numbers</span>
         <p class="hint" style="margin:0 0 6px">Green numbers are in the game; white ones are not. Tap a number to add it or take it out.</p>
         <div class="row"><button class="link" id="s-nm-all">Choose all</button><button class="link" id="s-nm-none">Choose none</button></div>
         <div id="s-nums"></div>
       </div>
       <div class="field" data-for="nquiz"><span class="lab">Numbers From</span>
-        <div class="seg sm" id="s-qrange"><button data-v="0">0–100</button><button data-v="1">0–1,000</button><button data-v="2">0–10,000</button><button data-v="3">0–100,000</button><button data-v="4">0–1,000,000</button><button data-v="5">Up to 999 million</button><button data-v="custom">My own range</button></div>
+        <div class="seg sm" id="s-qrange"><button data-v="0">0–99</button><button data-v="1">0–999</button><button data-v="2">0–9,999</button><button data-v="3">0–99,999</button><button data-v="4">0–999,999</button><button data-v="5">Up to 999 million</button><button data-v="custom">My own range</button></div>
         <div class="row" id="s-qcustom"><label>From <input id="s-qmin" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label><label>to <input id="s-qmax" type="number" min="0" max="999999999" inputmode="numeric" style="width:130px"></label></div>
       </div>
       <div class="field" data-for="nquiz"><span class="lab">HUNDRED</span>
         <div class="seg sm" id="s-nhund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div>
       </div>
-      <div class="field" data-for="numbers nquiz"><span class="lab">16–19</span>
+      <div class="field" data-for="numbers npick nquiz"><span class="lab">16–19</span>
         <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
         <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
       </div>
-      <div class="field" data-for="numbers nquiz"><span class="lab">23 &amp; 25</span>
+      <div class="field" data-for="numbers npick nquiz"><span class="lab">23 &amp; 25</span>
         <div class="seg sm" id="s-nform"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div>
         <p class="hint">Formal: the L changes into 3 or 5. Slang: the middle finger bends twice.</p>
       </div>
-      <div class="grid2" data-for="numbers nquiz">
-        <div class="field"><span class="lab">Answer By</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
+      <div class="grid2" data-for="numbers npick nquiz">
+        <div class="field" data-for="nquiz"><span class="lab">Answer By</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
         <label class="field" data-for="nquiz"><span class="lab">Numbers in a Round</span><select id="s-qcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
-        <label class="field" data-for="numbers"><span class="lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+        <label class="field" data-for="numbers npick"><span class="lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
       <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word Type</span>
         <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
@@ -236,7 +267,7 @@
         <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
       </details>
       <div class="field"><span class="lab">Skin Tone</span><div class="tones" id="s-tones"></div></div>
-      <div class="field" data-for="type pick fill ladder pairs flash numbers nquiz sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers npick nquiz sound tricky"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
       </div>
       <button class="btn big" id="s-go">Start</button>
@@ -489,6 +520,6 @@
 <script src="themes.js?v=40"></script>
 <script src="hand.js?v=75"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=79"></script>
+<script src="app.js?v=83"></script>
 </body>
 </html>
