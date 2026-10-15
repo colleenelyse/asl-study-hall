@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAOeklEQVR4nORb+XMb5Rl+dnVYlnxLlm/Hjh3Hd2JiO6FJIIGmbWiBDiRM0xmGmQ7tz/0D6JTSv6E/tcPQoS2UJEBLOQPBucCJc/pKnMtObMv3IV+ydez2fdeRLFna1cp2ZiA8M6vZU6vv/d7zeT8ZoQNN9YeelmXhGVFAsyzL+RCEHAGw4TsEGZiHLI8IguCSIZ+XAtLHl7re/zrec4LahX3YZ1yotb8qi+If6KZ8fA9BQnHJMv6U0jH2Zgta/LHuiSUAsbHm0EuiAW/Q5S14BECCuCnI8msXOo4dWz5cQZQAmmpffEkQxbdoNxmPEMgsFmQIRy62H/1v+PkIATTVHnqB7PuoIEDEIwgyBwmydKSt8/h7wXMhAeyoO1xnEHAej9jMx4BH9uNHbd1Hr/JBcKbJ5PEuHv3BM5JhxNt4MHblo7n2xd+RLlTjBwJS+1plzLxfXX04xWbEXTqZjR8U5FH3krfcaDPg0MMefEaaA6mpWUhNyYDBYFz5CWYRspPyqSkPPGOTcM+Mw+2ehD/gxcOH4EwzJ71Iv0bep5EPrQkGowmFeeUoKapCbu4miOxhVmF4mxEjdSQAcfndzn4JzS0+QJIxOtaPvvvXcX/gBvx+Hx4WBMi7SABCCTYIqSlZqNjSgNLiGphMZtX7FtMFEkCkUNxFIiY3i7DfkZDjLFa2HdufQu+9Lty4eQlz81PYaFBeUGkUBLlkvRqQlZGD+tq9yMst0XX/vCP2+zyZkeeNpElbyrYr2/3+HlztOIX5hRlsIHKNlBzkCmscv82apgy8pLgqoedMntjnDRraXly0Vdm6rreivessNgQCCYCqpySsAeWbt2N73ROaqq6GlBEJpjkZvpQwyVOGntEnxX22pmoXsh2FOPXNB/D7lrAe0NvTheb6w3IiD7GD27PrOeTnlmI98FHKNVZpwGKmCNO8jKzbEmwT8QUQhHtmAqfOvY/5eTfWg4QEYBCNeHLPC4qDSgQ+7xL6+q9jePQevN7F4KuRbLHBQpuZtMhoSsKmokrlnF54FufRcuYYpt1jWCsSEsCeA4dgfawMAdJ62xjN2Lj6o6PjAxga7sMYhbSxiUHoRba9ELk5xWTvlUij3CEevGQGJ0+9h6npEawFugWw7eAv4H+1HpJpxW6zu/wouBSIuG92bgoXLp2gWH4/4jybTkHeZqSn2kPniLXB3IKbQpwbM5QE+fyRCRBrRGPDAZjN2m6KE6hPvngLa4FRz015OaWwHqzFtCkyXIxVGZB7LQADcS0+nxdX21twu7c9dJ0HvalwKwryy1FIWzwMDt3BtY6zNKBllb7Xf4MEOYCdO36KvDx1n5NOmWZ9zZ41RYe4AkhKsmJX00H0pcWIlZTFeVMF+Psncebch3DPToQulZfWo7Z6N5KT9dt0QV6ZsvUP3ELn9W8U2/YszqHl3HFUV+7ENgq5QUj0c6bKDJjNWy5oc8t3o2+wBzPTifkDQ0FOzetaNzQ/dgAORz7mckUsZqziSShtNX1xH1+dfEf5oQyT0Yzdu55F1damNYVIRnqaXUl+vEseTEwNK+fGxgeJy5BCDniowYihRiNFEUHZZiiTzCvYDNfpNiQCTebHmV2Mkk3LVbKzOwDRF+kuMjo8ONNyDIEH+XpGejZ+8vTLutRdD3Y0PI3Hm38eOu660Ur1wU1lf6o0+qd7qzMSfremCXAuHoSVPH7VB17MFBhCUaD1+LFQsZKR7sSBfUconJmwkeAsk/3LxSsnlOO2S1/Abs+DP9kRda8/WUBVZTMGXLehF6oawJLMSI98iYlCuP1OAM7rAfSdbVWqNoY1OQ37976w4YMPYkvZNnKkywS117eIy1dPwjoWnTRZJ2Q4svLhsBdAL1Q1oJpSTjXMzE6hvfNM6Pjx5mcooUlBPHC46ufZkVZ+vJF8hpIAJWs/v2PbfgyP9CIQ8GNg8BbKTo7A+1xuKJ3m1Dr/4jL1X1SwBeM6c4+YAkixZcKemav6UNvlE6H9yopG8hWF0ML4xBCVtG3oH7wZ83p79zkqoauVUJaUFJuWtNnSlEnp6FwOdXfPnsNu/7NYehCdkmbkUE3LvkgvYpoA25gaOC4HkxxW/ToKdVrgev7E1/9UHTyDnejtu9fw6Ym/Y3JKPaPbUrottN8/0KM8Z6GBW8IGz8jMdEIvYgrAkaU++3f7OkP7pSU1Ss2uhu4b59Ha9in0gkNp0NnFgiwHIt7HJhULSeZkWHWYJCOmALI0BMDxOAgtZzM8cg/XwvyEXkxMDtPsxtYW9jMOx4q5TU+Pq35PeoY+M4gpgLQUe8yblygxCaemHBqmcn7VzDMZysyRzZqOeBibcKles4Y5y5m5CdX7knVqQJQTTEqyqRYfXOgEwYMxm2Lfx+Fx4UFmyOCEpqKsIXQ8Pz+D1oufRRVMQfj8+ogOs8mieo0nSw+iNMCmEY5mZ1cEkKGhYlwKB+HMLooYvPIO8uiNDU+pPp/r3AQ9sFisqteYK9CDhJqg/kBYi12DSOQZDiLbETtEcgVnNkeHPHZe2Rq+ZSGMFOVCTQ1LSwvQgzV3gWVJnUYINyEthqd0FZnK/uGpJ1+C1Zoa8/7Z2UnFuQaRma4e7haX9GlAlA+QoD4wUVyZ9QXPrOp9yckrA1jyqtviY1Rr1NXuocjiIqGZlTRWC+EhOJMdKplSLCwuLigZox5EacAKZxcNk3FlZrX4eVuYAFyuu9ACl8/51E+IN3guuu6ECaCqokn13qHhXuhFlAb4NARgCSM3PGFefjVyyIlx2ONZmJgaIrXtI56vBOvB9ZsXQ3adRnyB+cdbcaPShKUUEcmTEnLbA0hzLdcYA0PrqAbDebl5u4j+ndQ6fsoEV4MBmUWFMBqWSQ5OQz2e2EJgHxBeSrde/HxdPT6myjqpXmDw+5uP/BojuywKQSPTFC44RfTuN8FvYSc5qxRLehHTCXIc91D/7tYzJkxsNWCmUMRonRE3D5rhLFzh5riBqYYyosSC7I2H/IVWiqsFrhFOn/sgdMz0nK842rHK1GqczxbR3XMBiSCmAIZIZadLxKiWIZeem/buDB3f6e2AFnY1HgyFut573fjfZ28SfT0KPeCZPE/JUnjlWVH+GIoK1ReuLVLsv3XnChJBTE4w4Pcj80ADFrOi5ZO1YMP45S7FWXrJw1soc7Sr1A4mbnYUVmKEMr5Fsl++n2d0fHKIZCuQF0+nZktkl5i5Bh7E6W8+DAmLGzLb65+kcnm58pQFWSFEwyEQO9/3l/9gfnoSiSAmHzBJTQbjPbLv8ui8nR0Nc/VfnzmqHF/rPE0ERJkqIcKh6uCBV3Dj1iVcuba8cHOYvPTwA0/NKbWRyFNZljDlHo/q93EPclvd3oi0O22IyI82Pya3iCEn6P+UKPRe/c4vCFVWWBzzwF6zBUvpy3YgUOKT2y4h456ElJQMuIZ6lUggSQFlpko31Wi+yGHPV1JiM2VvPFjODyRihjhl5ZDKKs/fFQSHuSZipMtK6yJWlQTBXSlHD3n/DiJrLw7j3Mf/xlqg2Rl69uBvYbGnY8kmwuKWlAZIEJNEV3/V8l5oOUtVRTOp6RNIBOzduaUlO6yUWRvgkNKUfECLY1gNjlqff/kPKtQSU/0gNPsCHLqKneUwe2SIqzhI5vCc2QW433+T2gMBhYNLTclMiI4ylDjgfnkz/PsKIT2ej6X6LKROiDAv6GtXMlvccvY4NVD0OdZY0KwF7vZ1YG5uWvU6Fzp7f/R86PjbCx+j57Z+L+zaYYhYI8D7rkZd3Tqln3jy9Hu6yU81xO0MsZQLC9SbDewPUsibB7l4TkNnSWhOEk48VR5sMlL8joy1AXokpzOg+gxrZTsRo+fOf6SZjepFXAGwevFgeJBqyMxwKilDsE/gpp4e5whGo5FCpDprNF5hgGRetS6IaifuO8QCt9tbzhynPEV/rh8PcQXAYEY3P2ezZqOTiQ+u43n2OfMLSH5FG3qpgGHun3v9q5fL+S0C5nMirZA9e+pwpMPhEvhKxyml+6uXLdILoanu0KKedUJMPhzYf0RxdPHQ29eFq5QfLK5iZfJyS5WiiLlE9varO7ypQxIyqfPknhpV6HHeXMN3I0iQjQS5WjeFwUN9JAddHBSzNU+TELTMIQiO7f1UlNy8dZn23arfl2xNoTi/7Cu4+ztJJhd4iIsjwyHL6GEBtJIAdup9yGpNw4/3/UpZIqcX3Exhux0eua8IQy9dZc/MgyCKSq6gl+BIBCSAU+SGcZU8mG4BsDqeOPkvPLH7l8jSaJ+FI6mhGJmbSpFGlbR1VILlygQmXAMxVVskbcgmE1nNJXJDtOf2ZWwoBFwVmuoP/4xMUX/75gG4QGlu/GncRZJTVFXeeyIyHKYOSij7KnE1//zLt5U6ZaMgIPC4wTXSfTs/p/p5qs7yEnmY83kmHjhPyMqigsYQO+YPbTdQPRHp6b3U0LT3RKbWerBABMxYGOW+Lsi4dqHj+GvKLxNk+Q2sET23LuKjT/6Kju5vo1Z5MVYPfuU8EoYlaSP/0CK9zp9KYB4cvX5jLVoQ+iqq4jgJukVpMFd5HPOD5esS8aML2ZFCEL0yCi4EEl6i3UekSnDN0LqgzP6x3/NuKDMpdGxtpUzlFdpd8zIPFsQ49fV6qPafmZlUSA+HxwZPgQk+6/JwDaQkRa0BWKcTWqGrNGWvUG4RXjKvER76hmeGRruVCipiEhrrDx+iuTqKDQZniM7KCqTn5CNHzoTFYNH1HHeKudgZcN1R7SMmguW/zcmH2zqPvR88F6WFJITnBMjv0OxZ8ZDAq0WtxBQxX5hEpsLrhDn54WWvPt8ipdLzCp2+wSAGBocvdB79OPxkTDNsrH6xQTCK79LFCjwCUP46G/C/dKHrg2urr2n+eXquLvs31AP94/f5z9OCJP3Z2jnxt0T+PB2FHTUv7BcN4s/JLHZ+9/8+j0GiL78RIH3S1vH+6XjP/R8AAP//JtRe3QAAAAZJREFUAwByVc3htHqUzwAAAABJRU5ErkJggg==">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23362e55%22/%3E%3Cpath d=%22M20.1%2C28.1 L18.5%2C28.4 L16.8%2C28.5 L15.2%2C28.4 L13.6%2C28.1 L12.0%2C27.7 L10.5%2C27.0 L9.2%2C26.3 L7.9%2C25.3 L6.9%2C24.2 L5.9%2C23.1 L5.2%2C21.8 L4.6%2C20.5 L4.2%2C19.1 L4.1%2C17.7 L4.1%2C16.3 L4.3%2C14.9 L4.6%2C13.6 L5.2%2C12.3 L5.9%2C11.2 L6.7%2C10.1 L7.7%2C9.1 L8.8%2C8.3 L10.0%2C7.6 L11.3%2C7.1 L12.6%2C6.7 L14.0%2C6.4 L15.3%2C6.4 L16.7%2C6.5 L18.0%2C6.7 L19.2%2C7.1 L20.4%2C7.6 L21.5%2C8.3 L22.5%2C9.1 L23.3%2C9.9 L24.0%2C10.9 L24.6%2C11.9 L25.1%2C13.0 L25.3%2C14.1 L25.5%2C15.2 L25.4%2C16.3 L25.3%2C17.4 L25.0%2C18.4 L24.5%2C19.4 L23.9%2C20.3 L23.2%2C21.2 L22.5%2C21.9 L21.6%2C22.5 L20.6%2C23.1 L19.6%2C23.5 L18.6%2C23.7 L17.6%2C23.9 L16.5%2C23.9 L15.5%2C23.8 L14.5%2C23.6 L13.5%2C23.3 L12.7%2C22.9 L11.8%2C22.4 L11.1%2C21.8 L10.5%2C21.1 L10.0%2C20.4 L9.5%2C19.6 L9.2%2C18.8 L9.1%2C17.9 L9.0%2C17.1 L9.0%2C16.3 L9.2%2C15.5 L9.4%2C14.7 L9.8%2C14.0 L10.2%2C13.4 L10.8%2C12.8 L11.4%2C12.3 L12.0%2C11.8 L12.7%2C11.5 L13.4%2C11.2 L14.2%2C11.0 L14.9%2C11.0 L15.6%2C11.0 L16.4%2C11.1 L17.0%2C11.2 L17.7%2C11.5 L18.3%2C11.8 L18.8%2C12.2 L19.3%2C12.6 L19.7%2C13.1 L20.0%2C13.6 L20.3%2C14.1 L20.4%2C14.7 L20.5%2C15.2 L20.5%2C15.8 L20.5%2C16.3 L20.3%2C16.8 L20.1%2C17.3 L19.9%2C17.7 L19.6%2C18.1 L19.2%2C18.5 L18.8%2C18.8 L18.4%2C19.0 L18.0%2C19.2 L17.5%2C19.3 L17.1%2C19.4 L16.6%2C19.4 L16.2%2C19.3 L15.8%2C19.2 L15.4%2C19.1 L15.1%2C18.9 L14.8%2C18.7 L14.5%2C18.5 L14.3%2C18.2 L14.1%2C17.9 L14.0%2C17.7 L13.9%2C17.4 L13.9%2C17.1%22 fill=%22none%22 stroke=%22%238f82c9%22 stroke-width=%223.4%22 stroke-linecap=%22round%22/%3E%3Cg fill=%22%235fe0d0%22%3E%3Ccircle cx=%2213.6%22 cy=%2228.1%22 r=%221.5%22/%3E%3Ccircle cx=%224.7%22 cy=%2220.6%22 r=%221.5%22/%3E%3Ccircle cx=%226.6%22 cy=%2210.2%22 r=%221.5%22/%3E%3Ccircle cx=%2216.3%22 cy=%226.4%22 r=%221.5%22/%3E%3Ccircle cx=%2224.5%22 cy=%2211.6%22 r=%221.5%22/%3E%3Ccircle cx=%2224.2%22 cy=%2220.0%22 r=%221.5%22/%3E%3Ccircle cx=%2217.0%22 cy=%2223.9%22 r=%221.5%22/%3E%3C/g%3E%3C/svg%3E">
+  <title>Cochlear Implant Simulator</title>
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script>
+    // ---------- VIDEO WINDOW MODE ----------
+    // When this same file is opened with ?youtube=VIDEO_ID on the end of its
+    // address, it turns into a small window that holds only the YouTube player.
+    // The simulator opens that window itself and sends it play, pause and skip.
+    const YOUTUBE_ID = new URLSearchParams(location.search).get('youtube');
+
+    if (YOUTUBE_ID) {
+      document.title = 'CHOOSE THIS TO CONNECT SOUND';
+      // The pink strip along the bottom edge is how the simulator page recognizes this window when it is shared
+      document.write('<body style="margin:0; background:#e6007e; overflow:hidden"><div style="width:100vw; height:calc(100vh - 12px); background:#000"><div id="ytplayer" style="width:100%; height:100%"></div></div>');
+
+      let ytPlayer = null;
+      const tell = (state) => { if (window.opener) window.opener.postMessage({ simulatorVideo: state }, '*'); };
+
+      // YouTube calls this when its player code has loaded
+      window.onYouTubeIframeAPIReady = () => {
+        ytPlayer = new YT.Player('ytplayer', {
+          width: '100%', height: '100%', videoId: YOUTUBE_ID,
+          playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
+          events: {
+            onReady:       () => tell('ready'),
+            onStateChange: (event) => tell(event.data === 1 ? 'playing' : (event.data === 2 || event.data === 0) ? 'paused' : 'other'),
+            onError:       () => tell('error')
+          }
+        });
+      };
+
+      // Commands arriving from the simulator page
+      window.addEventListener('message', (event) => {
+        if (event.source !== window.opener || !ytPlayer || !event.data) return;
+        const command = event.data.simulatorCommand;
+        if (command === 'play')  ytPlayer.playVideo();
+        if (command === 'pause') ytPlayer.pauseVideo();
+        if (command === 'skip')  ytPlayer.seekTo(ytPlayer.getCurrentTime() + event.data.seconds, true);
+        if (command === 'seek')  ytPlayer.seekTo(event.data.seconds, true);
+      });
+
+      // Twice a second, tell the simulator page where the video is, for its position bar
+      setInterval(() => {
+        if (!ytPlayer || !ytPlayer.getDuration || !window.opener) return;
+        window.opener.postMessage({ simulatorVideo: 'time', time: ytPlayer.getCurrentTime() || 0, length: ytPlayer.getDuration() || 0 }, '*');
+      }, 500);
+
+      const youtubeCode = document.createElement('script');
+      youtubeCode.src = 'https://www.youtube.com/iframe_api';
+      document.head.append(youtubeCode);
+
+      // Stop this window from loading the rest of the simulator
+      document.write('<plaintext style="display:none">');
+    }
+  </script>
+  <style>
+    /* ----- Colors. Light is the starting look; Dark swaps these values. ----- */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --duct: #ece4fb; --ductEdge: #b9a8e0; --wire: #a79fbd;
+                --dot: #17b3a3; --dotEdge: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px;
+                max-width: 1200px; margin: 18px auto; padding: 0 20px 70px 20px;     /* (the space at the bottom keeps the Stop button from covering the end of the page) */
+                background: var(--page); color: var(--ink); line-height: 1.5; }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --duct: #3d3560; --ductEdge: #7469a3; --wire: #8d84ad;
+                --dot: #2ec4b6; --dotEdge: #f4effa; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff;
+                --accent: #ffe600; --onAccent: #000; --duct: #000; --ductEdge: #fff; --wire: #fff; --dot: #00e0c6; --dotEdge: #fff; --shadow: none; }
+    .contrast .panel { border-width: 2px; }
+    .contrast select, .contrast input[type=text], .contrast button, .contrast .jumpLinks a, .contrast .pageLink, .contrast .backUp { border: 2px solid #fff; }
+    .contrast a { color: #ffe600; }
+    .contrast .jumpLinks a, .contrast .pageLink, .contrast .backUp { color: #fff; }
+    body.big  { zoom: 1.15; }                 /* Large text */
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    .pageLink { text-decoration: none; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); }
+    .pageLink:hover { border-color: var(--accent); }
+    [hidden]  { display: none !important; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 21px; font-weight: 800; margin: 16px 0 8px 0; }
+    a         { color: inherit; }
+    .hint     { color: var(--quiet); font-size: 14px; }
+    ol.hint   { padding-left: 18px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .panel    { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .panel p  { margin: 8px 0; }
+    .panel > p, .panel > ol, .panel > ul, .panel > dl { max-width: 78ch; }
+    .panel li { margin-bottom: 6px; }
+    select, input[type=text], button { font: inherit; font-size: 15px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 999px;
+                background: var(--raised); color: var(--ink); }
+    button    { font-weight: 700; transition: background 0.12s, border-color 0.12s; cursor: pointer; }
+    button:hover:not(:disabled):not(.on):not(.playing) { border-color: var(--accent); }
+    button:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    button.playing { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+
+    /* Rows of joined buttons where one is chosen */
+    .choices  { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .choices b { margin-right: 4px; }
+    .choices button.on { background: var(--accent); color: var(--onAccent); border-color: var(--accent); font-weight: bold; }
+
+    /* The four "Sound from" choices: a 2-by-2 grid of tiles, clearly different from the round buttons inside each choice */
+    #sourceTabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #sourceTabs b { grid-column: 1 / -1; margin: 0; }
+    #sourceTabs button { border-radius: 12px; padding: 11px 8px; text-align: center; border-width: 2px; }
+    [id^="source-"] { margin-top: 12px; padding: 10px 14px 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--page); }
+    .contrast [id^="source-"] { border-width: 2px; }
+    [id^="source-"] > p:first-child { margin-top: 0; }
+    .youtubeRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .youtubeRow input[type=text] { flex: 1 1 180px; }
+    .youtubeRow button { white-space: nowrap; }
+    [id^="source-"] details ul { margin: 4px 0; padding-left: 20px; }
+    .youtubeGuide { margin: 10px 0 6px 0; padding-left: 22px; }
+    .youtubeGuide li { margin-bottom: 5px; opacity: 0.6; }
+    .youtubeGuide li.now { opacity: 1; color: var(--ink, inherit); }
+    .youtubeGuide li.now::marker { color: var(--pink, var(--accent, #e6007e)); font-weight: 800; }
+    .contrast .youtubeGuide li { opacity: 1; }
+    .contrast .youtubeGuide li.now::marker { color: #ffe600; }
+    /* the Home arrow and the link to the other simulator, stacked at the top left */
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    /* The one link at the top of every page: a square Home button */
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent, #e6007e); }
+    .homeButton:focus-visible { outline: 3px solid var(--accent, #e6007e); outline-offset: 2px; }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    /* the big warning when the wrong tab was shared */
+    .alertBox { margin: 10px 0 4px 0; padding: 12px 14px 12px 46px; border-radius: 12px; background: #c62828; color: #fff; font-size: 16px; line-height: 1.35;
+                border: 2px solid #fff; box-shadow: 0 0 0 3px #c62828; position: relative; }
+    .alertBox::before { content: '!'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%;
+                background: #fff; color: #c62828; font-weight: 900; font-size: 18px; text-align: center; line-height: 24px; }
+    .alertBox b { color: #fff; }
+    .seekRow  { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    .seekRow input[type=range] { flex: 1; min-width: 0; margin: 0; accent-color: var(--pink, var(--accent, #e6007e)); cursor: pointer; }
+    .contrast .seekRow input[type=range] { accent-color: #ffe600; }
+    /* ===== LITE (Simple view): the same page with almost everything hidden (the address ends in ?lite, which gives <body class="lite">) ===== */
+    body.lite { max-width: 1000px; }
+    body.lite .jump, body.lite #sourceTabs, body.lite #source-file, body.lite #source-youtube, body.lite #source-mic, body.lite #source-story .hint,
+    body.lite #player, body.lite .arrayNotes, body.lite #eraNote, body.lite .backUp, body.lite #status,
+    body.lite .panel:has(#eras) ~ .panel { display: none !important; }
+    .liteStep { font-size: 20px; font-weight: 800; margin: 0 0 8px 0; }
+    .liteNote { margin: 8px 0 0 0; }
+    body.lite #source-story button { border-color: var(--accent); }
+    body.lite #source-story button::before { content: '\25B6'; margin-right: 10px; font-size: 0.85em; }
+    body.lite #source-story button.playing::before { content: '\275A\275A'; letter-spacing: 1px; }
+    .liteInfo { text-align: center; font-weight: 700; min-height: 24px; margin: 6px auto 0 auto; }
+    body.lite .top { align-items: center; }
+    body.lite .top .panel { border: none; background: none; box-shadow: none; padding: 0; }
+    body.lite [id^="source-"] { margin-top: 0; border: none; background: none; padding: 0; }
+    body.lite #source-story p { margin: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+    body.lite #source-story button { font-size: 18px; padding: 14px 22px; border-width: 2px; }
+    body.lite #arrayPicture { margin: 0 auto; max-width: 560px; }
+    body.lite .arrayBox { justify-content: center; }
+    .liteTag  { font-size: 15px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: var(--onAccent); vertical-align: middle; margin-left: 8px; letter-spacing: 0; }
+    .deeper   { margin: 18px 0 30px 0; text-align: center; }
+    .deeper a { font-size: 16px; padding: 10px 20px; }
+    .top      { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .top .panel { flex: 1; min-width: 300px; margin-bottom: 0; }
+    .videoPanel { flex: 0 0 300px !important; min-width: 300px; text-align: center; }
+    video     { width: 100%; height: 150px; background: black; display: block; border-radius: 12px; }
+    .transport { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 8px; }
+    .transport button { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: none; background: transparent; color: var(--ink); }
+    .transport button svg { width: 100%; height: 100%; display: block; }
+    .transport #playButton { width: 52px; height: 52px; }
+    .transport button:disabled { opacity: 0.35; cursor: default; }
+    #transportNote { margin: 0; min-height: 16px; font-size: 12.5px; line-height: 1.3; }
+    #status   { font-weight: bold; min-height: 20px; }
+
+    /* The history buttons: big, with the years underneath */
+    .eras     { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px 0; }
+    .eras button { display: flex; flex-direction: column; align-items: center; padding: 10px 18px; border-width: 2px; border-radius: 16px; }
+    .eras button b { font-size: 18px; font-weight: 800; }
+    .eras button span { font-size: 13px; font-weight: 600; opacity: 0.85; }
+    .eras button.on { border-color: var(--accent); background: var(--accent); color: var(--onAccent); }
+
+    /* The electrode chart */
+    .arrayBox { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-top: 10px; }
+    #arrayPicture { width: 100%; max-width: 700px; height: auto; flex: 1 1 520px; }
+    .arrayNotes { flex: 1 1 300px; }
+    .key      { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; border: 2px solid var(--quiet); }
+    .key.on   { background: var(--dot); border-color: var(--dot); box-shadow: 14px 0 0 -1px #ffd84d; margin-right: 20px; }
+
+    #arrayPicture circle { cursor: pointer; transition: r 0.1s; }
+    #arrayPicture circle:hover { r: 12; }
+    #arrayPicture circle:focus:not(:focus-visible) { outline: none; }
+    #arrayPicture circle:focus-visible { outline: 3px solid var(--accent); stroke: var(--accent); stroke-width: 5; }   /* Safari draws no outline on SVG shapes, so the edge is drawn thick instead */
+    #electrodeInfo { font-weight: 700; min-height: 48px; padding: 10px 14px; border-radius: 12px; background: var(--raised); }
+    #electrodeInfo:empty { display: none; }
+    #stopButton { position: fixed; right: 16px; bottom: 16px; z-index: 5; padding: 12px 18px; font-size: 17px; font-weight: bold;
+                  border-radius: 999px; border: none; background: #d6294a; color: white; box-shadow: 0 4px 14px rgba(120, 20, 50, 0.35); }
+    #stopButton.off { background: var(--card); color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+    /* The "I want more information about" buttons near the top */
+    .jump b   { display: block; margin-bottom: 8px; font-size: 17px; }
+    .jumpLinks { display: flex; flex-wrap: wrap; gap: 8px; }
+    .jumpLinks a { text-decoration: none; font-weight: 700; font-size: 14px; padding: 7px 14px; border-radius: 999px;
+                border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); }
+    .jumpLinks a:hover, .jumpLinks a:focus-visible { border-color: var(--accent); outline: none; }
+    html      { scroll-behavior: smooth; }
+    h2[id], p[id] { scroll-margin-top: 14px; }
+    @media (prefers-reduced-motion: reduce) { button { transition: none; } html { scroll-behavior: auto; } }
+    .backUp   { position: fixed; left: 16px; bottom: 16px; z-index: 5; text-decoration: none; font-weight: 700; padding: 10px 16px; border-radius: 999px;
+                background: var(--card); color: var(--ink); border: 1.5px solid var(--line); box-shadow: var(--shadow); }
+    .tableWrap { overflow-x: auto; margin: 10px 0; }
+    table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
+    table.compare th, table.compare td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    table.compare thead th { background: var(--raised); }
+    table.compare tbody th { background: var(--raised); width: 19%; }
+    .sources li { margin-bottom: 4px; }
+    dt        { font-weight: bold; margin-top: 8px; }
+    dd        { margin: 0; }
+      /* The on/off switch (the same as on the hearing loss page) */
+    .switch       { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch span  { width: 46px; height: 24px; border-radius: 12px; background: #999; position: relative; transition: background .15s; }
+    .switch span::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+    .switch input:checked + span { background: var(--accent); }
+    .switch input:checked + span::after { left: 25px; }
+    .switch input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .dark .switch span { background: #6a6090; }
+    .contrast .switch span { background: #000; border: 2px solid #fff; box-sizing: border-box; }
+    .contrast .switch input:checked + span { background: #ffe600; }
+    .contrast .switch span::after { background: #fff; top: 1px; }
+    .contrast .switch input:checked + span::after { background: #000; }
+      /* The Simple view switch at the top: the page reloads with or without ?lite on the end of its address */
+    .simpleSwitch { font-size: 15px; font-weight: 700; white-space: nowrap; }
+  </style>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <script>
+    // Simple view: the same page with less to read. It is on when the address ends in ?lite
+    // (the old Lite pages send people here that way). The LITE section near the end of the page does the rest.
+    if (new URLSearchParams(location.search).has('lite')) document.body.classList.add('lite');
+
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <a class="backUp" href="#top">&uarr; Back to the top</a>
+  <button id="stopButton" title="Stops every sound on this page. The Esc key does the same.">&#9632; Stop all sound</button>
+
+  <div class="pageBar" id="top">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>Cochlear Implant Simulator</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+      <label class="switch simpleSwitch" title="Simple view: press play and try the buttons, with less to read.">Simple view <input type="checkbox" id="simpleView" autocomplete="off"><span></span></label>
+      <a class="helpButton" href="troubleshooting.html" title="Opens the troubleshooting page: what to try when something does not work"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Troubleshooting</a>
+    </div>
+  </div>
+
+  <nav class="panel jump" aria-label="Jump to a section">
+    <b>I want more information about&hellip;</b>
+    <div class="jumpLinks">
+      <a href="#chart">The electrode chart</a>
+      <a href="#video">X-ray video of the wire going in</a>
+      <a href="#pitch">Why electrodes play a different pitch</a>
+      <a href="#counts">Why makers use different electrode counts</a>
+      <a href="#surgery">What surgery can cost the ear</a>
+      <a href="#who">Who can get an implant</a>
+      <a href="#timing">Why timing matters</a>
+      <a href="#mapping">Mapping and Bluetooth</a>
+      <a href="#mri">MRI scans with an implant</a>
+      <a href="#internal">Fully internal implants (2026)</a>
+      <a href="#deaf">Deaf culture and being &quot;fixed&quot;</a>
+      <a href="#sign">Implants and sign language together</a>
+      <a href="#accuracy">How accurate this page is</a>
+      <a href="#words">Words to know</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </nav>
+
+  <div class="top">
+    <!-- Where the sound comes from -->
+    <div class="panel">
+      <div class="choices" id="sourceTabs">
+        <b>Sound from:</b>
+        <button data-source="story">Built-in recordings</button>
+        <button data-source="file">A file</button>
+        <button data-source="youtube">YouTube</button>
+        <button data-source="mic">Microphone</button>
+      </div>
+
+      <div id="source-story">
+        <p><button class="clipButton" data-clip="story" data-name="the story">Play the story</button>
+           <button class="clipButton" data-clip="guided" data-name="the speech sounds sampler">Play the speech sounds sampler</button>
+           <audio id="storyClip" preload="metadata"></audio></p>
+        <p class="hint">Both recordings were written to include speech sounds at low, middle and high pitches, so you can hear what each setting does to them.
+           <b>The story</b> (45 seconds) is the quickest way to hear the difference between the settings below.
+           <b>The speech sounds sampler</b> (about 2 minutes) walks through low, middle and high speech sounds one group at a time.</p>
+      </div>
+      <div id="source-file" hidden>
+        <p><input type="file" id="file" accept="video/*,audio/*"></p>
+        <p class="hint">Choose an mp3, mp4 or other sound or video file from this computer, then press play on the video.</p>
+      </div>
+      <div id="source-youtube" hidden>
+        <input type="text" id="link" size="34">
+        <button id="connectButton">Connect YouTube</button>
+        <ol class="hint" id="youtubeSteps"></ol>
+        <p class="hint">Works in Chrome or Edge on a computer or Chromebook.</p>
+      </div>
+      <div id="source-mic" hidden>
+        <p><button id="micButton">Turn on microphone</button></p>
+        <p id="micChoiceRow" hidden><label>Which microphone: <select id="micChoice"></select></label></p>
+        <p class="hint">Put on headphones first, or the sound will loop and squeal. Then speak, or listen to the room.</p>
+        <p class="hint micTip"><b>For the microphone to work well:</b> keep the sound source and the microphone together, and move the listener as far from them as you can. The listener should only hear the sound through the headphones. If the listener can also hear the real sound in the room, the simulation will not sound right. Turning off transparency mode and keeping the source quiet also help.</p>
+      </div>
+      <p id="status" aria-live="polite"></p>
+    </div>
+
+    <div class="panel videoPanel">
+      <video id="player" controls loop playsinline></video>
+      <div class="seekRow" id="seekRow" hidden>
+        <span id="seekNow">0:00</span>
+        <input type="range" id="seekBar" min="0" max="100" step="1" value="0" aria-label="Position in the video or recording">
+        <span id="seekEnd">0:00</span>
+      </div>
+      <div class="transport">
+        <button id="backButton" aria-label="Back 10 seconds"></button>
+        <button id="playButton" aria-label="Play"></button>
+        <button id="forwardButton" aria-label="Forward 10 seconds"></button>
+      </div>
+      <p class="hint" id="transportNote"></p>
+    </div>
+  </div>
+
+  <!-- What the listener hears -->
+  <div class="panel" style="margin-top: 10px;">
+    <div class="choices" id="modeButtons">
+      <b>Listen to:</b>
+      <button data-mode="original">The original sound</button>
+      <button data-mode="describe">An implant, as users describe it</button>
+      <button data-mode="channels">The electrode demonstration</button>
+    </div>
+    <p id="modeNote"></p>
+  </div>
+
+  <!-- The electrode array -->
+  <div class="panel">
+    <h2 id="chart" style="margin-top: 0;">The electrode array</h2>
+    <p>A cochlear implant has a thin row of electrodes threaded into the cochlea. Each electrode stands for one band of pitches.
+       Today's most widely used implants have 22. Choose an earlier design to switch electrodes off and hear the electrode demonstration with fewer.</p>
+    <div class="eras" id="eras"></div>
+    <p id="eraNote" class="hint"></p>
+
+    <div class="arrayBox">
+      <svg id="arrayPicture" viewBox="0 0 620 465" role="group" aria-label="A cochlea with a row of electrodes inside it"></svg>
+      <div class="arrayNotes">
+        <div class="choices" id="labelButtons">
+          <b>Numbers on the chart show:</b>
+          <button data-labels="set">The pitch each electrode plays</button>
+          <button data-labels="natural">The pitch that spot hears in a hearing ear</button>
+        </div>
+        <p id="labelNote" class="hint"></p>
+        <p><b>Click any electrode to hear its sound.</b> You hear a beep or a burst of hiss at its pitch, depending on the "Sound of each electrode" choice below. The numbers are in Hz, and "k" means thousand (1.2k = 1,200 Hz).</p>
+        <p id="electrodeInfo" aria-live="polite"></p>
+        <p><span class="key on"></span> An electrode that is switched on. It turns from teal to glowing yellow while its band of pitches is sounding.</p>
+        <p><span class="key" style="background: transparent; border-style: dashed;"></span> An electrode that is switched off.</p>
+        <p id="carrierRow"><label>Sound of each electrode: <select id="carrierChoice"><option value="tone">Beeps (tones)</option><option value="noise">Hiss (noise)</option></select></label>
+           <span class="hint">This only changes "The electrode demonstration" and the sound you hear when you click an electrode. With hiss, a voice sounds like a rough whisper, not a steady hiss. Researchers use both.</span></p>
+        <p id="bandList" class="hint"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 id="video" style="margin-top: 0;">See the wire go in</h2>
+    <p>This X-ray video (called fluoroscopy) shows a real electrode array being slid into a cochlea. Watch how it curls around as it follows the spiral.
+       It is from the implant maker MED-EL, whose arrays have 12 pairs of contacts, so count the dark spots.</p>
+    <div id="insertVideo"></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="pitch" style="margin-top: 0;">Why does each electrode play a different pitch than its spot in the cochlea naturally hears?</h2>
+    <p>The chart above can show two different numbers for every electrode. Switch between them with the two buttons beside the chart:</p>
+    <ul>
+      <li><b>"The pitch each electrode plays"</b> is the pitch the implant sends to that electrode.</li>
+      <li><b>"The pitch that spot hears in a hearing ear"</b> is the pitch that same spot in the cochlea picks up in someone with typical hearing.</li>
+    </ul>
+    <p>For every electrode, the first number is lower than the second. That is not a mistake in the chart. It is how real implants work, and here is why:</p>
+    <ol>
+      <li><b>The cochlea is like a piano keyboard rolled up into a snail shell.</b> The high notes are at the opening. The low notes are deep in the center.</li>
+      <li><b>The wire only goes partway in.</b> It cannot reach the low notes in the center.</li>
+      <li><b>But we need low notes to understand speech.</b> So the implant takes all the sounds of speech, low and high, and shares them out among the electrodes it has.</li>
+      <li><b>So every electrode plays a lower note than its spot is used to.</b> <span id="mismatchExample"></span></li>
+      <li><b>At first, voices can sound high and squeaky.</b> Over weeks and months, the brain learns the new pattern and voices start to sound more normal.</li>
+    </ol>
+    <p class="hint">Try it: click an electrode in each view to hear the two notes. All of these numbers are approximate, because every ear and every surgery is a little different.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="counts" style="margin-top: 0;">If one implant had 22 electrodes in 1985, why do others have fewer?</h2>
+    <p><b>Having 22 electrodes never meant hearing 22 separate pitches.</b> The first 22-electrode implant, the Nucleus 22, used only <b>one</b> electrode at a time in its
+       earliest version, then two (1985), then four (late 1980s). Its processor looked for the strongest parts of a voice and sent each one to the electrode in the matching spot.
+       From the early 1990s it has picked about six to ten of the 22 for each moment of sound, whichever bands are loudest. So 22 gives many <i>places</i> to choose from, not 22 things happening at once.</p>
+    <p><b>When did all 22 start working at once? They never have.</b> All 22 have been available since the first version, but even today the implant fires only one electrode at a time,
+       switching between them thousands of times a second, because electrodes fired together blur into each other. Since about 2000 its processor can be set to use up to 20 in each sweep,
+       but a typical setting still uses about 8 to 10.</p>
+    <p><b>The makers still use different counts today because they made different trade-offs</b>, and no count has proved best:</p>
+    <ul>
+      <li><b>Cochlear (22):</b> many closely spaced electrodes, with only the loudest several used at each moment.</li>
+      <li><b>MED-EL (12):</b> fewer electrodes spaced farther apart on a longer, softer wire, and all of them are used every time. Wider spacing means less overlap between neighbors, and the longer wire reaches deeper, toward the low-pitch end of the cochlea.</li>
+      <li><b>Advanced Bionics (16):</b> each electrode has its own power source, so two neighbors can fire together and place a pitch <i>between</i> them. That is how 16 electrodes are set up to give many more pitch steps than 16.</li>
+    </ul>
+    <p><b>Why more is not simply better:</b> the cochlea is filled with fluid that carries electricity, so the current from one electrode spreads to the nerves near its neighbors.
+       In studies, most implant users get about as much from 22 electrodes as from roughly 8 well-separated ones, and people with 12, 16 and 22 electrodes understand speech about equally well on average.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="surgery" style="margin-top: 0;">What surgery can cost the ear</h2>
+    <p>Many people who get an implant can still hear a little, usually low pitches. This is called leftover hearing, or residual hearing. Sliding the wire into the cochlea can damage it.</p>
+    <ul>
+      <li><b>About half of patients lose some or all of their residual hearing</b> after surgery. Sometimes it happens right away, and sometimes it fades over the following months.</li>
+      <li><b>The trend is toward protecting it.</b> Surgeons now use thinner, softer wires, slide them in slowly, often go through the cochlea's natural opening (the round window), and give medicine to calm swelling. Some watch the ear's own signals during surgery so they can stop if it is being damaged.</li>
+      <li><b>Why it matters:</b> a person who keeps their residual low-pitch hearing can use a hearing aid and an implant in the same ear. That mix helps with music and with speech in noise.</li>
+      <li><b>It is still not a promise.</b> Anyone considering an implant is told that the residual hearing in that ear may be lost.</li>
+    </ul>
+
+    <h2 id="who">Who can get an implant?</h2>
+    <p>Not everyone with hearing loss can. It depends on the ear itself and on the person's situation.</p>
+    <p><b>The ear and body (anatomy)</b></p>
+    <ul>
+      <li><b>There has to be a working vestibulocochlear nerve</b> (often called the auditory nerve). The hearing part of this nerve connects the cochlea to the brain. The implant's electrodes sit inside the cochlea, where the ends of this nerve are. Their tiny electric pulses skip the damaged parts of the cochlea and set off the nerve directly, and the nerve carries the signal to the brain. If the nerve is missing, the signal has no way to get there, so an implant cannot help.</li>
+      <li><b>There has to be a cochlea the wire can fit into.</b> Some people are born with a cochlea that formed differently before birth (a congenital difference). Doctors look for these on a CT scan or an MRI before surgery. A CT scan shows the bone and the shape of the cochlea, and an MRI shows the vestibulocochlear nerve:
+        <ul>
+          <li><b>No cochlea at all.</b> The inner ear never formed. An implant is not possible, because there is nowhere to put the wire.</li>
+          <li><b>One open space instead of a spiral</b> (called a common cavity). The cochlea and the balance organ formed as a single pocket. An implant is sometimes possible with a specially shaped wire.</li>
+          <li><b>Too few turns</b> (often called a Mondini malformation). The cochlea has about one and a half turns instead of two and a half, and the inner walls are partly missing. Many of these ears can be implanted.</li>
+          <li><b>A small cochlea.</b> It has the right shape but is undersized, so a shorter wire is used.</li>
+        </ul>
+        Separately, <b>after meningitis</b> the cochlea can fill with bone within weeks or months, which can block the wire. Children who lose hearing from meningitis are often implanted quickly for this reason.</li>
+      <li><b>The person has to be well enough for surgery</b>, with no ear infection at the time.</li>
+    </ul>
+    <p><b>The situation (in the United States)</b></p>
+    <ul>
+      <li><b>How much hearing aids help.</b> Implants are for people who get little benefit from hearing aids. A common guide is understanding 60% or less of test words, with a hearing loss of 60 dB or more. Medicare raised its cutoff from 40% to 60% of test sentences in 2022, so more people now qualify.</li>
+      <li><b>Age.</b> The youngest approved age has dropped over time: 2 years (1990), 18 months (1998), 12 months (2000) and 9 months (2020, for one maker's implant).</li>
+      <li><b>One deaf ear.</b> Implants for people with one deaf ear and one hearing ear were first approved in 2019. Other devices are sometimes preferred. They work in different ways:
+        <ul>
+          <li><b>CROS hearing aid.</b> A microphone worn on the deaf side sends sound to the hearing ear. No surgery.</li>
+          <li><b>Bone conduction device (such as a Baha).</b> A small device behind the deaf ear sends sound as vibration through the skull to the hearing ear's cochlea. There are two ways to wear one:
+            <ul>
+              <li><b>With surgery:</b> a small metal post or magnet is placed in the skull bone behind the ear, and the device snaps onto it.</li>
+              <li><b>Without surgery:</b> the device is held against the head by a soft headband. This is common for young children and for people trying one out before deciding.</li>
+            </ul></li>
+          <li><b>Cochlear implant.</b> The only one of the three that makes the deaf ear itself hear.</li>
+        </ul>
+        <b>Why the difference matters:</b> the first two move sound over to the good ear, so the person still hears with one ear. They help with sound coming from the deaf side, but not with telling where a sound is coming from.
+        In a trial that compared all three, only the implant improved locating sounds and eased ringing in the ear (tinnitus).<br>
+        <b>Why someone might still choose a CROS aid or a Baha:</b> the deaf ear may have no working vestibulocochlear nerve or cochlea; the ear may have been deaf so long that the brain would struggle to use it; they work right away, with no months of learning;
+        they can be tried out before deciding; and the surgery is smaller or not needed at all.</li>
+      <li><b>Access.</b> Insurance, cost, distance from a clinic, and whether a doctor ever suggests it all matter. It is estimated that fewer than 1 in 10 adults in the United States who qualify have an implant.</li>
+      <li><b>Choice.</b> An implant is a choice, not a requirement. Many Deaf people and families choose sign language and do not want one. The box "Do deaf people need to be fixed?" below says more.</li>
+    </ul>
+
+    <h2 id="timing">Why timing matters: the brain's windows for learning</h2>
+    <p><b>An implant only gives the brain <i>access</i> to sound.</b> The brain still has to learn what sounds are and connect meaning to them. Young brains are very flexible (this is called plasticity), so babies and young children learn this most easily, which is why they are implanted early.</p>
+    <p>The brain learns sound and language most easily during certain years of life. Scientists call these sensitive periods. They are not hard deadlines, and the ages below are averages, but learning gets harder as each window closes.</p>
+    <ul>
+      <li><b>Learning to hear: about the first 3&frac12; years.</b> A study of 104 children who were born deaf measured how their brains responded to sound after an implant. Children implanted by about age 3&frac12; developed typical brain responses within months.
+          Some children implanted up to about age 7 still did. After about age 7, the brain's flexibility for this was greatly reduced.</li>
+      <li><b>Younger is better, even within that window.</b> Studies of babies implanted before 12 months, and even before 9 months, find better spoken language than in children implanted later. This is why the youngest approved age keeps dropping.</li>
+      <li><b>A first language: from birth through the early years.</b> Babies begin learning language from their first days. A child who has no full access to any language in the first few years, spoken or signed, can have lasting difficulty with language.
+          This is called language deprivation. Sign language is a full language and counts: a deaf child who signs from birth is learning a first language on time.
+          <br><b>An early first language also helps with every language that comes after it.</b> A study published in the journal <i>Nature</i> in 2002 compared adults who had language from infancy with deaf adults who had little language in early life.
+          Those who had language from infancy learned a new language well later in life. Those who had little early language did poorly. This held whether the early language was signed or spoken, and whether the later language was signed or spoken.
+          What mattered was having a language early, not which kind. This is why researchers who study this advise keeping the time a child spends without language as short as possible.</li>
+      <li><b>A new language later on: easiest before about age 10 to 12.</b> A study of about 670,000 people found that the ability to learn a new language's grammar stays strong until about age 17 or 18 and then declines.
+          To end up with grammar like a native speaker's, people usually needed to start by about age 10 to 12. Adults can still learn new languages well, with more effort. (This study was about hearing people learning English grammar, not about deaf children.)
+          Accent has been studied separately. The later a person starts a new language, the stronger their accent tends to be: adults usually keep more of an accent than children do, and in one study even children who started young still had an accent that listeners could hear.</li>
+    </ul>
+    <p><b>What this means for implants:</b> a baby with an implant is using these windows while they are wide open. It is much harder for an older brain that has never heard, or has gone many years without sound, because the window for learning sound has mostly closed.
+       Adults who lost their hearing after they learned to listen and talk usually do well, because their brains already know what sounds mean.</p>
+    <p><b>The hard part: who decides, and when?</b></p>
+    <ul>
+      <li><b>The argument for waiting.</b> Many people feel a person should have a say in elective surgery on their own body. (Elective means it is planned ahead and is not an emergency.) An implant is an operation, it can destroy residual hearing, and a baby cannot agree to it. Waiting until the child is old enough to take part in the decision feels morally right to many people, and it is a view often heard in the Deaf community.</li>
+      <li><b>The cost of waiting.</b> The windows above do not wait. A child old enough to help decide, at 8 or 12 or 18, is past the years when the brain learns to hear most easily. An implant at that age usually gives much less than the same implant would have given in the first year or two of life.</li>
+      <li><b>There are consequences for waiting to decide.</b> Deciding to wait is also a decision, made by the parents, with results that last. That is why this is one of the hardest choices families of deaf babies face, and why thoughtful people debate it.</li>
+      <li><b>One thing that does not have to wait: language.</b> Whatever a family decides about an implant, a child who has full access to a language from the start, including sign language, keeps the language window from closing.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h2 id="mapping" style="margin-top: 0;">After surgery: mapping the implant</h2>
+    <p>An implant does nothing until it is switched on and tuned for the person wearing it. That tuning is called <b>mapping</b> (or programming), and the saved settings are called a <b>map</b>. An audiologist does it.</p>
+    <p><b>What a session looks like</b></p>
+    <ol>
+      <li><b>Switch-on usually comes a few weeks after surgery</b> (often three to four), once the ear has healed. The outside part of the implant (the sound processor) is plugged into the audiologist's computer.</li>
+      <li><b>The computer checks every electrode</b> to see that it is working. This is not the first check: the same kind of test is usually run in the operating room during surgery, so that a problem can be found while the surgeon can still do something about it.</li>
+      <li><b>The audiologist finds two levels for each electrode</b>, one electrode at a time:
+        <ul>
+          <li>the <b>softest</b> pulse the person can just hear (the threshold, or T-level);</li>
+          <li>the pulse that is <b>loud but still comfortable</b> (the comfort level, or C-level).</li>
+        </ul>
+        Sound is then fitted into the space between those two levels.</li>
+      <li><b>The person says what they hear.</b> An adult points to a loudness chart ("too soft", "comfortable", "too loud"). A young child plays a listening game, such as dropping a block in a bucket each time they hear a beep.</li>
+      <li><b>For babies, the implant can measure the nerve itself.</b> It sends a pulse and records how the vestibulocochlear nerve responds, so the audiologist has a starting point even when the child is too young to take part or give feedback.</li>
+      <li><b>The map is saved to the processor</b>, and the person goes out and listens with it.</li>
+    </ol>
+    <p><b>What the audiologist can adjust</b></p>
+    <ul>
+      <li><b>How soft and how loud each electrode is</b> (the T-level and the C-level). This is most of the work.</li>
+      <li><b>Which electrodes are on.</b> An electrode can be switched off if it sounds bad, does nothing, or makes a face muscle twitch. This is like the history buttons on this page switching electrodes off.</li>
+      <li><b>Which pitches go to which electrode.</b> These are the "pitch each electrode plays" numbers on the chart above.</li>
+      <li><b>How fast the electrodes pulse</b>, and, on one maker's implants, how many are used for each moment of sound.</li>
+      <li><b>Separate programs</b> for different places, such as a noisy room, music, or the phone. The person wearing the implant can switch between these programs themselves, to suit where they are and what they are doing.</li>
+    </ul>
+    <p><b>It is not done once.</b> The first map is usually quiet and careful. As the brain and nerve get used to the sound, the levels change, so there are several sessions in the first months and then checkups for life. A new map can make the implant sound noticeably different, and usually better.</p>
+    <p><b>Bluetooth: sound sent straight to the implant</b></p>
+    <ul>
+      <li><b>Today's sound processors have Bluetooth</b>, like wireless earbuds. Phone calls, video calls, music, podcasts and TV sound can be sent straight from a phone or other device to the processor.</li>
+      <li><b>Why it helps:</b> streamed sound does not have to cross the room to reach the microphone, so it does not pick up background noise on the way. One user described a streamed phone call as much clearer than holding the phone up to the processor.</li>
+      <li><b>Extra gadgets that do the same job for things that are not a phone:</b>
+        <ul>
+          <li><b>A TV streamer</b> is a small box that plugs into a television. It sends the TV's sound straight to the processor, so the person hears the show clearly without turning the volume up for everyone else.</li>
+          <li><b>A remote microphone</b> is a small microphone that someone else wears, clipped to their shirt. A teacher is a common example. The teacher's voice goes straight to the student's processor, so it sounds close and clear even from across a noisy classroom. People still often call these "FMs" or "FM systems", because the older ones sent the voice over FM radio. Most newer ones use digital signals instead, but the name has stuck.</li>
+        </ul></li>
+    </ul>
+    <p id="mri"><b>MRI scans: from "not allowed" to "allowed, with rules"</b></p>
+    <p>An MRI machine is a very strong magnet. A cochlear implant has a small magnet in it too, under the skin, which holds the outside processor in place. For years that made MRI scans a real problem.</p>
+    <ul>
+      <li><b>The problem.</b> The MRI machine can pull on the implant's magnet and move it under the skin.</li>
+      <li><b>The old answer: surgery.</b> With many earlier implants, a surgeon had to take the magnet out before the scan and put it back afterward. The implant did not work in between.</li>
+      <li><b>Early 2000s: weak scanners.</b> The first implant was approved in the United States for a low-strength MRI (0.2 tesla) with its magnet left in place.</li>
+      <li><b>Next: standard scanners.</b> Some implants were then approved for the common 1.5 tesla scanners without removing the magnet, while others still needed it taken out.</li>
+      <li><b>2015: strong scanners.</b> The first implant was approved in the United States for a 3 tesla MRI without removing the magnet. Its magnet can turn freely inside its case and line itself up with the scanner, so it is not pulled out of place. The other makers followed with their own versions in 2018 and 2019.</li>
+    </ul>
+    <p>Doctors do not call an implant "MRI safe". The term is <b>MRI conditional</b>: a scan is allowed only under set conditions, which depend on the exact implant and the strength of the scanner. The implant also leaves a shadow on the picture near the ear. A person with an implant always tells the MRI staff before a scan.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="internal" style="margin-top: 0;">New in 2026: an implant with nothing on the outside</h2>
+    <p>Every implant described so far has two parts: the part inside the head, and a sound processor worn on the outside that holds the microphone and battery. In September 2026 the maker MED-EL launched the first cochlear implant with <b>no outside part at all</b>, called the TICI UNICO.</p>
+    <p><b>How it is different</b></p>
+    <ul>
+      <li><b>The microphone is under the skin</b>, above and behind the ear. It cannot be seen.</li>
+      <li><b>The battery is inside too.</b> It runs for up to 40 hours and is recharged in about an hour to an hour and a half by holding a charger against the head. The implant keeps working while it charges.</li>
+      <li><b>It can still use an outside processor</b> if the person wants or needs one.</li>
+    </ul>
+    <p><b>What is expected to change</b></p>
+    <ul>
+      <li><b>Hearing all day and all night.</b> People can hear while sleeping, showering and swimming, the times when an outside processor comes off.</li>
+      <li><b>Nothing to see, lose or knock off.</b> Helmets, sports and rough play are simpler, and no one can tell the person has an implant. The maker hopes this will lead more people to consider one.</li>
+    </ul>
+    <p><b>What is still unknown or harder</b></p>
+    <ul>
+      <li><b>It is very new.</b> As of late September 2026, 40 people had received one. Early testing found speech understanding with the inside microphone was similar to an outside one, but larger studies are still under way.</li>
+      <li><b>It is approved in Europe, for adults.</b> It is not approved for sale in the United States, and there is no known date for that.</li>
+      <li><b>The inside battery will not last forever, and it cannot be swapped on its own.</b> The maker says it should give a full day of hearing on one charge for at least 15 years. When it wears out, replacing it means another surgery, or the person can switch to wearing an outside processor. The inside electronics are also harder to upgrade than an outside processor.</li>
+    </ul>
+    <p><b>Different companies are making different choices.</b> Fully internal implants are still being developed, and the makers have not settled on one design. They differ on where the battery goes, how it is charged, and even on how sound gets in: a microphone under the skin, or a sensor that uses the ear's own parts.
+       Only one is on the market so far. The other two below are still being tested and cannot be bought.</p>
+    <div class="tableWrap">
+      <table class="compare">
+        <thead>
+          <tr><th></th><th>MED-EL TICI UNICO</th><th>Envoy Medical Acclaim</th><th>Cochlear (not yet named)</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Can you get one?</th><td>Yes, in Europe, for adults (launched September 2026). Not approved in the United States.</td><td>No. In a clinical trial in the United States. Its maker hopes for approval in late 2027 or early 2028.</td><td>No. For research use only, with no date given.</td></tr>
+          <tr><th>How sound gets in</th><td>A microphone under the skin, above and behind the ear.</td><td>No microphone. A sensor in the middle ear picks up the movement of the ear's own tiny bones.</td><td>A microphone under the skin behind the ear.</td></tr>
+          <tr><th>Where the battery is</th><td>In the head, inside the implant.</td><td>In the chest, joined to the implant by a wire under the skin.</td><td>Under the skin behind the ear.</td></tr>
+          <tr><th>How it charges</th><td>A charger held against the head, for about 1 to 1&frac12; hours.</td><td>A charger at the chest.</td><td>Not stated in the sources I found.</td></tr>
+          <tr><th>Time between charges</th><td>Up to 40 hours.</td><td>Several days.</td><td>Not stated.</td></tr>
+          <tr><th>How long the battery should last</th><td>At least 15 years, the maker says.</td><td>About 10 to 15 years, the maker says.</td><td>Not stated.</td></tr>
+          <tr><th>Can it also use an outside processor?</th><td>Yes.</td><td>Not stated.</td><td>Not stated.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>The biggest differences:</b></p>
+    <ul>
+      <li><b>Microphone or sensor.</b> A microphone under the skin hears through a layer of tissue, which changes the sound and took years to get right. A middle-ear sensor skips that problem by letting the outer ear and tympanic membrane (eardrum) do their usual job, but it depends on those parts of the ear working.</li>
+      <li><b>Head or chest.</b> A battery in the head keeps everything in one place. A battery in the chest can be bigger and last longer between charges, but it means a second site for surgery and a wire under the skin.</li>
+      <li><b>Proven or not yet.</b> Only one of the three has been approved anywhere. The battery lifespans are the makers' own estimates, because none of these has been in anyone's head for that long.</li>
+    </ul>
+    <p class="hint">This does not change the questions in the next box. An implant with nothing on the outside is still an implant, and a person who has one is still deaf.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="deaf" style="margin-top: 0;">Do deaf people need to be "fixed"?</h2>
+    <p>Many deaf people say no. Deaf people have a rich culture that does not rely on sound, with its own languages, stories, poetry, humor, art and traditions passed down through generations. This is one of the most important things to understand about cochlear implants.</p>
+    <p><b>Two ways of seeing deafness</b></p>
+    <ul>
+      <li><b>The medical view</b> sees deafness as a hearing loss, something missing that a doctor should try to repair. An implant is the repair.</li>
+      <li><b>The cultural view</b> sees Deaf people (often written with a capital D) as a community with its own language, such as American Sign Language, and its own history, schools, humor and art. In this view a deaf child is not broken. A person who is whole does not need to be "fixed".</li>
+    </ul>
+    <p><b>How the Deaf community's views have changed</b></p>
+    <ul>
+      <li><b>1980s: adults.</b> The first implants went to adults who had grown up hearing, lost their hearing later, and chose the surgery for themselves. For that group, implants were generally seen as a good thing.
+          The results were modest, though. With the early one-electrode implants, most people could notice sounds and found lip-reading easier, but could not understand speech by listening alone.</li>
+      <li><b>1990 to 1991: children, and strong opposition.</b> In 1990 the United States approved implants for children as young as 2. In 1991 the National Association of the Deaf called that decision "unsound scientifically, procedurally and ethically": the benefit for children had not been proven, Deaf people had not been asked,
+          and a child cannot agree to the surgery for themselves. There was also concern that children with implants would be placed in programs that did not value sign language.</li>
+      <li><b>2000: a shift.</b> The National Association of the Deaf replaced its statement. The new one was much milder. It stressed parents making informed choices, and it said: "Cochlear implantation is a technology that represents a tool to be used in some forms of communication." It also said that implants "do not by themselves impart the ability to understand spoken language through listening alone."</li>
+      <li><b>Today: less "implant or sign", more "language first".</b> Some Deaf people now have implants and also sign. In its later statements, the National Association of the Deaf says it is critical that signing also be used with a child who has an implant. The main concern has moved from the device itself to making sure every deaf child has full access to language from the start, whether or not they get an implant.
+          Views still differ, and some Deaf people remain opposed to implanting children.</li>
+    </ul>
+    <p><b>Things both sides agree on:</b> an implant does not turn a deaf person into a hearing person. They are still deaf in the pool (without a waterproof processor), when the battery dies, and every night while the processor is off and charging for the next day. And children do best when the adults around them make sure they are never left without language.</p>
+
+    <h2 id="sign">An implant and sign language together</h2>
+    <p>The National Association of the Deaf, and a number of researchers, recommend giving a deaf child <b>both</b>: an implant if the family chooses one, <b>and</b> a sign language such as American Sign Language (ASL). The goal is that the child has full access to language at every moment, not only when the implant is working well.</p>
+    <ul>
+      <li><b>The months or years before the implant matter most.</b> A baby cannot get an implant on the day they are born. There is testing, waiting, surgery, healing and switch-on, and then more months before speech starts to make sense. Those are some of the most important months for language. A baby who is signed with during that time is already learning language. A baby who is not may be getting very little.</li>
+      <li><b>An implant does not work the same for everyone.</b> Some children understand speech very well with one, and some get much less. No one can tell ahead of time. Sign language means the child has a full language either way.</li>
+      <li><b>There are times with no implant.</b> At night, in the bath, at the pool (without a waterproof processor), when a part breaks or the battery dies, the child is deaf and needs a way to communicate.</li>
+      <li><b>Most deaf children have hearing parents.</b> More than 90 percent of deaf children are born to hearing parents. Gallaudet University's yearly survey of deaf and hard-of-hearing students in the United States found that about 23 percent had family members who regularly signed (in both 2009&ndash;10 and 2013&ndash;14). The ASL textbook <i>Signing Naturally</i> gives about 30 percent as the share of hearing parents who learn to sign. A Boston University article puts it at "at most, 40 percent" of families using sign language at home, and says that perhaps as many as 70 percent of deaf children are deprived of language.</li>
+    </ul>
+    <p><b>Why so few families sign.</b> Parents report that sign language is hard to learn, that classes can be costly, hard to find or hard to fit into family life, and that some professionals discouraged them from signing.</p>
+    <p><b>What families are told after the hearing screening.</b> When a baby does not pass a hearing screening, the first people the family hears from are medical professionals, and every family sees an audiologist for the diagnosis. Researchers report that hearing families "often experience pressure from health care professionals to pursue spoken language as a primary form of communication", and that some professionals say signing will get in the way of learning to speak. In a small 2025 interview study, some families said an audiologist or implant team told them they did not need sign language, and ten families said no one had talked with them about language choices at all. One long-standing approach, auditory-verbal therapy, teaches listening and speaking without sign language or lip-reading; families who want a spoken-language outcome may choose it. Advice like this steers families toward a spoken-language-only approach, now usually called Listening and Spoken Language and historically known as <b>oralism</b>.</p>
+    <p><b>Does signing get in the way of speech? Studies have not found that it does.</b> A 2023 study looked at 56 deaf and hard-of-hearing children who had hearing parents and were learning both ASL and spoken English. Children with bigger ASL vocabularies were <i>more</i> likely to have spoken English vocabularies in the normal range. Its authors wrote: "Acquisition of sign language does not harm spoken vocabulary acquisition," and "We found no evidence to support recommendations that families with DHH children avoid learning sign language." (DHH means deaf and hard of hearing.) A 2017 review found no evidence "that using sign language impairs spoken language development." A 2022 article written for speech-language pathologists says that using a signed language alongside a spoken one "can be highly beneficial for a child who is deaf."</p>
+    <p class="hint">Researchers do not all agree. Some studies have found that children with implants whose families did not sign scored higher on spoken language tests, and some programs still advise families to focus on listening and speech alone.
+       Other researchers answer that those studies did not compare against families who sign fluently, and that a child with a strong first language of any kind learns a second one more easily. What nearly everyone agrees on is that no child should go without language while the adults decide.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="accuracy" style="margin-top: 0;">How accurate is this?</h2>
+    <p><b>An implant, as users describe it</b> is built from studies of people who have an implant in one ear and normal hearing in the other,
+       so they can compare the two directly. The changes they chose most often were to narrow the sound to roughly 500 to 3,000 Hz and to blur
+       neighboring pitches together. This page does both. Those studies also found large differences from person to person: there is no single implant sound.
+       Many listeners also asked for a flatter voice pitch, which this page does not do.</p>
+    <p><b>The electrode demonstration</b> is the method researchers have used for about 30 years, called a vocoder. It shows how much <i>information</i>
+       a given number of electrodes can carry. In the same studies, implant users rated it a poor match for what an implant actually <i>sounds</i> like,
+       so use it to compare electrode counts, not to imagine the experience.</p>
+    <p><b>More electrodes do not add detail one for one.</b> Electric current spreads inside the cochlea, so neighboring electrodes overlap.
+       Studies find that people understand speech in quiet quite well with about eight working channels.</p>
+    <p><b>The history is not a straight line.</b> The year on each button is roughly when that number of electrodes first reached patients.
+       The 22-electrode Nucleus came early, in 1985, only a year after the single-electrode House/3M implant was approved. The 8, 12 and 16 channel designs
+       came afterward from other makers, and 12, 16 and 22 are all still made today. So the count did not climb step by step; different makers chose different numbers.</p>
+    <p><b>The cochlea chart</b> is a simplified drawing. The natural pitches come from a standard formula for the human cochlea (Greenwood's), with the electrodes drawn about 1.2 turns deep,
+       which is typical for a 22-electrode implant. Real ears and real surgeries vary, so treat the natural pitch numbers as approximate.</p>
+    <p class="hint">A new implant user's brain also takes months to learn the new signal. No simulation can show that.</p>
+  </div>
+
+  <div class="panel">
+    <h2 id="words" style="margin-top: 0;">Words to know</h2>
+    <dl>
+      <dt>Cochlea</dt><dd>The snail-shaped inner ear, where sound is turned into nerve signals.</dd>
+      <dt>Vestibulocochlear nerve</dt><dd>The nerve that connects the inner ear to the brain. Its hearing part carries sound signals from the cochlea to the brain, and is often called the auditory nerve.</dd>
+      <dt>Residual hearing</dt><dd>The hearing a person still has in an ear with hearing loss. It is also called leftover hearing.</dd>
+      <dt>Mapping</dt><dd>Tuning an implant for the person wearing it, done by an audiologist. The saved settings are called a map.</dd>
+      <dt>Electrode</dt><dd>A tiny metal contact inside the cochlea. It gives off a small electric pulse that sets off the nearby ends of the vestibulocochlear nerve.</dd>
+      <dt>Electrode array</dt><dd>The row of electrodes on the thin wire that sits inside the cochlea.</dd>
+      <dt>Channel</dt><dd>One band of pitches that the implant handles separately. Some implants use two contacts for each channel.</dd>
+      <dt>Vocoder</dt><dd>A way of rebuilding a sound from a small number of pitch bands, keeping only how loud each band is from moment to moment.</dd>
+    </dl>
+  </div>
+
+  <!-- Sources always stay last on the page -->
+  <div class="panel">
+    <h2 id="sources" style="margin-top: 0;">Sources</h2>
+    <ul class="sources hint">
+      <li><a href="https://journals.sagepub.com/doi/pdf/10.1177/2331216520920079" target="_blank" rel="noopener">Approximations to the Voice of a Cochlear Implant (Dorman and colleagues, 2020)</a></li>
+      <li><a href="https://www.nature.com/articles/s41598-025-25711-z" target="_blank" rel="noopener">Acoustic simulation of cochlear implant sound to approximate the perceptual experience of electric hearing (2025)</a></li>
+      <li><a href="https://link.springer.com/chapter/10.1007/978-981-19-4703-2_11" target="_blank" rel="noopener">Channel-Vocoder-Centric Modelling of Cochlear Implants: Strengths and Limitations</a></li>
+      <li><a href="https://www.enttoday.org/article/milestones-in-development-of-cochlear-implant-technology/" target="_blank" rel="noopener">Milestones in Development of Cochlear Implant Technology (ENTtoday)</a></li>
+      <li><a href="https://ecs.utdallas.edu/loizou/cimplants/tutorial/tutorial.htm" target="_blank" rel="noopener">Introduction to Cochlear Implants (Loizou): how each maker's processor uses its electrodes</a></li>
+      <li><a href="https://www.intechopen.com/chapters/41194" target="_blank" rel="noopener">Cochlear Implant Stimulation Rates and Speech Perception</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11456118/" target="_blank" rel="noopener">Electrode Insertion Trauma and Residual Hearing Loss in Cochlear Implant Recipients: A Review</a></li>
+      <li><a href="https://hearingreview.com/hearing-products/implants-bone-conduction/cochlear-implants/who-gets-a-ci-expanding-access-to-cochlear-implants" target="_blank" rel="noopener">Who Gets a CI? Expanding Access to Cochlear Implants (Hearing Review)</a></li>
+      <li><a href="https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0257447" target="_blank" rel="noopener">Cochlear implant compared with bone conduction devices and CROS hearing aids for single-sided deafness: a randomised trial</a></li>
+      <li><a href="https://pubmed.ncbi.nlm.nih.gov/12476090/" target="_blank" rel="noopener">A sensitive period for the development of the central auditory system in children with cochlear implants (Sharma and colleagues, 2002)</a></li>
+      <li><a href="https://pubmed.ncbi.nlm.nih.gov/33710159/" target="_blank" rel="noopener">Language outcomes among infants implanted before 9 and 12 months of age versus older children (2021)</a></li>
+      <li><a href="https://www.sciencedirect.com/science/article/abs/pii/S0010027718300994" target="_blank" rel="noopener">A critical period for second language acquisition: evidence from 2/3 million English speakers (2018)</a></li>
+      <li><a href="https://www.audiologyonline.com/articles/cochlear-implants-considerations-in-programming-1011" target="_blank" rel="noopener">Cochlear Implants: Considerations in Programming for the Pediatric Population (AudiologyOnline)</a></li>
+      <li><a href="https://gallaudet.edu/museum/exhibits/history-through-deaf-eyes/awareness-access-and-change/invention-of-the-cochlear-implant-fans-flames-of-debate-on-both-sides/" target="_blank" rel="noopener">Invention of the cochlear implant fans flames of debate on both sides (Gallaudet University, History Through Deaf Eyes)</a></li>
+      <li><a href="https://www.bu.edu/articles/2017/asl-language-acquisition" target="_blank" rel="noopener">Many deaf children are deprived of language (Boston University): families, sign language and implants</a></li>
+      <li><a href="https://journals.sagepub.com/doi/10.1177/0142723719834102" target="_blank" rel="noopener">Deaf children need language, not (just) speech (Hall, Hall and Caselli, 2019)</a></li>
+      <li><a href="https://www.nature.com/articles/417038a" target="_blank" rel="noopener">Linguistic ability and early language exposure (Mayberry, Lock and Kazmi, Nature, 2002)</a></li>
+      <li><a href="https://pubmed.ncbi.nlm.nih.gov/30350745/" target="_blank" rel="noopener">Nerve responses and electrode checks measured during cochlear implant surgery, with the surgical site open and closed</a></li>
+      <li><a href="https://www.hearingtracker.com/news/med-el-launches-tici-unico-first-fully-implantable-cochlear-implant" target="_blank" rel="noopener">MED-EL Launches TICI UNICO, First Fully Implantable Cochlear Implant (HearingTracker, September 2026)</a></li>
+      <li><a href="https://hearandnow.cochlear.com/hearing-solutions/cochlear-implants/wireless-streaming-from-cochlear-implant/" target="_blank" rel="noopener">Wireless streaming from a cochlear implant: phone calls, music and more (Cochlear)</a></li>
+      <li><a href="https://hearingreview.com/hearing-products/implants-bone-conduction/cochlear-implants/on-the-cusp-of-completely-implantable-cochlear-implants" target="_blank" rel="noopener">On the Cusp of Completely Implantable Cochlear Implants (Hearing Review)</a></li>
+      <li><a href="https://www.medel.com/hearing-solutions/tici" target="_blank" rel="noopener">TICI UNICO (MED-EL): battery life and charging</a></li>
+      <li><a href="https://blog.medel.com/technology/history-of-mri-cochlear-implants/" target="_blank" rel="noopener">The History of MRI and Cochlear Implants (MED-EL)</a></li>
+      <li><a href="https://www.medel.com/about-medel/our-history" target="_blank" rel="noopener">MED-EL's Timeline</a></li>
+      <li><a href="https://hearingreview.com/hearing-products/cochlear-implants-for-children-mark-their-25th-anniversary-controversies-and-successes" target="_blank" rel="noopener">Cochlear Implants for Children Mark Their 25th Anniversary (Hearing Review)</a></li>
+      <li><a href="https://cochlearimplanthelp.com/journey/choosing-a-cochlear-implant/electrodes-and-channels/" target="_blank" rel="noopener">Electrodes and Channels (Cochlear Implant HELP)</a></li>
+      <li><a href="https://pubs.rsna.org/doi/full/10.1148/rg.220102" target="_blank" rel="noopener">Cochlear Implantation: Systematic Approach to Preoperative Radiologic Evaluation (RadioGraphics): inner ear differences and which can be implanted</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10646041/" target="_blank" rel="noopener">Role of Imaging in Evaluating Patients for Cochlear Implantation: what CT and MRI each show</a></li>
+      <li><a href="https://www.sciencedirect.com/science/article/pii/S1879729613001257" target="_blank" rel="noopener">Rapidly progressive bilateral postmeningitic deafness in children: bone forming in the cochlea after meningitis</a></li>
+      <li><a href="https://www.mdpi.com/2076-3425/14/1/99" target="_blank" rel="noopener">Single-Sided Deafness and Hearing Rehabilitation Modalities (Brain Sciences, 2024): CROS aids, bone conduction devices and implants</a></li>
+      <li><a href="https://www.alderhey.nhs.uk/conditions/patient-information-leaflets/bone-conduction-hearing-devices-bchds/" target="_blank" rel="noopener">Bone conduction hearing devices (Alder Hey Children's NHS Foundation Trust)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3210741/" target="_blank" rel="noopener">Outcomes and Achievement of Students Who Grew Up with Access to Cochlear Implants: quotes the 1991 and 2000 National Association of the Deaf statements</a></li>
+      <li><a href="https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2025.1667467/full" target="_blank" rel="noopener">Results with early single-channel implants (Frontiers in Neuroscience, 2025)</a></li>
+      <li><a href="https://www.nidcd.nih.gov/health/statistics/quick-statistics-hearing" target="_blank" rel="noopener">Quick Statistics About Hearing (NIDCD): more than 90% of deaf children are born to hearing parents</a></li>
+      <li><a href="https://olis.oregonlegislature.gov/liz/2015R1/Downloads/CommitteeMeetingDocument/54094" target="_blank" rel="noopener">2009&ndash;10 Annual Survey of Deaf and Hard of Hearing Children and Youth (Gallaudet Research Institute): families who sign</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5495521/" target="_blank" rel="noopener">Early Sign Language Exposure and Cochlear Implantation Benefits (Geers and colleagues, 2017)</a></li>
+      <li><a href="https://sites.bu.edu/lavalab/files/2022/06/Lieberman-Mitchiner-Pontecorvo-2022.pdf" target="_blank" rel="noopener">Hearing parents learning American Sign Language with their deaf children (Lieberman, Mitchiner and Pontecorvo, 2022): what parents report</a></li>
+      <li><a href="https://www.hopkinsmedicine.org/health/treatment-tests-and-therapies/cochlear-implant-surgery" target="_blank" rel="noopener">Cochlear Implant Surgery (Johns Hopkins Medicine): when the implant is switched on</a></li>
+      <li><a href="https://www.cms.gov/medicare-coverage-database/view/ncacal-decision-memo.aspx?proposed=N&amp;ncaid=306" target="_blank" rel="noopener">Medicare decision memo on cochlear implantation (2022)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8918064/" target="_blank" rel="noopener">Expansion of Audiologic Criteria for Pediatric Cochlear Implantation: youngest approved ages by year</a></li>
+      <li><a href="https://www.medel.com/en-us/press-room/press-list/2019/07/22/fda-approves-med-el-usa-s-cochlear-implants-for-single-sided-deafness-and-asymmetric-hearing-loss" target="_blank" rel="noopener">FDA approves cochlear implants for single-sided deafness (MED-EL, 2019)</a></li>
+      <li><a href="https://www.mddionline.com/implants/move-to-3-0-t-mri-spurs-cochlear-implant-innovation" target="_blank" rel="noopener">Move to 3.0 T MRI Spurs Cochlear Implant Innovation (MD+DI): the 2015 approval</a></li>
+      <li><a href="https://bulletin.entnet.org/article/update-on-barriers-to-ci-uptake-in-adults/" target="_blank" rel="noopener">Update on Barriers to Cochlear Implant Uptake in Adults (AAO-HNS Bulletin)</a></li>
+      <li><a href="https://olis.oregonlegislature.gov/liz/2023R1/Downloads/PublicTestimonyDocument/44862" target="_blank" rel="noopener">National Association of the Deaf position statement on early language (copy filed as public testimony): signing alongside an implant</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10785677/" target="_blank" rel="noopener">Hearing parents learning American Sign Language with their deaf children: a mixed-methods survey (2022): pressure from professionals, and the 2013&ndash;14 Gallaudet figure</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13155430/" target="_blank" rel="noopener">The Radical Middle: Caregiver Beliefs About Language Access for Deaf and Hard of Hearing Children (2025): what families were told</a></li>
+      <li><a href="https://www.avchears.org/av-therapy-approach.html" target="_blank" rel="noopener">Auditory-Verbal Therapy for Children with Hearing Loss (Auditory Verbal Center)</a></li>
+      <li><a href="https://www.sciencedirect.com/science/article/abs/pii/S0095447005000355" target="_blank" rel="noopener">Degree of foreign accent in English sentences produced by Korean children and adults (Flege and colleagues, 2006)</a></li>
+      <li><a href="https://www.cambridge.org/core/journals/applied-psycholinguistics/article/abs/age-of-immersion-as-a-predictor-of-foreign-accent/EB8DAE82BC1152B91E9EC7A2BE929B23" target="_blank" rel="noopener">Age of immersion as a predictor of foreign accent (Munro and Mann, 2005)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10187967/" target="_blank" rel="noopener">Learning a Sign Language Does Not Hinder Acquisition of a Spoken Language (Pontecorvo and colleagues, 2023)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5392137/" target="_blank" rel="noopener">What You Don't Know Can Hurt You: The Risk of Language Deprivation by Impairing Sign Language Development in Deaf Children (Hall, 2017)</a></li>
+      <li><a href="https://pubs.asha.org/doi/abs/10.1044/2021_PERSP-21-00124" target="_blank" rel="noopener">Benefits of Visual Language: How Acquisition of Signed Language Complements Spoken Language Development (ASHA Perspectives, 2022)</a></li>
+      <li><a href="https://www.dawnsign.com/store/signing-naturally-units-1-6-student-set-2" target="_blank" rel="noopener"><i>Signing Naturally</i>, Units 1&ndash;6 (DawnSignPress)</a>: the share of hearing parents who learn to sign</li>
+    </ul>
+  </div>
+
+  <script>
+    // ---------- SETTINGS (safe to change) ----------
+
+    // The history buttons. "count" is how many electrodes (or channels) stay switched on.
+    const ERAS = [
+      { count: 1,  name: '1 electrode',   years: 'first used about 1972',
+        note: 'The House single-electrode implant. The first one a person could wear home was made in 1972, and the House/3M version was approved in the United States in 1984. It gave rhythm and loudness, but very little pitch.' },
+      { count: 8,  name: '8 channels',    years: 'first used about 1991',
+        note: 'The first Clarion (trials from 1991, approved in the United States in 1996) and the MED-EL Combi 40 (1994). Each had 16 contacts, used in pairs as 8 channels. An 8-channel research implant was first tried in Vienna in 1977.' },
+      { count: 12, name: '12 channels',   years: 'first used about 1996',
+        note: 'The MED-EL Combi 40+ (1996): 24 contacts, used in pairs as 12 channels. MED-EL implants still use 12 today.' },
+      { count: 16, name: '16 electrodes', years: 'first used about 2001',
+        note: 'The Advanced Bionics CII (2001) and HiRes 90K (2003) could use all 16 contacts separately. Advanced Bionics implants still use 16 today.' },
+      { count: 22, name: '22 electrodes', years: 'first used about 1985',
+        note: 'The Cochlear Nucleus 22: first trials in 1982, approved in the United States in 1985. Nucleus implants still have 22 electrodes and are the most widely used in the world, so this is also the most common count today.' }
+    ];
+    const MODERN_COUNT = 22;      // the count the page starts on
+
+    // The drawing: how many turns the cochlea has, and where along it the first and last electrodes sit (in turns from the wide end)
+    const COCHLEA_TURNS = 2.3;
+    const ARRAY_FROM    = 0.02;
+    const ARRAY_TO      = 1.2;
+    // The X-ray video of the wire going in (the part of its YouTube link after "v=")
+    const INSERT_VIDEO  = 'bDx12M5u4uY';
+    const BEEP_SECONDS  = 0.7;
+    const BEEP_VOLUME   = 0.2;
+
+    // The range of pitches an implant handles, in Hz
+    const LOWEST_HZ  = 200;
+    const HIGHEST_HZ = 7500;
+
+    // "An implant, as users describe it": keep roughly this range of pitches, and blur by this much
+    const DESCRIBE_LOW_HZ  = 500;
+    const DESCRIBE_HIGH_HZ = 3000;
+    const DESCRIBE_BLUR    = 4;
+
+    // ---------- THE SOUND ENGINE PARTS THAT RUN INSIDE THE BROWSER'S SOUND SYSTEM ----------
+
+    // The pitch-blurring effect (the same one the hearing loss page uses for "Unclear speech")
+    const BLUR_CODE = `
+      class Smear extends AudioWorkletProcessor {
+        constructor(options) {
+          super();
+          this.N = 1024;                       // sound is handled in overlapping slices this long
+          this.hop = 256;                      // a new slice starts every 256 samples
+          this.win = new Float32Array(this.N);
+          for (let i = 0; i < this.N; i++) this.win[i] = Math.sin(Math.PI * (i + 0.5) / this.N);
+          this.re = new Float32Array(this.N);
+          this.im = new Float32Array(this.N);
+          this.power = new Float32Array(this.N / 2 + 1);
+          this.inBuf  = [new Float32Array(this.N), new Float32Array(this.N)];
+          this.outBuf = [new Float32Array(this.N), new Float32Array(this.N)];
+          this.blocks = 0;
+          this.powerIn = 0;                    // running averages, used to keep the loudness the same
+          this.powerOut = 0;
+          this.setAmount(options.processorOptions.amount);
+          this.port.onmessage = (event) => this.setAmount(event.data.amount);
+        }
+
+        // Work out, for every pitch, which neighbors it is blended with and how strongly
+        setAmount(amount) {
+          const half = this.N / 2;
+          this.first = new Int32Array(half + 1);
+          this.weights = [];
+          for (let k = 0; k <= half; k++) {
+            const freq = k * sampleRate / this.N;
+            const earWidth = 24.7 * (4.37 * freq / 1000 + 1);            // how wide a healthy ear's "pitch window" is here, in Hz
+            const sigma = Math.max(0.01, amount * earWidth * 0.5 * this.N / sampleRate);   // spread, in slices of the spectrum
+            const reach = Math.ceil(3 * sigma);
+            const from = Math.max(0, k - reach), to = Math.min(half, k + reach);
+            const w = new Float32Array(to - from + 1);
+            let total = 0;
+            for (let j = from; j <= to; j++) { w[j - from] = Math.exp(-0.5 * ((j - k) / sigma) ** 2); total += w[j - from]; }
+            for (let j = 0; j < w.length; j++) w[j] /= total;
+            this.first[k] = from;
+            this.weights.push(w);
+          }
+        }
+
+        // The fast Fourier transform: time <-> pitch
+        transform(re, im, backwards) {
+          const n = re.length;
+          for (let i = 1, j = 0; i < n; i++) {
+            let bit = n >> 1;
+            for (; j & bit; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+          }
+          for (let size = 2; size <= n; size *= 2) {
+            const angle = (backwards ? 2 : -2) * Math.PI / size;
+            const stepRe = Math.cos(angle), stepIm = Math.sin(angle);
+            for (let start = 0; start < n; start += size) {
+              let wRe = 1, wIm = 0;
+              for (let k = 0; k < size / 2; k++) {
+                const a = start + k, b = a + size / 2;
+                const xRe = re[b] * wRe - im[b] * wIm, xIm = re[b] * wIm + im[b] * wRe;
+                re[b] = re[a] - xRe; im[b] = im[a] - xIm; re[a] += xRe; im[a] += xIm;
+                const next = wRe * stepRe - wIm * stepIm; wIm = wRe * stepIm + wIm * stepRe; wRe = next;
+              }
+            }
+          }
+          if (backwards) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+        }
+
+        smearSlice(inBuf, outBuf) {
+          const N = this.N, half = N / 2, re = this.re, im = this.im, power = this.power;
+          for (let i = 0; i < N; i++) { re[i] = inBuf[i] * this.win[i]; im[i] = 0; }
+          this.transform(re, im, false);
+          for (let k = 0; k <= half; k++) power[k] = re[k] * re[k] + im[k] * im[k];
+          for (let k = 0; k <= half; k++) {
+            const w = this.weights[k], from = this.first[k];
+            let blended = 0;
+            for (let j = 0; j < w.length; j++) blended += w[j] * power[from + j];
+            const gain = Math.sqrt(blended / (power[k] + 1e-20));
+            re[k] *= gain; im[k] *= gain;
+            if (k > 0 && k < half) { re[N - k] = re[k]; im[N - k] = -im[k]; }
+          }
+          this.transform(re, im, true);
+          for (let i = 0; i < N; i++) outBuf[i] += re[i] * this.win[i] * 0.5;
+        }
+
+        process(inputs, outputs) {
+          const input = inputs[0], output = outputs[0], size = 128;
+          // Not in use (nothing is plugged in): send silence and skip all the work.
+          // The leftover sound is wiped once, so nothing old plays when it is used again.
+          if (input.length === 0) {
+            if (!this.resting) {
+              this.inBuf.forEach((buf) => buf.fill(0));
+              this.outBuf.forEach((buf) => buf.fill(0));
+              this.powerIn = 0; this.powerOut = 0;
+              this.resting = true;
+            }
+            return true;
+          }
+          this.resting = false;
+          this.blocks++;
+          for (let ch = 0; ch < output.length; ch++) {
+            const inBuf = this.inBuf[ch], outBuf = this.outBuf[ch];
+            const source = input[ch] || input[0];
+            inBuf.copyWithin(0, size);
+            if (source) inBuf.set(source, this.N - size); else inBuf.fill(0, this.N - size);
+            output[ch].set(outBuf.subarray(0, size));
+            outBuf.copyWithin(0, size);
+            outBuf.fill(0, this.N - size);
+            if (this.blocks % (this.hop / size) === 0) this.smearSlice(inBuf, outBuf);
+          }
+
+          // Blending pitches together loses a little strength. Measure how much
+          // (averaged over about half a second) and turn the result back up to match.
+          let energyIn = 0, energyOut = 0;
+          const first = input[0];
+          for (let i = 0; i < size; i++) {
+            if (first) energyIn += first[i] * first[i];
+            energyOut += output[0][i] * output[0][i];
+          }
+          this.powerIn  += 0.006 * (energyIn - this.powerIn);
+          this.powerOut += 0.006 * (energyOut - this.powerOut);
+          const makeUp = this.powerOut > 1e-12 ? Math.min(3, Math.max(1, Math.sqrt(this.powerIn / this.powerOut))) : 1;
+          for (let ch = 0; ch < output.length; ch++) {
+            for (let i = 0; i < size; i++) output[ch][i] *= makeUp;
+          }
+          return true;
+        }
+      }
+      registerProcessor('smear', Smear);
+    `;
+
+    // The electrode demonstration (a vocoder). For each electrode it:
+    //   1. keeps one band of pitches from the incoming sound,
+    //   2. measures how loud that band is from moment to moment,
+    //   3. plays a hiss or a beep at that pitch, at that loudness.
+    const IMPLANT_CODE = `
+      class Implant extends AudioWorkletProcessor {
+        constructor(options) {
+          super();
+          this.carrier = 'tone';
+          this.powerIn = 0; this.powerOut = 0;
+          this.sinceReport = 0;
+          this.listenOnly = false;     // true when another sound choice is being heard: only measure the bands (for the glowing electrodes)
+          this.setBands(options.processorOptions.edges);
+          this.port.onmessage = (event) => {
+            if (event.data.edges) this.setBands(event.data.edges);
+            if (event.data.carrier) this.carrier = event.data.carrier;
+            if ('listenOnly' in event.data) this.listenOnly = event.data.listenOnly;
+          };
+        }
+
+        // A filter that keeps one band of pitches (used twice in a row for a sharper edge)
+        bandFilter(low, high) {
+          const center = Math.sqrt(low * high), w = 2 * Math.PI * center / sampleRate;
+          const q = center / (high - low), alpha = Math.sin(w) / (2 * q), a0 = 1 + alpha;
+          return { b0: alpha / a0, b2: -alpha / a0, a1: -2 * Math.cos(w) / a0, a2: (1 - alpha) / a0 };
+        }
+
+        setBands(edges) {
+          this.bands = [];
+          for (let i = 0; i < edges.length - 1; i++) {
+            const low = edges[i], high = edges[i + 1];
+            this.bands.push({
+              f: this.bandFilter(low, high),
+              g: this.bandFilter(low / 1.25, high * 1.25),   // a wider, gentler filter for the hiss, so neighbors overlap
+              step: 2 * Math.PI * Math.sqrt(low * high) / sampleRate, phase: 0,
+              s: new Float64Array(8),      // memory for the two filters on the incoming sound
+              c: new Float64Array(8),      // memory for the filter on the hiss
+              level: 0,                    // how loud this band is right now
+              hissPower: 1e-4              // running measure of how strong this band's hiss is
+            });
+          }
+          this.smooth = 1 - Math.exp(-2 * Math.PI * 160 / sampleRate);   // follow loudness changes up to about 160 times a second
+        }
+
+        // Run one sample through two copies of a band filter
+        twice(f, m, x) {
+          let y = f.b0 * x + f.b2 * m[1] - f.a1 * m[2] - f.a2 * m[3];
+          m[1] = m[0]; m[0] = x; m[3] = m[2]; m[2] = y;
+          x = y;
+          y = f.b0 * x + f.b2 * m[5] - f.a1 * m[6] - f.a2 * m[7];
+          m[5] = m[4]; m[4] = x; m[7] = m[6]; m[6] = y;
+          return y;
+        }
+
+        process(inputs, outputs) {
+          const input = inputs[0], output = outputs[0], size = output[0].length;
+          // Nothing plugged in: send silence, and let the electrodes stop glowing
+          if (input.length === 0) {
+            if (!this.resting) {
+              this.bands.forEach((band) => { band.level = 0; });
+              this.port.postMessage(this.bands.map(() => 0));
+              this.resting = true;
+            }
+            return true;
+          }
+          this.resting = false;
+          const left = input[0], right = input[1] || input[0];
+          const tones = this.carrier === 'tone';
+          let energyIn = 0, energyOut = 0;
+
+          // Silence coming in and every band already quiet (for example, nothing is playing): nothing to work out
+          let silent = this.bands.every((band) => band.level < 1e-7);
+          for (let n = 0; silent && left && n < size; n++) if (left[n] !== 0 || right[n] !== 0) silent = false;
+
+          for (let n = 0; n < size && !silent; n++) {
+            const x = left ? (left[n] + right[n]) / 2 : 0;
+            let sum = 0;
+            for (let i = 0; i < this.bands.length; i++) {
+              const band = this.bands[i];
+              const part = this.twice(band.f, band.s, x);
+              band.level += this.smooth * (Math.abs(part) - band.level);
+              if (this.listenOnly) continue;      // not being heard: the level is all that is needed
+              let sound;
+              if (tones) {
+                band.phase += band.step;
+                if (band.phase > 6.283185307) band.phase -= 6.283185307;
+                sound = Math.sin(band.phase) * 1.414;
+              } else {
+                const g = band.g, m = band.c, hiss = Math.random() * 2 - 1;   // each electrode gets its own hiss, so neighbors blend instead of cancelling
+                const shaped = g.b0 * hiss + g.b2 * m[1] - g.a1 * m[2] - g.a2 * m[3];
+                m[1] = m[0]; m[0] = hiss; m[3] = m[2]; m[2] = shaped;
+                band.hissPower += 0.0005 * (shaped * shaped - band.hissPower);
+                sound = shaped / Math.sqrt(band.hissPower + 1e-12);
+              }
+              sum += band.level * 1.25 * sound;
+            }
+            output[0][n] = sum;
+            energyIn += x * x; energyOut += sum * sum;
+          }
+
+          // Keep the overall loudness the same as the original
+          // (not while only measuring or resting, so the loudness is still right the moment the demonstration is heard again)
+          if (!silent && !this.listenOnly) {
+            this.powerIn  += 0.006 * (energyIn - this.powerIn);
+            this.powerOut += 0.006 * (energyOut - this.powerOut);
+          }
+          const makeUp = this.powerOut > 1e-12 ? Math.min(4, Math.max(0.25, Math.sqrt(this.powerIn / this.powerOut))) : 1;
+          for (let n = 0; n < size; n++) {
+            const y = Math.max(-1, Math.min(1, output[0][n] * makeUp));
+            output[0][n] = y;
+            if (output[1]) output[1][n] = y;
+          }
+
+          // About 20 times a second, tell the page how loud each band is, for the glowing electrodes
+          this.sinceReport += size;
+          if (this.sinceReport >= sampleRate / 20) {
+            this.sinceReport = 0;
+            this.port.postMessage(this.bands.map((band) => band.level));
+          }
+          return true;
+        }
+      }
+      registerProcessor('implant', Implant);
+    `;
+
+    // ---------- PITCH BANDS ----------
+    // The cochlea does not space pitches evenly: low pitches are packed close
+    // together and high pitches spread out. These two functions convert
+    // between a pitch in Hz and a position along the cochlea (0 = tip, 1 = base),
+    // using a standard formula for the human ear (Greenwood's).
+    const placeOf = (hz) => Math.log10(hz / 165.4 + 0.88) / 2.1;
+    const pitchAt = (place) => 165.4 * (Math.pow(10, 2.1 * place) - 0.88);
+
+    // The edges of the bands for a given number of electrodes, low to high
+    function bandEdges(count) {
+      const from = placeOf(LOWEST_HZ), to = placeOf(HIGHEST_HZ), edges = [];
+      for (let i = 0; i <= count; i++) edges.push(pitchAt(from + (to - from) * i / count));
+      return edges;
+    }
+
+    // Which of the 22 positions stay switched on for a given count, spread evenly.
+    // Position 1 is at the wide outer end (highest pitch) and 22 is nearest the tip (lowest).
+    function activePositions(count) {
+      if (count === 1) return [Math.round(MODERN_COUNT / 2)];
+      const positions = [];
+      for (let i = 0; i < count; i++) positions.push(1 + Math.round(i * (MODERN_COUNT - 1) / (count - 1)));
+      return positions;
+    }
+
+    // ---------- THE ELECTRODE PICTURE ----------
+    const arrayPicture = document.getElementById('arrayPicture');
+    const dots = [];    // the 22 electrode dots, position 1 first
+
+    const labelTexts = [];   // the number beside each electrode
+    const dotTurns = [];     // where each electrode sits, in turns from the wide end
+
+    // The drawn spiral: its radius shrinks as it winds inward
+    const radiusAt = (turns) => 195 - 72 * turns;
+    // For the natural pitches: how far along a real cochlea (about 2.5 turns) a spot is, measured in turns from the wide end
+    const lengthTo = (turns) => 185 * turns - 30 * turns * turns;
+    function spot(turns, outward) {
+      const angle = Math.PI * 0.5 + turns * 2 * Math.PI, radius = radiusAt(turns) + (outward || 0);
+      return [310 + radius * Math.cos(angle) * 1.25, 215 + radius * Math.sin(angle)];
+    }
+
+    // The pitch a healthy cochlea hears at a spot, from how far along the spiral it is
+    function naturalPitch(turns) {
+      const start = lengthTo(-0.08);     // the drawn tube begins a little before the first electrode
+      const fromBase = Math.max(0, Math.min(1, (lengthTo(turns) - start) / (lengthTo(2.55) - start)));
+      return pitchAt(1 - fromBase);
+    }
+
+    // Short way to write a pitch on the chart: 250, 1.2k, 14k
+    function shortHz(hz) {
+      if (hz < 1000) return String(Math.round(hz / 10) * 10);
+      if (hz < 9950) return (hz / 1000).toFixed(1) + 'k';
+      return Math.round(hz / 1000) + 'k';
+    }
+    const longHz = (hz) => (hz < 1000 ? Math.round(hz / 10) * 10 : Math.round(hz / 100) * 100).toLocaleString('en-US') + ' Hz';
+
+    (function drawCochlea() {
+      const WIRE_SIDE = 0;
+      const line = (from, to, side) => {
+        let path = '';
+        for (let t = from; t <= to; t += 0.01) path += (path ? ' L' : 'M') + spot(t, side).map((v) => v.toFixed(1)).join(',');
+        return path;
+      };
+      const duct = line(-0.08, COCHLEA_TURNS, 0), wire = line(-0.08, ARRAY_TO + 0.02, WIRE_SIDE);
+
+      let picture = '<path d="' + duct + '" fill="none" stroke="var(--ductEdge)" stroke-width="44" stroke-linecap="round"/>'
+                  + '<path d="' + duct + '" fill="none" stroke="var(--duct)" stroke-width="38" stroke-linecap="round"/>'
+                  + '<path d="' + wire + '" fill="none" stroke="var(--wire)" stroke-width="5" stroke-linecap="round"/>';
+      let numbers = '';
+      for (let i = 0; i < MODERN_COUNT; i++) {
+        const turns = ARRAY_FROM + (ARRAY_TO - ARRAY_FROM) * i / (MODERN_COUNT - 1);
+        dotTurns.push(turns);
+        const [x, y] = spot(turns, WIRE_SIDE);
+        picture += '<circle id="dot' + (i + 1) + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="10" stroke="var(--dotEdge)" stroke-width="2.5" tabindex="0" role="button" pointer-events="all"><title></title></circle>';
+        // The number sits just outside its electrode
+        const [lx, ly] = spot(turns, 36);
+        numbers += '<text id="label' + (i + 1) + '" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" dominant-baseline="central" stroke="var(--card)" stroke-width="4"></text>';
+      }
+      const start = spot(-0.08);
+      picture += '<g font-size="12.5" font-weight="bold" fill="var(--ink)" paint-order="stroke" stroke-linejoin="round" pointer-events="none">' + numbers + '</g>'
+               + '<g font-size="15" font-weight="bold" fill="var(--ink)" pointer-events="none">'
+               + '<text x="' + (start[0] + 30) + '" y="' + (start[1] + 5) + '">High pitches</text>'
+               + '<text x="310" y="222" text-anchor="middle" stroke="var(--duct)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">Low pitches</text></g>';
+      arrayPicture.innerHTML = picture;
+      for (let i = 1; i <= MODERN_COUNT; i++) {
+        const dot = document.getElementById('dot' + i);
+        dot.onclick = () => beep(i - 1);
+        dot.onkeydown = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); beep(i - 1); } };
+        dots.push(dot);
+        labelTexts.push(document.getElementById('label' + i));
+      }
+    })();
+
+    // ---------- CHOICES ----------
+    let mode  = 'original';        // 'original', 'describe' or 'channels'
+    let count = MODERN_COUNT;      // how many electrodes are switched on
+    let labels = 'set';            // what the numbers on the chart show: 'set' or 'natural'
+    let levels = [];               // how loud each band is right now (from the sound engine)
+    let drawnLevels = [];          // the levels the electrodes were last drawn with
+
+    const modeNotes = {
+      original: 'The sound with nothing changed, for comparing.',
+      describe: 'The closest this page can get to what implant users report: the sound is narrowed to the middle pitches and neighboring pitches are blurred together. It always imitates a modern implant.',
+      channels: 'A vocoder: each switched-on electrode plays its own band of pitches as a hiss or a beep. Use the buttons below to hear what fewer electrodes can carry.'
+    };
+
+    const eraButtons = [];
+    ERAS.forEach((era) => {
+      const button = document.createElement('button');
+      button.innerHTML = '<b>' + era.name + '</b><span>' + era.years + '</span>';
+      button.onclick = () => {
+        count = era.count;
+        mode = 'channels';    // the count only changes the electrode demonstration
+        showChoices();
+        setEngine();
+      };
+      document.getElementById('eras').append(button);
+      eraButtons.push(button);
+    });
+
+    document.querySelectorAll('#modeButtons button').forEach((button) => {
+      button.onclick = () => {
+        mode = button.dataset.mode;
+        if (mode === 'describe') count = MODERN_COUNT;
+        showChoices();
+        setEngine();
+      };
+    });
+
+    const carrierChoice = document.getElementById('carrierChoice');
+    carrierChoice.onchange = () => {
+      if (mode !== 'channels') { mode = 'channels'; showChoices(); }    // this choice only changes the electrode demonstration, so switch to it
+      setEngine();
+    };
+
+    function showChoices() {
+      document.querySelectorAll('#modeButtons button').forEach((button) => {
+        button.classList.toggle('on', button.dataset.mode === mode);
+        button.setAttribute('aria-pressed', button.dataset.mode === mode);    // tells screen readers which one is on
+      });
+      document.getElementById('modeNote').textContent = modeNotes[mode];
+      ERAS.forEach((era, i) => {
+        eraButtons[i].classList.toggle('on', era.count === count);
+        eraButtons[i].setAttribute('aria-pressed', era.count === count);
+      });
+      const era = ERAS.find((item) => item.count === count);
+      document.getElementById('eraNote').textContent = era.name + ', ' + era.years + '. ' + era.note;
+
+      document.querySelectorAll('#labelButtons button').forEach((button) => {
+        button.classList.toggle('on', button.dataset.labels === labels);
+        button.setAttribute('aria-pressed', button.dataset.labels === labels);
+      });
+      document.getElementById('labelNote').textContent = (labels === 'set'
+        ? 'Showing the pitch the implant sends to each switched-on electrode. '
+        : 'Showing the pitch a hearing ear picks up at the spot where each electrode sits. ')
+        + 'Switch between the two buttons and the numbers change. The box under the X-ray video explains why they are different.';
+
+      // The number beside each electrode, and what shows when you point at it
+      dots.forEach((dot, i) => {
+        const band = bandOf(i);
+        labelTexts[i].textContent = labels === 'natural' ? shortHz(naturalPitch(dotTurns[i])) : band ? shortHz(Math.sqrt(band[0] * band[1])) : '';
+        dot.querySelector('title').textContent = describeElectrode(i);
+        dot.setAttribute('aria-label', describeElectrode(i));
+      });
+      document.getElementById('bandList').textContent = count + (count === 1 ? ' electrode is' : ' electrodes are') + ' switched on, sharing '
+        + LOWEST_HZ + ' to ' + HIGHEST_HZ.toLocaleString('en-US') + ' Hz.';
+      drawDots();
+    }
+
+    // The band of pitches electrode i is set to, or null if it is switched off (i = 0 is the one at the wide end)
+    function bandOf(i) {
+      const where = activePositions(count).indexOf(i + 1);
+      if (where < 0) return null;
+      const edges = bandEdges(count);
+      return [edges[count - 1 - where], edges[count - where]];
+    }
+
+    function describeElectrode(i) {
+      const band = bandOf(i);
+      return 'Electrode ' + (i + 1) + (band ? ' is set to ' + longHz(band[0]).replace(' Hz', '') + ' to ' + longHz(band[1]) + '.' : ' is switched off.')
+        + ' In natural hearing, this spot in the cochlea hears about ' + longHz(naturalPitch(dotTurns[i])) + '.';
+    }
+
+    document.querySelectorAll('#labelButtons button').forEach((button) => {
+      button.onclick = () => { labels = button.dataset.labels; showChoices(); };
+    });
+
+    // Click an electrode: play a short beep at the pitch written beside it
+    let beeper = null;
+    const dotTimers = [];    // for each dot, the timer that thins its outline again after the beep
+    function beep(i) {
+      const band = bandOf(i), info = document.getElementById('electrodeInfo');
+      const hz = labels === 'natural' ? naturalPitch(dotTurns[i]) : band ? Math.sqrt(band[0] * band[1]) : null;
+      info.textContent = describeElectrode(i) + (hz ? (carrierChoice.value === 'noise' ? ' The hiss is centered on ' : ' The beep is ') + longHz(hz) + '.' : ' Switched-off electrodes make no sound.');
+      if (!hz) return;
+      startAudio();
+      if (beeper) { try { beeper.stop(); } catch (e) { /* already ended */ } }
+      const fade = ctx.createGain(), now = ctx.currentTime;
+      let tone, loudness = BEEP_VOLUME;
+      if (carrierChoice.value === 'noise') {
+        // a burst of hiss, narrowed to this electrode's band of pitches
+        const width = band ? band[1] - band[0] : hz * 0.16;
+        const samples = Math.ceil(ctx.sampleRate * BEEP_SECONDS), buffer = ctx.createBuffer(1, samples, ctx.sampleRate), data = buffer.getChannelData(0);
+        for (let n = 0; n < samples; n++) data[n] = Math.random() * 2 - 1;
+        tone = ctx.createBufferSource(); tone.buffer = buffer;
+        const narrow = ctx.createBiquadFilter(); narrow.type = 'bandpass'; narrow.frequency.value = hz; narrow.Q.value = Math.max(0.3, hz / (width * 1.5));
+        tone.connect(narrow);
+        tone = Object.assign(tone, { out: narrow });
+        loudness = Math.min(2.5, 0.14 / (0.577 * Math.sqrt(1.57 * width * 1.5 / (ctx.sampleRate / 2))));   // narrow hiss is quiet, so turn it up to match the beep
+      } else {
+        tone = ctx.createOscillator();
+        tone.frequency.value = hz;
+      }
+      fade.gain.setValueAtTime(0, now);
+      fade.gain.linearRampToValueAtTime(loudness, now + 0.02);
+      fade.gain.setValueAtTime(loudness, now + BEEP_SECONDS - 0.05);
+      fade.gain.linearRampToValueAtTime(0, now + BEEP_SECONDS);
+      (tone.out || tone).connect(fade); fade.connect(master);
+      tone.start(now); tone.stop(now + BEEP_SECONDS);
+      beeper = tone;
+      dots[i].setAttribute('stroke-width', '5');
+      clearTimeout(dotTimers[i]);    // a second click on the same dot: the first click's timer must not thin it early
+      dotTimers[i] = setTimeout(() => dots[i].setAttribute('stroke-width', '2.5'), BEEP_SECONDS * 1000);   // back to the outline it was drawn with
+    }
+
+    // Color the electrodes: dashed and empty when off, yellow when on, brighter while sounding
+    function drawDots() {
+      const positions = activePositions(count);
+      dots.forEach((dot, i) => {
+        const where = positions.indexOf(i + 1);
+        if (where < 0) {
+          dot.setAttribute('fill', 'none');
+          dot.setAttribute('stroke-dasharray', '4 3');
+          dot.setAttribute('opacity', '0.55');
+          dot.style.filter = '';
+        } else {
+          // band 0 is the lowest pitch, which belongs to the electrode nearest the tip
+          const level = levels[count - 1 - where] || 0;
+          const glow = Math.max(0, Math.min(1, (20 * Math.log10(level + 1e-6) + 60) / 45));
+          // blend from teal (resting) to bright yellow (sounding)
+          dot.setAttribute('fill', glow < 0.02 ? 'var(--dot)' : 'rgb(' + Math.round(23 + 232 * glow) + ',' + Math.round(179 + 37 * glow) + ',' + Math.round(163 - 86 * glow) + ')');
+          dot.style.filter = glow > 0.25 ? 'drop-shadow(0 0 ' + (7 * glow).toFixed(1) + 'px #ffd84d)' : '';
+          dot.removeAttribute('stroke-dasharray');
+          dot.setAttribute('opacity', '1');
+        }
+      });
+    }
+
+    // ---------- THE AUDIO CHAIN ----------
+    //                         /-->  original  ---------------------------\
+    //   sound sources --> input -->  narrow + blur ("as users describe") --->  speakers
+    //                         \-->  implant (the electrode demonstration) -/
+
+    const player = document.getElementById('player');
+    const status = document.getElementById('status');
+    function say(message) { status.textContent = message; }
+
+    let ctx = null, input, master, silenced = false, paths = null, implantNode = null, engineReady = null;
+    let fileSource = null, storySource = null, tabSource = null, tabStream = null, micSource = null, micStream = null;
+
+    // Build the sound engine the first time it is needed
+    function startAudio() {
+      if (!ctx) {
+        ctx = new AudioContext({ latencyHint: 'interactive' });
+        input = ctx.createGain();
+        master = ctx.createGain();      // everything passes through here, so one button can silence it
+        master.connect(ctx.destination);
+        fileSource = ctx.createMediaElementSource(player);
+        fileSource.connect(input);
+        storySource = ctx.createMediaElementSource(storyClip);
+        storySource.connect(input);
+
+        // Until the two effects have loaded, play the original sound
+        paths = { original: ctx.createGain(), describe: ctx.createGain(), channels: ctx.createGain() };
+        Object.values(paths).forEach((path) => { path.gain.value = 0; path.connect(master); });
+        input.connect(paths.original);
+        paths.original.gain.value = 1;
+        engineReady = loadEffects();
+      }
+      ctx.resume();
+      soundBackOn();
+      return engineReady;
+    }
+
+    async function loadEffects() {
+      const asAddress = (code) => 'data:text/javascript;base64,' + btoa(code);
+      try {
+        await ctx.audioWorklet.addModule(asAddress(BLUR_CODE));
+        await ctx.audioWorklet.addModule(asAddress(IMPLANT_CODE));
+      } catch (e) {
+        say('This browser cannot run the implant effects. Try a current version of Chrome or Edge.');
+        return false;
+      }
+
+      // "As users describe it": narrow the range of pitches, then blur
+      const low = ctx.createBiquadFilter();   low.type = 'highpass';  low.frequency.value = DESCRIBE_LOW_HZ;
+      const high1 = ctx.createBiquadFilter(); high1.type = 'lowpass'; high1.frequency.value = DESCRIBE_HIGH_HZ;
+      const high2 = ctx.createBiquadFilter(); high2.type = 'lowpass'; high2.frequency.value = DESCRIBE_HIGH_HZ;
+      const blur = new AudioWorkletNode(ctx, 'smear', {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
+        processorOptions: { amount: DESCRIBE_BLUR }
+      });
+      low.connect(high1); high1.connect(high2); high2.connect(blur); blur.connect(paths.describe);
+      describeStart = low;           // setEngine plugs the sound in here only while "As users describe it" is chosen
+
+      // The electrode demonstration
+      implantNode = new AudioWorkletNode(ctx, 'implant', {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
+        processorOptions: { edges: bandEdges(count) }
+      });
+      implantNode.port.onmessage = (event) => {
+        levels = event.data;
+        // Only redraw when the tab is showing and some electrode's glow has visibly changed
+        if (document.hidden) return;
+        const glowOf = (level) => Math.max(0, Math.min(1, (20 * Math.log10((level || 0) + 1e-6) + 60) / 45));   // the same sum as in drawDots
+        const changed = levels.length !== drawnLevels.length || levels.some((level, i) => Math.abs(glowOf(level) - glowOf(drawnLevels[i])) > 0.01);
+        if (!changed) return;
+        drawnLevels = levels;
+        drawDots();
+      };
+      input.connect(implantNode);    // always plugged in: it also measures the sound for the glowing electrodes
+      implantNode.connect(paths.channels);
+      sentCount = count;             // (the bands for this count were given to it just above)
+
+      setEngine();
+      return true;
+    }
+
+    // Make the sound engine match the choices on the page
+    // To save work, only the choice being heard does its full job. The others are put away once they have faded out:
+    // the "As users describe it" chain is unplugged, and the electrode demonstration only measures (for the glowing electrodes).
+    let describeStart = null, describeOn = false;   // the start of the "As users describe it" chain, and is sound going into it?
+    let sentCount = null;                           // the electrode count the demonstration was last given
+    let restTimer = null;
+    function setEngine() {
+      if (!ctx || !implantNode) return;
+      // New bands restart the electrode demonstration, so they are only sent when the number of electrodes changed
+      const message = { carrier: carrierChoice.value };
+      if (count !== sentCount) { message.edges = bandEdges(count); sentCount = count; }
+      if (mode === 'channels') message.listenOnly = false;
+      implantNode.port.postMessage(message);
+      if (mode === 'describe' && !describeOn) { input.connect(describeStart); describeOn = true; }
+      Object.keys(paths).forEach((name) => paths[name].gain.setTargetAtTime(name === mode ? 1 : 0, ctx.currentTime, 0.03));
+      clearTimeout(restTimer);
+      restTimer = setTimeout(() => {
+        if (mode !== 'channels') implantNode.port.postMessage({ listenOnly: true });
+        if (mode !== 'describe' && describeOn) { input.disconnect(describeStart); describeOn = false; }
+      }, 400);
+    }
+
+    // ----- The Stop button: silence everything, right now -----
+    const stopButton = document.getElementById('stopButton');
+    function stopAllSound() {
+      storyClip.pause();
+      if (beeper) { try { beeper.stop(); } catch (e) { /* already ended */ } }
+      if (controllingYouTube()) tellVideo('pause');
+      else if (!tabStream) player.pause();
+      stopMicrophone();
+      if (ctx) {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+        silenced = true;
+        stopButton.innerHTML = '&#9658; Turn sound back on';
+        stopButton.classList.add('off');
+      }
+      say(tabStream && !controllingYouTube() ? 'Sound stopped. The YouTube tab is still connected but silent here; pause it in its own tab.' : 'Sound stopped.');
+    }
+    function soundBackOn() {
+      if (!silenced) return;
+      silenced = false;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
+      stopButton.innerHTML = '&#9632; Stop all sound';
+      stopButton.classList.remove('off');
+      say('');
+    }
+    stopButton.onclick = () => { if (silenced) soundBackOn(); else stopAllSound(); };
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') stopAllSound(); });
+
+    // ----- Sound sources -----
+    const sourceTabs = document.querySelectorAll('#sourceTabs button');
+    let sourceShown = '';           // which "Sound from" tile is chosen
+    let builtInChosen = false;      // has a built-in recording been picked yet?
+    let transportReady = false;     // are the play and skip buttons under the video drawn yet?
+    function showSource(name) {
+      sourceShown = name;
+      if (transportReady) showButtons();
+      sourceTabs.forEach((tab) => {
+        tab.classList.toggle('on', tab.dataset.source === name);
+        tab.setAttribute('aria-pressed', tab.dataset.source === name);     // tells screen readers which one is chosen
+        document.getElementById('source-' + tab.dataset.source).hidden = tab.dataset.source !== name;
+      });
+    }
+    sourceTabs.forEach((tab) => { tab.onclick = () => showSource(tab.dataset.source); });
+
+    // The built-in story
+    const storyClip = document.getElementById('storyClip');
+    const clipButtons = document.querySelectorAll('.clipButton');
+    let clipChosen = 'story';       // which built-in recording is loaded
+    function showStory() {
+      clipButtons.forEach((button) => {
+        const playing = !storyClip.paused && button.dataset.clip === clipChosen;
+        button.textContent = (playing ? 'Pause ' : 'Play ') + button.dataset.name;
+        button.classList.toggle('playing', playing);
+      });
+    }
+    // Play or pause a built-in recording (with no name given: whichever one is loaded)
+    function playClip(name) {
+      startAudio();
+      builtInChosen = true;
+      name = name || clipChosen;
+      if (name !== clipChosen) { clipChosen = name; storyClip.src = BUILT_IN[name]; }
+      else if (!storyClip.paused) { storyClip.pause(); return; }
+      player.pause(); stopYouTube(); stopMicrophone();
+      storyClip.loop = true;
+      storyClip.play();
+      showStory();
+    }
+    clipButtons.forEach((button) => { button.onclick = () => playClip(button.dataset.clip); });
+    storyClip.onplay = () => { showStory(); showButtons(); };
+    storyClip.onpause = () => { showStory(); showButtons(); };
+
+    // A file
+    const file = document.getElementById('file');
+    let fileAddress = null;    // the temporary address the browser gives the chosen file
+    file.onchange = () => {
+      if (!file.files[0]) return;
+      stopYouTube(); stopMicrophone(); storyClip.pause();
+      if (fileAddress) URL.revokeObjectURL(fileAddress);    // let go of the file chosen before, so it does not stay in memory
+      fileAddress = URL.createObjectURL(file.files[0]);
+      player.src = fileAddress;
+      say('');
+      showButtons();
+    };
+    player.onplay = () => { if (tabStream) return; storyClip.pause(); stopMicrophone(); startAudio(); showButtons(); };
+    player.onpause = () => showButtons();
+
+    const link = document.getElementById('link');
+    const connectButton = document.getElementById('connectButton');
+    const youtubeSteps = document.getElementById('youtubeSteps');
+    const playButton = document.getElementById('playButton');
+    const backButton = document.getElementById('backButton');
+    const forwardButton = document.getElementById('forwardButton');
+    const transportNote = document.getElementById('transportNote');
+    let videoWindow = null;      // the small YouTube window this page opened
+    let videoPlaying = false;    // is the video in that window playing?
+
+    // ----- Source 2: YouTube -----
+
+    // Pasting a link only works when this page is on a real web address,
+    // because YouTube refuses to play inside a page opened as a file.
+    const ON_THE_WEB = location.protocol === 'http:' || location.protocol === 'https:';
+
+    if (ON_THE_WEB) {
+      link.placeholder = 'Paste a YouTube link';      // online, there is one box and one button instead of a list of steps (built just below)
+    } else {
+      // Opened as a file from a computer: YouTube will not play inside the page, so there is nothing to connect
+      link.hidden = true;
+      connectButton.hidden = true;
+      const offlineNote = document.createElement('p');
+      offlineNote.className = 'hint';
+      offlineNote.textContent = 'YouTube only works on the online version of this page. Opened as a file from a computer, use the built-in recordings, your own file or the microphone.';
+      youtubeSteps.before(offlineNote);
+    }
+
+    // Put the link box and the Connect button inside the steps they belong to
+    // Online: one link box and ONE button that changes as you go:
+    //   "Open the video"  ->  "Connect the sound"  ->  "Disconnect"
+    // (Chrome allows only one of "open a window" and "share a tab" per click, so it takes two clicks.)
+    const openButton = document.createElement('button');     // these two are never shown; the one button below runs them
+    const youtubeButton = document.createElement('button');
+    const youtubeAlert = document.createElement('p');        // the big warning shown when the wrong tab was shared
+    youtubeAlert.className = 'alertBox';
+    youtubeAlert.setAttribute('role', 'alert');
+    youtubeAlert.hidden = true;
+    const youtubeHint = document.createElement('ol');        // the three steps; the one to do next is highlighted
+    youtubeHint.className = 'hint youtubeGuide';
+    youtubeHint.innerHTML = '<li><b>Open.</b> Paste a YouTube link in the box and click <b>Open the video</b>. The video opens in its own small window.</li>'
+      + '<li><b>Connect.</b> Come back to this page and click <b>Connect the sound</b>. Chrome shows a box: click the tab named <b>CHOOSE THIS TO CONNECT SOUND</b>, then click <b>Share</b>.</li>'
+      + '<li><b>Listen.</b> Use the play and skip buttons under the video on this page. The sound now goes through the simulator.</li>';
+    if (ON_THE_WEB) {
+      const row = document.createElement('div');
+      row.className = 'youtubeRow';
+      row.append(link, youtubeButton);
+      youtubeSteps.before(row, youtubeAlert, youtubeHint);
+      youtubeSteps.hidden = true;
+      connectButton.hidden = true;
+      const help = document.createElement('details');
+      help.className = 'hint';
+      help.innerHTML = '<summary>Not working?</summary>'
+        + '<ul><li>In the box Chrome shows, pick the tab named <b>CHOOSE THIS TO CONNECT SOUND</b>, and keep "Also share tab audio" switched on.</li>'
+        + '<li>If you hear nothing, look at the small video window and make sure the YouTube player is not muted and its volume is all the way up.</li>'
+        + '<li>If no small window opens, allow pop-ups for this page with the icon at the right end of the address bar.</li></ul>';
+      youtubeHint.after(help);
+      youtubeButton.onclick = async () => {
+        if (tabStream) stopYouTube();
+        else if (videoWindow && !videoWindow.closed) await connectButton.onclick();
+        else openButton.onclick();
+        showYouTubeStep();
+      };
+      setInterval(showYouTubeStep, 1000);     // notices when the small window is closed by hand
+    }
+
+    // Make the one button and the three steps match where things stand
+    let shownYouTubeStep = 0;
+    function showYouTubeStep() {
+      if (!ON_THE_WEB) return;
+      const windowOpen = videoWindow !== null && !videoWindow.closed;
+      const step = tabStream ? 2 : windowOpen ? 1 : 0;
+      youtubeButton.textContent = ['Open the video', 'Connect the sound', 'Disconnect'][step];
+      [...youtubeHint.children].forEach((item, n) => item.classList.toggle('now', n === step));
+      if (step !== shownYouTubeStep) { shownYouTubeStep = step; showButtons(); }     // also updates the note under the play button
+      youtubeButton.classList.toggle('playing', windowOpen && !tabStream);    // highlighted while it is waiting for the second click
+    }
+    showYouTubeStep();
+
+    openButton.onclick = () => {
+      const videoId = youtubeIdFrom(link.value);
+      if (!videoId) { say('That does not look like a YouTube link. Copy it from the address bar and try again.'); return; }
+      stopYouTube();
+      videoPlaying = false;
+      videoWindow = window.open(location.pathname + '?youtube=' + encodeURIComponent(videoId), 'simulatorVideo', 'width=854,height=480');
+      if (!videoWindow) say('Chrome blocked the video window. Allow pop-ups for this page (the icon at the right end of the address bar), then click Open the video again.');
+      else say('');
+    };
+
+    // Pull the video's ID out of any kind of YouTube link
+    function youtubeIdFrom(text) {
+      let address;
+      try { address = new URL(text.trim()); } catch (e) { return null; }
+      const host = address.hostname.replace(/^(www|m|music)\./, '');
+      let id = null;
+      if (host === 'youtu.be') id = address.pathname.split('/')[1];
+      if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+        const parts = address.pathname.split('/');
+        if (parts[1] === 'watch') id = address.searchParams.get('v');
+        if (['shorts', 'embed', 'live'].includes(parts[1])) id = parts[2];
+      }
+      return id && /^[\w-]{6,20}$/.test(id) ? id : null;
+    }
+
+    // Is this page driving its own YouTube window right now?
+    function controllingYouTube() {
+      return tabStream !== null && videoWindow !== null && !videoWindow.closed;
+    }
+
+    function tellVideo(command, seconds) {
+      videoWindow.postMessage({ simulatorCommand: command, seconds: seconds }, '*');
+    }
+
+    // News arriving from the YouTube window
+    window.addEventListener('message', (event) => {
+      if (event.source !== videoWindow || !event.data || !event.data.simulatorVideo) return;
+      const news = event.data.simulatorVideo;
+      if (news === 'time') { videoTime = event.data.time; videoLength = event.data.length; return; }
+      if (news === 'playing') videoPlaying = true;
+      if (news === 'paused')  videoPlaying = false;
+      if (news === 'error') say('YouTube would not play this video in the small window (some videos do not allow it). '
+                              + 'Open it in a normal tab and connect that tab instead.');
+      showButtons();
+    });
+
+    // ----- The position bar: shows where the video or recording is, and jumps when dragged -----
+    const seekRow = document.getElementById('seekRow'), seekBar = document.getElementById('seekBar');
+    const seekNow = document.getElementById('seekNow'), seekEnd = document.getElementById('seekEnd');
+    let videoTime = 0, videoLength = 0;      // reported by the small YouTube window
+    let seeking = false;                     // true while the bar is being dragged
+    const clock = (seconds) => Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0');
+
+    function showPosition() {
+      const target = transportTarget();
+      // a file has its own bar on the video itself, so this one is for YouTube and the built-in recordings
+      const clip = target === 'builtin' ? storyClip : null;
+      const now = target === 'youtube' ? videoTime : clip ? clip.currentTime : 0;
+      const length = target === 'youtube' ? videoLength : clip ? clip.duration : 0;
+      seekRow.hidden = !(length > 0);
+      if (seekRow.hidden || seeking) return;
+      seekBar.max = Math.floor(length);
+      seekBar.value = Math.floor(now);
+      seekNow.textContent = clock(now);
+      seekEnd.textContent = clock(length);
+    }
+    setInterval(showPosition, 250);
+    seekBar.oninput = () => { seeking = true; seekNow.textContent = clock(Number(seekBar.value)); };
+    seekBar.onchange = () => {
+      const target = transportTarget(), to = Number(seekBar.value);
+      if (target === 'youtube') { tellVideo('seek', to); videoTime = to; }
+      else if (target === 'builtin') storyClip.currentTime = to;
+      seeking = false;
+    };
+
+    // ----- Play, pause and skip buttons (work for files and for YouTube) -----
+
+    // What the play and skip buttons under the video control right now: 'youtube', 'file', 'builtin', or nothing (null).
+    // They only run a built-in recording once someone has chosen "Built-in recordings" and picked one.
+    function transportTarget() {
+      const video = controllingYouTube();
+      if (tabStream && !video) return null;
+      // first, whatever belongs to the chosen "Sound from" tile
+      if (sourceShown === 'youtube' && video) return 'youtube';
+      if (sourceShown === 'story' && builtInChosen) return 'builtin';
+      if (sourceShown === 'file' && player.src) return 'file';
+      // otherwise, keep control of whatever is playing right now
+      if (video && videoPlaying) return 'youtube';
+      if (player.src && !player.paused) return 'file';
+      if (!storyClip.paused) return 'builtin';
+      return null;
+    }
+
+    playButton.onclick = () => {
+      const target = transportTarget();
+      if (target === 'youtube') { startAudio(); tellVideo(videoPlaying ? 'pause' : 'play'); }
+      else if (target === 'file') { if (player.paused) player.play(); else player.pause(); }
+      else if (target === 'builtin') playClip();
+    };
+
+    function skip(seconds) {
+      const target = transportTarget();
+      if (target === 'youtube') tellVideo('skip', seconds);
+      else if (target) { const clip = target === 'file' ? player : storyClip; clip.currentTime = clip.currentTime + seconds; }
+    }
+    backButton.onclick    = () => skip(-10);
+    forwardButton.onclick = () => skip(10);
+
+    // The button pictures: thin outlines with rounded corners
+    const drawIcon = (shapes) =>
+      '<svg viewBox="-5 -7 58 58" fill="none" stroke="currentColor" stroke-width="2.6" '
+      + 'stroke-linecap="round" stroke-linejoin="round">' + shapes + '</svg>';
+
+    const RING       = '<circle cx="24" cy="24" r="22"/>';
+    const TURN_ARROW = '<path d="M24 2 A22 22 0 1 1 2 24"/><path d="M30 -4 L23 2 L30 8"/>';
+    const TEN        = '<text x="24" y="30" text-anchor="middle" font-size="16" font-weight="bold" '
+                     + 'font-family="Arial, sans-serif" fill="currentColor" stroke="none">10</text>';
+
+    const ICONS = {
+      play:    drawIcon(RING + '<path d="M19 14 L34 24 L19 34 Z"/>'),
+      pause:   drawIcon(RING + '<rect x="15.5" y="13" width="6" height="22" rx="3"/><rect x="26.5" y="13" width="6" height="22" rx="3"/>'),
+      back:    drawIcon(TURN_ARROW + TEN),
+      forward: drawIcon('<g transform="translate(48, 0) scale(-1, 1)">' + TURN_ARROW + '</g>' + TEN)
+    };
+
+    backButton.innerHTML    = ICONS.back;
+    forwardButton.innerHTML = ICONS.forward;
+
+    // Keep the buttons' pictures and on/off state up to date
+    function showButtons() {
+      const sharedTabOnly = tabStream !== null && !controllingYouTube();   // a tab we cannot control
+      const target = transportTarget();
+      const nothingLoaded = target === null && !sharedTabOnly;
+      const playing = target === 'youtube' ? videoPlaying : target === 'file' ? !player.paused : target === 'builtin' ? !storyClip.paused : false;
+
+      const showPause = playing && !sharedTabOnly;
+      playButton.innerHTML = showPause ? ICONS.pause : ICONS.play;
+      playButton.setAttribute('aria-label', showPause ? 'Pause' : 'Play');
+
+      transportNote.textContent = sharedTabOnly ? 'Play, pause and skip in the YouTube tab. These buttons cannot reach it.'
+                                : nothingLoaded ? (sourceShown === 'story' ? 'Choose a recording to use these buttons.'
+                                                 : sourceShown === 'file' ? 'Choose a file to use these buttons.'
+                                                 : sourceShown === 'youtube' ? 'Connect a YouTube video to use these buttons.'
+                                                 : 'These buttons are not used with the microphone.')
+                                : (videoWindow && !videoWindow.closed) ? 'During an ad, these buttons and the bar wait until the ad is over. To skip the ad, use the small video window.' : '';
+
+      [playButton, backButton, forwardButton].forEach((button) => {
+        button.disabled = sharedTabOnly || nothingLoaded;
+        button.title = sharedTabOnly ? 'Use the controls in the YouTube tab' : button.getAttribute('aria-label');
+      });
+    }
+    transportReady = true;
+    showButtons();
+
+    // Ask Chrome to share a tab's sound and picture with this page
+    connectButton.onclick = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        say('This browser cannot share tab sound. Use Chrome or Edge on a computer.');
+        return;
+      }
+
+      // The video has to be open in its own small window first, so that the buttons on this page can control it
+      if (!videoWindow || videoWindow.closed) { say('First paste a YouTube link and click Open the video.'); return; }
+
+      stopYouTube(true);      // keep the video window that is open
+      stopMicrophone();
+      storyClip.pause();
+      startAudio();
+
+      const request = {
+        video: { displaySurface: 'browser' },
+        audio: {
+          suppressLocalAudioPlayback: true,   // mute the original so only the simulated sound is heard
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        selfBrowserSurface: 'exclude'         // do not offer this tab itself
+      };
+
+      // Ask Chrome to stay on this tab after sharing starts
+      let controller = null;
+      if (window.CaptureController) {
+        controller = new CaptureController();
+        request.controller = controller;
+      }
+
+      const asking = navigator.mediaDevices.getDisplayMedia(request);
+
+      let stream;
+      try {
+        stream = await asking;
+      } catch (e) {
+        say('The video window is open but nothing was shared. Click Connect the sound again and pick it.');    // (the video window was checked just above)
+        return;
+      }
+
+      if (controller) {
+        try { controller.setFocusBehavior('no-focus-change'); } catch (e) { /* not a tab */ }
+      }
+
+      const picture = stream.getVideoTracks()[0];
+      if (picture && picture.getSettings().displaySurface && picture.getSettings().displaySurface !== 'browser') {
+        stream.getTracks().forEach((track) => track.stop());
+        say('Please share a Chrome Tab, not a window or the whole screen. Click Connect the sound again.');
+        return;
+      }
+
+      // Was it the small video window that was shared? If another tab was picked, the video would play straight
+      // to the speakers, around the simulator, and nothing on this page would change its sound.
+      youtubeAlert.hidden = true;
+      say('Connecting…');
+      if (await sharedTheVideoWindow(stream) === false) {
+        stream.getTracks().forEach((track) => track.stop());
+        say('');
+        youtubeAlert.innerHTML = '<b>Wrong tab. Nothing was connected.</b> Click <b>Connect the sound</b> again and pick the tab named <b>CHOOSE THIS TO CONNECT SOUND</b>.';
+        youtubeAlert.hidden = false;
+        youtubeAlert.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+
+      if (stream.getAudioTracks().length === 0) {
+        stream.getTracks().forEach((track) => track.stop());
+        say('No sound came through. Click Connect the sound again and leave "Also share tab audio" turned on.');
+        return;
+      }
+
+      tabStream = stream;
+      // Ask again for the video window itself to go quiet, so that only the simulated sound is heard
+      stream.getAudioTracks().forEach((track) => { try { track.applyConstraints({ suppressLocalAudioPlayback: true }).catch(() => {}); } catch (e) { /* not supported */ } });
+
+      // Sound goes through the implant effects
+      tabSource = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      tabSource.connect(input);
+
+      // Picture shows in the video box
+      player.pause();
+      player.removeAttribute('src');
+      if (fileAddress) { URL.revokeObjectURL(fileAddress); fileAddress = null; }   // the file is no longer needed
+      player.srcObject = new MediaStream(stream.getVideoTracks());
+      player.controls = false;
+      player.muted = true;
+      player.play();
+
+      if (picture) picture.onended = () => stopYouTube();
+      if (controllingYouTube()) say('Connected. Use the Play and skip buttons under the video.');
+      else say('Connected. Play, pause and skip in the YouTube tab. The choices below change what you hear.');
+      showButtons();
+    };
+
+    // Look at the shared picture for the pink strip along the bottom edge of the small video window.
+    // Gives true (it is the video window), false (it is some other tab) or null (could not tell).
+    async function sharedTheVideoWindow(stream) {
+      try {
+        const look = document.createElement('video');
+        look.muted = true;
+        look.srcObject = new MediaStream(stream.getVideoTracks());
+        look.play().catch(() => {});      // not waited for: if no picture arrives, give up after 2.5 seconds and carry on
+        for (let tries = 0; tries < 25 && look.videoWidth === 0; tries++) await new Promise((done) => setTimeout(done, 100));
+        if (!look.videoWidth) return null;
+        await new Promise((done) => setTimeout(done, 200));
+        const canvas = document.createElement('canvas');
+        canvas.width = look.videoWidth; canvas.height = look.videoHeight;
+        const pen = canvas.getContext('2d');
+        pen.drawImage(look, 0, 0);
+        const row = pen.getImageData(0, canvas.height - 3, canvas.width, 1).data;
+        let pink = 0, checked = 0;
+        for (let x = Math.floor(canvas.width * 0.1); x < canvas.width * 0.9; x += 4) {
+          const i = x * 4;
+          checked++;
+          if (Math.abs(row[i] - 230) < 50 && row[i + 1] < 70 && Math.abs(row[i + 2] - 126) < 50) pink++;
+        }
+        look.srcObject = null;
+        return pink / checked > 0.8;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Disconnect YouTube (also runs when you click "Stop sharing" in Chrome)
+    function stopYouTube(keepWindow) {
+      if (!keepWindow) youtubeAlert.hidden = true;
+      setTimeout(showYouTubeStep, 0);
+      if (!keepWindow) {
+        if (videoWindow && !videoWindow.closed) videoWindow.close();
+        videoWindow = null;
+        videoPlaying = false;
+      }
+      if (!tabStream) return;
+      tabStream.getTracks().forEach((track) => track.stop());
+      tabSource.disconnect();
+      tabStream = null;
+      tabSource = null;
+      player.srcObject = null;
+      player.controls = true;
+      player.muted = false;
+      say('YouTube disconnected.');
+      showButtons();
+    }
+
+    // The microphone
+    const micButton = document.getElementById('micButton');
+    const micChoice = document.getElementById('micChoice'), micChoiceRow = document.getElementById('micChoiceRow');
+    micButton.onclick = () => {
+      if (micStream) { stopMicrophone(); say('Microphone off.'); return; }
+      startMicrophone(micChoice.value);
+    };
+    // Picking a different microphone from the menu switches to it straight away
+    micChoice.onchange = () => { if (micStream) startMicrophone(micChoice.value); };
+
+    // Fill the microphone menu (the browser only shares the names once the microphone is allowed)
+    async function listMicrophones() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (!micStream) return;
+      const inUse = micStream.getAudioTracks()[0].getSettings().deviceId;
+      micChoice.innerHTML = '';
+      devices.filter((device) => device.kind === 'audioinput').forEach((device) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = device.label || 'Microphone';
+        option.selected = device.deviceId === inUse;
+        micChoice.append(option);
+      });
+      micChoiceRow.hidden = false;
+    }
+
+    async function startMicrophone(deviceId) {
+      startAudio();
+      const wanted = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 };
+      if (deviceId) wanted.deviceId = { exact: deviceId };
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: wanted });
+      } catch (e) { say('The microphone could not be turned on. Allow it with the icon at the left end of the address bar, then try again.'); return; }
+      stopYouTube(); player.pause(); storyClip.pause();
+      stopMicrophone();
+      micStream = stream;
+      micSource = ctx.createMediaStreamSource(stream);
+      micSource.connect(input);
+      micButton.textContent = 'Turn off microphone';
+      micButton.classList.add('playing');
+      say('Microphone on. Wear headphones, or the sound will loop and squeal.');
+      listMicrophones();
+
+      // Listen to the microphone for a few seconds. If nothing at all arrives, say so: the microphone may be the wrong one, muted, or blocked by the computer's settings.
+      const micCheck = ctx.createAnalyser(), checkedStream = stream;
+      micCheck.fftSize = 8192;        // long enough that nothing is missed between looks
+      micSource.connect(micCheck);
+      let loudest = 0, looks = 0;
+      const wave = new Float32Array(micCheck.fftSize);    // made once and reused for every look
+      const micCheckTimer = setInterval(() => {
+        micCheck.getFloatTimeDomainData(wave);
+        wave.forEach((value) => { loudest = Math.max(loudest, Math.abs(value)); });
+        looks++;
+        if (micStream !== checkedStream || loudest > 0.002 || looks >= 40) clearInterval(micCheckTimer);
+        if (micStream === checkedStream && looks >= 40 && loudest <= 0.002) {
+          say('The microphone is on, but no sound is coming from it. Choose a different one in the "Which microphone" menu. If that does not help, see the Troubleshooting page.');
+        } else if (micStream === checkedStream && loudest > 0.002) {
+          say('Microphone on and picking up sound. Wear headphones, or the sound will loop and squeal.');
+        }
+      }, 100);
+    };
+    function stopMicrophone() {
+      if (!micStream) return;
+      micStream.getTracks().forEach((track) => track.stop());
+      micSource.disconnect();
+      micStream = null; micSource = null;
+      micButton.textContent = 'Turn on microphone';
+      micButton.classList.remove('playing');
+    }
+
+    // ---------- COLORS AND TEXT SIZE ----------
+    // The choice is remembered on this computer, and shared with the hearing loss page.
+    const themeChoice = document.getElementById('themeChoice');
+    const textChoice  = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';    // Dark is the starting color scheme
+    showLook();
+
+    // The worked example in the "Why don't the numbers match?" box, using the chart's own numbers for all 22 electrodes
+    (function writeExample() {
+      const edges = bandEdges(MODERN_COUNT), last = MODERN_COUNT - 1;
+      document.getElementById('mismatchExample').textContent =
+        'With all 22 switched on, the deepest electrode plays about ' + longHz(Math.sqrt(edges[0] * edges[1]))
+        + ', but its spot is used to hearing about ' + longHz(naturalPitch(dotTurns[last]))
+        + '. The first electrode plays about ' + longHz(Math.sqrt(edges[last] * edges[last + 1]))
+        + ', but its spot is used to hearing about ' + longHz(naturalPitch(dotTurns[0])) + '.';
+    })();
+
+    // The X-ray video: YouTube only plays inside a page that is on a real web address.
+    // Opened as a file, the page shows a link instead.
+    document.getElementById('insertVideo').innerHTML = ON_THE_WEB
+      ? '<iframe src="https://www.youtube.com/embed/' + INSERT_VIDEO + '" title="X-ray video of a cochlear implant electrode being inserted" '
+        + 'style="width: 100%; max-width: 640px; aspect-ratio: 4 / 3; border: 0; border-radius: 12px;" allowfullscreen></iframe>'
+      : '<p><a href="https://www.youtube.com/watch?v=' + INSERT_VIDEO + '" target="_blank" rel="noopener">Watch the X-ray video on YouTube</a></p>'
+        + '<p class="hint">Once this page is online, the video will play right here. YouTube does not allow its player inside a page opened as a file from your computer.</p>';
+
+    // ---------- START ----------
+    showSource('story');
+    showChoices();
+  </script>
+
+  <script>
+    // ---------- LITE ----------
+    // Simple view (once called the Lite page) is this same file opened with ?lite on the end of its address, which gives <body class="lite">: built-in recordings, the three sound choices,
+    // and the electrode-count buttons with the cochlea picture.
+    if (document.body.classList.contains('lite')) {
+      document.title = 'Cochlear Implant Simulator: Simple view';
+      document.querySelector('h1').innerHTML = 'Cochlear Implant Simulator <span class="liteTag">Simple view</span>';
+
+      // Numbered headings, so it is clear where to start
+      const stepOne = document.createElement('h2');
+      stepOne.className = 'liteStep';
+      stepOne.textContent = '1. Choose a recording to play';
+      document.getElementById('source-story').before(stepOne);
+      const lengths = document.createElement('p');
+      lengths.className = 'hint liteNote';
+      lengths.textContent = 'The story is 45 seconds. The speech sounds sampler is about 2 minutes and walks through low, middle and high speech sounds.';
+      document.getElementById('source-story').after(lengths);
+      document.querySelector('#modeButtons b').outerHTML = '<h2 class="liteStep" style="flex-basis: 100%;">2. Choose how to hear it</h2>';
+
+      // plainer one-line notes for the three sound choices
+      modeNotes.original = 'The recording with nothing changed.';
+      modeNotes.describe = 'The closest match to what people with implants describe: the sound is narrower and blurred.';
+      modeNotes.channels = 'Each switched-on electrode plays its own band of pitches. Try the electrode buttons below.';
+      showChoices();
+
+      // shorter words above the electrode buttons and under the picture
+      const arrayPanel = document.getElementById('eras').parentElement;
+      arrayPanel.querySelector('h2').textContent = '3. Choose how many electrodes';
+      arrayPanel.querySelector('p').textContent = 'Each electrode handles one band of pitches. The most common implant today has 22. Try fewer, and listen to the electrode demonstration change.';
+      const legend = document.createElement('p');
+      legend.className = 'hint';
+      legend.style.cssText = 'text-align: center; margin: 8px auto 0 auto;';
+      legend.textContent = 'Click an electrode to hear its pitch. The numbers are in Hz (1.2k = 1,200). Teal electrodes are switched on, and glow yellow while their pitches sound. Dashed ones are switched off.';
+      // one short line saying what was just clicked
+      const liteInfo = document.createElement('p');
+      liteInfo.className = 'liteInfo';
+      arrayPanel.append(liteInfo, legend);
+      const plainBeep = beep;
+      beep = function (i) {
+        plainBeep(i);
+        const band = bandOf(i);
+        liteInfo.textContent = band ? 'Electrode ' + (i + 1) + ' plays about ' + longHz(Math.sqrt(band[0] * band[1])) + '.' : 'Electrode ' + (i + 1) + ' is switched off.';
+      };
+
+      // a way on to the full version
+      const deeper = document.createElement('p');
+      deeper.className = 'deeper';
+      deeper.innerHTML = '<a class="pageLink" href="cochlear-implant-simulator.html">Want to go deeper? Open the full version</a>';
+      arrayPanel.after(deeper);
+    }
+  </script>
+  <script>
+    // ---------- THE SIMPLE VIEW SWITCH ----------
+    // Simple view is this same page with ?lite on the end of its address. Flipping the switch reloads the page
+    // with or without it, keeping the rest of the address (such as a saved setup after the #).
+    (function () {
+      const simpleView = document.getElementById('simpleView');
+      simpleView.checked = document.body.classList.contains('lite');
+      simpleView.onchange = () => {
+        const extras = new URLSearchParams(location.search);
+        extras.delete('lite');
+        let query = extras.toString();
+        if (simpleView.checked) query = query ? query + '&lite' : 'lite';
+        location.replace(location.pathname + (query ? '?' + query : '') + location.hash);
+      };
+    })();
+  </script>
+
+  <!-- THE BUILT-IN RECORDINGS are separate files that sit next to this page: story.mp3 and listening-tutorial.mp3 -->
+  <script>
+    const BUILT_IN = { story: 'story.mp3', guided: 'listening-tutorial.mp3' };
+    document.getElementById('storyClip').src = BUILT_IN.story;
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+  <script>
+    // The recordings are separate files. A browser only lets a page run them through the simulator when the page is online,
+    // so when this page is opened straight from a folder, say so at the top.
+    // (The small YouTube window, ?youtube= on the end of the address, never gets this far: VIDEO WINDOW MODE at the top stops it.)
+    if (location.protocol === 'file:') {
+      const offline = document.createElement('p');
+      offline.textContent = 'You opened this page as a file on your computer. The built-in recordings will be silent here, because they only work when the page is online. '
+                          + 'Your own files and the microphone still work.';
+      offline.style.cssText = 'margin: 0 0 12px 0; padding: 10px 16px; border-radius: 14px; border: 2px solid #c79a00; background: #fff4c2; color: #111; font-weight: bold;';
+      document.body.insertBefore(offline, document.body.firstChild);
+    }
+  </script>
+</body>
+</html>

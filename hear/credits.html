@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <meta name="robots" content="noindex">   <!-- a helper page: kept out of search results -->
+  <title>Credits and Sources</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2328223f%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2247%22%20font-size%3D%2242%22%20font-family%3D%22Georgia%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ff6fb1%22%3Ei%3C/text%3E%3C/svg%3E">
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* The same colors and shapes as the other pages (copied from troubleshooting.html) */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+                max-width: 1000px; margin: 18px auto; padding: 0 20px 40px 20px; background: var(--page); color: var(--ink); }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff; --accent: #ffe600; --onAccent: #000; --shadow: none; }
+    body.big  { zoom: 1.15; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 22px; font-weight: 800; margin: 0 0 8px 0; }
+    .hint     { color: var(--quiet); font-size: 15px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    select, button { font: inherit; font-size: 15px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); }
+    a         { color: var(--accent); overflow-wrap: anywhere; }
+    a:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent); }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    /* Each section is a card, like the "Before you start" box on the welcome page */
+    .card     { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 22px; margin-top: 16px; box-shadow: var(--shadow); }
+    .contrast .card { border-width: 2px; }
+    .card p   { margin: 0 0 8px 0; }
+    .card p:last-child { margin-bottom: 0; }
+    .card ul  { margin: 0; padding-left: 20px; }
+    .card li  { margin-bottom: 6px; }
+    .card li:last-child { margin-bottom: 0; }
+    @media print { body { background: #fff; color: #000; } .pageTools, .homeButton { display: none !important; } .card { box-shadow: none; } }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* On a narrow screen the font menu lines up with the left edge of the menus at the top, instead of spilling off the left side of the screen */
+    @media (max-width: 640px) { .pageTools { position: relative; } .fontPick { position: static; }
+                                #fontMenu { left: 0; right: auto; min-width: 0; width: 270px; max-width: calc(100vw - 32px); } }
+  </style>
+</head>
+<body>
+  <script>
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <div class="pageBar">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>Credits and sources</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+      <a class="helpButton" href="troubleshooting.html" title="Opens the troubleshooting page: what to try when something does not work"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Troubleshooting</a>
+    </div>
+  </div>
+  <p class="hint">Who made this site, what helped, and where the facts come from.</p>
+
+  <!-- To add a credit: copy one <li> line inside the right card and change the words. Links open in a new tab. -->
+  <section class="card" id="made-by">
+    <h2>Made by</h2>
+    <p>Colleen Gibbons, ASL teacher. The writing and the design are her own.</p>
+  </section>
+
+  <section class="card" id="pictures">
+    <h2>Pictures</h2>
+    <p>The Audiogram of Familiar Sounds chart and the ear diagram pictures were made by Colleen with Canva and ChatGPT.</p>
+  </section>
+
+  <section class="card" id="recordings">
+    <h2>Recordings</h2>
+    <p>The story, the sample conversation and the listening tutorial were written by Colleen and voiced with ElevenLabs.</p>
+  </section>
+
+  <section class="card" id="code-help">
+    <h2>Code help</h2>
+    <p>The site was built with help from ChatGPT and Claude (Anthropic).</p>
+  </section>
+
+  <section class="card" id="sources">
+    <h2>Sources</h2>
+    <p>Each page lists the sources for its facts at the bottom:</p>
+    <ul>
+      <li>Hearing Loss Simulator sources</li>
+      <li>Cochlear Implant Simulator sources</li>
+      <li>Parts of the Ear sources (at the bottom of the "Parts of the ear" view)</li>
+    </ul>
+  </section>
+
+  <section class="card" id="fonts">
+    <h2>Fonts</h2>
+    <ul>
+      <li><a href="https://opendyslexic.org" target="_blank" rel="noopener">OpenDyslexic</a> by Abbie Gonzalez (SIL Open Font License 1.1).</li>
+      <li>From <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a>, all under the <a href="https://openfontlicense.org" target="_blank" rel="noopener">SIL Open Font License</a>:
+          Atkinson Hyperlegible, Inter, Lexend, Literata, Nunito and Source Sans 3 (the Font menu on every page).</li>
+    </ul>
+  </section>
+
+  <p class="hint" style="margin-top: 22px; text-align: center;"><a href="credits.html">Credits and sources</a> · <a href="privacy.html">Privacy</a></p>
+
+  <script>
+    // ---------- COLORS AND TEXT SIZE (shared with the other pages) ----------
+    const themeChoice = document.getElementById('themeChoice'), textChoice = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (problem) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (problem) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';
+    showLook();
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+</body>
+</html>

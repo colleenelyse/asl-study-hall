@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <meta name="robots" content="noindex">   <!-- a helper page: kept out of search results -->
+  <title>Save Your Score as a PDF</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAE7ElEQVR4nOybbUxbVRjH/+e2Bcr7S2C82FBw0DqGOszYMqFAFj/4khi2SWIyzTTLYkyMZh+MGo0Ok8UvGo1+MTFEs31AXeZbxJfEjJdlCxsZWxYcLUorGw7YmvHeIfQenwMWKRfGSHbarre/pL3c59xL+vzPec55zrn3GHEblBZX71Q4HuNMqQTn+QxsAxiSEElwTHHwYTD2N+O8k6vsR+dfbSfWuo2tXlRrtFn9++kfvsUYy8ddCOecxMChXo/SBLTOrXTNSgIopdbqBkVhjVRcgmiAcxcHe9PpbjsmzpYWaQSwFTka6PA51boZ0QTn0+T50053+/dLzUEClBQ7dlGsf03OK4hCKCRULIjwVcC2KIC92FHOOTqjruaXQSL4VK7s6PO0nhfngZoWx+Zod14gfDQo/Aj+833+y2atPkBFm6AfNi/4LLzOrk32p6j9NLZnQ0dQzjCCcf9Go5rk38Og6Mp5AVV4DpKV3UYKilroFK6w7UY6WqFTKEu0kwDMCp1C2WGuwhlyoVfIdyNlQvHQKeR7mhE6JyYAdE5IBajMugeP5tmQn5iKAvrkJaRApRnY0M0JXPUtfH4b/gPtIx6ECmYvruGQjCUxDa+X1aIu997buv7UNQ/e62lD34QXspEuQL2lDI33PwKjsr4lBpq24nDPCRx1n4dMpC58PJCeh0PlO9ftvICmrXhtUw0qMgsgE2ktID8hFcdr9iItLkFTJmr3rPcyPJOjmIMKa1I6tmZaYDIYNNeOzkyjvuMohnyTkIG0TvBAydYVnR+mju7V7p9xhgRYSoE5FR899ATKMoIT0/T4ROyxlOMT12nIQFoI7Mgu1NgmZm9i3+ljGucFg75xHOxuwazfrykrSs6ALKQIIJq/hZr1cr70XIRn6saq9w1MjcI1fk1jtyZlQhZSQiA1Lh5H+s/BbDQh0WCC2SCOcfj1at+a93r/8WlsJkVeXy1FgF6qxcM9rVgvtEoDe6p2cerK9BhkEVGp8FOFm5FjTtbYWwadkEXECFCZZcEbZXUau5Na0y9DLsgiIgTYV1SBg/dVUR4Q/HOuz0zhhTPfYFZVIYuwCiA6xw9p7HdsKNKUDUzewP7O49ISoABhEyAjzoym7bthT8vRlHV5r+Clrh8wusKIcKcJiwBiWPt0W73GeZWeXb5/6SSa/uxCqAiLAC/bqlCeHpzyzlGcv3j2O3SMuBFKQi5AgmJEAw13y/ngUkfInReEXICqHCtSTMGTJC/19l9Q5hgOQi5AEqXH3d7BIFvP2AhNiqUvTK1ISJbEIpnYqjBCjJjsZMYlBtn8FACd1y8jHIRcgFdsD6MmtzjI5pubRcVPHyMcxEIAOicmAHROLA+AzokJAJ2jUAcwA51Cvo8pjGMIeoV8p0cuXLcCMPJdvCco9w2ECEb4rkBVv4VO8atK8/yOEXuR4xwY2wIdwTkuON1tD84/dlU5b4TO4Fx9Rxz/3zOko1YQqH3x9+KDdxXqc2JDEaIc4SNj/JnA+aIALvfJC1T8LKIYsW1OZdjb299+MWALei3LOzrwe1Z6YTfFxZMUDiZEEfPb5Rjf1dffsfrGyQAbCx1bjAqaSYRSRAOcuyjEGxZaeTC33Dxtt6rPU7Lw9t28eZq+3nV6DJ+tZ/O0BlthTR1T+OOcsW0Rv30eGKTfdkrlaOlzt7evddu/AAAA//+YbyOjAAAABklEQVQDAFKhqI8UBTNAAAAAAElFTkSuQmCC">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2328223f%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2246%22%20font-size%3D%2240%22%20font-family%3D%22Arial%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ff6fb1%22%3E%3F%3C/text%3E%3C/svg%3E">
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* The same colors and shapes as the other pages */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+                max-width: 1000px; margin: 18px auto; padding: 0 20px 40px 20px; background: var(--page); color: var(--ink); }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff; --accent: #ffe600; --onAccent: #000; --shadow: none; }
+    body.big  { zoom: 1.15; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 22px; font-weight: 800; margin: 26px 0 8px 0; }
+    .hint     { color: var(--quiet); font-size: 15px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    select, button { font: inherit; font-size: 15px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); }
+    a         { color: var(--accent); }
+    a:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent); }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    [hidden]  { display: none !important; }
+    ol.steps  { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px 14px 42px; margin: 8px 0; box-shadow: var(--shadow); }
+    ol.steps li { margin-bottom: 8px; }
+    ol.steps li:last-child { margin-bottom: 0; }
+    .tabRow   { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .tabRow button { cursor: pointer; font-weight: 700; border-radius: 12px; border-width: 2px; padding: 9px 16px; }
+    .tabRow button[aria-selected="true"] { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+    .browserSteps { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    .browserSteps ol.steps { flex: 2 1 380px; margin: 0; }
+    /* A small drawing of the print window, to show where "Save as PDF" is */
+    .mock     { flex: 1 1 230px; max-width: 300px; background: #fff; color: #111; border: 1px solid #999; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: Arial, sans-serif; }
+    .mockTitle { font-size: 17px; font-weight: bold; margin-bottom: 8px; }
+    .mockRow  { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; }
+    .mockPick { border: 2px solid #e6007e; border-radius: 6px; padding: 3px 8px; font-weight: bold; box-shadow: 0 0 0 3px rgba(230, 0, 126, 0.2); }
+    .mockPlain { border: 1px solid #bbb; border-radius: 6px; padding: 3px 8px; color: #555; }
+    .mockButtons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+    .mockSave { background: #1a73e8; color: #fff; border-radius: 16px; padding: 5px 16px; font-weight: bold; }
+    .mockCancel { border: 1px solid #bbb; border-radius: 16px; padding: 5px 14px; color: #1a73e8; }
+    .contrast ol.steps, .contrast .tabRow button { border-width: 2px; }
+    /* Laid out like the troubleshooting section of a manual: the problem on the left, the steps on the right */
+    table.fixes { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    .fixes th, .fixes td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .fixes thead th { border-top: 0; background: var(--raised); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--quiet); }
+    .fixes tbody th { width: 34%; font-weight: 800; }
+    .fixes ol { margin: 0; padding-left: 22px; }
+    .fixes li { margin-bottom: 6px; }
+    .fixes li:last-child { margin-bottom: 0; }
+    .contrast table.fixes { border-width: 2px; }
+    @media (max-width: 640px) {
+      .fixes thead { display: none; }
+      .fixes tr, .fixes tbody th, .fixes td { display: block; width: auto; }
+      .fixes td { border-top: 0; padding-top: 0; }
+    }
+    @media print { .browserSteps::before { content: attr(data-name); font-weight: 800; flex-basis: 100%; } body { background: #fff; color: #000; } .pageTools, .homeButton, .tabRow { display: none !important; } .browserSteps[hidden] { display: flex !important; }  }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* On a narrow screen the font menu lines up with the left edge of the menus at the top, instead of spilling off the left side of the screen */
+    @media (max-width: 640px) { .pageTools { position: relative; } .fontPick { position: static; }
+                                #fontMenu { left: 0; right: auto; min-width: 0; width: 270px; max-width: calc(100vw - 32px); } }
+  </style>
+</head>
+<body>
+  <script>
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <div class="pageBar">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>Save your score as a PDF</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Your score report can be saved as a PDF file. A PDF is a file you can upload to an online assignment, such as one in Canvas.</p>
+
+  <h2>Before you start</h2>
+  <ol class="steps">
+    <li>Type your name in the <b>Your name</b> box next to the score.</li>
+    <li>Press <b>Score report</b>. Check that the report shows your name and your score.</li>
+    <li>Leave the report open. Do not reload or close the page: the score is only kept while the page is open.</li>
+  </ol>
+
+  <h2>Part 1: Save the report as a PDF</h2>
+  <p>Press the <b>Print</b> button on the report. A print window opens. You are not going to print on paper. You are going to choose "Save as PDF" where the printer would normally be picked. Find your browser below.</p>
+  <div class="tabRow" role="tablist" aria-label="Which browser">
+    <button role="tab" data-browser="chrome" aria-selected="true">Chrome or a Chromebook</button>
+    <button role="tab" data-browser="edge" aria-selected="false">Edge</button>
+    <button role="tab" data-browser="safari" aria-selected="false">Safari on a Mac</button>
+  </div>
+  <div class="browserSteps" data-name="Chrome or a Chromebook" id="steps-chrome">
+    <ol class="steps">
+      <li>In the print window, find the line called <b>Destination</b>.</li>
+      <li>Click the menu beside it and choose <b>Save as PDF</b>. If you do not see it, choose <b>See more…</b> first.</li>
+      <li>Click the blue <b>Save</b> button.</li>
+      <li>Give the file a name with your own name in it, such as <i>Ear Quiz - Jordan Lee</i>.</li>
+      <li>Choose where to save it. <b>Downloads</b> is a good choice because it is easy to find again. On a Chromebook you can also choose Google Drive.</li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+    <div class="mock" aria-hidden="true">
+      <div class="mockTitle">Print</div>
+      <div class="mockRow"><span>Destination</span><span class="mockPick">Save as PDF &#9662;</span></div>
+      <div class="mockRow"><span>Pages</span><span class="mockPlain">All</span></div>
+      <div class="mockRow"><span>Layout</span><span class="mockPlain">Portrait</span></div>
+      <div class="mockButtons"><span class="mockSave">Save</span><span class="mockCancel">Cancel</span></div>
+    </div>
+  </div>
+  <div class="browserSteps" data-name="Edge" id="steps-edge" hidden>
+    <ol class="steps">
+      <li>In the print window, find the line called <b>Printer</b>.</li>
+      <li>Click the menu beside it and choose <b>Save as PDF</b>.</li>
+      <li>Click the <b>Save</b> button.</li>
+      <li>Give the file a name with your own name in it, such as <i>Ear Quiz - Jordan Lee</i>.</li>
+      <li>Choose where to save it. <b>Downloads</b> is a good choice because it is easy to find again.</li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+  </div>
+  <div class="browserSteps" data-name="Safari on a Mac" id="steps-safari" hidden>
+    <ol class="steps">
+      <li>In the print window, look at the bottom for a button or menu marked <b>PDF</b>.</li>
+      <li>Click it and choose <b>Save as PDF</b>.</li>
+      <li>Give the file a name with your own name in it, such as <i>Ear Quiz - Jordan Lee</i>.</li>
+      <li>Choose where to save it. <b>Downloads</b> or <b>Desktop</b> are good choices because they are easy to find again.</li>
+      <li>Click <b>Save</b>.</li>
+    </ol>
+  </div>
+  <p class="hint">The exact words can differ a little between computers and versions. Look for "PDF" where the printer is chosen.</p>
+
+  <h2>Part 2: Check the file</h2>
+  <ol class="steps">
+    <li>Open the place where you saved it (for example, your Downloads folder).</li>
+    <li>Open the PDF. Make sure it shows your name, the date and your score.</li>
+  </ol>
+
+  <h2>Part 3: Upload it to your assignment</h2>
+  <ol class="steps">
+    <li>Open the assignment your teacher gave you.</li>
+    <li>Press the button that starts your submission. In Canvas this is <b>Start Assignment</b>.</li>
+    <li>Choose to upload a file. In Canvas, choose <b>File Upload</b>, then <b>Upload File</b> or <b>Choose File</b>.</li>
+    <li>Find the PDF you saved and select it.</li>
+    <li>Press <b>Submit Assignment</b>.</li>
+    <li>Check that the assignment page now says it was submitted.</li>
+  </ol>
+  <p class="hint">Other sites, such as Google Classroom, work in a similar way: open the assignment, add or attach a file, choose your PDF, and turn it in. If your screen looks different, ask your teacher.</p>
+
+  <h2>If something goes wrong</h2>
+  <table class="fixes">
+    <thead><tr><th>Problem</th><th>What to try</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">The PDF shows the whole page, not just the report.</th><td><ol><li>Close the print window.</li><li>Open the <b>Score report</b> first, then press the <b>Print</b> button that is on the report itself.</li></ol></td></tr>
+      <tr><th scope="row">The PDF says "(no name typed)".</th><td><ol><li>Close the report.</li><li>Type your name in the <b>Your name</b> box, open the report again, and save a new PDF.</li></ol></td></tr>
+      <tr><th scope="row">I cannot find the file I saved.</th><td><ol><li>Look in your <b>Downloads</b> folder.</li><li>If it is not there, save it again and read the folder name before you click Save.</li></ol></td></tr>
+      <tr><th scope="row">My score went back to zero.</th><td><ol><li>The page was reloaded or closed. The score is only kept while the page is open.</li><li>Save the PDF before you leave the page next time.</li></ol></td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    // ---------- WHICH BROWSER'S STEPS ARE SHOWING ----------
+    document.querySelectorAll('.tabRow button').forEach((tab) => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tabRow button').forEach((other) => other.setAttribute('aria-selected', other === tab ? 'true' : 'false'));
+        document.querySelectorAll('.browserSteps').forEach((steps) => { steps.hidden = steps.id !== 'steps-' + tab.dataset.browser; });
+      };
+    });
+
+    // ---------- COLORS AND TEXT SIZE (shared with the other pages) ----------
+    const themeChoice = document.getElementById('themeChoice'), textChoice = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (problem) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (problem) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';
+    showLook();
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+</body>
+</html>

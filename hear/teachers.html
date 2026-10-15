@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <meta name="robots" content="noindex">   <!-- a helper page: kept out of search results -->
+  <title>For Teachers</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2328223f%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2247%22%20font-size%3D%2242%22%20font-family%3D%22Georgia%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ff6fb1%22%3ET%3C/text%3E%3C/svg%3E">
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* The same colors and shapes as the other pages (copied from credits.html) */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+                max-width: 1000px; margin: 18px auto; padding: 0 20px 40px 20px; background: var(--page); color: var(--ink); }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff; --accent: #ffe600; --onAccent: #000; --shadow: none; }
+    body.big  { zoom: 1.15; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 22px; font-weight: 800; margin: 0 0 8px 0; }
+    h3        { font-size: 18px; font-weight: 800; margin: 14px 0 4px 0; }
+    .hint     { color: var(--quiet); font-size: 15px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    select, button { font: inherit; font-size: 15px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); }
+    a         { color: var(--accent); overflow-wrap: anywhere; }
+    a:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent); }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    /* Each section is a card, like the "Before you start" box on the welcome page */
+    .card     { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 22px; margin-top: 16px; box-shadow: var(--shadow); }
+    .contrast .card { border-width: 2px; }
+    .card p   { margin: 0 0 8px 0; }
+    .card p:last-child { margin-bottom: 0; }
+    .card ul, .card ol { margin: 0 0 8px 0; padding-left: 22px; }
+    .card li  { margin-bottom: 6px; }
+    .card li:last-child { margin-bottom: 0; }
+    .card h3:first-child { margin-top: 0; }
+    .jumps    { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px 0; }
+    .jumps a  { text-decoration: none; font-weight: 700; font-size: 15px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); }
+    .jumps a:hover { border-color: var(--accent); }
+    .contrast .jumps a { border-width: 2px; }
+
+    /* THE LINKS TO PASTE: the name, then the full address with a Copy link button beside it */
+    .links    { list-style: none; padding: 0 !important; margin: 0; }
+    .links li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); margin: 0 !important; }
+    .links li:first-child { border-top: 0; padding-top: 2px; }
+    .links .what { grid-column: 1 / -1; font-weight: 700; }
+    .links .what small { font-weight: 400; color: var(--quiet); font-size: 15px; }
+    .links .address { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14.5px; background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; min-width: 0; }
+    .links .address a { text-decoration: none; }
+    .links .address a:hover { text-decoration: underline; }
+    button.copy { font-weight: 700; cursor: pointer; white-space: nowrap; }
+    button.copy:hover { border-color: var(--accent); }
+    button.copy.done { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+    .contrast .links .address, .contrast button.copy { border-width: 2px; }
+    @media (max-width: 520px) { .links li { grid-template-columns: 1fr; } button.copy { justify-self: start; } }
+    @media (pointer: coarse) { button.copy { min-height: 44px; } }
+    .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .footLine { margin: 22px 0 0 0; text-align: center; font-size: 15px; color: var(--quiet); }
+    .footLine a { font-weight: 700; }
+    @media print { body { background: #fff; color: #000; } .pageTools, .homeButton, .jumps, button.copy { display: none !important; } .card { box-shadow: none; } }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* On a narrow screen the font menu lines up with the left edge of the menus at the top, instead of spilling off the left side of the screen */
+    @media (max-width: 640px) { .pageTools { position: relative; } .fontPick { position: static; }
+                                #fontMenu { left: 0; right: auto; min-width: 0; width: 270px; max-width: calc(100vw - 32px); } }
+  </style>
+</head>
+<body>
+  <script>
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <div class="pageBar">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>For teachers</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+      <a class="helpButton" href="troubleshooting.html" title="Opens the troubleshooting page: what to try when something does not work"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Troubleshooting</a>
+    </div>
+  </div>
+  <p class="hint">Welcome! Everything here is free to use with your students. Nobody signs in, and nothing needs to be installed.</p>
+  <nav class="jumps" aria-label="Sections"><a href="#whats-here">What's here</a><a href="#links">Links to paste</a><a href="#tips">Classroom tips</a><a href="#lessons">Lesson ideas</a></nav>
+
+  <!-- To change the wording: edit the words between the tags. To add a link to paste: copy one <li> in the "Links to paste" card and change both addresses. -->
+  <section class="card" id="whats-here">
+    <h2>What's here</h2>
+    <h3>Hearing Loss Simulator</h3>
+    <p>Students play a short story (45 seconds) or a speech sounds sampler (about 2 minutes) and hear it through a hearing loss they choose,
+       from Mild to Profound, drawn on an audiogram with the speech banana. They can drag a fader at each pitch, set each ear separately,
+       and add background noise, ringing in the ears (tinnitus), unclear speech or a hearing aid. Three games (Listen and guess, Read the audiogram and Build it)
+       keep score and make a printable score report. Plan on 15 to 20 minutes to explore, or a full class period with the games.</p>
+    <h3>Cochlear Implant Simulator</h3>
+    <p>Students hear the same recordings as the original sound, as implant users describe it, and as an electrode demonstration.
+       They can switch from today's 22 electrodes back to earlier designs (16, 12, 8 and 1) and click an electrode to hear its pitch.
+       The reading covers how implants work, surgery, who can get one, why timing matters, mapping, Deaf culture, and implants and sign language together.
+       Plan on 15 minutes to listen, and 20 to 30 more for the reading.</p>
+    <h3>Parts of the Ear</h3>
+    <p>No sound needed. Four tiles: Parts of the ear and Types of hearing loss to explore the picture, then Label the ear and Questions to quiz.
+       The quiz keeps score and makes a printable score report. About 10 minutes to explore and 10 to 15 minutes for the quiz.</p>
+    <h3>Simple view</h3>
+    <p>Both simulators have a Simple view switch at the top: the press-play version, with very little reading. It keeps the built-in recordings,
+       the hearing loss or electrode buttons, and the chart, and hides everything else.</p>
+  </section>
+
+  <section class="card" id="links">
+    <h2>Links to paste</h2>
+    <p>Paste these into Canvas, Google Classroom, a slide or an email. Each one opens the page straight to the right spot.</p>
+    <p id="copyStatus" class="visuallyHidden" aria-live="polite"></p>
+    <ul class="links">
+      <li><span class="what">Hearing Loss Simulator</span>
+          <span class="address"><a href="hearing-loss-simulator.html">hearing-loss-simulator.html</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Hearing Loss Simulator, Simple view</span>
+          <span class="address"><a href="hearing-loss-simulator.html?lite">hearing-loss-simulator.html?lite</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Hearing Loss Games <small>(opens on Listen and guess; Read the audiogram and Build it are at the top)</small></span>
+          <span class="address"><a href="hearing-loss-simulator.html?game=mystery">hearing-loss-simulator.html?game=mystery</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Cochlear Implant Simulator</span>
+          <span class="address"><a href="cochlear-implant-simulator.html">cochlear-implant-simulator.html</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Cochlear Implant Simulator, Simple view</span>
+          <span class="address"><a href="cochlear-implant-simulator.html?lite">cochlear-implant-simulator.html?lite</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Cochlear implants: Deaf culture and being "fixed" <small>(the reading, for a discussion)</small></span>
+          <span class="address"><a href="cochlear-implant-simulator.html#deaf">cochlear-implant-simulator.html#deaf</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Parts of the Ear: Parts of the ear</span>
+          <span class="address"><a href="ear-quiz.html#parts">ear-quiz.html#parts</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Parts of the Ear: Types of hearing loss</span>
+          <span class="address"><a href="ear-quiz.html#loss">ear-quiz.html#loss</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Parts of the Ear: Label the ear</span>
+          <span class="address"><a href="ear-quiz.html#label">ear-quiz.html#label</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">Parts of the Ear: Questions</span>
+          <span class="address"><a href="ear-quiz.html#ask">ear-quiz.html#ask</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+      <li><span class="what">How to save a score report as a PDF and turn it in</span>
+          <span class="address"><a href="save-as-pdf.html">save-as-pdf.html</a></span>
+          <button type="button" class="copy">Copy link</button></li>
+    </ul>
+
+    <h3>Make your own setup link (Hearing Loss Simulator)</h3>
+    <p>You can give students a link that opens the simulator already set to a hearing loss you chose.</p>
+    <ol>
+      <li>Open the Hearing Loss Simulator with Simple view switched off.</li>
+      <li>Set it up the way you want students to hear it: a degree or shape button, the faders, <b>Both ears</b> or <b>Separate ears</b>, the green Sound level tag,
+          and anything under "More true to life" (background noise, ringing, unclear speech, hearing aid).</li>
+      <li>Scroll down to the box <b>For teachers: share a setup with your class</b> and click <b>Copy a link to this setup</b>.
+          You should see "Link copied."</li>
+      <li>Paste it into your class page. Try it yourself first in a new tab.</li>
+    </ol>
+    <p class="hint">The link saves the settings, not the sound. Students still press play on a recording, or choose their own file, YouTube video or microphone.
+       One link per hearing loss works well for comparing, or one per station in a rotation.</p>
+  </section>
+
+  <section class="card" id="tips">
+    <h2>Classroom tips</h2>
+    <ul>
+      <li><b>Headphones.</b> They give the truest sound, and they are needed for anything that treats each ear differently (Separate ears, and the "Different in each ear" buttons).
+          Through speakers, both ears hear both sides.</li>
+      <li><b>Set the volume first.</b> On the Hearing Loss Simulator, have everyone press <b>Play a sample conversation</b> in the yellow box and set the volume so it sounds like someone across a table. Then leave it alone.</li>
+      <li><b>Bluetooth speakers and the high pitches.</b> The 9K to 20K test tones often make no sound through Bluetooth speakers or headphones, which usually stop around 15,000 to 16,000 Hz.
+          Use the computer's own speakers, wired headphones, an AUX cable, or the projector's HDMI sound. Bluetooth also adds a delay. See <a href="troubleshooting.html#help-no-sound">Troubleshooting: No sound</a>.</li>
+      <li><b>YouTube</b> works only in Chrome or Edge on a computer or Chromebook. Safari, Firefox, phones and iPads cannot connect a YouTube video.
+          School filters may also block the small video window; see <a href="troubleshooting.html#help-youtube">Troubleshooting: YouTube</a>.</li>
+      <li><b>The built-in recordings</b> (the story and the speech sounds sampler) work on any device and browser, as long as the page is opened from its web address, not from a downloaded file.</li>
+      <li><b>Microphone.</b> Headphones first, or it squeals. After turning it on, pick the computer's built-in microphone in the "Which microphone" menu.
+          Keep the sound source next to the microphone and the listener far away, so they only hear it through the headphones.
+          See <a href="troubleshooting.html#help-microphone">Troubleshooting: Microphone</a>.</li>
+      <li><b>On the projector.</b> Large text and High contrast (at the top of every page) help the back row. Your choice is remembered on that computer, on every page of the site.
+          For whole-class listening, use the room's wired or HDMI sound, not a Bluetooth speaker.</li>
+      <li><b>Simple view</b> is a good start for younger students, students new to the topic, or anyone who would rather press play than read.</li>
+      <li><b>Score reports.</b> The Hearing Loss Games and the Parts of the Ear quiz count every answer until the score is reset.
+          Students type their name, press <b>Score report</b>, then <b>Print</b>. The <a href="save-as-pdf.html">Save as PDF</a> page walks them through saving it and uploading it to Canvas or Google Classroom.
+          The score is kept only while the page is open, so remind them to save before they close or reload it.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="lessons">
+    <h2>Lesson ideas</h2>
+    <ol>
+      <li><b>From Mild to Profound.</b> Play the story with no hearing loss, then again at Mild, Moderate, Severe and Profound.
+          After each, students write down the words they could still understand. Which sounds disappear first: the low hum of "m" and "oo", or the high hiss of "s", "f" and "th"?</li>
+      <li><b>Find the speech banana.</b> The yellow area on the audiogram is where the sounds of speech fall. Click a shape such as a high-frequency loss and ask:
+          which part of the banana is now above the line, and too soft to hear? Then try the <b>Read the audiogram</b> game.</li>
+      <li><b>How many electrodes?</b> On the Cochlear Implant Simulator, choose <b>The electrode demonstration</b> and play the story with 1, 8, 12, 16 and 22 electrodes.
+          When does speech start to make sense? Then read "Why makers use different electrode counts" to see why more is not simply better.</li>
+      <li><b>Label-the-ear race.</b> In pairs, open <b>Label the ear</b> with blank labels and race to place every term, then press <b>Check my work</b>.
+          Finish with <b>Questions</b> and turn in the score report.</li>
+      <li><b>Deaf culture discussion.</b> Read "Do deaf people need to be 'fixed'?" and "An implant and sign language together" on the cochlear implant page.
+          Discuss the medical view and the cultural view, how the National Association of the Deaf's position changed from 1991 to today, and why so many researchers say no child should go without language.
+          Invite students to listen to Deaf voices on this, and to remember that an implant is a choice, not a requirement.</li>
+    </ol>
+  </section>
+
+  <p class="footLine"><a href="credits.html">Credits and sources</a> · <a href="privacy.html">Privacy</a></p>
+
+  <script>
+    // ---------- COLORS AND TEXT SIZE (shared with the other pages) ----------
+    const themeChoice = document.getElementById('themeChoice'), textChoice = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (problem) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (problem) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';
+    showLook();
+
+    // ---------- THE COPY LINK BUTTONS ----------
+    // Each button copies the address next to it. If the browser does not allow copying, the older way is tried,
+    // and if that fails too, the address is selected so it can be copied with Ctrl+C (Command+C on a Mac).
+    const copyStatus = document.getElementById('copyStatus');
+    function oldCopy(text) {
+      const box = document.createElement('textarea');
+      box.value = text; box.setAttribute('readonly', ''); box.style.position = 'fixed'; box.style.opacity = '0';
+      document.body.appendChild(box); box.select();
+      let worked = false;
+      try { worked = document.execCommand('copy'); } catch (problem) { worked = false; }
+      box.remove();
+      return worked;
+    }
+    function selectText(spot) {
+      const range = document.createRange(); range.selectNodeContents(spot);
+      const picked = window.getSelection(); picked.removeAllRanges(); picked.addRange(range);
+    }
+    document.querySelectorAll('button.copy').forEach((button) => {
+      const address = button.parentElement.querySelector('.address');
+      const name = button.parentElement.querySelector('.what').firstChild.textContent.trim();
+      button.setAttribute('aria-label', 'Copy link: ' + name);
+      button.onclick = async () => {
+        const link = address.textContent.trim();
+        let copied = false;
+        try { await navigator.clipboard.writeText(link); copied = true; } catch (problem) { copied = oldCopy(link); }
+        document.querySelectorAll('button.copy.done').forEach((other) => { other.classList.remove('done'); other.textContent = 'Copy link'; });
+        if (copied) {
+          button.textContent = 'Copied'; button.classList.add('done');
+          copyStatus.textContent = '';
+          setTimeout(() => { copyStatus.textContent = 'Copied: ' + name; }, 50);     // (cleared first, so the same message is read out again)
+          setTimeout(() => { button.textContent = 'Copy link'; button.classList.remove('done'); }, 2500);
+        } else {
+          selectText(address);
+          copyStatus.textContent = 'Copying was not allowed. The link is selected: press Control C, or Command C on a Mac.';
+        }
+      };
+    });
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+</body>
+</html>

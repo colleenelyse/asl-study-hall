@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <meta name="robots" content="noindex">   <!-- a helper page: kept out of search results -->
+  <title>Privacy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2328223f%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2247%22%20font-size%3D%2242%22%20font-family%3D%22Georgia%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ff6fb1%22%3EP%3C/text%3E%3C/svg%3E">
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* The same colors and shapes as the other pages (copied from credits.html) */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+                max-width: 1000px; margin: 18px auto; padding: 0 20px 40px 20px; background: var(--page); color: var(--ink); }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff; --accent: #ffe600; --onAccent: #000; --shadow: none; }
+    body.big  { zoom: 1.15; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 22px; font-weight: 800; margin: 0 0 8px 0; }
+    h3        { font-size: 18px; font-weight: 800; margin: 14px 0 4px 0; }
+    .hint     { color: var(--quiet); font-size: 15px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    select, button { font: inherit; font-size: 15px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); }
+    a         { color: var(--accent); overflow-wrap: anywhere; }
+    a:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent); }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    /* Each section is a card, like the "Before you start" box on the welcome page */
+    .card     { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 22px; margin-top: 16px; box-shadow: var(--shadow); }
+    .contrast .card { border-width: 2px; }
+    .card p   { margin: 0 0 8px 0; }
+    .card p:last-child { margin-bottom: 0; }
+    .card ul, .card ol { margin: 0 0 8px 0; padding-left: 22px; }
+    .card li  { margin-bottom: 6px; }
+    .card li:last-child { margin-bottom: 0; }
+    .card h3:first-child { margin-top: 0; }
+    .jumps    { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px 0; }
+    .jumps a  { text-decoration: none; font-weight: 700; font-size: 15px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); }
+    .jumps a:hover { border-color: var(--accent); }
+    .contrast .jumps a { border-width: 2px; }
+
+    .footLine { margin: 22px 0 0 0; text-align: center; font-size: 15px; color: var(--quiet); }
+    .footLine a { font-weight: 700; }
+    @media print { body { background: #fff; color: #000; } .pageTools, .homeButton, .jumps { display: none !important; } .card { box-shadow: none; } }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* On a narrow screen the font menu lines up with the left edge of the menus at the top, instead of spilling off the left side of the screen */
+    @media (max-width: 640px) { .pageTools { position: relative; } .fontPick { position: static; }
+                                #fontMenu { left: 0; right: auto; min-width: 0; width: 270px; max-width: calc(100vw - 32px); } }
+  </style>
+</head>
+<body>
+  <script>
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <div class="pageBar">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>Privacy</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+      <a class="helpButton" href="troubleshooting.html" title="Opens the troubleshooting page: what to try when something does not work"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Troubleshooting</a>
+    </div>
+  </div>
+  <p class="hint">What these pages keep, what they never collect, and which outside services they use. Last updated October 13, 2026.</p>
+
+  <!-- This page covers the hearing pages: the welcome page, both simulators, Parts of the Ear, Troubleshooting, Save as PDF, Credits, For teachers and this page.
+       If a page starts using a new outside service, add it to the "Outside services" card. -->
+  <section class="card" id="short">
+    <h2>The short version</h2>
+    <ul>
+      <li><b>No sign-in and no accounts.</b> Nobody makes an account or logs in.</li>
+      <li><b>No ads, and no tracking.</b> These pages do not show ads, and do not use analytics or visit counters.</li>
+      <li><b>Nothing you do is sent to us.</b> There is no server collecting answers, scores, names, sound or files. Everything happens inside your own browser.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="on-device">
+    <h2>What stays on your device</h2>
+    <p>Three choices are saved in this browser (in its local storage), so every page looks the way you like next time:</p>
+    <ul>
+      <li><b>simulatorColors</b>: Dark, Light or High contrast</li>
+      <li><b>simulatorText</b>: Normal or Large text</li>
+      <li><b>simulatorFont</b>: the font you picked</li>
+    </ul>
+    <p>That is all that is saved. Clearing your browser's data for this site removes them.</p>
+    <p><b>Quiz and game scores are not saved.</b> They are kept only while the page is open, and they are gone when the page is reloaded or closed.
+       The name typed in the "Your name" box is not saved either.</p>
+  </section>
+
+  <section class="card" id="sound">
+    <h2>Microphone, tab sharing and your own files</h2>
+    <ul>
+      <li><b>The microphone</b> turns on only when you press <b>Turn on microphone</b>, and your browser asks your permission first.
+          The sound is changed inside your browser and played straight to your headphones. It is never recorded, saved or sent anywhere.</li>
+      <li><b>Sharing a tab</b> happens only when you press <b>Connect the sound</b> to use a YouTube video. The browser asks what to share. The page uses that tab's sound, and looks at its picture only to check that the right tab was shared.
+          Nothing is recorded, saved or sent anywhere.</li>
+      <li><b>Your own files.</b> A sound or video file you choose plays from your own computer. It is never uploaded.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="reports">
+    <h2>Score reports and links</h2>
+    <ul>
+      <li><b>Score reports.</b> A name typed in the "Your name" box appears only on the score report on your screen, and on the copy you print or save as a PDF.
+          Where that copy goes is up to you, for example when you upload it to your class.</li>
+      <li><b>The online report (Parts of the Ear).</b> The score report has a QR code. The whole report, with the name, date and scores, is written inside the link itself.
+          Nothing is stored on a server, but anyone who has the link or scans the code can see that report, so share it only with your teacher.</li>
+      <li><b>Setup links (Hearing Loss Simulator).</b> A teacher's "Copy a link to this setup" link holds only the simulator's settings, such as the faders and the background noise. No names, sound or scores.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="outside">
+    <h2>Outside services</h2>
+    <p>The pages themselves come from GitHub. A few parts load something from another company. When that happens, your browser connects to that company,
+       which can see the usual things any website sees, such as your internet address and browser type.</p>
+    <ul>
+      <li><b>GitHub Pages</b> hosts the site. GitHub may keep standard server logs, such as internet addresses.
+          <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages" target="_blank" rel="noopener">About GitHub Pages</a>,
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>.</li>
+      <li><b>Google Fonts.</b> Fonts from Google download only when someone opens the Font menu or picks one of its Google fonts. (Each page gets the connection ready in advance, so a chosen font loads quickly, but nothing is downloaded until then.)
+          <a href="https://developers.google.com/fonts/faq/privacy" target="_blank" rel="noopener">Google Fonts privacy</a>.</li>
+      <li><b>jsDelivr.</b> The OpenDyslexic font comes with the site. Only if the site's own copy cannot be used does the browser get it from jsDelivr instead.
+          <a href="https://www.jsdelivr.com/terms/privacy-policy-jsdelivr-net" target="_blank" rel="noopener">jsDelivr privacy policy</a>.</li>
+      <li><b>YouTube.</b> When they are opened online, both simulator pages show a short YouTube video (what a hearing test looks like, and an X-ray of an implant going in), so YouTube's player loads with the page.
+          YouTube is also used when someone connects a YouTube video to a simulator.
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google privacy policy</a> (it covers YouTube).</li>
+      <li><b>cdnjs (Cloudflare).</b> The Parts of the Ear score report downloads a small QR code maker from cdnjs the first time the report is opened. The QR code itself is made inside your browser; the report is not sent to cdnjs.
+          <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare privacy policy</a>.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="teachers">
+    <h2>A note for teachers</h2>
+    <p>These pages ask students for no personal information and need no accounts. Even so, please check your district's student data privacy rules before assigning them,
+       such as an approved-site list. In Illinois that includes the Student Online Personal Protection Act (SOPPA). For students under 13, the federal Children's Online Privacy Protection Act (COPPA) also applies to sites that collect personal information.</p>
+  </section>
+
+  <p class="footLine"><a href="credits.html">Credits and sources</a> · <a href="privacy.html">Privacy</a></p>
+
+  <script>
+    // ---------- COLORS AND TEXT SIZE (shared with the other pages) ----------
+    const themeChoice = document.getElementById('themeChoice'), textChoice = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (problem) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (problem) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';
+    showLook();
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+</body>
+</html>

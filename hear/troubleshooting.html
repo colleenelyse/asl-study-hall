@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Old address (colleenelyse.github.io/Hearingandcis/...): open the same page on asl.cool instead, keeping anything after the ? or #
+    if (false) {      /* this copy IS the github.io address for schools that block asl.cool: never jump to asl.cool */
+      var moved = { 'hearing-loss-simulator': '/hearing/', 'cochlear-implant-simulator': '/ci/', 'ear-quiz': '/ear/' };
+      var page = location.pathname.split('/').pop().replace(/\.html$/, '');
+      location.replace('https://asl.cool' + (moved[page] || '/hearing/' + page) + location.search + location.hash);
+    }
+  </script>
+  <meta name="robots" content="noindex">   <!-- a helper page: kept out of search results -->
+  <title>Troubleshooting</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAE7ElEQVR4nOybbUxbVRjH/+e2Bcr7S2C82FBw0DqGOszYMqFAFj/4khi2SWIyzTTLYkyMZh+MGo0Ok8UvGo1+MTFEs31AXeZbxJfEjJdlCxsZWxYcLUorGw7YmvHeIfQenwMWKRfGSHbarre/pL3c59xL+vzPec55zrn3GHEblBZX71Q4HuNMqQTn+QxsAxiSEElwTHHwYTD2N+O8k6vsR+dfbSfWuo2tXlRrtFn9++kfvsUYy8ddCOecxMChXo/SBLTOrXTNSgIopdbqBkVhjVRcgmiAcxcHe9PpbjsmzpYWaQSwFTka6PA51boZ0QTn0+T50053+/dLzUEClBQ7dlGsf03OK4hCKCRULIjwVcC2KIC92FHOOTqjruaXQSL4VK7s6PO0nhfngZoWx+Zod14gfDQo/Aj+833+y2atPkBFm6AfNi/4LLzOrk32p6j9NLZnQ0dQzjCCcf9Go5rk38Og6Mp5AVV4DpKV3UYKilroFK6w7UY6WqFTKEu0kwDMCp1C2WGuwhlyoVfIdyNlQvHQKeR7mhE6JyYAdE5IBajMugeP5tmQn5iKAvrkJaRApRnY0M0JXPUtfH4b/gPtIx6ECmYvruGQjCUxDa+X1aIu997buv7UNQ/e62lD34QXspEuQL2lDI33PwKjsr4lBpq24nDPCRx1n4dMpC58PJCeh0PlO9ftvICmrXhtUw0qMgsgE2ktID8hFcdr9iItLkFTJmr3rPcyPJOjmIMKa1I6tmZaYDIYNNeOzkyjvuMohnyTkIG0TvBAydYVnR+mju7V7p9xhgRYSoE5FR899ATKMoIT0/T4ROyxlOMT12nIQFoI7Mgu1NgmZm9i3+ljGucFg75xHOxuwazfrykrSs6ALKQIIJq/hZr1cr70XIRn6saq9w1MjcI1fk1jtyZlQhZSQiA1Lh5H+s/BbDQh0WCC2SCOcfj1at+a93r/8WlsJkVeXy1FgF6qxcM9rVgvtEoDe6p2cerK9BhkEVGp8FOFm5FjTtbYWwadkEXECFCZZcEbZXUau5Na0y9DLsgiIgTYV1SBg/dVUR4Q/HOuz0zhhTPfYFZVIYuwCiA6xw9p7HdsKNKUDUzewP7O49ISoABhEyAjzoym7bthT8vRlHV5r+Clrh8wusKIcKcJiwBiWPt0W73GeZWeXb5/6SSa/uxCqAiLAC/bqlCeHpzyzlGcv3j2O3SMuBFKQi5AgmJEAw13y/ngUkfInReEXICqHCtSTMGTJC/19l9Q5hgOQi5AEqXH3d7BIFvP2AhNiqUvTK1ISJbEIpnYqjBCjJjsZMYlBtn8FACd1y8jHIRcgFdsD6MmtzjI5pubRcVPHyMcxEIAOicmAHROLA+AzokJAJ2jUAcwA51Cvo8pjGMIeoV8p0cuXLcCMPJdvCco9w2ECEb4rkBVv4VO8atK8/yOEXuR4xwY2wIdwTkuON1tD84/dlU5b4TO4Fx9Rxz/3zOko1YQqH3x9+KDdxXqc2JDEaIc4SNj/JnA+aIALvfJC1T8LKIYsW1OZdjb299+MWALei3LOzrwe1Z6YTfFxZMUDiZEEfPb5Rjf1dffsfrGyQAbCx1bjAqaSYRSRAOcuyjEGxZaeTC33Dxtt6rPU7Lw9t28eZq+3nV6DJ+tZ/O0BlthTR1T+OOcsW0Rv30eGKTfdkrlaOlzt7evddu/AAAA//+YbyOjAAAABklEQVQDAFKhqI8UBTNAAAAAAElFTkSuQmCC">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2328223f%22/%3E%3Ctext%20x%3D%2232%22%20y%3D%2246%22%20font-size%3D%2240%22%20font-family%3D%22Arial%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ff6fb1%22%3E%3F%3C/text%3E%3C/svg%3E">
+  <!-- The Google fonts are only downloaded once someone picks one (see THE FONT MENU in site.js); these lines just get the connection ready -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* The same colors and shapes as the other pages */
+    body      { --page: #f3eff9; --card: #ffffff; --raised: #f7f4fc; --line: #ddd3ec; --ink: #2a2440; --quiet: #675f80;
+                --accent: #e6007e; --onAccent: #ffffff; --shadow: 0 1px 2px rgba(60, 40, 110, 0.08), 0 6px 18px rgba(60, 40, 110, 0.07);
+                font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+                max-width: 1000px; margin: 18px auto; padding: 0 20px 40px 20px; background: var(--page); color: var(--ink); }
+    body.dark { --page: #1d1930; --card: #28223f; --raised: #362e55; --line: #453c6b; --ink: #f4effa; --quiet: #c3b9da;
+                --accent: #ff6fb1; --onAccent: #1d1930; --shadow: none; }
+    body.contrast { --page: #000; --card: #000; --raised: #000; --line: #fff; --ink: #fff; --quiet: #fff; --accent: #ffe600; --onAccent: #000; --shadow: none; }
+    body.big  { zoom: 1.15; }
+    h1        { font-size: 30px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    h2        { font-size: 22px; font-weight: 800; margin: 26px 0 8px 0; }
+    .hint     { color: var(--quiet); font-size: 15px; margin: 6px 0; }
+    .pageBar  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+    .titleSide { display: flex; align-items: center; gap: 20px; }
+    .pageTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+    select, button { font: inherit; font-size: 15px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); }
+    a         { color: var(--accent); }
+    a:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    a.homeButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 66px; height: 66px; flex: none; box-sizing: border-box;
+                  border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); font-weight: 800; font-size: 14px; line-height: 1.1; text-decoration: none; }
+    .homeButton:hover { border-color: var(--accent); }
+    .contrast .homeButton { border: 2px solid #fff; color: #fff; }
+
+    /* Laid out like the troubleshooting section of a manual: the problem on the left, the steps on the right */
+    .jumps    { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px 0; }
+    .jumps a  { text-decoration: none; font-weight: 700; font-size: 15px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--raised); color: var(--ink); }
+    .jumps a:hover { border-color: var(--accent); }
+    table.fixes { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    .fixes th, .fixes td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .fixes thead th { border-top: 0; background: var(--raised); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--quiet); }
+    .fixes tbody th { width: 34%; font-weight: 800; }
+    .fixes ol { margin: 0; padding-left: 22px; }
+    .fixes li { margin-bottom: 6px; }
+    .fixes li:last-child { margin-bottom: 0; }
+    .contrast table.fixes, .contrast .jumps a { border-width: 2px; }
+    @media (max-width: 640px) {
+      .fixes thead { display: none; }
+      .fixes tr, .fixes tbody th, .fixes td { display: block; width: auto; }
+      .fixes td { border-top: 0; padding-top: 0; }
+    }
+    /* Check my speaker: which of the 9K to 20K pitch buttons this speaker can play */
+    .speakerCheck { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 4px 18px 16px 18px; margin: 16px 0 6px 0; }
+    .speakerCheck h2 { margin-top: 12px; }
+    .speakerCheck button.main { background: var(--accent); color: var(--onAccent); border-color: var(--accent); font-weight: 800; cursor: pointer; }
+    .speakerResult { margin: 12px 0 0 0; padding: 12px 14px; border-radius: 12px; border: 2px solid; line-height: 1.45; }
+    .speakerResult[hidden] { display: none; }
+    .speakerResult.good { border-color: #1a7f37; background: rgba(26, 127, 55, 0.10); }
+    .speakerResult.some { border-color: #b26a00; background: rgba(178, 106, 0, 0.10); }
+    .speakerResult.none { border-color: #c62828; background: rgba(198, 40, 40, 0.10); }
+    .speakerResult ol { margin: 6px 0 0 0; padding-left: 22px; }
+    .listenRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px 0; }
+    .listenRow button { cursor: pointer; font-weight: 700; min-width: 64px; }
+    .listenRow button.playing { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+    .listenRow button:disabled { opacity: 0.45; cursor: not-allowed; text-decoration: line-through; }
+    .contrast .speakerResult { background: #000; }
+    @media print { body { background: #fff; color: #000; } .pageTools, .jumps, .homeButton, .speakerCheck { display: none !important; } }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>
+    /* On a narrow screen the font menu lines up with the left edge of the menus at the top, instead of spilling off the left side of the screen */
+    @media (max-width: 640px) { .pageTools { position: relative; } .fontPick { position: static; }
+                                #fontMenu { left: 0; right: auto; min-width: 0; width: 270px; max-width: calc(100vw - 32px); } }
+  </style>
+</head>
+<body>
+  <script>
+    // Put the remembered colors and text size on straight away, so the page does not flash the wrong colors while it loads.
+    // (The Colors menu near the end of the page does the same thing again once it is ready.)
+    (function () {
+      let colors = null, text = null;
+      try { colors = localStorage.getItem('simulatorColors'); text = localStorage.getItem('simulatorText'); } catch (problem) { /* not allowed here */ }
+      if (['dark', 'light', 'contrast'].indexOf(colors) < 0) colors = 'dark';     // Dark is the starting color scheme
+      if (colors === 'dark') document.body.classList.add('dark');
+      if (colors === 'contrast') document.body.classList.add('contrast');
+      if (text === 'big') document.body.classList.add('big');
+    })();
+  </script>
+  <div class="pageBar">
+    <div class="titleSide">
+      <a class="homeButton" href="index.html" title="Back to the welcome page">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 3 L21 11"/><path d="M5 9.5 V20 H10 V14 H14 V20 H19 V9.5"/></svg>
+        Home
+      </a>
+      <h1>Troubleshooting</h1>
+    </div>
+    <div class="pageTools">
+      <label>Colors:
+        <select id="themeChoice"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select>
+      </label>
+      <label>Text size:
+        <select id="textChoice"><option value="">Normal</option><option value="big">Large</option></select>
+      </label>
+      <div class="fontPick">
+        <span id="fontLabel">Font:</span>
+        <button type="button" id="fontButton" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="fontMenu" role="listbox" aria-labelledby="fontLabel" hidden></div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Find your problem in the left column. Try the steps on the right in order.</p>
+  <nav class="jumps" aria-label="Sections"><a href="#speaker-check">Check my speaker</a><a href="#help-no-sound">No sound</a><a href="#help-microphone">Microphone</a><a href="#help-youtube">YouTube</a><a href="#help-the-page-itself">The page itself</a></nav>
+
+  <section class="speakerCheck" id="speaker-check" aria-labelledby="speakerCheckTitle">
+    <h2 id="speakerCheckTitle">Check my speaker</h2>
+    <p class="hint">Before class, find out whether the speaker or headphones you are using can play the high pitch buttons (9K to 20K) on the hearing loss audiogram.
+       Bluetooth speakers and headphones often cannot. Connect the speaker you will use, then press the button.</p>
+    <button type="button" class="main" id="checkSpeaker">Check my speaker</button>
+    <div class="speakerResult" id="speakerResult" role="status" aria-live="polite" hidden></div>
+    <div id="speakerListen" hidden>
+      <p class="hint" style="margin-top: 14px;"><b>Listen for yourself.</b> Start with the volume low. Each button plays its pitch for 2 seconds; press it again to stop.
+         Crossed-out buttons are pitches this sound system cannot play. Most adults cannot hear above about 15,000 to 17,000 Hz, but teenagers often can.</p>
+      <div class="listenRow" id="listenRow"></div>
+    </div>
+  </section>
+
+  <h2 id="help-no-sound">No sound</h2>
+  <table class="fixes">
+    <thead><tr><th>Problem</th><th>What to try</th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">I pressed play and hear nothing.</th>
+        <td><ol><li>Check that the computer's volume is up and not muted, and that your headphones are plugged in or connected.</li><li>On the Hearing Loss Simulator, press "Play a sample conversation" in the yellow box at the top. It does not go through the faders, so if you hear it, your sound is working.</li><li>Check the faders or the hearing loss you chose. A severe or profound loss is meant to make most sounds disappear. Choose <b>Normal</b> and try again.</li><li>Under "Sound from", make sure the box you want is chosen and that something in it has been started.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The built-in recordings are silent, but everything else works.</th>
+        <td><ol><li>This happens when the website version of a page is opened as a file on the computer. The page shows a yellow note when this is the case.</li><li>Open the site from its web address instead: <b>colleenelyse.github.io/Hearingandcis</b>. The built-in recordings can only play when the page is online, not when it is opened from a downloaded file. Your own files and the microphone work either way.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The 9K to 20K pitch buttons on the audiogram make no sound.</th>
+        <td><ol><li>Look for a red box under the chart. It says your speaker cannot play that pitch, and how high it can go right now.</li><li>Bluetooth speakers and headphones often play only lower pitches, especially ones with a microphone. Bluetooth usually cuts off above about 15,000 to 16,000 Hz anyway.</li><li>Use the computer's own speakers, wired headphones, a cable from the computer's headphone jack to the speaker's AUX input, or the projector's (HDMI) sound.</li><li>On a Mac, if the speaker has a microphone, open System Settings, then Sound, and set Input to the Mac's own microphone.</li><li>Then reload the page.</li><li>Even with the right speaker, many speakers cannot play the very top pitches. Most adults cannot hear above about 15,000 to 17,000 Hz, while teenagers often can.</li></ol></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="help-microphone">Microphone</h2>
+  <table class="fixes">
+    <thead><tr><th>Problem</th><th>What to try</th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">The microphone is on, but I hear nothing.</th>
+        <td><ol><li><b>Choose the right microphone.</b> After you turn the microphone on, a "Which microphone" menu appears under the button. Pick your computer's built-in microphone, or the one you want. This is the most common fix.</li><li>Read the message under the buttons. "Microphone on and picking up sound" means the microphone works. "The microphone is on, but no sound is coming from it" means the wrong microphone is chosen, or it is muted.</li><li>Check the faders. If a hearing loss is set, your own voice comes through quiet or not at all.</li><li>On a Mac, open System Settings, then Privacy &amp; Security, then Microphone, and check that your browser is switched on.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">With the microphone on, I can still hear the real sound.</th>
+        <td><ol><li><b>Move the listener away.</b> Keep the sound source and the microphone together, and move the listener as far from them as you can. The listener should only hear the sound through the headphones.</li><li>Turn off transparency mode on the headphones, and turn noise cancelling on if they have it.</li><li>Keep the sound source quiet. The microphone only needs to pick it up.</li><li>In the "Which microphone" menu, choose the microphone that is next to the sound source, not one on the listener's headphones.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The page says the microphone could not be turned on.</th>
+        <td><ol><li>Click the icon at the left end of the address bar and allow the microphone for this site.</li><li>Press Turn on microphone again.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">There is a loud squeal or echo.</th>
+        <td><ol><li>The microphone is hearing the speakers. Put on headphones.</li><li>If it continues, turn the microphone off.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The sound went muffled when I turned the microphone on.</th>
+        <td><ol><li>Many wireless (Bluetooth) headphones switch to a lower-quality "phone call" mode when their own microphone is used.</li><li>In the "Which microphone" menu, choose the computer's built-in microphone, not the headphones' microphone.</li></ol></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="help-youtube">YouTube</h2>
+  <table class="fixes">
+    <thead><tr><th>Problem</th><th>What to try</th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">How do I connect a YouTube video?</th>
+        <td><ol><li>Use Chrome or Edge on a computer or Chromebook, on the website. YouTube does not work in Safari, or when the page is opened as a file.</li><li>On a simulator page (with Simple view switched off), choose YouTube under "Sound from", paste the video's link, and press <b>Open the video</b>. A small video window opens.</li><li>Press <b>Connect the sound</b>. The browser asks what to share.</li><li>Choose the tab named <b>CHOOSE THIS TO CONNECT SOUND</b>, keep "Also share tab audio" switched on, and press Share.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The page says "Wrong tab. Nothing was connected."</th>
+        <td><ol><li>A different tab or window was shared. Press Connect the sound again.</li><li>Choose the tab named CHOOSE THIS TO CONNECT SOUND. It has a pink strip along the bottom.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The video plays, but the simulator does not change its sound.</th>
+        <td><ol><li>The sound was not connected, so you are hearing the video directly.</li><li>Press Connect the sound and share the small video window's tab, with "Also share tab audio" switched on.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The play and skip buttons do nothing.</th>
+        <td><ol><li>During an ad, the buttons and the bar wait until the ad is over.</li><li>To skip the ad, use the small video window.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The small video window never opens.</th>
+        <td><ol><li>The browser may have blocked the pop-up window. Click the blocked pop-up icon at the right end of the address bar and allow pop-ups for this site.</li><li>On a school computer, the school's settings may block it. Ask your teacher.</li></ol></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="help-the-page-itself">The page itself</h2>
+  <table class="fixes">
+    <thead><tr><th>Problem</th><th>What to try</th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">The page looks old, or a change is missing.</th>
+        <td><ol><li>The browser is showing a saved copy. Hold Shift and press the refresh button.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">The font does not change when I choose one.</th>
+        <td><ol><li>Most of the fonts are downloaded from the internet when you pick them. Check your connection.</li><li>Without a connection, the page uses your computer's own font.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">I cannot hear the high-pitch test tones.</th>
+        <td><ol><li>Whether you hear them depends on your ears and also on your speakers or headphones. Many laptop speakers and wireless headphones cannot play the highest pitches.</li><li>If a red box appears under the chart, the speaker cannot play that pitch at all. See "The 9K to 20K pitch buttons on the audiogram make no sound" above.</li><li>Keep the volume where it is. Turning it up can hurt your ears even when a tone seems silent.</li></ol></td>
+      </tr>
+      <tr>
+        <th scope="row">My quiz score disappeared.</th>
+        <td><ol><li>The score is kept only while the page is open. Reloading or closing the page starts it again.</li><li>Open the score report and print it, or take a picture of it, before you leave the page.</li></ol></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="hint" style="margin-top: 26px; text-align: center;"><a href="credits.html">Credits and sources</a> · <a href="privacy.html">Privacy</a></p>
+
+  <script>
+    // ---------- COLORS AND TEXT SIZE (shared with the other pages) ----------
+    const themeChoice = document.getElementById('themeChoice'), textChoice = document.getElementById('textChoice');
+    function remember(key, value) { try { localStorage.setItem(key, value); } catch (problem) { /* not allowed here */ } }
+    function recall(key)          { try { return localStorage.getItem(key); } catch (problem) { return null; } }
+    function showLook() {
+      document.body.classList.toggle('dark', themeChoice.value === 'dark');
+      document.body.classList.toggle('contrast', themeChoice.value === 'contrast');
+      document.body.classList.toggle('big', textChoice.value === 'big');
+    }
+    themeChoice.onchange = () => { remember('simulatorColors', themeChoice.value); showLook(); };
+    textChoice.onchange  = () => { remember('simulatorText', textChoice.value); showLook(); };
+    if (recall('simulatorColors')) themeChoice.value = recall('simulatorColors');
+    if (recall('simulatorText'))   textChoice.value  = recall('simulatorText');
+    if (!themeChoice.value) themeChoice.value = 'dark';
+    showLook();
+  </script>
+  <script>
+    // ---------- CHECK MY SPEAKER ----------
+    // A web page cannot ask which speaker is connected, but it can see the speaker's "sample rate": how many times a second
+    // the sound is measured. The highest pitch a sound system can play is a little under half of that. Laptop speakers and
+    // wired headphones run at 44,100 or 48,000 (up to 20,000 Hz). Bluetooth speakers and headsets that are also using their
+    // microphone often drop to 16,000 or 24,000, which cannot carry the high pitch buttons. This uses the same rule as the
+    // hearing loss simulator, so the answer here matches what its buttons will do.
+    (function () {
+      const PITCHES = [1000, 4000, 8000, 9000, 12000, 16000, 20000];   // what the listen buttons play
+      const LOWEST_BUTTON = 9000, HIGHEST_BUTTON = 20000;               // the pitch buttons on the audiogram
+      const VOLUME = 0.2;                                               // same as the simulator's pitch buttons: kept low
+      const result = document.getElementById('speakerResult');
+      const listen = document.getElementById('speakerListen');
+      const row = document.getElementById('listenRow');
+      let ctx = null, tone = null;
+
+      function stopTone() {
+        if (!tone) return;
+        const now = ctx.currentTime;
+        tone.volume.gain.cancelScheduledValues(now);
+        tone.volume.gain.setValueAtTime(tone.volume.gain.value, now);
+        tone.volume.gain.linearRampToValueAtTime(0, now + 0.05);     // fade out, so there is no click
+        tone.maker.stop(now + 0.06);
+        tone.button.classList.remove('playing');
+        clearTimeout(tone.timer);
+        tone = null;
+      }
+
+      function playTone(freq, button) {
+        if (tone && tone.button === button) { stopTone(); return; }  // pressing a playing button stops it
+        stopTone();
+        ctx.resume();
+        const maker = ctx.createOscillator();
+        maker.frequency.value = freq;
+        const volume = ctx.createGain();
+        const now = ctx.currentTime;
+        volume.gain.setValueAtTime(0, now);
+        volume.gain.linearRampToValueAtTime(VOLUME, now + 0.05);       // fade in, so there is no click
+        maker.connect(volume);
+        volume.connect(ctx.destination);
+        maker.start();
+        button.classList.add('playing');
+        tone = { maker: maker, volume: volume, button: button, timer: setTimeout(stopTone, 2000) };
+      }
+
+      document.getElementById('checkSpeaker').onclick = () => {
+        const Maker = window.AudioContext || window.webkitAudioContext;
+        if (!Maker) { result.className = 'speakerResult none'; result.hidden = false; result.textContent = 'This browser cannot play sound from a web page. Try Chrome, Edge or Safari.'; return; }
+        // A fresh check each time, so switching speakers and pressing the button again gives the new speaker's answer
+        stopTone();
+        if (ctx) ctx.close();
+        ctx = new Maker();
+        const rate = ctx.sampleRate;
+        const highest = Math.floor((rate / 2 - 1000) / 1000) * 1000;
+        const fixes = '<ol><li>Use the computer\'s own speakers, wired headphones, or a cable from the computer\'s headphone jack to the speaker\'s AUX input.</li>'
+          + '<li>On a Mac with a Bluetooth speaker that has a microphone: open System Settings, then Sound, and under Input choose the Mac\'s own microphone.</li>'
+          + '<li>Reload the simulator page after changing speakers, then press Check my speaker again here.</li></ol>';
+        let message;
+        if (highest >= HIGHEST_BUTTON) {
+          result.className = 'speakerResult good';
+          message = '<b>Ready.</b> This sound system can play every pitch button, up to 20,000 Hz. '
+            + 'Bluetooth can still quietly cut off the very top (often above about 15,000 to 16,000 Hz), and small speakers fade out up there too, '
+            + 'so press 16K and 20K below to listen.';
+        } else if (highest >= LOWEST_BUTTON) {
+          result.className = 'speakerResult some';
+          message = '<b>Only some pitch buttons will play.</b> Right now this sound system can play up to about ' + highest.toLocaleString() + ' Hz, '
+            + 'so the buttons above that will be silent. This usually means Bluetooth. To hear them all:' + fixes;
+        } else {
+          result.className = 'speakerResult none';
+          message = '<b>None of the pitch buttons will play.</b> Right now this sound system only goes up to about ' + Math.max(0, highest).toLocaleString() + ' Hz. '
+            + 'This usually means a Bluetooth speaker or headset is using its microphone. To hear the pitch buttons:' + fixes;
+        }
+        result.innerHTML = message + '<p class="hint" style="margin: 8px 0 0 0;">Sample rate: ' + rate.toLocaleString() + ' a second.</p>';
+        result.hidden = false;
+
+        row.innerHTML = '';
+        PITCHES.forEach((freq) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = (freq / 1000) + 'K';
+          const playable = freq <= rate / 2 - 1000;
+          button.disabled = !playable;
+          button.setAttribute('aria-label', playable ? 'Play a ' + freq + ' hertz tone' : freq + ' hertz: this sound system cannot play it');
+          button.onclick = () => playTone(freq, button);
+          row.append(button);
+        });
+        listen.hidden = false;
+      };
+    })();
+  </script>
+  <script src="site.js"></script>     <!-- the font menu, shared by every page -->
+</body>
+</html>
