@@ -26,15 +26,15 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   <div class="card">
     <h2>2. The buttons</h2>
     <p class="hint">Emoji, name, a short description, and the address (for a page on asl.cool, just the part after asl.cool/, like <b>fingerspelling/</b>; for another site, the whole address starting with https://).</p>
-    <p class="hint">You always see every button after typing your password. Tick <b>Students</b> to show a button to students after they type the class password on asl.cool, and tick a teacher link to put it on that link.</p>
+    <p class="hint">You always see every button after typing your own password. Under each button, tick 🔑 the passwords that should open it, and tick a teacher link to put it on that link.</p>
     <div id="tools"></div>
     <button class="ghost" type="button" id="add">+ Add a button</button>
   </div>
   <div class="card">
-    <h2>Class Passwords (for students)</h2>
-    <p class="hint">Students type a class password on asl.cool to see the buttons ticked for it. Make one for all your students, or one per class period. Keep them simple (a word you write on the board); each must be different, and different from your own password. You type your own password in the same box to see everything.</p>
+    <h2>Passwords (for classes, teachers or anyone)</h2>
+    <p class="hint">Make a password for anyone: a class, a class period, another teacher, a family. Whoever types it on asl.cool sees only the buttons you tick for that password (the 🔑 ticks under each button). Each must be different, and different from your own password. Remove a password and it stops working right away. You type your own password in the same box to see everything.</p>
     <div id="classes"></div>
-    <button class="ghost" type="button" id="addclass">+ New class password</button>
+    <button class="ghost" type="button" id="addclass">+ New password</button>
   </div>
   <div class="card">
     <h2>Teacher Links</h2>
@@ -97,13 +97,13 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     if (e.target.hasAttribute('data-rm') && confirm('Remove the link for "' + (x.name || 'this teacher') + '"? It stops working after you save.')) { shares.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.sh) t.sh = t.sh.filter(c => c !== x.code); }); drawShares(); draw(); } });
   $('#addshare').onclick = () => { shares.push({ code: newCode(), name: '' }); drawShares(); draw(); $('#shares .share:last-child input').focus(); };
   function drawClasses() {
-    $('#classes').innerHTML = classes.length ? classes.map((c, i) => `<div class="share" data-i="${i}"><div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div><label>Name (only you see it)</label><input data-cn value="${esc(c.name)}" maxlength="60" placeholder="All students, Period 1…"></div><div><label>Class password</label><input data-cp value="${esc(c.pw)}" maxlength="60" autocomplete="off" spellcheck="false"></div></div>
-      <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-rm>Remove</button><span class="hint">${tools.filter(t => (t.cl || []).indexOf(c.id) >= 0).length} buttons</span></div></div>`).join('') : '<p class="hint">No class passwords yet: students cannot open any buttons on asl.cool.</p>';
+    $('#classes').innerHTML = classes.length ? classes.map((c, i) => `<div class="share" data-i="${i}"><div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div><label>Name (only you see it)</label><input data-cn value="${esc(c.name)}" maxlength="60" placeholder="Period 1, Mrs. Lee, Families…"></div><div><label>Password</label><input data-cp value="${esc(c.pw)}" maxlength="60" autocomplete="off" spellcheck="false"></div></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-rm>Remove</button><span class="hint">${tools.filter(t => (t.cl || []).indexOf(c.id) >= 0).length} buttons</span></div></div>`).join('') : '<p class="hint">No passwords yet: only you can open buttons on asl.cool.</p>';
   }
   $('#classes').addEventListener('input', e => { const box = e.target.closest('.share'); if (!box) return; const c = classes[+box.dataset.i];
     if (e.target.hasAttribute('data-cn')) { c.name = e.target.value; draw(); } if (e.target.hasAttribute('data-cp')) c.pw = e.target.value; });
   $('#classes').addEventListener('click', e => { const box = e.target.closest('.share'); if (!box || !e.target.hasAttribute('data-rm')) return; const c = classes[+box.dataset.i];
-    if (!confirm('Remove the class password "' + (c.pw || '') + '"? Students using it will need a new one after you save.')) return; classes.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.cl) t.cl = t.cl.filter(x => x !== c.id); }); drawClasses(); draw(); });
+    if (!confirm('Remove the password "' + (c.pw || '') + '"? Students using it will need a new one after you save.')) return; classes.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.cl) t.cl = t.cl.filter(x => x !== c.id); }); drawClasses(); draw(); });
   $('#addclass').onclick = () => { const c = { id: newCode(), name: classes.length ? '' : 'All students', pw: '' }; if (!classes.length) tools.forEach(t => { if (t.s) t.cl = (t.cl || []).concat(c.id); });      // the first one starts with the buttons that were open for students
     classes.push(c); drawClasses(); draw(); $('#classes .share:last-child input[data-cp]').focus(); };
   function drawProducts() {
@@ -153,7 +153,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
     const shareOut = shares.map(x => ({ code: x.code, tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
     const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim() }));
-    const bad = cls.find(c => c.pw.length < 4) ? 'Each class password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'A class password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two class passwords are the same. Make each one different.' : '';
+    const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
     const prods = (products || []).map(x => ({ title: String(x.title || '').trim(), link: String(x.link || '').trim(), img: String(x.img || '').trim(), price: String(x.price || '').trim(), desc: String(x.desc || '').trim(), tag: String(x.tag || '').trim() })).filter(x => x.title || x.link);
     const badP = prods.find(x => !x.title || !/^https:\/\//.test(x.link) || (x.img && !/^https:\/\//.test(x.img)));
@@ -165,7 +165,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not save.');
       curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); drawShares(); $('#new1').value = ''; $('#new2').value = '';
-      m.className = 'msg good'; m.textContent = 'Saved! ' + (cls.length ? cls.length + ' class password' + (cls.length === 1 ? '' : 's') + ' saved' : 'No class password yet, so students see no buttons') + (shares.length ? ', and your ' + shares.length + ' teacher link' + (shares.length === 1 ? ' is' : 's are') + ' up to date' : '') + '.' + (n1 ? ' Use the new password from now on.' : '');
+      m.className = 'msg good'; m.textContent = 'Saved! ' + (cls.length ? cls.length + ' password' + (cls.length === 1 ? '' : 's') + ' saved' : 'No passwords yet, so only you can open buttons') + (shares.length ? ', and your ' + shares.length + ' teacher link' + (shares.length === 1 ? ' is' : 's are') + ' up to date' : '') + '.' + (n1 ? ' Use the new password from now on.' : '');
     } catch (err) { m.className = 'msg bad'; m.textContent = err.message; }
     $('#save').disabled = false;
   };

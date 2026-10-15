@@ -1503,7 +1503,7 @@ if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as it
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
   $$('.top nav a').forEach((x, i) => { if (i) x.remove(); });
 }
-if (CFG.only) { const t = $('.top nav a.tptlink'); if (t) t.remove(); }      // the TpT products themselves (built with CFG.only) do not advertise the store
+if (CFG.only) $$('.top nav a.tptlink').forEach(t => t.remove());      // the TpT products themselves (built with CFG.only) do not advertise the store
 if (ONLY) {
   $$('[data-only]').forEach(x => { if (x.dataset.only !== ONLY) x.remove(); });
   $$('.top nav a').forEach(x => { const m = (x.getAttribute('href') || '').match(/^#\/(\w+)/); if (m && offPage(m[1])) x.remove(); });
