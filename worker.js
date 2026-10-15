@@ -110,12 +110,12 @@ export default {
   }
 };
 /* Admin > Show the shop to everyone (Colleen: "a show/hide toggle that's universal on the admin page"). The pages ship with the shop hidden;
-   when the switch is on, the Worker takes the hide rule out as it serves them. Never in the TpT copies (fs-tpt, num-tpt). */
+   when the switch is on, the Worker narrows the hide rule to .noshop (set on the device by a password or teacher link without Show the shop): the switch is only for visitors without a password (Colleen). Never in the TpT copies (fs-tpt, num-tpt). */
 async function shopSwitch(req, env, res, p) {
   const type = res.headers.get('content-type') || '';
   if (res.status !== 200 || /^\/(fs|num)-tpt\//.test(p) || !/text\/(html|css)/.test(type)) return res;
   const st = await state(env, req); if (!st || !st.shopOn) return res;
-  const body = (await res.text()).replace('[data-shop]{display:none!important}', '[data-shop-off]{display:none!important}').replace('.top nav a.tptlink, .shopcard { display: none !important; }', '.shop-hide-off { display: none !important; }');
+  const body = (await res.text()).replace('[data-shop]{display:none!important}', '.noshop [data-shop]{display:none!important}').replace('.top nav a.tptlink, .shopcard { display: none !important; }', '.noshop .top nav a.tptlink, .noshop .shopcard { display: none !important; }');
   const h = new Headers(res.headers); h.delete('content-length'); h.delete('etag'); h.set('cache-control', 'no-cache');
   return new Response(body, { status: 200, headers: h });
 }

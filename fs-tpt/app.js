@@ -3,6 +3,7 @@
    Progress is kept in this browser only (localStorage); nothing is sent anywhere except what the student chooses to email. */
 (function () {
 'use strict';
+try{if(localStorage.getItem('aslNoShop'))document.documentElement.classList.add('noshop')}catch(e){}      // a password without Show the shop (asl.cool) keeps the shop hidden here
 
 /* inside the ASL Study app (?embed=aslstudy), the word lists come from the teacher's sheet (ASL Study 3.81, Colleen): the app sends them
    ('fsp-words'), they are kept for this browser tab (sessionStorage), and every later load starts from them. Each list is used only when it

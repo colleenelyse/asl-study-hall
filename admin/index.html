@@ -44,12 +44,12 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   </div>
   <div class="card">
     <h2>🛍️ Shop Links on asl.cool</h2>
-    <label style="display:flex;gap:10px;align-items:center;font-weight:700;font-size:1.1em"><input type="checkbox" id="shopon" style="width:22px;height:22px"> Show the shop to everyone</label>
-    <p class="hint">Off: the Shop ASL Study Hall and TpT buttons, the product cards and the teacher card are hidden from students and visitors (only the passwords and teacher links with 🛍️ Show the shop ticked still see them). On: everyone on asl.cool sees them. Never shown inside ASL Study or your TpT products. Click Save at the bottom after changing it.</p>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:700;font-size:1.1em"><input type="checkbox" id="shopon" style="width:22px;height:22px"> Show the shop to visitors without a password</label>
+    <p class="hint">Only for people who come to asl.cool without a password. Anyone who types a password, or opens a teacher link, gets that password's or link's own 🛍️ Show the shop tick instead, and keeps it on that device (so students stay shop-free even on the fingerspelling site). Ticked: visitors see the Shop ASL Study Hall and TpT buttons, the product cards and the teacher card. Unticked: hidden. Never shown inside ASL Study or your TpT products. Click Save at the bottom after changing it.</p>
   </div>
   <div class="card">
     <h2>Featured Products (shown on asl.cool)</h2>
-    <p class="hint">Product cards visitors see on asl.cool (at the bottom of the welcome page, and at the end of a round on the public fingerspelling site; never inside ASL Study or your TpT products). For each: a name, the link (your Shopify or TpT product page), and a picture address (in Shopify or TpT, right-click the product picture › Copy Image Address). Price, a short description and a label (like "On TpT" or "New") are optional. <b>Leave this empty to show every product in your Shopify store automatically</b> (new products appear by themselves). Add cards here only to choose specific ones or to add TpT listings. While Show the shop to everyone is off, these are hidden too.</p>
+    <p class="hint">Product cards visitors see on asl.cool (at the bottom of the welcome page, and at the end of a round on the public fingerspelling site; never inside ASL Study or your TpT products). For each: a name, the link (your Shopify or TpT product page), and a picture address (in Shopify or TpT, right-click the product picture › Copy Image Address). Price, a short description and a label (like "On TpT" or "New") are optional. <b>Leave this empty to show every product in your Shopify store automatically</b> (new products appear by themselves). Add cards here only to choose specific ones or to add TpT listings. While Show the shop to visitors is off, these are hidden too.</p>
     <div id="products"></div>
     <button class="ghost" type="button" id="addprod">+ Add a product</button>
   </div>
@@ -94,7 +94,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   }
   function drawShares() {
     $('#shares').innerHTML = shares.length ? shares.map((x, i) => `<div class="share" data-i="${i}"><label>Name (only you see it)</label><input data-n value="${esc(x.name)}" maxlength="80" placeholder="Mrs. Lee, ASL 1 teachers…">
-      <label style="display:flex;gap:8px;align-items:center;margin:8px 0 0;font-weight:700"><input type="checkbox" data-sshop style="width:auto" ${x.shop ? 'checked' : ''}> 🛍️ Show the shop on this link</label>
+      <label style="display:flex;gap:8px;align-items:center;margin:8px 0 0;font-weight:700"><input type="checkbox" data-sshop style="width:auto" ${x.shop ? 'checked' : ''}> 🛍️ Show the shop</label>
       <p style="margin:8px 0 4px"><code>${shareUrl(x.code)}</code></p><div class="row"><button type="button" class="ghost small" data-copy>Copy link</button><button type="button" class="ghost small" data-rm>Remove link</button><span class="hint">${(tools.filter(t => (t.sh || []).indexOf(x.code) >= 0)).length} buttons</span></div></div>`).join('') : '<p class="hint">No teacher links yet.</p>';
   }
   $('#shares').addEventListener('input', e => { const box = e.target.closest('.share'); if (box && e.target.hasAttribute('data-n')) { shares[+box.dataset.i].name = e.target.value; draw(); } });
@@ -105,7 +105,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   $('#addshare').onclick = () => { shares.push({ code: newCode(), name: '' }); drawShares(); draw(); $('#shares .share:last-child input').focus(); };
   function drawClasses() {
     $('#classes').innerHTML = classes.length ? classes.map((c, i) => `<div class="share" data-i="${i}"><div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px"><div><label>Name (only you see it)</label><input data-cn value="${esc(c.name)}" maxlength="60" placeholder="Period 1, Mrs. Lee, Families…"></div><div><label>Password</label><input data-cp value="${esc(c.pw)}" maxlength="60" autocomplete="off" spellcheck="false"></div></div>
-      <label style="display:flex;gap:8px;align-items:center;margin:10px 0 0;font-weight:700"><input type="checkbox" data-cshop style="width:auto" ${c.shop ? 'checked' : ''}> 🛍️ Show the shop (Shopify &amp; TpT links and products), for teachers, not students</label>
+      <label style="display:flex;gap:8px;align-items:center;margin:10px 0 0;font-weight:700"><input type="checkbox" data-cshop style="width:auto" ${c.shop ? 'checked' : ''}> 🛍️ Show the shop</label>
       <div class="who" style="margin-top:10px"><b style="width:100%">Opens:</b>${tools.map((t, k) => `<label><input type="checkbox" data-copen="${k}" ${(t.cl || []).indexOf(c.id) >= 0 ? 'checked' : ''}> ${esc(t.icon || '')} ${esc(t.title || '(no name yet)')}</label>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-rm>Remove</button><span class="hint">${tools.filter(t => (t.cl || []).indexOf(c.id) >= 0).length} buttons</span></div></div>`).join('') : '<p class="hint">No passwords yet: only you can open buttons on asl.cool.</p>';
   }
