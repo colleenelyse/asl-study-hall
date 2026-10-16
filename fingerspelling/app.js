@@ -34,7 +34,7 @@ const CFG = { ads: false, ga: '' };
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math', 'learn'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
@@ -1415,6 +1415,100 @@ function agepicsInit() {
   $('#ap-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
 }
 
+/* ---------- Learn Numbers (Colleen, 2026-10-15): lessons in the order she taught the rules (dev/ASL-number-rules.md), grouped like the games.
+   Each lesson: the rule in plain words, parts with examples the big hand signs when tapped, then five quick "pick what it signed" questions.
+   An example is [label, value, kind, options, note]: kind 'n' a number, 'y' a year, 'a' an age, 'o' a math sign. ---------- */
+const OPN = { '+': 'PLUS', '-': 'MINUS', 'x': 'TIMES', '/': 'DIVIDED BY', '=': 'EQUALS', '?': 'HOW MANY' };
+const LESSONS = [
+  { id: 'n0-20', name: '0–10', icon: '🖐️', about: 'The 0–9 handshapes and 10.', intro: 'Start here. These handshapes are the building blocks for every other number.', parts: [
+    ['0–5', 'Show the number with your fingers. For 1–5 on their own, the palm faces you, the signer.', [0, 1, 2, 3, 4, 5]],
+    ['6–9', 'The thumb touches one finger: 6 the pinky, 7 the ring finger, 8 the middle finger, 9 the pointer finger.', [6, 7, 8, 9]],
+    ['10', 'A thumbs-up with a small, quick twist of the wrist.', [10]]], pool: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+  { id: 'nteens', name: 'The teens', icon: '🧒', about: '11–19, and the two ways to sign 16–19.', intro: 'The teens each have their own movement. Watch for what the fingers do.', parts: [
+    ['11 and 12', 'The finger (11) or two fingers (12) flick up from the thumb, twice.', [11, 12]],
+    ['13, 14 and 15', 'Palm toward you, the fingers bend at the knuckles, twice. 13 uses two fingers with the thumb out, 14 four fingers, 15 four fingers with the thumb out.', [13, 14, 15]],
+    ['16–19: two ways', 'People sign 16–19 in different ways. The most common is 10 + the number: a thumbs-up that flicks into the 6–9 shape. Another way is the twist: the 6–9 shape twists out.', [['16', 16, 'n', { teens: 'ten' }, '10 + 6'], ['16', 16, 'n', { teens: 'twist' }, 'twist'], ['17', 17, 'n', { teens: 'ten' }, '10 + 7'], ['17', 17, 'n', { teens: 'twist' }, 'twist'], ['18', 18, 'n', { teens: 'ten' }, '10 + 8'], ['19', 19, 'n', { teens: 'ten' }, '10 + 9']]]], pool: [11, 12, 13, 14, 15, 16, 17, 18, 19] },
+  { id: 'n20s', name: 'The 20s', icon: '2️⃣', about: '20–29, and the formal and slang forms of 23 and 25.', intro: 'The 20s have their own signs. Watch each one closely.', parts: [
+    ['20', 'The pointer finger and thumb pinch, twice.', [20]],
+    ['21–29', 'Each of the 20s has its own sign. 22 is a double (see Doubles).', [21, 22, 24, 26, 27, 28, 29]],
+    ['23 and 25: two forms', 'Both have a formal form and a slang form. You will see both.', [['23', 23, 'n', { form: 'alt' }, 'formal'], ['23', 23, 'n', { form: 'main' }, 'slang'], ['25', 25, 'n', { form: 'alt' }, 'formal'], ['25', 25, 'n', { form: 'main' }, 'slang']]]], pool: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29] },
+  { id: 'ntens', name: 'Tens', icon: '🔟', about: '30, 40, 50 … 90.', intro: 'Sign the first digit, then 0.', parts: [
+    ['30–90', 'The first digit, then 0.', [30, 40, 50, 60, 70, 80, 90]]], pool: [30, 40, 50, 60, 70, 80, 90] },
+  { id: 'ndoubles', name: 'Doubles', icon: '👯', about: '22, 33, 44 … 99: one handshape, placed twice.', intro: 'When both digits are the same, the hand makes that handshape once and places it twice.', parts: [
+    ['22–99', 'The handshape, palm down but tipped: a firm placing, one arc toward the signer’s right, and a firm second placing. 11 has its own sign.', [22, 33, 44, 55, 66, 77, 88, 99]]], pool: [22, 33, 44, 55, 66, 77, 88, 99] },
+  { id: 'nrocking', name: 'Rocking numbers', icon: '🔄', about: '67, 76, 89, 98 …: the wrist rocks between the two digits.', intro: 'When both digits are 6, 7, 8 or 9 and they are different, the hand rocks from the first digit to the second.', parts: [
+    ['Going up: 67, 68, 69, 78, 79, 89', 'The thumb moves to the new finger while the wrist rocks. A small wrist movement, not the arm.', [67, 68, 69, 78, 79, 89]],
+    ['Going down: 76, 86, 87, 96, 97, 98', 'The rock goes the other way.', [76, 86, 87, 96, 97, 98]],
+    ['Not a double', 'Compare: 66 and 77 are doubles, not rocking numbers.', [66, 67, 77, 76]]], pool: [67, 68, 69, 76, 78, 79, 86, 87, 89, 96, 97, 98] },
+  { id: 'ntwo', name: 'Other two-digit numbers', icon: '🔢', about: '34, 52, 81 …: one digit, then the other.', intro: 'Every other two-digit number is the first digit, then the second.', parts: [
+    ['Digit, then digit', 'Sign the first digit, then the second, smoothly.', [34, 47, 58, 63, 72, 91]],
+    ['1–5 inside a longer number', 'Inside a longer number, 1–5 face palm out (toward the person watching).', [31, 42, 53, 85, 94]]], pool: [34, 47, 58, 63, 72, 91, 31, 42, 53, 85, 94, 36, 49, 57] },
+  { id: 'nhundreds', name: 'Hundreds', icon: '💯', about: 'The number of hundreds, HUNDRED, then the rest.', intro: 'Sign it the way it is said: the number of hundreds, HUNDRED, then the rest. No AND sign.', parts: [
+    ['Exact hundreds', 'The number, then HUNDRED. HUNDRED is signed two ways: with a C, or with a curl.', [['100', 100, 'n', { hund: 'c' }, 'C'], ['100', 100, 'n', { hund: 'curl' }, 'curl'], 300, 500, 900]],
+    ['Hundreds and more', 'Flow straight into the rest of the number. Special forms stay special: the 78 in 678 still rocks.', [105, 125, 219, 456, 678, 999]]], pool: [100, 200, 300, 500, 900, 105, 125, 219, 456, 678, 999] },
+  { id: 'nthousands', name: 'Thousands and millions', icon: '🔟🔟', about: 'THOUSAND and MILLION use both hands.', intro: 'Sign it the way it is said: the number of thousands, THOUSAND, then the rest. Never sign zeros that are not said.', parts: [
+    ['THOUSAND', 'The other hand is open, palm up. The signing hand, a flat bent B, touches its palm once.', [1000, 10000, 25000, 100000]],
+    ['Thousands and more', 'Keep going after THOUSAND, in spoken order. 4,007 is FOUR THOUSAND SEVEN.', [1005, 2150, 4007, 5678]],
+    ['MILLION', 'The THOUSAND touch, then a second touch farther out on the fingers.', [1000000, 2500000]]], pool: [1000, 10000, 25000, 1005, 2150, 4007, 5678, 1000000] },
+  { id: 'nyears', name: 'Years', icon: '🕰️', about: 'Years are split in two, in three different ways.', intro: 'Years are not signed like big numbers. There is no THOUSAND. There are three kinds.', parts: [
+    ['Years that start with a teen (1000–1999)', 'Two numbers. The first is always the 10 + number form (16–19 never twist in a year). The second is one two-digit number in its own form: 76 rocks, 22 is a double.', [['1776', 1776, 'y'], ['1865', 1865, 'y'], ['1922', 1922, 'y']]],
+    ['01–09 and 00', '1906 is 19, then 0, then 6. 1900 is 19, then a 0 that slides to the side.', [['1906', 1906, 'y'], ['1900', 1900, 'y']]],
+    ['2000–2009', '2 palm out, then a 0 that slides to the side, then the last digit palm out. 2000 has a longer slide.', [['2005', 2005, 'y'], ['2000', 2000, 'y']]],
+    ['2010–2099', 'TWENTY, then the last two digits as one number (not single digits).', [['2026', 2026, 'y'], ['2017', 2017, 'y']]]], pool: [1492, 1776, 1865, 1906, 1900, 1969, 2000, 2005, 2008, 2017, 2026], kind: 'y' },
+  { id: 'nages', name: 'Ages', icon: '🎂', about: 'Ages start at the chin.', intro: 'Every age starts at the chin, then pushes down and forward.', parts: [
+    ['Ages 1–9', 'The number, palm out, the pointer finger on the center of the chin; then the hand pushes down and forward.', [['3', 3, 'a'], ['6', 6, 'a'], ['9', 9, 'a']]],
+    ['Ages 10 and up', 'The 1 (palm in) starts on the chin, pushes down and forward, and forms the number with all the usual number rules.', [['13', 13, 'a'], ['21', 21, 'a'], ['47', 47, 'a'], ['76', 76, 'a']]]], pool: [2, 5, 8, 12, 16, 21, 34, 47, 76, 88], kind: 'a' },
+  { id: 'nmath', name: 'Math signs', icon: '➗', about: 'PLUS, MINUS, TIMES, DIVIDED BY, EQUALS, HOW MANY.', intro: 'The six signs for math problems. All of them use both hands.', parts: [
+    ['The four operations', 'PLUS, MINUS, TIMES and DIVIDED BY.', [['+', '+', 'o', null, 'plus'], ['−', '-', 'o', null, 'minus'], ['×', 'x', 'o', null, 'times'], ['÷', '/', 'o', null, 'divided by']]],
+    ['Ending the problem', 'A problem ends with EQUALS or HOW MANY.', [['=', '=', 'o', null, 'equals'], ['?', '?', 'o', null, 'how many']]]], pool: ['+', '-', 'x', '/', '=', '?'], kind: 'o' }
+];
+const LN = { cur: null, busy: false, q: null, n: 0, right: 0 };
+const lnDone = () => { try { return JSON.parse(localStorage.getItem('fs-learned') || '[]'); } catch (e) { return []; } };
+const lnMark = id => { try { const d = lnDone(); if (d.indexOf(id) < 0) { d.push(id); localStorage.setItem('fs-learned', JSON.stringify(d)); } } catch (e) {} };
+const lnEx = e => Array.isArray(e) ? { label: e[0], v: e[1], kind: e[2] || 'n', o: e[3] || {}, note: e[4] || '' } : { label: String(e).replace(/\B(?=(\d{3})+(?!\d))/g, ','), v: e, kind: 'n', o: {}, note: '' };
+async function lnSign(x) {
+  const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed))), o = Object.assign({ per, teens: 'ten', form: 'alt' }, x.o || {});
+  if (x.kind === 'y') return hand.signYear(+x.v, o);
+  if (x.kind === 'a') return hand.signAge(+x.v, o);
+  if (x.kind === 'o') return hand.signOp(x.v, { per });
+  return +x.v < 100 ? hand.sign(+x.v, o) : hand.signParts(bdBlocksFor(+x.v), o);
+}
+async function lnPlay(x, btn) { if (LN.busy) return; LN.busy = true; if (btn) btn.classList.add('on'); try { await lnSign(x); } finally { LN.busy = false; if (btn) btn.classList.remove('on'); } }
+const lnLabel = (L, v) => L.kind === 'o' ? OPN[v] : String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') ;
+function lnAsk() {
+  const L = LN.cur; if (!L || LN.busy) return; if (LN.n >= 5) return;
+  const v = pick1(L.pool.filter(x => !LN.q || x !== LN.q.v)), others = shuffle(L.pool.filter(x => x !== v)).slice(0, 2);
+  LN.q = { v, choices: shuffle([v].concat(others)), answered: false }; LN.n++;
+  $('#ln-q').textContent = 'Question ' + LN.n + ' of 5: what did the hand sign?'; $('#ln-msg').textContent = ''; $('#ln-start').hidden = true; $('#ln-replay').hidden = false;
+  $('#ln-choices').innerHTML = LN.q.choices.map(c => '<button class="btn ghost" data-v="' + esc(String(c)) + '">' + esc(lnLabel(L, c)) + '</button>').join('');
+  $$('#ln-choices button').forEach(b => b.onclick = () => lnAnswer(b));
+  lnPlay({ v, kind: L.kind || 'n', o: {} });
+}
+function lnAnswer(b) {
+  const L = LN.cur, q = LN.q; if (!q || q.answered) return; q.answered = true; const good = b.dataset.v === String(q.v); if (good) LN.right++;
+  $$('#ln-choices button').forEach(x => { x.disabled = true; if (x.dataset.v === String(q.v)) x.classList.add('ok'); }); if (!good) b.classList.add('no');
+  if (LN.n < 5) { $('#ln-msg').textContent = (good ? 'Right! ' : 'It was ' + lnLabel(L, q.v) + '. ') + 'Next one coming…'; setTimeout(() => { if (LN.cur === L) lnAsk(); }, 1600); }
+  else { $('#ln-msg').textContent = (good ? 'Right! ' : 'It was ' + lnLabel(L, q.v) + '. ') + 'You got ' + LN.right + ' of 5.' + (LN.right >= 4 ? ' Lesson done!' : ' Watch the examples again, then try once more.'); if (LN.right >= 4) { lnMark(L.id); if (window.confetti) window.confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } }); } $('#ln-start').hidden = false; $('#ln-start').textContent = 'Try again'; $('#ln-replay').hidden = true; }
+}
+function lnShow() {
+  const id = (location.hash.split('/')[2] || ''), k = Math.max(0, LESSONS.findIndex(l => l.id === id)), L = LN.cur = LESSONS[k];
+  putStage('learn-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#ln-speed').value = Math.round(S.speed * 100);
+  hand.helper(L.id === 'nthousands' || L.id === 'nmath'); ageFace(L.id === 'nages');
+  $('#ln-step').textContent = 'Lesson ' + (k + 1) + ' of ' + LESSONS.length; $('#ln-title').textContent = 'Focus on: ' + L.name; $('#ln-intro').textContent = L.intro;
+  $('#ln-parts').innerHTML = L.parts.map((P, i) => '<div class="ln-part"><h3>' + esc(P[0]) + '</h3><p>' + esc(P[1]) + '</p><div class="ln-ex" data-p="' + i + '">' + P[2].map((e, j) => { const x = lnEx(e); return '<button data-j="' + j + '" aria-label="Watch ' + esc(x.label + (x.note ? ' ' + x.note : '')) + '">▶ ' + esc(x.label) + (x.note ? '<small>' + esc(x.note) + '</small>' : '') + '</button>'; }).join('') + '</div></div>').join('');
+  $$('#ln-parts .ln-ex button').forEach(b => b.onclick = () => lnPlay(lnEx(L.parts[+b.parentNode.dataset.p][2][+b.dataset.j]), b));
+  LN.n = 0; LN.right = 0; LN.q = null; $('#ln-choices').innerHTML = ''; $('#ln-msg').textContent = ''; $('#ln-q').textContent = 'Tap Start. The hand signs; pick what it signed.'; $('#ln-start').hidden = false; $('#ln-start').textContent = 'Start'; $('#ln-replay').hidden = true;
+  const prev = LESSONS[k - 1], next = LESSONS[k + 1];
+  $('#ln-prev').href = prev ? '#/learn/' + prev.id : '#/games'; $('#ln-prev').textContent = prev ? '← ' + prev.name : '← Lessons';
+  $('#ln-next').href = next ? '#/learn/' + next.id : '#/games'; $('#ln-next').textContent = next ? 'Next: ' + next.name + ' →' : 'Done: to the games →';
+}
+function learnInit() {
+  const g = $('#g-learngrid'); if (g) { const draw = () => { const d = lnDone(); g.innerHTML = '<span class="ln-focus">Focus on:</span>' + LESSONS.map(L => '<a class="ln-btn' + (d.indexOf(L.id) >= 0 ? ' done' : '') + '" href="#/learn/' + L.id + '" title="' + esc(L.about) + '"><span aria-hidden="true">' + L.icon + '</span> ' + esc(L.name) + '</a>').join('');      /* one heading, a button per topic (Colleen) */ }; draw(); window.addEventListener('hashchange', () => { if (/^#\/games/.test(location.hash)) draw(); }); }
+  $('#ln-start').onclick = () => { if (LN.n >= 5) { LN.n = 0; LN.right = 0; } lnAsk(); };
+  $('#ln-replay').onclick = () => { if (LN.q) lnPlay({ v: LN.q.v, kind: LN.cur.kind || 'n', o: {} }); };
+  $('#ln-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
 /* ---------- Math in ASL (Colleen, 2026-10-15; dev/ASL-number-rules.md "Math"): the hand signs a problem, a number, the operation (PLUS, MINUS,
    TIMES, DIVIDE), a number, then EQUALS or HOW MANY (mixed). Three styles: write the problem (what the hand signed), solve it, or pick the answer
    from four. Levels: Easy (+ and −, to 10), Medium (all four, to 20), Hard (all four, to 100), Custom (the student's operations and size).
@@ -2057,13 +2151,13 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
   if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
-  if (name !== 'build' && name !== 'shownum' && name !== 'signnum') hand.helper(false);
+  if (name !== 'build' && name !== 'shownum' && name !== 'signnum' && name !== 'learn') hand.helper(false);
   ageFace(false);      /* the age face shows only where ages are signed (its screen turns it back on) */      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
   if (name === 'letter') {      // a letter from the chart, with the hand
     showScreen('review'); putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
@@ -2074,7 +2168,7 @@ function route() {
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show|build|shownum|signnum)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn)$/.test(name)) parkStage();
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (SHOW[name]) SHOW[name]();
@@ -2086,7 +2180,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
-gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); buildInit(); classInit(); bingoInit();
+gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
@@ -2101,5 +2195,5 @@ if (ONLY) {
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
-window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
+window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, LESSONS, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();

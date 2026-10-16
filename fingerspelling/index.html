@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=98">
+<link rel="stylesheet" href="style.css?v=102">
 </head>
 <body>
 <header class="top">
@@ -36,6 +36,9 @@
   <section data-screen="games" class="screen">
     <h2 class="pad" data-only="letters">Fingerspelling Games</h2>
     <div class="gamegrid" id="g-grid" data-only="letters"></div>
+    <h2 class="pad" data-only="numbers">Learn Numbers</h2>
+    <p class="pad hint learn-intro" data-only="numbers">Short lessons, in order. Each shows the rule, lets you watch every example, and ends with a quick check.</p>
+    <div class="pad learnbar" id="g-learngrid" data-only="numbers"></div>
     <h2 class="pad" data-only="numbers">Numbers</h2>
     <div class="gamegrid" id="g-numgrid" data-only="numbers"></div>
     <h2 class="pad" data-only="numbers">Ages</h2>
@@ -90,6 +93,31 @@
         <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sn-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
         <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sn-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
         <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Learn Numbers (Colleen, 2026-10-15): lessons in the order she taught the number rules, grouped like the games -->
+  <section data-screen="learn" class="screen">
+    <div class="play">
+      <div class="stage-slot" id="learn-slot"></div>
+      <div class="card panel learn-panel">
+        <p class="learn-step" id="ln-step"></p>
+        <h2 id="ln-title">Learn</h2>
+        <p class="hint" id="ln-intro"></p>
+        <div id="ln-parts"></div>
+        <div class="ln-try" id="ln-try">
+          <h3>Check yourself</h3>
+          <p class="hint" id="ln-q">Tap Start. The hand signs; pick what it signed.</p>
+          <div class="row"><button class="btn" id="ln-start">Start</button><button class="btn ghost" id="ln-replay" hidden>▶ Watch again</button></div>
+          <div class="ln-choices" id="ln-choices"></div>
+          <p class="hint" id="ln-msg" aria-live="polite"></p>
+        </div>
+        <div class="row ln-nav"><a class="btn ghost" id="ln-prev" href="#/games">←</a><a class="btn ghost" href="#/games">All lessons</a><a class="btn" id="ln-next" href="#/games">Next lesson →</a></div>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="ln-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -626,6 +654,6 @@
 <script src="people.js?v=4"></script>
 <script src="hand.js?v=129"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=137"></script>
+<script src="app.js?v=140"></script>
 </body>
 </html>
