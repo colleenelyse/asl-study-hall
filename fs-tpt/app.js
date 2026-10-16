@@ -34,9 +34,9 @@ const CFG = { ads: false, ga: '', only: 'letters' };      /* TpT edition: one pr
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
-const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
-  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
+const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
+  ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const store = {
@@ -70,6 +70,8 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   nquiz: { section: 'numbers', name: 'Numbers Quiz', icon: '🎯', about: 'The hand signs a bigger number, with hundreds, thousands and millions. Choose the range, then type the number or pick it.' },
   yread: { section: 'years', name: 'Read the Year', icon: '📅', about: 'The hand signs a year. Type it. Choose teen years like 1776, 2000–2009, or 2010–2099.' },      /* years (Colleen, 2026-10-15) */
   ypick: { section: 'years', name: 'Pick the Year', icon: '🗓️', about: 'The hand signs a year. Pick it from four years that look alike when signed, like 1969 and 1996.' },
+  aread: { section: 'ages', name: 'Read the Age', icon: '🎂', about: 'The hand signs an age, starting at the chin. Type it. Choose ages 1–9, 10–19, or 20–99.' },      /* ages (Colleen, 2026-10-15) */
+  apick: { section: 'ages', name: 'Pick the Age', icon: '🧁', about: 'The hand signs an age, starting at the chin. Pick it from four ages that look alike when signed.' },
   pick: { name: 'Pick the Word', icon: '👆', about: 'Watch the word, then pick it from four that look alike. Great for beginners.' },
   type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the Blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
@@ -77,10 +79,11 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
-const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick';
-const isYear = g => g === 'yread' || g === 'ypick';      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
+const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick' || g === 'aread' || g === 'apick';
+const isYear = g => g === 'yread' || g === 'ypick';
+const isAge = g => g === 'aread' || g === 'apick';      // Read the Age and Pick the Age (signed with hand.signAge, the face behind the hand)      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
 const isNums = g => g === 'numbers' || g === 'npick';      // Read the Number (typed) and Pick the Number (picked): the same numbers and settings
-const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || g === 'ypick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
+const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || g === 'ypick' || g === 'apick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
 const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
@@ -123,6 +126,23 @@ function yearChoices(w) {
   while (out.size < 3) { const x = n + Math.round((Math.random() - 0.5) * 60); if (ok(x)) out.add(x); }
   return shuffle([n].concat(Array.from(out))).map(String);
 }
+/* AGES (Colleen): ages 1-99 in three groups; a round picks ages from the groups chosen */
+const ATYPES = [['1-9', 'Ages 1–9', 1, 9], ['10-19', 'Ages 10–19', 10, 19], ['20-99', 'Ages 20–99', 20, 99]];
+function ageItem(list) {
+  const kinds = ATYPES.filter(t => (S.atypes || []).indexOf(t[0]) >= 0), use = kinds.length ? kinds : ATYPES; let x, tries = 0;
+  do { const T = pick1(use); x = T[2] + Math.floor(Math.random() * (T[3] - T[2] + 1)); } while (tries++ < 20 && list.length && +list[list.length - 1].w === x);
+  return { w: String(x), n: 1, form: 'age', teens: teensFor() };
+}
+/* Pick the Age: three wrong ages that look alike when signed (the digits swapped, one more or less, ten more or less, the same shape as a single digit) */
+function ageChoices(w) {
+  const n = +w, out = new Set(), ok = x => x !== n && x >= 1 && x <= 99, tries = [];
+  if (n >= 10 && n % 10 && Math.floor(n / 10) !== n % 10) tries.push((n % 10) * 10 + Math.floor(n / 10));
+  if (n >= 11 && n <= 19) tries.push(n - 10); if (n <= 9) tries.push(n + 10);
+  tries.push(n + 1, n - 1, n + 10, n - 10);
+  tries.forEach((x, k) => { if (out.size < 3 && ok(x) && (k < 2 || Math.random() < 0.8)) out.add(x); });
+  while (out.size < 3) { const x = 1 + Math.floor(Math.random() * 99); if (ok(x)) out.add(x); }
+  return shuffle([n].concat(Array.from(out))).map(String);
+}
 /* Numbers quiz, picking: three wrong numbers that look close when signed (one digit changed, two digits swapped, a place off) */
 function bigChoices(w) {
   const n = +w, d = String(n).split(''), out = new Set(), [lo, hi] = qRange(), ok = x => x !== n && x >= lo && x <= hi;
@@ -162,7 +182,8 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
   levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
-if (!Array.isArray(S.ytypes) || !S.ytypes.length) S.ytypes = ['teen', '200x', '20xx'];      // years: all three kinds to start
+if (!Array.isArray(S.ytypes) || !S.ytypes.length) S.ytypes = ['teen', '200x', '20xx'];
+if (!Array.isArray(S.atypes) || !S.atypes.length) S.atypes = ['1-9', '10-19', '20-99'];      // ages: all three groups to start      // years: all three kinds to start
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
 S.nums = (S.nums || []).filter(x => NUMS.indexOf(x) >= 0);
 S.pairs = (S.pairs || []).filter(p => window.LOOK_GROUPS && window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = ['M N S T', 'A E O'].filter(p => window.LOOK_GROUPS[p]); if (!S.pairs.length) S.pairs = Object.keys(window.LOOK_GROUPS || {}).slice(0, 2);      // the sheet's groups may differ (3.96)      // old letter pairs became letter groups
@@ -194,7 +215,7 @@ async function spellWord(w, blur, teens, form) {
   if (isNum(w)) {      // a number (0-20) is signed, not spelled; the answer is never shown while it signs
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow())));      // Beginner 1 s a beat ... Deaf 0.35 s (the numbers' moves need more time than a letter)
     const so = { per, teens: teens || teensFor(), form: form || formFor(), hund: S.nhund === 'mix' ? undefined : S.nhund, stop: () => stopFlag };
-    spelling = form === 'year' && hand.signYear && +w >= 1000 && +w <= 2099 ? hand.signYear(+w, so) : +w < 100 ? hand.sign(+w, so) : hand.signParts(bdBlocksFor(+w), so);      // a year is signed as a year (hand.js YEARS)      // bigger numbers in spoken order: 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45
+    spelling = form === 'age' && hand.signAge && +w >= 1 && +w <= 99 ? hand.signAge(+w, so) : form === 'year' && hand.signYear && +w >= 1000 && +w <= 2099 ? hand.signYear(+w, so) : +w < 100 ? hand.sign(+w, so) : hand.signParts(bdBlocksFor(+w), so);      // a year is signed as a year (hand.js YEARS)      // bigger numbers in spoken order: 12,345 = 12 + THOUSAND + 3 + HUNDRED + 45
     try { await spelling; } finally { spelling = null; }
     return;
   }
@@ -274,7 +295,14 @@ function gamesInit() {
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
     '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
-    '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Hands sign five years. Put them in order on the timeline, then put each event above its year.</span></a>';
+    '';
+  $('#g-numgrid').innerHTML += '<a class="gcard" href="#/math"><span class="gi" aria-hidden="true">➗</span><b>Math in ASL</b><span>The hand signs a math problem. Write the problem, solve it, or pick the answer. Easy, Medium, Hard or your own.</span></a>';
+  $('#g-agegrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'ages').map(card).join('') +      // ages in their own section (Colleen)
+    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99 and watch the hand sign it from the chin.</span></a>' +
+    '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>See ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ' at one time of life. Tap each hand to watch it sign an age, then pick the one that fits.</span></a>';
+  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See an event. Tap each hand to watch it sign a year, then pick the year it happened.</span></a>';
+  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Hands sign five years. Put them in order on the timeline, then put each event above its year.</span></a>';
 }
 let drawCats, drawPool;
 function setupInit() {
@@ -288,6 +316,7 @@ function setupInit() {
     if (g === 'flash') { n = S.flash.length; msg = n ? n + ' letters chosen.' : 'Choose at least one letter.'; }
     else if (isNums(g)) { n = S.nums.length; msg = n ? n + ' numbers chosen.' : 'Choose at least one number.'; }
     else if (isYear(g)) { n = (S.ytypes || []).length; msg = n ? '' : 'Choose at least one kind of year.'; }
+    else if (isAge(g)) { n = (S.atypes || []).length; msg = n ? '' : 'Choose at least one group of ages.'; }
     else if (g === 'nquiz') { const [lo, hi] = qRange(); n = hi >= lo ? 1 : 0; msg = n ? 'Numbers from ' + lo.toLocaleString('en-US') + ' to ' + hi.toLocaleString('en-US') + '.' : 'The highest number must be at least the lowest.'; }
     else if (g === 'pairs') { n = S.pairs.length; msg = n ? '' : 'Choose at least one pair.'; }
     else { n = poolFor(g).length; msg = n ? n + ' words match your choices.' : (g === 'sound' || g === 'tricky' ? 'Choose at least one level.' : g === 'fill' || bankOf(g) === 'everyday' ? 'No words match. Choose more word lists or a higher letter limit.' : 'No words match. Choose more categories or a higher letter limit.'); }
@@ -301,6 +330,7 @@ function setupInit() {
   const drawFc = chipsInit($('#s-fcats'), fc, 'fcats', c => esc(c) + ' <small>' + window.FAMILIAR[c].length + '</small>', () => drawPool());
   const drawPr = chipsInit($('#s-pairs'), PAIRS, 'pairs', p => p.split(' ').join(' · '), () => drawPool());
   chipsInit($('#s-ytypes'), YTYPES.map(t => t[0]), 'ytypes', k => esc(YTYPES.find(t => t[0] === k)[1]), () => drawPool());
+  chipsInit($('#s-atypes'), ATYPES.map(t => t[0]), 'atypes', k => esc(ATYPES.find(t => t[0] === k)[1]), () => drawPool());
   const drawFl = chipsInit($('#s-flash'), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'flash', x => x, () => drawPool());
   $('#s-fl-all').onclick = () => { S.flash = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); saveS(); drawFl(); };
   $('#s-fl-none').onclick = () => { S.flash = []; saveS(); drawFl(); };
@@ -353,7 +383,8 @@ function setupShow(game) {
   if (game && GAMES[game]) { S.game = game; saveS(); }
   const g = S.game;
   $('#s-title').textContent = GAMES[g].name; $('#s-about').textContent = GAMES[g].about;
-  $('#s-ncount-lab').textContent = isYear(g) ? 'Years in a Round' : 'Numbers in a Round';
+  $('#s-ncount-lab').textContent = isYear(g) ? 'Years in a Round' : isAge(g) ? 'Ages in a Round' : 'Numbers in a Round';
+  ageFace(isAge(g));      /* the face behind the hand for the age games (Colleen) */
   $('#s-speed-lab').textContent = g === 'ladder' ? 'Starting speed' : g === 'fill' ? 'Speed (this game plays a little slower than the speed you pick)' : 'Speed';
   const playing = !!(R && R.game === g && location.hash === '#/play');
   $('#game-area').hidden = !playing; $('#s-live').hidden = !playing; $('#s-go').textContent = playing ? 'Start over with these settings' : 'Start';
@@ -415,6 +446,7 @@ function startRound(fixedWords) {
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
   else if (g === 'nquiz') { list = []; for (let i = 0; i < S.qcount; i++) list.push(quizItem(list)); }
   else if (isYear(g)) { list = []; for (let i = 0; i < S.ncount; i++) list.push(yearItem(list)); }
+  else if (isAge(g)) { list = []; for (let i = 0; i < S.ncount; i++) list.push(ageItem(list)); }
   else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
@@ -433,10 +465,11 @@ function refreshRound() {
   else if (g === 'flash') { const more = []; for (let k = done.length; k < S.flcount && S.flash.length; k++) more.push({ w: pick1(S.flash), n: 1 }); R.list = done.concat(more); }
   else if (g === 'nquiz') { const more = []; for (let k = done.length; k < S.qcount; k++) more.push(quizItem(done.concat(more))); R.list = done.concat(more); }
   else if (isYear(g)) { const more = []; for (let k = done.length; k < S.ncount; k++) more.push(yearItem(done.concat(more))); R.list = done.concat(more); }
+  else if (isAge(g)) { const more = []; for (let k = done.length; k < S.ncount; k++) more.push(ageItem(done.concat(more))); R.list = done.concat(more); }
   else if (isNums(g)) { const more = []; for (let k = done.length; k < S.ncount && S.nums.length; k++) more.push({ w: pick1(S.nums), n: 1, teens: teensFor(), form: formFor() }); R.list = done.concat(more); }
   else if (g === 'pairs') { const more = []; for (let k = done.length; k < S.count && S.pairs.length; k++) more.push(pairTrial()); R.list = done.concat(more); }
   else { const total = g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count; R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))).slice(0, Math.max(0, total - done.length))); }
-  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? (isYear(g2) ? 'Year ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
+  if (R.i >= 0) { const g2 = R.game; $('#p-count').textContent = g2 === 'ladder' ? 'Word ' + (R.i + 1) : (g2 === 'flash' ? 'Letter ' : isNumGame(g2) ? (isYear(g2) ? 'Year ' : isAge(g2) ? 'Age ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + Math.max(R.list.length, R.i + 1); }
   assist.className = 'assist' + (S.assist === 'off' || g === 'flash' || g === 'pairs' || isNumGame(g) ? '' : ' ' + S.assist);
   if (R.i >= 0 && R.answered !== R.i) drawBlanks(R.list[R.i]);
 }
@@ -469,7 +502,7 @@ function drawBlanks(it) {
 function drawWord() {
   const g = R.game, it = R.list[R.i];
   $('#p-speedf').hidden = g === 'ladder'; $('#p-speed').value = Math.round(S.speed * 100);
-  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? (isYear(g) ? 'Year ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
+  $('#p-count').textContent = g === 'ladder' ? 'Word ' + (R.i + 1) : (g === 'flash' ? 'Letter ' : isNumGame(g) ? (isYear(g) ? 'Year ' : isAge(g) ? 'Age ' : 'Number ') : 'Word ') + (R.i + 1) + ' of ' + R.list.length;
   ladderBar();
   $('#p-feedback').textContent = ''; $('#p-feedback').className = 'feedback'; $('#p-next').hidden = true; $('#p-meaning').hidden = true;
   const choice = isChoice(g);
@@ -479,12 +512,13 @@ function drawWord() {
     if (isNums(g) && !it.shown) it.shown = numChoices(it.w);
     if (g === 'nquiz' && !it.shown) it.shown = bigChoices(it.w);
     if (g === 'ypick' && !it.shown) it.shown = yearChoices(it.w);
+    if (g === 'apick' && !it.shown) it.shown = ageChoices(it.w);
     const opts = g === 'pick' || isNumGame(g) ? it.shown : it.opts;
-    $('#p-cask').textContent = isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
+    $('#p-cask').textContent = isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : isAge(g) ? 'Which age did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
-    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? isYear(g) ? 'What year did the hand sign?' : 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) || isAge(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? isYear(g) ? 'What year did the hand sign?' : isAge(g) ? 'What age did the hand sign?' : 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
   drawBlanks(it);
@@ -583,7 +617,7 @@ function finishRound() {
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
     speed: Math.round(S.speed * 100) / 100, speedName: speedName(S.speed), limit: R.settings.limit, mode: R.settings.mode, paper: S.paper,
-    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : isYear(g) ? 'Years: ' + YTYPES.filter(t => (R.settings.ytypes || []).indexOf(t[0]) >= 0).map(t => t[1]).join(', ') : isNums(g) ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
+    cats: g === 'sound' ? 'Levels ' + R.settings.levels.sort().join(', ') : g === 'tricky' ? R.settings.tlevels.sort().map(l => window.TRICKY_LEVELS[l]).join(', ') : g === 'flash' ? R.settings.flash.length + ' letters' : isAge(g) ? 'Ages: ' + ATYPES.filter(t => (R.settings.atypes || []).indexOf(t[0]) >= 0).map(t => t[1].replace('Ages ', '')).join(', ') : isYear(g) ? 'Years: ' + YTYPES.filter(t => (R.settings.ytypes || []).indexOf(t[0]) >= 0).map(t => t[1]).join(', ') : isNums(g) ? numsLabel(R.settings.nums) + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] : g === 'nquiz' ? (() => { const r = R.settings.qrange === 'custom' ? [R.settings.qmin, R.settings.qmax] : (Q_RANGES[+R.settings.qrange] || Q_RANGES[1]); return nfmt(r[0]) + '–' + nfmt(r[1]); })() + ' · 16–19: ' + TEENS_NAME[R.settings.nteens] + ' · 23, 25: ' + FORM_NAME[R.settings.nform || 'mix'] + ' · HUNDRED: ' + HUND_NAME[R.settings.nhund || 'mix'] : g === 'pairs' ? R.settings.pairs.join(' ') : R.settings.cats.length === CATS.length ? 'All' : R.settings.cats.join(','),
     supports: [R.settings.one ? 'one word' : '', R.settings.showCount ? 'letter count' : '', R.settings.assist !== 'off' && g !== 'flash' && g !== 'pairs' && !isNumGame(g) ? R.settings.assist + ' letters' : ''].filter(Boolean).join(', '), review: R.review, items };
   res.bank = g === 'pairs' || g === 'flash' || g === 'tricky' || isNumGame(g) ? '' : bankOf(g); res.replays = items.reduce((a, x) => a + (x.replays || 0), 0);
   if (g === 'ladder') { res.top = R.top; res.topLps = R.top === null ? 0 : lps(R.top); res.topName = R.top === null ? '' : speedName(R.top); }
@@ -699,7 +733,7 @@ function resultsShow() {
     $('#r-stats').innerHTML = statBox(r.topName || '—', 'top speed') + statBox(r.right + ' of ' + r.n, 'words right') + statBox(r.avgLen, 'letters per word') + statBox(time, 'time');
   } else if (isNumGame(g)) {
     $('#r-score').textContent = r.pct + '%';
-    $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, isYear(g) ? 'years right' : 'numbers right') + statBox(r.speedName, 'speed') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
+    $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, isYear(g) ? 'years right' : isAge(g) ? 'ages right' : 'numbers right') + statBox(r.speedName, 'speed') + statBox(time, 'time') + statBox(r.paper === 'yes' ? 'Yes' : 'No', 'used paper');
   } else if (g === 'flash') {
     $('#r-score').textContent = r.pct + '%';
     $('#r-stats').innerHTML = statBox(r.right + ' of ' + r.n, 'letters right') + statBox((r.avgMs / 1000).toFixed(1) + ' s', 'to answer (average)') + statBox(r.speedName, 'speed') + statBox(time, 'time');
@@ -711,7 +745,7 @@ function resultsShow() {
   const mix = mixList(r.items);
   $('#r-extra').innerHTML = (mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '') +
     (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '');
-  $('#r-review').textContent = isNumGame(g) ? (isYear(g) ? 'Review missed years' : 'Review missed numbers') : 'Review missed words';      // Colleen: number games say number, not word
+  $('#r-review').textContent = isNumGame(g) ? (isYear(g) ? 'Review missed years' : isAge(g) ? 'Review missed ages' : 'Review missed numbers') : 'Review missed words';      // Colleen: number games say number, not word
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
 }
@@ -720,7 +754,7 @@ function resultsShow() {
 function reviewShow() {
   const r = store.get('last', null), miss = r ? r.items.filter(x => !x.ok) : [];
   putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
-  $('#v-title').textContent = r && isYear(r.game) ? 'Missed years' : r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
+  $('#v-title').textContent = r && isYear(r.game) ? 'Missed years' : r && isAge(r.game) ? 'Missed ages' : r && isNumGame(r.game) ? 'Missed numbers' : 'Missed words'; $('#v-back').hidden = false;
   $('#v-list').innerHTML = miss.length ? miss.map((x, i) => '<button data-i="' + i + '">' + esc(x.w) + '</button>').join('') : '<p class="hint">No missed ' + (r && isNumGame(r.game) ? 'numbers' : 'words') + '. Nice!</p>';
   $('#v-list').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#v-list button').forEach(x => x.classList.toggle('on', x === b)); spellWord(miss[+b.dataset.i].w, null, teensFor()); };
   $('#v-again').hidden = false; $('#v-again').disabled = !miss.length;
@@ -1155,23 +1189,86 @@ function showShow() {
   if (q) { $('#sh-word').value = q; spellWord(q); }
 }
 
+/* AGES (Colleen): the lower face behind the hand, drawn flat like her picture; its colors come from the hand's skin tone */
+const mixHex = (a, b, k) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), c = i => Math.round(((x >> i) & 255) * (1 - k) + ((y >> i) & 255) * k); return '#' + [16, 8, 0].map(i => c(i).toString(16).padStart(2, '0')).join(''); };
+/* the hand's skin as it looks on screen for each of the 7 tones (sampled from the rendered palm), so the face matches the hand */
+const FACE_TONE = { '#c68c6c': '#e5bc9d', '#b27c5e': '#ddad8d', '#9c6a4f': '#d39e7d', '#87593f': '#c78f6e', '#6c4632': '#af7a60', '#513224': '#8e6150', '#3d251a': '#745246' };      /* from the rendered back of the hand and fingers, a little lighter (the palm was used before, so darker hands got a face far too light; found in the skin tone check) */
+const FACE_CHIN_Y = 233, FACE_SCALE = 0.555;      /* the bottom of the chin where the fingertip lands; Colleen chose the soft, shaded face (style 2), a little bigger */
+/* a shaded face (Colleen: "it doesn't look like it's part of the same person as the hand because it's so flat"): soft light and shadow like the
+   3D hand, a nose, the groove above the lip, full lips with a soft shine, a rounded chin, a shaded neck, a faint skin texture; all from the hand's color */
+function faceSvg(tone) {
+  /* painted after the photo Colleen chose as the look (not copied): one soft wide curve from cheek to chin, only the round bottom of the nose,
+     bright in the middle and shadowed at the sides, a deep soft shadow under the jaw, coral glossy lips, a wide neck and shoulders */
+  const skin = mixHex(mixHex(FACE_TONE[tone] || mixHex(tone, '#ffffff', 0.45), tone, 0.15), '#f2a27e', 0.1), L = (parseInt(skin.slice(1, 3), 16) * 0.3 + parseInt(skin.slice(3, 5), 16) * 0.59 + parseInt(skin.slice(5, 7), 16) * 0.11) / 255, hi = mixHex(skin, '#fff6ee', 0.08 + 0.26 * L * L), lite = mixHex(skin, '#fff6ee', 0.04 + 0.12 * L * L);      /* darker skin gets a softer shine, so the face stays the same color as the hand */
+  const shade = mixHex(skin, tone, 0.42), deep = mixHex(skin, '#4a2216', 0.42), dark = mixHex(skin, '#2a1209', 0.55);
+  const lipTop = mixHex(mixHex(skin, '#c4584a', 0.5 * L + 0.1), tone, 0.12 + 0.3 * (1 - L)), lipLow = mixHex(mixHex(skin, '#d4705e', 0.48 * L + 0.08), tone, 0.25 * (1 - L)), line = mixHex(lipTop, '#2a120c', 0.42);
+  const bl = (id, sd) => '<filter id="' + id + '" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="' + sd + '"/></filter>';
+  const E = (cx, cy, rx, ry, c, o, f, rot) => '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="' + c + '" opacity="' + o + '" filter="url(#' + f + ')"' + (rot ? ' transform="rotate(' + rot + ' ' + cx + ' ' + cy + ')"' : '') + '/>';
+  const P = (d, c, w, o, f) => '<path d="' + d + '" stroke="' + c + '" stroke-width="' + w + '" fill="none" stroke-linecap="round" opacity="' + o + '"' + (f ? ' filter="url(#' + f + ')"' : '') + '/>';
+  const NECK = 'M200 380 C 205 640, 214 760, 165 850 C 320 905, 680 905, 835 850 C 786 760, 795 640, 800 380 Z';
+  const FACE = 'M-90 -1400 C -110 -700, -100 -250, -40 20 C 30 280, 230 482, 500 482 C 770 482, 970 280, 1040 20 C 1100 -250, 1110 -700, 1090 -1400 Z';      /* one soft curve from cheek to chin */
+  return '<svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs>' +
+    '<radialGradient id="fr" gradientUnits="userSpaceOnUse" cx="480" cy="40" r="640"><stop offset="0" stop-color="' + hi + '"/><stop offset=".45" stop-color="' + lite + '"/><stop offset=".78" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
+    '<linearGradient id="ng" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + deep + '"/><stop offset=".3" stop-color="' + shade + '"/><stop offset=".62" stop-color="' + shade + '"/><stop offset="1" stop-color="' + deep + '"/></linearGradient>' +
+    '<radialGradient id="sh" gradientUnits="userSpaceOnUse" cx="480" cy="1000" r="1500"><stop offset="0" stop-color="' + lite + '"/><stop offset=".5" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
+    '<linearGradient id="nf" gradientUnits="userSpaceOnUse" x1="0" y1="420" x2="0" y2="2500"><stop offset="0" stop-color="#fff"/><stop offset=".85" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+    '<mask id="nm" maskUnits="userSpaceOnUse" x="-3000" y="380" width="7000" height="2400"><rect x="-3000" y="380" width="7000" height="2400" fill="url(#nf)"/></mask>' +
+    '<clipPath id="fc"><path d="' + FACE + '"/></clipPath>' +
+    '<clipPath id="nc"><path d="' + NECK + '"/></clipPath>' +
+    '<linearGradient id="lt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + lipTop + '"/><stop offset="1" stop-color="' + mixHex(lipTop, '#000000', 0.2) + '"/></linearGradient>' +
+    '<radialGradient id="ll" cx="45%" cy="38%" r="68%"><stop offset="0" stop-color="' + mixHex(lipLow, '#ffffff', 0.12) + '"/><stop offset=".7" stop-color="' + lipLow + '"/><stop offset="1" stop-color="' + mixHex(lipLow, '#000000', 0.16) + '"/></radialGradient>' +
+    bl('b4', 4) + bl('b8', 8) + bl('b16', 16) + bl('b30', 30) + bl('b60', 60) + bl('b90', 90) +
+    '</defs><g transform="translate(500 ' + FACE_CHIN_Y + ') scale(' + FACE_SCALE + ') translate(-500 -482)">' +
+    /* shoulders and a wide neck */
+    '<g mask="url(#nm)"><path d="M200 380 C 205 640, 214 770, 120 860 C -40 945, -700 975, -1500 1130 L -1500 2700 L 2500 2700 L 2500 1130 C 1700 975, 1040 945, 880 860 C 786 770, 795 640, 800 380 Z" fill="url(#sh)"/>' +
+    '<path d="' + NECK + '" fill="url(#ng)"/>' +
+    '<g clip-path="url(#nc)"><path d="M150 400 C 300 560, 420 610, 505 612 C 600 610, 720 560, 850 400 L 850 690 C 700 740, 600 752, 505 752 C 410 752, 300 740, 150 690 Z" fill="' + dark + '" opacity=".5" filter="url(#b60)"/></g>' +      /* the deep soft shadow under the jaw */
+    P('M40 990 C 180 958, 320 950, 448 972', deep, 22, .3, 'b16') + P('M960 990 C 820 958, 680 950, 552 972', deep, 24, .35, 'b16') + E(500, 985, 70, 40, deep, .3, 'b16') + '</g>' +
+    /* the face: bright in the middle, the sides turning away into shadow */
+    '<path d="' + FACE + '" fill="url(#fr)" filter="url(#b4)"/>' +
+    '<g clip-path="url(#fc)">' + E(-20, 0, 170, 520, deep, .45, 'b90') + E(1020, 20, 190, 540, deep, .55, 'b90') + E(500, 500, 420, 70, deep, .4, 'b30') + '</g>' +
+    /* the round bottom of the nose: a lit tip, soft wings, nostrils as soft dark crescents */
+    E(500, -60, 110, 85, hi, .5, 'b16') + E(488, -88, 40, 26, '#ffffff', .22, 'b8') +      /* the round tip, catching the light */
+    P('M398 -60 C 372 -20, 380 20, 425 30', shade, 16, .6, 'b8') + P('M602 -60 C 628 -20, 620 20, 575 30', deep, 18, .65, 'b8') +      /* the wings */
+    '<path d="M430 22 C 448 8, 470 10, 482 26 C 470 36, 446 36, 430 22 Z" fill="' + dark + '" opacity=".6" filter="url(#b4)"/>' +
+    '<path d="M570 22 C 552 8, 530 10, 518 26 C 530 36, 554 36, 570 22 Z" fill="' + dark + '" opacity=".65" filter="url(#b4)"/>' +      /* nostrils */
+    E(505, 60, 140, 34, deep, .45, 'b16') +      /* the shadow under the nose */
+    E(480, 112, 10, 36, lite, .45, 'b8') + E(522, 112, 10, 36, shade, .45, 'b8') +      /* the groove above the lip */
+    /* coral glossy lips */
+    '<g transform="translate(500 175) scale(1.2) translate(-500 -175)">' +
+    '<path d="M340 160 C 398 124, 442 108, 477 115 C 490 119, 495 126, 500 126 C 505 126, 510 119, 523 115 C 558 108, 602 124, 660 160 C 602 168, 546 171, 500 171 C 454 171, 398 168, 340 160 Z" fill="url(#lt)"/>' +
+    '<path d="M346 166 C 406 176, 454 179, 500 179 C 546 179, 594 176, 654 166 C 616 238, 562 266, 500 268 C 438 266, 384 238, 346 166 Z" fill="url(#ll)"/>' +
+    P('M330 161 C 400 173, 454 175, 500 175 C 546 175, 600 173, 670 161', line, 6, .55, 'b4') +
+    E(450, 207, 40, 9, '#ffffff', .32, 'b8') + E(535, 214, 22, 6, '#ffffff', .22, 'b8') + E(555, 142, 30, 7, '#ffffff', .18, 'b8') + '</g>' +
+    E(500, 312, 150, 32, deep, .5, 'b16') +      /* shadow under the lower lip */
+    E(475, 405, 170, 62, hi, .5, 'b30') +      /* light on the chin */
+    '</g></svg>';
+}
+const toneCss = v => typeof v === 'number' ? '#' + v.toString(16).padStart(6, '0') : /^#[0-9a-f]{6}$/i.test(String(v)) ? v : '#87593f';
+function ageFace(on) { const was = stage.classList.contains('agemode'); stage.classList.toggle('agemode', !!on); if (on) $('#ageface').innerHTML = faceSvg(toneCss(hand.tone)); if (!!on !== was && hand.ageView) hand.ready.then(() => hand.ageView(!!on)); }
+$('#hand').addEventListener('fstone', e => { if (stage.classList.contains('agemode')) $('#ageface').innerHTML = faceSvg(toneCss(e.detail)); });
 /* a year's parts as blocks: 17 + 76, or 2 + 0 → + 5 (the 0 that slides) */
 const yearBlocks = y => (hand.yearParts ? hand.yearParts(y) || [] : []).map(([n, how]) => how === 'n' ? String(n) : '0 →');
 const blocksHtml = (labels, now) => labels.map((t, i) => '<span class="blk' + (/[A-Z]/.test(t) ? ' h' : '') + (i === now ? ' now' : '') + '">' + esc(t) + '</span>').join('<span class="plus">+</span>');
 /* ---------- Show me numbers (Colleen): type any number, the hand signs it with all of the number rules ---------- */
-function snShow() { if (/^#\/shownum\/year/.test(location.hash)) { S.snyear = true; saveS(); } $('#sn-year').checked = !!S.snyear; hand.helper(!S.snyear);      /* the extra hand is never needed for years (Colleen) */ putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
+function snShow() { const m = /^#\/shownum\/(year|age)/.exec(location.hash); if (m) { S.snas = m[1]; saveS(); } $$('#sn-as button').forEach(b => b.classList.toggle('on', b.dataset.v === S.snas)); hand.helper(S.snas === 'num'); ageFace(S.snas === 'age');      /* the extra hand is never needed for years (Colleen) */ putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
 function shownumInit() {
   const go = () => {
     const raw = $('#sn-num').value.trim(), digits = raw.replace(/[,\s]/g, '');
     if (!/^\d+$/.test(digits) || +digits > 999999999) { $('#sn-note').textContent = 'Type a whole number from 0 to 999,999,999 (commas are fine).'; $('#sn-blocks').innerHTML = ''; $('#sn-num').focus(); return; }
-    const n = +digits, asYear = !!S.snyear && n >= 1000 && n <= 2099, blocks = bdBlocksFor(n);
-    hand.helper(!asYear && n >= 1000);      // the left hand waits only for a number that needs THOUSAND or MILLION
+    const n = +digits, asYear = S.snas === 'year' && n >= 1000 && n <= 2099, asAge = S.snas === 'age' && n >= 1 && n <= 99, blocks = bdBlocksFor(n);
+    hand.helper(!asYear && !asAge && n >= 1000);
+    if (asAge) { $('#sn-note').textContent = 'Age ' + n; $('#sn-blocks').innerHTML = blocksHtml(n <= 9 ? ['chin + ' + n] : ['chin + 1', String(n)], -1);
+      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+        const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+        spelling = hand.signAge(n, { per, teens: S.snteens === 'mix' ? teensFor() : S.snteens, form: S.snform === 'mix' ? formFor() : S.snform, stop: () => stopFlag }); try { await spelling; } finally { spelling = null; } })();
+      return; }      // the left hand waits only for a number that needs THOUSAND or MILLION
     if (asYear) { $('#sn-note').textContent = String(n) + ' (signed as a year)'; const yb = yearBlocks(n), drawY = k => { $('#sn-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
       (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
         const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
         spelling = hand.signYear(n, { per, form: S.snform === 'mix' ? formFor() : S.snform, stop: () => stopFlag, onPart: drawY }); try { await spelling; } finally { spelling = null; drawY(-1); } })();
       return; }
-    if (S.snyear && !asYear) $('#sn-note').textContent = nfmt(n) + ' (years go from 1000 to 2099, so this is signed as a number)'; else
+    if ((S.snas === 'year' && !asYear) || (S.snas === 'age' && !asAge)) $('#sn-note').textContent = nfmt(n) + (S.snas === 'year' ? ' (years go from 1000 to 2099' : ' (ages go from 1 to 99') + ', so this is signed as a number)'; else
     $('#sn-note').textContent = nfmt(n);
     const draw = playing => { $('#sn-blocks').innerHTML = blocks.map((t, i) => '<span class="blk' + (t === 'H' || t === 'T' || t === 'M' ? ' h' : '') + ((playing || []).indexOf(i) >= 0 ? ' now' : '') + '">' + bdName(t) + '</span>').join('<span class="plus">+</span>'); };
     draw();
@@ -1188,18 +1285,21 @@ function shownumInit() {
   $('#sn-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
   S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';
   segInit('sn-teens', 'snteens'); segInit('sn-form', 'snform'); segInit('sn-hund', 'snhund');
-  $('#sn-year').checked = !!S.snyear; $('#sn-year').onchange = e => { S.snyear = e.target.checked; saveS(); hand.helper(!S.snyear); };      // Show Me Years (Colleen)
+  if (!S.snas) S.snas = S.snyear ? 'year' : 'num';
+  segInit('sn-as', 'snas', () => { hand.helper(S.snas === 'num'); ageFace(S.snas === 'age'); });      // Show Me Numbers / Years / Ages (Colleen)      // Show Me Years (Colleen)
 }
 
 /* ---------- Sign the number (Colleen): a random number pops up for the student to sign, then the hand checks them ---------- */
 const SG_BIG = [['100–999', 100, 999], ['1,000–9,999', 1000, 9999], ['10,000–999,999', 10000, 999999], ['Millions', 1000000, 999999999]];      // past 99, by size, like the quiz ranges
 const SG = { n: null, count: 0 };
 const SG_YEARS = YTYPES.map(t => ['Years ' + t[1].replace(/^Teen years \((.*)\)$/, '$1'), t[2], t[3]]);      // Sign the Year (Colleen)
-const sgGroups = () => NUM_GROUPS.map(g => g[0]).concat(SG_BIG.map(g => g[0]), SG_YEARS.map(g => g[0]));
+const SG_AGES = ATYPES.map(t => [t[1], t[2], t[3]]);      // Sign the Age (Colleen)
+const sgGroups = () => NUM_GROUPS.map(g => g[0]).concat(SG_BIG.map(g => g[0]), SG_YEARS.map(g => g[0]), SG_AGES.map(g => g[0]));
 const sgNeedsHelper = () => S.sgroups.some(k => SG_BIG.some(g => g[0] === k && g[2] >= 1000));
 function sgPick() {
   const k = pick1(S.sgroups.length ? S.sgroups : ['0–20']), big = SG_BIG.find(g => g[0] === k), yr = SG_YEARS.find(g => g[0] === k);
-  SG.yearNext = !!yr;
+  const ag = SG_AGES.find(g => g[0] === k); SG.yearNext = !!yr; SG.ageNext = !!ag;
+  if (ag) return ag[1] + Math.floor(Math.random() * (ag[2] - ag[1] + 1));
   if (yr) return yr[1] + Math.floor(Math.random() * (yr[2] - yr[1] + 1));
   if (big) return big[1] + Math.floor(Math.random() * (big[2] - big[1] + 1));
   return +pick1((NUM_GROUPS.find(g => g[0] === k) || NUM_GROUPS[0])[1]);
@@ -1207,11 +1307,16 @@ function sgPick() {
 function sgCover(on) { $('#sg-cover').hidden = !on; $('#sg-check').hidden = !on; $('#sg-again').hidden = on; $('#sg-blocks').hidden = on; }
 function sgNext() {
   stopFlag = true; let n, tries = 0; do { n = sgPick(); } while (n === SG.n && tries++ < 5);
-  SG.n = n; SG.year = !!SG.yearNext; SG.count++; $('#sg-num').textContent = SG.year ? String(n) : nfmt(n); sgCover(true);
+  SG.n = n; SG.year = !!SG.yearNext; SG.age = !!SG.ageNext; SG.count++; ageFace(SG.age); $('#sg-num').textContent = SG.year ? String(n) : nfmt(n); sgCover(true);
   $('#sg-count').textContent = SG.count === 1 ? '' : SG.count - 1 + (SG.count === 2 ? ' number' : ' numbers') + ' signed so far.';
 }
 function sgPlay() {
   if (SG.n === null) return; sgCover(false);
+  if (SG.age) { $('#sg-blocks').innerHTML = blocksHtml(SG.n <= 9 ? ['chin + ' + SG.n] : ['chin + 1', String(SG.n)], -1);
+    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+      const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+      spelling = hand.signAge(SG.n, { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, stop: () => stopFlag }); try { await spelling; } finally { spelling = null; } })();
+    return; }
   if (SG.year) { const yb = yearBlocks(SG.n), drawY = k => { $('#sg-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
     (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
       const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
@@ -1229,10 +1334,11 @@ function sgPlay() {
 }
 let sgMarks = [];
 function sgShow() {
-  if (/^#\/signnum\/year/.test(location.hash) && !S.sgroups.some(k => SG_YEARS.some(g => g[0] === k))) { S.sgroups = SG_YEARS.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }      // Sign the Year: the year groups
+  if (/^#\/signnum\/year/.test(location.hash) && !S.sgroups.some(k => SG_YEARS.some(g => g[0] === k))) { S.sgroups = SG_YEARS.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }
+  if (/^#\/signnum\/age/.test(location.hash) && !S.sgroups.some(k => SG_AGES.some(g => g[0] === k))) { S.sgroups = SG_AGES.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }      // Sign the Age: the age groups      // Sign the Year: the year groups
   putStage('signnum-slot'); hand.helper(sgNeedsHelper()); speedNow = () => S.speed; assist.className = 'assist';
   $('#sg-speed').value = Math.round(S.speed * 100); sgMarks.forEach(m => m());
-  if (SG.n === null) sgNext(); else sgCover(true);
+  if (SG.n === null) sgNext(); else { sgCover(true); ageFace(SG.age); }
 }
 function signnumInit() {
   if (!Array.isArray(S.sgroups)) S.sgroups = ['0–20'];
@@ -1244,6 +1350,255 @@ function signnumInit() {
   sgMarks = [segInit('sg-teens', 'snteens'), segInit('sg-form', 'snform'), segInit('sg-hund', 'snhund')];
   document.addEventListener('keydown', e => { if (location.hash !== '#/signnum' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return; if (e.key === 'Enter') { e.preventDefault(); sgNext(); } else if (e.key === ' ') { e.preventDefault(); sgPlay(); } });
 }
+
+/* ONE SHARED SET OF SMALL HANDS (streamlined for school Chromebooks, Colleen): How Old Is Charlie?, When Did It Happen?, the Timeline and Math
+   all use the same few light tile hands, moved into whichever page is open. Browsers allow only about 16 3D views at once; one set per page
+   could pass that and blank the main hand. use: 'age' (the chin view), 'two' (the left hand too, for math signs), or plain. */
+const TILES = [];
+function tileHand(k, tile, use) {
+  if (!TILES[k]) { const c = document.createElement('canvas'); TILES[k] = { canvas: c, hand: window.FSHand.create(c, { tile: true }) }; }
+  const T = TILES[k]; if (tile && T.canvas.parentNode !== tile) tile.appendChild(T.canvas);
+  T.hand.ready.then(() => { T.hand.setTone(toneHex()); if (T.hand.ageView) T.hand.ageView(use === 'age'); T.hand.helper(use === 'two'); });
+  return T;
+}
+/* ---------- How old is Charlie? (Colleen, 2026-10-15): a picture of Charlie at one stage of life; four hands, each with the face behind it, sign four
+   ages at once; the right one is any age in that stage's range; the three others come from stages at least 3 stages away from the picture's
+   (so none of them could fit her) and at least 2 stages from each other ---------- */
+const AP = { hands: [], cur: null, right: 0, tries: 0, last: -1, answered: false };
+const uniqIds = (svg, pre) => svg.replace(/id="([^"]+)"/g, 'id="' + pre + '$1"').replace(/url\(#([^)]+)\)/g, 'url(#' + pre + '$1)');      // four faces on one page need their own names
+function apRound() {
+  const R0 = window.CHARLIE, n = R0.STAGES.length, ok = (a, b) => Math.abs(a - b) >= 3, apart = (a, b) => Math.abs(a - b) >= 2;
+  let i, t = 0; do { i = Math.floor(Math.random() * n); } while (i === AP.last && t++ < 10); AP.last = i;
+  let picks = null;
+  for (let tries = 0; tries < 300 && !picks; tries++) { const c = shuffle([...Array(n).keys()].filter(x => ok(x, i))), got = [];
+    for (const x of c) { if (got.length === 3) break; if (got.every(y => apart(x, y))) got.push(x); } if (got.length === 3) picks = got; }
+  if (!picks) picks = shuffle([...Array(n).keys()].filter(x => ok(x, i))).slice(0, 3);
+  const ageIn = st => { const [, , lo, hi] = R0.STAGES[st]; return lo + Math.floor(Math.random() * (hi - lo + 1)); };
+  const right = ageIn(i), choices = shuffle([right].concat(picks.map(ageIn)));
+  return { stage: i, right, choices };
+}
+function apHand(k, tile) {      /* each hand is made inside its tile (it measures its size when it is made), then reused */
+  const T = tileHand(k, tile, 'age'); AP.hands[k] = AP.hands[k] || {}; AP.hands[k].canvas = T.canvas; AP.hands[k].hand = T.hand;
+}
+function apDraw() {
+  const R0 = window.CHARLIE, r = AP.cur = apRound(); AP.answered = false;
+  $('#ap-title').textContent = 'How Old Is ' + R0.NAME + '?';
+  $('#ap-pic').innerHTML = R0.picture(r.stage); $('#ap-msg').textContent = ''; $('#ap-next').hidden = true;
+  const tone = toneHex(), css = toneCss(tone);
+  const grid = $('#ap-grid'); $$('#ap-grid canvas').forEach(c => c.remove()); grid.innerHTML = '';
+  r.choices.forEach((age, k) => {
+    const tile = document.createElement('div'); tile.className = 'ap-choice'; tile.dataset.age = age; tile.setAttribute('role', 'button');
+    tile.innerHTML = '<div class="ap-face">' + uniqIds(faceSvg(css), 'ap' + k) + '</div><span class="ap-tag">' + 'ABCD'[k] + '</span><span class="ap-tap">▶ tap</span>';
+    tile.dataset.k = k; tile.setAttribute('aria-label', 'Watch hand ' + 'ABCD'[k]); tile.onclick = () => apWatch(k);
+    const cell = document.createElement('div'); cell.className = 'ap-cell'; cell.appendChild(tile); cell.insertAdjacentHTML('beforeend', '<button class="btn ghost ap-pickbtn" data-k="' + k + '">Pick ' + 'ABCD'[k] + '</button>'); grid.appendChild(cell); apHand(k, tile); AP.hands[k].hand.ready.then(() => AP.hands[k].hand.setTone(tone));
+  });
+  $$('.ap-pickbtn').forEach(b => b.onclick = () => apPick($$('.ap-choice')[+b.dataset.k]));      /* each Pick button sits right under its hand (Colleen) */
+}
+const smooth = () => new Promise(res => { let last = performance.now(), good = 0; const t0 = last; (function f(now) { good = now - last < 60 ? good + 1 : 0; last = now; if (good >= 3 || now - t0 > 5000) res(); else requestAnimationFrame(f); })(last); });      /* waits until the screen is drawing smoothly again (four hands take a few seconds to load the first time) */
+function apWatch(k) {      /* the student starts each hand, one at a time (Colleen: "just like on the timeline") */
+  const R = AP.cur, H = AP.hands[k]; if (!R || !H || H.busy) return; H.busy = true;
+  const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+  H.hand.ready.then(smooth).then(() => AP.cur === R && H.hand.signAge(R.choices[k], { per, teens: S.nteens === 'mix' ? teensFor() : S.nteens, form: formFor() })).finally(() => { H.busy = false; });
+}
+function apPick(tile) {
+  if (AP.answered || !AP.cur) return; AP.answered = true; AP.tries++;
+  const R0 = window.CHARLIE, st = R0.STAGES[AP.cur.stage], age = +tile.dataset.age, good = age === AP.cur.right; if (good) AP.right++;
+  $$('.ap-pickbtn').forEach(b => { b.disabled = true; const bt = $$('.ap-choice')[+b.dataset.k]; if (+bt.dataset.age === AP.cur.right) b.classList.add('ok'); else if (bt === tile) b.classList.add('no'); }); $$('.ap-choice').forEach(t => { t.classList.add(+t.dataset.age === AP.cur.right ? 'ok' : t === tile ? 'no' : 'x'); t.insertAdjacentHTML('beforeend', '<span class="ap-age">' + t.dataset.age + '</span>'); });
+  const span = st[2] === st[3] ? String(st[2]) : st[2] + ' to ' + st[3];
+  $('#ap-msg').textContent = (good ? 'Right! ' : 'Not this time. The hand that fits signed ' + AP.cur.right + '. ') + R0.NAME + ' looks about ' + st[1] + ' here, so any age from ' + span + ' fits.';
+  $('#ap-score').textContent = AP.right + ' of ' + AP.tries + ' right so far.'; $('#ap-next').hidden = false;
+  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+}
+function apShow() { $('#ap-speed').value = Math.round(S.speed * 100); if (!AP.cur) setTimeout(apDraw, 50); else $$('#ap-grid .ap-choice').forEach((t, k) => tileHand(k, t, 'age')); }      /* the shared hands come back to this page */
+function agepicsInit() {
+  $('#ap-next').onclick = apDraw;
+  $('#ap-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
+/* ---------- Math in ASL (Colleen, 2026-10-15; dev/ASL-number-rules.md "Math"): the hand signs a problem, a number, the operation (PLUS, MINUS,
+   TIMES, DIVIDE), a number, then EQUALS or HOW MANY (mixed). Three styles: write the problem (what the hand signed), solve it, or pick the answer
+   from four. Levels: Easy (+ and −, to 10), Medium (all four, to 20), Hard (all four, to 100), Custom (the student's operations and size).
+   Shortcut buttons + − × ÷ = sit under the answer box; typed symbols work too, and / means divide. ---------- */
+const MT = { cur: null, busy: false, right: 0, tries: 0, answered: false };
+const MT_LEVELS = { easy: [['+', '-'], 10], medium: [['+', '-', 'x', '/'], 20], hard: [['+', '-', 'x', '/'], 100] };
+const MT_SYM = { '+': '+', '-': '−', 'x': '×', '/': '÷' };
+const mtSet = () => S.mtLevel === 'custom' ? [S.mtOps.length ? S.mtOps : ['+'], +S.mtMax || 10] : MT_LEVELS[S.mtLevel] || MT_LEVELS.easy;
+const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function mtMake(ops, max) {      /* whole numbers only: no answers below 0, division always comes out even; times uses factors up to 12 when the numbers go past 12 */
+  const op = pick1(ops); let a, b, r;
+  if (op === '+') { a = rint(1, max - 1); b = rint(1, max - a); r = a + b; }      /* no zeros (0 − 0 is too easy) */
+  else if (op === '-') { a = rint(2, max); b = rint(1, a - 1); r = a - b; }
+  else if (op === 'x') { const f = Math.min(max, 12); a = rint(1, f); b = rint(1, max <= 12 ? Math.max(1, Math.floor(max / a)) : f); r = a * b; }
+  else { b = rint(1, Math.min(max, 12)); r = rint(1, Math.max(1, Math.floor(max / b))); a = b * r; }      /* the number divided stays within the level */
+  return { a, op, b, r, end: Math.random() < 0.5 ? '=' : '?', eqFirst: Math.random() < 0.5 };      /* eqFirst: Insert the signs shows 12 = 7 + 5 instead of 7 + 5 = 12 */
+}
+const mtNorm = t => String(t).toLowerCase().replace(/\s+/g, '').replace(/[×*x]/g, 'x').replace(/[÷/]/g, '/').replace(/[−–—]/g, '-').replace(/[=?]+$/, '').replace(/^how many|howmany$/, '');
+function mtTrue(v, p) {      /* Insert the signs: the three signed numbers in the order signed, one blank an operation and the other =, and true (any signs that work count) */
+  const t = String(v).toLowerCase().replace(/\s+/g, '').replace(/[×*x]/g, 'x').replace(/[÷/]/g, '/').replace(/[−–—]/g, '-');
+  const n = mtOrder(p), calc = (a, o, b) => ({ '+': a + b, '-': a - b, 'x': a * b, '/': b ? a / b : NaN })[o];
+  let m = /^(\d+)([-+x\/])(\d+)=(\d+)$/.exec(t); if (m && +m[1] === n[0] && +m[3] === n[1] && +m[4] === n[2]) return calc(n[0], m[2], n[1]) === n[2];
+  m = /^(\d+)=(\d+)([-+x\/])(\d+)$/.exec(t); if (m && +m[1] === n[0] && +m[2] === n[1] && +m[4] === n[2]) return calc(n[1], m[3], n[2]) === n[0];
+  return false;
+}
+const mtOrder = p => p.eqFirst ? [p.r, p.a, p.b] : [p.a, p.b, p.r];
+const mtText = p => p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + (p.end === '=' ? ' EQUALS' : ' HOW MANY');
+function mtChoices(p) { const out = new Set([p.r]), near = [p.r + 1, p.r - 1, p.r + 2, p.r - 2, p.r + 10, p.r - 10, p.a + p.b, Math.abs(p.a - p.b), p.a * p.b]; shuffle(near).forEach(x => { if (out.size < 4 && x >= 0 && x !== p.r) out.add(x); }); while (out.size < 4) out.add(p.r + out.size + 3); return shuffle(Array.from(out)); }
+const mtNum = (n, o) => n < 100 ? hand.sign(n, o) : hand.signParts(bdBlocksFor(n), o);
+/* The problem is built on the page as a row (Colleen): (hand: a number) (operation) (hand: a number) (operation) (hand or answer). Each hand
+   tile is its own small 3D hand that signs its part when tapped; ▶ Play all plays the row left to right. */
+MT.hands = [];
+function mtHand(k, tile, two) { const T = tileHand(k, tile, two ? 'two' : ''); const H = MT.hands[k] = MT.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; return H; }
+function mtLayout(p) {      /* what each of the five spots holds */
+  if (S.mtStyle === 'insert') { const n = mtOrder(p); return [{ num: n[0] }, { blank: true }, { num: n[1] }, { blank: true }, { num: n[2] }]; }
+  if (S.mtStyle === 'build') return p.eqFirst ? [{ num: p.r }, { op: '=' }, { num: p.a }, { op: p.op }, { num: p.b }] : [{ num: p.a }, { op: p.op }, { num: p.b }, { op: '=' }, { num: p.r }];      /* the whole true sentence is signed; a box under each tile */
+  return [{ num: p.a }, { op: p.op }, { num: p.b }, { op: p.end }, S.mtStyle === 'solve' ? { box: true } : S.mtStyle === 'pick' ? { q: true } : null].filter(Boolean);
+}
+function mtBuild() {
+  const p = MT.cur, row = $('#mt-row'); row.innerHTML = ''; MT.spots = mtLayout(p); MT.sel = 1;
+  row.style.gridTemplateColumns = 'repeat(' + MT.spots.length + ', 1fr)';
+  MT.spots.forEach((sp, k) => {
+    const t = document.createElement('div');
+    if (S.mtStyle === 'build') { const cell = document.createElement('div'); cell.className = 'mt-cell'; cell.appendChild(t); const d = document.createElement('div'); d.className = 'mt-drop' + (sp.op ? ' op' : ''); d.dataset.k = k;
+      if (sp.op) { d.setAttribute('role', 'button'); d.setAttribute('aria-label', 'Operation box ' + (k + 1)); d.onclick = () => { if (MT.answered) return; if (MT.pick) { d.textContent = MT.pick; MT.pick = null; $$('#mt-bank .chip-op').forEach(c => c.classList.remove('sel')); } else d.textContent = ''; }; }
+      else d.innerHTML = '<input type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Number ' + (k + 1) + '">';
+      cell.appendChild(d); row.appendChild(cell); }
+    else row.appendChild(t);
+    if (sp.num !== undefined || sp.op) { t.className = 'mt-tile hand'; t.setAttribute('role', 'button'); t.setAttribute('aria-label', 'Watch part ' + (k + 1)); t.innerHTML = '<span class="ap-tap">▶ tap</span>'; mtHand(k, t, !!sp.op); t.onclick = () => mtRun(k); }
+    else if (sp.blank) { t.className = 'mt-tile blank' + (k === MT.sel ? ' sel' : ''); t.textContent = ''; t.setAttribute('role', 'button'); t.setAttribute('aria-label', 'Blank'); t.onclick = () => { MT.sel = k; $$('#mt-row .blank').forEach(b => b.classList.toggle('sel', b === t)); }; }
+    else if (sp.box) { t.className = 'mt-tile box'; t.innerHTML = '<input id="mt-box" type="text" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Your answer">'; t.querySelector('input').onkeydown = e => { if (e.key === 'Enter') mtAnswer(e.target.value); }; }
+    else if (sp.q) { t.className = 'mt-tile box'; t.textContent = '?'; }
+  });
+}
+function mtBank() {      /* Read and build: the five operation tiles in a mixed order; drag one into a box (or tap it, then tap the box) */
+  const bank = $('#mt-bank'); MT.pick = null; bank.hidden = S.mtStyle !== 'build'; if (bank.hidden) { bank.innerHTML = ''; return; }
+  bank.innerHTML = shuffle(['+', '−', '×', '÷', '=']).map(x => '<div class="chip-op" role="button" aria-label="Operation ' + x + '" data-v="' + x + '">' + x + '</div>').join('');
+  $$('#mt-bank .chip-op').forEach(c => c.onpointerdown = e => {
+    if (MT.answered) return; e.preventDefault(); const x0 = e.clientX, y0 = e.clientY; let ghost = null, over = null;
+    const move = ev => { if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) { ghost = document.createElement('div'); ghost.className = 'mt-ghost'; ghost.textContent = c.dataset.v; document.body.appendChild(ghost); }
+      if (ghost) { ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px'; const el = document.elementFromPoint(ev.clientX, ev.clientY), d = el && el.closest('.mt-drop.op'); if (over && over !== d) over.classList.remove('hot'); over = d; if (d) d.classList.add('hot'); } };
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+      if (ghost) { ghost.remove(); if (over) { over.textContent = c.dataset.v; over.classList.remove('hot'); } }
+      else { const was = MT.pick === c.dataset.v; MT.pick = was ? null : c.dataset.v; $$('#mt-bank .chip-op').forEach(x => x.classList.toggle('sel', !was && x === c)); } };
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+  });
+}
+const mtPer = () => Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+function mtPart(k) { const sp = MT.spots[k], H = MT.hands[k], per = mtPer(); if (!H) return Promise.resolve();
+  return H.hand.ready.then(() => sp.op ? H.hand.signOp(sp.op, { per }) : sp.num < 100 ? H.hand.sign(sp.num, { per, teens: S.snteens === 'mix' ? teensFor() : S.snteens, form: formFor() }) : H.hand.signParts(bdBlocksFor(sp.num), { per })); }
+async function mtRun(which) {
+  if (!MT.cur || MT.busy) return; MT.busy = true; $('#mt-again').disabled = true;
+  const tiles = $$('#mt-row .mt-tile'), list = which === undefined ? MT.spots.map((sp, k) => k).filter(k => MT.hands[k] && (MT.spots[k].num !== undefined || MT.spots[k].op)) : [which];
+  try { for (const k of list) { tiles[k] && tiles[k].classList.add('on'); await mtPart(k); tiles[k] && tiles[k].classList.remove('on'); } }
+  finally { MT.busy = false; $('#mt-again').disabled = false; if (MT.queued) { MT.queued = false; mtNew(); } }
+}
+const mtPlay = () => mtRun();
+function mtNew() {
+  if (MT.busy) { MT.queued = true; return; } const [ops, max] = mtSet(); MT.cur = mtMake(ops, max); MT.answered = false;
+  const inp = $('#mt-in'); inp.value = ''; inp.className = ''; inp.disabled = false; $('#mt-check').disabled = false; $('#mt-check2').disabled = false; $('#mt-msg').textContent = '';
+  mtBuild(); mtBank();
+  $('#mt-picks').innerHTML = S.mtStyle === 'pick' ? mtChoices(MT.cur).map(x => '<button class="btn ghost" data-v="' + x + '">' + x + '</button>').join('') : '';
+  $$('#mt-picks button').forEach(b => b.onclick = () => mtAnswer(b.dataset.v, b));
+  const R = MT.cur; Promise.all(MT.hands.filter(Boolean).map(H => H.hand.ready)).then(smooth).then(() => { if (MT.cur === R) mtPlay(); });
+  if (S.mtStyle === 'write') setTimeout(() => inp.focus(), 50);
+}
+function mtAnswer(v, btn) {
+  const p = MT.cur; if (!p || MT.answered) return;
+  if (S.mtStyle === 'insert') { const t = $$('#mt-row .mt-tile'); if (t[1].textContent === '' || t[3].textContent === '') { $('#mt-msg').textContent = 'Fill both blanks first.'; return; } v = MT.spots.map((sp, k) => sp.blank ? t[k].textContent : sp.num).join(''); }
+  if (S.mtStyle === 'solve' && v === undefined) v = ($('#mt-box') || {}).value || '';
+  if (S.mtStyle === 'build') {
+    const ds = $$('#mt-row .mt-drop'); if (ds.some(d => d.classList.contains('op') ? d.textContent === '' : d.querySelector('input').value.trim() === '')) { $('#mt-msg').textContent = 'Fill every box first.'; return; }
+    let all = true; MT.answered = true; MT.tries++;
+    ds.forEach((d, k) => { const sp = MT.spots[k], ok = sp.op ? ({ '+': '+', '−': '-', '×': 'x', '÷': '/', '=': '=' })[d.textContent] === sp.op : +d.querySelector('input').value.replace(/[^\d]/g, '') === sp.num; d.classList.add(ok ? 'ok' : 'no'); if (!ok) all = false; if (!sp.op) d.querySelector('input').disabled = true; });
+    if (all) MT.right++; const p2 = MT.cur;
+    $('#mt-msg').textContent = (all ? 'Right! ' : 'Not quite. ') + 'The hand signed ' + MT.spots.map(sp => sp.op ? (sp.op === '=' ? '=' : MT_SYM[sp.op]) : sp.num).join(' ') + '.';
+    $('#mt-score').textContent = MT.right + ' of ' + MT.tries + ' right so far.'; $('#mt-check2').disabled = true;
+    if (all && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } }); return;
+  }
+  if (String(v).trim() === '') return;
+  let good;
+  if (S.mtStyle === 'write') good = mtNorm(v) === mtNorm(p.a + p.op + p.b);
+  else if (S.mtStyle === 'insert') good = mtTrue(v, p);
+  else good = +String(v).replace(/[^\d]/g, '') === p.r && /\d/.test(v);
+  MT.answered = true; MT.tries++; if (good) MT.right++;
+  const last = $$('#mt-row .mt-tile'); if (S.mtStyle === 'insert') [1, 3].forEach(k => { last[k].classList.remove('sel'); last[k].classList.add(good ? 'ok' : 'no'); }); if (S.mtStyle === 'solve') { last[4].classList.add(good ? 'ok' : 'no'); const bx = $('#mt-box'); if (bx) bx.disabled = true; } if (S.mtStyle === 'pick' || S.mtStyle === 'solve') { last[last.length - 1].classList.add(good ? 'ok' : 'no'); if (S.mtStyle === 'pick') last[last.length - 1].textContent = p.r; }
+  $('#mt-check2').disabled = true;
+  const inp = $('#mt-in'); if (S.mtStyle === 'pick') { $$('#mt-picks button').forEach(b => { b.disabled = true; if (+b.dataset.v === p.r) b.classList.add('ok'); }); if (!good && btn) btn.classList.add('no'); } else { inp.classList.add(good ? 'ok' : 'no'); inp.disabled = true; $('#mt-check').disabled = true; }
+  $('#mt-msg').textContent = S.mtStyle === 'insert' ? (good ? 'Right! ' : 'Not this time. ') + 'The hand signed ' + mtOrder(p).join(', ') + ': ' + (p.eqFirst ? p.r + ' = ' + p.a + ' ' + MT_SYM[p.op] + ' ' + p.b : p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + ' = ' + p.r) + '.' : (good ? 'Right! ' : 'Not this time. ') + 'The hand signed ' + mtText(p) + '.' + (S.mtStyle === 'write' ? '' : ' The answer is ' + p.r + '.');
+  $('#mt-score').textContent = MT.right + ' of ' + MT.tries + ' right so far.';
+  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+}
+function mtDraw() {
+  const lv = S.mtLevel, [ops, max] = mtSet();
+  $('#mt-custom').hidden = lv !== 'custom';
+  $('#mt-levelnote').textContent = lv === 'custom' ? '' : ops.map(o => MT_SYM[o]).join(' ') + ', numbers up to ' + max + '.';
+  $('#mt-how').textContent = { write: 'Tap each hand to watch it sign. Then type the whole problem (like 7 + 5 =).', solve: 'Tap each hand to watch it sign. Then type the answer in the last box.', pick: 'Tap each hand to watch it sign. Then pick the answer.', insert: 'Tap each hand to watch it sign a number. One blank is an operation and the other is =. Tap a blank, then a sign button to fill it.', build: 'Tap each hand to watch it sign. Type each number in the box under its hand, and drag the right operation tile into each operation box.' }[S.mtStyle];
+  $('#mt-answer').hidden = S.mtStyle !== 'write'; $('#mt-keys').hidden = S.mtStyle !== 'write' && S.mtStyle !== 'insert'; $('#mt-checkrow').hidden = S.mtStyle !== 'insert' && S.mtStyle !== 'solve' && S.mtStyle !== 'build'; $('#mt-bank').hidden = S.mtStyle !== 'build';
+}
+function mtShow() { parkStage(); ageFace(false); speedNow = () => S.speed; $('#mt-speed').value = Math.round(S.speed * 100); mtDraw(); if (!MT.cur) setTimeout(mtNew, 300); else $$('#mt-row .mt-tile.hand').forEach(t => { const k = [...$('#mt-row').querySelectorAll('.mt-tile')].indexOf(t); tileHand(k, t, MT.spots[k] && MT.spots[k].op ? 'two' : ''); }); }
+function mathInit() {
+  if (!S.mtStyle) S.mtStyle = 'solve'; if (!S.mtLevel) S.mtLevel = 'easy'; if (!Array.isArray(S.mtOps)) S.mtOps = ['+', '-']; if (!S.mtMax) S.mtMax = '10';
+  segInit('mt-style', 'mtStyle', () => { mtDraw(); mtNew(); }); segInit('mt-level', 'mtLevel', () => { mtDraw(); mtNew(); }); segInit('mt-max', 'mtMax', mtDraw);
+  chipsInit($('#mt-ops'), ['+', '-', 'x', '/'], 'mtOps', x => MT_SYM[x], mtDraw);
+  $('#mt-go').onclick = mtNew; $('#mt-again').onclick = mtPlay; $('#mt-check').onclick = () => mtAnswer($('#mt-in').value);
+  $('#mt-in').onkeydown = e => { if (e.key === 'Enter') mtAnswer($('#mt-in').value); };
+  $('#mt-keys').onclick = e => { const b = e.target.closest('button'); if (!b) return;
+    if (S.mtStyle === 'insert') { if (MT.answered) return; const t = $$('#mt-row .mt-tile'), k = MT.sel; if (!t[k] || !MT.spots[k].blank) return; t[k].textContent = b.dataset.k; const other = k === 1 ? 3 : 1; if (t[other].textContent === '') { MT.sel = other; $$('#mt-row .blank').forEach(x => x.classList.toggle('sel', x === t[other])); } return; }
+    const i = $('#mt-in'); i.value += b.dataset.k; i.focus(); };
+  $('#mt-check2').onclick = () => mtAnswer();
+  $('#mt-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
+/* ---------- When Did It Happen? (Colleen, 2026-10-15): an event (her picture, or a placeholder box with its name until the picture comes),
+   four hands, each signing a year when tapped (one at a time, like the timeline). The four years: the right one, a possible one (the same
+   times, 12-40 years off), a look-alike when signed (digits swapped, a century off, ten off), and one that could not be (300+ years off).
+   Pictures go in fingerspelling-site/events/ and are named in themes.js EVENTS (img), the same as the timeline. ---------- */
+const EY = { hands: [], cur: null, right: 0, tries: 0, used: [], answered: false };
+const EY_NOW = new Date().getFullYear();
+function eyChoices(n) {      /* returns [{ y, kind }] for the right year and three others, all different and from 1000 to this year */
+  const ok = x => x >= 1000 && x <= Math.min(2099, EY_NOW) && x !== n, far = (x, l, d) => l.every(c => Math.abs(c.y - x) >= d), out = [{ y: n, kind: 'right' }];
+  const a = Math.floor(n / 100), b = n % 100, look = [];
+  if (b >= 10 && b % 11 && b % 10) look.push(a * 100 + (b % 10) * 10 + Math.floor(b / 10));      /* 1969 / 1996 */
+  if (n >= 2001 && n <= 2009) look.push(1900 + b);      /* 2005 / 1905 */
+  look.push(n + 100, n - 100, n + 10, n - 10);
+  const L = shuffle(look.slice(0, 2)).concat(look.slice(2)).find(x => ok(x)); out.push({ y: L, kind: 'look' });
+  let P, t = 0; do { P = n + (Math.random() < 0.5 ? -1 : 1) * (12 + Math.floor(Math.random() * 29)); } while (t++ < 200 && !(ok(P) && far(P, out, 5)));
+  out.push({ y: P, kind: 'possible' });
+  let U; t = 0; do { U = 1000 + Math.floor(Math.random() * (EY_NOW - 1000 + 1)); } while (t++ < 500 && !(ok(U) && Math.abs(U - n) >= 300 && far(U, out, 40)));
+  out.push({ y: U, kind: 'far' });
+  return shuffle(out);
+}
+function eyEvent() { const E = window.EVENTS || []; if (EY.used.length >= E.length) EY.used = []; let i; do { i = Math.floor(Math.random() * E.length); } while (EY.used.indexOf(i) >= 0); EY.used.push(i); return E[i]; }
+function eyHand(k, tile) { const T = tileHand(k, tile, ''); const H = EY.hands[k] = EY.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; }
+function eyDraw() {
+  const e = eyEvent(), ch = eyChoices(e.year); EY.cur = { e, ch }; EY.answered = false;
+  $('#ey-event').innerHTML = e.img ? '<img src="events/' + esc(e.img) + '" alt="' + esc(e.title) + '">' : '<div class="ey-ph"><span class="ic" aria-hidden="true">' + esc(e.icon || '📅') + '</span><b>' + esc(e.title) + '</b><small>picture coming</small></div>';
+  $('#ey-msg').textContent = ''; $('#ey-next').hidden = true;
+  const tone = toneHex(), grid = $('#ey-grid'); grid.innerHTML = '';
+  ch.forEach((c, k) => {
+    const tile = document.createElement('div'); tile.className = 'ap-choice ey-choice'; tile.dataset.k = k; tile.setAttribute('role', 'button'); tile.setAttribute('aria-label', 'Watch hand ' + 'ABCD'[k]);
+    tile.innerHTML = '<span class="ap-tag">' + 'ABCD'[k] + '</span><span class="ap-tap">▶ tap</span>'; tile.onclick = () => eyWatch(k);
+    const cell = document.createElement('div'); cell.className = 'ap-cell'; cell.appendChild(tile); cell.insertAdjacentHTML('beforeend', '<button class="btn ghost ap-pickbtn" data-k="' + k + '">Pick ' + 'ABCD'[k] + '</button>'); grid.appendChild(cell);
+    eyHand(k, tile); EY.hands[k].hand.ready.then(() => EY.hands[k].hand.setTone(tone));
+  });
+  $$('#ey-grid .ap-pickbtn').forEach(b => b.onclick = () => eyPick(+b.dataset.k));
+}
+function eyWatch(k) {
+  const R = EY.cur, H = EY.hands[k]; if (!R || !H || H.busy) return; H.busy = true;
+  H.hand.ready.then(smooth).then(() => EY.cur === R && H.hand.signYear(R.ch[k].y, { per: tlPer() })).finally(() => { H.busy = false; });
+}
+const EY_WHY = { right: 'the right year', possible: 'possible, the same times, but not it', look: 'looks alike when signed', far: 'way off' };
+function eyPick(k) {
+  if (EY.answered || !EY.cur) return; EY.answered = true; EY.tries++;
+  const R = EY.cur, good = R.ch[k].kind === 'right'; if (good) EY.right++;
+  $$('#ey-grid .ap-cell').forEach((cell, j) => { const c = R.ch[j], b = cell.querySelector('.ap-pickbtn'), t = cell.querySelector('.ap-choice'); b.disabled = true;
+    if (c.kind === 'right') { b.classList.add('ok'); t.classList.add('ok'); } else if (j === k) { b.classList.add('no'); t.classList.add('no'); }
+    t.insertAdjacentHTML('beforeend', '<span class="ap-age">' + c.y + '</span>'); cell.insertAdjacentHTML('beforeend', '<span class="ey-why">' + EY_WHY[c.kind] + '</span>'); });
+  $('#ey-msg').textContent = (good ? 'Right! ' : 'Not this time. ') + R.e.title + ': ' + R.e.year + '.';
+  $('#ey-score').textContent = EY.right + ' of ' + EY.tries + ' right so far.'; $('#ey-next').hidden = false;
+  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+}
+function eyShow() { $('#ey-speed').value = Math.round(S.speed * 100); if (!EY.cur) setTimeout(eyDraw, 50); else $$('#ey-grid .ap-choice').forEach((t, k) => tileHand(k, t, '')); }
+function eventyearInit() { $('#ey-next').onclick = eyDraw; $('#ey-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); }; }
 
 /* ---------- Timeline (Colleen, 2026-10-15): 5 events, no year twice, fairly spread apart (two may be close). Proportional ticks on a line;
    below each tick a spot for a hand that signs a year, above it a spot for the event. Drag (or tap, then tap a spot), then Check. ---------- */
@@ -1263,7 +1618,7 @@ function tlPick() {
 }
 const tlPer = () => Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
 function tlHandItem(k, year) {
-  if (!TL.hands[k]) { const c = document.createElement('canvas'); TL.hands[k] = { canvas: c, hand: window.FSHand.create(c, {}) }; }
+  const T = tileHand(k, null, ''); const H = TL.hands[k] = TL.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand;
   const it = document.createElement('div'); it.className = 'tl-item tl-hand'; it.dataset.kind = 'hand'; it.dataset.year = year; it.dataset.k = k;
   it.setAttribute('aria-label', 'A hand signing a year. Tap to watch it.'); it.appendChild(TL.hands[k].canvas);
   it.insertAdjacentHTML('beforeend', '<span class="tl-play">▶ tap</span>'); return it;
@@ -1271,6 +1626,7 @@ function tlHandItem(k, year) {
 function tlEventItem(e) {
   const it = document.createElement('div'); it.className = 'tl-item tl-ev'; it.dataset.kind = 'ev'; it.dataset.year = e.year;
   it.innerHTML = e.img ? '<img src="events/' + esc(e.img) + '" alt="' + esc(e.title) + '">' : '<span class="ic" aria-hidden="true">' + esc(e.icon || '📅') + '</span>' + esc(e.title);
+  if (S.tlYears === 'show') it.insertAdjacentHTML('beforeend', '<span class="tl-yr">' + e.year + '</span>');      /* Colleen: a version with the year on each event (match the signed years to the events) */
   it.title = e.title; return it;
 }
 function tlNew() {
@@ -1314,9 +1670,10 @@ function tlCheck() {
   if (yr === n && evn === n && window.confetti) window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
 }
 function tlReveal() { $$('.tl-hand').forEach(it => { if (!it.querySelector('.tl-year')) it.insertAdjacentHTML('beforeend', '<span class="tl-year">' + it.dataset.year + '</span>'); }); }
-function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); }
+function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); else $$('.tl-hand[data-k]').forEach(it => { const T = tileHand(+it.dataset.k, null, ''); it.insertBefore(T.canvas, it.firstChild); }); }
 function timelineInit() {
   const root = document.querySelector('[data-screen=timeline]'); if (!root) return;
+  if (!S.tlYears) S.tlYears = 'hide'; segInit('tl-yrs', 'tlYears', () => { if (!TL.busy) tlNew(); });
   root.addEventListener('pointerdown', e => { const it = e.target.closest('.tl-item'); if (!it) return; e.preventDefault(); TL.drag = { it, x0: e.clientX, y0: e.clientY, moved: false }; try { it.setPointerCapture(e.pointerId); } catch (x) {} });
   root.addEventListener('pointermove', e => { const d = TL.drag; if (!d) return;
     if (!d.moved) { if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 8) return; const r = d.it.getBoundingClientRect(); d.dx = d.x0 - r.left; d.dy = d.y0 - r.top; d.moved = true; d.it.style.width = r.width + 'px'; d.it.style.height = r.height + 'px'; d.it.classList.add('dragging'); }
@@ -1700,13 +2057,14 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
   if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
-  if (name !== 'build' && name !== 'shownum' && name !== 'signnum') hand.helper(false);      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
+  if (name !== 'build' && name !== 'shownum' && name !== 'signnum') hand.helper(false);
+  ageFace(false);      /* the age face shows only where ages are signed (its screen turns it back on) */      /* the left hand (for THOUSAND) waits in its corner only where a number might need it */
   if (name === 'letter') {      // a letter from the chart, with the hand
     showScreen('review'); putStage('review-slot'); assist.className = 'assist small'; speedNow = () => S.speed;
     $('#v-title').textContent = 'Letter ' + (parts[1] || ''); $('#v-back').hidden = true; $('#v-again').hidden = true;
@@ -1728,7 +2086,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
 }
-gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); buildInit(); classInit(); bingoInit();
+gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
@@ -1743,5 +2101,5 @@ if (ONLY) {
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
-window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
+window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();

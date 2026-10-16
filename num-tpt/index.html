@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=77">
+<link rel="stylesheet" href="style.css?v=98">
 </head>
 <body>
 <header class="top">
@@ -38,6 +38,8 @@
     <div class="gamegrid" id="g-grid" data-only="letters"></div>
     <h2 class="pad" data-only="numbers">Numbers</h2>
     <div class="gamegrid" id="g-numgrid" data-only="numbers"></div>
+    <h2 class="pad" data-only="numbers">Ages</h2>
+    <div class="gamegrid" id="g-agegrid" data-only="numbers"></div>
     <h2 class="pad" data-only="numbers">Years</h2>
     <div class="gamegrid" id="g-yeargrid" data-only="numbers"></div>
     <h2 class="pad" data-only="letters">Teacher Tools</h2>
@@ -77,7 +79,7 @@
         <label class="lab" for="sn-num">Your number</label>
         <input id="sn-num" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="Like 2026 or 1,250">
         <div class="row"><button class="btn big" id="sn-go">Sign it</button><button class="btn ghost" id="sn-again">Again</button></div>
-        <label class="check" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="sn-year" style="width:auto"> Sign it as a year (1000–2099), like 1776 = 17 + 76</label>
+        <div class="field small"><span class="lab">Sign It As</span><div class="seg sm" id="sn-as"><button data-v="num">A number</button><button data-v="year">A year (1000–2099)</button><button data-v="age">An age (1–99)</button></div></div>
         <div class="blocks" id="sn-blocks" aria-live="polite"></div>
         <p class="hint" id="sn-note"></p>
         <div class="field small"><span class="lab">Speed</span>
@@ -88,6 +90,39 @@
         <div class="field small"><span class="lab">23 &amp; 25</span><div class="seg sm" id="sn-form"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div></div>
         <div class="field small"><span class="lab">HUNDRED</span><div class="seg sm" id="sn-hund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div></div>
         <div class="blocks-why">🧱 <b>What are the blocks?</b> They are the signs in order. ASL signs big numbers in parts, the way they are said: 345 is 3 + HUNDRED + 45, and 2,026 is 2 + THOUSAND + 26. Each block is one sign, and the block that lights up is the one the hand is signing now.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Math (Colleen, 2026-10-15): the hand signs a problem (a number, + - x / , a number, then EQUALS or HOW MANY); three styles -->
+  <section data-screen="math" class="screen">
+    <div class="card ap-card mt-card">
+      <h2>Math in ASL</h2>
+      <p class="hint" id="mt-how">Tap each hand to watch it sign.</p>
+      <p class="tl-turn" role="note">📱↻ Turn your phone sideways for bigger hands.</p>
+      <div class="mt-row" id="mt-row" aria-live="polite"></div>
+      <div class="row"><button class="btn ghost" id="mt-again">▶ Play all</button><button class="btn big" id="mt-go">New problem</button></div>
+      <div id="mt-answer">
+        <label class="lab" for="mt-in" id="mt-inlab">The problem</label>
+        <div class="row mt-inrow"><input id="mt-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"><button class="btn" id="mt-check">Check</button></div>
+      </div>
+      <div class="mt-bank" id="mt-bank" aria-label="Operation tiles"></div>
+      <div class="mt-keys" id="mt-keys"><button data-k="+">+</button><button data-k="−">−</button><button data-k="×">×</button><button data-k="÷">÷</button><button data-k="=">=</button></div>
+      <div class="row" id="mt-checkrow"><button class="btn" id="mt-check2">Check</button></div>
+      <div class="mt-picks" id="mt-picks"></div>
+      <p class="hint" id="mt-msg"></p><p class="hint" id="mt-score"></p>
+      <div class="mt-settings">
+        <div class="field small"><span class="lab">Style</span><div class="seg sm" id="mt-style"><button data-v="write">Write the problem</button><button data-v="solve">Solve it</button><button data-v="pick">Pick the answer</button><button data-v="insert">Insert the signs</button><button data-v="build">Read and build (advanced)</button></div></div>
+        <div class="field small"><span class="lab">Level</span><div class="seg sm" id="mt-level"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button><button data-v="custom">Custom</button></div></div>
+        <p class="hint" id="mt-levelnote"></p>
+        <div id="mt-custom">
+          <div class="field small"><span class="lab">Operations</span><div class="chips" id="mt-ops"></div></div>
+          <div class="field small"><span class="lab">Numbers up to</span><div class="seg sm" id="mt-max"><button data-v="10">10</button><button data-v="20">20</button><button data-v="100">100</button></div></div>
+        </div>
+        <div class="field small"><span class="lab">Speed</span>
+          <div class="speed"><input id="mt-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+            <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -116,6 +151,35 @@
     </div>
   </section>
 
+  <!-- When did it happen? (Colleen): an event (picture or placeholder); tap each hand to watch it sign a year; pick the year -->
+  <section data-screen="eventyear" class="screen">
+    <div class="card ap-card">
+      <h2>When Did It Happen?</h2>
+      <p class="hint">Tap each hand to watch it sign a year. Then pick the year this happened.</p>
+      <div class="ap-wrap"><div class="ap-pic ey-event" id="ey-event"></div><div class="ap-grid" id="ey-grid"></div></div>
+      <div class="row"><button class="btn" id="ey-next" hidden>Next event</button></div>
+      <p class="hint" id="ey-msg" aria-live="polite"></p><p class="hint" id="ey-score"></p>
+      <div class="field small"><span class="lab">Speed</span>
+        <div class="speed"><input id="ey-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+          <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+      </div>
+    </div>
+  </section>
+  <!-- How old is Charlie? (Colleen): a picture of Charlie at one stage of life; tap each hand to watch it sign an age; pick the one that fits -->
+  <section data-screen="agepics" class="screen">
+    <div class="card ap-card">
+      <h2 id="ap-title">How Old Is Charlie?</h2>
+      <p class="hint">Tap each hand to watch it sign an age. Then pick the age that fits Charlie in the picture.</p>
+      <div class="ap-wrap"><div class="ap-pic" id="ap-pic"></div><div class="ap-grid" id="ap-grid"></div></div>
+      <div class="row"><button class="btn" id="ap-next" hidden>Next picture</button></div>
+      <p class="hint" id="ap-msg" aria-live="polite"></p><p class="hint" id="ap-score"></p>
+      <div class="field small"><span class="lab">Speed</span>
+        <div class="speed"><input id="ap-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+          <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Timeline (Colleen): hands signing years go under proportional ticks in order; events go above their years -->
   <section data-screen="timeline" class="screen">
     <div class="card tl-card">
@@ -134,6 +198,7 @@
       <div class="tl-tray" id="tl-hands" data-tray="hand"></div>
       <div class="row"><button class="btn big" id="tl-check">Check</button><button class="btn ghost" id="tl-show" hidden>Show the years</button><button class="btn ghost" id="tl-new">New timeline</button></div>
       <p class="hint" id="tl-msg" aria-live="polite"></p>
+      <div class="field small"><span class="lab">Event years</span><div class="seg sm" id="tl-yrs"><button data-v="hide">Hidden</button><button data-v="show">Shown on the events</button></div></div>
       <div class="field small"><span class="lab">Speed</span>
         <div class="speed"><input id="tl-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
@@ -214,7 +279,7 @@
       <div class="row between"><h2 id="s-title">Set Up</h2><div class="row" style="margin:0"><button class="link" id="s-fold" aria-expanded="true">Hide settings ▲</button><a class="link" href="#/games">All games</a></div></div>
       <div id="s-fields">
       <p class="hint" id="s-about"></p>
-      <div class="field" data-for="type pick fill pairs flash numbers npick nquiz ladder sound tricky yread ypick"><span class="lab" id="s-speed-lab">Speed</span>
+      <div class="field" data-for="type pick fill pairs flash numbers npick nquiz ladder sound tricky yread ypick aread apick"><span class="lab" id="s-speed-lab">Speed</span>
         <div class="speed"><input id="s-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
       </div>
@@ -250,6 +315,10 @@
         <div class="chips letters" id="s-flash"></div>
         <label class="field"><span class="lab">Letters in a Round</span><select id="s-flcount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
+      <div class="field" data-for="aread apick"><span class="lab">Ages</span>
+        <p class="hint" style="margin:0 0 6px">Every age starts at the chin. 1–9: the number, palm out, pushed down and forward. 10 and up: the 1 on the chin, then the number.</p>
+        <div class="chips" id="s-atypes"></div>
+      </div>
       <div class="field" data-for="yread ypick"><span class="lab">Years</span>
         <p class="hint" style="margin:0 0 6px">Choose the kinds of years. Teen years split in two (17 + 76); 2000–2009 slide the 0; 2010–2099 are TWENTY + the last two.</p>
         <div class="chips" id="s-ytypes"></div>
@@ -266,18 +335,18 @@
       <div class="field" data-for="nquiz"><span class="lab">HUNDRED</span>
         <div class="seg sm" id="s-nhund"><button data-v="mix">Mixed</button><button data-v="c">C</button><button data-v="curl">Curl</button></div>
       </div>
-      <div class="field" data-for="numbers npick nquiz"><span class="lab">16–19</span>
+      <div class="field" data-for="numbers npick nquiz aread apick"><span class="lab">16–19</span>
         <div class="seg sm" id="s-nteens"><button data-v="mix">Mixed</button><button data-v="ten">10 + number</button><button data-v="twist">Twist</button></div>
         <p class="hint">People sign 16–19 in a variety of ways. Mixed shows both of these; pick one to practice just that way.</p>
       </div>
-      <div class="field" data-for="numbers npick nquiz yread ypick"><span class="lab">23 &amp; 25</span>
+      <div class="field" data-for="numbers npick nquiz yread ypick aread apick"><span class="lab">23 &amp; 25</span>
         <div class="seg sm" id="s-nform"><button data-v="mix">Mixed</button><button data-v="alt">Formal</button><button data-v="main">Slang</button></div>
         <p class="hint">Formal: the L changes into 3 or 5. Slang: the middle finger bends twice.</p>
       </div>
-      <div class="grid2" data-for="numbers npick nquiz yread ypick">
+      <div class="grid2" data-for="numbers npick nquiz yread ypick aread apick">
         <div class="field" data-for="nquiz"><span class="lab">Answer By</span><div class="seg sm" id="s-nkind"><button data-v="type">Typing the number</button><button data-v="pick">Picking from four</button></div></div>
         <label class="field" data-for="nquiz"><span class="lab">Numbers in a Round</span><select id="s-qcount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
-        <label class="field" data-for="numbers npick yread ypick"><span class="lab" id="s-ncount-lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
+        <label class="field" data-for="numbers npick yread ypick aread apick"><span class="lab" id="s-ncount-lab">Numbers in a Round</span><select id="s-ncount"><option>10</option><option selected>20</option><option>30</option></select></label>
       </div>
       <div class="field" data-for="type pick fill ladder sound"><span class="lab">Word Type</span>
         <div class="seg" id="s-bank"><button data-v="everyday">Everyday words</button><button data-v="proper">Names &amp; fingerspelled words</button></div>
@@ -298,7 +367,7 @@
         <div class="sub"><span>Show each letter:</span><div class="seg" id="s-assist"><button data-v="off">Off</button><button data-v="small">Small</button><button data-v="large">Large</button></div></div>
       </details>
       <div class="field"><span class="lab">Skin Tone</span><div class="tones" id="s-tones"></div></div>
-      <div class="field" data-for="type pick fill ladder pairs flash numbers npick nquiz sound tricky yread ypick"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
+      <div class="field" data-for="type pick fill ladder pairs flash numbers npick nquiz sound tricky yread ypick aread apick"><span class="lab">Paper</span><div class="seg" id="s-paper"><button data-v="no">Not using paper</button><button data-v="yes">Using paper</button></div></div>
       <p class="pool" id="s-pool" aria-live="polite"></p>
       </div>
       <button class="btn big" id="s-go">Start</button>
@@ -543,7 +612,7 @@
 <!-- the one hand, moved into whichever screen needs it -->
 <div class="stage" id="stage">
   <div class="assist" id="assist" aria-hidden="true"></div>
-  <div class="cv"><canvas id="hand" width="800" height="800" aria-label="A hand fingerspelling"></canvas><div class="frost" id="frost" aria-hidden="true"></div></div>
+  <div class="cv"><div class="ageface" id="ageface" aria-hidden="true"></div><canvas id="hand" width="800" height="800" aria-label="A hand fingerspelling"></canvas><div class="frost" id="frost" aria-hidden="true"></div></div>
   <div class="loading" id="loading">Getting the hand ready…</div>
 </div>
 
@@ -553,9 +622,10 @@
 <script src="lib/GLTFLoader.js"></script>
 <script src="lib/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
-<script src="themes.js?v=41"></script>
-<script src="hand.js?v=80"></script>
+<script src="themes.js?v=42"></script>
+<script src="people.js?v=4"></script>
+<script src="hand.js?v=129"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=92"></script>
+<script src="app.js?v=137"></script>
 </body>
 </html>

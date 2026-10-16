@@ -8,7 +8,7 @@ opts = opts || {};
 let readyOk, readyErr; const ready = new Promise((a, b) => { readyOk = a; readyErr = b; });
 /* LIGHT: school Chromebooks and other low-power devices get a lighter hand (Colleen: 25 Chromebooks froze): a simpler model, no shadows,
    lighter skin detail, no planning in the middle of a word. Same shapes and movements. ?light=1 / ?light=0 in the address forces it either way. */
-const LIGHT = /[?&]light=1\b/.test(location.search) || (!/[?&]light=0\b/.test(location.search) && (/\bCrOS\b/.test(navigator.userAgent) || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || !!opts.light));
+const LIGHT = /[?&]light=1\b/.test(location.search) || (!/[?&]light=0\b/.test(location.search) && (/\bCrOS\b/.test(navigator.userAgent) || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || !!opts.light || !!opts.tile));      /* tile hands are always light */
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !LIGHT, alpha: true, preserveDrawingBuffer: true, powerPreference: LIGHT ? 'low-power' : 'default' });
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;      /* film-like light, for a photo look */
@@ -18,7 +18,7 @@ let quality = 1, slowN = 0, slowT = 0;
 const gl = renderer.getContext();
 function fitRes() {
   const shown = canvas.clientWidth || 400, ratio = Math.min(window.devicePixelRatio || 1, quality < 1 ? 1 : 1.5);
-  const px = Math.max(320, Math.min(800, Math.round(shown * ratio * quality)));
+  const px = opts.tile ? Math.max(160, Math.min(360, Math.round(shown * Math.min(window.devicePixelRatio || 1, 1.25) * quality))) : Math.max(320, Math.min(800, Math.round(shown * ratio * quality)));      /* tile hands (shown small) draw small */
   if (canvas.width !== px) { renderer.setSize(px, px, false); dirty = true; }
 }
 function slowCheck(ms) {      /* the first 30 drawings: if they average over 25 ms, draw smaller and with softer shadows */
@@ -110,7 +110,7 @@ const TONE_SET = [
   { exp: 1.11, fill: 0.52, key: 2.10, env: 0.58, coat: 0.11, palm: [1.41, 1.27, 1.19], red: 0.30, sss: [0.42, 0.20, 0.13], edge: [0.62, 0.55, 0.53], edgeK: 0.76, rim: [0.087, 0.063, 0.048] }
 ];
 function setTone(hex) {
-  toneNow = hex; dirty = true; const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
+  toneNow = hex; dirty = true; try { canvas.dispatchEvent(new CustomEvent('fstone', { detail: hex })); } catch (e) {}      /* the age face behind the hand follows the skin tone (Colleen) */ const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
   [H1, H2].forEach(h => { if (h && h.mesh) { h.mesh.material.color.set(hex).convertSRGBToLinear(); h.mesh.material.envMapIntensity = T.env; h.mesh.material.clearcoat = T.coat; } });      /* both hands the same tone */
   renderer.toneMappingExposure = T.exp; hemi.intensity = T.fill; key.intensity = T.key;
   SKU.skPalm.value.fromArray(T.palm); SKU.skRed.value = T.red; SKU.skSSS.value.fromArray(T.sss); SKU.skEdge.value.fromArray(T.edge); SKU.skEdgeK.value = T.edgeK; SKU.skRim.value.fromArray(T.rim);
@@ -184,13 +184,14 @@ function helperTick(now) {
   withHand(H2, () => apply(h2cur));
 }
 /* with the helper showing, the camera steps back a little and over, so both hands fit */
-const camFor = on => { dirty = true; camTw = null; CAM_LAST = on ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }; if (on) { cam.position.set(0.02, 0.075, 0.62); cam.lookAt(0.02, 0.075, 0); }      /* straight on, stepped back a little so both hands fit (a higher view was tried for MILLION and did not help) */ else { cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0); } };
+let ageOn = false;      /* age mode keeps its stepped-back view even when the helper hand comes or goes */
+const camFor = on => { dirty = true; camTw = null; if (ageOn) { cam.position.fromArray(CAM_AGE.pos); cam.lookAt(...CAM_AGE.at); CAM_LAST = CAM_AGE; return; } CAM_LAST = on ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }; if (on) { cam.position.set(0.02, 0.075, 0.62); cam.lookAt(0.02, 0.075, 0); }      /* straight on, stepped back a little so both hands fit (a higher view was tried for MILLION and did not help) */ else { cam.position.set(0, 0.085, 0.5); cam.lookAt(0, 0.085, 0); } };
 /* camera easing (camTo), kept for later; THOUSAND and MILLION no longer turn the camera (Colleen: not needed once the z bug was fixed) */
 const CAM_FRONT = { pos: [0.02, 0.075, 0.62], at: [0.02, 0.075, 0] }, CAM_TOUCH = { pos: [-0.2, 0.2, 0.55], at: [0.03, 0.03, 0] };
 let camTw = null;
 function camTo(T, ms) { camTw = { p0: cam.position.toArray(), a0: CAM_LAST.at, T, st: performance.now(), ms }; }
 let CAM_LAST = CAM_FRONT;
-function camTick(now) { if (!camTw) return; dirty = true; const k = ease(Math.min(1, (now - camTw.st) / camTw.ms)); const P = lerp(camTw.p0, camTw.T.pos, k), A = lerp(camTw.a0, camTw.T.at, k); cam.position.set(P[0], P[1], P[2]); cam.lookAt(A[0], A[1], A[2]); if (k >= 1) { CAM_LAST = camTw.T; camTw = null; } }
+function camTick(now) { if (!camTw) return; dirty = true; const k = ease(Math.max(0, Math.min(1, (now - camTw.st) / camTw.ms))); const P = lerp(camTw.p0, camTw.T.pos, k), A = lerp(camTw.a0, camTw.T.at, k); cam.position.set(P[0], P[1], P[2]); cam.lookAt(A[0], A[1], A[2]); if (k >= 1) { CAM_LAST = camTw.T; camTw = null; } }
 let helperWanted = false;
 const helper = on => { helperOn = !!on; dirty = true; h2done = false; if (helperOn && !H2 && !helperWanted && H1.bones) { helperWanted = true; loadHelper(); } camFor(helperOn); if (H2) { H2.mirror.visible = helperOn; if (helperOn) { h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur)); } } };
 /* turn the hand upright, palm to the camera, and work out each joint's bend and spread axes in its own frame */
@@ -416,7 +417,8 @@ const SLIDE = new Set('LBCDEGHIOPRUVW'.split(''));      /* as Colleen's Z photo 
 /* double letters: by default the fingers and thumb relax part of the way toward an open hand (Colleen: for B the thumb partly opens and closes again) */
 const loosen = (P, k) => { const R = norm(POSE.rest), Q = norm(P); return { f: lerp(Q.f, R.f, k), t: lerp(Q.t, R.t, k), w: Q.w, p: Q.p }; };
 const DOUBLE = {};      /* letter: P => the in-between shape, for letters that should double differently */
-const norm = p => ({ f: p.f, t: p.t, w: p.w || [0, 0, 0], p: [0, 1, 2].map(i => (p.p && p.p[i]) || 0), under: !!p.under, over: !!p.over, stage: p.stage || 0 });      /* p always has x, y and z: a missing z made the smooth paths lose all forward/back movement (MILLION, Colleen) */
+let SHIFT = null;      /* ages: the number after the push stays out where the push ended (closer to the student) */
+const norm = p => ({ f: p.f, t: p.t, w: p.w || [0, 0, 0], p: [0, 1, 2].map(i => ((p.p && p.p[i]) || 0) + (SHIFT ? SHIFT[i] : 0)), under: !!p.under, over: !!p.over, stage: p.stage || 0 });      /* p always has x, y and z: a missing z made the smooth paths lose all forward/back movement (MILLION, Colleen) */
 const lerp = (a, b, k) => Array.isArray(a) ? (b && b.length > a.length ? b : a).map((_, i) => lerp(a[i] === undefined ? 0 : a[i], b[i] === undefined ? 0 : b[i], k)) : a + (b - a) * k;      /* a missing 5th finger value counts as 0 */
 const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
 let cur = norm(POSE.rest), from = cur, to = cur, st = 0, dur = 1;
@@ -670,6 +672,7 @@ async function sign(n, o) {
     const A = norm(cur), B = norm(use.via || use.start), diff = A.f.reduce((t, F, i) => t + F.reduce((u, v, j) => u + Math.abs(v - B.f[i][j]), 0), 0) + A.t.reduce((t, v, j) => t + Math.abs(v - B.t[j]), 0);
     if (diff < 40) { const tap = Math.max(170, per * 0.3); moveTo(loosen(B, 0.42), tap * 0.9); await wait(tap); moveTo(B, tap * 0.9); await wait(tap); }      /* big and slow enough to see, even on a small hand at a fast speed (Colleen) */
   }
+  if (use.via && Math.abs(((norm(cur).w[1] - norm(use.start).w[1]) % 360 + 540) % 360 - 180) < 60) use = Object.assign({}, use, { via: null });      /* already turned that way (an age: the 1 is palm in after the push): no swing back out (Colleen: "13 turns the wrong way") */
   if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }
   if (use.hold) await wait(per * use.hold);
@@ -709,6 +712,80 @@ async function thousand(o, last, million) {
   if (last) { moveTo(million ? TH_ABOVE2 : TH_ABOVE, per * 0.25); await wait(per * 0.28); }
   helperMove(HELPER_REST, per * 0.6);      /* back to the corner while the number goes on */
 }
+/* MATH SIGNS (Colleen, 2026-10-15; dev/ASL-number-rules.md "Math"). PLUS, MINUS, DIVIDE, TIMES, EQUALS and HOW MANY are LOCKED by Colleen (2026-10-15): change them only when she asks. PLUS: both hands in the 1 handshape. The left hand points straight up,
+   palm toward the right hand, in front, and stays still. The right hand is palm down, the pointer finger level with the floor; it comes forward
+   from behind the left hand and the middle knuckle of the pointer finger taps the left pointer finger twice. */
+const PLUS_L = { f: SH[1].f, t: SH[1].t, w: [0, 90, 0], p: [-0.05, 0, 0.03] };
+const PLUS_BACK = { f: SH[1].f, t: SH[1].t, w: [65, 0, -90], p: [-0.03, 0.05, -0.045] }      /* APPROVED by Colleen (2026-10-15) */, PLUS_TOUCH = Object.assign({}, PLUS_BACK, { p: [-0.03, 0.05, -0.005] });      /* crossing about halfway up the left finger, turned over 180 degrees from the first try (Colleen: "it needs to turn over 180 degrees") */
+/* MINUS (Colleen, 2026-10-15): the left hand an open B, fingers together (not spread), palm toward the right hand; the right hand a 1, level
+   with the floor, palm down; the pointer finger lands on the top of the left palm, once, with a clear stop. */
+const MINUS_L = { f: [[0, 0, 0, 3], [0, 0, 0, 0], [0, 0, 0, -3], [0, 0, 0, -6]], t: [0, 0, 0, 0, 0],      /* the thumb straight along the side, behind the right hand (Colleen) */
+  w: [0, 15, 0], p: [-0.05, 0, 0.03] };      /* palm mostly toward the student, so the right finger can lie along it */
+const MINUS_ABOVE = { f: SH[1].f, t: SH[1].t, w: [80, 0, -90], p: [-0.01, 0.06, 0.09] }, MINUS_TOUCH = Object.assign({}, MINUS_ABOVE, { p: [-0.02, 0.03, 0.06] });      /* turned over 180 degrees (palm down) and landing lower on the palm (Colleen) */      /* the finger lands SIDEWAYS on the palm, lying along it, never through it (Colleen) */
+/* DIVIDE (Colleen, 2026-10-15, with a drawing): both hands open, fingers together (not spread), the thumb out in the L position. The right hand
+   starts on top of the left (crossed, backs toward the student); then both move down together, turn palm down, and separate. */
+const FLAT_L = { f: [[0, 0, 0, 3], [0, 0, 0, 0], [0, 0, 0, -3], [0, 0, 0, -6]], t: [20, 0, 0, 5, 5] };      /* a shorter thumb (Colleen: "shorten those thumbs") */
+const DIV_R0 = Object.assign({}, FLAT_L, { w: [-160, 30, -115], p: [-0.03, 0.075, 0.02] }), DIV_L0 = Object.assign({}, FLAT_L, { w: [-160, 30, -90], p: [-0.05, 0.01, 0] });      /* LOCKED by Colleen (2026-10-15, option 1 in dev/hand-choices/divide-starts.png): the right hand on top, its pinky on the left pointer finger; its fingertips pivot up as the wrist drops; both hands turn their fingertips toward the student, in opposite directions */
+const DIV_RM = Object.assign({}, FLAT_L, { w: [90, 0, -30], p: [-0.06, 0.02, 0.035] }), DIV_LM = Object.assign({}, FLAT_L, { w: [90, 0, -30], p: [-0.105, 0.0, 0.035] });      /* halfway: palms down, apart, fingertips turning toward the student */
+const DIV_R1 = Object.assign({}, FLAT_L, { w: [100, 10, 0], p: [-0.065, -0.035, 0.02] }), DIV_L1 = Object.assign({}, FLAT_L, { w: [100, 10, 0], p: [-0.11, -0.035, 0.02] });      /* LOCKED by Colleen (2026-10-15): this second half, halfway pose and ending ("this bottom row is right and locked", dev/hand-choices/divide-turn-locked.png) */
+/* TIMES (Colleen, 2026-10-15, with two photos): both hands a V, almost palm in, the right higher. Each V points toward the other hand and keeps
+   pointing that way; the hands swoop toward each other, the right brushes over the left where they cross in the center, and they keep going a
+   bit, ending with the forearms crossed (the right V up on the left side, the left V lower on the right). */
+const VSH = { f: POSE.V.f, t: POSE.V.t };
+const TIMES_R0 = Object.assign({}, VSH, { w: [-160, 30, -105], p: [-0.08, 0.05, 0.02] }), TIMES_RX = Object.assign({}, VSH, { w: [-160, 30, -105], p: [-0.035, 0.05, 0.045] }), TIMES_R1 = Object.assign({}, VSH, { w: [-160, 30, -110], p: [0.015, 0.062, 0.04] });      /* fingers turned more toward the student (Colleen); the right hand a little in front and above: the fists touch for a moment as they cross but never merge */
+const TIMES_L0 = Object.assign({}, VSH, { w: [-160, 30, -80], p: [-0.105, 0.0, 0] }), TIMES_LX = Object.assign({}, VSH, { w: [-160, 30, -80], p: [-0.05, 0.0, -0.005] }), TIMES_L1 = Object.assign({}, VSH, { w: [-160, 30, -80], p: [0.0, -0.015, -0.012] });
+/* EQUALS (Colleen, 2026-10-15, with pictures): both hands bent at the big knuckles (fingers together and straight, the thumb along the side),
+   palms down, fingers pointing at each other. They start apart (not touching) and come together, ending with the fingertips touching. */
+const EQ = { f: [[85, 0, 0, 2], [85, 0, 0, 0], [85, 0, 0, -2], [85, 0, 0, -4]], t: [0, 0, 0, 0, 0], w: [0, 90, 0] };
+const EQ_R0 = Object.assign({}, EQ, { p: [-0.115, 0, 0.02] }), EQ_R1 = Object.assign({}, EQ, { p: [-0.09, 0, 0.02] });      /* LOCKED by Colleen (2026-10-15). Checked close up: the longest fingertips just touch, never overlap; the ring and pinky are a little apart (Colleen) */
+const EQ_L0 = Object.assign({}, EQ, { p: [-0.135, 0, 0.02] }), EQ_L1 = Object.assign({}, EQ, { p: [-0.11, 0, 0.02] });
+/* HOW MANY (Colleen, 2026-10-15, with two photos): both hands S, palms up, low and apart; they throw upward, opening as they go, the fingers
+   almost all the way open to a 5 but not quite (spread, a little bent), ending up high with the fingers up and the palms toward the signer. */
+const HM_S = { f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [4, 8, -60, 84, 77] };
+const HM_5 = { f: [[20, 25, 12, 15], [20, 25, 12, 3], [20, 25, 12, -9], [20, 25, 12, -20]], t: [12, 40, 0, 15, 15] };      /* almost a 5, not quite */
+const HM_R0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.055, -0.07, 0.03] }), HM_L0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.095, -0.07, 0.03] });      /* palm up, the thumb on top toward the sky, the backs of the curled fingers toward the student (never the wrist, Colleen) */
+const HM_R1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.07, 0.0, 0.03] }), HM_L1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.08, 0.0, 0.03] });      /* a good amount of empty space between the hands (Colleen); the left hand is mirrored, so its x runs the other way */
+async function signOp(op, o) {
+  o = o || {}; const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+  if (o.onLetter) o.onLetter(op);
+  if (op === '+') {
+    helperMove(PLUS_L, per * 0.5); moveTo(PLUS_BACK, per * 0.5); await wait(per * 0.6);
+    for (let i = 0; i < 2; i++) { moveTo(PLUS_TOUCH, per * 0.16); await wait(per * 0.2); moveTo(PLUS_BACK, per * 0.16); await wait(per * 0.2); }      /* two taps */
+    await wait(per * 0.2);
+  }
+  if (op === '?') {
+    helperMove(HM_L0, per * 0.5); moveTo(HM_R0, per * 0.5); await wait(per * 0.65);      /* S hands, palms up */
+    helperMove(HM_L1, per * 0.3); moveTo(HM_R1, per * 0.3); await wait(per * 0.35);      /* throw up and open */
+    await wait(per * 0.5);
+  }
+  if (op === '=') {
+    helperMove(EQ_L0, per * 0.5); moveTo(EQ_R0, per * 0.5); await wait(per * 0.6);      /* apart */
+    helperMove(EQ_L1, per * 0.35); moveTo(EQ_R1, per * 0.35); await wait(per * 0.4);      /* together: the fingertips touch */
+    await wait(per * 0.5);
+  }
+  if (op === 'x') {
+    helperMove(TIMES_L0, per * 0.5); moveTo(TIMES_R0, per * 0.5); await wait(per * 0.6);      /* apart, each V pointing at the other */
+    helperMove(TIMES_LX, per * 0.25); moveTo(TIMES_RX, per * 0.25); await wait(per * 0.25);      /* swoop in: the right brushes over the left in the center */
+    helperMove(TIMES_L1, per * 0.25); moveTo(TIMES_R1, per * 0.25); await wait(per * 0.3);      /* and keep going a bit */
+    await wait(per * 0.4);
+  }
+  if (op === '/') {
+    helperMove(DIV_L0, per * 0.5); moveTo(DIV_R0, per * 0.5); await wait(per * 0.65);      /* right hand on top of the left */
+    helperMove(DIV_LM, per * 0.3); moveTo(DIV_RM, per * 0.3); await wait(per * 0.3);      /* together: down and apart, the fingertips turning toward the student */
+    helperMove(DIV_L1, per * 0.35); moveTo(DIV_R1, per * 0.35); await wait(per * 0.4);      /* palm down, apart (LOCKED) */
+    await wait(per * 0.4);
+  }
+  if (op === '-') {
+    helperMove(MINUS_L, per * 0.5); moveTo(MINUS_ABOVE, per * 0.5); await wait(per * 0.55);
+    playPath([Object.assign({}, cur, { w: eQw(cur) }), MINUS_TOUCH], per * 0.35, EASE_IN); await wait(per * 0.37);      /* fastest at the end: lands with a stop */
+    await wait(per * 0.45);
+  }
+  if (op === 'rest') { helperMove(HELPER_REST, per * 0.6); moveTo(POSE.rest, 500); await wait(520); return; }      /* both hands back to rest (after a part played on its own) */
+  helperMove(HELPER_REST, per * 0.6);      /* the left hand goes back to its corner; the right hand goes on to the next number when stay */
+  if (o.stay) return;
+  moveTo(POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter('');
+}
 /* a whole number from blocks, in spoken order (Colleen's rules): tokens are numbers 0-99 and 'H' (HUNDRED, after a digit 1-9).
    The parts flow into each other with no return to rest in between; onPart(i) tells which block is playing. */
 function partsOf(tokens) {
@@ -732,6 +809,35 @@ async function signParts(tokens, o) {
   }
   if (o.onPart) o.onPart([]);
   if (tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
+}
+/* AGES (Colleen, 2026-10-15; dev/ASL-number-rules.md "Ages"): every age starts at the center of the chin (the face behind the hand is drawn
+   by the app). 1-9: the number's handshape palm out, the pointer finger on the chin, then a push down and forward (toward the student).
+   10 and up: the 1, palm in, on the chin, the same push, then the number with all its usual rules. */
+const AGE_CHIN = [0, 0.105, -0.05]      /* LOCKED by Colleen (2026-10-15): "this is the right placement" */, AGE_PUSH = [0, 0.03, 0.09], AGE_NUM = [0, 0.03, 0.09];      /* the push comes well forward so the hand grows as it comes closer (Colleen) */      /* raised (Colleen: the fingertip in front of the center of the chin) */      /* tuned so the fingertip meets the drawn chin */
+const CAM_AGE = { pos: [0, 0.17, 0.493], at: [0, 0.17, 0] };      /* closer (Colleen: "we only need to see this much and the hand needs to be bigger"): the lips at the top, the wrist at the bottom */      /* in age mode the view steps back and up a little, so the drawn chin and lips fit above the hand */
+/* for tuning (no animation needed): the age pose drawn at once in the age view: which = 'chin' (on the chin) or 'push' (after the push) */
+function ageStill(n, which) {
+  const shape = n <= 9 ? (n <= 5 ? DIGIT_OUT(n) : NUM[n].start) : NUM[1].start;
+  apply(Object.assign({ w: [0, 0, 0] }, norm(Object.assign({}, shape, { p: which === 'push' ? AGE_PUSH : AGE_CHIN })), { q: null }));
+  cam.position.fromArray(CAM_AGE.pos); cam.lookAt(...CAM_AGE.at); scene.updateMatrixWorld(true);
+  const url = snap(); camFor(helperOn); return url;
+}
+const AGE_REST = () => Object.assign({}, POSE.rest, { p: [0, -0.32, 0] });      /* in the age view the waiting hand is out of sight below; it rises to the chin to sign (Colleen: the low resting hand was weird) */
+function ageView(on) { const was = ageOn; ageOn = !!on; if (on && !was && !PATH) { cur = from = to = norm(AGE_REST()); settled = false; st = 0; dur = 1; dirty = true; } else if (!on && was && !PATH) moveTo(POSE.rest, 350); const T = on ? CAM_AGE : (helperOn ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }); camTo(T, 350); CAM_LAST = T; }
+async function signAge(n, o) {
+  o = o || {}; n = Math.floor(+n); if (!(n >= 1 && n <= 99)) return;
+  const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (o.onLetter) o.onLetter(String(n));
+  const shape = n <= 9 ? (n <= 5 ? DIGIT_OUT(n) : NUM[n].start) : NUM[1].start;      /* 1-9 palm out; 10+ the 1 palm in */
+  const A = Object.assign({}, shape, { p: AGE_CHIN }), B = Object.assign({}, shape, { p: AGE_PUSH });
+  if (o.onPart) o.onPart(0);
+  if (ageOn && !PATH) { cur = from = to = norm(Object.assign({}, shape, { p: AGE_REST().p })); settled = false; dirty = true; }      /* out of sight it takes the shape first, so it comes into view already a 1 (or the 2-9 of a single-digit age) (Colleen) */
+  moveTo(A, per * 0.55); await wait(per * 0.75);      /* on the chin */
+  playPath([A, B], per * 0.55); await wait(per * 0.6);      /* push down and forward */
+  if (n >= 10) { if (o.onPart) o.onPart(1); SHIFT = AGE_NUM; try { await sign(n, Object.assign({}, o, { stay: true, series: true, onLetter: null })); } finally { SHIFT = null; } }
+  else await wait(per * 0.6);
+  if (o.onPart) o.onPart(-1);
+  moveTo(ageOn ? AGE_REST() : POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter('');
 }
 /* YEARS (Colleen, 2026-10-15; dev/ASL-number-rules.md "Years"). Three types:
    1000-1999: the first two digits (10-19, always the 10 + number form) + the last two as ONE number (76 rocks, 22 double-bounces);
@@ -794,8 +900,8 @@ const ARROW = {      /* drawn over the card, as the student sees the movement */
 };
 const snap = () => { renderer.render(scene, cam); return renderer.domElement.toDataURL(); };
 const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] : P0; };
-if (opts.debug) window.__hand = { get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, spell, sign, signParts, signYear, yearParts, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+if (opts.debug) window.__hand = { get cur() { return cur; }, get cam() { return cam; }, get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
+return { ready, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();
