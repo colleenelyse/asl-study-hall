@@ -109,6 +109,37 @@ const TONE_SET = [
   { exp: 1.07, fill: 0.46, key: 2.14, env: 0.56, coat: 0.11, palm: [1.36, 1.23, 1.16], red: 0.33, sss: [0.43, 0.20, 0.13], edge: [0.62, 0.55, 0.53], edgeK: 0.80, rim: [0.073, 0.053, 0.040] },
   { exp: 1.11, fill: 0.52, key: 2.10, env: 0.58, coat: 0.11, palm: [1.41, 1.27, 1.19], red: 0.30, sss: [0.42, 0.20, 0.13], edge: [0.62, 0.55, 0.53], edgeK: 0.76, rim: [0.087, 0.063, 0.048] }
 ];
+/* SLEEVE (Colleen, 2026-10-15): in the age view the hand belongs to a person, so the arm goes on past the edge of the picture. Stretching the
+   wrist streaked the skin, so (her picture) a soft light blue sleeve: a rounded cuff edge the hand comes out of, a cuff band, then the sleeve
+   widening a little down the arm. Fixed to the wrist bone, pointing away from the fingers; shown only in age mode. */
+let forearm = null;
+function makeForearm() {
+  const w = H.bones && H.bones.wrist, m = H.bones && H.bones['middle-finger-phalanx-proximal'], ix = H.bones && H.bones['index-finger-phalanx-proximal'], pk = H.bones && H.bones['pinky-finger-phalanx-proximal'];
+  if (!w || !m || !ix || !pk) return;
+  H.root.updateMatrixWorld(true);
+  const loc = b => w.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
+  const toF = loc(m), P = loc(ix).distanceTo(loc(pk)), dir = toF.clone().normalize().negate(), len = toF.length() * 9;
+  /* a knit texture drawn once: soft V-shaped stitches */
+  const tc = document.createElement('canvas'); tc.width = tc.height = 64; const x = tc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 64, 64); x.strokeStyle = 'rgba(0,0,0,0.13)'; x.lineWidth = 3;
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const X = c * 16, Y = r * 16; x.beginPath(); x.moveTo(X + 2, Y + 3); x.lineTo(X + 8, Y + 13); x.lineTo(X + 14, Y + 3); x.stroke(); }
+  const knit = new THREE.CanvasTexture(tc); knit.wrapS = knit.wrapT = THREE.RepeatWrapping; knit.encoding = THREE.sRGBEncoding;
+  const BLUE = new THREE.Color(0x7fa9d4).convertSRGBToLinear();
+  const body = new THREE.LatheGeometry([[0.7, 0.36], [0.72, 0.42], [0.8, 1.2], [0.92, len / P]].map(([r, y]) => new THREE.Vector2(r * P, y * P)), 40); body.computeVertexNormals();
+  const tex = knit.clone(); tex.needsUpdate = true; tex.repeat.set(14, Math.round(len / P * 3));
+  const sleeve = new THREE.Mesh(body, new THREE.MeshStandardMaterial({ color: BLUE, map: tex, roughness: 1, metalness: 0, envMapIntensity: 0.25, side: THREE.DoubleSide })); sleeve.scale.set(1, 1, 0.82);
+  /* the ribbed cuff (Colleen: "a textured cuff"): raised ribs all the way round, a rolled edge where the hand comes out */
+  const cuffG = new THREE.CylinderGeometry(P * 0.7, P * 0.7, P * 0.4, 112, 6, true), cp = cuffG.attributes.position, RIBS = 28;
+  for (let k = 0; k < cp.count; k++) { const X = cp.getX(k), Z = cp.getZ(k), a = Math.atan2(Z, X), rib = 1 + 0.045 * Math.max(0, Math.cos(a * RIBS)); cp.setX(k, X * rib); cp.setZ(k, Z * rib); }
+  cuffG.computeVertexNormals();
+  const cuffMat = new THREE.MeshStandardMaterial({ color: BLUE.clone().multiplyScalar(0.86), roughness: 1, metalness: 0, envMapIntensity: 0.25, side: THREE.DoubleSide });
+  const cuff = new THREE.Mesh(cuffG, cuffMat); cuff.scale.set(1, 1, 0.82); cuff.position.y = P * 0.18;
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(P * 0.69, P * 0.05, 10, 64), cuffMat); lip.rotation.x = Math.PI / 2; lip.scale.set(1, 0.82, 1); lip.position.y = -P * 0.02;      /* the rolled edge */
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(P * 0.66, 40), new THREE.MeshBasicMaterial({ color: 0x3e5873, side: THREE.DoubleSide })); hole.rotation.x = Math.PI / 2; hole.scale.set(1, 0.82, 1); hole.position.y = P * 0.06;      /* the shadowy inside */
+  const g = new THREE.Group(); g.add(sleeve, cuff, lip, hole); g.children.forEach(c => c.position.y += -P * 0.3);      /* the cuff edge sits at the wrist */
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  w.add(g); g.visible = ageOn; forearm = g;
+}
+function setForearm(on) { if (forearm) { forearm.visible = !!on; dirty = true; } }
 function setTone(hex) {
   toneNow = hex; dirty = true; try { canvas.dispatchEvent(new CustomEvent('fstone', { detail: hex })); } catch (e) {}      /* the age face behind the hand follows the skin tone (Colleen) */ const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
   [H1, H2].forEach(h => { if (h && h.mesh) { h.mesh.material.color.set(hex).convertSRGBToLinear(); h.mesh.material.envMapIntensity = T.env; h.mesh.material.clearcoat = T.coat; } });      /* both hands the same tone */
@@ -157,6 +188,7 @@ new THREE.GLTFLoader().load(HAND_URL, g => {
   fitRes(); window.addEventListener('resize', () => { fitRes(); });
   if (window.ResizeObserver) new ResizeObserver(() => fitRes()).observe(canvas);
   (function loop() { if (dirty) { dirty = false; const t0 = performance.now(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
+  makeForearm();      /* ages: the arm continues below the wrist (Colleen: no cut-off wrist with a real person) */
   readyOk();
   if (helperOn && !helperWanted) { helperWanted = true; loadHelper(); }      /* the left hand loads the first time a page needs it (helper(true)) */
 }, undefined, e => { readyErr(e); if (opts.onError) opts.onError(e); });
@@ -830,7 +862,7 @@ function ageStill(n, which) {
   const url = snap(); camFor(helperOn); return url;
 }
 const AGE_REST = () => Object.assign({}, POSE.rest, { p: [0, -0.32, 0] });      /* in the age view the waiting hand is out of sight below; it rises to the chin to sign (Colleen: the low resting hand was weird) */
-function ageView(on) { const was = ageOn; ageOn = !!on; if (on && !was && !PATH) { cur = from = to = norm(AGE_REST()); settled = false; st = 0; dur = 1; dirty = true; } else if (!on && was && !PATH) moveTo(POSE.rest, 350); const T = on ? CAM_AGE : (helperOn ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }); camTo(T, 350); CAM_LAST = T; }
+function ageView(on) { const was = ageOn; ageOn = !!on; setForearm(ageOn); if (on && !was && !PATH) { cur = from = to = norm(AGE_REST()); settled = false; st = 0; dur = 1; dirty = true; } else if (!on && was && !PATH) moveTo(POSE.rest, 350); const T = on ? CAM_AGE : (helperOn ? CAM_FRONT : { pos: [0, 0.085, 0.5], at: [0, 0.085, 0] }); camTo(T, 350); CAM_LAST = T; }
 async function signAge(n, o) {
   o = o || {}; n = Math.floor(+n); if (!(n >= 1 && n <= 99)) return;
   const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));

@@ -1214,7 +1214,7 @@ function faceSvg(tone) {
   const FACE = 'M-90 -1400 C -110 -700, -100 -250, -40 20 C 30 280, 230 482, 500 482 C 770 482, 970 280, 1040 20 C 1100 -250, 1110 -700, 1090 -1400 Z';      /* one soft curve from cheek to chin */
   return '<svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs>' +
     '<radialGradient id="fr" gradientUnits="userSpaceOnUse" cx="480" cy="40" r="640"><stop offset="0" stop-color="' + hi + '"/><stop offset=".45" stop-color="' + lite + '"/><stop offset=".78" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
-    '<linearGradient id="ng" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + deep + '"/><stop offset=".3" stop-color="' + shade + '"/><stop offset=".62" stop-color="' + shade + '"/><stop offset="1" stop-color="' + deep + '"/></linearGradient>' +
+    '<linearGradient id="ng" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + mixHex(skin, shade, 0.75) + '"/><stop offset=".3" stop-color="' + mixHex(skin, shade, 0.25) + '"/><stop offset=".62" stop-color="' + mixHex(skin, shade, 0.25) + '"/><stop offset="1" stop-color="' + mixHex(skin, shade, 0.75) + '"/></linearGradient>'      /* the neck close to the face color (Colleen: a big color difference between the head and neck) */ +
     '<radialGradient id="sh" gradientUnits="userSpaceOnUse" cx="480" cy="1000" r="1500"><stop offset="0" stop-color="' + lite + '"/><stop offset=".5" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
     '<linearGradient id="nf" gradientUnits="userSpaceOnUse" x1="0" y1="420" x2="0" y2="2500"><stop offset="0" stop-color="#fff"/><stop offset=".85" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
     '<mask id="nm" maskUnits="userSpaceOnUse" x="-3000" y="380" width="7000" height="2400"><rect x="-3000" y="380" width="7000" height="2400" fill="url(#nf)"/></mask>' +
@@ -1227,8 +1227,20 @@ function faceSvg(tone) {
     /* shoulders and a wide neck */
     '<g mask="url(#nm)"><path d="M200 380 C 205 640, 214 770, 120 860 C -40 945, -700 975, -1500 1130 L -1500 2700 L 2500 2700 L 2500 1130 C 1700 975, 1040 945, 880 860 C 786 770, 795 640, 800 380 Z" fill="url(#sh)"/>' +
     '<path d="' + NECK + '" fill="url(#ng)"/>' +
-    '<g clip-path="url(#nc)"><path d="M150 400 C 300 560, 420 610, 505 612 C 600 610, 720 560, 850 400 L 850 690 C 700 740, 600 752, 505 752 C 410 752, 300 740, 150 690 Z" fill="' + dark + '" opacity=".5" filter="url(#b60)"/></g>' +      /* the deep soft shadow under the jaw */
+    '<g clip-path="url(#nc)"><path d="M150 400 C 300 560, 420 610, 505 612 C 600 610, 720 560, 850 400 L 850 690 C 700 740, 600 752, 505 752 C 410 752, 300 740, 150 690 Z" fill="' + dark + '" opacity=".2" filter="url(#b60)"/></g>' +      /* the deep soft shadow under the jaw */
     P('M40 990 C 180 958, 320 950, 448 972', deep, 22, .3, 'b16') + P('M960 990 C 820 958, 680 950, 552 972', deep, 24, .35, 'b16') + E(500, 985, 70, 40, deep, .3, 'b16') + '</g>' +
+    /* a matching sweater (Colleen): light blue like the sleeve, a simple scoop neck with ribbing, a soft knit */
+    (() => { const bz = (t, p0, p1, p2, p3) => p0 * (1 - t) ** 3 + 3 * p1 * t * (1 - t) ** 2 + 3 * p2 * t * t * (1 - t) + p3 * t ** 3;
+      const scoop = [[60, 905, 180, 1070, 330, 1130, 500, 1130], [500, 1130, 670, 1130, 820, 1070, 940, 905]];
+      let ribs = ''; scoop.forEach(([x0, y0, x1, y1, x2, y2, x3, y3]) => { for (let i = 0; i <= 22; i++) { const t = i / 22, x = bz(t, x0, x1, x2, x3), y = bz(t, y0, y1, y2, y3), dx = bz(Math.min(1, t + .01), x0, x1, x2, x3) - x, dy = bz(Math.min(1, t + .01), y0, y1, y2, y3) - y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; ribs += 'M' + (x - nx * 26).toFixed(1) + ' ' + (y - ny * 26).toFixed(1) + 'L' + (x + nx * 26).toFixed(1) + ' ' + (y + ny * 26).toFixed(1); } });
+      const SW = '#b9d3ea', SWs = '#93b4d4', SWd = '#7d9fc2';
+      return '<defs><pattern id="knit" width="34" height="30" patternUnits="userSpaceOnUse"><path d="M3 4 L17 24 L31 4" stroke="' + SWd + '" stroke-width="4" fill="none" opacity=".35"/></pattern>' +
+        '<radialGradient id="swg" gradientUnits="userSpaceOnUse" cx="500" cy="1300" r="1700"><stop offset="0" stop-color="' + SW + '"/><stop offset=".6" stop-color="' + SW + '"/><stop offset="1" stop-color="' + SWs + '"/></radialGradient></defs>' +
+        '<path d="M-1500 1110 C -700 955, -100 925, 60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905 C 1100 925, 1700 955, 2500 1110 L 2500 2700 L -1500 2700 Z" fill="url(#swg)"/>' +
+        '<path d="M-1500 1110 C -700 955, -100 925, 60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905 C 1100 925, 1700 955, 2500 1110 L 2500 2700 L -1500 2700 Z" fill="url(#knit)"/>' +
+        '<path d="M60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905" stroke="' + SWs + '" stroke-width="56" fill="none" stroke-linecap="round"/>' +      /* the ribbed neckband */
+        '<path d="' + ribs + '" stroke="' + SWd + '" stroke-width="6" opacity=".55" stroke-linecap="round"/>' +
+        '<path d="M60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905" transform="translate(0 -26)" stroke="' + mixHex(SWs, '#000000', 0.25) + '" stroke-width="5" fill="none" opacity=".45"/>'; })() +
     /* the face: bright in the middle, the sides turning away into shadow */
     '<path d="' + FACE + '" fill="url(#fr)" filter="url(#b4)"/>' +
     '<g clip-path="url(#fc)">' + E(-20, 0, 170, 520, deep, .45, 'b90') + E(1020, 20, 190, 540, deep, .55, 'b90') + E(500, 500, 420, 70, deep, .4, 'b30') + '</g>' +
@@ -1509,7 +1521,7 @@ async function lnSign(x) {
   return +x.v < 100 ? hand.sign(+x.v, o) : hand.signParts(bdBlocksFor(+x.v), o);
 }
 async function lnPlay(x, btn) { if (LN.busy) return; LN.busy = true; if (btn) btn.classList.add('on'); try { await lnSign(x); } finally { LN.busy = false; if (btn) btn.classList.remove('on'); } }
-const lnLabel = (L, v) => L.kind === 'o' ? OPN[v] : String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') ;
+const lnLabel = (L, v) => L.kind === 'o' ? OPN[v] : L.kind === 'y' || L.kind === 'a' || L.kind === 'l' ? String(v) : String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',');      /* years never get a comma (Colleen) */
 function lnAsk() {
   const L = LN.cur; if (!L || LN.busy) return; if (LN.n >= 5) return;
   const v = pick1(L.pool.filter(x => !LN.q || x !== LN.q.v)), others = shuffle(L.pool.filter(x => x !== v)).slice(0, 2);
