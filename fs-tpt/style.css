@@ -557,3 +557,25 @@ body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sc
 .learnbar .ln-btn { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: 700 15px var(--display); text-decoration: none; }
 .learnbar .ln-btn:hover { border-color: var(--accent); }
 .learnbar .ln-btn.done { border-color: var(--good); } .learnbar .ln-btn.done::after { content: '✓'; color: var(--good); font-weight: 800; margin-left: 2px; }
+.mt-keys .mt-clear { font: 700 16px var(--display); min-width: 70px; color: var(--muted); }
+#mt-clear2 { display: none; } body:has(#mt-keys[hidden]) #mt-clear2 { display: inline-flex; }      /* Clear sits with the sign buttons; in Solve it and Read and build (no sign buttons) it sits by Check */
+/* Timeline: tall picture boxes to fit Colleen's pictures (3 wide : 4 tall), and results that are easy to see (Colleen) */
+.tl-card .tl-board { --tall: calc(var(--slot, 118px) * 1.34); height: calc(var(--tall) + var(--slot, 118px) + 76px); }
+.tl-card .tl-top { height: calc(var(--tall) + 4px); } .tl-card .tl-bottom { height: calc(var(--slot, 118px) + 4px); }
+.tl-card .tl-axis { top: calc(var(--tall) + 36px); }
+.tl-card .tl-top .tl-slot { height: var(--tall); }
+.tl-card .tl-top .tl-slot .tl-item { height: calc(var(--tall) - 8px); }
+.tl-card #tl-events .tl-ev { height: 147px; }
+.tl-card .tl-ev img { object-fit: contain; background: var(--surface); }
+.tl-card .tl-slot.ok, .tl-card .tl-slot.no { border-width: 5px; border-style: solid; }
+.tl-card .tl-slot.ok { border-color: var(--good); background: var(--good-soft, #DCF4E7); } .tl-card .tl-slot.no { border-color: var(--bad); background: var(--bad-soft, #FBE3E1); }
+.tl-card .tl-slot.ok .tl-item { border-color: var(--good); } .tl-card .tl-slot.no .tl-item { border-color: var(--bad); }
+.tl-card .tl-slot.ok::after, .tl-card .tl-slot.no::after { position: absolute; z-index: 3; right: -10px; top: -10px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font: 900 19px/1 Arial, Helvetica, sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.tl-card .tl-slot.ok::after { content: '✓'; background: var(--good); } .tl-card .tl-slot.no::after { content: '✗'; background: var(--bad); }
+#tl-msg.res { font: 800 18px var(--display); padding: 12px 16px; border-radius: 12px; color: var(--ink); }
+#tl-msg.res.allok { background: var(--good-soft, #DCF4E7); border: 3px solid var(--good); } #tl-msg.res.some { background: var(--bad-soft, #FBE3E1); border: 3px solid var(--bad); }
+@media (max-width: 640px) { .tl-card #tl-events .tl-ev { height: 104px; } }
+.learnbar .ln-focus { flex-basis: 100%; }
+.learnbar .ln-btn { border-radius: 10px; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+.learnbar .ln-btn:hover { background: var(--accent); color: var(--accent-ink); }
+.learnbar .ln-btn .ln-go { font-weight: 900; color: var(--accent); } .learnbar .ln-btn:hover .ln-go { color: inherit; }

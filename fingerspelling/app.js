@@ -288,17 +288,18 @@ function gamesInit() {
   const card = k => { const g = GAMES[k]; return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') +      // Show Me How to Spell sits with the fingerspelling games (Colleen)
     '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name and watch the hand spell it.</span></a>';
-  $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
+  $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
+    '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
+    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99 and watch the hand sign it from the chin.</span></a>';
+  $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
     '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
-    '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
     '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
     '';
   $('#g-numgrid').innerHTML += '<a class="gcard" href="#/math"><span class="gi" aria-hidden="true">➗</span><b>Math in ASL</b><span>The hand signs a math problem. Write the problem, solve it, or pick the answer. Easy, Medium, Hard or your own.</span></a>';
   $('#g-agegrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'ages').map(card).join('') +      // ages in their own section (Colleen)
-    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99 and watch the hand sign it from the chin.</span></a>' +
     '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
     '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>See ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ' at one time of life. Tap each hand to watch it sign an age, then pick the one that fits.</span></a>';
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See an event. Tap each hand to watch it sign a year, then pick the year it happened.</span></a>';
@@ -1503,7 +1504,7 @@ function lnShow() {
   $('#ln-next').href = next ? '#/learn/' + next.id : '#/games'; $('#ln-next').textContent = next ? 'Next: ' + next.name + ' →' : 'Done: to the games →';
 }
 function learnInit() {
-  const g = $('#g-learngrid'); if (g) { const draw = () => { const d = lnDone(); g.innerHTML = '<span class="ln-focus">Focus on:</span>' + LESSONS.map(L => '<a class="ln-btn' + (d.indexOf(L.id) >= 0 ? ' done' : '') + '" href="#/learn/' + L.id + '" title="' + esc(L.about) + '"><span aria-hidden="true">' + L.icon + '</span> ' + esc(L.name) + '</a>').join('');      /* one heading, a button per topic (Colleen) */ }; draw(); window.addEventListener('hashchange', () => { if (/^#\/games/.test(location.hash)) draw(); }); }
+  const g = $('#g-learngrid'); if (g) { const draw = () => { const d = lnDone(); g.innerHTML = '<span class="ln-focus">Tutorials — focus on:</span>' + LESSONS.map((L, i) => '<a class="ln-btn' + (d.indexOf(L.id) >= 0 ? ' done' : '') + '" href="#/learn/' + L.id + '" title="' + esc(L.about) + '" aria-label="Tutorial ' + (i + 1) + ': ' + esc(L.name) + '"><span aria-hidden="true">' + L.icon + '</span> ' + esc(L.name) + ' <span class="ln-go" aria-hidden="true">→</span></a>').join('');      /* reads as tutorials to open, not options to pick (Colleen) */      /* one heading, a button per topic (Colleen) */ }; draw(); window.addEventListener('hashchange', () => { if (/^#\/games/.test(location.hash)) draw(); }); }
   $('#ln-start').onclick = () => { if (LN.n >= 5) { LN.n = 0; LN.right = 0; } lnAsk(); };
   $('#ln-replay').onclick = () => { if (LN.q) lnPlay({ v: LN.q.v, kind: LN.cur.kind || 'n', o: {} }); };
   $('#ln-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
@@ -1535,7 +1536,7 @@ function mtTrue(v, p) {      /* Insert the signs: the three signed numbers in th
   return false;
 }
 const mtOrder = p => p.eqFirst ? [p.r, p.a, p.b] : [p.a, p.b, p.r];
-const mtText = p => p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + (p.end === '=' ? ' EQUALS' : ' HOW MANY');
+const mtText = p => p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + (p.end === '=' ? ' EQUALS' : ' HOW MANY');      /* the message names the sign; typing = is optional */
 function mtChoices(p) { const out = new Set([p.r]), near = [p.r + 1, p.r - 1, p.r + 2, p.r - 2, p.r + 10, p.r - 10, p.a + p.b, Math.abs(p.a - p.b), p.a * p.b]; shuffle(near).forEach(x => { if (out.size < 4 && x >= 0 && x !== p.r) out.add(x); }); while (out.size < 4) out.add(p.r + out.size + 3); return shuffle(Array.from(out)); }
 const mtNum = (n, o) => n < 100 ? hand.sign(n, o) : hand.signParts(bdBlocksFor(n), o);
 /* The problem is built on the page as a row (Colleen): (hand: a number) (operation) (hand: a number) (operation) (hand or answer). Each hand
@@ -1610,7 +1611,8 @@ function mtAnswer(v, btn) {
   }
   if (String(v).trim() === '') return;
   let good;
-  if (S.mtStyle === 'write') good = mtNorm(v) === mtNorm(p.a + p.op + p.b);
+  if (S.mtStyle === 'write') { const t = String(v).toLowerCase().replace(/\s+/g, '').replace(/[×*x]/g, 'x').replace(/[÷/]/g, '/').replace(/[−–—]/g, '-'), m = /^(\d+)([-+x\/])(\d+)(?:=(\d*|\?)|\?)?$/.exec(t);      /* 4+2, 4+2=, 4+2=6 or 4+2=? all count; = never has to be typed (Colleen) */
+    good = !!m && +m[1] === p.a && m[2] === p.op && +m[3] === p.b && (m[4] === undefined || m[4] === '' || m[4] === '?' || +m[4] === p.r); }
   else if (S.mtStyle === 'insert') good = mtTrue(v, p);
   else good = +String(v).replace(/[^\d]/g, '') === p.r && /\d/.test(v);
   MT.answered = true; MT.tries++; if (good) MT.right++;
@@ -1625,7 +1627,7 @@ function mtDraw() {
   const lv = S.mtLevel, [ops, max] = mtSet();
   $('#mt-custom').hidden = lv !== 'custom';
   $('#mt-levelnote').textContent = lv === 'custom' ? '' : ops.map(o => MT_SYM[o]).join(' ') + ', numbers up to ' + max + '.';
-  $('#mt-how').textContent = { write: 'Tap each hand to watch it sign. Then type the whole problem (like 7 + 5 =).', solve: 'Tap each hand to watch it sign. Then type the answer in the last box.', pick: 'Tap each hand to watch it sign. Then pick the answer.', insert: 'Tap each hand to watch it sign a number. One blank is an operation and the other is =. Tap a blank, then a sign button to fill it.', build: 'Tap each hand to watch it sign. Type each number in the box under its hand, and drag the right operation tile into each operation box.' }[S.mtStyle];
+  $('#mt-how').textContent = { write: 'Tap each hand to watch it sign. Then type the problem (like 7 + 5, 7 + 5 = or 7 + 5 = 12).', solve: 'Tap each hand to watch it sign. Then type the answer in the last box.', pick: 'Tap each hand to watch it sign. Then pick the answer.', insert: 'Tap each hand to watch it sign a number. One blank is an operation and the other is =. Tap a blank, then a sign button to fill it.', build: 'Tap each hand to watch it sign. Type each number in the box under its hand, and drag the right operation tile into each operation box.' }[S.mtStyle];
   $('#mt-answer').hidden = S.mtStyle !== 'write'; $('#mt-keys').hidden = S.mtStyle !== 'write' && S.mtStyle !== 'insert'; $('#mt-checkrow').hidden = S.mtStyle !== 'insert' && S.mtStyle !== 'solve' && S.mtStyle !== 'build'; $('#mt-bank').hidden = S.mtStyle !== 'build';
 }
 function mtShow() { parkStage(); ageFace(false); speedNow = () => S.speed; $('#mt-speed').value = Math.round(S.speed * 100); mtDraw(); if (!MT.cur) setTimeout(mtNew, 300); else $$('#mt-row .mt-tile.hand').forEach(t => { const k = [...$('#mt-row').querySelectorAll('.mt-tile')].indexOf(t); tileHand(k, t, MT.spots[k] && MT.spots[k].op ? 'two' : ''); }); }
@@ -1635,10 +1637,19 @@ function mathInit() {
   chipsInit($('#mt-ops'), ['+', '-', 'x', '/'], 'mtOps', x => MT_SYM[x], mtDraw);
   $('#mt-go').onclick = mtNew; $('#mt-again').onclick = mtPlay; $('#mt-check').onclick = () => mtAnswer($('#mt-in').value);
   $('#mt-in').onkeydown = e => { if (e.key === 'Enter') mtAnswer($('#mt-in').value); };
-  $('#mt-keys').onclick = e => { const b = e.target.closest('button'); if (!b) return;
+  $('#mt-keys').onclick = e => { const b = e.target.closest('button'); if (!b || !b.dataset.k) return;
     if (S.mtStyle === 'insert') { if (MT.answered) return; const t = $$('#mt-row .mt-tile'), k = MT.sel; if (!t[k] || !MT.spots[k].blank) return; t[k].textContent = b.dataset.k; const other = k === 1 ? 3 : 1; if (t[other].textContent === '') { MT.sel = other; $$('#mt-row .blank').forEach(x => x.classList.toggle('sel', x === t[other])); } return; }
     const i = $('#mt-in'); i.value += b.dataset.k; i.focus(); };
   $('#mt-check2').onclick = () => mtAnswer();
+  const mtClear = () => {      /* Colleen: a way to clear selections before checking */
+    if (MT.answered || !MT.cur) return;
+    if (S.mtStyle === 'insert') { const t = $$('#mt-row .mt-tile'); [1, 3].forEach(k => { if (t[k]) t[k].textContent = ''; }); MT.sel = 1; $$('#mt-row .blank').forEach(x => x.classList.toggle('sel', x === t[1])); }
+    else if (S.mtStyle === 'build') { $$('#mt-row .mt-drop').forEach(d => { if (d.classList.contains('op')) d.textContent = ''; else d.querySelector('input').value = ''; }); MT.pick = null; $$('#mt-bank .chip-op').forEach(c => c.classList.remove('sel')); }
+    else if (S.mtStyle === 'solve') { const b = $('#mt-box'); if (b) { b.value = ''; b.focus(); } }
+    else { const i = $('#mt-in'); i.value = ''; i.focus(); }
+    $('#mt-msg').textContent = '';
+  };
+  $('#mt-clear').onclick = mtClear; $('#mt-clear2').onclick = mtClear;
   $('#mt-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
 }
 
@@ -1724,7 +1735,7 @@ function tlEventItem(e) {
   it.title = e.title; return it;
 }
 function tlNew() {
-  const ev = TL.ev = tlPick(); TL.sel = null; $('#tl-msg').textContent = ''; $('#tl-show').hidden = true;
+  const ev = TL.ev = tlPick(); TL.sel = null; $('#tl-msg').textContent = ''; $('#tl-msg').className = 'hint'; $('#tl-show').hidden = true;
   const lo = ev[0].year, hi = ev[ev.length - 1].year, pct = y => 6 + 88 * (y - lo) / ((hi - lo) || 1);
   const W = $('#tl-board').clientWidth || 800, slot = Math.max(54, Math.min(W < 640 ? 84 : 118, Math.floor(W / ev.length) - 8)), minSep = Math.min(100 * (slot + 6) / W, 100 / ev.length);
   $('#tl-board').style.setProperty('--slot', slot + 'px');      /* the spots shrink to fit a narrow screen (a phone) */
@@ -1758,12 +1769,14 @@ function tlCheck() {
   ['#tl-bottom', '#tl-top'].forEach(sel => $$(sel + ' .tl-slot').forEach((slot, i) => { const it = slot.querySelector('.tl-item'); slot.classList.remove('ok', 'no'); if (!it) return; filled++;
     const ok = +it.dataset.year === TL.ev[i].year; slot.classList.add(ok ? 'ok' : 'no'); if (ok) { if (sel === '#tl-bottom') yr++; else evn++; } }));
   const n = TL.ev.length;
+  const msg = $('#tl-msg'); msg.classList.add('res'); msg.classList.toggle('allok', filled > 0 && yr === n && evn === n); msg.classList.toggle('some', filled > 0 && !(yr === n && evn === n));
+  setTimeout(() => msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);      /* Colleen: the results were too easy to miss */
   $('#tl-msg').textContent = !filled ? 'Put the hands and the events on the timeline first.' : yr === n && evn === n ? 'All right! Every year and every event is in its place. 🎉' :
-    'Years in the right spot: ' + yr + ' of ' + n + '. Events above the right year: ' + evn + ' of ' + n + '. Green is right; red needs another look.';
+    'Checked! Years in the right spot: ' + yr + ' of ' + n + '. Events above the right year: ' + evn + ' of ' + n + '. Green ✓ is right; red ✗ needs another look.';
   $('#tl-show').hidden = false;
   if (yr === n && evn === n && window.confetti) window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
 }
-function tlReveal() { $$('.tl-hand').forEach(it => { if (!it.querySelector('.tl-year')) it.insertAdjacentHTML('beforeend', '<span class="tl-year">' + it.dataset.year + '</span>'); }); }
+function tlReveal() { $$('.tl-ev').forEach(it => { if (!it.querySelector('.tl-yr')) it.insertAdjacentHTML('beforeend', '<span class="tl-yr">' + it.dataset.year + '</span>'); }); }      /* the years go on the event pictures, not the hands (Colleen) */
 function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); else $$('.tl-hand[data-k]').forEach(it => { const T = tileHand(+it.dataset.k, null, ''); it.insertBefore(T.canvas, it.firstChild); }); }
 function timelineInit() {
   const root = document.querySelector('[data-screen=timeline]'); if (!root) return;

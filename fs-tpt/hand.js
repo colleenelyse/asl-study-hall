@@ -668,12 +668,19 @@ async function sign(n, o) {
   if (N.hund) use = N.hund[o.hund === 'c' || o.hund === 'curl' ? o.hund : (Math.random() < 0.5 ? 'c' : 'curl')];      /* HUNDRED: the C or the curl, mixed unless asked */
   if (o.series && n >= 1 && n <= 5) use = { start: DIGIT_OUT(n), steps: [] };      /* inside a longer number, 1-5 face palm out (Colleen) */
   if (o.onLetter) o.onLetter(String(n));
-  if (o.series) {      /* the same handshape twice in a row (the 7 of 17 and the 7 of 76 in 1776, Colleen): the touching fingers open a little and tap closed again */
+  if (o.series && !o.enter) {      /* the same handshape twice in a row (the 7 of 17 and the 7 of 76 in 1776, Colleen): the touching fingers open a little and tap closed again */
     const A = norm(cur), B = norm(use.via || use.start), diff = A.f.reduce((t, F, i) => t + F.reduce((u, v, j) => u + Math.abs(v - B.f[i][j]), 0), 0) + A.t.reduce((t, v, j) => t + Math.abs(v - B.t[j]), 0);
     if (diff < 40) { const tap = Math.max(170, per * 0.3); moveTo(loosen(B, 0.42), tap * 0.9); await wait(tap); moveTo(B, tap * 0.9); await wait(tap); }      /* big and slow enough to see, even on a small hand at a fast speed (Colleen) */
   }
   if (use.via && Math.abs(((norm(cur).w[1] - norm(use.start).w[1]) % 360 + 540) % 360 - 180) < 60) use = Object.assign({}, use, { via: null });      /* already turned that way (an age: the 1 is palm in after the push): no swing back out (Colleen: "13 turns the wrong way") */
-  if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
+  if (o.enter) {      /* ages (Colleen): one move from the 1 on the chin: down, forward and turning into the number at the same time */
+    const near = P => { if (!P || !P.w) return P; const y0 = norm(cur).w[1]; let y = P.w[1]; while (y - y0 > 180) y -= 360; while (y - y0 < -180) y += 360; return Object.assign({}, P, { w: [P.w[0], y, P.w[2]] }); };      /* the short way round: 16's thumbs-up spun almost a full turn the wrong way (Colleen) */
+    const realStart = use.start; use = Object.assign({}, use, { start: near(use.start), via: near(use.via) }); if (!use.via) delete use.via;
+    if (use.via) { moveTo(use.via, o.enter * 0.5); await wait(o.enter * 0.5); moveTo(use.start, o.enter * 0.5); await wait(o.enter * 0.55); }
+    else { moveTo(use.start, o.enter); await wait(o.enter * 1.05); }
+    if (realStart.w && use.start.w[1] !== realStart.w[1]) { cur = norm(realStart); from = to = cur; settled = false; dirty = true; }      /* same turn, written the usual way, so the next moves (the flick into 6) go the right way */
+    use = Object.assign({}, use, { start: realStart }); }
+  else if (use.via) { moveTo(use.via, per * 0.25); await wait(per * 0.25); moveTo(use.start, per * 0.3); await wait(per * 0.45); }
   else { moveTo(use.start, per * 0.5); await wait(per * 0.65); }
   if (use.hold) await wait(per * use.hold);
   if (use.arc) { for (const [P, b] of use.steps) { moveTo(P, per * b * 0.95); await wait(per * b); } playPath(use.arc.keys, per * use.arc.beats, EASE_IN); await wait(per * use.arc.beats); }
@@ -833,9 +840,8 @@ async function signAge(n, o) {
   if (o.onPart) o.onPart(0);
   if (ageOn && !PATH) { cur = from = to = norm(Object.assign({}, shape, { p: AGE_REST().p })); settled = false; dirty = true; }      /* out of sight it takes the shape first, so it comes into view already a 1 (or the 2-9 of a single-digit age) (Colleen) */
   moveTo(A, per * 0.55); await wait(per * 0.75);      /* on the chin */
-  playPath([A, B], per * 0.55); await wait(per * 0.6);      /* push down and forward */
-  if (n >= 10) { if (o.onPart) o.onPart(1); SHIFT = AGE_NUM; try { await sign(n, Object.assign({}, o, { stay: true, series: true, onLetter: null })); } finally { SHIFT = null; } }
-  else await wait(per * 0.6);
+  if (n >= 10) { if (o.onPart) o.onPart(1); SHIFT = AGE_NUM; try { await sign(n, Object.assign({}, o, { stay: true, series: true, enter: per * 0.75, onLetter: null })); } finally { SHIFT = null; } }      /* the push and the turn into the number are one move (Colleen: "they look like 2 separate moves") */
+  else { playPath([A, B], per * 0.55); await wait(per * 0.6); await wait(per * 0.6); }      /* 1-9: push down and forward, no turn */
   if (o.onPart) o.onPart(-1);
   moveTo(ageOn ? AGE_REST() : POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter('');
 }
