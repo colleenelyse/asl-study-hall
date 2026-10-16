@@ -520,7 +520,7 @@ async function spell(word, o) {
     const ch = chars[n], P = targets[n], dbl = n > 0 && chars[n - 1] === ch;
     const acrossSpace = n > 1 && chars[n - 1] === ' ' && chars[n - 2] === ch && !Array.isArray(P);      /* GOOD DAY: the same letter on both sides of a space */
     lab.textContent = (P && P.label) || ch;
-    if (ch === 'Z' && chars[n + 1] === 'Z' && Math.random() < 0.5) {      /* ZZ, sometimes: the bent V draws the Z once */
+    if (ch === 'Z' && chars[n + 1] === 'Z' && (o.zz === 'v' || (o.zz !== 'two' && Math.random() < 0.5))) {      /* o.zz: 'v' always the bent V, 'two' always two Z's (the Learn lesson shows both) */      /* ZZ, sometimes: the bent V draws the Z once */
       lab.textContent = 'ZZ'; moveTo(ZZ[0], per * 0.4); await wait(per * 0.45); await steps(ZZ.slice(1), per * 1.2); await wait(per * 0.3); n++; continue;
     }
     if (P.smooth) { const pt = P.quick ? 0.55 : 1.3; moveTo(P[0], per * 0.4); await wait(per * 0.45); playPath(P, per * pt); await wait(per * (pt + 0.15)); continue; }      /* J, and 's (quicker) */

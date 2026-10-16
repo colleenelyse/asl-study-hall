@@ -582,3 +582,21 @@ body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sc
 .tl-links line.pair-ok { stroke: var(--good); stroke-width: 5; stroke-dasharray: none; }
 .tl-links line.pair-no { stroke: var(--bad); stroke-width: 3; }
 .tl-links .tl-x circle { fill: var(--bad); stroke: #fff; stroke-width: 2.5; } .tl-links .tl-x path { stroke: #fff; stroke-width: 4; stroke-linecap: round; }
+/* ACTIVITY PAGE (Colleen, 2026-10-15: start from "Look C"): picture cards, a color per section, and spacing rules: all of a section's cards on one
+   line when they fit; if not, two (or more) even rows, centered, every card the same width (app.js layoutGrids sets --per). */
+.sec-fs { --c: #0FA3B1; } .sec-show { --c: #7B61FF; } .sec-num { --c: #2F6BFF; } .sec-age { --c: #E8743B; } .sec-year { --c: #14804D; } .sec-tools { --c: #9C6644; }
+h2.sechead { display: table; border-bottom: 4px solid var(--c); padding-bottom: 2px; margin-top: 8px; }
+.gamegrid { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; --per: 4; margin-left: auto; margin-right: auto; }
+.gamegrid .gcard { flex: 0 0 calc((100% - (var(--per) - 1) * 14px) / var(--per)); max-width: 250px; min-width: 0; padding: 0 0 12px; gap: 2px; overflow: hidden; position: relative; border: 0; box-shadow: 0 3px 12px rgba(27, 30, 60, .09); }
+.gamegrid .gcard:hover { box-shadow: 0 0 0 3px var(--c, var(--accent)), 0 6px 16px rgba(27, 30, 60, .12); }
+.gamegrid .gcard .gi { display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 10; margin-bottom: 8px; font-size: 46px; background: linear-gradient(135deg, color-mix(in srgb, var(--c, var(--accent)) 34%, var(--surface)), color-mix(in srgb, var(--c, var(--accent)) 9%, var(--surface))); }
+.gamegrid .gcard .gi img { width: 100%; height: 100%; object-fit: cover; }      /* Colleen's own pictures drop in here later */
+.gamegrid .gcard b { padding: 0 12px; font-size: 17px; line-height: 1.2; }
+.gamegrid .gcard > span:last-child { padding: 0 12px; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.gamegrid .gcard .tag { position: absolute; left: 8px; top: 8px; z-index: 1; }
+body.contrast .gamegrid .gcard { border: 2px solid #fff; }
+/* inset pictures (Colleen: "I prefer these inset images over the ones that go to the edge") */
+.gamegrid .gcard { padding: 12px 12px 14px; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(27, 30, 60, .06); }
+.gamegrid .gcard .gi { border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.gamegrid .gcard b, .gamegrid .gcard > span:last-child { padding: 0 4px; }
+.ln-part.star { border: 3px solid var(--sun, #FFC83D); border-radius: 14px; padding: 10px 12px; margin: 8px 0; background: color-mix(in srgb, var(--sun, #FFC83D) 14%, var(--surface)); }      /* a highlighted part, like ZZ (Colleen: draw attention to it) */

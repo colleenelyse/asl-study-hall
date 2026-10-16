@@ -34,7 +34,7 @@ const CFG = { ads: false, ga: '' };
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math', 'learn'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
@@ -285,27 +285,31 @@ function chipsInit(el, items, arr, label, after) {
   draw(); return draw;
 }
 function gamesInit() {
-  const card = k => { const g = GAMES[k]; return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
+  const BLURB = {"flash": "A quick warm-up: the hand shows one letter, you type it.", "pairs": "M or N? Learn to tell apart the letters that look alike.", "sound": "Short words that sound the way they’re spelled. A great first word game.", "pick": "Watch a word, then pick it from four that look alike.", "type": "The hand spells a word. Type what you saw.", "fill": "The middle letters blur. Catch the first and last, then put the word together.", "ladder": "Every right answer speeds the hand up. How fast can you read?", "tricky": "Words with wild spellings, like pterodactyl. Four levels of sneaky.", "numbers": "The hand signs a number. Type it. You choose which groups.", "npick": "The hand signs a number. Pick it from four that look alike.", "nquiz": "Big numbers with HUNDRED, THOUSAND and MILLION. Type or pick.", "yread": "The hand signs a year. Type it.", "ypick": "The hand signs a year. Pick it from look-alikes like 1969 and 1996.", "aread": "The hand signs an age from the chin. Type it.", "apick": "The hand signs an age. Pick it from four that look alike."};      /* short card lines (Colleen: make the descriptions better); the full text stays on each setup screen */
+  const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') +      // Show Me How to Spell sits with the fingerspelling games (Colleen)
-    '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name and watch the hand spell it.</span></a>';
+    '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
-    '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even a big one like 2,026 or 1,250,000, and watch the hand sign it.</span></a>' +
-    '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099 and watch the hand sign it the way years are signed.</span></a>' +
-    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99 and watch the hand sign it from the chin.</span></a>';
+    '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
+    '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
+    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99. The hand signs it from the chin.</span></a>';
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
-    '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
-    '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Line up number signs, like 3 + HUNDRED + 45, then watch the hand sign the whole number.</span></a>';
+    '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Snap number signs together, like 3 + HUNDRED + 45, then watch.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
-    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' +
     '';
-  $('#g-numgrid').innerHTML += '<a class="gcard" href="#/math"><span class="gi" aria-hidden="true">➗</span><b>Math in ASL</b><span>The hand signs a math problem. Write the problem, solve it, or pick the answer. Easy, Medium, Hard or your own.</span></a>';
+  $('#g-numgrid').innerHTML += '<a class="gcard" href="#/math"><span class="gi" aria-hidden="true">➗</span><b>Math in ASL</b><span>The hand signs a math problem. Write it, solve it, or build it.</span></a>';
   $('#g-agegrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'ages').map(card).join('') +      // ages in their own section (Colleen)
-    '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it yourself, then check yourself with the hand.</span></a>' +
-    '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>See ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ' at one time of life. Tap each hand to watch it sign an age, then pick the one that fits.</span></a>';
-  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See an event. Tap each hand to watch it sign a year, then pick the year it happened.</span></a>';
-  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Hands sign five years. Put them in order on the timeline, then put each event above its year.</span></a>';
+    '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>' +
+    '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>Look at ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ', watch four hands sign ages, and pick the one that fits.</span></a>';
+  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See a historic event. Watch four hands sign years and pick the right one.</span></a>';
+  $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Put five signed years in order, then match each event to its year.</span></a>';
 }
 let drawCats, drawPool;
+/* spacing rule for the activity cards (Colleen): one line if they all fit; otherwise the fewest even rows, centered (6 = 3 + 3, 5 = 3 + 2) */
+function layoutGrids() { $$('.gamegrid').forEach(g => { const n = g.children.length; g.style.maxWidth = ''; const W = g.clientWidth; if (!n || !W) return; const MIN = W < 500 ? 140 : 180, GAP = 14, fit = Math.max(1, Math.floor((W + GAP) / (MIN + GAP))), rows = Math.ceil(n / fit); const per = Math.ceil(n / rows); g.style.setProperty('--per', per); g.style.maxWidth = (per * 250 + (per - 1) * GAP) + 'px'; }); }      /* the row is only as wide as its cards, so 6 = 3 + 3, never 4 + 2 */
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => layoutGrids()); setTimeout(() => $$('.gamegrid').forEach(g => ro.observe(g)), 0); } else window.addEventListener('resize', layoutGrids);
 function setupInit() {
   $('#s-limit').innerHTML = LIMITS.map(n => '<option value="' + n + '">' + (n ? n + ' letters or fewer' : 'No limit') + '</option>').join('');
   $('#s-limit').value = String(S.limit); $('#s-count').value = String(S.count); $('#s-scount').value = String(S.scount); $('#s-flcount').value = String(S.flcount);
@@ -1463,6 +1467,35 @@ const LESSONS = [
     ['The four operations', 'PLUS, MINUS, TIMES and DIVIDED BY.', [['+', '+', 'o', null, 'plus'], ['−', '-', 'o', null, 'minus'], ['×', 'x', 'o', null, 'times'], ['÷', '/', 'o', null, 'divided by']]],
     ['Ending the problem', 'A problem ends with EQUALS or HOW MANY.', [['=', '=', 'o', null, 'equals'], ['?', '?', 'o', null, 'how many']]]], pool: ['+', '-', 'x', '/', '=', '?'], kind: 'o' }
 ];
+/* Learn Fingerspelling (Colleen, 2026-10-15): the same kind of tutorials for the alphabet; look-alike groups are hers (themes.js LOOK_GROUPS). Kind 'l': the hand spells it. */
+const LS = (str) => str.split(' ').map(c => [c, c, 'l']);
+const LESSONS_FS = [
+  { id: 'fa-i', name: 'A–I', icon: '🅰️', about: 'The first nine letters.', intro: 'Hold your hand up beside your shoulder, palm toward the person watching. Watch each handshape.', parts: [
+    ['A, B, C', 'A is a fist with the thumb at the side. B is a flat hand with the thumb across the palm. C curves like the letter.', LS('A B C')],
+    ['D, E, F', 'D points up with the other fingers touching the thumb. E curls the fingertips down over the thumb. F touches the pointer finger to the thumb.', LS('D E F')],
+    ['G, H, I', 'G and H point sideways (G one finger, H two). I raises just the pinky.', LS('G H I')]], pool: 'ABCDEFGHI'.split(''), kind: 'l' },
+  { id: 'fj-r', name: 'J–R', icon: '🔤', about: 'J through R.', intro: 'Keep your hand in one place. Only the handshape changes.', parts: [
+    ['J, K, L', 'J draws a J with the pinky. K raises two fingers with the thumb between them. L is the shape of an L.', LS('J K L')],
+    ['M, N, O', 'M tucks the thumb under three fingers, N under two. O rounds all the fingers to the thumb.', LS('M N O')],
+    ['P, Q, R', 'P is like K pointing down. Q is like G pointing down. R crosses two fingers.', LS('P Q R')]], pool: 'JKLMNOPQR'.split(''), kind: 'l' },
+  { id: 'fs-z', name: 'S–Z', icon: '🔠', about: 'S through Z.', intro: 'The last eight letters.', parts: [
+    ['S, T, U', 'S is a fist with the thumb across the front. T tucks the thumb between two fingers. U holds two fingers up together.', LS('S T U')],
+    ['V, W, X', 'V spreads two fingers, W three. X hooks the pointer finger.', LS('V W X')],
+    ['Y, Z', 'Y holds out the thumb and pinky. Z draws a Z with the pointer finger.', LS('Y Z')]], pool: 'STUVWXYZ'.split(''), kind: 'l' },
+  { id: 'fmove', name: 'Letters that move', icon: '〰️', about: 'J and Z draw their letter in the air.', intro: 'Every letter holds still except two.', parts: [
+    ['J', 'Start with I (the pinky up) and draw a J.', LS('J I')],
+    ['Z', 'Point and draw a Z.', LS('Z')]], pool: ['J', 'Z', 'I', 'D'], kind: 'l' },
+  { id: 'flook', name: 'Look-alike letters', icon: '👀', about: 'Letters that look alike, side by side.', intro: 'These groups are easy to mix up. Watch for the small difference.', parts: Object.keys(window.LOOK_GROUPS || { 'M N S T': 1, 'A E O': 1, 'R U V W K': 1, 'K P G H': 1, 'I Y J': 1 }).map(k => [k, { 'M N S T': 'Watch where the thumb is: under three fingers, under two, across the front, or between two.', 'A E O': 'All three close the hand. Watch the thumb and the fingertips.', 'R U V W K': 'Count the fingers and watch if they cross, touch or spread.', 'K P G H': 'K and P are the same shape pointing up and down; G and H point sideways.', 'I Y J': 'The pinky is up in all three. Y adds the thumb; J moves.' }[k] || 'Watch closely.', LS(k)]),
+    pool: 'MNSTAEORUVWKPGHIYJ'.split(''), kind: 'l' },
+  { id: 'fwords', name: 'Spelling words', icon: '📝', about: 'Spelling a whole word smoothly.', intro: 'Spell a word in one smooth flow. Keep your hand still; only the handshapes change.', parts: [
+    ['Short words', 'Each letter flows into the next, with no bounce between letters.', [['CAT', 'CAT', 'l'], ['DOG', 'DOG', 'l'], ['SUN', 'SUN', 'l'], ['MAP', 'MAP', 'l']]],
+    ['Longer words', 'Keep the same steady rhythm all the way through.', [['TEACHER', 'TEACHER', 'l'], ['FRIEND', 'FRIEND', 'l'], ['PIZZA', 'PIZZA', 'l']]]], pool: ['CAT', 'COT', 'CUT', 'MAP', 'NAP', 'TAP', 'SUN', 'RUN'], kind: 'l' },
+  { id: 'fdouble', name: 'Double letters', icon: '👯', about: 'Showing the same letter twice in a row.', intro: 'When a word has the same letter twice in a row, the second one has to look different from just holding the first.', parts: [
+    ['Loosen and close', 'Most double letters: the fingers and thumb relax part of the way open, then close into the letter again.', [['BOOK', 'BOOK', 'l'], ['SEE', 'SEE', 'l'], ['MISS', 'MISS', 'l'], ['TOOTH', 'TOOTH', 'l']]],
+    ['Slide', 'Some letters (B, C, D, E, G, H, I, L, O, P, R, U, V, W) can instead slide a little to the side for the second letter. Watch a few times; you will see both.', [['BALL', 'BALL', 'l'], ['APPLE', 'APPLE', 'l'], ['HELLO', 'HELLO', 'l'], ['COFFEE', 'COFFEE', 'l']]],
+    ['ZZ', 'A popular slang option for ZZ: a bent V (two fingers) draws the Z once. Many people also draw two Z\u2019s.', [['PIZZA', 'PIZZA', 'l', { zz: 'v' }, 'slang'], ['PIZZA', 'PIZZA', 'l', { zz: 'two' }, 'two Z\u2019s']]],
+    ['Double or not?', 'Compare a word with a double letter to one without.', [['BEE', 'BEE', 'l'], ['BE', 'BE', 'l'], ['TOO', 'TOO', 'l'], ['TO', 'TO', 'l']]]], pool: ['BOOK', 'LOOK', 'TOOK', 'BALL', 'BELL', 'BILL', 'SEE', 'BEE', 'TOO', 'TO', 'POOL', 'TOOL'], kind: 'l' }
+];
 const LN = { cur: null, busy: false, q: null, n: 0, right: 0 };
 const lnDone = () => { try { return JSON.parse(localStorage.getItem('fs-learned') || '[]'); } catch (e) { return []; } };
 const lnMark = id => { try { const d = lnDone(); if (d.indexOf(id) < 0) { d.push(id); localStorage.setItem('fs-learned', JSON.stringify(d)); } } catch (e) {} };
@@ -1472,6 +1505,7 @@ async function lnSign(x) {
   if (x.kind === 'y') return hand.signYear(+x.v, o);
   if (x.kind === 'a') return hand.signAge(+x.v, o);
   if (x.kind === 'o') return hand.signOp(x.v, { per });
+  if (x.kind === 'l') return hand.spell(String(x.v), Object.assign({ speed: () => S.speed }, x.o || {}));
   return +x.v < 100 ? hand.sign(+x.v, o) : hand.signParts(bdBlocksFor(+x.v), o);
 }
 async function lnPlay(x, btn) { if (LN.busy) return; LN.busy = true; if (btn) btn.classList.add('on'); try { await lnSign(x); } finally { LN.busy = false; if (btn) btn.classList.remove('on'); } }
@@ -1492,19 +1526,19 @@ function lnAnswer(b) {
   else { $('#ln-msg').textContent = (good ? 'Right! ' : 'It was ' + lnLabel(L, q.v) + '. ') + 'You got ' + LN.right + ' of 5.' + (LN.right >= 4 ? ' Lesson done!' : ' Watch the examples again, then try once more.'); if (LN.right >= 4) { lnMark(L.id); if (window.confetti) window.confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } }); } $('#ln-start').hidden = false; $('#ln-start').textContent = 'Try again'; $('#ln-replay').hidden = true; }
 }
 function lnShow() {
-  const id = (location.hash.split('/')[2] || ''), k = Math.max(0, LESSONS.findIndex(l => l.id === id)), L = LN.cur = LESSONS[k];
+  const id = (location.hash.split('/')[2] || ''), LIST = LESSONS_FS.some(l => l.id === id) ? LESSONS_FS : LESSONS, k = Math.max(0, LIST.findIndex(l => l.id === id)), L = LN.cur = LIST[k];
   putStage('learn-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#ln-speed').value = Math.round(S.speed * 100);
   hand.helper(L.id === 'nthousands' || L.id === 'nmath'); ageFace(L.id === 'nages');
-  $('#ln-step').textContent = 'Lesson ' + (k + 1) + ' of ' + LESSONS.length; $('#ln-title').textContent = 'Focus on: ' + L.name; $('#ln-intro').textContent = L.intro;
-  $('#ln-parts').innerHTML = L.parts.map((P, i) => '<div class="ln-part"><h3>' + esc(P[0]) + '</h3><p>' + esc(P[1]) + '</p><div class="ln-ex" data-p="' + i + '">' + P[2].map((e, j) => { const x = lnEx(e); return '<button data-j="' + j + '" aria-label="Watch ' + esc(x.label + (x.note ? ' ' + x.note : '')) + '">▶ ' + esc(x.label) + (x.note ? '<small>' + esc(x.note) + '</small>' : '') + '</button>'; }).join('') + '</div></div>').join('');
+  $('#ln-step').textContent = 'Lesson ' + (k + 1) + ' of ' + LIST.length; $('#ln-title').textContent = 'Focus on: ' + L.name; $('#ln-intro').textContent = L.intro;
+  $('#ln-parts').innerHTML = L.parts.map((P, i) => '<div class="ln-part' + (P[3] === 'star' ? ' star' : '') + '"><h3>' + esc(P[0]) + '</h3><p>' + esc(P[1]) + '</p><div class="ln-ex" data-p="' + i + '">' + P[2].map((e, j) => { const x = lnEx(e); return '<button data-j="' + j + '" aria-label="Watch ' + esc(x.label + (x.note ? ' ' + x.note : '')) + '">▶ ' + esc(x.label) + (x.note ? '<small>' + esc(x.note) + '</small>' : '') + '</button>'; }).join('') + '</div></div>').join('');
   $$('#ln-parts .ln-ex button').forEach(b => b.onclick = () => lnPlay(lnEx(L.parts[+b.parentNode.dataset.p][2][+b.dataset.j]), b));
   LN.n = 0; LN.right = 0; LN.q = null; $('#ln-choices').innerHTML = ''; $('#ln-msg').textContent = ''; $('#ln-q').textContent = 'Tap Start. The hand signs; pick what it signed.'; $('#ln-start').hidden = false; $('#ln-start').textContent = 'Start'; $('#ln-replay').hidden = true;
-  const prev = LESSONS[k - 1], next = LESSONS[k + 1];
+  const prev = LIST[k - 1], next = LIST[k + 1];
   $('#ln-prev').href = prev ? '#/learn/' + prev.id : '#/games'; $('#ln-prev').textContent = prev ? '← ' + prev.name : '← Lessons';
   $('#ln-next').href = next ? '#/learn/' + next.id : '#/games'; $('#ln-next').textContent = next ? 'Next: ' + next.name + ' →' : 'Done: to the games →';
 }
 function learnInit() {
-  const g = $('#g-learngrid'); if (g) { const draw = () => { const d = lnDone(); g.innerHTML = '<span class="ln-focus">Tutorials — focus on:</span>' + LESSONS.map((L, i) => '<a class="ln-btn' + (d.indexOf(L.id) >= 0 ? ' done' : '') + '" href="#/learn/' + L.id + '" title="' + esc(L.about) + '" aria-label="Tutorial ' + (i + 1) + ': ' + esc(L.name) + '"><span aria-hidden="true">' + L.icon + '</span> ' + esc(L.name) + ' <span class="ln-go" aria-hidden="true">→</span></a>').join('');      /* reads as tutorials to open, not options to pick (Colleen) */      /* one heading, a button per topic (Colleen) */ }; draw(); window.addEventListener('hashchange', () => { if (/^#\/games/.test(location.hash)) draw(); }); }
+  [['#g-learngrid', LESSONS], ['#g-learnfs', LESSONS_FS]].forEach(([sel, LIST]) => { const g = $(sel); if (!g) return; const draw = () => { const d = lnDone(); g.innerHTML = '<span class="ln-focus">Tutorials — focus on:</span>' + LIST.map((L, i) => '<a class="ln-btn' + (d.indexOf(L.id) >= 0 ? ' done' : '') + '" href="#/learn/' + L.id + '" title="' + esc(L.about) + '" aria-label="Tutorial ' + (i + 1) + ': ' + esc(L.name) + '"><span aria-hidden="true">' + L.icon + '</span> ' + esc(L.name) + ' <span class="ln-go" aria-hidden="true">→</span></a>').join('');      /* reads as tutorials to open, not options to pick (Colleen) */      /* one heading, a button per topic (Colleen) */ }; draw(); window.addEventListener('hashchange', () => { if (/^#\/games/.test(location.hash)) draw(); }); });
   $('#ln-start').onclick = () => { if (LN.n >= 5) { LN.n = 0; LN.right = 0; } lnAsk(); };
   $('#ln-replay').onclick = () => { if (LN.q) lnPlay({ v: LN.q.v, kind: LN.cur.kind || 'n', o: {} }); };
   $('#ln-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
@@ -2215,5 +2249,5 @@ if (ONLY) {
 window.addEventListener('hashchange', route);
 route();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
-window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, LESSONS, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
+window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, LESSONS, LESSONS_FS, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();
