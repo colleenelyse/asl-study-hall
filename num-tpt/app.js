@@ -1735,7 +1735,7 @@ function tlEventItem(e) {
   it.title = e.title; return it;
 }
 function tlNew() {
-  const ev = TL.ev = tlPick(); TL.sel = null; $('#tl-msg').textContent = ''; $('#tl-msg').className = 'hint'; $('#tl-show').hidden = true;
+  const ev = TL.ev = tlPick(); TL.sel = null; TL.checked = false; $('#tl-msg').textContent = ''; $('#tl-msg').className = 'hint'; $('#tl-show').hidden = true;
   const lo = ev[0].year, hi = ev[ev.length - 1].year, pct = y => 6 + 88 * (y - lo) / ((hi - lo) || 1);
   const W = $('#tl-board').clientWidth || 800, slot = Math.max(54, Math.min(W < 640 ? 84 : 118, Math.floor(W / ev.length) - 8)), minSep = Math.min(100 * (slot + 6) / W, 100 / ev.length);
   $('#tl-board').style.setProperty('--slot', slot + 'px');      /* the spots shrink to fit a narrow screen (a phone) */
@@ -1747,8 +1747,8 @@ function tlNew() {
   $('#tl-bottom').innerHTML = xs.map((x, i) => '<div class="tl-slot" data-kind="hand" data-i="' + i + '" style="left:' + x.toFixed(2) + '%" aria-label="Year spot ' + (i + 1) + '"></div>').join('');
   requestAnimationFrame(() => {      /* dashed lines from each tick to its two spots */
     const b = $('#tl-board').getBoundingClientRect(), ax = $('#tl-axis').getBoundingClientRect(), ay = ax.top - b.top + 2;
-    $('#tl-links').innerHTML = ev.map((e, i) => { const tx = b.width * pct(e.year) / 100, top = $$('#tl-top .tl-slot')[i].getBoundingClientRect(), bot = $$('#tl-bottom .tl-slot')[i].getBoundingClientRect();
-      return '<line x1="' + tx + '" y1="' + (ay - 10) + '" x2="' + (top.left - b.left + top.width / 2) + '" y2="' + (top.bottom - b.top) + '"/><line x1="' + tx + '" y1="' + (ay + 10) + '" x2="' + (bot.left - b.left + bot.width / 2) + '" y2="' + (bot.top - b.top) + '"/>'; }).join('');
+    TL.pts = []; $('#tl-links').innerHTML = ev.map((e, i) => { const tx = b.width * pct(e.year) / 100, top = $$('#tl-top .tl-slot')[i].getBoundingClientRect(), bot = $$('#tl-bottom .tl-slot')[i].getBoundingClientRect(); TL.pts[i] = [(tx + top.left - b.left + top.width / 2) / 2, (ay - 10 + top.bottom - b.top) / 2];      /* halfway up the line to the picture: close years keep their X's apart */
+      return '<line data-i="' + i + '" x1="' + tx + '" y1="' + (ay - 10) + '" x2="' + (top.left - b.left + top.width / 2) + '" y2="' + (top.bottom - b.top) + '"/><line data-i="' + i + '" x1="' + tx + '" y1="' + (ay + 10) + '" x2="' + (bot.left - b.left + bot.width / 2) + '" y2="' + (bot.top - b.top) + '"/>'; }).join(''); tlPairMarks();
   });
   const handTray = $('#tl-hands'), evTray = $('#tl-events'); handTray.innerHTML = ''; evTray.innerHTML = '';
   shuffle(ev.map((e, k) => k)).forEach((k, j) => handTray.appendChild(tlHandItem(j, ev[k].year)));
@@ -1773,8 +1773,15 @@ function tlCheck() {
   setTimeout(() => msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);      /* Colleen: the results were too easy to miss */
   $('#tl-msg').textContent = !filled ? 'Put the hands and the events on the timeline first.' : yr === n && evn === n ? 'All right! Every year and every event is in its place. 🎉' :
     'Checked! Years in the right spot: ' + yr + ' of ' + n + '. Events above the right year: ' + evn + ' of ' + n + '. Green ✓ is right; red ✗ needs another look.';
+  TL.checked = true; tlPairMarks();
   $('#tl-show').hidden = false;
   if (yr === n && evn === n && window.confetti) window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+}
+function tlPairMarks() {      /* after Check: each picture and the hand under it get a green line if they are the same year (even out of order), a red X if not (Colleen); redrawn with the lines */
+  const svg = $('#tl-links'); if (!svg) return; svg.querySelectorAll('.tl-x').forEach(x => x.remove()); svg.querySelectorAll('line').forEach(l => l.classList.remove('pair-ok', 'pair-no')); if (!TL.checked) return;
+  $$('#tl-top .tl-slot').forEach((slot, i) => { const e = slot.querySelector('.tl-item'), h = ($$('#tl-bottom .tl-slot')[i] || slot).querySelector('.tl-hand'); if (!e || !h || !TL.pts || !TL.pts[i]) return;
+    const same = e.dataset.year === h.dataset.year; svg.querySelectorAll('line[data-i="' + i + '"]').forEach(l => l.classList.add(same ? 'pair-ok' : 'pair-no'));
+    if (!same) { const [x, y] = TL.pts[i]; svg.insertAdjacentHTML('beforeend', '<g class="tl-x" transform="translate(' + x + ' ' + y + ')"><circle r="15"/><path d="M-7 -7 L7 7 M7 -7 L-7 7"/></g>'); } });
 }
 function tlReveal() { $$('.tl-ev').forEach(it => { if (!it.querySelector('.tl-yr')) it.insertAdjacentHTML('beforeend', '<span class="tl-yr">' + it.dataset.year + '</span>'); }); }      /* the years go on the event pictures, not the hands (Colleen) */
 function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); else $$('.tl-hand[data-k]').forEach(it => { const T = tileHand(+it.dataset.k, null, ''); it.insertBefore(T.canvas, it.firstChild); }); }
@@ -1785,7 +1792,7 @@ function timelineInit() {
   root.addEventListener('pointermove', e => { const d = TL.drag; if (!d) return;
     if (!d.moved) { if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 8) return; const r = d.it.getBoundingClientRect(); d.dx = d.x0 - r.left; d.dy = d.y0 - r.top; d.moved = true; d.it.style.width = r.width + 'px'; d.it.style.height = r.height + 'px'; d.it.classList.add('dragging'); }
     d.it.style.left = (e.clientX - d.dx) + 'px'; d.it.style.top = (e.clientY - d.dy) + 'px'; tlHot(tlTargetAt(e.clientX, e.clientY, d.it)); });
-  const end = e => { const d = TL.drag; if (!d) return; TL.drag = null;
+  const end = e => { const d = TL.drag; if (!d) return; TL.drag = null; if (d.moved && TL.checked) { TL.checked = false; tlPairMarks(); }      /* moving a piece after Check clears the line marks */
     if (d.moved) { d.it.classList.remove('dragging'); ['left', 'top', 'width', 'height'].forEach(k => { d.it.style[k] = ''; }); const t = e.type === 'pointerup' ? tlTargetAt(e.clientX, e.clientY, d.it) : null; tlHot(null); if (t) tlPlace(d.it, t); tlSelect(null); return; }
     if (e.type !== 'pointerup') return;
     if (d.it.dataset.kind === 'hand') tlPlay(d.it);

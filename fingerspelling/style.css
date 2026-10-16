@@ -579,3 +579,6 @@ body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sc
 .learnbar .ln-btn { border-radius: 10px; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); }
 .learnbar .ln-btn:hover { background: var(--accent); color: var(--accent-ink); }
 .learnbar .ln-btn .ln-go { font-weight: 900; color: var(--accent); } .learnbar .ln-btn:hover .ln-go { color: inherit; }
+.tl-links line.pair-ok { stroke: var(--good); stroke-width: 5; stroke-dasharray: none; }
+.tl-links line.pair-no { stroke: var(--bad); stroke-width: 3; }
+.tl-links .tl-x circle { fill: var(--bad); stroke: #fff; stroke-width: 2.5; } .tl-links .tl-x path { stroke: #fff; stroke-width: 4; stroke-linecap: round; }
