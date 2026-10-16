@@ -203,6 +203,12 @@ hand.ready.then(() => { $('#loading').remove(); });
 const assist = $('#assist');
 const toneHex = () => S.tone === 'random' ? hand.dealTone() : hand.TONES[+S.tone] || hand.TONES[3];
 hand.ready.then(() => hand.setTone(S.tone === 'random' ? hand.TONES[3] : toneHex()));
+/* activities WITHOUT a Skin Tone picker (Colleen): a random tone each time, every tone used equally often (the hand's shuffled deck: all 7, then a
+   new shuffle). Activities with the picker follow it. NOPICK is set by the router (one tone per visit); Charlie, events, timeline and math keep their own tone (AP.tone, EY.tone, TL.tone, MT.tone). */
+let NOPICK = false;
+const nextTone = () => NOPICK ? hand.dealTone() : toneHex();
+const newTone = () => { if (!NOPICK && S.tone === 'random') hand.setTone(toneHex()); };      /* the picker's Random: a new tone each word, as before; without a picker the tone is set once per visit or round (Colleen: never swap in the middle of a game) */
+let TONE_PAGE = '';
 let speedNow = () => S.speed;
 let spelling = null, stopFlag = false;
 /* spells one word; blur = a Set of letter positions (0-based) to hide behind frosted glass (Fill in the blanks) */
@@ -210,7 +216,7 @@ async function spellWord(w, blur, teens, form) {
   await hand.ready;
   stopFlag = true; while (spelling) await spelling;      // finish (stop) the word before
   stopFlag = false;
-  if (S.tone === 'random') hand.setTone(toneHex());      // Random: a new tone before each word, never during one
+  newTone();      // Random: a new tone before each word, never during one
   assist.textContent = ''; stage.classList.remove('frosted');
   if (isNum(w)) {      // a number (0-20) is signed, not spelled; the answer is never shown while it signs
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow())));      // Beginner 1 s a beat ... Deaf 0.35 s (the numbers' moves need more time than a letter)
@@ -1225,25 +1231,25 @@ function faceSvg(tone) {
     bl('b4', 4) + bl('b8', 8) + bl('b16', 16) + bl('b30', 30) + bl('b60', 60) + bl('b90', 90) +
     '</defs><g transform="translate(500 ' + FACE_CHIN_Y + ') scale(' + FACE_SCALE + ') translate(-500 -482)">' +
     /* shoulders and a wide neck */
-    '<g mask="url(#nm)"><path d="M200 380 C 205 640, 214 770, 120 860 C -40 945, -700 975, -1500 1130 L -1500 2700 L 2500 2700 L 2500 1130 C 1700 975, 1040 945, 880 860 C 786 770, 795 640, 800 380 Z" fill="url(#sh)"/>' +
+    '<g mask="url(#nm)"><path d="M200 380 C 205 640, 214 770, 120 860 C -40 945, -700 975, -1500 1130 L -1500 2700 L 2500 2700 L 2500 1130 C 1700 975, 1040 945, 880 860 C 786 770, 795 640, 800 380 Z" fill="' + mixHex(skin, shade, 0.25) + '"/>' +
     '<path d="' + NECK + '" fill="url(#ng)"/>' +
     '<g clip-path="url(#nc)"><path d="M150 400 C 300 560, 420 610, 505 612 C 600 610, 720 560, 850 400 L 850 690 C 700 740, 600 752, 505 752 C 410 752, 300 740, 150 690 Z" fill="' + dark + '" opacity=".2" filter="url(#b60)"/></g>' +      /* the deep soft shadow under the jaw */
     P('M40 990 C 180 958, 320 950, 448 972', deep, 22, .3, 'b16') + P('M960 990 C 820 958, 680 950, 552 972', deep, 24, .35, 'b16') + E(500, 985, 70, 40, deep, .3, 'b16') + '</g>' +
     /* a matching sweater (Colleen): light blue like the sleeve, a simple scoop neck with ribbing, a soft knit */
     (() => { const bz = (t, p0, p1, p2, p3) => p0 * (1 - t) ** 3 + 3 * p1 * t * (1 - t) ** 2 + 3 * p2 * t * t * (1 - t) + p3 * t ** 3;
-      const scoop = [[60, 905, 180, 1070, 330, 1130, 500, 1130], [500, 1130, 670, 1130, 820, 1070, 940, 905]];
+      const scoop = [[150, 858, 230, 1060, 350, 1130, 500, 1130], [500, 1130, 650, 1130, 770, 1060, 850, 858]];      /* the sweater's top edge covers the shoulders right up to the neckline (Colleen) */
       let ribs = ''; scoop.forEach(([x0, y0, x1, y1, x2, y2, x3, y3]) => { for (let i = 0; i <= 22; i++) { const t = i / 22, x = bz(t, x0, x1, x2, x3), y = bz(t, y0, y1, y2, y3), dx = bz(Math.min(1, t + .01), x0, x1, x2, x3) - x, dy = bz(Math.min(1, t + .01), y0, y1, y2, y3) - y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; ribs += 'M' + (x - nx * 26).toFixed(1) + ' ' + (y - ny * 26).toFixed(1) + 'L' + (x + nx * 26).toFixed(1) + ' ' + (y + ny * 26).toFixed(1); } });
       const SW = '#b9d3ea', SWs = '#93b4d4', SWd = '#7d9fc2';
       return '<defs><pattern id="knit" width="34" height="30" patternUnits="userSpaceOnUse"><path d="M3 4 L17 24 L31 4" stroke="' + SWd + '" stroke-width="4" fill="none" opacity=".35"/></pattern>' +
         '<radialGradient id="swg" gradientUnits="userSpaceOnUse" cx="500" cy="1300" r="1700"><stop offset="0" stop-color="' + SW + '"/><stop offset=".6" stop-color="' + SW + '"/><stop offset="1" stop-color="' + SWs + '"/></radialGradient></defs>' +
-        '<path d="M-1500 1110 C -700 955, -100 925, 60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905 C 1100 925, 1700 955, 2500 1110 L 2500 2700 L -1500 2700 Z" fill="url(#swg)"/>' +
-        '<path d="M-1500 1110 C -700 955, -100 925, 60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905 C 1100 925, 1700 955, 2500 1110 L 2500 2700 L -1500 2700 Z" fill="url(#knit)"/>' +
-        '<path d="M60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905" stroke="' + SWs + '" stroke-width="56" fill="none" stroke-linecap="round"/>' +      /* the ribbed neckband */
+        '<path d="M-1500 1095 C -700 935, -120 895, 150 858 C 230 1060, 350 1130, 500 1130 C 650 1130, 770 1060, 850 858 C 1120 895, 1700 935, 2500 1095 L 2500 2700 L -1500 2700 Z" fill="url(#swg)"/>' +
+        '<path d="M-1500 1095 C -700 935, -120 895, 150 858 C 230 1060, 350 1130, 500 1130 C 650 1130, 770 1060, 850 858 C 1120 895, 1700 935, 2500 1095 L 2500 2700 L -1500 2700 Z" fill="url(#knit)"/>' +
+        '<path d="M150 858 C 230 1060, 350 1130, 500 1130 C 650 1130, 770 1060, 850 858" stroke="' + SWs + '" stroke-width="56" fill="none" stroke-linecap="round"/>' +      /* the ribbed neckband */
         '<path d="' + ribs + '" stroke="' + SWd + '" stroke-width="6" opacity=".55" stroke-linecap="round"/>' +
-        '<path d="M60 905 C 180 1070, 330 1130, 500 1130 C 670 1130, 820 1070, 940 905" transform="translate(0 -26)" stroke="' + mixHex(SWs, '#000000', 0.25) + '" stroke-width="5" fill="none" opacity=".45"/>'; })() +
+        '<path d="M150 858 C 230 1060, 350 1130, 500 1130 C 650 1130, 770 1060, 850 858" transform="translate(0 -26)" stroke="' + mixHex(SWs, '#000000', 0.25) + '" stroke-width="5" fill="none" opacity=".45"/>'; })() +
     /* the face: bright in the middle, the sides turning away into shadow */
-    '<path d="' + FACE + '" fill="url(#fr)" filter="url(#b4)"/>' +
-    '<g clip-path="url(#fc)">' + E(-20, 0, 170, 520, deep, .45, 'b90') + E(1020, 20, 190, 540, deep, .55, 'b90') + E(500, 500, 420, 70, deep, .4, 'b30') + '</g>' +
+    '<path d="' + FACE + '" fill="url(#fr)" filter="url(#b8)"/>' + '<g clip-path="url(#nc)">' + E(500, 470, 330, 34, mixHex(skin, shade, 0.3), .55, 'b30') + '</g>' +
+    '<g clip-path="url(#fc)">' + E(-20, 0, 170, 520, deep, .45, 'b90') + E(1020, 20, 190, 540, deep, .55, 'b90') + E(500, 440, 380, 60, deep, .12, 'b60') + '</g>' +
     /* the round bottom of the nose: a lit tip, soft wings, nostrils as soft dark crescents */
     E(500, -60, 110, 85, hi, .5, 'b16') + E(488, -88, 40, 26, '#ffffff', .22, 'b8') +      /* the round tip, catching the light */
     P('M398 -60 C 372 -20, 380 20, 425 30', shade, 16, .6, 'b8') + P('M602 -60 C 628 -20, 620 20, 575 30', deep, 18, .65, 'b8') +      /* the wings */
@@ -1276,12 +1282,12 @@ function shownumInit() {
     const n = +digits, asYear = S.snas === 'year' && n >= 1000 && n <= 2099, asAge = S.snas === 'age' && n >= 1 && n <= 99, blocks = bdBlocksFor(n);
     hand.helper(!asYear && !asAge && n >= 1000);
     if (asAge) { $('#sn-note').textContent = 'Age ' + n; $('#sn-blocks').innerHTML = blocksHtml(n <= 9 ? ['chin + ' + n] : ['chin + 1', String(n)], -1);
-      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
         const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
         spelling = hand.signAge(n, { per, teens: S.snteens === 'mix' ? teensFor() : S.snteens, form: S.snform === 'mix' ? formFor() : S.snform, stop: () => stopFlag }); try { await spelling; } finally { spelling = null; } })();
       return; }      // the left hand waits only for a number that needs THOUSAND or MILLION
     if (asYear) { $('#sn-note').textContent = String(n) + ' (signed as a year)'; const yb = yearBlocks(n), drawY = k => { $('#sn-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
-      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+      (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
         const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
         spelling = hand.signYear(n, { per, form: S.snform === 'mix' ? formFor() : S.snform, stop: () => stopFlag, onPart: drawY }); try { await spelling; } finally { spelling = null; drawY(-1); } })();
       return; }
@@ -1291,7 +1297,7 @@ function shownumInit() {
     draw();
     (async () => {
       await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
-      if (S.tone === 'random') hand.setTone(toneHex());
+      newTone();
       const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
       spelling = hand.signParts(blocks, { per, teens: S.snteens === 'mix' ? teensFor() : S.snteens, form: S.snform === 'mix' ? formFor() : S.snform, hund: S.snhund === 'mix' ? undefined : S.snhund, stop: () => stopFlag, onPart: b => draw(b) });
       try { await spelling; } finally { spelling = null; draw(); }
@@ -1330,12 +1336,12 @@ function sgNext() {
 function sgPlay() {
   if (SG.n === null) return; sgCover(false);
   if (SG.age) { $('#sg-blocks').innerHTML = blocksHtml(SG.n <= 9 ? ['chin + ' + SG.n] : ['chin + 1', String(SG.n)], -1);
-    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
       const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
       spelling = hand.signAge(SG.n, { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, stop: () => stopFlag }); try { await spelling; } finally { spelling = null; } })();
     return; }
   if (SG.year) { const yb = yearBlocks(SG.n), drawY = k => { $('#sg-blocks').innerHTML = blocksHtml(yb, k); }; drawY(-1);
-    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; if (S.tone === 'random') hand.setTone(toneHex());
+    (async () => { await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
       const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
       spelling = hand.signYear(SG.n, { per, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, stop: () => stopFlag, onPart: drawY }); try { await spelling; } finally { spelling = null; drawY(-1); } })();
     return; }
@@ -1343,7 +1349,7 @@ function sgPlay() {
   draw();
   (async () => {
     await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
-    if (S.tone === 'random') hand.setTone(toneHex());
+    newTone();
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
     spelling = hand.signParts(blocks, { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, hund: S.snhund === 'mix' ? undefined : S.snhund, stop: () => stopFlag, onPart: b => draw(b) });
     try { await spelling; } finally { spelling = null; draw(); }
@@ -1372,10 +1378,10 @@ function signnumInit() {
    all use the same few light tile hands, moved into whichever page is open. Browsers allow only about 16 3D views at once; one set per page
    could pass that and blank the main hand. use: 'age' (the chin view), 'two' (the left hand too, for math signs), or plain. */
 const TILES = [];
-function tileHand(k, tile, use) {
+function tileHand(k, tile, use, tone) {
   if (!TILES[k]) { const c = document.createElement('canvas'); TILES[k] = { canvas: c, hand: window.FSHand.create(c, { tile: true }) }; }
   const T = TILES[k]; if (tile && T.canvas.parentNode !== tile) tile.appendChild(T.canvas);
-  T.hand.ready.then(() => { T.hand.setTone(toneHex()); if (T.hand.ageView) T.hand.ageView(use === 'age'); T.hand.helper(use === 'two'); });
+  T.hand.ready.then(() => { T.hand.setTone(tone || nextTone()); if (T.hand.ageView) T.hand.ageView(use === 'age'); T.hand.helper(use === 'two'); });
   return T;
 }
 /* ---------- How old is Charlie? (Colleen, 2026-10-15): a picture of Charlie at one stage of life; four hands, each with the face behind it, sign four
@@ -1395,13 +1401,13 @@ function apRound() {
   return { stage: i, right, choices };
 }
 function apHand(k, tile) {      /* each hand is made inside its tile (it measures its size when it is made), then reused */
-  const T = tileHand(k, tile, 'age'); AP.hands[k] = AP.hands[k] || {}; AP.hands[k].canvas = T.canvas; AP.hands[k].hand = T.hand;
+  const T = tileHand(k, tile, 'age', AP.tone); AP.hands[k] = AP.hands[k] || {}; AP.hands[k].canvas = T.canvas; AP.hands[k].hand = T.hand;
 }
 function apDraw() {
   const R0 = window.CHARLIE, r = AP.cur = apRound(); AP.answered = false;
   $('#ap-title').textContent = 'How Old Is ' + R0.NAME + '?';
   $('#ap-pic').innerHTML = R0.picture(r.stage); $('#ap-msg').textContent = ''; $('#ap-next').hidden = true;
-  const tone = toneHex(), css = toneCss(tone);
+  const tone = AP.tone = hand.dealTone(), css = toneCss(tone);      /* a new tone each round, every tone equally often */
   const grid = $('#ap-grid'); $$('#ap-grid canvas').forEach(c => c.remove()); grid.innerHTML = '';
   r.choices.forEach((age, k) => {
     const tile = document.createElement('div'); tile.className = 'ap-choice'; tile.dataset.age = age; tile.setAttribute('role', 'button');
@@ -1426,7 +1432,7 @@ function apPick(tile) {
   $('#ap-score').textContent = AP.right + ' of ' + AP.tries + ' right so far.'; $('#ap-next').hidden = false;
   if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
 }
-function apShow() { $('#ap-speed').value = Math.round(S.speed * 100); if (!AP.cur) setTimeout(apDraw, 50); else $$('#ap-grid .ap-choice').forEach((t, k) => tileHand(k, t, 'age')); }      /* the shared hands come back to this page */
+function apShow() { $('#ap-speed').value = Math.round(S.speed * 100); if (!AP.cur) setTimeout(apDraw, 50); else $$('#ap-grid .ap-choice').forEach((t, k) => tileHand(k, t, 'age', AP.tone)); }      /* the shared hands come back to this page */
 function agepicsInit() {
   $('#ap-next').onclick = apDraw;
   $('#ap-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
@@ -1588,7 +1594,7 @@ const mtNum = (n, o) => n < 100 ? hand.sign(n, o) : hand.signParts(bdBlocksFor(n
 /* The problem is built on the page as a row (Colleen): (hand: a number) (operation) (hand: a number) (operation) (hand or answer). Each hand
    tile is its own small 3D hand that signs its part when tapped; ▶ Play all plays the row left to right. */
 MT.hands = [];
-function mtHand(k, tile, two) { const T = tileHand(k, tile, two ? 'two' : ''); const H = MT.hands[k] = MT.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; return H; }
+function mtHand(k, tile, two) { const T = tileHand(k, tile, two ? 'two' : '', MT.tone); const H = MT.hands[k] = MT.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; return H; }
 function mtLayout(p) {      /* what each of the five spots holds */
   if (S.mtStyle === 'insert') { const n = mtOrder(p); return [{ num: n[0] }, { blank: true }, { num: n[1] }, { blank: true }, { num: n[2] }]; }
   if (S.mtStyle === 'build') return p.eqFirst ? [{ num: p.r }, { op: '=' }, { num: p.a }, { op: p.op }, { num: p.b }] : [{ num: p.a }, { op: p.op }, { num: p.b }, { op: '=' }, { num: p.r }];      /* the whole true sentence is signed; a box under each tile */
@@ -1636,7 +1642,7 @@ const mtPlay = () => mtRun();
 function mtNew() {
   if (MT.busy) { MT.queued = true; return; } const [ops, max] = mtSet(); MT.cur = mtMake(ops, max); MT.answered = false;
   const inp = $('#mt-in'); inp.value = ''; inp.className = ''; inp.disabled = false; $('#mt-check').disabled = false; $('#mt-check2').disabled = false; $('#mt-msg').textContent = '';
-  mtBuild(); mtBank();
+  if (!MT.tone) MT.tone = hand.dealTone(); mtBuild(); mtBank();      /* math: one tone for the whole visit */
   $('#mt-picks').innerHTML = S.mtStyle === 'pick' ? mtChoices(MT.cur).map(x => '<button class="btn ghost" data-v="' + x + '">' + x + '</button>').join('') : '';
   $$('#mt-picks button').forEach(b => b.onclick = () => mtAnswer(b.dataset.v, b));
   const R = MT.cur; Promise.all(MT.hands.filter(Boolean).map(H => H.hand.ready)).then(smooth).then(() => { if (MT.cur === R) mtPlay(); });
@@ -1676,7 +1682,7 @@ function mtDraw() {
   $('#mt-how').textContent = { write: 'Tap each hand to watch it sign. Then type the problem (like 7 + 5, 7 + 5 = or 7 + 5 = 12).', solve: 'Tap each hand to watch it sign. Then type the answer in the last box.', pick: 'Tap each hand to watch it sign. Then pick the answer.', insert: 'Tap each hand to watch it sign a number. One blank is an operation and the other is =. Tap a blank, then a sign button to fill it.', build: 'Tap each hand to watch it sign. Type each number in the box under its hand, and drag the right operation tile into each operation box.' }[S.mtStyle];
   $('#mt-answer').hidden = S.mtStyle !== 'write'; $('#mt-keys').hidden = S.mtStyle !== 'write' && S.mtStyle !== 'insert'; $('#mt-checkrow').hidden = S.mtStyle !== 'insert' && S.mtStyle !== 'solve' && S.mtStyle !== 'build'; $('#mt-bank').hidden = S.mtStyle !== 'build';
 }
-function mtShow() { parkStage(); ageFace(false); speedNow = () => S.speed; $('#mt-speed').value = Math.round(S.speed * 100); mtDraw(); if (!MT.cur) setTimeout(mtNew, 300); else $$('#mt-row .mt-tile.hand').forEach(t => { const k = [...$('#mt-row').querySelectorAll('.mt-tile')].indexOf(t); tileHand(k, t, MT.spots[k] && MT.spots[k].op ? 'two' : ''); }); }
+function mtShow() { MT.tone = hand.dealTone(); parkStage(); ageFace(false); speedNow = () => S.speed; $('#mt-speed').value = Math.round(S.speed * 100); mtDraw(); if (!MT.cur) setTimeout(mtNew, 300); else $$('#mt-row .mt-tile.hand').forEach(t => { const k = [...$('#mt-row').querySelectorAll('.mt-tile')].indexOf(t); tileHand(k, t, MT.spots[k] && MT.spots[k].op ? 'two' : '', MT.tone); }); }
 function mathInit() {
   if (!S.mtStyle) S.mtStyle = 'solve'; if (!S.mtLevel) S.mtLevel = 'easy'; if (!Array.isArray(S.mtOps)) S.mtOps = ['+', '-']; if (!S.mtMax) S.mtMax = '10';
   segInit('mt-style', 'mtStyle', () => { mtDraw(); mtNew(); }); segInit('mt-level', 'mtLevel', () => { mtDraw(); mtNew(); }); segInit('mt-max', 'mtMax', mtDraw);
@@ -1719,12 +1725,12 @@ function eyChoices(n) {      /* returns [{ y, kind }] for the right year and thr
   return shuffle(out);
 }
 function eyEvent() { const E = window.EVENTS || []; if (EY.used.length >= E.length) EY.used = []; let i; do { i = Math.floor(Math.random() * E.length); } while (EY.used.indexOf(i) >= 0); EY.used.push(i); return E[i]; }
-function eyHand(k, tile) { const T = tileHand(k, tile, ''); const H = EY.hands[k] = EY.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; }
+function eyHand(k, tile) { const T = tileHand(k, tile, '', EY.tone); const H = EY.hands[k] = EY.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand; }
 function eyDraw() {
   const e = eyEvent(), ch = eyChoices(e.year); EY.cur = { e, ch }; EY.answered = false;
   $('#ey-event').innerHTML = e.img ? '<img src="events/' + esc(e.img) + '" alt="' + esc(e.title) + '">' : '<div class="ey-ph"><span class="ic" aria-hidden="true">' + esc(e.icon || '📅') + '</span><b>' + esc(e.title) + '</b><small>picture coming</small></div>';
   $('#ey-msg').textContent = ''; $('#ey-next').hidden = true;
-  const tone = toneHex(), grid = $('#ey-grid'); grid.innerHTML = '';
+  const tone = EY.tone = hand.dealTone(), grid = $('#ey-grid'); grid.innerHTML = '';
   ch.forEach((c, k) => {
     const tile = document.createElement('div'); tile.className = 'ap-choice ey-choice'; tile.dataset.k = k; tile.setAttribute('role', 'button'); tile.setAttribute('aria-label', 'Watch hand ' + 'ABCD'[k]);
     tile.innerHTML = '<span class="ap-tag">' + 'ABCD'[k] + '</span><span class="ap-tap">▶ tap</span>'; tile.onclick = () => eyWatch(k);
@@ -1748,7 +1754,7 @@ function eyPick(k) {
   $('#ey-score').textContent = EY.right + ' of ' + EY.tries + ' right so far.'; $('#ey-next').hidden = false;
   if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
 }
-function eyShow() { $('#ey-speed').value = Math.round(S.speed * 100); if (!EY.cur) setTimeout(eyDraw, 50); else $$('#ey-grid .ap-choice').forEach((t, k) => tileHand(k, t, '')); }
+function eyShow() { $('#ey-speed').value = Math.round(S.speed * 100); if (!EY.cur) setTimeout(eyDraw, 50); else $$('#ey-grid .ap-choice').forEach((t, k) => tileHand(k, t, '', EY.tone)); }
 function eventyearInit() { $('#ey-next').onclick = eyDraw; $('#ey-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); }; }
 
 /* ---------- Timeline (Colleen, 2026-10-15): 5 events, no year twice, fairly spread apart (two may be close). Proportional ticks on a line;
@@ -1769,7 +1775,7 @@ function tlPick() {
 }
 const tlPer = () => Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
 function tlHandItem(k, year) {
-  const T = tileHand(k, null, ''); const H = TL.hands[k] = TL.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand;
+  const T = tileHand(k, null, '', TL.tone); const H = TL.hands[k] = TL.hands[k] || {}; H.canvas = T.canvas; H.hand = T.hand;
   const it = document.createElement('div'); it.className = 'tl-item tl-hand'; it.dataset.kind = 'hand'; it.dataset.year = year; it.dataset.k = k;
   it.setAttribute('aria-label', 'A hand signing a year. Tap to watch it.'); it.appendChild(TL.hands[k].canvas);
   it.insertAdjacentHTML('beforeend', '<span class="tl-play">▶ tap</span>'); return it;
@@ -1781,7 +1787,7 @@ function tlEventItem(e) {
   it.title = e.title; return it;
 }
 function tlNew() {
-  const ev = TL.ev = tlPick(); TL.sel = null; TL.checked = false; $('#tl-msg').textContent = ''; $('#tl-msg').className = 'hint'; $('#tl-show').hidden = true;
+  TL.tone = hand.dealTone(); const ev = TL.ev = tlPick(); TL.sel = null; TL.checked = false; $('#tl-msg').textContent = ''; $('#tl-msg').className = 'hint'; $('#tl-show').hidden = true;
   const lo = ev[0].year, hi = ev[ev.length - 1].year, pct = y => 6 + 88 * (y - lo) / ((hi - lo) || 1);
   const W = $('#tl-board').clientWidth || 800, slot = Math.max(54, Math.min(W < 640 ? 84 : 118, Math.floor(W / ev.length) - 8)), minSep = Math.min(100 * (slot + 6) / W, 100 / ev.length);
   $('#tl-board').style.setProperty('--slot', slot + 'px');      /* the spots shrink to fit a narrow screen (a phone) */
@@ -1830,7 +1836,7 @@ function tlPairMarks() {      /* after Check: each picture and the hand under it
     if (!same) { const [x, y] = TL.pts[i]; svg.insertAdjacentHTML('beforeend', '<g class="tl-x" transform="translate(' + x + ' ' + y + ')"><circle r="15"/><path d="M-7 -7 L7 7 M7 -7 L-7 7"/></g>'); } });
 }
 function tlReveal() { $$('.tl-ev').forEach(it => { if (!it.querySelector('.tl-yr')) it.insertAdjacentHTML('beforeend', '<span class="tl-yr">' + it.dataset.year + '</span>'); }); }      /* the years go on the event pictures, not the hands (Colleen) */
-function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); else $$('.tl-hand[data-k]').forEach(it => { const T = tileHand(+it.dataset.k, null, ''); it.insertBefore(T.canvas, it.firstChild); }); }
+function tlShowScreen() { $('#tl-speed').value = Math.round(S.speed * 100); if (!TL.ev.length) setTimeout(tlNew, 30); else $$('.tl-hand[data-k]').forEach(it => { const T = tileHand(+it.dataset.k, null, '', TL.tone); it.insertBefore(T.canvas, it.firstChild); }); }
 function timelineInit() {
   const root = document.querySelector('[data-screen=timeline]'); if (!root) return;
   if (!S.tlYears) S.tlYears = 'hide'; segInit('tl-yrs', 'tlYears', () => { if (!TL.busy) tlNew(); });
@@ -1907,7 +1913,7 @@ async function bdPlay() {
   if (!BD.tokens.length || bdCheck(BD.tokens)) return;
   await hand.ready;
   stopFlag = true; while (spelling) await spelling; stopFlag = false;
-  if (S.tone === 'random') hand.setTone(toneHex());
+  newTone();
   const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
   spelling = hand.signParts(BD.tokens.slice(), { per, teens: S.snteens === 'mix' ? pick1(['ten', 'twist']) : S.snteens, form: S.snform === 'mix' ? pick1(['alt', 'main']) : S.snform, hund: S.bdh === 'mix' ? undefined : S.bdh, stop: () => stopFlag, onPart: b => bdDraw(b) });
   try { await spelling; } finally { spelling = null; bdDraw(); }
@@ -2232,6 +2238,9 @@ function route() {
     $('#v-list').onclick = e => { if (e.target.closest('button')) spellWord(parts[1] || 'A'); }; spellWord(parts[1] || 'A'); return;
   }
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
+  NOPICK = !/^(play|setup|show|review|results|report|card|home|games)$/.test(name);      /* these pages have (or follow) the Skin Tone picker */
+  if (NOPICK && h !== TONE_PAGE) hand.ready.then(() => hand.setTone(hand.dealTone()));      /* one new tone per visit (a new lesson counts as a new visit) */
+  TONE_PAGE = NOPICK ? h : '';
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
   if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn)$/.test(name)) parkStage();
