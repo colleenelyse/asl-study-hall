@@ -946,17 +946,25 @@ function poseJoints(c) { return POSE[c] ? jointsOf(letterStill(c)) : null; }
 function numberJoints(n, out) { return SH[n] ? jointsOf(out ? DIGIT_OUT(n) : SH[n]) : null; }
 /* the number camera, moving numbers: every way a number can be signed (23 and 25 both ways, 16-19 both ways, hundreds C or curl), each as the
    joints of its key moments, in order (start, then each step, then a double's arc) */
-function numberKeys(n) {
+/* o.series: a part of a bigger number (1-9 palm out); o.tenOnly: 16-19 only in the 10 + number form (years); n may be 'T' (THOUSAND) or 'M' (MILLION):
+   the signing hand only (the camera watches one hand): the flattened bent B landing, back of the hand to the student */
+function formsOf(n, o) {
+  o = o || {}; const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
+  if (n === 'T') return [[TH_ABOVE, TH_TOUCH]]; if (n === 'M') return [[TM_ABOVE1, TM_TOUCH1, TH_ABOVE2, TH_TOUCH2]];
   const N = NUM[n]; if (!N) return [];
-  const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
-  const forms = N.hund ? [seq(N.hund.c), seq(N.hund.curl)] : [seq(N)].concat(N.alt ? [seq(N.alt)] : [], N.ten ? [seq(N.ten)] : []);
+  if (n >= 1 && n <= 9 && o.series) return [[DIGIT_OUT(n)]];      /* 0 keeps its own shape and turn */
+  if (N.hund) return [seq(N.hund.c), seq(N.hund.curl)];
+  if (N.ten && o.tenOnly) return [seq(N.ten)];
+  return [seq(N)].concat(N.alt ? [seq(N.alt)] : [], N.ten ? [seq(N.ten)] : []);
+}
+function numberKeys(n, o) {
+  const forms = formsOf(n, o);
   return forms.map(F => F.map(jointsOf).filter(Boolean));
 }
 /* look-alikes for the camera: every digit held at the same wrist angles as this number's key moments, so a different digit at that angle loses */
-function numberDecoys(n) {
-  const N = NUM[n]; if (!N) return []; const ws = {};
-  const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
-  (N.hund ? [N.hund.c, N.hund.curl] : [N].concat(N.alt ? [N.alt] : [], N.ten ? [N.ten] : [])).forEach(F => seq(F).forEach(P => { const w = P.w || [0, 0, 0]; ws[w.join(',')] = w; }));
+function numberDecoys(n, o) {
+  const ws = {};
+  formsOf(n, o).forEach(F => F.forEach(P => { const w = P.w || [0, 0, 0]; ws[w.join(',')] = w; }));
   [IN, OUT].forEach(w => { ws[w.join(',')] = w; });      /* palm toward you and palm out too: the palm has to face the right way (Colleen) */
   const out = []; Object.values(ws).forEach(w => { for (let d = 0; d <= 9; d++) { const J = jointsOf(Object.assign({}, SH[d], { w })); if (J) out.push([d, J]); } });
   return out;
