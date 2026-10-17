@@ -67,6 +67,7 @@ function rankRaw(f) {
 let LEFT = false;
 const camHand = P => P.map(p => [LEFT ? -p.x : p.x, -p.y, -p.z]);      /* the tracker's y points down; ours up. A left hand is mirrored so it matches the right-hand letters */
 let landmarker = null, video = $('#rd-video'), draw = $('#rd-draw'), ctx = draw.getContext('2d'), lastT = -1, held = 0, cur = 0, done = false, lastF = null, teaching = 0, teachBuf = [];
+const WANT_GAME = (new URLSearchParams(location.search).get('g') || '').replace(/[^a-z]/g, '');      /* a camera game card on the games page opens straight into it */
 async function start() {
   $('#rd-camsg').innerHTML = '<p>Starting the camera…</p>';
   try {
@@ -80,6 +81,7 @@ async function start() {
     try { landmarker = await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { landmarker = await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; return; }
   $('#rd-camsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; requestAnimationFrame(loop);
+  if (WANT_GAME && (NUMS ? NGAMES : LGAMES).some(g => g[0] === WANT_GAME)) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) gb.click(); refHand.ready.then(() => startGame(WANT_GAME)); }
 }
 function loop() {
   requestAnimationFrame(loop);
@@ -596,5 +598,6 @@ refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c);
   STILL.filter(c => !'WFOC'.includes(c)).forEach(c => { if (TPL[c]) NOTNUM[c] = TPL[c]; }); { const P = refHand.numberJoints(10, false); if (P) NOTNUM['thumbs up'] = feat(P); }      /* W = 6, F = 9, O and C = 0: those stay out */
   DIGITS.forEach(c => { const n = +c, P = refHand.numberJoints(n, false); if (P) TPL[c] = feat(P); if (n >= 1 && n <= 5) { const Q = refHand.numberJoints(n, true); if (Q) ALT[c] = feat(Q); } });      /* 1-5: palm toward you (counting) or palm out (inside a bigger number); both count */
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
+if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) setTimeout(() => gb.click(), 0); }      /* show the game list until the camera is on */
 { const want = ONLY === 'numbers' || QS.get('kind') === 'numbers' ? 'numbers' : ''; const b = want && document.querySelector('#rd-mode [data-v="numbers"]'); if (b) { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b)); setNums(true); $('#rd-ask').textContent = 'Sign this number'; ckAbout(); } }
 window.READER = { startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */

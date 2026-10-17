@@ -35,7 +35,7 @@ if (EMBED) try {
 const CFG = { ads: false, ga: '', only: 'both' };      /* TpT edition: one product's games only, never ads, never visitor counting */
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
-const ONLY = CFG.only === 'both' ? '' : CFG.only || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
+const ONLY = CFG.only === 'both' ? '' : CFG.only || (/\/numbers\/?$/.test(location.pathname) ? 'numbers' : '') || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
 const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
@@ -298,9 +298,12 @@ function gamesInit() {
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
   $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
-  const cc = $('#camcard'); if (cc) cc.onclick = openCamera;
+  const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span></a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
+  $('#g-exprfs').innerHTML += camGames('', [['def', '📖', 'Definition to Word', 'Read what it means, then fingerspell the word.'], ['echo', '🔁', 'Echo', 'The hand spells a word. Spell it back.'], ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'], ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'], ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'], ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.']]);
+  $$('#g-exprfs .gcard').forEach(a => { a.onclick = openCamera; });
   $('#g-exprnum').innerHTML = '<a class="gcard" data-cam data-camnum href="reader.html?kind=numbers" id="camnumcard"><span class="gi" aria-hidden="true">📷</span><b>Sign Numbers to the Camera</b><span>Sign numbers to your camera: 0 to 9, moving numbers, rocking numbers, hundreds. It reads your hand and helps you fix it.</span></a>';      /* expressive: the camera reads the student's hand (Colleen, 2026-10-17: the sign-it-then-check-yourself games are gone now that the camera can check) */
-  const cn = $('#camnumcard'); if (cn) cn.onclick = openCamera;
+  $('#g-exprnum').innerHTML += camGames('n', [['math', '➗', 'Math Answer', 'Solve the problem (easy to hard), then sign the answer.'], ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'], ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out.']]);
+  $$('#g-exprnum .gcard').forEach(a => { a.onclick = openCamera; });
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
@@ -699,8 +702,8 @@ function sendToStudy(res, round) {
 let CAMWIN = null;
 function openCamera(e) {
   if (!EMBED) return; if (e) e.preventDefault();
-  const num = !!(e && e.currentTarget && e.currentTarget.id === 'camnumcard');      /* the number camera (2026-10-17) */
-  const u = 'reader.html?embed=aslstudy' + (num ? '&kind=numbers' : '') + (ONLY ? '&only=' + ONLY : '') + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
+  const el = e && e.currentTarget, num = !!(el && (el.id === 'camnumcard' || el.hasAttribute('data-camnum'))), q = (el && el.dataset.q) || '';      /* the number camera, and a camera game to open (2026-10-17) */
+  const u = 'reader.html?embed=aslstudy' + (q ? '&' + q : num ? '&kind=numbers' : '') + (ONLY ? '&only=' + ONLY : '') + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
   CAMWIN = window.open(u, '_blank');
   if (!CAMWIN) location.href = u;
 }
@@ -2287,7 +2290,8 @@ function route() {
 function showScreen(name) {
   $$('.screen').forEach(s => s.classList.toggle('on', s.dataset.screen === name));
   window.scrollTo(0, 0);
-  $$('.ad').forEach(a => { a.hidden = !CFG.ads; if (CFG.ads) a.textContent = 'Advertisement'; });      // never on a game screen
+  const adsOk = CFG.ads && !EMBED && !CFG.only && /(^|\.)asl\.cool$/.test(location.hostname) && !document.documentElement.classList.contains('noshop');      /* NO ADS for students in ASL Study (EMBED), in the paid sheets (CFG.only), off asl.cool, or on a device opened with a class password (Colleen, 2026-10-17) */
+  $$('.ad').forEach(a => { a.hidden = !adsOk; if (adsOk) a.textContent = 'Advertisement'; });      // never on a game screen
 }
 gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
@@ -2295,7 +2299,7 @@ if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as it
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
   $$('.top nav a').forEach((x, i) => { if (i) x.remove(); });
 }
-if (CFG.only) $$('.top nav a.tptlink').forEach(t => t.remove());      // the TpT products themselves (built with CFG.only) do not advertise the store
+if (CFG.only || EMBED) $$('.top nav a.tptlink, .home-teach').forEach(t => t.remove());      // the TpT products themselves (built with CFG.only) do not advertise the store
 if (ONLY) {
   $$('[data-only]').forEach(x => { if (x.dataset.only !== ONLY) x.remove(); });
   $$('.top nav a').forEach(x => { const m = (x.getAttribute('href') || '').match(/^#\/(\w+)/); if (m && offPage(m[1])) x.remove(); });

@@ -607,3 +607,10 @@ body.contrast .gamegrid .gcard { border: 2px solid #fff; }
 .meaning .def { font-size: 17px; } .meaning .def span { margin-right: 4px; }      /* the word's description after an answer (Colleen) */
 body.nocam [data-cam] { display: none !important; }      /* TpT editions without the Expressive part */
 body.nocamnum [data-camnum] { display: none !important; }      /* TpT sheets without the expressive numbers part */
+/* games page panels (Colleen, 2026-10-17): Receptive on the left, Expressive on the right; stacked on a phone; one panel fills the row when the other is hidden (no camera) */
+.panels { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; margin-top: 10px; }
+.panels .pcol { flex: 1 1 340px; min-width: 0; padding: 4px 12px 8px; border-radius: 18px; background: color-mix(in srgb, var(--surface2) 45%, transparent); }
+.panels .pcol .modehead { margin-top: 10px; }
+/* the home pages' teacher box (Colleen, 2026-10-17): hidden with the other shop links until admin > Show the shop to everyone */
+.home-teach { margin: 22px auto 0; max-width: 640px; padding: 16px 18px; border-radius: 16px; background: color-mix(in srgb, var(--sun, #FFC83D) 20%, var(--surface)); text-align: left; }
+.home-teach h2 { margin: 0 0 6px; font-size: 22px; text-align: center; } .home-teach p { margin: 0 0 10px; }

@@ -104,6 +104,8 @@ export default {
       return sh ? json({ tools: sh.tools, shop: !!sh.shop }) : json({ error: 'This link is not active.' }, 404);      // shop: show Colleen's shop links and products (teachers yes, students no)
     }
     if (/^\/t\/[a-z0-9]{8,16}\/?$/.test(p)) return env.ASSETS.fetch(new Request(new URL('/share/', req.url)));      // the share page reads the code from the address
+    if (p === '/numbers') return Response.redirect(url.origin + '/numbers/' + url.search, 301);
+    if (p.startsWith('/numbers/')) return numbers(req, env, url, p);      // asl.cool/numbers: the games in numbers mode, at their own address (Colleen, 2026-10-17)
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
     const res = await env.ASSETS.fetch(req);
     return shopSwitch(req, env, res, p);
@@ -118,4 +120,14 @@ async function shopSwitch(req, env, res, p) {
   const body = (await res.text()).replace('[data-shop]{display:none!important}', '.noshop [data-shop]{display:none!important}').replace('.top nav a.tptlink, .shopcard { display: none !important; }', '.noshop .top nav a.tptlink, .noshop .shopcard { display: none !important; }');
   const h = new Headers(res.headers); h.delete('content-length'); h.delete('etag'); h.set('cache-control', 'no-cache');
   return new Response(body, { status: 200, headers: h });
+}
+/* asl.cool/numbers/... is served from the fingerspelling folder (the same games; app.js reads /numbers/ in the address and shows only
+   the numbers half), so the address bar keeps /numbers. A redirect from the files (like reader.html to reader) keeps /numbers too. */
+async function numbers(req, env, url, p) {
+  const rest = p.slice('/numbers/'.length), q = url.search;
+  if (rest === 'index.html') return Response.redirect(url.origin + '/numbers/' + q, 301);
+  const res = await env.ASSETS.fetch(new Request(new URL('/fingerspelling/' + rest + q, req.url), req));
+  const loc = res.headers.get('location');
+  if (res.status >= 300 && res.status < 400 && loc) { const L = new URL(loc, url.origin); if (L.pathname.startsWith('/fingerspelling/')) { L.pathname = '/numbers/' + L.pathname.slice('/fingerspelling/'.length); const h = new Headers(res.headers); h.set('location', L.pathname + L.search); return new Response(null, { status: res.status, headers: h }); } }
+  return shopSwitch(req, env, res, '/fingerspelling/' + rest);
 }

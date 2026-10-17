@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=115">
+<link rel="stylesheet" href="style.css?v=117">
 </head>
 <body>
 <header class="top">
@@ -19,47 +19,82 @@
 <main>
   <!-- Home -->
   <section data-screen="home" class="screen">
-    <div class="hero card">
+    <div class="hero card" data-only="numbers">
+      <h1>Read ASL Numbers Like a Pro</h1>
+      <p>A realistic hand signs numbers the way a real signer does, from the first ten to years and ages. Read it, then sign it yourself to your camera.</p>
+      <a class="btn big" href="#/games">Start practicing</a>
+      <ul class="points">
+        <li>Every kind of number: 0 to 20, the 20s, rocking numbers, doubles, hundreds, thousands, years and ages</li>
+        <li><b>Sign Numbers to the Camera.</b> Your camera reads your hand, checks your palm and your movement, and has games like Math Answer and Beat the Clock. Nothing is recorded.</li>
+        <li>Step-by-step lessons, games for every level and Math in ASL</li>
+        <li>Your progress stays on this device. No sign-in.</li>
+      </ul>
+      <div class="shopcard home-teach">
+        <h2>For Teachers: Get the Classroom Edition</h2>
+        <p><b>ASL Numberwise</b> turns these games into a class tool: students play through your own link, every round saves to your Google Sheet, and each student gets a report on what to practice next. Add the camera edition to track expressive signing too.</p>
+        <div class="row" style="justify-content:center"><a class="btn" href="https://aslstudyhall.com" target="_blank" rel="noopener">🛍️ Shop at aslstudyhall.com</a><a class="btn teach-tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></div>
+      </div>
+    </div>
+    <div class="hero card" data-only="letters">
       <h1>Read Fingerspelling Like a Pro</h1>
-      <p>A realistic hand spells words at real speeds, from Beginner to Deaf conversation speed. Read it, then show what you saw.</p>
+      <p>A realistic hand spells words at real speeds, from Beginner to Deaf conversation speed. Read it, then fingerspell it yourself to your camera.</p>
       <a class="btn big" href="#/games">Start practicing</a>
       <ul class="points">
         <li>Names, brands, cities, movies and more, the words people really fingerspell</li>
+        <li><b>Fingerspell to the Camera.</b> Your camera reads your hand, helps you fix each letter, and has games like Hangman and ASL Wordle. Nothing is recorded.</li>
         <li>Games for every level, a speed ladder, and classroom Bingo</li>
         <li>Your progress stays on this device. No sign-in.</li>
       </ul>
+      <div class="shopcard home-teach">
+        <h2>For Teachers: Get the Classroom Edition</h2>
+        <p><b>ASL Spellbound</b> turns these games into a class tool: students play through your own link, every round saves to your Google Sheet, and each student gets a report on what they mixed up and what to practice next. Add the camera edition to track expressive fingerspelling too.</p>
+        <div class="row" style="justify-content:center"><a class="btn" href="https://aslstudyhall.com" target="_blank" rel="noopener">🛍️ Shop at aslstudyhall.com</a><a class="btn teach-tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></div>
+      </div>
     </div>
     <div class="ad" data-ad="home" hidden></div>
   </section>
 
   <!-- Games -->
   <section data-screen="games" class="screen">
+    <!-- 2026-10-17 (Colleen): Show Me across the top, then Learn, then two panels: Receptive on the left, Expressive on the right -->
+    <h2 class="pad sechead sec-show" data-only="letters">Show Me</h2>
+    <div class="gamegrid sec-show" id="g-showfs" data-only="letters"></div>
     <h2 class="pad" data-only="letters">Learn Fingerspelling</h2>
     <p class="pad hint learn-intro" data-only="letters">Step-by-step tutorials. Tap one to start: it explains the letters, shows every example, and ends with a quick check.</p>
     <div class="pad learnbar" id="g-learnfs" data-only="letters"></div>
-    <h2 class="pad sechead sec-show" data-only="letters">Show Me</h2>
-    <div class="gamegrid sec-show" id="g-showfs" data-only="letters"></div>
-    <div class="modehead pad" data-only="letters"><h2>Receptive</h2><p>Read the fingerspelling: the hand spells, you figure it out.</p></div>
-    <h2 class="pad sechead sec-fs" data-only="letters">Read the Letters</h2>
-    <div class="gamegrid sec-fs" id="g-grid" data-only="letters"></div>
-    <div data-cam class="modehead pad" data-only="letters"><h2>Expressive</h2><p>Fingerspell it yourself. The camera reads your hand.</p></div>
-    <h2 data-cam class="pad sechead sec-expr" data-only="letters">Sign the Letters</h2>
-    <div data-cam class="gamegrid sec-expr" id="g-exprfs" data-only="letters"></div>
+    <div class="panels" data-only="letters">
+      <div class="pcol">
+        <div class="modehead pad"><h2>Receptive</h2><p>Read the fingerspelling: the hand spells, you figure it out.</p></div>
+        <h2 class="pad sechead sec-fs">Read the Letters</h2>
+        <div class="gamegrid sec-fs" id="g-grid"></div>
+      </div>
+      <div class="pcol" data-cam>
+        <div class="modehead pad"><h2>Expressive</h2><p>Fingerspell it yourself. The camera reads your hand.</p></div>
+        <h2 class="pad sechead sec-expr">Sign the Letters</h2>
+        <div class="gamegrid sec-expr" id="g-exprfs"></div>
+      </div>
+    </div>
+    <h2 class="pad sechead sec-show" data-only="numbers">Show Me</h2>
+    <div class="gamegrid sec-show" id="g-showgrid" data-only="numbers"></div>
     <h2 class="pad" data-only="numbers">Learn Numbers</h2>
     <p class="pad hint learn-intro" data-only="numbers">Step-by-step tutorials, one for each kind of number. Tap one to start: it explains the rule, shows every example, and ends with a quick check.</p>
     <div class="pad learnbar" id="g-learngrid" data-only="numbers"></div>
-    <h2 class="pad sechead sec-show" data-only="numbers">Show Me</h2>
-    <div class="gamegrid sec-show" id="g-showgrid" data-only="numbers"></div>
-    <div class="modehead pad" data-only="numbers"><h2>Receptive</h2><p>Read the numbers: the hand signs, you figure it out.</p></div>
-    <h2 class="pad sechead sec-num" data-only="numbers">Numbers</h2>
-    <div class="gamegrid sec-num" id="g-numgrid" data-only="numbers"></div>
-    <h2 class="pad sechead sec-age" data-only="numbers">Ages</h2>
-    <div class="gamegrid sec-age" id="g-agegrid" data-only="numbers"></div>
-    <h2 class="pad sechead sec-year" data-only="numbers">Years</h2>
-    <div class="gamegrid sec-year" id="g-yeargrid" data-only="numbers"></div>
-    <div data-cam data-camnum class="modehead pad" data-only="numbers"><h2>Expressive</h2><p>Sign it yourself. The camera reads your hand.</p></div>
-    <h2 data-cam data-camnum class="pad sechead sec-expr" data-only="numbers">Sign the Numbers</h2>
-    <div data-cam data-camnum class="gamegrid sec-expr" id="g-exprnum" data-only="numbers"></div>
+    <div class="panels" data-only="numbers">
+      <div class="pcol">
+        <div class="modehead pad"><h2>Receptive</h2><p>Read the numbers: the hand signs, you figure it out.</p></div>
+        <h2 class="pad sechead sec-num">Numbers</h2>
+        <div class="gamegrid sec-num" id="g-numgrid"></div>
+        <h2 class="pad sechead sec-age">Ages</h2>
+        <div class="gamegrid sec-age" id="g-agegrid"></div>
+        <h2 class="pad sechead sec-year">Years</h2>
+        <div class="gamegrid sec-year" id="g-yeargrid"></div>
+      </div>
+      <div class="pcol" data-cam data-camnum>
+        <div class="modehead pad"><h2>Expressive</h2><p>Sign it yourself. The camera reads your hand.</p></div>
+        <h2 class="pad sechead sec-expr">Sign the Numbers</h2>
+        <div class="gamegrid sec-expr" id="g-exprnum"></div>
+      </div>
+    </div>
     <h2 class="pad sechead sec-tools" data-only="letters">Teacher Tools</h2>
     <div class="gamegrid sec-tools" data-only="letters">
       <a class="gcard" href="#/class"><span class="gi" aria-hidden="true">📽️</span><b>Projector Mode</b><span>On the board: the hand spells, students write, you reveal.</span></a>
@@ -469,8 +504,8 @@
       </div>
     </div>
     <div class="card shopcard" id="r-teach" hidden>
-      <h2>Enjoying This? Teachers, Take It Further</h2>
-      <p><b>Get ASL Spellbound for your classes:</b> student tracking and diagnostic reports. Students play these games through your own link, every round saves to your Google Sheet, and each student gets a report with what they mixed up and what to practice next.</p>
+      <h2>For Teachers: Get the Classroom Edition</h2>
+      <p><b>ASL Spellbound</b> (fingerspelling), <b>ASL Numberwise</b> (numbers) or both, with or without the camera: students play these games through your own link, every round saves to your Google Sheet, and each student gets a report with what they mixed up and what to practice next.</p>
       <div class="teach-products" id="r-products"></div>
       <div class="row"><a class="btn" href="https://aslstudyhall.com" target="_blank" rel="noopener">🛍️ Shop at aslstudyhall.com</a><a class="btn teach-tpt" href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener">🛒 Shop on TpT</a></div>
     </div>
@@ -670,6 +705,6 @@
 <script src="people.js?v=4"></script>
 <script src="hand.js?v=145"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=175"></script>
+<script src="app.js?v=179"></script>
 </body>
 </html>
