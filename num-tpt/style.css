@@ -606,3 +606,4 @@ body.contrast .gamegrid .gcard { border: 2px solid #fff; }
 .modehead h2 { margin: 0; font-size: 28px; } .modehead p { margin: 0; color: var(--muted); }
 .meaning .def { font-size: 17px; } .meaning .def span { margin-right: 4px; }      /* the word's description after an answer (Colleen) */
 body.nocam [data-cam] { display: none !important; }      /* TpT editions without the Expressive part */
+body.nocamnum [data-camnum] { display: none !important; }      /* TpT sheets without the expressive numbers part */

@@ -941,14 +941,34 @@ const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] 
 /* JOINTS FOR THE READER (2026-10-17): the 21 joint positions of a letter's handshape, in the same order the camera hand-tracker reports
    them (wrist; thumb base to tip; then each finger knuckle to tip), so the fingerspelling reader can compare a student's hand to Colleen's. */
 const MP_JOINTS = ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'].concat(...FING.map(f => [f + '-phalanx-proximal', f + '-phalanx-intermediate', f + '-phalanx-distal', f + '-tip']));
-function poseJoints(c) {
-  if (!H.bones || !POSE[c]) return null; const keep = cur;
-  apply(Object.assign({}, norm(letterStill(c)), { q: null })); H.root.updateMatrixWorld(true);
+function poseJoints(c) { return POSE[c] ? jointsOf(letterStill(c)) : null; }
+/* the number camera (2026-10-17): 0-9 as the hand makes them; out = palm out, the way 1-5 look inside a bigger number */
+function numberJoints(n, out) { return SH[n] ? jointsOf(out ? DIGIT_OUT(n) : SH[n]) : null; }
+/* the number camera, moving numbers: every way a number can be signed (23 and 25 both ways, 16-19 both ways, hundreds C or curl), each as the
+   joints of its key moments, in order (start, then each step, then a double's arc) */
+function numberKeys(n) {
+  const N = NUM[n]; if (!N) return [];
+  const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
+  const forms = N.hund ? [seq(N.hund.c), seq(N.hund.curl)] : [seq(N)].concat(N.alt ? [seq(N.alt)] : [], N.ten ? [seq(N.ten)] : []);
+  return forms.map(F => F.map(jointsOf).filter(Boolean));
+}
+/* look-alikes for the camera: every digit held at the same wrist angles as this number's key moments, so a different digit at that angle loses */
+function numberDecoys(n) {
+  const N = NUM[n]; if (!N) return []; const ws = {};
+  const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
+  (N.hund ? [N.hund.c, N.hund.curl] : [N].concat(N.alt ? [N.alt] : [], N.ten ? [N.ten] : [])).forEach(F => seq(F).forEach(P => { const w = P.w || [0, 0, 0]; ws[w.join(',')] = w; }));
+  [IN, OUT].forEach(w => { ws[w.join(',')] = w; });      /* palm toward you and palm out too: the palm has to face the right way (Colleen) */
+  const out = []; Object.values(ws).forEach(w => { for (let d = 0; d <= 9; d++) { const J = jointsOf(Object.assign({}, SH[d], { w })); if (J) out.push([d, J]); } });
+  return out;
+}
+function jointsOf(P0) {
+  if (!H.bones || !P0) return null; const keep = cur;
+  apply(Object.assign({}, norm(P0), { q: null })); H.root.updateMatrixWorld(true);
   const out = MP_JOINTS.map(n => H.bones[n] ? H.bones[n].getWorldPosition(new THREE.Vector3()).toArray() : null);
   apply(keep); dirty = true; return out.some(x => !x) ? null : out;
 }
 if (opts.debug) window.__hand = { get cur() { return cur; }, get cam() { return cam; }, get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, poseJoints, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+return { ready, poseJoints, numberJoints, numberKeys, numberDecoys, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();

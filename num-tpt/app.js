@@ -299,7 +299,8 @@ function gamesInit() {
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
   $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
   const cc = $('#camcard'); if (cc) cc.onclick = openCamera;
-  $('#g-exprnum').innerHTML = '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>';      /* expressive: the student signs (Colleen) */
+  $('#g-exprnum').innerHTML = '<a class="gcard" data-cam data-camnum href="reader.html?kind=numbers" id="camnumcard"><span class="gi" aria-hidden="true">📷</span><b>Sign Numbers to the Camera</b><span>Sign 0 to 9 to your camera. It reads your hand and helps you fix it.</span></a>' + '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>';      /* expressive: the student signs (Colleen) */
+  const cn = $('#camnumcard'); if (cn) cn.onclick = openCamera;
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
@@ -698,7 +699,8 @@ function sendToStudy(res, round) {
 let CAMWIN = null;
 function openCamera(e) {
   if (!EMBED) return; if (e) e.preventDefault();
-  const u = 'reader.html?embed=aslstudy' + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
+  const num = !!(e && e.currentTarget && e.currentTarget.id === 'camnumcard');      /* the number camera (2026-10-17) */
+  const u = 'reader.html?embed=aslstudy' + (num ? '&kind=numbers' : '') + (ONLY ? '&only=' + ONLY : '') + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
   CAMWIN = window.open(u, '_blank');
   if (!CAMWIN) location.href = u;
 }
@@ -709,7 +711,8 @@ window.addEventListener('message', e => {
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
-  if (e.data.type === 'fsp-hello' && e.data.cam === false) document.body.classList.add('nocam');      /* a TpT edition without the Expressive part: no camera activity (Colleen: the Plus edition has it) */
+  if (e.data.type === 'fsp-hello' && e.data.cam === false) document.body.classList.add('nocam');
+  if (e.data.type === 'fsp-hello' && 'cam' in e.data && e.data.camnum !== true) document.body.classList.add('nocamnum');      /* the TpT sheets: the number camera only where it was bought (ASL Study sends no cam, so it keeps both) */      /* a TpT edition without the Expressive part: no camera activity (Colleen: the Plus edition has it) */
   if (e.data.type === 'fsp-hello' && e.data.camtl !== undefined && e.data.camtl !== null && e.data.camtl !== '') STUDY.camtl = Math.max(0, Math.min(60, +e.data.camtl || 0));      /* the teacher's camera time limit (Settings) */
   if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); STUDY.cls = String(e.data.cls || '').slice(0, 80); STUDY.app = String(e.data.app || '').slice(0, 60); STUDY.level = String(e.data.level || '').slice(0, 40); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
   if (e.data.type === 'fsp-compare-data' && CMP && CMP.kind === e.data.kind && CMP.state === 'loading') {      /* ASL Study 3.82: the program comparison for the diagnostic report */

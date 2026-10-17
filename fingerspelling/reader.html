@@ -6,7 +6,7 @@
 <title>Fingerspell to the Camera</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=111">
+<link rel="stylesheet" href="style.css?v=115">
 <style>
   /* Fingerspell to the Camera (2026-10-17): the student fingerspells; the camera reads the hand. Nothing leaves the computer. */
   body { padding: 0 0 40px; }
@@ -55,6 +55,7 @@
   body.checking #rd-hint, body.checking label:has(#rd-hint), body.checking #rd-skip, body.checking #rd-prev, body.checking #rd-rand, body.checking .rd-teach, body.checking .rd-test, body.checking #rd-after, body.checking #rd-showbox, body.checking #rd-mix { display: none !important; }      /* no hints or helps during a check */
   .rd-safe { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; background: var(--good-soft, #DCF4E7); border: 2px solid var(--good, #14804D); font-size: 15px; } .rd-safe > span { font-size: 22px; line-height: 1; }      /* the camera promise, on every camera page (Colleen) */
   .rd-def { margin: 8px auto; padding: 10px 14px; border-radius: 12px; background: var(--surface2); text-align: left; font-size: 16px; max-width: 360px; }
+  .rd-prompt .rd-def { flex-basis: 100%; max-width: 640px; margin: 0 auto 4px; padding: 8px 16px; text-align: center; font: 600 clamp(17px, 2vw, 20px)/1.35 var(--body, inherit); background: color-mix(in srgb, var(--sun, #FFC83D) 22%, var(--surface)); }      /* right under the word (Colleen) */
   .rd-alpha button.has { border-color: var(--good); } .rd-alpha button.cur { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 </style>
 </head>
@@ -62,7 +63,7 @@
 <div class="rd-wrap">
   <p style="margin:0"><a href="./#/games" id="rd-back" style="color:var(--accent);font-weight:700;text-decoration:none">← All activities</a></p>
   <h1 style="font-size:32px;margin:6px 0 4px">Fingerspell to the Camera</h1>
-  <p class="hint" style="margin:0 0 8px">Sign the letter to your camera. When the camera reads it, the letter turns green.</p>
+  <p class="hint" style="margin:0 0 8px" id="rd-intro">Sign the letter to your camera. When the camera reads it, the letter turns green.</p>
   <div class="rd-safe" role="note"><span aria-hidden="true">🔒</span><div><b>Your camera is private.</b> The camera only watches your hand while you practice. <b>Nothing is recorded.</b> No videos or pictures are saved or sent anywhere, and nobody else can see your camera. <span id="rd-safe-more">The only thing kept is your score: which letters you signed.</span></div></div>
   <div class="rd-grid">
     <div>
@@ -72,14 +73,18 @@
     </div>
     <div class="card rd-target">
       <div class="seg sm" id="rd-kind" style="margin:0 auto 6px;display:inline-flex"><button data-v="practice" class="on">Practice</button><button data-v="check">Check</button></div>
-      <div class="seg sm" id="rd-mode" style="margin:0 auto 8px;display:inline-flex"><button data-v="letters" class="on">Letters</button><button data-v="words">Words</button></div>
+      <div class="seg sm" id="rd-mode" style="margin:0 auto 8px;display:inline-flex"><button data-v="letters" class="on">Letters</button><button data-v="words">Words</button><button data-v="numbers">Numbers</button></div>
       <div id="rd-checkset" hidden>
         <p class="rd-small" style="margin:2px 0" id="rd-checkabout">All 26 letters, in a mixed order. No hints. The time only runs while your hand is in view.</p>
-        <label class="rd-small" id="rd-tlwrap">Time per letter: <select id="rd-tl"><option value="4">4 seconds</option><option value="6">6 seconds</option><option value="8" selected>8 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option><option value="20">20 seconds</option><option value="0">No limit</option></select></label>
+        <label class="rd-small" id="rd-tlwrap">Time per <span id="rd-tlunit">letter</span>: <select id="rd-tl"><option value="4">4 seconds</option><option value="6">6 seconds</option><option value="8" selected>8 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option><option value="20">20 seconds</option><option value="0">No limit</option></select></label>
         <div class="rd-row"><button class="btn big" id="rd-checkgo">Start the check</button></div>
         <div class="rd-ckbar" id="rd-ckbar" hidden><span id="rd-ckpos"></span><div class="rd-bar"><i id="rd-cktime" style="background:var(--accent)"></i></div></div>
       </div>
       <div class="rd-results" id="rd-results" hidden></div>
+      <details id="rd-numset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the numbers</b></summary>
+        <div class="chips rd-chips" id="rd-nsets"></div>
+        <p class="rd-small" style="margin:4px 0 0">1 to 5 on their own face you; 6 to 9 face out. Moving numbers count every way you sign them: both 23s and 25s, 16 to 19 either way, hundreds into a C or a curl. The palm has to face the right way.</p>
+      </details>
       <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the words</b></summary>
         <p class="rd-small" style="margin:4px 0 2px"><b>Word length</b> (shorter is easier)</p>
         <div class="chips rd-chips" id="rd-lens"></div>
@@ -93,6 +98,7 @@
       <div class="rd-show" id="rd-showbox" hidden><img class="rd-ref" id="rd-ref" alt="How the letter looks"></div>
       <div class="rd-oops" id="rd-oops" role="alert" hidden></div>
       <div class="rd-bar" aria-hidden="true"><i id="rd-hold"></i></div>
+      <div class="rd-row"><button class="btn" id="rd-shownum" hidden>▶ Show me</button></div>
       <div class="rd-row" id="rd-after" hidden><button class="btn" id="rd-showme">▶ Show me</button></div>
       <p class="rd-def" id="rd-def" hidden></p>
       <div class="rd-model" id="rd-modelbox" hidden></div>
@@ -103,7 +109,7 @@
       <p class="rd-small" style="margin-top:10px">Signing with your <b id="rd-handname">right</b> hand. <button class="link" id="rd-switch" style="background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;text-decoration:underline">Switch hands</button></p>
       <div class="rd-teach">
         <h3>Teach it my hand</h3>
-        <p class="rd-small" style="margin:0">Hands are all a little different. Make the letter, hold it steady and tap Teach: the camera remembers your way of making it (on this computer only). It only learns a letter that already looks close to the right handshape, so it can’t learn a mistake.</p>
+        <p class="rd-small" style="margin:0">Hands are all a little different. Make the sign, hold it steady and tap Teach: the camera remembers your way of making it (on this computer only). It only learns a sign that already looks close to the right handshape, so it can’t learn a mistake.</p>
         <div class="rd-row"><button class="btn" id="rd-teachbtn">Teach this letter</button><button class="btn ghost" id="rd-forget">Forget this letter</button></div>
         <div class="rd-alpha" id="rd-alpha"></div>
       </div>
@@ -116,7 +122,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="defs.js?v=1"></script>
-<script src="hand.js?v=142"></script>
-<script type="module" src="reader.js?v=23"></script>
+<script src="hand.js?v=144"></script>
+<script type="module" src="reader.js?v=32"></script>
 </body>
 </html>
