@@ -42,6 +42,11 @@
   .rd-oops { margin: 8px auto; padding: 10px 14px; border-radius: 12px; background: var(--bad-soft, #FBE3E1); border: 2px solid var(--bad, #C7362E); color: var(--ink); font: 700 17px var(--display); max-width: 320px; }
   .rd-mix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--sun, #FFC83D) 18%, var(--surface)); text-align: left; font-size: 14px; }
   .rd-mix b { font-family: var(--display); } .rd-chips { justify-content: center; } .rd-test { margin-top: 8px; }
+  .rd-prompt { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; padding: 8px 16px; border-radius: 16px; background: var(--surface); box-shadow: 0 2px 8px rgba(27,30,60,.06); }
+  .rd-prompt .rd-word { margin: 0; font-size: clamp(40px, 7vw, 72px); } .rd-word.alldone span { color: var(--good) !important; text-decoration: none; }
+  .rd-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 clamp(70px, 14vw, 140px) var(--display); color: #fff; text-shadow: 0 4px 18px rgba(0,0,0,.4); opacity: 0; pointer-events: none; }
+  .rd-flash.go { animation: rdflash .8s ease-out; } @keyframes rdflash { 0% { opacity: 0; transform: scale(.6); background: rgba(20,128,77,0); } 25% { opacity: 1; transform: scale(1.05); background: rgba(20,128,77,.45); } 100% { opacity: 0; transform: scale(1); background: rgba(20,128,77,0); } }
+  .rd-word span { display: inline-block; transition: transform .2s; } .rd-word .c { transform: scale(1.25); animation: rdpop .35s ease-out; } @keyframes rdpop { 0% { transform: scale(.7); } 70% { transform: scale(1.35); } 100% { transform: scale(1.25); } }      /* the letter you're on is bigger and pops in */
   .rd-alpha button.has { border-color: var(--good); } .rd-alpha button.cur { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 </style>
 </head>
@@ -52,25 +57,26 @@
   <p class="hint" style="margin:0 0 12px">Sign the letter to your camera. When the camera reads it, the letter turns green. Your camera picture stays on this computer: nothing is recorded or sent.</p>
   <div class="rd-grid">
     <div>
-      <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="right">My right hand</button><button class="btn big" data-hand="left">My left hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on.</p></div></div></div>
+      <div class="rd-prompt" id="rd-prompt" hidden><span class="lab">Spell this word</span></div>
+      <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-flash" id="rd-flash"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="right">My right hand</button><button class="btn big" data-hand="left">My left hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on.</p></div></div></div>
       <p class="rd-small" id="rd-status"></p>
     </div>
     <div class="card rd-target">
       <div class="seg sm" id="rd-mode" style="margin:0 auto 8px;display:inline-flex"><button data-v="letters" class="on">Letters</button><button data-v="words">Words</button></div>
-      <div id="rd-wordset" hidden>
+      <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the words</b></summary>
         <p class="rd-small" style="margin:4px 0 2px"><b>Word length</b> (shorter is easier)</p>
         <div class="chips rd-chips" id="rd-lens"></div>
         <p class="rd-small" style="margin:8px 0 2px"><b>Word lists</b></p>
         <div class="chips rd-chips" id="rd-cats"></div>
         <p class="rd-small" id="rd-count"></p>
-      </div>
+      </details>
       <p class="lab" style="margin:6px 0 0" id="rd-ask">Sign this letter</p>
       <div class="rd-word" id="rd-word" hidden></div>
       <div class="rd-letter" id="rd-letter">A</div>
       <div class="rd-show" id="rd-showbox" hidden><img class="rd-ref" id="rd-ref" alt="How the letter looks"></div>
       <div class="rd-oops" id="rd-oops" role="alert" hidden></div>
       <div class="rd-bar" aria-hidden="true"><i id="rd-hold"></i></div>
-      <div class="rd-row" id="rd-after" hidden><button class="btn" id="rd-showme">▶ Show me</button><button class="btn ghost" id="rd-next">Next word →</button></div>
+      <div class="rd-row" id="rd-after" hidden><button class="btn" id="rd-showme">▶ Show me</button></div>
       <div class="rd-model" id="rd-modelbox" hidden></div>
       <label class="rd-small" style="display:block;margin-top:10px"><input type="checkbox" id="rd-hint"> Show the handshape (for beginners)</label>
       <div class="rd-row"><button class="btn ghost" id="rd-prev">←</button><button class="btn ghost" id="rd-skip">Skip →</button><button class="btn ghost" id="rd-rand">Random</button></div>
@@ -92,6 +98,6 @@
 <script src="lib/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="hand.js?v=142"></script>
-<script type="module" src="reader.js?v=7"></script>
+<script type="module" src="reader.js?v=12"></script>
 </body>
 </html>

@@ -17,12 +17,20 @@ function feat(P) {
   const w = P[0], up = sub(P[9], w), s = len(up) || 1, y = unit(up), across = sub(P[5], P[17]);
   const x = unit(sub(across, y.map(v => v * dot(across, y)))), z = cross(x, y), shape = [];
   for (let k = 1; k < 21; k++) { const d = sub(P[k], w); shape.push(dot(d, x) / s, dot(d, y) / s, dot(d, z) / s); }
-  return { shape, orient: y.concat(z) };
+  /* KEY DETAILS (Colleen: M read as E, N as T, R not read): where the thumb tip sits across the hand (0 = pinky side, 1 = pointer side) and how
+     low it is, whether the thumb is in front of the fingers, and whether the pointer and middle fingertips cross (R) */
+  const X = k => dot(sub(P[k], w), x) / s, Y = k => dot(sub(P[k], w), y) / s, Z = k => dot(sub(P[k], w), z) / s;
+  const span = (X(5) - X(17)) || 0.001, thumbAcross = (X(4) - X(17)) / span, thumbLow = Y(4) - (Y(6) + Y(10)) / 2, thumbFront = Z(4) - (Z(6) + Z(10) + Z(14)) / 3;
+  const crossed = (X(8) - X(12)) / span, tipsUp = (Y(8) + Y(12)) / 2 - Y(5);
+  return { shape, orient: y.concat(z), key: [thumbAcross, thumbLow, thumbFront, crossed, tipsUp] };
 }
-function dist(a, b) {
-  let s = 0, o = 0; for (let i = 0; i < a.shape.length; i++) s += (a.shape[i] - b.shape[i]) ** 2;
+const LOOSE = { G: 0.45, H: 0.45, K: 0.45, P: 0.55, Q: 0.45, O: 0.5, C: 0.6 };      /* letters whose angle varies a lot from signer to signer (Colleen: G and H persnickety, K and Q need more flexible rotation) */
+const KEYW = [1.3, 0.7, 0.6, 1.4, 0.4];      /* how much each key detail counts */
+function dist(a, b, letter) {
+  let s = 0, o = 0, k = 0; for (let i = 0; i < a.shape.length; i++) s += (a.shape[i] - b.shape[i]) ** 2;
   for (let i = 0; i < 6; i++) o += (a.orient[i] - b.orient[i]) ** 2;
-  return Math.sqrt(s) + 1.2 * Math.sqrt(o);
+  if (a.key && b.key) for (let i = 0; i < KEYW.length; i++) k += KEYW[i] * Math.abs(a.key[i] - b.key[i]);
+  return Math.sqrt(s) + 1.2 * (LOOSE[letter] || 1) * Math.sqrt(o) + k;
 }
 
 /* ---------- letters from Colleen's hand, and the student's own ---------- */
@@ -30,10 +38,10 @@ const TPL = {};
 let MINE = {}; try { MINE = JSON.parse(localStorage.getItem('fs-reader-mine') || '{}'); } catch (e) {}
 const MINE_KEY = 'fs-reader-mine';
 const saveMine = () => { try { localStorage.setItem('fs-reader-mine', JSON.stringify(MINE)); } catch (e) {} };
-const rankModel = f => LETTERS.map(c => [c, TPL[c] ? dist(f, TPL[c]) : 99]).sort((a, b) => a[1] - b[1]);      /* Colleen's hand only */
+const rankModel = f => LETTERS.map(c => [c, TPL[c] ? dist(f, TPL[c], c) : 99]).sort((a, b) => a[1] - b[1]);      /* Colleen's hand only */
 const nearModel = (f, c, n) => rankModel(f).slice(0, n).some(x => x[0] === c);      /* SAFEGUARD: is the hand at least close to Colleen's letter? */
 function rank(f) {
-  return LETTERS.map(c => { let d = TPL[c] ? dist(f, TPL[c]) * 1.25 : 99; (MINE[c] || []).forEach(m => { d = Math.min(d, dist(f, m)); }); return [c, d]; }).sort((a, b) => a[1] - b[1]);
+  return LETTERS.map(c => { let d = TPL[c] ? dist(f, TPL[c], c) * 1.25 : 99; (MINE[c] || []).forEach(m => { d = Math.min(d, dist(f, m, c)); }); return [c, d]; }).sort((a, b) => a[1] - b[1]);
 }
 
 /* ---------- the camera ---------- */
@@ -62,17 +70,20 @@ function loop() {
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
   const R = rank(f), target = WORD ? WORD[wi] : LETTERS[cur];
-  const T = (MINE[target] || []).concat(TPL[target] ? [TPL[target]] : []).sort((a, b) => dist(f, a) - dist(f, b))[0];      /* the closest version of the target letter */
-  const right = R[0][0] === target && nearModel(f, target, 4), dT = T ? dist(f, T) : 9;
+  const T = (MINE[target] || []).concat(TPL[target] ? [TPL[target]] : []).sort((a, b) => dist(f, a, target) - dist(f, b, target))[0];      /* the closest version of the target letter */
+  const dTgt = (R.find(x => x[0] === target) || [0, 99])[1];
+  const right = (R[0][0] === target || (R.slice(0, 2).some(x => x[0] === target) && dTgt <= R[0][1] * 1.15)) && nearModel(f, target, 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
   const pct = right ? 100 : Math.max(0, Math.min(90, Math.round(100 - dT * 18)));      /* the right letter shows 100% at once; anything else tops out at 90% (never stuck at 99%) */
   const hot = right || !T ? -1 : worstFinger(f, T); dots(r.landmarks[0], hot, right);
   $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>'; $('#rd-tip').textContent = right ? 'Yes!' : T ? coach(f, T, hot) : '';
   $('#rd-guess').innerHTML = R.slice(0, 3).map((x, i) => '<span class="' + (i ? '' : 'top') + '">' + x[0] + '<small>' + Math.max(0, Math.round(100 - x[1] * 18)) + '% close</small></span>').join('');      /* the testing panel: top 3 guesses and how close each is */
   if (done) return;
   oopsCheck(R, target, f);
+  /* DOUBLE LETTERS (Colleen): the second of two same letters only counts after the hand slides to the side or bounces (opens a little and closes) */
+  if (DBL) { const wx = r.landmarks[0][0].x; if (DBL.x0 === null) DBL.x0 = wx; if (Math.abs(wx - DBL.x0) > 0.05 || dT > DBL.d0 + 0.6) DBL.moved = true; if (!DBL.moved) { $('#rd-tip').textContent = 'Double letter: slide it or bounce it'; held = 0; $('#rd-hold').style.width = '0'; return; } }
   held = right ? held + 1 : Math.max(0, held - 2);      /* SAFEGUARD inside `right`: a letter the student taught still has to look close to the real handshape */ $('#rd-hold').style.width = Math.min(100, 100 * held / HOLD) + '%';
-  if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok');
-    if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 500); }
+  if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok'); flash(target);
+    if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); }
     else setTimeout(() => go(cur + 1), 1100); }
 }
 /* the hand outline (drawn in dots()) */
@@ -131,7 +142,7 @@ function finishTeach() {      /* SAFEGUARD (Colleen: new learners could teach it
 }
 
 /* ---------- word mode (Colleen): shorter words easier, longer harder; the student chooses the lengths and the word lists; after a word, Show me ---------- */
-let WORD = null, wi = 0;
+let WORD = null, wi = 0, lastD = 1;
 const LENS = [['short', 'Short (3–4)', 3, 4], ['medium', 'Medium (5–6)', 5, 6], ['long', 'Long (7+)', 7, 99]];
 const CATS = Object.keys(window.FS_WORDS || {});
 const nice = k => k.charAt(0) + k.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -147,29 +158,35 @@ function chips(el, items, key) {
   el.onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = WS[key], i = a.indexOf(b.dataset.v); if (i >= 0) { if (a.length > 1) a.splice(i, 1); } else a.push(b.dataset.v); saveWS(); chips(el, items, key); count(); };
 }
 const count = () => { const n = pool().length; $('#rd-count').textContent = n ? n + ' words' : 'No words fit. Choose another length or list.'; };
+function flash(c) {      /* a big green check on the camera, so it's obvious the letter was accepted (Colleen) */
+  const f = $('#rd-flash'); f.textContent = '✓ ' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+}
+let DBL = null;
 function showWord() {
-  const c = WORD[wi]; done = false; held = 0; $('#rd-hold').style.width = '0'; $('#rd-letter').textContent = c; $('#rd-letter').classList.remove('ok'); $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
+  const c = WORD[wi]; DBL = wi > 0 && WORD[wi - 1] === c ? { x0: null, d0: lastD, moved: false } : null; done = false; held = 0; $('#rd-hold').style.width = '0'; $('#rd-letter').textContent = c; $('#rd-letter').classList.remove('ok'); $('#rd-word').classList.remove('alldone');
   $('#rd-word').innerHTML = WORD.split('').map((x, i) => '<span class="' + (i < wi ? 'd' : i === wi ? 'c' : 'n') + '">' + x + '</span>').join('');
   showRef(c);
 }
 function newWord() { const P = pool(); WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
-function wordDone() {
-  done = true; $('#rd-word').innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); $('#rd-letter').textContent = '✓'; $('#rd-letter').classList.add('ok');
-  $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-status').textContent = 'You spelled ' + WORD + '!';
+let LAST = '';
+function wordDone() {      /* all green, then straight on to the next word (Colleen); "Show me" stays for the word just spelled */
+  done = true; LAST = WORD; const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
+  $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-showme').textContent = '▶ Show me ' + LAST; $('#rd-status').textContent = 'You spelled ' + LAST + '!';
+  setTimeout(() => { if (WORD === LAST && done) newWord(); }, 1500);
 }
 async function showMe() {      /* the hand spells the word back, for clarity (Colleen) */
-  if (!refHand || !WORD) return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-showme').disabled = true;
-  try { await refHand.ready; await refHand.spell(WORD, { speed: () => 0.15 }); } finally { $('#rd-showme').disabled = false; }
+  if (!refHand || !LAST) return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-showme').disabled = true;
+  try { await refHand.ready; await refHand.spell(LAST, { speed: () => 0.15 }); } finally { $('#rd-showme').disabled = false; }
 }
 function showRef(c) {      /* the handshape picture: only when "Show the handshape" is on (beginners); most of the time it just asks for the letter */
   const on = $('#rd-hint').checked; $('#rd-showbox').hidden = !on;
   if (on && refHand && refHand.chartImage) { try { $('#rd-ref').src = refHand.chartImage(c); } catch (e) {} }
 }
 $('#rd-mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b));
-  const words = b.dataset.v === 'words'; $('#rd-word').hidden = !words; $('#rd-wordset').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
+  const words = b.dataset.v === 'words'; $('#rd-prompt').hidden = !words; (words ? $('#rd-prompt') : $('.rd-target')).insertBefore($('#rd-word'), words ? null : $('#rd-letter')); $('#rd-letter').hidden = words; $('#rd-ask').hidden = words; $('#rd-word').hidden = !words;      /* the word sits right above the camera (Colleen) */ $('#rd-wordset').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
   $('#rd-ask').textContent = words ? 'Spell this word' : 'Sign this letter'; if (words) newWord(); else { WORD = null; go(cur); } };
 chips($('#rd-lens'), LENS.map(l => [l[0], l[1]]), 'lens'); chips($('#rd-cats'), CATS.map(k => [k, nice(k)]), 'cats'); count();
-$('#rd-showme').onclick = showMe; $('#rd-next').onclick = newWord;
+$('#rd-showme').onclick = showMe;
 try { $('#rd-hint').checked = localStorage.getItem('fs-reader-hint') === '1'; } catch (e) {}
 $('#rd-hint').onchange = () => { try { localStorage.setItem('fs-reader-hint', $('#rd-hint').checked ? '1' : '0'); } catch (e) {} showRef(WORD ? WORD[wi] || 'A' : LETTERS[cur]); };
 drawMix();
