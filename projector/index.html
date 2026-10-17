@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Projector</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
+<style>
+  /* Projector: a live copy of the teacher's main monitor for the projector screen (Extended display).
+     Freeze holds the picture still; the timer, bell schedule and other boxes on top keep running.
+     Opened from the Hall Pass Kiosk teacher view (Tools > Projector), which passes ?kiosk=…&bell=…&theme=… */
+  :root { --bar: rgba(15, 18, 28, .92); --ink: #f5f7fb; --muted: #aab2c5; --line: rgba(255,255,255,.16); --accent: #8fb3ff; --cold: #7dd3fc; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--ink); overflow: hidden;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; }
+  #screen, #still { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  #still { display: none; }
+  body.frozen #still { display: block; }
+  body:not(.idle) { cursor: default; } body.idle { cursor: none; }
+
+  /* start screen */
+  #start { position: fixed; inset: 0; display: flex; padding: 24px; background: #12151c; z-index: 30; overflow-y: auto; }
+  #start .card { margin: auto; }
+  #start[hidden] { display: none; }
+  .card { max-width: 640px; background: #1b202b; border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; line-height: 1.45; }
+  .card h1 { margin: 0 0 8px; font-size: 28px; }
+  .card ol { padding-left: 22px; margin: 10px 0 18px; } .card li { margin: 6px 0; }
+  .card .note { color: var(--muted); font-size: 14px; margin: 14px 0 0; }
+  .big { font: inherit; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 12px; border: 0; background: var(--accent); color: #0b1020; cursor: pointer; }
+  .err { color: #ff9a91; font-weight: 700; margin-top: 12px; }
+
+  /* control bar: shows when the mouse moves, hides after a few seconds */
+  #bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 20; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 8px; border-radius: 14px; background: var(--bar); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    transition: opacity .25s; max-width: calc(100vw - 24px); }
+  body.idle #bar { opacity: 0; pointer-events: none; }
+  #bar button { font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.07); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+  #bar button:hover { background: rgba(255,255,255,.14); }
+  #bar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+  #freezeBtn { min-width: 130px; }
+  body.frozen #freezeBtn { background: var(--cold); color: #062030; border-color: var(--cold); }
+  /* a small sign only while the bar is showing, so the teacher can tell it is frozen */
+  #frozenTag { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20; padding: 6px 12px; border-radius: 999px;
+    background: var(--cold); color: #062030; font-weight: 800; font-size: 14px; display: none; }
+  body.frozen:not(.idle) #frozenTag { display: block; }
+
+  /* boxes on top (timer, bell schedule…): drag by the top strip, resize from the corner */
+  .box { position: fixed; z-index: 10; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); min-width: 160px; min-height: 110px; }
+  .box iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+  .box .grip { position: absolute; left: 0; right: 0; top: 0; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px;
+    background: var(--bar); color: var(--ink); font-size: 13px; font-weight: 700; cursor: move; opacity: 0; transition: opacity .2s; z-index: 2; }
+  .box:hover .grip { opacity: 1; }
+  body.idle .box .grip { opacity: 0; }
+  .box .grip span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .box .grip button { font: inherit; border: 0; background: rgba(255,255,255,.12); color: var(--ink); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  .box .size { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; z-index: 2;
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,.35) 50%); opacity: 0; }
+  .box:hover .size { opacity: 1; }
+  body.idle .box .size { opacity: 0; }
+  body.moving .box iframe { pointer-events: none; }
+</style>
+</head>
+<body class="">
+<video id="screen" autoplay muted playsinline></video>
+<canvas id="still"></canvas>
+<div id="boxes"></div>
+<div id="frozenTag">❄️ Frozen: students see this picture</div>
+
+<div id="bar" hidden>
+  <button id="freezeBtn" type="button" title="Freeze (F)">❄️ Freeze</button>
+  <span class="sep"></span>
+  <button type="button" data-add="timer">⏱️ Timer</button>
+  <button type="button" data-add="bell">🔔 Bell schedule</button>
+  <button type="button" data-add="timeleft">⏳ Time left</button>
+  <button type="button" data-add="passboard">🎫 Hall passes</button>
+  <button type="button" data-add="noise">🔊 Noise meter</button>
+  <span class="sep"></span>
+  <button id="miniBtn" type="button" title="A small Freeze button that stays on top of every window">🎛️ Mini control</button>
+  <button id="fullBtn" type="button">⛶ Full screen</button>
+  <button id="stopBtn" type="button">■ Stop</button>
+</div>
+
+<div id="start">
+  <div class="card">
+    <h1>📽️ Projector</h1>
+    <p>This window goes on the <b>projector screen</b> and shows a live copy of your main monitor. Press <b>❄️ Freeze</b> to hold the picture still while you use your monitor. Timers and the bell schedule on top keep running.</p>
+    <ol>
+      <li>Drag this window onto the projector screen.</li>
+      <li>Press <b>Start</b>. Choose <b>Entire screen</b>, pick your <b>main monitor</b> (not the projector), then press <b>Share</b>.</li>
+      <li>Press <b>⛶ Full screen</b> in the bar at the bottom. The bar appears whenever you move the mouse over this screen.</li>
+    </ol>
+    <button class="big" id="startBtn" type="button">Start</button>
+    <div class="err" id="err" hidden></div>
+    <p class="note">Your projector has to be set to <b>Extended display</b>, not Mirror. On a Mac: System Settings → Displays → click the projector → Use as: Extended display. Shortcut keys on this screen: F freezes and unfreezes.</p>
+    <p class="note"><b>Unfreezing from your own monitor:</b> use the 📽️ Freeze button in the teacher view's top bar, or press <b>🎛️ Mini control</b> in the bar here for a small Freeze button that floats above every window (drag it onto your private monitor).</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  // The kiosk's published address (its Tools pages), the live bell schedule, and the teacher view's colors.
+  var KIOSK = q.get('kiosk') || 'https:' + '//script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec';
+  var BELL = q.get('bell') || '';
+  var THEME = (q.get('theme') || 'auto').replace(/[^a-z]/g, '');
+  var TOOLS = {
+    timer: { name: 'Timer', w: 30, h: 34, x: 68, y: 2, src: function () { return KIOSK + '?view=tools&tool=timer&theme=' + THEME; } },
+    bell: { name: 'Bell schedule', w: 28, h: 48, x: 70, y: 40, src: function () { return BELL; } },
+    timeleft: { name: 'Time left', w: 26, h: 26, x: 2, y: 2, src: function () { return KIOSK + '?view=tools&tool=timeleft&theme=' + THEME; } },
+    noise: { name: 'Noise meter', w: 34, h: 30, x: 33, y: 2, allow: 'microphone', src: function () { return 'noise.html?theme=' + THEME; } },
+    passboard: { name: 'Hall passes', w: 30, h: 40, x: 2, y: 40, src: function () { return KIOSK + '?view=tools&tool=passboard&theme=' + THEME; } }
+  };
+  if (!BELL) document.querySelector('[data-add="bell"]').hidden = true;
+
+  var video = document.getElementById('screen'), still = document.getElementById('still'), body = document.body;
+  var stream = null, frozen = false;
+
+  /* ----- sharing the main monitor ----- */
+  function showErr(t) { var e = document.getElementById('err'); e.textContent = t; e.hidden = !t; }
+  document.getElementById('startBtn').onclick = function () {
+    showErr('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      showErr('This browser cannot share a screen. Open this page in Google Chrome on your computer.');
+      return;
+    }
+    navigator.mediaDevices.getDisplayMedia({
+      video: { displaySurface: 'monitor', frameRate: { ideal: 30 } }, audio: false,
+      selfBrowserSurface: 'exclude', monitorTypeSurfaces: 'include', surfaceSwitching: 'include'
+    }).then(function (s) {
+      stream = s; video.srcObject = s;
+      s.getVideoTracks()[0].addEventListener('ended', stopped);
+      document.getElementById('start').hidden = true;
+      document.getElementById('bar').hidden = false;
+      wake(); tell();
+    }).catch(function (err) {
+      showErr(err && err.name === 'NotAllowedError' ? 'Sharing was cancelled. Press Start and choose your main monitor.' : 'Could not share the screen: ' + (err && err.message || err));
+    });
+  };
+  function stopped() {
+    if (frozen) toggleFreeze();
+    stream = null; video.srcObject = null;
+    document.getElementById('start').hidden = false;
+    document.getElementById('bar').hidden = true;
+    tell();
+  }
+  document.getElementById('stopBtn').onclick = function () {
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stopped();
+  };
+
+  /* ----- Freeze: copy the current picture and hold it; the boxes on top keep running ----- */
+  function toggleFreeze() {
+    if (!frozen) {
+      if (!video.videoWidth) return;
+      still.width = video.videoWidth; still.height = video.videoHeight;
+      still.getContext('2d').drawImage(video, 0, 0);
+    }
+    frozen = !frozen;
+    body.classList.toggle('frozen', frozen);
+    document.getElementById('freezeBtn').textContent = frozen ? '▶ Unfreeze' : '❄️ Freeze';
+    tell();
+  }
+  /* The freeze state goes to the teacher view (it opened this window) and to the mini control. */
+  function tell() {
+    try { if (window.opener) window.opener.postMessage({ projector: 'state', frozen: frozen, sharing: !!stream }, '*'); } catch (e) {}
+    paintMini();
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (e.source !== window.opener || typeof d.projector !== 'string') return;
+    if (d.projector === 'freeze' && !frozen && stream) toggleFreeze();
+    else if (d.projector === 'unfreeze' && frozen) toggleFreeze();
+    else tell();
+  });
+  setInterval(tell, 5000);      // so a teacher view that was reloaded finds out again
+  window.addEventListener('beforeunload', function () { try { if (window.opener) window.opener.postMessage({ projector: 'closed' }, '*'); } catch (e) {} });
+
+  /* Mini control: a tiny window that floats above every other window (Chrome's Picture-in-Picture),
+     so Freeze / Unfreeze is always one click away on the teacher's own monitor. */
+  var mini = null;
+  function paintMini() {
+    if (!mini) return;
+    var b = mini.document.getElementById('mb');
+    b.textContent = frozen ? '▶ Unfreeze' : '❄️ Freeze';
+    b.className = frozen ? 'on' : '';
+    mini.document.getElementById('ms').textContent = !stream ? 'Not sharing' : frozen ? 'Students see the frozen picture' : 'Students see your screen live';
+  }
+  var miniBtn = document.getElementById('miniBtn');
+  if (!('documentPictureInPicture' in window)) miniBtn.hidden = true;
+  miniBtn.onclick = function () {
+    if (mini) { mini.focus(); return; }
+    window.documentPictureInPicture.requestWindow({ width: 240, height: 120 }).then(function (w) {
+      mini = w;
+      w.document.body.innerHTML = '<style>body{margin:0;height:100vh;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#12151c;color:#f5f7fb;font:600 13px system-ui,sans-serif;text-align:center}' +
+        'button{font:800 20px system-ui,sans-serif;padding:10px 18px;border-radius:12px;border:0;background:#2b3245;color:#f5f7fb;cursor:pointer;width:88%}button.on{background:#7dd3fc;color:#062030}</style>' +
+        '<button id="mb" type="button"></button><div id="ms"></div>';
+      w.document.getElementById('mb').onclick = function () { if (stream) toggleFreeze(); };
+      w.addEventListener('pagehide', function () { mini = null; });
+      paintMini();
+    }).catch(function () {});
+  };
+  document.getElementById('freezeBtn').onclick = toggleFreeze;
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && stream) toggleFreeze();
+  });
+  document.getElementById('fullBtn').onclick = function () {
+    if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function () {});
+  };
+
+  /* ----- the bar and the box handles hide when the mouse is still ----- */
+  var idleTimer = null;
+  function wake() { body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(function () { body.classList.add('idle'); }, 2500); }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('mousedown', wake);
+
+  /* ----- boxes on top: remembered on this computer (place and size in % of the screen) ----- */
+  var boxes = [];
+  try { boxes = JSON.parse(localStorage.getItem('projectorBoxes') || '[]') || []; } catch (e) { boxes = []; }
+  function save() { try { localStorage.setItem('projectorBoxes', JSON.stringify(boxes)); } catch (e) {} }
+  function place(el, b) { el.style.left = b.x + 'vw'; el.style.top = b.y + 'vh'; el.style.width = b.w + 'vw'; el.style.height = b.h + 'vh'; }
+  function drawBox(b) {
+    var t = TOOLS[b.kind]; if (!t || !t.src()) return;
+    var el = document.createElement('div'); el.className = 'box';
+    el.innerHTML = '<div class="grip"><span>' + t.name + '</span><button type="button" title="Remove">✕</button></div><iframe allow="fullscreen; autoplay"></iframe><div class="size"></div>';
+    el.querySelector('iframe').src = t.src();
+    if (t.allow) el.querySelector('iframe').setAttribute('allow', 'fullscreen; autoplay; ' + t.allow);
+    place(el, b);
+    el.querySelector('.grip button').onclick = function () { boxes = boxes.filter(function (x) { return x !== b; }); save(); el.remove(); };
+    drag(el, el.querySelector('.grip'), b, false);
+    drag(el, el.querySelector('.size'), b, true);
+    document.getElementById('boxes').appendChild(el);
+  }
+  function drag(el, handle, b, resize) {
+    handle.addEventListener('pointerdown', function (e) {
+      if (e.target.tagName === 'BUTTON') return;
+      e.preventDefault(); handle.setPointerCapture(e.pointerId); body.classList.add('moving');
+      var sx = e.clientX, sy = e.clientY, start = { x: b.x, y: b.y, w: b.w, h: b.h }, W = innerWidth / 100, H = innerHeight / 100;
+      function move(ev) {
+        var dx = (ev.clientX - sx) / W, dy = (ev.clientY - sy) / H;
+        if (resize) { b.w = Math.max(12, Math.min(100 - b.x, start.w + dx)); b.h = Math.max(12, Math.min(100 - b.y, start.h + dy)); }
+        else { b.x = Math.max(0, Math.min(100 - b.w, start.x + dx)); b.y = Math.max(0, Math.min(100 - b.h, start.y + dy)); }
+        place(el, b);
+      }
+      function up() { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); body.classList.remove('moving'); save(); }
+      handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (btn) {
+    btn.onclick = function () {
+      var kind = btn.getAttribute('data-add'), t = TOOLS[kind], same = boxes.filter(function (x) { return x.kind === kind; }).length;
+      var b = { kind: kind, w: t.w, h: t.h, x: Math.min(100 - t.w, t.x + same * 3), y: Math.min(100 - t.h, t.y + same * 4) };      /* each tool starts in its own corner */
+      boxes.push(b); save(); drawBox(b);
+    };
+  });
+  boxes.forEach(drawBox);
+})();
+</script>
+</body>
+</html>

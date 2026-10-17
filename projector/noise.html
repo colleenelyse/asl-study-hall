@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Noise meter</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
+<style>
+/* Noise meter: listens to the room through the computer's microphone and shows how loud it is.
+   Opened from the Hall Pass Kiosk teacher view (Tools > Noise meter) or as a box on the Projector page.
+   Nothing is recorded or sent anywhere: the sound is only measured on this computer.
+   Colors: the teacher view's color schemes (?theme=…), copied from checkin/Dashboard.html. */
+  :root {
+    --bg: #f3f4f7;
+    --panel: #ffffff;
+    --ink: #1a2233;
+    --muted: #5d6779;
+    --line: #dfe3ea;
+    --soft: #eef1f6;
+    --accent: #2d3a8c;
+    --present: #1b7f47;  --present-bg: #e3f4e9;
+    --tardy:   #a35a00;  --tardy-bg:   #fdeecd;
+    --pass:    #5140b8;  --pass-bg:    #ebe7fb;
+    --absent:  #b3261e;  --absent-bg:  #fbe4e1;
+    --go: #1b7f47; --go-bg: #e3f4e9;
+    --warn: #8a6100; --warn-bg: #fdf0c4;
+    --over: #b3261e; --over-bg: #fbe0dc;
+    --shadow: 0 1px 2px rgba(20,28,50,.06), 0 6px 18px rgba(20,28,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --panel: #1b202b; --ink: #eef1f7; --muted: #a2abbd;
+      --line: #2c3342; --soft: #232937; --accent: #a9b4ff;
+      --present: #6fd69a; --present-bg: #17352a;
+      --tardy: #f2c063;   --tardy-bg: #3a2e12;
+      --pass: #b7abff;    --pass-bg: #2a2550;
+      --absent: #ff9a91;  --absent-bg: #3d1e1c;
+      --go: #6fd69a; --go-bg: #17352a;
+      --warn: #f2c063; --warn-bg: #3a2e12;
+      --over: #ff9a91; --over-bg: #3d1e1c;
+      --shadow: none;
+    }
+  }
+  /* ---------- color schemes (Colors picker in the header) ---------- */
+  :root[data-theme="light"] {
+    --bg: #f3f4f7; --panel: #ffffff; --ink: #1a2233; --muted: #5d6779; --line: #dfe3ea; --soft: #eef1f6;
+    --accent: #2d3a8c; --present: #1b7f47; --present-bg: #e3f4e9; --tardy: #a35a00; --tardy-bg: #fdeecd;
+    --pass: #5140b8; --pass-bg: #ebe7fb; --absent: #b3261e; --absent-bg: #fbe4e1; --go: #1b7f47; --go-bg: #e3f4e9;
+    --warn: #8a6100; --warn-bg: #fdf0c4; --over: #b3261e; --over-bg: #fbe0dc;
+    --shadow: 0 1px 2px rgba(20,28,50,.06), 0 6px 18px rgba(20,28,50,.06);
+  }
+  /* Calm classroom: warm paper background, soft pastel colors */
+  :root[data-theme="calm"] {
+    --bg: #f7f2ea; --panel: #fffdf9; --ink: #2f2a26; --muted: #6f655b; --line: #e8dfd2; --soft: #f3ece2;
+    --accent: #2f6f73; --present: #2e7d5b; --present-bg: #dff1e7; --tardy: #b26a1b; --tardy-bg: #fbe9d2;
+    --pass: #6b55b0; --pass-bg: #ece6f8; --absent: #c0504d; --absent-bg: #f9e0dd; --go: #2e7d5b; --go-bg: #dff1e7;
+    --warn: #9a6a12; --warn-bg: #fbefcf; --over: #c0504d; --over-bg: #f9e0dd;
+    --shadow: 0 1px 2px rgba(60,40,20,.06), 0 8px 20px rgba(60,40,20,.06);
+  }
+  /* Night: deep navy with bright, easy-to-read colors */
+  :root[data-theme="night"] {
+    --bg: #0f172a; --panel: #1e293b; --ink: #f8fafc; --muted: #cbd5e1; --line: #334155; --soft: #273449;
+    --accent: #93c5fd; --present: #4ade80; --present-bg: #14532d; --tardy: #fbbf24; --tardy-bg: #4a3410;
+    --pass: #c4b5fd; --pass-bg: #3b2f6b; --absent: #fca5a5; --absent-bg: #3b2530; --go: #4ade80; --go-bg: #14532d;
+    --warn: #fbbf24; --warn-bg: #4a3410; --over: #fca5a5; --over-bg: #5b1d1d;
+    --shadow: none;
+  }
+  /* High contrast: white, black and strong colors, readable across the room */
+  :root[data-theme="contrast"] {
+    --bg: #ffffff; --panel: #ffffff; --ink: #000000; --muted: #262626; --line: #000000; --soft: #f2f2f2;
+    --accent: #0033cc; --present: #006b2d; --present-bg: #c8f5d6; --tardy: #8a4b00; --tardy-bg: #ffe08a;
+    --pass: #3d1fa3; --pass-bg: #ddd3ff; --absent: #b00000; --absent-bg: #ffd0cc; --go: #006b2d; --go-bg: #c8f5d6;
+    --warn: #7a5200; --warn-bg: #ffe08a; --over: #b00000; --over-bg: #ffd0cc;
+    --shadow: 0 0 0 2px #000;
+  }
+  /* ---- fun schemes (pink stands in for red) ---- */
+  /* Neon: near-black with glowing neon colors */
+  :root[data-theme="neon"] {
+    --bg: radial-gradient(circle at 20% 0%, #1a0b2e 0%, #07060f 55%) fixed; --panel: #120f24; --ink: #f5f3ff; --muted: #b9b3d9;
+    --line: #2e2650; --soft: #1c1736; --accent: #00f0ff;
+    --present: #39ff14; --present-bg: #0f2e14; --tardy: #ffe600; --tardy-bg: #2e2a06;
+    --pass: #b026ff; --pass-bg: #26103d; --absent: #ff2ec4; --absent-bg: #33102b;
+    --go: #39ff14; --go-bg: #0f2e14; --warn: #ffe600; --warn-bg: #2e2a06; --over: #ff2ec4; --over-bg: #33102b;
+    --shadow: 0 0 0 1px #2e2650, 0 0 18px rgba(176, 38, 255, .18);
+  }
+  /* Pastel night: deep plum-navy with soft pastel colors */
+  :root[data-theme="pastelnight"] {
+    --bg: #1e1b2e; --panel: #2a2640; --ink: #fbf7ff; --muted: #c9c1df; --line: #3d3758; --soft: #332e4d;
+    --accent: #a0d8ef; --present: #a8e6cf; --present-bg: #2d4a43; --tardy: #ffd3b6; --tardy-bg: #4d3d36;
+    --pass: #d5aaff; --pass-bg: #3f3260; --absent: #ffaacb; --absent-bg: #4d3044;
+    --go: #a8e6cf; --go-bg: #2d4a43; --warn: #ffd3b6; --warn-bg: #4d3d36; --over: #ffaacb; --over-bg: #4d3044;
+    --shadow: none;
+  }
+  /* Ocean: deep teal-blue with sea-glass colors */
+  :root[data-theme="ocean"] {
+    --bg: linear-gradient(180deg, #072a3a 0%, #031722 100%) fixed; --panel: #0b3447; --ink: #ecfeff; --muted: #a5d8e6;
+    --line: #155068; --soft: #0f4158; --accent: #5eead4;
+    --present: #5eead4; --present-bg: #0f4a4a; --tardy: #fcd34d; --tardy-bg: #4a3f17;
+    --pass: #93c5fd; --pass-bg: #173f6b; --absent: #f9a8d4; --absent-bg: #4a2240;
+    --go: #5eead4; --go-bg: #0f4a4a; --warn: #fcd34d; --warn-bg: #4a3f17; --over: #f9a8d4; --over-bg: #4a2240;
+    --shadow: none;
+  }
+  /* Sunset: warm peach-to-lavender sky */
+  :root[data-theme="sunset"] {
+    --bg: linear-gradient(160deg, #ffd8b8 0%, #ffc2c7 45%, #d9c4f2 100%) fixed; --panel: rgba(255, 255, 255, .88);
+    --ink: #3b2140; --muted: #7a5470; --line: #f2cfd6; --soft: #fff0ea; --accent: #b4436c;
+    --present: #2f8a5f; --present-bg: #dff3e6; --tardy: #c25e00; --tardy-bg: #ffe3c7;
+    --pass: #7b4bb8; --pass-bg: #eadcfb; --absent: #d6336c; --absent-bg: #ffdbe8;
+    --go: #2f8a5f; --go-bg: #dff3e6; --warn: #a65d00; --warn-bg: #ffe9c7; --over: #d6336c; --over-bg: #ffdbe8;
+    --shadow: 0 6px 22px rgba(120, 40, 80, .12);
+  }
+  /* Candy shop: pink and mint sweet-shop colors */
+  :root[data-theme="candy"] {
+    --bg: #fff0f6; --panel: #ffffff; --ink: #3d1f33; --muted: #8a5a78; --line: #ffd1e6; --soft: #fff5fa;
+    --accent: #e0479e; --present: #12a67a; --present-bg: #d5f7ea; --tardy: #d97706; --tardy-bg: #fff1c9;
+    --pass: #8b5cf6; --pass-bg: #efe7ff; --absent: #e0479e; --absent-bg: #ffe0ef;
+    --go: #12a67a; --go-bg: #d5f7ea; --warn: #b45f06; --warn-bg: #fff1c9; --over: #e0479e; --over-bg: #ffe0ef;
+    --shadow: 0 4px 14px rgba(224, 71, 158, .12);
+  }
+  :root[data-theme="neon"] .tile b, :root[data-theme="neon"] .countdown { text-shadow: 0 0 10px currentColor; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); overflow: hidden;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; }
+.wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vmin; padding: 4vmin; }
+.face { font-size: 22vmin; line-height: 1; }
+.word { font-size: 8vmin; font-weight: 800; }
+.meter { position: relative; width: min(92vw, 1200px); height: 9vmin; min-height: 26px; border-radius: 999px; background: var(--soft); overflow: hidden; border: 1px solid var(--line); }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: var(--go); transition: width .12s linear, background .3s; }
+.mark { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; background: var(--ink); opacity: .55; border-radius: 2px; }
+body.ok .fill { background: var(--go); } body.mid .fill { background: var(--warn); } body.loud .fill { background: var(--over); }
+body.loud .wrap { animation: loud 1s ease-in-out infinite; }
+@keyframes loud { 50% { background: var(--over-bg); } }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: center; font-size: 14px; color: var(--muted); transition: opacity .3s; }
+.controls label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.controls input[type=range] { width: 150px; accent-color: var(--accent); }
+body.idle .controls { opacity: 0; pointer-events: none; } body.idle { cursor: none; }
+#start { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; text-align: center; padding: 20px; background: var(--bg); }
+#start[hidden] { display: none; }
+#start button { font: inherit; font-size: 20px; font-weight: 800; padding: 14px 22px; border-radius: 12px; border: 0; background: var(--accent); color: var(--panel); cursor: pointer; }
+#start p { margin: 0; color: var(--muted); max-width: 420px; }
+.err { color: var(--absent); font-weight: 700; }
+</style>
+</head>
+<body class="ok">
+<div class="wrap">
+  <div class="face" id="face">😊</div>
+  <div class="word" id="word">Nice and quiet</div>
+  <div class="meter"><div class="fill" id="fill"></div><div class="mark" id="mark"></div></div>
+  <div class="controls">
+    <label>Too loud at <input type="range" id="limit" min="20" max="95" value="70"></label>
+    <label>Microphone sensitivity <input type="range" id="sens" min="1" max="10" value="5"></label>
+    <label><input type="checkbox" id="chime"> Chime when too loud</label>
+  </div>
+</div>
+<div id="start">
+  <div style="font-size:64px">🔊</div>
+  <button type="button" id="go">🎤 Start the noise meter</button>
+  <p>Your browser will ask to use the microphone. Choose <b>Allow</b>. Nothing is recorded or saved; it only measures how loud the room is.</p>
+  <p class="err" id="err" hidden></p>
+</div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), t = (q.get('theme') || '').replace(/[^a-z]/g, '');
+  if (t && t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+  var el = function (id) { return document.getElementById(id); };
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('noiseMeter') || '{}') || {}; } catch (e) {}
+  if (saved.limit) el('limit').value = saved.limit;
+  if (saved.sens) el('sens').value = saved.sens;
+  el('chime').checked = !!saved.chime;
+  function save() { try { localStorage.setItem('noiseMeter', JSON.stringify({ limit: +el('limit').value, sens: +el('sens').value, chime: el('chime').checked })); } catch (e) {} }
+  ['limit', 'sens', 'chime'].forEach(function (id) { el(id).addEventListener('input', function () { save(); mark(); }); });
+  function mark() { el('mark').style.left = el('limit').value + '%'; }
+  mark();
+
+  var ctx = null, an = null, buf = null, level = 0, loudSince = 0, lastChime = 0;
+  el('go').onclick = function () {
+    el('err').hidden = true;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('err').textContent = 'This browser cannot use the microphone. Use Google Chrome.'; el('err').hidden = false; return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      an = ctx.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
+      ctx.createMediaStreamSource(stream).connect(an);
+      el('start').hidden = true;
+      setInterval(tick, 80);      /* keeps going even when this window is behind others */
+    }).catch(function (err) {
+      el('err').textContent = err && err.name === 'NotAllowedError' ? 'The microphone was blocked. Click the microphone icon in the address bar, choose Allow, then try again.' : 'Could not use the microphone: ' + (err && err.message || err);
+      el('err').hidden = false;
+    });
+  };
+  function chime() {
+    try { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(.18, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .6);
+      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .6); } catch (e) {}
+  }
+  function tick() {
+    an.getFloatTimeDomainData(buf);
+    var sum = 0; for (var i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    var rms = Math.sqrt(sum / buf.length);
+    var db = 20 * Math.log10(Math.max(rms, 1e-6));                       // about -90 (silent) to 0 (very loud)
+    var raw = Math.max(0, Math.min(100, (db + 75 + (+el('sens').value - 5) * 4) * 1.6));
+    level = raw > level ? level * .6 + raw * .4 : level * .92 + raw * .08;   // rises fast, falls slowly
+    var limit = +el('limit').value, now = Date.now(), state = level >= limit ? 'loud' : level >= limit * .7 ? 'mid' : 'ok';
+    if (state === 'loud') { if (!loudSince) loudSince = now; } else loudSince = 0;
+    var showLoud = loudSince && now - loudSince > 1000;                     // only after a full second, not a single clap
+    var cls = showLoud ? 'loud' : state === 'loud' ? 'mid' : state;
+    if (document.body.dataset.s !== cls) {
+      document.body.classList.remove('ok', 'mid', 'loud'); document.body.classList.add(cls); document.body.dataset.s = cls;
+      el('face').textContent = cls === 'loud' ? '🙉' : cls === 'mid' ? '😐' : '😊';
+      el('word').textContent = cls === 'loud' ? 'Too loud!' : cls === 'mid' ? 'Getting loud' : 'Nice and quiet';
+    }
+    if (showLoud && el('chime').checked && now - lastChime > 6000) { lastChime = now; chime(); }
+    el('fill').style.width = level.toFixed(1) + '%';
+  }
+  // the sliders hide when the mouse is still
+  var idle = null;
+  function wake() { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(function () { document.body.classList.add('idle'); }, 3000); }
+  document.addEventListener('mousemove', wake); wake();
+})();
+</script>
+</body>
+</html>
