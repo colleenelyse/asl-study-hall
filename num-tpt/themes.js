@@ -9,7 +9,7 @@ window.SOUND_WORDS = {
       'Sam', 'Ben', 'Pam', 'Tom', 'Kim', 'Jen', 'Tim', 'Ted', 'Bob', 'Dan', 'Ron', 'Rob', 'Jim', 'Ned', 'Mel', 'Deb', 'Jan', 'Nan', 'Val', 'Zak', 'Tad', 'Kip', 'Bev', 'Jed', 'Don', 'Jon', 'Lin', 'Vin'],
   2: ['stop', 'spot', 'slip', 'slap', 'flat', 'flip', 'drum', 'drip', 'trip', 'trap', 'snap', 'spin', 'swim', 'spit', 'step', 'stem', 'sled', 'fled', 'plan', 'plum', 'plus', 'slam', 'slim', 'slid', 'brim', 'lamp', 'damp', 'ramp', 'jump', 'bump', 'dump', 'lump', 'pump', 'tent', 'bent', 'dent', 'rent', 'sent', 'went', 'vent', 'hunt', 'mint', 'hint', 'lint', 'lift', 'soft', 'loft', 'raft', 'left', 'help', 'held', 'melt', 'belt', 'felt', 'kelp', 'milk', 'silk', 'film', 'fist', 'list', 'mist', 'best', 'nest', 'pest', 'rest', 'test', 'vest', 'west', 'zest', 'dust', 'just', 'must', 'rust', 'trust', 'land', 'band', 'hand', 'sand', 'bend', 'lend', 'mend', 'send', 'tend', 'fund', 'past', 'fast', 'mast', 'vast', 'desk', 'disk', 'task', 'mask', 'tusk', 'brisk', 'stomp', 'stamp', 'blimp', 'limp', 'plump', 'slump', 'stump', 'strap', 'strip', 'split', 'print', 'blend', 'spend', 'trend', 'twin', 'twist', 'swept', 'slept', 'kept', 'wept', 'blunt', 'stunt', 'spent',
       'Brad', 'Fran', 'Brent', 'Kent', 'Stan', 'Trent', 'Fred', 'Bret'],
-  3: ['sunset', 'napkin', 'laptop', 'suntan', 'upset', 'until', 'insult', 'himself', 'bandit', 'tiptop', 'absent', 'velvet', 'helmet', 'nonstop', 'kidnap', 'dentist', 'pumpkin', 'denim', 'vivid', 'timid', 'rapid', 'solid', 'limit', 'modest', 'invent', 'intend', 'admit', 'submit', 'hundred', 'splendid', 'tablet', 'habit', 'robin', 'sunlit', 'trumpet', 'pundit', 'tempest', 'unfit', 'unlit', 'bobsled', 'Kendal', 'Linton', 'Benson']
+  3: ['sunset', 'napkin', 'laptop', 'suntan', 'upset', 'until', 'insult', 'himself', 'bandit', 'tiptop', 'absent', 'velvet', 'helmet', 'nonstop', 'dentist', 'pumpkin', 'denim', 'vivid', 'timid', 'rapid', 'solid', 'limit', 'modest', 'invent', 'intend', 'admit', 'submit', 'hundred', 'splendid', 'tablet', 'habit', 'robin', 'sunlit', 'trumpet', 'pundit', 'tempest', 'unfit', 'unlit', 'bobsled', 'Kendal', 'Linton', 'Benson']
 };
 
 /* Familiar words for Fill in the blanks (Colleen: everyday words, not brand names with odd spellings): single words from her WordSearch Studio word banks. */
@@ -40,10 +40,9 @@ window.LOOK_GROUPS = {
     ['band', 'bend', 'bond', 'bind'], ['pack', 'pick', 'puck', 'peck'], ['last', 'lost', 'list', 'lest'], ['ham', 'hem', 'him', 'hum']] },
   'R U V W K': { letters: 'RUVWK', sets: [
     ['rest', 'vest', 'west', 'best'], ['rent', 'vent', 'went', 'bent'], ['rake', 'wake', 'bake', 'make'], ['ring', 'wing', 'king', 'sing'],
-    ['rink', 'wink', 'kink', 'pink'], ['rag', 'wag', 'bag', 'tag'], ['run', 'bun', 'fun', 'gun'], ['rise', 'wise', 'rose', 'vase'],
+    ['rink', 'wink', 'kink', 'pink'], ['rag', 'wag', 'bag', 'tag'], ['rise', 'wise', 'rose', 'vase'],
     ['row', 'vow', 'wow', 'bow'], ['rail', 'wail', 'tail', 'nail']] },
-  'K P G H': { letters: 'KPGH', sets: [
-    ['kill', 'pill', 'hill', 'gill'], ['got', 'hot', 'pot', 'cot'], ['gold', 'hold', 'told', 'cold'], ['hug', 'pug', 'mug', 'bug'],
+  'K P G H': { letters: 'KPGH', sets: [ ['got', 'hot', 'pot', 'cot'], ['gold', 'hold', 'told', 'cold'], ['hug', 'pug', 'mug', 'bug'],
     ['pick', 'kick', 'tick', 'sick'], ['peg', 'keg', 'leg', 'beg'], ['hen', 'pen', 'ten', 'den'], ['gate', 'hate', 'late', 'date'],
     ['kin', 'pin', 'gin', 'tin'], ['gum', 'hum', 'sum', 'yum'], ['park', 'bark', 'dark', 'mark'], ['hole', 'pole', 'mole', 'role']] },
   'I Y J': { letters: 'IYJ', sets: [['die', 'dye', 'lie', 'lye']] }

@@ -1,7 +1,7 @@
 /* Fingerspell to the Camera (2026-10-17). The camera hand-tracker (Google MediaPipe, running inside the browser) finds the 21 joints of the
    student's hand; we compare that hand to each letter. The letters come from Colleen's own 3D hand (hand.poseJoints), and "Teach it my hand"
    adds the student's own way of making a letter (kept in this browser only). The camera picture never leaves the computer. */
-import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
+import { FilesetResolver, HandLandmarker, FaceDetector } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), STILL = LETTERS.filter(c => c !== 'J' && c !== 'Z'), MOVING = { J: 1, Z: 1 };
@@ -11,6 +11,7 @@ let NUMS = false, SET = LETTERS, STILLSET = STILL;
 const UNIT = () => NUMS ? 'number' : 'letter';      /* J and Z move: they are read from the motion (readMotion), the others from the handshape */
 const MODEL = 'https:' + '/' + '/storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 const WASM = 'https:' + '/' + '/cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
+let VFILES = null;
 const HOLD = 500;      /* ms (Colleen, 2026-10-17): the shape has to be held on purpose for half a second; passing through it doesn't count */
 const clock = () => window.__fakeNow !== undefined ? window.__fakeNow : performance.now();      /* tests can move time by hand */
 let prevT = 0, EMA = 0, SKIP = 0;      /* still quick: no sitting at 99% (Colleen) */
@@ -76,7 +77,7 @@ async function start() {
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The camera did not turn on. Check that this computer has a camera and that the browser is allowed to use it. Some school computers turn the camera off.</p>'; return; }
   $('#rd-camsg').innerHTML = '<p>Getting the hand reader ready…</p>';
   try {
-    const files = await FilesetResolver.forVisionTasks(WASM);
+    const files = VFILES = await FilesetResolver.forVisionTasks(WASM);
     const opts = d => ({ baseOptions: { modelAssetPath: MODEL, delegate: d }, runningMode: 'VIDEO', numHands: 1 });
     try { landmarker = await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { landmarker = await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; return; }
@@ -96,6 +97,7 @@ function loop() {
   if (GAME && GAME.free) { freeRead(f, r.landmarks[0]); return; }      /* Hangman, Wordle: any letter, no target */
   const target0 = WORD ? WORD[wi] : SET[cur];
   if (MOVING[target0]) { readMotion(target0, camHand(r.worldLandmarks[0]), r.landmarks[0], f); return; }
+  if (NUMS && String(target0)[0] === 'a') { ageRead(target0, f, r.landmarks[0], nowT); return; }
   if (NUMS && String(target0).length > 1) { seqRead(target0, f, r.landmarks[0]); return; }
   if (WORD) { const L0 = r.landmarks[0], sz = Math.hypot(L0[9].x - L0[0].x, L0[9].y - L0[0].y); BOUNCE.push({ y: L0[0].y, s: sz }); if (BOUNCE.length > 240) BOUNCE.shift(); }
   MOT = [];
@@ -166,6 +168,7 @@ function drawMix() {      /* targeted feedback: the pairs this student mixes up 
 let refHand = null;
 function go(k) {
   cur = (k + SET.length) % SET.length; done = false; held = 0; $('#rd-hold').style.width = '0';
+  AGE = null;
   const c = SET[cur]; $('#rd-letter').textContent = GAME && GAME.mask ? '?' : NUMS ? numText(c) : c; $('#rd-letter').classList.toggle('long', NUMS && numText(c).length > 4); $('#rd-letter').classList.remove('ok'); SEQ = null;
   const sn = $('#rd-shownum'); if (sn) sn.hidden = !NUMS || c.length < 2; $('#rd-modelbox').hidden = true;
   showRef(c); drawAlpha();
@@ -206,6 +209,7 @@ const NSETS = [['d', '0–9', range(0, 9)], ['teen', '10–19', range(10, 19)], 
   ['big', '101–999', sample(40, () => { let n; do { n = 101 + Math.floor(Math.random() * 899); } while (n % 100 === 0); return n; })],
   ['thou', 'Thousands', sample(40, () => rndPick([1000 * (1 + Math.floor(Math.random() * 99)), 1000 + Math.floor(Math.random() * 98999), 100000 + 1000 * Math.floor(Math.random() * 900)]))],
   ['mil', 'Millions', sample(30, () => 1e6 * (1 + Math.floor(Math.random() * 20)) + rndPick([0, 0, 500000, 250000, 1000 * Math.floor(Math.random() * 999)]))],
+  ['age', 'Ages', sample(36, () => 'a' + rndPick([1 + Math.floor(Math.random() * 9), 10 + Math.floor(Math.random() * 10), 20 + Math.floor(Math.random() * 80)]))],
   ['year', 'Years', sample(40, () => 'y' + rndPick([1492, 1776, 1865, 1906, 1900, 1969, 1999, 2000, 2005, 2008, 1000 + Math.floor(Math.random() * 1100)]))]];      /* every number (Colleen): big numbers are read in parts, in spoken order */
 let NS = ['d']; try { const v = JSON.parse(localStorage.getItem('fs-reader-nsets') || 'null'); if (Array.isArray(v) && v.length) NS = v.filter(k => NSETS.some(x => x[0] === k)); if (!NS.length) NS = ['d']; } catch (e) {}
 const nPool = () => { const out = []; NSETS.forEach(x => { if (NS.includes(x[0])) x[2].forEach(n => out.push(String(n))); }); return out; };
@@ -216,6 +220,7 @@ function numChips() {
   el.onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; const i = NS.indexOf(b.dataset.v); if (i >= 0) { if (NS.length > 1) NS.splice(i, 1); } else NS.push(b.dataset.v); try { localStorage.setItem('fs-reader-nsets', JSON.stringify(NS)); } catch (x) {} numChips(); if (NUMS) { SET = onlyDigits() ? DIGITS : shuffleA(nPool()); go(0); ckAbout(); } };
 }
 function nHint(n) {      /* one short reminder of the movement */
+  if (String(n)[0] === 'a') { const a = +String(n).slice(1); return a <= 9 ? a + ' palm out, pointer finger on your chin, then push down and forward' : '1 on your chin, then push forward into the ' + a; }
   { const P = partsFor(n); if (P.length > 1) return 'In parts: ' + P.map(p => p.v === 'T' ? 'THOUSAND' : p.v === 'M' ? 'MILLION' : p.v).join(', '); }
   n = +n; if (n === 10) return 'Thumb up, then twist it'; if (n <= 12) return 'Flick ' + (n === 11 ? 'the finger' : 'the fingers') + ' up from the thumb'; if (n <= 15) return 'Bend the fingers down, twice';
   if (n <= 19) return '10, then flick into the ' + (n - 10) + ' (or twist the ' + (n - 10) + ')'; if (n === 20) return 'Pinch: thumb and pointer, twice'; if (n === 21) return 'L, then bend the thumb';
@@ -232,7 +237,7 @@ function partsFor(t) {
   if (t[0] === 'y') { const yp = refHand && refHand.yearParts ? refHand.yearParts(+t.slice(1)) : null; return (yp || []).map(([v]) => ({ v, o: { series: true, tenOnly: true } })); }      /* years: 16-19 only as 10 + number */
   const tok = tokensFor(+t); return tok.map(v => ({ v, o: { series: tok.length > 1 } }));
 }
-const numText = t => { t = String(t); return t[0] === 'y' ? t.slice(1) : t.length > 3 ? Number(t).toLocaleString('en-US') : t; };      /* SQ: key moments closer than this count as one */
+const numText = t => { t = String(t); return t[0] === 'a' ? 'Age ' + t.slice(1) : t[0] === 'y' ? t.slice(1) : t.length > 3 ? Number(t).toLocaleString('en-US') : t; };      /* SQ: key moments closer than this count as one */
 const roll = f => Math.atan2(f.orient[0], f.orient[1]) * 57.3;      /* how far the fingers lean, side to side, as the camera sees it */
 function squash(K) {
   const out = []; K.forEach(k => { if (!out.length || dist(k, out[out.length - 1]) > SQ) out.push(k); });
@@ -251,7 +256,8 @@ function seqStart(n) {
   if (!DECOY[n] && refHand && refHand.numberDecoys) DECOY[n] = [].concat(...P.map(p => refHand.numberDecoys(p.v, p.o).map(([d, J]) => feat(J))));
   SEQ = { n, forms: (KEYS[n] || []).map(K => ({ K, i: -1, run: 0, r0: null, noSkip: multi })) };      /* a part can't be skipped */
 }
-function seqRead(n, f, L) {
+function seqRead(n, f, L, opt) {
+  opt = opt || {};
   if (!SEQ || SEQ.n !== n) seqStart(n);
   let best = 99; DIGITS.forEach(c => { best = Math.min(best, dModel(f, c)); (MINE[c] || []).forEach(m => { best = Math.min(best, dist(f, m, c)); }); });
   SEQ.forms.forEach(F => F.K.forEach(k => { best = Math.min(best, dist(f, k)); })); (DECOY[n] || []).forEach(k => { best = Math.min(best, dist(f, k)); });
@@ -269,16 +275,59 @@ function seqRead(n, f, L) {
     }
     prog = Math.max(prog, (F.i + 1) / F.K.length);
   });
+  if (!opt.quiet) {      /* ages draw their own picture and tip */
   dots(L, -1, !!win);
   const pct = win ? 100 : Math.round(prog * 90); $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>';
   const wrongWay = SEQ.forms.some(F => F.wrong); $('#rd-tip').textContent = win ? 'Yes!' : wrongWay ? 'Check which way it rocks: ' + nHint(n).toLowerCase() : nHint(n);
   $('#rd-guess').innerHTML = SEQ.forms.map(F => '<span class="' + (F === win ? 'top' : '') + '">' + (F.i + 1) + '/' + F.K.length + '<small>key moments</small></span>').join('');
   $('#rd-hold').style.width = (win ? 100 : prog * 100) + '%';
-  if (win && !done) { done = true; SEQ = null; $('#rd-letter').classList.add('ok'); flash(numText(n)); ckRecord(n, true, 1); setTimeout(nextLetter, 1300); }
+  }
+  if (win && !done && (!opt.gate || opt.gate())) { done = true; SEQ = null; $('#rd-letter').classList.add('ok'); flash(numText(opt.as || n)); ckRecord(opt.as || n, true, 1); setTimeout(nextLetter, 1300); }
+  return !!win;
+}
+/* AGES (2026-10-17): the face finder (MediaPipe, on this computer only, loaded only for ages) finds the mouth and nose; the chin is just below.
+   1-9: the number palm out, the pointer finger on the chin, then a push down and forward. 10 and up: the 1 palm in on the chin, then the push
+   turns into the number with its usual rules (Colleen's locked age rules in hand.js). */
+let FACE_DET = null, FACE_LOAD = null, FACE = null, AGE = null, faceN = 0;
+const FACE_MODEL = 'https:' + '/' + '/storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
+function faceStart() {
+  if (FACE_LOAD || !VFILES) return; const o = d => ({ baseOptions: { modelAssetPath: FACE_MODEL, delegate: d }, runningMode: 'VIDEO', minDetectionConfidence: 0.5 });
+  FACE_LOAD = FaceDetector.createFromOptions(VFILES, o('GPU')).catch(() => FaceDetector.createFromOptions(VFILES, o('CPU'))).then(d => { FACE_DET = d; }).catch(() => { FACE_LOAD = null; });
+}
+function faceTick(t) {
+  if (!FACE_DET) { faceStart(); return; } if (++faceN % 3) return;      /* every third frame is plenty */
+  try { const r = FACE_DET.detectForVideo(video, t), d = r && r.detections && r.detections[0]; if (!d || !d.keypoints || d.keypoints.length < 6) { FACE = null; return; }
+    const k = d.keypoints, nose = k[2], mouth = k[3], fw = Math.abs(k[4].x - k[5].x) || (d.boundingBox ? d.boundingBox.width / (video.videoWidth || 640) : 0.25);
+    FACE = { x: mouth.x + (mouth.x - nose.x) * 1.3, y: mouth.y + (mouth.y - nose.y) * 1.3, fw, t }; } catch (e) { FACE = null; }
+}
+function ageRead(t, f, L, now) {
+  const a = +String(t).slice(1); faceTick(now);
+  if (!AGE || AGE.t !== t) AGE = { t, phase: 'chin', ms: 0, last: now, s0: 0, pushed: false };
+  const dt = Math.min(100, now - AGE.last); AGE.last = now;
+  const startC = a <= 9 ? (a <= 5 ? a + '*' : String(a)) : '1', R = rank(f), best = R[0][1], dS = (R.find(x => x[0] === startC) || [0, 99])[1], shapeOK = dS <= best * 1.2;      /* 1-5 palm out are the "*" entries */
+  const tip = L[8], size = Math.hypot(L[9].x - L[0].x, L[9].y - L[0].y);
+  dots(L, -1, AGE.phase === 'done');
+  if (FACE && now - FACE.t < 600) { ctx.beginPath(); ctx.arc(FACE.x * draw.width, FACE.y * draw.height, 9, 0, 7); ctx.strokeStyle = AGE.phase === 'chin' ? '#FFC83D' : '#14804D'; ctx.lineWidth = 4; ctx.stroke(); }      /* where the chin is */
+  const face = FACE && now - FACE.t < 600, near = face ? Math.hypot(tip.x - FACE.x, tip.y - FACE.y) / FACE.fw : 9;
+  let tipTxt = '', prog = 0;
+  if (!face) tipTxt = 'Face the camera so it can see your chin';
+  else if (AGE.phase === 'chin') {
+    tipTxt = !shapeOK ? (a <= 9 ? 'Make ' + a + ', palm out' : 'Make a 1, palm toward you') : near > 0.4 ? 'Put your pointer finger on your chin' : 'Now push down and forward';
+    if (shapeOK && near <= 0.4) { AGE.ms += dt; if (AGE.ms >= 250) { AGE.phase = 'push'; AGE.s0 = size; AGE.y0 = tip.y; } } else AGE.ms = 0;
+    prog = 0.1 + (shapeOK ? 0.15 : 0) + (near <= 0.4 ? 0.15 : 0);
+  }
+  if (face && (AGE.phase === 'push' || AGE.phase === 'num')) {
+    if (!AGE.pushed && (near > 0.75 || size > AGE.s0 * 1.12) && tip.y >= AGE.y0 - 0.02) AGE.pushed = true;      /* away from the chin: down, or forward (bigger) */
+    if (a <= 9) { tipTxt = AGE.pushed ? 'Yes!' : 'Push down and forward'; prog = AGE.pushed ? 1 : 0.5;
+      if (AGE.pushed && shapeOK && !done) { AGE.phase = 'done'; done = true; $('#rd-letter').classList.add('ok'); flash(numText(t)); ckRecord(t, true, 1); setTimeout(nextLetter, 1300); } }
+    else { AGE.phase = 'num'; const won = seqRead(String(a), f, L, { as: t, gate: () => AGE.pushed, quiet: true }); tipTxt = won && AGE.pushed ? 'Yes!' : AGE.pushed ? 'Now sign ' + a : 'Push forward into the ' + a; prog = 0.5 + (AGE.pushed ? 0.25 : 0) + (won ? 0.25 : 0); if (done) AGE.phase = 'done'; }
+  }
+  $('#rd-tip').textContent = tipTxt; $('#rd-hold').style.width = Math.round(prog * 100) + '%';
+  $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', Math.round(prog * 100)); $('#rd-pct').innerHTML = '<span>' + Math.round(prog * 100) + '%</span>';
 }
 async function showNum() {      /* the hand signs the number, so the student can see the movement */
-  if (!refHand || !NUMS) return; const n = +String(SET[cur]).replace('y', ''), box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-shownum').disabled = true;
-  try { await refHand.ready; const t = String(SET[cur]); if (t[0] === 'y') await refHand.signYear(+t.slice(1), {}); else if (partsFor(t).length > 1) await refHand.signParts(tokensFor(+t).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]), {}); else await refHand.sign(n, {}); } catch (e) {} finally { $('#rd-shownum').disabled = false; }
+  if (!refHand || !NUMS) return; const n = +String(SET[cur]).replace(/^[ya]/, ''), box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-shownum').disabled = true;
+  try { await refHand.ready; const t = String(SET[cur]); if (t[0] === 'a') await refHand.signAge(+t.slice(1), {}); else if (t[0] === 'y') await refHand.signYear(+t.slice(1), {}); else if (partsFor(t).length > 1) await refHand.signParts(tokensFor(+t).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]), {}); else await refHand.sign(n, {}); } catch (e) {} finally { $('#rd-shownum').disabled = false; }
 }
 /* ---------- J and Z (the letters that move) ---------- */
 let MOT = [];      /* the last couple of seconds of the moving fingertip */
@@ -444,7 +493,9 @@ $('#rd-hint').onchange = () => { try { localStorage.setItem('fs-reader-hint', $(
 drawMix();
 
 /* ---------- CAMERA GAMES (Colleen, 2026-10-17). Practice only: nothing is saved to the sheet; each game keeps this computer's best score. ---------- */
-let GAME = null;
+let GAME = null, CLASSNAMES = null;
+/* the Name Game: inside a class app the camera tab asks for the class's first names (they stay on this screen; nothing is kept) */
+if (IN_SHEET) { window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-names' && Array.isArray(e.data.names)) CLASSNAMES = e.data.names.map(x => String(x).toUpperCase().replace(/[^A-Z]/g, '')).filter(x => x.length >= 2 && x.length <= 14); }); try { window.opener.postMessage({ type: 'fsp-cam-names?' }, '*'); } catch (e) {} }
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function maskWord(text, key) { let t = String(text); [key].concat(key.split(/\s+/).filter(w => w.length >= 3)).forEach(w => { t = t.replace(new RegExp(reEsc(w), 'gi'), '_____'); }); return t; }      /* the description must not give the word away */
 const best = (k, v, lower) => { let b = null; try { b = JSON.parse(localStorage.getItem('fs-cam-best') || '{}'); } catch (e) { b = {}; } const old = b[k]; if (v !== undefined && (old === undefined || (lower ? v < old : v > old))) { b[k] = v; try { localStorage.setItem('fs-cam-best', JSON.stringify(b)); } catch (e) {} return { old, isNew: true }; } return { old, isNew: false }; };
@@ -457,7 +508,8 @@ const LGAMES = [
   ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'],
   ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'],
   ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'],
-  ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.']];
+  ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'],
+  ['names', '🙋', 'Name Game', 'Fingerspell names: your classmates\u2019 names in your class app, popular names here.']];
 const NGAMES = [
   ['math', '➗', 'Math Answer', 'Solve the problem, then sign the answer.'],
   ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'],
@@ -494,6 +546,12 @@ function startGame(k) {
     G.play = async () => { const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; try { await refHand.ready; await refHand.spell(G.w, { speed: () => 0.15 }); } catch (e) {} };
     G.wordDone = () => { G.score++; ghead('<b>' + G.score + '</b> spelled'); setTimeout(G.next, 1600); };
     G.skip = () => { const w = $('#rd-word'); w.innerHTML = G.w.split('').map(x => '<span class="n">' + x + '</span>').join(''); done = true; $('#rd-def').textContent = '📖 ' + ((window.FS_DEFS || {})[defOf(G.w)] || ''); setTimeout(G.next, 2600); };
+    G.next();
+  } else if (k === 'names') {
+    const P = CLASSNAMES && CLASSNAMES.length >= 3 ? CLASSNAMES : (window.FS_WORDS.NAME || []).map(w => String(w).toUpperCase()).filter(w => /^[A-Z]{2,12}$/.test(w));
+    const mine = !!(CLASSNAMES && CLASSNAMES.length >= 3), order = shuffleA(P); G.n = 0;
+    G.next = () => { if (G.n >= Math.min(10, order.length)) return endGame('<h3>Name Game</h3><div class="big">' + G.score + ' of ' + G.n + '</div><p class="rd-small">names spelled' + (best('names', G.score).isNew ? ' (a new best!)' : '') + '</p>', k); G.w = order[G.n++]; bar('Name Game: ' + (mine ? 'names in your class' : 'popular names') + ', ' + G.n + ' of ' + Math.min(10, order.length), [['skip', 'Skip']]); ghead('<b>' + G.score + '</b> spelled'); wordGame(G, G.w); };
+    G.wordDone = () => { G.score++; ghead('<b>' + G.score + '</b> spelled'); setTimeout(G.next, 1200); }; G.skip = G.next;
     G.next();
   } else if (k === 'speed') {
     const P = pool().filter(w => w.length <= 6); if (!P.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
@@ -600,4 +658,4 @@ refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c);
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
 if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) setTimeout(() => gb.click(), 0); }      /* show the game list until the camera is on */
 { const want = ONLY === 'numbers' || QS.get('kind') === 'numbers' ? 'numbers' : ''; const b = want && document.querySelector('#rd-mode [data-v="numbers"]'); if (b) { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b)); setNums(true); $('#rd-ask').textContent = 'Sign this number'; ckAbout(); } }
-window.READER = { startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
+window.READER = { ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
