@@ -32,7 +32,7 @@ if (EMBED) try {
 } catch (e) {}
 
 /* switches for later: ads (never during a word) and Google Analytics. Both off until the site is ready for them. */
-const CFG = { ads: false, ga: '', only: 'both' };      /* TpT edition: one product's games only, never ads, never visitor counting */
+const CFG = { ads: false, ga: '', only: 'both' };      /* TpT edition: one product's games only, never ads, never visitor counting */      /* (no braces inside: dev/build-tpt-site.py rewrites this line) */      /* AdSense (Colleen, 2026-10-17): ads turns on once adClient (ca-pub-...) and the two ad unit numbers are filled in */
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only === 'both' ? '' : CFG.only || (/\/numbers\/?$/.test(location.pathname) ? 'numbers' : '') || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
@@ -2291,7 +2291,16 @@ function showScreen(name) {
   $$('.screen').forEach(s => s.classList.toggle('on', s.dataset.screen === name));
   window.scrollTo(0, 0);
   const adsOk = CFG.ads && !EMBED && !CFG.only && /(^|\.)asl\.cool$/.test(location.hostname) && !document.documentElement.classList.contains('noshop');      /* NO ADS for students in ASL Study (EMBED), in the paid sheets (CFG.only), off asl.cool, or on a device opened with a class password (Colleen, 2026-10-17) */
-  $$('.ad').forEach(a => { a.hidden = !adsOk; if (adsOk) a.textContent = 'Advertisement'; });      // never on a game screen
+  $$('.ad').forEach(a => { a.hidden = !adsOk; });      // never on a game screen
+  if (adsOk && CFG.adClient) { const box = $('.screen.on .ad'); if (box) adFill(box); }
+}
+/* Google AdSense: non-personalized only, loaded only where adsOk allows, one ad unit filled the first time its page shows */
+let adLib = false;
+function adFill(box) {
+  const slot = box.dataset.ad === 'home' ? CFG.adHome : box.dataset.ad === 'results' ? CFG.adResults : ''; if (!slot || box.dataset.filled) return; box.dataset.filled = '1';
+  if (!adLib) { adLib = true; (window.adsbygoogle = window.adsbygoogle || []).requestNonPersonalizedAds = 1; const sc = document.createElement('script'); sc.async = true; sc.crossOrigin = 'anonymous'; sc.src = 'https:' + '/' + '/pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(CFG.adClient); document.head.appendChild(sc); }
+  box.innerHTML = '<p class="adlabel">Advertisement</p><ins class="adsbygoogle" style="display:block" data-ad-client="' + esc(CFG.adClient) + '" data-ad-slot="' + esc(slot) + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
 }
 gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */

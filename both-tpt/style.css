@@ -617,3 +617,4 @@ body.nocamnum [data-camnum] { display: none !important; }      /* TpT sheets wit
 /* the tip link (Colleen's Ko-fi, 2026-10-17): home pages and results only; never inside ASL Study, the paid copies, or on a class-password device */
 .tiplink { margin: 16px auto 0; text-align: center; font-size: 15px; color: var(--muted); } .tiplink a { color: var(--accent); font-weight: 800; }
 html.noshop .tiplink, html.embedded .tiplink { display: none !important; }
+.ad .adlabel { margin: 0 0 4px; font-size: 12px; color: var(--muted); text-align: center; }      /* ads are labeled */
