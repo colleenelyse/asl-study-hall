@@ -11,6 +11,9 @@
   var len = function (a) { return Math.hypot(a[0], a[1], a[2]); }, unit = function (a) { var l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
   var cross = function (a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; };
   var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+  /* The chest area, in face widths from the chin (Colleen, 2026-10-17: ME, MY, YOU and YOUR are signed lower than the chin; the top of the
+     area starts below the chin). The area just under the chin is where AGES are signed (reader.js). */
+  var CHEST = { top: 0.6, bottom: 3.0, half: 0.95 };
 
   /* P: 21 world points already turned to our frame (x right as the signer sees it, y up, z toward the camera; a left hand mirrored).
      L: 21 image points (0-1, as the camera sees them). face: { x, y, fw } (the chin, and the face width) or null. */
@@ -25,7 +28,7 @@
       f.size = Math.hypot(L[9].x - L[0].x, L[9].y - L[0].y);
       if (face && face.fw) {
         var tip = shape === 'point' ? L[8] : L[9], dx = (tip.x - face.x) / face.fw, dy = (tip.y - face.y) / face.fw;
-        f.chest = { dx: dx, dy: dy, near: Math.abs(dx) < 0.9 && dy > 0.1 && dy < 2.6, rel: f.size / face.fw };      // in front of the chest: below the chin, within the body's width
+        f.chest = { dx: dx, dy: dy, near: Math.abs(dx) < CHEST.half && dy > CHEST.top && dy < CHEST.bottom, rel: f.size / face.fw };      // in front of the chest: below the chin, within the body's width
       }
     }
     return f;
@@ -78,6 +81,6 @@
       return null;
     };
   }
-  var API = { features: features, dirScore: dirScore, classify: classify, calibrate: calibrate, Steady: Steady, DEFAULT: DEFAULT };
+  var API = { CHEST: CHEST, features: features, dirScore: dirScore, classify: classify, calibrate: calibrate, Steady: Steady, DEFAULT: DEFAULT };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PRONOUN_REC = API;
 })(typeof window !== 'undefined' ? window : this);

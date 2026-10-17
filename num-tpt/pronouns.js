@@ -115,7 +115,18 @@ function dots(L, c) {
   ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = col;
   B.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(L[a].x * W, L[a].y * H); ctx.lineTo(L[b].x * W, L[b].y * H); ctx.stroke(); });
   if (FACE) { ctx.beginPath(); ctx.arc(FACE.x * W, FACE.y * H, 8, 0, 7); ctx.strokeStyle = '#FFC83D'; ctx.stroke(); }
+  drawChest();
 }
+/* the chest area the recognizer uses (pronoun-recognize.js features: within 0.9 face widths of the chin's middle, from 0.1 to 2.6 face widths
+   below it). Drawn only when the teacher ticks "Show the chest area", so students see a clean camera. The canvas is mirrored like the video. */
+function drawChest() {
+  if (!$('#tChest') || !$('#tChest').checked || !FACE) return;
+  const C = REC.CHEST, W = draw.width, H = draw.height, x0 = (FACE.x - C.half * FACE.fw) * W, w = 2 * C.half * FACE.fw * W, y0 = (FACE.y + C.top * FACE.fw) * H, h = (C.bottom - C.top) * FACE.fw * H;      // exactly the recognizer's numbers (both in 0-1 picture units)
+  ctx.save(); ctx.fillStyle = 'rgba(255,200,61,.16)'; ctx.strokeStyle = 'rgba(255,200,61,.9)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, y0, w, h, 18) : ctx.rect(x0, y0, w, h); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  ctx.translate(x0 + w / 2, y0 + 26); ctx.scale(-1, 1); ctx.font = '700 20px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#FFE38A'; ctx.fillText('chest area: ME, MY', 0, 0); ctx.restore();      // the label un-mirrored so it reads normally
+}
+window.PRON_CHEST_DEMO = (face) => { FACE = Object.assign({ t: now() }, face); draw.width = 640; draw.height = 480; ctx.clearRect(0, 0, 640, 480); $('#tChest').checked = true; ctx.beginPath(); ctx.arc(FACE.x * 640, FACE.y * 480, 8, 0, 7); ctx.strokeStyle = '#FFC83D'; ctx.lineWidth = 4; ctx.stroke(); drawChest(); };
 function drawDiag(f, c) {
   if ($('#t-teach').hidden) return;
   if (!f) { $('#diag').textContent = 'No hand in view.'; return; }

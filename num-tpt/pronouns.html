@@ -105,6 +105,7 @@
         <h2>What the camera sees</h2>
         <p class="small2" style="margin:0">For testing: the live reading, with the numbers behind it. A heuristic prototype: check it with real signers before trusting a score.</p>
         <div class="diag" id="diag">Turn on the camera.</div>
+        <label class="small2" style="display:block;margin-top:6px"><input type="checkbox" id="tChest"> Show the chest area on the camera (where ME and MY are signed)</label>
         <h2 style="margin-top:14px">Speeds</h2>
         <label class="small2" style="display:block">Interpreter speed: words per minute <input type="number" class="auth" id="tWpm" value="110" min="40" max="220" style="width:90px"></label>
         <label class="small2" style="display:block">Interpreter answer window (seconds) <input type="number" class="auth" id="tWin" value="0.75" step="0.05" min="0.3" max="3" style="width:90px"></label>
@@ -124,7 +125,7 @@
 </div>
 <script src="pronoun-sentences.js?v=1"></script>
 <script src="pronoun-engine.js?v=1"></script>
-<script src="pronoun-recognize.js?v=1"></script>
-<script type="module" src="pronouns.js?v=1"></script>
+<script src="pronoun-recognize.js?v=2"></script>
+<script type="module" src="pronouns.js?v=2"></script>
 </body>
 </html>
