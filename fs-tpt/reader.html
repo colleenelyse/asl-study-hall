@@ -62,7 +62,8 @@
   .rd-gamelist { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; margin: 6px 0; } @media (max-width: 420px) { .rd-gamelist { grid-template-columns: 1fr; } }
   .rd-gcard { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: start; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; font: inherit; }
   .rd-gcard span { font-size: 26px; grid-row: span 2; } .rd-gcard b { font: 700 16px var(--display); } .rd-gcard small { color: var(--muted); font-size: 13px; } .rd-gcard:hover { border-color: var(--accent); }
-  .rd-ghead { flex-basis: 100%; text-align: center; font: 700 18px var(--display); color: var(--muted); } .rd-ghead b { color: var(--ink); } .rd-math { font-size: clamp(30px, 5vw, 48px); color: var(--ink); }
+  .rd-prompt.numgame .lab { display: none; } .rd-gmodel #rd-model { position: static; display: block; width: 180px; height: 180px; border-radius: 14px; background: var(--surface2); }      /* the math hand beside the problem */
+  .rd-prompt.numgame .rd-ghead { flex-basis: auto; } .rd-ghead { flex-basis: 100%; text-align: center; font: 700 18px var(--display); color: var(--muted); } .rd-ghead b { color: var(--ink); } .rd-math { font-size: clamp(30px, 5vw, 48px); color: var(--ink); }
   .rd-wordle { display: inline-grid; gap: 4px; } .rd-wordle div { display: flex; gap: 4px; } .rd-wordle i { width: 1.15em; height: 1.2em; display: inline-flex; align-items: center; justify-content: center; font-style: normal; border-radius: 8px; border: 2px solid var(--line); font-size: 34px; }
   .rd-wordle .y { background: var(--good); color: #fff; border-color: var(--good); } .rd-wordle .m { background: var(--sun, #FFC83D); border-color: var(--sun, #FFC83D); color: #1b1e3c; } .rd-wordle .n { background: var(--surface2); color: var(--muted); } .rd-wordle .t { background: var(--surface); }
   .rd-calc { margin: 10px auto 0; max-width: 260px; padding: 10px; border-radius: 14px; background: var(--surface2); } .rd-calcd { font: 700 26px var(--display); text-align: right; padding: 6px 10px; border-radius: 10px; background: var(--surface); margin-bottom: 8px; overflow-x: auto; white-space: nowrap; }
@@ -79,8 +80,8 @@
   <div class="rd-safe" role="note"><span aria-hidden="true">🔒</span><div><b>Your camera is private.</b> The camera only watches your hand while you practice. <b>Nothing is recorded.</b> No videos or pictures are saved or sent anywhere, and nobody else can see your camera. <span id="rd-safe-more">The only thing kept is your score: which letters you signed.</span></div></div>
   <div class="rd-grid">
     <div>
-      <div class="rd-prompt" id="rd-prompt" hidden><div class="rd-ghead" id="rd-ghead" hidden></div><span class="lab">Spell this word</span></div>
-      <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-flash" id="rd-flash"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="right">My right hand</button><button class="btn big" data-hand="left">My left hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on. It only watches your hand. Nothing is recorded or saved.</p></div></div></div>
+      <div class="rd-prompt" id="rd-prompt" hidden><div class="rd-ghead" id="rd-ghead" hidden></div><div class="rd-gmodel" id="rd-gmodel" hidden></div><span class="lab">Spell this word</span></div>
+      <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-flash" id="rd-flash"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="left">My left hand</button><button class="btn big" data-hand="right">My right hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on. It only watches your hand. Nothing is recorded or saved.</p></div></div></div>
       <p class="rd-small" id="rd-status"></p>
     </div>
     <div class="card rd-target">
@@ -141,6 +142,6 @@
 <script src="words.js?v=40"></script>
 <script src="defs.js?v=2"></script>
 <script src="hand.js?v=145"></script>
-<script type="module" src="reader.js?v=40"></script>
+<script type="module" src="reader.js?v=47"></script>
 </body>
 </html>

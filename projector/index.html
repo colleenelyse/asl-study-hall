@@ -60,12 +60,55 @@
   .box:hover .size { opacity: 1; }
   body.idle .box .size { opacity: 0; }
   body.moving .box iframe { pointer-events: none; }
+
+  /* LIVING SCREENSAVERS (2026-10-17): one live animal camera, chosen in the teacher view (Tools > Living Screensavers). It is its own layer
+     above the screen copy and the frozen picture, so it keeps playing during Freeze. One player only; changing cameras reuses it. */
+  #live { position: fixed; z-index: 9; background: #000; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  #live[hidden] { display: none; }
+  #live.full { inset: 0 !important; width: 100vw !important; height: 100vh !important; border-radius: 0; box-shadow: none; }
+  #live .frame { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #live .ratio { position: relative; width: 100%; max-height: 100%; aspect-ratio: 16 / 9; }      /* never stretched: black bars instead */
+  #live .ratio > div, #live .ratio iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #live .ttl { position: absolute; left: 12px; bottom: 10px; z-index: 3; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+  #live.notitle .ttl { display: none; }
+  #live .rest { position: absolute; inset: 0; z-index: 4; display: none; align-items: center; justify-content: center; text-align: center; padding: 16px; background: #0d1117; color: #c9d1e3; font-size: 18px; font-weight: 600; }
+  #live.resting .rest { display: flex; }
+  #live .grip { position: absolute; left: 0; right: 0; top: 0; height: 30px; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px;
+    background: var(--bar); color: var(--ink); font-size: 13px; font-weight: 700; cursor: move; opacity: 0; transition: opacity .2s; }
+  #live:not(.full):hover .grip { opacity: 1; } body.idle #live .grip { opacity: 0; } #live.full .grip { display: none; }
+  #live .grip span { flex: 1; } #live .grip button { font: inherit; border: 0; background: rgba(255,255,255,.12); color: var(--ink); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  #live .size { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; z-index: 5; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,.35) 50%); opacity: 0; }
+  #live:not(.full):hover .size { opacity: 1; } body.idle #live .size { opacity: 0; } #live.full .size { display: none; }
+  body.moving #live iframe { pointer-events: none; }
+
+  /* MEET THE RESIDENTS (shown only when the teacher presses Show to Class): cards over the camera, which keeps playing underneath */
+  #res { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; padding: 3vh 3vw; background: rgba(6, 10, 18, .78); color: #f5f7fb; overflow-y: auto; }
+  #res[hidden] { display: none; }
+  #res h2 { margin: 0 0 .3em; font-size: clamp(22px, 3.2vw, 44px); font-weight: 800; letter-spacing: .01em; }
+  #res .sub { margin: 0 0 1.2em; color: #c9d1e3; font-size: clamp(14px, 1.5vw, 22px); }
+  #res .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(clamp(200px, 19vw, 300px), 1fr)); gap: 2vw; align-content: start; }
+  #res .card2 { background: #f9f7f2; color: #1b1e2c; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.4); display: flex; flex-direction: column; }
+  #res .card2 .ph { aspect-ratio: 4 / 3; background: #26303f center / cover no-repeat; }
+  #res .card2 .ph.none { display: flex; align-items: center; justify-content: center; font-size: 56px; }
+  #res .card2 .bd { padding: 14px 16px 16px; }
+  #res .card2 b { display: block; font-size: clamp(20px, 2vw, 30px); line-height: 1.1; }
+  #res .card2 .sp { color: #5a6175; font-size: clamp(13px, 1.1vw, 17px); margin: 2px 0 8px; }
+  #res .card2 .rec { background: #e8f1ff; color: #1b2c55; border-radius: 10px; padding: 8px 10px; font-size: clamp(14px, 1.15vw, 18px); line-height: 1.3; }
+  #res .card2 .rec i { display: block; font-style: normal; font-weight: 800; font-size: .78em; text-transform: uppercase; letter-spacing: .06em; color: #3b5bab; margin-bottom: 2px; }
+  #res .card2 .ln { margin-top: 8px; font-size: clamp(13px, 1.05vw, 17px); line-height: 1.35; color: #2b3040; }
+  #res .former { margin: 2.2em 0 .8em; font-size: clamp(18px, 2vw, 28px); color: #c9d1e3; }
+  #res .card2.gone { opacity: .82; } #res .card2.gone .ph { filter: grayscale(.35); }
+  #res .card2 .tagf { display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: 999px; background: #e4e0d6; color: #5a5446; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  #res .x { position: fixed; top: 16px; right: 18px; font: inherit; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 12px; border: 0; background: rgba(255,255,255,.14); color: #fff; cursor: pointer; }
+  body.idle #res .x { opacity: 0; }
 </style>
 </head>
 <body class="">
 <video id="screen" autoplay muted playsinline></video>
 <canvas id="still"></canvas>
+<div id="live" hidden><div class="frame"><div class="ratio"><div id="ytp"></div></div></div><div class="ttl" id="liveTitle"></div><div class="rest" id="liveRest">This camera is resting. Back soon.</div><div class="grip"><span>Living Screensaver</span><button type="button" id="liveX" title="Stop">✕</button></div><div class="size"></div></div>
 <div id="boxes"></div>
+<div id="res" hidden><button type="button" class="x" id="resX">✕ Back to the camera</button><div id="resBody"></div></div>
 <div id="frozenTag">❄️ Frozen: students see this picture</div>
 
 <div id="bar" hidden>
@@ -257,6 +300,100 @@
     };
   });
   boxes.forEach(drawBox);
+
+  /* ----- LIVING SCREENSAVERS: the teacher view sends { projector: 'live', act, ... }; this window answers with live state ----- */
+  var LIVE = { cam: null, player: null, ready: false, status: 'stopped', code: 0, isLive: null, mode: 'box', title: true, box: { x: 54, y: 52, w: 44, h: 44 }, timer: null };
+  try { var lv0 = JSON.parse(localStorage.getItem('projectorLive') || '{}'); if (lv0.box) LIVE.box = lv0.box; if (lv0.mode) LIVE.mode = lv0.mode; if (lv0.title === false) LIVE.title = false; } catch (e) {}
+  function liveSave() { try { localStorage.setItem('projectorLive', JSON.stringify({ box: LIVE.box, mode: LIVE.mode, title: LIVE.title, last: LIVE.cam })); } catch (e) {} }
+  var liveEl = document.getElementById('live');
+  function livePaint() {
+    liveEl.classList.toggle('full', LIVE.mode === 'full'); liveEl.classList.toggle('notitle', !LIVE.title);
+    liveEl.classList.toggle('resting', LIVE.status === 'error' || LIVE.status === 'waiting');
+    if (LIVE.mode !== 'full') place(liveEl, LIVE.box);
+    document.getElementById('liveTitle').textContent = LIVE.cam ? LIVE.cam.name : '';
+  }
+  function liveState() { return { camId: LIVE.cam && LIVE.cam.id, vid: LIVE.cam && LIVE.cam.vid, name: LIVE.cam && LIVE.cam.name, status: LIVE.status, code: LIVE.code, isLive: LIVE.isLive, mode: LIVE.mode, title: LIVE.title }; }
+  function liveTell() { try { if (window.opener) window.opener.postMessage({ projector: 'live', state: liveState() }, '*'); } catch (e) {} }
+  function liveSet(st, code) { LIVE.status = st; LIVE.code = code || 0; livePaint(); liveTell(); }
+  var ytWant = [];
+  function ytLoad(cb) {
+    if (window.YT && window.YT.Player) return cb(); ytWant.push(cb); if (ytLoad.started) return; ytLoad.started = true;
+    window.onYouTubeIframeAPIReady = function () { var w = ytWant; ytWant = []; w.forEach(function (f) { f(); }); };
+    var sc = document.createElement('script'); sc.src = 'https:' + '//www.youtube.com/iframe_api'; sc.onerror = function () { liveSet('error', -1); }; document.head.appendChild(sc);      /* YouTube's official player */
+  }
+  function liveWatch() {      /* no picture after 20 s: the stream may be offline or not started (YouTube sends no error for that) */
+    clearTimeout(LIVE.timer); LIVE.timer = setTimeout(function () { if (LIVE.status === 'loading' || LIVE.status === 'buffering') liveSet('waiting'); }, 20000);
+  }
+  function livePlay(cam) {
+    if (!cam || !/^[\w-]{11}$/.test(cam.vid || '')) return;
+    LIVE.cam = { id: String(cam.id || ''), vid: cam.vid, name: String(cam.name || '').slice(0, 80) }; LIVE.isLive = null;
+    liveEl.hidden = false; liveSet('loading'); liveSave(); liveWatch();
+    ytLoad(function () {
+      if (LIVE.player && LIVE.ready) { LIVE.player.loadVideoById(LIVE.cam.vid); LIVE.player.mute(); return; }      /* the same player: the old stream is released */
+      if (LIVE.player) return;      /* still starting: onReady loads the newest camera */
+      LIVE.player = new YT.Player('ytp', {
+        host: 'https:' + '//www.youtube-nocookie.com', videoId: LIVE.cam.vid,
+        playerVars: { autoplay: 1, mute: 1, controls: 0, rel: 0, playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0, modestbranding: 1 },
+        events: {
+          onReady: function (e) { LIVE.ready = true; e.target.mute(); if (LIVE.cam && e.target.getVideoData && e.target.getVideoData().video_id !== LIVE.cam.vid) e.target.loadVideoById(LIVE.cam.vid); e.target.playVideo(); },
+          onStateChange: function (e) {
+            if (e.data === 1) { clearTimeout(LIVE.timer); var vd = {}; try { vd = e.target.getVideoData() || {}; } catch (x) {} LIVE.isLive = typeof vd.isLive === 'boolean' ? vd.isLive : null; e.target.mute(); liveSet('playing'); }      /* isLive: what the player itself reports; nothing is guessed */
+            else if (e.data === 3) { if (LIVE.status !== 'playing') liveSet('buffering'); else { LIVE.status = 'buffering'; liveTell(); } liveWatch(); }
+            else if (e.data === 0) liveSet('waiting', 0);      /* the broadcast ended */
+          },
+          onError: function (e) { clearTimeout(LIVE.timer); liveSet('error', e.data); }      /* 2 bad link, 5 player, 100 removed or private, 101/150 embedding turned off */
+        }
+      });
+    });
+  }
+  function liveStop() {
+    clearTimeout(LIVE.timer);
+    if (LIVE.player) { try { LIVE.player.destroy(); } catch (e) {} LIVE.player = null; LIVE.ready = false; var d = document.createElement('div'); d.id = 'ytp'; liveEl.querySelector('.ratio').innerHTML = ''; liveEl.querySelector('.ratio').appendChild(d); }      /* nothing keeps streaming */
+    LIVE.cam = null; liveEl.hidden = true; liveSet('stopped');
+  }
+  document.getElementById('liveX').onclick = liveStop;
+  drag(liveEl, liveEl.querySelector('.grip'), LIVE.box, false);
+  drag(liveEl, liveEl.querySelector('.size'), LIVE.box, true);
+  liveEl.addEventListener('pointerup', liveSave);
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (e.source !== window.opener || d.projector !== 'live') return;
+    if (d.act === 'play') livePlay(d.cam);
+    else if (d.act === 'stop') liveStop();
+    else if (d.act === 'mode') { LIVE.mode = d.mode === 'full' ? 'full' : 'box'; liveSave(); livePaint(); liveTell(); }
+    else if (d.act === 'title') { LIVE.title = !!d.show; liveSave(); livePaint(); liveTell(); }
+    else if (d.act === 'retry' && LIVE.cam) livePlay(LIVE.cam);
+    else liveTell();
+  });
+  setInterval(liveTell, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && LIVE.player && LIVE.ready && LIVE.status === 'playing') try { LIVE.player.playVideo(); } catch (e) {} });      /* back to the window: keep it going */
+  livePaint();
+
+  /* Meet the Residents: only what the teacher deliberately sends with Show to Class (names, photos, short identifying details) */
+  function resEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function resCard(r, gone) {
+    var ph = /^https:\/\//.test(r.photo || '') ? '<div class="ph" style="background-image:url(\'' + resEsc(r.photo).replace(/'/g, '%27') + '\')"></div>' : '<div class="ph none">🐾</div>';
+    return '<div class="card2' + (gone ? ' gone' : '') + '">' + ph + '<div class="bd">' + (gone ? '<span class="tagf">Former resident</span>' : '') + '<b>' + resEsc(r.name) + '</b>' +
+      '<div class="sp">' + resEsc([r.species, r.age, r.sex].filter(Boolean).join(' · ')) + '</div>' +
+      (r.recognize ? '<div class="rec"><i>How to recognize me</i>' + resEsc(r.recognize) + '</div>' : '') +
+      (r.personality ? '<div class="ln">' + resEsc(r.personality) + '</div>' : '') + (r.favorites ? '<div class="ln">❤️ ' + resEsc(r.favorites) + '</div>' : '') + '</div></div>';
+  }
+  function resShow(d) {
+    var now = (d.cards || []).filter(function (r) { return !r.former; }), gone = (d.cards || []).filter(function (r) { return r.former; });
+    document.getElementById('resBody').innerHTML = '<h2>Meet the Residents' + (d.camName ? ': ' + resEsc(d.camName) : '') + '</h2>' +
+      (d.about ? '<p class="sub">' + resEsc(d.about) + '</p>' : '') +
+      (now.length ? '<div class="cards">' + now.map(function (r) { return resCard(r, false); }).join('') + '</div>' : '') +
+      (gone.length ? '<div class="former">Former residents</div><div class="cards">' + gone.map(function (r) { return resCard(r, true); }).join('') + '</div>' : '');
+    document.getElementById('res').hidden = false; liveTellRes();
+  }
+  function resHide() { document.getElementById('res').hidden = true; liveTellRes(); }
+  function liveTellRes() { try { if (window.opener) window.opener.postMessage({ projector: 'residents', showing: !document.getElementById('res').hidden }, '*'); } catch (e) {} }
+  document.getElementById('resX').onclick = resHide;
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (e.source !== window.opener || d.projector !== 'residents') return;
+    if (d.act === 'show') resShow(d); else if (d.act === 'hide') resHide(); else liveTellRes();
+  });
 })();
 </script>
 </body>

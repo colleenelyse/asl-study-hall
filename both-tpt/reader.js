@@ -12,7 +12,7 @@ const UNIT = () => NUMS ? 'number' : 'letter';      /* J and Z move: they are re
 const MODEL = 'https:' + '/' + '/storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 const WASM = 'https:' + '/' + '/cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 let VFILES = null;
-const HOLD = 500;      /* ms (Colleen, 2026-10-17): the shape has to be held on purpose for half a second; passing through it doesn't count */
+const HOLD = 300;      /* ms (Colleen, 2026-10-17): held on purpose, not a quick pass-through; 500 ms felt too long (E), so 300 */
 const clock = () => window.__fakeNow !== undefined ? window.__fakeNow : performance.now();      /* tests can move time by hand */
 let prevT = 0, EMA = 0, SKIP = 0;      /* still quick: no sitting at 99% (Colleen) */
 
@@ -31,7 +31,13 @@ function feat(P) {
   const crossed = (X(8) - X(12)) / span, tipsUp = (Y(8) + Y(12)) / 2 - Y(5);
   return { shape, orient: y.concat(z), key: [thumbAcross, thumbLow, thumbFront, crossed, tipsUp] };
 }
-const LOOSE = { D: 0.5, G: 0.35, H: 0.1, K: 0.45, P: 0.1, Q: 0.4, O: 0.5, C: 0.6 };      /* Colleen: D tricky; H worse than G; P a problem */      /* letters whose angle varies a lot from signer to signer (Colleen: G and H persnickety, K and Q need more flexible rotation) */
+const LOOSE = { D: 0.5, G: 0.35, H: 0.4, K: 0.45, P: 0.4, Q: 0.4, O: 0.5, C: 0.6 };      /* Colleen: D tricky; H worse than G; P a problem */      /* letters whose angle varies a lot from signer to signer (Colleen: G and H persnickety, K and Q need more flexible rotation) */
+/* MUST-HAVES (Colleen, 2026-10-17: it accepted C for O, K for P, G for Q): the detail that tells a pair apart has to be there, however close
+   the rest looks. Up-down = which way the fingers point (1 up, 0 level, -1 down); the gap = thumb tip to pointer fingertip, for the hand's size. */
+const gapTI = f => { const s = f.shape, a = [s[9], s[10], s[11]], b = [s[21], s[22], s[23]]; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
+const GATE = { K: [f => f.orient[1] > 0.55, 'Point your fingers up for K'], P: [f => f.orient[1] < 0.35, 'Point your fingers down for P'],
+  G: [f => f.orient[1] > -0.4, 'Point your fingers to the side for G'], Q: [f => f.orient[1] < -0.45, 'Point your fingers down for Q'],
+  O: [f => gapTI(f) < 0.26, 'Close your fingertips onto your thumb for O'], C: [f => gapTI(f) > 0.3, 'Leave a gap between your fingers and thumb for C'] };
 const EASY = { S: 1.35, H: 1.3, P: 1.3 };      /* (Colleen, 2026-10-17) H: too picky about the turn; P: it's a P once it's low enough not to be a K */      /* letters the camera was too picky about (Colleen: S): they also count as a close second or third */
 const KEYW = [1.3, 0.7, 0.6, 1.4, 0.4];      /* how much each key detail counts */
 function dist(a, b, letter) {
@@ -104,11 +110,11 @@ function loop() {
   const R = rank(f), target = target0;
   const T = (MINE[target] || []).concat(TPL[target] ? [TPL[target]] : []).sort((a, b) => dist(f, a, target) - dist(f, b, target))[0];      /* the closest version of the target letter */
   const dTgt = (R.find(x => x[0] === target) || [0, 99])[1];
-  const easy = EASY[target], right = (R[0][0] === target || (R.slice(0, easy ? 3 : 2).some(x => x[0] === target) && dTgt <= R[0][1] * (easy || 1.15))) && nearModel(f, target, NUMS ? 3 : 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
+  const easy = EASY[target], gate = GATE[target], gateOK = !gate || gate[0](f), AIM = TPL[target] || T, aimOK = !AIM || (dot(f.orient.slice(0, 3), AIM.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), AIM.orient.slice(3)) >= 0.2), right = gateOK && aimOK && (R[0][0] === target || (R.slice(0, easy ? 3 : 2).some(x => x[0] === target) && dTgt <= R[0][1] * (easy || 1.15))) && nearModel(f, target, NUMS ? 3 : 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
   const pct = right ? 100 : Math.max(0, Math.min(90, Math.round(100 - dT * 18)));      /* the right letter shows 100% at once; anything else tops out at 90% (never stuck at 99%) */
   const hot = right || !T ? -1 : worstFinger(f, T); dots(r.landmarks[0], hot, right);
   const palmWrong = NUMS && !right && R[0][0] === target + '*';      /* the right number, the palm the wrong way */
-  $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>'; $('#rd-tip').textContent = right ? 'Yes!' : palmWrong ? 'Turn your palm toward you' : T ? coach(f, T, hot) : '';
+  $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>'; $('#rd-tip').textContent = right ? 'Yes!' : !gateOK ? gate[1] : palmWrong ? 'Turn your palm toward you' : T ? coach(f, T, hot) : '';
   $('#rd-guess').innerHTML = R.slice(0, 3).map((x, i) => '<span class="' + (i ? '' : 'top') + '">' + (x[0][0] === '~' ? 'not a number (' + x[0].slice(1) + ')' : x[0].replace('*', ' palm out')) + '<small>' + Math.max(0, Math.round(100 - x[1] * 18)) + '% close</small></span>').join('');      /* the testing panel: top 3 guesses and how close each is */
   if (done) return;
   quickCheck(R, target, f, dTgt);
@@ -116,7 +122,7 @@ function loop() {
   /* DOUBLE LETTERS (Colleen): the second of two same letters only counts after the hand slides to the side or bounces (opens a little and closes) */
   if (DBL) { const wx = r.landmarks[0][0].x; if (DBL.x0 === null) DBL.x0 = wx; if (Math.abs(wx - DBL.x0) > 0.05 || dT > DBL.d0 + 0.6) DBL.moved = true; if (!DBL.moved) { $('#rd-tip').textContent = 'Double letter: slide it or bounce it'; held = 0; $('#rd-hold').style.width = '0'; return; } }
   const dt = Math.min(100, prevT ? nowT - prevT : 33); prevT = nowT;
-  held = right ? held + dt : Math.max(0, held - 3 * dt);      /* a one-frame misread only takes a little off */      /* SAFEGUARD inside `right`: a letter the student taught still has to look close to the real handshape */ $('#rd-hold').style.width = Math.min(100, 100 * held / HOLD) + '%';
+  held = right ? held + dt : Math.max(0, held - dt);      /* a one-frame misread only takes a little off (not a restart) */      /* SAFEGUARD inside `right`: a letter the student taught still has to look close to the real handshape */ $('#rd-hold').style.width = Math.min(100, 100 * held / HOLD) + '%';
   if (held >= HOLD && WORD && !DBL && bouncy()) { done = true; return stopBounce(); }
   if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok'); flash(target); ckRecord(target, true, 1);
     if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); }
@@ -139,8 +145,8 @@ function dots(L, hot, allGood) {      /* our own style: each finger its own soft
 const FNAME = ['thumb', 'pointer finger', 'middle finger', 'ring finger', 'pinky'];
 function coach(f, t, hot) {      /* one short tip: which way the hand points or faces first, then the finger to fix */
   const dy = f.orient.slice(0, 3), ty = t.orient.slice(0, 3), dz = f.orient.slice(3), tz = t.orient.slice(3);
-  if (dot(dy, ty) < 0.6) return ty[1] > 0.6 ? 'Point your fingers up' : ty[1] < -0.6 ? 'Point your fingers down' : 'Turn your fingers to the side';
-  if (dot(dz, tz) < 0.4) return tz[2] > 0.5 ? 'Turn your palm toward the camera' : tz[2] < -0.5 ? 'Turn your palm toward you' : 'Turn your palm to face sideways';      /* says which way (Colleen: there may be no picture) */
+  if (dot(dy, ty) < 0.7) return ty[1] > 0.6 ? 'Point your fingers up' : ty[1] < -0.6 ? 'Point your fingers down' : 'Turn your fingers to the side';
+  if (dot(dz, tz) < 0.2) return tz[2] > 0.5 ? 'Turn your palm toward the camera' : tz[2] < -0.5 ? 'Turn your palm toward you' : 'Turn your palm to face sideways';      /* says which way (Colleen: there may be no picture) */
   return hot >= 0 ? 'Check your ' + FNAME[hot] : '';
 }
 /* ---------- "Oops, that's an M, not an N" (Colleen), and the mix-ups the student makes often ---------- */
@@ -175,7 +181,7 @@ function go(k) {
 }
 function drawAlpha() { $('#rd-alpha').innerHTML = SET.map((c, i) => '<button class="' + (MINE[c] && MINE[c].length ? 'has ' : '') + (i === cur ? 'cur' : '') + '" data-i="' + i + '">' + c + '</button>').join(''); }
 function finishTeach() {      /* SAFEGUARD (Colleen: new learners could teach it a mistake): only frames that already look close to Colleen's letter are kept */
-  const c = SET[cur], good = teachBuf.filter(f => nearModel(f, c, 3)); teachBuf = [];
+  const c = SET[cur], M = TPL[c], good = teachBuf.filter(f => nearModel(f, c, 3) && (!M || (dot(f.orient.slice(0, 3), M.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), M.orient.slice(3)) >= 0.2))); teachBuf = [];      /* it can't learn a turned-around hand (Colleen: palm toward the signer) */
   $('#rd-teachbtn').disabled = false; $('#rd-teachbtn').textContent = 'Teach this ' + UNIT();
   if (good.length < 15) { $('#rd-status').textContent = 'That doesn\u2019t look close enough to ' + c + ' yet. Check the picture, then try again.'; return; }
   MINE[c] = (MINE[c] || []).concat(good).slice(-60); saveMine(); drawAlpha(); $('#rd-status').textContent = 'Learned your ' + c + '.';
@@ -253,7 +259,8 @@ function seqStart(n) {
       P.forEach(p => { const forms = refHand.numberKeys(p.v, p.o).map(F => squash(F.map(feat))).filter(K => K.length); combos = combos.flatMap(c => forms.map(F => c.concat(c.length && dist(c[c.length - 1], F[0]) < SQ ? F.slice(1) : F))).slice(0, 16); });
       KEYS[n] = combos; }
   }
-  if (!DECOY[n] && refHand && refHand.numberDecoys) DECOY[n] = [].concat(...P.map(p => refHand.numberDecoys(p.v, p.o).map(([d, J]) => feat(J))));
+  const twin = +n >= 11 && +n <= 15 ? +n - 10 : -1;      /* 11-15 start like 1-5 (fingers together, or held by the thumb): that plain digit is not a look-alike to beat (Colleen: 14 struggled) */
+  if (!DECOY[n] && refHand && refHand.numberDecoys) DECOY[n] = [].concat(...P.map(p => refHand.numberDecoys(p.v, p.o).filter(([d]) => d !== twin).map(([d, J]) => feat(J))));
   SEQ = { n, forms: (KEYS[n] || []).map(K => ({ K, i: -1, run: 0, r0: null, noSkip: multi })) };      /* a part can't be skipped */
 }
 function seqRead(n, f, L, opt) {
@@ -261,7 +268,7 @@ function seqRead(n, f, L, opt) {
   if (!SEQ || SEQ.n !== n) seqStart(n);
   let best = 99; DIGITS.forEach(c => { best = Math.min(best, dModel(f, c)); (MINE[c] || []).forEach(m => { best = Math.min(best, dist(f, m, c)); }); });
   SEQ.forms.forEach(F => F.K.forEach(k => { best = Math.min(best, dist(f, k)); })); (DECOY[n] || []).forEach(k => { best = Math.min(best, dist(f, k)); });
-  const ok = k => dist(f, k) <= best * 1.15 + 0.1;
+  const tol = +n >= 11 && +n <= 15 ? 1.3 : 1.15, ok = k => dist(f, k) <= best * tol + (tol > 1.2 ? 0.25 : 0.1);      /* the bends and flicks of 11-15 get a little more room */
   let prog = 0, win = null;
   SEQ.forms.forEach(F => {
     let j = -1; for (let t = F.i + 1; t <= Math.min(F.i >= 0 && F.K.length >= 4 && !F.noSkip ? F.i + 2 : F.i + 1, F.K.length - 1); t++) if (ok(F.K[t]) && (F.i < 0 || dist(f, F.K[t]) < dist(f, F.K[F.i]))) j = t;      /* the next key moment (one in between may be skipped) */
@@ -494,6 +501,7 @@ drawMix();
 
 /* ---------- CAMERA GAMES (Colleen, 2026-10-17). Practice only: nothing is saved to the sheet; each game keeps this computer's best score. ---------- */
 let GAME = null, CLASSNAMES = null;
+if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved') { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
 /* the Name Game: inside a class app the camera tab asks for the class's first names (they stay on this screen; nothing is kept) */
 if (IN_SHEET) { window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-names' && Array.isArray(e.data.names)) CLASSNAMES = e.data.names.map(x => String(x).toUpperCase().replace(/[^A-Z]/g, '')).filter(x => x.length >= 2 && x.length <= 14); }); try { window.opener.postMessage({ type: 'fsp-cam-names?' }, '*'); } catch (e) {} }
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -520,7 +528,7 @@ function drawGames() {
   $('#rd-gamelist').innerHTML = L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : b) + '.' : '') + '</small></button>'; }).join('');
 }
 function gameUI(on) {
-  document.body.classList.toggle('gaming', on); $('#rd-mlevel').hidden = true; if (!on) $('#rd-calc').hidden = true; $('#rd-gamelist').hidden = on; $('#rd-gamebar').hidden = !on; $('#rd-results').hidden = true;
+  document.body.classList.toggle('gaming', on); $('#rd-prompt').hidden = !on; $('#rd-prompt').classList.toggle('numgame', on && NUMS); const gm = $('#rd-gmodel'); if (gm) gm.hidden = true;      /* the game's line (problem, score, timer) sits right above the camera */ $('#rd-mlevel').hidden = true; if (!on) $('#rd-calc').hidden = true; $('#rd-gamelist').hidden = on; $('#rd-gamebar').hidden = !on; $('#rd-results').hidden = true;
   if (on) { $('#rd-hint').checked = false; $('#rd-showbox').hidden = true; $('#rd-after').hidden = true; } else { ghead(''); $('#rd-modelbox').hidden = true; }
 }
 function endGame(html, again) {
@@ -599,7 +607,7 @@ function startGame(k) {
     G.next = () => { if (G.n >= 10) return endGame('<h3>Math Answer</h3><div class="big">' + G.score + ' of 10</div><p class="rd-small">answers signed' + (best('math-' + MLEVEL, G.score).isNew ? ' (a new best!)' : '') + '</p>', k); G.n++; G.p = make(); SET = [String(G.p.ans)]; bar('Math Answer (' + MLEVEL + '): problem ' + G.n + ' of 10', [['watch', '▶ Watch it signed'], ['calc', '🧮 Calculator'], ['skip', 'Show the answer']]); ghead('<span class="rd-math">' + G.q() + ' = ?</span>'); go(0); };
     G.q = () => G.p.a + ' ' + SIGN[G.p.op] + ' ' + G.p.b + (G.p.op2 ? ' ' + SIGN[G.p.op2] + ' ' + G.p.c : '');
     G.numDone = () => { G.score++; ghead('<span class="rd-math">' + G.q() + ' = ' + G.p.ans + '</span>'); $('#rd-letter').textContent = G.p.ans; setTimeout(G.next, 1200); };
-    G.watch = async () => { const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; try { await refHand.ready; await refHand.sign(G.p.a, {}); await refHand.signOp(G.p.op, {}); await refHand.sign(G.p.b, {}); if (G.p.op2) { await refHand.signOp(G.p.op2, {}); await refHand.sign(G.p.c, {}); } } catch (e) {} };
+    G.watch = async () => { const box = $('#rd-gmodel'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false;      /* the hand signs the problem right beside it, above the camera (Colleen) */ try { await refHand.ready; await refHand.sign(G.p.a, {}); await refHand.signOp(G.p.op, {}); await refHand.sign(G.p.b, {}); if (G.p.op2) { await refHand.signOp(G.p.op2, {}); await refHand.sign(G.p.c, {}); } } catch (e) {} };
     G.skip = () => { done = true; $('#rd-letter').textContent = G.p.ans; setTimeout(G.next, 2000); };
     $('#rd-calc').hidden = true; G.next();
   } else if (k === 'count') {
@@ -633,7 +641,7 @@ function calcKey(k) {
 }
 $('#rd-calc').onclick = e => { const b = e.target.closest('button'); if (b) calcKey(b.dataset.k); };
 function freeRead(f, L) {
-  const R = rank(f).filter(x => !MOVING[x[0]] && x[0].length === 1 && /[A-Z]/.test(x[0])), top = R[0][0], ok = nearModel(f, top, 2), now = clock();
+  const R = rank(f).filter(x => !MOVING[x[0]] && x[0].length === 1 && /[A-Z]/.test(x[0])), top = R[0][0], ok = nearModel(f, top, 2) && (!GATE[top] || GATE[top][0](f)) && (!TPL[top] || (dot(f.orient.slice(0, 3), TPL[top].orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), TPL[top].orient.slice(3)) >= 0.2)), now = clock();      /* the must-haves apply here too */
   const dt = Math.min(100, FREE.t ? now - FREE.t : 33); FREE.t = now; dots(L, -1, false);
   if (FREE.lock && (top !== FREE.lock || Math.abs(L[0].x - FREE.x0) > 0.06)) FREE.lock = '';
   if (!ok || top === FREE.lock) { FREE.ms = 0; $('#rd-hold').style.width = '0'; $('#rd-tip').textContent = FREE.lock ? 'Next letter' : 'Sign a letter'; return; }

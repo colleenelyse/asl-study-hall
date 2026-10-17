@@ -300,6 +300,7 @@ function gamesInit() {
   $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span></a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
   $('#g-exprfs').innerHTML += camGames('', [['def', '📖', 'Definition to Word', 'Read what it means, then fingerspell the word.'], ['echo', '🔁', 'Echo', 'The hand spells a word. Spell it back.'], ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'], ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'], ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'], ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'], ['names', '🙋', 'Name Game', 'Fingerspell names. In your class app: your classmates\u2019 names.']]);
+  if (!CFG.only) $('#g-exprfs').innerHTML += '<a class="gcard" data-cam href="pronouns.html" data-page="pronouns.html"><span class="gi" aria-hidden="true">👉</span><b>Pronoun Signs: ME, MY, YOU, YOUR</b><span>Sign the right pronoun at the right word: point or flat hand, toward you or toward them.</span></a>';      /* the pronoun drills (Colleen, 2026-10-17) */
   $$('#g-exprfs .gcard').forEach(a => { a.onclick = openCamera; });
   $('#g-exprnum').innerHTML = '<a class="gcard" data-cam data-camnum href="reader.html?kind=numbers" id="camnumcard"><span class="gi" aria-hidden="true">📷</span><b>Sign Numbers to the Camera</b><span>Sign numbers to your camera: 0 to 9, moving numbers, rocking numbers, hundreds. It reads your hand and helps you fix it.</span></a>';      /* expressive: the camera reads the student's hand (Colleen, 2026-10-17: the sign-it-then-check-yourself games are gone now that the camera can check) */
   $('#g-exprnum').innerHTML += camGames('n', [['math', '➗', 'Math Answer', 'Solve the problem (easy to hard), then sign the answer.'], ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'], ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out.']]);
@@ -703,18 +704,19 @@ let CAMWIN = null;
 function openCamera(e) {
   if (!EMBED) return; if (e) e.preventDefault();
   const el = e && e.currentTarget, num = !!(el && (el.id === 'camnumcard' || el.hasAttribute('data-camnum'))), q = (el && el.dataset.q) || '';      /* the number camera, and a camera game to open (2026-10-17) */
-  const u = 'reader.html?embed=aslstudy' + (q ? '&' + q : num ? '&kind=numbers' : '') + (ONLY ? '&only=' + ONLY : '') + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
+  const u = (el && el.dataset.page ? el.dataset.page + '?embed=aslstudy' : 'reader.html?embed=aslstudy' + (q ? '&' + q : num ? '&kind=numbers' : '')) + (ONLY ? '&only=' + ONLY : '') + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
   CAMWIN = window.open(u, '_blank');
   if (!CAMWIN) location.href = u;
 }
 window.addEventListener('message', e => {
-  if (EMBED && CAMWIN && e.source === CAMWIN && e.origin === location.origin && e.data && e.data.type === 'fsp-cam-names?') { try { window.parent.postMessage({ type: 'fsp-cam-names?' }, '*'); } catch (x) {} return; }      /* the Name Game asks the class app for first names */
+  if (EMBED && CAMWIN && e.source === CAMWIN && e.origin === location.origin && e.data && (e.data.type === 'fsp-cam-names?' || e.data.type === 'fsp-pron-bank?')) { try { window.parent.postMessage({ type: e.data.type }, '*'); } catch (x) {} return; }      /* the Name Game (first names) and Pronoun Signs (the teacher's sentences) ask the class app */
   if (!EMBED || !CAMWIN || e.source !== CAMWIN || e.origin !== location.origin || !e.data || e.data.type !== 'fsp-cam-round') return;
   const m = Object.assign({}, e.data, { type: 'fsp-round' }); try { window.parent.postMessage(m, '*'); } catch (x) {}
 });
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
+  if ((e.data.type === 'fsp-pron-bank' || e.data.type === 'fsp-cam-saved') && CAMWIN) { try { CAMWIN.postMessage(e.data, location.origin); } catch (x) {} return; }      /* passed on to the camera tab */
   if (e.data.type === 'fsp-cam-names' && CAMWIN && Array.isArray(e.data.names)) { try { CAMWIN.postMessage({ type: 'fsp-cam-names', names: e.data.names.slice(0, 300) }, location.origin); } catch (x) {} return; }
   if (e.data.type === 'fsp-hello' && e.data.cam === false) document.body.classList.add('nocam');
   if (e.data.type === 'fsp-hello' && 'cam' in e.data && e.data.camnum !== true) document.body.classList.add('nocamnum');      /* the TpT sheets: the number camera only where it was bought (ASL Study sends no cam, so it keeps both) */      /* a TpT edition without the Expressive part: no camera activity (Colleen: the Plus edition has it) */
