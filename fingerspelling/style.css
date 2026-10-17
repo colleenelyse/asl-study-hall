@@ -605,3 +605,4 @@ body.contrast .gamegrid .gcard { border: 2px solid #fff; }
 .modehead { margin: 26px 0 6px; padding: 12px 16px; border-radius: 16px; background: var(--surface2); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }      /* Receptive / Expressive (Colleen) */
 .modehead h2 { margin: 0; font-size: 28px; } .modehead p { margin: 0; color: var(--muted); }
 .meaning .def { font-size: 17px; } .meaning .def span { margin-right: 4px; }      /* the word's description after an answer (Colleen) */
+body.nocam [data-cam] { display: none !important; }      /* TpT editions without the Expressive part */

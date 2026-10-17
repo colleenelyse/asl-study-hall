@@ -709,6 +709,7 @@ window.addEventListener('message', e => {
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
+  if (e.data.type === 'fsp-hello' && e.data.cam === false) document.body.classList.add('nocam');      /* a TpT edition without the Expressive part: no camera activity (Colleen: the Plus edition has it) */
   if (e.data.type === 'fsp-hello' && e.data.camtl !== undefined && e.data.camtl !== null && e.data.camtl !== '') STUDY.camtl = Math.max(0, Math.min(60, +e.data.camtl || 0));      /* the teacher's camera time limit (Settings) */
   if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); STUDY.cls = String(e.data.cls || '').slice(0, 80); STUDY.app = String(e.data.app || '').slice(0, 60); STUDY.level = String(e.data.level || '').slice(0, 40); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
   if (e.data.type === 'fsp-compare-data' && CMP && CMP.kind === e.data.kind && CMP.state === 'loading') {      /* ASL Study 3.82: the program comparison for the diagnostic report */
