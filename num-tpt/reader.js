@@ -200,6 +200,7 @@ function readMotion(c, P, L, f) {
 /* ---------- CHECK (the diagnostic, Colleen): a fixed set, no hints, a time limit per letter (only while the hand is in view); every letter is
    recorded: signed or not yet, the seconds it took, and a letter signed quickly and confidently instead (a real mix-up, not a struggle).
    Inside ASL Study / the TpT sheet the results go to the student's Fingerspelling Stats as EXPRESSIVE. Nothing but these results is kept. ---------- */
+try { const got = JSON.parse(sessionStorage.getItem('fsp.sheetWords') || 'null'); if (got && got.defs && typeof got.defs === 'object') window.FS_DEFS = Object.assign({}, window.FS_DEFS || {}, got.defs); } catch (e) {}      /* the teacher's own descriptions, when opened from the sheet */
 const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 'aslstudy' && !!window.opener;
 if (QS.get('embed') === 'aslstudy') { const m = document.getElementById('rd-safe-more'); if (m) m.textContent = 'The only thing your teacher gets is your score: which letters you signed and how long each one took.'; }
 let CK = null;

@@ -16,6 +16,7 @@ const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Obje
 const goodTricky = a => Array.isArray(a) && a.length > 0 && a.every(x => Array.isArray(x) && typeof x[0] === 'string' && x[0].trim() !== '' && [1, 2, 3, 4].indexOf(+x[1]) >= 0);
 const goodLook = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
   Object.keys(o).every(k => /^[A-Z]( [A-Z])+$/.test(k) && Array.isArray(o[k]) && o[k].every(set => Array.isArray(set) && set.length >= 2 && set.length <= 4 && set.every(w => typeof w === 'string' && w.trim() !== '')));
+const goodDefs = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).every(k => typeof o[k] === 'string' && o[k].length <= 300);
 const SHEET_KEY = 'fsp.sheetWords';
 let sheetStart = '';      // the sheet lists this page was built from ('' = the built-in words)
 if (EMBED) try {
@@ -25,6 +26,7 @@ if (EMBED) try {
     if (goodLists(got.everyday)) window.FAMILIAR = got.everyday;
     if (goodTricky(got.tricky)) window.TRICKY = got.tricky.map(x => [String(x[0]), +x[1], String(x[2] || ''), String(x[3] || '')]);
     if (goodLook(got.look)) window.LOOK_GROUPS = Object.fromEntries(Object.entries(got.look).map(([k, sets]) => [k, { letters: k.replace(/ /g, ''), sets }]));
+    if (goodDefs(got.defs)) window.FS_DEFS = Object.assign({}, window.FS_DEFS || {}, got.defs);      /* the teacher's own word descriptions (sheet Description column) */
     sheetStart = raw;
   }
 } catch (e) {}
@@ -718,7 +720,7 @@ window.addEventListener('message', e => {      /* the app can open a given game:
   }
   if (e.data.type === 'fsp-words') {      /* ASL Study 3.81: the sheet's lists; a page built from other words reloads once to use them */
     const clean = { proper: goodLists(e.data.proper) ? e.data.proper : null, everyday: goodLists(e.data.everyday) ? e.data.everyday : null,
-      tricky: goodTricky(e.data.tricky) ? e.data.tricky : null, look: goodLook(e.data.look) ? e.data.look : null };
+      tricky: goodTricky(e.data.tricky) ? e.data.tricky : null, look: goodLook(e.data.look) ? e.data.look : null, defs: goodDefs(e.data.defs) ? e.data.defs : null };
     if (!clean.proper && !clean.everyday && !clean.tricky && !clean.look) return;
     const s = JSON.stringify(clean);
     try {
