@@ -1,0 +1,174 @@
+/* Word lists for special modes and classroom themes. */
+
+/* Sound it out (Colleen): words where every letter keeps one sound, so students can "hear" the letters.
+   Letters: B D F H J K L M N P R S T V W Z and the short vowels A E I O U. Left out: C, G (two sounds), X, Q, Y.
+   No silent E, no two vowels together, no letter pairs with a new sound (sh, th, ph, ch, ck, nk), no ar/er/ir/or/ur, no doubled letters,
+   no S that sounds like Z. Level 1: three letters. Level 2: four or five letters. Level 3: two short parts (sun-set). Names and everyday words. */
+window.SOUND_WORDS = {
+  1: ['sat', 'mat', 'bat', 'hat', 'rat', 'pat', 'fan', 'man', 'pan', 'tan', 'van', 'ran', 'dad', 'mad', 'sad', 'bad', 'had', 'lap', 'map', 'nap', 'tap', 'sap', 'jam', 'ham', 'ram', 'bed', 'red', 'fed', 'led', 'wed', 'ten', 'hen', 'men', 'pen', 'den', 'pet', 'net', 'jet', 'wet', 'vet', 'set', 'let', 'bet', 'met', 'web', 'sit', 'hit', 'fit', 'kit', 'bit', 'pit', 'lit', 'pin', 'tin', 'win', 'fin', 'bin', 'dip', 'hip', 'lip', 'rip', 'sip', 'tip', 'zip', 'rib', 'bib', 'kid', 'lid', 'hid', 'dot', 'hot', 'lot', 'not', 'pot', 'mop', 'hop', 'top', 'pop', 'job', 'mob', 'nod', 'rod', 'pod', 'bus', 'but', 'hut', 'nut', 'sun', 'bun', 'fun', 'run', 'tub', 'rub', 'sub', 'hum', 'mud', 'bud', 'pup',
+      'Sam', 'Ben', 'Pam', 'Tom', 'Kim', 'Jen', 'Tim', 'Ted', 'Bob', 'Dan', 'Ron', 'Rob', 'Jim', 'Ned', 'Mel', 'Deb', 'Jan', 'Nan', 'Val', 'Zak', 'Tad', 'Kip', 'Bev', 'Jed', 'Don', 'Jon', 'Lin', 'Vin'],
+  2: ['stop', 'spot', 'slip', 'slap', 'flat', 'flip', 'drum', 'drip', 'trip', 'trap', 'snap', 'spin', 'swim', 'spit', 'step', 'stem', 'sled', 'fled', 'plan', 'plum', 'plus', 'slam', 'slim', 'slid', 'brim', 'lamp', 'damp', 'ramp', 'jump', 'bump', 'dump', 'lump', 'pump', 'tent', 'bent', 'dent', 'rent', 'sent', 'went', 'vent', 'hunt', 'mint', 'hint', 'lint', 'lift', 'soft', 'loft', 'raft', 'left', 'help', 'held', 'melt', 'belt', 'felt', 'kelp', 'milk', 'silk', 'film', 'fist', 'list', 'mist', 'best', 'nest', 'pest', 'rest', 'test', 'vest', 'west', 'zest', 'dust', 'just', 'must', 'rust', 'trust', 'land', 'band', 'hand', 'sand', 'bend', 'lend', 'mend', 'send', 'tend', 'fund', 'past', 'fast', 'mast', 'vast', 'desk', 'disk', 'task', 'mask', 'tusk', 'brisk', 'stomp', 'stamp', 'blimp', 'limp', 'plump', 'slump', 'stump', 'strap', 'strip', 'split', 'print', 'blend', 'spend', 'trend', 'twin', 'twist', 'swept', 'slept', 'kept', 'wept', 'blunt', 'stunt', 'spent',
+      'Brad', 'Fran', 'Brent', 'Kent', 'Stan', 'Trent', 'Fred', 'Bret'],
+  3: ['sunset', 'napkin', 'laptop', 'suntan', 'upset', 'until', 'insult', 'himself', 'bandit', 'tiptop', 'absent', 'velvet', 'helmet', 'nonstop', 'kidnap', 'dentist', 'pumpkin', 'denim', 'vivid', 'timid', 'rapid', 'solid', 'limit', 'modest', 'invent', 'intend', 'admit', 'submit', 'hundred', 'splendid', 'tablet', 'habit', 'robin', 'sunlit', 'trumpet', 'pundit', 'tempest', 'unfit', 'unlit', 'bobsled', 'Kendal', 'Linton', 'Benson']
+};
+
+/* Familiar words for Fill in the blanks (Colleen: everyday words, not brand names with odd spellings): single words from her WordSearch Studio word banks. */
+window.FAMILIAR = {"K–2 level vocab": ["apple", "book", "fish", "green", "happy", "jump", "kite", "moon", "play", "school", "tree", "water", "yellow", "friend", "house", "smile", "ball", "bird", "blue", "boat", "bread", "brown", "cake", "chair", "cold", "door", "duck", "farm", "flower", "food", "foot", "girl", "goat", "hand", "horse", "juice", "lake", "leaf", "milk", "mouse", "night", "paper", "park", "rain", "road", "rock", "room", "shoe", "snow", "star", "table", "truck", "walk", "warm", "wind", "window", "winter", "yard"],
+  "Grades 3–5 level vocab": ["adventure", "balance", "calendar", "discover", "energy", "fraction", "habitat", "imagine", "journey", "library", "measure", "multiply", "observe", "pattern", "planet", "question", "recycle", "solution", "triangle", "weather", "accurate", "angle", "area", "author", "average", "biography", "boundary", "calculate", "cause", "character", "community", "compare", "complete", "conclusion", "consumer", "continent", "contrast", "decimal", "denominator", "detail", "diagram", "difference", "direction", "distance", "ecosystem", "equation", "estimate", "evaporation", "example", "experiment", "fact", "fiction", "government", "graph", "history", "information", "length", "matter", "multiple", "numerator", "paragraph", "perimeter", "population", "product", "property", "purpose", "quotient", "region", "remainder", "sentence", "source", "summary", "surface", "temperature", "timeline", "tradition", "volume", "weight"],
+  "Grades 6–8 level vocab": ["analyze", "culture", "evidence", "factor", "gravity", "hypothesis", "justice", "literature", "migration", "organism", "perspective", "resource", "sequence", "structure", "variable", "volume", "ecosystem", "democracy", "velocity", "coordinate", "abstract", "adaptation", "algebra", "allusion", "atmosphere", "cellular", "chronology", "coefficient", "conservation", "constitutional", "correlation", "density", "distribution", "diversity", "dynamic", "emphasis", "equilibrium", "exponent", "geography", "geometric", "historical", "identity", "inequality", "interdependence", "interpretation", "legislation", "linear", "magnitude", "narrative", "neutral", "paradox", "percentage", "political", "probability", "proportion", "reaction", "representation", "revolution", "scientific", "society", "symbolism", "system", "technology", "theme", "transformation", "translation", "validity", "visualization", "civilization", "consequence", "document", "economics", "environment", "formula", "genetics", "median", "ratio"],
+  "High school level vocab": ["argument", "bias", "context", "criterion", "economy", "ethics", "function", "inference", "innovation", "metaphor", "perspective", "phenomenon", "research", "rhetoric", "statistics", "synthesis", "theory", "variable", "analysis", "interpretation", "allocate", "ambiguity", "anomaly", "assumption", "causation", "coherent", "commodity", "connotation", "constraint", "corroborate", "derivative", "discourse", "empirical", "evaluate", "extrapolate", "framework", "ideology", "implication", "integral", "legitimacy", "methodology", "nuance", "objective", "paradigm", "qualitative", "quantitative", "reliability", "validity", "counterargument", "diction", "fallacy", "hyperbole", "imagery", "irony", "juxtaposition", "motif", "parallelism", "satire", "syntax", "thesis", "calculus", "quadratic", "logarithm", "polynomial", "vector", "stoichiometry", "kinetics", "thermodynamics", "biodiversity", "ecology", "macroeconomics", "microeconomics", "federalism", "jurisdiction", "precedent"],
+  "Fruits & Vegetables": ["apple", "apricot", "avocado", "banana", "beet", "blueberry", "broccoli", "carrot", "celery", "cherry", "cucumber", "grape", "lettuce", "mango", "onion", "orange", "peach", "pepper", "spinach", "strawberry", "raspberry", "blackberry", "pineapple", "watermelon", "cantaloupe", "pear", "plum", "kiwi", "lemon", "lime", "asparagus", "cauliflower", "cabbage", "zucchini", "squash", "peas", "corn", "radish", "acai", "boysenberry", "cranberry", "currant", "durian", "gooseberry", "grapefruit", "guava", "honeydew", "jackfruit", "kumquat", "lychee", "mandarin", "nectarine", "papaya", "persimmon", "pomegranate", "pomelo", "tangerine", "plantain", "coconut", "date", "elderberry", "mulberry", "olive", "quince", "artichoke", "arugula", "daikon", "eggplant", "endive", "fennel", "garlic", "jicama", "kale", "kohlrabi", "leek", "okra", "parsnip", "rutabaga", "shallot", "turnip", "watercress", "chives", "romanesco"],
+  "Animals": ["bear", "camel", "elephant", "giraffe", "gorilla", "kangaroo", "leopard", "rabbit", "tiger", "wolf", "zebra", "lion", "cheetah", "panda", "koala", "otter", "deer", "moose", "bison", "alligator", "crocodile", "turtle", "tortoise", "snake", "lizard", "iguana", "gecko", "chameleon", "python", "cobra", "rattlesnake", "anole", "skink", "dolphin", "octopus", "shark", "whale", "jellyfish", "seahorse", "starfish", "stingray", "lobster", "crab", "squid", "seal", "manatee", "clam", "oyster", "coral", "shrimp", "orca", "eagle", "penguin", "hawk", "falcon", "robin", "cardinal", "flamingo", "parrot", "toucan", "pelican", "swan", "duck", "goose", "ostrich", "peacock", "crow", "raven", "hummingbird", "frog", "toad", "salamander", "newt", "axolotl", "bullfrog", "caecilian", "mudpuppy", "tadpole", "butterfly", "beetle", "dragonfly", "grasshopper", "ladybug", "mosquito", "moth", "spider", "scorpion", "tick", "tarantula", "firefly", "aardvark", "alpaca", "anteater", "armadillo", "badger", "beaver", "bobcat", "buffalo", "capybara", "chimpanzee", "cougar", "coyote", "dingo", "donkey", "ferret", "gazelle", "gerbil", "goat", "hamster", "hedgehog", "hippopotamus", "horse", "hyena", "jaguar", "lemur", "llama", "lynx", "mole", "monkey", "orangutan", "platypus", "porcupine", "possum", "raccoon", "rhinoceros", "skunk", "sloth", "squirrel", "weasel", "caiman", "copperhead", "cottonmouth", "abalone", "anemone", "anglerfish", "barracuda", "clownfish", "conch", "dolphinfish", "flounder", "haddock", "marlin", "mussel", "narwhal", "pufferfish", "salmon", "sardine", "swordfish", "tuna", "walrus", "albatross", "canary", "chickadee", "condor", "crane", "dove", "finch", "heron", "kingfisher", "loon", "macaw", "magpie", "nightingale", "oriole", "puffin", "quail", "sparrow", "stork", "woodpecker", "hellbender", "sirens", "aphid", "centipede", "cicada", "cockroach", "cricket", "earwig", "flea", "gnat", "hornet", "housefly", "lacewing", "locust", "mayfly", "millipede", "silverfish", "termite", "wasp", "weevil"],
+  "Science": ["atom", "beaker", "bond", "carbon", "catalyst", "compound", "electron", "element", "flask", "hydrogen", "molecule", "neutron", "nucleus", "oxygen", "proton", "reaction", "solution", "titration", "adaptation", "cell", "chromosome", "ecosystem", "enzyme", "evolution", "gene", "genetics", "homeostasis", "membrane", "mitosis", "organism", "photosynthesis", "population", "protein", "respiration", "species", "tissue", "trait", "vacuole", "asteroid", "comet", "constellation", "earth", "eclipse", "galaxy", "gravity", "jupiter", "mars", "meteor", "moon", "nebula", "orbit", "planet", "satellite", "saturn", "star", "venus", "acceleration", "amplitude", "circuit", "conduction", "current", "electricity", "energy", "force", "frequency", "friction", "inertia", "magnetism", "mass", "momentum", "motion", "power", "pressure", "reflection", "refraction", "velocity", "voltage", "wave", "work", "atmosphere", "erosion", "fault", "fossil", "geology", "igneous", "lava", "magma", "mantle", "metamorphic", "mineral", "sedimentary", "seismic", "soil", "weathering", "earthquake", "volcano", "crust", "acid", "alkali", "anion", "aqueous", "base", "cation", "concentration", "crystal", "distillation", "electrolyte", "endothermic", "exothermic", "filtration", "isotope", "metal", "molarity", "oxidation", "precipitate", "reactant", "salt", "solubility", "solvent", "allele", "antibody", "bacteria", "biodiversity", "chloroplast", "cytoplasm", "diffusion", "dominant", "fungus", "heredity", "meiosis", "mutation", "nucleotide", "organelle", "pathogen", "recessive", "ribosome", "symbiosis", "virus", "aphelion", "astronaut", "celestial", "exoplanet", "lunar", "mercury", "neptune", "perihelion", "pluto", "rocket", "supernova", "telescope", "uranus", "buoyancy", "compression", "convection", "electromagnet", "fluid", "joule", "lens", "newton", "resistance", "spectrum", "aquifer", "bedrock", "core", "deposition", "epicenter", "groundwater", "humidity", "mineralogy", "precipitation", "sediment", "tsunami"],
+  "Geography": ["archipelago", "border", "canyon", "climate", "continent", "delta", "desert", "equator", "glacier", "island", "latitude", "longitude", "mountain", "ocean", "peninsula", "plateau", "river", "terrain", "valley", "watershed", "hemisphere", "scale", "legend", "coordinates", "gulf", "strait", "lake", "tributary", "estuary", "country", "state", "province", "capital", "territory", "nation", "tundra", "rainforest", "savanna", "temperate", "arid", "tropical", "basin", "butte", "cliff", "dune", "escarpment", "foothill", "gorge", "hill", "isthmus", "mesa", "plain", "ridge", "wetland", "cave", "canal", "channel", "creek", "fjord", "lagoon", "marsh", "reservoir", "spring", "stream", "waterfall", "harbor", "elevation", "boundary", "city", "county", "district", "municipality", "region", "sovereignty", "urban", "rural", "biome", "humid", "monsoon", "polar", "semiarid", "subtropical", "vegetation"],
+  "Holidays": ["birthday", "Christmas", "Diwali", "Easter", "Halloween", "Hanukkah", "Juneteenth", "Kwanzaa", "Passover", "Thanksgiving", "Ramadan", "Holi", "Vesak", "Purim", "Navratri", "Epiphany", "Oktoberfest"],
+  "Careers": ["accountant", "architect", "artist", "chef", "dentist", "designer", "doctor", "engineer", "firefighter", "journalist", "lawyer", "mechanic", "nurse", "pharmacist", "pilot", "scientist", "teacher", "therapist", "veterinarian", "writer", "paramedic", "surgeon", "chemist", "biologist", "librarian", "electrician", "plumber", "carpenter", "welder", "paralegal", "radiologist", "audiologist", "astronomer", "geologist", "meteorologist", "actor", "director", "photographer", "musician", "judge", "entrepreneur", "machinist", "animator", "mediator", "professor", "principal", "roofer", "mason"],
+  "Technology": ["algorithm", "browser", "cloud", "computer", "database", "device", "download", "hardware", "internet", "keyboard", "network", "password", "programming", "robot", "software", "spreadsheet", "storage", "tablet", "website", "wireless", "phishing", "encryption", "firewall", "malware", "authentication", "code", "variable", "function", "data", "router", "server", "bandwidth", "ethernet", "processor", "memory", "monitor", "mouse", "application", "hotspot", "ransomware", "antivirus", "loop", "array", "Boolean", "debugging"],
+  "School": ["assignment", "backpack", "calculator", "classroom", "desk", "dictionary", "homework", "library", "locker", "notebook", "pencil", "project", "quiz", "schedule", "student", "teacher", "textbook", "whiteboard", "worksheet", "semester", "binder", "folder", "marker", "highlighter", "scissors", "principal", "counselor", "cafeteria", "gymnasium", "auditorium", "office", "exam", "essay", "presentation", "research", "grade", "rubric", "assembly", "club", "practice", "rehearsal", "syllabus", "credit", "transcript", "dean", "registrar", "homeroom"]};
+
+/* Look-alike letters (Colleen: four real words that are close, a specialty list of words with commonly mistaken letters).
+   Each set is four real words that differ only where the easily confused handshapes are. Groups are letters that look alike. */
+window.LOOK_GROUPS = {
+  'M N S T': { letters: 'MNST', sets: [
+    ['mail', 'nail', 'tail', 'sail'], ['map', 'nap', 'tap', 'sap'], ['might', 'night', 'tight', 'sight'], ['mold', 'sold', 'told', 'gold'],
+    ['nip', 'sip', 'tip', 'hip'], ['meat', 'neat', 'seat', 'beat'], ['name', 'same', 'tame', 'game'], ['mile', 'tile', 'pile', 'file'],
+    ['mop', 'top', 'shop', 'hop'], ['sell', 'tell', 'bell', 'well'], ['sick', 'tick', 'nick', 'kick'], ['sun', 'nun', 'run', 'bun'],
+    ['mask', 'task', 'tusk', 'desk'], ['net', 'set', 'met', 'pet'], ['nose', 'hose', 'rose', 'most']] },
+  'A E O': { letters: 'AEO', sets: [
+    ['pat', 'pet', 'pot', 'pit'], ['tan', 'ten', 'ton', 'tin'], ['bat', 'bet', 'bit', 'but'], ['pan', 'pen', 'pin', 'pun'],
+    ['bag', 'beg', 'big', 'bog'], ['hat', 'hot', 'hit', 'hut'], ['lack', 'lock', 'lick', 'luck'], ['bad', 'bed', 'bid', 'bud'],
+    ['band', 'bend', 'bond', 'bind'], ['pack', 'pick', 'puck', 'peck'], ['last', 'lost', 'list', 'lest'], ['ham', 'hem', 'him', 'hum']] },
+  'R U V W K': { letters: 'RUVWK', sets: [
+    ['rest', 'vest', 'west', 'best'], ['rent', 'vent', 'went', 'bent'], ['rake', 'wake', 'bake', 'make'], ['ring', 'wing', 'king', 'sing'],
+    ['rink', 'wink', 'kink', 'pink'], ['rag', 'wag', 'bag', 'tag'], ['run', 'bun', 'fun', 'gun'], ['rise', 'wise', 'rose', 'vase'],
+    ['row', 'vow', 'wow', 'bow'], ['rail', 'wail', 'tail', 'nail']] },
+  'K P G H': { letters: 'KPGH', sets: [
+    ['kill', 'pill', 'hill', 'gill'], ['got', 'hot', 'pot', 'cot'], ['gold', 'hold', 'told', 'cold'], ['hug', 'pug', 'mug', 'bug'],
+    ['pick', 'kick', 'tick', 'sick'], ['peg', 'keg', 'leg', 'beg'], ['hen', 'pen', 'ten', 'den'], ['gate', 'hate', 'late', 'date'],
+    ['kin', 'pin', 'gin', 'tin'], ['gum', 'hum', 'sum', 'yum'], ['park', 'bark', 'dark', 'mark'], ['hole', 'pole', 'mole', 'role']] },
+  'I Y J': { letters: 'IYJ', sets: [['die', 'dye', 'lie', 'lye']] }
+};
+
+/* Silent Letters & Strange Spellings (Colleen): the opposite of Sound it out: words with ridiculous spellings. From her list (Ridiculous_Spelling_Fingerspelling_Word_Bank, 2026-10-13).
+   Each word: [word, level, definition (shown after the answer), note]. */
+window.TRICKY_LEVELS = { 1: 'A Little Sneaky', 2: 'Wait, What?', 3: 'Who Approved This Spelling?', 4: 'English Has Lost Its Mind' };
+window.TRICKY = [["knee", 1, "A leg joint", "The K is silent."],
+  ["knife", 1, "A sharp tool used for cutting", "The K is silent."],
+  ["knock", 1, "To hit a surface to get someone's attention", "The K is silent."],
+  ["knight", 1, "A soldier or noble warrior from the Middle Ages", "The K and GH are silent."],
+  ["know", 1, "To understand or be aware of something", "The K is silent."],
+  ["write", 1, "To form words using letters", "The W is silent."],
+  ["wrong", 1, "Not correct", "The W is silent."],
+  ["wrist", 1, "The joint between the hand and forearm", "The W is silent."],
+  ["wrap", 1, "To cover or surround something", "The W is silent."],
+  ["thumb", 1, "The short thick finger on the side of the hand", "The B is silent."],
+  ["comb", 1, "A tool used to untangle or arrange hair", "The B is silent."],
+  ["lamb", 1, "A young sheep", "The B is silent."],
+  ["climb", 1, "To move upward using hands or feet", "The B is silent."],
+  ["crumb", 1, "A tiny piece of bread or another food", "The B is silent."],
+  ["doubt", 1, "A feeling of uncertainty", "The B is silent."],
+  ["debt", 1, "Money that a person owes", "The B is silent."],
+  ["island", 1, "Land surrounded by water", "The S is silent."],
+  ["answer", 1, "A response to a question", "The W is silent."],
+  ["sword", 1, "A weapon with a long sharp blade", "The W is silent."],
+  ["honest", 1, "Truthful and not deceptive", "The H is silent."],
+  ["hour", 1, "A period of 60 minutes", "The H is silent."],
+  ["ghost", 1, "The spirit of a dead person in stories", "The H is not separately pronounced."],
+  ["sign", 1, "A symbol or gesture that communicates meaning", "The G is silent."],
+  ["gnome", 1, "A small imaginary creature in folklore", "The G is silent."],
+  ["receipt", 2, "A written or printed record of a purchase", "The P is silent."],
+  ["muscle", 2, "Body tissue that contracts to create movement", "The C is silent."],
+  ["scissors", 2, "A cutting tool with two crossing blades", "The C is silent."],
+  ["salmon", 2, "A fish that often migrates upstream to reproduce", "The L is silent in standard US pronunciation."],
+  ["autumn", 2, "The season between summer and winter", "The N is silent."],
+  ["column", 2, "An upright pillar or a vertical section of a page", "The N is silent."],
+  ["subtle", 2, "Not obvious or easy to notice", "The B is silent."],
+  ["yacht", 2, "A boat used for sailing or recreation", "The CH is not pronounced as written."],
+  ["aisle", 2, "A walkway between rows of seats or shelves", "The S is silent."],
+  ["choir", 2, "An organized group of singers", "The CH sounds like KW."],
+  ["rhythm", 2, "A repeated pattern of beats or sounds", "The word has no A E I O or U."],
+  ["Wednesday", 2, "The day between Tuesday and Thursday", "The first D is generally not pronounced."],
+  ["February", 2, "The second month of the year", "The first R is often dropped in casual speech."],
+  ["vacuum", 2, "A space without much matter or a suction cleaner", "It has two consecutive U letters."],
+  ["queue", 2, "A line of people or things waiting", "The UEUE after Q is not pronounced as separate syllables."],
+  ["plumber", 2, "A worker who installs and repairs water pipes", "The B is silent."],
+  ["whistle", 2, "To make a high-pitched sound with air", "The T is silent."],
+  ["listen", 2, "To pay attention to sound", "The T is silent."],
+  ["castle", 2, "A large fortified building", "The T is silent."],
+  ["Christmas", 2, "A holiday celebrated on December 25", "The T is silent in standard pronunciation."],
+  ["mortgage", 2, "A loan usually secured by property", "The T is silent."],
+  ["indict", 2, "To formally accuse someone of a crime", "The C is silent."],
+  ["biscuit", 2, "A small baked bread or cookie-like food", "The UI makes an unexpected short I sound."],
+  ["foreign", 2, "From or connected with another country", "The G is silent."],
+  ["colonel", 3, "A military officer ranking above lieutenant colonel", "Pronounced like kernel; the spelling is highly irregular."],
+  ["epitome", 3, "A perfect example of something", "The final E is a separate syllable."],
+  ["hyperbole", 3, "An intentional and dramatic exaggeration", "The final E is pronounced as a syllable."],
+  ["segue", 3, "A smooth transition from one topic to another", "Pronounced SEG-way despite its ending."],
+  ["genre", 3, "A category of art music books or movies", "The G sounds like ZH; the ending is unusual."],
+  ["rendezvous", 3, "A planned meeting at a particular place", "The final S is silent; the French spelling is unusual."],
+  ["bourgeois", 3, "Relating to the middle class or conventional tastes", "Several French-derived letters are silent."],
+  ["silhouette", 3, "A dark outline of a person or object", "The H is silent; the OU and ETTE are surprising."],
+  ["camouflage", 3, "A disguise that helps something blend into its surroundings", "The final AGE sounds like AHZH rather than age."],
+  ["lingerie", 3, "Women's underwear or sleepwear", "The French-derived ending sounds unlike ordinary English spelling."],
+  ["mischievous", 3, "Playfully causing trouble", "It has three syllables in standard US pronunciation."],
+  ["onomatopoeia", 3, "A word that imitates a sound such as buzz", "The string of vowels is unexpected."],
+  ["conscience", 3, "A person's sense of right and wrong", "The SCIENCE ending is pronounced SHUNS."],
+  ["conscious", 3, "Awake and aware of one's surroundings", "The SCIOUS ending sounds like SHUS."],
+  ["acquaintance", 3, "A person someone knows but not well", "The ACQU opening and AIN sequence are tricky."],
+  ["quay", 3, "A platform beside water where boats load or dock", "It is pronounced KEY."],
+  ["faux", 3, "Artificial or made to look like something else", "The French-derived AUX sounds like OH."],
+  ["hors d'oeuvre", 3, "A small appetizer served before a meal", "The French-derived spelling has multiple silent letters."],
+  ["chassis", 3, "The supporting frame of a vehicle", "The final S is silent in common US pronunciation."],
+  ["liaison", 3, "A connection or someone who helps groups communicate", "The vowel combinations make the spelling unexpected."],
+  ["mnemonic", 3, "A memory aid such as a rhyme or acronym", "The initial M is silent."],
+  ["pneumonia", 3, "A lung infection that can make breathing difficult", "The initial P is silent."],
+  ["phlegm", 3, "Thick mucus from the throat or lungs", "The PH sounds like F and the G is silent."],
+  ["pterodactyl", 4, "An extinct flying reptile with long finger-supported wings", "The initial P is silent."],
+  ["pterodactylus", 4, "A genus of extinct flying reptiles", "The initial P is silent; the word is long."],
+  ["psoriasis", 4, "A chronic skin condition causing scaly patches", "The initial P is silent."],
+  ["pseudonym", 4, "A name used instead of one's real name", "The initial P is silent; PSEUDO sounds like SOO-doh."],
+  ["psychiatrist", 4, "A medical doctor specializing in mental health", "The initial P is silent; CH sounds like K."],
+  ["psychology", 4, "The scientific study of the mind and behavior", "The initial P is silent; CH sounds like K."],
+  ["ptarmigan", 4, "A grouse-like bird of cold northern regions", "The initial P is silent."],
+  ["czar", 4, "A title used for certain emperors or powerful leaders", "The CZ makes a Z sound in common US pronunciation."],
+  ["tsunami", 4, "A very large ocean wave caused by an underwater disturbance", "The TS opening is unusual in English."],
+  ["rhinoceros", 4, "A large thick-skinned animal with a horn or horns", "The RH sounds like R; the spelling is long."],
+  ["rhubarb", 4, "A tart plant stalk used in pies and desserts", "The RH sounds like R."],
+  ["diphthong", 4, "A vowel sound that glides between two sounds", "PH sounds like F and TH makes a different sound."],
+  ["dysrhythmia", 4, "An abnormal or irregular rhythm", "The DYS and RHYTHM sequences are tricky."],
+  ["ophthalmologist", 4, "A medical doctor specializing in eye care", "The PHTH cluster makes this very difficult to spell."],
+  ["pharaoh", 4, "A ruler of ancient Egypt", "The PH sounds like F and the AOH spelling is unusual."],
+  ["chrysanthemum", 4, "A flowering plant often called a mum", "The CH sounds like K and the vowel pattern is unusual."],
+  ["chihuahua", 4, "A very small dog breed originally from Mexico", "The CH and HUA letter combinations are unusual."],
+  ["squirrel", 4, "A small rodent with a bushy tail", "Its vowel and consonant sequences are unexpectedly tricky."],
+  ["quinoa", 4, "An edible seed commonly prepared like a grain", "Pronounced KEEN-wah despite the spelling."],
+  ["Worcestershire", 4, "An English county name also used for a savory sauce", "Its pronunciation drops or merges several written syllables."],
+  ["bourgeoisie", 4, "The middle class considered as a social group", "Its French-derived spelling and pronunciation are very different."]];
+
+/* Historic events for the Years games (Colleen, 2026-10-15). SAMPLE events in words until her pictures are ready: each { year, title, icon, img }.
+   When a picture is added, put it in events/ and give its file name as img (it then shows instead of the icon). The same year may appear
+   twice in the bank; one game never uses a year twice. */
+window.EVENTS = [      /* Colleen's event pictures (2026-10-15), in fingerspelling-site/events/; used by the Timeline and When Did It Happen? */
+  { year: 1692, title: 'Salem Witch Trials', img: '1692-salem-witch-trials.webp' },
+  { year: 1773, title: 'Boston Tea Party', img: '1773-boston-tea-party.webp' },
+  { year: 1776, title: 'Declaration of Independence Signed', img: '1776-declaration-of-independence-signed.webp' },
+  { year: 1783, title: 'American Revolutionary War Ends', img: '1783-american-revolutionary-war-ends.webp' },
+  { year: 1804, title: 'Napoleon Becomes Emperor', img: '1804-napoleon-becomes-emperor.webp' },
+  { year: 1817, title: 'American School for the Deaf Opens', img: '1817-american-school-for-the-deaf-opens.webp' },
+  { year: 1836, title: 'Battle of the Alamo', img: '1836-battle-of-the-alamo.webp' },
+  { year: 1861, title: 'American Civil War Begins', img: '1861-american-civil-war-begins.webp' },
+  { year: 1863, title: 'Emancipation Proclamation', img: '1863-emancipation-proclamation.webp' },
+  { year: 1876, title: 'Telephone Patented by Alexander Graham Bell', img: '1876-telephone-patented-by-alexander-graham-bell.webp' },
+  { year: 1903, title: 'First Flight', img: '1903-first-flight.webp' },
+  { year: 1912, title: 'Titanic Sinks', img: '1912-titanic-sinks.webp' },
+  { year: 1914, title: 'World War I Begins', img: '1914-world-war-i-begins.webp' },
+  { year: 1929, title: 'Stock Market Crash', img: '1929-stock-market-crash.webp' },
+  { year: 1937, title: 'Hindenburg Disaster', img: '1937-hindenburg-disaster.webp' },
+  { year: 1941, title: 'Pearl Harbor', img: '1941-pearl-harbor.webp' },
+  { year: 1864, title: 'Gallaudet University Established', img: '1964-gallaudet-university-established.webp' },      /* Colleen's file says 1964; Gallaudet was founded in 1864 (asked her) */
+  { year: 1989, title: 'Fall of the Berlin Wall', img: '1989-fall-of-the-berlin-wall.webp' },
+  { year: 2004, title: 'Facebook Launches', img: '2004-facebook-launches.webp' },
+  { year: 2007, title: 'First iPhone Released', img: '2007-first-iphone-released.webp' },
+  { year: 2020, title: 'COVID-19 Pandemic Begins', img: '2020-covid-19-pandemic-begins.webp' },
+  { year: 2021, title: 'Perseverance Rover Lands on Mars', img: '2021-perseverance-rover-lands-on-mars.webp' }
+];
