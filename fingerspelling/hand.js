@@ -938,8 +938,17 @@ const ARROW = {      /* drawn over the card, as the student sees the movement */
 };
 const snap = () => { renderer.render(scene, cam); return renderer.domElement.toDataURL(); };
 const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] : P0; };
+/* JOINTS FOR THE READER (2026-10-17): the 21 joint positions of a letter's handshape, in the same order the camera hand-tracker reports
+   them (wrist; thumb base to tip; then each finger knuckle to tip), so the fingerspelling reader can compare a student's hand to Colleen's. */
+const MP_JOINTS = ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'].concat(...FING.map(f => [f + '-phalanx-proximal', f + '-phalanx-intermediate', f + '-phalanx-distal', f + '-tip']));
+function poseJoints(c) {
+  if (!H.bones || !POSE[c]) return null; const keep = cur;
+  apply(Object.assign({}, norm(letterStill(c)), { q: null })); H.root.updateMatrixWorld(true);
+  const out = MP_JOINTS.map(n => H.bones[n] ? H.bones[n].getWorldPosition(new THREE.Vector3()).toArray() : null);
+  apply(keep); dirty = true; return out.some(x => !x) ? null : out;
+}
 if (opts.debug) window.__hand = { get cur() { return cur; }, get cam() { return cam; }, get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+return { ready, poseJoints, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();

@@ -600,3 +600,7 @@ body.contrast .gamegrid .gcard { border: 2px solid #fff; }
 .gamegrid .gcard .gi { border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
 .gamegrid .gcard b, .gamegrid .gcard > span:last-child { padding: 0 4px; }
 .ln-part.star { border: 3px solid var(--sun, #FFC83D); border-radius: 14px; padding: 10px 12px; margin: 8px 0; background: color-mix(in srgb, var(--sun, #FFC83D) 14%, var(--surface)); }      /* a highlighted part, like ZZ (Colleen: draw attention to it) */
+[data-yearonly="1"] .not-year { display: none !important; }      /* years have no 16–19, 23 & 25 or HUNDRED choices (Colleen) */
+.sec-expr { --c: #D6457A; }
+.modehead { margin: 26px 0 6px; padding: 12px 16px; border-radius: 16px; background: var(--surface2); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }      /* Receptive / Expressive (Colleen) */
+.modehead h2 { margin: 0; font-size: 28px; } .modehead p { margin: 0; color: var(--muted); }

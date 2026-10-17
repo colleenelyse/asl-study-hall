@@ -293,21 +293,20 @@ function chipsInit(el, items, arr, label, after) {
 function gamesInit() {
   const BLURB = {"flash": "A quick warm-up: the hand shows one letter, you type it.", "pairs": "M or N? Learn to tell apart the letters that look alike.", "sound": "Short words that sound the way they’re spelled. A great first word game.", "pick": "Watch a word, then pick it from four that look alike.", "type": "The hand spells a word. Type what you saw.", "fill": "The middle letters blur. Catch the first and last, then put the word together.", "ladder": "Every right answer speeds the hand up. How fast can you read?", "tricky": "Words with wild spellings, like pterodactyl. Four levels of sneaky.", "numbers": "The hand signs a number. Type it. You choose which groups.", "npick": "The hand signs a number. Pick it from four that look alike.", "nquiz": "Big numbers with HUNDRED, THOUSAND and MILLION. Type or pick.", "yread": "The hand signs a year. Type it.", "ypick": "The hand signs a year. Pick it from look-alikes like 1969 and 1996.", "aread": "The hand signs an age from the chin. Type it.", "apick": "The hand signs an age. Pick it from four that look alike."};      /* short card lines (Colleen: make the descriptions better); the full text stays on each setup screen */
   const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
-  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') +      // Show Me How to Spell sits with the fingerspelling games (Colleen)
-    '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
+  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
+  $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
+  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
+  $('#g-exprnum').innerHTML = '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>';      /* expressive: the student signs (Colleen) */
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
     '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99. The hand signs it from the chin.</span></a>';
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
-    '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' +
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Snap number signs together, like 3 + HUNDRED + 45, then watch.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
-    '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' +
     '';
   $('#g-numgrid').innerHTML += '<a class="gcard" href="#/math"><span class="gi" aria-hidden="true">➗</span><b>Math in ASL</b><span>The hand signs a math problem. Write it, solve it, or build it.</span></a>';
   $('#g-agegrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'ages').map(card).join('') +      // ages in their own section (Colleen)
-    '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>' +
     '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>Look at ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ', watch four hands sign ages, and pick the one that fits.</span></a>';
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See a historic event. Watch four hands sign years and pick the right one.</span></a>';
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Put five signed years in order, then match each event to its year.</span></a>';
@@ -1274,7 +1273,7 @@ $('#hand').addEventListener('fstone', e => { if (stage.classList.contains('agemo
 const yearBlocks = y => (hand.yearParts ? hand.yearParts(y) || [] : []).map(([n, how]) => how === 'n' ? String(n) : '0 →');
 const blocksHtml = (labels, now) => labels.map((t, i) => '<span class="blk' + (/[A-Z]/.test(t) ? ' h' : '') + (i === now ? ' now' : '') + '">' + esc(t) + '</span>').join('<span class="plus">+</span>');
 /* ---------- Show me numbers (Colleen): type any number, the hand signs it with all of the number rules ---------- */
-function snShow() { const m = /^#\/shownum\/(year|age)/.exec(location.hash); if (m) { S.snas = m[1]; saveS(); } $$('#sn-as button').forEach(b => b.classList.toggle('on', b.dataset.v === S.snas)); hand.helper(S.snas === 'num'); ageFace(S.snas === 'age');      /* the extra hand is never needed for years (Colleen) */ putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
+function snShow() { setTimeout(yearOnly, 0); const m = /^#\/shownum\/(year|age)/.exec(location.hash); if (m) { S.snas = m[1]; saveS(); } $$('#sn-as button').forEach(b => b.classList.toggle('on', b.dataset.v === S.snas)); hand.helper(S.snas === 'num'); ageFace(S.snas === 'age');      /* the extra hand is never needed for years (Colleen) */ putStage('shownum-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#sn-speed').value = Math.round(S.speed * 100); setTimeout(() => $('#sn-num').focus(), 50); }
 function shownumInit() {
   const go = () => {
     const raw = $('#sn-num').value.trim(), digits = raw.replace(/[,\s]/g, '');
@@ -1309,7 +1308,7 @@ function shownumInit() {
   S.snteens = S.snteens || 'mix'; S.snform = S.snform || 'mix'; S.snhund = S.snhund || 'mix';
   segInit('sn-teens', 'snteens'); segInit('sn-form', 'snform'); segInit('sn-hund', 'snhund');
   if (!S.snas) S.snas = S.snyear ? 'year' : 'num';
-  segInit('sn-as', 'snas', () => { hand.helper(S.snas === 'num'); ageFace(S.snas === 'age'); });      // Show Me Numbers / Years / Ages (Colleen)      // Show Me Years (Colleen)
+  segInit('sn-as', 'snas', () => { yearOnly(); hand.helper(S.snas === 'num'); ageFace(S.snas === 'age'); });      // Show Me Numbers / Years / Ages (Colleen)      // Show Me Years (Colleen)
 }
 
 /* ---------- Sign the number (Colleen): a random number pops up for the student to sign, then the hand checks them ---------- */
@@ -1356,16 +1355,19 @@ function sgPlay() {
   })();
 }
 let sgMarks = [];
+const yearOnly = () => { const sn = document.querySelector('[data-screen=shownum]'), sg = document.querySelector('[data-screen=signnum]');      /* hide the 16–19, 23 & 25 and HUNDRED choices when only years are signed (Colleen) */
+  if (sn) sn.dataset.yearonly = S.snas === 'year' ? '1' : ''; if (sg) sg.dataset.yearonly = S.sgroups.length && S.sgroups.every(k => SG_YEARS.some(g => g[0] === k)) ? '1' : ''; };
 function sgShow() {
   if (/^#\/signnum\/year/.test(location.hash) && !S.sgroups.some(k => SG_YEARS.some(g => g[0] === k))) { S.sgroups = SG_YEARS.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }
   if (/^#\/signnum\/age/.test(location.hash) && !S.sgroups.some(k => SG_AGES.some(g => g[0] === k))) { S.sgroups = SG_AGES.map(g => g[0]); saveS(); SG.n = null; if (window.__sgDraw) window.__sgDraw(); }      // Sign the Age: the age groups      // Sign the Year: the year groups
   putStage('signnum-slot'); hand.helper(sgNeedsHelper()); speedNow = () => S.speed; assist.className = 'assist';
   $('#sg-speed').value = Math.round(S.speed * 100); sgMarks.forEach(m => m());
   if (SG.n === null) sgNext(); else { sgCover(true); ageFace(SG.age); }
+  yearOnly();
 }
 function signnumInit() {
   if (!Array.isArray(S.sgroups)) S.sgroups = ['0–20'];
-  const hint = () => { $('#sg-hint').textContent = S.sgroups.length ? '' : 'Choose at least one group (0–20 is used until you do).'; if (location.hash === '#/signnum') hand.helper(sgNeedsHelper()); };
+  const hint = () => { yearOnly(); $('#sg-hint').textContent = S.sgroups.length ? '' : 'Choose at least one group (0–20 is used until you do).'; if (location.hash === '#/signnum') hand.helper(sgNeedsHelper()); };
   window.__sgDraw = chipsInit($('#sg-groups'), sgGroups(), 'sgroups', x => esc(x), hint);
   $('#sg-check').onclick = sgPlay; $('#sg-check2').onclick = sgPlay; $('#sg-again').onclick = sgPlay; $('#sg-next').onclick = sgNext;
   $('#sg-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
