@@ -614,3 +614,6 @@ body.nocamnum [data-camnum] { display: none !important; }      /* TpT sheets wit
 /* the home pages' teacher box (Colleen, 2026-10-17): hidden with the other shop links until admin > Show the shop to everyone */
 .home-teach { margin: 22px auto 0; max-width: 640px; padding: 16px 18px; border-radius: 16px; background: color-mix(in srgb, var(--sun, #FFC83D) 20%, var(--surface)); text-align: left; }
 .home-teach h2 { margin: 0 0 6px; font-size: 22px; text-align: center; } .home-teach p { margin: 0 0 10px; }
+/* the tip link (Colleen's Ko-fi, 2026-10-17): home pages and results only; never inside ASL Study, the paid copies, or on a class-password device */
+.tiplink { margin: 16px auto 0; text-align: center; font-size: 15px; color: var(--muted); } .tiplink a { color: var(--accent); font-weight: 800; }
+html.noshop .tiplink, html.embedded .tiplink { display: none !important; }
