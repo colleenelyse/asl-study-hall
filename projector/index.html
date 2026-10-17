@@ -76,6 +76,7 @@
   <button type="button" data-add="timeleft">⏳ Time left</button>
   <button type="button" data-add="passboard">🎫 Hall passes</button>
   <button type="button" data-add="noise">🔊 Noise meter</button>
+  <button type="button" data-add="seating">🪑 Seating chart</button>
   <span class="sep"></span>
   <button id="miniBtn" type="button" title="A small Freeze button that stays on top of every window">🎛️ Mini control</button>
   <button id="fullBtn" type="button">⛶ Full screen</button>
@@ -109,6 +110,7 @@
     timer: { name: 'Timer', w: 30, h: 34, x: 68, y: 2, src: function () { return KIOSK + '?view=tools&tool=timer&theme=' + THEME; } },
     bell: { name: 'Bell schedule', w: 28, h: 48, x: 70, y: 40, src: function () { return BELL; } },
     timeleft: { name: 'Time left', w: 26, h: 26, x: 2, y: 2, src: function () { return KIOSK + '?view=tools&tool=timeleft&theme=' + THEME; } },
+    seating: { name: 'Seating chart', w: 46, h: 58, x: 27, y: 38, src: function () { return KIOSK + '?view=seat&theme=' + THEME; } },
     noise: { name: 'Noise meter', w: 34, h: 30, x: 33, y: 2, allow: 'microphone', src: function () { return 'noise.html?theme=' + THEME; } },
     passboard: { name: 'Hall passes', w: 30, h: 40, x: 2, y: 40, src: function () { return KIOSK + '?view=tools&tool=passboard&theme=' + THEME; } }
   };
