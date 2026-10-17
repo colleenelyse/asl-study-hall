@@ -75,9 +75,10 @@ function loop() {
   if (!landmarker || video.currentTime === lastT) return; lastT = video.currentTime;
   const r = landmarker.detectForVideo(video, performance.now());
   ctx.clearRect(0, 0, draw.width, draw.height);
-  if (!r.worldLandmarks || !r.worldLandmarks.length) { $('#rd-guess').innerHTML = '<span>No hand</span>'; held = 0; $('#rd-hold').style.width = '0'; lastF = null; $('#rd-pct').hidden = true; $('#rd-tip').textContent = 'Hold your hand up where the camera can see it'; return; }
+  const nowT = performance.now(); if (!r.worldLandmarks || !r.worldLandmarks.length) { if (CK) CK.lastT = 0; $('#rd-guess').innerHTML = '<span>No hand</span>'; held = 0; $('#rd-hold').style.width = '0'; lastF = null; $('#rd-pct').hidden = true; $('#rd-tip').textContent = 'Hold your hand up where the camera can see it'; return; }
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
+  if (CK && CK.on && !done) { if (CK.lastT) CK.t += nowT - CK.lastT; CK.lastT = nowT; ckTick(); if (!CK.on) return; }      /* the check's clock runs only while a hand is in view */
   const target0 = WORD ? WORD[wi] : LETTERS[cur];
   if (MOVING[target0]) { readMotion(target0, camHand(r.worldLandmarks[0]), r.landmarks[0], f); return; }
   MOT = [];
@@ -90,13 +91,14 @@ function loop() {
   $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>'; $('#rd-tip').textContent = right ? 'Yes!' : T ? coach(f, T, hot) : '';
   $('#rd-guess').innerHTML = R.slice(0, 3).map((x, i) => '<span class="' + (i ? '' : 'top') + '">' + x[0] + '<small>' + Math.max(0, Math.round(100 - x[1] * 18)) + '% close</small></span>').join('');      /* the testing panel: top 3 guesses and how close each is */
   if (done) return;
+  quickCheck(R, target, f, dTgt);
   oopsCheck(R, target, f);
   /* DOUBLE LETTERS (Colleen): the second of two same letters only counts after the hand slides to the side or bounces (opens a little and closes) */
   if (DBL) { const wx = r.landmarks[0][0].x; if (DBL.x0 === null) DBL.x0 = wx; if (Math.abs(wx - DBL.x0) > 0.05 || dT > DBL.d0 + 0.6) DBL.moved = true; if (!DBL.moved) { $('#rd-tip').textContent = 'Double letter: slide it or bounce it'; held = 0; $('#rd-hold').style.width = '0'; return; } }
   held = right ? held + 1 : Math.max(0, held - 2);      /* SAFEGUARD inside `right`: a letter the student taught still has to look close to the real handshape */ $('#rd-hold').style.width = Math.min(100, 100 * held / HOLD) + '%';
-  if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok'); flash(target);
+  if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok'); flash(target); ckRecord(target, true, 1);
     if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); }
-    else setTimeout(() => go(cur + 1), 1100); }
+    else setTimeout(nextLetter, 1100); }
 }
 /* the hand outline (drawn in dots()) */
 const FING = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
@@ -191,10 +193,77 @@ function readMotion(c, P, L, f) {
   const pct = ok ? 100 : Math.round(prog * 90); $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>';
   $('#rd-tip').textContent = ok ? 'Yes!' : !shapeOK ? (J ? 'Make an I (pinky up), then draw a J' : zz ? 'Draw two Z\u2019s, or one Z with a bent V' : 'Point your pointer finger, then draw a Z') : (J ? 'Draw a J: down, then hook' : 'Draw a Z in the air');
   if (ok && !done) { done = true; MOT = []; $('#rd-letter').classList.add('ok'); flash(c); $('#rd-hold').style.width = '100%';
-    const step = bentV ? 2 : 1; if (bentV) flash('ZZ');
-    if (WORD) setTimeout(() => { wi += step; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); else setTimeout(() => go(cur + 1), 1100); }
+    const step = bentV ? 2 : 1; if (bentV) flash('ZZ'); ckRecord(c, true, step);
+    if (WORD) setTimeout(() => { wi += step; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); else setTimeout(nextLetter, 1100); }
   else $('#rd-hold').style.width = (prog * 100) + '%';
 }
+/* ---------- CHECK (the diagnostic, Colleen): a fixed set, no hints, a time limit per letter (only while the hand is in view); every letter is
+   recorded: signed or not yet, the seconds it took, and a letter signed quickly and confidently instead (a real mix-up, not a struggle).
+   Inside ASL Study / the TpT sheet the results go to the student's Fingerspelling Stats as EXPRESSIVE. Nothing but these results is kept. ---------- */
+const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 'aslstudy' && !!window.opener;
+if (QS.get('embed') === 'aslstudy') { const m = document.getElementById('rd-safe-more'); if (m) m.textContent = 'The only thing your teacher gets is your score: which letters you signed and how long each one took.'; }
+let CK = null;
+const TL_FIXED = QS.has('tl') ? Math.max(0, Math.min(60, +QS.get('tl') || 0)) : null;      /* the teacher's time limit from the sheet's Settings */
+const tlNow = () => TL_FIXED !== null ? TL_FIXED : +($('#rd-tl').value || 8);
+const shuffleA = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function ckStart() {
+  const words = !!WORD || $('#rd-mode .on').dataset.v === 'words';
+  CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: words ? shuffleA(pool()).slice(0, 8) : shuffleA(LETTERS) };
+  if (!CK.queue.length) { CK = null; $('#rd-status').textContent = 'No words fit. Choose another length or list.'; return; }
+  document.body.classList.add('checking'); $('#rd-results').hidden = true; $('#rd-checkgo').hidden = true; $('#rd-ckbar').hidden = false; $('#rd-hint').checked = false;
+  if (words) { CK.qi = 0; WORD = CK.queue[0]; wi = 0; showWord(); } else { CK.qi = 0; go(LETTERS.indexOf(CK.queue[0])); }
+  ckBar();
+}
+function ckBar() { if (!CK) return; const total = CK.words ? CK.queue.length : 26, at = CK.qi + 1; $('#rd-ckpos').textContent = (CK.words ? 'Word ' : 'Letter ') + Math.min(at, total) + ' of ' + total; const L = tlNow(); $('#rd-cktime').style.width = L ? Math.min(100, CK.t / (L * 10)) + '%' : '0'; }
+function ckTick() {
+  ckBar(); const L = tlNow(); if (!L || CK.t < L * 1000) return;
+  const c = WORD ? WORD[wi] : LETTERS[cur]; ckRecord(c, false, 1); done = true;      /* time is up: "not yet", on to the next */
+  const box = $('#rd-oops'); box.textContent = 'Time’s up for ' + c + '. On to the next one.'; box.hidden = false; setTimeout(() => { box.hidden = true; }, 1600);
+  if (WORD) setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 600); else setTimeout(nextLetter, 600);
+}
+function ckRecord(c, ok, step) {
+  if (!CK || !CK.on) return; const secs = Math.round(CK.t / 100) / 10;
+  for (let k = 0; k < step; k++) CK.items.push({ c: k ? c : c, ok, secs: k ? 0 : secs, quick: k ? '' : CK.quick });
+  CK.t = 0; CK.lastT = 0; CK.quick = ''; CK.quickN = 0; CK.quickL = '';
+}
+function quickCheck(R, target, f, dTgt) {      /* quick and confident (Colleen): early in the letter, held steady, clearly another letter */
+  if (!CK || !CK.on || CK.quick) return; const top = R[0][0];
+  if (top === target || CK.t > 3000 || !nearModel(f, top, 1) || R[0][1] > dTgt * 0.75) { CK.quickN = 0; return; }
+  CK.quickN = top === CK.quickL ? CK.quickN + 1 : 1; CK.quickL = top; if (CK.quickN >= 8) CK.quick = top;
+}
+function nextLetter() {
+  if (!CK || !CK.on) return go(cur + 1);
+  CK.qi++; if (CK.qi >= CK.queue.length) return ckFinish(); go(LETTERS.indexOf(CK.queue[CK.qi])); ckBar();
+}
+function ckNextWord() { CK.qi++; if (CK.qi >= CK.queue.length) return ckFinish(); WORD = CK.queue[CK.qi]; wi = 0; showWord(); ckBar(); }
+function ckFinish() {
+  const C = CK; C.on = false; document.body.classList.remove('checking'); $('#rd-ckbar').hidden = true; $('#rd-checkgo').hidden = false; $('#rd-checkgo').textContent = 'Check again';
+  const it = C.items, signed = it.filter(x => x.ok), slow = signed.filter(x => x.secs > 4), notYet = it.filter(x => !x.ok), quick = it.filter(x => x.quick);
+  const avg = signed.length ? Math.round(signed.reduce((a, x) => a + x.secs, 0) / signed.length * 10) / 10 : 0;
+  const per = {}; it.forEach(x => { const p = per[x.c] = per[x.c] || { ok: 0, n: 0, secs: 0 }; p.n++; if (x.ok) { p.ok++; p.secs += x.secs; } });
+  const cls = c => { const p = per[c]; return !p.ok ? 'no' : p.secs / p.ok > 4 ? 'slow' : 'ok'; };
+  $('#rd-results').innerHTML = '<h3>Your check</h3><div class="big">' + signed.length + ' of ' + it.length + '</div><p class="rd-small">letters signed' + (signed.length ? ', about ' + avg + ' seconds each' : '') + '</p>' +
+    '<div class="lets">' + Object.keys(per).sort().map(c => '<span class="' + cls(c) + '">' + c + '</span>').join('') + '</div><p class="rd-small">Green: signed. Yellow: signed, but slow. Red: not yet.</p>' +
+    (quick.length ? '<p><b>Quick mix-ups</b> (signed fast and sure, but a different letter):</p><ul>' + quick.map(x => '<li>' + an(x.quick).replace(/^an? /, '') + ' when asked for ' + x.c + '</li>').join('') + '</ul>' : '') +
+    (notYet.length ? '<p><b>Not yet:</b> ' + [...new Set(notYet.map(x => x.c))].join(', ') + '. The camera can misread a hand, so ask your teacher to check these.</p>' : '<p><b>Every letter signed!</b></p>') +
+    (IN_SHEET ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
+  $('#rd-results').hidden = false;
+  if (IN_SHEET) ckSend(C, it, signed, quick);
+  CK = null; WORD = null; if (!C.words) go(0); else { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x.dataset.v === 'words')); newWord(); }
+}
+function ckSend(C, it, signed, quick) {      /* to the games page that opened this tab, which passes it to ASL Study / the TpT sheet */
+  const round = { type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera', name: 'Fingerspell to the Camera', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    n: it.length, right: signed.length, secs: Math.round((Date.now() - C.start) / 1000), speed: 1, lps: null, top: null, letters: signed.length, items: [],
+    exp: { words: C.words ? 1 : 0, hand: LEFT ? 'left' : 'right', limit: tlNow(), items: it.slice(0, 200).map(x => [x.c, x.ok ? 1 : 0, x.secs, x.quick || '']) } };
+  try { window.opener.postMessage(round, location.origin); $('#rd-sent').textContent = 'Saved to your class.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
+}
+$('#rd-kind').onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; $$('#rd-kind button').forEach(x => x.classList.toggle('on', x === b)); const ck = b.dataset.v === 'check';
+  $('#rd-checkset').hidden = !ck; $('#rd-results').hidden = true; $('#rd-checkgo').hidden = false; $('#rd-checkgo').textContent = 'Start the check';
+  $('#rd-checkabout').textContent = $('#rd-mode .on').dataset.v === 'words' ? '8 words from the words you chose. No hints. The time only runs while your hand is in view.' : 'All 26 letters, in a mixed order. No hints. The time only runs while your hand is in view.'; };
+$('#rd-checkgo').onclick = ckStart;
+if (TL_FIXED !== null) { $('#rd-tlwrap').innerHTML = 'Time per letter: ' + (TL_FIXED ? TL_FIXED + ' seconds' : 'no limit') + ' (set by your teacher)'; }
+else { try { const v = localStorage.getItem('fs-reader-tl'); if (v !== null) $('#rd-tl').value = v; } catch (e) {} $('#rd-tl').onchange = () => { try { localStorage.setItem('fs-reader-tl', $('#rd-tl').value); } catch (e) {} }; }
+
 function flash(c) {      /* a big green check on the camera, so it's obvious the letter was accepted (Colleen) */
   const f = $('#rd-flash'); f.textContent = '✓ ' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
 }
@@ -208,8 +277,9 @@ function newWord() { const P = pool(); WORD = P.length ? P[Math.floor(Math.rando
 let LAST = '';
 function wordDone() {      /* all green, then straight on to the next word (Colleen); "Show me" stays for the word just spelled */
   done = true; LAST = WORD; const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
+  const D = window.FS_DEFS || {}, k = Object.keys(D).find(x => x.toUpperCase().replace(/[^A-Z]/g, '') === LAST); const dv = $('#rd-def'); dv.hidden = !k; if (k) dv.textContent = '📖 ' + D[k];      /* what the word means (Colleen) */
   $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-showme').textContent = '▶ Show me ' + LAST; $('#rd-status').textContent = 'You spelled ' + LAST + '!';
-  setTimeout(() => { if (WORD === LAST && done) newWord(); }, 1500);
+  setTimeout(() => { if (WORD === LAST && done) { if (CK && CK.on) ckNextWord(); else newWord(); } }, 1500);
 }
 async function showMe() {      /* the hand spells the word back, for clarity (Colleen) */
   if (!refHand || !LAST) return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-showme').disabled = true;
@@ -238,4 +308,4 @@ $('#rd-teachbtn').onclick = () => { if (!landmarker) return; if (MOVING[LETTERS[
 $('#rd-forget').onclick = () => { delete MINE[LETTERS[cur]]; saveMine(); drawAlpha(); };
 refHand = window.FSHand.create($('#rd-model'), {});
 refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); }); go(0); $('#rd-status').textContent = 'Ready: all 26 letters.'; });
-window.READER = { setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
+window.READER = { ckStart, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */

@@ -295,7 +295,8 @@ function gamesInit() {
   const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
-  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
+  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
+  const cc = $('#camcard'); if (cc) cc.onclick = openCamera;
   $('#g-exprnum').innerHTML = '<a class="gcard" href="#/signnum"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Number</b><span>A number pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/year"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Year</b><span>A year pops up. Sign it, then check yourself with the hand.</span></a>' + '<a class="gcard" href="#/signnum/age"><span class="gi" aria-hidden="true">🙋</span><b>Sign the Age</b><span>An age pops up. Sign it, then check yourself with the hand.</span></a>';      /* expressive: the student signs (Colleen) */
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
@@ -594,6 +595,17 @@ function showMeaning(it) {
   m.hidden = false;
   const b = $('#p-say'); if (b) b.onclick = () => { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(it.w); u.lang = 'en-US'; u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {} };
 }
+/* What does that word mean? (Colleen: "I was right, but is that a real word?"): after a word game answer, a short description from defs.js */
+const defKey = w => String(w || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+let DEFIDX = null;
+function wordDef(w) {
+  const D = window.FS_DEFS; if (!D) return ''; if (D[w]) return D[w];
+  if (!DEFIDX) { DEFIDX = {}; Object.keys(D).forEach(k => { DEFIDX[defKey(k)] = D[k]; }); } return DEFIDX[defKey(w)] || '';
+}
+function showDef(w) {
+  if (isNumGame(R.game) || R.game === 'flash' || R.game === 'pairs' || String(w).length < 2) return; const d = wordDef(w); if (!d) return;
+  const m = $('#p-meaning'); m.innerHTML = '<p class="def"><span aria-hidden="true">📖</span> ' + esc(d) + '</p>'; m.hidden = false;
+}
 function afterAnswer() {
   const last = R.game === 'ladder' ? R.lives <= 0 : R.i + 1 >= R.list.length;
   if (R.game === 'flash') { setTimeout(() => { if (R && location.hash === '#/play') nextWord(); }, 650); return; }      // letters keep coming
@@ -608,7 +620,7 @@ function answerTyped(skip) {
   const ok = !skip && answerKey(typed, isNumGame(R.game)) === answerKey(it.w, isNumGame(R.game));      // Numbers: only the digits count      // only the letters count: apostrophes, spaces, capitals and punctuation are allowed but never required (Colleen)
   record(ok, skip ? '' : typed);
   showFeedback(ok, skip, it.w);
-  if (R.game === 'tricky') showMeaning(it);
+  if (R.game === 'tricky') showMeaning(it); else showDef(it.w);
   fboxes().forEach(b => { b.disabled = true; }); $('#p-answer').disabled = true; $('#p-check').hidden = true; $('#p-skip').hidden = true; $('#p-replay').hidden = R.game === 'flash';
   afterAnswer();
 }
@@ -618,7 +630,7 @@ function answerChoice(o) {
   const num = isNumGame(R.game), it = R.list[R.i], right = R.game === 'pairs' ? it.target : it.w, ok = answerKey(o, num) === answerKey(right, num);
   record(ok, o, { w: right, pair: it.pair, picked: true });
   $$('#p-choices button').forEach(b => { b.disabled = true; if (answerKey(b.dataset.o, num) === answerKey(right, num)) b.classList.add('right'); else if (b.dataset.o === o) b.classList.add('wrong'); });
-  showFeedback(ok, false, right);
+  showFeedback(ok, false, right); showDef(right);
   afterAnswer();
 }
 function finishRound() {
@@ -679,9 +691,23 @@ function sendToStudy(res, round) {
     const ord = orderList(res.items); msg.orderN = ord.length; msg.order = ord.slice(0, 20).map(x => [String(x.w).slice(0, 40), String(x.typed).slice(0, 40)]); }      // 3.90: letter order slips
   try { window.parent.postMessage(msg, '*'); } catch (e) {}
 }
+/* Fingerspell to the Camera inside ASL Study / the TpT sheet: the camera can't run inside the sheet's frame, so it opens in its own tab
+   (like Say It); its check results come back here and go on to the sheet as an expressive round (Colleen) */
+let CAMWIN = null;
+function openCamera(e) {
+  if (!EMBED) return; if (e) e.preventDefault();
+  const u = 'reader.html?embed=aslstudy' + (STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : '');
+  CAMWIN = window.open(u, '_blank');
+  if (!CAMWIN) location.href = u;
+}
+window.addEventListener('message', e => {
+  if (!EMBED || !CAMWIN || e.source !== CAMWIN || e.origin !== location.origin || !e.data || e.data.type !== 'fsp-cam-round') return;
+  const m = Object.assign({}, e.data, { type: 'fsp-round' }); try { window.parent.postMessage(m, '*'); } catch (x) {}
+});
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
   if (!EMBED || e.source !== window.parent || !e.data) return;
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
+  if (e.data.type === 'fsp-hello' && e.data.camtl !== undefined && e.data.camtl !== null && e.data.camtl !== '') STUDY.camtl = Math.max(0, Math.min(60, +e.data.camtl || 0));      /* the teacher's camera time limit (Settings) */
   if (e.data.type === 'fsp-hello' && e.data.name) { STUDY.name = String(e.data.name).slice(0, 60); STUDY.cls = String(e.data.cls || '').slice(0, 80); STUDY.app = String(e.data.app || '').slice(0, 60); STUDY.level = String(e.data.level || '').slice(0, 40); if (!store.get('name', '')) store.set('name', STUDY.name); if (location.hash === '#/report') reportShow(); }
   if (e.data.type === 'fsp-compare-data' && CMP && CMP.kind === e.data.kind && CMP.state === 'loading') {      /* ASL Study 3.82: the program comparison for the diagnostic report */
     const d = e.data.data;
