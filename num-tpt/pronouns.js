@@ -328,4 +328,5 @@ $('#tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return
 const bv = ENG.validateBank(window.PRONOUN_BANK);
 $('#status').textContent = bv.errors.length ? 'Bank problems: ' + bv.errors.join('; ') : 'Ready: ' + bv.ok.length + ' sentences.';
 drawSetup(); drawMine();
+$('#tChest').checked = false;      // the chest overlay always starts off (Colleen); the browser must not bring a tick back on reload
 window.PRON_TEST = { G1: () => G1, handle, onSign, S, nextSentence, startWith: list => { G1 = { queue: list, qi: 0, missed: [], results: [], repeating: false }; $('#done').hidden = true; $('#setup').hidden = true; $('#playing').hidden = false; $('#sent').hidden = false; nextSentence(); } };
