@@ -164,8 +164,12 @@
 
   /* ----- sharing the main monitor ----- */
   function showErr(t) { var e = document.getElementById('err'); e.textContent = t; e.hidden = !t; }
+  /* one screen (or a mirrored projector): sharing would show this window inside itself, a "tunnel" (Colleen, 2026-10-17) */
+  function oneScreen() { return window.screen && window.screen.isExtended === false; }
+  var warnedOne = false;
   document.getElementById('startBtn').onclick = function () {
     showErr('');
+    if (oneScreen() && !warnedOne) { warnedOne = true; showErr('This computer shows only one screen right now. If the projector mirrors your screen, this window would copy itself (a "tunnel"). Set the projector to Extended display (Mac: System Settings > Displays > the projector > Use as: Extended display), drag this window onto the projector, then press Start. Press Start again to share anyway.'); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       showErr('This browser cannot share a screen. Open this page in Google Chrome on your computer.');
       return;
@@ -178,11 +182,16 @@
       s.getVideoTracks()[0].addEventListener('ended', stopped);
       document.getElementById('start').hidden = true;
       document.getElementById('bar').hidden = false;
-      wake(); tell();
+      wake(); tell(); tunnelTip();
     }).catch(function (err) {
       showErr(err && err.name === 'NotAllowedError' ? 'Sharing was cancelled. Press Start and choose your main monitor.' : 'Could not share the screen: ' + (err && err.message || err));
     });
   };
+  function tunnelTip() {      // a reminder for the first seconds: the window belongs on the projector screen, not the shared one
+    var t = document.getElementById('tunnelTip'); if (!t) { t = document.createElement('div'); t.id = 'tunnelTip'; t.style.cssText = 'position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:25;max-width:min(680px,92vw);padding:12px 16px;border-radius:12px;background:#fff4d6;color:#1b1e3c;font-weight:700;font-size:16px;box-shadow:0 8px 24px rgba(0,0,0,.35)'; document.body.appendChild(t); }
+    t.textContent = 'Seeing windows inside windows (a tunnel)? Drag this window onto the projector screen, or press Stop and share your main monitor (not the projector).'; t.hidden = false;
+    setTimeout(function () { t.hidden = true; }, 12000);
+  }
   function stopped() {
     if (frozen) toggleFreeze();
     stream = null; video.srcObject = null;
