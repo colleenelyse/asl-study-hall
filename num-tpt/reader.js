@@ -4,7 +4,7 @@
 import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const LETTERS = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split('');      /* J and Z move: they come later */
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), STILL = LETTERS.filter(c => c !== 'J' && c !== 'Z'), MOVING = { J: 1, Z: 1 };      /* J and Z move: they are read from the motion (readMotion), the others from the handshape */
 const MODEL = 'https:' + '/' + '/storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 const WASM = 'https:' + '/' + '/cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const HOLD = 6;      /* frames in a row the right letter must be read (short, so a right letter is accepted quickly; Colleen: no sitting at 99%) */
@@ -24,7 +24,7 @@ function feat(P) {
   const crossed = (X(8) - X(12)) / span, tipsUp = (Y(8) + Y(12)) / 2 - Y(5);
   return { shape, orient: y.concat(z), key: [thumbAcross, thumbLow, thumbFront, crossed, tipsUp] };
 }
-const LOOSE = { G: 0.45, H: 0.45, K: 0.45, P: 0.55, Q: 0.45, O: 0.5, C: 0.6 };      /* letters whose angle varies a lot from signer to signer (Colleen: G and H persnickety, K and Q need more flexible rotation) */
+const LOOSE = { D: 0.5, G: 0.35, H: 0.25, K: 0.45, P: 0.35, Q: 0.4, O: 0.5, C: 0.6 };      /* Colleen: D tricky; H worse than G; P a problem */      /* letters whose angle varies a lot from signer to signer (Colleen: G and H persnickety, K and Q need more flexible rotation) */
 const KEYW = [1.3, 0.7, 0.6, 1.4, 0.4];      /* how much each key detail counts */
 function dist(a, b, letter) {
   let s = 0, o = 0, k = 0; for (let i = 0; i < a.shape.length; i++) s += (a.shape[i] - b.shape[i]) ** 2;
@@ -38,10 +38,19 @@ const TPL = {};
 let MINE = {}; try { MINE = JSON.parse(localStorage.getItem('fs-reader-mine') || '{}'); } catch (e) {}
 const MINE_KEY = 'fs-reader-mine';
 const saveMine = () => { try { localStorage.setItem('fs-reader-mine', JSON.stringify(MINE)); } catch (e) {} };
-const rankModel = f => LETTERS.map(c => [c, TPL[c] ? dist(f, TPL[c], c) : 99]).sort((a, b) => a[1] - b[1]);      /* Colleen's hand only */
+const rankModel = f => STILL.map(c => [c, TPL[c] ? dist(f, TPL[c], c) : 99]).sort((a, b) => a[1] - b[1]);      /* Colleen's hand only */
 const nearModel = (f, c, n) => rankModel(f).slice(0, n).some(x => x[0] === c);      /* SAFEGUARD: is the hand at least close to Colleen's letter? */
-function rank(f) {
-  return LETTERS.map(c => { let d = TPL[c] ? dist(f, TPL[c], c) * 1.25 : 99; (MINE[c] || []).forEach(m => { d = Math.min(d, dist(f, m, c)); }); return [c, d]; }).sort((a, b) => a[1] - b[1]);
+/* K and P (and G and Q) are the same handshape; only the direction differs: P and Q point down. When both are in the running, the direction decides. */
+const DOWNPAIRS = [['K', 'P', 0.4], ['G', 'Q', -0.45]];      /* [up letter, down letter, the direction that divides them: K points up, P forward-down; G sideways, Q down] */
+function byDirection(R, f) {
+  DOWNPAIRS.forEach(([up, dn, cut]) => { const down = f.orient[1] < cut; const iu = R.findIndex(x => x[0] === up), id = R.findIndex(x => x[0] === dn); if (iu < 0 || id < 0 || Math.min(iu, id) > 1) return;
+    const want = down ? dn : up, other = down ? up : dn, iw = R.findIndex(x => x[0] === want), io = R.findIndex(x => x[0] === other);
+    if (iw > io && R[iw][1] < R[io][1] * 1.6) { const t = R[iw]; R[iw] = R[io]; R[io] = t; const lo = Math.min(R[iw][1], R[io][1]); R[io][1] = lo; R[io][1] = Math.min(R[io][1], lo); } });
+  return R;
+}
+function rank(f) { return byDirection(rankRaw(f), f); }
+function rankRaw(f) {
+  return STILL.map(c => { let d = TPL[c] ? dist(f, TPL[c], c) * 1.25 : 99; (MINE[c] || []).forEach(m => { d = Math.min(d, dist(f, m, c)); }); return [c, d]; }).sort((a, b) => a[1] - b[1]);
 }
 
 /* ---------- the camera ---------- */
@@ -69,7 +78,10 @@ function loop() {
   if (!r.worldLandmarks || !r.worldLandmarks.length) { $('#rd-guess').innerHTML = '<span>No hand</span>'; held = 0; $('#rd-hold').style.width = '0'; lastF = null; $('#rd-pct').hidden = true; $('#rd-tip').textContent = 'Hold your hand up where the camera can see it'; return; }
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
-  const R = rank(f), target = WORD ? WORD[wi] : LETTERS[cur];
+  const target0 = WORD ? WORD[wi] : LETTERS[cur];
+  if (MOVING[target0]) { readMotion(target0, camHand(r.worldLandmarks[0]), r.landmarks[0], f); return; }
+  MOT = [];
+  const R = rank(f), target = target0;
   const T = (MINE[target] || []).concat(TPL[target] ? [TPL[target]] : []).sort((a, b) => dist(f, a, target) - dist(f, b, target))[0];      /* the closest version of the target letter */
   const dTgt = (R.find(x => x[0] === target) || [0, 99])[1];
   const right = (R[0][0] === target || (R.slice(0, 2).some(x => x[0] === target) && dTgt <= R[0][1] * 1.15)) && nearModel(f, target, 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
@@ -150,7 +162,7 @@ let WS = { lens: ['short'], cats: CATS.slice() }; try { Object.assign(WS, JSON.p
 const saveWS = () => { try { localStorage.setItem('fs-reader-words', JSON.stringify(WS)); } catch (e) {} };
 function pool() {
   const lens = LENS.filter(l => WS.lens.includes(l[0])), out = new Set();
-  WS.cats.forEach(k => (window.FS_WORDS[k] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && !/[JZ]/.test(w) && lens.some(l => w.length >= l[2] && w.length <= l[3])) out.add(w); }));      /* J and Z come later */
+  WS.cats.forEach(k => (window.FS_WORDS[k] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && lens.some(l => w.length >= l[2] && w.length <= l[3])) out.add(w); }));
   return [...out];
 }
 function chips(el, items, key) {
@@ -158,6 +170,31 @@ function chips(el, items, key) {
   el.onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = WS[key], i = a.indexOf(b.dataset.v); if (i >= 0) { if (a.length > 1) a.splice(i, 1); } else a.push(b.dataset.v); saveWS(); chips(el, items, key); count(); };
 }
 const count = () => { const n = pool().length; $('#rd-count').textContent = n ? n + ' words' : 'No words fit. Choose another length or list.'; };
+/* ---------- J and Z (the letters that move) ---------- */
+let MOT = [];      /* the last couple of seconds of the moving fingertip */
+const ext = (P, tip, base) => len(sub(P[tip], P[base])) / (len(sub(P[9], P[0])) || 1);      /* how far a finger reaches out, for its size */
+function readMotion(c, P, L, f) {
+  const now = performance.now(), J = c === 'J';
+  const zz = !J && WORD && WORD[wi + 1] === 'Z', bentV = zz && ext(P, 8, 5) > 0.6 && ext(P, 12, 9) > 0.67 && ext(P, 16, 13) < 0.66 && ext(P, 20, 17) < 0.62;      /* double Z (Colleen): two full Z's, or the slang bent V drawing one Z for both */
+  const shapeOK = bentV || (J ? ext(P, 20, 17) > 0.62 && ext(P, 8, 5) < 0.66 && ext(P, 12, 9) < 0.68 : ext(P, 8, 5) > 0.7 && ext(P, 12, 9) < 0.68 && ext(P, 16, 13) < 0.66);      /* measured on Colleen's hand: a finger out reaches 0.7-0.95, a curled one 0.45-0.6 */      /* J: only the pinky out; Z: only the pointer out */
+  const tip = L[J ? 20 : 8], sx = LEFT ? -1 : 1;
+  if (shapeOK) MOT.push({ t: now, x: tip.x * sx, y: tip.y, z: f.orient.slice(3) }); MOT = MOT.filter(m => now - m.t < 2200);
+  dots(L, shapeOK ? -1 : (J ? 4 : 1), false);
+  $('#rd-guess').innerHTML = '<span class="top">' + (shapeOK ? (J ? 'I shape' : 'pointer out') : 'shape?') + '</span>';
+  let prog = 0, ok = false;
+  if (MOT.length > 6) {
+    const a = MOT[0], b = MOT[MOT.length - 1], down = b.y - a.y, across = Math.abs(b.x - a.x);
+    if (J) { const turn = Math.acos(Math.max(-1, Math.min(1, dot(a.z, b.z)))) * 57.3; prog = Math.min(1, Math.max(0, down) / 0.07) * 0.6 + Math.min(1, Math.max(across / 0.04, turn / 35)) * 0.4; ok = down > 0.06 && (across > 0.03 || turn > 30); }      /* J: the pinky goes down and hooks (moves across or the palm turns) */
+    else { let rev = 0, dir = 0, lastX = a.x; MOT.forEach(m => { const d = m.x - lastX; if (Math.abs(d) > 0.025) { const sd = Math.sign(d); if (dir && sd !== dir) rev++; dir = sd; lastX = m.x; } }); const span = Math.max(...MOT.map(m => m.x)) - Math.min(...MOT.map(m => m.x));
+      prog = Math.min(1, rev / 2) * 0.6 + Math.min(1, Math.max(0, down) / 0.05) * 0.2 + Math.min(1, span / 0.1) * 0.2; ok = rev >= 2 && down > 0.03 && span > 0.08; }      /* Z: across, back at an angle, across again: two turns, going down */
+  }
+  const pct = ok ? 100 : Math.round(prog * 90); $('#rd-pct').hidden = false; $('#rd-pct').style.setProperty('--p', pct); $('#rd-pct').innerHTML = '<span>' + pct + '%</span>';
+  $('#rd-tip').textContent = ok ? 'Yes!' : !shapeOK ? (J ? 'Make an I (pinky up), then draw a J' : zz ? 'Draw two Z\u2019s, or one Z with a bent V' : 'Point your pointer finger, then draw a Z') : (J ? 'Draw a J: down, then hook' : 'Draw a Z in the air');
+  if (ok && !done) { done = true; MOT = []; $('#rd-letter').classList.add('ok'); flash(c); $('#rd-hold').style.width = '100%';
+    const step = bentV ? 2 : 1; if (bentV) flash('ZZ');
+    if (WORD) setTimeout(() => { wi += step; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); else setTimeout(() => go(cur + 1), 1100); }
+  else $('#rd-hold').style.width = (prog * 100) + '%';
+}
 function flash(c) {      /* a big green check on the camera, so it's obvious the letter was accepted (Colleen) */
   const f = $('#rd-flash'); f.textContent = '✓ ' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
 }
@@ -197,8 +234,8 @@ $$('[data-hand]').forEach(b => b.onclick = () => { setHand(b.dataset.hand); star
 $('#rd-switch').onclick = () => setHand(LEFT ? 'right' : 'left');
 $('#rd-skip').onclick = () => { if (WORD) { if (done) return newWord(); wi++; if (wi >= WORD.length) wordDone(); else showWord(); } else go(cur + 1); }; $('#rd-prev').onclick = () => { if (WORD) { if (wi > 0 && !done) { wi--; showWord(); } } else go(cur - 1); }; $('#rd-rand').onclick = () => { if (WORD) newWord(); else go(Math.floor(Math.random() * LETTERS.length)); };
 $('#rd-alpha').onclick = e => { const b = e.target.closest('button'); if (b) go(+b.dataset.i); };
-$('#rd-teachbtn').onclick = () => { if (!landmarker) return; teachBuf = []; teaching = 30; $('#rd-teachbtn').disabled = true; $('#rd-teachbtn').textContent = 'Hold still…'; };
+$('#rd-teachbtn').onclick = () => { if (!landmarker) return; if (MOVING[LETTERS[cur]]) { $('#rd-status').textContent = 'J and Z are read from the motion, so they don\u2019t need teaching.'; return; } teachBuf = []; teaching = 30; $('#rd-teachbtn').disabled = true; $('#rd-teachbtn').textContent = 'Hold still…'; };
 $('#rd-forget').onclick = () => { delete MINE[LETTERS[cur]]; saveMine(); drawAlpha(); };
 refHand = window.FSHand.create($('#rd-model'), {});
-refHand.ready.then(() => { LETTERS.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); }); go(0); $('#rd-status').textContent = 'Ready: ' + Object.keys(TPL).length + ' letters.'; });
-window.READER = { TPL, MINE, feat, rank, dist, LETTERS, pool, oopsCheck, MIX: () => MIX };      /* for testing */
+refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); }); go(0); $('#rd-status').textContent = 'Ready: all 26 letters.'; });
+window.READER = { setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
