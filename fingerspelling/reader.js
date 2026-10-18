@@ -538,6 +538,23 @@ if (IN_SHEET) window.addEventListener('message', e => {
     const G = { k: 'live', hide: true, hideLetter: true, wordDone: () => { liveDone(w); GAME = { k: 'live', free: true, letter: () => {} }; WORD = null;      /* waits quietly for the next word */ $('#rd-word').innerHTML = '<span class="d">✓</span>'; $('#rd-letter').textContent = '✓'; $('#rd-tip').textContent = 'Got it! Look at your game for the next sign.'; } };
     $('#rd-prompt').hidden = false; wordGame(G, w); $('#rd-tip').textContent = 'Fingerspell the English word for the sign in your game (' + w.length + ' letters)';
   }
+  /* SEA BATTLE AIMING (2026-10-18): { type: 'fsp-cam-aim', id, parts: [['w', 'Q'], ['n', '14']] } asks for a square's label in order: a letter or word
+     ('w', fingerspelled) and/or a number ('n', signed). When every part is read: { type: 'fsp-cam-aimed', id, ms } (ms = how long it took). */
+  if (d.type === 'fsp-cam-aim' && Array.isArray(d.parts) && d.parts.length) {
+    const parts = d.parts.map(p => [p[0] === 'n' ? 'n' : 'w', p[0] === 'n' ? String(Math.max(0, Math.floor(+p[1] || 0))) : String(p[1] || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 14)]).filter(p => p[1]);
+    if (!parts.length) return; if (GAME && GAME.k !== 'aim') quitGame();
+    const t0 = Date.now(), id = d.id; let k = 0;
+    const show = () => { const left = parts.slice(k).map(p => p[1]).join(' + '); liveBanner('🎯 Sea Battle: sign <b>' + parts.map((p, i) => i < k ? '<s>' + p[1] + '</s>' : p[1]).join(' then ') + '</b> to fire'); return left; };
+    const step = () => {
+      if (k >= parts.length) { GAME = { k: 'live', free: true, letter: () => {} }; WORD = null; try { window.opener.postMessage({ type: 'fsp-cam-aimed', id, ms: Date.now() - t0 }, '*'); } catch (e) {} liveBanner('🎯 Fired! Look at your game.'); $('#rd-tip').textContent = 'Fired!'; return; }
+      const p = parts[k], G = { k: 'aim', hide: false, hideLetter: false, wordDone: () => { k++; setTimeout(step, 250); }, numDone: () => { k++; setTimeout(step, 250); } };
+      show();
+      if (p[0] === 'n') { const b = document.querySelector('#rd-mode [data-v="numbers"]'); if (b && !b.classList.contains('on')) b.click(); GAME = G; WORD = null; SET = [p[1]]; go(0); }
+      else { const b = document.querySelector('#rd-mode [data-v="words"]'); if (b && !b.classList.contains('on')) b.click(); $('#rd-prompt').hidden = false; wordGame(G, p[1]); }
+    };
+    step(); return;
+  }
+  if (d.type === 'fsp-cam-aim' && d.stop) { if (GAME && GAME.k === 'aim') { GAME = null; WORD = null; } liveBanner(''); return; }
   if (d.type === 'fsp-cam-target' && d.stop) { if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
 });
 if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved') { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
