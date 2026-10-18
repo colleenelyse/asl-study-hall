@@ -4,7 +4,7 @@
 // The release number other teachers see in their teacher view. They update their own copy by pasting the
 // changed files from the "Update your kiosk" page (asl-study-hall-site/kiosk-update/, built by
 // dev/build-update-page.py). Raise it by one with every release (the build script checks it).
-var KIOSK_RELEASE = 1;
+var KIOSK_RELEASE = 2;
 
 
 
@@ -712,9 +712,7 @@ function kioskBellScheduleRows_() {
 
     if (!sheet || sheet.getLastRow() < 2) return null;
 
-    return sheet
-      .getRange(2, 1, sheet.getLastRow() - 1, 9)
-      .getDisplayValues();
+    return kioskRowsByHeading_(sheet, KIOSK_BELL_COLS_, 2, sheet.getLastRow() - 1);
   });
 }
 
@@ -727,9 +725,7 @@ function kioskScheduleCalendarRows_() {
 
     if (!calendar || calendar.getLastRow() < 2) return [];
 
-    return calendar
-      .getRange(2, 1, calendar.getLastRow() - 1, 6)
-      .getDisplayValues();
+    return kioskRowsByHeading_(calendar, KIOSK_CALENDAR_COLS_, 2, calendar.getLastRow() - 1);
   });
 }
 
@@ -1675,9 +1671,7 @@ function getBirthdayScheduleCalendarCache_() {
   var weeklyByDay = {};
 
   if (calendar && calendar.getLastRow() >= 2) {
-    rows = calendar
-      .getRange(2, 1, calendar.getLastRow() - 1, 6)
-      .getDisplayValues();
+    rows = kioskRowsByHeading_(calendar, KIOSK_CALENDAR_COLS_, 2, calendar.getLastRow() - 1);
 
     rows.forEach(function(row) {
       var ruleType = String(row[0] || "").trim();
@@ -1939,6 +1933,78 @@ function birthdayContextForToday_(birthdayValue) {
 var STUDENT_PASS_STATUS_HEADER_ = "Pass Status";
 var STUDENT_PASS_STATUS_OPTIONS_ = ["Allowed", "Restricted"];
 
+// Students tab columns are found by their HEADING, so a teacher can move columns around (2026-10-17).
+// Each column accepts a few common heading names; a missing heading falls back to the original column.
+var KIOSK_STUDENT_COLUMNS_ = {
+  period: { names: ["period"], fallback: 1 },
+  classTitle: { names: ["class title", "class", "class name", "course", "course name", "course title"], fallback: 2 },
+  first: { names: ["first name", "first", "firstname"], fallback: 3 },
+  last: { names: ["last name", "last", "lastname", "surname"], fallback: 4 },
+  id: { names: ["student id", "id", "student number", "student no", "student", "studentid"], fallback: 5 },
+  photo: { names: ["student photo", "photo", "picture", "student picture"], startsWith: true, fallback: 6 },
+  dob: { names: ["dob", "birthday", "birth date", "birthdate", "date of birth"], fallback: 7 }
+};
+
+function kioskHeadingKey_(text) {
+  return String(text || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9#]+/g, " ").replace(/#/g, " no ").trim().replace(/\s+/g, " ");
+}
+
+// { period: 1, classTitle: 2, first: 3, ... } (1-based column numbers) for this Students tab.
+function kioskStudentColumns_(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), 7);
+  var heads = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(kioskHeadingKey_);
+  var out = { lastCol: lastCol }, used = {};
+  Object.keys(KIOSK_STUDENT_COLUMNS_).forEach(function(key) {
+    var spec = KIOSK_STUDENT_COLUMNS_[key], found = 0;
+    spec.names.some(function(name) {      // the first name in the list wins, so "student id" beats "student"
+      for (var c = 0; c < heads.length; c++) {
+        if (used[c]) continue;
+        if (heads[c] === name || (spec.startsWith && heads[c].indexOf(name + " ") === 0)) { found = c + 1; return true; }
+      }
+      return false;
+    });
+    out[key] = found || spec.fallback;
+    if (found) used[found - 1] = true;
+  });
+  return out;
+}
+
+// Any tab teachers edit: its rows in the column order the code expects, matched by HEADING, so the
+// columns can be moved (2026-10-17). spec = one list of accepted heading names per expected column;
+// a heading that isn't found keeps its original position.
+var KIOSK_BELL_COLS_ = [["enabled", "on", "on off"], ["schedule", "schedule name"], ["period"], ["roster period"],
+  ["roster opens", "opens"], ["late bell", "class starts", "starts"], ["class ends", "ends"], ["block type", "type"], ["notes", "note"]];
+var KIOSK_DEST_COLS_ = [["destination", "place"], ["collection", "icon style"], ["category"], ["icon"], ["enabled", "on", "on off"],
+  ["notes", "note"], ["ask i got a pass", "ask pass", "got a pass"], ["optional trip", "optional"]];
+var KIOSK_CALENDAR_COLS_ = [["rule type"], ["rule value", "date", "day"], ["schedule"], ["school day"], ["notes", "note"], ["display note"]];
+
+function kioskHeadingMap_(sheet, spec) {
+  var lastCol = Math.max(sheet.getLastColumn(), spec.length);
+  var heads = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(kioskHeadingKey_);
+  var used = {}, map = [];
+  spec.forEach(function(names, i) {
+    var found = -1;
+    names.some(function(name) {
+      for (var c = 0; c < heads.length; c++) if (!used[c] && heads[c] === name) { found = c; return true; }
+      return false;
+    });
+    if (found >= 0) used[found] = true;
+    map.push(found);
+  });
+  var found = map.map(function(c) { return c >= 0; });
+  map = map.map(function(c, i) { return c >= 0 ? c : i; });      // not found: the original column
+  return { cols: map, found: found, lastCol: lastCol, heads: heads };
+}
+
+// Rows startRow.. of a tab, each in the spec's order. raw = true for real values (dates), else display text.
+function kioskRowsByHeading_(sheet, spec, startRow, numRows, raw) {
+  var m = kioskHeadingMap_(sheet, spec);
+  var range = sheet.getRange(startRow, 1, numRows, m.lastCol);
+  return (raw ? range.getValues() : range.getDisplayValues()).map(function(r) {
+    return m.cols.map(function(c) { return r[c] === undefined ? "" : r[c]; });
+  });
+}
+
 // Students tab "Commuter" column (Yes/No). Each row is one student in one
 // class period, so Yes on a student's 2nd-period row covers only 2nd period.
 // Commuters arriving after the late bell count as Present (not tardy); the
@@ -2048,15 +2114,19 @@ function getStudentRoster__read_() {
   var rowCount = studentSheet.getLastRow() - 1;
 
   // Startup still avoids touching the photo cells as image objects.
-  // A:E remain the normal roster fields. G is Birthday.
-  var coreData =
+  // Columns are found by their headings (kioskStudentColumns_), so they can be in any order.
+  var cols = kioskStudentColumns_(studentSheet);
+  var allData =
     studentSheet
-      .getRange(2, 1, rowCount, 5)
+      .getRange(2, 1, rowCount, cols.lastCol)
       .getDisplayValues();
+  var coreData = allData.map(function(r) {
+    return [r[cols.period - 1], r[cols.classTitle - 1], r[cols.first - 1], r[cols.last - 1], r[cols.id - 1]];
+  });
 
   var birthdayValues =
     studentSheet
-      .getRange(2, 7, rowCount, 1)
+      .getRange(2, cols.dob, rowCount, 1)
       .getValues();
 
   var passStatusValues = [];
@@ -2222,7 +2292,7 @@ function getDeferredRosterImages(options) {
   ) {
     var rowCount = studentSheet.getLastRow() - 1;
     var photoRange =
-      studentSheet.getRange(2, 6, rowCount, 1);
+      studentSheet.getRange(2, kioskStudentColumns_(studentSheet).photo, rowCount, 1);
 
     var photoValues = photoRange.getValues();
     var photoFormulas = photoRange.getFormulas();
@@ -2293,7 +2363,7 @@ function getStudentPhotos(rowNumbers) {
   var minRow = Math.min.apply(null, rows);
   var maxRow = Math.max.apply(null, rows);
 
-  var range = sheet.getRange(minRow, 6, maxRow - minRow + 1, 1);
+  var range = sheet.getRange(minRow, kioskStudentColumns_(sheet).photo, maxRow - minRow + 1, 1);
   var values = range.getValues();
   var formulas = range.getFormulas();
 
@@ -3750,11 +3820,11 @@ function saveStudentPhotoUpload__write_(rowNumber, dataUrl, originalFileName) {
   }
 
   var firstName = String(
-    sheet.getRange(rowNumber, 3).getDisplayValue() || ""
+    sheet.getRange(rowNumber, kioskStudentColumns_(sheet).first).getDisplayValue() || ""
   ).trim();
 
   var lastName = String(
-    sheet.getRange(rowNumber, 4).getDisplayValue() || ""
+    sheet.getRange(rowNumber, kioskStudentColumns_(sheet).last).getDisplayValue() || ""
   ).trim();
 
   if (!firstName) {
@@ -3767,7 +3837,7 @@ function saveStudentPhotoUpload__write_(rowNumber, dataUrl, originalFileName) {
     (firstName + " " + lastName).trim();
 
   var photoCell =
-    sheet.getRange(rowNumber, 6);
+    sheet.getRange(rowNumber, kioskStudentColumns_(sheet).photo);
 
   try {
     // Store the already-cropped image itself in the spreadsheet cell.
@@ -3899,7 +3969,7 @@ function convertExistingStudentPhotosToInCell__write_() {
   var range =
     sheet.getRange(
       2,
-      6,
+      kioskStudentColumns_(sheet).photo,
       lastRow - 1,
       1
     );
@@ -4275,9 +4345,10 @@ function defaultDestinationIconChoice_(destination) {
 function applyDestinationDependentValidationForRow_(sheet, rowNumber, options) {
   options = options || getDestinationIconOptions_();
 
-  var collectionCell = sheet.getRange(rowNumber, 2);
-  var categoryCell = sheet.getRange(rowNumber, 3);
-  var iconCell = sheet.getRange(rowNumber, 4);
+  var dc = kioskHeadingMap_(sheet, KIOSK_DEST_COLS_).cols;      // by heading, so the columns can be moved
+  var collectionCell = sheet.getRange(rowNumber, dc[1] + 1);
+  var categoryCell = sheet.getRange(rowNumber, dc[2] + 1);
+  var iconCell = sheet.getRange(rowNumber, dc[3] + 1);
 
   // Start each row clean so stale rules from an older layout cannot survive.
   collectionCell.clearDataValidations();
@@ -4400,12 +4471,7 @@ function upgradeDestinationIconSheets__write_() {
 
   var existing = [];
   if (sheet.getLastRow() >= 2) {
-    existing = sheet.getRange(
-      2,
-      1,
-      sheet.getLastRow() - 1,
-      Math.max(sheet.getLastColumn(), 6)
-    ).getDisplayValues();
+    existing = kioskRowsByHeading_(sheet, KIOSK_DEST_COLS_, 2, sheet.getLastRow() - 1);
   }
 
   // Preserve any user-created destinations, but ALWAYS restore the user's
@@ -4593,16 +4659,18 @@ var KIOSK_OPTIONAL_TRIP_DEFAULT_ = ["water", "locker", "library", "printer", "bo
 
 function kioskEnsureOptionalTripColumn_(sheet) {
   try {
-    if (String(sheet.getRange(1, 8).getDisplayValue() || "").trim()) return;
-    kioskEnsureColumns_(sheet, 8);
-    sheet.getRange(1, 8).setValue("Optional trip");
+    var dm = kioskHeadingMap_(sheet, KIOSK_DEST_COLS_);
+    if (dm.found[7]) return;      // already there, wherever the teacher put it
+    var col = String(sheet.getRange(1, 8).getDisplayValue() || "").trim() ? dm.lastCol + 1 : 8;
+    kioskEnsureColumns_(sheet, col);
+    sheet.getRange(1, col).setValue("Optional trip");
     var last = sheet.getLastRow();
     if (last < 2) return;
-    var names = sheet.getRange(2, 1, last - 1, 1).getDisplayValues();
-    sheet.getRange(2, 8, last - 1, 1).setValues(names.map(function(r) {
+    var names = sheet.getRange(2, dm.cols[0] + 1, last - 1, 1).getDisplayValues();
+    sheet.getRange(2, col, last - 1, 1).setValues(names.map(function(r) {
       return [KIOSK_OPTIONAL_TRIP_DEFAULT_.indexOf(String(r[0] || "").trim().toLowerCase()) !== -1 ? "Yes" : "No"];
     }));
-    sheet.getRange(2, 8, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(
+    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(
       SpreadsheetApp.newDataValidation().requireValueInList(["Yes", "No"], true).setAllowInvalid(false)
         .setHelpText("Yes = a trip that can usually wait. A student over the weekly limit needs the teacher PIN to leave for it during class.")
         .build());
@@ -4611,16 +4679,18 @@ function kioskEnsureOptionalTripColumn_(sheet) {
 
 function kioskEnsureAskPassColumn_(sheet) {
   try {
-    if (String(sheet.getRange(1, 7).getDisplayValue() || "").trim()) return;
-    kioskEnsureColumns_(sheet, 7);
-    sheet.getRange(1, 7).setValue("Ask \"I got a pass\"");
+    var dm = kioskHeadingMap_(sheet, KIOSK_DEST_COLS_);
+    if (dm.found[6]) return;      // already there, wherever the teacher put it
+    var col = String(sheet.getRange(1, 7).getDisplayValue() || "").trim() ? dm.lastCol + 1 : 7;
+    kioskEnsureColumns_(sheet, col);
+    sheet.getRange(1, col).setValue("Ask \"I got a pass\"");
     var last = sheet.getLastRow();
     if (last < 2) return;
-    var names = sheet.getRange(2, 1, last - 1, 1).getDisplayValues();
-    sheet.getRange(2, 7, last - 1, 1).setValues(names.map(function(r) {
+    var names = sheet.getRange(2, dm.cols[0] + 1, last - 1, 1).getDisplayValues();
+    sheet.getRange(2, col, last - 1, 1).setValues(names.map(function(r) {
       return [KIOSK_ASK_PASS_DEFAULT_.indexOf(String(r[0] || "").trim().toLowerCase()) !== -1 ? "Yes" : "No"];
     }));
-    sheet.getRange(2, 7, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(
+    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(
       SpreadsheetApp.newDataValidation().requireValueInList(["Yes", "No"], true).setAllowInvalid(false)
         .setHelpText("Yes = when a student picks this place, the kiosk asks whether a pass was delivered to them. Those trips don't count toward their weekly minutes.")
         .build());
@@ -4634,9 +4704,7 @@ function getDestinationList__read_() {
   if (
     !sheet ||
     sheet.getLastColumn() < 6 ||
-    String(
-      sheet.getRange(1, 2).getDisplayValue()
-    ).trim() !== "Collection"
+    !kioskHeadingMap_(sheet, KIOSK_DEST_COLS_).found[1]      // no "Collection" heading anywhere (moving it is fine)
   ) {
     upgradeDestinationIconSheets();
     sheet = ss.getSheetByName("Destinations");
@@ -4667,14 +4735,7 @@ function getDestinationList__read_() {
     kioskEnsureAskPassColumn_(sheet);
     kioskEnsureOptionalTripColumn_(sheet);
 
-    data = sheet
-      .getRange(
-        2,
-        1,
-        sheet.getLastRow() - 1,
-        8
-      )
-      .getDisplayValues();
+    data = kioskRowsByHeading_(sheet, KIOSK_DEST_COLS_, 2, sheet.getLastRow() - 1);
 
     data.forEach(function(row) {
       var destination =
@@ -6246,9 +6307,7 @@ function getBellScheduleDisplay__read_(scheduleName) {
     };
   }
 
-  var data = sheet
-    .getRange(2, 1, sheet.getLastRow() - 1, 9)
-    .getDisplayValues();
+  var data = kioskRowsByHeading_(sheet, KIOSK_BELL_COLS_, 2, sheet.getLastRow() - 1);
 
   var rows = [];
 
@@ -6316,9 +6375,7 @@ function getBellScheduleNames__read_() {
     return [];
   }
 
-  var values = sheet
-    .getRange(2, 1, sheet.getLastRow() - 1, 2)
-    .getDisplayValues();
+  var values = kioskRowsByHeading_(sheet, KIOSK_BELL_COLS_, 2, sheet.getLastRow() - 1);
 
   var seen = {};
   var names = [];
@@ -6346,9 +6403,8 @@ function ensureSeparatedLunchBlocks__full_() {
 
   if (!sheet || sheet.getLastRow() < 2) return;
 
-  var data = sheet
-    .getRange(2, 1, sheet.getLastRow() - 1, 9)
-    .getDisplayValues();
+  var data = kioskRowsByHeading_(sheet, KIOSK_BELL_COLS_, 2, sheet.getLastRow() - 1);
+  var bellMap = kioskHeadingMap_(sheet, KIOSK_BELL_COLS_);      // where each column really is (for writing)
 
   var schedules = {};
 
@@ -6443,11 +6499,9 @@ function ensureSeparatedLunchBlocks__full_() {
   });
 
   fifthBUpdates.forEach(function(rowNumber) {
-    sheet.getRange(rowNumber, 4).setValue("Lunch");
-    sheet.getRange(rowNumber, 8, 1, 2).setValues([[
-      "Lunch",
-      FIFTH_B_LUNCH_NOTE_
-    ]]);
+    sheet.getRange(rowNumber, bellMap.cols[3] + 1).setValue("Lunch");
+    sheet.getRange(rowNumber, bellMap.cols[7] + 1).setValue("Lunch");
+    sheet.getRange(rowNumber, bellMap.cols[8] + 1).setValue(FIFTH_B_LUNCH_NOTE_);
   });
 
   Object.keys(schedules).forEach(function(scheduleName) {
@@ -6502,9 +6556,15 @@ function ensureSeparatedLunchBlocks__full_() {
     });
 
   if (appendRows.length) {
+    // each value goes under its own heading, wherever the teacher has put that column
+    var wide = appendRows.map(function(r) {
+      var out = []; for (var c = 0; c < bellMap.lastCol; c++) out.push("");
+      r.forEach(function(v, k) { out[bellMap.cols[k]] = v; });
+      return out;
+    });
     sheet
-      .getRange(sheet.getLastRow() + 1, 1, appendRows.length, 9)
-      .setValues(appendRows);
+      .getRange(sheet.getLastRow() + 1, 1, wide.length, bellMap.lastCol)
+      .setValues(wide);
   }
 
   if (deleteRows.length || appendRows.length || fifthBUpdates.length) {
@@ -7758,9 +7818,7 @@ function checkArrivalScheduleMatch(payload) {
     payload.expectedSchedule || ""
   ).trim();
 
-  var rows = sheet
-    .getRange(2, 1, sheet.getLastRow() - 1, 9)
-    .getDisplayValues();
+  var rows = kioskRowsByHeading_(sheet, KIOSK_BELL_COLS_, 2, sheet.getLastRow() - 1);
 
   var matches = [];
 
@@ -12025,23 +12083,26 @@ function onEdit(e) {
     applyLogConditionalFormatting(readKioskSettings());
   }
 
+  var destCols = sheet.getName() === "Destinations" ? kioskHeadingMap_(sheet, KIOSK_DEST_COLS_).cols.map(function(c) { return c + 1; }) : null;
+  var editedDestCol = destCols ? destCols.indexOf(e.range.getColumn()) : -1;      // 0 Destination, 1 Collection, 2 Category
   if (
-    sheet.getName() === "Destinations" &&
+    destCols &&
     e.range.getRow() >= 2 &&
-    e.range.getColumn() >= 1 &&
-    e.range.getColumn() <= 3
+    editedDestCol >= 0 &&
+    editedDestCol <= 2
   ) {
     var row = e.range.getRow();
 
-    if (e.range.getColumn() === 1) {
-      var destination = String(sheet.getRange(row, 1).getDisplayValue() || "").trim();
-      if (destination && !sheet.getRange(row, 2).getDisplayValue()) {
-        sheet.getRange(row, 2).setValue("Doodle");
+    if (editedDestCol === 0) {
+      var destination = String(sheet.getRange(row, destCols[0]).getDisplayValue() || "").trim();
+      if (destination && !sheet.getRange(row, destCols[1]).getDisplayValue()) {
+        sheet.getRange(row, destCols[1]).setValue("Doodle");
       }
-    } else if (e.range.getColumn() === 2) {
-      sheet.getRange(row, 3, 1, 2).clearContent();
-    } else if (e.range.getColumn() === 3) {
-      sheet.getRange(row, 4).clearContent();
+    } else if (editedDestCol === 1) {
+      sheet.getRange(row, destCols[2]).clearContent();
+      sheet.getRange(row, destCols[3]).clearContent();
+    } else if (editedDestCol === 2) {
+      sheet.getRange(row, destCols[3]).clearContent();
     }
 
     applyDestinationDependentValidationForRow_(
@@ -14244,10 +14305,10 @@ function cleanForSharing() {
     var stu = ss.getSheetByName("Students");
     if (stu) {
       if (stu.getLastRow() > 1) kioskDeleteRowsSafely_(stu, 2, stu.getLastRow() - 1);
-      var width = Math.max(5, stu.getLastColumn());
+      var width = Math.max(5, stu.getLastColumn()), sc = kioskStudentColumns_(stu);
       var rows = KIOSK_TEMPLATE_SAMPLES_.map(function(n, i) {
         var r = []; for (var c = 0; c < width; c++) r.push("");
-        r[0] = "1"; r[1] = "Sample Class"; r[2] = n[0]; r[3] = n[1]; r[4] = String(900001 + i);
+        r[sc.period - 1] = "1"; r[sc.classTitle - 1] = "Sample Class"; r[sc.first - 1] = n[0]; r[sc.last - 1] = n[1]; r[sc.id - 1] = String(900001 + i);
         return r;
       });
       stu.getRange(2, 1, rows.length, width).setValues(rows);

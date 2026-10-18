@@ -1,5 +1,5 @@
 {
- "newest": 1,
+ "newest": 2,
  "releases": [
   {
    "release": 1,
@@ -17,10 +17,20 @@
     "Artwork.html",
     "appsscript.json"
    ]
+  },
+  {
+   "release": 2,
+   "date": "2026-10-17",
+   "notes": [
+    "Move columns freely: the Students, Bell Schedule, Schedule Calendar and Destinations tabs now find each column by its heading, so you can put the columns in any order (keep the heading names)."
+   ],
+   "changed": [
+    "Code.gs"
+   ]
   }
  ],
  "sizes": {
-  "Code.gs": 398635,
+  "Code.gs": 404359,
   "Index.html": 1155680,
   "Dashboard.html": 103521,
   "Seating.html": 263180,
