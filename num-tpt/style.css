@@ -629,3 +629,7 @@ html.noshop .tiplink, html.embedded .tiplink { display: none !important; }
 .mbox b { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 104px; padding: 22px 4px 14px; border-radius: 52px 52px 10px 10px; background: #2F6BFF; color: #fff; font: 700 17px var(--display); letter-spacing: .04em; box-shadow: 0 4px 0 rgba(0,0,0,.2); overflow-wrap: anywhere; }
 .mbox .post { width: 12px; height: 54px; background: #6b4f33; border-radius: 4px; } .mbox .flag { position: absolute; top: 30px; right: 4px; width: 8px; height: 30px; background: #E5484D; border-radius: 2px; z-index: 1; }
 .mbox:hover b { transform: translateX(-50%) translateY(-3px); } .mbox.ok b { background: #1F9D55; } .mbox.no b { background: #E5484D; }
+
+/* Lucky Claw questions (2026-10-17) */
+.cq-top { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; } .cq-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 220px; }
+.cq-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .cq-opt { font: 700 20px var(--display); padding: 12px 8px; } .cq-opt.ok { background: #1F9D55; color: #fff; } .cq-opt.no { background: #E5484D; color: #fff; }

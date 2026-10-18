@@ -1425,6 +1425,41 @@ function tileHand(k, tile, use, tone) {
   T.hand.ready.then(() => { T.hand.setTone(tone || nextTone()); if (T.hand.ageView) T.hand.ageView(use === 'age'); T.hand.helper(use === 'two'); });
   return T;
 }
+/* ---------- LUCKY CLAW QUESTIONS (2026-10-17): ASL Study's Lucky Claw shows this page (#/clawq/letters or #/clawq/numbers) under its machine.
+   The hand fingerspells a word (or signs a number), the student picks it from four; every right answer tells ASL Study ('fsp-claw-right'),
+   which gives a Claw Coin. Nothing is written while it signs. ---------- */
+const CQ = { kind: 'letters', cur: null, busy: false };
+function cqRound() {
+  if (CQ.kind === 'numbers') { const lo = 0, hi = 99, n = lo + Math.floor(Math.random() * (hi - lo + 1)), set = new Set([n]);
+    while (set.size < 4) { const d = Math.random() < 0.5 ? n + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 9)) : (n % 10) * 10 + Math.floor(n / 10); if (d >= 0 && d <= 99) set.add(d); }      /* near numbers and swapped digits */
+    return { answer: String(n), choices: shuffle([...set].map(String)) }; }
+  const W = window.FS_WORDS || {}, all = [...new Set([].concat(...Object.keys(W).filter(k => k !== 'NAME').map(k => W[k])).map(w => String(w).toUpperCase().replace(/[^A-Z]/g, '')).filter(w => w.length >= 3 && w.length <= 7))];
+  const w = all[Math.floor(Math.random() * all.length)] || 'CAT', like = shuffle(all.filter(x => x !== w && Math.abs(x.length - w.length) <= 1 && (x[0] === w[0] || x.slice(-1) === w.slice(-1)))).slice(0, 3);
+  while (like.length < 3) { const x = all[Math.floor(Math.random() * all.length)]; if (x && x !== w && like.indexOf(x) < 0) like.push(x); }
+  return { answer: w, choices: shuffle([w].concat(like)) };
+}
+async function cqSign(v) {
+  await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone(); assist.textContent = ''; stage.classList.remove('frosted');
+  if (isNum(v)) { const per = Math.round(1000 * Math.pow(0.35, Math.max(0, speedNow()))); spelling = hand.sign(+v, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag }); }
+  else spelling = hand.spell(v, { speed: () => speedNow(), stop: () => stopFlag });
+  try { await spelling; } finally { spelling = null; }
+}
+async function cqNext() {
+  const R = CQ.cur = cqRound(); R.done = false; $('#cq-msg').textContent = '';
+  $('#cq-opts').innerHTML = R.choices.map((c, i) => '<button class="btn ghost cq-opt" data-i="' + i + '">' + esc(c) + '</button>').join('');
+  CQ.busy = true; try { await cqSign(R.answer); } finally { CQ.busy = false; }
+}
+function cqPick(i) {
+  const R = CQ.cur; if (!R || R.done) return; R.done = true; const ok = R.choices[i] === R.answer;
+  $$('#cq-opts .cq-opt').forEach((b, k) => { if (R.choices[k] === R.answer) b.classList.add('ok'); else if (k === i) b.classList.add('no'); });
+  $('#cq-msg').textContent = ok ? '✅ +1 Claw Coin!' : '❌ It was ' + R.answer + '.';
+  if (ok) { try { window.parent.postMessage({ type: 'fsp-claw-right', kind: CQ.kind }, '*'); } catch (e) {} }
+  setTimeout(cqNext, ok ? 700 : 1600);
+}
+function clawqShow() { putStage('cq-slot'); assist.className = 'assist small'; speedNow = () => S.speed; $('#cq-title').textContent = CQ.kind === 'numbers' ? 'What number did the hand sign?' : 'What word did the hand spell?'; $('#cq-speed').value = Math.round(S.speed * 100); setTimeout(cqNext, 300); }
+document.addEventListener('click', e => { const t = e.target; if (!t || !t.closest) return; const b = t.closest('#cq-opts .cq-opt'); if (b) cqPick(+b.dataset.i); else if (t.id === 'cq-again' && CQ.cur && !CQ.busy && !CQ.cur.done) { CQ.busy = true; cqSign(CQ.cur.answer).finally(() => { CQ.busy = false; }); } });
+document.addEventListener('input', e => { if (e.target && e.target.id === 'cq-speed') { S.speed = +e.target.value / 100; saveS(); } });
+
 /* ---------- RETURN TO SENDER (Colleen, 2026-10-17): mail arrives; the hand fingerspells who it is for; drop it in the right mailbox. The names on the
    mailboxes look alike (same start, one or two letters different), and they get closer and more numerous each round, so every letter matters.
    Chance (personal only): EXPRESS = one viewing for double stamps; a mystery 📦 package is worth more; and now and then the name matches NO
@@ -2332,7 +2367,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, mail: mailShow, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, mail: mailShow, clawq: clawqShow, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
@@ -2352,9 +2387,10 @@ function route() {
   TONE_PAGE = NOPICK ? h : '';
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn|mail)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn|mail|clawq)$/.test(name)) parkStage();
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
+  if (name === 'clawq') CQ.kind = parts[1] === 'numbers' ? 'numbers' : 'letters';
   if (SHOW[name]) SHOW[name]();
   if (name === 'games' && /[?&]focus=numbers\b/.test(location.search)) setTimeout(() => { const g = $('#g-numgrid'), h = g && (g.previousElementSibling || g); if (h) h.scrollIntoView({ block: 'start' }); }, 50);      // asl.cool/numbers opens on the numbers games
   track('page_view', { page_title: name, page_location: name === 'view' ? location.href.split('#')[0] + '#/view' : location.href });   // never send a report (it holds a name) to the visit counter
