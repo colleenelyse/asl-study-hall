@@ -1428,7 +1428,11 @@ function tileHand(k, tile, use, tone) {
 /* ---------- LUCKY CLAW QUESTIONS (2026-10-17): ASL Study's Lucky Claw shows this page (#/clawq/letters or #/clawq/numbers) under its machine.
    The hand fingerspells a word (or signs a number), the student picks it from four; every right answer tells ASL Study ('fsp-claw-right'),
    which gives a Claw Coin. Nothing is written while it signs. ---------- */
-const CQ = { kind: 'letters', cur: null, busy: false };
+const CQ = { kind: 'letters', cur: null, busy: false, hold: false, waiting: false };
+/* 2026-10-18: ASL Study can park this page while it shows another kind of question ('fsp-claw-hold') and bring it back ('fsp-claw-go') */
+window.addEventListener('message', e => { const d = e.data; if (!d || e.source !== window.parent) return;
+  if (d.type === 'fsp-claw-hold') { CQ.hold = true; stopFlag = true; }
+  if (d.type === 'fsp-claw-go') { CQ.hold = false; CQ.waiting = false; if (d.kind) CQ.kind = d.kind === 'numbers' ? 'numbers' : 'letters'; const tt = $('#cq-title'); if (tt) tt.textContent = CQ.kind === 'numbers' ? 'What number did the hand sign?' : 'What word did the hand spell?'; cqNext(); } });      /* always a fresh question when it comes back */
 function cqRound() {
   if (CQ.kind === 'numbers') { const lo = 0, hi = 99, n = lo + Math.floor(Math.random() * (hi - lo + 1)), set = new Set([n]);
     while (set.size < 4) { const d = Math.random() < 0.5 ? n + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 9)) : (n % 10) * 10 + Math.floor(n / 10); if (d >= 0 && d <= 99) set.add(d); }      /* near numbers and swapped digits */
@@ -1454,7 +1458,8 @@ function cqPick(i) {
   $$('#cq-opts .cq-opt').forEach((b, k) => { if (R.choices[k] === R.answer) b.classList.add('ok'); else if (k === i) b.classList.add('no'); });
   $('#cq-msg').textContent = ok ? '✅ +1 Claw Coin!' : '❌ It was ' + R.answer + '.';
   if (ok) { try { window.parent.postMessage({ type: 'fsp-claw-right', kind: CQ.kind }, '*'); } catch (e) {} }
-  setTimeout(cqNext, ok ? 700 : 1600);
+  try { window.parent.postMessage({ type: 'fsp-claw-answer', ok, kind: CQ.kind }, '*'); } catch (e) {}      /* 2026-10-18: Sea Battle mixes question types and moves on after each answer */
+  setTimeout(() => { if (!CQ.hold) cqNext(); else CQ.waiting = true; }, ok ? 700 : 1600);
 }
 function clawqShow() { putStage('cq-slot'); assist.className = 'assist small'; speedNow = () => S.speed; $('#cq-title').textContent = CQ.kind === 'numbers' ? 'What number did the hand sign?' : 'What word did the hand spell?'; $('#cq-speed').value = Math.round(S.speed * 100); setTimeout(cqNext, 300); }
 document.addEventListener('click', e => { const t = e.target; if (!t || !t.closest) return; const b = t.closest('#cq-opts .cq-opt'); if (b) cqPick(+b.dataset.i); else if (t.id === 'cq-again' && CQ.cur && !CQ.busy && !CQ.cur.done) { CQ.busy = true; cqSign(CQ.cur.answer).finally(() => { CQ.busy = false; }); } });

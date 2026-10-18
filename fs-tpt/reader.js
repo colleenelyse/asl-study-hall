@@ -71,6 +71,7 @@ function rankRaw(f) {
 }
 
 /* ---------- the camera ---------- */
+function camTellOpener(type, why) { try { if (window.opener && new URLSearchParams(location.search).get('embed') === 'aslstudy') window.opener.postMessage({ type, why: why || '' }, '*'); } catch (e) {} }      /* 2026-10-18: ASL Study's lobby waits for "camera ready" */
 let LEFT = false;
 const camHand = P => P.map(p => [LEFT ? -p.x : p.x, -p.y, -p.z]);      /* the tracker's y points down; ours up. A left hand is mirrored so it matches the right-hand letters */
 let landmarker = null, video = $('#rd-video'), draw = $('#rd-draw'), ctx = draw.getContext('2d'), lastT = -1, held = 0, cur = 0, done = false, lastF = null, teaching = 0, teachBuf = [];
@@ -80,14 +81,14 @@ async function start() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
     video.srcObject = stream; await video.play();
-  } catch (e) { $('#rd-camsg').innerHTML = '<p>The camera did not turn on. Check that this computer has a camera and that the browser is allowed to use it. Some school computers turn the camera off.</p>'; return; }
+  } catch (e) { $('#rd-camsg').innerHTML = '<p>The camera did not turn on. Check that this computer has a camera and that the browser is allowed to use it. Some school computers turn the camera off.</p>'; camTellOpener('fsp-cam-fail', 'camera'); return; }
   $('#rd-camsg').innerHTML = '<p>Getting the hand reader ready…</p>';
   try {
     const files = VFILES = await FilesetResolver.forVisionTasks(WASM);
     const opts = d => ({ baseOptions: { modelAssetPath: MODEL, delegate: d }, runningMode: 'VIDEO', numHands: 1 });
     try { landmarker = await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { landmarker = await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
-  } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; return; }
-  $('#rd-camsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; requestAnimationFrame(loop);
+  } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; camTellOpener('fsp-cam-fail', 'reader'); return; }
+  $('#rd-camsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; requestAnimationFrame(loop); camTellOpener('fsp-cam-ready');
   if (WANT_GAME && (NUMS ? NGAMES : LGAMES).some(g => g[0] === WANT_GAME)) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) gb.click(); refHand.ready.then(() => startGame(WANT_GAME)); }
 }
 function loop() {
@@ -520,13 +521,15 @@ let GAME = null, CLASSNAMES = null;
 /* CLASS GAMES (2026-10-17): ASL Study's live class game opens this tab and tells it what to do.
    { type: 'fsp-cam-live', on, kind: 'letters'|'numbers' }: every word (or number) signed in practice counts for the student and their team.
    { type: 'fsp-cam-target', word }: "camera answers": fingerspell this word (hidden: the student sees the sign in the game) and say when it is done. */
-let LIVEON = false;
+let LIVEON = false, LIVESIG = '', AIMID = null, TARGETW = '';
 function liveDone(w) { if (!IN_SHEET) return; try { window.opener.postMessage({ type: 'fsp-cam-done', w: String(w) }, '*'); } catch (e) {} }
 function liveBanner(t) { let b = $('#rd-livebar'); if (!b) { b = document.createElement('div'); b.id = 'rd-livebar'; b.className = 'rd-livebar'; const m = $('main') || document.body; m.insertBefore(b, m.firstChild); } b.innerHTML = t || ''; b.hidden = !t; }
 if (IN_SHEET) window.addEventListener('message', e => {
   if (e.source !== window.opener || !e.data) return; const d = e.data;
   if (d.type === 'fsp-cam-live') {
-    LIVEON = !!d.on; if (GAME) quitGame();
+    const sig = [!!d.on, d.kind, !!d.target, d.team].join('|');      /* 2026-10-18 (Colleen: "glitchy" in Sea Battle): ASL Study repeats its messages while this tab loads; a repeat changes nothing */
+    if (sig === LIVESIG) return; LIVESIG = sig;
+    LIVEON = !!d.on; if (GAME && GAME.k !== 'aim') quitGame();
     if (!LIVEON) { liveBanner(''); return; }
     const want = d.kind === 'numbers' ? 'numbers' : 'words', btn = document.querySelector('#rd-mode [data-v="' + want + '"]');
     if (btn && !btn.classList.contains('on')) btn.click();
@@ -534,6 +537,7 @@ if (IN_SHEET) window.addEventListener('message', e => {
   }
   if (d.type === 'fsp-cam-target' && d.word) {
     const w = String(d.word).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 24); if (!w) return;
+    if (w === TARGETW && GAME && GAME.k === 'live' && !GAME.free) return; TARGETW = w;      /* the same word again: keep going, don't start over */
     const btn = document.querySelector('#rd-mode [data-v="words"]'); if (btn && !btn.classList.contains('on')) btn.click();
     const G = { k: 'live', hide: true, hideLetter: true, wordDone: () => { liveDone(w); GAME = { k: 'live', free: true, letter: () => {} }; WORD = null;      /* waits quietly for the next word */ $('#rd-word').innerHTML = '<span class="d">✓</span>'; $('#rd-letter').textContent = '✓'; $('#rd-tip').textContent = 'Got it! Look at your game for the next sign.'; } };
     $('#rd-prompt').hidden = false; wordGame(G, w); $('#rd-tip').textContent = 'Fingerspell the English word for the sign in your game (' + w.length + ' letters)';
@@ -541,6 +545,7 @@ if (IN_SHEET) window.addEventListener('message', e => {
   /* SEA BATTLE AIMING (2026-10-18): { type: 'fsp-cam-aim', id, parts: [['w', 'Q'], ['n', '14']] } asks for a square's label in order: a letter or word
      ('w', fingerspelled) and/or a number ('n', signed). When every part is read: { type: 'fsp-cam-aimed', id, ms } (ms = how long it took). */
   if (d.type === 'fsp-cam-aim' && Array.isArray(d.parts) && d.parts.length) {
+    if (d.id && d.id === AIMID) return; AIMID = d.id;      /* the same square again (ASL Study repeats it while this tab loads): keep the student's progress */
     const parts = d.parts.map(p => [p[0] === 'n' ? 'n' : 'w', p[0] === 'n' ? String(Math.max(0, Math.floor(+p[1] || 0))) : String(p[1] || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 14)]).filter(p => p[1]);
     if (!parts.length) return; if (GAME && GAME.k !== 'aim') quitGame();
     const t0 = Date.now(), id = d.id; let k = 0;
@@ -554,8 +559,8 @@ if (IN_SHEET) window.addEventListener('message', e => {
     };
     step(); return;
   }
-  if (d.type === 'fsp-cam-aim' && d.stop) { if (GAME && GAME.k === 'aim') { GAME = null; WORD = null; } liveBanner(''); return; }
-  if (d.type === 'fsp-cam-target' && d.stop) { if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
+  if (d.type === 'fsp-cam-aim' && d.stop) { AIMID = null; if (GAME && GAME.k === 'aim') { GAME = null; WORD = null; } liveBanner(''); return; }
+  if (d.type === 'fsp-cam-target' && d.stop) { TARGETW = ''; if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
 });
 if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved') { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
 /* the Name Game: inside a class app the camera tab asks for the class's first names (they stay on this screen; nothing is kept) */
