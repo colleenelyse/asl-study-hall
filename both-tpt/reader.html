@@ -91,6 +91,11 @@
   .rd-boss { display: flex; flex-direction: column; align-items: center; gap: 6px; } .rd-boss .b { font-size: 96px; line-height: 1; } .rd-boss.hurt .b { animation: rdshake .4s; }
   .rd-boss .hp { width: 260px; height: 16px; border-radius: 999px; background: #ddd; overflow: hidden; } .rd-boss .hp i { display: block; height: 100%; background: #e5484d; transition: width .3s; } .rd-boss small { color: var(--muted); font-weight: 700; }
   @keyframes rdshake { 25% { transform: translateX(-10px) rotate(-6deg); } 75% { transform: translateX(10px) rotate(6deg); } }
+  .rd-party { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 12px; background: var(--surface2, #f2f2f7); } .rd-party.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  .rd-board { font: 700 20px var(--display); padding-left: 24px; } .rd-board li { margin: 4px 0; }
+  .rd-bee { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .rd-bee span { padding: 6px 12px; border-radius: 999px; background: var(--surface2, #eee); font: 700 17px var(--display); }
+  .rd-bee .now { background: var(--sun, #FFC83D); color: #1B1E2E; transform: scale(1.12); } .rd-bee .out { opacity: .45; text-decoration: line-through; }
+  .rd-word .ph { color: var(--good, #14804D); } .rd-word .pm { color: var(--bad, #C7362E); text-decoration: line-through; }      /* Speed Pacer: got it / missed */
 </style>
 </head>
 <body>
@@ -165,6 +170,6 @@
 <script src="hand.js?v=145"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=52"></script>
+<script type="module" src="reader.js?v=55"></script>
 </body>
 </html>

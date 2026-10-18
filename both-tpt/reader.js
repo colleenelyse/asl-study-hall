@@ -100,6 +100,7 @@ function loop() {
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
   if (CK && CK.on && !done) { if (CK.lastT) CK.t += nowT - CK.lastT; CK.lastT = nowT; ckTick(); if (!CK.on) return; }      /* the check's clock runs only while a hand is in view */
+  if (GAME && GAME.pace) { paceRead(f, r.landmarks[0]); return; }      /* Speed Pacer: forgiving, timed by the pacer */
   if (GAME && GAME.free) { freeRead(f, r.landmarks[0]); return; }      /* Hangman, Wordle: any letter, no target */
   const target0 = WORD ? WORD[wi] : SET[cur];
   if (MOVING[target0]) { readMotion(target0, camHand(r.worldLandmarks[0]), r.landmarks[0], f); return; }
@@ -537,7 +538,9 @@ const LGAMES = [
   ['picture', '🖼️', 'Picture Spell', 'A picture shows up. Fingerspell what it is.'],
   ['chain', '🔗', 'Word Chain', 'Each word starts with the last letter of the one before. Make the longest chain!'],
   ['scramble', '🔀', 'Unscramble', 'The letters are mixed up. Fingerspell the real word.'],
-  ['blitz', '⚡', 'Category Blitz', 'Spell as many words in the category as you can in 60 seconds.']];
+  ['blitz', '⚡', 'Category Blitz', 'Spell as many words in the category as you can in 60 seconds.'],
+  ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The word moves on at that speed, ready or not. Build up your fingerspelling pace.'],
+  ['bee', '🐝', 'Spelling Bee', 'Take turns at the camera; a miss and you sit down. Last one standing wins. (Alone: how far can you go?)']];
 const NGAMES = [
   ['math', '➗', 'Math Answer', 'Solve the problem, then sign the answer.'],
   ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'],
@@ -550,7 +553,7 @@ const NGAMES = [
 function drawGames() {
   const L = NUMS ? NGAMES : LGAMES;
   $('#rd-mlevel').hidden = !NUMS; $$('#rd-mlevel button').forEach(b => b.classList.toggle('on', b.dataset.v === MLEVEL));
-  $('#rd-gamelist').innerHTML = L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : b) + '.' : '') + '</small></button>'; }).join('');
+  $('#rd-gamelist').innerHTML = partyBar() + L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : b) + '.' : '') + '</small></button>'; }).join('');
 }
 function gameUI(on) {
   if (!on) { gpic(''); gchoose(''); }
@@ -558,6 +561,7 @@ function gameUI(on) {
   if (on) { $('#rd-hint').checked = false; $('#rd-showbox').hidden = true; $('#rd-after').hidden = true; } else { ghead(''); $('#rd-modelbox').hidden = true; }
 }
 function endGame(html, again) {
+  if (PARTY.on && PARTY.names.length && again !== 'bee' && partyTurnOver(html, again)) return;
   const G = GAME; clearInterval(G && G.timer); GAME = null; WORD = null; done = true;
   gameUI(false); $('#rd-gamelist').hidden = true; $('#rd-def').hidden = true; $('#rd-word').innerHTML = ''; $('#rd-prompt').hidden = true;
   $('#rd-results').innerHTML = html + '<div class="rd-row"><button class="btn" id="rd-again">Play again</button><button class="btn ghost" id="rd-other">Other games</button></div>'; $('#rd-results').hidden = false;
@@ -568,6 +572,8 @@ const wordGame = (G, w) => { GAME = G; WORD = w; wi = 0; done = false; $('#rd-pr
 const bar = (txt, buttons) => { $('#rd-gtitle').textContent = txt; $('#rd-gbtns').innerHTML = (buttons || []).map(b => '<button class="btn ghost" data-gb="' + b[0] + '">' + b[1] + '</button>').join('') + '<button class="btn ghost" data-gb="quit">Quit</button>'; };
 function startGame(k) {
   if (!landmarker && !window.__test) { $('#rd-status').textContent = 'Turn on the camera first: choose your hand above the camera.'; return; }
+  if (PARTY.on && PARTY.names.length && k !== 'bee' && !PARTY.going) return partyStart(k);
+  PARTY.going = false;
   if (GAME) clearInterval(GAME.timer);
   gameUI(true); $('#rd-results').hidden = true; MOT = []; BRUN = 0;
   const any = (lo, hi) => { const out = new Set(); CATS.forEach(c => (window.FS_WORDS[c] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && w.length >= lo && w.length <= hi) out.add(w); })); return [...out]; };
@@ -727,6 +733,69 @@ const PICKGAMES = {
     G.skip = G.next; G.next();
   }
 };
+/* ---------- take turns (Colleen, 2026-10-17: "any group game that can have a solo mode, should. and vice versa"): every camera game can be played
+   by a group at one camera. Each player plays the same game in turn; the scores line up at the end (lower is better for the timed games). ---------- */
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const anyWords = (lo, hi) => { const out = new Set(); CATS.forEach(c => (window.FS_WORDS[c] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && w.length >= lo && w.length <= hi) out.add(w); })); return [...out]; };
+let PARTY = { on: false, names: [], i: 0, scores: [], k: '' };
+try { const p0 = JSON.parse(localStorage.getItem('fs-cam-party') || 'null'); if (p0 && Array.isArray(p0.names)) PARTY.names = p0.names.slice(0, 40); } catch (e) {}
+const LOWER = { count: 1, racer: 1, boss: 1, hilo: 1 };
+function partyBar() {
+  if (!PARTY.on) return '<div class="rd-party"><button class="btn ghost" id="rd-partyon">👥 Take turns (group)</button><span class="rd-small">Play any game with friends at this camera.</span></div>';
+  return '<div class="rd-party on"><b>👥 Taking turns:</b> ' + PARTY.names.map(esc).join(', ') + ' <button class="btn ghost" id="rd-partyedit">Change players</button><button class="btn ghost" id="rd-partyoff">Play alone</button></div>';
+}
+function partyAsk() {
+  const names = PARTY.names.length ? PARTY.names : (CLASSNAMES || []).slice(0, 30);
+  $('#rd-results').innerHTML = '<h3>👥 Who is playing?</h3><p class="rd-small">One name per line (first names only). Each player takes a turn at the camera.</p><textarea id="rd-partynames" rows="6" style="width:100%;font:inherit">' + esc(names.join('\n')) + '</textarea>' +
+    '<div class="rd-row"><button class="btn" id="rd-partygo">Start taking turns</button><button class="btn ghost" id="rd-partycancel">Cancel</button></div>';
+  $('#rd-results').hidden = false; $('#rd-gamelist').hidden = true;
+  $('#rd-partygo').onclick = () => { const L = $('#rd-partynames').value.split(/\n+/).map(x => x.trim().replace(/[<>]/g, '').slice(0, 24)).filter(Boolean).slice(0, 40); if (L.length < 2) { alert('Type at least two names.'); return; }
+    PARTY.names = L; PARTY.on = true; try { localStorage.setItem('fs-cam-party', JSON.stringify({ names: L })); } catch (e) {} $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
+  $('#rd-partycancel').onclick = () => { $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
+}
+document.addEventListener('click', e => { const t = e.target; if (!t || !t.id) return;
+  if (t.id === 'rd-partyon' || t.id === 'rd-partyedit') partyAsk();
+  else if (t.id === 'rd-partyoff') { PARTY.on = false; drawGames(); } });
+function partyStart(k) {      /* before each turn: whose turn it is */
+  if (PARTY.k !== k || PARTY.i >= PARTY.names.length) { PARTY.k = k; PARTY.i = 0; PARTY.scores = []; }
+  const name = PARTY.names[PARTY.i];
+  $('#rd-results').innerHTML = '<h3>🎤 ' + esc(name) + '\u2019s turn</h3><p class="rd-small">Turn ' + (PARTY.i + 1) + ' of ' + PARTY.names.length + '. Step up to the camera!</p><div class="rd-row"><button class="btn" id="rd-turngo">Start</button><button class="btn ghost" id="rd-turnskip">Skip ' + esc(name) + '</button></div>';
+  $('#rd-results').hidden = false; $('#rd-gamelist').hidden = true;
+  $('#rd-turngo').onclick = () => { $('#rd-results').hidden = true; PARTY.going = true; startGame(k); };
+  $('#rd-turnskip').onclick = () => { PARTY.scores.push([name, null]); PARTY.i++; partyNext(k); };
+}
+function partyTurnOver(html, k) {      /* the game ended: keep this player's score, then the next player (or the scores) */
+  const G = GAME; if (G) clearInterval(G.timer); GAME = null; WORD = null; done = true; gameUI(false); $('#rd-def').hidden = true; $('#rd-prompt').hidden = true;
+  const m = /class="big">([^<]*)</.exec(html), v = m ? parseFloat(m[1].replace(/[^0-9.\-]/g, '')) : NaN;
+  PARTY.scores.push([PARTY.names[PARTY.i], isFinite(v) ? v : null, m ? m[1] : '–']); PARTY.i++; PARTY.going = false;
+  $('#rd-results').innerHTML = html.replace('<h3>', '<h3>' + esc(PARTY.names[PARTY.i - 1]) + ': '); $('#rd-results').hidden = false;
+  setTimeout(() => partyNext(k), 2500); return true;
+}
+function partyNext(k) {
+  if (PARTY.i < PARTY.names.length) return partyStart(k);
+  const lower = !!LOWER[k], S2 = PARTY.scores.filter(x => x[1] !== null).sort((a, b) => lower ? a[1] - b[1] : b[1] - a[1]), medal = ['🥇', '🥈', '🥉'];
+  $('#rd-results').innerHTML = '<h3>🏆 Scores</h3><ol class="rd-board">' + S2.map((x, i) => '<li>' + (medal[i] || '') + ' <b>' + esc(x[0]) + '</b> ' + esc(x[2]) + '</li>').join('') + '</ol>' +
+    '<div class="rd-row"><button class="btn" id="rd-partyagain">Play again</button><button class="btn ghost" id="rd-partyother">Other games</button></div>';
+  $('#rd-results').hidden = false; PARTY.i = 0;
+  $('#rd-partyagain').onclick = () => { PARTY.scores = []; partyStart(k); }; $('#rd-partyother').onclick = () => { $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
+}
+/* ---------- SPEED PACER (Colleen, 2026-10-17): the student picks a speed; each letter gets its time slot and the word moves on whether they keep up
+   or not, with a pause between words to look at the next one. Much more forgiving than the other modes: no hold, no direction or must-have
+   checks (but the palm must face the right way: a wrong palm never counts), no double-letter slide; the right letter among the top guesses for a moment (two frames) anywhere in its slot (plus a little grace)
+   counts. J and Z count from their handshape (I, or the pointer finger). ---------- */
+const PACES = [[0.5, 'Very slow', '1 letter every 2 seconds'], [1, 'Slow', '1 letter a second'], [1.5, 'Steady', '3 letters every 2 seconds'], [2, 'Quick', '2 letters a second'], [3, 'Fast', '3 letters a second'], [4, 'Native-like', '4 letters a second']];
+const PACE_ALIKE = { J: ['J', 'I'], Z: ['Z', 'D', 'G'] };
+function paceRead(f, L) {
+  const P = GAME.pace; if (!P.run || P.i < 0 || !WORD) { dots(L, -1, false); return; }
+  const R = rank(f), palmOK = c => { const A = TPL[c]; return !A || (dot(f.orient.slice(0, 3), A.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), A.orient.slice(3)) >= 0.2); };      /* the palm facing the wrong way never counts, even here (Colleen) */
+  const check = i => { const want = (PACE_ALIKE[WORD[i]] || [WORD[i]]).filter(palmOK); if (!want.length) return false; const top = R.slice(0, 3), dT = Math.min(...want.map(c => (R.find(x => x[0] === c) || [0, 99])[1]));
+    return top.some(x => want.indexOf(x[0]) >= 0) || dT <= R[0][1] * 1.4 + 0.15; };
+  let hit = false;
+  [P.i, P.i - 1].forEach(i => { if (i < 0 || P.got[i] !== null || (i === P.i - 1 && clock() - P.slotAt > P.grace)) return;      /* the letter just before still counts for a moment (grace) */
+    if (check(i)) { P.seen[i] = (P.seen[i] || 0) + 1; if (P.seen[i] >= 2) { P.got[i] = true; hit = true; P.paint(); } } else P.seen[i] = 0; });
+  dots(L, -1, hit || P.got[P.i] === true);
+  $('#rd-tip').textContent = P.got[P.i] ? 'Got it!' : 'Sign ' + WORD[P.i];
+}
 /* ---------- more letter games (Colleen, 2026-10-17: "actually fun games") ---------- */
 const PICS = [['🐱', 'CAT'], ['🐶', 'DOG'], ['🐟', 'FISH'], ['🐦', 'BIRD'], ['🐸', 'FROG'], ['🐷', 'PIG'], ['🐮', 'COW'], ['🐻', 'BEAR'], ['🦁', 'LION'], ['🦆', 'DUCK'], ['🐝', 'BEE'], ['🦉', 'OWL'],
   ['🐯', 'TIGER'], ['🦓', 'ZEBRA'], ['🐍', 'SNAKE'], ['🐋', 'WHALE'], ['🐢', 'TURTLE'], ['🦒', 'GIRAFFE'], ['🍎', 'APPLE'], ['🍕', 'PIZZA'], ['🎂', 'CAKE'], ['🥚', 'EGG'], ['🥛', 'MILK'], ['🌮', 'TACO'],
@@ -820,6 +889,64 @@ const LETTERGAMES = {
       const el = G.t0 ? (Date.now() - G.t0) / 1000 : 0; if (gh && ghostSecs) gh.style.left = (Math.min(1, el / ghostSecs) * 88) + '%';
       ghead('<b>' + G.letters + '</b> of ' + GOAL + ' letters · <b>' + el.toFixed(1) + '</b> s'); }, 100);
     G.next();
+  },
+  pacer(G, k) {
+    const P0 = pool(); if (!P0.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
+    let pick = 1; try { pick = +localStorage.getItem('fs-cam-pace') || 1; } catch (e) {}
+    bar('Speed Pacer', []); gpic('');
+    gchoose('<div class="rd-gsay" style="font-size:18px">🎵 How fast are you aiming for?</div><div class="rd-gpicks">' + PACES.map(p => '<button class="btn ' + (p[0] === pick ? '' : 'ghost') + '" data-v="' + p[0] + '">' + p[1] + '<br><small>' + p[2] + '</small></button>').join('') + '</div>' +
+      '<label class="rd-gtype">Pause between words <select id="rd-pacegap"><option value="1500">1.5 s</option><option value="2500" selected>2.5 s</option><option value="4000">4 s</option></select></label><p class="rd-small">Uses the word lengths and lists chosen under Practice. 10 words.</p>', e => {
+      e.onclick = ev => { const b = ev.target.closest('[data-v]'); if (!b) return; const lps = +b.dataset.v; try { localStorage.setItem('fs-cam-pace', lps); } catch (x) {} start(lps, +$('#rd-pacegap').value); }; });
+    const start = (lps, gap) => {
+      gchoose(''); const name = (PACES.find(p => p[0] === lps) || PACES[1])[1];
+      const P = G.pace = { lps, gap, slot: 1000 / lps, grace: Math.min(350, 450 / lps), i: -1, got: [], seen: [], run: false, n: 0, hits: 0, total: 0, slotAt: 0 };
+      bar('Speed Pacer: ' + name, [['skip', 'Skip this word']]);
+      P.paint = () => { $('#rd-word').hidden = false; $('#rd-word').innerHTML = WORD.split('').map((x, i) => '<span class="' + (P.got[i] === true ? 'ph' : P.got[i] === false ? 'pm' : i === P.i ? 'c' : 'n') + '">' + x + '</span>').join(''); };
+      const nextWord = () => {
+        if (P.n >= 10) { const pct = P.total ? Math.round(100 * P.hits / P.total) : 0, b = best('pacer-' + lps, pct); return endGame('<h3>Speed Pacer: ' + name + '</h3><div class="big">' + pct + '%</div><p class="rd-small">' + P.hits + ' of ' + P.total + ' letters at ' + (PACES.find(p => p[0] === lps) || [0, '', ''])[2] + (b.isNew ? ' (a new best for this speed!)' : b.old !== undefined ? ' (best: ' + b.old + '%)' : '') + (pct >= 85 ? '. Ready to try the next speed up?' : '') + '</p>', k); }
+        P.n++; P.tok = (P.tok || 0) + 1; WORD = rnd(P0); wi = 0; done = false; P.i = -1; P.got = WORD.split('').map(() => null); P.seen = []; P.run = false;
+        $('#rd-prompt').hidden = false; P.paint(); $('#rd-letter').textContent = '…'; ghead('Word <b>' + P.n + '</b> of 10 · get ready…');
+        const tk = P.tok; later(G, () => { if (tk === P.tok) { P.run = true; slot(0, tk); } }, gap);
+      };
+      const slot = (i, tk) => {
+        if (tk !== P.tok) return;      /* a skipped word stops its own clock */
+        if (i > 0 && P.got[i - 1] === null) later(G, () => { if (P.got[i - 1] === null) { P.got[i - 1] = false; P.paint(); } }, P.grace);      /* missed: red once its grace is over */
+        if (i >= WORD.length) { P.run = false; later(G, () => { P.got.forEach((g, j) => { if (g === null) P.got[j] = false; }); P.total += WORD.length; P.hits += P.got.filter(x => x === true).length; P.paint(); later(G, nextWord, 700); }, P.grace + 20); return; }
+        P.i = i; P.slotAt = clock(); $('#rd-letter').textContent = WORD[i]; P.paint(); ghead('Word <b>' + P.n + '</b> of 10 · <b>' + (P.total ? Math.round(100 * P.hits / P.total) : 100) + '%</b> so far');
+        later(G, () => slot(i + 1, tk), P.slot);
+      };
+      G.skip = () => { if (!P.run) return; P.run = false; P.tok++; P.got = P.got.map(g => g === true); P.total += WORD.length; P.hits += P.got.filter(Boolean).length; P.paint(); later(G, nextWord, 500); };
+      nextWord();
+    };
+  },
+  bee(G, k) {      /* group: the players (Take turns names, or 2+ typed now) take turns; a miss or running out of time sits you down; words get longer each round.
+                     Alone: one player, one miss ends it (how many words?). The teacher (or the player) presses Missed it for a wrong letter. */
+    const P = anyWords(3, 12); if (!P.length) return endGame('<p>No words fit.</p>', k);
+    const solo = !(PARTY.on && PARTY.names.length >= 2);
+    G.players = solo ? [{ n: 'You', out: false }] : PARTY.names.map(n => ({ n, out: false })); G.turn = -1; G.round = 1; G.len = 3; G.secs = 30; G.mode = 'read'; G.n = 0;
+    gpic(''); gchoose('<div class="rd-gsay" style="font-size:18px">🐝 ' + (solo ? 'Solo bee: spell until you miss' : G.players.length + ' players: ' + G.players.map(x => esc(x.n)).join(', ')) + '</div>' +
+      '<label class="rd-gtype">The word is <select id="rd-beemode"><option value="read">shown</option><option value="hand">fingerspelled by the hand (hidden)</option><option value="def">a definition (hidden)</option></select></label>' +
+      '<label class="rd-gtype">Time per word <select id="rd-beesecs"><option value="20">20 s</option><option value="30" selected>30 s</option><option value="60">60 s</option><option value="0">no limit</option></select></label><button class="btn" id="rd-beego">Start the bee</button>' +
+      (solo ? '<p class="rd-small">Playing with a group? Quit, press 👥 Take turns, add the names, then choose Spelling Bee.</p>' : ''));
+    bar('Spelling Bee', []);
+    $('#rd-beego').onclick = () => { G.mode = $('#rd-beemode').value; G.secs = +$('#rd-beesecs').value; bar('Spelling Bee', [['miss', '❌ Missed it'], ['replay', '🔁 Show again']]); G.next(); };
+    const alive = () => G.players.filter(x => !x.out);
+    G.next = () => {
+      const A = alive(); if ((!solo && A.length <= 1) || (solo && A.length === 0)) return G.over();
+      do { G.turn = (G.turn + 1) % G.players.length; if (G.turn === 0 && G.n) { G.round++; G.len = Math.min(12, G.len + 1); } } while (G.players[G.turn].out);
+      G.n++; const L = P.filter(w => w.length === G.len && (G.mode !== 'def' || defOf(w))), pick = L.length ? L : P; G.w = rnd(pick); G.hide = G.mode !== 'read'; G.hideLetter = G.hide;
+      G.end = G.secs ? Date.now() + G.secs * 1000 : 0;
+      gpic('<div class="rd-bee">' + G.players.map((x, i) => '<span class="' + (x.out ? 'out' : i === G.turn ? 'now' : '') + '">' + (x.out ? '🪑 ' : i === G.turn ? '🎤 ' : '') + esc(x.n) + '</span>').join('') + '</div>');
+      wordGame(G, G.w); if (G.mode === 'hand') G.play();
+    };
+    G.play = async () => { if (G.mode !== 'hand') return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; try { await refHand.ready; await refHand.spell(G.w, { speed: () => 0.15 }); } catch (e) {} };
+    G.wordDone = () => { G.players[G.turn].words = (G.players[G.turn].words || 0) + 1; ghead('✅ <b>' + esc(G.players[G.turn].n) + '</b> spelled ' + G.w); later(G, G.next, 1400); };
+    G.gb_miss = () => { if (!WORD) return; G.players[G.turn].out = true; done = true; $('#rd-word').innerHTML = G.w.split('').map(x => '<span class="n">' + x + '</span>').join(''); ghead('❌ <b>' + esc(G.players[G.turn].n) + '</b> sits down. The word was ' + G.w); later(G, G.next, 2200); };
+    G.over = () => { const A = alive(), win = solo ? null : A[0];
+      if (solo) { const n = G.players[0].words || 0, b = best('bee', n); return endGame('<h3>Spelling Bee</h3><div class="big">' + n + '</div><p class="rd-small">words before a miss' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); }
+      endGame('<h3>🐝 ' + (win ? esc(win.n) + ' wins the Spelling Bee!' : 'Spelling Bee') + '</h3><div class="big">Round ' + G.round + '</div><p class="rd-small">' + G.players.map(x => esc(x.n) + ': ' + (x.words || 0)).join(' · ') + '</p>', k); };
+    G.timer = setInterval(() => { if (!G.end || !WORD || done) { if (G.turn >= 0 && !G.end) ghead('Round <b>' + G.round + '</b> · ' + G.len + ' letters · <b>' + esc((G.players[G.turn] || {}).n || '') + '</b>'); return; }
+      const t = Math.max(0, Math.ceil((G.end - Date.now()) / 1000)); ghead('Round <b>' + G.round + '</b> · <b>' + esc(G.players[G.turn].n) + '</b> · <b>' + t + '</b> s'); if (t <= 0) G.gb_miss(); }, 250);
   },
   boss(G, k) {      /* the boss loses 6 health per letter of each word you spell; every 15 seconds it attacks (3 hearts) */
     const P = pool().filter(w => w.length >= 3 && w.length <= 7); if (!P.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
