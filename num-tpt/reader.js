@@ -307,6 +307,16 @@ function faceTick(t) {
     const k = d.keypoints, nose = k[2], mouth = k[3], fw = Math.abs(k[4].x - k[5].x) || (d.boundingBox ? d.boundingBox.width / (video.videoWidth || 640) : 0.25);
     FACE = { x: mouth.x + (mouth.x - nose.x) * 1.3, y: mouth.y + (mouth.y - nose.y) * 1.3, fw, t }; } catch (e) { FACE = null; }
 }
+/* the age area (Colleen, 2026-10-17: "a good area to expect to see ages"): from the chin to about two and a half face widths down, about as
+   wide as the shoulders. Drawn only when "Show the age area" is ticked (off every time the page loads). The canvas is mirrored like the video. */
+const AGE_AREA = { top: 0.1, bottom: 2.6, half: 0.9 };
+function ageArea() {
+  const box = $('#rd-agebox'); if (!box || !box.checked || !FACE) return;
+  const W = draw.width, H = draw.height, A = AGE_AREA, x0 = (FACE.x - A.half * FACE.fw) * W, w = 2 * A.half * FACE.fw * W, y0 = (FACE.y + A.top * FACE.fw) * H, h = (A.bottom - A.top) * FACE.fw * H;
+  ctx.save(); ctx.fillStyle = 'rgba(127,209,255,.15)'; ctx.strokeStyle = 'rgba(127,209,255,.9)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, y0, w, h, 18) : ctx.rect(x0, y0, w, h); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+  ctx.translate(x0 + w / 2, y0 + 26); ctx.scale(-1, 1); ctx.font = '700 20px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#bfe8ff'; ctx.fillText('age area', 0, 0); ctx.restore();
+}
 function ageRead(t, f, L, now) {
   const a = +String(t).slice(1); faceTick(now);
   if (!AGE || AGE.t !== t) AGE = { t, phase: 'chin', ms: 0, last: now, s0: 0, pushed: false };
@@ -314,6 +324,7 @@ function ageRead(t, f, L, now) {
   const startC = a <= 9 ? (a <= 5 ? a + '*' : String(a)) : '1', R = rank(f), best = R[0][1], dS = (R.find(x => x[0] === startC) || [0, 99])[1], shapeOK = dS <= best * 1.2;      /* 1-5 palm out are the "*" entries */
   const tip = L[8], size = Math.hypot(L[9].x - L[0].x, L[9].y - L[0].y);
   dots(L, -1, AGE.phase === 'done');
+  if (FACE && now - FACE.t < 600) ageArea();
   if (FACE && now - FACE.t < 600) { ctx.beginPath(); ctx.arc(FACE.x * draw.width, FACE.y * draw.height, 9, 0, 7); ctx.strokeStyle = AGE.phase === 'chin' ? '#FFC83D' : '#14804D'; ctx.lineWidth = 4; ctx.stroke(); }      /* where the chin is */
   const face = FACE && now - FACE.t < 600, near = face ? Math.hypot(tip.x - FACE.x, tip.y - FACE.y) / FACE.fw : 9;
   let tipTxt = '', prog = 0;
@@ -666,4 +677,4 @@ refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c);
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
 if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) setTimeout(() => gb.click(), 0); }      /* show the game list until the camera is on */
 { const want = ONLY === 'numbers' || QS.get('kind') === 'numbers' ? 'numbers' : ''; const b = want && document.querySelector('#rd-mode [data-v="numbers"]'); if (b) { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b)); setNums(true); $('#rd-ask').textContent = 'Sign this number'; ckAbout(); } }
-window.READER = { ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
+window.READER = { ageArea, setFaceDemo: v => { FACE = v; }, ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */

@@ -135,7 +135,8 @@
       <li>Press <b>Start</b>. Choose <b>Entire screen</b>, pick your <b>main monitor</b> (not the projector), then press <b>Share</b>.</li>
       <li>Press <b>⛶ Full screen</b> in the bar at the bottom. The bar appears whenever you move the mouse over this screen.</li>
     </ol>
-    <button class="big" id="startBtn" type="button">Start</button>
+    <button class="big" id="startBtn" type="button">Start</button> <button class="big" id="previewBtn" type="button" style="background:#2b3245;color:#f5f7fb">Preview (no projector)</button>
+    <p class="note" style="margin-top:8px"><b>Preview</b> tries everything on this screen without sharing: the animal camera, the boxes, Meet the Residents and Freeze, over a stand-in picture of your screen.</p>
     <div class="err" id="err" hidden></div>
     <p class="note">Your projector has to be set to <b>Extended display</b>, not Mirror. On a Mac: System Settings → Displays → click the projector → Use as: Extended display. Shortcut keys on this screen: F freezes and unfreezes.</p>
     <p class="note"><b>Unfreezing from your own monitor:</b> use the 📽️ Freeze button in the teacher view's top bar, or press <b>🎛️ Mini control</b> in the bar here for a small Freeze button that floats above every window (drag it onto your private monitor).</p>
@@ -192,6 +193,22 @@
     t.textContent = 'Seeing windows inside windows (a tunnel)? Drag this window onto the projector screen, or press Stop and share your main monitor (not the projector).'; t.hidden = false;
     setTimeout(function () { t.hidden = true; }, 12000);
   }
+  /* PREVIEW (Colleen, 2026-10-17: "not connected to a projector right now, i want to be able to preview it"): no screen sharing; a stand-in
+     picture plays the part of the shared screen, so Freeze, the camera and the boxes can all be tried on one screen */
+  var preview = false;
+  function previewPicture() {
+    var c = document.createElement('canvas'), W = 1280, H = 720; c.width = W; c.height = H; var g = c.getContext('2d');
+    var gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#24304f'); gr.addColorStop(1, '#3b2f5c'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,.08)'; for (var i = 0; i < 6; i++) g.fillRect(80, 150 + i * 80, 700 - i * 60, 34);
+    g.fillStyle = '#fff'; g.font = '700 54px system-ui, sans-serif'; g.fillText('Preview: your screen goes here', 80, 100);
+    g.font = '600 26px system-ui, sans-serif'; g.fillStyle = '#c9d1e3'; g.fillText('With a projector, students see your main monitor here. Freeze holds this picture still.', 80, H - 60);
+    return c;
+  }
+  document.getElementById('previewBtn').onclick = function () {
+    preview = true; showErr('');
+    var pic = previewPicture(); video.hidden = true; still.width = pic.width; still.height = pic.height; still.getContext('2d').drawImage(pic, 0, 0); still.style.display = 'block';
+    document.getElementById('start').hidden = true; document.getElementById('bar').hidden = false; wake(); tell();
+  };
   function stopped() {
     if (frozen) toggleFreeze();
     stream = null; video.srcObject = null;
@@ -200,12 +217,18 @@
     tell();
   }
   document.getElementById('stopBtn').onclick = function () {
+    if (preview) { preview = false; video.hidden = false; still.style.display = ''; }
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     stopped();
   };
 
   /* ----- Freeze: copy the current picture and hold it; the boxes on top keep running ----- */
   function toggleFreeze() {
+    if (preview) {
+      frozen = !frozen; body.classList.toggle('frozen', frozen); var g2 = still.getContext('2d'), pic2 = previewPicture(); g2.drawImage(pic2, 0, 0);
+      if (frozen) { g2.fillStyle = 'rgba(125,211,252,.9)'; g2.font = '800 40px system-ui, sans-serif'; g2.fillText('❄️ FROZEN: this picture stays still', 80, 360); }
+      document.getElementById('freezeBtn').textContent = frozen ? '▶ Unfreeze' : '❄️ Freeze'; tell(); return;
+    }
     if (!frozen) {
       if (!video.videoWidth) return;
       still.width = video.videoWidth; still.height = video.videoHeight;
@@ -218,13 +241,13 @@
   }
   /* The freeze state goes to the teacher view (it opened this window) and to the mini control. */
   function tell() {
-    try { if (window.opener) window.opener.postMessage({ projector: 'state', frozen: frozen, sharing: !!stream }, '*'); } catch (e) {}
+    try { if (window.opener) window.opener.postMessage({ projector: 'state', frozen: frozen, sharing: !!stream || preview }, '*'); } catch (e) {}
     paintMini();
   }
   window.addEventListener('message', function (e) {
     var d = e.data || {};
     if (e.source !== window.opener || typeof d.projector !== 'string') return;
-    if (d.projector === 'freeze' && !frozen && stream) toggleFreeze();
+    if (d.projector === 'freeze' && !frozen && (stream || preview)) toggleFreeze();
     else if (d.projector === 'unfreeze' && frozen) toggleFreeze();
     else tell();
   });
@@ -239,7 +262,7 @@
     var b = mini.document.getElementById('mb');
     b.textContent = frozen ? '▶ Unfreeze' : '❄️ Freeze';
     b.className = frozen ? 'on' : '';
-    mini.document.getElementById('ms').textContent = !stream ? 'Not sharing' : frozen ? 'Students see the frozen picture' : 'Students see your screen live';
+    mini.document.getElementById('ms').textContent = preview ? (frozen ? 'Preview: frozen' : 'Preview') : !stream ? 'Not sharing' : frozen ? 'Students see the frozen picture' : 'Students see your screen live';
   }
   var miniBtn = document.getElementById('miniBtn');
   if (!('documentPictureInPicture' in window)) miniBtn.hidden = true;
@@ -250,14 +273,14 @@
       w.document.body.innerHTML = '<style>body{margin:0;height:100vh;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#12151c;color:#f5f7fb;font:600 13px system-ui,sans-serif;text-align:center}' +
         'button{font:800 20px system-ui,sans-serif;padding:10px 18px;border-radius:12px;border:0;background:#2b3245;color:#f5f7fb;cursor:pointer;width:88%}button.on{background:#7dd3fc;color:#062030}</style>' +
         '<button id="mb" type="button"></button><div id="ms"></div>';
-      w.document.getElementById('mb').onclick = function () { if (stream) toggleFreeze(); };
+      w.document.getElementById('mb').onclick = function () { if (stream || preview) toggleFreeze(); };
       w.addEventListener('pagehide', function () { mini = null; });
       paintMini();
     }).catch(function () {});
   };
   document.getElementById('freezeBtn').onclick = toggleFreeze;
   document.addEventListener('keydown', function (e) {
-    if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && stream) toggleFreeze();
+    if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && (stream || preview)) toggleFreeze();
   });
   document.getElementById('fullBtn').onclick = function () {
     if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function () {});
