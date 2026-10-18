@@ -66,8 +66,9 @@
       <div class="sent" id="sent" hidden><div class="txt" id="sentTxt"></div><div class="prev" id="prev" hidden></div><div class="meta"><span id="metaL"></span><span id="metaR"></span></div></div>
       <div class="cam"><video id="video" playsinline muted></video><canvas id="draw"></canvas>
         <div class="status" id="camStatus"><i></i><span>Camera off</span></div><div class="tip" id="tip"></div><div class="mark" id="big"></div>
-        <div class="msg" id="camMsg"><div><p>Turn on the camera to start.</p><button class="btn big" id="camOn">Turn on the camera</button><p class="small2" style="color:#cfd6ff">It only watches your hand and where your chin is. Nothing is recorded.</p></div></div></div>
+        <div class="msg" id="camMsg"><div><p>Which hand do you sign with?</p><p><button class="btn big" type="button" data-hand="left">✋ Left hand</button> <button class="btn big" type="button" data-hand="right">Right hand ✋</button></p><p class="small2" style="color:#cfd6ff">It only watches your hand and where your chin is. Nothing is recorded.</p></div></div></div>
       <p class="small2" id="status"></p>
+      <p class="small2">Signing with your <b id="handName">right</b> hand. <button type="button" id="handSwitch" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Switch hands</button></p>
     </div>
     <div class="card side">
       <div class="seg2" id="tabs"><button data-t="play" class="on">Play</button><button data-t="cal">Calibrate</button><button data-t="teach">Teacher</button></div>
@@ -126,6 +127,6 @@
 <script src="pronoun-sentences.js?v=1"></script>
 <script src="pronoun-engine.js?v=1"></script>
 <script src="pronoun-recognize.js?v=2"></script>
-<script type="module" src="pronouns.js?v=3"></script>
+<script type="module" src="pronouns.js?v=4"></script>
 </body>
 </html>

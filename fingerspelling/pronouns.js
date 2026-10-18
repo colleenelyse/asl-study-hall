@@ -88,7 +88,18 @@ async function camOn() {
   } catch (e) { $('#camMsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; camStatus('bad', 'Reader blocked'); return; }
   $('#camMsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; camStatus('', 'Show your hand'); requestAnimationFrame(loop);
 }
-$('#camOn').onclick = camOn;
+/* which hand: asked first, like the camera fingerspelling page (Colleen, 2026-10-17: the camera's own guess said "left" for her right hand,
+   and a wrong guess also flips which way the palm seems to face, so the flat-hand signs could never be read). Remembered on this device. */
+let LEFT = load('pron-hand', null) === 'left';
+function setHand(h) {
+  const was = load('pron-hand', null); LEFT = h === 'left'; save('pron-hand', h);
+  if (was !== h && CAL) { CAL = null; save('pron-cal', null); }      // a calibration made with the other hand (or the old guess) no longer fits
+  const n = $('#handName'); if (n) n.textContent = LEFT ? 'left' : 'right';
+}
+if (load('pron-calv', 0) < 2) { CAL = null; save('pron-cal', null); save('pron-calv', 2); }      // calibrations from before 2026-10-17 used the wrong-hand guess
+$$('[data-hand]').forEach(b => b.onclick = () => { setHand(b.dataset.hand); camOn(); });
+$('#handSwitch').onclick = () => { setHand(LEFT ? 'right' : 'left'); tip(CAL ? '' : 'Switched hands. Calibrate again for the best reading.'); };
+setHand(LEFT ? 'left' : 'right');
 function loop() {
   requestAnimationFrame(loop);
   if (!landmarker || video.currentTime === lastT || document.hidden) return; lastT = video.currentTime;
@@ -98,7 +109,7 @@ function loop() {
   ctx.clearRect(0, 0, draw.width, draw.height);
   if (!r.worldLandmarks || !r.worldLandmarks.length) { LIVE = null; handGone(t); steady(null, t); drawDiag(null, null); return; }
   lastHandAt = t; handBack(t);
-  const side = r.handednesses && r.handednesses[0] && r.handednesses[0][0] ? r.handednesses[0][0].categoryName : 'Right', isLeft = side === 'Right';      // MediaPipe names hands as if the picture were mirrored; ours is not
+  const isLeft = LEFT;      // the hand the student chose (the tracker's own left/right guess is not reliable)
   const P = r.worldLandmarks[0].map(p => [isLeft ? -p.x : p.x, -p.y, -p.z]);      // our frame: x right, y up, z toward the camera; a left hand mirrored
   const f = REC.features(P, r.landmarks[0], FACE && t - FACE.t < 800 ? FACE : null), c = REC.classify(f, CAL);
   LIVE = { f, c, side: isLeft ? 'left' : 'right' };

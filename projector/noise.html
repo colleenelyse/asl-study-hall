@@ -153,6 +153,7 @@ body.idle .controls { opacity: 0; pointer-events: none; } body.idle { cursor: no
     <label>Too loud at <input type="range" id="limit" min="20" max="95" value="70"></label>
     <label>Microphone sensitivity <input type="range" id="sens" min="1" max="10" value="5"></label>
     <label><input type="checkbox" id="chime"> Chime when too loud</label>
+    <label>🎤 <select id="micsel" aria-label="Microphone" style="font:inherit;max-width:220px"><option value="">Default microphone</option></select></label>
   </div>
 </div>
 <div id="start">
@@ -176,17 +177,35 @@ body.idle .controls { opacity: 0; pointer-events: none; } body.idle { cursor: no
   function mark() { el('mark').style.left = el('limit').value + '%'; }
   mark();
 
-  var ctx = null, an = null, buf = null, level = 0, loudSince = 0, lastChime = 0;
+  var ctx = null, an = null, buf = null, level = 0, loudSince = 0, lastChime = 0, stream = null, ticking = null;
+  /* which microphone (Colleen, 2026-10-17): a menu, remembered on this computer; changing it switches right away */
+  function micWant() { try { return localStorage.getItem('noiseMic') || ''; } catch (e) { return ''; } }
+  function micList() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(function (devs) {
+      var sel = el('micsel'), cur = micWant(), list = devs.filter(function (d) { return d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default'; });
+      sel.innerHTML = '<option value="">Default microphone</option>' + list.map(function (d, i) { return '<option value="' + d.deviceId.replace(/"/g, '') + '">' + (d.label || 'Microphone ' + (i + 1)).replace(/[<&]/g, '') + '</option>'; }).join('');
+      sel.value = list.some(function (d) { return d.deviceId === cur; }) ? cur : '';
+    }).catch(function () {});
+  }
+  function listen(retry) {
+    var audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, want = retry ? '' : micWant();
+    if (want) audio.deviceId = { exact: want };
+    return navigator.mediaDevices.getUserMedia({ audio: audio }).then(function (s2) {
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); if (ctx) { try { ctx.close(); } catch (e) {} }
+      stream = s2; ctx = new (window.AudioContext || window.webkitAudioContext)();
+      an = ctx.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
+      ctx.createMediaStreamSource(stream).connect(an); micList();
+      if (!ticking) ticking = setInterval(tick, 80);      /* keeps going even when this window is behind others */
+    }, function (err) { if (want && !retry) { try { localStorage.setItem('noiseMic', ''); } catch (e) {} return listen(true); } throw err; });
+  }
+  el('micsel').onchange = function () { try { localStorage.setItem('noiseMic', el('micsel').value); } catch (e) {} if (stream) listen(false).catch(function () {}); };
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', micList);
+  micList();
   el('go').onclick = function () {
     el('err').hidden = true;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('err').textContent = 'This browser cannot use the microphone. Use Google Chrome.'; el('err').hidden = false; return; }
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      an = ctx.createAnalyser(); an.fftSize = 2048; buf = new Float32Array(an.fftSize);
-      ctx.createMediaStreamSource(stream).connect(an);
-      el('start').hidden = true;
-      setInterval(tick, 80);      /* keeps going even when this window is behind others */
-    }).catch(function (err) {
+    listen(false).then(function () { el('start').hidden = true; }).catch(function (err) {
       el('err').textContent = err && err.name === 'NotAllowedError' ? 'The microphone was blocked. Click the microphone icon in the address bar, choose Allow, then try again.' : 'Could not use the microphone: ' + (err && err.message || err);
       el('err').hidden = false;
     });
