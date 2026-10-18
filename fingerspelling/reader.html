@@ -96,6 +96,11 @@
   .rd-bee { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .rd-bee span { padding: 6px 12px; border-radius: 999px; background: var(--surface2, #eee); font: 700 17px var(--display); }
   .rd-bee .now { background: var(--sun, #FFC83D); color: #1B1E2E; transform: scale(1.12); } .rd-bee .out { opacity: .45; text-decoration: line-through; }
   .rd-word .ph { color: var(--good, #14804D); } .rd-word .pm { color: var(--bad, #C7362E); text-decoration: line-through; }      /* Speed Pacer: got it / missed */
+  .rd-livebar { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: var(--sun, #FFC83D); color: #1B1E2E; font: 700 17px var(--display); text-align: center; }
+  .jars { display: flex; gap: 14px; justify-content: center; } .jar { display: flex; flex-direction: column; align-items: center; gap: 4px; } .jar .glass { position: relative; width: 110px; height: 150px; border: 4px solid rgba(120,160,200,.9); border-top-width: 10px; border-radius: 18px 18px 30px 30px; overflow: hidden; background: rgba(230,245,255,.5); }
+  .jar .fill { position: absolute; left: 0; right: 0; bottom: 0; background: repeating-radial-gradient(circle at 8px 8px, #3D7BE0 0 6px, transparent 7px) 0 0 / 16px 16px, #d7e7fb; transition: height .4s; } .jar b { font: 700 26px var(--display); }
+  .camtrack { width: min(420px, 80vw); height: 20px; border-radius: 999px; background: var(--surface2, #eee); overflow: hidden; } .camtrack i { display: block; height: 100%; background: linear-gradient(90deg, #3D7BE0, #2EC27E); transition: width .3s; }
+  .rd-pacerow { margin: 8px 0; } body.gamestab .rd-pacerow, body.gaming .rd-pacerow, body.nums .rd-pacerow { display: none; }
 </style>
 </head>
 <body>
@@ -130,6 +135,7 @@
         <div class="chips rd-chips" id="rd-nsets"></div>
         <p class="rd-small" style="margin:4px 0 0">1 to 5 on their own face you; 6 to 9 face out. Moving numbers count every way you sign them: both 23s and 25s, 16 to 19 either way, hundreds into a C or a curl. The palm has to face the right way.</p>
       </details>
+      <p class="rd-pacerow" id="rd-pacerow"><button class="btn ghost" id="rd-pacebtn" type="button">🎵 Speed Pacer (training)</button> <span class="rd-small">Pick a speed; the words move on at that pace, ready or not. More forgiving than the games.</span></p>
       <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the words</b></summary>
         <p class="rd-small" style="margin:4px 0 2px"><b>Word length</b> (shorter is easier)</p>
         <div class="chips rd-chips" id="rd-lens"></div>
@@ -170,6 +176,6 @@
 <script src="hand.js?v=145"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=55"></script>
+<script type="module" src="reader.js?v=59"></script>
 </body>
 </html>

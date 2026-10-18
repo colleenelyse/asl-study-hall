@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=118">
+<link rel="stylesheet" href="style.css?v=119">
 </head>
 <body>
 <header class="top">
@@ -246,6 +246,21 @@
     </div>
   </section>
   <!-- How old is Charlie? (Colleen): a picture of Charlie at one stage of life; tap each hand to watch it sign an age; pick the one that fits -->
+  <section data-screen="mail" class="screen">
+    <div class="card mail-card">
+      <h2>📮 Return to Sender</h2>
+      <p class="hint">Watch the hand spell who the mail is for, then tap that mailbox. The names look alike, so read every letter. If nobody here has that name, press 📮 Return to Sender.</p>
+      <p class="mail-head" id="mail-head"></p>
+      <div class="mail-top"><div class="mail-slot" id="mail-slot"></div><div class="mail-side"><div class="mail-item" id="mail-item">✉️</div>
+        <button class="btn ghost" id="mail-watch">▶ Watch again</button><button class="btn ghost" id="mail-express" title="One viewing, double stamps">⚡ Express (×2, no replay)</button><button class="btn ghost" id="mail-rts">📮 Return to Sender</button></div></div>
+      <p class="hint mail-msg" id="mail-msg" aria-live="polite"></p>
+      <div class="mail-street"><div class="mail-boxes" id="mail-boxes"></div></div>
+      <div class="field small"><span class="lab">Speed</span>
+        <div class="speed"><input id="mail-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
+          <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>
+      </div>
+    </div>
+  </section>
   <section data-screen="agepics" class="screen">
     <div class="card ap-card">
       <h2 id="ap-title">How Old Is Charlie?</h2>
@@ -708,6 +723,6 @@
 <script src="people.js?v=4"></script>
 <script src="hand.js?v=145"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=184"></script>
+<script src="app.js?v=185"></script>
 </body>
 </html>

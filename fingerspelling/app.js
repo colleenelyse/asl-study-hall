@@ -36,7 +36,7 @@ const CFG = { ads: false, ga: '', adClient: 'ca-pub-4570903342840204', adHome: '
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only === 'both' ? '' : CFG.only || (/\/numbers\/?$/.test(location.pathname) ? 'numbers' : '') || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card'];
+const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card', 'mail'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
@@ -295,7 +295,7 @@ function chipsInit(el, items, arr, label, after) {
 function gamesInit() {
   const BLURB = {"flash": "A quick warm-up: the hand shows one letter, you type it.", "pairs": "M or N? Learn to tell apart the letters that look alike.", "sound": "Short words that sound the way they’re spelled. A great first word game.", "pick": "Watch a word, then pick it from four that look alike.", "type": "The hand spells a word. Type what you saw.", "fill": "The middle letters blur. Catch the first and last, then put the word together.", "ladder": "Every right answer speeds the hand up. How fast can you read?", "tricky": "Words with wild spellings, like pterodactyl. Four levels of sneaky.", "numbers": "The hand signs a number. Type it. You choose which groups.", "npick": "The hand signs a number. Pick it from four that look alike.", "nquiz": "Big numbers with HUNDRED, THOUSAND and MILLION. Type or pick.", "yread": "The hand signs a year. Type it.", "ypick": "The hand signs a year. Pick it from look-alikes like 1969 and 1996.", "aread": "The hand signs an age from the chin. Type it.", "apick": "The hand signs an age. Pick it from four that look alike."};      /* short card lines (Colleen: make the descriptions better); the full text stays on each setup screen */
   const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span></a>'; };
-  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('');
+  $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') + '<a class="gcard" href="#/mail"><span class="gi" aria-hidden="true">📮</span><b>Return to Sender</b><span>Watch the name, then drop the letter in the right mailbox. The names look alike!</span></a>';
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
   $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span></a>';      /* expressive (Colleen) */
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span></a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
@@ -1425,6 +1425,74 @@ function tileHand(k, tile, use, tone) {
   T.hand.ready.then(() => { T.hand.setTone(tone || nextTone()); if (T.hand.ageView) T.hand.ageView(use === 'age'); T.hand.helper(use === 'two'); });
   return T;
 }
+/* ---------- RETURN TO SENDER (Colleen, 2026-10-17): mail arrives; the hand fingerspells who it is for; drop it in the right mailbox. The names on the
+   mailboxes look alike (same start, one or two letters different), and they get closer and more numerous each round, so every letter matters.
+   Chance (personal only): EXPRESS = one viewing for double stamps; a mystery 📦 package is worth more; and now and then the name matches NO
+   mailbox: press 📮 Return to Sender for a bonus. A wrong delivery just earns nothing for that letter. 12 letters a shift. ---------- */
+const MAIL = { n: 0, stamps: 0, cur: null, busy: false, express: false, best: 0 };
+try { MAIL.best = +localStorage.getItem('fs-mail-best') || 0; } catch (e) {}
+const mailNames = () => [...new Set((window.FS_WORDS && window.FS_WORDS.NAME || []).map(w => String(w).toUpperCase().replace(/[^A-Z]/g, '')).filter(w => w.length >= 3 && w.length <= 9))];
+function editDist(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
+function mailRound() {
+  const N = mailNames(), lvl = Math.floor(MAIL.n / 4), boxes = Math.min(6, 3 + lvl), close = lvl >= 2 ? 2 : lvl >= 1 ? 3 : 4;      /* more mailboxes and closer names each round */
+  let best = null;
+  for (let t = 0; t < 60 && !best; t++) {
+    const target = N[Math.floor(Math.random() * N.length)], alike = shuffle(N.filter(w => w !== target && editDist(w, target) <= close && w[0] === target[0])).slice(0, boxes - 1);
+    if (alike.length >= boxes - 1 || (t > 40 && alike.length >= 2)) best = { target, alike };
+  }
+  if (!best) { const target = N[0] || 'ANNA'; best = { target, alike: shuffle(N.filter(w => w !== target)).slice(0, boxes - 1) }; }
+  const wrong = MAIL.n >= 3 && Math.random() < 0.14;      /* nobody here by that name: Return to Sender */
+  const names = shuffle(wrong ? best.alike.concat([N.filter(w => w !== best.target && best.alike.indexOf(w) < 0 && w[0] === best.target[0])[0] || best.alike[0]]).slice(0, boxes) : best.alike.concat([best.target]));
+  return { target: best.target, names: [...new Set(names)], wrong, box: Math.random() < 0.17 ? 'pkg' : 'env', views: 0 };
+}
+async function mailSpell(w) {
+  await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
+  assist.textContent = ''; stage.classList.remove('frosted');
+  spelling = hand.spell(w, { speed: () => speedNow(), stop: () => stopFlag });      /* the name is never written while it signs */
+  try { await spelling; } finally { spelling = null; }
+}
+function mailPaint(msg) {
+  const R = MAIL.cur; $('#mail-head').innerHTML = 'Letter <b>' + Math.min(12, MAIL.n) + '</b> of 12 · <b>' + MAIL.stamps + '</b> stamps' + (MAIL.best ? ' · best ' + MAIL.best : '');
+  $('#mail-item').textContent = R && R.box === 'pkg' ? '📦' : '✉️'; $('#mail-msg').innerHTML = msg || '';
+  $('#mail-boxes').innerHTML = R ? R.names.map((n, i) => '<button class="mbox" data-i="' + i + '"><span class="flag"></span><span class="post"></span><b>' + esc(n) + '</b></button>').join('') : '';
+  $('#mail-express').classList.toggle('on', MAIL.express); $('#mail-watch').disabled = !R || MAIL.busy || (R.views > 0 && R.express);
+}
+async function mailNext() {
+  if (MAIL.n >= 12) return mailEnd();
+  MAIL.n++; MAIL.cur = mailRound(); MAIL.cur.express = MAIL.express; MAIL.done = false; mailPaint('Watch who this ' + (MAIL.cur.box === 'pkg' ? 'mystery package' : 'letter') + ' is for…');
+  await mailWatch();
+}
+async function mailWatch() {
+  const R = MAIL.cur; if (!R || MAIL.busy || MAIL.done || (R.express && R.views > 0)) return;
+  MAIL.busy = true; mailPaint(R.views ? 'Watch again…' : ''); R.views++;
+  try { await mailSpell(R.target); } finally { MAIL.busy = false; }
+  if (MAIL.cur === R && !MAIL.done) mailPaint(R.express ? '⚡ Express: no replays. Pick the mailbox!' : 'Pick the mailbox. ▶ Watch again costs a stamp.');
+}
+function mailScore(R) { const base = R.box === 'pkg' ? 5 : 3; return Math.max(1, (base - Math.max(0, R.views - 1)) * (R.express ? 2 : 1)); }
+function mailDeliver(i) {
+  const R = MAIL.cur; if (!R || MAIL.done || MAIL.busy || !R.views) return; MAIL.done = true;
+  const pick = i === -1 ? null : R.names[i], ok = i === -1 ? R.wrong : !R.wrong && pick === R.target, pts = ok ? mailScore(R) + (R.wrong ? 3 : 0) : 0; MAIL.stamps += pts;
+  $$('#mail-boxes .mbox').forEach((b, k) => { if (R.names[k] === R.target && !R.wrong) b.classList.add('ok'); else if (k === i) b.classList.add('no'); });
+  mailPaint((ok ? (i === -1 ? '📮 Right! Nobody here is named ' + R.target + '. ' : '✅ Delivered to ' + R.target + '! ') + '<b>+' + pts + '</b> stamps' : '❌ ' + (R.wrong ? 'Nobody here was named ' + R.target + ': that one goes back with 📮 Return to Sender.' : 'It was for ' + R.target + (pick ? ', not ' + pick : '') + '.')) + ' <button class="btn" id="mail-go">' + (MAIL.n >= 12 ? 'See my stamps' : 'Next letter') + '</button>');
+  if (ok && window.confetti && pts >= 6) window.confetti({ particleCount: 50, spread: 55, origin: { y: 0.6 } });
+}
+function mailEnd() {
+  const isNew = MAIL.stamps > MAIL.best; if (isNew) { MAIL.best = MAIL.stamps; try { localStorage.setItem('fs-mail-best', String(MAIL.best)); } catch (e) {} }
+  MAIL.cur = null; mailPaint('<b>Shift over!</b> ' + MAIL.stamps + ' stamps' + (isNew ? ' (a new best!)' : '') + ' <button class="btn" id="mail-again">New shift</button>');
+}
+function mailShow() { putStage('mail-slot'); assist.className = 'assist small'; speedNow = () => S.speed; $('#mail-speed').value = Math.round(S.speed * 100); if (!MAIL.cur && !MAIL.n) mailPaint('<button class="btn" id="mail-start">Start my shift</button>'); }
+function mailInit() {
+  document.addEventListener('click', e => { const t = e.target; if (!t) return;
+    if (t.id === 'mail-start' || t.id === 'mail-again') { MAIL.n = 0; MAIL.stamps = 0; mailNext(); }
+    else if (t.id === 'mail-go') mailNext();
+    else if (t.id === 'mail-watch') { if (MAIL.cur && MAIL.cur.views && !MAIL.cur.express) mailWatch(); }
+    else if (t.id === 'mail-express') { MAIL.express = !MAIL.express; if (MAIL.cur && !MAIL.cur.views) MAIL.cur.express = MAIL.express; mailPaint($('#mail-msg').innerHTML); }
+    else if (t.id === 'mail-rts') mailDeliver(-1);
+    else { const b = t.closest && t.closest('#mail-boxes .mbox'); if (b) mailDeliver(+b.dataset.i); } });
+  const sp = document.getElementById('mail-speed'); if (sp) sp.oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
 /* ---------- How old is Charlie? (Colleen, 2026-10-15): a picture of Charlie at one stage of life; four hands, each with the face behind it, sign four
    ages at once; the right one is any age in that stage's range; the three others come from stages at least 3 stages away from the picture's
    (so none of them could fit her) and at least 2 stages from each other ---------- */
@@ -2264,7 +2332,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, mail: mailShow, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
@@ -2284,7 +2352,7 @@ function route() {
   TONE_PAGE = NOPICK ? h : '';
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn|mail)$/.test(name)) parkStage();
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (SHOW[name]) SHOW[name]();
@@ -2306,7 +2374,7 @@ function adFill(box) {
   box.innerHTML = '<p class="adlabel">Advertisement</p><ins class="adsbygoogle" style="display:block" data-ad-client="' + esc(CFG.adClient) + '" data-ad-slot="' + esc(slot) + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
   try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
 }
-gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
+mailInit(); gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }

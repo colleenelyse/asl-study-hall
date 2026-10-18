@@ -618,3 +618,14 @@ body.nocamnum [data-camnum] { display: none !important; }      /* TpT sheets wit
 .tiplink { margin: 16px auto 0; text-align: center; font-size: 15px; color: var(--muted); } .tiplink a { color: var(--accent); font-weight: 800; }
 html.noshop .tiplink, html.embedded .tiplink { display: none !important; }
 .ad .adlabel { margin: 0 0 4px; font-size: 12px; color: var(--muted); text-align: center; }      /* ads are labeled */
+
+/* Return to Sender (2026-10-17): a street of mailboxes (Colleen's background can replace .mail-street later) */
+.mail-head { font: 700 18px var(--display); margin: 4px 0; } .mail-top { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; } .mail-slot { flex: 1 1 320px; display: flex; justify-content: center; } .mail-slot > .stage { width: min(100%, 42vh, 340px); }      /* the hand stays small enough that the mailboxes show */
+.mail-side { display: flex; flex-direction: column; gap: 8px; align-items: stretch; min-width: 200px; } .mail-item { font-size: 64px; text-align: center; line-height: 1; } #mail-express.on { background: var(--sun, #FFC83D); color: #1B1E2E; }
+.mail-msg { min-height: 44px; font-size: 17px; } .mail-msg .btn { margin-left: 8px; }
+.mail-street { border-radius: 18px; padding: 18px 12px 10px; background: linear-gradient(#bfe3ff 0 55%, #8fce6b 55% 78%, #9aa0a6 78%); }
+.mail-boxes { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.mbox { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 120px; height: 150px; border: 0; background: none; cursor: pointer; padding: 0; }
+.mbox b { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 104px; padding: 22px 4px 14px; border-radius: 52px 52px 10px 10px; background: #2F6BFF; color: #fff; font: 700 17px var(--display); letter-spacing: .04em; box-shadow: 0 4px 0 rgba(0,0,0,.2); overflow-wrap: anywhere; }
+.mbox .post { width: 12px; height: 54px; background: #6b4f33; border-radius: 4px; } .mbox .flag { position: absolute; top: 30px; right: 4px; width: 8px; height: 30px; background: #E5484D; border-radius: 2px; z-index: 1; }
+.mbox:hover b { transform: translateX(-50%) translateY(-3px); } .mbox.ok b { background: #1F9D55; } .mbox.no b { background: #E5484D; }

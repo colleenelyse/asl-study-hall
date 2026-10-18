@@ -412,6 +412,7 @@ function quickCheck(R, target, f, dTgt) {      /* quick and confident (Colleen):
   CK.quickN = top === CK.quickL ? CK.quickN + 1 : 1; CK.quickL = top; if (CK.quickN >= 8) CK.quick = top;
 }
 function nextLetter() {
+  if (LIVEON && !GAME) liveDone(SET[cur]);      /* a class game: this number counts */
   if (GAME && GAME.numDone) return GAME.numDone(SET[cur]);
   if (!CK || !CK.on) return go(cur + 1);
   CK.qi++; if (CK.qi >= CK.queue.length) return ckFinish(); go(SET.indexOf(CK.queue[CK.qi])); ckBar();
@@ -485,6 +486,7 @@ function wordDone() {      /* all green, then straight on to the next word (Coll
   done = true; LAST = WORD; const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
   $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-showme').textContent = '▶ Show me ' + LAST; $('#rd-status').textContent = 'You spelled ' + LAST + '!';
   if (GAME && GAME.wordDone) { $('#rd-after').hidden = true; return GAME.wordDone(LAST); }
+  if (LIVEON) liveDone(LAST);      /* a class game: this word counts */
   setTimeout(() => { if (WORD === LAST && done) { if (CK && CK.on) ckNextWord(); else newWord(); } }, 1500);
 }
 async function showMe() {      /* the hand spells the word back, for clarity (Colleen) */
@@ -499,6 +501,7 @@ $('#rd-mode').onclick = e => { const b = e.target.closest('button'); if (!b) ret
   setNums(b.dataset.v === 'numbers'); const words = b.dataset.v === 'words'; if (!words) $('#rd-def').hidden = true; $('#rd-prompt').hidden = !words; (words ? $('#rd-prompt') : $('.rd-target')).insertBefore($('#rd-word'), words ? null : $('#rd-letter')); $('#rd-letter').hidden = words; $('#rd-ask').hidden = words; $('#rd-word').hidden = !words;      /* the word sits right above the camera (Colleen) */ $('#rd-wordset').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
   $('#rd-ask').textContent = words ? 'Spell this word' : 'Sign this ' + UNIT(); ckAbout(); if (words) newWord(); else { WORD = null; go(NUMS ? 0 : cur); } };
 function setNums(on) {      /* letters <-> numbers: what is asked, the templates in the running, the page title */
+  { const pr = document.getElementById('rd-pacerow'); if (pr) pr.hidden = !!on; }      /* the Speed Pacer is for letters */
   if (on === NUMS) return; NUMS = on; SET = on ? (onlyDigits() ? DIGITS : shuffleA(nPool())) : LETTERS; STILLSET = on ? DIGITS : STILL; cur = 0; WORD = null; MOT = [];
   $('h1').textContent = on ? 'Sign Numbers to the Camera' : 'Fingerspell to the Camera'; document.title = $('h1').textContent;
   $('#rd-intro').textContent = on ? 'Sign the number to your camera. When the camera reads it, the number turns green.' : 'Sign the letter to your camera. When the camera reads it, the letter turns green.';
@@ -514,6 +517,29 @@ drawMix();
 
 /* ---------- CAMERA GAMES (Colleen, 2026-10-17). Practice only: nothing is saved to the sheet; each game keeps this computer's best score. ---------- */
 let GAME = null, CLASSNAMES = null;
+/* CLASS GAMES (2026-10-17): ASL Study's live class game opens this tab and tells it what to do.
+   { type: 'fsp-cam-live', on, kind: 'letters'|'numbers' }: every word (or number) signed in practice counts for the student and their team.
+   { type: 'fsp-cam-target', word }: "camera answers": fingerspell this word (hidden: the student sees the sign in the game) and say when it is done. */
+let LIVEON = false;
+function liveDone(w) { if (!IN_SHEET) return; try { window.opener.postMessage({ type: 'fsp-cam-done', w: String(w) }, '*'); } catch (e) {} }
+function liveBanner(t) { let b = $('#rd-livebar'); if (!b) { b = document.createElement('div'); b.id = 'rd-livebar'; b.className = 'rd-livebar'; const m = $('main') || document.body; m.insertBefore(b, m.firstChild); } b.innerHTML = t || ''; b.hidden = !t; }
+if (IN_SHEET) window.addEventListener('message', e => {
+  if (e.source !== window.opener || !e.data) return; const d = e.data;
+  if (d.type === 'fsp-cam-live') {
+    LIVEON = !!d.on; if (GAME) quitGame();
+    if (!LIVEON) { liveBanner(''); return; }
+    const want = d.kind === 'numbers' ? 'numbers' : 'words', btn = document.querySelector('#rd-mode [data-v="' + want + '"]');
+    if (btn && !btn.classList.contains('on')) btn.click();
+    liveBanner(d.target ? '🎮 Class game: look at the sign in your game, then fingerspell the English word here.' : '🎮 Class game: every ' + (want === 'numbers' ? 'number' : 'word') + ' you sign counts for you' + (d.team ? ' and the ' + String(d.team).replace(/[<>&]/g, '') + ' team' : '') + '!');
+  }
+  if (d.type === 'fsp-cam-target' && d.word) {
+    const w = String(d.word).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 24); if (!w) return;
+    const btn = document.querySelector('#rd-mode [data-v="words"]'); if (btn && !btn.classList.contains('on')) btn.click();
+    const G = { k: 'live', hide: true, hideLetter: true, wordDone: () => { liveDone(w); GAME = { k: 'live', free: true, letter: () => {} }; WORD = null;      /* waits quietly for the next word */ $('#rd-word').innerHTML = '<span class="d">✓</span>'; $('#rd-letter').textContent = '✓'; $('#rd-tip').textContent = 'Got it! Look at your game for the next sign.'; } };
+    $('#rd-prompt').hidden = false; wordGame(G, w); $('#rd-tip').textContent = 'Fingerspell the English word for the sign in your game (' + w.length + ' letters)';
+  }
+  if (d.type === 'fsp-cam-target' && d.stop) { if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
+});
 if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved') { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
 /* the Name Game: inside a class app the camera tab asks for the class's first names (they stay on this screen; nothing is kept) */
 if (IN_SHEET) { window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-names' && Array.isArray(e.data.names)) CLASSNAMES = e.data.names.map(x => String(x).toUpperCase().replace(/[^A-Z]/g, '')).filter(x => x.length >= 2 && x.length <= 14); }); try { window.opener.postMessage({ type: 'fsp-cam-names?' }, '*'); } catch (e) {} }
@@ -539,12 +565,15 @@ const LGAMES = [
   ['chain', '🔗', 'Word Chain', 'Each word starts with the last letter of the one before. Make the longest chain!'],
   ['scramble', '🔀', 'Unscramble', 'The letters are mixed up. Fingerspell the real word.'],
   ['blitz', '⚡', 'Category Blitz', 'Spell as many words in the category as you can in 60 seconds.'],
-  ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The word moves on at that speed, ready or not. Build up your fingerspelling pace.'],
+  ['r50', '📷', 'Race to 50', 'Alone: how fast can you sign 10, 25 or 50 words? (In class it is a team game.)'],
+  ['jar', '🫙', 'Fill the Jar', 'Alone: every word drops a marble in your jar. Two minutes. (In class it is a team game.)'],
   ['bee', '🐝', 'Spelling Bee', 'Take turns at the camera; a miss and you sit down. Last one standing wins. (Alone: how far can you go?)']];
 const NGAMES = [
   ['math', '➗', 'Math Answer', 'Solve the problem, then sign the answer.'],
   ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'],
   ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out. It gets faster.'],
+  ['r50', '📷', 'Race to 50', 'Alone: how fast can you sign 10, 25 or 50 numbers? (In class it is a team game.)'],
+  ['jar', '🫙', 'Fill the Jar', 'Alone: every number drops a marble in your jar. Two minutes. (In class it is a team game.)'],
   ['charlie', '🧑', 'How Old Is Charlie?', 'Look at Charlie, pick the age, then sign it as an AGE (start at the chin).'],
   ['years', '📜', 'When Did It Happen?', 'See the event, pick the year, then sign the year.'],
   ['guessage', '🎂', 'Guess My Age', 'Type your best guess of Charlie\u2019s age, then sign it. Closer guesses score more.'],
@@ -561,18 +590,19 @@ function gameUI(on) {
   if (on) { $('#rd-hint').checked = false; $('#rd-showbox').hidden = true; $('#rd-after').hidden = true; } else { ghead(''); $('#rd-modelbox').hidden = true; }
 }
 function endGame(html, again) {
-  if (PARTY.on && PARTY.names.length && again !== 'bee' && partyTurnOver(html, again)) return;
+  if (PARTY.on && PARTY.names.length && again !== 'bee' && again !== 'pacer' && partyTurnOver(html, again)) return;
   const G = GAME; clearInterval(G && G.timer); GAME = null; WORD = null; done = true;
   gameUI(false); $('#rd-gamelist').hidden = true; $('#rd-def').hidden = true; $('#rd-word').innerHTML = ''; $('#rd-prompt').hidden = true;
   $('#rd-results').innerHTML = html + '<div class="rd-row"><button class="btn" id="rd-again">Play again</button><button class="btn ghost" id="rd-other">Other games</button></div>'; $('#rd-results').hidden = false;
   $('#rd-again').onclick = () => startGame(again); $('#rd-other').onclick = () => { $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
+  if (again === 'pacer') { $('#rd-again').textContent = 'Train again'; $('#rd-other').textContent = 'Back to practice'; $('#rd-other').onclick = () => { $('#rd-results').hidden = true; const b = document.querySelector('#rd-kind [data-v="practice"]'); if (b) b.click(); }; }      /* the Speed Pacer is training, not a game (Colleen) */
 }
 function quitGame() { const G = GAME; if (!G) return; clearInterval(G.timer); GAME = null; WORD = null; gameUI(false); $('#rd-def').hidden = true; $('#rd-prompt').hidden = true; drawGames(); }
 const wordGame = (G, w) => { GAME = G; WORD = w; wi = 0; done = false; $('#rd-prompt').hidden = false; showWord(); };
 const bar = (txt, buttons) => { $('#rd-gtitle').textContent = txt; $('#rd-gbtns').innerHTML = (buttons || []).map(b => '<button class="btn ghost" data-gb="' + b[0] + '">' + b[1] + '</button>').join('') + '<button class="btn ghost" data-gb="quit">Quit</button>'; };
 function startGame(k) {
   if (!landmarker && !window.__test) { $('#rd-status').textContent = 'Turn on the camera first: choose your hand above the camera.'; return; }
-  if (PARTY.on && PARTY.names.length && k !== 'bee' && !PARTY.going) return partyStart(k);
+  if (PARTY.on && PARTY.names.length && k !== 'bee' && k !== 'pacer' && !PARTY.going) return partyStart(k);
   PARTY.going = false;
   if (GAME) clearInterval(GAME.timer);
   gameUI(true); $('#rd-results').hidden = true; MOT = []; BRUN = 0;
@@ -779,6 +809,7 @@ function partyNext(k) {
   $('#rd-results').hidden = false; PARTY.i = 0;
   $('#rd-partyagain').onclick = () => { PARTY.scores = []; partyStart(k); }; $('#rd-partyother').onclick = () => { $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
 }
+document.addEventListener('click', e => { if (e.target && e.target.id === 'rd-pacebtn') startGame('pacer'); });
 /* ---------- SPEED PACER (Colleen, 2026-10-17): the student picks a speed; each letter gets its time slot and the word moves on whether they keep up
    or not, with a pause between words to look at the next one. Much more forgiving than the other modes: no hold, no direction or must-have
    checks (but the palm must face the right way: a wrong palm never counts), no double-letter slide; the right letter among the top guesses for a moment (two frames) anywhere in its slot (plus a little grace)
@@ -809,6 +840,23 @@ let DICT = null;
 const dict = () => DICT || (DICT = new Set([].concat(...Object.values(window.FS_WORDS || {}).map(L => L.map(clean)), Object.keys(window.FS_DEFS || {}).map(clean), PICS.map(p => p[1])).filter(w => w.length >= 2)));
 const noJZ = w => !/[JZ]/.test(w);      /* letters that fall, pop up or get typed letter by letter are read one still handshape at a time */
 function freeBar(G, title, extra) { bar(title, (extra || []).concat([['undo', '⌫ Undo a letter'], ['clr', 'Clear']])); G.undo = () => { G.cur = G.cur.slice(0, -1); G.paint(); }; G.gb_clr = () => { G.cur = ''; G.paint(); }; }
+/* the solo versions of the class camera games: Race to 50 (a goal, timed) and Fill the Jar (two minutes, marbles) */
+function soloCount(G, k, jar) {
+  const nums = NUMS, P = nums ? (nPool().length ? nPool() : DIGITS.slice()) : pool(); if (!P.length) return endGame('<p>Nothing fits. Choose other ' + (nums ? 'numbers' : 'words') + ' in Practice first.</p>', k);
+  const unit = nums ? 'number' : 'word';
+  const paint = () => { const v = G.score;
+    if (jar) { const cap = Math.max(20, Math.ceil((v + 1) / 20) * 20); gpic('<div class="jars"><div class="jar"><div class="glass"><div class="fill" style="height:' + Math.min(100, 100 * v / cap) + '%"></div></div><b>' + v + '</b></div></div>'); }
+    else gpic('<div class="rd-hilo"><b>' + v + ' / ' + G.goal + '</b><div class="camtrack"><i style="width:' + Math.min(100, 100 * v / G.goal) + '%"></i></div></div>'); };
+  const go1 = () => { if (nums) { SET = [rnd(P)]; go(0); } else wordGame(G, rnd(P)); };
+  const hit = () => { G.score++; paint(); if (!jar && G.score >= G.goal) { const secs = Math.round((Date.now() - G.t0) / 100) / 10, b = best('r50-' + unit + '-' + G.goal, secs, true); return endGame('<h3>Race to ' + G.goal + '</h3><div class="big">' + secs + ' s</div><p class="rd-small">' + G.goal + ' ' + unit + 's' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ' s)' : '') + '</p>', k); } later(G, go1, nums ? 400 : 600); };
+  G.score = 0; G.wordDone = hit; G.numDone = hit; G.skip = go1;
+  const start = goal => { G.goal = goal; G.t0 = Date.now(); gchoose(''); bar(jar ? 'Fill the Jar' : 'Race to ' + goal, [['skip', 'Skip']]); paint(); go1();
+    G.timer = setInterval(() => { const el = (Date.now() - G.t0) / 1000;
+      if (jar) { const t = Math.max(0, Math.ceil(120 - el)); ghead('<b>' + G.score + '</b> marbles · <b>' + t + '</b> s'); if (t <= 0) { const b = best('jar-' + unit, G.score); endGame('<h3>Fill the Jar</h3><div class="big">' + G.score + '</div><p class="rd-small">marbles in two minutes' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); } }
+      else ghead('<b>' + G.score + '</b> of ' + G.goal + ' · <b>' + el.toFixed(1) + '</b> s'); }, 200); };
+  if (jar) return start(0);
+  bar('Race to 50', []); gpicks([10, 25, 50], v => v + ' ' + unit + 's', start);
+}
 const LETTERGAMES = {
   picture(G, k) {
     const order = shuffleA(PICS); G.n = 0; G.score = 0; G.hideLetter = true;
@@ -890,6 +938,8 @@ const LETTERGAMES = {
       ghead('<b>' + G.letters + '</b> of ' + GOAL + ' letters · <b>' + el.toFixed(1) + '</b> s'); }, 100);
     G.next();
   },
+  r50(G, k) { soloCount(G, k, false); },
+  jar(G, k) { soloCount(G, k, true); },
   pacer(G, k) {
     const P0 = pool(); if (!P0.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
     let pick = 1; try { pick = +localStorage.getItem('fs-cam-pace') || 1; } catch (e) {}
