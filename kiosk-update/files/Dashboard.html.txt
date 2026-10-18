@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teacher Dashboard</title>
+<style>
+  :root {
+    --bg: #f3f4f7;
+    --panel: #ffffff;
+    --ink: #1a2233;
+    --muted: #5d6779;
+    --line: #dfe3ea;
+    --soft: #eef1f6;
+    --accent: #2d3a8c;
+    --present: #1b7f47;  --present-bg: #e3f4e9;
+    --tardy:   #a35a00;  --tardy-bg:   #fdeecd;
+    --pass:    #5140b8;  --pass-bg:    #ebe7fb;
+    --absent:  #b3261e;  --absent-bg:  #fbe4e1;
+    --go: #1b7f47; --go-bg: #e3f4e9;
+    --warn: #8a6100; --warn-bg: #fdf0c4;
+    --over: #b3261e; --over-bg: #fbe0dc;
+    --shadow: 0 1px 2px rgba(20,28,50,.06), 0 6px 18px rgba(20,28,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --panel: #1b202b; --ink: #eef1f7; --muted: #a2abbd;
+      --line: #2c3342; --soft: #232937; --accent: #a9b4ff;
+      --present: #6fd69a; --present-bg: #17352a;
+      --tardy: #f2c063;   --tardy-bg: #3a2e12;
+      --pass: #b7abff;    --pass-bg: #2a2550;
+      --absent: #ff9a91;  --absent-bg: #3d1e1c;
+      --go: #6fd69a; --go-bg: #17352a;
+      --warn: #f2c063; --warn-bg: #3a2e12;
+      --over: #ff9a91; --over-bg: #3d1e1c;
+      --shadow: none;
+    }
+  }
+  /* ---------- color schemes (Colors picker in the header) ---------- */
+  :root[data-theme="light"] {
+    --bg: #f3f4f7; --panel: #ffffff; --ink: #1a2233; --muted: #5d6779; --line: #dfe3ea; --soft: #eef1f6;
+    --accent: #2d3a8c; --present: #1b7f47; --present-bg: #e3f4e9; --tardy: #a35a00; --tardy-bg: #fdeecd;
+    --pass: #5140b8; --pass-bg: #ebe7fb; --absent: #b3261e; --absent-bg: #fbe4e1; --go: #1b7f47; --go-bg: #e3f4e9;
+    --warn: #8a6100; --warn-bg: #fdf0c4; --over: #b3261e; --over-bg: #fbe0dc;
+    --shadow: 0 1px 2px rgba(20,28,50,.06), 0 6px 18px rgba(20,28,50,.06);
+  }
+  /* Calm classroom: warm paper background, soft pastel colors */
+  :root[data-theme="calm"] {
+    --bg: #f7f2ea; --panel: #fffdf9; --ink: #2f2a26; --muted: #6f655b; --line: #e8dfd2; --soft: #f3ece2;
+    --accent: #2f6f73; --present: #2e7d5b; --present-bg: #dff1e7; --tardy: #b26a1b; --tardy-bg: #fbe9d2;
+    --pass: #6b55b0; --pass-bg: #ece6f8; --absent: #c0504d; --absent-bg: #f9e0dd; --go: #2e7d5b; --go-bg: #dff1e7;
+    --warn: #9a6a12; --warn-bg: #fbefcf; --over: #c0504d; --over-bg: #f9e0dd;
+    --shadow: 0 1px 2px rgba(60,40,20,.06), 0 8px 20px rgba(60,40,20,.06);
+  }
+  /* Night: deep navy with bright, easy-to-read colors */
+  :root[data-theme="night"] {
+    --bg: #0f172a; --panel: #1e293b; --ink: #f8fafc; --muted: #cbd5e1; --line: #334155; --soft: #273449;
+    --accent: #93c5fd; --present: #4ade80; --present-bg: #14532d; --tardy: #fbbf24; --tardy-bg: #4a3410;
+    --pass: #c4b5fd; --pass-bg: #3b2f6b; --absent: #fca5a5; --absent-bg: #3b2530; --go: #4ade80; --go-bg: #14532d;
+    --warn: #fbbf24; --warn-bg: #4a3410; --over: #fca5a5; --over-bg: #5b1d1d;
+    --shadow: none;
+  }
+  /* High contrast: white, black and strong colors, readable across the room */
+  :root[data-theme="contrast"] {
+    --bg: #ffffff; --panel: #ffffff; --ink: #000000; --muted: #262626; --line: #000000; --soft: #f2f2f2;
+    --accent: #0033cc; --present: #006b2d; --present-bg: #c8f5d6; --tardy: #8a4b00; --tardy-bg: #ffe08a;
+    --pass: #3d1fa3; --pass-bg: #ddd3ff; --absent: #b00000; --absent-bg: #ffd0cc; --go: #006b2d; --go-bg: #c8f5d6;
+    --warn: #7a5200; --warn-bg: #ffe08a; --over: #b00000; --over-bg: #ffd0cc;
+    --shadow: 0 0 0 2px #000;
+  }
+  /* ---- fun schemes (pink stands in for red) ---- */
+  /* Neon: near-black with glowing neon colors */
+  :root[data-theme="neon"] {
+    --bg: radial-gradient(circle at 20% 0%, #1a0b2e 0%, #07060f 55%) fixed; --panel: #120f24; --ink: #f5f3ff; --muted: #b9b3d9;
+    --line: #2e2650; --soft: #1c1736; --accent: #00f0ff;
+    --present: #39ff14; --present-bg: #0f2e14; --tardy: #ffe600; --tardy-bg: #2e2a06;
+    --pass: #b026ff; --pass-bg: #26103d; --absent: #ff2ec4; --absent-bg: #33102b;
+    --go: #39ff14; --go-bg: #0f2e14; --warn: #ffe600; --warn-bg: #2e2a06; --over: #ff2ec4; --over-bg: #33102b;
+    --shadow: 0 0 0 1px #2e2650, 0 0 18px rgba(176, 38, 255, .18);
+  }
+  /* Pastel night: deep plum-navy with soft pastel colors */
+  :root[data-theme="pastelnight"] {
+    --bg: #1e1b2e; --panel: #2a2640; --ink: #fbf7ff; --muted: #c9c1df; --line: #3d3758; --soft: #332e4d;
+    --accent: #a0d8ef; --present: #a8e6cf; --present-bg: #2d4a43; --tardy: #ffd3b6; --tardy-bg: #4d3d36;
+    --pass: #d5aaff; --pass-bg: #3f3260; --absent: #ffaacb; --absent-bg: #4d3044;
+    --go: #a8e6cf; --go-bg: #2d4a43; --warn: #ffd3b6; --warn-bg: #4d3d36; --over: #ffaacb; --over-bg: #4d3044;
+    --shadow: none;
+  }
+  /* Ocean: deep teal-blue with sea-glass colors */
+  :root[data-theme="ocean"] {
+    --bg: linear-gradient(180deg, #072a3a 0%, #031722 100%) fixed; --panel: #0b3447; --ink: #ecfeff; --muted: #a5d8e6;
+    --line: #155068; --soft: #0f4158; --accent: #5eead4;
+    --present: #5eead4; --present-bg: #0f4a4a; --tardy: #fcd34d; --tardy-bg: #4a3f17;
+    --pass: #93c5fd; --pass-bg: #173f6b; --absent: #f9a8d4; --absent-bg: #4a2240;
+    --go: #5eead4; --go-bg: #0f4a4a; --warn: #fcd34d; --warn-bg: #4a3f17; --over: #f9a8d4; --over-bg: #4a2240;
+    --shadow: none;
+  }
+  /* Sunset: warm peach-to-lavender sky */
+  :root[data-theme="sunset"] {
+    --bg: linear-gradient(160deg, #ffd8b8 0%, #ffc2c7 45%, #d9c4f2 100%) fixed; --panel: rgba(255, 255, 255, .88);
+    --ink: #3b2140; --muted: #7a5470; --line: #f2cfd6; --soft: #fff0ea; --accent: #b4436c;
+    --present: #2f8a5f; --present-bg: #dff3e6; --tardy: #c25e00; --tardy-bg: #ffe3c7;
+    --pass: #7b4bb8; --pass-bg: #eadcfb; --absent: #d6336c; --absent-bg: #ffdbe8;
+    --go: #2f8a5f; --go-bg: #dff3e6; --warn: #a65d00; --warn-bg: #ffe9c7; --over: #d6336c; --over-bg: #ffdbe8;
+    --shadow: 0 6px 22px rgba(120, 40, 80, .12);
+  }
+  /* Candy shop: pink and mint sweet-shop colors */
+  :root[data-theme="candy"] {
+    --bg: #fff0f6; --panel: #ffffff; --ink: #3d1f33; --muted: #8a5a78; --line: #ffd1e6; --soft: #fff5fa;
+    --accent: #e0479e; --present: #12a67a; --present-bg: #d5f7ea; --tardy: #d97706; --tardy-bg: #fff1c9;
+    --pass: #8b5cf6; --pass-bg: #efe7ff; --absent: #e0479e; --absent-bg: #ffe0ef;
+    --go: #12a67a; --go-bg: #d5f7ea; --warn: #b45f06; --warn-bg: #fff1c9; --over: #e0479e; --over-bg: #ffe0ef;
+    --shadow: 0 4px 14px rgba(224, 71, 158, .12);
+  }
+  :root[data-theme="neon"] .tile b, :root[data-theme="neon"] .countdown { text-shadow: 0 0 10px currentColor; }
+
+  .theme-pick { display: flex; align-items: center; gap: .4rem; }
+
+  * { box-sizing: border-box; }
+  /* Everything is sized in rem, so the whole page grows on a big display. */
+  html { font-size: clamp(15px, 0.55vw + 9px, 30px); }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.3; -webkit-text-size-adjust: 100%;
+  }
+  button, select { font: inherit; color: inherit; }
+  .wrap { padding: 1rem; }
+
+  /* ---------- header ---------- */
+  .top {
+    display: grid; grid-template-columns: 1fr auto; gap: .75rem 1.5rem; align-items: end;
+    margin-bottom: .9rem;
+  }
+  .eyebrow { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .now-class { font-size: 2rem; font-weight: 800; line-height: 1.1; margin: .1rem 0 .2rem; }
+  .now-sub { color: var(--muted); font-size: .95rem; }
+  .clockbox { text-align: right; }
+  .countdown { font-size: 2.6rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .countdown-label { color: var(--muted); font-size: .9rem; margin-top: .2rem; }
+  .toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+  .toolbar select {
+    background: var(--panel); border: 1px solid var(--line); border-radius: .6rem;
+    padding: .5rem .7rem; min-height: 2.6rem; max-width: 100%;
+  }
+  .sync { margin-left: auto; color: var(--muted); font-size: .85rem; display: flex; align-items: center; gap: .4rem; }
+  .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--present); }
+  .dot.stale { background: var(--tardy); }
+  .dot.bad { background: var(--absent); }
+
+  /* ---------- tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .7rem; margin-bottom: .9rem; }
+  .tile {
+    background: var(--panel); border-radius: .9rem; padding: .7rem .9rem; box-shadow: var(--shadow);
+    border-top: .3rem solid var(--line); min-width: 0;
+  }
+  .tile b { display: block; font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tile span { display: block; font-size: .85rem; color: var(--muted); font-weight: 600; margin-top: .25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.present { border-top-color: var(--present); } .tile.present b { color: var(--present); }
+  .tile.tardy   { border-top-color: var(--tardy); }   .tile.tardy b   { color: var(--tardy); }
+  .tile.pass    { border-top-color: var(--pass); }    .tile.pass b    { color: var(--pass); }
+  .tile.absent  { border-top-color: var(--absent); }  .tile.absent b  { color: var(--absent); }
+  .tile.out     { border-top-color: var(--accent); }  .tile.out b     { color: var(--accent); }
+
+  /* ---------- panels ---------- */
+  .reasons { display: grid; gap: .5rem; margin: .4rem 0 .6rem; }
+  .reasons .reason { padding: .8rem; border-radius: .7rem; border: 1px solid var(--line); background: var(--soft); font-weight: 700; cursor: pointer; text-align: left; }
+  .reasons .skip { font-weight: 500; color: var(--muted); }
+  .door-row { display: flex; justify-content: space-between; gap: .6rem; padding: .45rem 0; border-top: 1px solid var(--line); }
+  .door-row:first-child { border-top: 0; }
+  .door-row span { color: var(--muted); font-size: .9rem; }
+  .tools-wrap { position: relative; display: inline-block; }
+  .release-link { margin-left: .6rem; color: var(--muted); font-size: .8rem; text-decoration: none; border-bottom: 1px dotted var(--line); }
+  .release-link:hover { color: var(--ink); }
+  .proj-freeze { font-weight: 800; }
+  #projFreeze.on { background: #7dd3fc; color: #062030; border-color: #7dd3fc; }
+  .todo-form { display: grid; grid-template-columns: 1fr auto auto; gap: .4rem; margin-bottom: .5rem; }
+  .todo-form input, .todo-form select { min-width: 0; padding: .5rem .6rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--soft); color: var(--ink); font: inherit; }
+  .todo-group h3 { margin: .6rem 0 .2rem; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .todo-item { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: .45rem; padding: .35rem 0; border-top: 1px solid var(--line); }
+  .todo-item input { width: 1.2rem; height: 1.2rem; accent-color: var(--present); cursor: pointer; margin: 0; }
+  .todo-item label { cursor: pointer; overflow-wrap: anywhere; }
+  .todo-item.done label { text-decoration: line-through; color: var(--muted); }
+  .todo-item button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: .8rem; padding: .2rem .35rem; border-radius: .4rem; white-space: nowrap; }
+  .todo-item button:hover { background: var(--soft); color: var(--ink); }
+  .todo-item button.del:hover { color: var(--absent); }
+  .todo-empty { color: var(--muted); font-size: .9rem; padding: .3rem 0; }
+  .todo-note { margin: .5rem 0 0; color: var(--muted); font-size: .8rem; }
+  .mem-form { display: grid; gap: .45rem; margin-bottom: .6rem; }
+  .mem-form textarea { width: 100%; resize: vertical; min-height: 4.2rem; padding: .6rem .7rem; border-radius: .6rem; border: 1px solid var(--line);
+    background: var(--soft); color: var(--ink); font: inherit; }
+  .mem-row { display: flex; align-items: center; gap: .6rem; }
+  .mem-save { font-weight: 700; }
+  .mem-year { display: inline-block; margin-top: .5rem; text-decoration: none; color: inherit; font-weight: 700; }
+  .mem-msg { color: var(--muted); font-size: .85rem; }
+  .mem-item { border-top: 1px solid var(--line); padding: .55rem 0; display: grid; grid-template-columns: 1fr auto; gap: .15rem .5rem; }
+  .mem-item p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; grid-column: 1; }
+  .mem-item small { color: var(--muted); font-size: .8rem; grid-column: 1; }
+  .mem-item button { grid-column: 2; grid-row: 1 / span 2; align-self: start; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: .9rem; padding: .2rem .4rem; border-radius: .4rem; }
+  .mem-item button:hover { background: var(--soft); color: var(--absent); }
+
+  /* LIVING SCREENSAVERS (2026-10-17): the camera library (teacher side); the camera itself plays on the Projector window, above Freeze */
+  .live-chip { font-weight: 700; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .live-ov { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 1.2rem; }
+  .live-ov[hidden] { display: none; }
+  .live-box { width: min(1180px, 100%); height: min(900px, 100%); background: var(--panel); color: var(--ink); border-radius: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,.35); display: flex; flex-direction: column; overflow: hidden; }
+  .live-head { display: flex; align-items: center; gap: .6rem; padding: .9rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
+  .live-head h2 { margin: 0; font-size: 1.3rem; flex: 1; }
+  .live-now { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; padding: .7rem 1.1rem; background: var(--soft); border-bottom: 1px solid var(--line); }
+  .live-now img { width: 112px; aspect-ratio: 16/9; object-fit: cover; border-radius: .5rem; background: #000; }
+  .live-now .info { flex: 1; min-width: 12rem; } .live-now .info b { display: block; font-size: 1.05rem; } .live-now .info small { color: var(--muted); }
+  .live-now .acts { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+  .live-btn { padding: .42rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font-weight: 600; font-size: .9rem; text-decoration: none; display: inline-block; }
+  .live-btn.on, .live-btn.main { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .live-seg { display: inline-flex; border: 1px solid var(--line); border-radius: .6rem; overflow: hidden; } .live-seg .live-btn { border: 0; border-radius: 0; }
+  .live-warn { margin: .6rem 1.1rem 0; padding: .6rem .8rem; border-radius: .6rem; background: var(--tardy-bg, #fdeecd); color: var(--ink); font-size: .92rem; }
+  .live-warn[hidden] { display: none; }
+  .live-tools { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; padding: .7rem 1.1rem; }
+  .live-tools input[type=search] { flex: 1; min-width: 12rem; padding: .5rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; }
+  .live-cats { display: flex; gap: .35rem; flex-wrap: wrap; padding: 0 1.1rem .5rem; }
+  .live-cats button { padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font-size: .85rem; font-weight: 600; }
+  .live-cats button.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .live-grid { flex: 1; overflow-y: auto; padding: .4rem 1.1rem 1.2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .9rem; align-content: start; }
+  .live-card { border: 1px solid var(--line); border-radius: .9rem; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+  .live-card.playing { outline: 3px solid var(--accent); }
+  .live-card .pic { position: relative; aspect-ratio: 16/9; background: #0d1117 center/cover no-repeat; cursor: pointer; }
+  .live-card .pic .tag { position: absolute; left: .45rem; top: .45rem; padding: .15rem .5rem; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: .75rem; font-weight: 700; }
+  .live-card .pic .fav { position: absolute; right: .4rem; top: .3rem; font-size: 1.3rem; background: none; border: 0; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .live-card .txt { padding: .55rem .7rem .2rem; flex: 1; } .live-card .txt b { display: block; font-size: 1rem; }
+  .live-card .txt small { display: block; color: var(--muted); font-size: .8rem; line-height: 1.35; }
+  .live-card .note { color: var(--tardy, #a35a00); font-weight: 600; }
+  .live-card .row { display: flex; gap: .3rem; padding: .45rem .6rem .6rem; flex-wrap: wrap; } .live-card .row .live-btn { padding: .3rem .55rem; font-size: .8rem; }
+  .live-form { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .live-form[hidden] { display: none; }
+  .live-form form { width: min(720px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); color: var(--ink); border-radius: 1rem; padding: 1.1rem 1.2rem; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .live-form h3 { margin: 0 0 .6rem; } .live-form label { display: block; font-size: .85rem; font-weight: 700; margin: .5rem 0 .2rem; }
+  .live-form input, .live-form select, .live-form textarea { width: 100%; box-sizing: border-box; padding: .45rem .6rem; border-radius: .5rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; }
+  .live-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .8rem; } .live-form .cats label { display: inline-flex; gap: .3rem; align-items: center; font-weight: 600; margin-right: .8rem; }
+  .live-form .cats input { width: auto; } .live-form .look { font-size: .85rem; color: var(--muted); margin: .3rem 0 0; } .live-form .btns { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .9rem; }
+  .live-box { position: relative; }
+  /* Meet the Residents (teacher side): reading here never changes the projector; Show to Class sends the cards */
+  .res-pane { position: absolute; inset: 0; z-index: 2; background: var(--panel); display: flex; flex-direction: column; }
+  .res-pane[hidden] { display: none; }
+  .res-pane .res-top { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; padding: .9rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
+  .res-pane .res-top h2 { margin: 0; font-size: 1.25rem; flex: 1; min-width: 12rem; }
+  .res-pane .res-mode { padding: .5rem 1.1rem; background: var(--soft); font-size: .9rem; color: var(--muted); display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+  .res-pane .res-mode b { color: var(--ink); }
+  .res-list { flex: 1; overflow-y: auto; padding: .8rem 1.1rem 1.4rem; }
+  .res-list h3 { margin: 1rem 0 .5rem; font-size: 1rem; } .res-about { margin: 0 0 .6rem; color: var(--ink); line-height: 1.4; }
+  .res-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .9rem; }
+  .res-card { border: 1px solid var(--line); border-radius: .9rem; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+  .res-card.sug { border-style: dashed; border-color: var(--tardy, #a35a00); } .res-card.gone { opacity: .85; }
+  .res-card .ph { aspect-ratio: 4/3; background: #26303f center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; }
+  .res-card .bd { padding: .6rem .75rem; flex: 1; font-size: .88rem; line-height: 1.38; }
+  .res-card .bd b { font-size: 1.1rem; display: block; } .res-card .sp { color: var(--muted); margin-bottom: .35rem; }
+  .res-card .rec { background: var(--soft); border-radius: .5rem; padding: .4rem .55rem; margin: .3rem 0; } .res-card .rec i { display: block; font-style: normal; font-weight: 800; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+  .res-card .src { font-size: .78rem; color: var(--muted); word-break: break-word; } .res-card .src a { color: var(--accent); }
+  .res-card .flag { display: inline-block; margin: 0 .3rem .3rem 0; padding: .1rem .45rem; border-radius: 999px; background: var(--soft); font-size: .72rem; font-weight: 700; color: var(--muted); }
+  .res-card .flag.warn { background: var(--tardy-bg, #fdeecd); color: var(--tardy, #a35a00); }
+  .res-card .row { display: flex; gap: .3rem; flex-wrap: wrap; padding: .45rem .6rem .6rem; } .res-card .row .live-btn { padding: .28rem .5rem; font-size: .78rem; }
+  .res-empty { color: var(--muted); }
+
+  .settings-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 1.2rem; }
+  .settings-overlay[hidden] { display: none; }
+  .settings-overlay .settings-bar { display: flex; align-items: center; gap: .6rem; padding: .55rem .7rem .55rem 1rem; background: var(--soft); border-bottom: 1px solid var(--line); position: relative; z-index: 2; }
+  .settings-overlay .settings-bar b { flex: 1; font-size: 1.05rem; }
+  .settings-overlay .settings-x { padding: .5rem 1rem; border-radius: .6rem; border: 0; background: var(--accent); color: var(--panel); font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); }      /* easy to see (Colleen, 2026-10-17) */
+  .settings-overlay .settings-box { width: min(1100px, 100%); height: min(860px, 100%); background: var(--panel); border-radius: 1rem; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); position: relative; display: flex; flex-direction: column; }
+  .settings-overlay iframe { position: relative; z-index: 1; width: 100%; flex: 1; min-height: 0; border: 0; display: block; background: transparent; }
+  .settings-overlay .settings-wait { position: absolute; inset: 52px 0 0 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 700; pointer-events: none; }
+  .tools-menu { position: absolute; z-index: 50; top: calc(100% + .3rem); left: 0; display: grid; gap: .3rem; padding: .5rem; min-width: 15rem;
+    background: var(--panel); border: 1px solid var(--line); border-radius: .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .tools-menu[hidden] { display: none; }
+  .tools-menu button { text-align: left; padding: .55rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--soft); cursor: pointer; font-weight: 600; }
+  .tools-menu small { color: var(--muted); padding: .2rem .3rem; }
+  .sound-toggle { padding: .45rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+  .sound-toggle.on { border-color: var(--present); color: var(--present); font-weight: 700; }
+  .queue-line { margin: 0 0 .6rem; padding: .5rem .7rem; border-radius: .6rem; background: var(--warn-bg); color: var(--warn); font-weight: 800; }
+  .student .wk { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .student .wk.over { color: var(--tardy); }
+  .student .wk.pattern { color: var(--absent); }
+  @keyframes overtimePulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 .35rem var(--over); } }
+  .pass-card.over.alarm { animation: overtimePulse 1.2s ease-in-out 12; }
+  .leftcol { display: grid; gap: .9rem; align-content: start; }
+  .bellp iframe { width: 100%; height: 420px; border: 0; border-radius: 10px; background: #fff; }
+  .student .who { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+  .student .emo { font-size: .88rem; color: var(--ink); opacity: .82; font-weight: 600; }
+  .bottom-row { display: grid; gap: .9rem; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; margin-top: .9rem; }
+  .grid { display: grid; gap: .9rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.15fr); align-items: start; }
+  .panel { background: var(--panel); border-radius: 1rem; box-shadow: var(--shadow); padding: .9rem 1rem 1rem; min-width: 0; }
+  .panel h2 { margin: 0 0 .7rem; font-size: 1.15rem; display: flex; align-items: baseline; gap: .5rem; }
+  .panel h2 small { font-weight: 600; color: var(--muted); font-size: .85rem; }
+  .empty { color: var(--muted); padding: .8rem 0 .2rem; }
+
+  /* out now */
+  .pass-card {
+    border-radius: .8rem; padding: .7rem .8rem; margin-bottom: .6rem; display: grid;
+    grid-template-columns: 1fr auto; gap: .2rem .8rem; align-items: center;
+    background: var(--go-bg); border-left: .45rem solid var(--go);
+  }
+  .pass-card.warn { background: var(--warn-bg); border-left-color: var(--warn); }
+  .pass-card.over { background: var(--over-bg); border-left-color: var(--over); }
+  .pass-name { font-weight: 800; font-size: 1.2rem; overflow-wrap: anywhere; }
+  .pass-dest { color: var(--muted); font-size: .9rem; }
+  .pass-time { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; grid-row: span 2; color: var(--go); }
+  .pass-card.warn .pass-time { color: var(--warn); }
+  .pass-card.over .pass-time { color: var(--over); }
+  .pass-card button {
+    grid-column: 1 / -1; margin-top: .45rem; border: 1px solid var(--line); background: var(--panel);
+    border-radius: .6rem; padding: .55rem; font-weight: 700; cursor: pointer; min-height: 2.6rem;
+  }
+  .pass-card button:hover { border-color: var(--ink); }
+
+  /* attendance */
+  .att-group { margin-bottom: .8rem; }
+  .att-group h3 { margin: 0 0 .35rem; font-size: .8rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .att-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr)); gap: .4rem; }
+  .student {
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%;
+    text-align: left; border: 1px solid transparent; border-radius: .65rem; padding: .5rem .65rem;
+    background: var(--soft); cursor: pointer; min-height: 2.8rem;
+  }
+  .student:hover, .student:focus-visible { border-color: var(--ink); outline: none; }
+  .student .nm { font-weight: 700; overflow-wrap: break-word; min-width: 0; }
+  .student .meta { font-size: .8rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .student.present { background: var(--present-bg); } .student.present .meta { color: var(--present); }
+  .student.tardy   { background: var(--tardy-bg); }   .student.tardy .meta   { color: var(--tardy); }
+  .student.latePass{ background: var(--pass-bg); }    .student.latePass .meta{ color: var(--pass); }
+  .student.absent  { background: var(--absent-bg); }  .student.absent .meta  { color: var(--absent); }
+  .student.busy { opacity: .55; }
+  .student .esc { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #c62828; border-radius: 999px; padding: .05rem .45rem; margin-left: .25rem; vertical-align: .1em; white-space: nowrap; }
+
+  /* log */
+  .log { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .log th { text-align: left; font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: .3rem .4rem; border-bottom: 1px solid var(--line); }
+  .log td { padding: .45rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .log td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .log tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; border-radius: 999px; padding: .1rem .55rem; font-weight: 700; font-size: .82rem; white-space: nowrap; }
+  .pill.go { background: var(--go-bg); color: var(--go); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.over { background: var(--over-bg); color: var(--over); }
+  .log-scroll { max-height: 70vh; overflow: auto; }
+
+  /* action sheet */
+  .sheet-back { position: fixed; inset: 0; background: rgba(10,14,24,.55); display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+  .sheet-back.open { display: flex; }
+  .sheet { background: var(--panel); border-radius: 1.1rem; padding: 1.1rem; width: min(30rem, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .sheet h3 { margin: 0 0 .15rem; font-size: 1.35rem; }
+  .sheet p { margin: 0 0 .8rem; color: var(--muted); font-size: .92rem; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+  .choices button { border-radius: .8rem; border: 2px solid transparent; padding: .9rem .6rem; font-weight: 800; font-size: 1.05rem; cursor: pointer; min-height: 3.6rem; }
+  .choices .present { background: var(--present-bg); color: var(--present); }
+  .choices .tardy { background: var(--tardy-bg); color: var(--tardy); }
+  .choices .latePass { background: var(--pass-bg); color: var(--pass); }
+  .choices .absent { background: var(--absent-bg); color: var(--absent); }
+  .choices button.current { border-color: currentColor; }
+  .choices button:hover { filter: brightness(.97); border-color: currentColor; }
+  .sheet .cancel { width: 100%; margin-top: .6rem; border: 1px solid var(--line); background: transparent; border-radius: .8rem; padding: .7rem; font-weight: 700; cursor: pointer; }
+
+  .banner { display: none; background: var(--absent-bg); color: var(--absent); border-radius: .7rem; padding: .6rem .8rem; margin-bottom: .8rem; font-weight: 600; }
+  .banner.show { display: block; }
+  .loading { padding: 3rem 1rem; text-align: center; color: var(--muted); font-size: 1.1rem; }
+
+  /* ---------- medium: two columns ---------- */
+  @media (max-width: 1150px) {
+    .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+    .grid .panel.outp { grid-column: 1 / -1; }
+    .bottom-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .bottom-row .panel.logp { grid-column: 1 / -1; }
+  }
+  /* ---------- phone: one column ---------- */
+  @media (max-width: 720px) {
+    .wrap { padding: .7rem; }
+    .top { grid-template-columns: 1fr; }
+    .clockbox { text-align: left; display: flex; align-items: baseline; gap: .6rem; }
+    .now-class { font-size: 1.55rem; }
+    .countdown { font-size: 2rem; }
+    .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .tile b { font-size: 1.7rem; }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .bottom-row { grid-template-columns: minmax(0, 1fr); }
+    .att-list { grid-template-columns: 1fr; }
+    .tile span { white-space: normal; }
+    .log .col-in { display: none; }
+    .log { font-size: .86rem; }
+    .sync { margin-left: 0; width: 100%; }
+    .log-scroll { max-height: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loading" class="loading">Loading your classroom…</div>
+
+  <div id="app" hidden>
+    <div class="banner" id="banner"></div>
+
+    <header class="top">
+      <div>
+        <div class="eyebrow" id="eyebrow">Teacher dashboard</div>
+        <div class="now-class" id="nowClass">—</div>
+        <div class="now-sub" id="nowSub"></div>
+      </div>
+      <div class="clockbox">
+        <div class="countdown" id="countdown">—</div>
+        <div class="countdown-label" id="countdownLabel"></div>
+      </div>
+      <div class="toolbar">
+        <label class="eyebrow" for="classPick">Class</label>
+        <select id="classPick" aria-label="Choose which class to show"></select>
+        <label class="theme-pick eyebrow">Colors
+          <select id="themePick" aria-label="Teacher view colors">
+            <option value="auto">Match my computer</option>
+            <option value="light">Classic light</option>
+            <option value="calm">Calm classroom</option>
+            <option value="night">Night</option>
+            <option value="contrast">High contrast</option>
+            <option value="neon">🌈 Neon</option>
+            <option value="pastelnight">🍬 Pastel night</option>
+            <option value="ocean">🌊 Ocean</option>
+            <option value="sunset">🌅 Sunset</option>
+            <option value="candy">🍭 Candy shop</option>
+          </select>
+        </label>
+        <button type="button" id="soundToggle" class="sound-toggle" title="Chime when a pass turns red">🔕 Sound off</button>
+        <button type="button" id="liveChip" class="sound-toggle live-chip" hidden title="Living Screensavers: the animal camera on the projector">🐠</button>
+        <button type="button" id="projFreeze" class="sound-toggle proj-freeze" hidden title="Freeze or unfreeze what the projector shows">📽️ Live · ❄️ Freeze</button>
+        <span class="tools-wrap" id="toolsWrap" hidden>
+          <button type="button" id="toolsButton" class="sound-toggle">🧰 Tools</button>
+          <span class="tools-menu" id="toolsMenu" hidden>
+            <button type="button" data-tool="timer">⏱️ Timer</button>
+            <button type="button" data-tool="dice">🎲 Dice</button>
+            <button type="button" data-tool="score">🏆 Scoreboard</button>
+            <button type="button" data-tool="picker">🎰 Name picker</button>
+            <button type="button" data-tool="rnum">🔢 Random number</button>
+            <button type="button" data-tool="passboard">🎫 Hall pass board</button>
+            <button type="button" data-tool="timeleft">⏳ Time left in class</button>
+            <button type="button" data-tool="noise">🔊 Noise meter</button>
+            <button type="button" data-tool="projector">📽️ Projector (with Freeze)</button>
+            <button type="button" data-tool="live">🐠 Living Screensavers</button>
+            <small>Each opens in its own window. Drag it onto the projector screen.</small>
+          </span>
+        </span>
+        <a id="settingsLink" target="_blank" href="#" hidden title="All the kiosk's settings (opens in a new tab)"
+           style="display:inline-block;margin:6px 0;padding:8px 12px;border-radius:10px;background:var(--accent);color:var(--panel);font-weight:700;text-decoration:none;">⚙️ Settings</a>
+        <a id="seatingLink" target="_top" href="#" hidden
+           style="display:inline-block;margin:6px 0;padding:8px 12px;border-radius:10px;background:var(--accent);color:var(--panel);font-weight:700;text-decoration:none;">🪑 Seating charts</a>
+        <a id="drillLink" target="_top" href="#" hidden
+           style="display:inline-block;margin:6px 0;padding:8px 12px;border-radius:10px;background:#b91c1c;color:#fff;font-weight:700;text-decoration:none;">🚨 Drill view</a>
+        <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Updating…</span><a id="releaseLink" class="release-link" href="#" target="_blank" rel="noopener" hidden></a></div>
+      </div>
+    </header>
+
+    <section class="tiles" id="tiles" aria-label="Class totals">
+      <div class="tile present"><b id="tPresent">0</b><span>Present</span></div>
+      <div class="tile tardy"><b id="tTardy">0</b><span>Tardy</span></div>
+      <div class="tile pass"><b id="tPass">0</b><span>Late with a pass</span></div>
+      <div class="tile absent"><b id="tAbsent">0</b><span>Not checked in</span></div>
+      <div class="tile out"><b id="tOut">0</b><span>Out right now</span></div>
+    </section>
+
+    <div class="grid">
+      <div class="leftcol">
+        <section class="panel bellp" id="bellPanel" hidden>
+          <h2>Bell schedule</h2>
+          <iframe id="bellFrame" title="Live bell schedule"></iframe>
+        </section>
+
+        <section class="panel doorp" id="doorPanel" hidden>
+          <h2>👋 Remind at the door <small id="doorNote"></small></h2>
+          <div id="doorList"></div>
+        </section>
+
+      </div>
+
+      <section class="panel">
+        <h2>Attendance <small id="attNote"></small></h2>
+        <div id="attList"></div>
+      </section>
+
+      <section class="panel outp">
+        <h2>Out right now <small id="outCount"></small></h2>
+        <div id="queueLine" class="queue-line" hidden></div>
+        <div id="outList"></div>
+      </section>
+    </div>
+
+    <!-- To-do, Class memories and Today's passes, side by side under everything -->
+    <div class="bottom-row">
+      <section class="panel todop" id="todoPanel">
+        <h2>📝 To-do <small id="todoCount"></small></h2>
+        <form id="todoForm" class="todo-form">
+          <input id="todoText" type="text" maxlength="500" placeholder="Remind me to…" aria-label="New reminder">
+          <select id="todoList" aria-label="Which list"><option value="Now">Now</option><option value="Later">Later</option></select>
+          <button type="submit" class="sound-toggle" id="todoAdd">Add</button>
+        </form>
+        <div id="todoBox"></div>
+        <p class="todo-note">Open reminders are in your end-of-day email too.</p>
+      </section>
+      <section class="panel memp" id="memPanel">
+        <h2>😂 Class memories <small id="memCount"></small></h2>
+        <form id="memForm" class="mem-form">
+          <textarea id="memText" rows="3" maxlength="2000" placeholder="Something funny just happened… type it here so you remember it."></textarea>
+          <div class="mem-row"><button type="submit" class="sound-toggle mem-save" id="memSave">💾 Save memory</button><span class="mem-msg" id="memMsg"></span></div>
+        </form>
+        <div id="memList"></div>
+        <button type="button" class="sound-toggle" id="memMore" hidden></button>
+        <a class="sound-toggle mem-year" id="memYear" href="#" target="_blank" hidden>📖 Year-end page (print or save as PDF)</a>
+      </section>
+      <section class="panel logp">
+        <h2>Today's passes <small id="logCount"></small></h2>
+        <div class="log-scroll" id="logBox"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-back" id="sheetBack" role="dialog" aria-modal="true" aria-labelledby="sheetName">
+  <div class="sheet">
+    <h3 id="sheetName"></h3>
+    <p id="sheetInfo"></p>
+    <div class="reasons" id="sheetReasons" hidden>
+      <button type="button" class="reason" data-reason="forgot">🤦 They forgot to check in</button>
+      <button type="button" class="reason" data-reason="kindness">💛 As a kindness</button>
+      <button type="button" class="reason skip" data-reason="">Skip</button>
+    </div>
+    <div class="choices">
+      <button type="button" class="present" data-status="Present">Present</button>
+      <button type="button" class="tardy" data-status="Tardy">Tardy</button>
+      <button type="button" class="latePass" data-status="Late with Pass">Late with a pass</button>
+      <button type="button" class="absent" data-status="Absent">Not here</button>
+    </div>
+    <button type="button" class="cancel" id="sheetCancel">Cancel</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var REFRESH_MS = 12000;
+  var data = null;            // last server answer
+  var offset = 0;             // server clock minus this device's clock
+  var lastGood = 0;
+  var failures = 0;
+  var classKey = '';          // '' = follow the bell schedule
+  var inFlight = false;
+  var busyKeys = {};          // students with a change being saved
+  var busyRows = {};          // passes being checked back in
+  var sheetStudent = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function serverNow() { return Date.now() + offset; }
+  function clockText(ms) {
+    if (!ms) return '';
+    var d = new Date(ms);
+    var h = d.getHours(), m = d.getMinutes();
+    return ((h % 12) || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? ' AM' : ' PM');
+  }
+  function span(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+    var h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function level(seconds) {
+    if (!data) return 'go';
+    if (seconds <= data.greenMinutes * 60) return 'go';
+    if (seconds <= data.yellowMinutes * 60) return 'warn';
+    return 'over';
+  }
+
+  /* ---------- drawing ---------- */
+  function drawHeader() {
+    var s = data.status || {};
+    var sel = data.selected;
+    $('eyebrow').textContent = data.title + ' · teacher view';
+    $('nowClass').textContent = sel ? sel.label : (s.label || 'No class right now');
+    var bits = [];
+    if (s.scheduleName) bits.push(s.scheduleName + ' schedule');
+    if (sel && !sel.live) bits.push('not the class in session');
+    else if (sel && s.lateBell && s.classEnds) bits.push(s.lateBell + ' – ' + s.classEnds);
+    else if (!sel && s.label) bits.push('Pick a class below to see its attendance');
+    $('nowSub').textContent = bits.join(' · ');
+
+    var pick = $('classPick');
+    var html = '<option value="">Follow the bell schedule</option>';
+    (data.classes || []).forEach(function (c) {
+      html += '<option value="' + esc(c.key) + '">' + esc(c.label) + ' (' + c.count + ')</option>';
+    });
+    if (pick.dataset.sig !== html) { pick.innerHTML = html; pick.dataset.sig = html; }
+    pick.value = classKey;
+  }
+
+  function drawClock() {
+    if (!data) return;
+    var s = data.status || {};
+    var now = serverNow();
+    var target = 0, label = '';
+    if (s.phase === 'class' && s.classEndsMs > now) { target = s.classEndsMs; label = 'left in ' + (s.period ? 'period ' + s.period : 'class'); }
+    else if (s.phase === 'passing' && s.lateBellMs > now) { target = s.lateBellMs; label = 'until the late bell' + (s.period ? ' for period ' + s.period : ''); }
+    if (target) {
+      $('countdown').textContent = span((target - now) / 1000);
+      $('countdownLabel').textContent = label;
+    } else {
+      $('countdown').textContent = clockText(now);
+      $('countdownLabel').textContent = s.label || '';
+    }
+  }
+
+  function drawTiles() {
+    var c = { present: 0, tardy: 0, latePass: 0, absent: 0 };
+    (data.students || []).forEach(function (st) { c[st.kind] = (c[st.kind] || 0) + 1; });
+    $('tPresent').textContent = c.present;
+    $('tTardy').textContent = c.tardy;
+    $('tPass').textContent = c.latePass;
+    $('tAbsent').textContent = c.absent;
+    $('tOut').textContent = (data.passes || []).length;
+  }
+
+  function drawOut() {
+    var line = data.passQueue || [];
+    $('queueLine').hidden = !line.length;
+    $('queueLine').textContent = line.length ? '🙋 Next in line: ' + line.map(function (e) { return e.displayName || e.name; }).join(', ') : '';
+    var list = (data.passes || []).slice().sort(function (a, b) { return a.timeOutMs - b.timeOutMs; });
+    $('outCount').textContent = list.length ? list.length + (list.length === 1 ? ' student' : ' students') : '';
+    if (!list.length) { $('outList').innerHTML = '<div class="empty">Everyone is in the room.</div>'; return; }
+    var now = serverNow();
+    $('outList').innerHTML = list.map(function (p) {
+      var secs = (now - p.timeOutMs) / 1000;
+      return '<div class="pass-card ' + level(secs) + '" data-row="' + p.row + '" data-out="' + p.timeOutMs + '">' +
+        '<div class="pass-name">' + esc(p.name || p.displayName) + '</div>' +
+        '<div class="pass-time">' + span(secs) + '</div>' +
+        '<div class="pass-dest">' + esc(p.destination) + ' · left ' + esc(clockText(p.timeOutMs)) + '</div>' +
+        '<button type="button" data-return="' + p.row + '"' + (busyRows[p.row] ? ' disabled' : '') + '>' +
+          (busyRows[p.row] ? 'Saving…' : 'Back in class') + '</button>' +
+      '</div>';
+    }).join('');
+    tickOut();
+  }
+
+  // Overtime alert: when a pass turns red its card pulses and (with Sound
+  // on) a short chime plays once. Passes already red when the page opened
+  // pulse without a chime.
+  var alertedRows = {}, firstOutDraw = true;
+  function overtimeCheck(card, lv) {
+    var row = card.dataset.row;
+    if (lv !== 'over') { card.classList.remove('alarm'); return; }
+    card.classList.add('alarm');
+    if (alertedRows[row]) return;
+    alertedRows[row] = true;
+    if (!firstOutDraw) chime();
+  }
+
+  function tickOut() {
+    var now = serverNow();
+    Array.prototype.forEach.call(document.querySelectorAll('.pass-card'), function (card) {
+      var secs = (now - Number(card.dataset.out)) / 1000;
+      card.querySelector('.pass-time').textContent = span(secs);
+      var lv = level(secs);
+      if (!card.classList.contains(lv)) { card.classList.remove('go', 'warn', 'over'); card.classList.add(lv); }
+      overtimeCheck(card, lv);
+    });
+    firstOutDraw = false;
+  }
+
+  var soundOn = false, audioCtx = null;
+  try { soundOn = localStorage.getItem('teacherViewSound') === 'on'; } catch (e) {}
+  function drawSoundButton() {
+    $('soundToggle').textContent = soundOn ? '🔔 Sound on' : '🔕 Sound off';
+    $('soundToggle').classList.toggle('on', soundOn);
+  }
+  function chime() {
+    if (!soundOn) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.22].forEach(function (at, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = i ? 660 : 880;
+        g.gain.setValueAtTime(0.0001, audioCtx.currentTime + at);
+        g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + at + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + at + 0.35);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(audioCtx.currentTime + at); o.stop(audioCtx.currentTime + at + 0.4);
+      });
+    } catch (e) {}
+  }
+  $('soundToggle').addEventListener('click', function () {
+    soundOn = !soundOn;
+    try { localStorage.setItem('teacherViewSound', soundOn ? 'on' : 'off'); } catch (e) {}
+    drawSoundButton();
+    if (soundOn) chime();   // the click lets the browser play sound; this is a test chime
+  });
+  drawSoundButton();
+
+  var GROUPS = [
+    { kind: 'absent', title: 'Not checked in' },
+    { kind: 'tardy', title: 'Tardy' },
+    { kind: 'latePass', title: 'Late with a pass' },
+    { kind: 'present', title: 'Present' }
+  ];
+  function metaFor(st) {
+    if (st.kind === 'absent') return st.leftEarly ? 'left early' : '';
+    if (st.kind === 'present') return st.pending ? 'checking in' : (st.checkInText || '').replace(/:\d\d (AM|PM)$/, ' $1');
+    return st.minutesLate ? st.minutesLate + ' min late' : 'late';
+  }
+  function drawAttendance() {
+    var box = $('attList');
+    if (!data.attendanceEnabled) { $('attNote').textContent = ''; box.innerHTML = '<div class="empty">Attendance is switched off in the kiosk settings.</div>'; return; }
+    if (!data.selected) { $('attNote').textContent = ''; box.innerHTML = '<div class="empty">No class is in session. Pick a class at the top to see it.</div>'; return; }
+    var all = data.students || [];
+    $('attNote').textContent = all.length + ' enrolled · tap a name to change it';
+    if (!all.length) { box.innerHTML = '<div class="empty">This class has no students yet.</div>'; return; }
+    box.innerHTML = GROUPS.map(function (g) {
+      var members = all.filter(function (st) { return st.kind === g.kind; });
+      if (!members.length) return '';
+      return '<div class="att-group"><h3>' + g.title + ' · ' + members.length + '</h3><div class="att-list">' +
+        members.map(function (st) {
+          return '<button type="button" class="student ' + st.kind + (busyKeys[st.key] ? ' busy' : '') + '" data-key="' + esc(st.key) + '">' +
+            '<span class="who"><span class="nm">' + esc(st.fullName || st.firstName) + (st.passRestricted ? ' <span class="esc" title="Pass restricted: escort only">🚫 escort</span>' : '') + '</span>' +
+            (st.emoji ? '<span class="emo" title="Today\'s emoji">' + esc(/^CUSTOM_/.test(st.emoji) ? '🐶' : st.emoji) + ' ' + esc(st.emojiName || '') + '</span>' : '') +
+            (st.weekTrips ? '<span class="wk ' + esc(st.weekFlag || '') + '" title="Counted trips and minutes out this week">' +
+              (st.weekFlag === 'pattern' ? '⚠️ ' : '') + st.weekTrips + (st.weekTrips === 1 ? ' trip' : ' trips') + ' · ' + st.weekMinutes + ' min this week</span>' : '') +
+            '</span>' +
+            '<span class="meta">' + esc(busyKeys[st.key] ? 'saving…' : metaFor(st)) + '</span></button>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  function drawLog() {
+    var log = data.log || [];
+    $('logCount').textContent = log.length ? log.length + (log.length === 1 ? ' pass' : ' passes') : '';
+    if (!log.length) { $('logBox').innerHTML = '<div class="empty">No passes yet today.</div>'; return; }
+    var now = serverNow();
+    $('logBox').innerHTML = '<table class="log"><thead><tr><th>Student</th><th>Where</th><th>Out</th><th class="col-in">In</th><th>Time</th></tr></thead><tbody>' +
+      log.map(function (r) {
+        var secs = ((r.inMs || now) - r.outMs) / 1000;
+        var mins = Math.max(1, Math.round(secs / 60));
+        return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.destination) + '</td>' +
+          '<td class="num">' + esc(clockText(r.outMs)) + '</td>' +
+          '<td class="num col-in">' + (r.inMs ? esc(clockText(r.inMs)) : 'still out') + '</td>' +
+          '<td class="num"><span class="pill ' + level(secs) + '">' + mins + ' min' + (r.inMs ? '' : ' · out') + '</span></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // Students in this class who often forget to check in (2+ in 4 weeks).
+  function drawDoor() {
+    var list = (data && data.forgetful) || [];
+    $('doorPanel').hidden = !list.length;
+    if (!list.length) return;
+    $('doorNote').textContent = 'forgot to check in, last 4 weeks';
+    $('doorList').innerHTML = list.map(function (f) {
+      return '<div class="door-row"><b>' + esc(f.name) + '</b><span>' + f.times + '× · last ' + esc(f.last) + '</span></div>';
+    }).join('');
+  }
+
+  // Live bell schedule (the same link as the kiosk's), loaded once.
+  function drawBell() {
+    var url = data && data.liveBellUrl;
+    var panel = $('bellPanel'), frame = $('bellFrame');
+    window.kioskBellUrl = url || '';
+    if (!url) { panel.hidden = true; return; }
+    panel.hidden = false;
+    if (frame.getAttribute('src') !== url) frame.setAttribute('src', url);
+  }
+
+  // Release number + a link to the "Update your kiosk" page, which shows what changed since this release.
+  function drawRelease() {
+    var a = $('releaseLink'), n = data && data.release;
+    if (!a || !n) return;
+    a.textContent = 'Release ' + n + ' · check for updates';
+    a.href = 'https:' + '//colleenelyse.github.io/asl-study-hall/kiosk-update/?have=' + n;
+    a.hidden = false;
+  }
+
+  function drawAll() {
+    $('loading').hidden = true; $('app').hidden = false;
+    drawHeader(); drawClock(); drawTiles(); drawOut(); drawAttendance(); drawLog();
+    drawBell();
+    drawRelease();
+    drawDoor();
+  }
+
+  function drawSync() {
+    var age = lastGood ? Math.round((Date.now() - lastGood) / 1000) : 0;
+    var dot = $('syncDot');
+    dot.className = 'dot' + (failures >= 2 ? ' bad' : (age > 40 ? ' stale' : ''));
+    $('syncText').textContent = failures >= 2
+      ? 'Can\'t reach your sheet. Trying again…'
+      : (lastGood ? 'Updated ' + (age < 3 ? 'just now' : age + ' seconds ago') : 'Updating…');
+    var banner = $('banner');
+    if (failures >= 3) { banner.textContent = 'The dashboard has not been able to update for a while. Check the internet connection, or reload this page.'; banner.classList.add('show'); }
+    else banner.classList.remove('show');
+  }
+
+  /* ---------- talking to the sheet ---------- */
+  function refresh() {
+    if (inFlight) return;
+    inFlight = true;
+    var asked = classKey;
+    google.script.run
+      .withSuccessHandler(function (result) {
+        inFlight = false;
+        if (!result || !result.success) { failures++; drawSync(); return; }
+        if (asked !== classKey) { refresh(); return; }      // class was switched meanwhile
+        failures = 0; lastGood = Date.now();
+        offset = Number(result.nowMs || Date.now()) - Date.now();
+        data = result;
+        drawAll(); drawSync();
+      })
+      .withFailureHandler(function () { inFlight = false; failures++; drawSync(); })
+      .getTeacherDashboard({ classKey: classKey });
+  }
+
+  function setAttendance(student, status, reason) {
+    if (!data || !data.selected) return;
+    busyKeys[student.key] = true;
+    // Show the change straight away.
+    var map = { 'Present': 'present', 'Tardy': 'tardy', 'Late with Pass': 'latePass', 'Absent': 'absent' };
+    student.kind = map[status]; student.pending = false;
+    if (student.kind === 'present' || student.kind === 'absent') student.minutesLate = '';
+    drawTiles(); drawAttendance();
+    var s = data.status || {};
+    var done = function () { delete busyKeys[student.key]; refresh(); };
+    google.script.run
+      .withSuccessHandler(done)
+      .withFailureHandler(function () { delete busyKeys[student.key]; failures++; drawSync(); refresh(); })
+      .teacherSetAttendance({
+        period: data.selected.period,
+        className: data.selected.classTitle,
+        studentName: student.fullName,
+        studentId: student.id,
+        status: status,
+        reason: reason || '',
+        scheduleName: s.scheduleName || '',
+        lateBell: data.selected.live ? (s.lateBell || '') : ''
+      });
+  }
+
+  function returnPass(row) {
+    busyRows[row] = true; drawOut();
+    var done = function () { delete busyRows[row]; refresh(); };
+    google.script.run.withSuccessHandler(done).withFailureHandler(function () { delete busyRows[row]; failures++; drawSync(); refresh(); })
+      .teacherReturnPass(row);
+  }
+
+  /* ---------- taps ---------- */
+  var sheetStatus = null;
+  function openSheet(student) {
+    sheetStudent = student;
+    sheetStatus = null;
+    $('sheetReasons').hidden = true;
+    document.querySelector('.choices').hidden = false;
+    $('sheetName').textContent = student.fullName || student.firstName;
+    var labels = { present: 'Present', tardy: 'Tardy', latePass: 'Late with a pass', absent: 'Not checked in' };
+    $('sheetInfo').textContent = 'Now: ' + labels[student.kind] + (metaFor(student) ? ' · ' + metaFor(student) : '') + '. Change to:';
+    Array.prototype.forEach.call(document.querySelectorAll('.choices button'), function (b) {
+      b.classList.toggle('current', b.classList.contains(student.kind));
+    });
+    $('sheetBack').classList.add('open');
+  }
+  function closeSheet() { $('sheetBack').classList.remove('open'); sheetStudent = null; }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var ret = t.closest && t.closest('[data-return]');
+    if (ret) { returnPass(Number(ret.dataset.return)); return; }
+    var st = t.closest && t.closest('.student');
+    if (st && data) {
+      var found = (data.students || []).filter(function (x) { return x.key === st.dataset.key; })[0];
+      if (found && !busyKeys[found.key]) openSheet(found);
+      return;
+    }
+    var choice = t.closest && t.closest('.choices button');
+    if (choice && sheetStudent) {
+      var s = sheetStudent, status = choice.dataset.status;
+      // Checking in someone who hadn't checked in: ask why (forgot / kindness).
+      if (s.kind === 'absent' && status !== 'Absent') {
+        sheetStatus = status;
+        document.querySelector('.choices').hidden = true;
+        $('sheetReasons').hidden = false;
+        $('sheetInfo').textContent = 'Marking ' + choice.textContent + '. Why are you checking them in?';
+        return;
+      }
+      closeSheet(); setAttendance(s, status); return;
+    }
+    var why = t.closest && t.closest('.reasons button');
+    if (why && sheetStudent && sheetStatus) {
+      var s2 = sheetStudent, st2 = sheetStatus; closeSheet(); setAttendance(s2, st2, why.dataset.reason); return;
+    }
+    if (t.id === 'sheetCancel' || t.id === 'sheetBack') closeSheet();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+  $('classPick').addEventListener('change', function () { classKey = this.value; refresh(); });
+
+  setInterval(function () { if (data) { drawClock(); tickOut(); } drawSync(); }, 1000);
+  setInterval(function () { if (!document.hidden) refresh(); }, REFRESH_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+  refresh();
+})();
+</script>
+</body>
+</html>
+
+  <script>
+  // Drill view button (opens the phone-friendly drill page).
+  google.script.run.withSuccessHandler(function (url) {
+    var a = document.getElementById('drillLink');
+    if (a && url) { a.href = url; a.hidden = false; }
+    var memYear = document.getElementById('memYear');
+    if (memYear && url) { memYear.href = url.replace(/\?view=drill$/, '?view=memories'); memYear.hidden = false; }
+    var gear = document.getElementById('settingsLink');
+    if (gear && url) {
+      gear.href = url.replace(/\?view=drill$/, '?settings=1'); gear.hidden = false;
+      // Teacher Settings opens in a panel over this page (just the settings, in these colors).
+      gear.onclick = function (e) {
+        e.preventDefault();
+        var box = document.getElementById('settingsOverlay'), frame = document.getElementById('settingsFrame');
+        frame.src = url.replace(/\?view=drill$/, '?settings=only') + kioskThemeQ();
+        box.hidden = false;
+      };
+    }
+    var seat = document.getElementById('seatingLink');
+    if (seat && url) {
+      seat.href = url.replace(/view=drill$/, 'view=seating'); seat.hidden = false;
+      seat.onclick = function () { seat.href = url.replace(/view=drill$/, 'view=seating') + kioskThemeQ(); };
+    }
+    // Tools menu: each tool in its own small window, to drag onto the projector.
+    var base = url ? url.replace(/\?view=drill$/, '') : '';
+    if (base) document.getElementById('toolsWrap').hidden = false;
+    document.getElementById('toolsButton').onclick = function (e) {
+      e.stopPropagation();
+      var m = document.getElementById('toolsMenu'); m.hidden = !m.hidden;
+    };
+    Array.prototype.forEach.call(document.querySelectorAll('#toolsMenu [data-tool]'), function (b) {
+      b.onclick = function () {
+        var t = b.getAttribute('data-tool');
+        if (t === 'live') { document.getElementById('toolsMenu').hidden = true; if (window.kioskLiveOpen) window.kioskLiveOpen(); return; }      // opens here, not in a window
+        var href = (t === 'picker' ? base + '?view=seating&tool=picker' : base + '?view=tools&tool=' + t) + kioskThemeQ();
+        // Time left = the live bell schedule itself (bell.plus), same look as the kiosk's.
+        if (t === 'timeleft' && window.kioskBellUrl) href = window.kioskBellUrl;
+        // Projector: a live copy of this monitor for the projector screen, with Freeze. It lives on the
+        // ASL Study Hall site because Apps Script pages are not allowed to share the screen.
+        var site = 'https:' + '//colleenelyse.github.io/asl-study-hall/projector/';
+        if (t === 'projector') {
+          href = site + '?kiosk=' + encodeURIComponent(base) + '&bell=' + encodeURIComponent(window.kioskBellUrl || '') + kioskThemeQ();
+          var pw = window.open(href, 'kioskProjector', 'popup=yes,width=1100,height=700');
+          if (!pw) pw = window.open(href, '_blank');
+          window.kioskProjectorWin = pw || null;
+          document.getElementById('toolsMenu').hidden = true;
+          return;
+        }
+        // Noise meter: also on the site (Apps Script pages may not use the microphone).
+        if (t === 'noise') href = site + 'noise.html?x=1' + kioskThemeQ();
+        var w = window.open(href, 'kioskTool_' + t, 'popup=yes,width=760,height=560');
+        if (!w) window.open(href, '_blank');
+        document.getElementById('toolsMenu').hidden = true;
+      };
+    });
+    document.addEventListener('click', function () { document.getElementById('toolsMenu').hidden = true; });
+  }).getDrillLink();
+</script>
+<div class="live-ov" id="liveOv" hidden>
+  <div class="live-box" role="dialog" aria-label="Living Screensavers">
+    <div class="live-head"><h2>🐠 Living Screensavers</h2><button type="button" class="live-btn" id="liveAdd">+ Add a camera</button><button type="button" class="live-btn" id="liveClose">✕ Close</button></div>
+    <div class="live-now" id="liveNow"></div>
+    <div class="live-warn" id="liveWarn" hidden></div>
+    <div class="live-tools"><input type="search" id="liveSearch" placeholder="Search: otter, jelly, Monterey…" aria-label="Search the cameras"></div>
+    <div class="live-cats" id="liveCats"></div>
+    <div class="live-grid" id="liveGrid"><p style="color:var(--muted)">Loading your cameras…</p></div>
+    <div class="res-pane" id="resPane" hidden>
+      <div class="res-top"><h2 id="resTitle">Meet the Residents</h2><button type="button" class="live-btn main" id="resShow">📽️ Show to Class</button><button type="button" class="live-btn" id="resAddBtn">+ Add a resident</button><button type="button" class="live-btn" id="resBack">← Back to cameras</button></div>
+      <div class="res-mode" id="resMode"></div>
+      <div class="res-list" id="resList"></div>
+      <div class="live-form" id="resForm" hidden><form id="resF" autocomplete="off">
+        <h3 id="resFT">Add a resident</h3>
+        <div class="two"><div><label for="rfName">Name (required)</label><input id="rfName" required maxlength="80"></div><div><label for="rfSpecies">Species</label><input id="rfSpecies" maxlength="120"></div></div>
+        <label for="rfPhoto">Photo (paste a picture link, or upload one)</label><input id="rfPhoto" placeholder="https://…"><input type="file" id="rfFile" accept="image/*" style="margin-top:.3rem"><p class="look" id="rfPhotoNote">Use a photo from the official zoo or aquarium page when you can.</p>
+        <label for="rfRec">How to recognize me (what students can look for on camera)</label><textarea id="rfRec" rows="2" maxlength="600"></textarea>
+        <div class="two"><div><label for="rfAge">Age or birth date</label><input id="rfAge" maxlength="80"></div><div><label for="rfSex">Sex (if publicly shared)</label><input id="rfSex" maxlength="40"></div></div>
+        <label for="rfPers">Personality or what they are often seen doing</label><textarea id="rfPers" rows="2" maxlength="600"></textarea>
+        <label for="rfFav">Favorite activities, foods or enrichment</label><input id="rfFav" maxlength="400">
+        <label for="rfBg">Rescue or conservation background</label><textarea id="rfBg" rows="2" maxlength="800"></textarea>
+        <label for="rfFacts">Interesting facts or milestones</label><textarea id="rfFacts" rows="2" maxlength="800"></textarea>
+        <div class="two"><div><label for="rfJoined">Joined the habitat</label><input id="rfJoined" maxlength="80"></div><div><label for="rfVer">Last checked (date)</label><input id="rfVer" type="date"></div></div>
+        <label for="rfSrc">Official sources (one link per line)</label><textarea id="rfSrc" rows="2" maxlength="1200" placeholder="https://www.montereybayaquarium.org/…"></textarea>
+        <label style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" id="rfShow" style="width:auto" checked> Can be shown to the class</label>
+        <label style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" id="rfArch" style="width:auto"> Former resident (moved away, adopted or passed away)</label>
+        <div class="btns"><button type="button" class="live-btn" id="rfCancel">Cancel</button><button type="submit" class="live-btn main" id="rfSave">Save</button></div>
+      </form></div>
+    </div>
+    <div class="live-form" id="liveForm" hidden><form id="liveF" autocomplete="off">
+      <h3 id="liveFT">Add a camera</h3>
+      <label for="lfUrl">YouTube link (paste it here)</label><input id="lfUrl" placeholder="https://www.youtube.com/watch?v=…">
+      <p class="look" id="lfLook">Paste a link and the name, channel and picture fill in by themselves.</p>
+      <div class="two"><div><label for="lfName">Name</label><input id="lfName" required maxlength="120"></div><div><label for="lfAnimal">Animal</label><input id="lfAnimal" maxlength="120"></div></div>
+      <div class="two"><div><label for="lfHab">Habitat or location</label><input id="lfHab" maxlength="160"></div><div><label for="lfOrg">Organization or channel</label><input id="lfOrg" maxlength="120"></div></div>
+      <label for="lfPage">Official camera page (zoo, aquarium, explore.org), if there is one</label><input id="lfPage" placeholder="https://…">
+      <label>Categories</label><div class="cats" id="lfCats"></div><input id="lfCatMore" placeholder="Other categories, separated by commas" style="margin-top:.3rem">
+      <div class="two"><div><label for="lfAct">Activity</label><select id="lfAct"><option>Calm</option><option>Moderate</option><option>Active</option></select></div><div><label for="lfStatus">Availability note</label><input id="lfStatus" maxlength="120" placeholder="Live camera, Seasonal, Morning only…"></div></div>
+      <div class="two"><div><label for="lfHours">Live hours, if known</label><input id="lfHours" maxlength="120" placeholder="24/7, 8 a.m. to 5 p.m.…"></div><div><label for="lfTz">Time zone</label><input id="lfTz" maxlength="120" placeholder="Pacific (2 hours behind Chicago)"></div></div>
+      <label for="lfDesc">Description (optional)</label><textarea id="lfDesc" rows="2" maxlength="500"></textarea>
+      <label for="lfNotes">My notes (optional, never shown to students)</label><textarea id="lfNotes" rows="2" maxlength="1000"></textarea>
+      <label style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" id="lfFav" style="width:auto"> ★ Favorite</label>
+      <div class="btns"><button type="button" class="live-btn" id="lfCancel">Cancel</button><button type="submit" class="live-btn main" id="lfSave">Save</button></div>
+    </form></div>
+  </div>
+</div>
+<script>
+  // LIVING SCREENSAVERS (2026-10-17): the library lives on the "Living Screensavers" tab; the chosen camera plays on the
+  // Projector window (Tools > Projector) as its own layer, so it keeps going during Freeze. This page only sends
+  // play / stop / size / title and shows what the Projector reports. Thumbnails here are pictures, never a second player.
+  (function () {
+    var CATS = ['Underwater', 'Birds', 'Zoo Animals', 'Rescue Animals', 'Wildlife'];
+    var cams = [], cat = 'All', q = '', state = null, editing = null, lastSeen = 0, residents = [], resCam = null, resEditing = null, resShowing = false, withFormer = false;
+    var tries = {}; try { tries = JSON.parse(localStorage.getItem('liveTries') || '{}') || {}; } catch (e) {}
+    function el(id) { return document.getElementById(id); }
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function proj() { var w = window.kioskProjectorWin; return w && !w.closed ? w : null; }
+    function send(m) { var w = proj(); if (!w) return false; m.projector = 'live'; w.postMessage(m, '*'); return true; }
+    function last() { try { return JSON.parse(localStorage.getItem('liveLast') || 'null'); } catch (e) { return null; } }
+    function watchUrl(c) { return c.vid ? 'https:' + '//www.youtube.com/watch?v=' + c.vid : c.url; }
+    function playable(c) { return !!c.vid && !/embedding is turned off|playlist/i.test(c.status || ''); }
+    var ERR = { 2: 'That link is not a YouTube video. Check the link (Edit).', 5: 'The player had a problem. Try Retry.', 100: 'YouTube says this video was removed or made private. Paste the camera’s new link (Edit).',
+      101: 'The owner turned off playing it on other sites. Open it on YouTube or choose another camera.', 150: 'The owner turned off playing it on other sites. Open it on YouTube or choose another camera.',
+      '-1': 'YouTube’s player did not load (the network or a school filter). Try Retry.' };
+    function stateText(st) {
+      if (!st || st.status === 'stopped') return 'Nothing playing';
+      if (st.status === 'loading') return 'Starting…';
+      if (st.status === 'buffering') return 'Reconnecting…';
+      if (st.status === 'waiting') return 'No picture yet. The stream may be offline or between broadcasts.';
+      if (st.status === 'error') return 'Not playing: ' + (ERR[st.code] || 'YouTube could not play it.');
+      if (st.status === 'playing') return st.isLive === true ? '● Playing · YouTube reports it is live' : st.isLive === false ? 'Playing · YouTube reports this is a recorded video, not live' : 'Playing';
+      return st.status;
+    }
+    function camById(id) { for (var i = 0; i < cams.length; i++) if (cams[i].id === id) return cams[i]; return null; }
+    function drawChip() {
+      var chip = el('liveChip'), on = state && state.status !== 'stopped' && Date.now() - lastSeen < 15000;
+      chip.hidden = !on; if (!on) return;
+      chip.textContent = '🐠 ' + (state.name || 'Camera') + (state.status === 'error' || state.status === 'waiting' ? ' · ⚠️' : '');
+    }
+    function drawNow() {
+      var box = el('liveNow'), st = state && Date.now() - lastSeen < 15000 ? state : null, c = st && st.camId ? camById(st.camId) : null, L = last();
+      var warn = el('liveWarn');
+      if (!proj()) { warn.hidden = false; warn.innerHTML = '<b>Open the Projector first.</b> The camera plays on the projector screen, above Freeze, so students see only the animals. <button type="button" class="live-btn main" id="liveOpenProj">📽️ Open the Projector</button>'; }
+      else warn.hidden = true;
+      if (!st || st.status === 'stopped') {
+        box.innerHTML = '<div class="info"><b>Nothing playing on the projector</b><small>Click a camera to play it (muted).</small></div>' +
+          (L && camById(L.id) ? '<div class="acts"><button type="button" class="live-btn main" data-resume="' + esc(L.id) + '">▶ Back to ' + esc(camById(L.id).name) + '</button></div>' : '');
+      } else {
+        var problem = st.status === 'error' || st.status === 'waiting';
+        box.innerHTML = (c && c.thumb ? '<img src="' + esc(c.thumb) + '" alt="">' : '') +
+          '<div class="info"><b>' + esc(st.name || '') + '</b><small>' + esc(stateText(st)) + '</small></div><div class="acts">' +
+          '<span class="live-seg"><button type="button" class="live-btn' + (st.mode !== 'full' ? ' on' : '') + '" data-mode="box">Small box</button><button type="button" class="live-btn' + (st.mode === 'full' ? ' on' : '') + '" data-mode="full">Fill the screen</button></span>' +
+          '<button type="button" class="live-btn" data-title="' + (st.title ? '0' : '1') + '">' + (st.title ? 'Hide the name' : 'Show the name') + '</button>' +
+          (problem ? '<button type="button" class="live-btn" data-retry="1">↻ Retry</button>' : '') +
+          (problem && c ? '<button type="button" class="live-btn" data-edit="' + esc(c.id) + '">✎ Edit the link</button>' : '') +
+          (c && c.page ? '<a class="live-btn" target="_blank" rel="noopener" href="' + esc(c.page) + '">Official page ↗</a>' : '') +
+          (c ? '<a class="live-btn" target="_blank" rel="noopener" href="' + esc(watchUrl(c)) + '">YouTube ↗</a>' : '') +
+          '<button type="button" class="live-btn" data-stop="1">■ Stop</button></div>';
+      }
+      drawChip();
+    }
+    function drawCats() {
+      var extra = []; cams.forEach(function (c) { c.cats.forEach(function (x) { if (CATS.indexOf(x) < 0 && extra.indexOf(x) < 0) extra.push(x); }); });
+      el('liveCats').innerHTML = ['All', '★ Favorites'].concat(CATS, extra).map(function (k) { return '<button type="button" data-cat="' + esc(k) + '" class="' + (k === cat ? 'on' : '') + '">' + esc(k) + '</button>'; }).join('');
+    }
+    function drawGrid() {
+      var words = q.toLowerCase().split(/\s+/).filter(String), playingId = state && state.status !== 'stopped' ? state.camId : '';
+      var list = cams.filter(function (c) {
+        if (cat === '★ Favorites' && !c.fav) return false;
+        if (cat !== 'All' && cat !== '★ Favorites' && c.cats.indexOf(cat) < 0) return false;
+        var hay = [c.name, c.animal, c.habitat, c.org, c.cats.join(' '), c.desc, c.notes, c.status].join(' ').toLowerCase();
+        return words.every(function (w) { return hay.indexOf(w) >= 0; });
+      });
+      el('liveGrid').innerHTML = list.length ? list.map(function (c) {
+        var t = tries[c.id], tried = t ? (t.ok ? '' : 'Last try (' + t.when + '): ' + t.msg) : '';
+        return '<div class="live-card' + (c.id === playingId ? ' playing' : '') + '">' +
+          '<div class="pic" data-play="' + esc(c.id) + '" style="background-image:url(\'' + esc(c.thumb) + '\')" title="' + (playable(c) ? 'Play on the projector' : 'Opens on YouTube') + '">' +
+          (c.id === playingId ? '<span class="tag">On the projector</span>' : c.activity ? '<span class="tag">' + esc(c.activity) + '</span>' : '') +
+          '<button type="button" class="fav" data-fav="' + esc(c.id) + '" title="' + (c.fav ? 'Remove from favorites' : 'Add to favorites') + '">' + (c.fav ? '★' : '☆') + '</button></div>' +
+          '<div class="txt"><b>' + esc(c.name) + '</b><small>' + esc([c.animal, c.org].filter(String).join(' · ')) + '</small>' +
+          (c.habitat ? '<small>' + esc(c.habitat) + '</small>' : '') + (c.tz ? '<small>' + esc(c.tz) + '</small>' : '') +
+          (c.status ? '<small class="note">' + esc(c.status) + '</small>' : '') + (tried ? '<small class="note">' + esc(tried) + '</small>' : '') + '</div>' +
+          '<div class="row">' + (playable(c) ? '<button type="button" class="live-btn main" data-play="' + esc(c.id) + '">▶ Play</button>' : '<a class="live-btn" target="_blank" rel="noopener" href="' + esc(watchUrl(c)) + '">Open on YouTube ↗</a>') +
+          (c.page ? '<a class="live-btn" target="_blank" rel="noopener" href="' + esc(c.page) + '" title="The camera’s official page">Official ↗</a>' : '') +
+          (resOf(c.id).length || c.desc ? '<button type="button" class="live-btn" data-res="' + esc(c.id) + '" title="Meet the Residents">🐾 Residents' + (resOf(c.id).filter(function (r) { return r.suggested; }).length ? ' •' : '') + '</button>' : '<button type="button" class="live-btn" data-res="' + esc(c.id) + '" title="Add resident animals">🐾+</button>') +
+          '<button type="button" class="live-btn" data-edit="' + esc(c.id) + '" title="Edit">✎</button><button type="button" class="live-btn" data-mv="-1" data-id="' + esc(c.id) + '" title="Move earlier">↑</button><button type="button" class="live-btn" data-mv="1" data-id="' + esc(c.id) + '" title="Move later">↓</button><button type="button" class="live-btn" data-del="' + esc(c.id) + '" title="Remove">✕</button></div></div>';
+      }).join('') : '<p style="color:var(--muted)">No cameras match. Try another category or search, or add a camera.</p>';
+    }
+    function drawAll() { drawCats(); drawGrid(); drawNow(); }
+    function resOf(camId) { return residents.filter(function (r) { return r.cam === camId; }); }
+    function gotRes(r) { residents = r || []; drawGrid(); if (resCam) drawRes(); }
+    function srcLinks(t) { return String(t || '').split(/\s+/).filter(function (u) { return /^https?:\/\//.test(u); }).map(function (u) { return '<a target="_blank" rel="noopener" href="' + esc(u) + '">' + esc(u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '</a>'; }).join(', '); }
+    function resCardHtml(r) {
+      var flags = (r.suggested ? '<span class="flag warn">Suggested: check it, then approve</span>' : '') + (!r.show ? '<span class="flag">Hidden from the class</span>' : '') + (r.archived ? '<span class="flag">Former resident</span>' : '');
+      return '<div class="res-card' + (r.suggested ? ' sug' : '') + (r.archived ? ' gone' : '') + '"><div class="ph"' + (/^https:\/\//.test(r.photo) ? ' style="background-image:url(\'' + esc(r.photo).replace(/'/g, '%27') + '\')">' : '>🐾') + '</div><div class="bd">' + flags +
+        '<b>' + esc(r.name) + '</b><div class="sp">' + esc([r.species, r.age, r.sex].filter(String).join(' · ')) + '</div>' +
+        (r.recognize ? '<div class="rec"><i>How to recognize me</i>' + esc(r.recognize) + '</div>' : '') +
+        (r.personality ? '<div>' + esc(r.personality) + '</div>' : '') + (r.favorites ? '<div>❤️ ' + esc(r.favorites) + '</div>' : '') +
+        (r.background ? '<div><b style="display:inline;font-size:.85rem">Background:</b> ' + esc(r.background) + '</div>' : '') + (r.facts ? '<div><b style="display:inline;font-size:.85rem">Facts:</b> ' + esc(r.facts) + '</div>' : '') +
+        (r.joined ? '<div class="src">Joined: ' + esc(r.joined) + '</div>' : '') + (r.sources ? '<div class="src">Sources: ' + srcLinks(r.sources) + '</div>' : '<div class="src">No official source yet</div>') + (r.verified ? '<div class="src">Checked ' + esc(r.verified) + '</div>' : '') +
+        '</div><div class="row">' + (r.suggested ? '<button type="button" class="live-btn main" data-rok="' + esc(r.id) + '">✓ Approve</button>' : '') +
+        '<button type="button" class="live-btn" data-redit="' + esc(r.id) + '">✎ Edit</button>' +
+        (!r.archived ? '<button type="button" class="live-btn" data-rmv="-1" data-rid="' + esc(r.id) + '" title="Earlier">↑</button><button type="button" class="live-btn" data-rmv="1" data-rid="' + esc(r.id) + '" title="Later">↓</button>' : '') +
+        '<button type="button" class="live-btn" data-rvis="' + esc(r.id) + '">' + (r.show ? 'Hide from class' : 'Show to class') + '</button>' +
+        '<button type="button" class="live-btn" data-rarch="' + esc(r.id) + '">' + (r.archived ? 'Bring back' : 'Former resident') + '</button>' +
+        '<button type="button" class="live-btn" data-rdel="' + esc(r.id) + '" title="Delete">✕</button></div></div>';
+    }
+    function drawRes() {
+      var c = resCam, list = resOf(c.id), sug = list.filter(function (r) { return r.suggested; }), now = list.filter(function (r) { return !r.suggested && !r.archived; }), gone = list.filter(function (r) { return !r.suggested && r.archived; });
+      el('resTitle').textContent = 'Meet the Residents: ' + c.name;
+      el('resShow').textContent = resShowing ? '■ Stop showing' : '📽️ Show to Class'; el('resShow').classList.toggle('on', resShowing);
+      el('resMode').innerHTML = resShowing ? '<b>Showing to the class</b> · the camera keeps playing underneath. Press Stop showing to go back to the plain camera.' :
+        '<b>Teacher only</b> · reading here does not change the projector.' + ' <label style="display:inline-flex;gap:.3rem;align-items:center"><input type="checkbox" id="resFormer"' + (withFormer ? ' checked' : '') + '> Include former residents when showing</label>';
+      el('resList').innerHTML = (c.desc ? '<h3>About this habitat</h3><p class="res-about">' + esc(c.desc) + '</p>' : '') +
+        (sug.length ? '<h3>Suggested profiles (found online; check each one before approving)</h3><div class="res-cards">' + sug.map(resCardHtml).join('') + '</div>' : '') +
+        '<h3>Residents</h3>' + (now.length ? '<div class="res-cards">' + now.map(resCardHtml).join('') + '</div>' : '<p class="res-empty">No residents yet. Add one with + Add a resident, using what the zoo or aquarium says about its own animals. For cameras with changing wild visitors, an About this habitat note (in ✎ Edit for the camera) fits better.</p>') +
+        (gone.length ? '<h3>Former residents</h3><div class="res-cards">' + gone.map(resCardHtml).join('') + '</div>' : '');
+    }
+    function openRes(c) { resCam = c; el('resPane').hidden = false; drawRes(); }
+    function showToClass() {
+      var c = resCam; if (!c) return;
+      if (resShowing) { var w0 = proj(); if (w0) w0.postMessage({ projector: 'residents', act: 'hide' }, '*'); resShowing = false; drawRes(); return; }
+      var cut = function (t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+      var cards = resOf(c.id).filter(function (r) { return !r.suggested && r.show && (withFormer || !r.archived); }).map(function (r) {      // only what students should see: never notes, sources or suggested profiles
+        return { name: r.name, species: r.species, age: r.age, sex: r.sex, photo: r.photo, recognize: cut(r.recognize, 220), personality: cut(r.personality, 150), favorites: cut(r.favorites, 110), former: r.archived };
+      });
+      if (!cards.length && !c.desc) { alert('There is nothing to show yet: approve a resident (with Can be shown to the class ticked), or add an About this habitat note.'); return; }
+      var w = proj(); if (!w) { alert('Open the Projector first (Tools > Projector).'); return; }
+      w.postMessage({ projector: 'residents', act: 'show', camName: c.name, about: c.desc ? cut(c.desc, 260) : '', cards: cards }, '*'); resShowing = true; drawRes();
+    }
+    function got(r) { cams = r || []; drawAll(); }
+    function failed(err) { el('liveGrid').innerHTML = '<p>' + esc((err && err.message) || 'Could not load the cameras. Close and open again.') + '</p>'; }
+    function play(c) {
+      if (!playable(c)) { window.open(watchUrl(c), '_blank'); return; }
+      if (!send({ act: 'play', cam: { id: c.id, vid: c.vid, name: c.name } })) { drawNow(); el('liveWarn').scrollIntoView({ block: 'nearest' }); return; }
+      try { localStorage.setItem('liveLast', JSON.stringify({ id: c.id })); } catch (e) {}
+      state = { camId: c.id, name: c.name, status: 'loading', mode: state && state.mode || 'box', title: state ? state.title : true }; lastSeen = Date.now(); drawAll();
+    }
+    window.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.projector === 'residents') { resShowing = !!d.showing; if (resCam && !el('resPane').hidden) drawRes(); return; }
+      if (d.projector === 'live' && d.act === 'list?' && e.source) {      // the Projector's own 🐠 Animal cam button asks for the cameras that play there
+        var asker = e.source; window.kioskProjectorWin = asker;
+        var answer = function (r) { if (r) cams = r; try { asker.postMessage({ projector: 'live', act: 'list', cams: cams.filter(playable).map(function (c) { return { id: c.id, vid: c.vid, name: c.name, fav: c.fav }; }) }, '*'); } catch (x) {} };
+        google.script.run.withSuccessHandler(answer).withFailureHandler(function () { answer(null); }).getLiveCams();
+        return;
+      }
+      if (d.projector !== 'live' || !d.state) return;
+      if (e.source) window.kioskProjectorWin = e.source;
+      state = d.state; lastSeen = Date.now();
+      if (state.camId && (state.status === 'playing' || state.status === 'error' || state.status === 'waiting')) {      // remembered per camera on this computer: the last try
+        var when = new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        tries[state.camId] = { ok: state.status === 'playing', when: when, msg: stateText(state).replace(/^Not playing: /, '') }; try { localStorage.setItem('liveTries', JSON.stringify(tries)); } catch (x) {}
+      }
+      if (!el('liveOv').hidden) { drawNow(); drawGrid(); } else drawChip();
+    });
+    setInterval(function () { if (lastSeen && Date.now() - lastSeen > 15000) { if (el('liveOv').hidden) drawChip(); else drawNow(); } }, 5000);
+    window.kioskLiveOpen = function () { el('liveOv').hidden = false; drawAll(); google.script.run.withSuccessHandler(got).withFailureHandler(failed).getLiveCams(); google.script.run.withSuccessHandler(gotRes).getLiveResidents(); send({ act: 'state' }); };
+    el('liveChip').onclick = window.kioskLiveOpen;
+    el('liveClose').onclick = function () { el('liveOv').hidden = true; };
+    el('liveOv').addEventListener('click', function (e) {
+      if (e.target === el('liveOv')) { el('liveOv').hidden = true; return; }
+      var rb = e.target.closest('[data-res],[data-rok],[data-redit],[data-rmv],[data-rvis],[data-rarch],[data-rdel],#resShow,#resAddBtn,#resBack');
+      if (rb) {
+        var rid = rb.getAttribute('data-rok') || rb.getAttribute('data-redit') || rb.getAttribute('data-rid') || rb.getAttribute('data-rvis') || rb.getAttribute('data-rarch') || rb.getAttribute('data-rdel'), rr = residents.filter(function (x) { return x.id === rid; })[0];
+        if (rb.hasAttribute('data-res')) openRes(camById(rb.getAttribute('data-res')));
+        else if (rb.id === 'resBack') { el('resPane').hidden = true; resCam = null; drawGrid(); }
+        else if (rb.id === 'resShow') showToClass();
+        else if (rb.id === 'resAddBtn') openResForm(null);
+        else if (rb.hasAttribute('data-redit') && rr) openResForm(rr);
+        else if (rb.hasAttribute('data-rok') && rr) google.script.run.withSuccessHandler(gotRes).saveLiveResident(Object.assign({}, rr, { approve: true }));
+        else if (rb.hasAttribute('data-rmv')) google.script.run.withSuccessHandler(gotRes).moveLiveResident(rid, +rb.getAttribute('data-rmv'));
+        else if (rb.hasAttribute('data-rvis') && rr) google.script.run.withSuccessHandler(gotRes).saveLiveResident(Object.assign({}, rr, { show: !rr.show }));
+        else if (rb.hasAttribute('data-rarch') && rr) google.script.run.withSuccessHandler(gotRes).saveLiveResident(Object.assign({}, rr, { archived: !rr.archived }));
+        else if (rb.hasAttribute('data-rdel') && rr && confirm('Delete ' + rr.name + '\'s profile? (To keep it as a former resident instead, use Former resident.)')) google.script.run.withSuccessHandler(gotRes).deleteLiveResident(rid);
+        return;
+      }
+      var b = e.target.closest('[data-play],[data-fav],[data-edit],[data-mv],[data-del],[data-cat],[data-mode],[data-title],[data-retry],[data-stop],[data-resume],#liveOpenProj'); if (!b) return;
+      if (b.id === 'liveOpenProj') { var tp = document.querySelector('#toolsMenu [data-tool="projector"]'); if (tp) tp.click(); setTimeout(drawNow, 800); return; }
+      if (b.hasAttribute('data-fav')) { e.stopPropagation(); var cf = camById(b.getAttribute('data-fav')); if (!cf) return; cf.fav = !cf.fav; drawGrid(); google.script.run.withSuccessHandler(got).setLiveCamFavorite(cf.id, cf.fav); return; }
+      if (b.hasAttribute('data-play')) { var cp = camById(b.getAttribute('data-play')); if (cp) play(cp); return; }
+      if (b.hasAttribute('data-resume')) { var cr = camById(b.getAttribute('data-resume')); if (cr) play(cr); return; }
+      if (b.hasAttribute('data-cat')) { cat = b.getAttribute('data-cat'); drawCats(); drawGrid(); return; }
+      if (b.hasAttribute('data-mode')) { send({ act: 'mode', mode: b.getAttribute('data-mode') }); if (state) state.mode = b.getAttribute('data-mode'); drawNow(); return; }
+      if (b.hasAttribute('data-title')) { send({ act: 'title', show: b.getAttribute('data-title') === '1' }); if (state) state.title = b.getAttribute('data-title') === '1'; drawNow(); return; }
+      if (b.hasAttribute('data-retry')) { send({ act: 'retry' }); return; }
+      if (b.hasAttribute('data-stop')) { send({ act: 'stop' }); state = null; drawAll(); return; }
+      if (b.hasAttribute('data-mv')) { google.script.run.withSuccessHandler(got).moveLiveCam(b.getAttribute('data-id'), +b.getAttribute('data-mv')); return; }
+      if (b.hasAttribute('data-del')) { var cd = camById(b.getAttribute('data-del')); if (cd && confirm('Remove "' + cd.name + '" from your Living Screensavers?')) { cams = cams.filter(function (x) { return x !== cd; }); drawGrid(); google.script.run.withSuccessHandler(got).deleteLiveCam(cd.id); } return; }
+      if (b.hasAttribute('data-edit')) { openForm(camById(b.getAttribute('data-edit'))); return; }
+    });
+    el('liveSearch').addEventListener('input', function () { q = this.value; drawGrid(); });
+    el('resList').addEventListener('change', function (e) { if (e.target.id === 'resFormer') withFormer = e.target.checked; });
+    el('resMode').addEventListener('change', function (e) { if (e.target.id === 'resFormer') withFormer = e.target.checked; });
+    function openResForm(r) {
+      resEditing = r || null; el('resFT').textContent = r ? 'Edit ' + r.name : 'Add a resident to ' + resCam.name;
+      var f = { rfName: 'name', rfSpecies: 'species', rfPhoto: 'photo', rfRec: 'recognize', rfAge: 'age', rfSex: 'sex', rfPers: 'personality', rfFav: 'favorites', rfBg: 'background', rfFacts: 'facts', rfJoined: 'joined', rfVer: 'verified', rfSrc: 'sources' };
+      Object.keys(f).forEach(function (id) { el(id).value = r ? (r[f[id]] || '') : ''; });
+      el('rfShow').checked = r ? r.show : true; el('rfArch').checked = !!(r && r.archived); el('rfFile').value = '';
+      el('resForm').hidden = false; el('rfName').focus();
+    }
+    el('rfCancel').onclick = function () { el('resForm').hidden = true; };
+    el('rfFile').addEventListener('change', function () {
+      var file = this.files && this.files[0]; if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { el('rfPhotoNote').textContent = 'That picture is too big. Use one under 5 MB.'; return; }
+      el('rfPhotoNote').textContent = 'Uploading the photo to your Drive…';
+      var fr = new FileReader(); fr.onload = function () {
+        google.script.run.withSuccessHandler(function (url) { el('rfPhoto').value = url; el('rfPhotoNote').textContent = 'Uploaded. It is saved in the Drive folder "Living Screensavers Residents".'; })
+          .withFailureHandler(function (err) { el('rfPhotoNote').textContent = (err && err.message) || 'Could not upload it.'; }).uploadLiveResidentPhoto(fr.result, el('rfName').value || 'resident');
+      }; fr.readAsDataURL(file);
+    });
+    el('resF').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var r = { id: resEditing ? resEditing.id : '', cam: resCam.id, name: el('rfName').value, species: el('rfSpecies').value, photo: el('rfPhoto').value, recognize: el('rfRec').value, age: el('rfAge').value, sex: el('rfSex').value,
+        personality: el('rfPers').value, favorites: el('rfFav').value, background: el('rfBg').value, facts: el('rfFacts').value, joined: el('rfJoined').value, verified: el('rfVer').value, sources: el('rfSrc').value,
+        show: el('rfShow').checked, archived: el('rfArch').checked, status: resEditing ? resEditing.status : '' };
+      el('rfSave').disabled = true;
+      google.script.run.withSuccessHandler(function (x) { el('rfSave').disabled = false; el('resForm').hidden = true; gotRes(x); })
+        .withFailureHandler(function (err) { el('rfSave').disabled = false; alert((err && err.message) || 'Could not save it.'); }).saveLiveResident(r);
+    });
+    // add / edit: the camera keeps its ID, so a new YouTube link for the same camera is just an edit
+    function openForm(c) {
+      editing = c || null; el('liveFT').textContent = c ? 'Edit ' + c.name : 'Add a camera';
+      el('lfUrl').value = c ? c.url : ''; el('lfName').value = c ? c.name : ''; el('lfAnimal').value = c ? c.animal : ''; el('lfHab').value = c ? c.habitat : ''; el('lfOrg').value = c ? c.org : '';
+      el('lfPage').value = c ? c.page : ''; el('lfAct').value = c && c.activity ? c.activity : 'Calm'; el('lfStatus').value = c ? c.status : ''; el('lfHours').value = c ? c.hours : ''; el('lfTz').value = c ? c.tz : '';
+      el('lfDesc').value = c ? c.desc : ''; el('lfNotes').value = c ? c.notes : ''; el('lfFav').checked = !!(c && c.fav);
+      var have = c ? c.cats : [];
+      el('lfCats').innerHTML = CATS.map(function (k) { return '<label><input type="checkbox" value="' + esc(k) + '"' + (have.indexOf(k) >= 0 ? ' checked' : '') + '> ' + esc(k) + '</label>'; }).join('');
+      el('lfCatMore').value = have.filter(function (k) { return CATS.indexOf(k) < 0; }).join(', ');
+      el('lfLook').textContent = c ? 'Paste the camera’s new link here when its broadcast changes. Everything else stays.' : 'Paste a link and the name, channel and picture fill in by themselves.';
+      el('liveForm').hidden = false; (c ? el('lfName') : el('lfUrl')).focus();
+    }
+    function lookup() {
+      var u = el('lfUrl').value.trim(); if (!u) return;
+      el('lfLook').textContent = 'Looking it up on YouTube…';
+      google.script.run.withSuccessHandler(function (r) {
+        if (!r || (!r.vid && !r.playlist)) { el('lfLook').textContent = 'That doesn’t look like a YouTube video link. Copy the link from the video’s page (it has watch?v= in it).'; return; }
+        if (!r.found) { el('lfLook').textContent = 'YouTube didn’t find that video (it may be private, removed, or the link is incomplete). You can still type the details yourself.'; return; }
+        if (!el('lfName').value && r.title) el('lfName').value = r.title.replace(/\s*\|\s*.*$/, '').replace(/^live[:\s-]*/i, '').slice(0, 120);
+        if (!el('lfOrg').value && r.org) el('lfOrg').value = r.org;
+        el('lfLook').textContent = r.playlist ? 'This is a playlist, not one camera: it will open on YouTube.' : r.embeddable === false ? 'Found, but its owner turned off playing it on other sites: it will open on YouTube instead.' :
+          'Found: ' + (r.title || 'a YouTube video') + '. YouTube’s lookup can’t tell whether it is live; the projector shows that once it plays.';
+        if (r.embeddable === false && !el('lfStatus').value) el('lfStatus').value = 'Embedding is turned off: opens on YouTube';
+        if (r.playlist && !el('lfStatus').value) el('lfStatus').value = 'A playlist, not one camera: opens on YouTube';
+      }).withFailureHandler(function () { el('lfLook').textContent = 'Could not look it up right now. Type the details yourself.'; }).lookupLiveCam(u);
+    }
+    el('lfUrl').addEventListener('change', lookup); el('lfUrl').addEventListener('paste', function () { setTimeout(lookup, 50); });
+    el('lfCancel').onclick = function () { el('liveForm').hidden = true; };
+    el('liveAdd').onclick = function () { openForm(null); };
+    el('liveF').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var cats = Array.prototype.map.call(el('lfCats').querySelectorAll('input:checked'), function (x) { return x.value; }).concat(el('lfCatMore').value.split(',').map(function (x) { return x.trim(); }).filter(String));
+      var c = { id: editing ? editing.id : '', url: el('lfUrl').value, name: el('lfName').value, animal: el('lfAnimal').value, habitat: el('lfHab').value, org: el('lfOrg').value, page: el('lfPage').value,
+        cats: cats, activity: el('lfAct').value, status: el('lfStatus').value, hours: el('lfHours').value, tz: el('lfTz').value, desc: el('lfDesc').value, notes: el('lfNotes').value, fav: el('lfFav').checked, thumb: editing ? editing.thumb : '' };
+      el('lfSave').disabled = true;
+      google.script.run.withSuccessHandler(function (r) { el('lfSave').disabled = false; el('liveForm').hidden = true; got(r); })
+        .withFailureHandler(function (err) { el('lfSave').disabled = false; alert((err && err.message) || 'Could not save it. Try again.'); }).saveLiveCam(c);
+    });
+  })();
+</script>
+<div class="settings-overlay" id="settingsOverlay" hidden>
+  <div class="settings-box">
+    <div class="settings-bar"><b>⚙️ Teacher Settings</b><button type="button" id="settingsOverlayClose" class="settings-x" title="Close (back to the teacher view)">✕ Close</button></div>
+    <div class="settings-wait">Opening Teacher Settings…</div>
+    <iframe id="settingsFrame" title="Teacher Settings"></iframe>
+  </div>
+</div>
+<script>
+  // Teacher Settings closes itself (× or Cancel) by sending a message; the Close button is a backup.
+  (function () {
+    var box = document.getElementById('settingsOverlay'), frame = document.getElementById('settingsFrame');
+    function close() { box.hidden = true; frame.src = 'about:blank'; }
+    window.addEventListener('message', function (e) { if (e.data && e.data.kioskSettings === 'close') close(); });
+    document.getElementById('settingsOverlayClose').onclick = close;
+  })();
+</script>
+<script>
+  // Projector remote: Freeze / Unfreeze the Projector window (Tools > Projector) from here. That window
+  // reports its state; the button shows only while it is open and sharing.
+  (function () {
+    var btn = document.getElementById('projFreeze'), frozen = false;
+    window.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.projector === 'state') {
+        frozen = !!d.frozen; btn.hidden = !d.sharing;
+        btn.classList.toggle('on', frozen);
+        btn.textContent = frozen ? '📽️ FROZEN · ▶ Unfreeze' : '📽️ Live · ❄️ Freeze';
+        if (e.source) window.kioskProjectorWin = e.source;
+      }
+      if (d.projector === 'closed') btn.hidden = true;
+    });
+    btn.onclick = function () {
+      var w = window.kioskProjectorWin;
+      if (!w || w.closed) { btn.hidden = true; alert('The Projector window is closed. Open it again from Tools.'); return; }
+      w.postMessage({ projector: frozen ? 'unfreeze' : 'freeze' }, '*');
+    };
+  })();
+</script>
+<script>
+  // To-do checklist: Now and Later lists, kept on the "To-Do" tab; open ones go in the end-of-day email.
+  (function () {
+    var todos = [];
+    function el(id) { return document.getElementById(id); }
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function group(list) {
+      var items = todos.filter(function (t) { return t.list === list; });
+      items.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });      // checked ones sink to the bottom
+      return '<div class="todo-group"><h3>' + list + '</h3>' + (items.length ? items.map(function (t) {
+        var other = list === 'Now' ? 'Later' : 'Now';
+        return '<div class="todo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" id="td_' + esc(t.id) + '" data-done="' + esc(t.id) + '"' + (t.done ? ' checked' : '') + '>' +
+          '<label for="td_' + esc(t.id) + '">' + esc(t.text) + '</label>' +
+          '<button type="button" data-move="' + esc(t.id) + '" data-to="' + other + '" title="Move to ' + other + '">→ ' + other + '</button>' +
+          '<button type="button" class="del" data-del="' + esc(t.id) + '" title="Delete">✕</button></div>';
+      }).join('') : '<div class="todo-empty">Nothing here.</div>') + '</div>';
+    }
+    function draw() {
+      var open = todos.filter(function (t) { return !t.done; }).length;
+      el('todoCount').textContent = open ? open + ' to do' : '';
+      el('todoBox').innerHTML = group('Now') + group('Later');
+    }
+    function got(r) { todos = r || []; draw(); }
+    function fail() { google.script.run.withSuccessHandler(got).getTodos(); }
+    el('todoForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var text = el('todoText').value.trim(); if (!text) { el('todoText').focus(); return; }
+      el('todoAdd').disabled = true;
+      google.script.run
+        .withSuccessHandler(function (r) { el('todoAdd').disabled = false; el('todoText').value = ''; got(r); el('todoText').focus(); })
+        .withFailureHandler(function (err) { el('todoAdd').disabled = false; alert((err && err.message) || 'Could not add it. Try again.'); })
+        .addTodo(text, el('todoList').value);
+    });
+    el('todoBox').addEventListener('change', function (e) {
+      var id = e.target.getAttribute('data-done'); if (!id) return;
+      var on = e.target.checked;
+      todos.forEach(function (t) { if (t.id === id) t.done = on; }); draw();      // show it right away
+      google.script.run.withSuccessHandler(got).withFailureHandler(fail).setTodoDone(id, on);
+    });
+    el('todoBox').addEventListener('click', function (e) {
+      var m = e.target.closest('[data-move]'), d = e.target.closest('[data-del]');
+      if (m) {
+        var id = m.getAttribute('data-move'), to = m.getAttribute('data-to');
+        todos.forEach(function (t) { if (t.id === id) t.list = to; }); draw();
+        google.script.run.withSuccessHandler(got).withFailureHandler(fail).moveTodo(id, to);
+      }
+      if (d) {
+        if (!confirm('Delete this reminder?')) return;
+        var did = d.getAttribute('data-del');
+        todos = todos.filter(function (t) { return t.id !== did; }); draw();
+        google.script.run.withSuccessHandler(got).withFailureHandler(fail).deleteTodo(did);
+      }
+    });
+    google.script.run.withSuccessHandler(got).getTodos();
+  })();
+</script>
+<script>
+  // Class memories: type a funny moment, it is kept on the "Class Memories" tab with the date and class.
+  (function () {
+    var list = [], showAll = false;
+    function el(id) { return document.getElementById(id); }
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function draw() {
+      var shown = showAll ? list : list.slice(0, 5);
+      el('memCount').textContent = list.length ? list.length + (list.length === 1 ? ' memory' : ' memories') : '';
+      el('memList').innerHTML = shown.map(function (m) {
+        return '<div class="mem-item"><p>' + esc(m.text) + '</p><small>' + esc(m.when) + (m.cls ? ' · ' + esc(m.cls) : '') + '</small>' +
+          '<button type="button" data-mem="' + esc(m.id) + '" title="Delete this memory">✕</button></div>';
+      }).join('');
+      var more = el('memMore');
+      more.hidden = list.length <= 5;
+      more.textContent = showAll ? 'Show fewer' : 'Show all ' + list.length;
+    }
+    function got(r) { list = r || []; draw(); }
+    el('memMore').onclick = function () { showAll = !showAll; draw(); };
+    el('memForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var text = el('memText').value.trim();
+      if (!text) { el('memText').focus(); return; }
+      var cls = (el('nowClass').textContent || '').trim();
+      el('memSave').disabled = true; el('memMsg').textContent = 'Saving…';
+      google.script.run
+        .withSuccessHandler(function (r) { el('memSave').disabled = false; el('memText').value = ''; el('memMsg').textContent = 'Saved 😄'; got(r); setTimeout(function () { el('memMsg').textContent = ''; }, 3000); })
+        .withFailureHandler(function (err) { el('memSave').disabled = false; el('memMsg').textContent = (err && err.message) || 'Could not save. Try again.'; })
+        .saveClassMemory(text, cls);
+    });
+    el('memList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mem]'); if (!b) return;
+      if (!confirm('Delete this memory? This cannot be undone.')) return;
+      google.script.run.withSuccessHandler(got).deleteClassMemory(b.getAttribute('data-mem'));
+    });
+    google.script.run.withSuccessHandler(got).getClassMemories();
+  })();
+</script>
+<script>
+  // The Colors choice, for the pages this view opens (Seating charts, Tools, Settings).
+  function kioskThemeQ() {
+    var t = document.documentElement.getAttribute('data-theme') || 'auto';
+    return '&theme=' + encodeURIComponent(t);
+  }
+</script>
+<script>
+  // Colors picker: remembered on this computer ("auto" follows light/dark mode).
+  (function () {
+    var pick = document.getElementById('themePick');
+    var saved = 'auto';
+    try { saved = localStorage.getItem('teacherViewTheme') || 'auto'; } catch (e) {}
+    function apply(v) {
+      if (v === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', v);
+    }
+    apply(saved);
+    if (pick) {
+      pick.value = saved;
+      pick.addEventListener('change', function () {
+        apply(pick.value);
+        try { localStorage.setItem('teacherViewTheme', pick.value); } catch (e) {}
+      });
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Drill view: who is here and who is out, readable on a phone in a hurry. */
+  :root { --here: #1f7a3a; --out: #b45309; --gone: #b91c1c; --ink: #111827; --muted: #4b5563; --line: #e5e7eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #f9fafb; }
+  header { position: sticky; top: 0; background: #111827; color: #fff; padding: 12px 16px; z-index: 2; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .sub { margin-top: 2px; font-size: 14px; opacity: .85; }
+  select { margin-top: 8px; width: 100%; font-size: 17px; padding: 8px; border-radius: 8px; border: 0; }
+  .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 4px; }
+  .count { background: #fff; border-radius: 12px; padding: 10px 6px; text-align: center; border: 2px solid var(--line); }
+  .count b { display: block; font-size: 36px; line-height: 1.05; }
+  .count span { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .count.here b { color: var(--here); } .count.out b { color: var(--out); } .count.gone b { color: var(--gone); }
+  section { margin: 12px 16px; background: #fff; border-radius: 12px; border: 2px solid var(--line); overflow: hidden; }
+  section h2 { margin: 0; padding: 10px 14px; font-size: 17px; color: #fff; }
+  section.out h2 { background: var(--out); } section.gone h2 { background: var(--gone); } section.here h2 { background: var(--here); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 11px 14px; border-top: 1px solid var(--line); font-size: 18px; display: flex; justify-content: space-between; gap: 10px; }
+  li:first-child { border-top: 0; }
+  li small { color: var(--muted); font-size: 15px; text-align: right; }
+  .empty { padding: 11px 14px; color: var(--muted); font-size: 16px; }
+  .sync { text-align: center; color: var(--muted); font-size: 13px; padding: 4px 16px 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚨 Drill view</h1>
+  <div class="sub" id="sub">Loading…</div>
+  <select id="pick" aria-label="Class"></select>
+</header>
+
+<div class="counts">
+  <div class="count here"><b id="nHere">–</b><span>Here</span></div>
+  <div class="count out"><b id="nOut">–</b><span>Out of room</span></div>
+  <div class="count gone"><b id="nGone">–</b><span>Not here</span></div>
+</div>
+
+<section class="out"><h2>Out of the room right now</h2><ul id="outList"></ul></section>
+<section class="gone"><h2>Not here (never checked in)</h2><ul id="goneList"></ul></section>
+<section class="here"><h2>Here</h2><ul id="hereList"></ul></section>
+<div class="sync" id="sync"></div>
+
+<script>
+(function () {
+  var classKey = '';            // '' = the class in session (bell schedule)
+  var data = null, lastGood = 0, offset = 0, busy = false;
+
+  function el(id) { return document.getElementById(id); }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fill(id, rows, emptyText) {
+    el(id).innerHTML = rows.length ? rows.join('') : '<li class="empty">' + esc(emptyText) + '</li>';
+  }
+  function mins(ms) { return Math.max(0, Math.floor((Date.now() + offset - ms) / 60000)); }
+
+  function draw() {
+    if (!data) return;
+    var students = data.students || [];
+    var passes = data.passes || [];
+    var outNames = {};
+    passes.forEach(function (p) { outNames[String(p.name || '').toLowerCase()] = true; });
+
+    var here = [], gone = [];
+    students.forEach(function (s) {
+      var full = String(s.fullName || s.firstName || '');
+      if (outNames[full.toLowerCase()]) return;   // listed under "out"
+      if (s.kind === 'absent') gone.push(full); else here.push(full);
+    });
+    here.sort(); gone.sort();
+
+    var out = passes.slice().sort(function (a, b) { return a.timeOutMs - b.timeOutMs; }).map(function (p) {
+      return '<li><span>' + esc(p.name) + '</span><small>' + esc(p.destination) + '<br>' + mins(p.timeOutMs) + ' min</small></li>';
+    });
+
+    el('nHere').textContent = here.length;
+    el('nOut').textContent = passes.length;
+    el('nGone').textContent = gone.length;
+    fill('outList', out, 'No one is out.');
+    fill('goneList', gone.map(function (n) { return '<li>' + esc(n) + '</li>'; }),
+      data.selected ? 'Everyone has checked in.' : 'Choose a class above.');
+    fill('hereList', here.map(function (n) { return '<li>' + esc(n) + '</li>'; }),
+      data.selected ? 'No one has checked in yet.' : 'Choose a class above.');
+
+    var sel = data.selected;
+    el('sub').textContent = sel ? (sel.label || (sel.period + ' ' + sel.classTitle)) + (sel.live ? ' · in session now' : '') :
+      'No class in session — choose one';
+  }
+
+  function drawPicker() {
+    var pick = el('pick');
+    var html = '<option value="">Class in session now</option>';
+    (data.classes || []).forEach(function (c) {
+      html += '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>';
+    });
+    if (pick.innerHTML !== html) pick.innerHTML = html;
+    pick.value = classKey;
+  }
+
+  function refresh() {
+    if (busy) return;
+    busy = true;
+    var asked = classKey;
+    google.script.run
+      .withSuccessHandler(function (result) {
+        busy = false;
+        if (asked !== classKey) { refresh(); return; }
+        if (!result || !result.success) return;
+        data = result; lastGood = Date.now();
+        offset = Number(result.nowMs || Date.now()) - Date.now();
+        drawPicker(); draw(); sync();
+      })
+      .withFailureHandler(function () { busy = false; sync(); })
+      .getTeacherDashboard({ classKey: classKey });
+  }
+
+  function sync() {
+    el('sync').textContent = lastGood
+      ? 'Updated ' + Math.round((Date.now() - lastGood) / 1000) + ' s ago · refreshes every 10 s'
+      : 'Connecting…';
+  }
+
+  el('pick').addEventListener('change', function () { classKey = this.value; refresh(); });
+  setInterval(function () { draw(); sync(); }, 1000);
+  setInterval(function () { if (!document.hidden) refresh(); }, 10000);
+  refresh();
+})();
+</script>
+</body>
+</html>

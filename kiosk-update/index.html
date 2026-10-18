@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Update Your Kiosk</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* "Update your kiosk": built into asl-study-hall-site/kiosk-update/ by checkin/dev/build-update-page.py.
+   Layout: one reading column; the release picker, then the numbered steps with one card per file to paste. */
+:root {
+  --bg: #f4f6f3; --paper: #ffffff; --ink: #1d2a24; --muted: #5b6b63; --line: #d9e1dc;
+  --pass: #f2c230; --pass-ink: #2b2200; --board: #24453a; --board-soft: #e3ece7; --good: #1f7a4d; --good-soft: #def2e6;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121916; --paper: #1a2420; --ink: #e9f0ec; --muted: #9db0a6; --line: #2d3b35;
+  --board: #8fd1b4; --board-soft: #203029; --good: #7fdcaa; --good-soft: #1d3328; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121916; --paper: #1a2420; --ink: #e9f0ec; --muted: #9db0a6; --line: #2d3b35;
+  --board: #8fd1b4; --board-soft: #203029; --good: #7fdcaa; --good-soft: #1d3328; color-scheme: dark }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 17px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font: 800 clamp(30px, 6vw, 42px)/1.05 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 700 21px/1.25 var(--display); margin: 0; }
+.lede { margin: 6px 0 0; color: var(--muted); }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.pick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+select { font: 700 16px var(--body); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.status { border-radius: 12px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: var(--good-soft); color: var(--good); }
+.status.todo { background: var(--board-soft); color: var(--board); }
+ol.steps { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 14px; }
+ol.steps > li { padding-left: 4px; }
+ol.steps > li > b:first-child { font-family: var(--display); font-size: 18px; }
+.menu { font-weight: 700; white-space: nowrap; }
+code { font: 500 14.5px var(--mono); background: var(--board-soft); border-radius: 6px; padding: 1px 6px; }
+.files { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.file { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--paper); }
+.file.done { opacity: .6; }
+.file input { width: 22px; height: 22px; accent-color: var(--good); }
+.file b { font: 700 16px var(--mono); }
+.file small { grid-column: 2; color: var(--muted); }
+.file .btns { grid-row: 1 / span 2; grid-column: 3; display: flex; gap: 6px; }
+button.copy { font: 700 15px var(--body); border: 0; border-radius: 10px; padding: 9px 14px; background: var(--pass); color: var(--pass-ink); cursor: pointer; white-space: nowrap; }
+button.copy.copied { background: var(--good); color: #fff; }
+a.raw { font: 700 13px var(--body); color: var(--muted); align-self: center; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--pass); outline-offset: 2px; }
+.note { color: var(--muted); font-size: 15px; margin: 0; }
+.new { margin: 0; padding-left: 20px; } .new li { margin: 3px 0; }
+.rel { font-weight: 700; color: var(--muted); font-size: 14px; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
+@media (max-width: 520px) { .file { grid-template-columns: auto 1fr; } .file .btns { grid-row: auto; grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Update Your Kiosk</h1>
+    <p class="lede">Get the newest Hall Pass Kiosk in your own Sheet. You keep your link, students, photos, settings and history. About 5 minutes.</p>
+  </header>
+
+  <section class="card">
+    <h2>Which release do you have?</h2>
+    <p class="note">Look at the top of your teacher view, next to "Updated … ago". It says <i>Release 1 · check for updates</i>, for example. That link opens this page already set.</p>
+    <div class="pick"><label for="have"><b>My teacher view shows:</b></label> <select id="have"></select></div>
+    <div class="status" id="status">Loading…</div>
+    <div id="whatsnew"></div>
+  </section>
+
+  <section class="card" id="how">
+    <h2>Update in 5 steps</h2>
+    <ol class="steps">
+      <li><b>Open your code.</b> Open your kiosk Sheet, then <span class="menu">Extensions › Apps Script</span>. Your files are listed on the left (Code.gs, Index.html, …).</li>
+      <li><b>Paste each file below.</b> For each one: click <b>Copy</b> here, then in Apps Script click that file's name on the left, click anywhere in the code, press <b>Ctrl+A</b> (⌘+A on a Mac) to select it all, and <b>Ctrl+V</b> (⌘+V) to paste over it. Tick the box here when it's done.
+        <div class="files" id="files"></div>
+        <p class="note" id="newfile" hidden>A file isn't in your list? Click <b>+</b> next to <i>Files</i>, choose <b>HTML</b>, type its name without ".html" (for example <code>Tools</code>), press Enter, then paste.</p>
+        <p class="note" id="manifest" hidden><b>appsscript.json</b> is hidden at first: click the ⚙️ <span class="menu">Project Settings</span> gear on the far left, tick <i>Show "appsscript.json" manifest file in editor</i>, then go back to <span class="menu">‹› Editor</span> and you'll see it.</p>
+      </li>
+      <li><b>Save.</b> Press <b>Ctrl+S</b> (⌘+S), or click the 💾 save icon above the code.</li>
+      <li><b>Turn on the new parts.</b> In the menu next to <span class="menu">▷ Run</span>, choose <code>setUpMyKiosk</code> and click <span class="menu">▷ Run</span>. If Google asks for permission again, allow it (the same way as when you set it up).</li>
+      <li><b>Publish the new version.</b> Click <span class="menu">Deploy › Manage deployments</span>, click the ✏️ pencil, open <b>Version</b> and choose <b>New version</b>, then click <span class="menu">Deploy</span>. Your kiosk link stays exactly the same.</li>
+    </ol>
+    <p class="note">Then reload the kiosk and your teacher view. The teacher view shows the new release number.</p>
+  </section>
+
+  <p class="note">Questions? Ask Colleen.</p>
+</div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search), sel = document.getElementById('have');
+  var data = null, texts = {}, done = {};
+  try { done = JSON.parse(localStorage.getItem('kioskUpdateDone') || '{}') || {}; } catch (e) {}
+  var kb = function (n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
+  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  fetch('releases.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+    data = d;
+    var opts = '<option value="0">No release number (an older copy)</option>';
+    d.releases.slice().reverse().forEach(function (r) { opts += '<option value="' + r.release + '">Release ' + r.release + '</option>'; });
+    sel.innerHTML = opts;
+    var have = Number(params.get('have'));
+    sel.value = d.releases.some(function (r) { return r.release === have; }) ? String(have) : (params.get('have') ? '0' : String(d.newest));
+    if (!params.get('have')) sel.value = '0';
+    paint();
+  }).catch(function () { document.getElementById('status').textContent = 'The update list could not load. Reload the page.'; });
+
+  sel.addEventListener('change', paint);
+
+  function needed(have) {
+    if (!have) return Object.keys(data.sizes);                // no number: an older copy, so every file
+    var set = {};
+    data.releases.forEach(function (r) { if (r.release > have) r.changed.forEach(function (f) { set[f] = true; }); });
+    return Object.keys(data.sizes).filter(function (f) { return set[f]; });
+  }
+
+  function paint() {
+    var have = Number(sel.value), list = needed(have), st = document.getElementById('status');
+    var newer = data.releases.filter(function (r) { return r.release > have; });
+    document.getElementById('how').hidden = !list.length;
+    if (!list.length) {
+      st.className = 'status ok'; st.textContent = '✓ You have the newest release (' + data.newest + '). Nothing to update.';
+    } else {
+      st.className = 'status todo';
+      st.textContent = have ? 'Release ' + data.newest + ' is out. Paste ' + list.length + (list.length === 1 ? ' file' : ' files') + ' below.'
+                            : 'Paste all ' + list.length + ' files below (your copy is from before release numbers).';
+    }
+    document.getElementById('whatsnew').innerHTML = newer.length ? newer.slice().reverse().map(function (r) {
+      return '<div class="rel">Release ' + r.release + ' · ' + esc(r.date) + '</div><ul class="new">' + r.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>';
+    }).join('') : '';
+    document.getElementById('manifest').hidden = list.indexOf('appsscript.json') < 0;
+    document.getElementById('newfile').hidden = !list.length;
+    var key = function (f) { return data.newest + ':' + f; };
+    document.getElementById('files').innerHTML = list.map(function (f, i) {
+      return '<div class="file' + (done[key(f)] ? ' done' : '') + '"><input type="checkbox" id="f' + i + '" data-f="' + esc(f) + '"' + (done[key(f)] ? ' checked' : '') + ' aria-label="' + esc(f) + ' pasted">' +
+        '<b>' + esc(f) + '</b><small>' + kb(data.sizes[f]) + (f === 'Code.gs' ? ' · the server code' : '') + '</small>' +
+        '<span class="btns"><button class="copy" type="button" data-copy="' + esc(f) + '">Copy</button>' +
+        '<a class="raw" href="files/' + encodeURIComponent(f) + '.txt" target="_blank" rel="noopener">open</a></span></div>';
+    }).join('');
+    list.forEach(function (f) {      // fetch now, so Copy is instant when clicked
+      if (texts[f]) return;
+      fetch('files/' + encodeURIComponent(f) + '.txt', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) { texts[f] = t; });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.file input'), function (box) {
+      box.addEventListener('change', function () {
+        done[key(box.dataset.f)] = box.checked; box.closest('.file').classList.toggle('done', box.checked);
+        try { localStorage.setItem('kioskUpdateDone', JSON.stringify(done)); } catch (e) {}
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('button.copy'), function (btn) {
+      btn.addEventListener('click', function () {
+        var f = btn.dataset.copy, t = texts[f];
+        if (!t) { btn.textContent = 'Loading… try again'; return; }
+        navigator.clipboard.writeText(t).then(function () {
+          btn.textContent = 'Copied ✓'; btn.classList.add('copied');
+          setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2500);
+        }, function () { btn.textContent = 'Use "open" →'; });
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

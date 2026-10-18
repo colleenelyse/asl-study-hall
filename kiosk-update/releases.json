@@ -1,0 +1,32 @@
+{
+ "newest": 1,
+ "releases": [
+  {
+   "release": 1,
+   "date": "2026-10-17",
+   "notes": [
+    "First release with a release number in the teacher view, and this Update page."
+   ],
+   "changed": [
+    "Code.gs",
+    "Index.html",
+    "Dashboard.html",
+    "Seating.html",
+    "Tools.html",
+    "Drill.html",
+    "Artwork.html",
+    "appsscript.json"
+   ]
+  }
+ ],
+ "sizes": {
+  "Code.gs": 398635,
+  "Index.html": 1155680,
+  "Dashboard.html": 103521,
+  "Seating.html": 263180,
+  "Tools.html": 231169,
+  "Drill.html": 6241,
+  "Artwork.html": 1333956,
+  "appsscript.json": 207
+ }
+}
