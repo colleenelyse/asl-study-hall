@@ -34,7 +34,18 @@
   #bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 20; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     padding: 8px; border-radius: 14px; background: var(--bar); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.4);
     transition: opacity .25s; max-width: calc(100vw - 24px); }
-  body.idle #bar { opacity: 0; pointer-events: none; }
+  body.idle #bar, body.idle #camMenu { opacity: 0; pointer-events: none; }
+  #camMenu { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 21; width: min(560px, calc(100vw - 32px)); max-height: 60vh; overflow: auto;
+    background: rgba(20,22,36,.96); color: #f5f7fb; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.5); transition: opacity .3s; }
+  #camMenu h3 { margin: 0 0 8px; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+  #camMenu .cams { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  #camMenu .cam { font: inherit; text-align: left; color: inherit; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 6px; cursor: pointer; }
+  #camMenu .cam:hover, #camMenu .cam.on { border-color: #7FA2FF; background: rgba(127,162,255,.18); }
+  #camMenu .cam img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; display: block; background: #000; }
+  #camMenu .cam b { display: block; font-size: 13px; margin-top: 4px; line-height: 1.2; }
+  #camMenu .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  #camMenu .row button, #camMenu h3 button { font: inherit; font-size: 13px; font-weight: 700; color: inherit; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  #camMenu p { margin: 4px 0; font-size: 14px; opacity: .85; }
   #bar button { font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.07); border: 1px solid var(--line);
     border-radius: 10px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
   #bar button:hover { background: rgba(255,255,255,.14); }
@@ -111,6 +122,7 @@
 <div id="res" hidden><button type="button" class="x" id="resX">✕ Back to the camera</button><div id="resBody"></div></div>
 <div id="frozenTag">❄️ Frozen: students see this picture</div>
 
+<div id="camMenu" hidden></div>
 <div id="bar" hidden>
   <button id="freezeBtn" type="button" title="Freeze (F)">❄️ Freeze</button>
   <span class="sep"></span>
@@ -119,6 +131,8 @@
   <button type="button" data-add="timeleft">⏳ Time left</button>
   <button type="button" data-add="passboard">🎫 Hall passes</button>
   <button type="button" data-add="noise">🔊 Noise meter</button>
+  <button type="button" data-add="pip" title="Pip listens to the room and cheers quiet working">🐣 Pip</button>
+  <button type="button" id="camBtn" title="Your Living Screensavers">🐠 Animal cam</button>
   <button type="button" data-add="seating">🪑 Seating chart</button>
   <span class="sep"></span>
   <button id="miniBtn" type="button" title="A small Freeze button that stays on top of every window">🎛️ Mini control</button>
@@ -156,6 +170,7 @@
     timeleft: { name: 'Time left', w: 26, h: 26, x: 2, y: 2, src: function () { return KIOSK + '?view=tools&tool=timeleft&theme=' + THEME; } },
     seating: { name: 'Seating chart', w: 46, h: 58, x: 27, y: 38, src: function () { return KIOSK + '?view=seat&theme=' + THEME; } },
     noise: { name: 'Noise meter', w: 34, h: 30, x: 33, y: 2, allow: 'microphone', src: function () { return 'noise.html?theme=' + THEME; } },
+    pip: { name: 'Pip', w: 40, h: 52, x: 58, y: 4, allow: 'microphone', src: function () { return 'https:' + '//colleenelyse.github.io/study-hall-sayit/class.html'; } },      /* the class sidekick: quiet minutes make Pip happy (no rewards here: those need ASL Study) */
     passboard: { name: 'Hall passes', w: 30, h: 40, x: 2, y: 40, src: function () { return KIOSK + '?view=tools&tool=passboard&theme=' + THEME; } }
   };
   if (!BELL) document.querySelector('[data-add="bell"]').hidden = true;
@@ -265,18 +280,32 @@
     mini.document.getElementById('ms').textContent = preview ? (frozen ? 'Preview: frozen' : 'Preview') : !stream ? 'Not sharing' : frozen ? 'Students see the frozen picture' : 'Students see your screen live';
   }
   var miniBtn = document.getElementById('miniBtn');
-  if (!('documentPictureInPicture' in window)) miniBtn.hidden = true;
+  /* the Mini control: a small always-on-top window (Chrome's picture-in-picture for pages). It opens in a corner of THIS screen, so the
+     note says where; when Chrome refuses (Colleen, 2026-10-17: "doesn't seem to do anything"), a plain small window opens instead. */
+  function miniFill(w, onTop) {
+    mini = w;
+    w.document.title = 'Mini control';
+    w.document.body.innerHTML = '<style>body{margin:0;height:100vh;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#12151c;color:#f5f7fb;font:600 13px system-ui,sans-serif;text-align:center}' +
+      'button{font:800 20px system-ui,sans-serif;padding:10px 18px;border-radius:12px;border:0;background:#2b3245;color:#f5f7fb;cursor:pointer;width:88%}button.on{background:#7dd3fc;color:#062030}</style>' +
+      '<button id="mb" type="button"></button><div id="ms"></div>';
+    w.document.getElementById('mb').onclick = function () { if (stream || preview) toggleFreeze(); };
+    w.addEventListener('pagehide', function () { if (mini === w) mini = null; });
+    paintMini();
+    toast(onTop ? 'The Mini control opened in a corner of this screen. Drag it onto your own monitor: it stays on top of every window there.' : 'The Mini control opened as a small window. Drag it onto your own monitor and keep it where you can see it.');
+  }
+  function toast(t) {      /* a note over the picture (the start card's message line is hidden while sharing) */
+    var n = document.getElementById('toast'); if (!n) { n = document.createElement('div'); n.id = 'toast'; n.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100vw - 32px));background:rgba(20,22,36,.96);color:#f5f7fb;border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:12px 16px;font:700 15px/1.4 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5)'; document.body.appendChild(n); }
+    n.textContent = t; n.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { n.hidden = true; }, 9000);
+  }
+  function miniPlain() {
+    var w = window.open('', 'projectorMini', 'popup=yes,width=260,height=150');
+    if (!w) { toast('The Mini control was blocked. Allow pop-ups for this page (the icon at the right end of the address bar), then press Mini control again.'); return; }
+    try { miniFill(w, false); w.focus(); } catch (e) {}
+  }
   miniBtn.onclick = function () {
-    if (mini) { mini.focus(); return; }
-    window.documentPictureInPicture.requestWindow({ width: 240, height: 120 }).then(function (w) {
-      mini = w;
-      w.document.body.innerHTML = '<style>body{margin:0;height:100vh;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#12151c;color:#f5f7fb;font:600 13px system-ui,sans-serif;text-align:center}' +
-        'button{font:800 20px system-ui,sans-serif;padding:10px 18px;border-radius:12px;border:0;background:#2b3245;color:#f5f7fb;cursor:pointer;width:88%}button.on{background:#7dd3fc;color:#062030}</style>' +
-        '<button id="mb" type="button"></button><div id="ms"></div>';
-      w.document.getElementById('mb').onclick = function () { if (stream || preview) toggleFreeze(); };
-      w.addEventListener('pagehide', function () { mini = null; });
-      paintMini();
-    }).catch(function () {});
+    if (mini && !mini.closed) { mini.focus(); return; }
+    if (!('documentPictureInPicture' in window)) return miniPlain();
+    window.documentPictureInPicture.requestWindow({ width: 240, height: 120 }).then(function (w) { miniFill(w, true); }).catch(miniPlain);
   };
   document.getElementById('freezeBtn').onclick = toggleFreeze;
   document.addEventListener('keydown', function (e) {
@@ -395,9 +424,39 @@
     else if (d.act === 'mode') { LIVE.mode = d.mode === 'full' ? 'full' : 'box'; liveSave(); livePaint(); liveTell(); }
     else if (d.act === 'title') { LIVE.title = !!d.show; liveSave(); livePaint(); liveTell(); }
     else if (d.act === 'retry' && LIVE.cam) livePlay(LIVE.cam);
+    else if (d.act === 'list') { camList = (Array.isArray(d.cams) ? d.cams : []).filter(function (c) { return c && /^[\w-]{11}$/.test(c.vid || ''); }).slice(0, 60); camMenuDraw(); }
     else liveTell();
   });
   setInterval(liveTell, 5000);
+  /* 🐠 Animal cam on the bar (Colleen, 2026-10-17: "more options" here): choose from the Living Screensavers saved in the teacher view,
+     which sends its list when asked ({ projector: 'live', act: 'list?' } -> { act: 'list', cams }). Without the teacher view: the last camera. */
+  var camList = null, camAsked = 0, camMenu = document.getElementById('camMenu');
+  function camEsc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function camMenuDraw() {
+    if (camMenu.hidden) return;
+    var last = null; try { last = (JSON.parse(localStorage.getItem('projectorLive') || '{}') || {}).last; } catch (e) {}
+    var list = camList && camList.length ? camList : (last && last.vid ? [last] : []), on = LIVE.cam && LIVE.cam.id;
+    var h = '<h3>🐠 Animal cam <button type="button" data-cm="close">✕ Close</button></h3>';
+    if (!camList && window.opener && Date.now() - camAsked < 4000) h += '<p>Getting your cameras from the teacher view…</p>';
+    else if (!camList || !camList.length) h += '<p>' + (window.opener ? 'No cameras that play here yet. Add them in the teacher view: 🧰 Tools > 🐠 Living Screensavers.' : 'To choose from all your cameras, open this window from the teacher view: 🧰 Tools > 📽️ Projector.') + '</p>';
+    if (list.length) h += '<div class="cams">' + list.map(function (c, i) { return '<button type="button" class="cam' + (c.id && c.id === on ? ' on' : '') + '" data-ci="' + i + '"><img alt="" src="https:' + '//i.ytimg.com/vi/' + c.vid + '/mqdefault.jpg"><b>' + (c.fav ? '⭐ ' : '') + camEsc(c.name || 'Camera') + '</b></button>'; }).join('') + '</div>';
+    h += '<div class="row">' + (LIVE.cam ? '<button type="button" data-cm="stop">■ Stop the camera</button><button type="button" data-cm="mode">' + (LIVE.mode === 'full' ? '▣ Make it a box' : '⛶ Fill the screen') + '</button>' : '') + '</div>';
+    camMenu.innerHTML = h;
+    camMenu.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.hasAttribute('data-ci')) { livePlay(list[+b.getAttribute('data-ci')]); camMenu.hidden = true; return; }
+      var a = b.getAttribute('data-cm');
+      if (a === 'close') camMenu.hidden = true;
+      else if (a === 'stop') { liveStop(); camMenuDraw(); }
+      else if (a === 'mode') { LIVE.mode = LIVE.mode === 'full' ? 'box' : 'full'; liveSave(); livePaint(); liveTell(); camMenuDraw(); }
+    };
+  }
+  document.getElementById('camBtn').onclick = function () {
+    if (!camMenu.hidden) { camMenu.hidden = true; return; }
+    camMenu.hidden = false; camList = null; camMenu.style.bottom = (document.getElementById('bar').offsetHeight + 30) + 'px';
+    try { if (window.opener) { window.opener.postMessage({ projector: 'live', act: 'list?' }, '*'); camAsked = Date.now(); setTimeout(camMenuDraw, 4100); } } catch (e) {}
+    camMenuDraw();
+  };
   document.addEventListener('visibilitychange', function () { if (!document.hidden && LIVE.player && LIVE.ready && LIVE.status === 'playing') try { LIVE.player.playVideo(); } catch (e) {} });      /* back to the window: keep it going */
   livePaint();
 
