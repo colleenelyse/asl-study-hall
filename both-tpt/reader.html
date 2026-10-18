@@ -70,6 +70,27 @@
   .rd-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .rd-keys button { padding: 10px 0; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: 700 18px var(--display); cursor: pointer; } .rd-keys .eq { grid-column: span 2; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   body.gaming #rd-mode, body.gaming #rd-hint, body.gaming label:has(#rd-hint), body.gaming #rd-skip, body.gaming #rd-prev, body.gaming #rd-rand, body.gaming .rd-teach, body.gaming #rd-showbox, body.gaming #rd-mix, body.gaming #rd-numset, body.gaming #rd-wordset, body.gaming #rd-shownum, body.gaming #rd-after { display: none !important; }      /* no helps during a game */
   body.gamestab:not(.gaming) .rd-letter, body.gamestab:not(.gaming) #rd-ask, body.gamestab:not(.gaming) .rd-bar, body.gamestab:not(.gaming) label:has(#rd-hint), body.gamestab:not(.gaming) #rd-skip, body.gamestab:not(.gaming) #rd-prev, body.gamestab:not(.gaming) #rd-rand, body.gamestab:not(.gaming) #rd-showbox, body.gamestab:not(.gaming) .rd-teach { display: none !important; }      /* the game list on its own */
+  /* choose, then sign (2026-10-17): the picture and the answer choices sit above the camera */
+  .rd-gpic { flex-basis: 100%; display: flex; justify-content: center; } .rd-gpic .rd-pic { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .rd-gpic .rd-pic img, .rd-gpic .rd-pic svg { max-height: 220px; max-width: min(320px, 80vw); border-radius: 16px; display: block; } .rd-gpic .rd-pic b { font: 700 20px var(--display); text-align: center; }
+  .rd-hilo { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 26px var(--display); } .rd-hilo small { font: 600 15px var(--body, inherit); color: var(--muted); }
+  .rd-gchoose { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; } .rd-gpicks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .rd-gpicks .btn { font-size: 22px; min-width: 120px; } .rd-gtype { font: 700 18px var(--display); display: flex; align-items: center; gap: 8px; } .rd-gtype input { font: 700 24px var(--display); width: 130px; padding: 6px 10px; border-radius: 12px; border: 2px solid var(--line, #ccc); }
+  .rd-gsay { font: 700 22px var(--display); text-align: center; padding: 6px 10px; } .rd-gchoose .rd-small { flex-basis: 100%; text-align: center; margin: 0; }
+  /* the letter games (2026-10-17) */
+  .rd-scram { display: flex; gap: 8px; } .rd-scram i { font: 700 40px var(--display); font-style: normal; width: 56px; height: 64px; display: grid; place-items: center; border-radius: 12px; background: var(--surface2, #eef); box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  .rd-chain { font: 700 24px var(--display); text-align: center; } .rd-chain .last { color: var(--accent); }
+  .rd-rain { position: relative; width: min(560px, 90vw); height: 240px; border-radius: 16px; overflow: hidden; background: linear-gradient(#cfe6ff, #eef6ff); }
+  .rd-rain i { position: absolute; top: 0; transform: translateX(-50%); font: 700 34px var(--display); font-style: normal; color: #1b3a6b; background: #fff; border-radius: 50%; width: 52px; height: 52px; display: grid; place-items: center; box-shadow: 0 3px 8px rgba(0,0,0,.18); transition: transform .25s, opacity .3s; }
+  .rd-rain i.pop { transform: translateX(-50%) scale(1.6); opacity: 0; } .rd-rain i.splat { background: #ffd6d6; opacity: 0; }
+  .rd-whack { display: grid; grid-template-columns: repeat(3, 96px); gap: 10px; } .rd-whack .hole { height: 84px; border-radius: 50% 50% 18px 18px; background: #7a5a3a; position: relative; overflow: hidden; }
+  .rd-whack .hole span { position: absolute; left: 50%; bottom: -70px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; background: #b98b5e; color: #fff; font: 700 32px var(--display); display: grid; place-items: center; transition: bottom .18s; }
+  .rd-whack .hole.up span { bottom: 8px; } .rd-whack .hole.bonk span { background: #f5b400; }
+  .rd-race { position: relative; width: min(560px, 90vw); display: flex; flex-direction: column; gap: 8px; padding-right: 40px; } .rd-race .lane { position: relative; height: 46px; border-radius: 12px; background: #3b3f4a; }
+  .rd-race .lane.ghost { opacity: .55; } .rd-race .car { position: absolute; left: 0; top: 4px; font-size: 34px; transition: left .25s; transform: scaleX(-1); } .rd-race .finish { position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 34px; }
+  .rd-boss { display: flex; flex-direction: column; align-items: center; gap: 6px; } .rd-boss .b { font-size: 96px; line-height: 1; } .rd-boss.hurt .b { animation: rdshake .4s; }
+  .rd-boss .hp { width: 260px; height: 16px; border-radius: 999px; background: #ddd; overflow: hidden; } .rd-boss .hp i { display: block; height: 100%; background: #e5484d; transition: width .3s; } .rd-boss small { color: var(--muted); font-weight: 700; }
+  @keyframes rdshake { 25% { transform: translateX(-10px) rotate(-6deg); } 75% { transform: translateX(10px) rotate(6deg); } }
 </style>
 </head>
 <body>
@@ -80,7 +101,7 @@
   <div class="rd-safe" role="note"><span aria-hidden="true">🔒</span><div><b>Your camera is private.</b> The camera only watches your hand while you practice. <b>Nothing is recorded.</b> No videos or pictures are saved or sent anywhere, and nobody else can see your camera. <span id="rd-safe-more">The only thing kept is your score: which letters you signed.</span></div></div>
   <div class="rd-grid">
     <div>
-      <div class="rd-prompt" id="rd-prompt" hidden><div class="rd-ghead" id="rd-ghead" hidden></div><div class="rd-gmodel" id="rd-gmodel" hidden></div><span class="lab">Spell this word</span></div>
+      <div class="rd-prompt" id="rd-prompt" hidden><div class="rd-ghead" id="rd-ghead" hidden></div><div class="rd-gmodel" id="rd-gmodel" hidden></div><div class="rd-gpic" id="rd-gpic" hidden></div><div class="rd-gchoose" id="rd-gchoose" hidden></div><span class="lab">Spell this word</span></div>
       <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-flash" id="rd-flash"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="left">My left hand</button><button class="btn big" data-hand="right">My right hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on. It only watches your hand. Nothing is recorded or saved.</p></div></div></div>
       <p class="rd-small" id="rd-status"></p>
     </div>
@@ -142,6 +163,8 @@
 <script src="words.js?v=40"></script>
 <script src="defs.js?v=2"></script>
 <script src="hand.js?v=145"></script>
-<script type="module" src="reader.js?v=48"></script>
+<script src="people.js?v=4"></script>
+<script src="themes.js?v=43"></script>
+<script type="module" src="reader.js?v=52"></script>
 </body>
 </html>

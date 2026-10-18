@@ -468,7 +468,8 @@ function stopBounce() {
 }
 function showWord() {
   if (wi === 0) { BRUN = 0; BOUNCE = []; }      /* the samples run on between letters, so the move from one letter to the next is in them */
-  const c = WORD[wi]; DBL = wi > 0 && WORD[wi - 1] === c ? { x0: null, d0: lastD, moved: false } : null; done = false; held = 0; $('#rd-hold').style.width = '0'; $('#rd-letter').textContent = c; $('#rd-letter').classList.remove('ok'); $('#rd-word').classList.remove('alldone');
+  if (GAME && GAME.onLetter && wi > 0) GAME.onLetter(wi);
+  const c = WORD[wi]; DBL = wi > 0 && WORD[wi - 1] === c ? { x0: null, d0: lastD, moved: false } : null; done = false; held = 0; $('#rd-hold').style.width = '0'; $('#rd-letter').textContent = GAME && GAME.hideLetter ? '?' : c; $('#rd-letter').classList.remove('ok'); $('#rd-word').classList.remove('alldone');
   $('#rd-word').innerHTML = WORD.split('').map((x, i) => '<span class="' + (i < wi ? 'd' : i === wi ? 'c' : 'n') + '">' + (GAME && GAME.hide && i >= wi ? '_' : x) + '</span>').join('');      /* games that hide the word show blanks until each letter is signed */
   if (wi === 0) showDef(WORD);
   showRef(c);
@@ -528,17 +529,31 @@ const LGAMES = [
   ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'],
   ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'],
   ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'],
-  ['names', '🙋', 'Name Game', 'Fingerspell names: your classmates\u2019 names in your class app, popular names here.']];
+  ['names', '🙋', 'Name Game', 'Fingerspell names: your classmates\u2019 names in your class app, popular names here.'],
+  ['rain', '🌧️', 'Letter Rain', 'Letters fall from the sky. Sign each one before it lands!'],
+  ['whack', '🔨', 'Whack-a-Letter', 'Moles pop up holding letters. Sign the letter to bonk the mole.'],
+  ['racer', '🏎️', 'Fingerspell Racer', 'Every letter moves your car. Beat your own ghost car.'],
+  ['boss', '👾', 'Boss Battle', 'Every word you spell hits the boss. Beat it before it gets you!'],
+  ['picture', '🖼️', 'Picture Spell', 'A picture shows up. Fingerspell what it is.'],
+  ['chain', '🔗', 'Word Chain', 'Each word starts with the last letter of the one before. Make the longest chain!'],
+  ['scramble', '🔀', 'Unscramble', 'The letters are mixed up. Fingerspell the real word.'],
+  ['blitz', '⚡', 'Category Blitz', 'Spell as many words in the category as you can in 60 seconds.']];
 const NGAMES = [
   ['math', '➗', 'Math Answer', 'Solve the problem, then sign the answer.'],
   ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'],
-  ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out. It gets faster.']];
+  ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out. It gets faster.'],
+  ['charlie', '🧑', 'How Old Is Charlie?', 'Look at Charlie, pick the age, then sign it as an AGE (start at the chin).'],
+  ['years', '📜', 'When Did It Happen?', 'See the event, pick the year, then sign the year.'],
+  ['guessage', '🎂', 'Guess My Age', 'Type your best guess of Charlie\u2019s age, then sign it. Closer guesses score more.'],
+  ['hilo', '🔼', 'Higher or Lower', 'Find the secret number from 1 to 100. Sign each guess.'],
+  ['price', '🏷️', 'Price Is Right', 'Guess the price, then sign it. Closest without going over!']];
 function drawGames() {
   const L = NUMS ? NGAMES : LGAMES;
   $('#rd-mlevel').hidden = !NUMS; $$('#rd-mlevel button').forEach(b => b.classList.toggle('on', b.dataset.v === MLEVEL));
   $('#rd-gamelist').innerHTML = L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : b) + '.' : '') + '</small></button>'; }).join('');
 }
 function gameUI(on) {
+  if (!on) { gpic(''); gchoose(''); }
   document.body.classList.toggle('gaming', on); $('#rd-prompt').hidden = !on; $('#rd-prompt').classList.toggle('numgame', on && NUMS); const gm = $('#rd-gmodel'); if (gm) gm.hidden = true;      /* the game's line (problem, score, timer) sits right above the camera */ $('#rd-mlevel').hidden = true; if (!on) $('#rd-calc').hidden = true; $('#rd-gamelist').hidden = on; $('#rd-gamebar').hidden = !on; $('#rd-results').hidden = true;
   if (on) { $('#rd-hint').checked = false; $('#rd-showbox').hidden = true; $('#rd-after').hidden = true; } else { ghead(''); $('#rd-modelbox').hidden = true; }
 }
@@ -636,8 +651,190 @@ function startGame(k) {
     G.timer = setInterval(() => { const t = Math.max(0, (G.end - Date.now()) / 1000); ghead('<b>' + G.score + '</b> signed · ' + '❤️'.repeat(G.lives) + ' · <b>' + t.toFixed(1) + '</b> s'); if (t <= 0 && !done) { G.lives--; const box = $('#rd-oops'); box.textContent = 'Time! It was ' + SET[0] + '.'; box.hidden = false; setTimeout(() => { box.hidden = true; }, 1400);
       if (G.lives <= 0) { const b = best('clock', G.score); return endGame('<h3>Beat the Clock</h3><div class="big">' + G.score + '</div><p class="rd-small">numbers signed' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); } G.next(); } }, 100);
     G.next();
-  }
+  } else if (PICKGAMES[k]) PICKGAMES[k](G, k);
+  else if (LETTERGAMES[k]) LETTERGAMES[k](G, k);
 }
+/* ---------- choose, then sign (Colleen, 2026-10-17: age and year games, Higher or Lower, Price Is Right) ----------
+   The student picks or types an answer (the camera can only check a sign it expects), then signs it; the camera has to see it before it counts. */
+const later = (G, fn, ms) => setTimeout(() => { if (GAME === G) fn(); }, ms);      /* only while this game is still on */
+function gpic(html) { const e = $('#rd-gpic'); e.innerHTML = html || ''; e.hidden = !html; }
+function gchoose(html, wire) { const e = $('#rd-gchoose'); e.innerHTML = html || ''; e.hidden = !html; if (wire) wire(e); }
+function gtype(label, lo, hi, then) {      /* a number box and a Sign it button */
+  gchoose('<label class="rd-gtype">' + label + ' <input type="number" inputmode="numeric" min="' + lo + '" max="' + hi + '" id="rd-gin"></label><button class="btn" id="rd-ggo">Sign it</button><p class="rd-small" id="rd-gmsg"></p>', e => {
+    const go2 = () => { const v = Math.round(+$('#rd-gin').value); if (!(v >= lo && v <= hi) || $('#rd-gin').value === '') { $('#rd-gmsg').textContent = 'Type a number from ' + lo + ' to ' + hi + '.'; return; } then(v); };
+    $('#rd-ggo').onclick = go2; $('#rd-gin').onkeydown = ev => { if (ev.key === 'Enter') go2(); }; setTimeout(() => { try { $('#rd-gin').focus(); } catch (x) {} }, 50); });
+}
+function gpicks(list, label, then) {      /* choice buttons */
+  gchoose('<div class="rd-gpicks">' + list.map(v => '<button class="btn ghost" data-v="' + v + '">' + label(v) + '</button>').join('') + '</div>', e => { e.onclick = ev => { const b = ev.target.closest('[data-v]'); if (b) then(+b.dataset.v); }; });
+}
+function gsign(target, msg) { gchoose(''); SET = [target]; go(0); $('#rd-tip').textContent = msg || 'Now sign it'; }
+function gsay(html, ms, next) { gchoose('<div class="rd-gsay">' + html + '</div>'); const g0 = GAME; if (next) setTimeout(() => { if (GAME === g0) next(); }, ms || 1800); }      /* only if this game is still on */
+const PRICES = [['🍕', 'A large pizza', 14], ['🚲', 'A new bike', 250], ['🎮', 'A video game', 60], ['🍦', 'An ice cream cone', 4], ['👟', 'Brand-name sneakers', 120], ['📱', 'A new phone', 800],
+  ['🎟️', 'A movie ticket', 13], ['🎧', 'Wireless earbuds', 150], ['🧸', 'A teddy bear', 20], ['🚗', 'A new car', 28000], ['🏀', 'A basketball', 30], ['🎸', 'A beginner guitar', 150],
+  ['📚', 'A paperback book', 12], ['🥤', 'A large soda', 3], ['🛹', 'A skateboard', 80], ['💻', 'A laptop', 700], ['🐶', 'A dog from a shelter (adoption fee)', 150], ['⌚', 'A smartwatch', 300]];      /* about what they cost; a game, not a store */
+const PICKGAMES = {
+  charlie(G, k) {      /* Charlie's picture; four ages, each from a different time of life; sign the one you pick as an AGE */
+    const C = window.CHARLIE; if (!C) return endGame('<p>Charlie did not load. Reload the page.</p>', k);
+    G.n = 0; G.score = 0; bar('How Old Is ' + C.NAME + '?', [['skip', 'Skip']]);
+    const ageIn = i => { const s = C.STAGES[i]; return s[2] + Math.floor(Math.random() * (s[3] - s[2] + 1)); };
+    G.next = () => { if (G.n >= 8) return endGame('<h3>How Old Is ' + C.NAME + '?</h3><div class="big">' + G.score + ' of 8</div><p class="rd-small">ages right' + (best('charlie', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      G.n++; const st = Math.floor(Math.random() * C.STAGES.length), others = shuffleA(C.STAGES.map((x, i) => i).filter(i => Math.abs(i - st) >= 2)).slice(0, 3);
+      G.right = C.STAGES[st]; gpic('<div class="rd-pic">' + C.picture(st) + '</div>'); ghead('Round <b>' + G.n + '</b> of 8 · <b>' + G.score + '</b> right');
+      $('#rd-letter').textContent = '?'; gpicks(shuffleA([st].concat(others)).map(ageIn), v => 'Age ' + v, v => { G.pick = v; gsign('a' + v, 'Sign AGE ' + v + ': start at your chin'); }); };
+    G.numDone = () => { const ok = G.pick >= G.right[2] && G.pick <= G.right[3]; if (ok) G.score++; gsay(ok ? '✅ Yes! ' + C.NAME + ' is ' + G.right[2] + ' to ' + G.right[3] + ' here.' : '❌ ' + C.NAME + ' is ' + G.right[2] + ' to ' + G.right[3] + ' here. You signed ' + G.pick + ' well, though!', 2200, G.next); };
+    G.skip = G.next; G.next();
+  },
+  guessage(G, k) {      /* type any age; closer = more points (the age in Colleen's picture) */
+    const C = window.CHARLIE; if (!C) return endGame('<p>Charlie did not load. Reload the page.</p>', k);
+    G.n = 0; G.score = 0; bar('Guess My Age', [['skip', 'Skip']]);
+    G.next = () => { if (G.n >= 6) return endGame('<h3>Guess My Age</h3><div class="big">' + G.score + '</div><p class="rd-small">points out of 600' + (best('guessage', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      G.n++; const st = Math.floor(Math.random() * C.STAGES.length); G.age = C.STAGES[st][1]; gpic('<div class="rd-pic">' + C.picture(st) + '</div>'); ghead('Round <b>' + G.n + '</b> of 6 · <b>' + G.score + '</b> points');
+      $('#rd-letter').textContent = '?'; gtype('How old is ' + C.NAME + '?', 1, 99, v => { G.pick = v; gsign('a' + v, 'Sign AGE ' + v + ': start at your chin'); }); };
+    G.numDone = () => { const off = Math.abs(G.pick - G.age), pts = Math.max(0, 100 - off * 10); G.score += pts; gsay((off === 0 ? '🎯 Exactly ' : off <= 3 ? '🔥 So close! ' : off <= 8 ? '👍 Not bad! ' : '🤔 ') + C.NAME + ' is ' + G.age + ' here. <b>+' + pts + '</b>', 2200, G.next); };
+    G.skip = G.next; G.next();
+  },
+  years(G, k) {      /* Colleen's event pictures; four years: the right one, a nearby one, a look-alike (swapped or another century) and one far off */
+    const E = (window.EVENTS || []).filter(e => e.year >= 1000 && e.year <= 2099); if (!E.length) return endGame('<p>The event pictures did not load. Reload the page.</p>', k);
+    const order = shuffleA(E); G.n = 0; G.score = 0; bar('When Did It Happen?', [['skip', 'Skip']]);
+    const ok = y => y >= 1000 && y <= 2099;
+    const choices = y => { const out = [y], add = v => { if (ok(v) && out.indexOf(v) < 0) out.push(v); };
+      const swap = Math.floor(y / 100) * 100 + (y % 10) * 10 + Math.floor((y % 100) / 10); if (swap !== y) add(swap); add(y + (y >= 2000 ? -100 : 100)); add(y - 100);
+      for (let t = 0; out.length < 3 && t < 20; t++) add(y + (Math.random() < 0.5 ? -1 : 1) * (8 + Math.floor(Math.random() * 30)));
+      out.length = Math.min(out.length, 3); for (let t = 0; out.length < 4 && t < 40; t++) add(y >= 1850 ? 1100 + Math.floor(Math.random() * 500) : 2030 + Math.floor(Math.random() * 60));      /* far off */
+      return shuffleA(out); };
+    G.next = () => { if (G.n >= Math.min(8, order.length)) return endGame('<h3>When Did It Happen?</h3><div class="big">' + G.score + ' of ' + G.n + '</div><p class="rd-small">years right' + (best('years', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      G.e = order[G.n++]; gpic('<div class="rd-pic"><img src="events/' + G.e.img + '" alt=""><b>' + G.e.title + '</b></div>'); ghead('Event <b>' + G.n + '</b> · <b>' + G.score + '</b> right');
+      $('#rd-letter').textContent = '?'; gpicks(choices(G.e.year), v => String(v), v => { G.pick = v; gsign('y' + v, 'Sign the year ' + v); }); };
+    G.numDone = () => { const okk = G.pick === G.e.year; if (okk) G.score++; gsay(okk ? '✅ Yes! ' + G.e.title + ': ' + G.e.year + '.' : '❌ It was ' + G.e.year + '. You signed ' + G.pick + ' well, though!', 2400, G.next); };
+    G.skip = G.next; G.next();
+  },
+  hilo(G, k) {      /* a secret number 1-100; each guess is signed; fewer guesses = better */
+    G.secret = 1 + Math.floor(Math.random() * 100); G.tries = 0; G.lo = 1; G.hi = 100; bar('Higher or Lower', [['skip', 'Give up']]);
+    G.ask = () => { gpic('<div class="rd-hilo">🔢 <b>' + G.lo + '</b> to <b>' + G.hi + '</b></div>'); ghead('Guesses: <b>' + G.tries + '</b>'); $('#rd-letter').textContent = '?'; gtype('Your guess', 1, 100, v => { G.pick = v; gsign(String(v), 'Sign ' + v); }); };
+    G.numDone = () => { G.tries++; const v = G.pick;
+      if (v === G.secret) { const b = best('hilo', G.tries, true); return endGame('<h3>You found it!</h3><div class="big">' + G.secret + '</div><p class="rd-small">in ' + G.tries + ' guess' + (G.tries === 1 ? '' : 'es') + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); }
+      if (v < G.secret) G.lo = Math.max(G.lo, v + 1); else G.hi = Math.min(G.hi, v - 1);
+      gsay(v < G.secret ? '🔼 Higher than ' + v + '!' : '🔽 Lower than ' + v + '!', 1300, G.ask); };
+    G.skip = () => endGame('<h3>The number was</h3><div class="big">' + G.secret + '</div>', k); G.ask();
+  },
+  price(G, k) {      /* guess, sign, then the price; going over scores 0 */
+    const order = shuffleA(PRICES); G.n = 0; G.score = 0; bar('Price Is Right', [['skip', 'Skip']]);
+    G.next = () => { if (G.n >= 5) return endGame('<h3>Price Is Right</h3><div class="big">' + G.score + '</div><p class="rd-small">points out of 500' + (best('price', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      G.it = order[G.n++]; gpic('<div class="rd-hilo"><span style="font-size:72px">' + G.it[0] + '</span><b>' + G.it[1] + '</b><small>about how many dollars?</small></div>'); ghead('Item <b>' + G.n + '</b> of 5 · <b>' + G.score + '</b> points');
+      $('#rd-letter').textContent = '?'; gtype('Your price: $', 1, 9999, v => { G.pick = v; gsign(String(v), 'Sign ' + v); }); };
+    G.numDone = () => { const p = G.it[2], v = G.pick, over = v > p, pts = over ? 0 : Math.max(0, Math.round(100 - 100 * (p - v) / p)); G.score += pts;
+      gsay((over ? '💥 Over! ' : pts >= 90 ? '🎯 Wow! ' : pts >= 60 ? '👍 Close! ' : '🤔 ') + 'About <b>$' + p.toLocaleString('en-US') + '</b>. <b>+' + pts + '</b>', 2400, G.next); };
+    G.skip = G.next; G.next();
+  }
+};
+/* ---------- more letter games (Colleen, 2026-10-17: "actually fun games") ---------- */
+const PICS = [['🐱', 'CAT'], ['🐶', 'DOG'], ['🐟', 'FISH'], ['🐦', 'BIRD'], ['🐸', 'FROG'], ['🐷', 'PIG'], ['🐮', 'COW'], ['🐻', 'BEAR'], ['🦁', 'LION'], ['🦆', 'DUCK'], ['🐝', 'BEE'], ['🦉', 'OWL'],
+  ['🐯', 'TIGER'], ['🦓', 'ZEBRA'], ['🐍', 'SNAKE'], ['🐋', 'WHALE'], ['🐢', 'TURTLE'], ['🦒', 'GIRAFFE'], ['🍎', 'APPLE'], ['🍕', 'PIZZA'], ['🎂', 'CAKE'], ['🥚', 'EGG'], ['🥛', 'MILK'], ['🌮', 'TACO'],
+  ['🌽', 'CORN'], ['🍐', 'PEAR'], ['🍇', 'GRAPES'], ['🍋', 'LEMON'], ['🍌', 'BANANA'], ['🥕', 'CARROT'], ['🍞', 'BREAD'], ['🧀', 'CHEESE'], ['🍪', 'COOKIE'], ['🍩', 'DONUT'], ['🚗', 'CAR'], ['🚌', 'BUS'],
+  ['🚲', 'BIKE'], ['⛵', 'BOAT'], ['✈️', 'PLANE'], ['🚆', 'TRAIN'], ['🚀', 'ROCKET'], ['⚽', 'BALL'], ['📖', 'BOOK'], ['☀️', 'SUN'], ['🌙', 'MOON'], ['⭐', 'STAR'], ['🌳', 'TREE'], ['🌸', 'FLOWER'],
+  ['❄️', 'SNOW'], ['🏠', 'HOUSE'], ['📱', 'PHONE'], ['⏰', 'CLOCK'], ['🎩', 'HAT'], ['👟', 'SHOE'], ['🧦', 'SOCKS'], ['🔑', 'KEY'], ['🎁', 'GIFT'], ['❤️', 'HEART'], ['🔔', 'BELL'], ['🥁', 'DRUM'],
+  ['🎸', 'GUITAR'], ['🤖', 'ROBOT'], ['👻', 'GHOST'], ['👑', 'CROWN'], ['🌈', 'RAINBOW'], ['🍔', 'BURGER'], ['🧁', 'CUPCAKE'], ['🦋', 'BUTTERFLY'], ['🐙', 'OCTOPUS'], ['🦈', 'SHARK']];
+const BLITZ = [['FRUIT', 'a fruit'], ['VEGETABLE', 'a vegetable'], ['ANIMAL', 'an animal'], ['COLOR', 'a color'], ['CANDY', 'a candy'], ['DRINK', 'a drink'], ['CLOTHES', 'clothes'], ['FLOWER', 'a flower'], ['GAME', 'a game']];
+const clean = w => String(w).toUpperCase().replace(/[^A-Z]/g, '');
+let DICT = null;
+const dict = () => DICT || (DICT = new Set([].concat(...Object.values(window.FS_WORDS || {}).map(L => L.map(clean)), Object.keys(window.FS_DEFS || {}).map(clean), PICS.map(p => p[1])).filter(w => w.length >= 2)));
+const noJZ = w => !/[JZ]/.test(w);      /* letters that fall, pop up or get typed letter by letter are read one still handshape at a time */
+function freeBar(G, title, extra) { bar(title, (extra || []).concat([['undo', '⌫ Undo a letter'], ['clr', 'Clear']])); G.undo = () => { G.cur = G.cur.slice(0, -1); G.paint(); }; G.gb_clr = () => { G.cur = ''; G.paint(); }; }
+const LETTERGAMES = {
+  picture(G, k) {
+    const order = shuffleA(PICS); G.n = 0; G.score = 0; G.hideLetter = true;
+    G.next = () => { if (G.n >= 10) return endGame('<h3>Picture Spell</h3><div class="big">' + G.score + ' of 10</div><p class="rd-small">pictures spelled' + (best('picture', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      const P = order[G.n++]; G.w = P[1]; bar('Picture Spell', [['skip', 'Show me and skip']]); gpic('<div class="rd-hilo"><span style="font-size:110px;line-height:1">' + P[0] + '</span></div>'); ghead('Picture <b>' + G.n + '</b> of 10 · <b>' + G.score + '</b> spelled'); G.hide = true; wordGame(G, G.w); };
+    G.wordDone = () => { G.score++; ghead('✅ <b>' + G.w + '</b>'); later(G, G.next, 1300); };
+    G.skip = () => { done = true; $('#rd-word').innerHTML = G.w.split('').map(x => '<span class="n">' + x + '</span>').join(''); later(G, G.next, 2200); };
+    G.next();
+  },
+  scramble(G, k) {
+    const P = pool().filter(w => w.length >= 4 && w.length <= 7 && new Set(w).size > 2); if (!P.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
+    G.n = 0; G.score = 0; G.hideLetter = true;
+    const mix = w => { for (let t = 0; t < 20; t++) { const m = shuffleA(w.split('')).join(''); if (m !== w) return m; } return w.split('').reverse().join(''); };
+    G.next = () => { if (G.n >= 10) return endGame('<h3>Unscramble</h3><div class="big">' + G.score + ' of 10</div><p class="rd-small">words unscrambled' + (best('scramble', G.score).isNew ? ' (a new best!)' : '') + '</p>', k);
+      G.n++; G.w = rnd(P); bar('Unscramble', [['skip', 'Show me and skip']]); gpic('<div class="rd-scram">' + mix(G.w).split('').map(x => '<i>' + x + '</i>').join('') + '</div>'); ghead('Word <b>' + G.n + '</b> of 10 · <b>' + G.score + '</b> right'); G.hide = true; wordGame(G, G.w); };
+    G.wordDone = () => { G.score++; ghead('✅ <b>' + G.w + '</b>'); later(G, G.next, 1300); };
+    G.skip = () => { done = true; $('#rd-word').innerHTML = G.w.split('').map(x => '<span class="n">' + x + '</span>').join(''); later(G, G.next, 2200); };
+    G.next();
+  },
+  chain(G, k) {      /* free letters; ✓ checks the word (a real word from the word lists, starting with the right letter, not used yet) */
+    const D = dict(), starts = [...D].filter(w => w.length === 4 && noJZ(w)); G.free = true; G.cur = ''; G.used = [rnd(starts)]; G.end = Date.now() + 120000;
+    freeBar(G, 'Word Chain', [['ok', '✓ Check my word']]);
+    G.need = () => G.used[G.used.length - 1].slice(-1);
+    G.paint = () => { gpic('<div class="rd-chain">' + G.used.slice(-4).map((w, i, a) => '<span' + (i === a.length - 1 ? ' class="last"' : '') + '>' + w + '</span>').join(' → ') + '</div>');
+      $('#rd-prompt').hidden = false; $('#rd-word').hidden = false; $('#rd-word').innerHTML = '<span class="c">' + G.need() + '</span>' + (G.cur.slice(1) || '…').split('').map(x => '<span class="d">' + x + '</span>').join(''); };
+    G.letter = c => { if (!G.cur) { if (c !== G.need()) { $('#rd-tip').textContent = 'Start with ' + G.need(); return; } } G.cur += c; flash(c); G.paint(); };
+    G.gb_ok = () => { const w = G.cur; if (w.length < 2) return; if (G.used.indexOf(w) >= 0) { $('#rd-tip').textContent = w + ' is already in the chain'; return; }
+      if (!D.has(w)) { $('#rd-tip').textContent = w + ' is not in the word lists. Try another word.'; return; } G.used.push(w); G.cur = ''; flash('✓'); G.paint(); };
+    G.timer = setInterval(() => { const t = Math.max(0, Math.ceil((G.end - Date.now()) / 1000)); ghead('Chain: <b>' + (G.used.length - 1) + '</b> words · <b>' + t + '</b> s'); if (t <= 0) { const n = G.used.length - 1, b = best('chain', n); endGame('<h3>Word Chain</h3><div class="big">' + n + '</div><p class="rd-small">words: ' + G.used.join(' → ') + (b.isNew ? ' (a new best!)' : '') + '</p>', k); } }, 250);
+    G.paint();
+  },
+  blitz(G, k) {      /* free letters; a word in the category counts as soon as it is complete (or with ✓) */
+    const cats = BLITZ.filter(c => (window.FS_WORDS[c[0]] || []).length), C = rnd(cats), words = new Set((window.FS_WORDS[C[0]] || []).map(clean).filter(w => w.length >= 3 && noJZ(w)));
+    G.free = true; G.cur = ''; G.got = []; G.end = Date.now() + 60000; freeBar(G, 'Category Blitz: spell ' + C[1], [['ok', '✓ Check my word']]);
+    G.paint = () => { gpic('<div class="rd-hilo">⚡ Spell <b>' + C[1] + '</b><small>' + (G.got.join(', ') || 'Any word in the category counts') + '</small></div>'); $('#rd-prompt').hidden = false; $('#rd-word').hidden = false; $('#rd-word').innerHTML = (G.cur || '…').split('').map(x => '<span class="d">' + x + '</span>').join(''); };
+    const take = w => { G.got.push(w); G.cur = ''; flash('✓'); G.paint(); };
+    G.letter = c => { G.cur += c; flash(c); if (words.has(G.cur) && G.got.indexOf(G.cur) < 0 && ![...words].some(w => w !== G.cur && w.startsWith(G.cur))) take(G.cur); else G.paint(); };
+    G.gb_ok = () => { const w = G.cur; if (G.got.indexOf(w) >= 0) { $('#rd-tip').textContent = 'You already spelled ' + w; return; } if (words.has(w)) take(w); else $('#rd-tip').textContent = w + ' is not on the ' + C[1] + ' list.'; };
+    G.timer = setInterval(() => { const t = Math.max(0, Math.ceil((G.end - Date.now()) / 1000)); ghead('<b>' + G.got.length + '</b> words · <b>' + t + '</b> s'); if (t <= 0) { const b = best('blitz', G.got.length); endGame('<h3>Category Blitz: ' + C[1] + '</h3><div class="big">' + G.got.length + '</div><p class="rd-small">' + (G.got.join(', ') || 'Try again!') + (b.isNew ? ' (a new best!)' : '') + '</p>', k); } }, 250);
+    G.paint();
+  },
+  rain(G, k) {      /* letters fall in the picture area; a signed letter pops the lowest one like it */
+    const L = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split(''); G.free = true; G.drops = []; G.lives = 3; G.score = 0; G.speed = 9; G.t0 = Date.now(); G.id = 0;
+    bar('Letter Rain', []); gpic('<div class="rd-rain" id="rd-rain"></div>');
+    const box = () => $('#rd-rain');
+    G.spawn = () => { const b = box(); if (!b) return; const d = { id: ++G.id, c: rnd(L), x: 6 + Math.random() * 82, y: 0 }; G.drops.push(d); const e = document.createElement('i'); e.id = 'rd-drop' + d.id; e.textContent = d.c; e.style.left = d.x + '%'; b.appendChild(e); };
+    G.letter = c => { const hit = G.drops.filter(d => d.c === c).sort((a, b) => b.y - a.y)[0]; if (!hit) { $('#rd-tip').textContent = 'No ' + c + ' falling right now'; return; }
+      G.drops = G.drops.filter(d => d !== hit); const e = $('#rd-drop' + hit.id); if (e) { e.classList.add('pop'); setTimeout(() => e.remove(), 300); } G.score++; G.speed = Math.max(4, G.speed - 0.15); flash(c); };
+    let last = Date.now(), nextAt = 0;
+    G.timer = setInterval(() => { const now = Date.now(), dt = (now - last) / 1000; last = now; if (now >= nextAt) { G.spawn(); nextAt = now + Math.max(900, 2600 - G.score * 60); }
+      G.drops.slice().forEach(d => { d.y += 100 * dt / G.speed; const e = $('#rd-drop' + d.id); if (e) e.style.top = d.y + '%';
+        if (d.y >= 92) { G.drops = G.drops.filter(x => x !== d); if (e) { e.classList.add('splat'); setTimeout(() => e.remove(), 400); } G.lives--; } });
+      ghead('<b>' + G.score + '</b> popped · ' + '❤️'.repeat(Math.max(0, G.lives)));
+      if (G.lives <= 0) { const b = best('rain', G.score); endGame('<h3>Letter Rain</h3><div class="big">' + G.score + '</div><p class="rd-small">letters popped' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); } }, 50);
+  },
+  whack(G, k) {      /* nine holes; a mole holds a letter for a few seconds; 60 seconds */
+    const L = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split(''); G.free = true; G.score = 0; G.miss = 0; G.end = Date.now() + 60000; G.moles = {};
+    bar('Whack-a-Letter', []); gpic('<div class="rd-whack" id="rd-whack">' + Array.from({ length: 9 }, (_, i) => '<div class="hole" id="rd-hole' + i + '"><span></span></div>').join('') + '</div>');
+    const show = () => { const free = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(i => !G.moles[i]); if (!free.length) return; const i = rnd(free), c = rnd(L.filter(x => !Object.values(G.moles).some(m => m.c === x)));
+      G.moles[i] = { c, until: Date.now() + Math.max(2200, 4200 - G.score * 80) }; const h = $('#rd-hole' + i); h.classList.add('up'); h.querySelector('span').textContent = c; };
+    const down = (i, hit) => { const h = $('#rd-hole' + i); if (!h) return; h.classList.remove('up'); if (hit) { h.classList.add('bonk'); setTimeout(() => h.classList.remove('bonk'), 350); } delete G.moles[i]; };
+    G.letter = c => { const i = Object.keys(G.moles).find(j => G.moles[j].c === c); if (i === undefined) { $('#rd-tip').textContent = 'No mole is holding ' + c; return; } down(i, true); G.score++; flash(c); };
+    let nextAt = 0;
+    G.timer = setInterval(() => { const now = Date.now(); Object.keys(G.moles).forEach(i => { if (now > G.moles[i].until) { down(i, false); G.miss++; } });
+      if (now >= nextAt && Object.keys(G.moles).length < (G.score >= 12 ? 3 : 2)) { show(); nextAt = now + Math.max(700, 1600 - G.score * 30); }
+      const t = Math.max(0, Math.ceil((G.end - now) / 1000)); ghead('<b>' + G.score + '</b> bonked · <b>' + t + '</b> s');
+      if (t <= 0) { const b = best('whack', G.score); endGame('<h3>Whack-a-Letter</h3><div class="big">' + G.score + '</div><p class="rd-small">moles bonked' + (b.isNew ? ' (a new best!)' : b.old !== undefined ? ' (best: ' + b.old + ')' : '') + '</p>', k); } }, 100);
+  },
+  racer(G, k) {      /* 30 letters of short words; the ghost car drives at the pace of your best time */
+    const P = pool().filter(w => w.length >= 3 && w.length <= 5); if (!P.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
+    const GOAL = 30, ghostSecs = best('racer').old; G.letters = 0; G.t0 = 0;
+    bar('Fingerspell Racer', [['skip', 'Skip this word']]); gpic('<div class="rd-race"><div class="lane"><span class="car" id="rd-car">🏎️</span></div>' + (ghostSecs ? '<div class="lane ghost"><span class="car" id="rd-ghost">👻</span></div>' : '') + '<div class="finish">🏁</div></div>');
+    G.onLetter = () => { if (!G.t0) G.t0 = Date.now(); G.letters++; };
+    G.next = () => wordGame(G, rnd(P));
+    G.wordDone = () => { G.onLetter(); if (G.letters >= GOAL) { const secs = Math.round((Date.now() - G.t0) / 100) / 10, b = best('racer', secs, true); return endGame('<h3>Fingerspell Racer</h3><div class="big">' + secs + ' s</div><p class="rd-small">for ' + GOAL + ' letters' + (b.isNew ? ' (a new best: the ghost car gets faster!)' : b.old !== undefined ? ' (ghost: ' + b.old + ' s)' : '') + '</p>', k); } later(G, G.next, 400); };
+    G.skip = G.next;
+    G.timer = setInterval(() => { const pct = Math.min(1, G.letters / GOAL), car = $('#rd-car'), gh = $('#rd-ghost'); if (car) car.style.left = (pct * 88) + '%';
+      const el = G.t0 ? (Date.now() - G.t0) / 1000 : 0; if (gh && ghostSecs) gh.style.left = (Math.min(1, el / ghostSecs) * 88) + '%';
+      ghead('<b>' + G.letters + '</b> of ' + GOAL + ' letters · <b>' + el.toFixed(1) + '</b> s'); }, 100);
+    G.next();
+  },
+  boss(G, k) {      /* the boss loses 6 health per letter of each word you spell; every 15 seconds it attacks (3 hearts) */
+    const P = pool().filter(w => w.length >= 3 && w.length <= 7); if (!P.length) return endGame('<p>No words fit. Choose other words in Practice first.</p>', k);
+    const BOSSES = ['👾', '🐉', '🦖', '👹', '🤖', '🐙']; G.hp = 100; G.lives = 3; G.boss = rnd(BOSSES); G.t0 = Date.now(); G.hitAt = Date.now() + 15000;
+    bar('Boss Battle', [['skip', 'Skip this word']]);
+    G.paint = hurt => { gpic('<div class="rd-boss' + (hurt ? ' hurt' : '') + '"><span class="b">' + G.boss + '</span><div class="hp"><i style="width:' + Math.max(0, G.hp) + '%"></i></div><small>Boss health ' + Math.max(0, G.hp) + '</small></div>'); };
+    G.next = () => wordGame(G, rnd(P));
+    G.wordDone = w => { G.hp -= (w || '').length * 6 || 18; G.paint(true); flash('💥'); if (G.hp <= 0) { const secs = Math.round((Date.now() - G.t0) / 1000), b = best('boss', secs, true); return endGame('<h3>You beat the boss! ' + G.boss + '</h3><div class="big">' + secs + ' s</div><p class="rd-small">' + (b.isNew ? 'A new best!' : b.old !== undefined ? 'Best: ' + b.old + ' s' : '') + '</p>', k); } later(G, G.next, 500); };
+    G.skip = G.next;
+    G.timer = setInterval(() => { const left = Math.max(0, Math.ceil((G.hitAt - Date.now()) / 1000)); ghead('❤️'.repeat(Math.max(0, G.lives)) + ' · the boss attacks in <b>' + left + '</b> s');
+      if (Date.now() >= G.hitAt) { G.lives--; G.hitAt = Date.now() + 15000; const box = $('#rd-oops'); box.textContent = G.boss + ' attacks!'; box.hidden = false; setTimeout(() => { box.hidden = true; }, 1200);
+        if (G.lives <= 0) endGame('<h3>The boss won this time ' + G.boss + '</h3><div class="big">' + Math.max(0, G.hp) + '</div><p class="rd-small">health left. Try again!</p>', k); } }, 250);
+    G.paint(false); G.next();
+  }
+};
 /* free letters (Hangman, Wordle): any letter held on purpose counts once; the same letter again needs the hand to change or slide first */
 let FREE = { c: '', ms: 0, lock: '', x0: 0 };
 let MLEVEL = 'easy'; try { MLEVEL = localStorage.getItem('fs-cam-mlevel') || 'easy'; } catch (e) {}
@@ -661,7 +858,7 @@ function freeRead(f, L) {
 }
 $('#rd-mlevel').onclick = e => { const b = e.target.closest('button'); if (!b) return; MLEVEL = b.dataset.v; try { localStorage.setItem('fs-cam-mlevel', MLEVEL); } catch (x) {} drawGames(); };
 $('#rd-gamelist').onclick = e => { const b = e.target.closest('[data-g]'); if (b) startGame(b.dataset.g); };
-$('#rd-gbtns').onclick = e => { const b = e.target.closest('[data-gb]'); if (!b || !GAME) return; const v = b.dataset.gb; if (v === 'quit') quitGame(); else if (v === 'skip' && GAME.skip) GAME.skip(); else if (v === 'replay' && GAME.play) GAME.play(); else if (v === 'undo' && GAME.undo) GAME.undo(); else if (v === 'watch' && GAME.watch) GAME.watch(); else if (v === 'calc') { $('#rd-calc').hidden = !$('#rd-calc').hidden; } };
+$('#rd-gbtns').onclick = e => { const b = e.target.closest('[data-gb]'); if (!b || !GAME) return; const v = b.dataset.gb; if (v === 'quit') quitGame(); else if (v === 'skip' && GAME.skip) GAME.skip(); else if (v === 'replay' && GAME.play) GAME.play(); else if (v === 'undo' && GAME.undo) GAME.undo(); else if (v === 'watch' && GAME.watch) GAME.watch(); else if (v === 'calc') { $('#rd-calc').hidden = !$('#rd-calc').hidden; } else if (GAME['gb_' + v]) GAME['gb_' + v](); };
 /* ---------- set up ---------- */
 const setHand = h => { LEFT = h === 'left'; document.body.classList.toggle('lefty', LEFT); $('#rd-handname').textContent = LEFT ? 'left' : 'right'; try { localStorage.setItem('fs-reader-hand', h); } catch (e) {} };
 $$('[data-hand]').forEach(b => b.onclick = () => { setHand(b.dataset.hand); start(); });      /* asks first: right or left hand (Colleen) */
