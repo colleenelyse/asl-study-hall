@@ -58,17 +58,41 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
       ['🔊', 'Noise meter', '', KIOSK + '?view=tools&tool=noise'],
       ['🎫', 'Hall pass board', '', KIOSK + '?view=tools&tool=passboard']
     ]],
-    ['Student sites', [
+    ['ASL practice', [
+      ['🤟', 'Fingerspelling', 'Read fingerspelling from the 3D hand.', SITE + 'fingerspelling/'],
+      ['🔢', 'Numbers', 'ASL numbers practice.', ON ? '/numbers/' : SITE + 'fingerspelling/?only=numbers'],
+      ['📷', 'Sign to the camera', 'Fingerspell or sign numbers to the camera.', SITE + 'fingerspelling/reader.html'],
+      ['👉', 'Pronoun Signs', 'ME, MY, YOU, YOUR on camera.', SITE + 'fingerspelling/pronouns.html'],
+      ['🎱', 'Fingerspelling Bingo', '', SITE + 'fingerspelling/#/bingo'],
+      ['🔎', 'WordSearch Studio', '', SITE + 'wordsearch/']
+    ]],
+    ['Hearing and the Ear', [
+      ['🦻', 'Hearing Loss Simulator', '', ON ? '/hearing/' : SITE + 'hear/hearing-loss-simulator.html'],
+      ['🔊', 'Cochlear Implant Simulator', '', ON ? '/ci/' : SITE + 'hear/cochlear-implant-simulator.html'],
+      ['👂', 'Parts of the Ear', 'Parts, labels and the ear quiz.', ON ? '/ear/' : SITE + 'hear/ear-quiz.html']
+    ]],
+    ['Reading warm-up', [
+      ['🤔', 'Wait… But What Does That Mean?', 'Teacher view, for the projector.', SITE + 'wait/'],
+      ['📝', 'Wait… (student link)', 'What students open.', SITE + 'wait-student/']
+    ]],
+    ['For students', [
       ['🏠', 'asl.cool home', 'What students see.', SITE],
-      ['✋', 'Fingerspelling', '', SITE + 'fingerspelling/'],
-      ['🔟', 'Numbers', '', ON ? '/numbers/' : SITE + 'fingerspelling/?only=numbers'],
-      ['🔎', 'Word search', '', SITE + 'wordsearch/'],
-      ['🅱️', 'Bingo', '', SITE + 'fingerspelling/#/bingo'],
-      ['🤔', 'Wait… But What Does That Mean?', '', SITE + 'wait/']
+      ['🎓', 'ASL Study Hall (student link)', 'Opens the class app.', SITE + 'study/'],
+      ['🔑', 'Log into your school account', 'Help page for signing in.', SITE + 'login-help/']
+    ]],
+    ['My shop and TpT', [
+      ['🛍️', 'aslstudyhall.com', 'My Shopify store.', 'https:' + '//aslstudyhall.com/'],
+      ['🍎', 'My TpT store', 'Jaq Joey Boutique.', 'https:' + '//www.teacherspayteachers.com/store/jaq-joey-boutique'],
+      ['✋', 'ASL Spellbound (TpT copy)', 'What fingerspelling buyers get.', SITE + 'fs-tpt/'],
+      ['🔟', 'ASL Numberwise (TpT copy)', 'What numbers buyers get.', SITE + 'num-tpt/'],
+      ['📦', 'Bundle (TpT copy)', 'Fingerspelling and numbers together.', SITE + 'both-tpt/']
     ]],
     ['Behind the scenes', [
       ['🔐', 'asl.cool admin', 'Buttons, passwords, teacher links.', SITE + 'admin/'],
-      ['🧪', 'ASL Study test link', 'The newest version before it’s published.', 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbxGGqXddAyMvRKnCmsHFVQd4Mfnl8VnEOA8mpiaRyk/dev']
+      ['🧪', 'ASL Study test link', 'The newest version before it\u2019s published.', 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbxGGqXddAyMvRKnCmsHFVQd4Mfnl8VnEOA8mpiaRyk/dev'],
+      ['🧪', 'Kiosk test link', 'The newest Kiosk before it\u2019s published.', 'https:' + '//script.google.com/macros/s/AKfycbzRau547mRA4mQH0W3wHySQ6kSS2CmfIrJlqwTJt4c/dev?view=teacher'],
+      ['🌐', 'School-safe copy of this page', 'For school, where asl.cool is blocked.', 'https:' + '//colleenelyse.github.io/asl-study-hall/colleen/'],
+      ['📜', 'Credits', '', SITE + 'credits.html']
     ]]
   ];
   var $ = function (s) { return document.querySelector(s); };
