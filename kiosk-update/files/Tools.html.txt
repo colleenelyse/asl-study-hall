@@ -87,6 +87,10 @@ svg.ic { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentC
 .sbgrid.full { flex: 1; min-height: 0; grid-auto-rows: 1fr }
 .sbteam { position: relative; container-type: inline-size; overflow: hidden; border-radius: 22px; background: var(--c); color: #fff; padding: 16px 14px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: clamp(190px, 44vh, 460px); box-shadow: 0 6px 0 rgba(0, 0, 0, .18); text-align: center }
 .sbteam.lead { box-shadow: 0 0 0 5px var(--sun, #FFC53D), 0 6px 0 rgba(0, 0, 0, .18) }
+.sbteam.half { padding: 46px 14px 46px } .sbhalf { position: absolute; left: 0; right: 0; height: 50%; border: 0; background: transparent; cursor: pointer; z-index: 1; color: #fff; display: flex; justify-content: center; font: 800 clamp(.95rem, 7cqw, 1.6rem) var(--body) }
+.sbhalf.up { top: 0; align-items: flex-start; padding-top: 10px; border-radius: 22px 22px 0 0 } .sbhalf.down { bottom: 0; align-items: flex-end; padding-bottom: 10px; background: rgba(0, 0, 0, .16); border-top: 2px dashed rgba(255, 255, 255, .35); border-radius: 0 0 22px 22px }
+.sbhalf span { background: rgba(255, 255, 255, .22); border-radius: 999px; padding: 2px 14px } .sbhalf.down span { background: rgba(0, 0, 0, .22) } .sbhalf.up:active { background: rgba(255, 255, 255, .16) } .sbhalf.down:active { background: rgba(0, 0, 0, .3) } .sbhalf:focus-visible { outline: 4px solid #fff; outline-offset: -8px }
+#sbfull .sbteam.half { padding: 9cqh 14px } #sbfull .sbhalf { font-size: clamp(1rem, min(7cqw, 6cqh), 2.6rem) }
 .sbhit { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; border-radius: inherit; z-index: 1 } .sbhit:active { background: rgba(255, 255, 255, .12) } .sbhit:focus-visible { outline: 4px solid #fff; outline-offset: -8px }
 .sbname { font: 800 clamp(1rem, 9cqw, 2.4rem)/1.1 var(--body); overflow-wrap: anywhere; display: flex; gap: 6px; align-items: center; justify-content: center } .sbcrown { font-size: 1.1em }
 .sbteam:not(#sbfull *) { container-type: size } .sbscore { white-space: nowrap; font: 700 clamp(1.6rem, min(calc(180cqw / var(--len)), 30cqh), 11rem)/1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; text-shadow: 0 3px 0 rgba(0, 0, 0, .18) }
@@ -129,7 +133,12 @@ body:has(#sbfull) #modal, body:has(#sbfull) #toast { z-index: 8600 } #modal .she
 .fbpet { width: 130px; height: 140px } .fbpet svg { width: 100%; height: 100% } .fbpet canvas, .fbmini canvas { width: 100%; height: 100%; display: block } .fbpet.away canvas, .fbmini.away canvas { opacity: .55; filter: grayscale(.4) }
 .dcarea { display: grid; grid-template-columns: repeat(var(--cols, 2), var(--s, 80px)); justify-content: center; align-content: center; gap: calc(var(--s, 80px) * .2); min-height: 0 } #dcpage .dcarea { height: 300px }
 .dcdie { width: var(--s); height: var(--s); border-radius: 18%; background: #fff; border: calc(var(--s) * .05) solid var(--c); box-shadow: 0 calc(var(--s) * .06) 0 color-mix(in srgb, var(--c) 70%, #000); display: grid; place-items: center; padding: calc(var(--s) * .07); margin: 0; box-sizing: border-box; cursor: pointer; color: #1B1E2E; font-family: var(--body); overflow: hidden }
-.dcdie svg { width: 100%; height: 100%; fill: var(--c) } .dcasl { font-family: CGasl, var(--body); font-size: calc(var(--s) * .6); line-height: 1 } .dcq { font: 800 calc(var(--s) * .45) var(--body); color: #B9BED3 }
+.dcdie svg { width: 100%; height: 100%; fill: var(--c) }
+.dcdie.poly { background: transparent; border: 0; box-shadow: none; border-radius: 0; position: relative; overflow: visible; padding: calc(var(--s) * .16) }
+.dcdie.poly > svg.dcshape { position: absolute; inset: 0; z-index: 0; overflow: visible; fill: #fff; stroke: var(--c); stroke-width: 5; stroke-linejoin: round; filter: drop-shadow(0 calc(var(--s) * .05) 0 color-mix(in srgb, var(--c) 70%, #000)) }
+.dcdie.poly > svg.dcshape .fc { fill: none; stroke-width: 1.5; opacity: .35 } .dcdie.poly > :not(.dcshape) { position: relative; z-index: 1 }
+.dcdie.sh-tri { padding: calc(var(--s) * .34) calc(var(--s) * .22) calc(var(--s) * .14) }
+.dcdie svg.dcglyph { width: calc(100% * var(--k, 1)); height: calc(100% * var(--k, 1)); fill: currentColor; overflow: visible } .dcasl { font-family: CGasl, var(--body); font-size: calc(var(--s) * .6); line-height: 1 } .dcq { font: 800 calc(var(--s) * .45) var(--body); color: #B9BED3 }
 .dctxt { font-weight: 800; font-size: calc(var(--s) * var(--fs)); line-height: 1.05; overflow-wrap: anywhere; text-align: center }
 .dcdie.roll { animation: dctumble .32s ease-in-out infinite } @keyframes dctumble { 0% { transform: rotate(0) } 25% { transform: rotate(-14deg) translateY(-12%) } 50% { transform: rotate(8deg) scale(.94) } 75% { transform: rotate(14deg) translateY(-8%) } 100% { transform: rotate(0) } }
 @media (prefers-reduced-motion: reduce) { .dcdie.roll { animation: none; opacity: .7 } }
@@ -800,6 +809,83 @@ div.sts { cursor: default }
 .rsheet .rs-scale span.p-near:not(.on) { background: #FFF9E0 !important; color: #8A6A00 !important; box-shadow: inset 0 0 0 2px #EED68A; }
 .rsheet .rs-scale span.p-on:not(.on) { background: #F4F7FF !important; color: #2F6BFF !important; box-shadow: inset 0 0 0 2px #B6CBFF; }
 .rsheet .rs-scale span.p-above:not(.on) { background: #F1FAF4 !important; color: #1E7B45 !important; box-shadow: inset 0 0 0 2px #B6DDC7; }
+  /* LIVING SCREENSAVERS (2026-10-17): the camera library (teacher side); the camera itself plays on the Projector window, above Freeze */
+  .live-chip { font-weight: 700; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .live-ov { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 1.2rem; }
+  .live-ov[hidden] { display: none; }
+  .live-box { width: min(1180px, 100%); height: min(900px, 100%); background: var(--panel); color: var(--ink); border-radius: 1rem; box-shadow: 0 20px 60px rgba(0,0,0,.35); display: flex; flex-direction: column; overflow: hidden; }
+  .live-head { display: flex; align-items: center; gap: .6rem; padding: .9rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
+  .live-head h2 { margin: 0; font-size: 1.3rem; flex: 1; }
+  .live-now { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; padding: .7rem 1.1rem; background: var(--soft); border-bottom: 1px solid var(--line); }
+  .live-now img { width: 112px; aspect-ratio: 16/9; object-fit: cover; border-radius: .5rem; background: #000; }
+  .live-now .info { flex: 1; min-width: 12rem; } .live-now .info b { display: block; font-size: 1.05rem; } .live-now .info small { color: var(--muted); }
+  .live-now .acts { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+  .live-btn { padding: .42rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font-weight: 600; font-size: .9rem; text-decoration: none; display: inline-block; }
+  .live-btn.on, .live-btn.main { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .live-seg { display: inline-flex; border: 1px solid var(--line); border-radius: .6rem; overflow: hidden; } .live-seg .live-btn { border: 0; border-radius: 0; }
+  .live-warn { margin: .6rem 1.1rem 0; padding: .6rem .8rem; border-radius: .6rem; background: var(--tardy-bg, #fdeecd); color: var(--ink); font-size: .92rem; }
+  .live-warn[hidden] { display: none; }
+  .live-tools { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; padding: .7rem 1.1rem; }
+  .live-tools input[type=search] { flex: 1; min-width: 12rem; padding: .5rem .7rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; }
+  .live-cats { display: flex; gap: .35rem; flex-wrap: wrap; padding: 0 1.1rem .5rem; }
+  .live-cats button { padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; font-size: .85rem; font-weight: 600; }
+  .live-cats button.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .live-grid { flex: 1; overflow-y: auto; padding: .4rem 1.1rem 1.2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .9rem; align-content: start; }
+  .live-card { border: 1px solid var(--line); border-radius: .9rem; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+  .live-card.playing { outline: 3px solid var(--accent); }
+  .live-card .pic { position: relative; aspect-ratio: 16/9; background: #0d1117 center/cover no-repeat; cursor: pointer; }
+  .live-card .pic .tag { position: absolute; left: .45rem; top: .45rem; padding: .15rem .5rem; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: .75rem; font-weight: 700; }
+  .live-card .pic .fav { position: absolute; right: .4rem; top: .3rem; font-size: 1.3rem; background: none; border: 0; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .live-card .txt { padding: .55rem .7rem .2rem; flex: 1; } .live-card .txt b { display: block; font-size: 1rem; }
+  .live-card .txt small { display: block; color: var(--muted); font-size: .8rem; line-height: 1.35; }
+  .live-card .note { color: var(--tardy, #a35a00); font-weight: 600; }
+  .live-card .row { display: flex; gap: .3rem; padding: .45rem .6rem .6rem; flex-wrap: wrap; } .live-card .row .live-btn { padding: .3rem .55rem; font-size: .8rem; }
+  .live-form { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .live-form[hidden] { display: none; }
+  .live-form form { width: min(720px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); color: var(--ink); border-radius: 1rem; padding: 1.1rem 1.2rem; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .live-form h3 { margin: 0 0 .6rem; } .live-form label { display: block; font-size: .85rem; font-weight: 700; margin: .5rem 0 .2rem; }
+  .live-form input, .live-form select, .live-form textarea { width: 100%; box-sizing: border-box; padding: .45rem .6rem; border-radius: .5rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; }
+  .live-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .8rem; } .live-form .cats label { display: inline-flex; gap: .3rem; align-items: center; font-weight: 600; margin-right: .8rem; }
+  .live-form .cats input { width: auto; } .live-form .look { font-size: .85rem; color: var(--muted); margin: .3rem 0 0; } .live-form .btns { display: flex; gap: .5rem; justify-content: flex-end; margin-top: .9rem; }
+  .live-box { position: relative; }
+  /* Meet the Residents (teacher side): reading here never changes the projector; Show to Class sends the cards */
+  .res-pane { position: absolute; inset: 0; z-index: 2; background: var(--panel); display: flex; flex-direction: column; }
+  .res-pane[hidden] { display: none; }
+  .res-pane .res-top { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; padding: .9rem 1.1rem .6rem; border-bottom: 1px solid var(--line); }
+  .res-pane .res-top h2 { margin: 0; font-size: 1.25rem; flex: 1; min-width: 12rem; }
+  .res-pane .res-mode { padding: .5rem 1.1rem; background: var(--soft); font-size: .9rem; color: var(--muted); display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+  .res-pane .res-mode b { color: var(--ink); }
+  .res-list { flex: 1; overflow-y: auto; padding: .8rem 1.1rem 1.4rem; }
+  .res-list h3 { margin: 1rem 0 .5rem; font-size: 1rem; } .res-about { margin: 0 0 .6rem; color: var(--ink); line-height: 1.4; }
+  .res-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .9rem; }
+  .res-card { border: 1px solid var(--line); border-radius: .9rem; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+  .res-card.sug { border-style: dashed; border-color: var(--tardy, #a35a00); } .res-card.gone { opacity: .85; }
+  .res-card .ph { aspect-ratio: 4/3; background: #26303f center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; }
+  .res-card .bd { padding: .6rem .75rem; flex: 1; font-size: .88rem; line-height: 1.38; }
+  .res-card .bd b { font-size: 1.1rem; display: block; } .res-card .sp { color: var(--muted); margin-bottom: .35rem; }
+  .res-card .rec { background: var(--soft); border-radius: .5rem; padding: .4rem .55rem; margin: .3rem 0; } .res-card .rec i { display: block; font-style: normal; font-weight: 800; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+  .res-card .src { font-size: .78rem; color: var(--muted); word-break: break-word; } .res-card .src a { color: var(--accent); }
+  .res-card .flag { display: inline-block; margin: 0 .3rem .3rem 0; padding: .1rem .45rem; border-radius: 999px; background: var(--soft); font-size: .72rem; font-weight: 700; color: var(--muted); }
+  .res-card .flag.warn { background: var(--tardy-bg, #fdeecd); color: var(--tardy, #a35a00); }
+  .res-card .row { display: flex; gap: .3rem; flex-wrap: wrap; padding: .45rem .6rem .6rem; } .res-card .row .live-btn { padding: .28rem .5rem; font-size: .78rem; }
+  .res-empty { color: var(--muted); }
+
+  /* 4.21 Living Screensavers in ASL Study: the Kiosk's colors mapped to ASL Study's */
+  .live-ov, .ls-dock, #lsLocal { --panel: var(--surface); --soft: var(--bg); --tardy-bg: var(--bad-soft); --tardy: var(--bad); }
+  .ls-dock { position: fixed; left: 12px; bottom: 12px; z-index: 80; display: flex; gap: 6px; }
+  .ls-dock button { padding: .45rem .75rem; border-radius: .7rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+  .ls-dock button[hidden] { display: none; } .ls-dock #lsFreeze.on { background: #7dd3fc; color: #062030; border-color: #7dd3fc; }
+  #lsLocal { position: fixed; z-index: 85; right: 14px; bottom: 14px; width: min(440px, 46vw); aspect-ratio: 16 / 9; background: #000; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  #lsLocal[hidden] { display: none; } #lsLocal.full { inset: 0; width: 100vw; height: 100vh; aspect-ratio: auto; border-radius: 0; right: 0; bottom: 0; }
+  #lsLocal .ratio { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; } #lsLocal .ratio > div { position: relative; width: 100%; max-height: 100%; aspect-ratio: 16 / 9; }
+  #lsLocal .ratio iframe, #lsLocal #lsYt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #lsLocal .ttl { position: absolute; left: 10px; bottom: 8px; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; font-size: 13px; font-weight: 600; } #lsLocal.notitle .ttl { display: none; }
+  #lsLocal .rest { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #0d1117; color: #c9d1e3; font-weight: 600; text-align: center; padding: 10px; } #lsLocal.resting .rest { display: flex; }
+  #lsLocal .x { position: absolute; top: 6px; right: 6px; z-index: 3; border: 0; border-radius: 8px; padding: 4px 9px; background: rgba(0,0,0,.5); color: #fff; cursor: pointer; font-weight: 700; opacity: 0; transition: opacity .2s; } #lsLocal:hover .x { opacity: 1; }
+  #lsLocal .res { position: absolute; inset: 0; z-index: 4; overflow-y: auto; padding: 3vh 3vw; background: rgba(6,10,18,.8); color: #fff; } #lsLocal .res[hidden] { display: none; }
+  #lsLocal .res h2 { margin: 0 0 .4em; } #lsLocal .res .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.4vw; }
+  #lsLocal .res .c2 { background: #f9f7f2; color: #1b1e2c; border-radius: 14px; overflow: hidden; } #lsLocal .res .c2 .ph { aspect-ratio: 4/3; background: #26303f center/cover no-repeat; } #lsLocal .res .c2 .bd { padding: 10px 12px; font-size: 15px; line-height: 1.35; }
+  #lsLocal .res .c2 b { display: block; font-size: 20px; } #lsLocal .res .rec { background: #e8f1ff; border-radius: 8px; padding: 6px 8px; margin: 4px 0; }
 
 /* kiosk additions */
 .knav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -959,6 +1045,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: 0; }
 <nav id="tabs" hidden></nav>
 <div id="modal" hidden></div>
 <div id="toast" hidden role="status"></div>
+<!-- every tool page: Colors (one theme for all Kiosk pages) and Pop out (Colleen, 2026-10-17) -->
+<div id="kbar" class="noprint" style="position:fixed;right:10px;bottom:10px;z-index:9000;display:flex;gap:6px;align-items:center;background:var(--surface,#fff);color:var(--ink,#1B1E2E);border:1px solid var(--line,#ddd);border-radius:999px;padding:4px 6px;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:.55;transition:opacity .2s;font:700 13px system-ui,sans-serif" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.55">
+  <label style="display:flex;align-items:center;gap:4px">🎨<select id="kTheme" aria-label="Colors for every Kiosk page" style="font:inherit;border:0;background:transparent;color:inherit;max-width:150px">
+    <option value="auto">Match my computer</option><option value="light">Classic light</option><option value="calm">Calm classroom</option><option value="night">Night</option><option value="contrast">High contrast</option><option value="neon">🌈 Neon</option><option value="pastelnight">🍬 Pastel night</option><option value="ocean">🌊 Ocean</option><option value="sunset">🌅 Sunset</option><option value="candy">🍭 Candy shop</option>
+  </select></label>
+  <button type="button" id="kPop" title="Open this tool in its own window you can drag onto the projector screen" style="font:inherit;border:1px solid var(--line,#ddd);background:transparent;color:inherit;border-radius:999px;padding:3px 10px;cursor:pointer">⧉ Pop out</button>
+</div>
+
 <script>
 (function () {
   var t = '';
@@ -972,6 +1066,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: 0; }
 /* ───────── helpers ───────── */
 const $ = (s, r) => (r || document).querySelector(s);
 const view = $('#view');
+const LOGIN_HELP = 'https:' + '/' + '/colleenelyse.github.io/asl-study-hall/login-help/';      /* step-by-step help for signing in to a school Google account (Colleen, 2026-10-17) */
+const loginLink = () => '<p><a class="link" href="' + LOGIN_HELP + '" target="_blank" rel="noopener">How do I log into my school Google account?</a></p>';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const n = x => Number(x || 0).toLocaleString();
 const rand = a => a[Math.floor(Math.random() * a.length)];
@@ -1176,12 +1272,12 @@ const sbStep = () => S.sb.money ? S.sb.mstep : S.sb.step;
 const sbFmt = p => S.sb.money ? (p < 0 ? '−' : '') + '$' + Math.abs(p).toLocaleString() : (p < 0 ? '−' : '') + Math.abs(p).toLocaleString();
 const sbColor = i => SB_COLORS[i % SB_COLORS.length];
 function sbCards(full) {
-  const t = S.sb.teams, top = Math.max(...t.map(x => x.p)), lead = t.filter(x => x.p === top).length === 1 && top > 0 ? top : null, pm = S.sb.mode === 'pm';
-  return `<div class="sbgrid${full ? ' full' : ''}" style="--cols:${t.length <= 4 ? t.length : t.length <= 6 ? 3 : 4};--len:${Math.max(2, ...t.map(x => sbFmt(x.p).length))}">${t.map((x, i) => `<div class="sbteam${pm ? ' pm' : ''}${x.p === lead ? ' lead' : ''}" style="--c:${sbColor(i)}" data-i="${i}">
-      ${pm ? '' : `<button class="sbhit" data-a="sbtap" data-i="${i}" aria-label="Add ${sbStep()} to ${esc(x.n)}"></button>`}
+  const t = S.sb.teams, top = Math.max(...t.map(x => x.p)), lead = t.filter(x => x.p === top).length === 1 && top > 0 ? top : null, pm = false, half = S.sb.money || S.sb.mode === 'pm';      /* Jeopardy and Add and subtract: the top half of a team adds the amount chosen at the top, the bottom half takes it away (Colleen, 2026-10-17) */
+  return `<div class="sbgrid${full ? ' full' : ''}" style="--cols:${t.length <= 4 ? t.length : t.length <= 6 ? 3 : 4};--len:${Math.max(2, ...t.map(x => sbFmt(x.p).length))}">${t.map((x, i) => `<div class="sbteam${half ? ' half' : ''}${x.p === lead ? ' lead' : ''}" style="--c:${sbColor(i)}" data-i="${i}">
+      ${half ? `<button class="sbhalf up" data-a="sbtap" data-i="${i}" aria-label="Add ${sbStep()} to ${esc(x.n)}"><span>+ ${sbFmt(sbStep())}</span></button><button class="sbhalf down" data-a="sbsub" data-i="${i}" aria-label="Take ${sbStep()} from ${esc(x.n)}"><span>− ${sbFmt(sbStep()).replace('−', '')}</span></button>` : `<button class="sbhit" data-a="sbtap" data-i="${i}" aria-label="Add ${sbStep()} to ${esc(x.n)}"></button>`}
       <div class="sbname">${x.p === lead ? '<span class="sbcrown" aria-hidden="true">👑</span>' : ''}<span>${esc(x.n)}</span></div>
       <div class="sbscore" aria-live="polite">${sbFmt(x.p)}</div>
-      ${pm ? `<div class="sbpm"><button class="sbminus" data-a="sbsub" data-i="${i}" aria-label="Take ${sbStep()} from ${esc(x.n)}">− ${sbFmt(sbStep()).replace('−', '')}</button><button class="sbplus" data-a="sbtap" data-i="${i}" aria-label="Add ${sbStep()} to ${esc(x.n)}">+ ${sbFmt(sbStep())}</button></div>` : `<div class="sbhint">Tap to add ${sbFmt(sbStep())}</div>`}
+      ${pm ? `<div class="sbpm"><button class="sbminus" data-a="sbsub" data-i="${i}" aria-label="Take ${sbStep()} from ${esc(x.n)}">− ${sbFmt(sbStep()).replace('−', '')}</button><button class="sbplus" data-a="sbtap" data-i="${i}" aria-label="Add ${sbStep()} to ${esc(x.n)}">+ ${sbFmt(sbStep())}</button></div>` : half ? '' : `<div class="sbhint">Tap to add ${sbFmt(sbStep())}</div>`}
     </div>`).join('')}</div>`;
 }
 function sbStepChips() {
@@ -1195,11 +1291,11 @@ function sbPaint() {
   const el = $('#sbbody'); if (!el) return; const s = S.sb, seg = (a, v, cur, label) => `<button class="${v === cur ? 'sel' : ''}" data-a="${a}" data-v="${v}" aria-pressed="${v === cur}">${label}</button>`;
   el.innerHTML = `<section class="card stack sbctl">
       <div class="row" style="flex-wrap:wrap;gap:10px 18px;align-items:center">
-        <div class="sbseg" role="group" aria-label="How to score">${seg('sbmode', 'tap', s.mode, 'Tap to add')}${seg('sbmode', 'pm', s.mode, 'Add and subtract')}</div>
+        ${s.money ? '' : `<div class="sbseg" role="group" aria-label="How to score">${seg('sbmode', 'tap', s.mode, 'Tap to add')}${seg('sbmode', 'pm', s.mode, 'Add and subtract')}</div>`}
         <div class="sbseg" role="group" aria-label="Points or dollars">${seg('sbmoney', '0', s.money ? '1' : '0', 'Points')}${seg('sbmoney', '1', s.money ? '1' : '0', 'Jeopardy ($)')}</div>
         ${s.money ? `<div class="sbseg" role="group" aria-label="Round">${seg('sbround', 'j', s.round === 'dj' ? 'dj' : 'j', 'Jeopardy')}${seg('sbround', 'dj', s.round === 'dj' ? 'dj' : 'j', 'Double Jeopardy')}</div>` : ''}
         <span class="grow"></span>${s.money ? '<button class="btn alt sm" data-a="sbdaily">Daily Double</button><button class="btn alt sm" data-a="sbfinal">Final Jeopardy</button>' : ''}<button class="btn sm" data-a="sbfull">Projector view</button></div>
-      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><span class="small muted" style="font-weight:800">Per tap</span>${sbStepChips()}</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><span class="small muted" style="font-weight:800">${S.sb.money ? 'Amount' : 'Per tap'}</span>${sbStepChips()}</div>
     </section>
     <div id="sbboard">${sbCards(false)}</div>
     <section class="card stack"><div class="row"><h2 class="grow" style="margin:0">Teams</h2><button class="btn alt sm" data-a="sbundo"${s.hist.length ? '' : ' disabled'}>Undo</button><button class="btn alt sm" data-a="sbreset">Reset scores</button></div>
@@ -1306,7 +1402,7 @@ function sbFjMsg(html, ms) { let m = $('#sbfjmsg'); if (!m) { m = document.creat
   m.innerHTML = html; m.classList.remove('in'); void m.offsetWidth; m.classList.add('in'); clearTimeout(m._t); if (ms) m._t = setTimeout(() => m.remove(), ms); }
 /* Projector view: the cards fill the screen; a slim bar keeps Undo, Per tap and Exit */
 function sbFullPaint() { const d = $('#sbfull'); if (!d) return;
-  d.innerHTML = `<div class="sbfullbar"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="small" style="font-weight:800">Per tap</span>${sbStepChips()}</div><span class="grow"></span>${S.sb.money ? `<div class="sbseg" role="group" aria-label="Round"><button class="${S.sb.round === 'dj' ? '' : 'sel'}" data-a="sbround" data-v="j">Jeopardy</button><button class="${S.sb.round === 'dj' ? 'sel' : ''}" data-a="sbround" data-v="dj">Double</button></div><button class="btn alt sm" data-a="sbdaily">Daily Double</button><button class="btn alt sm" data-a="sbfinal">Final Jeopardy</button>` : ''}<button class="btn alt sm" data-a="sbundo"${S.sb.hist.length ? '' : ' disabled'}>Undo</button><button class="btn alt sm" data-a="sbfullx">Exit projector view</button></div><div id="sbfullboard">${sbCards(true)}</div>`;
+  d.innerHTML = `<div class="sbfullbar"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="small" style="font-weight:800">${S.sb.money ? 'Amount' : 'Per tap'}</span>${sbStepChips()}</div><span class="grow"></span>${S.sb.money ? `<div class="sbseg" role="group" aria-label="Round"><button class="${S.sb.round === 'dj' ? '' : 'sel'}" data-a="sbround" data-v="j">Jeopardy</button><button class="${S.sb.round === 'dj' ? 'sel' : ''}" data-a="sbround" data-v="dj">Double</button></div><button class="btn alt sm" data-a="sbdaily">Daily Double</button><button class="btn alt sm" data-a="sbfinal">Final Jeopardy</button>` : ''}<button class="btn alt sm" data-a="sbundo"${S.sb.hist.length ? '' : ' disabled'}>Undo</button><button class="btn alt sm" data-a="sbfullx">Exit projector view</button></div><div id="sbfullboard">${sbCards(true)}</div>`;
   hydrate(d); }
 ACT.sbfull = () => { if ($('#sbfull')) return; const d = document.createElement('div'); d.id = 'sbfull'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Scoreboard, projector view');
   document.body.appendChild(d); sbFullPaint();
@@ -1436,10 +1532,36 @@ const dcPick = d => { const f = dcFaces(d); return f[Math.floor(Math.random() * 
 /* ASL font, loaded once into each document that shows dice (this page, the pop-out window) */
 function dcFont(doc) { try { if (!S.set.pipArt || doc.dcFont) return; const url = new URL('../fonts/CGasl.ttf', pipBase()).href, f = new FontFace('CGasl', 'url(' + url + ')'); doc.dcFont = f; doc.fonts.add(f); f.load().then(() => dcPaint()).catch(() => {}); } catch (e) {} }
 const DC_PIPS = { 1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[26, 26], [50, 50], [74, 74]], 4: [[28, 28], [72, 28], [28, 72], [72, 72]], 5: [[27, 27], [73, 27], [50, 50], [27, 73], [73, 73]], 6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]] };
+const DC_SHAPES = {      /* the outline of a die with that many faces (6: the usual square die) */
+  tri: '<polygon points="50,5 96,90 4,90"/><path class="fc" d="M50,5 L50,62 L4,90 M50,62 L96,90"/>',
+  d8: '<polygon points="50,3 97,50 50,97 3,50"/><path class="fc" d="M3,50 L97,50"/>',
+  d10: '<polygon points="50,3 96,44 50,97 4,44"/><path class="fc" d="M4,44 L50,60 L96,44 M50,60 L50,97"/>',
+  d12: '<polygon points="50,4 96,38 78,95 22,95 4,38"/><polygon class="fc" points="50,24 75,42 66,72 34,72 25,42"/>',
+  d20: '<polygon points="50,3 93,27 93,73 50,97 7,73 7,27"/><polygon class="fc" points="50,24 77,71 23,71"/>',
+  gem: '<polygon points="50.0,3.0 73.5,9.3 90.7,26.5 97.0,50.0 90.7,73.5 73.5,90.7 50.0,97.0 26.5,90.7 9.3,73.5 3.0,50.0 9.3,26.5 26.5,9.3"/><polygon class="fc" points="50.0,24.0 72.5,37.0 72.5,63.0 50.0,76.0 27.5,63.0 27.5,37.0"/>'
+};
+function dcShape(d) {
+  if (d.k === 'dots') return '';
+  const n = dcFaces(d).length;
+  return n <= 4 ? 'tri' : n <= 6 ? '' : n <= 8 ? 'd8' : n <= 10 ? 'd10' : n <= 12 ? 'd12' : n <= 20 ? 'd20' : 'gem';
+}
+/* an ASL letter drawn to fit: the font's hands reach above and below the line (J, Z, P, Q…), so each one is measured and
+   scaled into the die instead of being cut off (Colleen, 2026-10-17) */
+const DC_INK = {};
+function dcInk(t) {
+  const key = t + (document.fonts && document.fonts.check && document.fonts.check('100px CGasl') ? 1 : 0); if (DC_INK[key]) return DC_INK[key];
+  let b = { l: 0, a: 80, w: 70, h: 100 };
+  try { const c = (dcInk.c = dcInk.c || document.createElement('canvas')).getContext('2d'); c.font = '100px CGasl, sans-serif'; const m = c.measureText(t);
+    const l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width, a = m.actualBoundingBoxAscent || 80, de = m.actualBoundingBoxDescent || 20;
+    if (r + l > 1 && a + de > 1) b = { l: l, a: a, w: l + r, h: a + de }; } catch (e) {}
+  return (DC_INK[key] = b);
+}
+function dcGlyph(t) { const b = dcInk(t), pad = 4;
+  return `<svg class="dcglyph" viewBox="${(-b.l - pad).toFixed(1)} ${(-b.a - pad).toFixed(1)} ${(b.w + pad * 2).toFixed(1)} ${(b.h + pad * 2).toFixed(1)}" aria-hidden="true"><text x="0" y="0" font-family="CGasl, sans-serif" font-size="100">${esc(t)}</text></svg>`; }
 function dcFace(d, v) {
   if (v == null) return '<span class="dcq">?</span>';
   if (d.k === 'dots') return `<svg viewBox="0 0 100 100" aria-hidden="true">${(DC_PIPS[v] || []).map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="9.5"/>`).join('')}</svg>`;
-  if (d.k === 'asl' || d.k === 'asln') return `<span class="dcasl">${esc(String(v).toLowerCase())}</span>`;
+  if (d.k === 'asl' || d.k === 'asln') return dcGlyph(String(v).toLowerCase());
   const t = String(v), L = t.length; return `<span class="dctxt" style="--fs:${L <= 2 ? .58 : L <= 4 ? .4 : L <= 7 ? .26 : L <= 11 ? .18 : .13}">${esc(t)}</span>`;
 }
 const dcLabel = (d, v) => v == null ? 'not rolled yet' : d.k === 'asl' ? 'ASL letter ' + v : d.k === 'asln' ? 'ASL number ' + v : String(v);
@@ -1454,7 +1576,7 @@ function dcPaint(only) {
     const w = a.clientWidth || 300, h = a.clientHeight || 200, cols = n <= 3 ? n : n === 4 ? 2 : 3, rows = Math.ceil(n / cols), s = Math.max(30, Math.min(w / cols, h / rows) * .74);
     a.style.setProperty('--s', s + 'px'); a.style.setProperty('--cols', cols);
     if (a.children.length !== n) a.innerHTML = D.dice.map((d, i) => `<button class="dcdie" data-a="dcone" data-i="${i}" style="--c:${DC_COLORS[i % 6]}"></button>`).join('');
-    [...a.children].forEach((b, i) => { if (only != null && only !== i) return; const d = D.dice[i], v = D.vals[i]; b.className = 'dcdie k-' + d.k + (D.rolling & (1 << i) ? ' roll' : ''); b.innerHTML = dcFace(d, v); b.setAttribute('aria-label', 'Die ' + (i + 1) + ': ' + dcLabel(d, v) + '. Tap to roll just this one.'); });
+    [...a.children].forEach((b, i) => { if (only != null && only !== i) return; const d = D.dice[i], v = D.vals[i]; const sh = dcShape(d); b.className = 'dcdie k-' + d.k + (sh ? ' poly sh-' + sh : '') + (D.rolling & (1 << i) ? ' roll' : ''); b.innerHTML = (sh ? '<svg class="dcshape" viewBox="0 0 100 100" aria-hidden="true">' + DC_SHAPES[sh] + '</svg>' : '') + dcFace(d, v); b.setAttribute('aria-label', 'Die ' + (i + 1) + ': ' + dcLabel(d, v) + '. Tap to roll just this one.'); });
     const t = root.querySelector('.dctotal'), tot = dcTotal(); if (t) { if (!tot || D.auto || D.shown) t.textContent = tot; else if (!t.querySelector('button')) t.innerHTML = '<button class="btn sm alt" data-a="dctot">Show the total</button>'; } });      /* or a button, so students do the math first */
 }
 /* a little rattle through the speakers (the timer's sound maker) */
@@ -1543,9 +1665,9 @@ addEventListener('resize', () => { if (dcRoots().length) dcPaint(); });
 document.addEventListener('fullscreenchange', () => setTimeout(() => dcPaint(), 60));
 document.addEventListener('keydown', e => { if (!(e.key === ' ' || (e.key === 'Enter' && $('#dcfull')))) return; if (!$('#dcfull') && S.view !== 'dice') return; const t = e.target; if (t && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)) return; e.preventDefault(); ACT.dcroll(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#dcfull')) ACT.dcexit(); });
-const TEACH_GROUPS = [['My class', ['dash', 'reports', 'qres', 'spots', 'seats']], ['Teach', ['livehost', 'timer', 'dice', 'score', 'focus', 'tests', 'groups', 'picker', 'acts', 'push', 'board']], ['Rewards', ['prizes', 'gift']], ['Pictures', ['pics', 'banks']], ['Settings', ['appset']]];
+const TEACH_GROUPS = [['My class', ['dash', 'reports', 'qres', 'spots', 'seats']], ['Teach', ['livehost', 'timer', 'live', 'dice', 'score', 'focus', 'tests', 'groups', 'picker', 'acts', 'push', 'board']], ['Rewards', ['prizes', 'gift']], ['Pictures', ['pics', 'banks']], ['Settings', ['appset']]];
 const TEACH_SAME = { photos: 'pics' };
-const TEACH_IC = { acts: 'ear', fsres: 'hand', qres: 'target', spots: 'spark', score: 'trophy', focus: 'paw', tests: 'testpaper', groups: 'groups', picker: 'dice', dash: 'people', reports: 'chart', push: 'megaphone', livehost: 'gamepad', timer: 'stopwatch', dice: 'dicepair', seats: 'desk', prizes: 'ticket', gift: 'gift', pics: 'camera', banks: 'smile', appset: 'gear', board: 'sotd' };
+const TEACH_IC = { live: 'paw', acts: 'ear', fsres: 'hand', qres: 'target', spots: 'spark', score: 'trophy', focus: 'paw', tests: 'testpaper', groups: 'groups', picker: 'dice', dash: 'people', reports: 'chart', push: 'megaphone', livehost: 'gamepad', timer: 'stopwatch', dice: 'dicepair', seats: 'desk', prizes: 'ticket', gift: 'gift', pics: 'camera', banks: 'smile', appset: 'gear', board: 'sotd' };
 
 
 /* ===== Hall Pass Kiosk: Classroom tools page (?view=tools&tool=…) =====
@@ -1632,7 +1754,7 @@ function tlPaint() {
 function tlLoad() { call('getBellScheduleStatus', '__AUTO__').then(st => { S.tl.status = st; tlPaint(); }).catch(() => {}); }
 
 /* ----- which tool this window shows ----- */
-const KTOOLS = { timer: 'tmfull', dice: 'dcfull' };      /* Timer and Dice open straight into their big view; the Scoreboard opens on its setup (every mode, Jeopardy too) */
+const KTOOLS = { timer: 'tmfull' };      /* the Timer opens straight into its big view; Dice (Colleen, 2026-10-17) and the Scoreboard open on their settings */
 (function start() {
   const begin = p => {
     const tool = String(p.tool || 'timer');
@@ -1646,6 +1768,28 @@ const KTOOLS = { timer: 'tmfull', dice: 'dcfull' };      /* Timer and Dice open 
   };
   try { google.script.url.getLocation(loc => begin((loc && loc.parameter) || {})); }
   catch (e) { begin({}); }
+})();
+
+(function () {
+  var root = document.documentElement, sel = document.getElementById('kTheme'), pop = document.getElementById('kPop'), PAGE = 'tools';
+  sel.value = root.getAttribute('data-kiosk-theme') || root.getAttribute('data-theme') || 'auto';
+  setTimeout(function () { var t = root.getAttribute('data-theme'); if (t && !root.getAttribute('data-kiosk-theme')) sel.value = t; }, 1500);
+  sel.onchange = function () {
+    var v = sel.value; if (v === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', v);
+    root.setAttribute('data-kiosk-theme', v);
+    try { localStorage.setItem('teacherViewTheme', v); } catch (e) {}
+    try { google.script.run.setKioskTheme(v); } catch (e) {}
+  };
+  pop.onclick = function () {
+    var base = root.getAttribute('data-kiosk-url') || (typeof kioskLink !== 'undefined' ? kioskLink : '');
+    if (!base) { alert('The page is still loading. Try again in a moment.'); return; }
+    var v = (typeof S !== 'undefined' && S.view) || '', q;
+    if (PAGE === 'seating') q = v === 'picker' || v === 'groups' ? '?view=seating&tool=' + v : '?view=seating';
+    else q = '?view=tools&tool=' + (v || 'timer');
+    var small = /^(timer|dice|rnum|timeleft|picker)$/.test(v), w = small ? 620 : 1100, h = small ? 520 : 760;
+    var win = window.open(base + q, 'kpop' + Date.now(), 'popup=yes,width=' + w + ',height=' + h);
+    if (!win) alert('The pop-out window was blocked. Allow pop-ups for this page (the icon at the right end of the address bar), then press Pop out again.');
+  };
 })();
 
 </script>

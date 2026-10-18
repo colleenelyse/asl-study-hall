@@ -182,9 +182,14 @@
   .proj-freeze { font-weight: 800; }
   #projFreeze.on { background: #7dd3fc; color: #062030; border-color: #7dd3fc; }
   .todo-form { display: grid; grid-template-columns: 1fr auto auto; gap: .4rem; margin-bottom: .5rem; }
+  .todo-form #todoText { grid-column: 1 / -1; }      /* the reminder gets the whole first row; list, date and Add below */
+  .todo-form input[type=date] { min-width: 0; }
+  .todo-due { display: inline-block; margin-left: .4rem; font-size: .78rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .todo-due.today { color: var(--tardy); } .todo-due.overdue { color: var(--absent); }
+  .todo-item input[type=date] { width: auto; height: auto; padding: .2rem .3rem; border-radius: .4rem; border: 1px solid var(--line); background: var(--soft); color: var(--ink); font: inherit; font-size: .8rem; grid-column: 2 / -1; }
   .todo-form input, .todo-form select { min-width: 0; padding: .5rem .6rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--soft); color: var(--ink); font: inherit; }
   .todo-group h3 { margin: .6rem 0 .2rem; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .todo-item { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: .45rem; padding: .35rem 0; border-top: 1px solid var(--line); }
+  .todo-item { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: .45rem; padding: .35rem 0; border-top: 1px solid var(--line); }
   .todo-item input { width: 1.2rem; height: 1.2rem; accent-color: var(--present); cursor: pointer; margin: 0; }
   .todo-item label { cursor: pointer; overflow-wrap: anywhere; }
   .todo-item.done label { text-decoration: line-through; color: var(--muted); }
@@ -198,6 +203,11 @@
     background: var(--soft); color: var(--ink); font: inherit; }
   .mem-row { display: flex; align-items: center; gap: .6rem; }
   .mem-save { font-weight: 700; }
+  .mem-add { cursor: pointer; font-weight: 600; }
+  .mem-pic { position: relative; width: 9rem; } .mem-pic img { display: block; width: 100%; border-radius: .6rem; border: 1px solid var(--line); }
+  .mem-pic button { position: absolute; top: .25rem; right: .25rem; border: 0; border-radius: 50%; width: 1.6rem; height: 1.6rem; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; }
+  .mem-item img { display: block; max-width: 100%; max-height: 12rem; border-radius: .6rem; margin: .1rem 0 .3rem; grid-column: 1; }
+  .mem-item .mem-ph { grid-column: 1; color: var(--muted); font-size: .8rem; }
   .mem-year { display: inline-block; margin-top: .5rem; text-decoration: none; color: inherit; font-weight: 700; }
   .mem-msg { color: var(--muted); font-size: .85rem; }
   .mem-item { border-top: 1px solid var(--line); padding: .55rem 0; display: grid; grid-template-columns: 1fr auto; gap: .15rem .5rem; }
@@ -500,6 +510,7 @@
         <form id="todoForm" class="todo-form">
           <input id="todoText" type="text" maxlength="500" placeholder="Remind me to…" aria-label="New reminder">
           <select id="todoList" aria-label="Which list"><option value="Now">Now</option><option value="Later">Later</option></select>
+          <input id="todoDue" type="date" aria-label="Due date (optional)" title="Due date (optional): a Later item moves to Now on this day">
           <button type="submit" class="sound-toggle" id="todoAdd">Add</button>
         </form>
         <div id="todoBox"></div>
@@ -509,7 +520,10 @@
         <h2>😂 Class memories <small id="memCount"></small></h2>
         <form id="memForm" class="mem-form">
           <textarea id="memText" rows="3" maxlength="2000" placeholder="Something funny just happened… type it here so you remember it."></textarea>
-          <div class="mem-row"><button type="submit" class="sound-toggle mem-save" id="memSave">💾 Save memory</button><span class="mem-msg" id="memMsg"></span></div>
+          <div class="mem-pic" id="memPic" hidden><img id="memPicImg" alt="Photo for this memory"><button type="button" id="memPicX" title="Remove the photo">✕</button></div>
+          <div class="mem-row"><button type="submit" class="sound-toggle mem-save" id="memSave">💾 Save memory</button>
+            <label class="sound-toggle mem-add" title="Add a photo (or paste one into the box above)">📷 Add photo<input type="file" id="memFile" accept="image/*" hidden></label>
+            <span class="mem-msg" id="memMsg"></span></div>
         </form>
         <div id="memList"></div>
         <button type="button" class="sound-toggle" id="memMore" hidden></button>
@@ -1320,8 +1334,10 @@
       items.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });      // checked ones sink to the bottom
       return '<div class="todo-group"><h3>' + list + '</h3>' + (items.length ? items.map(function (t) {
         var other = list === 'Now' ? 'Later' : 'Now';
+        var due = t.due ? '<span class="todo-due ' + esc(t.dueState) + '">📅 ' + (t.dueState === 'today' ? 'due today' : t.dueState === 'overdue' ? 'overdue · ' + esc(t.dueText) : esc(t.dueText)) + '</span>' : '';
         return '<div class="todo-item' + (t.done ? ' done' : '') + '"><input type="checkbox" id="td_' + esc(t.id) + '" data-done="' + esc(t.id) + '"' + (t.done ? ' checked' : '') + '>' +
-          '<label for="td_' + esc(t.id) + '">' + esc(t.text) + '</label>' +
+          '<label for="td_' + esc(t.id) + '">' + esc(t.text) + due + '</label>' +
+          '<button type="button" data-due="' + esc(t.id) + '" data-val="' + esc(t.due || '') + '" title="Set or change the due date">📅</button>' +
           '<button type="button" data-move="' + esc(t.id) + '" data-to="' + other + '" title="Move to ' + other + '">→ ' + other + '</button>' +
           '<button type="button" class="del" data-del="' + esc(t.id) + '" title="Delete">✕</button></div>';
       }).join('') : '<div class="todo-empty">Nothing here.</div>') + '</div>';
@@ -1338,17 +1354,28 @@
       var text = el('todoText').value.trim(); if (!text) { el('todoText').focus(); return; }
       el('todoAdd').disabled = true;
       google.script.run
-        .withSuccessHandler(function (r) { el('todoAdd').disabled = false; el('todoText').value = ''; got(r); el('todoText').focus(); })
+        .withSuccessHandler(function (r) { el('todoAdd').disabled = false; el('todoText').value = ''; el('todoDue').value = ''; got(r); el('todoText').focus(); })
         .withFailureHandler(function (err) { el('todoAdd').disabled = false; alert((err && err.message) || 'Could not add it. Try again.'); })
-        .addTodo(text, el('todoList').value);
+        .addTodo(text, el('todoList').value, el('todoDue').value);
     });
     el('todoBox').addEventListener('change', function (e) {
+      var sd = e.target.getAttribute('data-setdue');      // the date box under an item (from its 📅 button)
+      if (sd) { google.script.run.withSuccessHandler(got).withFailureHandler(fail).setTodoDue(sd, e.target.value); return; }
       var id = e.target.getAttribute('data-done'); if (!id) return;
       var on = e.target.checked;
       todos.forEach(function (t) { if (t.id === id) t.done = on; }); draw();      // show it right away
       google.script.run.withSuccessHandler(got).withFailureHandler(fail).setTodoDone(id, on);
     });
     el('todoBox').addEventListener('click', function (e) {
+      var dd = e.target.closest('[data-due]');
+      if (dd) {      // 📅: show a date box under the item (click again to hide it); clear it to remove the date
+        var item = dd.closest('.todo-item'), box = item.querySelector('input[type=date]');
+        if (box) { box.remove(); return; }
+        box = document.createElement('input'); box.type = 'date'; box.value = dd.getAttribute('data-val') || '';
+        box.setAttribute('data-setdue', dd.getAttribute('data-due')); box.setAttribute('aria-label', 'Due date');
+        item.appendChild(box); try { if (box.showPicker) box.showPicker(); } catch (x) { box.focus(); }
+        return;
+      }
       var m = e.target.closest('[data-move]'), d = e.target.closest('[data-del]');
       if (m) {
         var id = m.getAttribute('data-move'), to = m.getAttribute('data-to');
@@ -1375,29 +1402,56 @@
       var shown = showAll ? list : list.slice(0, 5);
       el('memCount').textContent = list.length ? list.length + (list.length === 1 ? ' memory' : ' memories') : '';
       el('memList').innerHTML = shown.map(function (m) {
-        return '<div class="mem-item"><p>' + esc(m.text) + '</p><small>' + esc(m.when) + (m.cls ? ' · ' + esc(m.cls) : '') + '</small>' +
+        return '<div class="mem-item">' + (m.photo ? (photos[m.id] ? '<img src="' + photos[m.id] + '" alt="">' : '<span class="mem-ph" data-photo="' + esc(m.id) + '">📷 loading photo…</span>') : '') +
+          (m.text ? '<p>' + esc(m.text) + '</p>' : '') + '<small>' + esc(m.when) + (m.cls ? ' · ' + esc(m.cls) : '') + '</small>' +
           '<button type="button" data-mem="' + esc(m.id) + '" title="Delete this memory">✕</button></div>';
       }).join('');
       var more = el('memMore');
       more.hidden = list.length <= 5;
       more.textContent = showAll ? 'Show fewer' : 'Show all ' + list.length;
+      // photos load one at a time, only for memories on screen, and are kept for this visit
+      shown.forEach(function (m) {
+        if (!m.photo || photos[m.id] || asked[m.id]) return;
+        asked[m.id] = true;
+        google.script.run.withSuccessHandler(function (url) { if (url) { photos[m.id] = url; draw(); } }).getMemoryPhoto(m.id);
+      });
     }
+    var photos = {}, asked = {}, pic = '';
     function got(r) { list = r || []; draw(); }
+    // a photo for the next memory: chosen with 📷 or pasted into the box; made smaller (max 1200 px) before it is sent
+    function usePicture(file) {
+      if (!file || !/^image\//.test(file.type)) return;
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var k = Math.min(1, 1200 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        pic = c.toDataURL('image/jpeg', 0.82); URL.revokeObjectURL(url);
+        el('memPicImg').src = pic; el('memPic').hidden = false;
+      };
+      img.src = url;
+    }
+    el('memFile').addEventListener('change', function () { usePicture(this.files && this.files[0]); this.value = ''; });
+    el('memText').addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) if (/^image\//.test(items[i].type)) { e.preventDefault(); usePicture(items[i].getAsFile()); return; }
+    });
+    el('memPicX').onclick = function () { pic = ''; el('memPic').hidden = true; el('memPicImg').removeAttribute('src'); };
     el('memMore').onclick = function () { showAll = !showAll; draw(); };
     el('memForm').addEventListener('submit', function (e) {
       e.preventDefault();
       var text = el('memText').value.trim();
-      if (!text) { el('memText').focus(); return; }
+      if (!text && !pic) { el('memText').focus(); return; }
       var cls = (el('nowClass').textContent || '').trim();
       el('memSave').disabled = true; el('memMsg').textContent = 'Saving…';
       google.script.run
-        .withSuccessHandler(function (r) { el('memSave').disabled = false; el('memText').value = ''; el('memMsg').textContent = 'Saved 😄'; got(r); setTimeout(function () { el('memMsg').textContent = ''; }, 3000); })
+        .withSuccessHandler(function (r) { el('memSave').disabled = false; el('memText').value = ''; el('memPicX').onclick(); el('memMsg').textContent = 'Saved 😄'; got(r); setTimeout(function () { el('memMsg').textContent = ''; }, 3000); })
         .withFailureHandler(function (err) { el('memSave').disabled = false; el('memMsg').textContent = (err && err.message) || 'Could not save. Try again.'; })
-        .saveClassMemory(text, cls);
+        .saveClassMemory(text, cls, pic);
     });
     el('memList').addEventListener('click', function (e) {
       var b = e.target.closest('[data-mem]'); if (!b) return;
-      if (!confirm('Delete this memory? This cannot be undone.')) return;
+      if (!confirm('Delete this memory? This cannot be undone. (Its photo goes to your Google Drive trash.)')) return;
       google.script.run.withSuccessHandler(got).deleteClassMemory(b.getAttribute('data-mem'));
     });
     google.script.run.withSuccessHandler(got).getClassMemories();
@@ -1414,8 +1468,8 @@
   // Colors picker: remembered on this computer ("auto" follows light/dark mode).
   (function () {
     var pick = document.getElementById('themePick');
-    var saved = 'auto';
-    try { saved = localStorage.getItem('teacherViewTheme') || 'auto'; } catch (e) {}
+    var saved = document.documentElement.getAttribute('data-kiosk-theme') || '';      // the one theme saved for every Kiosk page (2026-10-17)
+    if (!saved) { try { saved = localStorage.getItem('teacherViewTheme') || 'auto'; } catch (e) { saved = 'auto'; } }
     function apply(v) {
       if (v === 'auto') document.documentElement.removeAttribute('data-theme');
       else document.documentElement.setAttribute('data-theme', v);
@@ -1426,6 +1480,7 @@
       pick.addEventListener('change', function () {
         apply(pick.value);
         try { localStorage.setItem('teacherViewTheme', pick.value); } catch (e) {}
+        try { google.script.run.setKioskTheme(pick.value); } catch (e) {}      // every Kiosk page opens in it from now on
       });
     }
   })();

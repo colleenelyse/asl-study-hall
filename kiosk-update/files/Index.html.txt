@@ -9893,10 +9893,9 @@ kioskLastBackground.load(function (last) {
             </div>
 
             <div class="setting-help">
-              Choose a student, then upload a photo here. The app saves the photo
-              to a private Hall Pass Kiosk Student Photos folder in Google Drive
-              and writes the image reference into that student's Photo cell on
-              the Students sheet.
+              Choose a student, then upload a photo or paste a copied picture here.
+              The photo is saved right inside that student's Photo cell on the
+              Students tab of your Sheet.
             </div>
 
             <div class="student-photo-settings-grid">

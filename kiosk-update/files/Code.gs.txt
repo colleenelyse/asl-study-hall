@@ -4,7 +4,67 @@
 // The release number other teachers see in their teacher view. They update their own copy by pasting the
 // changed files from the "Update your kiosk" page (asl-study-hall-site/kiosk-update/, built by
 // dev/build-update-page.py). Raise it by one with every release (the build script checks it).
-var KIOSK_RELEASE = 2;
+var KIOSK_RELEASE = 3;
+
+/* ===== Teachers list (2026-10-17) =====
+   Each teacher's copy tells Colleen's kiosk that it is in use: their Google email, their Sheet's name and
+   their release number. It goes to the "Kiosk Teachers" tab in Colleen's Sheet (one row per copy), when they
+   run setUpMyKiosk and at most once a day when their teacher view is open. Colleen's own kiosk and the
+   template never report. The manual tells teachers about it. */
+var KIOSK_HOME_SCRIPT_ID_ = "1BbVBbDBo8jHpgFngE8EFnfdVp29qENdeg7TX14NOQfVaTB93zpgzJi5X";
+var KIOSK_TEMPLATE_SCRIPT_ID_ = "1B4GOcGi2H_BxJfcZGcTlmizEdNjjFXnYyElGp_MfFFyB2kpWzR8rhBPK";
+var KIOSK_HOME_URL_ = "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec";
+var KIOSK_TEACHERS_HEAD_ = ["Email", "Sheet Name", "Release", "First Seen", "Last Seen", "Time Zone", "Copy ID"];
+
+// From a teacher's copy: "this copy is in use". Quiet if it can't reach Colleen's kiosk.
+function kioskReportInUse_(force) {
+  try {
+    var id = ScriptApp.getScriptId();
+    if (id === KIOSK_HOME_SCRIPT_ID_ || id === KIOSK_TEMPLATE_SCRIPT_ID_) return "not a teacher's copy";
+    var cache = kioskCache_();
+    if (!force && cache.get("kiosk:reportedInUse")) return "already today";
+    var email = "";
+    try { email = Session.getEffectiveUser().getEmail() || ""; } catch (e) {}
+    UrlFetchApp.fetch(KIOSK_HOME_URL_, {
+      method: "post", contentType: "application/json", muteHttpExceptions: true, followRedirects: true,
+      payload: JSON.stringify({ kioskTeacher: 1, email: email, sheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
+        release: KIOSK_RELEASE, tz: Session.getScriptTimeZone(), copy: id })
+    });
+    cache.put("kiosk:reportedInUse", "1", 21600);
+    return "reported";
+  } catch (err) {
+    return "could not report";
+  }
+}
+
+// On Colleen's kiosk only: record a teacher's copy in the "Kiosk Teachers" tab (one row per copy, updated each time).
+function doPost(e) {
+  var out = function(t) { return ContentService.createTextOutput(t); };
+  try {
+    if (ScriptApp.getScriptId() !== KIOSK_HOME_SCRIPT_ID_) return out("not here");
+    var d = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    if (!d || d.kioskTeacher !== 1) return out("ignored");
+    var clean = function(v, max) { return String(v == null ? "" : v).replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, max); };
+    var email = clean(d.email, 120), copy = clean(d.copy, 80).replace(/[^A-Za-z0-9_-]/g, "");
+    if (!copy || (email && !/^[^@\s]+@[^@\s]+$/.test(email))) return out("bad");
+    var release = Math.max(0, Math.min(9999, Math.round(Number(d.release) || 0)));
+    kioskWithEmojiLock_(function() {
+      var sheet = kioskSeatTab_("Kiosk Teachers", KIOSK_TEACHERS_HEAD_), now = new Date(), row = 0;
+      if (sheet.getLastRow() >= 2) {
+        sheet.getRange(2, 7, sheet.getLastRow() - 1, 1).getValues().forEach(function(r, i) { if (!row && String(r[0]) === copy) row = i + 2; });
+      }
+      if (row) {
+        sheet.getRange(row, 1, 1, 3).setValues([[email, clean(d.sheet, 120), release]]);
+        sheet.getRange(row, 5, 1, 2).setValues([[now, clean(d.tz, 60)]]);
+      } else {
+        sheet.appendRow([email, clean(d.sheet, 120), release, now, now, clean(d.tz, 60), copy]);
+      }
+    });
+    return out("ok");
+  } catch (err) {
+    return out("error");
+  }
+}
 
 
 
@@ -1550,6 +1610,23 @@ function checkDestinationArtwork() {
   return report;
 }
 
+/* ONE color theme for every Kiosk page (Colleen, 2026-10-17: "when i change one in one place, it stays that way for all pages").
+   Saved in the script properties; each page opens in it, and any page's Colors menu changes it. "auto" = match the computer. */
+function getKioskTheme() {
+  try { return String(PropertiesService.getScriptProperties().getProperty("KIOSK_THEME") || ""); } catch (err) { return ""; }
+}
+function setKioskTheme(v) {
+  v = String(v || "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 20) || "auto";
+  PropertiesService.getScriptProperties().setProperty("KIOSK_THEME", v);
+  return v;
+}
+function kioskThemed_(out, params) {
+  var t = getKioskTheme() || String((params && params.theme) || "").toLowerCase().replace(/[^a-z]/g, ""), url = "";
+  try { url = ScriptApp.getService().getUrl(); } catch (err) {}
+  return out.setContent(out.getContent().replace(/<html([^>]*)>/i, function (m, a) {      // data-kiosk-theme: what is saved (also "auto"), for the page's Colors menu; data-kiosk-url: for Pop out
+    return "<html" + (t ? a.replace(/\s*data-theme="[^"]*"/, "") : a) + (t ? ' data-kiosk-theme="' + t + '"' + (t === "auto" ? "" : ' data-theme="' + t + '"') : "") + (url ? ' data-kiosk-url="' + url.replace(/"/g, "") + '"' : "") + ">"; }));
+}
+
 function doGet(e) {
   var settings = readKioskSettings();
   var view = String(
@@ -1575,7 +1652,7 @@ function doGet(e) {
 
   // Classroom tools in their own small window: ?view=tools&tool=timer|dice|score|rnum|passboard|timeleft
   if (view === "tools") {
-    return HtmlService.createHtmlOutputFromFile('Tools')
+    return kioskThemed_(HtmlService.createHtmlOutputFromFile('Tools'), e && e.parameter)
       .setTitle("Classroom tools")
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -1583,14 +1660,14 @@ function doGet(e) {
 
   // Seating charts: ?view=seating (editor) or ?view=seat&cls=…&key=… (one seat, lit up)
   if (view === "seating" || view === "seat") {
-    return HtmlService.createHtmlOutputFromFile('Seating')
+    return kioskThemed_(HtmlService.createHtmlOutputFromFile('Seating'), e && e.parameter)
       .setTitle("Seating charts")
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (wantsDrill) {
-    return HtmlService.createHtmlOutputFromFile('Drill')
+    return kioskThemed_(HtmlService.createHtmlOutputFromFile('Drill'), e && e.parameter)
       .setTitle("Drill view")
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -1598,7 +1675,7 @@ function doGet(e) {
 
   if (view === "teacher" || view === "dashboard") {
     try {
-      return HtmlService.createHtmlOutputFromFile('Dashboard')
+      return kioskThemed_(HtmlService.createHtmlOutputFromFile('Dashboard'), e && e.parameter)
         .setTitle(
           (settings.mainTitle || settings.topTitle || "Hall Pass Kiosk") +
           " — Teacher"
@@ -1624,7 +1701,7 @@ function doGet(e) {
 
   // ?settings=only: just Teacher Settings, shown inside the teacher view, in its colors (?theme=…).
   if (String(params.settings || "") === "only") {
-    var theme = String(params.theme || "").toLowerCase().replace(/[^a-z]/g, "");
+    var theme = getKioskTheme() || String(params.theme || "").toLowerCase().replace(/[^a-z]/g, "");      // the one saved color theme first
     page.setContent(
       page.getContent()
         .replace("<html>", "<html" + (theme && theme !== "auto" ? ' data-theme="' + theme + '"' : "") + ">")
@@ -13381,34 +13458,65 @@ function getSeatingLink() {
 
 // ----- Class memories: funny moments the teacher types in the teacher view, kept on the
 // "Class Memories" tab (newest at the bottom of the tab, newest first in the teacher view).
-var KIOSK_MEMORY_HEAD_ = ["When", "Class", "Memory", "ID"];
+var KIOSK_MEMORY_HEAD_ = ["When", "Class", "Memory", "ID", "Photo"];      // Photo = a Drive file in "Hall Pass Kiosk Memories"
 
 function getClassMemories() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Class Memories");
   if (!sheet || sheet.getLastRow() < 2) return [];
   var tz = teacherDashboardTz_();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues()
-    .filter(function(r) { return String(r[2] || "").trim(); })
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
+    .filter(function(r) { return String(r[2] || "").trim() || String(r[4] || "").trim(); })
     .map(function(r) {
       return {
         id: String(r[3] || ""),
         when: r[0] instanceof Date ? Utilities.formatDate(r[0], tz, "EEE, MMM d, yyyy · h:mm a") : String(r[0] || ""),
         cls: String(r[1] || ""),
-        text: String(r[2] || "")
+        text: String(r[2] || ""),
+        photo: !!String(r[4] || "").trim()
       };
     })
     .reverse();
 }
 
-function saveClassMemory(text, cls) {
+function saveClassMemory(text, cls, photoDataUrl) {
   text = String(text || "").trim().slice(0, 2000);
-  if (!text) throw new Error("Type the memory first.");
+  var photo = String(photoDataUrl || "");
+  if (!text && !photo) throw new Error("Type the memory or add a photo first.");
   cls = String(cls || "").replace(/^—$/, "").trim().slice(0, 80);
+  var photoId = "";
+  if (photo) {      // a picture the teacher view already made smaller; kept in their own Drive, never shared
+    var m = photo.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+\/=]+)$/);
+    if (!m) throw new Error("That picture could not be read. Try a JPG or PNG.");
+    if (m[2].length > 8 * 1024 * 1024) throw new Error("That picture is too big.");
+    var folders = DriveApp.getFoldersByName("Hall Pass Kiosk Memories");
+    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("Hall Pass Kiosk Memories");
+    var ext = m[1] === "image/jpeg" ? "jpg" : m[1].split("/")[1];
+    photoId = folder.createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], "memory-" + Date.now() + "." + ext)).getId();
+  }
   kioskWithEmojiLock_(function() {
     var sheet = kioskSeatTab_("Class Memories", KIOSK_MEMORY_HEAD_);
-    sheet.appendRow([new Date(), cls, text, "m" + Date.now() + Math.floor(Math.random() * 1000)]);
+    sheet.appendRow([new Date(), cls, text, "m" + Date.now() + Math.floor(Math.random() * 1000), photoId]);
   });
   return getClassMemories();
+}
+
+// A memory's photo as a data: link, only for photos listed on the Class Memories tab (no other Drive files).
+function kioskMemoryPhotoIdFor_(memoryId) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Class Memories");
+  if (!sheet || sheet.getLastRow() < 2) return "";
+  var hit = "";
+  sheet.getRange(2, 4, sheet.getLastRow() - 1, 2).getValues().forEach(function(r) { if (!hit && String(r[0]) === String(memoryId)) hit = String(r[1] || "").trim(); });
+  return hit;
+}
+function kioskPhotoDataUrl_(fileId) {
+  try {
+    var blob = DriveApp.getFileById(fileId).getBlob();
+    return "data:" + blob.getContentType() + ";base64," + Utilities.base64Encode(blob.getBytes());
+  } catch (err) { return ""; }
+}
+function getMemoryPhoto(memoryId) {
+  var fileId = kioskMemoryPhotoIdFor_(memoryId);
+  return fileId ? kioskPhotoDataUrl_(fileId) : "";
 }
 
 // ----- LIVING SCREENSAVERS (2026-10-17): Colleen's library of live animal cameras, kept on the "Living Screensavers" tab.
@@ -13653,12 +13761,12 @@ function uploadLiveResidentPhoto(dataUrl, name) {
 
 // ----- To-do checklist (teacher view): reminders in two lists, Now and Later, on the "To-Do" tab.
 // Open ones (and ones checked off today) show in the teacher view and in the end-of-day email.
-var KIOSK_TODO_HEAD_ = ["ID", "List", "Task", "Done", "Added", "Done At"];
+var KIOSK_TODO_HEAD_ = ["ID", "List", "Task", "Done", "Added", "Done At", "Due"];
 
 function kioskTodoRows_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("To-Do");
   if (!sheet || sheet.getLastRow() < 2) return { sheet: sheet, rows: [] };
-  return { sheet: sheet, rows: sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues() };
+  return { sheet: sheet, rows: sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues() };
 }
 
 function getTodos() {
@@ -13670,9 +13778,25 @@ function getTodos() {
     var done = String(r[3] || "") === "Yes";
     var doneDay = r[5] instanceof Date ? Utilities.formatDate(r[5], tz, "yyyy-MM-dd") : "";
     if (done && doneDay !== today) return;      // checked off on an earlier day: kept on the tab only
-    out.push({ id: String(r[0]), list: String(r[1]) === "Later" ? "Later" : "Now", text: String(r[2]), done: done });
+    var due = kioskTodoDueKey_(r[6], tz), list = String(r[1]) === "Later" ? "Later" : "Now", dueNow = false;
+    if (list === "Later" && due && due <= today) { list = "Now"; dueNow = true; }      // a Later item moves to Now on its day
+    out.push({ id: String(r[0]), list: list, text: String(r[2]), done: done, due: due,
+      dueText: due ? Utilities.formatDate(kioskTodoDueDate_(due), tz, "EEE, MMM d") : "",
+      dueState: !due ? "" : due < today ? "overdue" : due === today ? "today" : "later", dueNow: dueNow });
   });
   return out;
+}
+
+// A due date as "yyyy-MM-dd" (from a date cell, or text like 2026-10-24 or 10/24/2026); "" when none.
+function kioskTodoDueKey_(v, tz) {
+  if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, tz, "yyyy-MM-dd");
+  var t = String(v || "").trim(), m;
+  if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return m[1] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
+  if ((m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return m[3] + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2);
+  return "";
+}
+function kioskTodoDueDate_(key) {      // noon that day, so time zones never shift the date
+  var p = key.split("-"); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0);
 }
 
 function kioskTodoChange_(id, fn) {
@@ -13686,14 +13810,22 @@ function kioskTodoChange_(id, fn) {
   return getTodos();
 }
 
-function addTodo(text, list) {
+function addTodo(text, list, due) {
   text = String(text || "").trim().slice(0, 500);
   if (!text) throw new Error("Type the reminder first.");
+  var dueKey = kioskTodoDueKey_(due, teacherDashboardTz_());
   kioskWithEmojiLock_(function() {
     var sheet = kioskSeatTab_("To-Do", KIOSK_TODO_HEAD_);
-    sheet.appendRow(["t" + Date.now() + Math.floor(Math.random() * 1000), list === "Later" ? "Later" : "Now", text, "", new Date(), ""]);
+    sheet.appendRow(["t" + Date.now() + Math.floor(Math.random() * 1000), list === "Later" ? "Later" : "Now", text, "", new Date(), "",
+      dueKey ? kioskTodoDueDate_(dueKey) : ""]);
   });
   return getTodos();
+}
+
+// Set or clear (due = "") a to-do's due date.
+function setTodoDue(id, due) {
+  var dueKey = kioskTodoDueKey_(due, teacherDashboardTz_());
+  return kioskTodoChange_(id, function(sheet, row) { sheet.getRange(row, 7).setValue(dueKey ? kioskTodoDueDate_(dueKey) : ""); });
 }
 
 function setTodoDone(id, done) {
@@ -13703,7 +13835,13 @@ function setTodoDone(id, done) {
 }
 
 function moveTodo(id, list) {
-  return kioskTodoChange_(id, function(sheet, row) { sheet.getRange(row, 2).setValue(list === "Later" ? "Later" : "Now"); });
+  var tz = teacherDashboardTz_(), today = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+  return kioskTodoChange_(id, function(sheet, row, r) {
+    sheet.getRange(row, 2).setValue(list === "Later" ? "Later" : "Now");
+    // moving an item that is already due back to Later: forget the date, or it would jump straight back to Now
+    var due = kioskTodoDueKey_(r[6], tz);
+    if (list === "Later" && due && due <= today) sheet.getRange(row, 7).setValue("");
+  });
 }
 
 function deleteTodo(id) {
@@ -13720,7 +13858,10 @@ function kioskTodoEmailHtml_() {
     var open = todos.filter(function(t) { return t.list === list && !t.done; });
     if (!open.length) return "";
     return '<div style="font-weight:700;margin:8px 0 4px;">' + title + "</div>" +
-      '<ul style="margin:0 0 6px;padding-left:20px;">' + open.map(function(t) { return "<li>☐ " + esc(t.text) + "</li>"; }).join("") + "</ul>";
+      '<ul style="margin:0 0 6px;padding-left:20px;">' + open.map(function(t) {
+        return "<li>☐ " + esc(t.text) + (t.dueText ? ' <span style="color:' + (t.dueState === "overdue" ? "#c0504d" : "#6a7888") + ';">(' +
+          (t.dueState === "overdue" ? "overdue, " : t.dueState === "today" ? "due today, " : "due ") + esc(t.dueText) + ")</span>" : "") + "</li>";
+      }).join("") + "</ul>";
   };
   var doneToday = todos.filter(function(t) { return t.done; });
   var html = part("Now", "Now") + part("Later", "Later") +
@@ -13740,8 +13881,8 @@ function kioskMemoriesPage_(params) {
   var rows = [];
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Class Memories");
   if (sheet && sheet.getLastRow() >= 2) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function(r) {
-      if (r[0] instanceof Date && String(r[2] || "").trim()) rows.push({ when: r[0], cls: String(r[1] || ""), text: String(r[2]) });
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues().forEach(function(r) {
+      if (r[0] instanceof Date && (String(r[2] || "").trim() || String(r[4] || "").trim())) rows.push({ when: r[0], cls: String(r[1] || ""), text: String(r[2] || ""), photo: String(r[4] || "").trim() });
     });
   }
   var years = {};
@@ -13770,7 +13911,8 @@ function kioskMemoriesPage_(params) {
   var body = months.length ? months.map(function(k) {
     var mo = byMonth[k];
     return '<section><h2>' + esc(mo.name) + '</h2><div class="cards">' + mo.list.map(function(m) {
-      return '<article><p>' + esc(m.text).replace(/\n/g, "<br>") + '</p><footer>' + esc(Utilities.formatDate(m.when, tz, "EEE, MMM d")) +
+      var pic = m.photo ? kioskPhotoDataUrl_(m.photo) : "";
+      return '<article>' + (pic ? '<img src="' + pic + '" alt="">' : '') + (m.text ? '<p>' + esc(m.text).replace(/\n/g, "<br>") + '</p>' : '') + '<footer>' + esc(Utilities.formatDate(m.when, tz, "EEE, MMM d")) +
         (m.cls && !cls ? " · " + esc(m.cls) : "") + "</footer></article>";
     }).join("") + "</div></section>";
   }).join("") : '<p class="empty">No memories saved for this school year yet. Type them in the 😂 Class memories box in the teacher view.</p>';
@@ -13785,7 +13927,7 @@ function kioskMemoriesPage_(params) {
     '.cards{columns:2 300px;column-gap:14px}' +
     'article{break-inside:avoid;background:#fff;border-radius:14px;padding:14px 16px;margin:0 0 14px;box-shadow:0 2px 0 #eadfce,0 6px 16px rgba(80,60,30,.08)}' +
     'article:nth-child(3n+1){transform:rotate(-.4deg)}article:nth-child(3n+2){transform:rotate(.35deg)}' +
-    'article p{margin:0 0 8px;font-size:17px;line-height:1.45}article footer{font-size:13px;color:#8a7d6f;font-weight:600}' +
+    'article img{display:block;width:100%;height:auto;border-radius:10px;margin:0 0 10px}article p{margin:0 0 8px;font-size:17px;line-height:1.45}article footer{font-size:13px;color:#8a7d6f;font-weight:600}' +
     '.empty{text-align:center;color:#7a6e62;font-size:18px;margin-top:40px}' +
     '@media print{body{background:#fff}.noprint{display:none}article{box-shadow:none;border:1px solid #ddd;transform:none!important}h2{break-after:avoid}}' +
     '</style></head><body><div class="wrap">' +
@@ -13799,8 +13941,11 @@ function deleteClassMemory(id) {
   kioskWithEmojiLock_(function() {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Class Memories");
     if (!id || !sheet || sheet.getLastRow() < 2) return;
-    var ids = sheet.getRange(2, 4, sheet.getLastRow() - 1, 1).getValues();
-    for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === id) sheet.deleteRow(i + 2);
+    var ids = sheet.getRange(2, 4, sheet.getLastRow() - 1, 2).getValues();
+    for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === id) {
+      if (String(ids[i][1] || "").trim()) { try { DriveApp.getFileById(String(ids[i][1]).trim()).setTrashed(true); } catch (e) {} }      // its photo goes to Drive's trash (can be restored)
+      sheet.deleteRow(i + 2);
+    }
   });
   return getClassMemories();
 }
@@ -13926,6 +14071,8 @@ function getTeacherDashboard(options) {
 
   var log = [];
   try { log = teacherTodayPassLog_(now, tz); } catch (err6) { log = []; }
+
+  kioskReportInUse_(false);      // at most once a day: lets Colleen know this copy is in use (not in her own kiosk)
 
   return {
     success: true,
@@ -14361,7 +14508,8 @@ function setUpMyKiosk() {
   try { ensureLogHeaders(); ensureBackgroundsSheet(); ensureFontsSheet(); ensureDisplaySettingsRows_(); ensureDestinationIconBankSheet_(); } catch (e) {}
   try { installOrRefreshAttendanceReportAutomation(); } catch (e) {}
   try { kioskEnsureChangeWatcher_(); kioskEnsureArchiveTimer_(); } catch (e) {}
-  var msg = "Your kiosk is set up. Next: Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone), " +
+  kioskReportInUse_(true);      // lets Colleen know this copy is in use (email, Sheet name, release)
+  var msg = "Your kiosk is set up (release " + KIOSK_RELEASE + "). Colleen's kiosk was told you're using it, so she can let you know about updates. Next: Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone), " +
     "then open the web app link on the kiosk device. Add ?view=teacher to the end of the link for your teacher view.";
   Logger.log(msg);
   return msg;
