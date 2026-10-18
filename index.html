@@ -101,7 +101,7 @@ let SLOCKS = /*SLOCKS*/[{"v":1,"iter":100000,"salt":"WlJmr7luxUa0SAo1tYFebw==","
     const shop = admin || !!(got && got.shop);      // Colleen: teachers see the shop (their password has Show the shop on), students do not
     document.body.classList.toggle('shopok', shop);
     document.documentElement.classList.toggle('noshop', !shop); try { shop ? localStorage.removeItem('aslNoShop') : localStorage.setItem('aslNoShop', '1'); } catch (e) {}      // a password decides the shop on this device, whatever the visitor switch says
-    $('#tools').innerHTML = (admin ? '<h2>Your Full List</h2>' : '') + (tools.length ? '<div class="tgrid">' + tools.map(link).join('') + '</div>' : '<div class="card"><p style="margin:0">Your teacher has not added any activities to this password yet.</p></div>') +
+    $('#tools').innerHTML = (admin ? '<h2>Your Full List</h2>' + link({ icon: '⭐', title: "Colleen's Quick Links", desc: 'Everything you open every day, one click each.', href: (onAsl ? '/' : '') + 'colleen/' }) : '') + (tools.length ? '<div class="tgrid">' + tools.map(link).join('') + '</div>' : '<div class="card"><p style="margin:0">Your teacher has not added any activities to this password yet.</p></div>') +
       moreHtml(tools, admin) + '<div id="shopslot"></div>' +
       '<p style="text-align:right"><button class="lock" id="lockit">' + (admin ? 'Forget my password on this device' : 'Use a different password') + '</button></p>';
     if (shop) { const f = $('#featured'); if (f) $('#shopslot').appendChild(f); }      // the products card moves under the list for teachers
