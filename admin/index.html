@@ -91,17 +91,30 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       <label>Address</label><input data-k="href" value="${esc(t.href)}" maxlength="300">
       <div class="row" style="margin-top:8px"><button type="button" class="ghost small" data-mv="-1" ${i ? '' : 'disabled'}>↑ Up</button><button type="button" class="ghost small" data-mv="1" ${i < tools.length - 1 ? '' : 'disabled'}>↓ Down</button><button type="button" class="ghost small" data-del>Remove</button></div></div>`).join('');
   }
+  /* teacher link dates (Colleen, 2026-10-17): options when she makes the link, plus her own start and end dates; Chicago days, both ends included */
+  const dayStr = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const niceDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }); };
+  function passWhen(x) { const t = dayStr(new Date());
+    if (x.end && x.end < t) return 'Ended ' + niceDay(x.end) + ': the link shows "This preview has ended".';
+    if (x.start && x.start > t) return 'Starts ' + niceDay(x.start) + (x.end ? ', ends ' + niceDay(x.end) : '') + '.';
+    if (x.end) { const n = Math.round((new Date(x.end + 'T12:00') - new Date(t + 'T12:00')) / 864e5); return 'Works now; last day ' + niceDay(x.end) + (n === 0 ? ' (today)' : ' (' + n + ' more day' + (n === 1 ? '' : 's') + ')') + '.'; }
+    return x.start ? 'Works from ' + niceDay(x.start) + ', no end.' : 'Works now, no end.'; }
   function drawShares() {
     $('#shares').innerHTML = shares.length ? shares.map((x, i) => `<div class="share" data-i="${i}"><label>Name (only you see it)</label><input data-n value="${esc(x.name)}" maxlength="80" placeholder="Mrs. Lee, ASL 1 teachers…">
       <label style="display:flex;gap:8px;align-items:center;margin:8px 0 0;font-weight:700"><input type="checkbox" data-sshop style="width:auto" ${x.shop ? 'checked' : ''}> 🛍️ Show the shop</label>
-      <div class="who" style="margin-top:10px"><b style="width:100%">Opens:</b>${tools.map((t, k) => `<label><input type="checkbox" data-sopen="${k}" ${(t.sh || []).indexOf(x.code) >= 0 ? 'checked' : ''}> ${esc(t.icon || '')} ${esc(t.title || '(no name yet)')}</label>`).join('')}</div>
+      <div class="who" style="margin-top:10px"><b style="width:100%">Opens: <button type="button" class="ghost small" data-sall>All</button> <button type="button" class="ghost small" data-snone>None</button></b>${tools.map((t, k) => `<label><input type="checkbox" data-sopen="${k}" ${(t.sh || []).indexOf(x.code) >= 0 ? 'checked' : ''}> ${esc(t.icon || '')} ${esc(t.title || '(no name yet)')}</label>`).join('')}</div>
+      <div style="margin-top:10px"><b>Works:</b> <button type="button" class="ghost small" data-slen="0">No end</button> <button type="button" class="ghost small" data-slen="3">3 days</button> <button type="button" class="ghost small" data-slen="7">1 week</button> <button type="button" class="ghost small" data-slen="30">1 month</button> <button type="button" class="ghost small" data-slen="365">1 year</button>
+        <div class="row" style="gap:10px;margin-top:6px;flex-wrap:wrap"><label style="margin:0">Starts <input type="date" data-sstart value="${esc(x.start || '')}" style="width:auto"></label><label style="margin:0">Ends <input type="date" data-send value="${esc(x.end || '')}" style="width:auto"></label><span class="hint">${esc(passWhen(x))}</span></div></div>
       <p style="margin:8px 0 4px"><code>${shareUrl(x.code)}</code></p><div class="row"><button type="button" class="ghost small" data-copy>Copy link</button><button type="button" class="ghost small" data-rm>Remove link</button><span class="hint">${(tools.filter(t => (t.sh || []).indexOf(x.code) >= 0)).length} buttons</span></div></div>`).join('') : '<p class="hint">No teacher links yet.</p>';
   }
   $('#shares').addEventListener('input', e => { const box = e.target.closest('.share'); if (box && e.target.hasAttribute('data-n')) { shares[+box.dataset.i].name = e.target.value; draw(); } });
   $('#shares').addEventListener('change', e => { const box = e.target.closest('.share'); if (!box) return; const x = shares[+box.dataset.i];
+    if (e.target.hasAttribute('data-sstart') || e.target.hasAttribute('data-send')) { x[e.target.hasAttribute('data-sstart') ? 'start' : 'end'] = e.target.value || ''; drawShares(); draw(); return; }
     if (e.target.hasAttribute('data-sshop')) x.shop = e.target.checked;
     if (e.target.dataset.sopen !== undefined) { const t = tools[+e.target.dataset.sopen]; t.sh = (t.sh || []).filter(c => c !== x.code); if (e.target.checked) t.sh.push(x.code); drawShares(); } });      // tick what this link shows, right in its box (Colleen)
   $('#shares').addEventListener('click', e => { const box = e.target.closest('.share'); if (!box) return; const x = shares[+box.dataset.i];
+    if (e.target.dataset.slen !== undefined) { const n = +e.target.dataset.slen, st = new Date(); x.start = dayStr(st); if (n) { const en = new Date(); en.setDate(en.getDate() + n - 1); x.end = dayStr(en); } else x.end = ''; drawShares(); draw(); return; }      // 3 days = today and the next 2
+    if (e.target.hasAttribute('data-sall') || e.target.hasAttribute('data-snone')) { const on = e.target.hasAttribute('data-sall'); tools.forEach(t => { t.sh = (t.sh || []).filter(c => c !== x.code); if (on) t.sh.push(x.code); }); drawShares(); draw(); return; }
     if (e.target.hasAttribute('data-copy')) { navigator.clipboard.writeText(shareUrl(x.code)).then(() => { e.target.textContent = 'Copied!'; }, () => prompt('Copy this link:', shareUrl(x.code))); }
     if (e.target.hasAttribute('data-rm') && confirm('Remove the link for "' + (x.name || 'this teacher') + '"? It stops working after you save.')) { shares.splice(+box.dataset.i, 1); tools.forEach(t => { if (t.sh) t.sh = t.sh.filter(c => c !== x.code); }); drawShares(); draw(); } });
   $('#addshare').onclick = () => { shares.push({ code: newCode(), name: '' }); drawShares(); draw(); $('#shares .share:last-child input').focus(); };
@@ -172,7 +185,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     const missing = clean.find(t => !t.title || !t.href); if (missing) { m.className = 'msg bad'; m.textContent = 'Every button needs a name and an address.'; return; }
     clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
     const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
-    const shareOut = shares.map(x => ({ code: x.code, shop: !!x.shop, tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
+    const shareOut = shares.map(x => ({ code: x.code, shop: !!x.shop, start: x.start || '', end: x.end || '', tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
     const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim(), shop: !!c.shop }));      // exact, capitals count (Colleen: LTHS and lths can be two passwords)
     const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
@@ -182,7 +195,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     $('#save').disabled = true; m.textContent = 'Saving…';
     try {
       const vsalt = crypto.getRandomValues(new Uint8Array(16));
-      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim(), shop: !!x.shop })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, shop: c.shop, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut, products: prods, shopOn: $('#shopon').checked };
+      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim(), shop: !!x.shop, start: x.start || '', end: x.end || '' })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, shop: c.shop, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut, products: prods, shopOn: $('#shopon').checked };
       const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not save.');
       curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); drawShares(); $('#new1').value = ''; $('#new2').value = '';

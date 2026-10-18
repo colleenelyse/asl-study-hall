@@ -28,7 +28,10 @@ function okTools(list) {
 }
 const okUrl = u => typeof u === 'string' && u.length <= 500 && (/^https:\/\//.test(u) || /^[\w./-]+$/.test(u));
 function okProducts(list) { return Array.isArray(list) && list.length <= 60 && list.every(x => x && okStr(x.title, 120) && okUrl(x.link) && (!x.img || okUrl(x.img)) && (x.price === undefined || (typeof x.price === 'string' && x.price.length <= 30)) && (x.desc === undefined || (typeof x.desc === 'string' && x.desc.length <= 300)) && (x.tag === undefined || (typeof x.tag === 'string' && x.tag.length <= 40))); }
-function okShares(list) { return Array.isArray(list) && list.length <= 40 && list.every(x => x && /^[a-z0-9]{8,16}$/.test(x.code || '') && okTools(x.tools)); }
+const okDay = d => d === undefined || d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d);
+function okShares(list) { return Array.isArray(list) && list.length <= 40 && list.every(x => x && /^[a-z0-9]{8,16}$/.test(x.code || '') && okTools(x.tools) && okDay(x.start) && okDay(x.end)); }
+/* today in Chicago (Colleen's school), as 2026-10-17: a teacher link works from its start date through its end date */
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 async function save(req, env) {
   if (!env.LOCKS) return json({ error: 'Saving is not set up yet (no KV).' }, 503);
   const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'fail:' + ip;
@@ -45,7 +48,7 @@ async function save(req, env) {
   const SL = Array.isArray(body.slocks) ? body.slocks : [], okLock = x => x && okStr(x.salt, 100) && okStr(x.iv, 100) && okStr(x.data, 150000) && x.iter >= 100000;
   if (SL.length > 30 || !SL.every(okLock)) return json({ error: 'Something in the class passwords was not right.' }, 400);
   const slocks = SL.map(x => ({ v: 1, iter: x.iter, salt: x.salt, iv: x.iv, data: x.data }));
-  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, slocks, products: body.products !== undefined ? body.products.map(x => ({ title: x.title, link: x.link, img: x.img || '', price: x.price || '', desc: x.desc || '', tag: x.tag || '' })) : (st.products || []), vsalt: body.vsalt, vhash: body.vhash, mytools: slocks.length ? [] : body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools, shop: !!x.shop })), shopOn: body.shopOn !== undefined ? !!body.shopOn : !!st.shopOn, updated: new Date().toISOString() };
+  const next = { lock: { v: 1, iter: L.iter, salt: L.salt, iv: L.iv, data: L.data }, slocks, products: body.products !== undefined ? body.products.map(x => ({ title: x.title, link: x.link, img: x.img || '', price: x.price || '', desc: x.desc || '', tag: x.tag || '' })) : (st.products || []), vsalt: body.vsalt, vhash: body.vhash, mytools: slocks.length ? [] : body.mytools, shares: (body.shares || []).map(x => ({ code: x.code, tools: x.tools, shop: !!x.shop, start: x.start || '', end: x.end || '' })), shopOn: body.shopOn !== undefined ? !!body.shopOn : !!st.shopOn, updated: new Date().toISOString() };
   await env.LOCKS.put('state', JSON.stringify(next));
   const log = (await env.LOCKS.get('log', 'json')) || []; log.push([next.updated, ip, body.mytools.length]); await env.LOCKS.put('log', JSON.stringify(log.slice(-50)));
   await env.LOCKS.delete(failKey);
@@ -101,7 +104,11 @@ export default {
     }
     if (p === '/share.json') {      // one teacher's list, only with its code
       const st = await state(env, req), c = url.searchParams.get('c') || '', sh = st && (st.shares || []).find(x => x.code === c);
-      return sh ? json({ tools: sh.tools, shop: !!sh.shop }) : json({ error: 'This link is not active.' }, 404);      // shop: show Colleen's shop links and products (teachers yes, students no)
+      if (!sh) return json({ error: 'This link is not active.' }, 404);
+      const t = today();      // dates (Colleen, 2026-10-17: options when she makes the link, a start and an end date)
+      if (sh.start && t < sh.start) return json({ notyet: sh.start });
+      if (sh.end && t > sh.end) return json({ ended: sh.end });
+      return json({ tools: sh.tools, shop: !!sh.shop, end: sh.end || '' });      // shop: show Colleen's shop links and products (teachers yes, students no)
     }
     if (/^\/t\/[a-z0-9]{8,16}\/?$/.test(p)) return env.ASSETS.fetch(new Request(new URL('/share/', req.url)));      // the share page reads the code from the address
     if (p === '/numbers') return Response.redirect(url.origin + '/numbers/' + url.search, 301);

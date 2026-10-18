@@ -34,9 +34,14 @@ async function aslProducts() {
   if (!code) return off();
   try {
     const r = await fetch('/share.json?c=' + code, { cache: 'no-store' }); if (!r.ok) return off(); const d = await r.json();
+    const nice = v => { const [y, m, dd] = String(v).split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }); };
+    if (d.notyet) { box.innerHTML = '<div class="card"><h2>This link opens soon</h2><p>It starts on ' + esc(nice(d.notyet)) + '. Come back then!</p></div>'; return; }
+    if (d.ended) { box.innerHTML = '<div class="card"><h2>This preview has ended</h2><p>Thanks for trying ASL Study Hall! To keep using the games with your classes, get your own copy:</p>' +
+      '<p><a class="tool" href="https:' + '//aslstudyhall.com" target="_blank" rel="noopener"><b>🛍️ ASL Study Hall shop</b>aslstudyhall.com</a><a class="tool" href="https:' + '//www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener"><b>🍎 Teachers Pay Teachers</b>ASL Spellbound and ASL Numberwise</a></p></div>'; return; }      /* Colleen's passes (2026-10-17) */
     if (!d.tools || !d.tools.length) return off();
     if (d.shop) document.body.classList.add('shopok');
     document.documentElement.classList.toggle('noshop', !d.shop); try { d.shop ? localStorage.removeItem('aslNoShop') : localStorage.setItem('aslNoShop', '1'); } catch (e) {}      // this teacher link shows Colleen's shop (Show the shop ticked in admin)
+    if (d.end) box.insertAdjacentHTML('beforebegin', '<p style="font-weight:700">This link works through ' + esc(nice(d.end)) + '.</p>');
     box.innerHTML = d.tools.map(t => '<a class="tool" href="' + esc(/^https?:/i.test(t.href) ? t.href : '/' + t.href.replace(/^\//, '')) + '"><b>' + esc((t.icon ? t.icon + ' ' : '') + t.title) + '</b>' + esc(t.desc || '') + '</a>').join('');
     if (d.shop) { const pr = await aslProducts(); if (pr.length) box.insertAdjacentHTML('afterend', '<div class="card"><h2>From the ASL Study Hall Shop</h2>' + pr.map(x => '<a class="tool" href="' + esc(x.link) + '" target="_blank" rel="noopener">' + (x.img ? '<img src="' + esc(x.img) + '" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:10px;float:right;margin-left:12px">' : '') + '<b>' + esc(x.title) + (x.price ? ' · ' + esc(x.price) : '') + '</b>' + esc(x.desc || '') + '<span style="display:block;clear:both"></span></a>').join('') + '</div>'); }
   } catch (e) { box.innerHTML = '<p>Could not load the list. Check the internet connection and reload.</p>'; }
