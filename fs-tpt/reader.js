@@ -838,6 +838,14 @@ document.addEventListener('click', e => { if (e.target && e.target.id === 'rd-pa
    counts. J and Z count from their handshape (I, or the pointer finger). ---------- */
 const PACES = [[0.5, 'Very slow', '1 letter every 2 seconds'], [1, 'Slow', '1 letter a second'], [1.5, 'Steady', '3 letters every 2 seconds'], [2, 'Quick', '2 letters a second'], [3, 'Fast', '3 letters a second'], [4, 'Native-like', '4 letters a second']];
 const PACE_ALIKE = { J: ['J', 'I'], Z: ['Z', 'D', 'G'] };
+/* 4.61 (Colleen: "will I get a report?"): opened from ASL Study, a finished Speed Pacer run is saved to the student's Fingerspelling Stats:
+   the speed, the % of letters signed in time, and the word lengths chosen. */
+function paceSend(P, lps, pct) {
+  if (!IN_SHEET) return; const lens = LENS.filter(l => WS.lens.includes(l[0])).map(l => l[1].replace(/ \(.*\)/, '')).join(' + ') || 'any';
+  const round = { type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-pacer', name: 'Speed Pacer', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: P.n, right: P.full, secs: Math.round((Date.now() - P.t0) / 1000), speed: 1, lps: null, top: null, letters: P.hits, items: [],
+    pacer: { lps, pct, hits: P.hits, total: P.total, len: lens, hand: LEFT ? 'left' : 'right' } };
+  try { window.opener.postMessage(round, '*'); } catch (e) {}
+}
 function paceRead(f, L) {
   const P = GAME.pace; if (!P.run || P.i < 0 || !WORD) { dots(L, -1, false); return; }
   const R = rank(f), palmOK = c => { const A = TPL[c]; return !A || (dot(f.orient.slice(0, 3), A.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), A.orient.slice(3)) >= 0.2); };      /* the palm facing the wrong way never counts, even here (Colleen) */
@@ -971,11 +979,11 @@ const LETTERGAMES = {
       e.onclick = ev => { const b = ev.target.closest('[data-v]'); if (!b) return; const lps = +b.dataset.v; try { localStorage.setItem('fs-cam-pace', lps); } catch (x) {} start(lps, +$('#rd-pacegap').value); }; });
     const start = (lps, gap) => {
       gchoose(''); const name = (PACES.find(p => p[0] === lps) || PACES[1])[1];
-      const P = G.pace = { lps, gap, slot: 1000 / lps, grace: Math.min(350, 450 / lps), i: -1, got: [], seen: [], run: false, n: 0, hits: 0, total: 0, slotAt: 0 };
+      const P = G.pace = { lps, gap, slot: 1000 / lps, grace: Math.min(350, 450 / lps), i: -1, got: [], seen: [], run: false, n: 0, hits: 0, total: 0, slotAt: 0, full: 0, t0: Date.now() };
       bar('Speed Pacer: ' + name, [['skip', 'Skip this word']]);
       P.paint = () => { $('#rd-word').hidden = false; $('#rd-word').innerHTML = WORD.split('').map((x, i) => '<span class="' + (P.got[i] === true ? 'ph' : P.got[i] === false ? 'pm' : i === P.i ? 'c' : 'n') + '">' + x + '</span>').join(''); };
       const nextWord = () => {
-        if (P.n >= 10) { const pct = P.total ? Math.round(100 * P.hits / P.total) : 0, b = best('pacer-' + lps, pct); return endGame('<h3>Speed Pacer: ' + name + '</h3><div class="big">' + pct + '%</div><p class="rd-small">' + P.hits + ' of ' + P.total + ' letters at ' + (PACES.find(p => p[0] === lps) || [0, '', ''])[2] + (b.isNew ? ' (a new best for this speed!)' : b.old !== undefined ? ' (best: ' + b.old + '%)' : '') + (pct >= 85 ? '. Ready to try the next speed up?' : '') + '</p>', k); }
+        if (P.n >= 10) { const pct = P.total ? Math.round(100 * P.hits / P.total) : 0, b = best('pacer-' + lps, pct); paceSend(P, lps, pct); return endGame('<h3>Speed Pacer: ' + name + '</h3><div class="big">' + pct + '%</div><p class="rd-small">' + P.hits + ' of ' + P.total + ' letters at ' + (PACES.find(p => p[0] === lps) || [0, '', ''])[2] + (b.isNew ? ' (a new best for this speed!)' : b.old !== undefined ? ' (best: ' + b.old + '%)' : '') + (pct >= 85 ? '. Ready to try the next speed up?' : '') + '</p>' + (IN_SHEET ? '<p class="rd-small">✓ Saved for your teacher.</p>' : ''), k); }
         P.n++; P.tok = (P.tok || 0) + 1; WORD = rnd(P0); wi = 0; done = false; P.i = -1; P.got = WORD.split('').map(() => null); P.seen = []; P.run = false;
         $('#rd-prompt').hidden = false; P.paint(); $('#rd-letter').textContent = '…'; ghead('Word <b>' + P.n + '</b> of 10 · get ready…');
         const tk = P.tok; later(G, () => { if (tk === P.tok) { P.run = true; slot(0, tk); } }, gap);
@@ -983,7 +991,7 @@ const LETTERGAMES = {
       const slot = (i, tk) => {
         if (tk !== P.tok) return;      /* a skipped word stops its own clock */
         if (i > 0 && P.got[i - 1] === null) later(G, () => { if (P.got[i - 1] === null) { P.got[i - 1] = false; P.paint(); } }, P.grace);      /* missed: red once its grace is over */
-        if (i >= WORD.length) { P.run = false; later(G, () => { P.got.forEach((g, j) => { if (g === null) P.got[j] = false; }); P.total += WORD.length; P.hits += P.got.filter(x => x === true).length; P.paint(); later(G, nextWord, 700); }, P.grace + 20); return; }
+        if (i >= WORD.length) { P.run = false; later(G, () => { P.got.forEach((g, j) => { if (g === null) P.got[j] = false; }); P.total += WORD.length; P.hits += P.got.filter(x => x === true).length; if (P.got.every(x => x === true)) P.full++; P.paint(); later(G, nextWord, 700); }, P.grace + 20); return; }
         P.i = i; P.slotAt = clock(); $('#rd-letter').textContent = WORD[i]; P.paint(); ghead('Word <b>' + P.n + '</b> of 10 · <b>' + (P.total ? Math.round(100 * P.hits / P.total) : 100) + '%</b> so far');
         later(G, () => slot(i + 1, tk), P.slot);
       };
