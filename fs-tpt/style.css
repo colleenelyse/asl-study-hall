@@ -633,3 +633,32 @@ html.noshop .tiplink, html.embedded .tiplink { display: none !important; }
 /* Lucky Claw questions (2026-10-17) */
 .cq-top { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; } .cq-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 220px; }
 .cq-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .cq-opt { font: 700 20px var(--display); padding: 12px 8px; } .cq-opt.ok { background: #1F9D55; color: #fff; } .cq-opt.no { background: #E5484D; color: #fff; }
+/* Show Me Days of the Week / Seasons (Colleen, 2026-10-18) */
+.stbtns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.stbtns .btn.on { outline: 3px solid var(--accent, #2b6cb0); outline-offset: 1px; }
+.stword { font-size: 2rem; font-weight: 800; min-height: 2.6rem; margin: 6px 0; text-align: center; }
+/* the signer page (Case Closed clues in ASL Study): only the hand */
+body.signer-only .top, body.signer-only .foot, body.signer-only .ad { display: none !important; }
+body.signer-only { margin: 0; background: transparent; }
+body.signer-only .signer-slot { width: 100%; max-width: 100vh; margin: 0 auto; }
+body.signer-only .signer-slot .stage { width: 100%; margin: 0; }
+/* Clock Reading (Colleen, 2026-10-18) */
+.ck-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .ck-top { grid-template-columns: 1fr; } }
+.ck-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; } .ck-right { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ck-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .ck-grid[hidden] { display: none; } .ck-tile canvas { background: #fff; }
+.ck-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ck-opt { border: 3px solid var(--line); border-radius: 14px; background: var(--surface); padding: 10px; cursor: pointer; }
+.ck-opt:hover { border-color: var(--accent); } .ck-opt.ok { border-color: var(--good, #2F9E5F); } .ck-opt.no { border-color: var(--bad, #C7362E); } .ck-opt.x { opacity: .55; }
+.ck-lcd { display: inline-flex; align-items: baseline; gap: 6px; background: #1c2321; color: #7CFFB2; border-radius: 10px; padding: 6px 14px; font: 700 2rem ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .04em; box-shadow: inset 0 0 0 3px #39463f; }
+.ck-lcd small { font-size: .9rem; } .ck-lcd.big { font-size: 3.2rem; padding: 10px 22px; }
+.ck-analog, .ck-set { position: relative; width: 100%; max-width: 280px; margin: 0 auto; color: var(--ink); }
+.ck-face { width: 100%; height: auto; display: block; touch-action: none; } .ck-rim { fill: var(--surface); stroke: currentColor; stroke-width: 4; }
+.ck-face .ck-hh line, .ck-face .ck-hh circle { stroke: currentColor; fill: currentColor; } .ck-face .ck-mh line { stroke: var(--accent); } .ck-face .ck-mh circle { fill: var(--accent); }
+.ck-set .ck-face { cursor: grab; } .ck-readout { text-align: center; font: 800 1.4rem var(--display); margin: 4px 0 0; }
+.ck-ap { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); font: 800 1rem var(--display); background: var(--surface); border-radius: 6px; padding: 0 6px; }
+.ck-ans { margin-top: 8px; max-width: 140px; margin-left: auto; margin-right: auto; text-align: center; } .ck-ans small { display: block; color: var(--muted); }
+.ck-show { display: flex; justify-content: center; } .ck-show .ck-analog { max-width: 240px; } .ck-apseg { justify-content: center; }
+body.signer-only .cv { width: min(100vw, 100vh) !important; margin: 0 auto; }      /* the frame is small like a phone, but the hand should fill it */
+body.signer-only main, body.signer-only .screen.on { padding: 0 !important; margin: 0 !important; }
+body.signer-only .assist { display: none; }

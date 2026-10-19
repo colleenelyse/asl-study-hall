@@ -113,18 +113,18 @@ const TONE_SET = [
    wrist streaked the skin, so (her picture) a soft light blue sleeve: a rounded cuff edge the hand comes out of, a cuff band, then the sleeve
    widening a little down the arm. Fixed to the wrist bone, pointing away from the fingers; shown only in age mode. */
 let forearm = null;
-function makeForearm() {
+function makeForearm(short) {      /* short: a natural forearm ending at an elbow, with an upper arm (FALL) */
   const w = H.bones && H.bones.wrist, m = H.bones && H.bones['middle-finger-phalanx-proximal'], ix = H.bones && H.bones['index-finger-phalanx-proximal'], pk = H.bones && H.bones['pinky-finger-phalanx-proximal'];
   if (!w || !m || !ix || !pk) return;
   H.root.updateMatrixWorld(true);
   const loc = b => w.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
-  const toF = loc(m), P = loc(ix).distanceTo(loc(pk)), dir = toF.clone().normalize().negate(), len = toF.length() * 9;
+  const helperArm = !!short, toF = loc(m), P = loc(ix).distanceTo(loc(pk)), dir = toF.clone().normalize().negate(), len = toF.length() * (helperArm ? 2.6 : 9);      /* the helper's forearm ends at an elbow (Colleen: "insanely long") */
   /* a knit texture drawn once: soft V-shaped stitches */
   const tc = document.createElement('canvas'); tc.width = tc.height = 64; const x = tc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 64, 64); x.strokeStyle = 'rgba(0,0,0,0.13)'; x.lineWidth = 3;
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const X = c * 16, Y = r * 16; x.beginPath(); x.moveTo(X + 2, Y + 3); x.lineTo(X + 8, Y + 13); x.lineTo(X + 14, Y + 3); x.stroke(); }
   const knit = new THREE.CanvasTexture(tc); knit.wrapS = knit.wrapT = THREE.RepeatWrapping; knit.encoding = THREE.sRGBEncoding;
   const BLUE = new THREE.Color(0x7fa9d4).convertSRGBToLinear();
-  const body = new THREE.LatheGeometry([[0.7, 0.36], [0.72, 0.42], [0.8, 1.2], [0.92, len / P]].map(([r, y]) => new THREE.Vector2(r * P, y * P)), 40); body.computeVertexNormals();
+  const body = new THREE.LatheGeometry((helperArm ? [[0.7, 0.36], [0.72, 0.42], [0.76, 1.2], [0.8, len / P]] : [[0.7, 0.36], [0.72, 0.42], [0.8, 1.2], [0.92, len / P]]).map(([r, y]) => new THREE.Vector2(r * P, y * P)), 40); body.computeVertexNormals();
   const tex = knit.clone(); tex.needsUpdate = true; tex.repeat.set(14, Math.round(len / P * 3));
   const sleeve = new THREE.Mesh(body, new THREE.MeshStandardMaterial({ color: BLUE, map: tex, roughness: 1, metalness: 0, envMapIntensity: 0.25, side: THREE.DoubleSide })); sleeve.scale.set(1, 1, 0.82);
   /* the ribbed cuff (Colleen: "a textured cuff"): raised ribs all the way round, a rolled edge where the hand comes out */
@@ -137,8 +137,19 @@ function makeForearm() {
   const hole = new THREE.Mesh(new THREE.CircleGeometry(P * 0.66, 40), new THREE.MeshBasicMaterial({ color: 0x3e5873, side: THREE.DoubleSide })); hole.rotation.x = Math.PI / 2; hole.scale.set(1, 0.82, 1); hole.position.y = P * 0.06;      /* the shadowy inside */
   const g = new THREE.Group(); g.add(sleeve, cuff, lip, hole); g.children.forEach(c => c.position.y += -P * 0.3);      /* the cuff edge sits at the wrist */
   g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-  w.add(g); g.visible = ageOn; forearm = g;
+  if (helperArm) {      /* the elbow: a rounded end, then the upper arm (placed in the world each frame, see placeUpper) */
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(P * 0.8, 32, 20), sleeve.material); ball.position.y = len - P * 0.3; ball.scale.set(1, 1, 0.82); g.add(ball);
+    const elbow = new THREE.Object3D(); elbow.position.y = len - P * 0.3; g.add(elbow); H.elbow = elbow;
+    const up = new THREE.Mesh(new THREE.CylinderGeometry(P * 0.82, P * 0.86, 1, 40, 1, true), sleeve.material); up.visible = false; scene.add(up); H.upper = up; H.armR = P;
+    H.upDir = H === H1 ? new THREE.Vector3(-0.25, 0.35, -1).normalize() : new THREE.Vector3(0.3, 0.75, -0.8).normalize();      /* each upper arm goes up toward its own shoulder */
+  }
+  w.add(g); if (!short) { g.visible = ageOn; forearm = g; } else { g.visible = false; H.sleeve = g; H.sleeveBase = g.quaternion.clone(); H.lat = loc(ix).sub(loc(pk)).normalize(); H.nrm = new THREE.Vector3().crossVectors(H.lat, dir).normalize(); }      /* the short arms are for FALL (and the left arm for TIME); lat: the wrist's side-to-side axis, for bending the hand at the wrist */
 }
+const sleeveBend = (h, deg, dev) => { if (!h || !h.sleeve || !h.lat) return; h.bendNow = [deg || 0, dev || 0]; h.sleeve.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(h.lat, (deg || 0) * Math.PI / 180)).multiply(new THREE.Quaternion().setFromAxisAngle(h.nrm, (dev || 0) * Math.PI / 180)).multiply(h.sleeveBase); dirty = true; };      /* deg: the hand bends forward/back at the wrist; dev: side to side */      /* the forearm stays put while the hand bends at the wrist */
+function tweenBend(h, to, ms, dev) { if (!h) return; const a = (h.bendNow || [0, 0]).slice(), b = [to, dev || 0], t0 = performance.now(), step = () => { const k = Math.min(1, (performance.now() - t0) / Math.max(1, ms)); sleeveBend(h, a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k); if (k < 1) requestAnimationFrame(step); }; step(); }      /* the forearm turns smoothly while the hand bends at the wrist */
+const helperSleeve = (on, leftOnly) => { (leftOnly ? [H2] : [H1, H2]).forEach(h => { if (h && h.sleeve) { h.sleeve.visible = !!on; if (h.upper) h.upper.visible = !!on; } }); dirty = true; };      /* both arms, with elbows (FALL) */
+const UPPER_LEN = 0.6;      /* from each elbow up toward its shoulder, off the picture (FALL) */
+function placeUpper() { let any = false; [H1, H2].forEach(h => { if (h && h.upper && h.upper.visible) any = true; }); if (!any) return; scene.updateMatrixWorld(true); [H1, H2].forEach(h => { if (!h || !h.upper || !h.upper.visible) return; const e = h.elbow.getWorldPosition(new THREE.Vector3()); h.upper.position.copy(e).addScaledVector(h.upDir, UPPER_LEN / 2); h.upper.scale.set(1, UPPER_LEN, 1); h.upper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), h.upDir); }); }
 function setForearm(on) { if (forearm) { forearm.visible = !!on; dirty = true; } }
 function setTone(hex) {
   toneNow = hex; dirty = true; try { canvas.dispatchEvent(new CustomEvent('fstone', { detail: hex })); } catch (e) {}      /* the age face behind the hand follows the skin tone (Colleen) */ const T = TONE_SET[Math.max(0, TONES.indexOf(hex))];
@@ -187,8 +198,8 @@ new THREE.GLTFLoader().load(HAND_URL, g => {
   H.center = c; H.size = s;
   fitRes(); window.addEventListener('resize', () => { fitRes(); });
   if (window.ResizeObserver) new ResizeObserver(() => fitRes()).observe(canvas);
-  (function loop() { if (dirty) { dirty = false; const t0 = performance.now(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
-  makeForearm();      /* ages: the arm continues below the wrist (Colleen: no cut-off wrist with a real person) */
+  (function loop() { if (dirty) { dirty = false; const t0 = performance.now(); placeUpper(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
+  makeForearm(); makeForearm(true);      /* ages: the arm continues below the wrist (Colleen: no cut-off wrist with a real person) */
   readyOk();
   if (helperOn && !helperWanted) { helperWanted = true; loadHelper(); }      /* the left hand loads the first time a page needs it (helper(true)) */
 }, undefined, e => { readyErr(e); if (opts.onError) opts.onError(e); });
@@ -203,6 +214,7 @@ function loadHelper() {
     h.mirror = new THREE.Group(); h.mirror.scale.x = -1; scene.add(h.mirror); h.mirror.add(h.pivot);
     h.mirror.visible = helperOn; H2 = h;
     h2cur = h2from = h2to = norm(HELPER_REST); withHand(H2, () => apply(h2cur));
+    withHand(H2, () => { if (H.bones) makeForearm(true); });
     if (toneNow !== null) setTone(toneNow);
   });
 }
@@ -784,6 +796,169 @@ const HM_S = { f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 10
 const HM_5 = { f: [[20, 25, 12, 15], [20, 25, 12, 3], [20, 25, 12, -9], [20, 25, 12, -20]], t: [12, 40, 0, 15, 15] };      /* almost a 5, not quite */
 const HM_R0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.055, -0.07, 0.03] }), HM_L0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.095, -0.07, 0.03] });      /* palm up, the thumb on top toward the sky, the backs of the curled fingers toward the student (never the wrist, Colleen) */
 const HM_R1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.07, 0.0, 0.03] }), HM_L1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.08, 0.0, 0.03] });      /* a good amount of empty space between the hands (Colleen); the left hand is mirrored, so its x runs the other way */
+/* DAYS OF THE WEEK (Colleen, 2026-10-18). MONDAY, TUESDAY, WEDNESDAY, FRIDAY, SATURDAY: the day's first letter, palm facing the signer,
+   a small circle. THURSDAY: a normal T, flips to an H, then the same circle. SUNDAY: both open B hands, palms out, at the same time the right
+   hand draws a flat circle on the palm plane counterclockwise and the left hand clockwise (mirrored). CHECKED by Colleen (2026-10-18: "these are good"): clockwise circles as the student sees them. */
+const DAY_R = 0.014, DAY_C = [0, 0.012];      /* circle size and center (meters) */
+const dayCircle = (P, dir, c, r) => { const out = []; for (let k = 0; k <= 8; k++) { const a = (dir > 0 ? 1 : -1) * k * Math.PI / 4; out.push(Object.assign({}, P, { p: [c[0] + (r || DAY_R) * Math.sin(a), c[1] + (r || DAY_R) * Math.cos(a)] })); } return out; };
+const DAY_IN = L => Object.assign({}, POSE[L], { w: IN });
+/* MONDAY and TUESDAY: the fingers over the thumb stand taller, so from the back the student can count them (Colleen) */
+const DAY_TALL = { M: Object.assign(DAY_IN('M'), { f: [[36, 72, 22, 0], [36, 72, 22, 0], [36, 72, 22, 0], [85, 100, 55, 0]] }), T: Object.assign(DAY_IN('T'), { f: [[34, 72, 22, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]] }) };
+const OPEN_B = { f: [[0, 0, 0, 3], [0, 0, 0, 0], [0, 0, 0, -3], [0, 0, 0, -6]], t: [12, 10, -20, 10, 10], w: OUT };      /* open B: fingers together and straight, the thumb relaxed out to the side (Colleen's Sunday photo) */
+const SUN_C = [-0.088, -0.03], SUN_R = 0.016;
+const DAY_DIR = 1;      /* clockwise from the student's side of the screen (Colleen, 2026-10-18; measured on screen) */
+const THU_MID = Object.assign({}, POSE.H, { w: [0, 90, 45], p: [0, 0.006] });      /* halfway through Thursday's forearm turn */
+const SUN_DIR = 1;      /* Sunday's right hand; the left hand mirrors it (reversed by Colleen, 2026-10-18) */
+const DAY_NAME = { MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday', SAT: 'Saturday', SUN: 'Sunday' }, SEASON_NAME = { WIN: 'Winter', SPR: 'Spring', SUM: 'Summer', FAL: 'Fall' };
+async function signDay(day, o) {
+  o = o || {}; const per = o.per || 700, wait = ms => new Promise(r => setTimeout(r, ms)), d = String(day || '').toUpperCase().slice(0, 3);
+  if (o.onLetter) o.onLetter(DAY_NAME[d] || d);      /* the full word (Colleen: abbreviations looked weird) */
+  if (d === 'SUN') {
+    if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+    const R = dayCircle(OPEN_B, SUN_DIR, SUN_C, SUN_R);      /* the left hand is a mirror image, so the same path turns the other way */
+    helperMove(R[0], per * 0.5); moveTo(R[0], per * 0.5); await wait(per * 0.6);
+    const step = per * 1.4 / (R.length - 1);
+    for (let k = 1; k < R.length; k++) { helperMove(R[k], step); moveTo(R[k], step); await wait(step); }
+    await wait(per * 0.5);
+    if (o.stay) return;
+    helperMove(HELPER_REST, per * 0.6); moveTo(POSE.rest, 500); await wait(620);
+    helper(false);      /* the extra hand leaves once Sunday is done (Colleen) */
+    if (o.onLetter) o.onLetter(''); return;
+  }
+  if (helperOn) helper(false);      /* only Sunday uses the extra hand */
+  helperSleeve(false); setForearm(ageOn);      /* no sleeves for the days (Colleen) */
+  let shape;
+  if (d === 'THU') {      /* a normal T, then the forearm turns (a twist an arm can really make) into a sideways H. o.thu = 'h': the other
+                            way Colleen signs it (2026-10-18), the sideways H alone doing the circle, reached with the same forearm turn from rest */
+    const hOnly = o.thu === 'h' || (o.thu === 'mix' && Math.random() < 0.5);
+    if (!hOnly) { moveTo(POSE.T, per * 0.45); await wait(per * 0.6); }
+    shape = Object.assign({}, POSE.H, { w: [-162, -8, -114], p: DAY_C });      /* the H stays sideways, tilted on a diagonal: fingers a little up, the wrist a little down (Colleen) */
+    playPath([hOnly ? Object.assign({}, cur) : Object.assign({}, POSE.T), THU_MID, Object.assign({}, shape, { p: [DAY_C[0], DAY_C[1] + DAY_R] })], per * 0.6); await wait(per * 0.62);      /* one smooth turn that ends right where the circle starts */
+  }
+  else { const L = { MON: 'M', TUE: 'T', WED: 'W', FRI: 'F', SAT: 'S' }[d]; if (!L) return; shape = DAY_TALL[L] || DAY_IN(L); }
+  const C = dayCircle(shape, DAY_DIR, DAY_C);
+  if (d !== 'THU') { moveTo(C[0], per * 0.45); await wait(per * 0.55); }      /* Thursday's turn already ends at the start of the circle */
+  playPath(C, per * 1.1); await wait(per * 1.15);
+  await wait(per * 0.5);
+  if (o.stay) return;
+  if (d === 'THU') { playPath([C[C.length - 1], THU_MID, POSE.rest], 650); await wait(670); }      /* turns back the same way it came (Colleen: the spin back was weird) */
+  else { moveTo(POSE.rest, 500); await wait(520); }
+  if (o.onLetter) o.onLetter('');
+}
+/* SEASONS (Colleen's videos, 2026-10-18). WINTER: two S hands shaking in front of the chest. SPRING: the right flat O pushes up through the
+   left C and opens, twice. FALL: the left forearm slanted across the body, palm down; the right flat hand brushes down along it toward the
+   elbow, twice. SUMMER: a bent pointer finger drawn across the forehead, closing to an X (needs the forehead view). NOT YET CHECKED by Colleen. */
+const FLAT_O = { f: [[55, 15, 10, 0], [55, 15, 10, 0], [55, 15, 10, 0], [55, 15, 10, 0]], t: [32, -2, -47, 20, 12] };      /* flat O: straight fingers bunched onto the thumb */
+const CAM_WIDE = { pos: [0, 0.03, 0.85], at: [0, 0.03, 0] };      /* seasons: stepped back and centered, so both hands and the fall arm fit (Colleen: winter cut off on one side) */
+const CAM_SUM = { pos: [0, 0, 0.8], at: [0, 0, 0] };
+const CAM_FALL = { pos: [0.03, 0.005, 0.72], at: [0.03, 0.005, 0] };      /* zoomed in on the left arm, most of the right arm off the picture (Colleen) */      /* fall: back far enough to see the whole left arm down to the elbow */
+const wideCam = (on, T) => { if (on) camTo(T || CAM_WIDE, 250); else camFor(helperOn); };
+const SEA = {
+  WIN_R: Object.assign({}, HM_S, { w: [0, 60, 0], p: [-0.115, 0.02, 0.02] }), WIN_L: Object.assign({}, HM_S, { w: [0, 60, 0], p: [-0.115, 0.02, 0.02] }),      /* apart, a little space between (Colleen) */
+  SPR_L: Object.assign({}, POSE.O, { w: [59, 47, -19], p: [-0.05, 0.0, 0.03] }),      /* the left O on its side, the hole pointing up, fingers angled toward the student so the O stays in front (measured) */
+  SPR_LO: Object.assign({}, POSE.O, { f: POSE.C.f, t: POSE.C.t, w: [59, 47, -19], p: [-0.05, 0.0, 0.03] }),      /* the O opens a little to let the right hand through (Colleen) */
+  SPR_R0: Object.assign({}, FLAT_O, { w: [-135, 2, -180], p: [-0.015, -0.135, 0.075] }), SPR_RM: Object.assign({}, FLAT_O, { w: [-135, 2, -180], p: [-0.015, -0.065, 0.075] }),      /* the right flat O underneath, palm in, fingertips up, lined up with the center of the O (measured) */
+  SPR_R1: Object.assign({}, HM_5, { w: IN, p: [-0.015, 0.0, 0.075] }),      /* and spreading into a 5, palm in: a plant growing up through the ground */
+  FAL_L: Object.assign({}, POSE.rest, { w: [90, 40, -90], p: [0.07, 0.07, 0.0] }),      /* the whole left arm on a diagonal, flat to the audience, the hand resting (Colleen) */
+  FAL_R0: Object.assign({}, FLAT_L, { w: [90, 30, -90], p: [0.0994, -0.0823, 0.04] }), FAL_RM: Object.assign({}, FLAT_L, { w: [90, 25, -90], p: [0.105, -0.105, 0.04] }), FAL_R1: Object.assign({}, FLAT_L, { w: [90, 19, -90], p: [0.1091, -0.1328, 0.04] })      /* palm down at the left elbow; the right forearm swings on its own elbow, which stays still (Colleen: bending and unbending at the elbow, measured) */
+};
+/* the forehead behind SUMMER (Colleen: soft, not scary): hairline, forehead and eyebrows only, painted like the age face */
+const browSvg = skin => { skin = /^#[0-9a-f]{6}$/i.test(skin || '') ? skin : '#fcc5a8'; const sh = '#' + [0, 2, 4].map(i => Math.round(parseInt(skin.substr(1 + i, 2), 16) * 0.93).toString(16).padStart(2, '0')).join('');      /* the forehead in the hand's skin tone; sh = its shadow */
+  return '<svg viewBox="-390 -369 1980 1980" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" xmlns="http:' + '/' + '/www.w3.org/2000/svg">' +      /* sized to the hand (Colleen): 1200 units = 26 cm at the SUMMER camera */
+  '<defs><linearGradient id="bfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + skin + '"/><stop offset="1" stop-color="' + skin + '" stop-opacity="0"/></linearGradient></defs>' +      /* redrawn after the forehead picture Colleen chose (2026-10-18): flat colors, swept brown hair */
+  '<rect x="-390" y="-369" width="1980" height="1980" fill="#ffffff"/><rect x="110" y="930" width="980" height="320" fill="url(#bfade)"/>' +      /* the face fades away below the forehead */
+  '<path d="M4 945 C 60 935, 130 930, 200 935 C 450 960, 750 972, 1000 945 C 1080 938, 1150 940, 1196 940 L 1196 860 C 1180 800, 1150 700, 1100 650 C 1060 600, 1000 560, 900 560 L 300 560 C 200 560, 140 610, 100 660 C 50 720, 20 800, 4 860 Z" fill="' + skin + '"/>' +
+  '<path d="M4 930 C 2 905, 20 895, 45 905 C 62 912, 70 930, 68 945 L 4 945 Z" fill="' + sh + '"/><path d="M1196 930 C 1198 905, 1180 895, 1155 905 C 1138 912, 1130 930, 1132 945 L 1196 945 Z" fill="' + sh + '"/>' +
+  '<path d="M120 945 C 125 820, 150 720, 230 640 C 300 590, 420 585, 520 595 C 560 585, 590 590, 610 610 C 640 585, 720 575, 860 578 C 960 590, 1020 650, 1060 760 C 1075 830, 1080 900, 1080 945 L 1060 945 C 1055 870, 1040 780, 1000 700 C 950 630, 880 600, 800 595 C 720 592, 650 600, 612 622 C 590 605, 560 600, 525 610 C 430 600, 320 610, 250 670 C 190 730, 150 830, 140 945 Z" fill="' + sh + '"/>' +
+  '<path d="M598 812 C 594 840, 596 870, 600 892 C 604 870, 604 840, 600 812 Z" fill="' + sh + '"/>' +
+  '<path d="M70 945 C 50 860, 20 800, 12 640 C 40 600, 50 560, 90 520 C 110 470, 170 420, 230 400 C 180 380, 160 370, 175 355 C 260 300, 330 270, 410 265 C 520 235, 640 225, 800 250 C 830 270, 850 290, 880 320 C 900 330, 920 340, 935 378 C 1000 375, 1070 400, 1100 440 C 1130 460, 1150 480, 1150 490 C 1160 540, 1180 600, 1195 640 C 1198 700, 1196 760, 1188 800 C 1170 860, 1130 900, 1115 945 L 1085 945 C 1090 860, 1080 780, 1040 700 C 1000 640, 940 590, 880 575 C 820 565, 720 565, 640 575 C 610 585, 600 590, 600 590 C 580 575, 550 565, 520 565 C 515 580, 480 590, 430 580 C 340 575, 270 600, 230 640 C 210 680, 205 720, 210 750 C 180 760, 150 800, 130 900 L 115 945 Z" fill="#623b2f"/>' +
+  '<path d="M90 945 C 100 860, 120 760, 180 680 C 230 610, 300 580, 380 570 C 300 600, 240 650, 210 720 C 180 780, 140 860, 115 945 Z" fill="#57332a"/><path d="M1085 945 C 1090 860, 1075 760, 1020 690 C 990 650, 950 610, 900 585 C 980 610, 1040 670, 1070 760 C 1090 830, 1100 900, 1105 945 Z" fill="#57332a"/>' +
+  '<path d="M320 360 C 420 345, 540 355, 640 400 C 680 420, 670 440, 640 430 C 540 395, 420 375, 320 370 Z" fill="#6e4334"/><path d="M520 300 C 600 310, 680 340, 740 390 C 760 410, 740 420, 720 405 C 660 360, 590 330, 520 310 Z" fill="#6e4334"/><path d="M220 550 C 260 500, 320 480, 390 485 C 400 495, 380 500, 360 500 C 300 505, 260 520, 230 555 Z" fill="#6e4334"/><path d="M900 500 C 960 520, 1010 560, 1040 610 C 1050 625, 1030 625, 1020 610 C 990 570, 950 540, 900 510 Z" fill="#6e4334"/>' +
+  '<path d="M360 455 C 450 460, 540 490, 610 545 C 620 555, 600 555, 590 548 C 520 500, 440 470, 360 462 Z" fill="#57332a"/><path d="M560 470 C 610 490, 650 520, 680 560 C 670 565, 655 555, 645 545 C 620 515, 590 490, 560 475 Z" fill="#57332a"/><path d="M740 390 C 780 430, 800 480, 800 540 C 790 545, 785 530, 785 520 C 782 470, 765 430, 740 395 Z" fill="#57332a"/>' +
+  '</svg>';
+};
+async function signSeason(name, o) {
+  o = o || {}; const per = o.per || 700, wait = ms => new Promise(r => setTimeout(r, ms)), n = String(name || '').toUpperCase().slice(0, 3);
+  if (n !== 'FAL') { helperSleeve(false); setForearm(ageOn); }      /* only fall shows the arms (Colleen) */
+  if (o.onLetter) o.onLetter(SEASON_NAME[n] || n);
+  if (n === 'SUM') {      /* one hand, palm down: a crooked pointer finger drawn across the forehead from the signer's left to right, closing to an X.
+                             The page shows the forehead behind the hand (browSvg) while o.onView('brow') is on. */
+    if (helperOn) helper(false);
+    camTo(CAM_SUM, 250);      /* stepped back so the forehead and hand are true to size (Colleen) */
+    if (o.onView) o.onView('brow');
+    const X0 = Object.assign({}, POSE.X, { f: [[0, 40, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], w: [90, 0, -90], p: [0.002, -0.09, 0] }), X1 = Object.assign({}, X0, { f: POSE.X.f, p: [-0.144, -0.09, 0] });      /* all the way across the forehead (Colleen) */
+    moveTo(X0, per * 0.5); await wait(per * 0.65); moveTo(X1, per * 1.1); await wait(per * 1.2);
+  } else {
+    if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+    wideCam(true);
+    const both = async (R, L, ms) => { helperMove(L, ms); moveTo(R, ms); await wait(ms * 1.05); };
+    const at = (P, dx, dy, dz) => Object.assign({}, P, { p: [P.p[0] + (dx || 0), P.p[1] + (dy || 0), P.p[2] + (dz || 0)] });
+    if (n === 'WIN') { await both(SEA.WIN_R, SEA.WIN_L, per * 0.5); for (let i = 0; i < 4; i++) { const d = i % 2 ? -0.008 : 0.008; await both(at(SEA.WIN_R, d), at(SEA.WIN_L, d), per * 0.13); } await both(SEA.WIN_R, SEA.WIN_L, per * 0.13); }
+    if (n === 'SPR') { await both(SEA.SPR_R0, SEA.SPR_L, per * 0.55); helperMove(SEA.SPR_LO, per * 0.25); playPath([SEA.SPR_R0, SEA.SPR_RM, SEA.SPR_R1], per * 0.75); await wait(per * 0.85); }      /* up and through once (Colleen) */
+    if (n === 'FAL') { helperSleeve(true); wideCam(true, CAM_FALL);      /* both arms in sleeves, so no hand floats on its own (Colleen) */
+      await both(SEA.FAL_R0, SEA.FAL_L, per * 0.6); for (let i = 0; i < 2; i++) { playPath([SEA.FAL_R0, SEA.FAL_RM, SEA.FAL_R1], per * 0.24, EASE_IN); await wait(per * 0.32); if (i < 1) { playPath([SEA.FAL_R1, SEA.FAL_RM, SEA.FAL_R0], per * 0.26); await wait(per * 0.3); } } }      /* down, down: each stroke ends sharply */
+  }
+  await wait(per * 0.5);
+  if (o.stay) return;
+  if (helperOn) { helperSleeve(false); helperMove(HELPER_REST, per * 0.6); moveTo(POSE.rest, 500); await wait(620); setForearm(ageOn); helper(false); } else { moveTo(POSE.rest, 500); await wait(520); camFor(false); }
+  if (o.onView) o.onView('');
+  if (o.onLetter) o.onLetter('');
+}
+/* for placing two-hand poses by eye (no animation) */
+async function holdTwo(R, L) { if (L && !helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await new Promise(r => setTimeout(r, 100)); } if (L) helperMove(L, 1); moveTo(R, 1); }
+/* CLOCK TIMES (Colleen, 2026-10-18): the hour is part of TIME (numeral incorporation, like ages). The left hand is bent down at the wrist the
+   whole time. 1-5: the palm-out number, tipped down at the wrist, taps the time spot on the back of the left wrist with its pointer finger, then
+   rises to normal. 6-9: the fingertip and thumb that touch tap the spot, then rise. 10-12: a palm-out 1 taps, rises, and becomes the number.
+   Then, if there are minutes, a little slide to the signer's right and the minutes: O + digit for :01-:09, otherwise the number rules.
+   NOT YET CHECKED by Colleen. */
+const TIME_BEND = 62;      /* how far the left hand hangs down at the wrist: relaxed (Colleen: the wrists need to relax and bend more) */
+const TIME_L = Object.assign({}, FLAT_L, { w: [90, 0, -90], p: [0.05, -0.17, -0.02], bend: TIME_BEND });      /* low, below where the numbers are signed */
+const CAM_TIME = { pos: [-0.025, 0.08, 0.8], at: [-0.025, 0.08, 0] };      /* close in: only as much arm as is needed (Colleen) */      /* stepped back so the left arm and the number both show */      /* written flat; signTime turns it down at the wrist */
+const TIME_DEV = 45, TIME_TIP = -15, TIME_FLEX = 115,      /* bent forward at the wrist toward the left wrist, palm still facing out, and a slight clockwise tilt as the viewer sees it (Colleen) */ TIME_SLIDE = [-0.045, 0, 0], TIME_TOUCH = { 6: 'pinky-finger-tip', 7: 'ring-finger-tip', 8: 'middle-finger-tip', 9: 'index-finger-tip' };
+const eulerPre = (rot, w) => { const D = Math.PI / 180, m = rot.multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(w[0] * D, w[1] * D, w[2] * D))), e = new THREE.Euler().setFromRotationMatrix(m, 'XYZ'); return [e.x / D, e.y / D, e.z / D]; };
+function bonesAt(P, names, keep) { if (!H.bones) return null; keep = keep || cur; apply(Object.assign({}, norm(P), { q: null })); scene.updateMatrixWorld(true); const out = names.map(n => H.bones[n].getWorldPosition(new THREE.Vector3())); apply(keep); dirty = true; return out; }
+const timeLeft = () => Object.assign({}, TIME_L, { w: eulerPre(new THREE.Matrix4().makeRotationZ(-TIME_BEND * Math.PI / 180), TIME_L.w) });      /* mirrored: this hangs the left fingers down */
+async function signTime(h, m, o) {
+  o = o || {}; h = Math.floor(+h); m = Math.floor(+m || 0); if (!(h >= 1 && h <= 12) || !(m >= 0 && m <= 59)) return;
+  const per = o.per || 600, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (o.onLetter) o.onLetter(h + ':' + String(m).padStart(2, '0') + (o.ampm ? ' ' + o.ampm : ''));
+  helperSleeve(false); setForearm(ageOn);
+  if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+  camTo(CAM_TIME, 250); const L0 = timeLeft(); helperSleeve(true); [H1, H2].forEach(hh => { if (hh && hh.upper) hh.upper.visible = false; });      /* both forearms in sleeves so no hand floats on its own (Colleen: the wrists stay attached to the arms); no upper arms, so less arm on screen */ sleeveBend(H2, -TIME_BEND);      /* the forearm stays level and the hand hangs from it */
+  helperMove(L0, per * 0.5); await wait(per * 0.55);
+  /* where the time spot is: the back of the left wrist */
+  let spot = null; if (H2 && H2.bones && H2.bones.wrist) { const W = withHand(H2, () => bonesAt(L0, ['wrist'], h2cur)); if (W) spot = W[0].add(new THREE.Vector3(0.008, 0.016, 0)); }      /* worked out from the pose itself, not from wherever the hand is mid-move */
+  const up = h <= 5 ? DIGIT_OUT(h) : h <= 9 ? NUM[h].start : DIGIT_OUT(1);      /* the shape that taps */
+  const tipW = eulerPre(new THREE.Matrix4().makeRotationZ(TIME_TIP * Math.PI / 180).multiply(new THREE.Matrix4().makeRotationX(TIME_FLEX * Math.PI / 180)), up.w || OUT),      /* tipped down toward the wrist, the palm still facing forward (Colleen) */ tip0 = Object.assign({}, up, { w: tipW, p: [0, 0, 0] });
+  let tap = Object.assign({}, tip0, { p: [0, 0.05, 0.03] });
+  if (spot) { const names = h >= 6 && h <= 9 ? [TIME_TOUCH[h], 'thumb-tip'] : ['index-finger-tip'], B = bonesAt(tip0, names); if (B) { const c = B.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / B.length); tap = Object.assign({}, tip0, { p: [spot.x - c.x, spot.y - c.y, spot.z - c.z] }); } }
+  const above = Object.assign({}, tap, { p: [tap.p[0], tap.p[1] + 0.03, tap.p[2] + 0.01] }), rise = Object.assign({}, up, { p: [-0.02, 0.085, 0.02] });      /* up into normal signing space, clear of the left wrist */
+  if (o.onPart) o.onPart(0);
+  const FB = o.flexSign === undefined ? -1 : o.flexSign;      /* the right forearm does not bend with the hand */
+  sleeveBend(H1, 0, 0); tweenBend(H1, -FB * TIME_FLEX, per * 0.5); moveTo(above, per * 0.5); await wait(per * 0.55);
+  moveTo(tap, per * 0.18); await wait(per * 0.22);      /* the tap */
+  tweenBend(H1, 0, per * 0.55, TIME_DEV); playPath([tap, above, rise], per * 0.55);      /* up, the forearm angled out to the side so it stays above the left arm (Colleen) */ await wait(per * 0.6);      /* and up into the number */
+  const RISE = rise.p;
+  if (h >= 10) { if (o.onPart) o.onPart(1); SHIFT = RISE;
+    try { if (h === 10) await sign(10, Object.assign({}, o, { stay: true, series: true, enter: per * 0.6, onLetter: null }));
+      else { const A = Object.assign({}, h === 11 ? S11 : S12, { w: OUT }), B = Object.assign({}, h === 11 ? E11 : E12, { w: OUT }); for (let i = 0; i < 2; i++) { moveTo(A, per * 0.22); await wait(per * 0.26); moveTo(B, per * 0.2); await wait(per * 0.26); } }      /* 11 and 12 flick palm forward, like the other incorporated hours (Colleen) */
+    } finally { SHIFT = null; } }
+  else await wait(per * 0.45);
+  if (m > 0) {
+    const here = norm(cur); playPath([here, Object.assign({}, here, { p: [here.p[0] + TIME_SLIDE[0], here.p[1], here.p[2]] })], per * 0.35); await wait(per * 0.4);      /* the slide */
+    if (o.onPart) o.onPart(2);
+    SHIFT = [RISE[0] + TIME_SLIDE[0], RISE[1], RISE[2]];      /* the minutes stay up in signing space, a little to the right */
+    try {
+      if (m <= 9) { moveTo(ZERO_OUT, per * 0.4); await wait(per * 0.6); moveTo(m <= 5 ? DIGIT_OUT(m) : NUM[m].start, per * 0.4); await wait(per * 0.8); }
+      else await sign(m, Object.assign({}, o, { stay: true, series: true, enter: 0, onLetter: null }));
+    } finally { SHIFT = null; }
+  }
+  if (o.ampm === 'AM' || o.ampm === 'PM') { if (o.onPart) o.onPart(3); const here = norm(cur); playPath([here, Object.assign({}, here, { p: [here.p[0] + TIME_SLIDE[0] * 0.6, here.p[1], here.p[2]] })], per * 0.3); await wait(per * 0.35); SHIFT = [RISE[0] + TIME_SLIDE[0] * (m > 0 ? 1.6 : 0.6), RISE[1], RISE[2]]; try { await spell(o.ampm, { speed: () => o.speed || 0, stop: o.stop }); } finally { SHIFT = null; } }      /* AM or PM, fingerspelled after a little slide (Colleen) */
+  await wait(per * 0.4);
+  if (o.onPart) o.onPart(-1);
+  if (o.stay) return;
+  helperSleeve(false); sleeveBend(H2, 0); sleeveBend(H1, 0); helperMove(HELPER_REST, per * 0.5); moveTo(POSE.rest, 500); await wait(520); helper(false); if (o.onLetter) o.onLetter('');
+}
 async function signOp(op, o) {
   o = o || {}; const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
   if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
@@ -976,7 +1151,7 @@ function jointsOf(P0) {
   apply(keep); dirty = true; return out.some(x => !x) ? null : out;
 }
 if (opts.debug) window.__hand = { get cur() { return cur; }, get cam() { return cam; }, get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, poseJoints, numberJoints, numberKeys, numberDecoys, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+return { ready, signDay, signSeason, signTime, timeLeft, sleeveBend: (deg, dev, right) => sleeveBend(right ? H1 : H2, deg, dev), browSvg, boneAt: (left, name) => { const h = left ? H2 : H1; if (name === 'elbow' && h && h.elbow) { scene.updateMatrixWorld(true); return h.elbow.getWorldPosition(new THREE.Vector3()).toArray().map(v => +v.toFixed(4)); } if (!h || !h.bones || !h.bones[name]) return null; (left ? h.mirror : h.root).updateMatrixWorld(true); return h.bones[name].getWorldPosition(new THREE.Vector3()).toArray().map(v => +v.toFixed(4)); }, holdTwo, helperSleeve, setForearm, wideCam, SEA, poseJoints, numberJoints, numberKeys, numberDecoys, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();

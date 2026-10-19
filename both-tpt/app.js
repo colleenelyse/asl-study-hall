@@ -36,7 +36,8 @@ const CFG = { ads: false, ga: '', only: 'both' };      /* TpT edition: one produ
 /* one edition only (the TpT products, Colleen: fingerspelling and numbers sold separately or as a bundle): CFG.only or ?only=letters / ?only=numbers.
    The other edition's games, pages and menu links are hidden and their addresses go to #/games. */
 const ONLY = CFG.only === 'both' ? '' : CFG.only || (/\/numbers\/?$/.test(location.pathname) ? 'numbers' : '') || ((location.search.match(/[?&]only=(letters|numbers|both)\b/) || [])[1] || '').replace('both', '') || ((location.search.match(/[?&]only=both\b/) || EMBED) ? '' : 'letters');      /* Colleen: the fingerspelling link shows only fingerspelling, the numbers link only numbers; inside ASL Study (or ?only=both) both */
-const NUM_PAGES = ['shownum', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card', 'mail'];
+const CLOCKS_READY = false;      /* Colleen 2026-10-18: "the clock times aren't good yet" — Clock Reading is saved but hidden (no card, its address goes to the games) until she approves the signed times */
+const NUM_PAGES = ['shownum', 'showtime', 'clocks', 'build', 'signnum', 'timeline', 'agepics', 'eventyear', 'math'], LETTER_PAGES = ['show', 'chart', 'class', 'bingo', 'letter', 'card', 'mail'];
 const offPage = (name, sub) => ONLY === 'letters' ? NUM_PAGES.indexOf(name) >= 0 || (name === 'setup' && /^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'numbers') :
   ONLY === 'numbers' ? LETTER_PAGES.indexOf(name) >= 0 || (name === 'setup' && !/^(numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(sub || '')) || (name === 'report' && sub === 'now') : false;
 
@@ -308,7 +309,9 @@ function gamesInit() {
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
-    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99. The hand signs it from the chin.</span></a>';
+    '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99. The hand signs it from the chin.</span></a>' +
+    '<a class="gcard" href="#/showtime/days"><span class="gi" aria-hidden="true">📆</span><b>Show Me Days of the Week</b><span>Tap a day. The hand signs it, Monday to Sunday.</span></a>' +
+    '<a class="gcard" href="#/showtime/seasons"><span class="gi" aria-hidden="true">🍂</span><b>Show Me Seasons</b><span>Tap a season. The hand signs winter, spring, summer or fall.</span></a>';      /* days and seasons (Colleen, 2026-10-18) */
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Snap number signs together, like 3 + HUNDRED + 45, then watch.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
@@ -317,6 +320,8 @@ function gamesInit() {
   $('#g-agegrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'ages').map(card).join('') +      // ages in their own section (Colleen)
     '<a class="gcard" href="#/agepics"><span class="gi" aria-hidden="true">🧑</span><b>How Old Is ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + '?</b><span>Look at ' + ((window.CHARLIE && window.CHARLIE.NAME) || 'Charlie') + ', watch four hands sign ages, and pick the one that fits.</span></a>';
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/eventyear"><span class="gi" aria-hidden="true">📅</span><b>When Did It Happen?</b><span>See a historic event. Watch four hands sign years and pick the right one.</span></a>';
+  $('#g-clockgrid').innerHTML = CLOCKS_READY ? '<a class="gcard" href="#/clocks"><span class="gi" aria-hidden="true">🕒</span><b>Clock Reading</b><span>The hand signs a time. Pick the digital clock, set the hands of a clock, or find the hand that matches.</span></a>' : '';      /* clock times (Colleen, 2026-10-18): hidden until she approves the signed times */
+  if (!CLOCKS_READY) { const h = $('.sec-clock'); if (h) h.hidden = true; }
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Put five signed years in order, then match each event to its year.</span></a>';
 }
 let drawCats, drawPool;
@@ -1350,6 +1355,33 @@ function shownumInit() {
   segInit('sn-as', 'snas', () => { yearOnly(); hand.helper(S.snas === 'num'); ageFace(S.snas === 'age'); });      // Show Me Numbers / Years / Ages (Colleen)      // Show Me Years (Colleen)
 }
 
+/* ---------- Show me days of the week and seasons (Colleen, 2026-10-18): tap a word, the hand signs it (hand.signDay, hand.signSeason) ---------- */
+const ST = { kind: 'days' };
+const ST_WORDS = { days: [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['THU', 'Thursday'], ['FRI', 'Friday'], ['SAT', 'Saturday'], ['SUN', 'Sunday']], seasons: [['WIN', 'Winter'], ['SPR', 'Spring'], ['SUM', 'Summer'], ['FAL', 'Fall']] };
+const faceSkin = tone => mixHex(mixHex(FACE_TONE[tone] || mixHex(tone, '#ffffff', 0.45), tone, 0.15), '#f2a27e', 0.1);      /* the same skin as the age face */
+function stShow() {
+  ST.kind = /^#\/showtime\/seasons/.test(location.hash) ? 'seasons' : 'days';
+  putStage('showtime-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#st-speed').value = Math.round(S.speed * 100);
+  const days = ST.kind === 'days';
+  $('#st-title').textContent = days ? 'Show Me Days of the Week' : 'Show Me Seasons';
+  $('#st-hint').textContent = days ? 'Tap a day and watch the hand sign it. Thursday has two ways: T then H, or H alone.' : 'Tap a season and watch the hand sign it.';
+  $('#st-thu-field').hidden = !days; $('#st-word').textContent = '';
+  $('#st-btns').innerHTML = ST_WORDS[ST.kind].map(([k, w]) => '<button class="btn" data-k="' + k + '">' + w + '</button>').join('');
+}
+function showtimeInit() {
+  const brow = v => { const on = v === 'brow'; stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };      /* SUMMER: the forehead behind the hand */
+  const play = async k => {
+    await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
+    $$('#st-btns button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed))), o = { per, onLetter: w => { if (w) $('#st-word').textContent = w; }, onView: brow, thu: S.stthu === 'mix' ? 'mix' : S.stthu === 'h' ? 'h' : 'th' };
+    spelling = ST.kind === 'days' ? hand.signDay(k, o) : hand.signSeason(k, o);
+    try { await spelling; } finally { spelling = null; brow(''); }
+  };
+  $('#st-btns').onclick = e => { const b = e.target.closest('button[data-k]'); if (b) play(b.dataset.k); };
+  $('#st-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+  S.stthu = S.stthu || 'mix'; segInit('st-thu', 'stthu');
+}
+
 /* ---------- Sign the number (Colleen): a random number pops up for the student to sign, then the hand checks them ---------- */
 const SG_BIG = [['100–999', 100, 999], ['1,000–9,999', 1000, 9999], ['10,000–999,999', 10000, 999999], ['Millions', 1000000, 999999999]];      // past 99, by size, like the quiz ranges
 const SG = { n: null, count: 0 };
@@ -1464,6 +1496,26 @@ function cqPick(i) {
 function clawqShow() { putStage('cq-slot'); assist.className = 'assist small'; speedNow = () => S.speed; $('#cq-title').textContent = CQ.kind === 'numbers' ? 'What number did the hand sign?' : 'What word did the hand spell?'; $('#cq-speed').value = Math.round(S.speed * 100); setTimeout(cqNext, 300); }
 document.addEventListener('click', e => { const t = e.target; if (!t || !t.closest) return; const b = t.closest('#cq-opts .cq-opt'); if (b) cqPick(+b.dataset.i); else if (t.id === 'cq-again' && CQ.cur && !CQ.busy && !CQ.cur.done) { CQ.busy = true; cqSign(CQ.cur.answer).finally(() => { CQ.busy = false; }); } });
 document.addEventListener('input', e => { if (e.target && e.target.id === 'cq-speed') { S.speed = +e.target.value / 100; saveS(); } });
+
+/* ---------- THE SIGNER (2026-10-18): ASL Study's Case Closed puts this page (#/signer) in a frame on each student's screen and on the
+   projector. It shows only the hand. ASL Study sends { type: 'fsp-sign', id, item, speed } and gets { type: 'fsp-signed', id } back when
+   the hand is done. item: { kind: 'spell', text } | { kind: 'day', code, thu } | { kind: 'season', code } | { kind: 'time', h, m } | { kind: 'number', n } | { kind: 'digits', ds }. ---------- */
+const SIGNER = { busy: false };
+async function signerSign(d) {
+  await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
+  const it = d.item || {}, sp = Math.max(0, Math.min(1, +d.speed || 0)); S.speed = sp; speedNow = () => sp; newTone();
+  const per = Math.round(1000 * Math.pow(0.35, sp)), brow = v => { const on = v === 'brow'; stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };
+  assist.textContent = ''; stage.classList.remove('frosted');
+  if (it.kind === 'day') spelling = hand.signDay(it.code, { per, thu: it.thu || 'mix' });
+  else if (it.kind === 'season') spelling = hand.signSeason(it.code, { per, onView: brow });
+  else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
+  else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag });
+  else if (it.kind === 'digits') spelling = (async () => { const ds = (it.ds || []).map(Number); for (let i = 0; i < ds.length; i++) { if (stopFlag) break; await hand.sign(ds[i], { per, series: i > 0, stay: i < ds.length - 1, teens: teensFor(), form: formFor(), stop: () => stopFlag }); } })();      /* a padlock code: one digit at a time (escape room) */
+  else spelling = hand.spell(String(it.text || '').toUpperCase(), { speed: () => sp, stop: () => stopFlag });
+  try { await spelling; } finally { spelling = null; brow(''); try { window.parent.postMessage({ type: 'fsp-signed', id: d.id }, '*'); } catch (e) {} }
+}
+window.addEventListener('message', e => { const d = e.data; if (!d || e.source !== window.parent) return; if (d.type === 'fsp-sign') signerSign(d); if (d.type === 'fsp-stop') stopFlag = true; });
+function signerShow() { putStage('signer-slot'); assist.className = 'assist small'; document.body.classList.add('signer-only'); try { window.parent.postMessage({ type: 'fsp-signer-ready' }, '*'); } catch (e) {} }
 
 /* ---------- RETURN TO SENDER (Colleen, 2026-10-17): mail arrives; the hand fingerspells who it is for; drop it in the right mailbox. The names on the
    mailboxes look alike (same start, one or two letters different), and they get closer and more numerous each round, so every letter matters.
@@ -1585,6 +1637,104 @@ function apShow() { $('#ap-speed').value = Math.round(S.speed * 100); if (!AP.cu
 function agepicsInit() {
   $('#ap-next').onclick = apDraw;
   $('#ap-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
+}
+
+/* ---------- CLOCK READING (Colleen, 2026-10-18): the hand signs a clock time (hand.signTime: TIME with the hour built in, the minutes, AM/PM).
+   Three games, each on its own or mixed:
+   - Pick the Digital Clock: four digital clocks that look alike (3:15, 3:50, 5:13, 3:05); tap the one the hand signed.
+   - Set the Clock: drag the hands of an analog clock to the time the hand signed (and pick AM or PM when it is signed).
+   - Which Hand?: a clock (digital or analog) is shown; four small hands each sign a time; pick the one that matches.
+   Minutes: :00 and :30, quarter hours, every 5 minutes, or any minute. ---------- */
+const CK = { cur: null, right: 0, tries: 0, hands: [], busy: false };
+const ckLabel = t => t.h + ':' + String(t.m).padStart(2, '0') + (t.ap ? ' ' + t.ap : '');
+const ckMinOk = m => S.ckmins === 'hour' ? m % 30 === 0 : S.ckmins === 'quarter' ? m % 15 === 0 : S.ckmins === 'five' ? m % 5 === 0 : true;
+function ckTime() {
+  const h = 1 + Math.floor(Math.random() * 12), steps = S.ckmins === 'hour' ? [0, 30] : S.ckmins === 'quarter' ? [0, 15, 30, 45] : null;
+  const m = steps ? pick1(steps) : S.ckmins === 'five' ? 5 * Math.floor(Math.random() * 12) : Math.floor(Math.random() * 60);
+  const ap = S.ckampm === 'on' || (S.ckampm === 'some' && Math.random() < 0.5) ? pick1(['AM', 'PM']) : '';
+  return { h, m, ap };
+}
+/* times that look like the right one: digits swapped, the hour and minutes traded, an hour off, the minutes off, AM/PM flipped */
+function ckLookalikes(t) {
+  const out = [], add = (h, m, ap) => { if (h >= 1 && h <= 12 && m >= 0 && m <= 59 && !out.some(x => x.h === h && x.m === m && x.ap === ap) && !(h === t.h && m === t.m && ap === t.ap)) out.push({ h, m, ap }); };
+  const mm = String(t.m).padStart(2, '0'), rev = +(mm[1] + mm[0]);
+  add(t.h, rev, t.ap); if (t.m >= 1 && t.m <= 12 && t.h < 60) add(t.m, t.h, t.ap); add(t.h % 12 + 1, t.m, t.ap); add(t.h === 1 ? 12 : t.h - 1, t.m, t.ap);
+  [5, 10, 15, 30].forEach(d => { add(t.h, (t.m + d) % 60, t.ap); add(t.h, (t.m + 60 - d) % 60, t.ap); });
+  if (t.ap) add(t.h, t.m, t.ap === 'AM' ? 'PM' : 'AM');
+  const near = shuffle(out.filter(x => ckMinOk(x.m) || Math.random() < 0.3)), pickd = [];
+  for (const x of near) { if (pickd.length === 3) break; pickd.push(x); }
+  while (pickd.length < 3) { const x = ckTime(); x.ap = t.ap ? x.ap || t.ap : ''; if (!(x.h === t.h && x.m === t.m) && !pickd.some(y => y.h === x.h && y.m === x.m)) pickd.push(x); }
+  return pickd;
+}
+const ckDigital = (t, cls) => '<span class="ck-lcd' + (cls ? ' ' + cls : '') + '"><b>' + t.h + ':' + String(t.m).padStart(2, '0') + '</b>' + (t.ap ? '<small>' + t.ap + '</small>' : '') + '</span>';
+/* an analog clock face; the hands' angles are in degrees from 12 */
+function ckFace(hDeg, mDeg, opts) {
+  opts = opts || {}; let ticks = '';
+  for (let i = 0; i < 60; i++) { const a = i * 6 * Math.PI / 180, r1 = i % 5 ? 88 : 82; ticks += '<line x1="' + (100 + Math.sin(a) * r1).toFixed(1) + '" y1="' + (100 - Math.cos(a) * r1).toFixed(1) + '" x2="' + (100 + Math.sin(a) * 93).toFixed(1) + '" y2="' + (100 - Math.cos(a) * 93).toFixed(1) + '" stroke="currentColor" stroke-width="' + (i % 5 ? 1 : 2.6) + '" opacity="' + (i % 5 ? .45 : .9) + '"/>'; }
+  let nums = ''; for (let n = 1; n <= 12; n++) { const a = n * 30 * Math.PI / 180; nums += '<text x="' + (100 + Math.sin(a) * 68).toFixed(1) + '" y="' + (100 - Math.cos(a) * 68 + 6).toFixed(1) + '" text-anchor="middle" font-size="17" font-weight="800" fill="currentColor">' + n + '</text>'; }
+  const hand = (deg, len, w, cls) => { const a = deg * Math.PI / 180, x = 100 + Math.sin(a) * len, y = 100 - Math.cos(a) * len; return '<g class="' + cls + '"><line x1="100" y1="100" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke-width="' + w + '" stroke-linecap="round"/>' + (opts.knobs ? '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (w + 4) + '"/>' : '') + '</g>'; };
+  return '<svg class="ck-face" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96" class="ck-rim"/>' + ticks + nums + hand(hDeg, 46, 7, 'ck-hh') + hand(mDeg, 74, 4.5, 'ck-mh') + '<circle cx="100" cy="100" r="6" fill="currentColor"/></svg>' + (opts.ap ? '<span class="ck-ap">' + opts.ap + '</span>' : '');
+}
+const ckAnalog = t => '<div class="ck-analog">' + ckFace((t.h % 12) * 30 + t.m * 0.5, t.m * 6, { ap: t.ap }) + '</div>';
+async function ckSignBig(t) {
+  await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone(); assist.textContent = ''; stage.classList.remove('frosted');
+  const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+  spelling = hand.signTime(t.h, t.m, { per, ampm: t.ap, teens: teensFor(), form: formFor(), speed: S.speed, stop: () => stopFlag });
+  CK.busy = true; try { await spelling; } finally { spelling = null; CK.busy = false; }
+}
+function ckNext() {
+  const kinds = S.ckmode === 'mix' ? ['digital', 'analog', 'hands'] : [S.ckmode], kind = pick1(kinds), t = ckTime();
+  CK.cur = { kind, t, done: false, show: kind === 'hands' ? pick1(['digital', 'analog']) : '' };
+  $('#ck-msg').textContent = ''; $('#ck-next').hidden = true;
+  const big = kind !== 'hands'; $('#ck-slot').hidden = !big; $('#ck-grid').hidden = big; $('#ck-again').hidden = !big;
+  $('#ck-how').textContent = kind === 'digital' ? 'Watch the hand sign a time, then tap the digital clock that shows it.' : kind === 'analog' ? 'Watch the hand sign a time, then drag the clock hands to show it. Drag the long hand for the minutes and the short hand for the hour.' : 'Look at the clock. Tap each hand to watch it sign a time, then pick the hand that matches the clock.';
+  if (kind === 'digital') { const opts = shuffle([t].concat(ckLookalikes(t))); CK.cur.opts = opts;
+    $('#ck-play').innerHTML = '<div class="ck-opts">' + opts.map((o, i) => '<button class="ck-opt" data-i="' + i + '">' + ckDigital(o) + '</button>').join('') + '</div>'; ckSignBig(t); }
+  if (kind === 'analog') { CK.cur.set = { h: 12, m: 0, ap: '' };
+    $('#ck-play').innerHTML = '<div class="ck-set" id="ck-set"></div>' + (t.ap ? '<div class="seg sm ck-apseg" id="ck-apseg"><button data-v="AM">AM</button><button data-v="PM">PM</button></div>' : '') + '<button class="btn" id="ck-check">Check</button>';
+    ckSetPaint(); ckSetDrag(); if (t.ap) $('#ck-apseg').onclick = e => { const b = e.target.closest('button'); if (!b) return; CK.cur.set.ap = b.dataset.v; $$('#ck-apseg button').forEach(x => x.classList.toggle('on', x === b)); };
+    $('#ck-check').onclick = ckCheckSet; ckSignBig(t); }
+  if (kind === 'hands') { const opts = shuffle([t].concat(ckLookalikes(t))); CK.cur.opts = opts;
+    $('#ck-play').innerHTML = '<div class="ck-show">' + (CK.cur.show === 'digital' ? ckDigital(t, 'big') : ckAnalog(t)) + '</div><p class="hint">Which hand signed this time?</p>';
+    const grid = $('#ck-grid'); $$('#ck-grid canvas').forEach(c => c.remove()); grid.innerHTML = ''; const tone = hand.dealTone();
+    opts.forEach((o, k) => { const cell = document.createElement('div'); cell.className = 'ap-cell'; const tile = document.createElement('div'); tile.className = 'ap-choice ck-tile'; tile.setAttribute('role', 'button'); tile.innerHTML = '<span class="ap-tag">' + 'ABCD'[k] + '</span><span class="ap-tap">▶ tap</span>'; tile.onclick = () => ckWatch(k);
+      cell.appendChild(tile); cell.insertAdjacentHTML('beforeend', '<button class="btn ghost ap-pickbtn ck-pick" data-k="' + k + '">Pick ' + 'ABCD'[k] + '</button>'); grid.appendChild(cell);
+      const T = tileHand(k, tile, 'two', tone); CK.hands[k] = { hand: T.hand, busy: false }; });
+  }
+}
+function ckWatch(k) { const R = CK.cur, H = CK.hands[k]; if (!R || !H || H.busy) return; H.busy = true; const o = R.opts[k], per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed)));
+  H.hand.ready.then(smooth).then(() => CK.cur === R && H.hand.signTime(o.h, o.m, { per, ampm: o.ap, teens: teensFor(), form: formFor(), speed: S.speed })).finally(() => { H.busy = false; }); }
+function ckScore(good, text) {
+  CK.tries++; if (good) CK.right++; CK.cur.done = true;
+  $('#ck-msg').textContent = (good ? '✅ Right! ' : '❌ Not this time. ') + text; $('#ck-next').hidden = false; $('#ck-score').textContent = CK.right + ' of ' + CK.tries + ' right so far.';
+  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+}
+/* Set the Clock: the student drags the hands; the hour hand snaps to the hours and moves with the minutes like a real clock */
+function ckSetPaint() { const s = CK.cur.set; $('#ck-set').innerHTML = ckFace((s.h % 12) * 30 + s.m * 0.5, s.m * 6, { knobs: true }) + '<p class="ck-readout">' + s.h + ':' + String(s.m).padStart(2, '0') + '</p>'; }
+function ckSetDrag() {
+  const box = $('#ck-set'); let which = '';
+  const angle = e => { const r = box.querySelector('svg').getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2; return (Math.atan2(x, -y) * 180 / Math.PI + 360) % 360; };
+  const move = e => { if (!which || !CK.cur || CK.cur.done) return; e.preventDefault(); const a = angle(e), s = CK.cur.set;
+    if (which === 'm') { const step = S.ckmins === 'any' ? 1 : 5; s.m = (Math.round(a / 6 / step) * step) % 60; } else { s.h = Math.round(a / 30) % 12 || 12; }
+    ckSetPaint(); };
+  box.onpointerdown = e => { if (!CK.cur || CK.cur.done) return; const r = box.querySelector('svg').getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 200 - 100, y = (e.clientY - r.top) / r.height * 200 - 100, d = Math.hypot(x, y), s = CK.cur.set;
+    const hA = ((s.h % 12) * 30 + s.m * 0.5) * Math.PI / 180, mA = s.m * 6 * Math.PI / 180, dh = Math.hypot(x - Math.sin(hA) * 46, y + Math.cos(hA) * 46), dm = Math.hypot(x - Math.sin(mA) * 74, y + Math.cos(mA) * 74);
+    which = d < 58 && dh < dm + 12 ? 'h' : 'm'; if (d > 58 && dh < 20) which = 'h'; try { box.setPointerCapture(e.pointerId); } catch (x2) {} move(e); };
+  box.onpointermove = move; box.onpointerup = box.onpointercancel = () => { which = ''; };
+}
+function ckCheckSet() { const R = CK.cur; if (!R || R.done) return; const s = R.set, t = R.t; if (t.ap && !s.ap) { $('#ck-msg').textContent = 'Pick AM or PM too.'; return; }
+  const good = s.h === t.h && s.m === t.m && (!t.ap || s.ap === t.ap); ckScore(good, 'The hand signed ' + ckLabel(t) + '.');
+  $('#ck-set').insertAdjacentHTML('beforeend', '<div class="ck-ans">' + ckAnalog(t) + '<small>The answer</small></div>'); }
+document.addEventListener('click', e => { const t = e.target; if (!t || !t.closest) return;
+  const o = t.closest('.ck-opt'); if (o && CK.cur && CK.cur.kind === 'digital' && !CK.cur.done) { const k = +o.dataset.i, R = CK.cur, good = R.opts[k] === R.t; $$('.ck-opt').forEach((b, i) => b.classList.add(R.opts[i] === R.t ? 'ok' : i === k ? 'no' : 'x')); ckScore(good, 'The hand signed ' + ckLabel(R.t) + '.'); }
+  const p = t.closest('.ck-pick'); if (p && CK.cur && CK.cur.kind === 'hands' && !CK.cur.done) { const k = +p.dataset.k, R = CK.cur, good = R.opts[k] === R.t;
+    $$('.ck-pick').forEach((b, i) => { b.disabled = true; b.classList.add(R.opts[i] === R.t ? 'ok' : i === k ? 'no' : 'x'); }); $$('.ck-tile').forEach((tl, i) => tl.insertAdjacentHTML('beforeend', '<span class="ap-age">' + ckLabel(R.opts[i]) + '</span>')); ckScore(good, 'Hand ' + 'ABCD'[R.opts.indexOf(R.t)] + ' signed ' + ckLabel(R.t) + '.'); } });
+function clocksShow() { putStage('ck-slot'); assist.className = 'assist small'; speedNow = () => S.speed; $('#ck-speed').value = Math.round(S.speed * 100); setTimeout(ckNext, 200); }
+function clocksInit() {
+  S.ckmode = S.ckmode || 'mix'; S.ckmins = S.ckmins || 'quarter'; S.ckampm = S.ckampm || 'off';
+  segInit('ck-mode', 'ckmode', ckNext); segInit('ck-mins', 'ckmins', ckNext); segInit('ck-ampm', 'ckampm', ckNext);
+  $('#ck-next').onclick = ckNext; $('#ck-again').onclick = () => { if (CK.cur && CK.cur.kind !== 'hands' && !CK.busy) ckSignBig(CK.cur.t); };
+  $('#ck-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
 }
 
 /* ---------- Learn Numbers (Colleen, 2026-10-15): lessons in the order she taught the rules (dev/ASL-number-rules.md), grouped like the games.
@@ -2372,10 +2522,11 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, mail: mailShow, clawq: clawqShow, show: showShow, build: buildShow, shownum: snShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, card: null, mail: mailShow, clawq: clawqShow, show: showShow, build: buildShow, shownum: snShow, showtime: stShow, signer: signerShow, clocks: clocksShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
+  if (name === 'clocks' && !CLOCKS_READY && !/[?&]clocks=1\b/.test(location.search)) { location.replace('#/games'); return; }      // hidden until approved (preview with ?clocks=1)
   if (SOLO && name !== 'bingo' && name !== 'card') { location.replace('#/bingo'); return; }      // Bingo on its own: only the Bingo maker and shared cards
   stopFlag = true;
   if (name !== 'build' && name !== 'shownum' && name !== 'signnum' && name !== 'learn') hand.helper(false);
@@ -2392,7 +2543,8 @@ function route() {
   TONE_PAGE = NOPICK ? h : '';
   showScreen(name === 'play' ? 'setup' : name);
   if (name === 'play' && R) setupShow(R.game);
-  if (!/^(play|review|class|bingo|show|build|shownum|signnum|learn|mail|clawq)$/.test(name)) parkStage();
+  if (!/^(play|review|class|bingo|show|build|shownum|showtime|signer|clocks|signnum|learn|mail|clawq)$/.test(name)) parkStage();
+  if (name !== 'signer') document.body.classList.remove('signer-only');
   if (name === 'setup') setupShow(parts[1]);
   if (name === 'card') cardShow(h.slice(5));
   if (name === 'clawq') CQ.kind = parts[1] === 'numbers' ? 'numbers' : 'letters';
@@ -2415,7 +2567,7 @@ function adFill(box) {
   box.innerHTML = '<p class="adlabel">Advertisement</p><ins class="adsbygoogle" style="display:block" data-ad-client="' + esc(CFG.adClient) + '" data-ad-slot="' + esc(slot) + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
   try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
 }
-mailInit(); gamesInit(); setupInit(); showInit(); shownumInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
+mailInit(); gamesInit(); setupInit(); showInit(); shownumInit(); showtimeInit(); clocksInit(); signnumInit(); timelineInit(); agepicsInit(); eventyearInit(); mathInit(); learnInit(); buildInit(); classInit(); bingoInit();
 if (SOLO) {      /* asl.cool/bingo opens ?solo=bingo: Fingerspelling Bingo as its own teacher tool, without the practice site's menus (Colleen) */
   document.title = 'Fingerspelling Bingo'; document.body.classList.add('solo');
   const br = $('.top .brand'); if (br) { br.href = '#/bingo'; br.innerHTML = '<span class="logo" aria-hidden="true">🎱</span> Fingerspelling Bingo'; }
