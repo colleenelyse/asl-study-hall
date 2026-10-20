@@ -326,6 +326,7 @@ function gamesInit() {
   cardArt();
 }
 /* 4.69 (Colleen): her pictures on the activity buttons, in four families with her colors (Show Me, Watch, Sign It, Class); a corner badge for each family */
+const CARD_V = '?v=2';      /* raise this whenever the button pictures are replaced, so browsers fetch the new ones */
 const CARD_FAM = { show: '🖐️', watch: '👁️', sign: '📷', class: '📽️' };
 const CARD_ART = { '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
   '#/showtime/days': ['show-days', 'show'], '#/showtime/seasons': ['show-seasons', 'show'], '#/mail': ['mail', 'watch'], '#/build': ['build', 'watch'], '#/math': ['math', 'watch'],
@@ -338,7 +339,7 @@ function cardFor(href) { if (!href) return null; if (CARD_ART[href]) return CARD
   return null; }
 function cardArt() { $$('.gamegrid .gcard').forEach(a => { const m = cardFor(a.getAttribute('href')), gi = a.querySelector('.gi'); if (!m || !gi || gi.querySelector('img')) return;
   const em = gi.textContent; a.classList.add('fam-' + m[1]); gi.classList.add('pic');
-  gi.innerHTML = '<span class="gbadge">' + CARD_FAM[m[1]] + '</span><img src="cards/' + m[0] + '.webp" alt="" loading="lazy">';
+  gi.innerHTML = '<span class="gbadge">' + CARD_FAM[m[1]] + '</span><img src="cards/' + m[0] + '.webp' + CARD_V + '" alt="" loading="lazy">';
   gi.querySelector('img').onerror = () => { gi.classList.remove('pic'); gi.textContent = em; }; }); }
 let drawCats, drawPool;
 /* spacing rule for the activity cards (Colleen): one line if they all fit; otherwise the fewest even rows, centered (6 = 3 + 3, 5 = 3 + 2) */
