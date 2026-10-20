@@ -600,7 +600,7 @@ const orderLine = (items, html) => { const o = orderList(items || []); if (!o.le
   return 'Letter order slips: ' + t + (o.length > 6 ? (html ? ' · ' : ', ') + 'and ' + (o.length - 6) + ' more' : ''); };
 function record(ok, typed, extra) {
   const it = R.list[R.i];
-  const row = Object.assign({ w: it.w, c: it.c || '', n: it.n || lettersCount(it.w), ok, typed, replays: R.cur.replays, ms: Date.now() - R.cur.shownAt, speed: R.game === 'ladder' ? R.lspeed : S.speed }, extra || {});
+  const row = Object.assign({ w: it.w, c: it.c || '', n: it.n || lettersCount(it.w), ok, typed, replays: R.cur.replays, ms: Date.now() - R.cur.shownAt, speed: R.game === 'ladder' ? R.lspeed : R.game === 'fill' ? Math.max(0, S.speed - FILL_SLOWER) : S.speed }, extra || {});
   if (!ok && typed) row.mix = diffPairs(row.w, typed);
   R.items.push(row);
   track('word_answer', { game: R.game, ok, letters: row.n });
@@ -714,7 +714,8 @@ function sendToStudy(res, round) {
     rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: res.n, right: res.right, secs: res.secs, speed: scale,
     lps: num ? null : lps(k), top: res.game === 'ladder' && res.top !== null && res.top !== undefined ? res.topLps : null,
     letters: num ? 0 : res.items.reduce((a, x) => a + (x.ok ? (x.n || lettersCount(x.w)) : 0), 0),      // letters read correctly
-    items: num ? [] : res.items.filter(x => x.c && !/^LEVEL/.test(x.c)).map(x => ({ w: x.w, c: x.c, ok: !!x.ok })).slice(0, 300) };
+    items: num ? [] : res.items.filter(x => x.c && !/^LEVEL/.test(x.c)).map(x => ({ w: x.w, c: x.c, ok: !!x.ok })).slice(0, 300),
+    spd: res.items.slice(0, 300).map(x => [lps(x.speed !== undefined ? x.speed : k), x.ok && !x.replays ? 1 : 0]) };      // ASL Study 4.89: each answer's speed (letters a second), right without watching again
   if (num) msg.nums = res.items.slice(0, 60).map(x => [String(x.w), x.ok ? 1 : 0, String(x.typed || '').slice(0, 13)]);      // ASL Study 3.90 Class Problem Spots: each number, right or not, and the answer given
   else { msg.mix = mixList(res.items).slice(0, 30).map(x => [x.right, x.saw, x.times]);      // 3.90: the round's letter mix-ups [right, saw, times]
     const ord = orderList(res.items); msg.orderN = ord.length; msg.order = ord.slice(0, 20).map(x => [String(x.w).slice(0, 40), String(x.typed).slice(0, 40)]); }      // 3.90: letter order slips
@@ -723,6 +724,14 @@ function sendToStudy(res, round) {
 /* Fingerspell to the Camera inside ASL Study / the TpT sheet: the camera can't run inside the sheet's frame, so it opens in its own tab
    (like Say It); its check results come back here and go on to the sheet as an expressive round (Colleen) */
 let CAMWIN = null;
+/* ASL Study 4.89 (Colleen: a class's camera practice never reached the sheet): the camera tab keeps each round on this device (fsp-cam-pending)
+   until ASL Study says it is saved; when the games open inside ASL Study again, anything still waiting is sent. The app never counts a round twice. */
+function camPendingSend() {
+  let list = []; try { list = JSON.parse(localStorage.getItem('fsp-cam-pending') || '[]'); } catch (e) {}
+  if (!Array.isArray(list) || !list.length) return;
+  const week = Date.now() - 7 * 864e5; list.filter(m => m && m.at > week).forEach(m => { try { window.parent.postMessage(Object.assign({}, m, { type: 'fsp-round' }), '*'); } catch (e) {} });
+  try { localStorage.removeItem('fsp-cam-pending'); } catch (e) {}
+}
 function openCamera(e) {
   if (!EMBED) return; if (e) e.preventDefault();
   const el = e && e.currentTarget, num = !!(el && (el.id === 'camnumcard' || el.hasAttribute('data-camnum'))), q = (el && el.dataset.q) || '';      /* the number camera, and a camera game to open (2026-10-17) */
@@ -733,6 +742,7 @@ function openCamera(e) {
 window.addEventListener('message', e => {
   if (EMBED && CAMWIN && e.source === CAMWIN && e.origin === location.origin && e.data && (e.data.type === 'fsp-cam-names?' || e.data.type === 'fsp-pron-bank?')) { try { window.parent.postMessage({ type: e.data.type }, '*'); } catch (x) {} return; }      /* the Name Game (first names) and Pronoun Signs (the teacher's sentences) ask the class app */
   if (!EMBED || !CAMWIN || e.source !== CAMWIN || e.origin !== location.origin || !e.data || e.data.type !== 'fsp-cam-round') return;
+  if (e.data.game === 'camera-practice' && STUDY.tpt) return;      /* ASL Study 4.89 camera practice: the TpT sheets do not keep it */
   const m = Object.assign({}, e.data, { type: 'fsp-round' }); try { window.parent.postMessage(m, '*'); } catch (x) {}
 });
 window.addEventListener('message', e => {      /* the app can open a given game: { type: 'fsp-open', hash: '#/setup/type' } */
@@ -740,6 +750,8 @@ window.addEventListener('message', e => {      /* the app can open a given game:
   if (e.data.type === 'fsp-open' && /^#\/[\w/-]*$/.test(e.data.hash || '')) location.hash = e.data.hash;
   if ((e.data.type === 'fsp-pron-bank' || e.data.type === 'fsp-cam-saved') && CAMWIN) { try { CAMWIN.postMessage(e.data, location.origin); } catch (x) {} return; }      /* passed on to the camera tab */
   if (e.data.type === 'fsp-cam-names' && CAMWIN && Array.isArray(e.data.names)) { try { CAMWIN.postMessage({ type: 'fsp-cam-names', names: e.data.names.slice(0, 300) }, location.origin); } catch (x) {} return; }
+  if (e.data.type === 'fsp-hello') STUDY.tpt = 'cam' in e.data;      /* the TpT sheets send cam; ASL Study does not */
+  if (e.data.type === 'fsp-hello' && !('cam' in e.data)) camPendingSend();      /* ASL Study 4.89: camera rounds that did not reach the app before */
   if (e.data.type === 'fsp-hello' && e.data.cam === false) document.body.classList.add('nocam');
   if (e.data.type === 'fsp-hello' && 'cam' in e.data && e.data.camnum !== true) document.body.classList.add('nocamnum');      /* the TpT sheets: the number camera only where it was bought (ASL Study sends no cam, so it keeps both) */      /* a TpT edition without the Expressive part: no camera activity (Colleen: the Plus edition has it) */
   if (e.data.type === 'fsp-hello' && e.data.camtl !== undefined && e.data.camtl !== null && e.data.camtl !== '') STUDY.camtl = Math.max(0, Math.min(60, +e.data.camtl || 0));      /* the teacher's camera time limit (Settings) */
@@ -911,7 +923,7 @@ const r1 = v => Math.round(v * 10) / 10;
 const cmpVal = (k, v) => v === null || v === undefined ? '—' : k === 'top' ? r1(v).toFixed(1) + ' / sec' : k === 'pct' ? Math.round(v) + '%' : k === 'minutes' ? String(Math.round(v)) : String(r1(v));
 const firstName = name => String(name || '').trim().split(/\s+/)[0] || 'This student';
 const share = p => p >= 88 ? '9 in 10' : p >= 72 ? '3 in 4' : p >= 60 ? '2 in 3' : 'half of';
-const standing = p => p >= 75 ? 'well above average' : p >= 60 ? 'above average' : p >= 40 ? 'about average' : p >= 20 ? 'a little below average' : 'below most of the class';
+const standing = p => p >= 75 ? 'well above average' : p >= 60 ? 'above average' : p >= 40 ? 'about average' : p >= 20 ? 'a little below average' : 'below most students';
 /* the plain-words summary and the next step, from the numbers (HTML with <b> for the report; the email takes the tags out) */
 function cmpWords(d, name, r) {
   const first = firstName(name), L = d.level || 'the program', num = d.kind === 'numbers', ms = d.measures.filter(m => m.p !== null && m.p !== undefined);
@@ -923,7 +935,7 @@ function cmpWords(d, name, r) {
   else if (best) sum = first + '’s strongest area is ' + (num && best.k === 'perMin' ? 'numbers a minute' : CMP_AREA[best.k]) + ' (' + ordinal(best.p) + ' percentile' + detail(best).replace(' (', ': ');
   if (worst && worst !== best) sum += ' and is ' + standing(worst.p) + ' for ' + (num && worst.k === 'perMin' ? 'numbers a minute' : CMP_AREA[worst.k]) + '.';
   else if (sum) sum += '.';
-  if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
+  if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most students in this level.' : mins.p < 25 ? ' has practiced less than most students in this level so far.' : ' practices about as much as most students in this level.');
   const sp = Math.round((r.game === 'ladder' && r.top !== null && r.top !== undefined ? r.top : r.speed || 0) * 3), slower = SPEEDS[Math.max(0, sp - 1)], mix = mixList(r.items || []).slice(0, 2).map(x => x.right + '/' + x.saw);
   let next = '';
   if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
@@ -943,9 +955,9 @@ function timeHalf(d, name) {
   const first = firstName(name), max = Math.max(1, ...a.rows.map(x => Math.max(x.me || 0, x.avg || 0))) * 1.3, at = v => Math.max(0, Math.min(98, 100 * v / max)).toFixed(0);
   const rows = a.rows.map(x => '<tr><td>' + esc(TIME_NAMES[x.k] || x.k) + '</td><td class="num"><b>' + x.me + ' min</b></td><td class="num">' + (x.avg === null ? '—' : x.avg + ' min') + '</td><td><div class="rs-bar">' +
     (x.p === null || x.p === undefined ? '' : '<span class="me" style="left:' + pctAt(x.p) + '%"></span>') + '</div></td><td class="num">' + (x.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(x.p)][1] + '">' + ordinal(x.p) + '</span>') + '</td></tr>').join('');
-  const all = a.rows.find(x => x.k === 'app'), line = all && all.p !== null ? first + ' has spent ' + all.me + ' minutes in ' + esc(STUDY.app || 'ASL Study') + ' so far, more than about ' + Math.round(all.p) + '% of ' + esc(a.cls) + ' (class average ' + all.avg + ' minutes).' : '';
+  const all = a.rows.find(x => x.k === 'app'), line = all && all.p !== null ? first + ' has spent ' + all.me + ' minutes in ' + esc(STUDY.app || 'ASL Study') + ' so far, more than about ' + Math.round(all.p) + '% of ' + esc(a.cls) + ' (' + esc(a.cls) + ' average ' + all.avg + ' minutes).' : '';
   return '<h2 class="rs-h">Time Spent, Compared With ' + esc(a.cls) + ' (' + a.rows[0].n + ' Student' + (a.rows[0].n === 1 ? '' : 's') + ')</h2>' +
-    '<table class="rs-cmp"><tr><th>Where</th><th>' + esc(first) + '</th><th>Class average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + (line ? '<p class="rs-sets">' + line + ' Time counts toward the class comparison only; it does not change the Overall rating.</p>' : '');
+    '<table class="rs-cmp"><tr><th>Where</th><th>' + esc(first) + '</th><th>' + esc(a.cls) + ' average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + (line ? '<p class="rs-sets">' + line + ' Time counts toward this comparison only; it does not change the Overall rating.</p>' : '');
 }
 /* the comparison lines for the emailed report (Send to my teacher) */
 function cmpLines(cmp, name, r) {
@@ -953,9 +965,9 @@ function cmpLines(cmp, name, r) {
   const d = cmp.data, L = d.level || 'all students', names = CMP_NAMES[d.kind] || CMP_NAMES.letters, out = ['', 'Compared with ' + L + ' (all classes, ' + d.n + ' student' + (d.n === 1 ? '' : 's') + '):'];
   d.measures.forEach(m => { if (m.me === null && m.avg === null) return; out.push(names[m.k] + ': ' + cmpVal(m.k, m.me) + ' (' + L + ' average ' + cmpVal(m.k, m.avg) + ')' + (m.p === null ? '' : ', ' + ordinal(m.p) + ' percentile')); });
   if (d.overall !== null) out.push('Overall: ' + d.band + ' (' + ordinal(d.overall) + ' percentile in ' + L + ')');
-  if (d.small) out.push('Only ' + d.n + ' ' + L + ' student' + (d.n === 1 ? ' has' : 's have') + ' played ' + d.min + ' or more rounds so far, so this comparison is based on few students.');
+  if (d.small) out.push('There ' + (d.n === 1 ? 'is' : 'are') + ' only ' + d.n + ' ' + L + ' student' + (d.n === 1 ? '' : 's') + ' so far, so this comparison is based on few students.');
   if (d.overall !== null) { const w = cmpWords(d, name, r || {}), plain = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&'); out.push(plain(w.sum), plain(w.next)); }
-  if (d.app && d.app.rows) { out.push('', 'Time spent, compared with ' + d.app.cls + ' (' + d.app.rows[0].n + ' students):'); d.app.rows.forEach(x => out.push(TIME_NAMES[x.k] + ': ' + x.me + ' minutes (class average ' + (x.avg === null ? '—' : x.avg) + ')' + (x.p === null ? '' : ', ' + ordinal(x.p) + ' percentile'))); }
+  if (d.app && d.app.rows) { out.push('', 'Time spent, compared with ' + d.app.cls + ' (' + d.app.rows[0].n + ' students):'); d.app.rows.forEach(x => out.push(TIME_NAMES[x.k] + ': ' + x.me + ' minutes (' + d.app.cls + ' average ' + (x.avg === null ? '—' : x.avg) + ')' + (x.p === null ? '' : ', ' + ordinal(x.p) + ' percentile'))); }
   return out;
 }
 /* the bottom half of the diagnostic report: compared with the program */
@@ -973,8 +985,8 @@ function cmpHalf(cmp, name, r) {
       (m.p === null ? '—' : '<span class="rs-pill p-' + BANDS[bandOf(m.p)][1] + '">' + ordinal(m.p) + '</span>') + '</td></tr>';
   }).join('');
   let out = '<div class="rs-half"><h2 class="rs-h">Compared With ' + esc(L) + ' (All Classes, ' + d.n + ' Student' + (d.n === 1 ? '' : 's') + ')</h2>' +
-    (d.small ? '<p class="rs-small">Only ' + d.n + ' ' + esc(L) + ' student' + (d.n === 1 ? ' has' : 's have') + ' played ' + d.min + ' or more rounds so far, so this comparison is based on few students and may change a lot.</p>' : '') +
-    (d.me.rounds < d.min ? '<p class="rs-small">' + esc(first) + ' has played ' + d.me.rounds + ' round' + (d.me.rounds === 1 ? '' : 's') + ' so far; the numbers settle down after a few more.</p>' : '') +
+    (d.small ? '<p class="rs-small">There ' + (d.n === 1 ? 'is' : 'are') + ' only ' + d.n + ' ' + esc(L) + ' student' + (d.n === 1 ? '' : 's') + ' so far, so this comparison is based on few students and may change a lot.</p>' : '') +
+    (d.me.rounds < 3 ? '<p class="rs-small">' + esc(first) + ' has played ' + d.me.rounds + ' round' + (d.me.rounds === 1 ? '' : 's') + ' so far; the numbers settle down after a few more.</p>' : '') +
     '<table class="rs-cmp"><tr><th>Measure</th><th>' + esc(first) + '</th><th>' + esc(L) + ' average</th><th>Where ' + esc(first) + ' falls</th><th>Percentile</th></tr>' + rows + '</table>' + timeHalf(d, name);
   if (d.overall !== null) {
     const b = bandOf(d.overall), w = cmpWords(d, name, r);
@@ -983,7 +995,7 @@ function cmpHalf(cmp, name, r) {
       '<p>' + w.sum + '</p><p>' + w.next + '</p></div>';
   } else out += '<p class="rs-note">No other ' + esc(L) + ' students have played enough rounds to compare with yet.</p>';
   const core = d.kind === 'numbers' ? '% right and numbers right per minute' : 'top speed, % right and words right per minute';
-  return out + '<p class="rs-foot">Averages and percentiles come from every ' + esc(L) + ' student’s running totals in ' + esc(STUDY.app || 'ASL Study') + ' as of this report (' + d.n + ' student' + (d.n === 1 ? '' : 's') + '; students with fewer than ' + d.min + ' rounds are left out). ' +
+  return out + '<p class="rs-foot">Averages and percentiles come from every ' + esc(L) + ' student’s running totals in ' + esc(STUDY.app || 'ASL Study') + ' as of this report (' + d.n + ' student' + (d.n === 1 ? '' : 's') + ', every student in ' + esc(L) + ' in all classes, practiced or not). ' +
     'Percentile = the share of the other ' + esc(L) + ' students this student scored higher than; the line on each bar sits at that percentile (left = lowest, right = highest). Overall = the average of the percentiles for ' + core + '.' + (d.kind === 'numbers' ? '' : ' Letter flash is not counted.') + '</p></div>';
 }
 /* the report: one clean page with the student's name, and each number in its own box under a heading (Colleen). cmp (inside ASL Study only) makes it the diagnostic report. */

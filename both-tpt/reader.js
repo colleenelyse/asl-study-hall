@@ -99,6 +99,7 @@ function loop() {
   ctx.clearRect(0, 0, draw.width, draw.height);
   const nowT = clock(); if (!r.worldLandmarks || !r.worldLandmarks.length) { if (CK) CK.lastT = 0; $('#rd-guess').innerHTML = '<span>No hand</span>'; held = 0; $('#rd-hold').style.width = '0'; lastF = null; $('#rd-pct').hidden = true; $('#rd-tip').textContent = 'Hold your hand up where the camera can see it'; return; }
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
+  xTick(nowT);      /* 4.89 time to form each letter, hand in view */
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
   if (CK && CK.on && !done) { if (CK.lastT) CK.t += nowT - CK.lastT; CK.lastT = nowT; ckTick(); if (!CK.on) return; }      /* the check's clock runs only while a hand is in view */
   if (GAME && GAME.pace) { paceRead(f, r.landmarks[0]); return; }      /* Speed Pacer: forgiving, timed by the pacer */
@@ -378,7 +379,34 @@ function readMotion(c, P, L, f) {
    recorded: signed or not yet, the seconds it took, and a letter signed quickly and confidently instead (a real mix-up, not a struggle).
    Inside ASL Study / the TpT sheet the results go to the student's Fingerspelling Stats as EXPRESSIVE. Nothing but these results is kept. ---------- */
 try { const got = JSON.parse(sessionStorage.getItem('fsp.sheetWords') || 'null'); if (got && got.defs && typeof got.defs === 'object') window.FS_DEFS = Object.assign({}, window.FS_DEFS || {}, got.defs); } catch (e) {}      /* the teacher's own descriptions, when opened from the sheet */
-const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 'aslstudy' && !!window.opener;
+const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 'aslstudy' && !!window.opener, FROM_STUDY = QS.get('embed') === 'aslstudy';
+/* ASL Study 4.89 (Colleen: a whole class's camera practice never reached the sheet): every round is kept on this device (fsp-cam-pending) and
+   sent both to the page that opened this tab and to the ASL Study page around it; it is forgotten once ASL Study says it is saved. Anything still
+   waiting is sent the next time the games open inside ASL Study. The app never counts the same round (rid) twice. */
+function camPost(round) {
+  if (!FROM_STUDY) return; round.at = Date.now();
+  let list = []; try { list = JSON.parse(localStorage.getItem('fsp-cam-pending') || '[]'); } catch (e) {} if (!Array.isArray(list)) list = [];
+  list = list.filter(m => m && m.rid !== round.rid && m.at > Date.now() - 7 * 864e5).concat([round]).slice(-40);
+  try { localStorage.setItem('fsp-cam-pending', JSON.stringify(list)); } catch (e) {}
+  const o = window.opener; if (!o) return;
+  try { o.postMessage(round, '*'); } catch (e) {}
+  try { if (o.parent && o.parent !== o) o.parent.postMessage(round, '*'); } catch (e) {}
+}
+function camSaved(rid) { if (!rid) return; try { const list = JSON.parse(localStorage.getItem('fsp-cam-pending') || '[]'); localStorage.setItem('fsp-cam-pending', JSON.stringify((Array.isArray(list) ? list : []).filter(m => m && m.rid !== rid))); } catch (e) {} }
+/* 4.89: letters and words signed in practice and in the camera games (not the Check, Speed Pacer or the free-letter games, which save their own).
+   Counted, with the time each letter took to form while a hand was in view; sent every 25 letters and when the tab is left. */
+let XP = { letters: 0, words: 0, secs: 0 }, XT = { key: '', t: 0, lastT: 0 };
+const xOn = () => FROM_STUDY && !NUMS && !(CK && CK.on) && !(GAME && (GAME.free || GAME.pace));
+function xTick(nowT) { if (!xOn()) { XT.lastT = 0; return; } const key = (WORD ? WORD + ':' + wi : 'L:' + SET[cur]); if (key !== XT.key) { XT.key = key; XT.t = 0; } if (XT.lastT) XT.t += Math.min(200, nowT - XT.lastT); XT.lastT = nowT; }
+function xLetter() { if (!xOn()) return; XP.letters++; XP.secs += Math.min(30, XT.t / 1000); XT.t = 0; XT.key = ''; if (XP.letters >= 25) xFlush(); }
+function xWord() { if (xOn()) XP.words++; }
+function xFlush() {
+  if (!XP.letters) return; const x = XP; XP = { letters: 0, words: 0, secs: 0 };
+  camPost({ type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-practice', name: 'Camera practice and games', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    n: x.letters, right: x.letters, secs: Math.max(1, Math.round(x.secs)), speed: 1, lps: null, top: null, letters: x.letters, items: [], xprac: { letters: x.letters, words: Math.min(x.words, x.letters), secs: Math.round(x.secs * 10) / 10 } });
+}
+addEventListener('visibilitychange', () => { if (document.hidden) xFlush(); });
+addEventListener('pagehide', xFlush);
 const ONLY = /^(letters|numbers)$/.test(QS.get('only') || '') ? QS.get('only') : '';      /* the TpT editions: only the half the sheet has */
 { const numPage = ONLY === 'numbers' || QS.get('kind') === 'numbers'; $$('#rd-mode button').forEach(b => { if (numPage !== (b.dataset.v === 'numbers')) b.remove(); }); if ($$('#rd-mode button').length < 2) $('#rd-mode').hidden = true; }      /* two separate pages (Colleen): the letters camera never links to the numbers camera or back, since a buyer may have only one */
 if (QS.get('embed') === 'aslstudy') { const m = document.getElementById('rd-safe-more'); if (m) m.textContent = 'The only thing your teacher gets is your score: which letters you signed and how long each one took.'; }
@@ -429,16 +457,16 @@ function ckFinish() {
     '<div class="lets">' + Object.keys(per).sort((a, b) => NUMS ? a - b : a < b ? -1 : 1).map(c => '<span class="' + cls(c) + '">' + c + '</span>').join('') + '</div><p class="rd-small">Green: signed. Yellow: signed, but slow. Red: not yet.</p>' +
     (quick.length ? '<p><b>Quick mix-ups</b> (signed fast and sure, but a different ' + U + '):</p><ul>' + quick.map(x => '<li>' + an(x.quick).replace(/^an? /, '') + ' when asked for ' + x.c + '</li>').join('') + '</ul>' : '') +
     (notYet.length ? '<p><b>Not yet:</b> ' + [...new Set(notYet.map(x => x.c))].join(', ') + '. The camera can misread a hand, so ask your teacher to check these.</p>' : '<p><b>Every ' + U + ' signed!</b></p>') +
-    (IN_SHEET ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
+    (FROM_STUDY ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
   $('#rd-results').hidden = false;
-  if (IN_SHEET) ckSend(C, it, signed, quick);
+  if (FROM_STUDY) ckSend(C, it, signed, quick);
   CK = null; WORD = null; if (!C.words) go(0); else { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x.dataset.v === 'words')); newWord(); }
 }
 function ckSend(C, it, signed, quick) {      /* to the games page that opened this tab, which passes it to ASL Study / the TpT sheet */
   const round = { type: 'fsp-cam-round', v: 1, kind: NUMS ? 'numbers' : 'letters', game: NUMS ? 'camera-num' : 'camera', name: NUMS ? 'Sign Numbers to the Camera' : 'Fingerspell to the Camera', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: it.length, right: signed.length, secs: Math.round((Date.now() - C.start) / 1000), speed: 1, lps: null, top: null, letters: NUMS ? 0 : signed.length, items: [],
     exp: { words: C.words ? 1 : 0, hand: LEFT ? 'left' : 'right', limit: tlNow(), items: it.slice(0, 200).map(x => [x.c, x.ok ? 1 : 0, x.secs, x.quick || '']) } };
-  try { window.opener.postMessage(round, '*');      /* the games page that opened it, or ASL Study's Practice page (another origin); only the score goes */ $('#rd-sent').textContent = 'Saved to your class.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
+  try { camPost(round);      /* the games page that opened it, or ASL Study's Practice page (another origin); only the score goes */ $('#rd-sent').textContent = IN_SHEET ? 'Sending to your class…' : 'Kept on this device: it goes to your class the next time you open the fingerspelling games in ASL Study.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
 }
 $('#rd-kind').onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; if (GAME) quitGame(); $$('#rd-kind button').forEach(x => x.classList.toggle('on', x === b)); const ck = b.dataset.v === 'check', gm = b.dataset.v === 'games';
   $('#rd-gamelist').hidden = !gm; document.body.classList.toggle('gamestab', gm); if (gm) { drawGames(); $('#rd-checkset').hidden = true; $('#rd-results').hidden = true; return; } else if (!WORD && !NUMS) go(cur);
@@ -450,6 +478,7 @@ if (TL_FIXED !== null) { $('#rd-tlwrap').innerHTML = 'Time per letter: ' + (TL_F
 else { try { const v = localStorage.getItem('fs-reader-tl'); if (v !== null) $('#rd-tl').value = v; } catch (e) {} $('#rd-tl').onchange = () => { try { localStorage.setItem('fs-reader-tl', $('#rd-tl').value); } catch (e) {} }; }
 
 function flash(c) {      /* a big green check on the camera, so it's obvious the letter was accepted (Colleen) */
+  if (/^[A-Z]$/.test(c)) xLetter();      /* 4.89 */
   const f = $('#rd-flash'); f.textContent = '✓ ' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
 }
 let DBL = null;
@@ -484,7 +513,7 @@ function showDef(w) {      /* what the word means, right under the word, from th
 function newWord() { const P = pool(); WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
 let LAST = '';
 function wordDone() {      /* all green, then straight on to the next word (Colleen); "Show me" stays for the word just spelled */
-  done = true; LAST = WORD; const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
+  done = true; LAST = WORD; xWord(); const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
   $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-showme').textContent = '▶ Show me ' + LAST; $('#rd-status').textContent = 'You spelled ' + LAST + '!';
   if (GAME && GAME.wordDone) { $('#rd-after').hidden = true; return GAME.wordDone(LAST); }
   if (LIVEON) liveDone(LAST);      /* a class game: this word counts */
@@ -563,7 +592,8 @@ if (IN_SHEET) window.addEventListener('message', e => {
   if (d.type === 'fsp-cam-aim' && d.stop) { AIMID = null; if (GAME && GAME.k === 'aim') { GAME = null; WORD = null; } liveBanner(''); return; }
   if (d.type === 'fsp-cam-target' && d.stop) { TARGETW = ''; if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
 });
-if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved') { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
+if (FROM_STUDY) window.addEventListener('message', e => { if (e.data && e.data.type === 'fsp-cam-saved') camSaved(e.data.rid); });      /* 4.89 */
+if (IN_SHEET) window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-saved' && e.data.got && e.data.got.length) { const el = $('#rd-sent'); if (el) el.innerHTML = '✓ Saved to your class: ' + (e.data.got || []).join(', ').replace(/[<>&]/g, '') + (e.data.milestones || []).map(m => '<br><b>' + String(m.title).replace(/[<>&]/g, '') + '</b> ' + String(m.text).replace(/[<>&]/g, '')).join(''); } });      /* what a Check earned, with milestones (4.20) */
 /* the Name Game: inside a class app the camera tab asks for the class's first names (they stay on this screen; nothing is kept) */
 if (IN_SHEET) { window.addEventListener('message', e => { if (e.source === window.opener && e.data && e.data.type === 'fsp-cam-names' && Array.isArray(e.data.names)) CLASSNAMES = e.data.names.map(x => String(x).toUpperCase().replace(/[^A-Z]/g, '')).filter(x => x.length >= 2 && x.length <= 14); }); try { window.opener.postMessage({ type: 'fsp-cam-names?' }, '*'); } catch (e) {} }
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -842,10 +872,10 @@ const PACE_ALIKE = { J: ['J', 'I'], Z: ['Z', 'D', 'G'] };
 /* 4.61 (Colleen: "will I get a report?"): opened from ASL Study, a finished Speed Pacer run is saved to the student's Fingerspelling Stats:
    the speed, the % of letters signed in time, and the word lengths chosen. */
 function paceSend(P, lps, pct) {
-  if (!IN_SHEET) return; const lens = LENS.filter(l => WS.lens.includes(l[0])).map(l => l[1].replace(/ \(.*\)/, '')).join(' + ') || 'any';
+  if (!FROM_STUDY) return; const lens = LENS.filter(l => WS.lens.includes(l[0])).map(l => l[1].replace(/ \(.*\)/, '')).join(' + ') || 'any';
   const round = { type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-pacer', name: 'Speed Pacer', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: P.n, right: P.full, secs: Math.round((Date.now() - P.t0) / 1000), speed: 1, lps: null, top: null, letters: P.hits, items: [],
     pacer: { lps, pct, hits: P.hits, total: P.total, len: lens, hand: LEFT ? 'left' : 'right' } };
-  try { window.opener.postMessage(round, '*'); } catch (e) {}
+  camPost(round);      /* 4.89 */
 }
 function paceRead(f, L) {
   const P = GAME.pace; if (!P.run || P.i < 0 || !WORD) { dots(L, -1, false); return; }
