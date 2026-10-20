@@ -326,7 +326,7 @@ function gamesInit() {
   cardArt();
 }
 /* 4.69 (Colleen): her pictures on the activity buttons, in four families with her colors (Show Me, Watch, Sign It, Class); a corner badge for each family */
-const CARD_V = '?v=2';      /* raise this whenever the button pictures are replaced, so browsers fetch the new ones */
+const CARD_V = '?v=3';      /* raise this whenever the button pictures are replaced, so browsers fetch the new ones */
 const CARD_FAM = { show: '🖐️', watch: '👁️', sign: '📷', class: '📽️' };
 const CARD_ART = { '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
   '#/showtime/days': ['show-days', 'show'], '#/showtime/seasons': ['show-seasons', 'show'], '#/mail': ['mail', 'watch'], '#/build': ['build', 'watch'], '#/math': ['math', 'watch'],
