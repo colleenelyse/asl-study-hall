@@ -662,3 +662,9 @@ body.signer-only .signer-slot .stage { width: 100%; margin: 0; }
 body.signer-only .cv { width: min(100vw, 100vh) !important; margin: 0 auto; }      /* the frame is small like a phone, but the hand should fill it */
 body.signer-only main, body.signer-only .screen.on { padding: 0 !important; margin: 0 !important; }
 body.signer-only .assist { display: none; }
+/* 4.69 (Colleen): the four families of activities, her palette (Show Me, Watch, Sign It, Class; accent #F72585), with her pictures and a corner badge */
+.gamegrid .gcard.fam-show { --c: #00F5D4; } .gamegrid .gcard.fam-watch { --c: #00A8E8; } .gamegrid .gcard.fam-sign { --c: #F9D405; } .gamegrid .gcard.fam-class { --c: #773EA9; }
+.gamegrid .gcard .gi.pic { position: relative; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 55%, #fff), color-mix(in srgb, var(--c) 85%, #fff)); }
+.gamegrid .gcard .gi.pic img { width: auto; height: 92%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .18)); }
+.gamegrid .gcard .gi .gbadge { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 15px; line-height: 1; box-shadow: 0 0 0 2px var(--c), 0 2px 6px rgba(0, 0, 0, .2); }
+.gamegrid .gcard .tag { background: #F72585; color: #fff; }

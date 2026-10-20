@@ -323,7 +323,23 @@ function gamesInit() {
   $('#g-clockgrid').innerHTML = CLOCKS_READY ? '<a class="gcard" href="#/clocks"><span class="gi" aria-hidden="true">🕒</span><b>Clock Reading</b><span>The hand signs a time. Pick the digital clock, set the hands of a clock, or find the hand that matches.</span></a>' : '';      /* clock times (Colleen, 2026-10-18): hidden until she approves the signed times */
   if (!CLOCKS_READY) { const h = $('.sec-clock'); if (h) h.hidden = true; }
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Put five signed years in order, then match each event to its year.</span></a>';
+  cardArt();
 }
+/* 4.69 (Colleen): her pictures on the activity buttons, in four families with her colors (Show Me, Watch, Sign It, Class); a corner badge for each family */
+const CARD_FAM = { show: '🖐️', watch: '👁️', sign: '📷', class: '📽️' };
+const CARD_ART = { '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
+  '#/showtime/days': ['show-days', 'show'], '#/showtime/seasons': ['show-seasons', 'show'], '#/mail': ['mail', 'watch'], '#/build': ['build', 'watch'], '#/math': ['math', 'watch'],
+  '#/agepics': ['charlie', 'watch'], '#/eventyear': ['eventyear', 'watch'], '#/timeline': ['timeline', 'watch'], '#/class': ['projector', 'class'], '#/bingo': ['bingo', 'class'],
+  'reader.html': ['camera', 'sign'], 'reader.html?kind=numbers': ['camnumbers', 'sign'], 'pronouns.html': ['pronouns', 'sign'] };
+const CARD_CAM = { def: 'def', echo: 'echo', speed: 'speed', ladder: 'camladder', hang: 'hang', wordle: 'wordle', names: 'names', math: 'cammath', count: 'count', clock: 'clock' };
+function cardFor(href) { if (!href) return null; if (CARD_ART[href]) return CARD_ART[href];
+  const st = /^#\/setup\/(\w+)$/.exec(href); if (st) return [st[1], 'watch'];
+  const cg = /^reader\.html\?(?:kind=numbers&)?g=(\w+)$/.exec(href); if (cg && CARD_CAM[cg[1]]) return [CARD_CAM[cg[1]], 'sign'];
+  return null; }
+function cardArt() { $$('.gamegrid .gcard').forEach(a => { const m = cardFor(a.getAttribute('href')), gi = a.querySelector('.gi'); if (!m || !gi || gi.querySelector('img')) return;
+  const em = gi.textContent; a.classList.add('fam-' + m[1]); gi.classList.add('pic');
+  gi.innerHTML = '<span class="gbadge">' + CARD_FAM[m[1]] + '</span><img src="cards/' + m[0] + '.webp" alt="" loading="lazy">';
+  gi.querySelector('img').onerror = () => { gi.classList.remove('pic'); gi.textContent = em; }; }); }
 let drawCats, drawPool;
 /* spacing rule for the activity cards (Colleen): one line if they all fit; otherwise the fewest even rows, centered (6 = 3 + 3, 5 = 3 + 2) */
 function layoutGrids() { $$('.gamegrid').forEach(g => { const n = g.children.length; g.style.maxWidth = ''; const W = g.clientWidth; if (!n || !W) return; const MIN = W < 500 ? 140 : 180, GAP = 14, fit = Math.max(1, Math.floor((W + GAP) / (MIN + GAP))), rows = Math.ceil(n / fit); const per = Math.ceil(n / rows); g.style.setProperty('--per', per); g.style.maxWidth = (per * 250 + (per - 1) * GAP) + 'px'; }); }      /* the row is only as wide as its cards, so 6 = 3 + 3, never 4 + 2 */
@@ -1357,24 +1373,26 @@ function shownumInit() {
 
 /* ---------- Show me days of the week and seasons (Colleen, 2026-10-18): tap a word, the hand signs it (hand.signDay, hand.signSeason) ---------- */
 const ST = { kind: 'days' };
-const ST_WORDS = { days: [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['THU', 'Thursday'], ['FRI', 'Friday'], ['SAT', 'Saturday'], ['SUN', 'Sunday']], seasons: [['WIN', 'Winter'], ['SPR', 'Spring'], ['SUM', 'Summer'], ['FAL', 'Fall']] };
+const ST_WORDS = { days: [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['THU', 'Thursday'], ['FRI', 'Friday'], ['SAT', 'Saturday'], ['SUN', 'Sunday']], seasons: [['WIN', 'Winter'], ['SPR', 'Spring'], ['SUM', 'Summer'], ['FAL', 'Fall']], codes: [['NEW', '🔐 Sign a new code'], ['P0', '☝️ 1st (thumb)'], ['P1', '☝️ 2nd'], ['P2', '☝️ 3rd'], ['P3', '☝️ 4th'], ['P4', '☝️ 5th (pinky)']], colors: [['BLU', 'Blue'], ['GRN', 'Green'], ['YEL', 'Yellow'], ['PUR', 'Purple'], ['RED', 'Red'], ['PNK', 'Pink'], ['ORG', 'Orange'], ['WHT', 'White'], ['BLK', 'Black']] };      /* colors (Colleen, 2026-10-19): not on the games page until she approves them */
 const faceSkin = tone => mixHex(mixHex(FACE_TONE[tone] || mixHex(tone, '#ffffff', 0.45), tone, 0.15), '#f2a27e', 0.1);      /* the same skin as the age face */
 function stShow() {
-  ST.kind = /^#\/showtime\/seasons/.test(location.hash) ? 'seasons' : 'days';
+  ST.kind = /^#\/showtime\/seasons/.test(location.hash) ? 'seasons' : /^#\/showtime\/colors/.test(location.hash) ? 'colors' : /^#\/showtime\/codes/.test(location.hash) ? 'codes' : 'days';
   putStage('showtime-slot'); speedNow = () => S.speed; assist.className = 'assist'; $('#st-speed').value = Math.round(S.speed * 100);
   const days = ST.kind === 'days';
-  $('#st-title').textContent = days ? 'Show Me Days of the Week' : 'Show Me Seasons';
-  $('#st-hint').textContent = days ? 'Tap a day and watch the hand sign it. Thursday has two ways: T then H, or H alone.' : 'Tap a season and watch the hand sign it.';
+  $('#st-title').textContent = days ? 'Show Me Days of the Week' : ST.kind === 'colors' ? 'Show Me Colors' : ST.kind === 'codes' ? 'Show Me Codes' : 'Show Me Seasons';
+  $('#st-hint').textContent = days ? 'Tap a day and watch the hand sign it. Thursday has two ways: T then H, or H alone.' : ST.kind === 'colors' ? 'Tap a color and watch the hand sign it.' : ST.kind === 'codes' ? 'A code is five sets of letter, number, letter, number. The left hand lists them: thumb first, pinky last.' : 'Tap a season and watch the hand sign it.';
   $('#st-thu-field').hidden = !days; $('#st-word').textContent = '';
   $('#st-btns').innerHTML = ST_WORDS[ST.kind].map(([k, w]) => '<button class="btn" data-k="' + k + '">' + w + '</button>').join('');
 }
 function showtimeInit() {
-  const brow = v => { const on = v === 'brow'; stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };      /* SUMMER: the forehead behind the hand */
+  const brow = v => { if (v === 'face') return ageFace(true); const on = v === 'brow'; if (!on) ageFace(false); stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };      /* SUMMER and BLACK: the forehead behind the hand; colors at the chin and chest: the age face (Colleen, 2026-10-19) */
   const play = async k => {
     await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false; newTone();
     $$('#st-btns button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
     const per = Math.round(1000 * Math.pow(0.35, Math.max(0, S.speed))), o = { per, onLetter: w => { if (w) $('#st-word').textContent = w; }, onView: brow, thu: S.stthu === 'mix' ? 'mix' : S.stthu === 'h' ? 'h' : 'th' };
-    spelling = ST.kind === 'days' ? hand.signDay(k, o) : hand.signSeason(k, o);
+    if (/^P\d$/.test(k)) { $('#st-word').textContent = ['1st', '2nd', '3rd', '4th', '5th'][+k[1]]; spelling = hand.listPoint(+k[1]); try { await spelling; } finally { spelling = null; } return; }      /* hold the point on one finger, to check it */
+    const code = ST.kind === 'codes' ? hand.makeCode() : ''; if (code) { o.onLetter = w => { $('#st-word').textContent = w ? 'Set ' + w : code; }; o.stop = () => stopFlag; }      /* a new random code each tap; the whole code shows when the hand is done */
+    spelling = ST.kind === 'days' ? hand.signDay(k, o) : ST.kind === 'colors' ? hand.signColor(k, o) : code ? hand.signCode(code, o) : hand.signSeason(k, o);
     try { await spelling; } finally { spelling = null; brow(''); }
   };
   $('#st-btns').onclick = e => { const b = e.target.closest('button[data-k]'); if (b) play(b.dataset.k); };
@@ -1504,10 +1522,14 @@ const SIGNER = { busy: false };
 async function signerSign(d) {
   await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
   const it = d.item || {}, sp = Math.max(0, Math.min(1, +d.speed || 0)); S.speed = sp; speedNow = () => sp; newTone();
-  const per = Math.round(1000 * Math.pow(0.35, sp)), brow = v => { const on = v === 'brow'; stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };
+  const per = Math.round(1000 * Math.pow(0.35, sp)), brow = v => { if (v === 'face') return ageFace(true); const on = v === 'brow'; if (!on) ageFace(false); stage.classList.toggle('agemode', on); $('#ageface').innerHTML = on ? hand.browSvg(faceSkin(toneCss(hand.tone))) : ''; };
   assist.textContent = ''; stage.classList.remove('frosted');
   if (it.kind === 'day') spelling = hand.signDay(it.code, { per, thu: it.thu || 'mix' });
   else if (it.kind === 'season') spelling = hand.signSeason(it.code, { per, onView: brow });
+  else if (it.kind === 'color') spelling = hand.signColor(it.code, { per, onView: brow });
+  else if (it.kind === 'code') spelling = hand.signCode(String(it.code || ''), { per, stop: () => stopFlag });
+  else if (it.kind === 'piece') spelling = hand.signCode(String(it.set || ''), { per, at: +it.k || 0, stop: () => stopFlag });      /* Breach: one set at its listing finger */      /* the password game: five listed sets */
+  else if (it.kind === 'age') spelling = (async () => { brow('face'); await new Promise(r => setTimeout(r, 400)); await hand.signAge(+it.n, { per }); })();      /* Mind Your Manners: a doll's age, at the chin */
   else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
   else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag });
   else if (it.kind === 'digits') spelling = (async () => { const ds = (it.ds || []).map(Number); for (let i = 0; i < ds.length; i++) { if (stopFlag) break; await hand.sign(ds[i], { per, series: i > 0, stay: i < ds.length - 1, teens: teensFor(), form: formFor(), stop: () => stopFlag }); } })();      /* a padlock code: one digit at a time (escape room) */

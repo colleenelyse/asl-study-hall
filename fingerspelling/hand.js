@@ -877,6 +877,90 @@ const browSvg = skin => { skin = /^#[0-9a-f]{6}$/i.test(skin || '') ? skin : '#f
   '<path d="M360 455 C 450 460, 540 490, 610 545 C 620 555, 600 555, 590 548 C 520 500, 440 470, 360 462 Z" fill="#57332a"/><path d="M560 470 C 610 490, 650 520, 680 560 C 670 565, 655 555, 645 545 C 620 515, 590 490, 560 475 Z" fill="#57332a"/><path d="M740 390 C 780 430, 800 480, 800 540 C 790 545, 785 530, 785 520 C 782 470, 765 430, 740 395 Z" fill="#57332a"/>' +
   '</svg>';
 };
+/* COLORS (Colleen, 2026-10-19). BLUE, GREEN, YELLOW, PURPLE: the color's first letter, the hand shakes with a twist from the wrist.
+   From her videos: RED, the pointer finger brushes down from the lower lip to the chin, twice. PINK, a P brushes down across the lips, twice.
+   ORANGE, a C at the mouth squeezes closed to an S, three times. WHITE, an open 5 flat on the chest pulls away into a flat O.
+   BLACK, the side of the pointer finger, palm down, drawn across the forehead. The face and chest come from the age view (o.onView('face')),
+   the forehead from summer's (o.onView('brow')). NOT YET CHECKED by Colleen. */
+const COLOR_NAME = { BLU: 'Blue', GRN: 'Green', YEL: 'Yellow', PUR: 'Purple', RED: 'Red', PNK: 'Pink', ORG: 'Orange', WHT: 'White', BLK: 'Black' }, COLOR_LETTER = { BLU: 'B', GRN: 'G', YEL: 'Y', PUR: 'P' };
+const FLAT_O5 = { f: [[55, 15, 10, 0], [55, 15, 10, 0], [55, 15, 10, 0], [55, 15, 10, 0]], t: [32, -2, -47, 20, 12] };
+const CLR = {      /* measured on the age face (2026-10-19) */
+  RED0: () => Object.assign({}, NUM[1].start, { p: [0, 0.125, -0.05] }), RED1: () => Object.assign({}, NUM[1].start, { f: [[25, 45, 25, 0]].concat(NUM[1].start.f.slice(1)), p: [0, 0.09, -0.035] }),
+  PNK0: () => Object.assign({}, POSE.P, { w: [-10, 178, 0], p: [0, 0.105, -0.045] }), PNK1: () => Object.assign({}, POSE.P, { w: [-10, 178, 0], p: [0, 0.075, -0.04] }),      /* the whole hand palm toward the face: the top of the middle finger drags down the chin (Colleen) */
+  ORG0: () => Object.assign({}, POSE.C, { p: [-0.04, 0.132, -0.035] }), ORG1: () => Object.assign({}, POSE.C, { f: POSE.S.f, t: POSE.S.t, p: [-0.04, 0.132, -0.035] }),      /* the C on its side, the center of the chin in the hole between the thumb and index finger (Colleen) */
+  WHT0: () => ({ f: NUM[5].start.f, t: NUM[5].start.t, w: [0, 178, 80], p: [-0.035, 0.03, -0.03] }), WHT1: () => Object.assign({}, FLAT_O5, { w: [0, 178, 80], p: [-0.025, 0.03, 0.06] })
+};
+async function signColorFace(c, o, per, wait) {
+  if (helperOn) helper(false); helperSleeve(false);
+  if (c === 'BLK') {      /* like summer: the forehead behind the hand, a straight pointer finger, palm down, all the way across */
+    camTo(CAM_SUM, 250); if (o.onView) o.onView('brow');
+    const B0 = Object.assign({}, POSE.X, { f: [[0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], w: [90, 0, -90], p: [0.002, -0.09, 0] }), B1 = Object.assign({}, B0, { p: [-0.144, -0.09, 0] });
+    moveTo(B0, per * 0.5); await wait(per * 0.65); moveTo(B1, per * 1.0); await wait(per * 1.1); await wait(per * 0.4);
+    if (o.stay) return; moveTo(POSE.rest, 500); await wait(520); camFor(false); if (o.onView) o.onView(''); if (o.onLetter) o.onLetter(''); return;
+  }
+  if (o.onView) o.onView('face'); for (let i = 0; i < 20 && !ageOn; i++) await wait(50);      /* the page turns on the age face; the hand waits below, out of sight */
+  const k = c === 'RED' ? ['RED0', 'RED1', 2] : c === 'PNK' ? ['PNK0', 'PNK1', 2] : c === 'ORG' ? ['ORG0', 'ORG1', 3] : ['WHT0', 'WHT1', 1], A = CLR[k[0]](), B = CLR[k[1]]();
+  moveTo(A, per * 0.6); await wait(per * 0.75);
+  for (let i = 0; i < k[2]; i++) {
+    if (c === 'WHT') { playPath([A, B], per * 0.7); await wait(per * 0.75); }      /* pull away from the chest, closing */
+    else if (c === 'ORG') { moveTo(B, per * 0.22); await wait(per * 0.26); if (i < k[2] - 1) { moveTo(A, per * 0.22); await wait(per * 0.26); } }      /* squeeze, open, squeeze */
+    else { playPath([A, B], per * 0.45); await wait(per * 0.55); if (i < k[2] - 1) { const lift = Object.assign({}, A, { p: [A.p[0], (A.p[1] + B.p[1]) / 2, A.p[2] + 0.035] }); playPath([B, lift, A], per * 0.45); await wait(per * 0.55); } }      /* brush down, lift off and back up (so the second brush shows, Colleen), brush down */
+  }
+  await wait(per * 0.5);
+  if (o.stay) return;
+  moveTo(AGE_REST(), 500); await wait(520); if (o.onView) o.onView(''); if (o.onLetter) o.onLetter('');
+}
+const COLOR_TWIST = 28, COLOR_FLICK = 35, COLOR_FLICKS = { GRN: 1, PUR: 1 };      /* GREEN and PURPLE flick forward toward the viewer instead (Colleen) */      /* degrees each way: the forearm turning, the way a wrist really twists */
+const twistAbout = (P, deg) => { const D = Math.PI / 180, q = new THREE.Quaternion().setFromEuler(new THREE.Euler(P.w[0] * D, P.w[1] * D, P.w[2] * D)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deg * D)), e = new THREE.Euler().setFromQuaternion(q, 'XYZ');
+  return Object.assign({}, P, { w: [e.x / D, e.y / D, e.z / D] }); };      /* turns the hand about its own long axis (wrist to fingertips), whatever way the letter points */
+const flickAbout = (P, deg) => { const D = Math.PI / 180, q = new THREE.Quaternion().setFromEuler(new THREE.Euler(P.w[0] * D, P.w[1] * D, P.w[2] * D)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -deg * D)), e = new THREE.Euler().setFromQuaternion(q, 'XYZ');
+  return Object.assign({}, P, { w: [e.x / D, e.y / D, e.z / D] }); };      /* bends the wrist so the fingertips swing toward the viewer (measured: the tips come forward) */
+async function signColor(code, o) {
+  o = o || {}; const per = o.per || 700, wait = ms => new Promise(r => setTimeout(r, ms)), c = String(code || '').toUpperCase().slice(0, 3), L = COLOR_LETTER[c];
+  if (!COLOR_NAME[c]) return; if (o.onLetter) o.onLetter(COLOR_NAME[c]);
+  if (!L) return signColorFace(c, o, per, wait);
+  if (helperOn) helper(false); helperSleeve(false); setForearm(ageOn);
+  const base = Object.assign({}, POSE[L]), flick = COLOR_FLICKS[c];
+  const keys = flick ? [base] : [twistAbout(base, -COLOR_TWIST)];
+  for (let k = 0; k < 3; k++) keys.push(...(flick ? [flickAbout(base, COLOR_FLICK), base] : [twistAbout(base, COLOR_TWIST), twistAbout(base, -COLOR_TWIST)]));      /* three shakes, or three flicks forward */
+  keys.push(base);
+  moveTo(keys[0], per * 0.45); await wait(per * 0.55);
+  playPath(keys, per * 1.5, t => t); await wait(per * 1.55);
+  await wait(per * 0.4);
+  if (o.stay) return;
+  moveTo(POSE.rest, 500); await wait(520);
+  if (o.onLetter) o.onLetter('');
+}
+/* CODES with LISTING (Colleen, 2026-10-19, for the password game): a code is five sets of letter-number-letter-number (m2m4-b9p1-a3n5-v3c4-j2k5),
+   so a 9 is never mistaken for an F or a 6 for a W. Each set is introduced by listing: the left hand holds a sideways 5, palm in, fingers
+   pointing across the body, thumb on top; the right index points to the thumb for the first set … the pinky for the fifth; then the set is
+   spelled (letters fingerspelled, digits palm out). J and Z (letters that move) are never used. NOT YET CHECKED by Colleen. */
+const LIST_L = () => ({ f: NUM[5].start.f, t: NUM[5].start.t, w: [0, 180, 90], p: [-0.10, -0.03, 0] });      /* measured: the back of the hand to the student */
+const LIST_PT = [[-0.046, 0.030, 0.003], [-0.110, -0.012, 0.0065], [-0.118, -0.045, 0.0132], [-0.102, -0.079, 0.0099], [-0.075, -0.100, 0.0043]];      /* the pointing index just touching the thumb … the pinky (measured) */
+const LIST_SPELL = [-0.135, -0.05, 0.02], CAM_LIST = { pos: [0, 0.05, 0.75], at: [0, 0.05, 0] };
+const CODE_L = 'ABCDEFGHIKLMNOPQRSTUVWXY', CODE_N = '0123456789';
+const makeCode = (n = 5) => Array.from({ length: n }, () => [CODE_L, CODE_N, CODE_L, CODE_N].map(a => a[Math.floor(Math.random() * a.length)]).join('').toLowerCase()).join('-');
+async function signCode(code, o) {
+  o = o || {}; const per = o.per || 700, wait = ms => new Promise(r => setTimeout(r, ms)), sets = String(code || '').toUpperCase().split('-').filter(Boolean).slice(0, 5);
+  if (!sets.length) return; if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+  helperSleeve(false); camTo(CAM_LIST, 300); helperMove(LIST_L(), per * 0.6); await wait(per * 0.4);
+  for (let k = 0; k < sets.length; k++) {
+    if (o.stop && o.stop()) break; const fk = Math.min(4, k + (o.at || 0)); if (o.onLetter) o.onLetter((fk + 1) + ': ' + sets[k].toLowerCase());
+    const P = Object.assign({}, POSE.G, { p: LIST_PT[fk] }), tap = Object.assign({}, P, { p: [P.p[0] - 0.01, P.p[1], P.p[2]] });
+    moveTo(tap, per * 0.5); await wait(per * 0.55); moveTo(P, per * 0.2); await wait(per * 0.45);      /* point to the finger: a little tap */
+    for (const ch of sets[k]) {
+      if (o.stop && o.stop()) break;
+      const S = /[0-9]/.test(ch) ? (+ch >= 1 && +ch <= 5 ? DIGIT_OUT(+ch) : NUM[+ch].start) : POSE[ch]; if (!S || Array.isArray(S)) continue;
+      moveTo(Object.assign({}, S, { p: LIST_SPELL }), per * 0.4); await wait(per * 0.85);
+    }
+    await wait(per * 0.25);
+  }
+  if (o.stay) return;
+  helperMove(HELPER_REST, per * 0.6); moveTo(POSE.rest, 500); await wait(620); helper(false); camFor(false); if (o.onLetter) o.onLetter('');
+}
+/* Show Me Codes (for Colleen to check): hold the listing point on one finger, the left hand up */
+async function listPoint(k) { const wait = ms => new Promise(r => setTimeout(r, ms)); if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+  helperSleeve(false); camTo(CAM_LIST, 300); helperMove(LIST_L(), 400); moveTo(Object.assign({}, POSE.G, { p: LIST_PT[Math.max(0, Math.min(4, k))] }), 500); }
 async function signSeason(name, o) {
   o = o || {}; const per = o.per || 700, wait = ms => new Promise(r => setTimeout(r, ms)), n = String(name || '').toUpperCase().slice(0, 3);
   if (n !== 'FAL') { helperSleeve(false); setForearm(ageOn); }      /* only fall shows the arms (Colleen) */
@@ -1151,7 +1235,7 @@ function jointsOf(P0) {
   apply(keep); dirty = true; return out.some(x => !x) ? null : out;
 }
 if (opts.debug) window.__hand = { get cur() { return cur; }, get cam() { return cam; }, get H() { return H; }, get H2() { return H2; }, apply, snap, scene, cam, POSE, norm, moveTo, NUM, SH, helperMove, withHand };      /* dev pages only: lets the review tools reach the joints */
-return { ready, signDay, signSeason, signTime, timeLeft, sleeveBend: (deg, dev, right) => sleeveBend(right ? H1 : H2, deg, dev), browSvg, boneAt: (left, name) => { const h = left ? H2 : H1; if (name === 'elbow' && h && h.elbow) { scene.updateMatrixWorld(true); return h.elbow.getWorldPosition(new THREE.Vector3()).toArray().map(v => +v.toFixed(4)); } if (!h || !h.bones || !h.bones[name]) return null; (left ? h.mirror : h.root).updateMatrixWorld(true); return h.bones[name].getWorldPosition(new THREE.Vector3()).toArray().map(v => +v.toFixed(4)); }, holdTwo, helperSleeve, setForearm, wideCam, SEA, poseJoints, numberJoints, numberKeys, numberDecoys, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
+return { ready, signCode, makeCode, listPoint, signDay, signSeason, signColor, COLOR_NAME, signTime, timeLeft, sleeveBend: (deg, dev, right) => sleeveBend(right ? H1 : H2, deg, dev), browSvg, holdTwo, helperSleeve, setForearm, wideCam, SEA, poseJoints, numberJoints, numberKeys, numberDecoys, spell, sign, signParts, signYear, yearParts, signAge, signOp, ageView, ageStill, helper, numberImage: n => chartImage(NUM[n].start), setTone, TONES, dealTone, chartImage: c => chartImage(letterStill(c)), letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', get tone() { return toneNow; } };
 }
 window.FSHand = { create };
 })();

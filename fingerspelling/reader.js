@@ -549,9 +549,10 @@ if (IN_SHEET) window.addEventListener('message', e => {
     const parts = d.parts.map(p => [p[0] === 'n' ? 'n' : 'w', p[0] === 'n' ? String(Math.max(0, Math.floor(+p[1] || 0))) : String(p[1] || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 14)]).filter(p => p[1]);
     if (!parts.length) return; if (GAME && GAME.k !== 'aim') quitGame();
     const t0 = Date.now(), id = d.id; let k = 0;
-    const show = () => { const left = parts.slice(k).map(p => p[1]).join(' + '); liveBanner('🎯 Sea Battle: sign <b>' + parts.map((p, i) => i < k ? '<s>' + p[1] + '</s>' : p[1]).join(' then ') + '</b> to fire'); return left; };
+    const say = String(d.say || '🎯 Sea Battle: sign').replace(/[<>]/g, ''), doneSay = String(d.done || '🎯 Fired! Look at your game.').replace(/[<>]/g, ''), endWord = String(d.end || 'to fire').replace(/[<>]/g, '');      /* Breach uses this too: letter, number, letter, number */
+    const show = () => { const left = parts.slice(k).map(p => p[1]).join(' + '); liveBanner(say + ' <b>' + parts.map((p, i) => i < k ? '<s>' + p[1] + '</s>' : p[1]).join(' then ') + '</b> ' + endWord); return left; };
     const step = () => {
-      if (k >= parts.length) { GAME = { k: 'live', free: true, letter: () => {} }; WORD = null; try { window.opener.postMessage({ type: 'fsp-cam-aimed', id, ms: Date.now() - t0 }, '*'); } catch (e) {} liveBanner('🎯 Fired! Look at your game.'); $('#rd-tip').textContent = 'Fired!'; return; }
+      if (k >= parts.length) { GAME = { k: 'live', free: true, letter: () => {} }; WORD = null; try { window.opener.postMessage({ type: 'fsp-cam-aimed', id, ms: Date.now() - t0 }, '*'); } catch (e) {} liveBanner(doneSay); $('#rd-tip').textContent = '✓'; return; }
       const p = parts[k], G = { k: 'aim', hide: false, hideLetter: false, wordDone: () => { k++; setTimeout(step, 250); }, numDone: () => { k++; setTimeout(step, 250); } };
       show();
       if (p[0] === 'n') { const b = document.querySelector('#rd-mode [data-v="numbers"]'); if (b && !b.classList.contains('on')) b.click(); GAME = G; WORD = null; SET = [p[1]]; go(0); }
