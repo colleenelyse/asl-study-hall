@@ -1541,7 +1541,8 @@ async function signerSign(d) {
   else if (it.kind === 'season') spelling = hand.signSeason(it.code, { per, onView: brow });
   else if (it.kind === 'color') spelling = hand.signColor(it.code, { per, onView: brow });
   else if (it.kind === 'code') spelling = hand.signCode(String(it.code || ''), { per, stop: () => stopFlag });
-  else if (it.kind === 'piece') spelling = hand.signCode(String(it.set || ''), { per, at: +it.k || 0, stop: () => stopFlag });      /* Breach: one set at its listing finger */      /* the password game: five listed sets */
+  else if (it.kind === 'piece') spelling = hand.signCode(String(it.set || ''), { per, at: +it.k || 0, stop: () => stopFlag, whole: !!it.whole,      /* Breach 4.91: the number part as one whole number */
+    numSign: n => n < 100 ? hand.sign(n, { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) : hand.signParts(bdBlocksFor(n), { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) });      /* Breach: one set at its listing finger */      /* the password game: five listed sets */
   else if (it.kind === 'age') spelling = (async () => { brow('face'); await new Promise(r => setTimeout(r, 400)); await hand.signAge(+it.n, { per }); })();      /* Mind Your Manners: a doll's age, at the chin */
   else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
   else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag });

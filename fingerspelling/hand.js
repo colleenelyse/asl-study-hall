@@ -934,7 +934,7 @@ async function signColor(code, o) {
 /* CODES with LISTING (Colleen, 2026-10-19, for the password game): a code is five sets of letter-number-letter-number (m2m4-b9p1-a3n5-v3c4-j2k5),
    so a 9 is never mistaken for an F or a 6 for a W. Each set is introduced by listing: the left hand holds a sideways 5, palm in, fingers
    pointing across the body, thumb on top; the right index points to the thumb for the first set … the pinky for the fifth; then the set is
-   spelled (letters fingerspelled, digits palm out). J and Z (letters that move) are never used. NOT YET CHECKED by Colleen. */
+   spelled (letters fingerspelled; numbers signed as numbers, as in Number Builder: ASL Study 4.91). J and Z (letters that move) are never used. NOT YET CHECKED by Colleen. */
 const LIST_L = () => ({ f: NUM[5].start.f, t: NUM[5].start.t, w: [0, 180, 90], p: [-0.10, -0.03, 0] });      /* measured: the back of the hand to the student */
 const LIST_PT = [[-0.046, 0.030, 0.003], [-0.110, -0.012, 0.0065], [-0.118, -0.045, 0.0132], [-0.102, -0.079, 0.0099], [-0.075, -0.100, 0.0043]];      /* the pointing index just touching the thumb … the pinky (measured) */
 const LIST_SPELL = [-0.135, -0.05, 0.02], CAM_LIST = { pos: [0, 0.05, 0.75], at: [0, 0.05, 0] };
@@ -948,11 +948,14 @@ async function signCode(code, o) {
     if (o.stop && o.stop()) break; const fk = Math.min(4, k + (o.at || 0)); if (o.onLetter) o.onLetter((fk + 1) + ': ' + sets[k].toLowerCase());
     const P = Object.assign({}, POSE.G, { p: LIST_PT[fk] }), tap = Object.assign({}, P, { p: [P.p[0] - 0.01, P.p[1], P.p[2]] });
     moveTo(tap, per * 0.5); await wait(per * 0.55); moveTo(P, per * 0.2); await wait(per * 0.45);      /* point to the finger: a little tap */
-    for (const ch of sets[k]) {
+    const whole = o.numSign && o.whole ? /^([A-Z]+)([0-9]+)$/.exec(sets[k]) : null;      /* Breach (ASL Study 4.91): letters, then ONE whole number signed as a number (472 = 4 HUNDRED 72) */
+    for (const ch of whole ? whole[1] : sets[k]) {
       if (o.stop && o.stop()) break;
+      if (/[0-9]/.test(ch)) { await (o.numSign ? o.numSign(+ch) : sign(+ch, { per: per * 0.8, stay: true, teens: 'ten', form: 'main' })); continue; }      /* Breach (Colleen: "numbers should always sign correctly just like they would in number builder, not as single digits"): each digit of a3n5 as a number on its own */
       const S = /[0-9]/.test(ch) ? (+ch >= 1 && +ch <= 5 ? DIGIT_OUT(+ch) : NUM[+ch].start) : POSE[ch]; if (!S || Array.isArray(S)) continue;
       moveTo(Object.assign({}, S, { p: LIST_SPELL }), per * 0.4); await wait(per * 0.85);
     }
+    if (whole && !(o.stop && o.stop())) { await o.numSign(+whole[2]); }
     await wait(per * 0.25);
   }
   if (o.stay) return;
