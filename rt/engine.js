@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.148';
+var VERSION = '4.149';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2984,6 +2984,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
   if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
+  if (g.mode === 'breach' && !teacher && opt && opt.brDuo) { g.brDuo = true; g.teams = teams = 2; opt.brAuto = 0; g.late = false; }      /* 4.149 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): two crews of one */
   if (g.mode === 'breach') { g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; g.brOpt = opt; }      /* 4.98 automatic crews: made at Start */
     g.breach = breachNew_(teams, opt);      /* 4.92 untimed: until a crew wins; 4.93 a practice round is always untimed */ g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.68 Breach      // 4.58 the team escape room: one carnival for the class
   if (g.mode === 'case') { g.casec = caseNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.53 Case Closed
@@ -3120,7 +3121,8 @@ function api_liveClaim(auth, code, name) {
   return lock_(function () {
     var joined = liveJoinedSure_(g.id), taken = {}, list = [];
     if (livePhase_(g) === 'on' && g.late === false && !joined[id.key]) throw new Error('This game has already started, and your teacher closed it to new players. You can join the next one!');
-    if (g.vault && g.vault.duo && !joined[id.key] && Object.keys(joined).length >= 2) throw new Error('This Vault game already has two partners.');      // 4.105 duo: the host and one classmate
+    if (g.vault && g.vault.duo && !joined[id.key] && Object.keys(joined).length >= 2) throw new Error('This Vault game already has two partners.');
+    if (g.brDuo && !joined[id.key] && Object.keys(joined).length >= 2) throw new Error('This Breach duo already has two players.');      // 4.149 Breach duo: the host and one friend      // 4.105 duo: the host and one classmate
     Object.keys(joined).forEach(function (e) { if (e !== id.key) { taken[joined[e][1].toLowerCase()] = 1; list.push(joined[e][1]); } });
     var names = g.chars.map(function (c) { return c[0]; }), free = names.filter(function (n) { return !taken[n.toLowerCase()]; });
     if (g.rand && names.length) {                                      // random characters: the game deals one out (and keeps it if I rejoin)
@@ -8510,7 +8512,7 @@ function breachDue_(g) { var br = g.breach; if (!br || livePhase_(g) !== 'on' ||
 function breachTick_(g, force) {
   var br = g.breach, now = Date.now(); if (!br || livePhase_(g) !== 'on' || br.paused) return false;
   var j = liveJoined_(g.id), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  if (br.phase === 'wait') { br.phase = 'vote'; br.meetAt = now; if (br.practice) { br.phaseEnds = now; force = true; } else { br.phaseEnds = now + 35000; return true; } }      /* 4.142 (Colleen: "take out the team hand raising section"): straight to the vote (4.95's meet phase is gone) */
+  if (br.phase === 'wait') { br.phase = 'vote'; br.meetAt = now; if (br.practice || mates.every(function (m) { return m.length < 2; })) { br.phaseEnds = now; force = true; }      /* 4.149 crews of one (a duo) have nobody to vote for */ else { br.phaseEnds = now + 35000; return true; } }      /* 4.142 (Colleen: "take out the team hand raising section"): straight to the vote (4.95's meet phase is gone) */
   if (br.phase === 'meet') { if (now < br.phaseEnds && !force) return false;
     br.phase = 'vote'; if (br.practice) { br.phaseEnds = now; force = true; } else { br.phaseEnds = now + 35000; return true; } }      /* 4.93 (Colleen): a practice round skips the vote: a random Decoder for each crew */
   if (br.phase === 'vote' && (now >= br.phaseEnds || force || mates.every(function (m, t) { return m.length < 2 || m.every(function (e) { return br.votes[t][e]; }); }))) {

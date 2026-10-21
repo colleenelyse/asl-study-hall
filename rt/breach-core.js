@@ -80,7 +80,7 @@ function breachDue_(g) { var br = g.breach; if (!br || livePhase_(g) !== 'on' ||
 function breachTick_(g, force) {
   var br = g.breach, now = Date.now(); if (!br || livePhase_(g) !== 'on' || br.paused) return false;
   var j = liveJoined_(g.id), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  if (br.phase === 'wait') { br.phase = 'vote'; br.meetAt = now; if (br.practice) { br.phaseEnds = now; force = true; } else { br.phaseEnds = now + 35000; return true; } }      /* 4.142 (Colleen: "take out the team hand raising section"): straight to the vote (4.95's meet phase is gone) */
+  if (br.phase === 'wait') { br.phase = 'vote'; br.meetAt = now; if (br.practice || mates.every(function (m) { return m.length < 2; })) { br.phaseEnds = now; force = true; }      /* 4.149 crews of one (a duo) have nobody to vote for */ else { br.phaseEnds = now + 35000; return true; } }      /* 4.142 (Colleen: "take out the team hand raising section"): straight to the vote (4.95's meet phase is gone) */
   if (br.phase === 'meet') { if (now < br.phaseEnds && !force) return false;
     br.phase = 'vote'; if (br.practice) { br.phaseEnds = now; force = true; } else { br.phaseEnds = now + 35000; return true; } }      /* 4.93 (Colleen): a practice round skips the vote: a random Decoder for each crew */
   if (br.phase === 'vote' && (now >= br.phaseEnds || force || mates.every(function (m, t) { return m.length < 2 || m.every(function (e) { return br.votes[t][e]; }); }))) {
