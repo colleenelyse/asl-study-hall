@@ -15,9 +15,14 @@
    Messages: screen -> {a:'view'} | {a:'act', act, arg, n} (Vault) | {a:'call', fn, args, n, right} (Breach);
              room -> {t:'v', v} (your view) | {t:'r', n, out, v} (a reply) | {t:'b', b} (the board) | {t:'over'} */
 import { vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultEnd_ } from './vault-core.js';
+import { ENV } from './gas-env.js';
+import { API, __setStatic } from './engine.js';
 import { rtUse, breachView_, breachTick_, breachDue_, breachControl_, api_breachVote, api_breachMove, api_breachNote, api_breachBox, api_breachTool, api_breachTry } from './breach-core.js';
 
-const TICK_MS = { vault: 2000, breach: 1000 };      // between clicks the room still moves time along (Vault: the meeting minute, the guards; Breach: the vote, attempts, Color Scans)
+const TICK_MS = { vault: 2000, breach: 1000, engine: 5000 };      // engine: how often its memory is saved (the game itself moves on with each call, as on Google)
+/* 4.145 the engine runs these of ASL Study's own calls for a live game (never Start or Save and close: those stay with ASL Study) */
+const ENGINE_CALL = /^api_(livePing|liveAct|liveBoard|liveControl|sea|isle|escr|mob|case)/;
+const wsUser = id => id === 'teacher' ? 'ⓣ' : 'ⓟ' + id.slice(1);      // the socket's id (u3, teacher) -> the player's number inside the game (ⓟ3, ⓣ)      // between clicks the room still moves time along (Vault: the meeting minute, the guards; Breach: the vote, attempts, Color Scans)
 const BR_CALLS = { api_breachVote, api_breachMove, api_breachNote, api_breachBox, api_breachTool, api_breachTry };
 const json = (o, s) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -31,11 +36,11 @@ const same = (a, b) => { if (typeof a !== 'string' || typeof b !== 'string' || a
 export class LiveRoom {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; this.s = null; this.sent = new Map(); this.boardSent = '';
     ctx.blockConcurrencyWhile(async () => { this.s = (await ctx.storage.get('s')) || null; }); }
-  async save() { if (this.s) await this.ctx.storage.put('s', this.s); }
+  async save() { if (this.s) { await this.ctx.storage.put('s', this.s); this.dirty = false; } }
   breach() { return this.s && this.s.kind === 'breach'; }
   ends() { return this.breach() ? Number(this.s.g.ends) || 0 : this.s.ends; }
   setEnds(t) { if (this.breach()) this.s.g.ends = t; else this.s.ends = t; }
-  over() { return !this.s || (this.breach() && this.s.g.breach.paused ? false : Date.now() >= this.ends()); }
+  over() { if (this.s && this.s.kind === 'engine') return false; return !this.s || (this.breach() && this.s.g.breach.paused ? false : Date.now() >= this.ends()); }
   rt() { this.s.dirty = false; rtUse(this.s); return this.s; }      // Breach's rules read the room's game through these stand-ins
   sendAll(o) { const m = JSON.stringify(o); this.ctx.getWebSockets().forEach(ws => { try { ws.send(m); } catch (e) {} }); }
 
@@ -48,14 +53,20 @@ export class LiveRoom {
       if (this.s && this.s.k !== body.k) return json({ error: 'taken' }, 409);
       if (body.kind === 'vault' && body.k && body.vault && body.vault.pairs) this.s = { k: body.k, kind: 'vault', v: body.vault, ends: Number(body.ends) || Date.now() + 3600e3, made: Date.now() };
       else if (body.kind === 'breach' && body.k && body.g && body.g.breach && body.j) this.s = { k: body.k, kind: 'breach', g: body.g, j: body.j, rights: {}, made: Date.now() };
+      else if (body.kind === 'engine' && body.k && body.code && body.cache) { const cache = {}, x = Date.now() + 6 * 3600e3; Object.keys(body.cache).forEach(key => { cache[key] = { v: String(body.cache[key]), x }; });
+        this.s = { k: body.k, kind: 'engine', code: String(body.code), store: { cache, props: body.props || {} }, stat: body.stat || null, tz: body.tz || 'America/Chicago', made: Date.now() }; }
       else return json({ error: 'bad setup' }, 400);
       await this.save(); await this.ctx.storage.setAlarm(Date.now() + TICK_MS[this.s.kind]); return json({ ok: true });
     }
     if (!this.s || body.k !== this.s.k) return json({ error: 'no room' }, 404);
     if (op === 'results') {
+      if (this.s.kind === 'engine') { await this.save(); const c = {}; Object.keys(this.s.store.cache || {}).forEach(key => { c[key] = this.s.store.cache[key].v; }); return json({ cache: c, props: this.s.store.props || {} }); }
       if (this.breach()) return json({ g: this.s.g });
       const V = this.s.v; return json({ ends: this.s.ends, pairs: V.pairs.map(P => ({ ids: P.m, done: P.done || 0, t0: P.t0 || 0, pen: P.pen || 0, n: (P.locks || []).length, loot: (P.loot || []).reduce((t, x) => t + x[1], 0), caught: !!(vaultEnd_(V, P) || {}).caught })) });
     }
+    if (op === 'join' && this.s.kind === 'engine') { const key = String(body.key || ''), id = String(body.id || ''); if (!/^lj:\d{5}$/.test(key) || !/^ⓟ\d{1,3}$/.test(id) || !Array.isArray(body.entry)) return json({ error: 'bad join' }, 400);
+      const st = this.s.store, cur = st.cache[key] ? JSON.parse(st.cache[key].v) : (st.props[key] ? JSON.parse(st.props[key]) : {}); cur[id] = body.entry; const raw = JSON.stringify(cur);
+      st.cache[key] = { v: raw, x: Date.now() + 6 * 3600e3 }; if (st.props[key] != null) st.props[key] = raw; this.dirty = true; await this.save(); return json({ ok: true }); }      // a student who joined after Start
     if (op === 'join' && this.breach()) { const id = String(body.id || ''), t = Number(body.team); if (!/^p\d{1,3}$/.test(id) || !(t >= 0)) return json({ error: 'bad join' }, 400); this.s.j[id] = [id, '', t]; await this.save(); this.pushAll(); return json({ ok: true }); }
     if (op === 'control' && this.breach()) { this.rt(); const ch = breachControl_(this.s.g, String(body.action || '')); if (ch) { await this.save(); this.pushAll(); } return json({ ok: true, changed: !!ch }); }
     if (op === 'stop') { this.setEnds(Math.min(this.ends(), Date.now())); if (this.breach()) this.s.g.breach.paused = false; await this.save(); this.sendAll({ t: 'over' }); this.pushBoard(true); return json({ ok: true }); }      // the teacher ended the game early
@@ -67,7 +78,8 @@ export class LiveRoom {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
     const id = url.searchParams.get('id') || '', t = url.searchParams.get('t') || '';
     if (!this.s) return new Response('no room', { status: 404 });
-    if (!/^(p\d{1,3}|board)$/.test(id) || !same(await hmacHex(this.s.k, id), t)) return new Response('not allowed', { status: 403 });
+    if (!(this.s.kind === 'engine' ? /^(u\d{1,3}|teacher)$/ : /^(p\d{1,3}|board)$/).test(id) || !same(await hmacHex(this.s.k, id), t)) return new Response('not allowed', { status: 403 });
+    if (this.s.kind === 'engine') { const pair = new WebSocketPair(), [client, server] = Object.values(pair); server.accept(); server.addEventListener('message', e => this.engineMessage(server, id, e.data)); return new Response(null, { status: 101, webSocket: client }); }
     if (id !== 'board' && (this.breach() ? !this.s.j[id] : this.s.v.byE[id] == null)) return new Response('not in this game', { status: 403 });
     const pair = new WebSocketPair(), [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server, [id]); server.serializeAttachment({ id });
@@ -121,11 +133,24 @@ export class LiveRoom {
     try { ws.send(JSON.stringify({ t: 'r', n: m.n, out })); } catch (e) {}
     this.push(id, true); this.pushAll();      // what one crew member does can change every crew's screen (pieces seen, attempts, the logbook)
   }
+  /* 4.145 the engine: one of ASL Study's own calls, run here for this player (the store is the room's; it is saved every few seconds) */
+  engineMessage(ws, id, raw) {
+    let m; try { m = JSON.parse(raw); } catch (e) { return; }
+    if (!this.s) { try { ws.send(JSON.stringify({ t: 'r', n: m.n, err: 'This game has ended.' })); } catch (e) {} return; }
+    if (m.a !== 'rpc' || !ENGINE_CALL.test(String(m.fn)) || !API[m.fn]) return;
+    const args = Array.isArray(m.args) ? m.args : [];
+    if (m.fn === 'api_liveControl' && /^(clear|start)$/.test(String(args[1]))) { try { ws.send(JSON.stringify({ t: 'r', n: m.n, err: 'Use ASL Study for that.' })); } catch (e) {} return; }
+    ENV.store = this.s.store; ENV.user = wsUser(id); ENV.tz = this.s.tz; __setStatic(this.s.stat);
+    let out, err = null; try { out = API[m.fn]('', ...args); } catch (e) { err = String((e && e.message) || e); }
+    this.dirty = true;
+    try { ws.send(JSON.stringify(err == null ? { t: 'r', n: m.n, out: out === undefined ? null : out } : { t: 'r', n: m.n, err })); } catch (e) {}
+  }
   async webSocketClose(ws) { try { ws.close(); } catch (e) {} }
   async webSocketError(ws) { try { ws.close(); } catch (e) {} }
 
   async alarm() {
     if (!this.s) return;
+    if (this.s.kind === 'engine') { if (this.dirty) await this.save(); if (Date.now() - this.s.made > 8 * 3600e3) { await this.ctx.storage.deleteAll(); this.s = null; return; } await this.ctx.storage.setAlarm(Date.now() + TICK_MS.engine); return; }      // forgotten rooms clean themselves up after 8 hours
     if (this.over()) { this.sendAll({ t: 'over' }); this.pushBoard(true);
       if (Date.now() > this.ends() + 6 * 3600e3) { await this.ctx.storage.deleteAll(); this.s = null; return; }      // forgotten rooms clean themselves up
       await this.ctx.storage.setAlarm(Date.now() + 60e3); return; }
