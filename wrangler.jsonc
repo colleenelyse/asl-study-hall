@@ -6,5 +6,8 @@
   // the site's files (everything in this folder except what .assetsignore lists)
   "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": true },      // the Worker sees every request first, so aslstudyhall.com can show the storefront at / (the files are served by env.ASSETS)
   // Workers KV for the locked home page and its admin page (namespace asl_cool)
-  "kv_namespaces": [ { "binding": "LOCKS", "id": "5a8240bc3a56433a84c0630db8f6e1d9" } ]
+  "kv_namespaces": [ { "binding": "LOCKS", "id": "5a8240bc3a56433a84c0630db8f6e1d9" } ],
+  // live class games (ASL Study 4.139): one LiveRoom (a Durable Object, SQLite storage = the free plan) per game; rt/live.js
+  "durable_objects": { "bindings": [ { "name": "LIVE", "class_name": "LiveRoom" } ] },
+  "migrations": [ { "tag": "v1", "new_sqlite_classes": [ "LiveRoom" ] } ]
 }
