@@ -73,9 +73,12 @@ export class LiveRoom {
     if (!this.s) { try { ws.send(JSON.stringify({ t: 'over' })); } catch (e) {} return; }
     const { id } = ws.deserializeAttachment() || {}; let m; try { m = JSON.parse(raw); } catch (e) { return; }
     if (this.over()) { try { ws.send(JSON.stringify({ t: 'over' })); } catch (e) {} return; }
-    if (id === 'board') { this.pushBoard(true); return; }
+    if (id === 'board') {      /* the projector: a teacher's tap skips a stuck pair's lock (ASL Study 4.140) */
+      const P = m.a === 'tskip' ? this.s.v.pairs[Number(m.pair)] : null;
+      if (P) { const out = vaultActCore_(this.s.v, P.m[0], 'tskip', '', Date.now()); if (out.allDone) this.s.ends = Math.min(this.s.ends, Date.now() + 20000); if (!out.none) { await this.save(); P.m.forEach(x => this.push(x, true)); } }
+      this.pushBoard(true); return; }
     if (m.a === 'view') { this.push(id, true); await this.save(); return; }      // the view can start a pair's clock (the meeting minute), so it is saved
-    if (m.a !== 'act') return;
+    if (m.a !== 'act' || m.act === 'tskip') return;
     const now = Date.now(), out = vaultActCore_(this.s.v, id, String(m.act || ''), m.arg == null ? '' : String(m.arg), now);
     if (out.allDone) this.s.ends = Math.min(this.s.ends, now + 20000);      // everyone out: the game ends 20 seconds later
     delete out.changed; delete out.pair; delete out.allDone;
