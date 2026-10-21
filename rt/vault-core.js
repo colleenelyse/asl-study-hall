@@ -107,7 +107,7 @@ function vaultViewCore_(V, e) {
   if (sc.type === 'clock' || sc.type === 'door') { if (knower) v.lines = L.lines; else { v.color = L.color; v.place = L.place; v.digits = sc.type === 'door' ? L.ans.length : 0; } }
   if (sc.type === 'keys') { if (knower) v.lines = L.keys.map(function (c, i) { return [c, 'KEY', (L.uses || [])[i] || '']; }); else v.keys = L.keys; v.picked = !!L.picked; v.turned = !!P.turn[e]; }
   if (sc.type === 'nameplate') { if (knower) v.lines = L.lines; else { v.name = L.name; v.digits = 3; } }
-  if (sc.type === 'boxes') { if (knower) v.slip = { name: L.name, num: P.guided ? L.num : 0, sec: L.sec, row: L.row, col: L.col, rows: L.rows, cols: L.cols }; else v.wall = { rows: L.rows, cols: L.cols, secs: L.secs }; }      /* the doer walks the wall; the knower has the slip */
+  if (sc.type === 'boxes') { if (knower) v.slip = { name: L.name, num: P.guided ? L.num : 0, sec: L.sec, si: Number(String(L.ans).split('-')[0]), row: L.row, col: L.col, rows: L.rows, cols: L.cols };      /* 4.141 si: which of the 5 sections (the slip shows the same pictures as the wall) */ else v.wall = { rows: L.rows, cols: L.cols, secs: L.secs }; }      /* the doer walks the wall; the knower has the slip */
   if (sc.type === 'bars') { if (knower) v.want = L.want; else v.trays = L.trays; }
   if (sc.type === 'grid') { v.gn = L.n; if (knower) v.lit = L.lit; v.tip = V.scenario.filter(function (x, i) { return x.type === 'grid' && i < k; }).length === 0; }      /* "your partner's left is your right": the first floor grid of the game only (Colleen) */
   if (sc.type === 'lasers') { if (knower) v.lines = L.lines; else v.beams = L.beams; }
