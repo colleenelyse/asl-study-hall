@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.145';
+var VERSION = '4.146';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -3019,6 +3019,7 @@ function api_liveBoard(auth, code) {
   if (!g) return { game: null };
   liveHostOk_(auth, g);
   if (g.rte) { var tk = teacher ? 'ⓣ' : g.rte.map[me.key]; if (tk) return { game: { id: g.id, mode: g.mode, phase: 'on' }, rte: enginePass_(g, tk) }; }      // 4.145 the projector talks to the engine room from now on
+  if (!g.ends) try { liveWarm_(g); } catch (e) {}      // 4.146 while the lobby is open
   var phase = livePhase_(g), left = phase === 'on' ? (g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.ends - Date.now()) : phase === 'lobby' ? g.minutes * 60000 : 0, P;
   P = livePlayers_(g);
   var feed = parse_(CacheService.getScriptCache().get('lf:' + g.id), []);
@@ -7630,8 +7631,15 @@ function strengthMap_() {
   var pct = function (list, k) { var vals = list.filter(function (x) { return x[k] !== null; }).map(function (x) { return x[k]; }).sort(function (a, b) { return a - b; });
     return function (v) { if (v === null || vals.length < 2) return 0.5; var lo = 0, eq = 0; vals.forEach(function (x) { if (x < v) lo++; else if (x === v) eq++; }); return (lo + eq / 2) / vals.length; }; };
   Object.keys(byCls).forEach(function (c) { var L = byCls[c], pa = pct(L, 'acc'), pm = pct(L, 'm'); L.forEach(function (x) { out[x.e] = Math.round(1000 * (0.4 * pa(x.acc) + 0.4 * pm(x.m) + 0.2 * x.up)) / 1000; }); });
-  cachePut_('strength', out, 300); return out;
+  cachePut_('strength', out, 1800); return out;      // 4.146 half an hour (it is read while the lobby is open, so Start is quick)
 }
+/** 4.146 who has escaped The Vault before (a first-timer always plays Guided), read once and kept half an hour */
+function vaultPlayed_() { var got = cacheGet_('vaultPlayed'); if (got) return got; var sh = stuSheet_(), H = stuHead_(sh), played = {};
+  rows_(sh, 2, H.n).forEach(function (v, i) { var o = stuObj_(H, v, i + 2); if (o.Email) played[o.Email.toLowerCase()] = num_(o.Bests && o.Bests.vaultN); }); cachePut_('vaultPlayed', played, 1800); return played; }
+/** 4.146 (Colleen: "it takes a long time for each game to begin after i click start"): the slow sheet reads Start needs are done while the lobby is open
+    (the projector asks every few seconds anyway), so pressing Start only deals and hands off */
+function liveWarm_(g) { var c = CacheService.getScriptCache(), k = 'warm:' + g.id; if (c.get(k)) return; c.put(k, '1', 1500);
+  try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {} }
 /** Deals players into n teams with close total strength: strongest first, back and forth (1-2-3-3-2-1…). Returns { email: team }. */
 function evenTeams_(emails, n, apart) {
   var st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, list = shuffle_(emails.slice()).sort(function (a, b) { return sw(b) - sw(a); }), out = {};
@@ -8550,8 +8558,8 @@ var VAULT_MEET_MS = 60000;
 var VAULT_SURNAMES = ['ADAMS', 'ALLEN', 'ALVAREZ', 'BAKER', 'BELL', 'BENNETT', 'BROOKS', 'BROWN', 'BURKE', 'CARTER', 'CASTRO', 'CHEN', 'CLARK', 'COHEN', 'COLE', 'COOK', 'COOPER', 'CRUZ', 'DAVIS', 'DAY', 'DIAZ', 'DUNN', 'EDWARDS', 'ELLIS', 'EVANS', 'FISHER', 'FLORES', 'FORD', 'FOSTER', 'FOX', 'GARCIA', 'GOMEZ', 'GRAY', 'GREEN', 'GRIFFIN', 'HALL', 'HAYES', 'HILL', 'HOLT', 'HUGHES', 'JAMES', 'JENSEN', 'JOHNSON', 'JONES', 'KANE', 'KELLY', 'KHAN', 'KIM', 'KING', 'LANE', 'LEE', 'LEWIS', 'LONG', 'LOPEZ', 'LUNA', 'MARSH', 'MARTIN', 'MASON', 'MEYER', 'MILLER', 'MOORE', 'MORALES', 'MORGAN', 'MURPHY', 'NASH', 'NGUYEN', 'NOVAK', 'OKAFOR', 'OLSEN', 'ORTIZ', 'OWENS', 'PARK', 'PATEL', 'PERRY', 'PRICE', 'QUINN', 'REED', 'REYES', 'RIVERA', 'ROSS', 'RUIZ', 'RYAN', 'SANTOS', 'SCOTT', 'SHAW', 'SILVA', 'SMITH', 'STONE', 'SULLIVAN', 'TATE', 'TAYLOR', 'TORRES', 'TRAN', 'TURNER', 'VARGAS', 'WALSH', 'WARD', 'WEBB', 'WEST', 'WHITE', 'WOOD', 'WRIGHT', 'YANG', 'YOUNG', 'ZHANG', 'ABBOTT', 'ACOSTA', 'AKERS', 'BARNES', 'BLAIR', 'BOYD', 'BYRNE', 'CAIN', 'CHASE', 'CROSS', 'DALE', 'DEAN', 'DOYLE', 'DUKE', 'ESTES', 'FINCH', 'FROST', 'GATES', 'GILL', 'GRANT', 'HART', 'HICKS', 'HOOD', 'IRWIN', 'JORDAN', 'KNOX', 'LAMB', 'LOWE', 'MACK', 'MAYS', 'MOSS', 'NOLAN', 'NOBLE', 'OCHOA', 'PAGE', 'PENA', 'POPE', 'RICH', 'ROSE', 'SAGE', 'SHARP', 'SNOW', 'TODD', 'VANCE', 'VEGA', 'WADE', 'WOLF', 'YATES', 'AYERS', 'BOOTH', 'CHO', 'DORSEY', 'EATON', 'FAIRLY', 'GOODE', 'HUNT', 'INGRAM', 'JUAREZ', 'KEMP', 'LYONS', 'MERCER', 'NUNEZ', 'OAKES', 'PIERCE', 'RAMOS', 'SPARKS', 'THORNE', 'UPTON'];      /* 4.131: 173 owners (5 sections x 33 boxes) */
 var VAULT_LOOT_IN = ['📜', '💍', '💎', '🗝️', '💵', '⌚', '🪙', '📿'];
 var VAULT_COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'BLACK', 'WHITE'], VAULT_PLACES = ['LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'MIDDLE'];
-var VAULT_STRIKE_S = 15, VAULT_HINT_S = 30, VAULT_SYNC_MS = 2500, VAULT_SKIP_S = 60, VAULT_STUCK_MS = 180000;
-/** 4.140 stuck: 3 minutes on the same lock (the lock started when the last one opened, or when the pair's clock started) */
+var VAULT_STRIKE_S = 15, VAULT_HINT_S = 30, VAULT_SYNC_MS = 2500, VAULT_SKIP_S = 60, VAULT_STUCK_MS = 60000;      // 4.146 (Colleen): Stuck? after 1 minute (was 3)
+/** 4.140 stuck: 1 minute (4.146) on the same lock (the lock started when the last one opened, or when the pair's clock started) */
 function vaultStuck_(P, now) { return !!P.t0 && !P.done && (now || Date.now()) - (P.at || P.t0) >= VAULT_STUCK_MS; }
 function vaultRnd_(seed) { var x = seed % 2147483647; if (x <= 0) x += 2147483646; return function () { x = x * 16807 % 2147483647; return (x - 1) / 2147483646; }; }
 function vaultPick_(r, a) { return a[Math.floor(r() * a.length)]; }
@@ -8697,7 +8705,7 @@ function vaultStart_(g, opt) {
   var rest = who.filter(function (e) { return !used[e]; }).sort(function (a, b) { return sw(b) - sw(a); });      /* everyone else: strongest with weakest */
   var guard = 0; while (rest.length >= 2 && guard++ < 500) { var top = rest.shift(), pi = rest.length - 1; while (pi > 0 && away(top, rest[pi])) pi--; if (away(top, rest[pi])) { rest.push(top); if (rest.every(function (x, i) { return i === 0 || away(rest[0], x); })) break; continue; } pairs.push([top, rest.splice(pi, 1)[0]]); }      /* strongest with the weakest who isn't a keep-away */
   rest.forEach(function (x) { var ok = pairs.filter(function (p) { return p.length < 3 && !p.some(function (y) { return away(x, y); }); }).sort(function (a, b) { return (sw(a[0]) + sw(a[1])) - (sw(b[0]) + sw(b[1])); }); if (ok.length) ok[0].push(x); else pairs.push([x]); });      /* odd one out (or no one left to pair with): a trio with no keep-aways */      /* odd: a trio (two Outside) */
-  var sh = stuSheet_(), H = stuHead_(sh), played = {}; rows_(sh, 2, H.n).forEach(function (v, i) { var o = stuObj_(H, v, i + 2); played[o.Email.toLowerCase()] = num_(o.Bests && o.Bests.vaultN); });
+  var played = vaultPlayed_();      // 4.146 read while the lobby was open (liveWarm_)
   var now = Date.now();
   V.pairs = pairs.map(function (m, i) { var r = vaultRnd_(V.seed + 7919 * (i + 1)), inside = m[Math.floor(r() * 2) % Math.min(2, m.length)], side = {}; m.forEach(function (e) { side[e] = e === inside ? 'in' : 'out'; V.byE[e] = i; });
     var gd = V.guided || m.some(function (e) { return !played[e]; }); return { m: m, side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: {}, done: 0, guided: gd, locks: V.scenario.map(function (sc) { return vaultLock_(sc.type, r, { guided: gd }); }), turn: {}, rs: V.seed + 104729 * (i + 1) }; });
@@ -8796,7 +8804,7 @@ function engineSetup_(g) {
     ['mob:'].forEach(function (p) { var v = pp.getProperty(p + g.id); if (v) props[p + g.id] = JSON.stringify(rtSwap_(parse_(v, {}), swap)); });
     if (g.mode === 'mob' || (g.ends && g.mode !== 'mob' && pp.getProperty('live:' + g.id))) props['live:' + g.id] = out['live:' + g.id];
     var R = { room: g.id + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 24), k: Utilities.getUuid().replace(/-/g, '') };
-    var ok = rtPost_(R, 'setup', { kind: 'engine', code: g.id, cache: out, props: props, stat: rtSwap_(static_(), swap), tz: (function () { try { return tz_(); } catch (e) { return 'America/Chicago'; } })() });
+    var ok = rtPost_(R, 'setup', { kind: 'engine', code: g.id, cache: out, props: props, stat: rtSwap_((function (st) { var o = {}; ['v', 'settings', 'cards', 'units', 'classes', 'teach', 'day', 'built'].forEach(function (k) { if (st[k] !== undefined) o[k] = st[k]; }); return o; })(static_()), swap) /* 4.146 only what the games use */, tz: (function () { try { return tz_(); } catch (e) { return 'America/Chicago'; } })() });
     if (ok && ok.ok) { R.map = map; g.rte = R; } } catch (e) {}
 }
 /** A pass to the engine room: the room, my number, a signature, and everyone's first names (for my screen only). */
@@ -8828,6 +8836,7 @@ function vaultRecord_(g, P) {
   try { var sh = stuSheet_(), H = stuHead_(sh), secs = Math.round((P.done - P.t0) / 1000), rowsAdd = [];
     P.m.forEach(function (e) { var row = findRow_(sh, e); if (!row) return; var o = readStu_(sh, row); o.Bests = o.Bests || {}; o.Bests.vaultN = num_(o.Bests.vaultN) + 1; writeStu_(sh, o); rowsAdd.push([new Date(), e, o.Name, o.Class, o.Level, 'vault', 'The Vault', P.locks.length, P.locks.length, secs, 0]); });
     var lg = ss_().getSheetByName(TABS.log); rowsAdd.forEach(function (r) { lg.appendRow(r); }); } catch (x) {}
+  try { cacheDrop_('vaultPlayed'); } catch (x) {}      // 4.146 the next game knows they have played
 }
 
 /* 4.69 (Colleen): unit and subunit titles for the What to Study page. Units tab J = Unit title, K = Subunit titles ("5.1 Family; 5.2 Pets") */
