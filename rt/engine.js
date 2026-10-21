@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.152';
+var VERSION = '4.153';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -528,7 +528,7 @@ var FEATURES = [
   ['tokens', 'Tokens and the character shop', 'Rewards', 'Tokens for every correct answer, spent on characters, themes and extras.'],
   ['seasolo', 'Sea Battle (solo)', 'Practice', 'Students answer to earn cannonballs and battle the computer\'s hidden fleet.'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
-  ['house', 'The Silent House', 'Practice', 'A vocabulary escape room (working name): every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
+  ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
   ['claw', 'Lucky Claw', 'Practice', 'A claw machine game: students answer signs to earn Claw Coins, then grab mystery eggs; prizes (Tokens, Tickets, game characters, shop extras) go straight to their account.'],
   ['classRewards', 'Class rewards', 'Rewards', 'Students chip in Tickets toward rewards for the whole class.'],
   ['streaks', 'Streaks and streak freezes', 'Rewards', 'The day streak and freezes that protect it.'],
