@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.149';
+var VERSION = '4.151';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2983,7 +2983,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   g.made = Date.now();
   if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
-  if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
+  if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
   if (g.mode === 'breach' && !teacher && opt && opt.brDuo) { g.brDuo = true; g.teams = teams = 2; opt.brAuto = 0; g.late = false; }      /* 4.149 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): two crews of one */
   if (g.mode === 'breach') { g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; g.brOpt = opt; }      /* 4.98 automatic crews: made at Start */
     g.breach = breachNew_(teams, opt);      /* 4.92 untimed: until a crew wins; 4.93 a practice round is always untimed */ g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.68 Breach      // 4.58 the team escape room: one carnival for the class
@@ -8657,6 +8657,7 @@ function vaultViewCore_(V, e) {
   if (sc.type === 'lasers') { if (knower) v.lines = L.lines; else v.beams = L.beams; }
   if (sc.type === 'feelings') { if (knower) v.lines = L.lines; else { v.faces = L.faces; v.target = L.target; v.digits = 3; } }
   if (sc.type === 'count') { if (knower) v.lines = L.lines; else { v.seen = L.seen; v.digits = 4; } }
+  if (P.bot) { v.radio = L; v.rivals = V.pairs.filter(function (q) { return q !== P; }).map(function (q) { return { k: q.k, n: V.scenario.length, done: !!q.done }; }); }      /* 4.151 versus: what the radio partner knows, and how far the other player is */
   return v;
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
@@ -8672,8 +8673,9 @@ function vaultActCore_(V, e, act, a, now) {
     if (!vaultMeetDue_(P)) return { none: true };
     var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
-      if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* everyone out: the game ends 20 s later */
+      if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
     if (act === 'hint') { if (V.guided || P.guided) return { none: true }; P.hints++; P.pen += VAULT_HINT_S; out.hint = true; }
+    else if (act === 'again') { if (!P.bot) return { none: true }; P.pen += 5; out.again = true; }      /* 4.151 ↻ ask the radio partner again: +5 s */
     else if (act === 'crack') { if (!V.loot || P.x) return { none: true }; var c = VAULT_LOOT.filter(function (x) { return x[0] === str_(a); })[0], had = (P.loot || []).map(function (x) { return x[0]; });
       if (!c || had.indexOf(c[0]) >= 0 || 'abc'.indexOf(c[6]) > 'abc'.indexOf(sc.area)) return { none: true };
       var rr = vaultRnd_(P.rs + 7 * (had.length + 1) + now % 1000), types = [], knowers = [], last = P.xk || sc.knower;
@@ -8681,7 +8683,7 @@ function vaultActCore_(V, e, act, a, now) {
       var item = c[5] === 'loot-painting' ? 'loot-painting-' + (1 + Math.floor(rr() * 3)) : c[5];
       P.x = { key: c[0], name: c[1], img: c[2], need: c[3], value: c[4], item: item, done: 0, types: types, knowers: knowers, locks: types.map(function (t) { return vaultLock_(t, rr, { guided: P.guided }); }) }; P.strikes = 0; P.turn = {}; out.crack = c[0]; }
     else if (sc.type === 'keys' && act === 'pick') { if (knower) return { none: true }; if (str_(a) === L.color) { L.picked = L.color; out.good = true; } else strike(); }
-    else if (sc.type === 'keys' && act === 'turn') { if (!L.picked) return { none: true }; P.turn[e] = now;      /* 4.140 (Colleen: "the dual key turn was a disaster"): no 2.5-second window any more; the box opens once every partner has turned */
+    else if (sc.type === 'keys' && act === 'turn') { if (!L.picked) return { none: true }; P.turn[e] = now; if (P.bot) P.turn.bot = now;      /* 4.151 the radio partner turns with you */      /* 4.140 (Colleen: "the dual key turn was a disaster"): no 2.5-second window any more; the box opens once every partner has turned */
       if (P.m.every(function (x) { return P.turn[x]; })) solved(); else out.wait = true; }
     else if (act === 'skip' || act === 'tskip') { if (act === 'skip' && !vaultStuck_(P, now)) return { none: true };      /* tskip: the teacher skips it from the projector (only the asl.cool room accepts it, and only from the projector) */ P.pen += VAULT_SKIP_S; P.skips = (P.skips || 0) + 1; out.skipped = true; solved(); }      /* 4.140 a pair is never stuck for good: after 3 minutes on one lock, skip it for +60 s */
     else if (act === 'try') { if (knower) return { none: true }; var x = str_(a).replace(/\s/g, '');
@@ -8690,8 +8692,18 @@ function vaultActCore_(V, e, act, a, now) {
     else return { none: true };
     out.changed = true; return out;
 }
+/** 4.151 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): Vault duo VERSUS. Each player races
+    through the same bank on their own, with a partner on the RADIO (the computer: 'bot', always the one with the facts), on the solo lock list (no floor grid,
+    monitors or counting). Same locks, each player's own codes; the first one out wins (the game ends 20 seconds later). */
+function vaultVersusStart_(g) { var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), r = vaultRnd_(V.seed + 31), now = Date.now();
+  var pick = function (a) { return vaultPick_(r, a); }, three = vaultShuf_(r, ['money', 'clock', 'keys']), np = vaultShuf_(r, ['nameplate', 'bars']), list = vaultShuf_(r, three.slice(0, 2).concat(['boxes', np[0]])).map(function (t) { return { type: t, area: 'a', knower: 'in' }; });
+  if (V.len !== 'short') vaultShuf_(r, ['lasers', np[1], three[2]]).forEach(function (t) { list.push({ type: t, area: 'b', knower: 'in' }); });
+  list.push({ type: 'door', area: 'c', knower: 'in' }); V.scenario = list; V.byE = {};
+  V.pairs = who.map(function (e, i) { var rr = vaultRnd_(V.seed + 7919 * (i + 1)), side = {}; side[e] = 'out'; side.bot = 'in'; V.byE[e] = i;
+    return { m: [e, 'bot'], side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: { bot: 1 }, done: 0, guided: V.guided, locks: list.map(function (sc) { return vaultLock_(sc.type, rr, { guided: V.guided }); }), turn: {}, rs: V.seed + 104729 * (i + 1), bot: true }; }); }
 /* RT-SHARED-END */
 function vaultStart_(g, opt) {
+  if (g.vault && g.vault.versus) return vaultVersusStart_(g);      /* 4.151 */
   var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, pairs = [], used = {}, apart = seatApart_(who), away = function (a, b) { return !!(apart[a] && apart[a][b]); };      /* 4.129 keep-aways are never partners */
   var chart = null; try { if (opt && opt.cls) chart = seatChartFor_(str_(opt.cls)).chart; } catch (e) { chart = null; }
   if (chart && chart.seats) {      /* 4.138 (Colleen: "half the desks face one direction and the others face the opposite direction. i want students on the left to be partnered with a student on the right
@@ -8713,7 +8725,7 @@ function vaultStart_(g, opt) {
     var gd = V.guided || m.some(function (e) { return !played[e]; }); return { m: m, side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: {}, done: 0, guided: gd, locks: V.scenario.map(function (sc) { return vaultLock_(sc.type, r, { guided: gd }); }), turn: {}, rs: V.seed + 104729 * (i + 1) }; });
 }
 /** What one student sees, with the partners' first names (the Apps Script path; the asl.cool room adds names on the student's device). */
-function vaultView_(g, e) { var v = vaultViewCore_(g.vault, e), j = liveJoined_(g.id); if (v && v.me) v.me.partner = (v.me.mates || []).map(function (x) { return str_(j[x] && j[x][0]).split(' ')[0]; }); return v; }
+function vaultView_(g, e) { var v = vaultViewCore_(g.vault, e), j = liveJoined_(g.id); if (v && v.me) v.me.partner = (v.me.mates || []).map(function (x) { return x === 'bot' ? 'your partner' : str_(j[x] && j[x][0]).split(' ')[0]; }); return v; }
 /** The projector: every pair's progress with first names. */
 function vaultBoard_(g) { var b = vaultBoardCore_(g.vault), j = liveJoined_(g.id); if (b) b.pairs.forEach(function (p) { p.names = p.ids.map(function (x) { return str_(j[x] && j[x][0]).split(' ')[0]; }); delete p.ids; }); return b; }
 function api_vaultAct(auth, code, act, a) {
@@ -8738,7 +8750,7 @@ function vaultRtSetup_(g) {
   try { var emails = Object.keys(V.byE), map = {}; emails.forEach(function (e, i) { map[e] = 'p' + (i + 1); });
     var A = parse_(JSON.stringify(V), {}), re = function (o) { var n = {}; Object.keys(o || {}).forEach(function (e) { n[map[e] || e] = o[e]; }); return n; };
     A.byE = re(V.byE); A.seat = V.seat ? re(V.seat) : null; delete A.rtTried;
-    A.pairs.forEach(function (P) { P.m = P.m.map(function (e) { return map[e]; }); P.side = re(P.side); P.ready = re(P.ready); P.turn = re(P.turn); });
+    A.pairs.forEach(function (P) { P.m = P.m.map(function (e) { return map[e] || e; });      /* 4.151 'bot' (the radio partner in versus) stays 'bot' */ P.side = re(P.side); P.ready = re(P.ready); P.turn = re(P.turn); });
     var R = { room: g.id + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 24), k: Utilities.getUuid().replace(/-/g, '') };
     var ok = rtPost_(R, 'setup', { kind: 'vault', vault: A, ends: g.ends }); if (ok && ok.ok) { R.map = map; V.rt = R; } } catch (e) {}
 }

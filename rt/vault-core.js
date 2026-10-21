@@ -113,6 +113,7 @@ function vaultViewCore_(V, e) {
   if (sc.type === 'lasers') { if (knower) v.lines = L.lines; else v.beams = L.beams; }
   if (sc.type === 'feelings') { if (knower) v.lines = L.lines; else { v.faces = L.faces; v.target = L.target; v.digits = 3; } }
   if (sc.type === 'count') { if (knower) v.lines = L.lines; else { v.seen = L.seen; v.digits = 4; } }
+  if (P.bot) { v.radio = L; v.rivals = V.pairs.filter(function (q) { return q !== P; }).map(function (q) { return { k: q.k, n: V.scenario.length, done: !!q.done }; }); }      /* 4.151 versus: what the radio partner knows, and how far the other player is */
   return v;
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
@@ -128,8 +129,9 @@ function vaultActCore_(V, e, act, a, now) {
     if (!vaultMeetDue_(P)) return { none: true };
     var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
-      if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* everyone out: the game ends 20 s later */
+      if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
     if (act === 'hint') { if (V.guided || P.guided) return { none: true }; P.hints++; P.pen += VAULT_HINT_S; out.hint = true; }
+    else if (act === 'again') { if (!P.bot) return { none: true }; P.pen += 5; out.again = true; }      /* 4.151 ↻ ask the radio partner again: +5 s */
     else if (act === 'crack') { if (!V.loot || P.x) return { none: true }; var c = VAULT_LOOT.filter(function (x) { return x[0] === str_(a); })[0], had = (P.loot || []).map(function (x) { return x[0]; });
       if (!c || had.indexOf(c[0]) >= 0 || 'abc'.indexOf(c[6]) > 'abc'.indexOf(sc.area)) return { none: true };
       var rr = vaultRnd_(P.rs + 7 * (had.length + 1) + now % 1000), types = [], knowers = [], last = P.xk || sc.knower;
@@ -137,7 +139,7 @@ function vaultActCore_(V, e, act, a, now) {
       var item = c[5] === 'loot-painting' ? 'loot-painting-' + (1 + Math.floor(rr() * 3)) : c[5];
       P.x = { key: c[0], name: c[1], img: c[2], need: c[3], value: c[4], item: item, done: 0, types: types, knowers: knowers, locks: types.map(function (t) { return vaultLock_(t, rr, { guided: P.guided }); }) }; P.strikes = 0; P.turn = {}; out.crack = c[0]; }
     else if (sc.type === 'keys' && act === 'pick') { if (knower) return { none: true }; if (str_(a) === L.color) { L.picked = L.color; out.good = true; } else strike(); }
-    else if (sc.type === 'keys' && act === 'turn') { if (!L.picked) return { none: true }; P.turn[e] = now;      /* 4.140 (Colleen: "the dual key turn was a disaster"): no 2.5-second window any more; the box opens once every partner has turned */
+    else if (sc.type === 'keys' && act === 'turn') { if (!L.picked) return { none: true }; P.turn[e] = now; if (P.bot) P.turn.bot = now;      /* 4.151 the radio partner turns with you */      /* 4.140 (Colleen: "the dual key turn was a disaster"): no 2.5-second window any more; the box opens once every partner has turned */
       if (P.m.every(function (x) { return P.turn[x]; })) solved(); else out.wait = true; }
     else if (act === 'skip' || act === 'tskip') { if (act === 'skip' && !vaultStuck_(P, now)) return { none: true };      /* tskip: the teacher skips it from the projector (only the asl.cool room accepts it, and only from the projector) */ P.pen += VAULT_SKIP_S; P.skips = (P.skips || 0) + 1; out.skipped = true; solved(); }      /* 4.140 a pair is never stuck for good: after 3 minutes on one lock, skip it for +60 s */
     else if (act === 'try') { if (knower) return { none: true }; var x = str_(a).replace(/\s/g, '');
@@ -146,5 +148,14 @@ function vaultActCore_(V, e, act, a, now) {
     else return { none: true };
     out.changed = true; return out;
 }
+/** 4.151 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): Vault duo VERSUS. Each player races
+    through the same bank on their own, with a partner on the RADIO (the computer: 'bot', always the one with the facts), on the solo lock list (no floor grid,
+    monitors or counting). Same locks, each player's own codes; the first one out wins (the game ends 20 seconds later). */
+function vaultVersusStart_(g) { var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), r = vaultRnd_(V.seed + 31), now = Date.now();
+  var pick = function (a) { return vaultPick_(r, a); }, three = vaultShuf_(r, ['money', 'clock', 'keys']), np = vaultShuf_(r, ['nameplate', 'bars']), list = vaultShuf_(r, three.slice(0, 2).concat(['boxes', np[0]])).map(function (t) { return { type: t, area: 'a', knower: 'in' }; });
+  if (V.len !== 'short') vaultShuf_(r, ['lasers', np[1], three[2]]).forEach(function (t) { list.push({ type: t, area: 'b', knower: 'in' }); });
+  list.push({ type: 'door', area: 'c', knower: 'in' }); V.scenario = list; V.byE = {};
+  V.pairs = who.map(function (e, i) { var rr = vaultRnd_(V.seed + 7919 * (i + 1)), side = {}; side[e] = 'out'; side.bot = 'in'; V.byE[e] = i;
+    return { m: [e, 'bot'], side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: { bot: 1 }, done: 0, guided: V.guided, locks: list.map(function (sc) { return vaultLock_(sc.type, rr, { guided: V.guided }); }), turn: {}, rs: V.seed + 104729 * (i + 1), bot: true }; }); }
 
 export { vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultMeetDue_, vaultEnd_, vaultAlarm_, vaultLootVal_ };
