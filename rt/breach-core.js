@@ -49,7 +49,7 @@ function brMap_(n, t, pat, practice) {      // one crew's network: caches for ev
   var items = [], w = 24, h = 14;
   for (var c = 0; c < n; c++) if (c !== t) for (var s = 0; s < (practice ? 2 : 5); s++) { items.push({ k: 'cache', c: c, s: s }); items.push({ k: 'cache', c: c, s: s }); }      // 4.93 practice: only the 1st and 2nd sections
   for (var d = 0; d < 2 * n; d++) { var rc = t; while (rc === t) rc = Math.floor(Math.random() * n); items.push({ k: 'decoy', c: rc, s: Math.floor(Math.random() * 5), fake: brSet_(pat) }); }
-  var more = { wall: 34, alarm: 14, scan: 6, boost: 10, jump: 4 }; Object.keys(more).forEach(function (k) { for (var i = 0; i < more[k]; i++) items.push({ k: k }); });
+  var more = {}; Object.keys(more).forEach(function (k) { for (var i = 0; i < more[k]; i++) items.push({ k: k }); });      /* 4.143 (Colleen: "are all of these necessary for game play? cache is but maybe some of this is overcomplicating things"): only caches (some fake) on the map now; was { wall: 34, alarm: 14, scan: 6, boost: 10, jump: 4 } */
   var cells = [], start = Math.floor(h / 2) * w + Math.floor(w / 2);
   for (var i2 = 0; i2 < w * h; i2++) cells.push({ k: '' });
   var near = function (j) { return Math.abs(j % w - start % w) + Math.abs(Math.floor(j / w) - Math.floor(start / w)) <= 1; };
