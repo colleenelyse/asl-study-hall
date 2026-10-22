@@ -450,6 +450,10 @@
             '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
             (g.focus === 'trip' ? '<button class="btn small" data-halves>Two trips: half the class each</button>' : '') +
             (g.songs.length && !g.only ? '<button class="btn small" data-split title="Principals sing in one place while the chorus learns the dance in another">Split: singers + chorus dance</button>' : '') + '</div>' +
+            (function () {      // talents in this group (from the audition sign-ups), so the choreography can use them
+              var su = (T.show.casting || {}).signups || {}, who = people.filter(function (a) { return task(a, s).group === g.id && su[a.id] && su[a.id].excited; });
+              return who.length && ['dance', 'run', 'share'].indexOf(g.focus) >= 0 ? '<p class="small" style="background:var(--hi);padding:6px 10px;border-radius:10px">' + sym('✨') + '<b>Talents here:</b> ' + who.map(function (a) { return esc(a.name) + ': ' + esc(su[a.id].excited); }).join(' · ') + '</p>' : '';
+            })() +
             '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (sc) { return '<button type="button" class="btn small" data-sc="' + sc.id + '" aria-pressed="' + (g.scenes.indexOf(sc.id) >= 0) + '" title="' + esc(sc.place) + '">' + sc.num + '</button>'; }).join('') + '</div>' +
             '<p class="muted small" style="margin-top:10px">Songs <span class="small">(★ big number: the ensemble and small roles join)</span></p><div class="row">' + O.songs.map(function (so) { var m = O.moments.find(function (x) { return x.song === so.id; }); return '<button type="button" class="btn small" data-so="' + so.id + '" aria-pressed="' + (g.songs.indexOf(so.id) >= 0) + '">' + (m && m.big ? '★ ' : '') + esc(so.title) + '</button>'; }).join('') + '</div></div>';
         }).join('') +

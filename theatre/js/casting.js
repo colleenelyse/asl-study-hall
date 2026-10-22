@@ -1,7 +1,7 @@
 /* asl.cool/theatre Casting: audition sign-ups (from students' iPads), audition notes, callbacks, and the cast list, so a class that only gets its roster
    a week before school can start on day one (Colleen, 2026-10-21). Also "Plan the first two weeks": whole-cast warm-up days, then audition days.
    T.show.casting = { open, callbacksShown, posted (date the cast list went up),
-     signups { actor: { roles [char ids, first choice first], any, vocal { song, part } (a short vocal selection they choose), lines|solo|dance: yes|maybe|notyet, how: class|video|buddy|aac, helps, pronouns, at } },
+     signups { actor: { roles [char ids, first choice first], any, excited (one thing they are really excited to do on stage: Colleen, to work talents in), vocal { song, part } (a short vocal selection they choose), lines|solo|dance: yes|maybe|notyet, how: class|video|buddy|aac, helps, pronouns, at } },
      notes { actor: { acting|singing|dance: 0-3, tags [], text, consider [char ids] } }, callbacks { char: [actor ids] }, draft { char: [actor ids] } }
    Students send sign-ups as encrypted notes (type 'audition'); Teacher mode › Casting takes them in. Nothing about gender is asked or used:
    any student can play any role. */
@@ -11,6 +11,7 @@
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
   var COMFORT = [['yes', 'Yes!'], ['maybe', 'Maybe'], ['notyet', 'Not yet']];
   var HOW = [['class', '🎭 In class'], ['video', '📹 Record a video'], ['buddy', '👯 With a buddy'], ['aac', '💬 With my talker or sign']];
+  var EXCITED = ['A cartwheel', 'A cool dance move', 'Hit a big high note', 'Make people laugh', 'Tumbling or flips', 'Beatbox', 'Sign it in ASL', 'Play an instrument', 'A funny voice', 'A big dramatic moment'];
   var TAGS = ['Clear voice', 'Big energy', 'Funny', 'Strong singer', 'Moves well', 'Great listener', 'Leader', 'Brave', 'Needs a buddy', 'Loves backstage'];
   function C() {
     var c = T.show.casting = T.show.casting || {};
@@ -43,7 +44,7 @@
     var ok = function (v) { return COMFORT.some(function (c) { return c[0] === v; }) ? v : 'maybe'; };
     C().signups[n.actor] = { roles: n.roles.filter(function (r) { return T.charById(r); }).slice(0, 6), any: !!n.any, lines: ok(n.lines), solo: ok(n.solo), dance: ok(n.dance),
       vocal: n.vocal && T.songById(n.vocal.song) ? { song: n.vocal.song, part: String(n.vocal.part || '').slice(0, 120) } : null,
-      how: HOW.some(function (h) { return h[0] === n.how; }) ? n.how : 'class', helps: String(n.helps || '').slice(0, 300), pronouns: String(n.pronouns || '').slice(0, 30), at: n._at };
+      how: HOW.some(function (h) { return h[0] === n.how; }) ? n.how : 'class', excited: String(n.excited || '').slice(0, 150), helps: String(n.helps || '').slice(0, 300), pronouns: String(n.pronouns || '').slice(0, 30), at: n._at };
     return true;
   };
 
@@ -73,10 +74,13 @@
     var c = C(), list = students(), done = list.filter(function (a) { return c.signups[a.id]; }), not = list.filter(function (a) { return !c.signups[a.id]; });
     return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Auditions are open</b><br><span class="muted small">' + (c.open ? 'Students see Auditions on their iPad and can sign up.' : 'Students cannot sign up yet.') + '</span></span><input type="checkbox" id="open"' + (c.open ? ' checked' : '') + '></label></div>' +
       '<h3>' + done.length + ' of ' + list.length + ' signed up</h3>' +
+      (done.some(function (a) { return c.signups[a.id].excited; }) ? '<div class="card"><h3>' + sym('✨') + 'Talents to use</h3><p class="muted small">What each student is excited to do on stage. Work them into the choreography and staging; they also show on the Dance groups in Production.</p>' +
+        done.filter(function (a) { return c.signups[a.id].excited; }).map(function (a) { return '<p><b>' + esc(a.name) + ':</b> ' + esc(c.signups[a.id].excited) + '</p>'; }).join('') + '</div>' : '') +
       done.map(function (a) {
         var s = c.signups[a.id];
         return '<div class="card" style="cursor:pointer" data-stu="' + a.id + '"><div class="row">' + T.face(a, 44) + '<div class="grow"><b>' + esc(a.name) + '</b>' + (s.pronouns ? ' <span class="muted small">(' + esc(s.pronouns) + ')</span>' : '') +
           '<br>' + chips(s.roles) + (s.any ? '<span class="tag">Any role is OK</span>' : '') + '</div></div>' +
+          (s.excited ? '<p class="small">' + sym('✨') + 'Excited to: <b>' + esc(s.excited) + '</b></p>' : '') +
           (s.vocal && T.songById(s.vocal.song) ? '<p class="small">' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
           '<p class="muted small">' + comfortTxt(s) + ' · Audition: ' + esc((HOW.find(function (h) { return h[0] === s.how; }) || HOW[0])[1]) + '</p>' + (s.helps ? '<p class="small">' + sym('💛') + esc(s.helps) + '</p>' : '') + '</div>';
       }).join('') +
@@ -125,6 +129,7 @@
       var stars = function (k, label) { return '<div class="switch"><span>' + label + '</span><div class="seg" data-score="' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div></div>'; };
       app.innerHTML = '<div class="card"><div class="row">' + T.face(a, 64) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (s.pronouns ? '<span class="muted">' + esc(s.pronouns) + '</span>' : '') + '</div></div>' +
         '<p><b>Wants:</b> ' + (s.roles.length ? chips(s.roles) : '<span class="muted">no roles picked</span>') + (s.any ? ' <span class="tag">Any role is OK</span>' : '') + '</p>' +
+        (s.excited ? '<p>' + sym('✨') + 'Excited to: <b>' + esc(s.excited) + '</b></p>' : '') +
         (s.vocal && T.songById(s.vocal.song) ? '<p>' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
         '<p class="muted small">' + comfortTxt(s) + '</p>' + (s.helps ? '<p>' + sym('💛') + esc(s.helps) + '</p>' : '') +
         '<details><summary class="btn quiet small">Change their sign-up</summary>' + signupForm(s, 't') + '</details></div>' +
@@ -165,12 +170,14 @@
       '<div class="row"><label class="f grow" style="margin:0">Song<select id="' + p + 'vs"><option value="">Choose…</option>' + T.O().songs.map(function (so) { return '<option value="' + so.id + '"' + (s.vocal && s.vocal.song === so.id ? ' selected' : '') + '>' + esc(so.title) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f grow" style="margin:0">Which part<input id="' + p + 'vp" maxlength="120" value="' + esc(s.vocal ? s.vocal.part : '') + '" placeholder="e.g. the first verse"></label></div>' +
       (s.vocal && s.vocal.song ? '<p><a class="btn small" href="#/song/' + s.vocal.song + '">' + icon('songs') + 'Practice it</a></p>' : '') +
+      '<label class="f">' + sym('✨') + 'One thing I am really excited to do on stage<input id="' + p + 'exc" maxlength="150" value="' + esc(s.excited || '') + '" placeholder="Anything! A cartwheel, a joke, a high note…"></label>' +
+      '<div class="row" style="margin-top:-4px">' + EXCITED.map(function (x) { return '<button type="button" class="btn small quiet" data-' + p + 'exc="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
       '<label class="f">Things that help me (you can skip this)<input id="' + p + 'helps" maxlength="300" value="' + esc(s.helps) + '" placeholder="e.g. going first, a quiet room, my headphones, seeing the words"></label>' +
       '<label class="f">My pronouns (you can skip this)<input id="' + p + 'pro" maxlength="30" value="' + esc(s.pronouns) + '"></label>';
   }
   function readForm(s, p) {
     var any = document.getElementById(p + 'any'); if (!any) return;
-    s.any = any.checked; s.helps = document.getElementById(p + 'helps').value.trim(); s.pronouns = document.getElementById(p + 'pro').value.trim();
+    s.any = any.checked; s.excited = document.getElementById(p + 'exc').value.trim(); s.helps = document.getElementById(p + 'helps').value.trim(); s.pronouns = document.getElementById(p + 'pro').value.trim();
     var vs = document.getElementById(p + 'vs').value; s.vocal = vs ? { song: vs, part: document.getElementById(p + 'vp').value.trim() } : null;
   }
   function wireForm(s, p, redraw) {
@@ -179,6 +186,7 @@
     app.querySelectorAll('[data-' + p + 'role]').forEach(function (b) { b.onclick = function () { keepForm(); var r = b.getAttribute('data-' + p + 'role'), i = s.roles.indexOf(r); if (i >= 0) s.roles.splice(i, 1); else if (s.roles.length < 6) s.roles.push(r); reopen(); }; });
     app.querySelectorAll('[data-' + p + 'c] button').forEach(function (b) { b.onclick = function () { keepForm(); s[b.parentNode.getAttribute('data-' + p + 'c')] = b.dataset.v; reopen(); }; });
     var vsel = document.getElementById(p + 'vs'); if (vsel) vsel.onchange = function () { keepForm(); reopen(); };
+    app.querySelectorAll('[data-' + p + 'exc]').forEach(function (b) { b.onclick = function () { var inp = document.getElementById(p + 'exc'); inp.value = b.getAttribute('data-' + p + 'exc'); }; });
     app.querySelectorAll('[data-' + p + 'how] button').forEach(function (b) { b.onclick = function () { keepForm(); s.how = b.dataset.v; reopen(); }; });
   }
 

@@ -220,6 +220,10 @@ tell, listing the groups since the last one; `day.spotlight` (two at a time, tak
 with 1–4 solo lyric lines; for HSM JR: James, Susan, Cathy, Cyndra in "Auditions"); their Today says "you sing your solo line for the class" with the song;
 the day page has a Spotlight solos picker.
 
+**Talents** (Colleen: during auditions ask each student one thing they are really excited to do on stage; someone can do a cartwheel? work it into the
+choreo): the sign-up asks it (`signups[actor].excited`, quick picks or their own words); Casting › Sign-ups shows **Talents to use**; each sign-up and the
+notes page show it; a day's Dance / Run-through / Show and tell group lists the talents of the students in it.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.
