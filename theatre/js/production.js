@@ -1,78 +1,182 @@
-/* asl.cool/theatre Production: rehearsal calendar, who is called, attendance, conflicts (Teacher mode),
-   and My Rehearsals for students (when am I called; "I can't come" sends an encrypted note the teacher's page picks up).
-   T.show.production = { rehearsals: [{ id, date 'YYYY-MM-DD', start 'HH:MM', end, place, kind, scenes [ids], songs [ids], everyone, add [actor ids], remove [actor ids], notes }],
-                         conflicts: [{ id, actor, date, start, end, why, from }], attendance: { rehearsalId: { actorId: here|late|absent|excused } } } */
+/* asl.cool/theatre Production. The class meets once every school day (one 45-minute period), and every student has a job every day
+   (Colleen, 2026-10-21: "every student needs to have something to do on each calendar day of the school year"):
+   - On stage, in one of the day's groups: Acting (scenes), Vocals (songs), Dance (songs), Run-through… Students go to the first group whose scenes or songs
+     they are in, so they spend as much time on stage as possible; big group numbers take the whole ensemble and the small roles (see onFor in app.js);
+   - Crew: a station the teacher assigns (Props, Set painting…). Every student except the biggest leads has a home crew and at least one crew day
+     a week (Colleen: "at least 1 day a week, they're working on the set or costumes or props"); the app picks a day they are not needed on stage;
+   - Several rehearsals run at once (Colleen: "a duet can be rehearsing while a chorus is practicing that song and dance while others who aren't in this scene
+     are working on their crew position"): a song group can be split into principals (who sing) and chorus (the ensemble and small roles, who dance),
+     and anyone not in a group that day goes to their home crew;
+   - Practice in the app: for those with no crew (the leads), chosen for them (lines for a scene coming up, a song with the guide vocals…), so nobody is ever without a job;
+   - or the teacher's own words.
+   Weeks are shown to students one at a time ("Show this week to students"), so the teacher can change plans until then.
+   T.show.production = { term: { first, last, off [dates] }, shown [Monday dates], stations [{ id, name, desc }],
+     days { date: { groups [{ id, focus, scenes, songs, everyone, where }], assign { actor: 'g:<group>' | 'st:<station>' | 'app' | 'custom' }, tasks { actor: text }, notes } },
+     crewHome { actor: station }, crewExempt [actor ids] (unset = actors who play a lead),
+     conflicts [{ id, actor, date, why, from }], attendance { date: { actor: here|late|absent|excused } } }
+   A conflict is a class day the student will be away; students send them from Today as encrypted notes (POST /theatre/api/notes). */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var KINDS = [['rehearsal', '🎭', 'Rehearsal'], ['music', '🎵', 'Music'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
-  var kind = function (k) { return KINDS.find(function (x) { return x[0] === k; }) || KINDS[0]; };
+  var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
-  function P() { var p = T.show.production = T.show.production || {}; p.rehearsals = p.rehearsals || []; p.conflicts = p.conflicts || []; p.attendance = p.attendance || {}; return p; }
+  function P() {
+    var p = T.show.production = T.show.production || {};
+    p.term = p.term || { first: '', last: '', off: [] }; p.shown = p.shown || []; p.days = p.days || {}; p.stations = p.stations || [];
+    p.conflicts = p.conflicts || []; p.attendance = p.attendance || {}; p.crewHome = p.crewHome || {};
+    return p;
+  }
   T.production = P;
 
-  /* ---------- dates and times ---------- */
+  /* ---------- dates ---------- */
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
   var ymd = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
   var parse = function (s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]); };
+  var addDays = function (s, n) { var d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
   var today = function () { return ymd(new Date()); };
+  var monday = function (s) { var d = parse(s), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); return ymd(d); };
   function dayName(s, short) { return parse(s).toLocaleDateString('en-US', short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }); }
-  function time(t) { if (!t) return ''; var a = t.split(':'), h = +a[0]; return (h % 12 || 12) + (a[1] === '00' ? '' : ':' + a[1]) + (h < 12 ? ' AM' : ' PM'); }
-  function span(x) { return x.start ? time(x.start) + (x.end ? '–' + time(x.end) : '') : 'All day'; }
-  T.prodDay = dayName; T.prodSpan = span;
-  function byTime(a, b) { return (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')); }
-  /* a conflict that touches this rehearsal (no times = the whole day) */
-  function overlaps(c, r) { return c.date === r.date && (!c.start || !r.start || (c.start < (r.end || '23:59') && (c.end || '23:59') > r.start)); }
+  /* class days: Monday to Friday from the first day to the last, minus the days off */
+  function isClassDay(s) { var t = P().term, w = parse(s).getDay(); return !!t.first && s >= t.first && s <= t.last && w > 0 && w < 6 && t.off.indexOf(s) < 0; }
+  function classDays() { var t = P().term, out = []; if (!t.first || !t.last) return out; for (var s = t.first; s <= t.last && out.length < 400; s = addDays(s, 1)) if (isClassDay(s)) out.push(s); return out; }
+  function weekDays(mon) { var out = []; for (var i = 0; i < 5; i++) out.push(addDays(mon, i)); return out; }
+  var shown = function (s) { return P().shown.indexOf(monday(s)) >= 0; };
 
-  /* ---------- who is called ---------- */
-  function cast() { return (T.show.cast || []).filter(function (a) { return a.chars && a.chars.length; }); }
-  function calledChars(r) {
-    if (r.everyone) return T.O().characters.map(function (c) { return c.id; });
-    var ids = [];
-    T.O().moments.forEach(function (m) {
-      if (r.scenes.indexOf(m.scene) < 0 && (!m.song || r.songs.indexOf(m.song) < 0)) return;
-      (m.on === '*' ? T.O().characters.map(function (c) { return c.id; }) : m.on).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
-    });
-    return ids;
+  /* no-school dates pasted from a district calendar: one per line (or comma), ranges with a dash or "to".
+     2026-11-26 · 11/26/2026 · 11/26/26 · 11/26 · Nov 26, 2026 · Thursday, November 26th · 12/21/2026 - 1/1/2027 · Dec 21 – Jan 1 · Dec 21-23 */
+  var MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  function oneDate(txt, near) {
+    var s = txt.trim().toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1'), y, m, d, mm;
+    if ((mm = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/))) { y = +mm[1]; m = +mm[2]; d = +mm[3]; }
+    else if ((mm = s.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) { m = +mm[1]; d = +mm[2]; y = mm[3] ? +mm[3] : null; }
+    else if ((mm = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/))) { m = MONTHS.indexOf(mm[1]) + 1; d = +mm[2]; y = mm[3] ? +mm[3] : null; }
+    else return null;
+    if (y !== null && y < 100) y += 2000;
+    if (y === null) {      // no year: the school year that starts at the first day of class (or a month before it)
+      var base = parse(near || today()); base.setDate(base.getDate() - 31);
+      y = new Date(base.getFullYear(), m - 1, d) >= base ? base.getFullYear() : base.getFullYear() + 1;
+    }
+    var dt = new Date(y, m - 1, d);
+    return dt.getMonth() === m - 1 && dt.getDate() === d ? ymd(dt) : null;
   }
-  function called(r) {
-    var chars = calledChars(r);
-    return cast().filter(function (a) {
-      if ((r.remove || []).indexOf(a.id) >= 0) return false;
-      return r.everyone || (r.add || []).indexOf(a.id) >= 0 || a.chars.some(function (c) { return chars.indexOf(c) >= 0; });
+  function pasteDates(text, near) {
+    var out = [], bad = [];
+    text.split(/\n|;|,\s*(?=\d{1,2}\/)/).forEach(function (line) {
+      line = line.replace(/\([^)]*\)/g, ' ').trim(); if (!line) return;
+      var parts = line.split(/\s+(?:-|–|—|to|through|thru)\s+|\s*[–—]\s*|(?<=\d)-(?=\d{1,2}\/)|(?<=\d)-(?=[a-z])/i);
+      var short = parts.length === 1 && /[a-z]{3}/i.test(line) && line.match(/^(.*?\d{1,2})-(\d{1,2})\s*$/);      // "Dec 21-23"
+      if (short) parts = [short[1], short[2]];
+      var a = oneDate(parts[0], near), b = parts[1] ? oneDate(parts[1], near) : null;
+      if (parts[1] && a && !b && /^\s*\d{1,2}\s*$/.test(parts[1])) b = a.slice(0, 8) + pad(+parts[1]);
+      if (!a) { if (/\d/.test(line)) bad.push(line); return; }
+      if (b && b < a) { var t = a; a = b; b = t; }
+      for (var s = a; s <= (b || a) && out.length < 400; s = addDays(s, 1)) if (out.indexOf(s) < 0) out.push(s);
     });
+    return { dates: out.sort(), bad: bad };
   }
-  T.prodCalled = called;
-  function conflictsFor(r) { var ids = called(r).map(function (a) { return a.id; }); return P().conflicts.filter(function (c) { return ids.indexOf(c.actor) >= 0 && overlaps(c, r); }); }
+  T.pasteDates = pasteDates;
+
+  /* ---------- who does what ---------- */
+  function cast() { return (T.show.cast || []).filter(function (a) { a.chars = a.chars || []; return a.name; }); }      // students with no role yet are here too
   function actor(id) { return (T.show.cast || []).find(function (a) { return a.id === id; }); }
-  function what(r) {
-    var bits = r.scenes.map(function (id) { var s = T.sceneById(id); return s ? 'Scene ' + s.num : ''; })
-      .concat(r.songs.map(function (id) { var s = T.songById(id); return s ? '“' + s.title + '”' : ''; })).filter(Boolean);
-    return r.everyone && !bits.length ? 'Whole cast' : bits.join(', ') || 'To be planned';
+  function plan(s) { return P().days[s]; }
+  function newGroup(f) { return { id: uid('g'), focus: f || 'acting', scenes: [], songs: [], everyone: false, where: '', only: '' }; }
+  var ONLY = { '': 'Everyone in it', principals: 'Principals only', chorus: 'Chorus only (ensemble and small roles)' };
+  function blank() { return { groups: [], assign: {}, tasks: {}, notes: '' }; }
+  /* the characters a group needs: everyone on stage in its scenes and songs (big numbers bring the ensemble and small roles) */
+  function groupChars(g) {
+    var all = T.O().characters.map(function (c) { return c.id; });
+    if (g.everyone) return all;
+    var ms = T.O().moments.filter(function (m) { return g.scenes.indexOf(m.scene) >= 0 || (m.song && g.songs.indexOf(m.song) >= 0); });
+    return all.filter(function (c) {
+      if (g.only && (g.only === 'chorus') !== T.smallRole(T.charById(c))) return false;
+      return ms.some(function (m) { return T.onFor(m, c); });
+    });
   }
+  function groupWhat(g) {
+    var bits = g.scenes.map(function (id) { var s = T.sceneById(id); return s ? 'Scene ' + s.num : ''; })
+      .concat(g.songs.map(function (id) { var s = T.songById(id); return s ? '“' + s.title + '”' : ''; })).filter(Boolean);
+    return g.everyone && !bits.length ? 'whole cast' : bits.join(', ');
+  }
+  function groupName(g) { return focus(g.focus)[2] + (groupWhat(g) ? ': ' + groupWhat(g) : '') + (g.only ? ' (' + (g.only === 'chorus' ? 'chorus' : 'principals') + ')' : ''); }
+  function away(a, s) { return P().conflicts.find(function (c) { return c.actor === a.id && c.date === s; }); }
+  /* the app's practice ideas for one actor, most useful first (what is planned in the next two weeks), lines and songs taking turns */
+  function practiceList(a, s) {
+    var chars = a.chars, days = classDays().filter(function (d) { return d > s; }).slice(0, 10);
+    var soonSc = {}, soonSo = {};
+    days.forEach(function (d) { var r = plan(d); if (r) r.groups.forEach(function (g) { g.scenes.forEach(function (x) { soonSc[x] = 1; }); g.songs.forEach(function (x) { soonSo[x] = 1; }); }); });
+    var lines = [], songs = [];
+    T.O().scenes.forEach(function (sc) {
+      var src = T.scriptScene(sc); if (!src) return;
+      var n = src.items.filter(function (it) { return it.type === 'line' && T.isMine(it.who, sc, chars); }).length;
+      if (n) lines.push({ soon: !!soonSc[sc.id], t: { type: 'practice', icon: '🗣️', text: 'Practice your lines: Scene ' + sc.num + ' (' + n + ' line' + (n === 1 ? '' : 's') + ')', href: '#/lines/' + sc.id + '/run' } });
+    });
+    T.O().songs.forEach(function (so) {
+      var m = T.O().moments.find(function (x) { return x.song === so.id; });
+      if (m && T.onStage(m, chars)) songs.push({ soon: !!soonSo[so.id], t: { type: 'practice', icon: '🎵', text: 'Sing along: “' + so.title + '” with the guide vocals', href: '#/song/' + so.id } });
+    });
+    var pick = function (l) { var x = l.filter(function (i) { return i.soon; }); return (x.length ? x : l).map(function (i) { return i.t; }); };
+    var L = pick(lines), S = pick(songs), out = [];
+    for (var i = 0; i < Math.max(L.length, S.length); i++) { if (L[i]) out.push(L[i]); if (S[i]) out.push(S[i]); }
+    return out.length ? out : [{ type: 'practice', icon: '🎧', text: 'Listen to the whole show and follow the words', href: '#/listen' }, { type: 'practice', icon: '📖', text: 'The Story: read the scenes you are in', href: '#/story' }, { type: 'practice', icon: '👕', text: 'My Costumes: check what you wear and when', href: '#/costumes' }];
+  }
+  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
+  /* the weekly crew day */
+  function exempt(a) { var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }
+  function homeStation(a) { var id = P().crewHome[a.id]; return id && P().stations.find(function (x) { return x.id === id; }); }
+  function crewDayOf(a, mon) {
+    if (exempt(a) || !homeStation(a)) return null;
+    var days = weekDays(mon).filter(function (d) { return isClassDay(d) && !away(a, d); });
+    var how = function (d) { var r = plan(d); return r && r.assign && r.assign[a.id]; };
+    if (!days.length || days.some(function (d) { return String(how(d) || '').slice(0, 3) === 'st:'; })) return null;      // none this week, or the teacher already set one
+    var open = days.filter(function (d) { return !how(d); });
+    if (open.some(function (d) { return !autoGroup(a, plan(d)); })) return null;      // a day off stage this week: crew that day anyway
+    return open.length ? open[open.length - 1] : null;      // on stage every day: crew on the last open day of the week
+  }
+  /* one actor's job on one class day */
+  function task(a, s) {
+    var r = plan(s), cf = away(a, s), how = r && r.assign && r.assign[a.id];
+    if (cf) return { type: 'away', icon: '🙋', text: 'Away' + (cf.why ? ': ' + cf.why : '') };
+    if (how === 'custom' && r.tasks && r.tasks[a.id]) return { type: 'custom', icon: '📝', text: r.tasks[a.id] };
+    if (!how && crewDayOf(a, monday(s)) === s) { var hs = homeStation(a); return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + hs.name + (hs.desc ? ' (' + hs.desc + ')' : '') }; }
+    var g = how && how.slice(0, 2) === 'g:' ? r.groups.find(function (x) { return 'g:' + x.id === how; }) : (!how ? autoGroup(a, r) : null);
+    if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
+    var st = how && how.slice(0, 3) === 'st:' && P().stations.find(function (x) { return 'st:' + x.id === how; });
+    if (!how && !st && homeStation(a)) st = homeStation(a);      // not in a group today: with their crew
+    if (st) return { type: 'crew', icon: '🛠️', text: 'Crew: ' + st.name + (st.desc ? ' (' + st.desc + ')' : '') };
+    var all = practiceList(a, s), i = classDays().indexOf(s);
+    return all[(i < 0 ? 0 : i) % all.length];
+  }
+  T.prodTask = task;
 
-  /* ---------- student notes (conflicts sent from iPads) ---------- */
+  /* ---------- days away sent from iPads ---------- */
   function pullNotes() {
     return Store.getNotes(T.key, T.proof).then(function (notes) {
       if (!notes.length) return 0;
       var added = 0, p = P();
       notes.forEach(function (n) {
+        if (!n._junk && n.type === 'video' && actor(n.actor) && /^https:\/\//.test(n.url || '') && T.songById(n.song)) {      // a dance video link: waits for the teacher's OK
+          var V = T.show.videos = T.show.videos || [];
+          if (!V.some(function (v) { return v.url === n.url; })) { V.push({ id: uid('v'), song: n.song, title: String(n.title || 'Dance video').slice(0, 80), by: n.actor, url: String(n.url).slice(0, 500), ok: false, at: n._at }); added++; }
+          return;
+        }
         if (n._junk || n.type !== 'conflict' || !actor(n.actor) || !/^\d{4}-\d{2}-\d{2}$/.test(n.date || '')) return;
-        var dup = p.conflicts.some(function (c) { return c.actor === n.actor && c.date === n.date && (c.start || '') === (n.start || ''); });
-        if (!dup) { p.conflicts.push({ id: uid('x'), actor: n.actor, date: n.date, start: n.start || '', end: n.end || '', why: String(n.why || '').slice(0, 200), from: 'student', sent: n._at }); added++; }
+        if (p.conflicts.some(function (c) { return c.actor === n.actor && c.date === n.date; })) return;
+        p.conflicts.push({ id: uid('x'), actor: n.actor, date: n.date, why: String(n.why || '').slice(0, 200), from: 'student', sent: n._at }); added++;
       });
       var ids = notes.map(function (n) { return n._id; });
-      return (added ? T.saveShow(added + ' new conflict' + (added === 1 ? '' : 's') + ' from students') : Promise.resolve()).then(function () { return Store.clearNotes(T.proof, ids); }).then(function () { return added; });
+      return (added ? T.saveShow(added + ' new note' + (added === 1 ? '' : 's') + ' from students') : Promise.resolve()).then(function () { return Store.clearNotes(T.proof, ids); }).then(function () { return added; });
     });
   }
 
   /* ---------- Teacher: Production ---------- */
-  var view = T.ls('prodView') || 'calendar', month = null;
+  var tab = 'week', week = null;
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.production = function (args) {
-    if (args[0] === 'r') return rehearsalPage(args[1]);
+    if (args[0] === 'day') return dayPage(args[1]);
     if (args[0] === 'attend') return attendPage(args[1]);
     if (args[0] === 'callboard') return callboard(args[1]);
     overview();
@@ -80,264 +184,347 @@
   };
   function overview() {
     T.setBar('Production', '#/teacher');
-    var p = P(), now = today();
-    var tabs = [['calendar', 'Calendar'], ['list', 'List'], ['conflicts', 'Conflicts'], ['attendance', 'Attendance']];
-    var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (view === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div><span class="grow"></span>' +
-      '<button class="btn small" id="add">Add a rehearsal</button><button class="btn small" id="many">Add many</button><a class="btn small" href="#/teacher/production/callboard">Call board</a></div>';
-    if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so the app knows who to call.</p>';
-    if (view === 'calendar') h += calendar();
-    if (view === 'list') {
-      var up = p.rehearsals.filter(function (r) { return r.date >= now; }).sort(byTime), past = p.rehearsals.filter(function (r) { return r.date < now; }).sort(byTime).reverse();
-      h += (up.length ? up.map(card).join('') : '<p class="muted">No rehearsals coming up.</p>') +
-        (past.length ? '<details style="margin-top:16px"><summary class="btn quiet">Past rehearsals (' + past.length + ')</summary>' + past.map(card).join('') + '</details>' : '');
-    }
-    if (view === 'conflicts') h += conflictsView();
-    if (view === 'attendance') h += attendanceView();
+    if (!P().term.first) tab = 'setup';
+    var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
+    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['setup', 'Calendar & crew']];
+    var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
+    if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every student gets a job each day.</p>';
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView }[tab]();
     app.innerHTML = h;
-    app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { view = b.dataset.v; T.ls('prodView', view); overview(); }; });
-    document.getElementById('add').onclick = function () { newRehearsal(now); };
-    document.getElementById('many').onclick = addMany;
-    app.querySelectorAll('[data-r]').forEach(function (el) { el.onclick = function (e) { e.preventDefault(); T.go('#/teacher/production/r/' + el.dataset.r); }; });
-    app.querySelectorAll('[data-day]').forEach(function (el) { el.onclick = function (e) { if (e.target.closest('[data-r]')) return; newRehearsal(el.dataset.day); }; });
-    var mv = function (d) { var m = month || now.slice(0, 7), y = +m.slice(0, 4), mo = +m.slice(5) - 1 + d; month = ymd(new Date(y, mo, 1)).slice(0, 7); overview(); };
-    if (document.getElementById('pm')) { document.getElementById('pm').onclick = function () { mv(-1); }; document.getElementById('nm').onclick = function () { mv(1); }; }
-    if (view === 'conflicts') wireConflicts();
+    app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos }[tab] || function () {})();
   }
-  function card(r) {
-    var k = kind(r.kind), cf = conflictsFor(r), n = called(r).length;
-    return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/r/' + r.id + '" data-r="' + r.id + '"><div class="row"><b class="grow">' + sym(k[1]) + esc(dayName(r.date)) + '</b><span class="muted">' + esc(span(r)) + '</span></div>' +
-      '<div>' + esc(k[2]) + (r.place ? ' · ' + esc(r.place) : '') + ' · ' + esc(what(r)) + '</div>' +
-      '<div class="muted small">' + n + ' called' + (cf.length ? ' · <span class="err">' + cf.length + ' conflict' + (cf.length === 1 ? '' : 's') + '</span>' : '') + (P().attendance[r.id] ? ' · attendance taken' : '') + '</div></a>';
+
+  function setupView() {
+    var p = P(), t = p.term, n = classDays().length;
+    return '<div class="card"><h2>School calendar</h2><p class="muted">Class meets every school day, Monday to Friday, from the first day to the last, except the days off.</p>' +
+      '<div class="row"><label class="f grow">First day of class<input type="date" id="t1" value="' + (t.first || '') + '"></label><label class="f grow">Last day of class<input type="date" id="t2" value="' + (t.last || '') + '"></label></div>' +
+      '<label class="f">Paste the district’s no-school days<textarea id="t3" placeholder="One per line. Ranges work too:&#10;9/7/2026&#10;Nov 25 – Nov 27&#10;12/21/2026 - 1/1/2027"></textarea></label>' +
+      '<p class="err" id="tm"></p>' +
+      (t.off.length ? '<details><summary class="btn quiet small">' + t.off.length + ' days off saved</summary><p class="muted small">Tap one to make it a class day again.</p><div class="row">' + t.off.map(function (s) { return '<button class="btn small" data-off="' + s + '">' + esc(dayName(s, true)) + ' ✕</button>'; }).join('') + '</div></details>' : '') +
+      '<p>' + (n ? '<b>' + n + ' class days</b>, about ' + Math.ceil(n / 5) + ' weeks' : 'Set the first and last day.') + '</p>' +
+      '<div class="row end"><button class="btn primary" id="tsv" data-save>Save the calendar</button></div></div>' +
+      '<div class="card"><h2>Crew stations</h2><p class="muted">Jobs for students who are not on stage that day. Anyone without one practices in the app.</p>' +
+      (p.stations.length ? p.stations.map(function (st) { return '<div class="switch"><span><b>' + esc(st.name) + '</b> <span class="muted small">' + esc(st.desc || '') + '</span></span><button class="btn small quiet" data-rmst="' + st.id + '">Remove</button></div>'; }).join('') : '<p class="muted">None yet.</p>') +
+      '<div class="row"><label class="f grow" style="margin:0">Station<input id="sn" placeholder="e.g. Props"></label><label class="f grow" style="margin:0">What to do (optional)<input id="sd" placeholder="e.g. paint the lockers"></label><button class="btn" id="sadd" data-save>Add</button></div></div>' +
+      (p.stations.length && cast().length ? '<div class="card"><h2>Everyone’s crew</h2><p class="muted">Each student works with their crew at least one day a week, on a day they are not needed on stage. Tick <b>Lead</b> for the biggest roles to skip the weekly crew day.</p>' +
+        '<table class="tbl"><thead><tr><th>Student</th><th>Crew</th><th>Lead</th></tr></thead><tbody>' + cast().map(function (a) {
+          return '<tr><td>' + esc(a.name) + '</td><td><select data-home="' + a.id + '"><option value="">Choose…</option>' + p.stations.map(function (st) { return '<option value="' + st.id + '"' + (p.crewHome[a.id] === st.id ? ' selected' : '') + '>' + esc(st.name) + '</option>'; }).join('') + '</select></td>' +
+            '<td><input type="checkbox" data-lead="' + a.id + '"' + (exempt(a) ? ' checked' : '') + ' aria-label="Lead"></td></tr>';
+        }).join('') + '</tbody></table><div class="row end" style="margin-top:10px"><button class="btn" id="even">Fill in the rest evenly</button><button class="btn primary" id="hsv" data-save>Save crews</button></div></div>' : '');
   }
-  function calendar() {
-    var m = month || today().slice(0, 7), first = parse(m + '-01'), start = new Date(first); start.setDate(1 - first.getDay());
-    var label = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), now = today();
-    var h = '<div class="row" style="justify-content:center;margin-bottom:10px"><button class="round" id="pm" aria-label="Last month">' + icon('prev') + '</button><h2 style="margin:0;min-width:220px;text-align:center">' + esc(label) + '</h2><button class="round" id="nm" aria-label="Next month">' + icon('next') + '</button></div>' +
-      '<div class="cal"><div class="cal-h">Sun</div><div class="cal-h">Mon</div><div class="cal-h">Tue</div><div class="cal-h">Wed</div><div class="cal-h">Thu</div><div class="cal-h">Fri</div><div class="cal-h">Sat</div>';
-    for (var i = 0; i < 42; i++) {
-      var d = new Date(start); d.setDate(start.getDate() + i); var ds = ymd(d);
-      if (i >= 35 && d.getMonth() !== first.getMonth()) break;
-      var rs = P().rehearsals.filter(function (r) { return r.date === ds; }).sort(byTime);
-      var cf = P().conflicts.filter(function (c) { return c.date === ds; }).length;
-      h += '<div class="cal-d' + (d.getMonth() !== first.getMonth() ? ' out' : '') + (ds === now ? ' today' : '') + '" data-day="' + ds + '" title="Add a rehearsal on ' + esc(dayName(ds)) + '"><span class="n">' + d.getDate() + '</span>' +
-        rs.map(function (r) { var c = conflictsFor(r).length; return '<a href="#/teacher/production/r/' + r.id + '" data-r="' + r.id + '" class="cal-r">' + kind(r.kind)[1] + ' ' + esc(time(r.start) || kind(r.kind)[2]) + (c ? ' <b class="err">!' + c + '</b>' : '') + '</a>'; }).join('') +
-        (cf && !rs.length ? '<span class="muted small">' + cf + ' away</span>' : '') + '</div>';
+  function wireSetup() {
+    var p = P();
+    document.getElementById('tsv').onclick = function () {
+      var a = document.getElementById('t1').value, b = document.getElementById('t2').value, m = document.getElementById('tm');
+      if (!a || !b || b < a) { m.textContent = 'Pick the first day and a last day after it.'; return; }
+      var r = pasteDates(document.getElementById('t3').value, a);
+      p.term.first = a; p.term.last = b;
+      r.dates.forEach(function (s) { if (p.term.off.indexOf(s) < 0) p.term.off.push(s); }); p.term.off.sort();
+      T.saveShow(r.dates.length ? r.dates.length + ' days off added' : 'Calendar saved').then(function () {
+        tab = 'setup'; overview();
+        if (r.bad.length) document.getElementById('tm').textContent = 'I could not read: ' + r.bad.join(' · ') + '. Type those another way (like 11/26/2026).';
+      });
+    };
+    app.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { p.term.off = p.term.off.filter(function (s) { return s !== b.dataset.off; }); T.saveShow('Now a class day').then(overview); }; });
+    document.getElementById('sadd').onclick = function () { var n = document.getElementById('sn').value.trim(); if (!n) return; p.stations.push({ id: uid('st'), name: n, desc: document.getElementById('sd').value.trim() }); T.saveShow('Station added').then(overview); };
+    var hsv = document.getElementById('hsv');
+    if (hsv) {
+      var readCrew = function () {
+        app.querySelectorAll('[data-home]').forEach(function (s) { if (s.value) p.crewHome[s.dataset.home] = s.value; else delete p.crewHome[s.dataset.home]; });
+        p.crewExempt = Array.from(app.querySelectorAll('[data-lead]:checked')).map(function (c) { return c.dataset.lead; });
+      };
+      hsv.onclick = function () { readCrew(); T.saveShow('Crews saved').then(overview); };
+      document.getElementById('even').onclick = function () {
+        readCrew();
+        var n = {}; p.stations.forEach(function (st) { n[st.id] = 0; }); cast().forEach(function (a) { if (n[p.crewHome[a.id]] !== undefined) n[p.crewHome[a.id]]++; });
+        cast().forEach(function (a) { if (p.crewHome[a.id] || exempt(a)) return; var best = p.stations.slice().sort(function (x, y) { return n[x.id] - n[y.id]; })[0]; p.crewHome[a.id] = best.id; n[best.id]++; });
+        overview();
+      };
     }
-    return h + '</div><p class="muted small">Tap a day to add a rehearsal. <b class="err">!2</b> means two called actors have a conflict.</p>';
+    app.querySelectorAll('[data-rmst]').forEach(function (b) { b.onclick = function () { p.stations = p.stations.filter(function (x) { return x.id !== b.dataset.rmst; }); T.saveShow('Removed').then(overview); }; });
   }
-  function conflictsView() {
-    var list = P().conflicts.slice().sort(byTime), now = today();
+
+  function weekView() {
+    var p = P(), days = classDays();
+    if (!week) { var t = today(); week = monday(days.find(function (d) { return d >= t; }) || days[0] || t); }
+    var isShown = p.shown.indexOf(week) >= 0, people = cast();
+    var h = '<div class="row" style="justify-content:center;margin-bottom:10px"><button class="round" id="pw" aria-label="Last week">' + icon('prev') + '</button><h2 style="margin:0;text-align:center">Week of ' + esc(dayName(week, true)) + '</h2><button class="round" id="nw" aria-label="Next week">' + icon('next') + '</button></div>' +
+      '<div class="card row"><label class="switch grow" style="border:0"><span><b>Show this week to students</b><br><span class="muted small">' + (isShown ? 'Students can see this week on Today.' : 'Hidden: students see “Coming soon” for these days.') + '</span></span><input type="checkbox" id="shw"' + (isShown ? ' checked' : '') + '></label>' +
+      '<a class="btn small" href="#/teacher/production/callboard/' + week + '">Call board</a></div>';
+    return h + weekDays(week).map(function (s) {
+      if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
+      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0 };
+      people.forEach(function (a) { n[task(a, s).type]++; });
+      return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' +
+        (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +
+        '<div class="muted small">' + n.stage + ' on stage · ' + n.crew + ' crew · ' + n.practice + ' practicing' + (n.custom ? ' · ' + n.custom + ' other' : '') + (n.away ? ' · <span class="err">' + n.away + ' away</span>' : '') + '</div></a>';
+    }).join('');
+  }
+  function wireWeek() {
+    var go = function (n) { week = addDays(week, 7 * n); overview(); };
+    document.getElementById('pw').onclick = function () { go(-1); };
+    document.getElementById('nw').onclick = function () { go(1); };
+    document.getElementById('shw').onchange = function (e) {
+      var p = P(); p.shown = p.shown.filter(function (w) { return w !== week; }); if (e.target.checked) p.shown.push(week);
+      T.saveShow(e.target.checked ? 'Students can see this week' : 'This week is hidden').then(overview);
+    };
+  }
+
+  /* how each student's days are spent (planned days so far and ahead), to keep everyone on stage as much as possible */
+  function timeView() {
+    var days = classDays().filter(function (s) { return plan(s); }), cols = [['acting', '🗣️ Acting'], ['vocals', '🎵 Vocals'], ['dance', '💃 Dance'], ['other', '🎭 Other stage'], ['crew', '🛠️ Crew'], ['practice', '📱 App practice']];
+    if (!days.length) return '<p class="card muted">Plan some days first. This shows how many days each student spends on stage, in each kind of group.</p>';
+    var rows = cast().map(function (a) {
+      var c = { acting: 0, vocals: 0, dance: 0, other: 0, crew: 0, practice: 0, n: 0 };
+      days.forEach(function (s) { var t = task(a, s); if (t.type === 'away') return; c.n++; if (t.type === 'stage') c[c[t.focus] !== undefined ? t.focus : 'other']++; else if (t.type === 'crew') c.crew++; else if (t.type === 'practice') c.practice++; });
+      c.stage = c.acting + c.vocals + c.dance + c.other; return { a: a, c: c };
+    }).sort(function (x, y) { return x.c.stage / (x.c.n || 1) - y.c.stage / (y.c.n || 1); });
+    return '<p class="muted">The ' + days.length + ' planned days. Fewest days on stage first, so you can see who to bring in.</p><table class="tbl"><thead><tr><th>Student</th><th>On stage</th>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (x) { var pct = x.c.n ? Math.round(100 * x.c.stage / x.c.n) : 0; return '<tr><td>' + esc(x.a.name) + '</td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b></td>' + cols.map(function (c) { return '<td>' + x.c[c[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>';
+  }
+
+  function awayView() {
+    var list = P().conflicts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }), now = today();
     var rows = function (l) {
       return l.map(function (c) {
-        var a = actor(c.actor), hit = P().rehearsals.filter(function (r) { return overlaps(c, r) && called(r).some(function (x) { return x.id === c.actor; }); });
-        return '<tr><td>' + esc(dayName(c.date, true)) + '<br><span class="muted small">' + esc(span(c)) + '</span></td><td>' + (a ? T.face(a, 32) + ' ' + esc(a.name) : '<span class="muted">(removed)</span>') + '</td><td>' + esc(c.why || '') + (c.from === 'student' ? ' <span class="tag">from iPad</span>' : '') + '</td>' +
-          '<td>' + (hit.length ? '<span class="err">Misses ' + hit.map(function (r) { return esc(kind(r.kind)[2].toLowerCase()); }).join(', ') + '</span>' : '<span class="muted">No rehearsal called</span>') + '</td><td><button class="btn small quiet" data-del="' + c.id + '">Delete</button></td></tr>';
+        var a = actor(c.actor), r = plan(c.date), g = a && autoGroup(a, r);
+        return '<tr><td>' + esc(dayName(c.date, true)) + '</td><td>' + (a ? esc(a.name) : '<span class="muted">(removed)</span>') + '</td><td>' + esc(c.why || '') + (c.from === 'student' ? ' <span class="tag">from iPad</span>' : '') + '</td>' +
+          '<td>' + (g ? '<span class="err">Misses ' + esc(focus(g.focus)[2].toLowerCase()) + '</span>' : '') + '</td><td><button class="btn small quiet" data-del="' + c.id + '">Delete</button></td></tr>';
       }).join('');
     };
     var up = list.filter(function (c) { return c.date >= now; }), past = list.filter(function (c) { return c.date < now; });
-    return '<div class="card"><h3>Add a conflict</h3><div class="row"><label class="f grow" style="margin:0">Actor<select id="ca">' + cast().map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
-      '<label class="f" style="margin:0">Day<input type="date" id="cd" value="' + today() + '"></label><label class="f" style="margin:0">From<input type="time" id="cs"></label><label class="f" style="margin:0">To<input type="time" id="ce"></label></div>' +
-      '<label class="f">Why (optional)<input id="cw" maxlength="200" placeholder="Leave the times empty for the whole day"></label><div class="row end"><button class="btn primary" id="cadd" data-save>Add</button></div></div>' +
-      '<p class="muted">Students can send their own from <b>My Rehearsals</b> on their iPad. They show up here when you open Production.</p>' +
-      (up.length ? '<table class="tbl"><thead><tr><th>When</th><th>Who</th><th>Why</th><th>Rehearsal</th><th></th></tr></thead><tbody>' + rows(up) + '</tbody></table>' : '<p>No conflicts coming up.</p>') +
+    return '<div class="card"><h3>Add a day away</h3><div class="row"><label class="f grow" style="margin:0">Student<select id="ca">' + cast().map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="margin:0">Day<input type="date" id="cd" value="' + today() + '"></label><label class="f grow" style="margin:0">Why (optional)<input id="cw" maxlength="200" placeholder="e.g. field trip"></label><button class="btn primary" id="cadd" data-save>Add</button></div></div>' +
+      '<p class="muted">Students can send their own from <b>Today</b> on their iPad. They show up here when you open Production.</p>' +
+      (up.length ? '<table class="tbl"><thead><tr><th>Day</th><th>Who</th><th>Why</th><th></th><th></th></tr></thead><tbody>' + rows(up) + '</tbody></table>' : '<p>Nobody is away on a coming day.</p>') +
       (past.length ? '<details style="margin-top:14px"><summary class="btn quiet">Past (' + past.length + ')</summary><table class="tbl"><tbody>' + rows(past) + '</tbody></table></details>' : '');
   }
-  function wireConflicts() {
-    var add = document.getElementById('cadd');
-    if (add) add.onclick = function () {
-      var a = document.getElementById('ca').value, d = document.getElementById('cd').value; if (!a || !d) { T.toast('Pick the actor and the day.'); return; }
-      var s = document.getElementById('cs').value, e = document.getElementById('ce').value;
-      if (s && e && e <= s) { T.toast('The end time is before the start time.'); return; }
-      P().conflicts.push({ id: uid('x'), actor: a, date: d, start: s, end: s ? e : '', why: document.getElementById('cw').value.trim(), from: 'teacher' });
-      T.saveShow('Conflict added').then(overview);
+  function wireAway() {
+    document.getElementById('cadd').onclick = function () {
+      var a = document.getElementById('ca').value, d = document.getElementById('cd').value; if (!a || !d) { T.toast('Pick the student and the day.'); return; }
+      if (!isClassDay(d)) { T.toast('That is not a class day.'); return; }
+      if (P().conflicts.some(function (c) { return c.actor === a && c.date === d; })) { T.toast('Already there.'); return; }
+      P().conflicts.push({ id: uid('x'), actor: a, date: d, why: document.getElementById('cw').value.trim(), from: 'teacher' });
+      T.saveShow('Added').then(overview);
     };
-    app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { if (!confirm('Delete this conflict?')) return; var p = P(); p.conflicts = p.conflicts.filter(function (c) { return c.id !== b.dataset.del; }); T.saveShow('Deleted').then(overview); }; });
+    app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { if (!confirm('Delete this?')) return; var p = P(); p.conflicts = p.conflicts.filter(function (c) { return c.id !== b.dataset.del; }); T.saveShow('Deleted').then(overview); }; });
   }
   function attendanceView() {
-    var p = P(), list = p.rehearsals.filter(function (r) { return r.date <= today(); }).sort(byTime).reverse();
-    var cnt = {}; cast().forEach(function (a) { cnt[a.id] = { here: 0, late: 0, absent: 0, excused: 0, called: 0 }; });
-    p.rehearsals.forEach(function (r) { var at = p.attendance[r.id]; if (!at) return; called(r).forEach(function (a) { if (!cnt[a.id]) return; cnt[a.id].called++; if (at[a.id]) cnt[a.id][at[a.id]]++; }); });
-    return '<div class="card"><h3>Take attendance</h3>' + (list.length ? '<div class="grid">' + list.slice(0, 8).map(function (r) {
-      return '<a class="tile" style="min-height:90px" href="#/teacher/production/attend/' + r.id + '"><b>' + sym(kind(r.kind)[1]) + esc(dayName(r.date, true)) + '</b><span>' + (p.attendance[r.id] ? 'Taken ✓' : 'Not taken yet') + '</span></a>';
-    }).join('') + '</div>' : '<p class="muted">No rehearsals yet today or before.</p>') + '</div>' +
-      '<div class="card"><h3>So far</h3><table class="tbl"><thead><tr><th>Actor</th><th>Called</th>' + MARKS.map(function (m) { return '<th>' + m[1] + ' ' + m[2] + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      cast().map(function (a) { var c = cnt[a.id]; return '<tr><td>' + esc(a.name) + '</td><td>' + c.called + '</td>' + MARKS.map(function (m) { return '<td' + (m[0] === 'absent' && c.absent ? ' class="err"' : '') + '>' + c[m[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    var p = P(), now = today(), days = classDays().filter(function (s) { return s <= now; }).reverse();
+    var cnt = {}; cast().forEach(function (a) { cnt[a.id] = { here: 0, late: 0, absent: 0, excused: 0 }; });
+    Object.keys(p.attendance).forEach(function (s) { var at = p.attendance[s]; Object.keys(at).forEach(function (id) { if (cnt[id] && cnt[id][at[id]] !== undefined) cnt[id][at[id]]++; }); });
+    return '<div class="card"><h3>Take attendance</h3>' + (days.length ? '<div class="grid">' + days.slice(0, 10).map(function (s) {
+      return '<a class="tile" style="min-height:90px" href="#/teacher/production/attend/' + s + '"><b>' + esc(dayName(s, true)) + '</b><span>' + (p.attendance[s] ? 'Taken ✓' : 'Not taken yet') + '</span></a>';
+    }).join('') + '</div>' : '<p class="muted">No class days yet.</p>') + '</div>' +
+      '<div class="card"><h3>So far</h3><table class="tbl"><thead><tr><th>Student</th>' + MARKS.map(function (m) { return '<th>' + m[1] + ' ' + m[2] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      cast().map(function (a) { var c = cnt[a.id]; return '<tr><td>' + esc(a.name) + '</td>' + MARKS.map(function (m) { return '<td' + (m[0] === 'absent' && c.absent ? ' class="err"' : '') + '>' + c[m[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
 
-  function newRehearsal(date) {
-    var last = P().rehearsals.slice().sort(byTime).pop() || {};
-    T.prodDraft = { id: uid('r'), date: date, start: last.start || '15:30', end: last.end || '17:00', place: last.place || '', kind: 'rehearsal', scenes: [], songs: [], everyone: false, add: [], remove: [], notes: '' };
-    T.go('#/teacher/production/r/new');
+  /* dance videos: choreography recorded by students (or the teacher), one list per song. Students share a link to the video in their school
+     Google Drive; it shows to the cast only after the teacher's OK. Only the link is stored, encrypted with the show. */
+  function videosView() {
+    var V = T.show.videos = T.show.videos || [], pend = V.filter(function (v) { return !v.ok; }), ok = V.filter(function (v) { return v.ok; });
+    var row = function (v) { var a = actor(v.by), s = T.songById(v.song); return '<div class="switch" style="flex-wrap:wrap"><span class="grow"><b>' + esc(v.title) + '</b><br><span class="muted small">' + esc(s ? s.title : '') + (a ? ' · by ' + esc(a.name) : '') + '</span></span>' +
+      '<a class="btn small" href="' + esc(v.url) + '" target="_blank" rel="noopener">Watch</a>' + (v.ok ? '' : '<button class="btn small primary" data-okv="' + v.id + '">Share with the cast</button>') + '<button class="btn small quiet" data-rmv="' + v.id + '">Remove</button></div>'; };
+    return '<div class="card"><h3>Waiting for your OK</h3>' + (pend.length ? pend.map(row).join('') : '<p class="muted">Nothing new.</p>') + '</div>' +
+      '<div class="card"><h3>Shared with the cast</h3>' + (ok.length ? ok.map(row).join('') : '<p class="muted">None yet. Students share them from My Songs.</p>') + '</div>' +
+      '<div class="card"><h3>Add one yourself</h3><div class="row"><label class="f grow" style="margin:0">Song<select id="vs">' + T.O().songs.map(function (s) { return '<option value="' + s.id + '">' + esc(s.title) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f grow" style="margin:0">Title<input id="vt" placeholder="e.g. Chorus, counts 1–32"></label></div><label class="f">Link<input id="vu" placeholder="https://drive.google.com/…"></label><div class="row end"><button class="btn primary" id="vadd" data-save>Add</button></div></div>';
   }
-  function addMany() {
-    var d = T.dialog('<h2>Add many rehearsals</h2><p class="muted">The same days each week. You can pick the scenes for each one after.</p>' +
-      '<div class="row"><label class="f grow">First day<input type="date" id="a1" value="' + today() + '"></label><label class="f grow">Last day<input type="date" id="a2"></label></div>' +
-      '<p><b>Every</b></p><div class="row">' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(function (n, i) { return '<label class="btn small"><input type="checkbox" value="' + i + '"' + (i === 1 || i === 3 ? ' checked' : '') + '> ' + n + '</label>'; }).join('') + '</div>' +
-      '<div class="row"><label class="f grow">From<input type="time" id="a3" value="15:30"></label><label class="f grow">To<input type="time" id="a4" value="17:00"></label></div>' +
-      '<label class="f">Where<input id="a5" placeholder="e.g. Auditorium"></label>' +
-      '<label class="f">What kind<select id="a6">' + KINDS.map(function (k) { return '<option value="' + k[0] + '">' + k[1] + ' ' + k[2] + '</option>'; }).join('') + '</select></label>' +
-      '<label class="switch"><span>Call the whole cast</span><input type="checkbox" id="a7"></label>' +
-      '<p class="err" id="am"></p><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Add them</button></div>');
-    d.querySelector('#cn').onclick = function () { d.close(); };
-    d.querySelector('#ok').onclick = function () {
-      var a = d.querySelector('#a1').value, b = d.querySelector('#a2').value, days = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return +x.value; });
-      var msg = d.querySelector('#am');
-      if (!a || !b || b < a) { msg.textContent = 'Pick a first day and a last day after it.'; return; }
-      if (!days.length) { msg.textContent = 'Pick at least one day of the week.'; return; }
-      var out = [], cur = parse(a), end = parse(b);
-      while (cur <= end && out.length < 200) {
-        if (days.indexOf(cur.getDay()) >= 0) out.push({ id: uid('r'), date: ymd(cur), start: d.querySelector('#a3').value, end: d.querySelector('#a4').value, place: d.querySelector('#a5').value.trim(), kind: d.querySelector('#a6').value, scenes: [], songs: [], everyone: d.querySelector('#a7').checked, add: [], remove: [], notes: '' });
-        cur.setDate(cur.getDate() + 1);
-      }
-      if (!out.length) { msg.textContent = 'None of those days fall between the two dates.'; return; }
-      var have = P().rehearsals.map(function (r) { return r.date + r.start; });
-      out = out.filter(function (r) { return have.indexOf(r.date + r.start) < 0; });
-      P().rehearsals = P().rehearsals.concat(out);
-      T.saveShow(out.length + ' rehearsals added').then(function () { d.close(); view = 'list'; overview(); });
+  function wireVideos() {
+    var V = T.show.videos;
+    app.querySelectorAll('[data-okv]').forEach(function (b) { b.onclick = function () { V.find(function (v) { return v.id === b.dataset.okv; }).ok = true; T.saveShow('Shared with the cast').then(overview); }; });
+    app.querySelectorAll('[data-rmv]').forEach(function (b) { b.onclick = function () { if (!confirm('Remove this video link?')) return; T.show.videos = V.filter(function (v) { return v.id !== b.dataset.rmv; }); T.saveShow('Removed').then(overview); }; });
+    document.getElementById('vadd').onclick = function () {
+      var u = document.getElementById('vu').value.trim(); if (!/^https:\/\//.test(u)) { T.toast('Paste the link (it starts with https://).'); return; }
+      V.push({ id: uid('v'), song: document.getElementById('vs').value, title: document.getElementById('vt').value.trim() || 'Dance video', by: '', url: u, ok: true });
+      T.saveShow('Video added').then(overview);
+    };
+  }
+  /* students: the dance videos for a song (on its page in My Songs), and sharing one */
+  T.videoCard = function (songId) {
+    var V = (T.show.videos || []).filter(function (v) { return v.ok && v.song === songId; });
+    setTimeout(function () { var b = document.getElementById('sharev'); if (b) b.onclick = function () { shareVideo(songId); }; }, 0);
+    return '<div class="card"><h3>' + sym('💃') + 'Dance videos</h3>' + (V.length ? V.map(function (v) { var a = actor(v.by); return '<div class="switch"><span><b>' + esc(v.title) + '</b>' + (a ? '<br><span class="muted small">by ' + esc(a.name) + '</span>' : '') + '</span><a class="btn small primary" href="' + esc(v.url) + '" target="_blank" rel="noopener">' + icon('play') + 'Watch</a></div>'; }).join('') : '<p class="muted">No dance videos for this song yet.</p>') +
+      (T.me && T.me.id ? '<button class="btn small" id="sharev">Share a dance video</button>' : '') + '</div>';
+  };
+  function shareVideo(songId) {
+    var box = document.createElement('dialog');
+    box.innerHTML = '<h2>' + sym('💃') + 'Share a dance video</h2><ol><li>Put the video in your <b>school Google Drive</b>.</li><li>Tap <b>Share</b>, and let people at your school with the link view it.</li><li>Copy the link and paste it here.</li></ol>' +
+      '<label class="f">What it shows<input id="t" maxlength="80" placeholder="e.g. Chorus moves, slow"></label><label class="f">Link<input id="u" placeholder="https://drive.google.com/…" autocapitalize="off"></label>' +
+      '<p class="muted small">Your teacher watches it first, then shares it with the cast.</p><p class="err" id="m"></p><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok">Send</button></div>';
+    document.body.appendChild(box); box.showModal();
+    var close = function () { box.close(); box.remove(); };
+    box.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    box.querySelector('#cn').onclick = close;
+    box.querySelector('#ok').onclick = function () {
+      var u = box.querySelector('#u').value.trim();
+      if (!/^https:\/\//.test(u)) { box.querySelector('#m').textContent = 'Paste the link. It starts with https://'; return; }
+      box.querySelector('#ok').disabled = true;
+      Store.sendNote(T.key, { type: 'video', actor: T.me.id, song: songId, title: box.querySelector('#t').value.trim(), url: u }).then(function () { close(); T.toast('Sent! Your teacher will look at it.'); })
+        .catch(function (e) { box.querySelector('#ok').disabled = false; box.querySelector('#m').textContent = e.message || 'It did not send.'; });
     };
   }
 
-  /* one rehearsal: when, what, who is called (with conflicts) */
-  function rehearsalPage(id) {
-    /* edit a copy; Save puts it in the show */
-    var src = id === 'new' ? T.prodDraft : P().rehearsals.find(function (x) { return x.id === id; }); if (!src) return overview();
-    var r = JSON.parse(JSON.stringify(src)), isNew = id === 'new';
-    var put = function () {
-      var p = P(), i = p.rehearsals.findIndex(function (x) { return x.id === r.id; });
-      if (i >= 0) p.rehearsals[i] = r; else p.rehearsals.push(r);
-      return T.saveShow('Rehearsal saved').then(function () { if (isNew) { isNew = false; history.replaceState(null, '', '#/teacher/production/r/' + r.id); } r = JSON.parse(JSON.stringify(r)); });
-    };
-    T.setBar(dayName(r.date, true), '#/teacher/production');
-    var O = T.O();
+  /* one class day: the groups on stage, then a job for every student */
+  function dayPage(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return overview();
+    var r = JSON.parse(JSON.stringify(plan(s) || blank()));
+    T.setBar(dayName(s, true), '#/teacher/production');
+    var O = T.O(), p = P();
     function draw() {
-      var people = called(r), cf = conflictsFor(r), chars = calledChars(r);
-      var notCalled = cast().filter(function (a) { return people.indexOf(a) < 0; });
-      app.innerHTML = '<div class="card"><div class="row"><label class="f grow" style="margin:0">Day<input type="date" id="dt" value="' + r.date + '"></label><label class="f" style="margin:0">From<input type="time" id="st" value="' + (r.start || '') + '"></label><label class="f" style="margin:0">To<input type="time" id="en" value="' + (r.end || '') + '"></label></div>' +
-        '<div class="row"><label class="f grow">Where<input id="pl" value="' + esc(r.place || '') + '" placeholder="e.g. Auditorium"></label><label class="f grow">What kind<select id="kd">' + KINDS.map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === r.kind ? ' selected' : '') + '>' + k[1] + ' ' + k[2] + '</option>'; }).join('') + '</select></label></div></div>' +
-        '<div class="card"><h3>What we will work on</h3><label class="switch"><span>Call the whole cast</span><input type="checkbox" id="ev"' + (r.everyone ? ' checked' : '') + '></label>' +
-        '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (s) { return '<button type="button" class="btn small" data-sc="' + s.id + '" aria-pressed="' + (r.scenes.indexOf(s.id) >= 0) + '" title="' + esc(s.place) + '">' + s.num + '</button>'; }).join('') + '</div>' +
-        '<p class="muted small" style="margin-top:12px">Songs</p><div class="row">' + O.songs.map(function (s) { return '<button type="button" class="btn small" data-so="' + s.id + '" aria-pressed="' + (r.songs.indexOf(s.id) >= 0) + '">' + esc(s.title) + '</button>'; }).join('') + '</div></div>' +
-        '<div class="card"><h3>Called (' + people.length + ')</h3>' + (cf.length ? '<div class="fb miss">' + cf.map(function (c) { var a = actor(c.actor); return esc(a ? a.name : '?') + ' can’t come ' + esc(c.start ? span(c) : '(all day)') + (c.why ? ': ' + esc(c.why) : ''); }).join('<br>') + '</div>' : '') +
-        (people.length ? '<div class="choose">' + people.map(function (a) {
-          var away = cf.some(function (c) { return c.actor === a.id; }), forChars = a.chars.filter(function (c) { return chars.indexOf(c) >= 0; });
-          return '<div class="person" style="min-height:0' + (away ? ';border-color:var(--bad)' : '') + '">' + T.face(a, 56) + '<b>' + esc(a.name) + '</b><span>' + (forChars.length ? forChars.map(function (c) { return esc(T.charById(c).short); }).join(', ') : 'added by you') + (away ? ' · <b class="err">conflict</b>' : '') + '</span><button class="btn small quiet" data-rm="' + a.id + '">Not called</button></div>';
-        }).join('') + '</div>' : '<p class="muted">Nobody yet. Pick scenes or songs, or add people.</p>') +
-        (notCalled.length ? '<div class="row" style="margin-top:12px"><label class="f grow" style="margin:0">Also call<select id="ad"><option value="">Choose…</option>' + notCalled.map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label></div>' : '') + '</div>' +
-        '<div class="card"><label class="f" style="margin:0">Notes for the cast (they see these)<textarea id="nt" style="min-height:80px" placeholder="e.g. Bring your script and a pencil. Wear shoes you can dance in.">' + esc(r.notes || '') + '</textarea></label></div>' +
-        '<div class="dock"><div class="in"><button class="btn quiet" id="del">Delete</button><a class="btn" href="#/teacher/production/attend/' + r.id + '" id="att">' + icon('check') + 'Attendance</a><button class="btn primary" data-save id="sv">Save</button></div></div>';
+      var people = cast();
+      app.innerHTML = (isClassDay(s) ? '' : '<p class="card err">This is not a class day on your school calendar.</p>') +
+        '<p class="muted">Each group works on its own scenes or songs (Acting, Vocals, Dance…). Every student goes to the first group they are in; big group numbers bring the whole ensemble and the small roles. Anyone left over gets crew or practice in the app.</p>' +
+        r.groups.map(function (g, gi) {
+          var n = people.filter(function (a) { return task(a, s).group === g.id; }).length;
+          return '<div class="card" data-g="' + gi + '"><div class="row"><label class="f grow" style="margin:0">Group ' + (gi + 1) + '<select data-k="focus">' + FOCUS.map(function (f) { return '<option value="' + f[0] + '"' + (f[0] === g.focus ? ' selected' : '') + '>' + f[1] + ' ' + f[2] + '</option>'; }).join('') + '</select></label>' +
+            '<label class="f grow" style="margin:0">Where / with whom<input data-k="where" value="' + esc(g.where || '') + '" placeholder="e.g. Stage, choir room, with Ms. Lee"></label><span class="tag">' + n + ' students</span><button class="btn small quiet" data-delg>Remove</button></div>' +
+            '<div class="row"><label class="switch grow" style="border:0"><span>Whole cast</span><input type="checkbox" data-k="everyone"' + (g.everyone ? ' checked' : '') + '></label>' +
+            '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
+            (g.songs.length && !g.only ? '<button class="btn small" data-split title="Principals sing in one place while the chorus learns the dance in another">Split: singers + chorus dance</button>' : '') + '</div>' +
+            '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (sc) { return '<button type="button" class="btn small" data-sc="' + sc.id + '" aria-pressed="' + (g.scenes.indexOf(sc.id) >= 0) + '" title="' + esc(sc.place) + '">' + sc.num + '</button>'; }).join('') + '</div>' +
+            '<p class="muted small" style="margin-top:10px">Songs <span class="small">(★ big number: the ensemble and small roles join)</span></p><div class="row">' + O.songs.map(function (so) { var m = O.moments.find(function (x) { return x.song === so.id; }); return '<button type="button" class="btn small" data-so="' + so.id + '" aria-pressed="' + (g.songs.indexOf(so.id) >= 0) + '">' + (m && m.big ? '★ ' : '') + esc(so.title) + '</button>'; }).join('') + '</div></div>';
+        }).join('') +
+        '<div class="row" style="margin-bottom:14px">' + FOCUS.slice(0, 3).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
+        '<div class="card"><label class="f" style="margin:0">Note for everyone (they see it)<input id="nt" value="' + esc(r.notes || '') + '" placeholder="e.g. Wear shoes you can dance in."></label></div>' +
+        '<div class="card"><h3>Every student’s job</h3>' + people.map(function (a) {
+          var t = task(a, s), how = (r.assign || {})[a.id] || '';
+          return '<div class="switch" style="flex-wrap:wrap"><span class="grow">' + T.face(a, 36) + ' <b>' + esc(a.name) + '</b><br><span class="muted small">' + sym(t.icon) + esc(t.text) + '</span></span>' +
+            (t.type === 'away' ? '' : '<select data-job="' + a.id + '"><option value=""' + (how === '' ? ' selected' : '') + '>Automatic</option>' +
+              r.groups.map(function (g, gi) { return '<option value="g:' + g.id + '"' + (how === 'g:' + g.id ? ' selected' : '') + '>Group ' + (gi + 1) + ': ' + esc(focus(g.focus)[2]) + '</option>'; }).join('') +
+              p.stations.map(function (st) { return '<option value="st:' + st.id + '"' + (how === 'st:' + st.id ? ' selected' : '') + '>Crew: ' + esc(st.name) + '</option>'; }).join('') +
+              '<option value="app"' + (how === 'app' ? ' selected' : '') + '>Practice in the app</option><option value="custom"' + (how === 'custom' ? ' selected' : '') + '>My own words…</option></select>') +
+            (how === 'custom' ? '<input data-txt="' + a.id + '" value="' + esc((r.tasks || {})[a.id] || '') + '" placeholder="What should they do?" style="flex-basis:100%;min-height:48px;border:2px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--card)">' : '') + '</div>';
+        }).join('') + (p.stations.length ? '<div class="row" style="margin-top:10px"><button class="btn small" id="copy">Same crew jobs the rest of the week</button></div>' : '<p class="muted small">Add crew stations under Calendar & crew.</p>') + '</div>' +
+        '<div class="dock"><div class="in"><a class="btn" href="#/teacher/production/attend/' + s + '" id="att">' + icon('check') + 'Attendance</a><button class="btn quiet" id="clr">Clear this day</button><button class="btn primary" data-save id="sv">Save</button></div></div>';
       var keep = function () {
-        r.date = document.getElementById('dt').value || r.date; r.start = document.getElementById('st').value; r.end = document.getElementById('en').value;
-        r.place = document.getElementById('pl').value.trim(); r.kind = document.getElementById('kd').value; r.notes = document.getElementById('nt').value.trim();
+        app.querySelectorAll('[data-g]').forEach(function (el) { var g = r.groups[+el.dataset.g]; g.focus = el.querySelector('[data-k=focus]').value; g.where = el.querySelector('[data-k=where]').value.trim(); g.only = el.querySelector('[data-k=only]').value; });
+        r.notes = document.getElementById('nt').value.trim();
+        app.querySelectorAll('[data-txt]').forEach(function (i) { r.tasks[i.dataset.txt] = i.value; });
       };
-      app.querySelectorAll('[data-sc],[data-so]').forEach(function (b) {
-        b.onclick = function () { keep(); var list = b.dataset.sc ? r.scenes : r.songs, v = b.dataset.sc || b.dataset.so, i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); draw(); };
+      var gOf = function (el) { return r.groups[+el.closest('[data-g]').dataset.g]; };
+      app.querySelectorAll('[data-sc],[data-so]').forEach(function (b) { b.onclick = function () { keep(); var g = gOf(b), list = b.dataset.sc ? g.scenes : g.songs, v = b.dataset.sc || b.dataset.so, i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); draw(); }; });
+      app.querySelectorAll('[data-k=everyone]').forEach(function (c) { c.onchange = function () { keep(); gOf(c).everyone = c.checked; draw(); }; });
+      app.querySelectorAll('[data-k=focus],[data-k=only]').forEach(function (c) { c.onchange = function () { keep(); draw(); }; });
+      app.querySelectorAll('[data-split]').forEach(function (b) {
+        b.onclick = function () {
+          keep(); var g = gOf(b), i = r.groups.indexOf(g), d = JSON.parse(JSON.stringify(g));
+          g.focus = 'vocals'; g.only = 'principals'; d.id = uid('g'); d.focus = 'dance'; d.only = 'chorus'; d.where = '';
+          r.groups.splice(i + 1, 0, d); draw();
+        };
       });
-      document.getElementById('ev').onchange = function (e) { keep(); r.everyone = e.target.checked; draw(); };
-      app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { keep(); var id = b.dataset.rm; r.add = (r.add || []).filter(function (x) { return x !== id; }); if (called(r).some(function (a) { return a.id === id; })) r.remove = (r.remove || []).concat([id]); draw(); }; });
-      var ad = document.getElementById('ad'); if (ad) ad.onchange = function () { keep(); var id = ad.value; if (!id) return; r.remove = (r.remove || []).filter(function (x) { return x !== id; }); if (!called(r).some(function (a) { return a.id === id; })) r.add = (r.add || []).concat([id]); draw(); };
-      document.getElementById('sv').onclick = function () {
-        keep(); if (r.start && r.end && r.end <= r.start) { T.toast('The end time is before the start time.'); return; }
-        put().then(function () { T.setBar(dayName(r.date, true), '#/teacher/production'); draw(); });
+      app.querySelectorAll('[data-delg]').forEach(function (b) {
+        b.onclick = function () { keep(); var g = gOf(b); r.groups = r.groups.filter(function (x) { return x !== g; }); Object.keys(r.assign).forEach(function (k) { if (r.assign[k] === 'g:' + g.id) delete r.assign[k]; }); draw(); };
+      });
+      app.querySelectorAll('[data-addg]').forEach(function (b) { b.onclick = function () { keep(); r.groups.push(newGroup(b.dataset.addg)); draw(); }; });
+      app.querySelectorAll('[data-job]').forEach(function (sel) {
+        sel.onchange = function () {
+          keep(); var id = sel.dataset.job;
+          if (sel.value) r.assign[id] = sel.value; else delete r.assign[id];
+          if (sel.value !== 'custom') delete r.tasks[id];
+          draw(); var t = app.querySelector('[data-txt="' + id + '"]'); if (t) t.focus();
+        };
+      });
+      var save = function () {
+        keep();
+        Object.keys(r.tasks).forEach(function (id) { if (!String(r.tasks[id]).trim()) { delete r.tasks[id]; if (r.assign[id] === 'custom') delete r.assign[id]; } });
+        p.days[s] = r;
+        return T.saveShow('Day saved').then(function () { r = JSON.parse(JSON.stringify(r)); });
       };
-      document.getElementById('att').onclick = function (e) { e.preventDefault(); keep(); put().then(function () { T.go('#/teacher/production/attend/' + r.id); }); };
-      document.getElementById('del').onclick = function () {
-        if (isNew) { T.go('#/teacher/production'); return; }
-        if (!confirm('Delete the ' + kind(r.kind)[2].toLowerCase() + ' on ' + dayName(r.date) + '?')) return;
-        var p = P(); p.rehearsals = p.rehearsals.filter(function (x) { return x.id !== r.id; }); delete p.attendance[r.id];
-        T.saveShow('Deleted').then(function () { T.go('#/teacher/production'); });
+      var copy = document.getElementById('copy');
+      if (copy) copy.onclick = function () {
+        keep(); var n = 0;
+        weekDays(monday(s)).filter(function (d) { return d > s && isClassDay(d); }).forEach(function (d) {
+          var x = p.days[d] = p.days[d] || blank();
+          Object.keys(r.assign).forEach(function (id) { if (r.assign[id].slice(0, 3) === 'st:') x.assign[id] = r.assign[id]; }); n++;
+        });
+        save().then(function () { T.toast('Crew jobs copied to ' + n + ' more day' + (n === 1 ? '' : 's')); });
       };
+      document.getElementById('sv').onclick = function () { save().then(draw); };
+      document.getElementById('att').onclick = function (e) { e.preventDefault(); save().then(function () { T.go('#/teacher/production/attend/' + s); }); };
+      document.getElementById('clr').onclick = function () { if (!confirm('Clear the plan for ' + dayName(s) + '? Everyone will practice in the app.')) return; delete p.days[s]; T.saveShow('Cleared').then(function () { T.go('#/teacher/production'); }); };
     }
     draw();
   }
 
-  /* attendance: big buttons, one row per called actor; a conflict suggests Excused */
-  function attendPage(id) {
-    var r = P().rehearsals.find(function (x) { return x.id === id; }); if (!r) return overview();
-    T.setBar('Attendance', '#/teacher/production/r/' + r.id);
-    var at = Object.assign({}, P().attendance[r.id] || {}), cf = conflictsFor(r);
-    var people = called(r).concat(cast().filter(function (a) { return at[a.id] && !called(r).some(function (x) { return x.id === a.id; }); }));
-    cf.forEach(function (c) { if (!at[c.actor]) at[c.actor] = 'excused'; });
+  /* attendance: every student, every class day; a day away starts as Excused */
+  function attendPage(s) {
+    T.setBar('Attendance', '#/teacher/production/day/' + s);
+    var at = Object.assign({}, P().attendance[s] || {}), people = cast();
+    people.forEach(function (a) { if (!at[a.id] && away(a, s)) at[a.id] = 'excused'; });
     function draw() {
-      app.innerHTML = '<h2>' + sym(kind(r.kind)[1]) + esc(dayName(r.date)) + '</h2><p class="muted">' + esc(span(r)) + (r.place ? ' · ' + esc(r.place) : '') + ' · ' + esc(what(r)) + '</p>' +
-        '<div class="row noprint" style="margin-bottom:12px"><button class="btn small" id="allhere">' + icon('check') + 'Everyone else is here</button></div>' +
+      app.innerHTML = '<h2>' + esc(dayName(s)) + '</h2><div class="row noprint" style="margin-bottom:12px"><button class="btn small" id="allhere">' + icon('check') + 'Everyone else is here</button></div>' +
         people.map(function (a) {
-          var c = cf.find(function (x) { return x.actor === a.id; });
-          return '<div class="card row" style="margin-bottom:10px">' + T.face(a, 48) + '<div class="grow"><b>' + esc(a.name) + '</b>' + (c ? '<br><span class="muted small">Conflict: ' + esc(c.why || span(c)) + '</span>' : '') + '</div>' +
+          var t = task(a, s);
+          return '<div class="card row" style="margin-bottom:10px">' + T.face(a, 48) + '<div class="grow"><b>' + esc(a.name) + '</b><br><span class="muted small">' + sym(t.icon) + esc(t.text) + '</span></div>' +
             '<div class="seg" data-a="' + a.id + '">' + MARKS.map(function (m) { return '<button type="button" data-v="' + m[0] + '" aria-pressed="' + (at[a.id] === m[0]) + '">' + sym(m[1]) + m[2] + '</button>'; }).join('') + '</div></div>';
-        }).join('') + (people.length ? '' : '<p>Nobody is called for this one.</p>') +
+        }).join('') +
         '<div class="dock"><div class="in"><span class="muted" id="cnt"></span><button class="btn primary" data-save id="sv">Save attendance</button></div></div>';
-      var n = people.filter(function (a) { return at[a.id] === 'here' || at[a.id] === 'late'; }).length;
-      document.getElementById('cnt').textContent = n + ' of ' + people.length + ' here';
+      document.getElementById('cnt').textContent = people.filter(function (a) { return at[a.id] === 'here' || at[a.id] === 'late'; }).length + ' of ' + people.length + ' here';
       app.querySelectorAll('.seg[data-a] button').forEach(function (b) { b.onclick = function () { var a = b.parentNode.dataset.a; at[a] = at[a] === b.dataset.v ? undefined : b.dataset.v; draw(); }; });
       document.getElementById('allhere').onclick = function () { people.forEach(function (a) { if (!at[a.id]) at[a.id] = 'here'; }); draw(); };
-      document.getElementById('sv').onclick = function () {
-        var clean = {}; Object.keys(at).forEach(function (k) { if (at[k]) clean[k] = at[k]; });
-        P().attendance[r.id] = clean; T.saveShow('Attendance saved');
-      };
+      document.getElementById('sv').onclick = function () { var c = {}; Object.keys(at).forEach(function (k) { if (at[k]) c[k] = at[k]; }); P().attendance[s] = c; T.saveShow('Attendance saved'); };
     }
     draw();
   }
 
-  /* the call board: one week, big and printable (or on the projector) */
-  function callboard(from) {
+  /* the call board: one week, every student's job each day, grouped; printable or on the projector */
+  function callboard(mon) {
+    mon = monday(mon || today());
     T.setBar('Call board', '#/teacher/production');
-    var start = from ? parse(from) : new Date(); start.setDate(start.getDate() - start.getDay());
-    var end = new Date(start); end.setDate(start.getDate() + 6);
-    var a = ymd(start), b = ymd(end);
-    var list = P().rehearsals.filter(function (r) { return r.date >= a && r.date <= b; }).sort(byTime);
-    var prev = new Date(start); prev.setDate(start.getDate() - 7); var next = new Date(start); next.setDate(start.getDate() + 7);
-    app.innerHTML = '<div class="row noprint" style="justify-content:center;margin-bottom:10px"><a class="round" href="#/teacher/production/callboard/' + ymd(prev) + '" aria-label="Last week">' + icon('prev') + '</a><b>Week of ' + esc(dayName(a, true)) + '</b><a class="round" href="#/teacher/production/callboard/' + ymd(next) + '" aria-label="Next week">' + icon('next') + '</a><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
-      '<h2 class="center">' + esc(T.O().title) + ' · Call board</h2>' +
-      (list.length ? list.map(function (r) {
-        var people = called(r), away = conflictsFor(r).map(function (c) { return c.actor; });
-        return '<div class="card"><h3>' + sym(kind(r.kind)[1]) + esc(dayName(r.date)) + ' · ' + esc(span(r)) + (r.place ? ' · ' + esc(r.place) : '') + '</h3><p><b>' + esc(kind(r.kind)[2]) + ':</b> ' + esc(what(r)) + '</p>' +
-          '<p style="font-size:1.15em">' + (r.everyone ? '<b>Whole cast</b>' : people.map(function (x) { return esc(x.name) + (away.indexOf(x.id) >= 0 ? ' <span class="muted">(away)</span>' : ''); }).join(' · ') || '<span class="muted">Nobody called</span>') + '</p>' + (r.notes ? '<p class="muted">' + esc(r.notes) + '</p>' : '') + '</div>';
-      }).join('') : '<p class="center muted">No rehearsals this week.</p>');
+    var days = weekDays(mon).filter(isClassDay);
+    app.innerHTML = '<div class="row noprint" style="justify-content:center;margin-bottom:10px"><a class="round" href="#/teacher/production/callboard/' + addDays(mon, -7) + '" aria-label="Last week">' + icon('prev') + '</a><b>Week of ' + esc(dayName(mon, true)) + '</b><a class="round" href="#/teacher/production/callboard/' + addDays(mon, 7) + '" aria-label="Next week">' + icon('next') + '</a><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
+      '<h2 class="center">' + esc(T.O().title) + ' · Call board</h2>' + (P().shown.indexOf(mon) < 0 ? '<p class="center muted noprint">Students cannot see this week yet.</p>' : '') +
+      (days.length ? days.map(function (s) {
+        var r = plan(s), groups = {}, order = [];
+        cast().forEach(function (a) {
+          var t = task(a, s), k = t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
+          if (!groups[k]) { groups[k] = []; order.push(k); }
+          groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
+        });
+        order.sort(function (x, y) { var rank = function (k) { return /^📱|^🙋|^🛠️|^📝/.test(k) ? 1 : 0; }; return rank(x) - rank(y); });
+        return '<div class="card"><h3>' + esc(dayName(s)) + '</h3>' + (r && r.notes ? '<p class="muted">' + esc(r.notes) + '</p>' : '') +
+          order.map(function (k) { return '<p><b>' + esc(k) + ':</b> ' + groups[k].map(esc).join(' · ') + '</p>'; }).join('') + '</div>';
+      }).join('') : '<p class="center muted">No class days this week.</p>');
   }
 
-  /* ---------- Students: My Rehearsals ---------- */
+  /* ---------- Students: Today ---------- */
   T.studentPages = T.studentPages || {};
-  T.studentPages.rehearsals = function () {
-    T.setBar('My Rehearsals', '#/home');
-    var p = P(), me = T.me, now = today();
-    if (!me.id) { app.innerHTML = '<div class="card"><p>Your teacher has not put you on the cast list yet, so the app cannot tell when you are called.</p></div>'; return; }
-    var mine = p.rehearsals.filter(function (r) { return r.date >= now && called(r).some(function (a) { return a.id === me.id; }); }).sort(byTime);
-    var sent = (T.ls('sentConflicts') || []).filter(function (s) { return s.actor === me.id && s.date >= now && !p.conflicts.some(function (c) { return c.actor === me.id && c.date === s.date && (c.start || '') === (s.start || ''); }); });
-    var myCf = p.conflicts.filter(function (c) { return c.actor === me.id && c.date >= now; }).concat(sent.map(function (s) { return Object.assign({ pending: true }, s); })).sort(byTime);
-    app.innerHTML = '<h2>' + sym('📅') + 'When I am called</h2>' +
-      (mine.length ? mine.map(function (r, i) {
-        var away = myCf.find(function (c) { return overlaps(c, r); });
-        var links = r.scenes.map(function (id) { var s = T.sceneById(id); return s ? '<a class="btn small" href="#/lines/' + s.id + '">' + icon('lines') + 'Scene ' + s.num + '</a>' : ''; })
-          .concat(r.songs.map(function (id) { var s = T.songById(id); return s ? '<a class="btn small" href="#/song/' + s.id + '">' + icon('songs') + esc(s.title) + '</a>' : ''; })).join('');
-        return '<div class="card"' + (i === 0 ? ' style="border:3px solid ' + T.color(me.chars[0]) + '"' : '') + '>' + (i === 0 ? '<span class="tag">Next</span>' : '') +
-          '<h3 style="margin-top:6px">' + sym(kind(r.kind)[1]) + esc(dayName(r.date)) + '</h3><p class="big" style="font-size:1.3em;margin:4px 0">' + esc(span(r)) + (r.place ? ' · ' + esc(r.place) : '') + '</p>' +
-          '<p>' + esc(kind(r.kind)[2]) + ': ' + esc(what(r)) + '</p>' + (r.notes ? '<p class="card" style="background:var(--hi);margin:8px 0">' + sym('📌') + esc(r.notes) + '</p>' : '') +
-          (links ? '<p class="muted small">Practice first:</p><div class="row">' + links + '</div>' : '') +
-          '<div class="row" style="margin-top:10px">' + (away ? '<span class="tag">' + (away.pending ? 'Sent: you can’t come' : 'Your teacher knows you can’t come') + '</span>' : '<button class="btn small" data-cant="' + r.id + '">I can’t come</button>') + '</div></div>';
-      }).join('') : '<div class="card"><p>You are not called for any rehearsals right now.</p></div>') +
-      '<div class="card"><h3>' + sym('🙋') + 'Days I can’t come</h3>' + (myCf.length ? myCf.map(function (c) { return '<p>' + esc(dayName(c.date)) + ' · ' + esc(span(c)) + (c.why ? ' · ' + esc(c.why) : '') + (c.pending ? ' <span class="muted small">(sent)</span>' : '') + '</p>'; }).join('') : '<p class="muted">None.</p>') +
-      '<button class="btn" id="other">Tell my teacher about a day I can’t come</button></div>';
-    app.querySelectorAll('[data-cant]').forEach(function (b) { b.onclick = function () { var r = p.rehearsals.find(function (x) { return x.id === b.dataset.cant; }); cantCome({ date: r.date, start: r.start, end: r.end }); }; });
-    document.getElementById('other').onclick = function () { cantCome({ date: now }); };
+  T.studentPages.today = function () {
+    T.setBar('Today', '#/home');
+    var p = P(), me = T.me && actor(T.me.id), now = today();
+    if (!me) { app.innerHTML = '<div class="card"><p>Your teacher has not put you on the cast list yet, so the app cannot show your jobs. For now, practice in My Songs or Practice Lines.</p></div>'; return; }
+    if (!p.term.first) { app.innerHTML = '<div class="card"><p>Your teacher has not set up the class calendar yet.</p></div>'; return; }
+    var days = classDays().filter(function (s) { return s >= now; }).slice(0, 15);
+    var sent = (T.ls('sentAway') || []).filter(function (x) { return x.actor === me.id && x.date >= now; });
+    var card = function (s, big) {
+      if (!shown(s)) return '<div class="card" style="opacity:.7"><b>' + esc(dayName(s)) + '</b><br><span class="muted">Coming soon</span></div>';
+      var t = task(me, s), r = plan(s), pend = !away(me, s) && sent.some(function (x) { return x.date === s; });
+      return '<div class="card"' + (big ? ' style="border:3px solid ' + T.color(me.chars[0]) + '"' : '') + '>' + (big ? '<span class="tag">' + (s === now ? 'Today' : 'Next class') + '</span>' : '') +
+        '<h3 style="margin-top:6px">' + esc(dayName(s)) + '</h3><p style="' + (big ? 'font-size:1.35em;font-weight:700;' : '') + 'margin:4px 0">' + sym(t.icon) + esc(t.text) + '</p>' +
+        (r && r.notes ? '<p class="card" style="background:var(--hi);margin:8px 0">' + sym('📌') + esc(r.notes) + '</p>' : '') +
+        '<div class="row" style="margin-top:8px">' + (t.href ? '<a class="btn' + (big ? ' primary' : ' small') + '" href="' + t.href + '">Start</a>' : '') +
+        (t.type === 'away' ? '' : pend ? '<span class="tag">Sent: I’ll be away</span>' : '<button class="btn small quiet" data-away="' + s + '">I’ll be away</button>') + '</div></div>';
+    };
+    app.innerHTML = (days.length ? card(days[0], true) : '<div class="card"><p>No more class days this year. Bravo!</p></div>') +
+      (days.length > 1 ? '<h2 style="margin-top:20px">Coming up</h2>' + days.slice(1).map(function (s) { return card(s, false); }).join('') : '');
+    app.querySelectorAll('[data-away]').forEach(function (b) { b.onclick = function () { awayNote(b.dataset.away); }; });
   };
-  function cantCome(pre) {
+  function awayNote(s) {
     var box = document.createElement('dialog');
-    box.innerHTML = '<h2>' + sym('🙋') + 'I can’t come</h2><label class="f">Day<input type="date" id="d" value="' + pre.date + '" min="' + today() + '"></label>' +
-      '<label class="switch"><span>The whole day</span><input type="checkbox" id="all"' + (pre.start ? '' : ' checked') + '></label>' +
-      '<div class="row" id="tm"' + (pre.start ? '' : ' hidden') + '><label class="f grow">From<input type="time" id="s" value="' + (pre.start || '') + '"></label><label class="f grow">To<input type="time" id="e" value="' + (pre.end || '') + '"></label></div>' +
-      '<label class="f">Why (you can skip this)<input id="w" maxlength="200" placeholder="e.g. doctor, game, family"></label>' +
+    box.innerHTML = '<h2>' + sym('🙋') + 'I’ll be away</h2><p><b>' + esc(dayName(s)) + '</b></p><label class="f">Why (you can skip this)<input id="w" maxlength="200" placeholder="e.g. doctor, field trip"></label>' +
       '<p class="err" id="m"></p><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok">Send to my teacher</button></div>';
     document.body.appendChild(box); box.showModal();
     var close = function () { box.close(); box.remove(); };
     box.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
-    box.querySelector('#all').onchange = function (e) { box.querySelector('#tm').hidden = e.target.checked; };
     box.querySelector('#cn').onclick = close;
     box.querySelector('#ok').onclick = function () {
-      var all = box.querySelector('#all').checked, n = { type: 'conflict', actor: T.me.id, date: box.querySelector('#d').value, start: all ? '' : box.querySelector('#s').value, end: all ? '' : box.querySelector('#e').value, why: box.querySelector('#w').value.trim() };
-      if (!n.date) { box.querySelector('#m').textContent = 'Pick the day.'; return; }
+      var n = { type: 'conflict', actor: T.me.id, date: s, why: box.querySelector('#w').value.trim() };
       box.querySelector('#ok').disabled = true;
       Store.sendNote(T.key, n).then(function () {
-        var s = T.ls('sentConflicts') || []; s.push({ actor: n.actor, date: n.date, start: n.start, end: n.end, why: n.why }); T.ls('sentConflicts', s.slice(-30));
+        var l = T.ls('sentAway') || []; l.push({ actor: n.actor, date: n.date }); T.ls('sentAway', l.slice(-40));
         close(); T.toast('Sent! Your teacher will see it.'); T.route();
       }).catch(function (e) { box.querySelector('#ok').disabled = false; box.querySelector('#m').textContent = e.message || 'It did not send. Check the Wi-Fi, or tell your teacher.'; });
     };

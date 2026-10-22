@@ -70,21 +70,41 @@ settings, phone and iPad widths. Not yet tried on a real iPad (microphone, voice
 
 How students "say" a line: Run my role listens with webkitSpeechRecognition (iPad Safari, https only). AAC / sign users get the "I did it" button (set per actor, or on any device without speech recognition).
 
-## Built in session 3 (2026-10-21): Production
+## Built in session 3 (2026-10-21): Production, and getting ready before the cast list
 
-`js/production.js` (Teacher mode › Production, and the students' **My Rehearsals** tile). Data: `T.show.production = { rehearsals, conflicts, attendance }` (encrypted with the rest of the show).
-- **Calendar** (month), **List**, **Add a rehearsal** (tap a day), **Add many** (same weekdays between two dates). Each rehearsal: day, times, place, kind
-  (Rehearsal, Music, Dance, Run-through, Tech, Dress, Show), scenes and songs, notes for the cast. Edited on a copy; nothing changes until Save.
-- **Who is called** is worked out from the scenes and songs picked (characters on stage in those moments → the actors who play them), or "Call the whole cast";
-  the teacher can add or take off anyone.
-- **Conflicts**: the teacher adds them, or students send them from My Rehearsals ("I can't come", a whole day or set times). A student's note is encrypted with the
-  show key on the iPad and posted to `POST /theatre/api/notes` (no password; 5,000 characters at most; 60 an hour per address because a school's iPads share one;
-  300 waiting at most). Opening Production reads them with the teacher password, adds them to the show, and clears them. Conflicts show on the calendar (!n),
-  on the rehearsal, on the call board ("away"), and pre-fill Excused in attendance.
-- **Attendance**: Here / Late / Absent / Excused per called actor, "Everyone else is here", and a running total per actor.
-- **Call board**: one week, printable, for the callboard or the projector.
-- Students: My Rehearsals lists the rehearsals they are called to, with the notes and links to practice those scenes and songs.
-`dev/test-api.mjs` now has 19 checks (the notes routes added).
+How Colleen's class runs (her words, 2026-10-21): one 45-minute period every school day for the semester; **every student has something to do every day**;
+weeks are revealed to students one at a time so plans can change; several rehearsals at once whenever possible (a duet rehearsing while the chorus learns the
+song's dance while everyone else works crew); students need vocals, acting and dance time; **as much stage time as possible**, and big group numbers include
+everyone, especially the ensemble and small roles (barring costume changes); everyone except the biggest leads has a crew and works it at least one day a week;
+a place for choreography videos made by students; and the cast (how many students, abilities, genders) is only known about a week before school starts,
+so the app must be ready and waiting for a class list.
+
+`js/production.js` (Teacher mode › Production; students' **Today** tile). Data: `T.show.production = { term {first,last,off}, shown [Mondays], stations,
+crewHome, crewExempt, days {date: {groups, assign, tasks, notes}}, conflicts, attendance }`, and `T.show.videos`.
+- **Calendar & crew**: first and last day of class; paste the district's no-school days (one per line, ranges, many formats; unreadable lines are listed back);
+  crew stations; everyone's home crew ("Fill in the rest evenly"); **Lead** tick skips the weekly crew day (defaults to students playing a `leads` character).
+- **A class day** has 1+ **groups**, each Acting / Vocals / Dance / Run-through / Tech / Dress / Show, with scenes and songs, where, and who
+  (everyone in it, principals only, or chorus only). **Split: singers + chorus dance** turns one song group into a Vocals group (principals) and a Dance group
+  (ensemble and small roles). Each student goes to the first group they are in; otherwise to their home crew; leads with no crew get practice in the app
+  (lines for scenes coming up and songs, taking turns). A student on stage every day of a week is sent to crew on the last open day. Any student's job can be
+  set by hand (a group, a crew, practice, or the teacher's own words). "Same crew jobs the rest of the week".
+- **Big numbers**: `big: true` on a song moment (★ in Teacher mode › On stage) puts every ensemble and small-role character on stage for it (`T.onFor` in app.js);
+  tapping a box takes one off (`out`, e.g. a costume change). Set on Start of Something New, Get'cha Head, Auditions, Status Quo, Counting on You,
+  We're All in This Together, Bop to the Top, Breaking Free. Ms. Tenny and the Moderator are marked `small`. Only a show set up after this change gets these
+  (the outline is copied at setup).
+- **Week** view with **Show this week to students**; **Stage time** (each student's days on stage by Acting / Vocals / Dance vs crew and practice, fewest first);
+  **Days away** (teacher adds, or students send from Today as encrypted notes); **Attendance** for every student every class day; **Call board** for the week,
+  grouped by job; **Dance videos** (students share a school Google Drive link from a song's page; the teacher OKs it before the cast sees it).
+- Before the cast list: Teacher mode › Cast › **Paste a class list** (names only, "Last, First" turned around). Students without a role can sign in, see Today,
+  listen to the whole show, read the story; the schedule says it comes with their role. Whole-cast groups include them.
+
+Student supports added (research-backed, see the list Colleen was given 2026-10-21):
+- **Fade** (now the default in Practice Lines): each line is shown, then a hint once it is said without help, then hidden; it steps back after help.
+  Prompting with prompt fading is an evidence-based practice for autistic learners (NCAEP 2020 report).
+- **Play the whole show** (My Songs): every song in order with the guide vocals, repeating, on an `<audio>` element so it plays with the screen off.
+- **Today**: the next class's job in large type with a Start button straight into the activity, then the rest of the shown weeks (a visual schedule).
+
+Tests: `dev/test-api.mjs` (19), `dev/test-dates.js` (6), `dev/test-line-check.js`.
 
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
@@ -100,6 +120,7 @@ How students "say" a line: Run my role listens with webkitSpeechRecognition (iPa
 ### Later sections
 - **Casting**: audition sign-ups, audition notes, callback list, cast list.
 - ~~Production~~: built in session 3 (above).
+- Ideas offered to Colleen, not built yet (her choice): see the end of session 3's chat; e.g. social narratives for tech week and show day, video modeling, peer buddies, a break card, practice streaks.
 
 ## Design notes
 - Fonts: Lexend (headings) + Atkinson Hyperlegible (body), both on Google Fonts, chosen for readability.

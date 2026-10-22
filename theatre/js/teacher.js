@@ -268,10 +268,26 @@
   function castPage() {
     T.setBar('Cast', '#/teacher');
     var cast = T.show.cast = T.show.cast || [];
-    app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn primary" id="add">Add an actor</button></div>' +
+    app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
       '<p class="muted">Students tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
-        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + '</span></button>';
-      }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Until you add them, students pick a character.</p>');
+        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + '</span></button>';
+      }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: students can start (the whole show, the story, crews) before they have roles. Until then, students pick a character.</p>');
+    document.getElementById('roster').onclick = function () {
+      var d = dialog('<h2>Paste a class list</h2><p class="muted">One student per line, the way they like to be called. “Last, First” is turned around. Names already on the list are skipped. Give them roles later (tap a student).</p>' +
+        '<label class="f">Names<textarea id="nl" style="min-height:240px"></textarea></label><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Add them</button></div>');
+      d.querySelector('#cn').onclick = function () { d.close(); };
+      d.querySelector('#ok').onclick = function () {
+        var have = cast.map(function (c) { return c.name.toLowerCase(); }), n = 0;
+        d.querySelector('#nl').value.split('\n').forEach(function (line) {
+          var nm = line.replace(/\t.*$/, '').trim(); if (!nm) return;
+          var m = nm.match(/^([^,]+),\s*(.+)$/); if (m) nm = m[2] + ' ' + m[1];
+          if (have.indexOf(nm.toLowerCase()) >= 0) return;
+          have.push(nm.toLowerCase()); cast.push({ id: uid('a'), name: nm, chars: [], photo: '', access: Object.assign({}, T.DEF_ACCESS) }); n++;
+        });
+        if (!n) { d.close(); return; }
+        save(n + ' students added').then(function () { d.close(); castPage(); });
+      };
+    };
     document.getElementById('add').onclick = function () { editActor(null); };
     app.querySelectorAll('.person').forEach(function (b) { b.onclick = function () { editActor(cast.find(function (c) { return c.id === b.dataset.id; })); }; });
   }
@@ -288,7 +304,7 @@
         return '<label class="switch"><span>' + T.chip(c.id) + '</span><input type="checkbox" value="' + c.id + '"' + (a.chars.indexOf(c.id) >= 0 ? ' checked' : '') + '></label>';
       }).join('') + '</div>' +
       '<p style="margin-top:14px"><b>Practice Lines for this actor</b></p>' +
-      '<div class="switch"><span>My line on the screen</span>' + seg('show', [['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']]) + '</div>' +
+      '<div class="switch"><span>My line on the screen</span>' + seg('show', [['auto', 'Fade'], ['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']]) + '</div>' +
       sw('echo', 'Echo first (the app says the line, then the actor repeats it)') +
       sw('didIt', '“I did it” button instead of the microphone (AAC, sign, or no mic)') +
       sw('sayForMe', 'Allow “Say it for me”') +
@@ -305,7 +321,6 @@
       a.name = d.querySelector('#nm').value.trim();
       a.chars = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return x.value; });
       if (!a.name) { T.toast('Type a name.'); return; }
-      if (!a.chars.length) { T.toast('Pick at least one character.'); return; }
       var i = cast.findIndex(function (c) { return c.id === a.id; }); if (i >= 0) cast[i] = a; else cast.push(a);
       save().then(function () { d.close(); castPage(); if (T.me && T.me.id === a.id) T.setMe({ cast: a.id }); });
     };
@@ -319,23 +334,27 @@
       var s = T.sceneById(m.scene), song = m.song && T.songById(m.song);
       return '<th title="' + esc('Scene ' + s.num + ' · ' + (song ? song.title : 'talking')) + '">' + s.num + '<br>' + (song ? '🎵' : '🗣️') + '</th>';
     }).join('');
-    app.innerHTML = '<p class="muted">Tap a box to put a character on stage for that moment (🗣️ talking, 🎵 a song). The minutes row is how long each talking part takes; song lengths come from the tracks.</p>' +
+    app.innerHTML = '<p class="muted">Tap a box to put a character on stage for that moment (🗣️ talking, 🎵 a song). <b>★ Big number</b>: everyone in the ensemble and every small role is on stage for that song; tap a box to take someone off (a costume change). The minutes row is how long each talking part takes; song lengths come from the tracks.</p>' +
       '<div class="onstage"><table><thead><tr><th>Scene</th>' + head + '</tr></thead><tbody>' +
+      '<tr><th title="Everyone in the ensemble and every small role joins">Big number</th>' + O.moments.map(function (m, j) { return '<td>' + (m.song ? '<button data-big="' + j + '" aria-pressed="' + !!m.big + '" aria-label="Big number">' + (m.big ? '★' : '') + '</button>' : '') + '</td>'; }).join('') + '</tr>' +
       '<tr><th>Minutes</th>' + O.moments.map(function (m, j) { return '<td>' + (m.song ? '<span class="muted">' + Math.round(T.songMinutes(T.songById(m.song))) + '</span>' : '<input inputmode="decimal" data-min="' + j + '" value="' + (m.minutes || 1) + '" aria-label="Minutes">') + '</td>'; }).join('') + '</tr>' +
       O.characters.map(function (c) {
         return '<tr style="--c:' + T.color(c.id) + '"><th>' + T.chip(c.id) + '</th>' + O.moments.map(function (m, j) {
-          var on = m.on === '*' || m.on.indexOf(c.id) >= 0;
+          var on = T.onFor(m, c.id);
           return '<td><button data-c="' + c.id + '" data-j="' + j + '" aria-pressed="' + on + '" aria-label="' + esc(c.short) + ', moment ' + (j + 1) + '"></button></td>';
         }).join('') + '</tr>';
       }).join('') + '</tbody></table></div><div class="dock"><div class="in"><button class="btn primary" data-save id="sv">Save</button></div></div>';
     app.querySelectorAll('.onstage td button').forEach(function (b) {
       b.onclick = function () {
-        var m = O.moments[+b.dataset.j], id = b.dataset.c;
-        if (m.on === '*') m.on = O.characters.map(function (c) { return c.id; });
-        var i = m.on.indexOf(id); if (i >= 0) m.on.splice(i, 1); else m.on.push(id);
-        b.setAttribute('aria-pressed', i < 0);
+        var m = O.moments[+b.dataset.j], id = b.dataset.c, was = T.onFor(m, id);
+        m.out = (m.out || []).filter(function (x) { return x !== id; });
+        if (was) { if (m.on !== '*' && m.on.indexOf(id) >= 0) m.on.splice(m.on.indexOf(id), 1); if (T.onFor(m, id)) m.out.push(id); }
+        else if (!T.onFor(m, id)) { if (m.on === '*') m.out = m.out.filter(function (x) { return x !== id; }); else m.on.push(id); }
+        if (!m.out.length) delete m.out;
+        b.setAttribute('aria-pressed', T.onFor(m, id));
       };
     });
+    app.querySelectorAll('button[data-big]').forEach(function (b) { b.onclick = function () { var m = O.moments[+b.dataset.big]; m.big = !m.big; if (!m.big) delete m.big; stagePage(); }; });
     app.querySelectorAll('input[data-min]').forEach(function (inp) { inp.onchange = function () { var v = parseFloat(inp.value); if (v > 0) O.moments[+inp.dataset.min].minutes = v; }; });
     document.getElementById('sv').onclick = function () { save(); };
   }

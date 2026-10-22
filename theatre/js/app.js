@@ -82,8 +82,16 @@
     return out;
   }
   T.labelChars = labelChars;
-  function onStage(moment, chars) { return moment.on === '*' || chars.some(function (c) { return moment.on.indexOf(c) >= 0; }); }
-  T.onStage = onStage;
+  /* big group numbers (big: true) take everyone in the ensemble and every small role, so students are on stage as much as possible;
+     out: characters the teacher took off (a costume change, or another reason) */
+  function smallRole(c) { return !!c && (c.group === 'ensemble' || c.group === 'featured' || !!c.small); }
+  function onFor(m, c) {
+    if ((m.out || []).indexOf(c) >= 0) return false;
+    if (m.on === '*' || m.on.indexOf(c) >= 0) return true;
+    return !!m.big && smallRole(charById(c));
+  }
+  function onStage(moment, chars) { return chars.some(function (c) { return onFor(moment, c); }); }
+  T.onStage = onStage; T.onFor = onFor; T.smallRole = smallRole;
   function inScene(scene, chars) { return O().moments.some(function (m) { return m.scene === scene.id && onStage(m, chars); }); }
   /* is this label me? ALL counts when I am in the scene */
   function isMine(label, scene, chars) {
@@ -134,14 +142,14 @@
   T.savePrefs = function () { ls('prefs', T.prefs); applyPrefs(); };
   applyPrefs();
 
-  var DEF_ACCESS = { show: 'line', echo: false, didIt: false, mic: true, sayForMe: true, strict: 'medium' };
+  var DEF_ACCESS = { show: 'auto', echo: false, didIt: false, mic: true, sayForMe: true, strict: 'medium' };
   T.DEF_ACCESS = DEF_ACCESS;
   function setMe(sel) {
     T.me = null;
     if (!sel || !T.show) return;
     if (sel.cast) {
       var c = (T.show.cast || []).find(function (x) { return x.id === sel.cast; });
-      if (c && c.chars && c.chars.length) T.me = { id: c.id, name: c.name, chars: c.chars.slice(), photo: c.photo, access: Object.assign({}, DEF_ACCESS, c.access || {}) };
+      if (c) T.me = { id: c.id, name: c.name, chars: (c.chars || []).slice(), photo: c.photo, access: Object.assign({}, DEF_ACCESS, c.access || {}) };
     } else if (sel.char && charById(sel.char)) {
       var ch = charById(sel.char);
       T.me = { id: null, name: ch.short, chars: [ch.id], access: Object.assign({}, DEF_ACCESS, ls('access') || {}) };
@@ -231,7 +239,7 @@
     if (page === 'teacher') return T.routes.teacher(parts.slice(1));
     if (!T.show) return unlockPage();
     if (!T.me && page !== 'settings') return whoPage();
-    var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage }[page] || (T.studentPages || {})[page];
+    var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage, listen: listenPage }[page] || (T.studentPages || {})[page];
     (fn || homePage)(parts.slice(1));
     app.scrollTop = 0; window.scrollTo(0, 0);
   }
@@ -274,12 +282,12 @@
   /* ---------- Who are you? ---------- */
   function whoPage(args) {
     setBar('Who are you?', T.me ? '#/home' : '');
-    var cast = (T.show.cast || []).filter(function (c) { return c.chars && c.chars.length; });
+    var cast = (T.show.cast || []).filter(function (c) { return c.name; });      // before casting, students are on the list with no role yet
     var pickChars = (args && args[0] === 'character') || !cast.length;
     var h = '<h2>' + (pickChars ? 'Pick your character' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
-        return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + c.chars.map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') + '</span></button>';
+        return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + ((c.chars || []).map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') || 'Role coming soon') + '</span></button>';
       }).join('') + '</div><p class="center"><a href="#/who/character" class="btn quiet">I am not on the list: pick a character</a></p>';
     } else {
       O().groups.forEach(function (g) {
@@ -307,12 +315,12 @@
     app.innerHTML = '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
       '<div><h2 style="margin:0">Hi, ' + esc(T.me.name) + '!</h2><div>' + who + '</div></div></div>' +
       '<div class="tiles">' +
+      tile('#/today', 'sched', 'Today', 'My job in class') +
       tile('#/schedule', 'stage', 'My Schedule', 'When I am on stage') +
       tile('#/lines', 'lines', 'Practice Lines', 'Listen and say my lines') +
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       tile('#/story', 'book', 'The Story', 'What happens') +
-      tile('#/rehearsals', 'sched', 'My Rehearsals', 'When I am called') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
       '</div>' + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
   }
@@ -357,11 +365,17 @@
       return { i: i, it: it, chars: chars, mine: it.type === 'line' && isMine(it.who, scene) };
     });
     var cur = 0, playing = false, gen = 0, hintLevel = 0;
+    /* Fade (the default): each of my lines starts shown, then a hint once I say it without help, then hidden; it steps back when I need help.
+       Prompting with prompt fading is one of the evidence-based practices for autistic learners (NCAEP 2020). Kept on this iPad. */
+    var fadeKey = 'fade:' + (T.me.id || T.me.chars[0]) + ':' + scene.id, fade = ls(fadeKey) || {};
+    var fk = function (x) { return x.it.who + '|' + x.it.text.slice(0, 48); };
+    function showFor(x) { return opt.show === 'auto' ? ['line', 'hint', 'hidden'][fade[fk(x)] || 0] : opt.show; }
+    function fadeStep(x, d) { if (opt.show !== 'auto') return; fade[fk(x)] = Math.max(0, Math.min(2, (fade[fk(x)] || 0) + d)); ls(fadeKey, fade); }
 
     function lineText(x) {
       if (mode === 'run' && x.mine && !x.done) {
-        if (opt.show === 'hidden') return '<span class="muted">(your line)</span>';
-        if (opt.show === 'hint') return '<span class="blank">' + esc(LineCheck.hint(x.it.text, 1)) + '</span>';
+        if (showFor(x) === 'hidden') return '<span class="muted">(your line)</span>';
+        if (showFor(x) === 'hint') return '<span class="blank">' + esc(LineCheck.hint(x.it.text, 1)) + '</span>';
       }
       return esc(x.it.text);
     }
@@ -398,7 +412,7 @@
       var sw = function (k, label) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-k="' + k + '"' + (opt[k] ? ' checked' : '') + '></label>'; };
       o.innerHTML = '<details' + (mode === 'run' ? '' : '') + '><summary class="btn quiet small" style="display:inline-flex">' + icon('gear') + 'Options</summary>' +
         sw('names', 'Say names before each line') + sw('dirs', 'Read stage directions') +
-        (mode === 'run' ? '<div class="switch"><span>My line on the screen</span><div class="seg" data-k="show">' + [['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (opt.show === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>' +
+        (mode === 'run' ? '<div class="switch"><span>My line on the screen</span><div class="seg" data-k="show">' + [['auto', 'Fade'], ['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (opt.show === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>' +
           sw('echo', 'Echo first (the app says it, then I say it)') + (T.canListen ? sw('didIt', 'Use an “I did it” button instead of the microphone') : '') : '') +
         '<div class="switch"><span>Speed</span><div class="seg" data-k="rate">' + [[0.7, 'Slow'], [1, 'Normal'], [1.25, 'Fast']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (+T.prefs.rate === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div></details>';
       o.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { opt[inp.dataset.k] = inp.checked; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt }); var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true; }; });
@@ -440,15 +454,16 @@
     var turnEl = null;
     function closeTurn() { if (turnEl) { turnEl.remove(); turnEl = null; } }
     function myTurn(x, g) {
-      hintLevel = opt.show === 'hint' ? 1 : 0;
+      var sh = showFor(x), helped = false;
+      hintLevel = sh === 'hint' ? 1 : 0;
       var c = color(T.me.chars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || T.me.chars[0]);
       closeTurn();
       turnEl = document.createElement('div'); turnEl.className = 'turn'; turnEl.style.setProperty('--c', c);
       document.body.appendChild(turnEl);
       var spokenLine = LineCheck.spoken(x.it.text);
       function shown() {
-        if (opt.show === 'line' || hintLevel >= 3) return esc(x.it.text);
-        if (hintLevel === 0) return '<span class="muted">Your line! ' + (opt.show === 'hidden' ? 'Can you remember it?' : '') + '</span>';
+        if (sh === 'line' || hintLevel >= 3) return esc(x.it.text);
+        if (hintLevel === 0) return '<span class="muted">Your line! ' + (sh === 'hidden' ? 'Can you remember it?' : '') + '</span>';
         return '<span class="blank">' + esc(LineCheck.hint(x.it.text, hintLevel)) + '</span>';
       }
       function draw(fb, listening) {
@@ -458,7 +473,7 @@
           '<div class="row">' +
           (opt.didIt ? '<button class="btn primary" data-a="did">' + icon('hand') + 'I did it</button>'
             : '<button class="btn primary' + (listening ? ' mic' : '') + '" data-a="mic"' + (listening ? ' disabled' : '') + '>' + icon('mic') + (listening ? 'Listening…' : 'Say it') + '</button><button class="btn" data-a="did">' + icon('hand') + 'I did it</button>') +
-          (opt.show !== 'line' && hintLevel < 3 ? '<button class="btn" data-a="hint">' + icon('bulb') + 'Hint</button>' : '') +
+          (sh !== 'line' && hintLevel < 3 ? '<button class="btn" data-a="hint">' + icon('bulb') + 'Hint</button>' : '') +
           (T.me.access.sayForMe !== false ? '<button class="btn" data-a="for">' + icon('speak') + 'Say it for me</button>' : '') +
           '<button class="btn quiet" data-a="skip">' + icon('skip') + 'Skip</button></div></div>';
         turnEl.querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
@@ -471,10 +486,10 @@
       }
       function act(a) {
         if (g !== gen) return;
-        if (a === 'did') return done('Nice!');
+        if (a === 'did') { fadeStep(x, helped ? 0 : 1); return done('Nice!'); }
         if (a === 'skip') return done();
-        if (a === 'hint') { hintLevel = Math.min(3, hintLevel + 1); return draw(); }
-        if (a === 'for') { Speech.stop(); return Speech.say(spokenLine, x.chars[0] || T.me.chars[0]).then(function () { if (g === gen) done(); }); }
+        if (a === 'hint') { helped = true; hintLevel = Math.min(3, hintLevel + 1); return draw(); }
+        if (a === 'for') { fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || T.me.chars[0]).then(function () { if (g === gen) done(); }); }
         if (a === 'mic') {
           Speech.stop();
           draw('', true);
@@ -482,9 +497,10 @@
             if (g !== gen) return;
             var best = { verdict: 'silent', score: 0 };
             alts.forEach(function (h) { var r = LineCheck.check(x.it.text, h, { strictness: opt.strict, keyWords: x.it.keyWords }); if (r.score > best.score || best.verdict === 'silent') best = r; });
-            if (best.verdict === 'pass') { chime(true); draw('<div class="fb pass">' + sym('🎉') + 'You got it!</div>'); setTimeout(function () { done(); }, 1100); return; }
-            if (best.verdict === 'close') { hintLevel = Math.max(hintLevel, 1); return draw('<div class="fb close">So close! You missed: ' + esc(best.missing.join(', ') || 'a word') + (best.flipped ? ' (listen for “not”)' : '') + '</div>'); }
+            if (best.verdict === 'pass') { fadeStep(x, helped ? 0 : 1); chime(true); draw('<div class="fb pass">' + sym('🎉') + 'You got it!</div>'); setTimeout(function () { done(); }, 1100); return; }
+            if (best.verdict === 'close') { helped = true; hintLevel = Math.max(hintLevel, 1); return draw('<div class="fb close">So close! You missed: ' + esc(best.missing.join(', ') || 'a word') + (best.flipped ? ' (listen for “not”)' : '') + '</div>'); }
             if (best.verdict === 'silent') return draw('<div class="fb silent">I did not hear you. Tap Say it and try again.</div>');
+            helped = true; if (sh === 'hidden') fadeStep(x, -1);
             hintLevel = Math.min(3, hintLevel + 1);
             draw('<div class="fb miss">Not quite. Here is a hint. Try again!</div>');
           });
@@ -562,6 +578,7 @@
   }
   function schedulePage() {
     setBar('My Schedule', '#/home');
+    if (!T.me.chars.length) { app.innerHTML = '<div class="card"><p>' + sym('🎭') + 'Your schedule for the show appears here when your teacher gives you your role.</p><p><a class="btn primary" href="#/today">See what to do today</a></p></div>'; return; }
     var list = buildSchedule(T.me.chars);
     var view = ls('schedView') || 'steps', at = 0;
     function draw() {
@@ -598,7 +615,7 @@
       return '<a class="tile" style="min-height:110px;align-items:flex-start;text-align:left" href="#/song/' + x.song.id + '"><b>' + sym('🎵') + esc(x.song.title) + '</b>' +
         '<span>Scene ' + x.scene.num + ' · ' + (x.sing ? '<span class="tag">You sing</span>' : x.on ? 'You are on stage' : 'Not in this one') + (t && (t.performance || t.rehearsal) ? '' : ' · no track yet') + '</span></a>';
     };
-    app.innerHTML = '<h2>My songs</h2><div class="grid">' + (mine.map(row).join('') || '<p>No songs for you. Enjoy the show!</p>') + '</div>' +
+    app.innerHTML = '<div class="row" style="margin-bottom:12px"><h2 class="grow" style="margin:0">My songs</h2><a class="btn primary" href="#/listen">' + icon('play') + 'Play the whole show</a></div><div class="grid">' + (mine.map(row).join('') || '<p>No songs for you. Enjoy the show!</p>') + '</div>' +
       (rest.length ? '<details style="margin-top:20px"><summary class="btn quiet">The other songs</summary><div class="grid" style="margin-top:12px">' + rest.map(row).join('') + '</div></details>' : '');
   }
   function songPage(args) {
@@ -615,7 +632,7 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!(mel && mel.notes && mel.notes.length) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
-      '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>';
+      '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     if (!(has.perf || has.guide)) return;
     var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: (mel && mel.offset) || 0 };
     var ctx = audioCtx();
@@ -689,6 +706,52 @@
     T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); });
   }
 
+  /* ---------- Listen to the whole show ----------
+     Every song in show order, again and again, with the singers (rehearsal tracks) or band only. Hearing the show many times makes it familiar and
+     predictable (and gives students who learn language in whole phrases, such as many with echolalia, the exact phrases to learn).
+     An <audio> element, so it keeps playing with the iPad's screen off. */
+  function listenPage() {
+    setBar('Play the whole show', '#/songs');
+    var tr = T.show.tracks || {}, st = Object.assign({ singers: true, repeat: true }, ls('listenOpts') || {});
+    var list = O().songs.filter(function (s) { var t = tr[s.id]; return t && (t.rehearsal || t.performance); });
+    if (!list.length) { app.innerHTML = '<div class="card"><p>Your teacher has not added the tracks yet.</p></div>'; return; }
+    var at = 0, url = null, audio = new Audio(), alive = true;
+    audio.preload = 'auto';
+    function kindFor(s) { var t = tr[s.id]; return st.singers ? (t.rehearsal ? 'rehearsal' : 'performance') : (t.performance ? 'performance' : 'rehearsal'); }
+    function lyricsFor(s) {
+      var scene = sceneById(s.scene), src = scene && scriptScene(scene), item = src && src.items.find(function (it) { return it.type === 'song' && it.num === s.num; });
+      return item && item.lyrics.length ? item.lyrics.map(function (l) { var mine = l.who && isMine(l.who, scene); return '<div class="lyric' + (mine ? ' mine' : '') + '">' + esc(l.text) + '</div>'; }).join('') : '<p class="muted">No lyrics yet.</p>';
+    }
+    function load(i, autoplay) {
+      at = (i + list.length) % list.length; draw();
+      var s = list[at], k = kindFor(s);
+      Store.getTrack(T.key, s.id, k, tr[s.id][k].ver).then(function (b) {
+        if (!alive || list[at] !== s) return;
+        if (url) URL.revokeObjectURL(url);
+        url = URL.createObjectURL(new Blob([b], { type: 'audio/mpeg' }));
+        audio.src = url; if (autoplay) audio.play().catch(function () {});
+      }).catch(function () { toast('That track would not load.'); });
+    }
+    audio.onended = function () { if (at < list.length - 1 || st.repeat) load(at + 1, true); };
+    audio.onplay = audio.onpause = function () { var b = document.getElementById('lp'); if (b) { b.innerHTML = icon(audio.paused ? 'play' : 'pause'); b.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); } };
+    function draw() {
+      var s = list[at], scene = sceneById(s.scene);
+      app.innerHTML = '<div class="card center"><p class="muted">Song ' + (at + 1) + ' of ' + list.length + ' · Scene ' + scene.num + '</p><h2>' + sym('🎵') + esc(s.title) + '</h2>' +
+        '<div class="row" style="justify-content:center"><button class="round" id="lb" aria-label="Last song">' + icon('prev') + '</button><button class="round big" id="lp" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="round" id="ln" aria-label="Next song">' + icon('next') + '</button></div>' +
+        '<label class="switch"><span>With the singers</span><input type="checkbox" data-k="singers"' + (st.singers ? ' checked' : '') + '></label>' +
+        '<label class="switch"><span>Start again after the last song</span><input type="checkbox" data-k="repeat"' + (st.repeat ? ' checked' : '') + '></label></div>' +
+        '<div class="card"><div class="lyrics">' + lyricsFor(s) + '</div></div>' +
+        '<div class="card"><h3>All the songs</h3>' + list.map(function (x, i) { return '<button class="btn quiet small" style="display:flex;width:100%;justify-content:flex-start' + (i === at ? ';background:var(--hi)' : '') + '" data-i="' + i + '">' + (i + 1) + '. ' + esc(x.title) + '</button>'; }).join('') + '</div>';
+      document.getElementById('lp').onclick = function () { if (!audio.src) return load(at, true); if (audio.paused) audio.play(); else audio.pause(); };
+      document.getElementById('lb').onclick = function () { load(at - 1, !audio.paused || !audio.src); };
+      document.getElementById('ln').onclick = function () { load(at + 1, !audio.paused || !audio.src); };
+      app.querySelectorAll('[data-i]').forEach(function (b) { b.onclick = function () { load(+b.dataset.i, true); }; });
+      app.querySelectorAll('input[data-k]').forEach(function (c) { c.onchange = function () { st[c.dataset.k] = c.checked; ls('listenOpts', st); if (c.dataset.k === 'singers') { var t = audio.currentTime, playing = !audio.paused; load(at, playing); audio.addEventListener('loadedmetadata', function f() { audio.removeEventListener('loadedmetadata', f); try { audio.currentTime = t; } catch (e) {} }); } }; });
+    }
+    draw();
+    T.cleanup.push(function () { alive = false; audio.pause(); if (url) URL.revokeObjectURL(url); });
+  }
+
   /* ---------- My Costumes ---------- */
   function costumesPage() {
     setBar('My Costumes', '#/home');
@@ -713,7 +776,7 @@
   /* ---------- The Story ---------- */
   function storyPage() {
     setBar('The Story', '#/home');
-    var who = function (s) { var ids = []; O().moments.forEach(function (m) { if (m.scene !== s.id) return; (m.on === '*' ? O().characters.map(function (c) { return c.id; }) : m.on).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); }); return ids; };
+    var who = function (s) { return O().characters.map(function (c) { return c.id; }).filter(function (id) { return O().moments.some(function (m) { return m.scene === s.id && onFor(m, id); }); }); };
     app.innerHTML = '<h2>' + sym('📖') + esc(O().title) + '</h2><div class="row noprint" style="margin-bottom:12px"><button class="btn" id="readall">' + icon('speak') + 'Read it all to me</button><a class="btn quiet" href="#who-is-who">Who is who</a></div>' +
       O().scenes.map(function (s) {
         var ids = who(s), mine = ids.filter(function (id) { return T.me.chars.indexOf(id) >= 0; });
