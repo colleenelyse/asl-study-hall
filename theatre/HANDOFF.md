@@ -153,6 +153,12 @@ Limit to know: anyone with the cast password could overwrite another student's r
 
 Notes from iPads now go through `T.noteHandlers[type]` (conflict, video, audition, shop); a page only clears the notes it knows.
 
+**Theatre bookings** (Production › Calendar & crew): the theatre's name and its other bookings, pasted one per line ("12/8/2026 Jazz Band Concert 7:30pm",
+ranges work). Shown as ⚠️ on the Week view, the day's plan and the call board (Colleen: watch for our set in someone's way, or theirs in ours, around tech week).
+Colleen's plan (2026-10-21): a show each semester in the **Reber Center** (North Campus): fall ends in December (finals about Dec 15–17), spring ends in May
+(finals about May 25–27; seniors' last day May 19). Performances the week before finals or finals week. The app holds one show at a time, so
+"Start a new show" for spring is still to build.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

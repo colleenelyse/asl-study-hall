@@ -14,6 +14,7 @@
    only on Run-through, Tech, Dress and Show days, or when the teacher calls them by hand.
    T.show.production = { term: { first, last, off [dates] }, shown [Monday dates], stations [{ id, name, desc }],
      days { date: { groups [{ id, focus, scenes, songs, everyone, where }], assign { actor: 'g:<group>' | 'st:<station>' | 'app' | 'custom' }, tasks { actor: text }, notes } },
+     bookings [{ id, date, text }] (other events in our theatre: concerts, other shows; Colleen: watch for the set being in someone's way, or theirs in ours), venueName,
      crewHome { actor: station }, crewExempt [actor ids] (unset = actors who play a lead),
      conflicts [{ id, actor, date, why, from }], attendance { date: { actor: here|late|absent|excused } } }
    A conflict is a class day the student will be away; students send them from Today as encrypted notes (POST /theatre/api/notes). */
@@ -81,6 +82,24 @@
     return { dates: out.sort(), bad: bad };
   }
   T.pasteDates = pasteDates;
+  /* "12/8/2026 Jazz Band Concert 7:30pm" -> { date, text }; ranges ("Dec 10 - Dec 12 One-Acts") give one booking per day */
+  var DATE_RE = /(\d{4}-\d{1,2}-\d{1,2}|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?)/i;
+  function pasteBookings(text, near) {
+    var out = [], bad = [];
+    text.split('\n').forEach(function (line) {
+      line = line.trim(); if (!line) return;
+      var m = line.match(DATE_RE); if (!m) { bad.push(line); return; }
+      var rest = line.slice(m.index + m[0].length), m2 = rest.match(new RegExp('^\\s*(?:-|–|—|to|through)\\s*' + DATE_RE.source, 'i'));
+      var range = m[0] + (m2 ? ' - ' + m2[1] : ''), what = (line.slice(0, m.index) + ' ' + (m2 ? rest.slice(m2[0].length) : rest)).replace(/^[\s:,–—-]+|[\s:,–—-]+$/g, '').replace(/\s+/g, ' ');
+      var r = pasteDates(range, near);
+      if (!r.dates.length) { bad.push(line); return; }
+      r.dates.forEach(function (d) { out.push({ date: d, text: what || 'Booked' }); });
+    });
+    return { list: out, bad: bad };
+  }
+  T.pasteBookings = pasteBookings;
+  function bookingsOn(s) { return (P().bookings || []).filter(function (b) { return b.date === s; }); }
+  var bookingLine = function (s, cls) { var l = bookingsOn(s); return l.length ? '<div class="' + (cls || 'small') + '" style="color:var(--warn)">⚠️ ' + esc(P().venueName || 'In our theatre') + ': ' + l.map(function (b) { return esc(b.text); }).join(' · ') + '</div>' : ''; };
 
   /* ---------- who does what ---------- */
   function cast() { return (T.show.cast || []).filter(function (a) { a.chars = a.chars || []; return a.name; }); }      // students with no role yet are here too
@@ -227,6 +246,11 @@
       (t.off.length ? '<details><summary class="btn quiet small">' + t.off.length + ' days off saved</summary><p class="muted small">Tap one to make it a class day again.</p><div class="row">' + t.off.map(function (s) { return '<button class="btn small" data-off="' + s + '">' + esc(dayName(s, true)) + ' ✕</button>'; }).join('') + '</div></details>' : '') +
       '<p>' + (n ? '<b>' + n + ' class days</b>, about ' + Math.ceil(n / 5) + ' weeks' : 'Set the first and last day.') + '</p>' +
       '<div class="row end"><button class="btn primary" id="tsv" data-save>Save the calendar</button></div></div>' +
+      '<div class="card"><h2>Bookings in our theatre</h2><p class="muted">Concerts, other shows, assemblies: anything that needs the stage. They show as ⚠️ on those days, so the set is never in someone’s way (or theirs in ours) during tech week.</p>' +
+      '<label class="f">Our theatre<input id="vn" value="' + esc(p.venueName || '') + '" placeholder="e.g. Reber Center"></label>' +
+      '<label class="f">Paste bookings, one per line<textarea id="bk" placeholder="12/8/2026 Jazz Band Concert 7:30pm&#10;Dec 3 Fanfares and Carols 7pm"></textarea></label><p class="err" id="bm"></p>' +
+      ((p.bookings || []).length ? '<details><summary class="btn quiet small">' + p.bookings.length + ' bookings saved</summary>' + p.bookings.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).map(function (b) { return '<div class="switch"><span><b>' + esc(dayName(b.date, true)) + '</b> ' + esc(b.text) + '</span><button class="btn small quiet" data-rmbk="' + b.id + '">Remove</button></div>'; }).join('') + '</details>' : '') +
+      '<div class="row end"><button class="btn primary" id="bksv" data-save>Save bookings</button></div></div>' +
       '<div class="card"><h2>Crew stations</h2><p class="muted">Jobs for students who are not on stage that day. Anyone without one practices in the app.</p>' +
       (p.stations.length ? p.stations.map(function (st) { return '<div class="switch"><span><b>' + esc(st.name) + '</b> <span class="muted small">' + esc(st.desc || '') + '</span></span><button class="btn small quiet" data-rmst="' + st.id + '">Remove</button></div>'; }).join('') : '<p class="muted">None yet.</p>') +
       '<div class="row"><label class="f grow" style="margin:0">Station<input id="sn" placeholder="e.g. Props"></label><label class="f grow" style="margin:0">What to do (optional)<input id="sd" placeholder="e.g. paint the lockers"></label><button class="btn" id="sadd" data-save>Add</button></div></div>' +
@@ -238,6 +262,13 @@
   }
   function wireSetup() {
     var p = P();
+    document.getElementById('bksv').onclick = function () {
+      var r = pasteBookings(document.getElementById('bk').value, p.term.first || today());
+      p.venueName = document.getElementById('vn').value.trim();
+      p.bookings = (p.bookings || []).concat(r.list.filter(function (b) { return !(p.bookings || []).some(function (x) { return x.date === b.date && x.text === b.text; }); }).map(function (b) { return { id: uid('b'), date: b.date, text: b.text.slice(0, 120) }; }));
+      T.saveShow(r.list.length ? r.list.length + ' bookings added' : 'Saved').then(function () { tab = 'setup'; overview(); if (r.bad.length) document.getElementById('bm').textContent = 'I could not find a date in: ' + r.bad.join(' · '); });
+    };
+    app.querySelectorAll('[data-rmbk]').forEach(function (b) { b.onclick = function () { p.bookings = p.bookings.filter(function (x) { return x.id !== b.dataset.rmbk; }); T.saveShow('Removed').then(overview); }; });
     document.getElementById('tsv').onclick = function () {
       var a = document.getElementById('t1').value, b = document.getElementById('t2').value, m = document.getElementById('tm');
       if (!a || !b || b < a) { m.textContent = 'Pick the first day and a last day after it.'; return; }
@@ -279,7 +310,7 @@
       if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
       var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0, trip: 0 };
       people.forEach(function (a) { n[task(a, s).type]++; });
-      return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' +
+      return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' + bookingLine(s) +
         (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +
         '<div class="muted small">' + (n.trip ? n.trip + ' on the trip · ' : '') + n.stage + ' on stage · ' + n.crew + ' crew · ' + n.practice + ' practicing' + (n.custom ? ' · ' + n.custom + ' other' : '') + (n.away ? ' · <span class="err">' + n.away + ' away</span>' : '') + '</div></a>';
     }).join('');
@@ -398,7 +429,7 @@
     var O = T.O(), p = P();
     function draw() {
       var people = cast();
-      app.innerHTML = (isClassDay(s) ? '' : '<p class="card err">This is not a class day on your school calendar.</p>') +
+      app.innerHTML = (isClassDay(s) ? '' : '<p class="card err">This is not a class day on your school calendar.</p>') + (bookingsOn(s).length ? '<div class="card">' + bookingLine(s, '') + '</div>' : '') +
         '<p class="muted">Each group works on its own scenes or songs (Acting, Vocals, Dance…). Every student goes to the first group they are in; big group numbers bring the whole ensemble and the small roles. Anyone left over gets crew or practice in the app.</p>' +
         r.groups.map(function (g, gi) {
           var n = people.filter(function (a) { return task(a, s).group === g.id; }).length;
@@ -529,7 +560,7 @@
           groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
         });
         order.sort(function (x, y) { var rank = function (k) { return /^📱|^🙋|^🛠️|^📝/.test(k) ? 1 : 0; }; return rank(x) - rank(y); });
-        return '<div class="card"><h3>' + esc(dayName(s)) + '</h3>' + (r && r.notes ? '<p class="muted">' + esc(r.notes) + '</p>' : '') +
+        return '<div class="card"><h3>' + esc(dayName(s)) + '</h3>' + bookingLine(s) + (r && r.notes ? '<p class="muted">' + esc(r.notes) + '</p>' : '') +
           order.map(function (k) { return '<p><b>' + esc(k) + ':</b> ' + groups[k].map(esc).join(' · ') + '</p>'; }).join('') + '</div>';
       }).join('') : '<p class="center muted">No class days this week.</p>');
   }
