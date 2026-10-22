@@ -3,6 +3,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
+  var sym = function (x) { return '<span class="sym" aria-hidden="true">' + x + '</span> '; };
   var PDFJS = 'https:' + '//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -431,7 +432,8 @@
   }
 
   /* ---------- Songs & tracks ---------- */
-  function songsPage() {
+  function songsPage(args) {
+    if (args && args[0] === 'cues' && T.songById(args[1])) return cuesPage(args[1]);
     T.setBar('Songs & tracks', '#/teacher');
     var O = T.O(), tr = T.show.tracks = T.show.tracks || {}, mel = T.show.melody = T.show.melody || {};
     var links = O.links || {};
@@ -446,7 +448,8 @@
         };
         var m = mel[s.id];
         return '<tr><td><b>#' + esc(s.num) + '</b> ' + esc(s.title) + '</td>' + cell('rehearsal') + cell('performance') +
-          '<td>' + (m ? '<span class="tag">' + m.notes.length + ' notes</span> ' : '') + '<button class="btn small" data-mel="' + s.id + '"' + (t.rehearsal && t.performance ? '' : ' disabled title="Upload both tracks first"') + '>' + (m ? 'Make again' : 'Make melody line') + '</button></td></tr>';
+          '<td>' + (m ? '<span class="tag">' + m.notes.length + ' notes</span> ' : '') + '<button class="btn small" data-mel="' + s.id + '"' + (t.rehearsal && t.performance ? '' : ' disabled title="Upload both tracks first"') + '>' + (m ? 'Make again' : 'Make melody line') + '</button>' +
+          ' <a class="btn small" href="#/teacher/songs/cues/' + s.id + '">' + (T.show.underscore && T.show.underscore[s.id] ? 'Lines over the music ✓' : 'Lines over the music') + '</a></td></tr>';
       }).join('') + '</tbody></table><p id="st" class="muted" role="status"></p>';
     var st = document.getElementById('st');
     app.querySelectorAll('input[type=file][data-s]').forEach(function (inp) {
@@ -463,7 +466,7 @@
               return save('Track saved');
             });
           });
-        }).then(function () { songsPage(); }).catch(function (e) { st.textContent = ''; T.toast(e.message || 'That file would not open as audio.', 4000); });
+        }).then(function () { if (location.hash === '#/teacher/songs') songsPage(); }).catch(function (e) { st.textContent = ''; T.toast(e.message || 'That file would not open as audio.', 4000); });
       };
     });
     app.querySelectorAll('button[data-mel]').forEach(function (b) {
@@ -483,6 +486,75 @@
           .catch(function (e) { b.disabled = false; st.textContent = ''; T.toast(e.message || 'Could not make the melody line.', 4000); });
       };
     });
+  }
+
+  /* lines spoken over a song's music: which lines, and when in the track. Found from the guide vocals (the voices left when the band track is
+     taken away, spoken stretches matched to the lines in order), or tapped by hand while the track plays; nudge, test, save. Times are on the
+     performance track's clock. */
+  function cuesPage(songId) {
+    var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
+    T.setBar('Lines over the music', '#/teacher/songs');
+    if (!src) { app.innerHTML = '<p class="card">Import the script first.</p>'; return; }
+    if (!tr.performance && !tr.rehearsal) { app.innerHTML = '<p class="card">Upload this song’s tracks first.</p>'; return; }
+    var U = T.show.underscore = T.show.underscore || {}, saved = U[songId] || { kind: 'performance', cues: [] };
+    var kind = tr.performance ? 'performance' : 'rehearsal', mel = T.show.melody && T.show.melody[songId], off = (mel && mel.offset) || 0;
+    var lines = src.items.filter(function (it) { return it.type === 'line'; }), times = {}, ticked = {};
+    lines.forEach(function (it) { var k = T.lineKey(it), c = saved.cues.find(function (x) { return x.key === k; }); if (c) { ticked[k] = 1; times[k] = saved.kind === kind ? c.t : c.t + (saved.kind === 'performance' ? off : -off); } else if (it.overMusic) ticked[k] = 1; });
+    var audio = new Audio(), url = null, loaded = false;
+    var load = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { if (url) URL.revokeObjectURL(url); url = URL.createObjectURL(new Blob([b])); audio.src = url; loaded = true; }); };
+    T.cleanup.push(function () { audio.pause(); if (url) URL.revokeObjectURL(url); });
+    function draw(msg) {
+      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + ' · Scene ' + scene.num + '</h2><p class="muted">Tick the lines that are spoken while this song’s music plays. Then let the app find them in the guide vocals, or play the track and tap <b>Now</b> as each line starts. In Practice Lines the track then plays inside the run, and these lines come on cue.</p>' +
+        '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div></div>' +
+        '<div class="card"><div class="row"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="grow">' + T.clock(audio.currentTime) + '</b>' +
+        '<button class="btn primary" id="now">Now: next line</button></div><p class="muted small">Tapping uses the band track’s clock. Space = Now.</p></div>' +
+        '<div class="card">' + lines.map(function (it, i) {
+          var k = T.lineKey(it), on = !!ticked[k], t = times[k];
+          return '<div class="switch" style="flex-wrap:wrap"><label style="display:flex;gap:10px;align-items:center;flex:1;cursor:pointer"><input type="checkbox" data-tick="' + i + '"' + (on ? ' checked' : '') + ' style="width:26px;height:26px"><span><b>' + esc(it.who) + '</b> ' + esc(it.text.slice(0, 90)) + (it.text.length > 90 ? '…' : '') + (it.overMusic ? ' <span class="tag">in the music pages</span>' : '') + '</span></label>' +
+            (on ? '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.25">−</button><b style="min-width:58px;text-align:center">' + (t == null ? '—' : t.toFixed(2) + ' s') + '</b><button class="btn small" data-nudge="' + i + '|0.25">+</button><button class="btn small" data-test="' + i + '"' + (t == null ? ' disabled' : '') + '>Test</button></span>' : '') + '</div>';
+        }).join('') + '</div><div class="dock"><div class="in"><button class="btn quiet" id="clr">Clear all times</button><button class="btn primary" id="sv" data-save>Save</button></div></div>';
+      var $ = function (id) { return document.getElementById(id); };
+      $('pl').onclick = function () { (loaded ? Promise.resolve() : load(kind)).then(function () { if (audio.paused) audio.play(); else audio.pause(); draw(); }); };
+      $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
+      $('now').onclick = tapNow;
+      $('clr').onclick = function () { times = {}; draw(); };
+      $('sv').onclick = function () {
+        var cues = lines.filter(function (it) { var k = T.lineKey(it); return ticked[k] && times[k] != null; }).map(function (it) { var k = T.lineKey(it); return { key: k, t: +(kind === 'performance' ? times[k] : times[k] - off).toFixed(2) }; });
+        if (cues.length) U[songId] = { kind: 'performance', cues: cues }; else delete U[songId];
+        save(cues.length + ' lines over the music saved');
+      };
+      $('find').onclick = find;
+      app.querySelectorAll('[data-tick]').forEach(function (b) { b.onchange = function () { var k = T.lineKey(lines[+b.dataset.tick]); if (b.checked) ticked[k] = 1; else { delete ticked[k]; delete times[k]; } draw(); }; });
+      app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var x = b.dataset.nudge.split('|'), k = T.lineKey(lines[+x[0]]); times[k] = Math.max(0, (times[k] || 0) + +x[1]); draw(); }; });
+      app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var k = T.lineKey(lines[+b.dataset.test]); (loaded ? Promise.resolve() : load(kind)).then(function () { audio.currentTime = Math.max(0, times[k] - 2); audio.play(); draw(); }); }; });
+    }
+    function tapNow() {
+      var next = lines.find(function (it) { var k = T.lineKey(it); return ticked[k] && times[k] == null; });
+      if (!next || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every ticked line has a time.'); return; }
+      times[T.lineKey(next)] = +audio.currentTime.toFixed(2); draw();
+    }
+    function find() {
+      var ctx = T.audioCtx(), m = document.getElementById('msg'), want = lines.filter(function (it) { return ticked[T.lineKey(it)]; });
+      if (!want.length) { T.toast('Tick the lines first.'); return; }
+      m.textContent = 'Loading both tracks…';
+      var get = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { return ctx.decodeAudioData(b); }); };
+      Promise.all([get('rehearsal'), get('performance')]).then(function (r) {
+        m.textContent = 'Listening for the spoken lines… (this can take a minute)';
+        return new Promise(function (ok) { setTimeout(ok, 50); }).then(function () {
+          var g = Melody.toMono(r[0]), p = Melody.toMono(r[1]), rate = r[0].sampleRate;
+          var offS = Melody.findOffset(g, p, rate), iso = Melody.isolate(g, p, offS);
+          var regions = Melody.voiceRegions(iso.voice, rate), found = Melody.alignLines(regions, want.map(function (it) { return LineCheck.spoken(it.text).length; }));
+          var n = 0; want.forEach(function (it, i) { if (found[i] != null) { times[T.lineKey(it)] = found[i]; n++; } });
+          if (kind !== 'performance') want.forEach(function (it) { var k = T.lineKey(it); if (times[k] != null) times[k] += offS / rate; });
+          draw('Found ' + n + ' of ' + want.length + ' lines (' + regions.filter(function (x) { return !x.sung; }).length + ' spoken stretches heard). Use Test to check each one, nudge with − and +, then Save.');
+        });
+      }).catch(function (e) { m.textContent = ''; T.toast(e.message || 'Could not read the tracks.', 4000); });
+    }
+    draw();
+    var tick = setInterval(function () { var el = document.getElementById('tm'); if (el) el.textContent = T.clock(audio.currentTime) + ' (' + audio.currentTime.toFixed(1) + ' s)'; }, 200);
+    T.cleanup.push(function () { clearInterval(tick); });
+    var kh = function (e) { if (e.key === ' ' && !/input|textarea/i.test(e.target.tagName)) { e.preventDefault(); tapNow(); } };
+    document.addEventListener('keydown', kh); T.cleanup.push(function () { document.removeEventListener('keydown', kh); });
   }
 
   /* ---------- Passwords & backup ---------- */

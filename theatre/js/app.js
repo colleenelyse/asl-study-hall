@@ -440,6 +440,19 @@
       var chars = it.type === 'line' ? labelChars(it.who).filter(function (c) { return c !== '*'; }) : [];
       return { i: i, it: it, chars: chars, mine: it.type === 'line' && isMine(it.who, scene, myChars) };
     });
+    /* lines spoken over a song's music (Teacher mode › Songs & tracks › Lines over the music): the track plays inside the run and those lines
+       happen on cue without stopping it (Colleen: "lines over the music ... play while the track is also playing") */
+    var songOf = function (it) { return O().songs.find(function (s) { return s.num === it.num; }); };
+    var trackOf = function (song) { var t = song && T.show.tracks && T.show.tracks[song.id]; return t && (t.rehearsal || t.performance) ? t : null; };
+    items.forEach(function (x) {
+      if (x.it.type !== 'song') return;
+      var song = songOf(x.it), u = song && T.show.underscore && T.show.underscore[song.id];
+      x.song = song; x.cues = [];
+      if (u) u.cues.forEach(function (c) { var y = items.find(function (z) { return z.it.type === 'line' && T.lineKey(z.it) === c.key; }); if (y) { y.cuedBy = x.i; x.cues.push({ y: y, t: c.t }); } });
+      x.cueKind = u ? u.kind : 'performance';
+      x.cues.sort(function (a, b) { return a.t - b.t; });
+    });
+    var songStop = null;
     var cur = 0, playing = false, gen = 0, hintLevel = 0;
     /* Fade (the default): each of my lines starts shown, then a hint once I say it without help, then hidden; it steps back when I need help.
        Prompting with prompt fading is one of the evidence-based practices for autistic learners (NCAEP 2020). Kept on this iPad. */
@@ -510,8 +523,8 @@
       if (el) { el.classList.add('now'); el.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' }); }
     }
     function setPP() { var b = document.getElementById('pp'); if (b) { b.innerHTML = icon(playing ? 'pause' : 'play'); b.setAttribute('aria-label', playing ? 'Pause' : 'Play'); } }
-    function pause() { playing = false; gen++; Speech.stop(); if (listen.stop) listen.stop(); closeTurn(); setPP(); }
-    function play() { if (cur >= items.length) cur = 0; if (!visible(cur)) cur = nextIdx(cur); if (items[cur] && items[cur].it.type === 'song') cur = nextIdx(cur); playing = true; setPP(); step(++gen); }
+    function pause() { playing = false; gen++; Speech.stop(); if (listen.stop) listen.stop(); if (songStop) songStop(); closeTurn(); setPP(); }
+    function play() { if (cur >= items.length) cur = 0; if (!visible(cur)) cur = nextIdx(cur); if (items[cur] && items[cur].it.type === 'song' && !trackOf(items[cur].song)) cur = nextIdx(cur); playing = true; setPP(); step(++gen); }
     function jump(i) { var was = playing; pause(); cur = Math.max(0, Math.min(i, items.length - 1)); if (!visible(cur)) cur = nextIdx(cur); mark(); if (was) play(); }
     function advance(g) { if (g !== gen) return; cur = nextIdx(cur); mark(); if (cur >= items.length) { playing = false; setPP(); toast('That is the end of the scene!'); return; } step(g); }
     function step(g) {
@@ -520,17 +533,55 @@
       mark();
       var it = x.it;
       if (it.type === 'dir') return Speech.say(LineCheck.spoken(it.text) || it.text.replace(/[()]/g, ''), null).then(function () { advance(g); });
-      if (it.type === 'song') { playing = false; setPP(); toast('Song time! Open it in My Songs, or tap Next.', 3500); return; }
+      if (it.type === 'song') { if (trackOf(x.song)) return playSong(x, g); playing = false; setPP(); toast('Song time! Open it in My Songs, or tap Next.', 3500); return; }
       if (mode === 'run' && x.mine) return myTurn(x, g);
       var text = LineCheck.spoken(it.text);
       var name = opt.names ? whoName(it.who) + '. ' : '';
       Speech.say(name ? name : '', null).then(function () { return g === gen && Speech.say(text, x.chars[0]); }).then(function () { advance(g); });
     }
 
+    /* ---- a song inside the run: the track plays here, and its lines over the music come on cue ---- */
+    function playSong(x, g) {
+      var t = trackOf(x.song), kind = (ls('runSinger') !== false && t.rehearsal) || !t.performance ? 'rehearsal' : 'performance';
+      var mel = T.show.melody && T.show.melody[x.song.id], off = (mel && mel.offset) || 0;
+      var adj = kind === x.cueKind ? 0 : (x.cueKind === 'performance' ? -off : off);      // the guide track runs `offset` seconds behind the band track
+      var el = app.querySelector('.item[data-i="' + x.i + '"]'), bar = document.createElement('div'); bar.className = 'row noprint songbar'; bar.style.marginTop = '10px';
+      if (el) { var old = el.querySelector('.songbar'); if (old) old.remove(); el.appendChild(bar); }
+      bar.innerHTML = '<span class="muted">Loading the track…</span>';
+      var audio = new Audio(), url = null, timer = null, fired = 0, alive = true, lastCue = x.i;
+      x.cues.forEach(function (c) { lastCue = Math.max(lastCue, c.y.i); });
+      songStop = function () { alive = false; clearInterval(timer); audio.pause(); if (url) URL.revokeObjectURL(url); songStop = null; bar.remove(); };
+      var finish = function () { if (!alive) return; songStop(); if (g !== gen) return; closeTurn(); cur = lastCue; advance(g); };
+      Store.getTrack(T.key, x.song.id, kind, t[kind].ver).then(function (b) {
+        if (!alive || g !== gen) return;
+        url = URL.createObjectURL(new Blob([b])); audio.src = url;
+        bar.innerHTML = '<b class="grow">' + sym('🎵') + '<span id="stime">0:00</span></b>' +
+          (t.rehearsal && t.performance ? '<label class="switch" style="border:0;min-height:0"><span class="small">With the singers</span><input type="checkbox" id="ssing"' + (kind === 'rehearsal' ? ' checked' : '') + '></label>' : '') +
+          '<button class="btn small" id="sskip">' + icon('skip') + 'Skip the song</button>';
+        bar.querySelector('#sskip').onclick = function (e) { e.stopPropagation(); finish(); };
+        var ss = bar.querySelector('#ssing'); if (ss) ss.onchange = function (e) { e.stopPropagation(); ls('runSinger', ss.checked); var at = audio.currentTime; songStop(); x.resumeAt = at; playSong(x, g); };
+        bar.onclick = function (e) { e.stopPropagation(); };
+        audio.onended = finish;
+        audio.onloadedmetadata = function () { if (x.resumeAt) { try { audio.currentTime = x.resumeAt; } catch (e) {} x.resumeAt = 0; } };
+        audio.play().catch(function () { toast('Tap Play to start the song.'); });
+        timer = setInterval(function () {
+          if (!alive) return;
+          var now = audio.currentTime, tm = bar.querySelector('#stime'); if (tm) tm.textContent = T.clock(now) + ' / ' + T.clock(audio.duration || 0);
+          while (fired < x.cues.length && now + adj >= x.cues[fired].t) cue(x.cues[fired++].y);
+        }, 100);
+      }).catch(function () { bar.innerHTML = '<span class="err">The track would not load.</span>'; });
+      function cue(y) {
+        cur = y.i; mark();
+        if (mode === 'run' && y.mine) return myTurn(y, g, true);
+        audio.volume = 0.35;      // the music dips while the line is read
+        Speech.say((opt.names ? whoName(y.it.who) + '. ' : '') + LineCheck.spoken(y.it.text), y.chars[0]).then(function () { audio.volume = 1; });
+      }
+    }
+
     /* ---- my turn ---- */
     var turnEl = null;
     function closeTurn() { if (turnEl) { turnEl.remove(); turnEl = null; } }
-    function myTurn(x, g) {
+    function myTurn(x, g, overMusic) {      // overMusic: during a song; the music keeps going and the run does not wait
       var sh = showFor(x), helped = false, recorded = false;
       var rec = function (ok) { if (recorded || asChar || !T.Progress) return; recorded = true; T.Progress.line(scene.id, x.it, ok); };      // like flashcards: the first try counts
       hintLevel = sh === 'hint' ? 1 : 0;
@@ -560,6 +611,7 @@
         x.done = true;
         var el = app.querySelector('.item[data-i="' + x.i + '"] .text'); if (el) el.innerHTML = esc(x.it.text);
         closeTurn(); if (msg) toast(msg, 1400);
+        if (overMusic) return;
         setTimeout(function () { advance(g); }, msg ? 700 : 0);
       }
       function act(a) {
@@ -586,6 +638,7 @@
         }
       }
       draw();
+      if (overMusic) { if (!opt.didIt) act('mic'); return; }
       if (opt.echo) {
         draw('<div class="fb close">' + sym('👂') + 'Listen, then say it after me.</div>');
         Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g !== gen) return; draw(); if (!opt.didIt) act('mic'); });

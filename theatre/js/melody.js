@@ -178,10 +178,66 @@
     return { stop: function () { nodes.forEach(function (o) { try { o.stop(); } catch (e) {} }); } };
   }
 
+  /* where the voices are, from the isolated voice track: stretches of sound, each marked sung (steady pitch) or spoken (pitch that wanders,
+     or no clear pitch). Used to place the lines spoken over the music (Colleen: "the lines are in the guide vocals"). Times are on the
+     performance track's clock, like the voice itself. */
+  function voiceRegions(voice, rate) {
+    var step = Math.max(1, Math.round(rate / 16000)), r = rate / step, x = new Float32Array(Math.floor(voice.length / step));
+    for (var i = 0, j = 0; j < x.length; i += step, j++) x[j] = voice[i];
+    var hop = Math.round(r * 0.02), size = Math.round(r * 0.04), fr = [];
+    var all = 0; for (i = 0; i < x.length; i += 8) all += x[i] * x[i]; all = Math.sqrt(all / Math.max(1, x.length / 8));
+    var gate = all * 0.45;
+    for (var o = 0; o + size < x.length; o += hop) {
+      var f = x.subarray(o, o + size), e = 0; for (i = 0; i < f.length; i += 2) e += f[i] * f[i]; e = Math.sqrt(e / (f.length / 2));
+      var hz = e > gate ? yin(f, r, 75, 900, 0.2) : 0;
+      fr.push({ on: e > gate, midi: hz ? 69 + 12 * Math.log2(hz / 440) : 0 });
+    }
+    var dt = hop / r, regions = [], k = 0;
+    while (k < fr.length) {
+      if (!fr[k].on) { k++; continue; }
+      var s0 = k, last = k;
+      while (k < fr.length && (fr[k].on || k - last < Math.round(0.3 / dt))) { if (fr[k].on) last = k; k++; }
+      var len = (last - s0 + 1) * dt; if (len < 0.25) continue;
+      var voiced = 0, steady = 0, prev = 0;
+      for (var q = s0; q <= last; q++) { var m = fr[q].midi; if (m) { voiced++; if (prev && Math.abs(m - prev) < 0.6) steady++; } prev = m; }
+      var sung = len > 0.6 && voiced / (last - s0 + 1) > 0.55 && steady / Math.max(1, voiced) > 0.6;
+      regions.push({ s: +(s0 * dt).toFixed(2), e: +((last + 1) * dt).toFixed(2), sung: sung });
+    }
+    return regions;
+  }
+  /* lines (in script order, with their length in characters) onto the spoken stretches, in order: each line takes one to three stretches
+     in a row, stretches can be left over (shouts, other talk), and the match follows how long each line should take to say */
+  function alignLines(regions, lens) {
+    var R = regions.filter(function (g) { return !g.sung; }), n = lens.length, m = R.length, INF = 1e9;
+    if (!n) return [];
+    var exp = lens.map(function (c) { return 0.3 + c / 14; }), SKIP = 0.6;
+    var f = [], back = [];
+    for (var i = 0; i <= n; i++) { f.push(new Array(m + 1).fill(INF)); back.push(new Array(m + 1).fill(null)); }
+    f[0][0] = 0;
+    for (var j = 1; j <= m; j++) { f[0][j] = f[0][j - 1] + SKIP; back[0][j] = [0, j - 1, 'skip']; }
+    for (i = 1; i <= n; i++) {
+      for (j = 1; j <= m; j++) {
+        if (f[i][j - 1] + SKIP < f[i][j]) { f[i][j] = f[i][j - 1] + SKIP; back[i][j] = [i, j - 1, 'skip']; }
+        for (var w = 1; w <= 3 && j - w >= 0; w++) {
+          var a = R[j - w], b = R[j - 1], dur = b.e - a.s, gaps = 0;
+          for (var q = j - w; q < j - 1; q++) gaps += R[q + 1].s - R[q].e;
+          if (gaps > 1.2) continue;
+          var c = f[i - 1][j - w] + Math.abs(dur - exp[i - 1]) / Math.max(exp[i - 1], 0.8) + gaps * 0.5;
+          if (c < f[i][j]) { f[i][j] = c; back[i][j] = [i - 1, j - w, 'line', a.s]; }
+        }
+      }
+    }
+    var bj = 0; for (j = 0; j <= m; j++) if (f[n][j] < f[n][bj]) bj = j;
+    if (f[n][bj] >= INF) return lens.map(function () { return null; });
+    var out = new Array(n), ci = n, cj = bj;
+    while (ci > 0 || cj > 0) { var bk = back[ci][cj]; if (!bk) break; if (bk[2] === 'line') out[ci - 1] = bk[3]; ci = bk[0]; cj = bk[1]; }
+    return out;
+  }
+
   var NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   function noteName(midi) { return NAMES[midi % 12] + (Math.floor(midi / 12) - 1); }
 
-  var api = { extract: extract, findOffset: findOffset, isolate: isolate, notes: notes, toMono: toMono, schedule: schedule, noteName: noteName, yin: yin };
+  var api = { voiceRegions: voiceRegions, alignLines: alignLines, extract: extract, findOffset: findOffset, isolate: isolate, notes: notes, toMono: toMono, schedule: schedule, noteName: noteName, yin: yin };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Melody = api;
 })(typeof window !== 'undefined' ? window : this);
