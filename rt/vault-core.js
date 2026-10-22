@@ -80,11 +80,12 @@ function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() *
   vaultShuf_(r, vaultShuf_(r, ['money', 'clock', 'keys']).slice(0, 2).concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
   if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count']).forEach(function (t) { list.push({ type: t, area: 'b' }); });
   list.push({ type: 'door', area: 'c' });
+  if (opt.vPrac) list.unshift({ type: 'money', area: 'a', practice: 1 });      /* 4.171 (Colleen: "maybe everyone plays a sample round with a step by step typed out instruction"): a practice lock first */
   var cnt = { 'in': 0, out: 0 }, prev = first === 'in' ? 'out' : 'in';      /* fixed doers first; everything else goes to whoever has had the facts less, then switches */
   list.forEach(function (x) { if (VAULT_KNOWER_FIXED[x.type]) cnt[VAULT_KNOWER_FIXED[x.type]]++; });
-  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return { type: x.type, area: x.area, knower: k }; });
+  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return x.practice ? { type: x.type, area: x.area, knower: k, practice: 1 } : { type: x.type, area: x.area, knower: k }; });
   var gm = Math.floor(num_(opt.vGuard)); gm = [6, 8, 10, 12, 15, 20].indexOf(gm) >= 0 ? gm : len === 'short' ? 8 : 12;
-  return { seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
+  return { hold: !!opt.vPrac, seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
 function vaultAreaName_(a, side) { for (var i = 0; i < VAULT_STAGES.length; i++) if (VAULT_STAGES[i][0] === a) return VAULT_STAGES[i][side === 'out' ? 2 : 1]; return ''; }
 /** At Start: partners, sides, each pair's own details. */
 function vaultPairOf_(g, e) { var V = g.vault, i = V && V.byE[e]; return i == null ? null : V.pairs[i]; }
@@ -106,11 +107,11 @@ function vaultLootVal_(P) { return (P.loot || []).reduce(function (t, x) { retur
 /** What one student sees: only their own side of their own pair's current lock (me.mates = the partners' ids; names are added by the caller). */
 function vaultViewCore_(V, e) {
   if (!V) return null; var i0 = V.byE[e], P = i0 == null ? null : V.pairs[i0];
-  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length };
+  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length, pk: V.scenario[0] && V.scenario[0].practice ? 1 : 0 };      /* 4.171 pk: a practice lock comes first */
   if (!P) return base;
   var side = P.side[e], k = P.k, cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, knower = sc.knower === side, end = vaultEnd_(V, P);
   vaultMeetDue_(P);
-  var v = { me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
+  var v = { pk: base.pk, me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
   if (!P.t0) { v.meet = { ready: !!P.ready[e], left: Math.max(0, Math.ceil((P.meet0 + VAULT_MEET_MS - Date.now()) / 1000)) };      /* 4.106 before the first lock: where you sit, where your partner sits */
     if (V.map && V.seat && V.seat[e]) { v.meet.map = V.map; v.meet.mine = V.seat[e]; v.meet.theirs = P.m.filter(function (x) { return x !== e && V.seat[x]; }).map(function (x) { return V.seat[x]; }); }
     return v; }
@@ -120,6 +121,8 @@ function vaultViewCore_(V, e) {
       shelf: P.x || end ? [] : VAULT_LOOT.filter(function (c) { return had.indexOf(c[0]) < 0 && 'abc'.indexOf(c[6]) <= stI; }).map(function (c) { return { key: c[0], name: c[1], img: c[2], locks: c[3], value: c[4] }; }) }; }
   if (end) { v.done = end.secs; v.caught = end.caught; return v; }
   if (P.done) return v;
+  if (V.hold) { v.hold = true; v.elapsed = 0; if (!sc.practice) { v.waitGo = true; return v; } }      /* 4.171 practice done: wait for the teacher's Start the clock */
+  if (sc.practice) v.prac = true;
   if (cur.extra) { v.extra = true; v.xk = P.x.done; v.xn = P.x.need; }
   if (sc.type === 'money') { if (knower) v.items = L.items; }
   if (sc.type === 'clock' || sc.type === 'door') { if (knower) v.lines = L.lines; else { v.color = L.color; v.place = L.place; v.digits = sc.type === 'door' ? L.ans.length : 0; } }
@@ -136,7 +139,12 @@ function vaultViewCore_(V, e) {
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
 function vaultBoardCore_(V) { if (!V) return null;
-  return { seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+  return { hold: !!V.hold, ready: V.hold ? V.pairs.filter(function (P) { return P.t0 && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice; }).length : 0, seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+/** 4.171 the teacher's "Start the clock": every pair goes on from the practice lock (done or not); practice mistakes don't count; each pair's clock starts now
+    (a pair still finding each other starts when they do) */
+function vaultGo_(V, now) { if (!V || !V.hold) return false; V.hold = false; now = now || Date.now();
+  V.pairs.forEach(function (P) { if ((V.scenario[P.k] || {}).practice) { P.k++; P.turn = {}; } if (P.t0) P.t0 = now; P.pen = 0; P.tot = 0; P.strikes = 0; P.hints = 0; P.skips = 0; P.at = now; });
+  return true; }
 /** The meeting is over when every partner pressed "I found my partner" or a minute passed: the pair's clock starts. */
 function vaultMeetDue_(P) { if (!P.t0 && (P.m.every(function (e) { return P.ready[e]; }) || Date.now() - P.meet0 >= VAULT_MEET_MS)) P.t0 = Date.now(); return !!P.t0; }
 /** A student acts on their pair's current lock (pure: the caller saves and records): try an answer (the doer), pick a key, turn a key, or ask for a hint (On your own: +30 s). */
@@ -145,6 +153,7 @@ function vaultActCore_(V, e, act, a, now) {
     var cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, side = P.side[e], knower = sc.knower === side, out = { ok: true };
     if (act === 'ready') { P.ready[e] = 1; vaultMeetDue_(P); out.changed = true; return out; }
     if (!vaultMeetDue_(P)) return { none: true };
+    if (V.hold && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice) return { none: true, hold: true };      /* 4.171 waiting for the teacher */
     var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided, v2: !!P.bot }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
       if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
@@ -177,4 +186,4 @@ function vaultVersusStart_(g) { var V = g.vault, joined = liveJoinedSure_(g.id),
 function vaultSoloList_(r, len) { var pick = vaultShuf_(r, VAULT_SOLO).slice(0, len === 'short' ? 4 : 5), a = pick.filter(function (t) { return t !== 'lasers'; }).map(function (t) { return { type: t, area: 'a', knower: 'in' }; });
   if (pick.indexOf('lasers') >= 0) a.push({ type: 'lasers', area: 'b', knower: 'in' }); a.push({ type: 'door', area: 'c', knower: 'in' }); return a; }
 
-export { vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultMeetDue_, vaultEnd_, vaultAlarm_, vaultLootVal_ };
+export { vaultGo_, vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultMeetDue_, vaultEnd_, vaultAlarm_, vaultLootVal_ };

@@ -30,7 +30,12 @@ var BR_UNTIMED = 3 * 3600000;
    their team with names for each list"): FIND YOUR CREW, one crew at a time, BR_MEET each: that crew raises their hands while everyone looks. */
 var BR_MEET = 8000;
 var BR_GLOW = 20000, BR_GLOW_EVERY = [180000, 240000];      // 4.68 (Colleen): a short Color Scan now and then: caches glow their crew's color
-var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 5, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 8, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+/* 4.170 (Colleen: "it was too easy for the decoder to change the password so students couldn't keep up with the moving targets even in short mode"; she picked):
+   a crew can change only a section a rival has found, each change costs 4 ⚡ more than the last (8, 12, 16 …), and then the crew waits 2 minutes */
+var BR_CHG_UP = 4, BR_CHG_WAIT = 120000;
+function brChgCost_(br, t) { return BR_COST.change + BR_CHG_UP * ((br.chgN || {})[t] || 0); }
+function brChgWait_(br, t, now) { return Math.max(0, ((br.chgAt || {})[t] || 0) + BR_CHG_WAIT - (now || Date.now())); }
 /* 4.91 (Colleen: "also accept passwords with a letter letter, number number pattern… the teacher chooses… practice single digit and up to quadruple
    digit numbers. only use 1 letter with triple and quadruple digit numbers"; "as long as each box is formulated the same way"): every section of
    every password in a game has the same pattern. lnln = letter, digit, letter, digit (a3n5; the digits signed one by one). The others are letters
@@ -145,8 +150,11 @@ function api_breachBox(auth, code, c, s, v) {
 function api_breachTool(auth, code, tool, a, b, right) {
   return lock_(function () { var W = brWho_(auth, code); if (W.err) return W.err; var br = W.br, why = brBusy_(br); if (why) return { none: true, why: why };
     if (br.decoders[W.t] !== W.id.key) return { none: true, why: 'Only your decoder has the tools.' };
-    var cost = BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
-    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true };
+    if (tool === 'change') { var s0 = Math.floor(num_(a)), wt = brChgWait_(br, W.t); if (s0 < 0 || s0 > 4) return { none: true };      /* 4.170 */
+      if (br.exposed && !(br.exposed[W.t][s0] || []).length) return { none: true, why: 'No rival crew has found that section yet, so it is safe. You can change a section once a rival has found it.' };
+      if (wt) return { none: true, why: 'Your crew just changed a section. Wait ' + Math.ceil(wt / 1000) + ' more seconds.' }; }
+    var cost = tool === 'change' ? brChgCost_(br, W.t) : BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
+    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true }; br.chgN = br.chgN || {}; br.chgAt = br.chgAt || {}; br.chgN[W.t] = (br.chgN[W.t] || 0) + 1; br.chgAt[W.t] = Date.now();
       br.pw[W.t][s] = brSet_(br.pat); if (br.exposed) br.exposed[W.t][s] = []; br.boxes.forEach(function (bx, o) { if (o !== W.t && bx[W.t + ':' + s]) bx[W.t + ':' + s] = { v: '', at: Date.now(), ok: null, stale: 1 }; });      /* 4.91 (Colleen: "it should automatically delete from other teams' screens"): the rival logbooks lose it */
       Object.keys(br.found).forEach(function (e2) { (br.found[e2] || []).forEach(function (f2) { if (f2[0] === W.t && f2[1] === s) f2[5] = 1; }); });      /* and every Agent's list crosses it out */
       br.maps.forEach(function (m, o) { if (o === W.t) return; var have = m.cells.some(function (x) { return x.k === 'cache' && x.c === W.t && x.s === s && !x.open; });
@@ -174,6 +182,7 @@ function api_breachTry(auth, code, c, k, v) {
       brLog_(br, { kind: A.done, t: A.t, c: A.c });
       if (win && br.endMode === 'most') {      /* 4.100 (Colleen: "the most hacks in a set amount of time"): 1 point a crack, +1 for the first crew to crack that rival; nobody is out */
         var first = br.firstOn[A.c] == null, pts = first ? 2 : 1; if (first) br.firstOn[A.c] = A.t; br.score[A.t] = (br.score[A.t] || 0) + pts; brLog_(br, { kind: 'points', t: A.t, c: A.c, n: pts }); brNewPw_(br, A.c, now); }
+      else if (win && br.practice && W.g.brReal) { brNewPw_(br, A.c, now); }      /* 4.171 a practice round that leads into the real game: a crack is cheered, the password changes, and practice goes on until the teacher starts the real game */
       else if (win) { br.ranks.push(A.t); if (br.endMode === 'first' || br.ranks.length >= Math.min(3, br.n - 1)) g_end_(W.g, now + 6000); else brNewPw_(br, A.c, now); }
     }
     livePut_(W.g); return out; });
@@ -193,7 +202,7 @@ function brRight_(br, t) { return 0 + Object.keys(br.boxes[t] || {}).filter(func
 /** What one student (or the projector, myTeam -1) sees. Never another crew's password; pieces only to the agent who found them. */
 function breachView_(g, myTeam, e) {
   var br = g.breach, j = liveJoined_(g.id), now = Date.now(), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  var v = { phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
+  var v = { toReal: !!(br.practice && g.brReal), phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
     decoders: br.decoders.map(function (d) { return d ? brLabel_(br, j, d) : ''; }), crews: mates.map(function (m) { return m.length; }),
     filled: br.boxes.map(function (bx) { var per = {}; Object.keys(bx).forEach(function (k) { if (!bx[k].stale) { var c = k.split(':')[0]; per[c] = (per[c] || 0) + 1; } }); return per; }),
     log: br.log.slice(-15), attempt: br.attempt ? { t: br.attempt.t, c: br.attempt.c, res: br.attempt.res, done: br.attempt.done || '', left: Math.max(0, br.attempt.ends - now) } : null,
@@ -205,7 +214,7 @@ function breachView_(g, myTeam, e) {
     v.map = { w: m.w, h: m.h, cells: m.cells.map(function (c, i) { return c.open ? (c.k === 'cache' || c.k === 'decoy' ? 'x' : c.k ? c.k + '_' : '.') : m.seen[i] === 4 ? 'fake' : m.seen[i] === 3 ? 'ping' : (c.k === 'cache' || c.k === 'decoy') && glow ? 'cache:' + c.c : c.k === 'decoy' ? 'cache' : c.k || '.'; }),      // no fog (Colleen): everything shows; a decoy looks like a cache until scanned
       pos: Object.keys(m.pos).map(function (x) { return [m.pos[x], brLabel_(br, j, x), x === me ? 1 : 0]; }), mine: m.pos[me] != null ? m.pos[me] : brStart_(m), start: brStart_(m) };
     v.found = (br.found[me] || []).map(function (f) { return [f[0], f[1], f[2], f[4] || null, f[5] ? 1 : 0]; });      /* only my own pieces, to re-watch; [4] 4.91: that section was changed since */
-    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; }      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
+    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; v.chg = { cost: brChgCost_(br, myTeam), wait: brChgWait_(br, myTeam) }; }      /* 4.170 what a change costs now, and the wait */      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
   }
   if (myTeam === -1) { v.maps = br.maps.map(function (m, t) { return { w: m.w, h: m.h, open: m.cells.filter(function (c) { return c.open; }).length, total: m.cells.length, pos: Object.keys(m.pos).map(function (x) { return m.pos[x]; }) }; }); }
   if (v.over) { v.pw = br.pw.map(function (p) { return p.join('-'); }); v.stats = Object.keys(br.stats).sort(function (a, b) { return br.stats[b] - br.stats[a]; }).slice(0, 3).map(function (x) { return [brLabel_(br, j, x), br.stats[x]]; }); }
@@ -216,6 +225,9 @@ function breachView_(g, myTeam, e) {
 function breachControl_(g2, action) { var B = g2.breach, now = Date.now(); if (!B || livePhase_(g2) !== 'on') return false;
   if (action === 'brskip') { if (B.phase === 'vote' || B.phase === 'meet') breachTick_(g2, true); }
   else if (action === 'brglow') { if (B.phase === 'play' && !B.attempt) brGlow_(B, now); }
+  else if (action === 'brreal') { if (!B.practice || !g2.brReal) return false;      /* 4.171 the practice round becomes the real game: same crews and Decoders, a fresh network and passwords, the clock starts now */
+    var nb = breachNew_(B.n, Object.assign({}, g2.brOpt || {}, { brPractice: false })); nb.colors = B.colors; nb.decoders = B.decoders.slice(); nb.phase = 'play'; nb.glowNext = now + BR_GLOW_EVERY[0]; g2.breach = nb; g2.brReal = false;
+    g2.untimed = false; g2.ends = now + (g2.minutes || 15) * 60000; brLog_(nb, { kind: 'start' }); }
   else if (/^brdec:\d$/.test(action)) { var t = Math.floor(num_(action.split(':')[1])), m = brMates_(liveJoined_(g2.id), t).filter(function (e) { return e !== B.decoders[t]; }); if (m.length) { B.decoders[t] = m[Math.floor(Math.random() * m.length)]; brLog_(B, { kind: 'newdec', t: t }); } }
   else if (action === 'brpause') { if (!B.paused) { B.paused = true; B.pausedAt = now; B.pausedLeft = Math.max(0, g2.ends - now); g2.ends += 864e5; } else { B.paused = false; g2.ends = now + (B.pausedLeft || 0); if (B.attempt) B.attempt.ends += now - B.pausedAt; if (B.phase === 'vote') B.phaseEnds += now - B.pausedAt; } }
   else return false;

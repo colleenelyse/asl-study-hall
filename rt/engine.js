@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.160';
+var VERSION = '4.171';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2981,11 +2981,12 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
     rand: !!(opt && opt.rand) && chars.length > 0, label: opt && (opt.label === 'char' || opt.label === 'both') ? opt.label : 'name' };      // rand: the game hands out characters; label: what the board shows under each avatar
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
+  g.vocab = opt && opt.vocab === 'set' ? 'set' : 'mine';      /* 4.170 (Colleen: "each of these games play with the student's selected vocab by default and allow the teacher to override"): 'mine' = each student's own signs; 'set' = everyone the host's */
   if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
-  if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
+  if (g.mode === 'vault') { if (teacher && opt) opt.vPrac = opt.vPrac !== false;      /* 4.171 a class Vault starts with a practice lock unless the teacher turns it off */ g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
   if (g.mode === 'breach' && !teacher && opt && opt.brDuo) { g.brDuo = true; g.teams = teams = 2; opt.brAuto = 0; g.late = false; }      /* 4.149 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): two crews of one */
-  if (g.mode === 'breach') { g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; g.brOpt = opt; }      /* 4.98 automatic crews: made at Start */
+  if (g.mode === 'breach') { if (opt && opt.brPracFirst) { opt.brPractice = true; g.brReal = true; } g.brOpt = opt || {};      /* 4.171 practice first, then the real game on the teacher's Start */ g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; }      /* 4.98 automatic crews: made at Start */
     g.breach = breachNew_(teams, opt);      /* 4.92 untimed: until a crew wins; 4.93 a practice round is always untimed */ g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.68 Breach      // 4.58 the team escape room: one carnival for the class
   if (g.mode === 'case') { g.casec = caseNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.53 Case Closed
   if (g.mode === 'isle') { g.isle = isleNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.47 Treasure Island (the ways to earn share Sea Battle's field)
@@ -3030,7 +3031,7 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3063,7 +3064,7 @@ function api_liveControl(auth, code, action) {
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); } }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
-  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } livePut_(g); }      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
+  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
   if (engNew) { engineSetup_(g); livePut_(g); }      // 4.145 every other live class game runs in an engine room on asl.cool
@@ -3075,6 +3076,11 @@ function api_liveControl(auth, code, action) {
     if (action === 'seafire' && sea.phase === 'battle' && sea.fireStart > now) sea.fireStart = now;      // Open fire now (end the head start)
     if (action === 'seaskip' && sea.phase === 'battle' && sea.fireStart && now >= sea.fireStart) { var T = (sea.turnLen || 30) * 1000, k = Math.floor((now - sea.fireStart) / T); sea.fireStart -= (sea.fireStart + (k + 1) * T) - now; }      // Pass the cannons now: every team's next teammate
     seaTick_(g2); livePut_(g2); g = g2; });
+  if ((action === 'vgo' && g.vault && g.vault.hold) || (action === 'brreal' && g.breach && g.breach.practice && g.brReal)) lock_(function () { var g2 = liveGet_(g.id); if (!g2) return; var now = Date.now();      /* 4.171 "Start the clock" (Colleen: "the game clock shouldn't begin until the teacher evaluates that everyone is ready to play") */
+    g2.ends = now + g2.minutes * 60000; g2.untimed = false;
+    if (action === 'vgo') { if (g2.vault.rt) { try { rtPost_(g2.vault.rt, 'control', { action: 'vgo', ends: g2.ends }); } catch (e) {} } vaultGo_(g2.vault, now); }
+    else { if (g2.breach.rt) { try { rtPost_(g2.breach.rt, 'control', { action: 'brreal', ends: g2.ends }); } catch (e) {} } breachControl_(g2, 'brreal'); g2.ends = now + g2.minutes * 60000; }
+    livePut_(g2); g = g2; });
   if (g.breach && (action === 'brpause' || action === 'brskip' || action === 'brglow' || /^brdec:\d$/.test(action)) && livePhase_(g) === 'on') {
     if (g.breach.rt) { try { rtPost_(g.breach.rt, 'control', { action: action }); } catch (e) {} }      // 4.142 the asl.cool room runs it
     else lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.breach) return; if (breachControl_(g2, action)) livePut_(g2); g = g2; }); }
@@ -3105,7 +3111,7 @@ function api_liveJoin(auth, code) {
   var joined = liveJoinedSure_(g.id), mine = joined[id.key];
   if (phase === 'on' && g.late === false && !mine) throw new Error('This game has already started, and your teacher closed it to new players. You can join the next one!');
   var sh = stuSheet_(), row = findRow_(sh, id.key), kept = keptChars_(row ? readStu_(sh, row) : null);
-  return { game: { id: g.id, brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key),
+  return { game: { id: g.id, vocab: g.vocab || 'set', brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key),
     taken: Object.keys(joined).filter(function (e) { return e !== id.key; }).map(function (e) { return joined[e][1]; }), mine: mine ? mine[1] : '' } };
 }
 /** Student: join with a character. Nobody else can have the same one while any are still free. */
@@ -3185,7 +3191,7 @@ function api_livePing(auth, code, p) {
   g.ids.forEach(function (x) { okId[x] = 1; });
   if (p.tally && typeof p.tally === 'object') Object.keys(p.tally).forEach(function (k) {
     var t = p.tally[k];
-    if (okId[k] && t instanceof Array && kept++ < 300) tally[k] = [Math.max(0, Math.min(999, Math.floor(num_(t[0])))), Math.max(0, Math.min(999, Math.floor(num_(t[1]))))];
+    if ((okId[k] || (g.vocab === 'mine' && /^[\w-]{1,40}$/.test(k))) && t instanceof Array && kept++ < 300)      /* 4.170 own signs count too */ tally[k] = [Math.max(0, Math.min(999, Math.floor(num_(t[0])))), Math.max(0, Math.min(999, Math.floor(num_(t[1]))))];
   });
   if (g.mode === 'sea') CacheService.getScriptCache().put('ls:' + g.id + ':' + id.key, String(Date.now()), LIVE_TTL);      // 4.43: who is still here (a student who stops checking in is skipped at the cannon)
   if (Date.now() < g.ends + 30000) CacheService.getScriptCache().put('lp:' + g.id + ':' + id.key, JSON.stringify([score, right, total, tally, steps]), LIVE_TTL);
@@ -7610,6 +7616,9 @@ function seatChartFor_(cls, emails) {
   if (seatKiosk_()) { try { var kc = seatKioskClass_(cls, emails || seatEmails_(cls)); if (kc && kc.label) { var r = seatKioskCall_('get', { cls: kc.label }); return { chart: seatMapChart_(r.chart, function (x) { return kc.fromKiosk[x]; }), kiosk: kc.label }; } } catch (e) { return { chart: seatLocal_(cls), kioskError: e.message }; } }
   return { chart: seatLocal_(cls) };
 }
+/** 4.167 (Colleen: "it takes a long time to launch… a game"): a class game's Start asked the Hall Pass Kiosk for the chart twice (keep-aways, then Vault partners),
+    a few seconds each. The games read it through here: kept 25 minutes, read while the lobby is open (liveWarm_), forgotten when the chart is saved. */
+function seatChartCached_(cls) { var k = 'chart:' + str_(cls), got = cacheGet_(k); if (got && got.c) return got.c; var c = null; try { c = seatChartFor_(cls).chart; } catch (e) { c = null; } if (c && c.seats) cachePut_(k, { c: c }, 1500); return c; }      /* a failed read is tried again at Start */
 function seatLocal_(cls) { var chart = null, sh = ss_().getSheetByName(TABS.seating); if (sh && sh.getLastRow() >= 2) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (r) { if (str_(r[0]) === cls && str_(r[1])) try { chart = JSON.parse(str_(r[1])); } catch (e) {} }); return chart; }
 function seatEmails_(cls) { var stu = stuSheet_(), H = stuHead_(stu), out = []; rows_(stu, 2, H.n).forEach(function (r) { if (str_(r[H.Class]) === cls && str_(r[H.Email])) out.push(str_(r[H.Email]).toLowerCase()); }); return out; }
 /** Students only the kiosk knows (no ASL Study account with their ID) keep their seat, pin and rules when ASL Study saves the chart. */
@@ -7641,7 +7650,8 @@ function vaultPlayed_() { var got = cacheGet_('vaultPlayed'); if (got) return go
 /** 4.146 (Colleen: "it takes a long time for each game to begin after i click start"): the slow sheet reads Start needs are done while the lobby is open
     (the projector asks every few seconds anyway), so pressing Start only deals and hands off */
 function liveWarm_(g) { var c = CacheService.getScriptCache(), k = 'warm:' + g.id; if (c.get(k)) return; c.put(k, '1', 1500);
-  try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {} }
+  try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {}
+  try { if (g.vOpt && g.vOpt.cls) seatChartCached_(g.vOpt.cls); } catch (e) {} }      /* 4.167 the seating chart, before Start */
 /** Deals players into n teams with close total strength: strongest first, back and forth (1-2-3-3-2-1…). Returns { email: team }. */
 function evenTeams_(emails, n, apart) {
   var st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, list = shuffle_(emails.slice()).sort(function (a, b) { return sw(b) - sw(a); }), out = {};
@@ -7655,7 +7665,7 @@ function evenTeams_(emails, n, apart) {
 function seatApart_(emails) {
   var want = {}, cls = {}, out = {}; (emails || []).forEach(function (e) { want[str_(e).toLowerCase()] = 1; });
   try { var stu = stuSheet_(), H = stuHead_(stu); rows_(stu, 2, H.n).forEach(function (r) { if (want[str_(r[H.Email]).toLowerCase()] && str_(r[H.Class])) cls[str_(r[H.Class])] = 1; }); } catch (e) { return out; }
-  Object.keys(cls).forEach(function (c) { var ch = null; try { ch = seatChartFor_(c).chart; } catch (e) { ch = null; }
+  Object.keys(cls).forEach(function (c) { var ch = seatChartCached_(c);      /* 4.167 */
     ((ch && ch.rules) || []).forEach(function (r) { if (r && r.t === 'apart' && r.a && r.b) { var a = str_(r.a).toLowerCase(), b = str_(r.b).toLowerCase(); (out[a] = out[a] || {})[b] = 1; (out[b] = out[b] || {})[a] = 1; } }); });
   return out;
 }
@@ -7790,12 +7800,18 @@ function api_clawGrab(auth, play, x, z) {
   cache.remove('clwp:' + str_(play));
   x = Math.max(0, Math.min(1, num_(x))); z = z === undefined || z === null ? 0.5 : Math.max(0, Math.min(1, num_(z)));
   var near = null; g.layout.forEach(function (l, j) { var lz = typeof l.z === 'number' ? l.z : 0.5, d = Math.sqrt(Math.pow((l.x - x) / 0.085, 2) + Math.pow((lz - z) / 0.2, 2)); if (d <= 1 && (!near || d < near.d)) near = { d: d, l: l, j: j }; });
+  /* 4.169 (Colleen: "the claw should not always drop the egg. students should win something each session they play in this game"): until a student wins a real
+     prize today, the claw reaches the nearest egg, holds it, carries it to the chute, and it is never an empty capsule. After that, the usual odds. */
+  var props = PropertiesService.getDocumentProperties(), wonKey = 'clw:' + dayStr_() + ':w:' + id.key, lucky = !props.getProperty(wonKey);
+  if (!near && lucky) g.layout.forEach(function (l, j) { var lz = typeof l.z === 'number' ? l.z : 0.5, d = Math.sqrt(Math.pow((l.x - x) / 0.085, 2) + Math.pow((lz - z) / 0.2, 2)); if (!near || d < near.d) near = { d: d, l: l, j: j }; });
   if (!near) return { win: false, miss: true };      // 4.30: the bigger eggs are easier to line up (0.085 across, 0.2 front-to-back)
-  var hold = CLAW_ODDS[near.l.p.rarity][1] + 0.12 * (1 - near.d);      // lined up well (across and front-to-back): a better grip
-  if (Math.random() > hold) return { win: false, slip: true, at: near.j, name: near.l.p.name };
-  if (Math.random() < CLAW_CARRY_DROP) return { win: false, dropped: true, at: near.j, name: near.l.p.name };      // it fell on the way to the chute
+  var hold = CLAW_ODDS[near.l.p.rarity][1] + 0.12 * (1 - Math.min(1, near.d));      // lined up well (across and front-to-back): a better grip
+  if (!lucky && Math.random() > hold) return { win: false, slip: true, at: near.j, name: near.l.p.name };
+  if (!lucky && Math.random() < CLAW_CARRY_DROP) return { win: false, dropped: true, at: near.j, name: near.l.p.name };      // it fell on the way to the chute
   var S = st.settings, p = near.l.p, label = p.name;
+  if (p.kind === 'empty' && lucky) { var real = clawPrizes_().filter(function (q) { return q.kind !== 'empty'; }); if (real.length) { p = real.filter(function (q) { return q.rarity === 'common'; })[0] || real[0]; label = p.name; } }      /* the day's first prize is never empty */
   if (p.kind === 'empty') return { win: true, empty: true, at: near.j, rarity: p.rarity, prize: { kind: 'empty', name: p.name } };      // made it to the chute… and it was empty
+  props.setProperty(wonKey, '1');
   return lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row), owned = ownedList_(o), got = null;
@@ -8462,7 +8478,12 @@ var BR_UNTIMED = 3 * 3600000;
    their team with names for each list"): FIND YOUR CREW, one crew at a time, BR_MEET each: that crew raises their hands while everyone looks. */
 var BR_MEET = 8000;
 var BR_GLOW = 20000, BR_GLOW_EVERY = [180000, 240000];      // 4.68 (Colleen): a short Color Scan now and then: caches glow their crew's color
-var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 5, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 8, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+/* 4.170 (Colleen: "it was too easy for the decoder to change the password so students couldn't keep up with the moving targets even in short mode"; she picked):
+   a crew can change only a section a rival has found, each change costs 4 ⚡ more than the last (8, 12, 16 …), and then the crew waits 2 minutes */
+var BR_CHG_UP = 4, BR_CHG_WAIT = 120000;
+function brChgCost_(br, t) { return BR_COST.change + BR_CHG_UP * ((br.chgN || {})[t] || 0); }
+function brChgWait_(br, t, now) { return Math.max(0, ((br.chgAt || {})[t] || 0) + BR_CHG_WAIT - (now || Date.now())); }
 /* 4.91 (Colleen: "also accept passwords with a letter letter, number number pattern… the teacher chooses… practice single digit and up to quadruple
    digit numbers. only use 1 letter with triple and quadruple digit numbers"; "as long as each box is formulated the same way"): every section of
    every password in a game has the same pattern. lnln = letter, digit, letter, digit (a3n5; the digits signed one by one). The others are letters
@@ -8624,11 +8645,12 @@ function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() *
   vaultShuf_(r, vaultShuf_(r, ['money', 'clock', 'keys']).slice(0, 2).concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
   if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count']).forEach(function (t) { list.push({ type: t, area: 'b' }); });
   list.push({ type: 'door', area: 'c' });
+  if (opt.vPrac) list.unshift({ type: 'money', area: 'a', practice: 1 });      /* 4.171 (Colleen: "maybe everyone plays a sample round with a step by step typed out instruction"): a practice lock first */
   var cnt = { 'in': 0, out: 0 }, prev = first === 'in' ? 'out' : 'in';      /* fixed doers first; everything else goes to whoever has had the facts less, then switches */
   list.forEach(function (x) { if (VAULT_KNOWER_FIXED[x.type]) cnt[VAULT_KNOWER_FIXED[x.type]]++; });
-  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return { type: x.type, area: x.area, knower: k }; });
+  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return x.practice ? { type: x.type, area: x.area, knower: k, practice: 1 } : { type: x.type, area: x.area, knower: k }; });
   var gm = Math.floor(num_(opt.vGuard)); gm = [6, 8, 10, 12, 15, 20].indexOf(gm) >= 0 ? gm : len === 'short' ? 8 : 12;
-  return { seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
+  return { hold: !!opt.vPrac, seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
 function vaultAreaName_(a, side) { for (var i = 0; i < VAULT_STAGES.length; i++) if (VAULT_STAGES[i][0] === a) return VAULT_STAGES[i][side === 'out' ? 2 : 1]; return ''; }
 /** At Start: partners, sides, each pair's own details. */
 function vaultPairOf_(g, e) { var V = g.vault, i = V && V.byE[e]; return i == null ? null : V.pairs[i]; }
@@ -8650,11 +8672,11 @@ function vaultLootVal_(P) { return (P.loot || []).reduce(function (t, x) { retur
 /** What one student sees: only their own side of their own pair's current lock (me.mates = the partners' ids; names are added by the caller). */
 function vaultViewCore_(V, e) {
   if (!V) return null; var i0 = V.byE[e], P = i0 == null ? null : V.pairs[i0];
-  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length };
+  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length, pk: V.scenario[0] && V.scenario[0].practice ? 1 : 0 };      /* 4.171 pk: a practice lock comes first */
   if (!P) return base;
   var side = P.side[e], k = P.k, cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, knower = sc.knower === side, end = vaultEnd_(V, P);
   vaultMeetDue_(P);
-  var v = { me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
+  var v = { pk: base.pk, me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
   if (!P.t0) { v.meet = { ready: !!P.ready[e], left: Math.max(0, Math.ceil((P.meet0 + VAULT_MEET_MS - Date.now()) / 1000)) };      /* 4.106 before the first lock: where you sit, where your partner sits */
     if (V.map && V.seat && V.seat[e]) { v.meet.map = V.map; v.meet.mine = V.seat[e]; v.meet.theirs = P.m.filter(function (x) { return x !== e && V.seat[x]; }).map(function (x) { return V.seat[x]; }); }
     return v; }
@@ -8664,6 +8686,8 @@ function vaultViewCore_(V, e) {
       shelf: P.x || end ? [] : VAULT_LOOT.filter(function (c) { return had.indexOf(c[0]) < 0 && 'abc'.indexOf(c[6]) <= stI; }).map(function (c) { return { key: c[0], name: c[1], img: c[2], locks: c[3], value: c[4] }; }) }; }
   if (end) { v.done = end.secs; v.caught = end.caught; return v; }
   if (P.done) return v;
+  if (V.hold) { v.hold = true; v.elapsed = 0; if (!sc.practice) { v.waitGo = true; return v; } }      /* 4.171 practice done: wait for the teacher's Start the clock */
+  if (sc.practice) v.prac = true;
   if (cur.extra) { v.extra = true; v.xk = P.x.done; v.xn = P.x.need; }
   if (sc.type === 'money') { if (knower) v.items = L.items; }
   if (sc.type === 'clock' || sc.type === 'door') { if (knower) v.lines = L.lines; else { v.color = L.color; v.place = L.place; v.digits = sc.type === 'door' ? L.ans.length : 0; } }
@@ -8680,7 +8704,12 @@ function vaultViewCore_(V, e) {
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
 function vaultBoardCore_(V) { if (!V) return null;
-  return { seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+  return { hold: !!V.hold, ready: V.hold ? V.pairs.filter(function (P) { return P.t0 && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice; }).length : 0, seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+/** 4.171 the teacher's "Start the clock": every pair goes on from the practice lock (done or not); practice mistakes don't count; each pair's clock starts now
+    (a pair still finding each other starts when they do) */
+function vaultGo_(V, now) { if (!V || !V.hold) return false; V.hold = false; now = now || Date.now();
+  V.pairs.forEach(function (P) { if ((V.scenario[P.k] || {}).practice) { P.k++; P.turn = {}; } if (P.t0) P.t0 = now; P.pen = 0; P.tot = 0; P.strikes = 0; P.hints = 0; P.skips = 0; P.at = now; });
+  return true; }
 /** The meeting is over when every partner pressed "I found my partner" or a minute passed: the pair's clock starts. */
 function vaultMeetDue_(P) { if (!P.t0 && (P.m.every(function (e) { return P.ready[e]; }) || Date.now() - P.meet0 >= VAULT_MEET_MS)) P.t0 = Date.now(); return !!P.t0; }
 /** A student acts on their pair's current lock (pure: the caller saves and records): try an answer (the doer), pick a key, turn a key, or ask for a hint (On your own: +30 s). */
@@ -8689,6 +8718,7 @@ function vaultActCore_(V, e, act, a, now) {
     var cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, side = P.side[e], knower = sc.knower === side, out = { ok: true };
     if (act === 'ready') { P.ready[e] = 1; vaultMeetDue_(P); out.changed = true; return out; }
     if (!vaultMeetDue_(P)) return { none: true };
+    if (V.hold && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice) return { none: true, hold: true };      /* 4.171 waiting for the teacher */
     var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided, v2: !!P.bot }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
       if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
@@ -8738,7 +8768,7 @@ function vaultSeatPairs_(chart, joined, sw, away) {
 function vaultStart_(g, opt) {
   if (g.vault && g.vault.versus) return vaultVersusStart_(g);      /* 4.151 */
   var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, pairs = [], used = {}, apart = seatApart_(who), away = function (a, b) { return !!(apart[a] && apart[a][b]); };      /* 4.129 keep-aways are never partners */
-  var chart = null; try { if (opt && opt.cls) chart = seatChartFor_(str_(opt.cls)).chart; } catch (e) { chart = null; }
+  var chart = opt && opt.cls ? seatChartCached_(str_(opt.cls)) : null;      /* 4.167 read while the lobby was open */
   if (chart && chart.seats) {      /* 4.138 (Colleen: "half the desks face one direction and the others face the opposite direction. i want students on the left to be partnered with a student on the right
        so they're looking at one another but can't easily see the other's screen"): a student in the LEFT half of the chart is paired with one in the RIGHT half, at the mirror spot
        (the same row, the same distance from the middle) or as close to it as possible; a partner of the other strength when it's a tie. Anyone left over pairs below. */
@@ -9038,8 +9068,11 @@ function api_breachBox(auth, code, c, s, v) {
 function api_breachTool(auth, code, tool, a, b, right) {
   return lock_(function () { var W = brWho_(auth, code); if (W.err) return W.err; var br = W.br, why = brBusy_(br); if (why) return { none: true, why: why };
     if (br.decoders[W.t] !== W.id.key) return { none: true, why: 'Only your decoder has the tools.' };
-    var cost = BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
-    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true };
+    if (tool === 'change') { var s0 = Math.floor(num_(a)), wt = brChgWait_(br, W.t); if (s0 < 0 || s0 > 4) return { none: true };      /* 4.170 */
+      if (br.exposed && !(br.exposed[W.t][s0] || []).length) return { none: true, why: 'No rival crew has found that section yet, so it is safe. You can change a section once a rival has found it.' };
+      if (wt) return { none: true, why: 'Your crew just changed a section. Wait ' + Math.ceil(wt / 1000) + ' more seconds.' }; }
+    var cost = tool === 'change' ? brChgCost_(br, W.t) : BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
+    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true }; br.chgN = br.chgN || {}; br.chgAt = br.chgAt || {}; br.chgN[W.t] = (br.chgN[W.t] || 0) + 1; br.chgAt[W.t] = Date.now();
       br.pw[W.t][s] = brSet_(br.pat); if (br.exposed) br.exposed[W.t][s] = []; br.boxes.forEach(function (bx, o) { if (o !== W.t && bx[W.t + ':' + s]) bx[W.t + ':' + s] = { v: '', at: Date.now(), ok: null, stale: 1 }; });      /* 4.91 (Colleen: "it should automatically delete from other teams' screens"): the rival logbooks lose it */
       Object.keys(br.found).forEach(function (e2) { (br.found[e2] || []).forEach(function (f2) { if (f2[0] === W.t && f2[1] === s) f2[5] = 1; }); });      /* and every Agent's list crosses it out */
       br.maps.forEach(function (m, o) { if (o === W.t) return; var have = m.cells.some(function (x) { return x.k === 'cache' && x.c === W.t && x.s === s && !x.open; });
@@ -9067,6 +9100,7 @@ function api_breachTry(auth, code, c, k, v) {
       brLog_(br, { kind: A.done, t: A.t, c: A.c });
       if (win && br.endMode === 'most') {      /* 4.100 (Colleen: "the most hacks in a set amount of time"): 1 point a crack, +1 for the first crew to crack that rival; nobody is out */
         var first = br.firstOn[A.c] == null, pts = first ? 2 : 1; if (first) br.firstOn[A.c] = A.t; br.score[A.t] = (br.score[A.t] || 0) + pts; brLog_(br, { kind: 'points', t: A.t, c: A.c, n: pts }); brNewPw_(br, A.c, now); }
+      else if (win && br.practice && W.g.brReal) { brNewPw_(br, A.c, now); }      /* 4.171 a practice round that leads into the real game: a crack is cheered, the password changes, and practice goes on until the teacher starts the real game */
       else if (win) { br.ranks.push(A.t); if (br.endMode === 'first' || br.ranks.length >= Math.min(3, br.n - 1)) g_end_(W.g, now + 6000); else brNewPw_(br, A.c, now); }
     }
     livePut_(W.g); return out; });
@@ -9086,7 +9120,7 @@ function brRight_(br, t) { return 0 + Object.keys(br.boxes[t] || {}).filter(func
 /** What one student (or the projector, myTeam -1) sees. Never another crew's password; pieces only to the agent who found them. */
 function breachView_(g, myTeam, e) {
   var br = g.breach, j = liveJoined_(g.id), now = Date.now(), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  var v = { phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
+  var v = { toReal: !!(br.practice && g.brReal), phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
     decoders: br.decoders.map(function (d) { return d ? brLabel_(br, j, d) : ''; }), crews: mates.map(function (m) { return m.length; }),
     filled: br.boxes.map(function (bx) { var per = {}; Object.keys(bx).forEach(function (k) { if (!bx[k].stale) { var c = k.split(':')[0]; per[c] = (per[c] || 0) + 1; } }); return per; }),
     log: br.log.slice(-15), attempt: br.attempt ? { t: br.attempt.t, c: br.attempt.c, res: br.attempt.res, done: br.attempt.done || '', left: Math.max(0, br.attempt.ends - now) } : null,
@@ -9098,7 +9132,7 @@ function breachView_(g, myTeam, e) {
     v.map = { w: m.w, h: m.h, cells: m.cells.map(function (c, i) { return c.open ? (c.k === 'cache' || c.k === 'decoy' ? 'x' : c.k ? c.k + '_' : '.') : m.seen[i] === 4 ? 'fake' : m.seen[i] === 3 ? 'ping' : (c.k === 'cache' || c.k === 'decoy') && glow ? 'cache:' + c.c : c.k === 'decoy' ? 'cache' : c.k || '.'; }),      // no fog (Colleen): everything shows; a decoy looks like a cache until scanned
       pos: Object.keys(m.pos).map(function (x) { return [m.pos[x], brLabel_(br, j, x), x === me ? 1 : 0]; }), mine: m.pos[me] != null ? m.pos[me] : brStart_(m), start: brStart_(m) };
     v.found = (br.found[me] || []).map(function (f) { return [f[0], f[1], f[2], f[4] || null, f[5] ? 1 : 0]; });      /* only my own pieces, to re-watch; [4] 4.91: that section was changed since */
-    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; }      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
+    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; v.chg = { cost: brChgCost_(br, myTeam), wait: brChgWait_(br, myTeam) }; }      /* 4.170 what a change costs now, and the wait */      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
   }
   if (myTeam === -1) { v.maps = br.maps.map(function (m, t) { return { w: m.w, h: m.h, open: m.cells.filter(function (c) { return c.open; }).length, total: m.cells.length, pos: Object.keys(m.pos).map(function (x) { return m.pos[x]; }) }; }); }
   if (v.over) { v.pw = br.pw.map(function (p) { return p.join('-'); }); v.stats = Object.keys(br.stats).sort(function (a, b) { return br.stats[b] - br.stats[a]; }).slice(0, 3).map(function (x) { return [brLabel_(br, j, x), br.stats[x]]; }); }
@@ -9109,6 +9143,9 @@ function breachView_(g, myTeam, e) {
 function breachControl_(g2, action) { var B = g2.breach, now = Date.now(); if (!B || livePhase_(g2) !== 'on') return false;
   if (action === 'brskip') { if (B.phase === 'vote' || B.phase === 'meet') breachTick_(g2, true); }
   else if (action === 'brglow') { if (B.phase === 'play' && !B.attempt) brGlow_(B, now); }
+  else if (action === 'brreal') { if (!B.practice || !g2.brReal) return false;      /* 4.171 the practice round becomes the real game: same crews and Decoders, a fresh network and passwords, the clock starts now */
+    var nb = breachNew_(B.n, Object.assign({}, g2.brOpt || {}, { brPractice: false })); nb.colors = B.colors; nb.decoders = B.decoders.slice(); nb.phase = 'play'; nb.glowNext = now + BR_GLOW_EVERY[0]; g2.breach = nb; g2.brReal = false;
+    g2.untimed = false; g2.ends = now + (g2.minutes || 15) * 60000; brLog_(nb, { kind: 'start' }); }
   else if (/^brdec:\d$/.test(action)) { var t = Math.floor(num_(action.split(':')[1])), m = brMates_(liveJoined_(g2.id), t).filter(function (e) { return e !== B.decoders[t]; }); if (m.length) { B.decoders[t] = m[Math.floor(Math.random() * m.length)]; brLog_(B, { kind: 'newdec', t: t }); } }
   else if (action === 'brpause') { if (!B.paused) { B.paused = true; B.pausedAt = now; B.pausedLeft = Math.max(0, g2.ends - now); g2.ends += 864e5; } else { B.paused = false; g2.ends = now + (B.pausedLeft || 0); if (B.attempt) B.attempt.ends += now - B.pausedAt; if (B.phase === 'vote') B.phaseEnds += now - B.pausedAt; } }
   else return false;
@@ -9356,6 +9393,7 @@ function api_seatingSave(auth, cls, chart) {
   requireTeacher_();
   cls = str_(cls); if (!cls) throw new Error('Pick a class first.');
   var json = JSON.stringify(chart || {}); if (json.length > 45000) throw new Error('That seating chart is too big to save.');
+  try { CacheService.getScriptCache().remove('chart:' + cls + ':n'); } catch (e) {}      /* 4.167 the games read the new chart */
   var kioskErr = '';
   if (seatKiosk_()) { try { var kc = seatKioskClass_(cls, seatEmails_(cls)); if (kc && kc.label) seatKioskCall_('save', { cls: kc.label, chart: seatKeepKioskOnly_(seatMapChart_(chart, function (x) { return kc.toKiosk[x]; }), (seatKioskCall_('get', { cls: kc.label }) || {}).chart, kc) }); else kioskErr = 'No kiosk class matches ' + cls + ' (no shared students).'; } catch (e) { kioskErr = e.message; } }      /* 4.101 the kiosk first; this tab keeps a backup */
   lock_(function () {
