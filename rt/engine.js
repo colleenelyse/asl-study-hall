@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.158';
+var VERSION = '4.159';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8662,7 +8662,7 @@ function vaultViewCore_(V, e) {
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
 function vaultBoardCore_(V) { if (!V) return null;
-  return { loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+  return { seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
 /** The meeting is over when every partner pressed "I found my partner" or a minute passed: the pair's clock starts. */
 function vaultMeetDue_(P) { if (!P.t0 && (P.m.every(function (e) { return P.ready[e]; }) || Date.now() - P.meet0 >= VAULT_MEET_MS)) P.t0 = Date.now(); return !!P.t0; }
 /** A student acts on their pair's current lock (pure: the caller saves and records): try an answer (the doer), pick a key, turn a key, or ask for a hint (On your own: +30 s). */
@@ -8702,6 +8702,20 @@ function vaultVersusStart_(g) { var V = g.vault, joined = liveJoinedSure_(g.id),
   V.pairs = who.map(function (e, i) { var rr = vaultRnd_(V.seed + 7919 * (i + 1)), side = {}; side[e] = 'out'; side.bot = 'in'; V.byE[e] = i;
     return { m: [e, 'bot'], side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: { bot: 1 }, done: 0, guided: V.guided, locks: list.map(function (sc) { return vaultLock_(sc.type, rr, { guided: V.guided }); }), turn: {}, rs: V.seed + 104729 * (i + 1), bot: true }; }); }
 /* RT-SHARED-END */
+/** 4.138 / 4.159 seating-chart partners for The Vault: a student in the LEFT half of the room is paired with one in the RIGHT half at the mirror spot (the same row,
+    the same distance from the middle), or as close to it as possible; a partner of the other strength when it's a tie. 4.159 (Colleen: "students partners were all
+    over the room"): the middle is the middle of the DESKS (the outermost desk columns), not of the chart's grid, which can be wider than the room's desks. */
+function vaultSeatPairs_(chart, joined, sw, away) {
+  var pos = {}, cols = [], pairs = [], used = {};
+  Object.keys(chart.seats || {}).forEach(function (k) { var e = str_(chart.seats[k]).toLowerCase(); if (joined[e]) pos[e] = k.split(',').map(Number); });
+  (chart.desks && chart.desks.length ? chart.desks.map(function (k) { return +String(k).split(',')[1]; }) : Object.keys(pos).map(function (e) { return pos[e][1]; })).forEach(function (c) { if (!isNaN(c)) cols.push(c); });
+  if (!cols.length) return { pairs: pairs, pos: pos };
+  var mid = (Math.min.apply(null, cols) + Math.max.apply(null, cols)) / 2, L = [], R = [];
+  Object.keys(pos).forEach(function (e) { (pos[e][1] < mid ? L : pos[e][1] > mid ? R : (L.length <= R.length ? L : R)).push(e); });      /* a middle column joins the smaller half */
+  var cand = []; L.forEach(function (a) { R.forEach(function (b) { if (away(a, b)) return; var p = pos[a], q = pos[b], dr = Math.abs(p[0] - q[0]), dm = Math.abs((mid - p[1]) - (q[1] - mid));
+    cand.push([dr * 10 + dm * 4 - Math.abs(sw(a) - sw(b)) * 3, a, b]); }); });
+  cand.sort(function (x, y) { return x[0] - y[0]; }).forEach(function (c) { if (used[c[1]] || used[c[2]]) return; used[c[1]] = used[c[2]] = 1; pairs.push([c[1], c[2]]); });
+  return { pairs: pairs, pos: pos, mid: mid }; }
 function vaultStart_(g, opt) {
   if (g.vault && g.vault.versus) return vaultVersusStart_(g);      /* 4.151 */
   var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, pairs = [], used = {}, apart = seatApart_(who), away = function (a, b) { return !!(apart[a] && apart[a][b]); };      /* 4.129 keep-aways are never partners */
@@ -8709,13 +8723,10 @@ function vaultStart_(g, opt) {
   if (chart && chart.seats) {      /* 4.138 (Colleen: "half the desks face one direction and the others face the opposite direction. i want students on the left to be partnered with a student on the right
        so they're looking at one another but can't easily see the other's screen"): a student in the LEFT half of the chart is paired with one in the RIGHT half, at the mirror spot
        (the same row, the same distance from the middle) or as close to it as possible; a partner of the other strength when it's a tie. Anyone left over pairs below. */
-    var at = {}, pos = {}, nc = num_(chart.cols) || 0; Object.keys(chart.seats).forEach(function (k) { var e = str_(chart.seats[k]).toLowerCase(); if (joined[e]) { at[k] = e; pos[e] = k.split(',').map(Number); } });
-    if (!nc) Object.keys(pos).forEach(function (e) { nc = Math.max(nc, pos[e][1] + 1); });
-    var mid = (nc - 1) / 2, L = [], R = []; Object.keys(pos).forEach(function (e) { (pos[e][1] < mid ? L : pos[e][1] > mid ? R : (L.length <= R.length ? L : R)).push(e); });      /* a middle column joins the smaller half */
-    var cand = []; L.forEach(function (a) { R.forEach(function (b) { if (away(a, b)) return; var p = pos[a], q = pos[b], dr = Math.abs(p[0] - q[0]), dm = Math.abs((mid - p[1]) - (q[1] - mid));
-      cand.push([dr * 10 + dm * 4 - Math.abs(sw(a) - sw(b)) * 3, a, b]); }); });
-    cand.sort(function (x, y) { return x[0] - y[0]; }).forEach(function (c) { if (used[c[1]] || used[c[2]]) return; used[c[1]] = used[c[2]] = 1; pairs.push([c[1], c[2]]); });
-    V.map = { rows: num_(chart.rows) || 0, cols: num_(chart.cols) || 0, desks: (chart.desks || []).slice(0, 200) }; V.seat = {}; Object.keys(pos).forEach(function (e) { V.seat[e] = pos[e].join(','); }); }      /* 4.106: each student sees where they and their partner sit */
+    var sp = vaultSeatPairs_(chart, joined, sw, away), pos = sp.pos; sp.pairs.forEach(function (p) { used[p[0]] = used[p[1]] = 1; pairs.push(p); });
+    V.seatNote = { cls: str_(opt.cls), paired: sp.pairs.length * 2, onChart: Object.keys(pos).length, joined: who.length };      /* 4.159 the projector says how many were paired from the chart */
+    V.map = { rows: num_(chart.rows) || 0, cols: num_(chart.cols) || 0, desks: (chart.desks || []).slice(0, 200) }; V.seat = {}; Object.keys(pos).forEach(function (e) { V.seat[e] = pos[e].join(','); }); }
+  else if (opt && opt.cls) V.seatNote = { cls: str_(opt.cls), paired: 0, onChart: 0, joined: who.length, none: true };      /* 4.159 the chart could not be read */      /* 4.106: each student sees where they and their partner sit */
   var rest = who.filter(function (e) { return !used[e]; }).sort(function (a, b) { return sw(b) - sw(a); });      /* everyone else: strongest with weakest */
   var guard = 0; while (rest.length >= 2 && guard++ < 500) { var top = rest.shift(), pi = rest.length - 1; while (pi > 0 && away(top, rest[pi])) pi--; if (away(top, rest[pi])) { rest.push(top); if (rest.every(function (x, i) { return i === 0 || away(rest[0], x); })) break; continue; } pairs.push([top, rest.splice(pi, 1)[0]]); }      /* strongest with the weakest who isn't a keep-away */
   rest.forEach(function (x) { var ok = pairs.filter(function (p) { return p.length < 3 && !p.some(function (y) { return away(x, y); }); }).sort(function (a, b) { return (sw(a[0]) + sw(a[1])) - (sw(b[0]) + sw(b[1])); }); if (ok.length) ok[0].push(x); else pairs.push([x]); });      /* odd one out (or no one left to pair with): a trio with no keep-aways */      /* odd: a trio (two Outside) */
