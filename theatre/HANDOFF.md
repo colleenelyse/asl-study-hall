@@ -169,6 +169,13 @@ Length = kept moments (songs from tracks when uploaded; everything else scaled t
 narrator bridges from the scene summaries. "Suggest" only applies her ranked cuts, then says how far over it still is. My Schedule shows **Evening show /
 School-day show** and lists what of theirs is left out. The page reminds her to get MTI's written permission before performing cuts.
 
+**Student look options** (Settings; saved per student as `prefs:<actor>` and per device): reading font (Atkinson Hyperlegible, Lexend, Andika, Comic Neue,
+the device's own), letter spacing, line spacing, main color (6), page tint in light mode (6), plus the earlier text size, light/dark, high contrast, symbols, motion.
+**Chromebooks** (every student has one; Chrome has good Google voices and speech recognition): keyboard shortcuts with on-screen hints on keyboard devices
+(Practice: Space play/pause, ← → back/next, Enter I got it, X not yet, H hint, S say it for me, M microphone; Songs: Space, ← back 10 s; Play the whole show:
+Space, ← →); checked at 1366×768. **Install as an app**: `manifest.webmanifest`, icons in `img/` (drawn by `dev/make-icons.js`), and `sw.js` (network first,
+the device's copy when offline; never caches `/theatre/api/`). Installing and the microphone need https, so they work only on asl.cool (or localhost).
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

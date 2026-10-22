@@ -49,6 +49,17 @@
   };
   function icon(name, cls) { return '<svg class="' + (cls || 'ic') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICON[name] || '') + '</svg>'; }
   T.icon = icon;
+  /* keyboards (Chromebooks): one handler per page, removed when the page changes; never while typing in a box */
+  function keys(map) {
+    var h = function (e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || /input|textarea|select/i.test((e.target.tagName || '')) || document.querySelector('dialog[open]')) return;
+      var k = e.key === ' ' ? 'Space' : e.key.length === 1 ? e.key.toLowerCase() : e.key, f = map[k];
+      if (f) { e.preventDefault(); f(); }
+    };
+    document.addEventListener('keydown', h); T.cleanup.push(function () { document.removeEventListener('keydown', h); });
+  }
+  var hasKeys = matchMedia('(pointer: fine)').matches;
+  function keyHint(text) { return hasKeys ? '<p class="muted small noprint" style="text-align:center">' + sym('⌨️') + text + '</p>' : ''; }
   var SCENE_SYM = { school: '🏫', class: '📚', hall: '🎒', ball: '🏀', lab: '🧪', stage: '🎭', mic: '🎤', lunch: '🍎', plant: '🌱', trophy: '🏆', party: '🎉' };
   function sym(s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; }
 
@@ -128,8 +139,13 @@
   }
 
   /* ---------- preferences (this iPad) ---------- */
-  var DEF_PREFS = { size: 1, contrast: false, theme: 'auto', rate: 1, symbols: true, motion: true };
+  var DEF_PREFS = { size: 1, contrast: false, theme: 'auto', rate: 1, symbols: true, motion: true, font: 'atkinson', spacing: 'normal', lines: 'normal', accent: '', tint: '' };
   T.prefs = Object.assign({}, DEF_PREFS, ls('prefs') || {});
+  /* reading fonts: Atkinson Hyperlegible (made for low vision), Lexend (made for reading fluency), Andika (made for new readers), Comic Neue, the device's own */
+  var FONTS = { atkinson: ["'Atkinson Hyperlegible'", "'Lexend'"], lexend: ["'Lexend'", "'Lexend'"], andika: ["'Andika'", "'Andika'"], comic: ["'Comic Neue'", "'Comic Neue'"], system: ['system-ui', 'system-ui'] };
+  var ACCENTS = { purple: '#6b3fd4', blue: '#1f5fbf', teal: '#0f7b7b', green: '#2f7d32', orange: '#b8500f', pink: '#b8336a' };
+  var TINTS = { cream: '#fbf5e4', blue: '#e8f1fb', yellow: '#fbf6cf', green: '#e9f5e6', pink: '#fbecf1', gray: '#eeeeee' };
+  T.FONTS = FONTS; T.ACCENTS = ACCENTS; T.TINTS = TINTS;
   function applyPrefs() {
     var p = T.prefs, r = document.documentElement;
     r.style.setProperty('--scale', p.size);
@@ -138,8 +154,16 @@
     r.dataset.dark = (p.theme === 'dark' || (p.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) ? '1' : '0';
     r.dataset.motion = p.motion ? '1' : '0';
     document.body.classList.toggle('symbols-off', !p.symbols);
+    var f = FONTS[p.font] || FONTS.atkinson;
+    r.style.setProperty('--font-body', f[0] + ', system-ui, sans-serif'); r.style.setProperty('--font-head', f[1] + ', system-ui, sans-serif');
+    r.style.setProperty('--ls', p.spacing === 'wide' ? '0.06em' : 'normal'); r.style.setProperty('--ws', p.spacing === 'wide' ? '0.16em' : 'normal');
+    r.style.setProperty('--lh', p.lines === 'tall' ? '1.9' : '1.5');
+    if (ACCENTS[p.accent]) { r.dataset.accent = p.accent; r.style.setProperty('--accent-pick', ACCENTS[p.accent]); } else delete r.dataset.accent;
+    if (TINTS[p.tint]) { r.dataset.tint = p.tint; r.style.setProperty('--tint', TINTS[p.tint]); } else delete r.dataset.tint;
   }
-  T.savePrefs = function () { ls('prefs', T.prefs); applyPrefs(); };
+  /* settings follow the student (a shared iPad, or their own Chromebook): saved for this device and for the signed-in student */
+  T.savePrefs = function () { ls('prefs', T.prefs); if (T.me && T.me.id) ls('prefs:' + T.me.id, T.prefs); applyPrefs(); };
+  T.loadPrefsFor = function (id) { var mine = id && ls('prefs:' + id); if (mine) { T.prefs = Object.assign({}, DEF_PREFS, mine); applyPrefs(); } };
   applyPrefs();
 
   var DEF_ACCESS = { show: 'auto', echo: false, didIt: false, mic: true, sayForMe: true, strict: 'medium' };
@@ -149,7 +173,7 @@
     if (!sel || !T.show) return;
     if (sel.cast) {
       var c = (T.show.cast || []).find(function (x) { return x.id === sel.cast; });
-      if (c) T.me = { id: c.id, name: c.name, chars: (c.chars || []).slice(), photo: c.photo, access: Object.assign({}, DEF_ACCESS, c.access || {}) };
+      if (c) { T.me = { id: c.id, name: c.name, chars: (c.chars || []).slice(), photo: c.photo, access: Object.assign({}, DEF_ACCESS, c.access || {}) }; T.loadPrefsFor(c.id); }
     } else if (sel.char && charById(sel.char)) {
       var ch = charById(sel.char);
       T.me = { id: null, name: ch.short, chars: [ch.id], access: Object.assign({}, DEF_ACCESS, ls('access') || {}) };
@@ -451,7 +475,8 @@
       }).join('') + '</div>' +
         '<div class="dock"><div class="in"><button class="round" id="pv" aria-label="Back one line">' + icon('prev') + '</button>' +
         '<button class="round big" id="pp" aria-label="Play">' + icon('play') + '</button>' +
-        '<button class="round" id="nx" aria-label="Next line">' + icon('next') + '</button></div></div>';
+        '<button class="round" id="nx" aria-label="Next line">' + icon('next') + '</button></div></div>' +
+        keyHint('Space: play or pause · ← →: back or next' + (mode === 'run' ? ' · Enter: I got it · X: not yet · H: hint · S: say it for me' : ''));
       renderOpts();
       app.querySelectorAll('.item').forEach(function (el) { el.onclick = function (e) { if (e.target.closest('a')) return; jump(+el.dataset.i); }; });
       document.getElementById('pp').onclick = function () { playing ? pause() : play(); };
@@ -521,7 +546,7 @@
       }
       function draw(fb, listening) {
         if (g !== gen || !turnEl) return;
-        turnEl.innerHTML = '<div class="in"><div class="row"><b class="grow" style="font-family:Lexend">' + sym('⭐') + 'Your turn!</b>' + chip(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]) + '</div>' +
+        turnEl.innerHTML = '<div class="in"><div class="row"><b class="grow" style="font-family:var(--font-head)">' + sym('⭐') + 'Your turn!</b>' + chip(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]) + '</div>' +
           '<div class="say">' + shown() + '</div>' + (fb || '') +
           '<div class="row">' +
           (opt.didIt ? '<button class="btn primary" data-a="did">' + icon('check') + 'I got it</button><button class="btn" data-a="miss">✗ Not yet</button>'
@@ -570,6 +595,9 @@
     }
     render();
     T.cleanup.push(function () { pause(); });
+    var press = function (a) { var b = turnEl && turnEl.querySelector('[data-a="' + a + '"]'); if (b && !b.disabled) b.click(); };
+    keys({ Space: function () { if (!turnEl) document.getElementById('pp').click(); }, ArrowRight: function () { document.getElementById('nx').click(); }, ArrowLeft: function () { document.getElementById('pv').click(); },
+      Enter: function () { press('did'); }, x: function () { press('miss'); }, n: function () { press('miss'); }, h: function () { press('hint'); }, m: function () { press('mic'); }, s: function () { press('for'); } });
   }
   var actx = null;
   function audioCtx() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; }
@@ -741,6 +769,7 @@
       document.getElementById('pl').innerHTML =
         '<div class="row" style="justify-content:center"><button class="round" id="sb" aria-label="Back 10 seconds">' + icon('back10') + '</button><button class="round big" id="spp" aria-label="Play">' + icon('play') + '</button><span class="time" id="tm"></span></div>' +
         '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song">' +
+        keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
         sw('melody', 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
@@ -764,6 +793,7 @@
       document.getElementById('lc').onclick = function () { P.loopA = P.loopB = null; lt(); };
       tick();
     }
+    keys({ Space: function () { var b = document.getElementById('spp'); if (b) b.click(); }, ArrowLeft: function () { var b = document.getElementById('sb'); if (b) b.click(); } });
     T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); if (!P.asked && (P.most || 0) > 0.6 && T.askSongRating) T.askSongRating(song.id); });
   }
 
@@ -810,6 +840,7 @@
       app.querySelectorAll('input[data-k]').forEach(function (c) { c.onchange = function () { st[c.dataset.k] = c.checked; ls('listenOpts', st); if (c.dataset.k === 'singers') { var t = audio.currentTime, playing = !audio.paused; load(at, playing); audio.addEventListener('loadedmetadata', function f() { audio.removeEventListener('loadedmetadata', f); try { audio.currentTime = t; } catch (e) {} }); } }; });
     }
     draw();
+    keys({ Space: function () { document.getElementById('lp').click(); }, ArrowRight: function () { document.getElementById('ln').click(); }, ArrowLeft: function () { document.getElementById('lb').click(); } });
     T.cleanup.push(function () { alive = false; audio.pause(); if (url) URL.revokeObjectURL(url); });
   }
 
@@ -873,6 +904,11 @@
     app.innerHTML = '<h2>' + icon('gear') + ' Settings</h2><div class="card">' +
       '<div class="switch"><span>Text size</span>' + seg('size', [[1, 'A'], [1.2, 'A+'], [1.4, 'A++'], [1.7, 'A+++']]) + '</div>' +
       '<div class="switch"><span>Colors</span>' + seg('theme', [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']]) + '</div>' +
+      '<div class="switch" style="flex-wrap:wrap"><span>Reading font</span><div class="seg" data-k="font">' + [['atkinson', 'Atkinson', "'Atkinson Hyperlegible'"], ['lexend', 'Lexend', "'Lexend'"], ['andika', 'Andika', "'Andika'"], ['comic', 'Comic Neue', "'Comic Neue'"], ['system', 'Plain', 'system-ui']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (p.font === o[0]) + '" style="font-family:' + o[2] + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div class="switch"><span>Space between letters</span>' + seg('spacing', [['normal', 'Normal'], ['wide', 'Wide']]) + '</div>' +
+      '<div class="switch"><span>Space between lines</span>' + seg('lines', [['normal', 'Normal'], ['tall', 'Tall']]) + '</div>' +
+      '<div class="switch" style="flex-wrap:wrap"><span>Main color</span><div class="row">' + [['', 'Standard', '#6b3fd4']].concat(Object.keys(ACCENTS).map(function (k) { return [k, k, ACCENTS[k]]; })).map(function (o) { return '<button type="button" class="swatch" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '" title="' + o[1] + '" style="--sw:' + o[2] + '"></button>'; }).join('') + '</div></div>' +
+      '<div class="switch" style="flex-wrap:wrap"><span>Page color <span class="muted small">(light mode)</span></span><div class="row">' + [['', 'White', '#f7f4ee']].concat(Object.keys(TINTS).map(function (k) { return [k, k, TINTS[k]]; })).map(function (o) { return '<button type="button" class="swatch" data-tint="' + o[0] + '" aria-pressed="' + ((p.tint || '') === o[0]) + '" aria-label="' + o[1] + '" title="' + o[1] + '" style="--sw:' + o[2] + '"></button>'; }).join('') + '</div></div>' +
       '<label class="switch"><span>High contrast</span><input type="checkbox" data-b="contrast"' + (p.contrast ? ' checked' : '') + '></label>' +
       '<label class="switch"><span>Picture symbols</span><input type="checkbox" data-b="symbols"' + (p.symbols ? ' checked' : '') + '></label>' +
       '<label class="switch"><span>Movement and animation</span><input type="checkbox" data-b="motion"' + (p.motion ? ' checked' : '') + '></label>' +
@@ -888,7 +924,9 @@
       '<p class="small"><b>Mac:</b> System Settings › Accessibility › Spoken Content › System voice › Manage Voices. Safari shows the new voices; some other browsers do not.</p></details></div>' +
       (T.me ? '<div class="card"><div class="row">' + face(T.me, 56) + '<div class="grow"><b>' + esc(T.me.name) + '</b><br>' + T.me.chars.map(chip).join('') + '</div><a class="btn" href="#/who">Change</a></div></div>' : '') +
       '<div class="card"><div class="row"><a class="btn" href="#/teacher">Teacher mode</a><span class="grow"></span><button class="btn quiet" id="forget">' + icon('lock') + 'Lock this iPad</button></div></div>';
-    app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { var k = b.parentNode.dataset.k; p[k] = k === 'theme' ? b.dataset.v : +b.dataset.v; T.savePrefs(); settingsPage(); }; });
+    app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { var k = b.parentNode.dataset.k; p[k] = ['size', 'rate'].indexOf(k) >= 0 ? +b.dataset.v : b.dataset.v; T.savePrefs(); settingsPage(); }; });
+    app.querySelectorAll('[data-accent]').forEach(function (b) { b.onclick = function () { p.accent = b.dataset.accent; T.savePrefs(); settingsPage(); }; });
+    app.querySelectorAll('[data-tint]').forEach(function (b) { b.onclick = function () { p.tint = b.dataset.tint; T.savePrefs(); settingsPage(); }; });
     app.querySelectorAll('input[data-b]').forEach(function (inp) { inp.onchange = function () { p[inp.dataset.b] = inp.checked; T.savePrefs(); if (inp.dataset.b === 'oneVoice') Speech.load(); }; });
     document.getElementById('test').onclick = function () { Speech.stop(); Speech.say('Break a leg! This is how fast I will read.'); };
     app.querySelectorAll('[data-myvoice]').forEach(function (b) {

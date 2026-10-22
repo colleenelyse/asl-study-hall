@@ -4,6 +4,7 @@
   --good: #1b7a43; --good-bg: #e2f5e9; --warn: #8a5a00; --warn-bg: #fff1d1; --bad: #a3242b; --bad-bg: #fde4e4; --hi: #fff3b8;
   --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.06);
   --scale: 1; --radius: 18px; --tap: 56px;
+  --font-body: 'Atkinson Hyperlegible', system-ui, sans-serif; --font-head: 'Lexend', system-ui, sans-serif; --ls: normal; --ws: normal; --lh: 1.5;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,10 @@
   --good: #6fdc9b; --good-bg: #173527; --warn: #ffcf6b; --warn-bg: #3a2d10; --bad: #ff9a9f; --bad-bg: #3d1a1d; --hi: #4a4120;
   --shadow: none; color-scheme: dark;
 }
+/* the student's own colors (Settings): an accent color, and a page tint in light mode */
+:root[data-accent] { --accent: var(--accent-pick); --accent-ink: #ffffff; }
+:root[data-accent][data-dark="1"] { --accent: color-mix(in srgb, var(--accent-pick) 55%, #ffffff); --accent-ink: #15131f; }
+:root[data-tint][data-dark="0"][data-contrast="0"] { --bg: var(--tint); }
 /* high contrast: black and white, thick outlines */
 :root[data-contrast="1"] { --bg: #ffffff; --card: #ffffff; --ink: #000000; --muted: #000000; --line: #000000; --accent: #0000c8; --accent-ink: #ffffff; --hi: #ffe600; --shadow: none; }
 :root[data-contrast="1"][data-theme="dark"], :root[data-contrast="1"][data-dark="1"] { --bg: #000000; --card: #000000; --ink: #ffffff; --muted: #ffffff; --line: #ffffff; --accent: #ffe600; --accent-ink: #000000; --hi: #0033cc; }
@@ -26,8 +31,8 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: calc(18px * var(--scale))/1.5 'Atkinson Hyperlegible', system-ui, sans-serif; min-height: 100vh; }
-h1, h2, h3, .tile b, .big { font-family: 'Lexend', system-ui, sans-serif; line-height: 1.2; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: calc(18px * var(--scale))/var(--lh) var(--font-body); letter-spacing: var(--ls); word-spacing: var(--ws); min-height: 100vh; }
+h1, h2, h3, .tile b, .big { font-family: var(--font-head); line-height: 1.25; }
 h2 { font-size: 1.5em; margin: .2em 0 .5em; }
 h3 { font-size: 1.15em; margin: 0 0 .3em; }
 p { margin: .4em 0; }
@@ -75,10 +80,10 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 120px; outline: non
 .tile.on { border-color: var(--accent); }
 .choose { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); }
 .person { min-height: 170px; border-radius: 22px; border: 2px solid var(--line); background: var(--card); padding: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink); }
-.face { width: 48px; height: 48px; border-radius: 50%; background: var(--c, var(--accent)); color: #fff; display: inline-grid; place-items: center; font: 700 18px 'Lexend', sans-serif; overflow: hidden; flex: none; }
+.face { width: 48px; height: 48px; border-radius: 50%; background: var(--c, var(--accent)); color: #fff; display: inline-grid; place-items: center; font: 700 18px var(--font-head); overflow: hidden; flex: none; }
 .face img { width: 100%; height: 100%; object-fit: cover; }
 .person .face { width: 96px; height: 96px; font-size: 2.1em; }
-.person b { font-family: 'Lexend', sans-serif; font-size: 1.1em; }
+.person b { font-family: var(--font-head); font-size: 1.1em; }
 .person span { color: var(--muted); font-size: .85em; text-align: center; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 6px; border-radius: 999px; background: color-mix(in srgb, var(--c, var(--accent)) 16%, var(--card)); border: 2px solid var(--c, var(--accent)); font-size: .85em; font-weight: 700; margin: 2px 4px 2px 0; }
 .chip::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--c, var(--accent)); }
@@ -98,12 +103,14 @@ label.f textarea { min-height: 120px; }
 .seg button { min-height: 50px; min-width: 64px; padding: 6px 14px; border: 0; background: var(--card); cursor: pointer; font-weight: 700; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .err { color: var(--bad); font-weight: 700; }
+.swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--line); background: var(--sw); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--ink); }
 
 /* the script */
 .script { display: flex; flex-direction: column; gap: 8px; }
 .item { border-radius: 14px; padding: 10px 14px; border: 2px solid transparent; cursor: pointer; scroll-margin: 120px 0 180px; }
 .item.line { background: var(--card); border-color: var(--line); border-left: 8px solid var(--c, var(--line)); }
-.item.line .who { font: 700 .8em 'Lexend', sans-serif; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
+.item.line .who { font: 700 .8em var(--font-head); letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
 .item.line .text { font-size: 1.12em; }
 .item.dir { color: var(--muted); font-style: italic; font-size: .92em; padding: 4px 14px; }
 .item.song { background: color-mix(in srgb, var(--accent) 10%, var(--card)); border-color: var(--accent); }
@@ -146,7 +153,7 @@ label.f textarea { min-height: 120px; }
 .sched .change { margin-top: 8px; padding: 8px 12px; background: var(--warn-bg); color: var(--warn); border-radius: 12px; font-weight: 700; }
 .firstthen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .firstthen .card { margin: 0; }
-.firstthen .lbl { font: 700 .8em 'Lexend', sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.firstthen .lbl { font: 700 .8em var(--font-head); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 
 /* songs */
 .player .time { font-variant-numeric: tabular-nums; }
@@ -156,7 +163,7 @@ label.f textarea { min-height: 120px; }
 /* teacher */
 .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.cal-h { font: 700 .75em 'Lexend', sans-serif; text-align: center; color: var(--muted); padding: 4px 0; }
+.cal-h { font: 700 .75em var(--font-head); text-align: center; color: var(--muted); padding: 4px 0; }
 .cal-d { min-height: 92px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
 .cal-d.out { opacity: .45; }
 .cal-d.today { border: 3px solid var(--accent); }
