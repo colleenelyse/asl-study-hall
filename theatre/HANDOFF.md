@@ -298,3 +298,9 @@ are found, so "Add many … tracks" can place every file (songs and scene-change
 Re-importing keeps the saved pages (`pdfVer`) until the new PDF is saved; a show saved without `pdfVer` while the PDF is on the server is reconnected
 when the teacher home opens (`recoverPdf`). Read the script, Cue sheet and Stage manager script tiles show whenever there is a script; their pages
 explain what to do if the pages are not saved.
+
+**Show look** (Colleen: "a little more branded to High School Musical… around copyright"): the show file's `theme` ({ id, color, presents, cheer })
+sets `data-show` on the page (`T.showTheme`, `applyTheme`; a show saved before themes takes it from the show file when the title matches).
+East High: school red and white tokens (light and dark), the Graduate varsity font for the title bar and banner only (`--font-show`), pennant
+stripe under the bar, a school-color top on tiles, and `T.showBanner()` on the student and teacher home pages (a basketball and spotlight drawn
+in SVG for the app). A student's own color, page tint and high contrast still win. Nothing from Disney (no logo, show art or movie fonts).

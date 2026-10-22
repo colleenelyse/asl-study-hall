@@ -105,6 +105,10 @@ window.DEFAULT_SHOW = {
       sensory: ['Game buzzer', 'Loud cheering and applause', 'Bows at the end'] }
   ],
 
+  // the app's look for this show (Colleen 2026-10-22: "a little more branded to High School Musical"): East High red and white, a varsity
+  // lettering font for titles, pennant stripes and a basketball drawn for the app. No Disney logo, show art or movie fonts.
+  theme: { id: 'easthigh', color: '#b3121f', presents: 'East High Drama Club presents', cheer: 'Go Wildcats!' },
+
   // the mic plot this show starts from (Colleen 2026-10-22: plan for 10 body mics; Jack Scott and the Moderator use a handheld)
   micPlot: { n: 10, pin: { jack: 'hand', moderator: 'hand' } },
 

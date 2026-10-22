@@ -165,6 +165,29 @@
   T.savePrefs = function () { ls('prefs', T.prefs); if (T.me && T.me.id) ls('prefs:' + T.me.id, T.prefs); applyPrefs(); };
   T.loadPrefsFor = function (id) { var mine = id && ls('prefs:' + id); if (mine) { T.prefs = Object.assign({}, DEF_PREFS, mine); applyPrefs(); } };
   applyPrefs();
+  /* the show's look (show file: theme), on every page and before unlocking (the public show file has it too) */
+  function showTheme() {      // the loaded show's theme; a show saved before themes existed takes it from the show file when it is the same show
+    var D = window.DEFAULT_SHOW, out = T.show && T.show.outline;
+    if (out) return out.theme || (D && D.title === out.title ? D.theme : null);
+    return D && D.theme;
+  }
+  T.showTheme = showTheme;
+  function applyTheme() {
+    var th = showTheme(), r = document.documentElement;
+    if (th) r.dataset.show = th.id; else delete r.dataset.show;
+    var m = document.getElementById('themecolor'); if (m) m.content = th && th.color ? th.color : '#1d1a2e';
+  }
+  T.applyTheme = applyTheme; applyTheme();
+  /* the banner on the home pages: the show's title on its school colors, with a basketball and a spotlight (drawn for this app) */
+  T.showBanner = function () {
+    var th = showTheme(); if (!th) return '';
+    return '<div class="showhero" role="img" aria-label="' + esc(O().title) + '">' +
+      '<svg class="showhero-art" viewBox="0 0 120 120" aria-hidden="true"><path class="beam" d="M60 0 L20 120 H100 Z"/>' +
+      '<circle cx="60" cy="74" r="30" class="ball"/><path class="seam" d="M30 74 H90 M60 44 V104 M39 53 C52 64 52 84 39 95 M81 53 C68 64 68 84 81 95"/>' +
+      '<path class="star" d="M22 22 l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/><path class="star" d="M98 30 l2 5 5 .5-4 3.5 1 5-4-2.5-4 2.5 1-5-4-3.5 5-.5z"/></svg>' +
+      '<div class="showhero-text"><div class="showhero-kicker">' + esc(th.presents || '') + '</div><div class="showhero-title">' + esc(O().title) + '</div>' +
+      (th.cheer ? '<div class="showhero-cheer">' + esc(th.cheer) + '</div>' : '') + '</div></div>';
+  };
 
   var DEF_ACCESS = { show: 'auto', echo: false, didIt: false, mic: true, sayForMe: true, strict: 'medium' };
   T.DEF_ACCESS = DEF_ACCESS;
@@ -295,7 +318,7 @@
   /* ---------- routing ---------- */
   var titleEl = document.getElementById('title'), backBtn = document.getElementById('back'), meBtn = document.getElementById('mebtn');
   function setBar(title, back) {
-    titleEl.textContent = title; document.title = title === 'Theatre' ? 'Theatre' : title + ' · Theatre';
+    titleEl.textContent = title; document.title = title === 'Theatre' ? 'Theatre' : title + ' · Theatre'; applyTheme();
     backBtn.hidden = !back; backBtn.dataset.to = back || '';
     meBtn.hidden = !T.me; meBtn.innerHTML = T.me ? face(T.me, 40) : '';
   }
@@ -385,7 +408,7 @@
   function homePage() {
     setBar(O().title);
     var who = T.me.chars.map(chip).join('');
-    app.innerHTML = '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
+    app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
       '<div><h2 style="margin:0">Hi, ' + esc(T.me.name) + '!</h2><div>' + who + '</div></div></div>' +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
@@ -1003,7 +1026,7 @@
       '<div class="switch" style="flex-wrap:wrap"><span>Reading font</span><div class="seg" data-k="font">' + [['atkinson', 'Atkinson', "'Atkinson Hyperlegible'"], ['lexend', 'Lexend', "'Lexend'"], ['andika', 'Andika', "'Andika'"], ['comic', 'Comic Neue', "'Comic Neue'"], ['system', 'Plain', 'system-ui']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (p.font === o[0]) + '" style="font-family:' + o[2] + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="switch"><span>Space between letters</span>' + seg('spacing', [['normal', 'Normal'], ['wide', 'Wide']]) + '</div>' +
       '<div class="switch"><span>Space between lines</span>' + seg('lines', [['normal', 'Normal'], ['tall', 'Tall']]) + '</div>' +
-      '<div class="switch" style="flex-wrap:wrap"><span>Main color</span><div class="row">' + [['', 'Standard', '#6b3fd4']].concat(Object.keys(ACCENTS).map(function (k) { return [k, k, ACCENTS[k]]; })).map(function (o) { return '<button type="button" class="swatch" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '" title="' + o[1] + '" style="--sw:' + o[2] + '"></button>'; }).join('') + '</div></div>' +
+      '<div class="switch" style="flex-wrap:wrap"><span>Main color</span><div class="row">' + [['', 'Standard', (showTheme() && showTheme().color) || '#6b3fd4']].concat(Object.keys(ACCENTS).map(function (k) { return [k, k, ACCENTS[k]]; })).map(function (o) { return '<button type="button" class="swatch" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '" title="' + o[1] + '" style="--sw:' + o[2] + '"></button>'; }).join('') + '</div></div>' +
       '<div class="switch" style="flex-wrap:wrap"><span>Page color <span class="muted small">(light mode)</span></span><div class="row">' + [['', 'White', '#f7f4ee']].concat(Object.keys(TINTS).map(function (k) { return [k, k, TINTS[k]]; })).map(function (o) { return '<button type="button" class="swatch" data-tint="' + o[0] + '" aria-pressed="' + ((p.tint || '') === o[0]) + '" aria-label="' + o[1] + '" title="' + o[1] + '" style="--sw:' + o[2] + '"></button>'; }).join('') + '</div></div>' +
       '<label class="switch"><span>High contrast</span><input type="checkbox" data-b="contrast"' + (p.contrast ? ' checked' : '') + '></label>' +
       '<label class="switch"><span>Picture symbols</span><input type="checkbox" data-b="symbols"' + (p.symbols ? ' checked' : '') + '></label>' +

@@ -23,6 +23,15 @@
 :root[data-accent] { --accent: var(--accent-pick); --accent-ink: #ffffff; }
 :root[data-accent][data-dark="1"] { --accent: color-mix(in srgb, var(--accent-pick) 55%, #ffffff); --accent-ink: #15131f; }
 :root[data-tint][data-dark="0"][data-contrast="0"] { --bg: var(--tint); }
+/* the show's look (show file: theme). East High (HSM JR): school red and white, varsity lettering for titles, pennant stripes. A student's own
+   color, page tint, and high contrast still win; the words stay in the readable fonts. */
+:root { --font-show: var(--font-head); --show-1: var(--accent); --show-2: #ffffff; --show-bar: var(--card); --show-bar-ink: var(--ink); }
+:root[data-show="easthigh"] { --font-show: 'Graduate', 'Lexend', system-ui, sans-serif; --show-1: #b3121f; --show-dark: #7d0c16; --show-gold: #ffc93c; }
+:root[data-show="easthigh"]:not([data-contrast="1"]) { --bg: #fbf6f1; --line: #e6d7cf; --show-bar: #b3121f; --show-bar-ink: #ffffff; }
+:root[data-show="easthigh"]:not([data-contrast="1"]):not([data-accent]) { --accent: #b3121f; --accent-ink: #ffffff; }
+:root[data-show="easthigh"][data-dark="1"]:not([data-contrast="1"]) { --bg: #1a1113; --card: #2a1a1e; --line: #4b2d33; --muted: #c9b3b7; --show-bar: #6e0b14; }
+:root[data-show="easthigh"][data-dark="1"]:not([data-contrast="1"]):not([data-accent]) { --accent: #ff7078; --accent-ink: #1a1113; }
+
 /* high contrast: black and white, thick outlines */
 :root[data-contrast="1"] { --bg: #ffffff; --card: #ffffff; --ink: #000000; --muted: #000000; --line: #000000; --accent: #0000c8; --accent-ink: #ffffff; --hi: #ffe600; --shadow: none; }
 :root[data-contrast="1"][data-theme="dark"], :root[data-contrast="1"][data-dark="1"] { --bg: #000000; --card: #000000; --ink: #ffffff; --muted: #ffffff; --line: #ffffff; --accent: #ffe600; --accent-ink: #000000; --hi: #0033cc; }
@@ -277,3 +286,25 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .printonly { display: none; }
 @media print { .printonly { display: block; } .micplot { font-size: 10px; } .micplot td, .micplot th { min-width: 0; padding: 3px; } }
 .mic-quick td { background: rgba(255, 143, 199, .18); }
+
+/* the show's look: title bar with a pennant stripe, varsity title, tiles with a school-color top, the home banner */
+:root[data-show]:not([data-contrast="1"]) .bar { background: var(--show-bar); color: var(--show-bar-ink); border-bottom: 0;
+  box-shadow: inset 0 -4px 0 var(--show-2), inset 0 -8px 0 var(--show-1); padding-bottom: 14px; }
+:root[data-show="easthigh"][data-dark="1"]:not([data-contrast="1"]) .bar { box-shadow: inset 0 -4px 0 var(--show-1), inset 0 -8px 0 #ffffff; }
+:root[data-show] .bar h1 { font-family: var(--font-show); letter-spacing: .02em; }
+:root[data-show]:not([data-contrast="1"]) .tile { border-top: 6px solid var(--accent); }
+.showhero { display: flex; align-items: center; gap: 14px; margin: 0 0 18px; padding: 16px 18px; border-radius: var(--radius); position: relative; overflow: hidden;
+  color: #ffffff; background: repeating-linear-gradient(-45deg, rgba(255,255,255,.07) 0 14px, transparent 14px 28px), linear-gradient(135deg, var(--show-1), var(--show-dark, var(--show-1))); }
+.showhero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: linear-gradient(var(--show-2) 0 4px, transparent 4px); opacity: .9; }
+.showhero-art { width: 84px; height: 84px; flex: none; }
+.showhero-art .beam { fill: rgba(255,255,255,.18); }
+.showhero-art .ball { fill: #f08a24; stroke: #3b1a05; stroke-width: 2.5; }
+.showhero-art .seam { fill: none; stroke: #3b1a05; stroke-width: 2.5; stroke-linecap: round; }
+.showhero-art .star { fill: var(--show-gold, #ffd34d); }
+.showhero-kicker { font: 700 .8em var(--font-head); letter-spacing: .12em; text-transform: uppercase; opacity: .92; }
+.showhero-title { font: 1.7em/1.1 var(--font-show); letter-spacing: .02em; margin: 2px 0; }
+.showhero-cheer { font: 700 1em var(--font-head); color: var(--show-gold, #ffd34d); }
+:root[data-contrast="1"] .showhero { background: var(--card); color: var(--ink); border: 3px solid var(--line); }
+:root[data-contrast="1"] .showhero-cheer { color: var(--ink); }
+@media (max-width: 420px) { .showhero-art { width: 60px; height: 60px; } .showhero-title { font-size: 1.35em; } }
+@media print { .showhero { display: none; } }
