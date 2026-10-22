@@ -115,6 +115,39 @@ teacher sets their job by hand), and appear in attendance and on the call board 
 
 Tests: `dev/test-api.mjs` (19), `dev/test-dates.js` (6), `dev/test-line-check.js`.
 
+## Built in session 4 (2026-10-21): Casting, voices, field trips, practice data
+
+**Casting** (`js/casting.js`, Teacher mode › Casting; students' **Auditions** tile while open): Auditions open switch; students sign up on the iPad (up to 6 roles
+in order, "any role is OK", comfort with lines / solo singing / dancing, how they want to audition: in class, video, with a buddy, with their talker or sign,
+"things that help me", optional pronouns; sent as an encrypted note, type `audition`). Each role has an **audition side** (the scene with the most of that
+character's lines, practiced with Run my role as that character: `#/lines/<scene>/run/<char>`, which does not touch their own line data) and a song they are named in.
+Audition notes (1–3 for acting, singing, dance; quick tags; "think about them for"); Callbacks per named role with suggestions (★ wanted it, ✓ noted),
+shown to students with a switch; Cast list draft (starts from current roles; "Fill in a draft for me" = callbacks then first choices then notes, one named role each;
+"Put everyone without a role in the ensemble"), then **Post** sets every student's roles. Nothing about gender is asked or used. **First two weeks**: a starter plan
+(week 1 whole-cast vocals, dance, read-through, crew tours; week 2 audition prep, auditions, callbacks), fills empty days only and shows week 1 to students.
+Teacher mode › Cast › Paste a class list makes this usable on day one.
+
+**Voices** (Colleen: the read-aloud voices were "terrible"): only the device's good English voices (joke voices removed, Premium/Enhanced/natural first, a pool of 6,
+gentle pitch changes). `pronounce()` fixes names from `outline.say` plus the teacher's list (Teacher mode › Script › How words are said, with Hear),
+"Ms." → "Miz", dashes, ellipses, ALL-CAPS words. Settings: **My voice** (each student picks the voice for their own lines; any character that had that voice moves to
+the most similar one left; per student on the device), **Story voice**, "same voice for everyone", and how to download better voices on iPad and Mac.
+
+**Field trips and shopping** (`js/shopping.js`; Production › Shopping): a 🚌 Field trip group; "Two trips: half the class each" (another day, store and teacher; halves mix
+the crews; the other half has class as usual). One shopping list for the whole show: every costume piece for every student who wears it (sizes from Cast, shown to
+students only with a switch) and props (`outline.props` starter list, the teacher adds more). Students on the trip open it from Today: a "what will happen" list and
+**Found it!** with a price; saved on the iPad and sent when back on Wi-Fi (`Store.queueNote` / `flushNotes`, type `shop`). Budget and money spent.
+
+**Practice data** (`js/progress.js`; API `/theatre/api/progress[/<actor>]`): like her flashcard app. In Run my role the first try at each line counts right or wrong
+(microphone result, or the student's own ✓ I got it / ✗ Not yet). After a song (track ends, or leaving after 60%+) students rate the words and the dance (😟 🙂 🤩,
+or no dance). Minutes on practice pages count while the student is active or audio plays. Records live on the iPad and are saved sealed to KV (40 saves / 10 min
+per student); another iPad merges them. **Study next** (Today, Practice Lines): the top three, favoring what is coming up in class in the next 10 days, lines
+missed or never tried, songs rated low, and things not practiced lately. **Teacher mode › Progress**: per student % practiced (scenes with every line tried + songs
+rated), minutes (7 days / all), struggling (a scene under 60% right after 3+ tries, a song rated 1), and days away when their scenes or songs were worked on,
+"caught up" once they practice it afterward; 🏅 list of students who practiced everything; sort by needs help / most done / most practice; per-student detail.
+Limit to know: anyone with the cast password could overwrite another student's record (it needs their id and the show key); fine for a class.
+
+Notes from iPads now go through `T.noteHandlers[type]` (conflict, video, audition, shop); a page only clears the notes it knows.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.
@@ -127,7 +160,7 @@ Tests: `dev/test-api.mjs` (19), `dev/test-dates.js` (6), `dev/test-line-check.js
 - Later: phone as remote using the existing live rooms (`rt/live.js`).
 
 ### Later sections
-- **Casting**: audition sign-ups, audition notes, callback list, cast list.
+- ~~Casting~~: built in session 4 (above).
 - ~~Production~~: built in session 3 (above).
 - Ideas offered to Colleen, not built yet (her choice): see the end of session 3's chat; e.g. social narratives for tech week and show day, video modeling, peer buddies, a break card, practice streaks.
 

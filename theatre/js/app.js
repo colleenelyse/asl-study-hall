@@ -386,7 +386,7 @@
   function sceneList() {
     setBar('Practice Lines', '#/home');
     if (!T.show.script) { app.innerHTML = '<div class="card"><p>The script is not here yet. Your teacher adds it in Teacher mode.</p></div>'; return; }
-    app.innerHTML = '<h2>Pick a scene</h2><div class="grid">' + O().scenes.map(function (s) {
+    app.innerHTML = (T.studyNextCard ? T.studyNextCard() : '') + '<h2>Pick a scene</h2><div class="grid">' + O().scenes.map(function (s) {
       var n = myLines(s), mine = inScene(s, T.me.chars);
       return '<a class="tile" style="min-height:120px;align-items:flex-start;text-align:left' + (mine ? ';border-color:' + color(T.me.chars[0]) : ';opacity:.75') + '" href="#/lines/' + s.id + '">' +
         '<b>' + sym(SCENE_SYM[s.icon] || '🎬') + 'Scene ' + s.num + '</b><span style="color:var(--ink)">' + esc(s.place) + '</span>' +
@@ -506,7 +506,8 @@
     var turnEl = null;
     function closeTurn() { if (turnEl) { turnEl.remove(); turnEl = null; } }
     function myTurn(x, g) {
-      var sh = showFor(x), helped = false;
+      var sh = showFor(x), helped = false, recorded = false;
+      var rec = function (ok) { if (recorded || asChar || !T.Progress) return; recorded = true; T.Progress.line(scene.id, x.it, ok); };      // like flashcards: the first try counts
       hintLevel = sh === 'hint' ? 1 : 0;
       var c = color(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]);
       closeTurn();
@@ -523,7 +524,7 @@
         turnEl.innerHTML = '<div class="in"><div class="row"><b class="grow" style="font-family:Lexend">' + sym('⭐') + 'Your turn!</b>' + chip(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]) + '</div>' +
           '<div class="say">' + shown() + '</div>' + (fb || '') +
           '<div class="row">' +
-          (opt.didIt ? '<button class="btn primary" data-a="did">' + icon('hand') + 'I did it</button>'
+          (opt.didIt ? '<button class="btn primary" data-a="did">' + icon('check') + 'I got it</button><button class="btn" data-a="miss">✗ Not yet</button>'
             : '<button class="btn primary' + (listening ? ' mic' : '') + '" data-a="mic"' + (listening ? ' disabled' : '') + '>' + icon('mic') + (listening ? 'Listening…' : 'Say it') + '</button><button class="btn" data-a="did">' + icon('hand') + 'I did it</button>') +
           (sh !== 'line' && hintLevel < 3 ? '<button class="btn" data-a="hint">' + icon('bulb') + 'Hint</button>' : '') +
           (T.me.access.sayForMe !== false ? '<button class="btn" data-a="for">' + icon('speak') + 'Say it for me</button>' : '') +
@@ -538,10 +539,11 @@
       }
       function act(a) {
         if (g !== gen) return;
-        if (a === 'did') { fadeStep(x, helped ? 0 : 1); return done('Nice!'); }
+        if (a === 'did') { rec(!helped); fadeStep(x, helped ? 0 : 1); return done('Nice!'); }
+        if (a === 'miss') { rec(false); helped = true; fadeStep(x, -1); hintLevel = 3; return draw('<div class="fb close">That is OK! Here is the line. Say it once more, then tap I got it.</div>'); }
         if (a === 'skip') return done();
         if (a === 'hint') { helped = true; hintLevel = Math.min(3, hintLevel + 1); return draw(); }
-        if (a === 'for') { fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g === gen) done(); }); }
+        if (a === 'for') { rec(false); fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g === gen) done(); }); }
         if (a === 'mic') {
           Speech.stop();
           draw('', true);
@@ -549,10 +551,10 @@
             if (g !== gen) return;
             var best = { verdict: 'silent', score: 0 };
             alts.forEach(function (h) { var r = LineCheck.check(x.it.text, h, { strictness: opt.strict, keyWords: x.it.keyWords }); if (r.score > best.score || best.verdict === 'silent') best = r; });
-            if (best.verdict === 'pass') { fadeStep(x, helped ? 0 : 1); chime(true); draw('<div class="fb pass">' + sym('🎉') + 'You got it!</div>'); setTimeout(function () { done(); }, 1100); return; }
-            if (best.verdict === 'close') { helped = true; hintLevel = Math.max(hintLevel, 1); return draw('<div class="fb close">So close! You missed: ' + esc(best.missing.join(', ') || 'a word') + (best.flipped ? ' (listen for “not”)' : '') + '</div>'); }
+            if (best.verdict === 'pass') { rec(!helped); fadeStep(x, helped ? 0 : 1); chime(true); draw('<div class="fb pass">' + sym('🎉') + 'You got it!</div>'); setTimeout(function () { done(); }, 1100); return; }
+            if (best.verdict === 'close') { rec(false); helped = true; hintLevel = Math.max(hintLevel, 1); return draw('<div class="fb close">So close! You missed: ' + esc(best.missing.join(', ') || 'a word') + (best.flipped ? ' (listen for “not”)' : '') + '</div>'); }
             if (best.verdict === 'silent') return draw('<div class="fb silent">I did not hear you. Tap Say it and try again.</div>');
-            helped = true; if (sh === 'hidden') fadeStep(x, -1);
+            rec(false); helped = true; if (sh === 'hidden') fadeStep(x, -1);
             hintLevel = Math.min(3, hintLevel + 1);
             draw('<div class="fb miss">Not quite. Here is a hint. Try again!</div>');
           });
@@ -705,7 +707,7 @@
     function start(at) {
       stopNodes();
       at = Math.max(0, Math.min(at, dur() - 0.05));
-      P.pos = at; P.t0 = ctx.currentTime + 0.05; P.playing = true;
+      P.pos = at; P.t0 = ctx.currentTime + 0.05; P.playing = true; if (T.Progress) T.Progress.playing = true;
       P.gp = ctx.createGain(); P.gg = ctx.createGain(); P.master = ctx.createGain(); P.master.gain.value = st.vol;
       P.gp.connect(P.master); P.gg.connect(P.master); P.master.connect(ctx.destination);
       P.gp.gain.value = st.guide && P.buf.guide ? 0 : 1; P.gg.gain.value = st.guide ? 1 : 0;
@@ -714,13 +716,14 @@
       if (st.melody && has.mel) P.mel = Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
       tick(); drawBtns();
     }
-    function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; stopNodes(); drawBtns(); }
+    function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); }
     function tick() {
       cancelAnimationFrame(P.raf);
       var f = function () {
         var t = now();
         if (P.playing && P.loopB != null && t >= P.loopB) { start(P.loopA || 0); return; }
-        if (P.playing && t >= dur()) { pause(); P.pos = 0; }
+        if (P.playing && t >= dur()) { pause(); P.pos = 0; if (!P.asked && T.askSongRating) { P.asked = true; T.askSongRating(song.id); } }
+        if (P.playing) P.most = Math.max(P.most || 0, t / dur());
         var r = document.getElementById('pos'); if (r && !r.dragging) r.value = t;
         var tm = document.getElementById('tm'); if (tm) tm.textContent = clock(t) + ' / ' + clock(dur());
         if (P.playing) P.raf = requestAnimationFrame(f);
@@ -756,7 +759,7 @@
       document.getElementById('lc').onclick = function () { P.loopA = P.loopB = null; lt(); };
       tick();
     }
-    T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); });
+    T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); if (!P.asked && (P.most || 0) > 0.6 && T.askSongRating) T.askSongRating(song.id); });
   }
 
   /* ---------- Listen to the whole show ----------
@@ -786,7 +789,7 @@
       }).catch(function () { toast('That track would not load.'); });
     }
     audio.onended = function () { if (at < list.length - 1 || st.repeat) load(at + 1, true); };
-    audio.onplay = audio.onpause = function () { var b = document.getElementById('lp'); if (b) { b.innerHTML = icon(audio.paused ? 'play' : 'pause'); b.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); } };
+    audio.onplay = audio.onpause = function () { if (T.Progress) T.Progress.playing = !audio.paused; var b = document.getElementById('lp'); if (b) { b.innerHTML = icon(audio.paused ? 'play' : 'pause'); b.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); } };
     function draw() {
       var s = list[at], scene = sceneById(s.scene);
       app.innerHTML = '<div class="card center"><p class="muted">Song ' + (at + 1) + ' of ' + list.length + ' · Scene ' + scene.num + '</p><h2>' + sym('🎵') + esc(s.title) + '</h2>' +

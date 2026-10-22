@@ -41,6 +41,7 @@
   var today = function () { return ymd(new Date()); };
   var monday = function (s) { var d = parse(s), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); return ymd(d); };
   function dayName(s, short) { return parse(s).toLocaleDateString('en-US', short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }); }
+  T.prodDay = dayName;
   /* class days: Monday to Friday from the first day to the last, minus the days off */
   function isClassDay(s) { var t = P().term, w = parse(s).getDay(); return !!t.first && s >= t.first && s <= t.last && w > 0 && w < 6 && t.off.indexOf(s) < 0; }
   function classDays() { var t = P().term, out = []; if (!t.first || !t.last) return out; for (var s = t.first; s <= t.last && out.length < 400; s = addDays(s, 1)) if (isClassDay(s)) out.push(s); return out; }
@@ -552,6 +553,7 @@
         (t.type === 'away' ? '' : pend ? '<span class="tag">Sent: I’ll be away</span>' : '<button class="btn small quiet" data-away="' + s + '">I’ll be away</button>') + '</div></div>';
     };
     app.innerHTML = (days.length ? card(days[0], true) : '<div class="card"><p>No more class days this year. Bravo!</p></div>') +
+      (T.studyNextCard ? T.studyNextCard() : '') +
       (days.length > 1 ? '<h2 style="margin-top:20px">Coming up</h2>' + days.slice(1).map(function (s) { return card(s, false); }).join('') : '');
     app.querySelectorAll('[data-away]').forEach(function (b) { b.onclick = function () { awayNote(b.dataset.away); }; });
   };

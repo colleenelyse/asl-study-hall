@@ -126,6 +126,16 @@
         });
       });
     },
+    /* a student's practice record, sealed with the show key */
+    putProgress: function (key, actor, obj) { return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('progress/' + actor, { box: box }); }); },
+    getProgress: function (key, actor) {
+      return getJSON('progress/' + actor).then(function (d) { return d && d.box ? open(key, d.box).then(function (b) { return JSON.parse(td.decode(b)); }) : null; });
+    },
+    allProgress: function (key, proof) {
+      return fetch(API + 'progress', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.records || []; }); })
+        .then(function (list) { return Promise.all(list.map(function (x) { return open(key, x.box).then(function (b) { return { actor: x.actor, at: x.at, rec: JSON.parse(td.decode(b)) }; }, function () { return null; }); })); })
+        .then(function (l) { return l.filter(Boolean); });
+    },
     /* notes from students' iPads (a rehearsal conflict), sealed with the show key */
     sendNote: function (key, obj) {
       return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('notes', { box: box }); });

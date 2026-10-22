@@ -107,6 +107,7 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
+      t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +
       t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list') +
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +

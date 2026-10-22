@@ -8,7 +8,8 @@ fs.copyFileSync(path.join(ROOT, 'theatre/api.js'), tmp);
 const { theatreApi } = await import(pathToFileURL(tmp));
 const kv = new Map();
 const LOCKS = { async get(k, type) { const v = kv.get(k); if (v == null) return null; if (type === 'json') return JSON.parse(v); if (type === 'arrayBuffer') return v; return v; },
-  async put(k, v) { kv.set(k, v); }, async delete(k) { kv.delete(k); } };
+  async put(k, v) { kv.set(k, v); }, async delete(k) { kv.delete(k); },
+  async list({ prefix }) { return { keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; } };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:' + PORT);

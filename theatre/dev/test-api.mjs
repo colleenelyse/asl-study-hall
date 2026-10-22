@@ -5,7 +5,8 @@ const here = path.dirname(new URL(import.meta.url).pathname), tmp = path.join(os
 fs.copyFileSync(path.join(here, '../api.js'), tmp);
 const { theatreApi } = await import(pathToFileURL(tmp));
 fs.unlinkSync(tmp);
-const kv = new Map(), env = { LOCKS: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } } };
+const kv = new Map(), env = { LOCKS: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); },
+  list: async ({ prefix }) => ({ keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }) } };
 const b64 = a => Buffer.from(a).toString('base64');
 const call = (method, p, body, headers) => { const url = new URL('https://asl.cool/theatre/api/' + p); return theatreApi(new Request(url, { method, body, headers: Object.assign({ 'cf-connecting-ip': '1.2.3.4' }, headers || {}) }), env, url, url.pathname); };
 const proofOf = async (pw, vs) => b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Buffer.from(vs, 'base64'), iterations: 1000 }, await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']), 256));
@@ -34,6 +35,11 @@ ok((await call('DELETE', 'notes', JSON.stringify({ ids: [notes[0].id] }), { 'x-p
 ok((await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'x'.repeat(5001) } }), { 'cf-connecting-ip': '9.9.9.9' })).status === 400, 'a huge note is refused');
 let last; for (let i = 0; i < 60; i++) last = await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '8.8.8.8' });
 ok(last.status === 200 && (await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '8.8.8.8' })).status === 429, 'sixty notes an hour per address');
+ok((await call('POST', 'progress/a1b2c3', JSON.stringify({ box: { iv: 'aXY=', data: 'cHJvZw==' } }))).status === 200, 'a student iPad saves its practice record');
+ok((await (await call('GET', 'progress/a1b2c3')).json()).box.data === 'cHJvZw==', 'and reads it back');
+ok((await call('GET', 'progress')).status === 403, 'everyone’s records need the teacher password');
+ok((await (await call('GET', 'progress', undefined, { 'x-proof': proof })).json()).records.length === 1, 'the teacher reads them all');
+ok((await call('POST', 'progress/../x', '{}')).status === 404, 'odd student ids are refused');
 const wrong = await proofOf('nope', vs);
 for (let i = 0; i < 5; i++) await call('POST', 'check', JSON.stringify({ proof: wrong }));
 ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 429, 'five wrong guesses lock this address for 10 minutes');

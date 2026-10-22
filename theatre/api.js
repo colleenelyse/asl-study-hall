@@ -5,6 +5,8 @@
    - theatre:track:<songId>:<rehearsal|performance>  the track's bytes, encrypted the same way (12-byte iv, then AES-GCM data).
    - theatre:notes  [{ id, at, box }]: notes from students' iPads (a rehearsal conflict), encrypted with the show key on the iPad.
      Anyone may add one (small, a few per address per hour); only the teacher password reads and clears them.
+   - theatre:progress:<actor>  one student's practice record (lines right/wrong, song ratings, minutes), encrypted with the show key on the iPad.
+     The iPad reads and writes its own (no password: it is sealed, small, and limited per student); the teacher reads all of them with the teacher password.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6, MAX_NOTES = 300, NOTES_PER_HOUR = 60;      // a school's iPads often share one address
@@ -80,6 +82,32 @@ export async function theatreApi(req, env, url, p) {
       return json({ ok: true });
     }
     return json({ error: 'GET, POST or DELETE' }, 405);
+  }
+  if (rest === 'progress') {      // the teacher: everyone's records
+    if (req.method !== 'GET') return json({ error: 'GET only' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    const out = []; let cursor;
+    do {
+      const page = await env.LOCKS.list({ prefix: 'theatre:progress:', cursor });
+      for (const k of page.keys) { const v = await env.LOCKS.get(k.name, 'json'); if (v) out.push({ actor: k.name.slice('theatre:progress:'.length), box: v.box, at: v.at }); }
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor && out.length < 200);
+    return json({ records: out });
+  }
+  const pm = rest.match(/^progress\/([a-z0-9]{2,16})$/);
+  if (pm) {
+    const key = 'theatre:progress:' + pm[1];
+    if (req.method === 'GET') { const v = await env.LOCKS.get(key, 'json'); return v ? json(v) : json({ none: true }, 404); }
+    if (req.method !== 'POST') return json({ error: 'GET or POST' }, 405);
+    const rk = 'theatre:prograte:' + pm[1], n = +(await env.LOCKS.get(rk) || 0);
+    if (n >= 40) return json({ error: 'Saving practice too often. It will try again later.' }, 429);
+    let body; try { const t = await req.text(); if (t.length > 120000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That record is too big.' }, 400); }
+    const b = body.box; if (!b || !okStr(b.iv, 100) || !okStr(b.data, 115000)) return json({ error: 'That record was not readable.' }, 400);
+    await env.LOCKS.put(key, JSON.stringify({ box: { iv: b.iv, data: b.data }, at: new Date().toISOString() }));
+    await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 600 });
+    return json({ ok: true });
   }
   const m = rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
   if (m) {
