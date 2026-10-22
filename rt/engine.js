@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.166';
+var VERSION = '4.167';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -3063,7 +3063,7 @@ function api_liveControl(auth, code, action) {
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); } }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
-  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } livePut_(g); }      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
+  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; livePut_(g); }      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
   if (engNew) { engineSetup_(g); livePut_(g); }      // 4.145 every other live class game runs in an engine room on asl.cool
@@ -7610,6 +7610,9 @@ function seatChartFor_(cls, emails) {
   if (seatKiosk_()) { try { var kc = seatKioskClass_(cls, emails || seatEmails_(cls)); if (kc && kc.label) { var r = seatKioskCall_('get', { cls: kc.label }); return { chart: seatMapChart_(r.chart, function (x) { return kc.fromKiosk[x]; }), kiosk: kc.label }; } } catch (e) { return { chart: seatLocal_(cls), kioskError: e.message }; } }
   return { chart: seatLocal_(cls) };
 }
+/** 4.167 (Colleen: "it takes a long time to launch… a game"): a class game's Start asked the Hall Pass Kiosk for the chart twice (keep-aways, then Vault partners),
+    a few seconds each. The games read it through here: kept 25 minutes, read while the lobby is open (liveWarm_), forgotten when the chart is saved. */
+function seatChartCached_(cls) { var k = 'chart:' + str_(cls), got = cacheGet_(k); if (got && got.c) return got.c; var c = null; try { c = seatChartFor_(cls).chart; } catch (e) { c = null; } if (c && c.seats) cachePut_(k, { c: c }, 1500); return c; }      /* a failed read is tried again at Start */
 function seatLocal_(cls) { var chart = null, sh = ss_().getSheetByName(TABS.seating); if (sh && sh.getLastRow() >= 2) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (r) { if (str_(r[0]) === cls && str_(r[1])) try { chart = JSON.parse(str_(r[1])); } catch (e) {} }); return chart; }
 function seatEmails_(cls) { var stu = stuSheet_(), H = stuHead_(stu), out = []; rows_(stu, 2, H.n).forEach(function (r) { if (str_(r[H.Class]) === cls && str_(r[H.Email])) out.push(str_(r[H.Email]).toLowerCase()); }); return out; }
 /** Students only the kiosk knows (no ASL Study account with their ID) keep their seat, pin and rules when ASL Study saves the chart. */
@@ -7641,7 +7644,8 @@ function vaultPlayed_() { var got = cacheGet_('vaultPlayed'); if (got) return go
 /** 4.146 (Colleen: "it takes a long time for each game to begin after i click start"): the slow sheet reads Start needs are done while the lobby is open
     (the projector asks every few seconds anyway), so pressing Start only deals and hands off */
 function liveWarm_(g) { var c = CacheService.getScriptCache(), k = 'warm:' + g.id; if (c.get(k)) return; c.put(k, '1', 1500);
-  try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {} }
+  try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {}
+  try { if (g.vOpt && g.vOpt.cls) seatChartCached_(g.vOpt.cls); } catch (e) {} }      /* 4.167 the seating chart, before Start */
 /** Deals players into n teams with close total strength: strongest first, back and forth (1-2-3-3-2-1…). Returns { email: team }. */
 function evenTeams_(emails, n, apart) {
   var st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, list = shuffle_(emails.slice()).sort(function (a, b) { return sw(b) - sw(a); }), out = {};
@@ -7655,7 +7659,7 @@ function evenTeams_(emails, n, apart) {
 function seatApart_(emails) {
   var want = {}, cls = {}, out = {}; (emails || []).forEach(function (e) { want[str_(e).toLowerCase()] = 1; });
   try { var stu = stuSheet_(), H = stuHead_(stu); rows_(stu, 2, H.n).forEach(function (r) { if (want[str_(r[H.Email]).toLowerCase()] && str_(r[H.Class])) cls[str_(r[H.Class])] = 1; }); } catch (e) { return out; }
-  Object.keys(cls).forEach(function (c) { var ch = null; try { ch = seatChartFor_(c).chart; } catch (e) { ch = null; }
+  Object.keys(cls).forEach(function (c) { var ch = seatChartCached_(c);      /* 4.167 */
     ((ch && ch.rules) || []).forEach(function (r) { if (r && r.t === 'apart' && r.a && r.b) { var a = str_(r.a).toLowerCase(), b = str_(r.b).toLowerCase(); (out[a] = out[a] || {})[b] = 1; (out[b] = out[b] || {})[a] = 1; } }); });
   return out;
 }
@@ -8738,7 +8742,7 @@ function vaultSeatPairs_(chart, joined, sw, away) {
 function vaultStart_(g, opt) {
   if (g.vault && g.vault.versus) return vaultVersusStart_(g);      /* 4.151 */
   var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, pairs = [], used = {}, apart = seatApart_(who), away = function (a, b) { return !!(apart[a] && apart[a][b]); };      /* 4.129 keep-aways are never partners */
-  var chart = null; try { if (opt && opt.cls) chart = seatChartFor_(str_(opt.cls)).chart; } catch (e) { chart = null; }
+  var chart = opt && opt.cls ? seatChartCached_(str_(opt.cls)) : null;      /* 4.167 read while the lobby was open */
   if (chart && chart.seats) {      /* 4.138 (Colleen: "half the desks face one direction and the others face the opposite direction. i want students on the left to be partnered with a student on the right
        so they're looking at one another but can't easily see the other's screen"): a student in the LEFT half of the chart is paired with one in the RIGHT half, at the mirror spot
        (the same row, the same distance from the middle) or as close to it as possible; a partner of the other strength when it's a tie. Anyone left over pairs below. */
@@ -9356,6 +9360,7 @@ function api_seatingSave(auth, cls, chart) {
   requireTeacher_();
   cls = str_(cls); if (!cls) throw new Error('Pick a class first.');
   var json = JSON.stringify(chart || {}); if (json.length > 45000) throw new Error('That seating chart is too big to save.');
+  try { CacheService.getScriptCache().remove('chart:' + cls + ':n'); } catch (e) {}      /* 4.167 the games read the new chart */
   var kioskErr = '';
   if (seatKiosk_()) { try { var kc = seatKioskClass_(cls, seatEmails_(cls)); if (kc && kc.label) seatKioskCall_('save', { cls: kc.label, chart: seatKeepKioskOnly_(seatMapChart_(chart, function (x) { return kc.toKiosk[x]; }), (seatKioskCall_('get', { cls: kc.label }) || {}).chart, kc) }); else kioskErr = 'No kiosk class matches ' + cls + ' (no shared students).'; } catch (e) { kioskErr = e.message; } }      /* 4.101 the kiosk first; this tab keeps a backup */
   lock_(function () {
