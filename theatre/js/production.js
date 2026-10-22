@@ -228,13 +228,13 @@
     T.setBar('Production', '#/teacher');
     if (!P().term.first) tab = 'setup';
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
-    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['setup', 'Calendar & crew']];
+    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every student gets a job each day.</p>';
-    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); } }[tab]();
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
-    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); } }[tab] || function () {})();
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); } }[tab] || function () {})();
   }
 
   function setupView() {
@@ -584,7 +584,7 @@
         (t.type === 'away' ? '' : pend ? '<span class="tag">Sent: I’ll be away</span>' : '<button class="btn small quiet" data-away="' + s + '">I’ll be away</button>') + '</div></div>';
     };
     app.innerHTML = (days.length ? card(days[0], true) : '<div class="card"><p>No more class days this year. Bravo!</p></div>') +
-      (T.studyNextCard ? T.studyNextCard() : '') +
+      (T.perfCard ? T.perfCard() : '') + (T.studyNextCard ? T.studyNextCard() : '') +
       (days.length > 1 ? '<h2 style="margin-top:20px">Coming up</h2>' + days.slice(1).map(function (s) { return card(s, false); }).join('') : '');
     app.querySelectorAll('[data-away]').forEach(function (b) { b.onclick = function () { awayNote(b.dataset.away); }; });
   };

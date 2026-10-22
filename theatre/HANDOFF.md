@@ -159,6 +159,16 @@ Colleen's plan (2026-10-21): a show each semester in the **Reber Center** (North
 (finals about May 25–27; seniors' last day May 19). Performances the week before finals or finals week. The app holds one show at a time, so
 "Start a new show" for spring is still to build.
 
+**Performances** (`js/performances.js`; Production › Performances): each performance's day, time, in-school or evening, relaxed performance, free ticket link
+(general admission on a ticketing site) and a note; the cast sees upcoming ones on Today with a **Free tickets** button for families. **Plan show week**
+(Colleen: three dress days in the class period, then in-school shows, any evening for families): Monday Act 1 dress, Tuesday Act 2 dress (the show splits at
+the scene where half its minutes have gone by; HSM JR has no act break), Wednesday full run, Thursday in-school shows at the times she types, plus an
+evening performance (default Friday). **School-day version** (45 minutes bell to bell; evening shows keep everything): Colleen's ranked cut options live in
+`outline.cutIdeas` (1. Scene 10 Horticulture HQ, 2. Scene 8 hallway) and `cutNotes` (tighten scene changes first; Jack's Scene 2 announcement as a small trim).
+Length = kept moments (songs from tracks when uploaded; everything else scaled to a timed full run once she enters one) + seconds per scene change, optional
+narrator bridges from the scene summaries. "Suggest" only applies her ranked cuts, then says how far over it still is. My Schedule shows **Evening show /
+School-day show** and lists what of theirs is left out. The page reminds her to get MTI's written permission before performing cuts.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

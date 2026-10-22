@@ -182,6 +182,18 @@ window.DEFAULT_SHOW = {
     { id: 'p-headset', name: 'Announcer microphone or headset', who: 'jack', qty: 1, scenes: ['s2', 's15', 's16'] }
   ],
 
+  /* the school-day (45-minute) version: Colleen's ranked cut options, best first. Each is a whole moment; text changes inside a scene need MTI's OK. */
+  cutIdeas: [
+    { moments: ['k20'], name: 'Scene 10: Horticulture Headquarters (rooftop garden)', saves: 'about 2 min with its scene change',
+      why: 'Fewest people (Troy and Gabriella only), no plot hole: the callback decision comes back stronger in Scene 14. Also saves building the garden set and one scene change. You lose their quiet scene and the first “kindergarten” mention that later lines call back to.' },
+    { moments: ['k17'], name: 'Scene 8: Hallway (Sharpay and Ryan see the callback list)', saves: 'about 45 seconds',
+      why: 'The cafeteria opens with everyone buzzing about the news, so the audience still gets it. Without it, “Stick to the Status Quo” starts cold.' }
+  ],
+  cutNotes: [
+    'Try first: tighten scene changes. In school shows most extra time is in transitions: rehearse changes like scenes, have actors carry their own furniture, play short scenes (3, 8, 10) downstage in front of a traveler while the next set goes up, and use Jack’s announcer corner to cover.',
+    'Small trim: Jack Scott’s announcement at the end of Scene 2 (20–30 seconds) only repeats the audition reminder; cut it only if the homeroom-to-hallway change gets faster.'
+  ],
+
   /* costume ideas to start from; Teacher mode is where they become the real plot */
   costumes: [
     { id: 'c-troy-school', who: 'troy', name: 'School clothes', items: ['Hoodie or T-shirt', 'Jeans', 'Sneakers'], moments: ['k2', 'k5', 'k6', 'k10', 'k14', 'k15', 'k16', 'k18', 'k19', 'k20', 'k25', 'k26'] },

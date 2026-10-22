@@ -586,8 +586,8 @@
   }
 
   /* ---------- My Schedule ---------- */
-  function buildSchedule(chars) {
-    var ms = O().moments, out = [], prevCostume = null;
+  function buildSchedule(chars, skip) {      // skip: moment ids cut from this version (the school-day show)
+    var ms = O().moments.filter(function (m) { return !skip || skip.indexOf(m.id) < 0; }), out = [], prevCostume = null;
     var segCache = {};
     for (var i = 0; i < ms.length; i++) {
       var m = ms[i], scene = sceneById(m.scene);
@@ -634,11 +634,14 @@
   function schedulePage() {
     setBar('My Schedule', '#/home');
     if (!T.me.chars.length) { app.innerHTML = '<div class="card"><p>' + sym('🎭') + 'Your schedule for the show appears here when your teacher gives you your role.</p><p><a class="btn primary" href="#/today">See what to do today</a></p></div>'; return; }
-    var list = buildSchedule(T.me.chars);
+    var cut = T.schoolCut && T.schoolCut(), version = (cut && ls('schedVersion')) || 'evening';
+    var list = buildSchedule(T.me.chars, version === 'school' ? cut : null);
     var view = ls('schedView') || 'steps', at = 0;
+    var mineCut = cut ? O().moments.filter(function (m) { return cut.indexOf(m.id) >= 0 && onStage(m, T.me.chars); }) : [];
     function draw() {
       var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' +
         '<button data-v="steps" aria-pressed="' + (view === 'steps') + '">One step at a time</button><button data-v="list" aria-pressed="' + (view === 'list') + '">Whole show</button></div>' +
+        (cut ? '<div class="seg" style="margin-left:8px"><button data-ver="evening" aria-pressed="' + (version === 'evening') + '">Evening show</button><button data-ver="school" aria-pressed="' + (version === 'school') + '">School-day show</button></div>' : '') +
         '<span class="grow"></span><button class="btn small" id="print">' + icon('print') + 'Print</button></div>';
       if (view === 'steps') {
         var a = list[at], b = list[at + 1];
@@ -646,7 +649,9 @@
           '<div class="row" style="justify-content:center;margin-top:16px"><button class="round" id="sp" aria-label="Back">' + icon('prev') + '</button><b>' + (at + 1) + ' of ' + list.length + '</b><button class="round" id="sn" aria-label="Next">' + icon('next') + '</button></div>';
       } else h += '<div class="sched">' + list.map(function (c, i) { return schedCard(c, i + 1); }).join('') + '</div>';
       app.innerHTML = '<h2 class="row">' + esc(T.me.name) + ' ' + T.me.chars.map(chip).join('') + '</h2>' + h;
-      app.querySelectorAll('.seg button').forEach(function (bt) { bt.onclick = function () { view = bt.dataset.v; ls('schedView', view); draw(); }; });
+      app.querySelectorAll('.seg button[data-v]').forEach(function (bt) { bt.onclick = function () { view = bt.dataset.v; ls('schedView', view); draw(); }; });
+      app.querySelectorAll('.seg button[data-ver]').forEach(function (bt) { bt.onclick = function () { ls('schedVersion', bt.dataset.ver); schedulePage(); }; });
+      if (version === 'school' && mineCut.length) app.insertAdjacentHTML('afterbegin', '<div class="card" style="background:var(--warn-bg)">' + sym('🏫') + '<b>In the school-day show, these are left out:</b> ' + mineCut.map(function (m) { return esc(m.song ? songById(m.song).title : 'Scene ' + sceneById(m.scene).num + ' (' + sceneById(m.scene).place + ')'); }).join(', ') + '. They are back in for the evening show.</div>');
       document.getElementById('print').onclick = function () { view = 'list'; draw(); setTimeout(function () { window.print(); }, 50); };
       var sp = document.getElementById('sp'), sn = document.getElementById('sn');
       if (sp) { sp.disabled = at === 0; sp.onclick = function () { at = Math.max(0, at - 1); draw(); }; sn.disabled = at >= list.length - 1; sn.onclick = function () { at = Math.min(list.length - 1, at + 1); draw(); }; }
