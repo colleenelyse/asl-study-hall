@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.169';
+var VERSION = '4.170';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2981,6 +2981,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
     rand: !!(opt && opt.rand) && chars.length > 0, label: opt && (opt.label === 'char' || opt.label === 'both') ? opt.label : 'name' };      // rand: the game hands out characters; label: what the board shows under each avatar
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
+  g.vocab = opt && opt.vocab === 'set' ? 'set' : 'mine';      /* 4.170 (Colleen: "each of these games play with the student's selected vocab by default and allow the teacher to override"): 'mine' = each student's own signs; 'set' = everyone the host's */
   if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
   if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
@@ -3030,7 +3031,7 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3105,7 +3106,7 @@ function api_liveJoin(auth, code) {
   var joined = liveJoinedSure_(g.id), mine = joined[id.key];
   if (phase === 'on' && g.late === false && !mine) throw new Error('This game has already started, and your teacher closed it to new players. You can join the next one!');
   var sh = stuSheet_(), row = findRow_(sh, id.key), kept = keptChars_(row ? readStu_(sh, row) : null);
-  return { game: { id: g.id, brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key),
+  return { game: { id: g.id, vocab: g.vocab || 'set', brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key),
     taken: Object.keys(joined).filter(function (e) { return e !== id.key; }).map(function (e) { return joined[e][1]; }), mine: mine ? mine[1] : '' } };
 }
 /** Student: join with a character. Nobody else can have the same one while any are still free. */
@@ -3185,7 +3186,7 @@ function api_livePing(auth, code, p) {
   g.ids.forEach(function (x) { okId[x] = 1; });
   if (p.tally && typeof p.tally === 'object') Object.keys(p.tally).forEach(function (k) {
     var t = p.tally[k];
-    if (okId[k] && t instanceof Array && kept++ < 300) tally[k] = [Math.max(0, Math.min(999, Math.floor(num_(t[0])))), Math.max(0, Math.min(999, Math.floor(num_(t[1]))))];
+    if ((okId[k] || (g.vocab === 'mine' && /^[\w-]{1,40}$/.test(k))) && t instanceof Array && kept++ < 300)      /* 4.170 own signs count too */ tally[k] = [Math.max(0, Math.min(999, Math.floor(num_(t[0])))), Math.max(0, Math.min(999, Math.floor(num_(t[1]))))];
   });
   if (g.mode === 'sea') CacheService.getScriptCache().put('ls:' + g.id + ':' + id.key, String(Date.now()), LIVE_TTL);      // 4.43: who is still here (a student who stops checking in is skipped at the cannon)
   if (Date.now() < g.ends + 30000) CacheService.getScriptCache().put('lp:' + g.id + ':' + id.key, JSON.stringify([score, right, total, tally, steps]), LIVE_TTL);
@@ -8472,7 +8473,12 @@ var BR_UNTIMED = 3 * 3600000;
    their team with names for each list"): FIND YOUR CREW, one crew at a time, BR_MEET each: that crew raises their hands while everyone looks. */
 var BR_MEET = 8000;
 var BR_GLOW = 20000, BR_GLOW_EVERY = [180000, 240000];      // 4.68 (Colleen): a short Color Scan now and then: caches glow their crew's color
-var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 5, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+var BR_L = 'abcdefghiklmnopqrstuvwxy', BR_N = '0123456789', BR_PER = 3, BR_COST = { move: 1, wall: 3, change: 8, verify: 4, ping: 3 }, BR_FREEZE = 120000;
+/* 4.170 (Colleen: "it was too easy for the decoder to change the password so students couldn't keep up with the moving targets even in short mode"; she picked):
+   a crew can change only a section a rival has found, each change costs 4 ⚡ more than the last (8, 12, 16 …), and then the crew waits 2 minutes */
+var BR_CHG_UP = 4, BR_CHG_WAIT = 120000;
+function brChgCost_(br, t) { return BR_COST.change + BR_CHG_UP * ((br.chgN || {})[t] || 0); }
+function brChgWait_(br, t, now) { return Math.max(0, ((br.chgAt || {})[t] || 0) + BR_CHG_WAIT - (now || Date.now())); }
 /* 4.91 (Colleen: "also accept passwords with a letter letter, number number pattern… the teacher chooses… practice single digit and up to quadruple
    digit numbers. only use 1 letter with triple and quadruple digit numbers"; "as long as each box is formulated the same way"): every section of
    every password in a game has the same pattern. lnln = letter, digit, letter, digit (a3n5; the digits signed one by one). The others are letters
@@ -9048,8 +9054,11 @@ function api_breachBox(auth, code, c, s, v) {
 function api_breachTool(auth, code, tool, a, b, right) {
   return lock_(function () { var W = brWho_(auth, code); if (W.err) return W.err; var br = W.br, why = brBusy_(br); if (why) return { none: true, why: why };
     if (br.decoders[W.t] !== W.id.key) return { none: true, why: 'Only your decoder has the tools.' };
-    var cost = BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
-    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true };
+    if (tool === 'change') { var s0 = Math.floor(num_(a)), wt = brChgWait_(br, W.t); if (s0 < 0 || s0 > 4) return { none: true };      /* 4.170 */
+      if (br.exposed && !(br.exposed[W.t][s0] || []).length) return { none: true, why: 'No rival crew has found that section yet, so it is safe. You can change a section once a rival has found it.' };
+      if (wt) return { none: true, why: 'Your crew just changed a section. Wait ' + Math.ceil(wt / 1000) + ' more seconds.' }; }
+    var cost = tool === 'change' ? brChgCost_(br, W.t) : BR_COST[tool]; if (!cost) return { none: true }; if (!brSpend_(W, cost, right)) return { none: true, why: 'Not enough power. Answer more questions!', need: cost };
+    if (tool === 'change') { var s = Math.floor(num_(a)); if (s < 0 || s > 4) return { none: true }; br.chgN = br.chgN || {}; br.chgAt = br.chgAt || {}; br.chgN[W.t] = (br.chgN[W.t] || 0) + 1; br.chgAt[W.t] = Date.now();
       br.pw[W.t][s] = brSet_(br.pat); if (br.exposed) br.exposed[W.t][s] = []; br.boxes.forEach(function (bx, o) { if (o !== W.t && bx[W.t + ':' + s]) bx[W.t + ':' + s] = { v: '', at: Date.now(), ok: null, stale: 1 }; });      /* 4.91 (Colleen: "it should automatically delete from other teams' screens"): the rival logbooks lose it */
       Object.keys(br.found).forEach(function (e2) { (br.found[e2] || []).forEach(function (f2) { if (f2[0] === W.t && f2[1] === s) f2[5] = 1; }); });      /* and every Agent's list crosses it out */
       br.maps.forEach(function (m, o) { if (o === W.t) return; var have = m.cells.some(function (x) { return x.k === 'cache' && x.c === W.t && x.s === s && !x.open; });
@@ -9108,7 +9117,7 @@ function breachView_(g, myTeam, e) {
     v.map = { w: m.w, h: m.h, cells: m.cells.map(function (c, i) { return c.open ? (c.k === 'cache' || c.k === 'decoy' ? 'x' : c.k ? c.k + '_' : '.') : m.seen[i] === 4 ? 'fake' : m.seen[i] === 3 ? 'ping' : (c.k === 'cache' || c.k === 'decoy') && glow ? 'cache:' + c.c : c.k === 'decoy' ? 'cache' : c.k || '.'; }),      // no fog (Colleen): everything shows; a decoy looks like a cache until scanned
       pos: Object.keys(m.pos).map(function (x) { return [m.pos[x], brLabel_(br, j, x), x === me ? 1 : 0]; }), mine: m.pos[me] != null ? m.pos[me] : brStart_(m), start: brStart_(m) };
     v.found = (br.found[me] || []).map(function (f) { return [f[0], f[1], f[2], f[4] || null, f[5] ? 1 : 0]; });      /* only my own pieces, to re-watch; [4] 4.91: that section was changed since */
-    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; }      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
+    if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; v.chg = { cost: brChgCost_(br, myTeam), wait: brChgWait_(br, myTeam) }; }      /* 4.170 what a change costs now, and the wait */      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
   }
   if (myTeam === -1) { v.maps = br.maps.map(function (m, t) { return { w: m.w, h: m.h, open: m.cells.filter(function (c) { return c.open; }).length, total: m.cells.length, pos: Object.keys(m.pos).map(function (x) { return m.pos[x]; }) }; }); }
   if (v.over) { v.pw = br.pw.map(function (p) { return p.join('-'); }); v.stats = Object.keys(br.stats).sort(function (a, b) { return br.stats[b] - br.stats[a]; }).slice(0, 3).map(function (x) { return [brLabel_(br, j, x), br.stats[x]]; }); }
