@@ -290,9 +290,9 @@
       '<div class="row end"><button class="btn primary" id="plan" data-save>Plan these days</button></div></div>';
   }
   var SONG = function (n) { var s = T.O().songs.find(function (x) { return x.num === n; }); return s ? s.id : null; };
-  function starter() {
-    var P = T.production(), out = [], d = P.term.first;
-    var classDays = []; for (var i = 0; classDays.length < 10 && i < 40; i++) { var s = addDays(d, i), w = parseD(s).getDay(); if (s <= P.term.last && w > 0 && w < 6 && P.term.off.indexOf(s) < 0) classDays.push(s); }
+  function starter(movie) {
+    var P = T.production(), out = [], d = P.term.first; movie = Math.max(0, movie === undefined ? (P.movieDays === undefined ? 3 : P.movieDays) : movie || 0);
+    var classDays = []; for (var i = 0; classDays.length < 10 + movie && i < 60; i++) { var s = addDays(d, i), w = parseD(s).getDay(); if (s <= P.term.last && w > 0 && w < 6 && P.term.off.indexOf(s) < 0) classDays.push(s); }
     var g = function (focus, songs, where) { return { id: 'g' + Math.random().toString(36).slice(2, 8), focus: focus, scenes: [], songs: songs.filter(Boolean), everyone: true, where: where || '', only: '' }; };
     /* Colleen: teach the whole-cast numbers in week 1 and use that as the audition (time spent learning what everyone needs for the show anyway),
        starting with the finale, plus a short vocal selection each student chooses. */
@@ -309,6 +309,8 @@
       ['Callbacks (reading scenes) · everyone else: “We’re All in This Together”', [Object.assign(g('acting', [], 'Stage'), { everyone: false, callbacks: true }), g('vocals', [SONG('40')])], 'Callbacks are on your iPad. Not called back? That is OK: everyone gets a role.'],
       ['Run the whole-cast numbers · the cast list goes up!', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'Great work this week! Look for the cast list on your iPad after class.']
     ];
+    /* Colleen: watch the movie early, after the title is announced (day one) and before rehearsals begin in earnest */
+    for (var mv = movie; mv > 0; mv--) plan.splice(1, 0, ['Watch the movie (part ' + mv + ' of ' + movie + ')', [g('watch', [], 'Everyone together')], 'We watch the movie together! Notice how each character changes, and listen for your favorite song.']);
     classDays.forEach(function (s, i) { var p = plan[i]; if (p) out.push({ date: s, label: p[0], groups: p[1], notes: p[2], half: p[3] }); });
     return out;
   }
@@ -320,9 +322,9 @@
     b.onclick = function () { var n = T.applyStarter(); T.saveShow(n + ' days planned; week 1 is shown to students').then(overview); };
   }
   /* the two audition weeks into the plan (empty days only); works before the class list: halves and crew tours are worked out each day */
-  T.applyStarter = function () {
+  T.applyStarter = function (movie) {
     var P = T.production(), n = 0, firstMon = null;
-    starter().forEach(function (x, i) {
+    starter(movie).forEach(function (x, i) {
       if (P.days[x.date]) return;
       if (x.half) { x.groups[0].everyone = false; x.groups[0].half = x.half; x.groups[1].everyone = true; }      // vocal selections: half the class each day
       if (!x.groups.length) x.groups = [{ id: 'g' + Math.random().toString(36).slice(2, 8), focus: 'crew', scenes: [], songs: [], everyone: true, where: 'Crew tours: set, costumes, props', only: '' }];
@@ -332,7 +334,7 @@
     if (firstMon) { var d0 = parseD(firstMon), w = d0.getDay(); d0.setDate(d0.getDate() - (w === 0 ? 6 : w - 1)); var mon = d0.getFullYear() + '-' + pad(d0.getMonth() + 1) + '-' + pad(d0.getDate()); if (P.shown.indexOf(mon) < 0) P.shown.push(mon); }
     return n;
   };
-  T.starterDays = function () { return starter().length; };
+  T.starterDays = function (movie) { return starter(movie).length; };
 
   /* ---------- Students: Auditions ---------- */
   T.studentPages = T.studentPages || {};

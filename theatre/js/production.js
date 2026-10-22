@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -176,6 +176,7 @@
       if (spot) return { type: 'stage', focus: 'share', icon: '🌟', text: 'Show and tell: you sing your solo line for the class!' + (so ? ' (“' + so.title + '”)' : ''), href: so ? '#/song/' + so.id : null, group: g.id };
       return { type: 'stage', focus: 'share', icon: '🎤', text: 'Show and tell: every group shows the class what it worked on' + (g.where ? ' · ' + g.where : ''), group: g.id };
     }
+    if (g && g.focus === 'watch') return { type: 'watch', icon: '🎬', text: 'Watch the movie together' + (g.where ? ' · ' + g.where : ''), group: g.id };
     if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
     if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
     if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
@@ -319,7 +320,7 @@
       '<a class="btn small" href="#/teacher/production/callboard/' + week + '">Call board</a></div>';
     return h + weekDays(week).map(function (s) {
       if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
-      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0, trip: 0 };
+      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0, trip: 0, watch: 0 };
       people.forEach(function (a) { n[task(a, s).type]++; });
       return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' + bookingLine(s) +
         (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +

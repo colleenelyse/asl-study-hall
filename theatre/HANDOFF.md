@@ -245,3 +245,10 @@ notes page show it; a day's Dance / Run-through / Show and tell group lists the 
 - Each character gets a "spike tape" color used on their chips, schedule cards and lines.
 - Touch targets 56px+, base text 18px scaled by the actor's setting, light and dark themes, reduced motion respected.
 - Track links: rehearsal tracks folder `1oTAmJVz1E6LtZhVr8uqBhv1ZCpBZ6A_A` (Guide Vocals), performance tracks `1TH1Tp166f7TxQ0-fSAhIeUD4uYuBPolo`. File names weren't readable without the Google Drive connector.
+
+**Hardest first, then review** (Colleen: learn the most difficult things first and keep rehearsing them as easier things are added): scenes and songs get a
+`diff` score in season.js (length, people, big numbers); `nextScene` / `pickSong` teach in that order; in the scenes stretch every Wednesday is a
+"Review day (the hardest so far)" (`reviewScene` / `reviewSong`: the hardest learned item rehearsed longest ago). Semester plan shows the teaching order.
+
+**Watch the movie** (Colleen: after the title is announced, before rehearsals begin in earnest): a 🎬 `watch` focus (everyone together); the semester plan
+has a "Watch the movie" box (`production.movieDays`, default 3, 0 for none); `starter(movie)` puts those days right after day one, before the audition days.

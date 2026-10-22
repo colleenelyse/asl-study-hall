@@ -26,12 +26,14 @@
       if (!talk.length) return;
       var who = {}; talk.forEach(function (m) { onIn(m).forEach(function (c) { who[c] = 1; }); });
       var min = talk.reduce(function (a, m) { return a + (m.minutes || 1); }, 0);
-      scenes.push({ id: s.id, num: s.num, min: min, chars: Object.keys(who), need: Math.max(1, Math.min(4, Math.ceil(min / 1.5))), done: 0, last: -1 });
+      var src = T.scriptScene(s), nLines = src ? src.items.filter(function (it) { return it.type === 'line'; }).length : 0;
+      scenes.push({ id: s.id, num: s.num, min: min, chars: Object.keys(who), need: Math.max(1, Math.min(4, Math.ceil(min / 1.5))), done: 0, last: -1,
+        diff: min + nLines * 0.05 + Object.keys(who).length * 0.2 });      // how hard: length, lines, people
     });
     O.songs.forEach(function (so) {
       var m = O.moments.find(function (x) { return x.song === so.id; }); if (!m) return;
       var min = T.songMinutes(so), big = !!m.big || m.on === '*';
-      songs.push({ id: so.id, title: so.title, min: min, big: big, chars: onIn(m), vneed: Math.max(2, Math.min(5, Math.ceil(min / 1.2))), dneed: big ? Math.max(2, Math.min(5, Math.ceil(min))) : 0, vdone: 0, ddone: 0, vlast: -1, dlast: -1 });
+      songs.push({ diff: min + (big ? 2 : 0) + onIn(m).length * 0.1, id: so.id, title: so.title, min: min, big: big, chars: onIn(m), vneed: Math.max(2, Math.min(5, Math.ceil(min / 1.2))), dneed: big ? Math.max(2, Math.min(5, Math.ceil(min))) : 0, vdone: 0, ddone: 0, vlast: -1, dlast: -1 });
     });
     return { scenes: scenes, songs: songs };
   }
@@ -60,24 +62,29 @@
     var d = parse(X().addDays(t.last, -7)), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1));
     return X().addDays(t.first, Math.round((d - parse(t.first)) / 864e5));
   }
-  function layout(showMon, withAuditions) {
-    var days = X().classDays(), aud = withAuditions && T.starterDays ? Math.min(T.starterDays(), days.length) : 0;
+  function layout(showMon, withAuditions, movieDays) {
+    var days = X().classDays(), aud = withAuditions && T.starterDays ? Math.min(T.starterDays(movieDays), days.length) : 0;
     var before = days.filter(function (d) { return d < showMon; });
     var runs = before.slice(-5), work = before.slice(aud, Math.max(aud, before.length - 5));
     var show = days.filter(function (d) { return d >= showMon && d <= X().addDays(showMon, 4); });
     return { days: days, auditions: before.slice(0, aud), work: work, runs: runs, show: show };
   }
-  function makePlan(showMon, withAuditions) {
-    var p = P(), L = layout(showMon, withAuditions), U = units(), n = L.work.length, made = 0;
-    if (withAuditions && T.applyStarter) made += T.applyStarter();
+  function makePlan(showMon, withAuditions, movieDays) {
+    var p = P(), L = layout(showMon, withAuditions, movieDays), U = units(), n = L.work.length, made = 0;
+    if (withAuditions && T.applyStarter) made += T.applyStarter(movieDays);
     var split = T.showSplit ? T.showSplit() : Math.ceil(T.O().scenes.length / 2), sceneIds = T.O().scenes.map(function (s) { return s.id; });
     var where = { acting: (p.venueName || 'Stage'), vocals: 'Choir room', dance: 'Dance space', run: (p.venueName || 'Stage') };
     var g = function (focus, sc, so, extra) { return Object.assign({ id: uid('g'), focus: focus, scenes: sc || [], songs: so || [], everyone: false, where: where[focus] || '', only: '' }, extra || {}); };
     var p1 = Math.round(n * 0.2), p3 = Math.round(n * 0.75), readAt = 0;
     var readChunks = (function () { var out = [], cur = [], m = 0; U.scenes.forEach(function (s) { cur.push(s.id); m += s.min; if (m >= 10) { out.push(cur); cur = []; m = 0; } }); if (cur.length) out.push(cur); return out; })();
-    var nextScene = function (i) { return U.scenes.find(function (s) { return s.done < s.need; }) || U.scenes.slice().sort(function (a, b) { return a.last - b.last; })[0]; };
+    /* hardest first (Colleen: learn the most difficult things first and keep rehearsing them as easier things are added) */
+    var byDiff = function (a, b) { return b.diff - a.diff; };
+    var nextScene = function (i) { return U.scenes.filter(function (s) { return s.done < s.need; }).sort(byDiff)[0] || U.scenes.slice().sort(function (a, b) { return a.last - b.last; })[0]; };
+    /* review: among the hard things already learned, the one rehearsed longest ago */
+    var reviewScene = function () { var l = U.scenes.filter(function (s) { return s.done > 0; }).sort(byDiff); l = l.slice(0, Math.max(3, Math.ceil(l.length / 2))); return l.sort(function (a, b) { return a.last - b.last; })[0]; };
+    var reviewSong = function (kind) { var l = U.songs.filter(function (s) { return kind === 'v' ? s.vdone > 0 : s.ddone > 0; }).sort(byDiff); l = l.slice(0, Math.max(2, Math.ceil(l.length / 2))); return l.sort(function (a, b) { return kind === 'v' ? a.vlast - b.vlast : a.dlast - b.dlast; })[0]; };
     var pickSong = function (kind, avoid, i) {      // the next song still to teach, least overlap with today's scene; else the one rehearsed longest ago
-      var todo = U.songs.filter(function (s) { return kind === 'v' ? s.vdone < s.vneed : s.dneed && s.ddone < s.dneed; }).slice(0, 3);
+      var todo = U.songs.filter(function (s) { return kind === 'v' ? s.vdone < s.vneed : s.dneed && s.ddone < s.dneed; }).sort(byDiff).slice(0, 3);
       var pool = todo.length ? todo : U.songs.filter(function (s) { return kind === 'v' || s.dneed; }).slice().sort(function (a, b) { return (kind === 'v' ? a.vlast - b.vlast : a.dlast - b.dlast); }).slice(0, 3);
       return pool.sort(function (a, b) { return overlap(a.chars, avoid) - overlap(b.chars, avoid); })[0];
     };
@@ -100,6 +107,13 @@
         else { var a1 = pickSong('v', [], i), a2 = a1 && pickSong('v', a1.chars, i); [a1, a2].filter(Boolean).forEach(function (s, k) { if (k && s === a1) return; groups.push(g('vocals', [], [s.id], { where: k ? 'Practice room' : 'Choir room' })); s.vdone++; s.vlast = i; }); note = 'Vocals: ' + groups.map(function (x) { return '“' + T.songById(x.songs[0]).title + '”'; }).join(' and ') + '.'; }
       } else if (i < p3) {      // scenes in order, with vocals and dance at the same time; Friday: run what we have learned
         if (fri && learned().length > 1) { var l = learned(); groups.push(g('run', l, [], { everyone: false })); note = 'Friday run: everything we have blocked so far (Scenes ' + T.sceneById(l[0]).num + '–' + T.sceneById(l[l.length - 1]).num + ').'; }
+        else if (parse(d).getDay() === 3 && reviewScene()) {      // Wednesdays: go back over the hardest things learned so far
+          var rs = reviewScene(), rv = reviewSong('v'), rd = reviewSong('d');
+          groups.push(g('acting', [rs.id])); rs.done++; rs.last = i;
+          if (rv) { groups.push(g('vocals', [], [rv.id], { only: rv.big ? 'principals' : '' })); rv.vdone++; rv.vlast = i; }
+          if (rd) { groups.push(g('dance', [], [rd.id], { only: 'chorus' })); rd.ddone++; rd.dlast = i; }
+          note = 'Review day (the hardest so far): Scene ' + rs.num + (rv ? ' · Vocals: “' + rv.title + '”' : '') + (rd ? ' · Dance: “' + rd.title + '”' : '') + '.';
+        }
         else {
           var sc = nextScene(i); groups.push(g('acting', [sc.id])); sc.done++; sc.last = i;
           var v = pickSong('v', sc.chars, i); if (v) { groups.push(g('vocals', [], [v.id], { only: v.big ? 'principals' : '' })); v.vdone++; v.vlast = i; }      // the chorus learns big numbers in the dance group, so they still get crew days
@@ -129,11 +143,14 @@
   T.seasonView = function () {
     var p = P(), t = p.term;
     if (!t.first) return '<div class="card"><p>' + sym('📅') + 'Set the first and last day of class first (Calendar & crew).</p><button class="btn primary" data-goto="setup">Go to Calendar & crew</button></div>';
-    var mon = p.showMonday || defaultShowMonday(), withAud = !(T.show.casting && T.show.casting.posted), L = layout(mon, withAud);
+    var mon = p.showMonday || defaultShowMonday(), withAud = !(T.show.casting && T.show.casting.posted), movie = p.movieDays === undefined ? 3 : p.movieDays, L = layout(mon, withAud, movie);
+    var order = units(); order.songs.sort(function (a, b) { return b.diff - a.diff; }); order.scenes.sort(function (a, b) { return b.diff - a.diff; });
     var gen = Object.keys(p.days).filter(function (d) { return p.days[d].gen; }).length;
     return '<div class="card"><h3>' + sym('🗓️') + 'Plan the semester</h3><p class="muted">Fills every empty class day from your school calendar, for every track, before anyone is cast. You can change any day after; days you already planned stay as they are.</p>' +
       '<label class="f">Monday of show week<input type="date" id="smon" value="' + mon + '"></label>' +
       '<label class="switch"><span>Start with the two audition weeks</span><input type="checkbox" id="saud"' + (withAud ? ' checked' : '') + '></label>' +
+      '<label class="f">🎬 Watch the movie: class periods, right after day one <span class="muted small">(about 98 minutes; 0 to skip)</span><input id="smov" inputmode="numeric" value="' + movie + '" style="width:90px"></label>' +
+      '<details style="margin:6px 0"><summary class="btn quiet small">Teaching order: hardest first</summary><p class="muted small">Taught in this order, and the hardest ones come back on Wednesdays as easier things are added.</p><p class="small"><b>Songs:</b> ' + order.songs.map(function (x) { return esc(x.title); }).join(' → ') + '</p><p class="small"><b>Scenes:</b> ' + order.scenes.map(function (x) { return 'Scene ' + x.num; }).join(' → ') + '</p></details>' +
       '<table class="tbl" style="margin:8px 0"><tbody>' +
       '<tr><td>Audition weeks</td><td>' + L.auditions.length + ' days</td><td class="muted small">' + (L.auditions[0] ? esc(X().dayName(L.auditions[0], true)) + ' – ' + esc(X().dayName(L.auditions[L.auditions.length - 1], true)) : '') + '</td></tr>' +
       '<tr><td>Rehearsals (music first, then scenes with vocals and dance at the same time)</td><td>' + L.work.length + ' days</td><td class="muted small">' + (L.work[0] ? esc(X().dayName(L.work[0], true)) + ' – ' + esc(X().dayName(L.work[L.work.length - 1], true)) : '') + '</td></tr>' +
@@ -148,7 +165,8 @@
     b.onclick = function () {
       var mon = document.getElementById('smon').value; if (!mon || parse(mon).getDay() !== 1) { T.toast('Pick the Monday of show week.'); return; }
       p.showMonday = mon;
-      var n = makePlan(mon, document.getElementById('saud').checked);
+      p.movieDays = Math.max(0, Math.min(6, +document.getElementById('smov').value || 0));
+      var n = makePlan(mon, document.getElementById('saud').checked, p.movieDays);
       T.saveShow(n + ' days planned').then(redraw);
     };
     var c = document.getElementById('sclear'); if (c) c.onclick = function () { if (!confirm('Clear every day the semester plan made? Days you planned yourself stay.')) return; Object.keys(p.days).forEach(function (d) { if (p.days[d].gen) delete p.days[d]; }); T.saveShow('Cleared').then(redraw); };
