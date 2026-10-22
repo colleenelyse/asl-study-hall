@@ -321,6 +321,7 @@
     var d = dialog('<h2>' + (isNew ? 'Add an actor' : 'Edit actor') + '</h2>' +
       '<div class="row">' + '<span id="ph">' + T.face(a, 80) + '</span><label class="btn small">Photo<input type="file" accept="image/*" id="pf" hidden></label><button class="btn small quiet" id="pr">No photo</button></div>' +
       '<label class="f">Name<input id="nm" value="' + esc(a.name) + '" autocomplete="off"></label>' +
+      '<label class="f">Sizes, for costume shopping (optional)<input id="sz" value="' + esc(a.sizes || '') + '" placeholder="e.g. shirt M, pants 10, shoes 7"></label>' +
       '<label class="switch"><span><b>Guest</b> (not in the class, e.g. a dancer who joins for tech week): only on run-through, tech, dress and show days, or days you call them</span><input type="checkbox" id="gu"' + (a.guest ? ' checked' : '') + '></label>' +
       '<p><b>Plays</b></p><div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 10px">' + O.characters.map(function (c) {
         return '<label class="switch"><span>' + T.chip(c.id) + '</span><input type="checkbox" value="' + c.id + '"' + (a.chars.indexOf(c.id) >= 0 ? ' checked' : '') + '></label>';
@@ -342,6 +343,7 @@
     d.querySelector('#ok').onclick = function () {
       a.name = d.querySelector('#nm').value.trim();
       if (d.querySelector('#gu').checked) a.guest = true; else delete a.guest;
+      a.sizes = d.querySelector('#sz').value.trim(); if (!a.sizes) delete a.sizes;
       a.chars = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return x.value; });
       if (!a.name) { T.toast('Type a name.'); return; }
       var i = cast.findIndex(function (c) { return c.id === a.id; }); if (i >= 0) cast[i] = a; else cast.push(a);

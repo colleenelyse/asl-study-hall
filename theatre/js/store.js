@@ -130,6 +130,21 @@
     sendNote: function (key, obj) {
       return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('notes', { box: box }); });
     },
+    /* a note that can wait: on a field trip there is often no Wi-Fi. Kept on this iPad (sealed) and sent when it is back online. */
+    queueNote: function (key, obj) {
+      return seal(key, te.encode(JSON.stringify(obj))).then(function (box) {
+        var q; try { q = JSON.parse(localStorage.getItem('theatre:noteQueue') || '[]'); } catch (e) { q = []; }
+        q.push(box); try { localStorage.setItem('theatre:noteQueue', JSON.stringify(q.slice(-300))); } catch (e) {}
+        return Store.flushNotes();
+      });
+    },
+    flushNotes: function () {
+      var q; try { q = JSON.parse(localStorage.getItem('theatre:noteQueue') || '[]'); } catch (e) { q = []; }
+      if (!q.length || !navigator.onLine) return Promise.resolve(q.length);
+      var left = q.slice();
+      return q.reduce(function (p, box) { return p.then(function () { return postJSON('notes', { box: box }).then(function () { left.shift(); }); }); }, Promise.resolve())
+        .catch(function () {}).then(function () { try { localStorage.setItem('theatre:noteQueue', JSON.stringify(left)); } catch (e) {} return left.length; });
+    },
     getNotes: function (key, proof) {
       return fetch(API + 'notes', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.notes || []; }); })
         .then(function (list) {
@@ -174,4 +189,5 @@
     }
   };
   root.Store = Store;
+  window.addEventListener('online', function () { Store.flushNotes(); });
 })(window);

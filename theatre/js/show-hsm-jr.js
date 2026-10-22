@@ -162,6 +162,26 @@ window.DEFAULT_SHOW = {
     { id: 'k35', scene: 's17', song: 'm41', on: '*' }
   ],
 
+  /* props to start from (our own list; Teacher mode › Production › Shopping changes it) */
+  props: [
+    { id: 'p-balls', name: 'Basketballs', who: 'jocks', qty: 6, scenes: ['s4', 's16'] },
+    { id: 'p-whistle', name: 'Whistle on a lanyard', who: 'coach', qty: 1, scenes: ['s4', 's12'] },
+    { id: 'p-clipboard', name: 'Clipboard', who: 'coach', qty: 1, scenes: ['s4', 's16'] },
+    { id: 'p-poms', name: 'Pom-poms', who: 'cheer', qty: 8, scenes: ['s1', 's16'] },
+    { id: 'p-gong', name: 'Small gong or bell', who: 'darbus', qty: 1, scenes: ['s2'] },
+    { id: 'p-phones', name: 'Old cell phones (pretend)', who: 'students', qty: 4, scenes: ['s2', 's5'] },
+    { id: 'p-mic', name: 'Karaoke microphone', who: 'partykids', qty: 2, scenes: ['s1'] },
+    { id: 'p-music', name: 'Binder of sheet music', who: 'kelsi', qty: 1, scenes: ['s7'] },
+    { id: 'p-treats', name: 'Tray of baked treats (fake)', who: 'zeke', qty: 1, scenes: ['s9'] },
+    { id: 'p-trays', name: 'Cafeteria lunch trays', who: 'students', qty: 10, scenes: ['s9', 's15'] },
+    { id: 'p-backpacks', name: 'Backpacks', who: 'students', qty: 8, scenes: ['s2', 's3'] },
+    { id: 'p-books', name: 'Textbooks and notebooks', who: 'brainiacs', qty: 8, scenes: ['s5', 's16'] },
+    { id: 'p-buzzer', name: 'Game buzzer or bell', who: 'moderator', qty: 1, scenes: ['s16'] },
+    { id: 'p-trophy', name: 'Trophy', who: 'coach', qty: 1, scenes: ['s17'] },
+    { id: 'p-hats', name: 'Party hats and noisemakers', who: 'partykids', qty: 10, scenes: ['s1'] },
+    { id: 'p-headset', name: 'Announcer microphone or headset', who: 'jack', qty: 1, scenes: ['s2', 's15', 's16'] }
+  ],
+
   /* costume ideas to start from; Teacher mode is where they become the real plot */
   costumes: [
     { id: 'c-troy-school', who: 'troy', name: 'School clothes', items: ['Hoodie or T-shirt', 'Jeans', 'Sneakers'], moments: ['k2', 'k5', 'k6', 'k10', 'k14', 'k15', 'k16', 'k18', 'k19', 'k20', 'k25', 'k26'] },

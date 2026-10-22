@@ -910,5 +910,6 @@
     }).catch(function (e) { T.loadError = e.message; });
   };
   T.setMe = setMe;
+  window.addEventListener('load', function () { setTimeout(function () { if (window.Store) Store.flushNotes(); }, 1500); });
   T.reload().then(route);
 })();

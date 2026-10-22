@@ -20,7 +20,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -126,7 +126,7 @@
     for (var i = 0; i < Math.max(L.length, S.length); i++) { if (L[i]) out.push(L[i]); if (S[i]) out.push(S[i]); }
     return out.length ? out : [{ type: 'practice', icon: '🎧', text: 'Listen to the whole show and follow the words', href: '#/listen' }, { type: 'practice', icon: '📖', text: 'The Story: read the scenes you are in', href: '#/story' }, { type: 'practice', icon: '👕', text: 'My Costumes: check what you wear and when', href: '#/costumes' }];
   }
-  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
+  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.focus === 'trip') return g.everyone; if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
   /* the weekly crew day */
   var BIG_DAYS = ['run', 'tech', 'dress', 'show'];
   function exempt(a) { if (a.guest) return true; var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }
@@ -151,6 +151,7 @@
     if (how === 'custom' && r.tasks && r.tasks[a.id]) return { type: 'custom', icon: '📝', text: r.tasks[a.id] };
     if (!how && crewDayOf(a, monday(s)) === s) { var hs = homeStation(a); return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + hs.name + (hs.desc ? ' (' + hs.desc + ')' : '') }; }
     var g = how && how.slice(0, 2) === 'g:' ? r.groups.find(function (x) { return 'g:' + x.id === how; }) : (!how ? autoGroup(a, r) : null);
+    if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
     if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
     var st = how && how.slice(0, 3) === 'st:' && P().stations.find(function (x) { return 'st:' + x.id === how; });
     if (!how && !st && homeStation(a)) st = homeStation(a);      // not in a group today: with their crew
@@ -207,13 +208,13 @@
     T.setBar('Production', '#/teacher');
     if (!P().term.first) tab = 'setup';
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
-    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['setup', 'Calendar & crew']];
+    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every student gets a job each day.</p>';
-    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView }[tab]();
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
-    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos }[tab] || function () {})();
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); } }[tab] || function () {})();
   }
 
   function setupView() {
@@ -275,11 +276,11 @@
       '<a class="btn small" href="#/teacher/production/callboard/' + week + '">Call board</a></div>';
     return h + weekDays(week).map(function (s) {
       if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
-      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0 };
+      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0, trip: 0 };
       people.forEach(function (a) { n[task(a, s).type]++; });
       return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' +
         (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +
-        '<div class="muted small">' + n.stage + ' on stage · ' + n.crew + ' crew · ' + n.practice + ' practicing' + (n.custom ? ' · ' + n.custom + ' other' : '') + (n.away ? ' · <span class="err">' + n.away + ' away</span>' : '') + '</div></a>';
+        '<div class="muted small">' + (n.trip ? n.trip + ' on the trip · ' : '') + n.stage + ' on stage · ' + n.crew + ' crew · ' + n.practice + ' practicing' + (n.custom ? ' · ' + n.custom + ' other' : '') + (n.away ? ' · <span class="err">' + n.away + ' away</span>' : '') + '</div></a>';
     }).join('');
   }
   function wireWeek() {
@@ -404,11 +405,12 @@
             '<label class="f grow" style="margin:0">Where / with whom<input data-k="where" value="' + esc(g.where || '') + '" placeholder="e.g. Stage, choir room, with Ms. Lee"></label><span class="tag">' + n + ' students</span><button class="btn small quiet" data-delg>Remove</button></div>' +
             '<div class="row"><label class="switch grow" style="border:0"><span>Whole cast</span><input type="checkbox" data-k="everyone"' + (g.everyone ? ' checked' : '') + '></label>' +
             '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
+            (g.focus === 'trip' ? '<button class="btn small" data-halves>Two trips: half the class each</button>' : '') +
             (g.songs.length && !g.only ? '<button class="btn small" data-split title="Principals sing in one place while the chorus learns the dance in another">Split: singers + chorus dance</button>' : '') + '</div>' +
             '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (sc) { return '<button type="button" class="btn small" data-sc="' + sc.id + '" aria-pressed="' + (g.scenes.indexOf(sc.id) >= 0) + '" title="' + esc(sc.place) + '">' + sc.num + '</button>'; }).join('') + '</div>' +
             '<p class="muted small" style="margin-top:10px">Songs <span class="small">(★ big number: the ensemble and small roles join)</span></p><div class="row">' + O.songs.map(function (so) { var m = O.moments.find(function (x) { return x.song === so.id; }); return '<button type="button" class="btn small" data-so="' + so.id + '" aria-pressed="' + (g.songs.indexOf(so.id) >= 0) + '">' + (m && m.big ? '★ ' : '') + esc(so.title) + '</button>'; }).join('') + '</div></div>';
         }).join('') +
-        '<div class="row" style="margin-bottom:14px">' + FOCUS.slice(0, 3).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
         '<div class="card"><label class="f" style="margin:0">Note for everyone (they see it)<input id="nt" value="' + esc(r.notes || '') + '" placeholder="e.g. Wear shoes you can dance in."></label></div>' +
         '<div class="card"><h3>Every student’s job</h3>' + people.map(function (a) {
           var t = task(a, s), how = (r.assign || {})[a.id] || '';
@@ -429,6 +431,25 @@
       app.querySelectorAll('[data-sc],[data-so]').forEach(function (b) { b.onclick = function () { keep(); var g = gOf(b), list = b.dataset.sc ? g.scenes : g.songs, v = b.dataset.sc || b.dataset.so, i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); draw(); }; });
       app.querySelectorAll('[data-k=everyone]').forEach(function (c) { c.onchange = function () { keep(); gOf(c).everyone = c.checked; draw(); }; });
       app.querySelectorAll('[data-k=focus],[data-k=only]').forEach(function (c) { c.onchange = function () { keep(); draw(); }; });
+      /* two trips (Colleen: each teacher goes once with half the class, to a different store, on a different day). Halves mix the crews so both
+         trips have costume and props people. The other half has class as usual that day. */
+      app.querySelectorAll('[data-halves]').forEach(function (b) {
+        b.onclick = function () {
+          keep(); var g = gOf(b);
+          var d = T.dialog('<h2>Two trips</h2><p class="muted">This day goes with ' + esc(g.where || 'this store') + '. The other half goes another day, to another store. Everyone else has class as usual.</p>' +
+            '<label class="f">The other trip’s day<input type="date" id="d2" value="' + addDays(s, 1) + '"></label><label class="f">Where, and with whom<input id="w2" placeholder="e.g. Savers on Route 9, with Mr. Kim"></label>' +
+            '<p class="err" id="m"></p><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok">Split the class</button></div>');
+          d.querySelector('#cn').onclick = function () { d.close(); };
+          d.querySelector('#ok').onclick = function () {
+            var s2 = d.querySelector('#d2').value; if (!s2 || s2 === s) { d.querySelector('#m').textContent = 'Pick a different day.'; return; }
+            var kids = cast().filter(function (a) { return !a.guest; }).sort(function (x, y) { return String(p.crewHome[x.id] || '~').localeCompare(String(p.crewHome[y.id] || '~')) || x.name.localeCompare(y.name); });
+            var r2 = p.days[s2] = p.days[s2] || blank(), g2 = newGroup('trip'); g2.where = d.querySelector('#w2').value.trim(); r2.groups.push(g2);
+            g.everyone = false;
+            kids.forEach(function (a, i) { if (i % 2 === 0) r.assign[a.id] = 'g:' + g.id; else { if (r.assign[a.id] === 'g:' + g.id) delete r.assign[a.id]; r2.assign[a.id] = 'g:' + g2.id; } });
+            d.close(); save().then(function () { T.toast('Half the class on each trip'); draw(); });
+          };
+        };
+      });
       app.querySelectorAll('[data-split]').forEach(function (b) {
         b.onclick = function () {
           keep(); var g = gOf(b), i = r.groups.indexOf(g), d = JSON.parse(JSON.stringify(g));
@@ -502,7 +523,7 @@
         var r = plan(s), groups = {}, order = [];
         cast().forEach(function (a) {
           var t = task(a, s); if (t.type === 'off') return;
-          var k = t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
+          var k = t.type === 'trip' ? '🚌 ' + t.text : t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
           if (!groups[k]) { groups[k] = []; order.push(k); }
           groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
         });
