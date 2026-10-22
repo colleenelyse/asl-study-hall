@@ -214,6 +214,12 @@ Test, nudge, Save (`T.show.lyricTimes[song] = { kind: 'performance', lines: [{ t
 pages, highlights the line being sung, and moves a red ball (hop animation, none with reduced motion) to each syllable: in My Songs (switch **Bouncing ball
 on the music**) and on the scene's pages when a song plays inside a run. Re-import the PDF after updating so lyrics have syllable positions.
 
+**Show and tell** (Colleen: groups that worked in different spaces perform for each other; give the audition soloists, whose one sung line is a stretch,
+a moment to shine): a 🎤 Show and tell group type (everyone together); the semester plan makes every other Friday (before the clean-up stretch) a show and
+tell, listing the groups since the last one; `day.spotlight` (two at a time, taking turns) are students with a small solo (`T.soloists()`: featured or small roles
+with 1–4 solo lyric lines; for HSM JR: James, Susan, Cathy, Cyndra in "Auditions"); their Today says "you sing your solo line for the class" with the song;
+the day page has a Spotlight solos picker.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

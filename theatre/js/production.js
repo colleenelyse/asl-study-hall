@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -171,6 +171,11 @@
     if (how === 'custom' && r.tasks && r.tasks[a.id]) return { type: 'custom', icon: '📝', text: r.tasks[a.id] };
     if (!how && crewDayOf(a, monday(s)) === s) { var hs = homeStation(a); return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + hs.name + (hs.desc ? ' (' + hs.desc + ')' : '') }; }
     var g = how && how.slice(0, 2) === 'g:' ? r.groups.find(function (x) { return 'g:' + x.id === how; }) : (!how ? autoGroup(a, r) : null);
+    if (g && g.focus === 'share') {      // show and tell (Colleen): groups perform for each other; small solo lines get their moment
+      var spot = (r.spotlight || []).filter(function (c) { return a.chars.indexOf(c) >= 0; })[0], so = spot && T.soloSongOf && T.soloSongOf(spot);
+      if (spot) return { type: 'stage', focus: 'share', icon: '🌟', text: 'Show and tell: you sing your solo line for the class!' + (so ? ' (“' + so.title + '”)' : ''), href: so ? '#/song/' + so.id : null, group: g.id };
+      return { type: 'stage', focus: 'share', icon: '🎤', text: 'Show and tell: every group shows the class what it worked on' + (g.where ? ' · ' + g.where : ''), group: g.id };
+    }
     if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
     if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
     if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
@@ -448,7 +453,9 @@
             '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (sc) { return '<button type="button" class="btn small" data-sc="' + sc.id + '" aria-pressed="' + (g.scenes.indexOf(sc.id) >= 0) + '" title="' + esc(sc.place) + '">' + sc.num + '</button>'; }).join('') + '</div>' +
             '<p class="muted small" style="margin-top:10px">Songs <span class="small">(★ big number: the ensemble and small roles join)</span></p><div class="row">' + O.songs.map(function (so) { var m = O.moments.find(function (x) { return x.song === so.id; }); return '<button type="button" class="btn small" data-so="' + so.id + '" aria-pressed="' + (g.songs.indexOf(so.id) >= 0) + '">' + (m && m.big ? '★ ' : '') + esc(so.title) + '</button>'; }).join('') + '</div></div>';
         }).join('') +
-        '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
+        (r.groups.some(function (g) { return g.focus === 'share'; }) ? '<div class="card"><h3>🌟 Spotlight solos</h3><p class="muted small">Students with a small solo line sing it for the class. Tap to choose.</p><div class="row">' +
+          (T.soloists ? T.soloists() : []).map(function (x) { return '<button type="button" class="btn small" data-spot="' + x.c + '" aria-pressed="' + ((r.spotlight || []).indexOf(x.c) >= 0) + '">' + esc(T.charById(x.c).short) + ' <span class="muted small">' + esc(x.song.title) + '</span></button>'; }).join('') + '</div></div>' : '') +
+        '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip', 'share'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
         '<div class="card"><label class="f" style="margin:0">Note for everyone (they see it)<input id="nt" value="' + esc(r.notes || '') + '" placeholder="e.g. Wear shoes you can dance in."></label></div>' +
         '<div class="card"><h3>Every student’s job</h3>' + people.map(function (a) {
           var t = task(a, s), how = (r.assign || {})[a.id] || '';
@@ -498,7 +505,8 @@
       app.querySelectorAll('[data-delg]').forEach(function (b) {
         b.onclick = function () { keep(); var g = gOf(b); r.groups = r.groups.filter(function (x) { return x !== g; }); Object.keys(r.assign).forEach(function (k) { if (r.assign[k] === 'g:' + g.id) delete r.assign[k]; }); draw(); };
       });
-      app.querySelectorAll('[data-addg]').forEach(function (b) { b.onclick = function () { keep(); r.groups.push(newGroup(b.dataset.addg)); draw(); }; });
+      app.querySelectorAll('[data-addg]').forEach(function (b) { b.onclick = function () { keep(); var ng = newGroup(b.dataset.addg); if (ng.focus === 'share') { ng.everyone = true; ng.where = 'Everyone together'; } r.groups.push(ng); draw(); }; });
+      app.querySelectorAll('[data-spot]').forEach(function (b) { b.onclick = function () { keep(); var c = b.dataset.spot, l = r.spotlight = r.spotlight || [], i = l.indexOf(c); if (i >= 0) l.splice(i, 1); else l.push(c); draw(); }; });
       app.querySelectorAll('[data-job]').forEach(function (sel) {
         sel.onchange = function () {
           keep(); var id = sel.dataset.job;

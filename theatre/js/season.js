@@ -37,6 +37,23 @@
   }
   var overlap = function (a, b) { return a.filter(function (c) { return b.indexOf(c) >= 0; }).length; };
 
+  /* students with a small solo line (1 to 4 sung lines that are theirs alone), for the show-and-tell spotlight; leads are not included */
+  function soloists() {
+    var out = [];
+    T.O().scenes.forEach(function (sc) {
+      var src = T.scriptScene(sc); if (!src) return;
+      src.items.forEach(function (it) {
+        if (it.type !== 'song') return;
+        var so = T.O().songs.find(function (s) { return s.num === it.num; }), n = {};
+        it.lyrics.forEach(function (l) { var ids = T.labelChars(l.who); if (ids.length === 1 && ids[0] !== '*') n[ids[0]] = (n[ids[0]] || 0) + 1; });
+        Object.keys(n).forEach(function (c) { var ch = T.charById(c); if (ch && (ch.group === 'featured' || ch.small) && n[c] <= 4 && so && !out.some(function (x) { return x.c === c; })) out.push({ c: c, song: so, lines: n[c] }); });      // the featured roles: one small solo that is a stretch
+      });
+    });
+    return out;
+  }
+  T.soloists = soloists;
+  T.soloSongOf = function (c) { var x = soloists().find(function (y) { return y.c === c; }); return x && x.song; };
+
   /* ---------- the plan ---------- */
   function defaultShowMonday() {
     var t = P().term; if (!t.last) return '';
@@ -65,11 +82,21 @@
       return pool.sort(function (a, b) { return overlap(a.chars, avoid) - overlap(b.chars, avoid); })[0];
     };
     var learned = function () { return U.scenes.filter(function (s) { return s.done > 0; }).map(function (s) { return s.id; }); };
+    /* show and tell, every other Friday: groups show each other the week's work, and two students with small solo lines sing them (Colleen) */
+    var solo = soloists(), soloAt = 0, fridays = 0, weekWork = [];
+    var share = function () {
+      var spot = solo.length ? [solo[soloAt++ % solo.length], solo[soloAt++ % solo.length]].filter(function (x, k, a) { return a.indexOf(x) === k; }).map(function (x) { return x.c; }) : [];
+      var shown = weekWork.filter(function (x, k, a) { return a.indexOf(x) === k; }).slice(0, 4);
+      var note = 'Show and tell: ' + (shown.length ? shown.join(', ') + ' show the class what they worked on.' : 'every group shows the class what it worked on.') + (spot.length ? ' 🌟 Spotlight: ' + spot.map(function (c) { return T.charById(c).short; }).join(' and ') + ' sing their solo lines.' : '');
+      return { groups: [g('share', [], [], { everyone: true, where: 'Everyone together' })], note: note, spotlight: spot };
+    };
     L.work.forEach(function (d, i) {
       var fri = parse(d).getDay() === 5, groups = [], note = '';
+      if (fri) fridays++;
+      if (fri && fridays % 2 === 0 && i < p3) { var sh = share(); weekWork = []; if (!p.days[d]) { p.days[d] = { groups: sh.groups, assign: {}, tasks: {}, notes: sh.note, gen: true, spotlight: sh.spotlight }; made++; } return; }
       if (i < p1) {      // music first, and read the script together
         if (readAt < readChunks.length) { var ch = readChunks[readAt++]; groups.push(g('acting', ch, [], { where: 'Table read' })); note = 'Read-through: Scene' + (ch.length > 1 ? 's ' + T.sceneById(ch[0]).num + '–' + T.sceneById(ch[ch.length - 1]).num : ' ' + T.sceneById(ch[0]).num) + '. ';
-          var sv = pickSong('v', [], i); if (sv) { groups.push(g('vocals', [], [sv.id])); sv.vdone++; sv.vlast = i; note += 'Vocals: “' + sv.title + '”.'; } }
+          var sv = pickSong('v', [], i); if (sv) { groups.push(g('vocals', [], [sv.id])); sv.vdone++; sv.vlast = i; note += 'Vocals: “' + sv.title + '”.'; weekWork.push('the “' + sv.title + '” singers'); } }
         else { var a1 = pickSong('v', [], i), a2 = a1 && pickSong('v', a1.chars, i); [a1, a2].filter(Boolean).forEach(function (s, k) { if (k && s === a1) return; groups.push(g('vocals', [], [s.id], { where: k ? 'Practice room' : 'Choir room' })); s.vdone++; s.vlast = i; }); note = 'Vocals: ' + groups.map(function (x) { return '“' + T.songById(x.songs[0]).title + '”'; }).join(' and ') + '.'; }
       } else if (i < p3) {      // scenes in order, with vocals and dance at the same time; Friday: run what we have learned
         if (fri && learned().length > 1) { var l = learned(); groups.push(g('run', l, [], { everyone: false })); note = 'Friday run: everything we have blocked so far (Scenes ' + T.sceneById(l[0]).num + '–' + T.sceneById(l[l.length - 1]).num + ').'; }
@@ -78,6 +105,7 @@
           var v = pickSong('v', sc.chars, i); if (v) { groups.push(g('vocals', [], [v.id], { only: v.big ? 'principals' : '' })); v.vdone++; v.vlast = i; }      // the chorus learns big numbers in the dance group, so they still get crew days
           var dn = pickSong('d', sc.chars.concat(v ? v.chars : []), i); if (dn) { groups.push(g('dance', [], [dn.id], { only: 'chorus' })); dn.ddone++; dn.dlast = i; }
           note = 'Acting: Scene ' + sc.num + (v ? ' · Vocals: “' + v.title + '”' : '') + (dn ? ' · Dance: “' + dn.title + '” (chorus)' : '') + '.';
+          weekWork.push('the Scene ' + sc.num + ' actors'); if (dn) weekWork.push('the “' + dn.title + '” dancers'); if (v) weekWork.push('the “' + v.title + '” singers');
         }
       } else {      // clean what was rehearsed longest ago; Wednesdays run the first half, Fridays the second half
         var wd = parse(d).getDay();
