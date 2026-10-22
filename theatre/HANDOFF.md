@@ -281,3 +281,9 @@ handoffs at a scene change cost more; someone left out who says more bumps the p
 Settings in `T.show.micPlot` { n, pin { unit: mic | 'hand' }, where, helper (actor id) }. `T.micSteps(chars, actorId)` gives a person's steps, which
 `buildSchedule` puts on their My Schedule cards (🎙️, ⚡ for a handoff at a scene change); the helper (if a cast member) gets the swaps too.
 The page lists the swaps (print), each mic in order, who has no mic, and pins.
+
+**Script reader fixes** (Colleen: "many lines were missed and many sung syllables were missed" in Gabriella's highlighted script): a page that is
+part music and part script now reads the script above the first song banner or staff and below the last staff (`firstMusic` / `lastStave`);
+lines went from 357 to 389 (every centered speaker name in HSM JR is found but one, Jack Scott p78). Singer labels are placed where they sit along the
+staff: each lyric word goes to the label before it, so a staff line that changes singer is split (`pushLyric`); "+ TROY:" joins whoever is singing.
+Re-import the PDF to get these; importing clears lyrics timing only for songs whose lyric lines changed (find them again on Songs & tracks).

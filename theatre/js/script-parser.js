@@ -73,9 +73,10 @@
       return {
         y: l.y, x0: first.x, x1: end, text: text.replace(/\s+/g, ' ').trim(),
         bold: bold > n / 2, italic: italic > n / 2, glyphs: glyphs, size: first.size || 12, lyric: lyric,
+        parts: l.parts.map(function (p) { return { x: p.x, str: p.str }; }),
         syl: [].concat.apply([], lyricParts.map(function (p) {      // where each sung word or syllable sits (for the bouncing ball); an item holding two words is split by its letters
           var str = p.str.replace(MUSIC_GLYPH_ALL, ' '), w = p.w || 0, out = [], re = /[A-Za-z’'][A-Za-z’',.!?]*/g, m;
-          while ((m = re.exec(str))) out.push({ x: +(p.x + w * m.index / Math.max(1, str.length)).toFixed(1), w: +(w * m[0].length / Math.max(1, str.length)).toFixed(1) });
+          while ((m = re.exec(str))) out.push({ x: +(p.x + w * m.index / Math.max(1, str.length)).toFixed(1), w: +(w * m[0].length / Math.max(1, str.length)).toFixed(1), t: m[0] });
           return out;
         }))
       };
@@ -107,7 +108,29 @@
     var songNums = opts.songNumbers ? opts.songNumbers.map(String) : null;
     var stop = opts.stopPatterns || [/^actor[’']?s glossary$/i, /^show glossary$/i, /^credits and copyrights$/i];
     var scenes = [], scene = null, speaker = null, block = null, depth = 0, done = false;
-    var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', pendingHeading = null, printed = null;
+    var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', singerLabs = [], pendingHeading = null, printed = null;
+    var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?:\s*$/;
+    /* a lyric line, split where a singer label above it starts (Colleen: "many sung syllables were missed": a name printed partway along the staff
+       starts that singer there, so the words before it still belong to the one before) */
+    function pushLyric(line, lyr) {
+      var syl = line.syl || [], labs = singerLabs; singerLabs = [];
+      if (!labs.length || !syl.length) { lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box, syl: syl.map(strip) }); return; }
+      var cur = singerNow;
+      labs.forEach(function (l) { if (l.plus && cur && splitNames(cur).indexOf(l.name) < 0) l.name = cur + ', ' + l.name; cur = l.name; });      // "+ TROY:" joins whoever is singing
+      var runs = [];
+      syl.forEach(function (x) {
+        var who = singerNow || labs[0].name;
+        labs.forEach(function (l) { if (x.x + x.w >= l.x - 4) who = l.name; });
+        var r = runs[runs.length - 1]; if (r && r.who === who) r.syl.push(x); else runs.push({ who: who, syl: [x] });
+      });
+      runs.forEach(function (r) {
+        var a = r.syl[0], z = r.syl[r.syl.length - 1], text = cleanLyric(r.syl.map(function (x) { return x.t; }).join(' '));
+        var b = { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h };
+        if (text.replace(/[^A-Za-z]/g, '').length) lastSongItem.lyrics.push({ who: r.who, text: text, page: printed, box: b, syl: r.syl.map(strip) });
+      });
+      singerNow = labs[labs.length - 1].name;
+    }
+    var strip = function (x) { return { x: x.x, w: x.w }; };
     var dialogueX = null;
 
     /* where each item sits on the PDF page (pdf page number, x, y from the top, width, height), so the app can highlight the real pages */
@@ -129,7 +152,7 @@
         var isSong = songNums ? songNums.indexOf(num) >= 0 : false;
         if (isSong && lastSong !== num) {
           lastSongItem = emit({ type: 'song', num: num, title: title, singers: [], lyrics: [] });
-          singerNow = '';
+          singerNow = ''; singerLabs = [];
           lastSong = num; block = null;
         } else if (!isSong && opts.keepCues) {
           emit({ type: 'cue', num: num, title: title });
@@ -142,6 +165,10 @@
 
     for (var pi = 0; pi < pages.length && !done; pi++) {
       var page = pages[pi], lines = toLines(page), music = isMusicPage(lines);
+      // a page that is part music, part script (a song ends and the scene goes on): below the last staff and its lyrics is ordinary script
+      var lastStave = music ? Math.max.apply(null, lines.filter(function (l) { return l.glyphs; }).map(function (l) { return l.y; }).concat([0])) : 0;
+      // …and above the first song banner or staff (a scene's last lines before the song starts on the same page)
+      var firstMusic = music ? Math.min.apply(null, lines.filter(function (l) { return l.glyphs || l.size >= 16; }).map(function (l) { return l.y - l.size; }).concat([1e9])) : 0;
       lines = lines.filter(function (l) {
         if (stop.some(function (re) { return re.test(l.text); })) return true;      // the glossary heading sits at the top of its page
         var f = pageFurniture(l, page);
@@ -173,22 +200,26 @@
         }
         if (!scene) continue;
 
-        if (music) {
+        if (music && !(line.y > lastStave + 45 && !prevStave) && !(line.y < firstMusic - 4 && !/^[A-Z][A-Z .’',&]+:/.test(t))) {
           if (/#\s?\d/.test(t)) cues(t);
           var lyr = line.lyric ? cleanLyric(line.lyric) : '';
           var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
           if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
-            lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box, syl: line.syl }); addBox(lastSongItem);
+            pushLyric(line, lyr); addBox(lastSongItem);
             prevStave = false;
             continue;
           }
           if (/^[\d\s+]*$/.test(t) || line.size >= 16) continue;          // measure numbers, the song's title banner
           // singer labels over the staves: "9 TROY:" "+ GABRIELLA, TROY:"
-          var lab = t.match(/^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?:\s*$/);
-          if (lab && (line.size < 10 || line.bold)) {
-            if (lastSongItem) splitNames(lab[1]).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
-            singerNow = lab[1].trim();
+          // one or more labels on the line, each where it starts along the staff
+          var labParts = (line.parts || []).filter(function (p) { return p.str.trim(); }), labs = labParts.map(function (p) { var m = p.str.trim().match(LAB); return m ? { name: m[1].trim(), x: p.x, plus: /^[\d\s]*\+/.test(p.str) } : null; });
+          var allLabs = labs.length && labParts.every(function (p, k) { return labs[k] || /^[\d\s+]+$/.test(p.str); }) && labs.some(Boolean);
+          var lab = t.match(LAB);
+          if ((allLabs || lab) && (line.size < 10 || line.bold || allLabs)) {
+            var found = allLabs ? labs.filter(Boolean) : [{ name: lab[1].trim(), x: line.x0, plus: /^[\d\s]*\+/.test(t) }];
+            found.forEach(function (f) { if (lastSongItem) splitNames(f.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); }); });
+            singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
             continue;
           }
           if (prevStave) { prevStave = false; continue; }                   // anything else right under a stave

@@ -177,6 +177,10 @@
       O.moments.push({ id: uid('k'), scene: id, minutes: 2, on: on });
     });
     O.scenes.sort(function (a, b) { return a.num - b.num; });
+    // lyrics timing is kept per lyric line: a song whose lines now read differently needs its timing found again
+    var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || 0) + it.lyrics.length; }); }); return o; };
+    var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
+    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) delete LT[so.id]; });
     T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
     T.toast('Read ' + r.scenes.length + ' scenes and ' + n + ' lines. Check the speaker names, then Save.', 4000);
