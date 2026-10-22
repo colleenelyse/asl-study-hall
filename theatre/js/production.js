@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -112,7 +112,7 @@
   function groupChars(g) {
     var all = T.O().characters.map(function (c) { return c.id; });
     if (g.everyone) return all;
-    var ms = T.O().moments.filter(function (m) { return g.scenes.indexOf(m.scene) >= 0 || (m.song && g.songs.indexOf(m.song) >= 0); });
+    var ms = T.O().moments.filter(function (m) { return (g.scenes.indexOf(m.scene) >= 0 && !(g.focus === 'acting' && m.song)) || (m.song && g.songs.indexOf(m.song) >= 0); });      // an acting rehearsal of a scene calls its spoken parts, not its songs
     return all.filter(function (c) {
       var ch = T.charById(c), chorus = T.smallRole(ch) || (ch && ch.group === 'helpers');      // peer models go with the chorus: they model the dance
       if (g.only && (g.only === 'chorus') !== chorus) return false;
@@ -146,7 +146,7 @@
     for (var i = 0; i < Math.max(L.length, S.length); i++) { if (L[i]) out.push(L[i]); if (S[i]) out.push(S[i]); }
     return out.length ? out : [{ type: 'practice', icon: '🎧', text: 'Listen to the whole show and follow the words', href: '#/listen' }, { type: 'practice', icon: '📖', text: 'The Story: read the scenes you are in', href: '#/story' }, { type: 'practice', icon: '👕', text: 'My Costumes: check what you wear and when', href: '#/costumes' }];
   }
-  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.focus === 'trip') return g.everyone; if (g.callbacks) { var cb = (T.show.casting || {}).callbacks || {}; return Object.keys(cb).some(function (k) { return cb[k].indexOf(a.id) >= 0; }); } if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
+  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.half) { var kids = cast().filter(function (x) { return !x.guest; }), k = kids.indexOf(a); return k >= 0 && (k % 2 === 0) === (g.half === 'A'); } if (g.focus === 'trip') return g.everyone; if (g.callbacks) { var cb = (T.show.casting || {}).callbacks || {}; return Object.keys(cb).some(function (k) { return cb[k].indexOf(a.id) >= 0; }); } if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
   /* the weekly crew day */
   var BIG_DAYS = ['run', 'tech', 'dress', 'show'];
   function exempt(a) { if (a.guest) return true; var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }
@@ -171,6 +171,7 @@
     if (how === 'custom' && r.tasks && r.tasks[a.id]) return { type: 'custom', icon: '📝', text: r.tasks[a.id] };
     if (!how && crewDayOf(a, monday(s)) === s) { var hs = homeStation(a); return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + hs.name + (hs.desc ? ' (' + hs.desc + ')' : '') }; }
     var g = how && how.slice(0, 2) === 'g:' ? r.groups.find(function (x) { return 'g:' + x.id === how; }) : (!how ? autoGroup(a, r) : null);
+    if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
     if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
     if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
     var st = how && how.slice(0, 3) === 'st:' && P().stations.find(function (x) { return 'st:' + x.id === how; });
@@ -180,6 +181,8 @@
     return all[(i < 0 ? 0 : i) % all.length];
   }
   T.prodTask = task;
+  /* shared with season.js (the semester plan and track calendars) */
+  T.prod = { groupChars: groupChars, classDays: classDays, isClassDay: isClassDay, plan: plan, newGroup: newGroup, focus: focus, groupName: groupName, monday: monday, addDays: addDays, dayName: dayName, today: today, bookingsOn: function (s) { return (P().bookings || []).filter(function (b) { return b.date === s; }); } };
 
   /* ---------- days away sent from iPads ---------- */
   /* notes from iPads: each kind has a handler (here: conflict, video; casting.js adds audition). A handler returns true when it added something.
@@ -228,15 +231,15 @@
     T.setBar('Production', '#/teacher');
     if (!P().term.first && !startedAtSetup) { tab = 'setup'; startedAtSetup = true; }      // first visit: start at the calendar; every tab still works after
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
-    var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
+    var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every student gets a job each day.</p>';
-    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); } }[tab]();
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, tracks: function () { return T.tracksView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
     app.querySelectorAll('[data-goto]').forEach(function (b) { b.onclick = function () { tab = b.dataset.goto; overview(); }; });
     if (tab === 'week' && !P().term.first) return;
-    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); } }[tab] || function () {})();
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); }, season: function () { T.wireSeason(overview); }, tracks: function () { T.wireTracks(overview); } }[tab] || function () {})();
   }
 
   function setupView() {
@@ -587,7 +590,7 @@
         (t.type === 'away' ? '' : pend ? '<span class="tag">Sent: I’ll be away</span>' : '<button class="btn small quiet" data-away="' + s + '">I’ll be away</button>') + '</div></div>';
     };
     app.innerHTML = (days.length ? card(days[0], true) : '<div class="card"><p>No more class days this year. Bravo!</p></div>') +
-      (T.perfCard ? T.perfCard() : '') + (T.studyNextCard ? T.studyNextCard() : '') +
+      '<p class="center"><a class="btn" href="#/calendar">' + sym('🗓️') + 'My whole calendar</a></p>' + (T.perfCard ? T.perfCard() : '') + (T.studyNextCard ? T.studyNextCard() : '') +
       (days.length > 1 ? '<h2 style="margin-top:20px">Coming up</h2>' + days.slice(1).map(function (s) { return card(s, false); }).join('') : '');
     app.querySelectorAll('[data-away]').forEach(function (b) { b.onclick = function () { awayNote(b.dataset.away); }; });
   };

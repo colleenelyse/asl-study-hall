@@ -119,6 +119,33 @@
     };
   }
   /* Act 1 dress, Act 2 dress, full run, in-school shows, and an evening show; the show splits where half its minutes have gone by (at a scene change) */
+  /* show week's days and performances (used by Plan show week, and by the semester plan) */
+  T.buildShowWeek = function (mo, times, evDate, evTime) {
+    var p = P();
+      var scenes = T.O().scenes.map(function (s) { return s.id; }), ms = T.O().moments, total = ms.reduce(function (a, m) { return a + mins(m); }, 0), run = 0, split = scenes.length;
+      for (var i = 0; i < ms.length; i++) { run += mins(ms[i]); if (run >= total / 2) { split = scenes.indexOf(ms[i].scene) + 1; break; } }
+      var g = function (focus, sc) { return { id: uid('g'), focus: focus, scenes: sc, songs: [], everyone: true, where: 'Reber Center stage', only: '' }; };
+      var first = T.sceneById(scenes[0]).num, mid = T.sceneById(scenes[split - 1]).num, last = T.sceneById(scenes[scenes.length - 1]).num;
+      var plan = [
+        [mo, [g('dress', scenes.slice(0, split))], 'Act 1 dress rehearsal (Scenes ' + first + '–' + mid + '): full costume, mics, props. Everyone not on stage is backstage crew.'],
+        [addDays(mo, 1), [g('dress', scenes.slice(split))], 'Act 2 dress rehearsal (Scenes ' + (mid + 1) + '–' + last + '): full costume, mics, props.'],
+        [addDays(mo, 2), [g('dress', scenes)], 'Full run: the school-day version, start to finish, like a real show.'],
+        [addDays(mo, 3), [g('show', scenes)], 'In-school performances! Classes come to watch. Call time: the start of class.']
+      ];
+      plan.forEach(function (x) { p.days[x[0]] = { groups: x[1], assign: {}, tasks: {}, notes: x[2] }; });
+      T.showWeekSplit = split;
+      (times || []).forEach(function (s) {
+        var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i); if (!m) return; var h = +m[1]; if (m[3] && /pm/i.test(m[3]) && h < 12) h += 12; if (!m[3] && h < 7) h += 12;
+        p.performances.push({ id: uid('pf'), date: addDays(mo, 3), time: pad(h) + ':' + (m[2] || '00'), kind: 'school', relaxed: false, tickets: '', notes: 'School-day version' });
+      });
+      if (evDate && !p.performances.some(function (x) { return x.date === evDate && x.kind === 'evening'; })) p.performances.push({ id: uid('pf'), date: evDate, time: evTime || '19:00', kind: 'evening', relaxed: false, tickets: '', notes: '' });
+      if (p.shown.indexOf(mo) < 0) p.shown.push(mo);
+  };
+  T.showSplit = function () {      // where Act 1 ends: the scene where half the show's minutes have gone by
+    var scenes = T.O().scenes.map(function (s) { return s.id; }), ms = T.O().moments, total = ms.reduce(function (a, m) { return a + mins(m); }, 0), run = 0;
+    for (var i = 0; i < ms.length; i++) { run += mins(ms[i]); if (run >= total / 2) return scenes.indexOf(ms[i].scene) + 1; }
+    return scenes.length;
+  };
   function planShowWeek() {
     var p = P(), t = p.term;
     var guess = t.last ? (function () { var d = parse(addDays(t.last, -7)), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); return ymd(d); })() : '';
@@ -131,23 +158,8 @@
     d.querySelector('#cn').onclick = function () { d.close(); };
     d.querySelector('#ok').onclick = function () {
       var mo = d.querySelector('#mo').value; if (!mo || parse(mo).getDay() !== 1) { d.querySelector('#m').textContent = 'Pick a Monday.'; return; }
-      var scenes = T.O().scenes.map(function (s) { return s.id; }), ms = T.O().moments, total = ms.reduce(function (a, m) { return a + mins(m); }, 0), run = 0, split = scenes.length;
-      for (var i = 0; i < ms.length; i++) { run += mins(ms[i]); if (run >= total / 2) { split = scenes.indexOf(ms[i].scene) + 1; break; } }
-      var g = function (focus, sc) { return { id: uid('g'), focus: focus, scenes: sc, songs: [], everyone: true, where: 'Reber Center stage', only: '' }; };
-      var first = T.sceneById(scenes[0]).num, mid = T.sceneById(scenes[split - 1]).num, last = T.sceneById(scenes[scenes.length - 1]).num;
-      var plan = [
-        [mo, [g('dress', scenes.slice(0, split))], 'Act 1 dress rehearsal (Scenes ' + first + '–' + mid + '): full costume, mics, props. Everyone not on stage is backstage crew.'],
-        [addDays(mo, 1), [g('dress', scenes.slice(split))], 'Act 2 dress rehearsal (Scenes ' + (mid + 1) + '–' + last + '): full costume, mics, props.'],
-        [addDays(mo, 2), [g('dress', scenes)], 'Full run: the school-day version, start to finish, like a real show.'],
-        [addDays(mo, 3), [g('show', scenes)], 'In-school performances! Classes come to watch. Call time: the start of class.']
-      ];
-      plan.forEach(function (x) { p.days[x[0]] = { groups: x[1], assign: {}, tasks: {}, notes: x[2] }; });
-      (d.querySelector('#st').value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (s) {
-        var m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i); if (!m) return; var h = +m[1]; if (m[3] && /pm/i.test(m[3]) && h < 12) h += 12; if (!m[3] && h < 7) h += 12;
-        p.performances.push({ id: uid('pf'), date: addDays(mo, 3), time: pad(h) + ':' + (m[2] || '00'), kind: 'school', relaxed: false, tickets: '', notes: 'School-day version' });
-      });
-      var ev = d.querySelector('#ev').value; if (ev) p.performances.push({ id: uid('pf'), date: ev, time: d.querySelector('#et').value || '19:00', kind: 'evening', relaxed: false, tickets: '', notes: '' });
-      if (p.shown.indexOf(mo) < 0) p.shown.push(mo);
+      var times = (d.querySelector('#st').value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      T.buildShowWeek(mo, times, d.querySelector('#ev').value, d.querySelector('#et').value || '19:00');
       T.saveShow('Show week planned').then(function () { d.close(); T.route(); });
     };
   }

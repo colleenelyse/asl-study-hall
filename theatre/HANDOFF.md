@@ -176,6 +176,14 @@ the device's own), letter spacing, line spacing, main color (6), page tint in li
 Space, ← →); checked at 1366×768. **Install as an app**: `manifest.webmanifest`, icons in `img/` (drawn by `dev/make-icons.js`), and `sw.js` (network first,
 the device's copy when offline; never caches `/theatre/api/`). Installing and the microphone need https, so they work only on asl.cool (or localhost).
 
+**Semester plan, Tracks, Doubling** (`js/season.js`): Production › **Semester plan** fills every empty class day from the school calendar, by character (works
+before the cast list): the audition weeks (`T.applyStarter`, halves worked out daily), music first (read-through + vocals), then scenes in order with acting,
+principals' vocals and the chorus dance at once (least-overlap song), a Friday run of what is blocked so far, a clean-up stretch (oldest scene first; Wed/Fri half
+runs), runs week, show week (`T.buildShowWeek`). Generated days have `gen: true` and can be cleared. Acting rehearsals call only a scene's spoken parts.
+Production › **Tracks**: every character's calendar (printable) and an at-a-glance table with the longest stretch without a call. Students: Today › My whole
+calendar (shown weeks only). Casting › **Doubling**: roles never on stage together (whole-cast numbers excluded) with the shortest break for a costume change,
+medium roles first; featured roles a member of a named group can play. Reading lines: others' lines light yellow, mine green, the current line strongest.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

@@ -57,10 +57,10 @@
   };
   function overview() {
     T.setBar('Casting', '#/teacher');
-    var c = C(), tabs = [['signups', 'Sign-ups'], ['notes', 'Audition notes'], ['callbacks', 'Callbacks'], ['cast', 'Cast list'], ['start', 'First two weeks']];
+    var c = C(), tabs = [['signups', 'Sign-ups'], ['notes', 'Audition notes'], ['callbacks', 'Callbacks'], ['cast', 'Cast list'], ['double', 'Doubling'], ['start', 'First two weeks']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!students().length) h += '<p class="card">Paste your class list first (Teacher mode › Cast › Paste a class list).</p>';
-    h += { signups: signupsView, notes: notesView, callbacks: callbacksView, cast: castView, start: startView }[tab]();
+    h += { signups: signupsView, notes: notesView, callbacks: callbacksView, cast: castView, start: startView, double: function () { return T.doublingView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
     ({ signups: wireSignups, callbacks: wireCallbacks, cast: wireCast, start: wireStart, notes: wireNotes }[tab] || function () {})();
@@ -309,20 +309,22 @@
   function addDays(s, n) { var x = parseD(s); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); }
   function wireStart() {
     var b = document.getElementById('plan'); if (!b) return;
-    b.onclick = function () {
-      var P = T.production(), n = 0, firstMon = null;
-      starter().forEach(function (x, i) {
-        if (P.days[x.date]) return;
-        var assign = {}, tasks = {};
-        if (!x.groups.length) students().forEach(function (a) { assign[a.id] = 'custom'; tasks[a.id] = x.label; });
-        if (x.half) { x.groups[0].everyone = false; x.groups[1].everyone = true; students().forEach(function (a, k) { if ((k % 2 === 0) === (x.half === 'A')) assign[a.id] = 'g:' + x.groups[0].id; }); }      // vocal selections: half the class each day
-        P.days[x.date] = { groups: x.groups, assign: assign, tasks: tasks, notes: x.notes }; n++;
-        if (i === 0) firstMon = x.date;
-      });
-      if (firstMon) { var d0 = parseD(firstMon), w = d0.getDay(); d0.setDate(d0.getDate() - (w === 0 ? 6 : w - 1)); var mon = d0.getFullYear() + '-' + pad(d0.getMonth() + 1) + '-' + pad(d0.getDate()); if (P.shown.indexOf(mon) < 0) P.shown.push(mon); }
-      T.saveShow(n + ' days planned; week 1 is shown to students').then(overview);
-    };
+    b.onclick = function () { var n = T.applyStarter(); T.saveShow(n + ' days planned; week 1 is shown to students').then(overview); };
   }
+  /* the two audition weeks into the plan (empty days only); works before the class list: halves and crew tours are worked out each day */
+  T.applyStarter = function () {
+    var P = T.production(), n = 0, firstMon = null;
+    starter().forEach(function (x, i) {
+      if (P.days[x.date]) return;
+      if (x.half) { x.groups[0].everyone = false; x.groups[0].half = x.half; x.groups[1].everyone = true; }      // vocal selections: half the class each day
+      if (!x.groups.length) x.groups = [{ id: 'g' + Math.random().toString(36).slice(2, 8), focus: 'crew', scenes: [], songs: [], everyone: true, where: 'Crew tours: set, costumes, props', only: '' }];
+      P.days[x.date] = { groups: x.groups, assign: {}, tasks: {}, notes: x.notes }; n++;
+      if (i === 0) firstMon = x.date;
+    });
+    if (firstMon) { var d0 = parseD(firstMon), w = d0.getDay(); d0.setDate(d0.getDate() - (w === 0 ? 6 : w - 1)); var mon = d0.getFullYear() + '-' + pad(d0.getMonth() + 1) + '-' + pad(d0.getDate()); if (P.shown.indexOf(mon) < 0) P.shown.push(mon); }
+    return n;
+  };
+  T.starterDays = function () { return starter().length; };
 
   /* ---------- Students: Auditions ---------- */
   T.studentPages = T.studentPages || {};

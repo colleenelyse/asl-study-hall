@@ -114,9 +114,19 @@ label.f textarea { min-height: 120px; }
 .item.line .text { font-size: 1.12em; }
 .item.dir { color: var(--muted); font-style: italic; font-size: .92em; padding: 4px 14px; }
 .item.song { background: color-mix(in srgb, var(--accent) 10%, var(--card)); border-color: var(--accent); }
-.item.mine { background: color-mix(in srgb, var(--c, var(--accent)) 14%, var(--card)); }
-.item.mine .who::after { content: ' · you'; color: var(--ink); }
-.item.now { border-color: var(--ink); box-shadow: 0 0 0 3px var(--hi); }
+/* reading lines (Colleen: everyone else's lines light yellow, mine clearly green; the line being read stands out most) */
+:root { --line-other: #fffbe3; --line-other-now: #ffe98a; --line-mine: #dcf5e1; --line-mine-now: #a8e6b6; --line-mine-edge: #1b7a43; }
+:root[data-dark="1"] { --line-other: #2b2818; --line-other-now: #5a4d10; --line-mine: #173a24; --line-mine-now: #1f6b3a; --line-mine-edge: #6fdc9b; }
+:root[data-contrast="1"] { --line-other: #ffffff; --line-other-now: #ffe600; --line-mine: #c8f7d0; --line-mine-now: #00d65a; --line-mine-edge: #000000; }
+:root[data-contrast="1"][data-dark="1"] { --line-other: #000000; --line-other-now: #6b5d00; --line-mine: #003b14; --line-mine-now: #007a2e; --line-mine-edge: #ffffff; }
+.item.line { background: var(--line-other); }
+.item.mine { background: var(--line-mine); border-color: var(--line-mine-edge); border-left-color: var(--line-mine-edge); }
+.item.mine .who { color: var(--line-mine-edge); }
+.item.mine .who::after { content: ' · you'; color: var(--line-mine-edge); }
+.item.now { border-color: var(--ink); box-shadow: 0 0 0 3px var(--ink); }
+.item.line.now { background: var(--line-other-now); }
+.item.line.mine.now { background: var(--line-mine-now); box-shadow: 0 0 0 4px var(--line-mine-edge); }
+.item.now .text { font-weight: 700; }
 .item.done { opacity: .6; }
 .item .blank { letter-spacing: .1em; }
 .lyric { padding: 2px 0; }
