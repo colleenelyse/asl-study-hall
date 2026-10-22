@@ -6,7 +6,7 @@ fs.copyFileSync(path.join(here, '../api.js'), tmp);
 const { theatreApi } = await import(pathToFileURL(tmp));
 fs.unlinkSync(tmp);
 const kv = new Map(), env = { LOCKS: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); },
-  list: async ({ prefix }) => ({ keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }) } };
+  list: async ({ prefix }) => ({ keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }) }, THEATRE_SETUP: 'TEST-CODE-1234' };
 const b64 = a => Buffer.from(a).toString('base64');
 const call = (method, p, body, headers) => { const url = new URL('https://asl.cool/theatre/api/' + p); return theatreApi(new Request(url, { method, body, headers: Object.assign({ 'cf-connecting-ip': '1.2.3.4' }, headers || {}) }), env, url, url.pathname); };
 const proofOf = async (pw, vs) => b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Buffer.from(vs, 'base64'), iterations: 1000 }, await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']), 256));
@@ -17,7 +17,8 @@ let bad = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c)
 ok((await call('GET', 'show')).status === 404, 'no show before setup');
 ok((await call('POST', 'show', JSON.stringify({ enc }))).status === 400, 'setup needs a teacher password');
 const vs = b64(Buffer.from('vsalt-123')), proof = await proofOf('teach', vs);
-ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: await hashOf(proof) }))).status === 200, 'first save sets the teacher password');
+ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: await hashOf(proof), setup: 'nope' }), { 'cf-connecting-ip': '7.7.7.7' })).status === 403, 'first setup needs the setup code');
+ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: await hashOf(proof), setup: 'test-code-1234' }))).status === 200, 'first save (with the setup code) sets the teacher password');
 const g = await (await call('GET', 'show')).json();
 ok(g.enc.data === 'ZGF0YQ==' && g.vsalt === vs && !g.vhash, 'GET gives the encrypted show and salt, never the hash');
 ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: 'a'.repeat(64) }))).status === 403, 'a second setup without the proof is refused');

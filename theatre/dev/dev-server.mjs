@@ -16,7 +16,7 @@ http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/theatre/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
-    const r = await theatreApi(new Request(url, { method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body }), { LOCKS }, url, url.pathname);
+    const r = await theatreApi(new Request(url, { method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body }), { LOCKS, THEATRE_SETUP: process.env.THEATRE_SETUP || 'DEV' }, url, url.pathname);
     res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer())); return;
   }
   let base = ROOT, p = url.pathname;

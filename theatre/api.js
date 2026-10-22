@@ -9,6 +9,8 @@
      The iPad reads and writes its own (no password: it is sealed, small, and limited per student); the teacher reads all of them with the teacher password.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
+/* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
+const SETUP_SHA = '34f8cca6a9bd1ccfcf06a776a7dff687337235afa18b37051bea0f3da54b7c6b';
 const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6, MAX_NOTES = 300, NOTES_PER_HOUR = 60;      // a school's iPads often share one address
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -42,7 +44,11 @@ export async function theatreApi(req, env, url, p) {
     if (st && st.vhash) { const bad = await proven(env, req, body.proof, st); if (bad) return bad; }
     else {
       if (!newPw) return json({ error: 'Choose a teacher password first.' }, 400);
-      if (env.THEATRE_SETUP && body.setup !== env.THEATRE_SETUP) return json({ error: 'The setup code is not right.' }, 403);
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'theatre:fail:' + ip, fails = +(await env.LOCKS.get(failKey) || 0);
+      if (fails >= MAX_FAILS) return json({ error: 'Too many wrong codes. Wait 10 minutes and try again.' }, 429);
+      const code = String(body.setup || '').trim().toUpperCase();
+      const ok = env.THEATRE_SETUP ? same(code, String(env.THEATRE_SETUP).toUpperCase()) : same(await sha256hex(new TextEncoder().encode(code)), SETUP_SHA);
+      if (!ok) { await env.LOCKS.put(failKey, String(fails + 1), { expirationTtl: FAIL_WINDOW }); return json({ error: 'The setup code is not right.' }, 403); }
     }
     const e = body.enc, next = { enc: { v: 1, iter: e.iter, salt: e.salt, iv: e.iv, data: e.data, wrap: { iv: e.wrap.iv, data: e.wrap.data } },
       vsalt: newPw ? body.newVsalt : st.vsalt, vhash: newPw ? body.newVhash : st.vhash, updated: new Date().toISOString() };

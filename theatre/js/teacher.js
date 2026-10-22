@@ -58,7 +58,7 @@
       '<label class="f">Cast password (for students)<input id="c1" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label>' +
       '<label class="f">Teacher password<input id="t1" type="password" autocomplete="new-password" minlength="8" required></label>' +
       '<label class="f">Teacher password again<input id="t2" type="password" autocomplete="new-password" required></label>' +
-      '<details><summary class="muted small">Setup code (only if you were given one)</summary><label class="f">Setup code<input id="sc" type="text" autocomplete="off"></label></details>' +
+      '<label class="f">Setup code (only for the first setup)<input id="sc" type="text" autocomplete="off" autocapitalize="characters" required placeholder="XXXX-XXXX-XXXX"></label>' +
       '<p class="err" id="msg" role="alert"></p><div class="row end"><button class="btn primary" type="submit">Set up</button></div></form>';
     document.getElementById('f').onsubmit = function (e) {
       e.preventDefault();
