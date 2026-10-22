@@ -215,7 +215,7 @@
   T.pullNotes = pullNotes;
 
   /* ---------- Teacher: Production ---------- */
-  var tab = 'week', week = null;
+  var tab = 'week', week = null, startedAtSetup = false;
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.production = function (args) {
     if (args[0] === 'day') return dayPage(args[1]);
@@ -226,7 +226,7 @@
   };
   function overview() {
     T.setBar('Production', '#/teacher');
-    if (!P().term.first) tab = 'setup';
+    if (!P().term.first && !startedAtSetup) { tab = 'setup'; startedAtSetup = true; }      // first visit: start at the calendar; every tab still works after
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
     var tabs = [['week', 'Week'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
@@ -234,6 +234,8 @@
     h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
+    app.querySelectorAll('[data-goto]').forEach(function (b) { b.onclick = function () { tab = b.dataset.goto; overview(); }; });
+    if (tab === 'week' && !P().term.first) return;
     ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); } }[tab] || function () {})();
   }
 
@@ -301,6 +303,7 @@
 
   function weekView() {
     var p = P(), days = classDays();
+    if (!p.term.first) return '<div class="card"><p>' + sym('📅') + 'Set the first and last day of class first, then each week shows here.</p><button class="btn primary" data-goto="setup">Go to Calendar & crew</button></div>';
     if (!week) { var t = today(); week = monday(days.find(function (d) { return d >= t; }) || days[0] || t); }
     var isShown = p.shown.indexOf(week) >= 0, people = cast();
     var h = '<div class="row" style="justify-content:center;margin-bottom:10px"><button class="round" id="pw" aria-label="Last week">' + icon('prev') + '</button><h2 style="margin:0;text-align:center">Week of ' + esc(dayName(week, true)) + '</h2><button class="round" id="nw" aria-label="Next week">' + icon('next') + '</button></div>' +
