@@ -116,6 +116,7 @@
   }
 
   /* ---------- Script: import and review ---------- */
+  T.loadPdfJs = function () { return loadPdfJs(); };
   function loadPdfJs() {
     if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
     return new Promise(function (ok, no) {
@@ -147,14 +148,16 @@
     document.getElementById('pdf').onchange = function (e) {
       var f = e.target.files[0]; if (!f) return;
       var prog = document.getElementById('prog'); prog.textContent = 'Opening…';
+      var keep = null;
       f.arrayBuffer().then(function (buf) {
+        keep = buf.slice(0);      // pdf.js takes the original; this copy is saved (sealed) for the page view
         return T.readScript(new Uint8Array(buf), function (n, N) { prog.textContent = 'Reading page ' + n + ' of ' + N + '…'; });
-      }).then(function (r) { applyImport(r, f.name); prog.textContent = ''; })
+      }).then(function (r) { applyImport(r, f.name, keep); prog.textContent = ''; })
         .catch(function (err) { prog.textContent = ''; T.toast(err.message || 'That PDF would not open.', 4000); });
     };
   }
   /* the new parse replaces the lines; key words the teacher added carry over when the line is the same */
-  function applyImport(r, fileName) {
+  function applyImport(r, fileName, pdfBytes) {
     var old = T.show.script, keys = {};
     if (old) old.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.keyWords) keys[it.who + '|' + it.text] = it.keyWords; }); });
     r.scenes.forEach(function (s) { s.items.forEach(function (it) { var k = keys[it.who + '|' + it.text]; if (k) it.keyWords = k; }); });
@@ -169,13 +172,17 @@
       O.moments.push({ id: uid('k'), scene: id, minutes: 2, on: on });
     });
     O.scenes.sort(function (a, b) { return a.num - b.num; });
-    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName };
+    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
     T.toast('Read ' + r.scenes.length + ' scenes and ' + n + ' lines. Check the speaker names, then Save.', 4000);
     scriptPage([]);
     var b = document.createElement('div'); b.className = 'card'; b.innerHTML = '<div class="row"><b class="grow">Not saved yet.</b><button class="btn primary" data-save>Save the script</button></div>';
     app.insertBefore(b, app.firstChild);
-    b.querySelector('button').onclick = function () { save('Script saved').then(function () { b.remove(); }); };
+    b.querySelector('button').onclick = function () {
+      var ver = Date.now().toString(36), btn = this; btn.disabled = true; btn.textContent = 'Saving the pages…';
+      (pdfBytes ? Store.putPdf(T.key, T.proof, pdfBytes, ver).then(function () { T.show.script.pdfVer = ver; }, function (e) { T.toast('The page view could not be saved: ' + e.message, 5000); }) : Promise.resolve())
+        .then(function () { return save(T.show.script.pdfVer ? 'Script and pages saved' : 'Script saved'); }).then(function () { b.remove(); }, function () { btn.disabled = false; btn.textContent = 'Save the script'; });
+    };
   }
   function titleCase(s) { return String(s).toLowerCase().replace(/(^|[\s/(-])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }).replace(/\b(A|P)\.m\./gi, function (m) { return m.toUpperCase(); }); }
   /* how the read-aloud voice says words it gets wrong: the show's list plus the teacher's own (T.show.say; an empty value turns one off) */

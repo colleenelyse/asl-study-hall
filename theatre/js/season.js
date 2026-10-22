@@ -149,7 +149,7 @@
     return '<div class="card row noprint"><label class="f grow" style="margin:0">Track<select id="trk">' + O.groups.map(function (gr) {
         var list = O.characters.filter(function (c) { return c.group === gr.id; }); if (!list.length) return '';
         return '<optgroup label="' + esc(gr.name) + '">' + list.map(function (c) { return '<option value="' + c.id + '"' + (c.id === track ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</optgroup>';
-      }).join('') + '</select></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
+      }).join('') + '</select></label><button class="btn small" onclick="print()">' + icon('print') + 'Print this calendar</button>' + (T.Pages && T.Pages.ready() ? '<a class="btn small" href="#/teacher/print/' + track + '">' + icon('print') + 'Highlighted script for this track</a>' : '') + '</div>' +
       '<div class="card"><h2>' + T.chip(track) + ' rehearsal calendar</h2><p>' + me.n.called + ' days called · 🗣️ ' + me.n.acting + ' acting · 🎵 ' + me.n.vocals + ' vocals · 💃 ' + me.n.dance + ' dance · 🔁 ' + (me.n.run + me.n.dress) + ' runs' +
       (me.gap >= 8 ? ' · <span class="err">' + me.gap + ' class days in a row without a call</span>' : '') + '</p><p class="muted small">Days without a call: crew, or practice in the app.</p>' +
       Object.keys(weeks).map(function (w) {

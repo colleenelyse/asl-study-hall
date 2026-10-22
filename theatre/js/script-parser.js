@@ -88,6 +88,8 @@
     var nearEdge = line.y > page.height * 0.9 || line.y < page.height * 0.07;
     if (!nearEdge || line.text.length > 90 || SCENE.test(line.text)) return null;      // a scene can start at the very top of a page
     var m = line.text.match(/^(\d{1,3})\b/) || line.text.match(/\b(\d{1,3})$/);
+    // a running head or footer has the page number; anything else this close is only furniture right at the edge (the last line of dialogue can sit near the footer)
+    if (!m && line.y < page.height * 0.955 && line.y > page.height * 0.045) return null;
     return { printed: m ? +m[1] : null };
   }
 
@@ -103,9 +105,14 @@
     var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', pendingHeading = null, printed = null;
     var dialogueX = null;
 
+    /* where each item sits on the PDF page (pdf page number, x, y from the top, width, height), so the app can highlight the real pages */
+    var box = null, nameBox = null;
+    var addBox = function (it) { if (it && box) (it.boxes = it.boxes || []).push(box); };
     function emit(item) {
       if (!scene) return null;
       item.page = printed != null ? printed : null;
+      if (item.type === 'line' && nameBox) { item.boxes = [nameBox]; nameBox = null; }
+      addBox(item);
       scene.items.push(item);
       return item;
     }
@@ -144,6 +151,7 @@
       if (music) depth = 0;            // an unclosed ( on sheet music never spills onto the next page
       for (var li = 0; li < lines.length; li++) {
         var line = lines[li], t = line.text;
+        box = { n: page.num, x: +line.x0.toFixed(1), y: +(line.y - line.size * 0.95).toFixed(1), w: +(line.x1 - line.x0).toFixed(1), h: +(line.size * 1.25).toFixed(1) };
         if (stop.some(function (re) { return re.test(t); })) { done = true; break; }
 
         if (pendingHeading) {          // a scene heading that wrapped to a second line
@@ -166,7 +174,7 @@
           var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
           if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
-            lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed });
+            lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box }); addBox(lastSongItem);
             prevStave = false;
             continue;
           }
@@ -181,7 +189,7 @@
           if (prevStave) { prevStave = false; continue; }                   // anything else right under a stave
           var startsDirM = /^\(/.test(t);
           if (depth > 0 || startsDirM || line.italic) {
-            if (block && block.type === 'dir' && block._open) block.text += ' ' + t;
+            if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
             else block = emit({ type: 'dir', text: t, _open: true });
             depth = Math.max(0, depth + parenDelta(t));
             if (depth === 0 && block) block._open = false;
@@ -194,7 +202,7 @@
             block = emit({ type: 'line', who: speaker, text: said[2], overMusic: true });
             continue;
           }
-          if (block && block.type === 'line' && block.overMusic) { block.text += ' ' + t; continue; }
+          if (block && block.type === 'line' && block.overMusic) { block.text += ' ' + t; addBox(block); continue; }
           continue;                                                          // anything else on a music page: skip
         }
 
@@ -205,7 +213,7 @@
         // stage directions: anything inside ( ), or an indented italic line
         var startsDir = /^\(/.test(t);
         if (depth > 0 || startsDir || (line.italic && dialogueX != null && line.x0 > dialogueX + 12)) {
-          if (block && block.type === 'dir' && block._open) block.text += ' ' + t;
+          if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
           else block = emit({ type: 'dir', text: t, _open: true });
           depth = Math.max(0, depth + parenDelta(t));
           if (depth === 0 && block) block._open = false;
@@ -217,7 +225,7 @@
         var center = (line.x0 + line.x1) / 2, mid = page.width / 2;
         if (isCaps(t) && t.length <= 42 && !/[:;!?]$/.test(t) && !/#\d/.test(t) &&
             (Math.abs(center - mid) < page.width * 0.12 || line.bold) && line.x0 > page.width * 0.2) {
-          speaker = t.replace(/\s+/g, ' ');
+          speaker = t.replace(/\s+/g, ' '); nameBox = box;
           speakers[speaker] = (speakers[speaker] || 0) + 1;
           block = null;
           continue;
@@ -227,7 +235,7 @@
         if (dialogueX == null || line.x0 < dialogueX) dialogueX = line.x0;
         if (!speaker) { block = emit({ type: 'dir', text: t }); continue; }
         if (block && block.type === 'line' && block.who === speaker) {
-          block.text = /-$/.test(block.text) && /^[a-z]/.test(t) ? block.text.slice(0, -1) + t : block.text + ' ' + t;
+          block.text = /-$/.test(block.text) && /^[a-z]/.test(t) ? block.text.slice(0, -1) + t : block.text + ' ' + t; addBox(block);
         } else {
           block = emit({ type: 'line', who: speaker, text: t });
         }
@@ -262,7 +270,7 @@
     scenes.forEach(function (s) {
       s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); });
     });
-    return { scenes: scenes, speakers: speakers };
+    return { scenes: scenes, speakers: speakers, pages: pages.map(function (pg) { return { n: pg.num, w: pg.width, h: pg.height }; }) };
   }
 
   /* pdf.js page -> the plain shape parse() expects. Call after page.getOperatorList() so font names resolve. */
@@ -278,7 +286,8 @@
         var font = '';
         try { var fo = page.commonObjs.get(it.fontName); font = (fo && (fo.name || fo.loadedName)) || ''; } catch (e) {}
         if (!font && tc.styles && tc.styles[it.fontName]) font = tc.styles[it.fontName].fontFamily || '';
-        return { str: it.str, x: tr[4], y: vp.height - tr[5], w: it.width, size: size, font: font };
+        var pt = vp.convertToViewportPoint(tr[4], tr[5]);      // pages can have an offset origin (this script's start 20.88 points in)
+        return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: size, font: font };
       });
       pages.push({ num: n, width: vp.width, height: vp.height, items: items });
       if (onProgress) onProgress(n, pdf.numPages);

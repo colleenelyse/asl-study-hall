@@ -395,6 +395,7 @@
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       tile('#/story', 'book', 'The Story', 'What happens') +
+      (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
       '</div>' + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
   }
@@ -434,7 +435,8 @@
     var src = scriptScene(scene);
     if (!src) { app.innerHTML = '<div class="card">This scene is not in the script yet.</div>'; return; }
     var acc = T.me.access;
-    var opt = Object.assign({ names: true, dirs: false, show: acc.show, echo: acc.echo, didIt: acc.didIt || !T.canListen, strict: acc.strict }, ls('practice') || {});
+    var opt = Object.assign({ names: true, dirs: false, show: acc.show, echo: acc.echo, didIt: acc.didIt || !T.canListen, strict: acc.strict, view: 'pages' }, ls('practice') || {});
+    var pagesOn = function () { return opt.view === 'pages' && T.Pages && T.Pages.ready(); };      // the real script pages, highlighted
     if (!T.canListen) opt.didIt = true;
     var items = src.items.map(function (it, i) {
       var chars = it.type === 'line' ? labelChars(it.who).filter(function (c) { return c !== '*'; }) : [];
@@ -473,7 +475,30 @@
       if (ids.length === 1 && ids[0] !== '*') return charById(ids[0]).short;
       return label.replace(/\b([A-Z])([A-Z']+)/g, function (m, a, b) { return a + b.toLowerCase(); });
     }
+    var dockHtml = function () {
+      return '<div class="dock"><div class="in"><button class="round" id="pv" aria-label="Back one line">' + icon('prev') + '</button>' +
+        '<button class="round big" id="pp" aria-label="Play">' + icon('play') + '</button>' +
+        '<button class="round" id="nx" aria-label="Next line">' + icon('next') + '</button></div></div>' +
+        keyHint('Space: play or pause · ← →: back or next' + (mode === 'run' ? ' · Enter: I got it · X: not yet · H: hint · S: say it for me' : ''));
+    };
+    function wireDock() {
+      renderOpts();
+      document.getElementById('pp').onclick = function () { playing ? pause() : play(); };
+      document.getElementById('pv').onclick = function () { jump(prevIdx(cur)); };
+      document.getElementById('nx').onclick = function () { jump(nextIdx(cur)); };
+    }
     function render() {
+      if (pagesOn()) {
+        app.innerHTML = '<div class="card noprint" id="opts"></div><div id="pages" class="pages"></div><div id="songdock" class="songdock noprint"></div>' + dockHtml();
+        var host = document.getElementById('pages');
+        T.Pages.renderScene(host, src, items, { dirs: opt.dirs, cover: function (x) {
+          if (mode !== 'run' || !x.mine || x.done) return '';
+          var s = showFor(x); return s === 'hidden' ? '(your line)' : s === 'hint' ? esc(LineCheck.hint(x.it.text, 1)) : '';
+        } }).then(function () { mark(); });
+        host.addEventListener('click', function (e) { var h = e.target.closest('.hl'); if (h) jump(+h.dataset.i); });
+        wireDock(); mark();
+        return;
+      }
       app.innerHTML = '<div class="card noprint" id="opts"></div><div class="script" id="script">' + items.map(function (x) {
         var it = x.it, c = x.chars[0] ? color(x.chars[0]) : 'var(--line)';
         if (it.type === 'dir') return opt.dirs ? '<div class="item dir" data-i="' + x.i + '">' + esc(it.text) + '</div>' : '';
@@ -485,32 +510,26 @@
             (song ? '<p class="row noprint" style="margin-top:8px"><a class="btn small" href="#/song/' + song.id + '">' + icon('songs') + 'Open in My Songs</a></p>' : '') + '</div>';
         }
         return '<div class="item line' + (x.mine ? ' mine' : '') + '" data-i="' + x.i + '" style="--c:' + c + '"><div class="who">' + esc(whoName(it.who)) + '</div><div class="text">' + lineText(x) + '</div></div>';
-      }).join('') + '</div>' +
-        '<div class="dock"><div class="in"><button class="round" id="pv" aria-label="Back one line">' + icon('prev') + '</button>' +
-        '<button class="round big" id="pp" aria-label="Play">' + icon('play') + '</button>' +
-        '<button class="round" id="nx" aria-label="Next line">' + icon('next') + '</button></div></div>' +
-        keyHint('Space: play or pause · ← →: back or next' + (mode === 'run' ? ' · Enter: I got it · X: not yet · H: hint · S: say it for me' : ''));
-      renderOpts();
+      }).join('') + '</div>' + dockHtml();
       app.querySelectorAll('.item').forEach(function (el) { el.onclick = function (e) { if (e.target.closest('a')) return; jump(+el.dataset.i); }; });
-      document.getElementById('pp').onclick = function () { playing ? pause() : play(); };
-      document.getElementById('pv').onclick = function () { jump(prevIdx(cur)); };
-      document.getElementById('nx').onclick = function () { jump(nextIdx(cur)); };
+      wireDock();
       mark();
     }
     function renderOpts() {
       var o = document.getElementById('opts');
       var sw = function (k, label) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-k="' + k + '"' + (opt[k] ? ' checked' : '') + '></label>'; };
-      o.innerHTML = '<details' + (mode === 'run' ? '' : '') + '><summary class="btn quiet small" style="display:inline-flex">' + icon('gear') + 'Options</summary>' +
+      o.innerHTML = (T.Pages && T.Pages.ready() ? '<div class="row" style="margin-bottom:6px"><div class="seg" data-k="view"><button type="button" data-v="pages" aria-pressed="' + (opt.view === 'pages') + '">📄 Script pages</button><button type="button" data-v="lines" aria-pressed="' + (opt.view !== 'pages') + '">☰ Lines</button></div></div>' : '') +
+        '<details' + (mode === 'run' ? '' : '') + '><summary class="btn quiet small" style="display:inline-flex">' + icon('gear') + 'Options</summary>' +
         sw('names', 'Say names before each line') + sw('dirs', 'Read stage directions') +
         (mode === 'run' ? '<div class="switch"><span>My line on the screen</span><div class="seg" data-k="show">' + [['auto', 'Fade'], ['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (opt.show === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>' +
           sw('echo', 'Echo first (the app says it, then I say it)') + (T.canListen ? sw('didIt', 'Use an “I did it” button instead of the microphone') : '') : '') +
         '<div class="switch"><span>Speed</span><div class="seg" data-k="rate">' + [[0.7, 'Slow'], [1, 'Normal'], [1.25, 'Fast']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (+T.prefs.rate === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div></details>';
-      o.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { opt[inp.dataset.k] = inp.checked; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt }); var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true; }; });
+      o.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { opt[inp.dataset.k] = inp.checked; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view }); var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true; }; });
       o.querySelectorAll('.seg button').forEach(function (b) {
         b.onclick = function () {
           var k = b.parentNode.dataset.k;
-          if (k === 'rate') { T.prefs.rate = +b.dataset.v; T.savePrefs(); } else { opt[k] = b.dataset.v; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt }); }
-          var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true;
+          if (k === 'rate') { T.prefs.rate = +b.dataset.v; T.savePrefs(); } else { opt[k] = b.dataset.v; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view }); }
+          var keep = cur; pause(); render(); cur = keep; mark(); var dt = document.querySelector('#opts details'); if (dt && k !== 'view') dt.open = true;
         };
       });
     }
@@ -519,8 +538,9 @@
     function prevIdx(i) { for (var j = i - 1; j >= 0; j--) if (visible(j)) return j; return 0; }
     function mark() {
       app.querySelectorAll('.item.now').forEach(function (e) { e.classList.remove('now'); });
-      var el = app.querySelector('.item[data-i="' + cur + '"]');
-      if (el) { el.classList.add('now'); el.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' }); }
+      var els = app.querySelectorAll('.item[data-i="' + cur + '"]');
+      els.forEach(function (e) { e.classList.add('now'); });
+      if (els[0]) els[0].scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
     }
     function setPP() { var b = document.getElementById('pp'); if (b) { b.innerHTML = icon(playing ? 'pause' : 'play'); b.setAttribute('aria-label', playing ? 'Pause' : 'Play'); } }
     function pause() { playing = false; gen++; Speech.stop(); if (listen.stop) listen.stop(); if (songStop) songStop(); closeTurn(); setPP(); }
@@ -545,7 +565,7 @@
       var t = trackOf(x.song), kind = (ls('runSinger') !== false && t.rehearsal) || !t.performance ? 'rehearsal' : 'performance';
       var mel = T.show.melody && T.show.melody[x.song.id], off = (mel && mel.offset) || 0;
       var adj = kind === x.cueKind ? 0 : (x.cueKind === 'performance' ? -off : off);      // the guide track runs `offset` seconds behind the band track
-      var el = app.querySelector('.item[data-i="' + x.i + '"]'), bar = document.createElement('div'); bar.className = 'row noprint songbar'; bar.style.marginTop = '10px';
+      var el = document.getElementById('songdock') || app.querySelector('.item[data-i="' + x.i + '"]'), bar = document.createElement('div'); bar.className = 'row noprint songbar'; bar.style.marginTop = '10px';
       if (el) { var old = el.querySelector('.songbar'); if (old) old.remove(); el.appendChild(bar); }
       bar.innerHTML = '<span class="muted">Loading the track…</span>';
       var audio = new Audio(), url = null, timer = null, fired = 0, alive = true, lastCue = x.i;
@@ -610,6 +630,7 @@
       function done(msg) {
         x.done = true;
         var el = app.querySelector('.item[data-i="' + x.i + '"] .text'); if (el) el.innerHTML = esc(x.it.text);
+        app.querySelectorAll('.hl.cover[data-i="' + x.i + '"]').forEach(function (c) { c.classList.remove('cover'); c.innerHTML = ''; });
         closeTurn(); if (msg) toast(msg, 1400);
         if (overMusic) return;
         setTimeout(function () { advance(g); }, msg ? 700 : 0);

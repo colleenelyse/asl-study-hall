@@ -167,11 +167,14 @@
       return fetch(API + 'notes', { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not clear the notes.'); });
     },
     /* tracks: encrypted bytes on the server, and a copy on this device */
+    /* the script PDF: sealed, saved like a track, and kept on the device by version */
+    putPdf: function (key, proof, bytes, ver) { return Store.putTrack(key, proof, '__pdf', '', bytes, ver); },
+    getPdf: function (key, ver) { return Store.getTrack(key, '__pdf', '', ver); },
     putTrack: function (key, proof, songId, kind, bytes, ver) {
       var iv = rand(12);
       return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, bytes).then(function (ct) {
         var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
-        return fetch(API + 'track/' + songId + '/' + kind, { method: 'POST', headers: { 'x-proof': proof, 'content-type': 'application/octet-stream' }, body: out })
+        return fetch(API + (songId === '__pdf' ? 'pdf' : 'track/' + songId + '/' + kind), { method: 'POST', headers: { 'x-proof': proof, 'content-type': 'application/octet-stream' }, body: out })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); var lk = 'track:' + songId + ':' + kind; return local.set(lk, out.buffer).then(function () { return local.set(lk + ':v', ver); }).then(function () { return d; }, function () { return d; }); }); });
       });
     },
@@ -185,7 +188,7 @@
         var cached = have === ver ? local.get(lk) : Promise.resolve(null);
         return cached.then(function (buf) {
           if (buf) return buf;
-          return fetch(API + 'track/' + songId + '/' + kind, { cache: 'no-store' }).then(function (r) {
+          return fetch(API + (songId === '__pdf' ? 'pdf' : 'track/' + songId + '/' + kind), { cache: 'no-store' }).then(function (r) {
             if (r.status === 404) return null;
             if (!r.ok) throw new Error('Could not load the track (' + r.status + ').');
             return r.arrayBuffer().then(function (b) { return local.set(lk, b).then(function () { return local.set(lk + ':v', ver); }).then(function () { return b; }, function () { return b; }); });

@@ -184,6 +184,17 @@ Production › **Tracks**: every character's calendar (printable) and an at-a-gl
 calendar (shown weeks only). Casting › **Doubling**: roles never on stage together (whole-cast numbers excluded) with the shortest break for a costume change,
 medium roles first; featured roles a member of a named group can play. Reading lines: others' lines light yellow, mine green, the current line strongest.
 
+**Lines over the music** (Teacher mode › Songs & tracks › Lines over the music, `cuesPage` in teacher.js): tick the lines spoken during a song, then **Find them
+in the guide vocals** (`Melody.voiceRegions` marks spoken vs sung stretches in the isolated voice; `Melody.alignLines` matches lines in order by length;
+`dev/test-underscore.js`), or tap Now while the track plays; nudge, Test, Save (`T.show.underscore[song] = { kind: 'performance', cues: [{ key, t }] }`).
+In Practice Lines the track plays inside the run (with or without the singers) and cued lines come on cue without stopping it; my lines pop up over the music.
+**The real pages** (`js/pages.js`): the teacher's PDF is saved sealed at import (`/theatre/api/pdf`, `Store.putPdf/getPdf`); the reader keeps every item's box
+(`item.boxes`, `lyric.box`, PDF points from the page's top-left, using `viewport.convertToViewportPoint`, since this PDF's pages have an offset origin).
+Practice Lines › **Script pages / Lines**: the real pages with yellow (others), green (mine), the current line strongest, covers for hint/hidden lines,
+the song bar above the buttons. **My script (print)**: my lines and lyrics I sing in colors I pick, an edge band on my scenes, only my scenes or the whole
+script; teachers print any track before casting (Tracks › Highlighted script for this track, `#/teacher/print/<character>`). Reader fixes this session:
+positions now use the page's real origin; a line near the footer is no longer dropped (357 lines, 463 lyric lines now). Re-import the PDF after updating.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

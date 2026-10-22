@@ -27,6 +27,8 @@ ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, en
 ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200, 'track upload with the proof');
 ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
 ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');
+ok((await call('POST', 'pdf', new Uint8Array(800), { 'x-proof': proof })).status === 200 && (await call('GET', 'pdf')).status === 200, 'the script PDF saves and loads (sealed)');
+ok((await call('POST', 'pdf', new Uint8Array(800))).status === 403, 'saving the PDF needs the teacher password');
 ok((await call('POST', 'track/../x/performance', new Uint8Array(500), { 'x-proof': proof })).status === 404, 'odd track names are refused');
 ok((await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '9.9.9.9' })).status === 200, 'a student iPad can send a note');
 ok((await call('GET', 'notes')).status === 403, 'reading notes needs the teacher password');

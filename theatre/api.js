@@ -5,6 +5,7 @@
    - theatre:track:<songId>:<rehearsal|performance>  the track's bytes, encrypted the same way (12-byte iv, then AES-GCM data).
    - theatre:notes  [{ id, at, box }]: notes from students' iPads (a rehearsal conflict), encrypted with the show key on the iPad.
      Anyone may add one (small, a few per address per hour); only the teacher password reads and clears them.
+   - theatre:pdf  the teacher's script PDF (for the script view that looks like the real pages), encrypted the same way as a track.
    - theatre:progress:<actor>  one student's practice record (lines right/wrong, song ratings, minutes), encrypted with the show key on the iPad.
      The iPad reads and writes its own (no password: it is sealed, small, and limited per student); the teacher reads all of them with the teacher password.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
@@ -115,9 +116,9 @@ export async function theatreApi(req, env, url, p) {
     await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 600 });
     return json({ ok: true });
   }
-  const m = rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
+  const m = rest === 'pdf' ? ['pdf'] : rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
   if (m) {
-    const key = 'theatre:track:' + m[1] + ':' + m[2];
+    const key = rest === 'pdf' ? 'theatre:pdf' : 'theatre:track:' + m[1] + ':' + m[2];
     if (req.method === 'GET') {
       const v = await env.LOCKS.get(key, 'arrayBuffer');
       return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404);
