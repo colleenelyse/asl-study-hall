@@ -154,6 +154,15 @@ label.f textarea { min-height: 120px; }
 .lyrics { max-height: 50vh; overflow: auto; padding: 8px 4px; }
 
 /* teacher */
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-h { font: 700 .75em 'Lexend', sans-serif; text-align: center; color: var(--muted); padding: 4px 0; }
+.cal-d { min-height: 92px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.cal-d.out { opacity: .45; }
+.cal-d.today { border: 3px solid var(--accent); }
+.cal-d .n { font-weight: 700; font-size: .85em; }
+.cal-r { display: block; font-size: .72em; line-height: 1.25; padding: 3px 5px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, var(--card)); color: var(--ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) { .cal-d { min-height: 64px; } .cal-r { font-size: .62em; padding: 2px 3px; } }
 .tbl { width: 100%; border-collapse: collapse; font-size: .9em; }
 .tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: middle; }
 .onstage { overflow: auto; max-height: 75vh; border: 1px solid var(--line); border-radius: 12px; }

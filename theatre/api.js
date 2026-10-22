@@ -3,9 +3,11 @@
    - theatre:show  { enc, vsalt, vhash, updated }. enc is the whole show (script lines, lyrics, cast, photos), encrypted in the browser
      with a show key that only the cast password unwraps. The Worker never sees a password or the key.
    - theatre:track:<songId>:<rehearsal|performance>  the track's bytes, encrypted the same way (12-byte iv, then AES-GCM data).
+   - theatre:notes  [{ id, at, box }]: notes from students' iPads (a rehearsal conflict), encrypted with the show key on the iPad.
+     Anyone may add one (small, a few per address per hour); only the teacher password reads and clears them.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
-const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6;
+const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6, MAX_NOTES = 300, NOTES_PER_HOUR = 60;      // a school's iPads often share one address
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function sha256hex(bytes) { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join(''); }
@@ -52,6 +54,32 @@ export async function theatreApi(req, env, url, p) {
     let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
     const bad = await proven(env, req, body.proof, st); if (bad) return bad;
     return json({ ok: true });
+  }
+  if (rest === 'notes') {
+    const list = (await env.LOCKS.get('theatre:notes', 'json')) || [];
+    if (req.method === 'POST') {      // a student's iPad sends a note (no password: it is encrypted, small, and limited per address)
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:noterate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= NOTES_PER_HOUR) return json({ error: 'Too many notes from this iPad. Try again later, or tell your teacher.' }, 429);
+      let body; try { const t = await req.text(); if (t.length > 6000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That note is too long.' }, 400); }
+      const b = body.box; if (!b || !okStr(b.iv, 100) || !okStr(b.data, 5000)) return json({ error: 'That note was not readable.' }, 400);
+      if (list.length >= MAX_NOTES) return json({ error: 'Your teacher has too many notes waiting. Tell your teacher in person.' }, 507);
+      const id = crypto.randomUUID();
+      list.push({ id, at: new Date().toISOString(), box: { iv: b.iv, data: b.data } });
+      await env.LOCKS.put('theatre:notes', JSON.stringify(list));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true, id });
+    }
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    if (req.method === 'GET') return json({ notes: list });
+    if (req.method === 'DELETE') {      // the teacher took these notes into the show
+      let ids; try { ids = JSON.parse(await req.text()).ids; } catch (e) { ids = null; }
+      if (!Array.isArray(ids)) return json({ error: 'Which notes?' }, 400);
+      await env.LOCKS.put('theatre:notes', JSON.stringify(list.filter(x => ids.indexOf(x.id) < 0)));
+      return json({ ok: true });
+    }
+    return json({ error: 'GET, POST or DELETE' }, 405);
   }
   const m = rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
   if (m) {

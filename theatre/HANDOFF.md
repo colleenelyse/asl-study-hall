@@ -70,6 +70,22 @@ settings, phone and iPad widths. Not yet tried on a real iPad (microphone, voice
 
 How students "say" a line: Run my role listens with webkitSpeechRecognition (iPad Safari, https only). AAC / sign users get the "I did it" button (set per actor, or on any device without speech recognition).
 
+## Built in session 3 (2026-10-21): Production
+
+`js/production.js` (Teacher mode › Production, and the students' **My Rehearsals** tile). Data: `T.show.production = { rehearsals, conflicts, attendance }` (encrypted with the rest of the show).
+- **Calendar** (month), **List**, **Add a rehearsal** (tap a day), **Add many** (same weekdays between two dates). Each rehearsal: day, times, place, kind
+  (Rehearsal, Music, Dance, Run-through, Tech, Dress, Show), scenes and songs, notes for the cast. Edited on a copy; nothing changes until Save.
+- **Who is called** is worked out from the scenes and songs picked (characters on stage in those moments → the actors who play them), or "Call the whole cast";
+  the teacher can add or take off anyone.
+- **Conflicts**: the teacher adds them, or students send them from My Rehearsals ("I can't come", a whole day or set times). A student's note is encrypted with the
+  show key on the iPad and posted to `POST /theatre/api/notes` (no password; 5,000 characters at most; 60 an hour per address because a school's iPads share one;
+  300 waiting at most). Opening Production reads them with the teacher password, adds them to the show, and clears them. Conflicts show on the calendar (!n),
+  on the rehearsal, on the call board ("away"), and pre-fill Excused in attendance.
+- **Attendance**: Here / Late / Absent / Excused per called actor, "Everyone else is here", and a running total per actor.
+- **Call board**: one week, printable, for the callboard or the projector.
+- Students: My Rehearsals lists the rehearsals they are called to, with the notes and links to practice those scenes and songs.
+`dev/test-api.mjs` now has 19 checks (the notes routes added).
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.
@@ -81,9 +97,9 @@ How students "say" a line: Run my role listens with webkitSpeechRecognition (iPa
 - A second window on the projector (BroadcastChannel to sync) shows the current line or lyric in huge type for the back wall. Advance with space bar / presentation clicker; optional "tap along once to record timings, then auto-advance".
 - Later: phone as remote using the existing live rooms (`rt/live.js`).
 
-### Later sections (Colleen wants these next; ask which first)
+### Later sections
 - **Casting**: audition sign-ups, audition notes, callback list, cast list.
-- **Production**: rehearsal calendar, who's called, attendance, conflicts.
+- ~~Production~~: built in session 3 (above).
 
 ## Design notes
 - Fonts: Lexend (headings) + Atkinson Hyperlegible (body), both on Google Fonts, chosen for readability.

@@ -126,6 +126,21 @@
         });
       });
     },
+    /* notes from students' iPads (a rehearsal conflict), sealed with the show key */
+    sendNote: function (key, obj) {
+      return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('notes', { box: box }); });
+    },
+    getNotes: function (key, proof) {
+      return fetch(API + 'notes', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.notes || []; }); })
+        .then(function (list) {
+          return Promise.all(list.map(function (n) {
+            return open(key, n.box).then(function (b) { var o = JSON.parse(td.decode(b)); o._id = n.id; o._at = n.at; return o; }, function () { return { _id: n.id, _junk: true }; });      // not sealed with this show's key: junk
+          }));
+        });
+    },
+    clearNotes: function (proof, ids) {
+      return fetch(API + 'notes', { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not clear the notes.'); });
+    },
     /* tracks: encrypted bytes on the server, and a copy on this device */
     putTrack: function (key, proof, songId, kind, bytes, ver) {
       var iv = rand(12);

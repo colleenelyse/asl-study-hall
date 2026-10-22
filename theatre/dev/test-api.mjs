@@ -26,6 +26,14 @@ ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof':
 ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
 ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');
 ok((await call('POST', 'track/../x/performance', new Uint8Array(500), { 'x-proof': proof })).status === 404, 'odd track names are refused');
+ok((await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '9.9.9.9' })).status === 200, 'a student iPad can send a note');
+ok((await call('GET', 'notes')).status === 403, 'reading notes needs the teacher password');
+const notes = (await (await call('GET', 'notes', undefined, { 'x-proof': proof })).json()).notes;
+ok(notes.length === 1 && notes[0].box.data === 'bm90ZQ==', 'the teacher reads the note');
+ok((await call('DELETE', 'notes', JSON.stringify({ ids: [notes[0].id] }), { 'x-proof': proof })).status === 200 && !(await (await call('GET', 'notes', undefined, { 'x-proof': proof })).json()).notes.length, 'the teacher clears it');
+ok((await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'x'.repeat(5001) } }), { 'cf-connecting-ip': '9.9.9.9' })).status === 400, 'a huge note is refused');
+let last; for (let i = 0; i < 60; i++) last = await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '8.8.8.8' });
+ok(last.status === 200 && (await call('POST', 'notes', JSON.stringify({ box: { iv: 'aXY=', data: 'bm90ZQ==' } }), { 'cf-connecting-ip': '8.8.8.8' })).status === 429, 'sixty notes an hour per address');
 const wrong = await proofOf('nope', vs);
 for (let i = 0; i < 5; i++) await call('POST', 'check', JSON.stringify({ proof: wrong }));
 ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 429, 'five wrong guesses lock this address for 10 minutes');

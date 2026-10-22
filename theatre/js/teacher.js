@@ -15,6 +15,7 @@
       .finally(function () { btns.forEach(function (b) { b.disabled = false; }); });
   }
   T.saveShow = save;
+  T.dialog = function (h, f) { return dialog(h, f); };
   function dialog(html, onOpen) {
     var d = document.createElement('dialog'); d.innerHTML = html; document.body.appendChild(d);
     var shut = d.close.bind(d);
@@ -42,7 +43,7 @@
     var page = parts[0] || '';
     if (!T.saved) return setupPage();
     if (!T.show || !T.proof) return signIn();
-    var fn = { '': home, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page];
+    var fn = { '': home, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page] || (T.teacherPages || {})[page];
     if (page === 'setup') return home();
     (fn || home)(parts.slice(1));
     window.scrollTo(0, 0);
@@ -106,6 +107,7 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
+      t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a student</a></p>';
   }

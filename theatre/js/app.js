@@ -43,6 +43,8 @@
     loop: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
     print: '<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2"/><rect x="6" y="14" width="12" height="7"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    stage: '<path d="M3 4h18v3c-3 2-6 2-9 0-3 2-6 2-9 0z"/><path d="M5 7v13M19 7v13M3 20h18"/>',
+    check: '<path d="M4 12l5 5L20 6"/>',
     star: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>'
   };
   function icon(name, cls) { return '<svg class="' + (cls || 'ic') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICON[name] || '') + '</svg>'; }
@@ -229,7 +231,7 @@
     if (page === 'teacher') return T.routes.teacher(parts.slice(1));
     if (!T.show) return unlockPage();
     if (!T.me && page !== 'settings') return whoPage();
-    var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage }[page];
+    var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage }[page] || (T.studentPages || {})[page];
     (fn || homePage)(parts.slice(1));
     app.scrollTop = 0; window.scrollTo(0, 0);
   }
@@ -305,11 +307,12 @@
     app.innerHTML = '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
       '<div><h2 style="margin:0">Hi, ' + esc(T.me.name) + '!</h2><div>' + who + '</div></div></div>' +
       '<div class="tiles">' +
-      tile('#/schedule', 'sched', 'My Schedule', 'When I am on stage') +
+      tile('#/schedule', 'stage', 'My Schedule', 'When I am on stage') +
       tile('#/lines', 'lines', 'Practice Lines', 'Listen and say my lines') +
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       tile('#/story', 'book', 'The Story', 'What happens') +
+      tile('#/rehearsals', 'sched', 'My Rehearsals', 'When I am called') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
       '</div>' + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
   }
