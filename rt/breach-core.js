@@ -182,6 +182,7 @@ function api_breachTry(auth, code, c, k, v) {
       brLog_(br, { kind: A.done, t: A.t, c: A.c });
       if (win && br.endMode === 'most') {      /* 4.100 (Colleen: "the most hacks in a set amount of time"): 1 point a crack, +1 for the first crew to crack that rival; nobody is out */
         var first = br.firstOn[A.c] == null, pts = first ? 2 : 1; if (first) br.firstOn[A.c] = A.t; br.score[A.t] = (br.score[A.t] || 0) + pts; brLog_(br, { kind: 'points', t: A.t, c: A.c, n: pts }); brNewPw_(br, A.c, now); }
+      else if (win && br.practice && W.g.brReal) { brNewPw_(br, A.c, now); }      /* 4.171 a practice round that leads into the real game: a crack is cheered, the password changes, and practice goes on until the teacher starts the real game */
       else if (win) { br.ranks.push(A.t); if (br.endMode === 'first' || br.ranks.length >= Math.min(3, br.n - 1)) g_end_(W.g, now + 6000); else brNewPw_(br, A.c, now); }
     }
     livePut_(W.g); return out; });
@@ -201,7 +202,7 @@ function brRight_(br, t) { return 0 + Object.keys(br.boxes[t] || {}).filter(func
 /** What one student (or the projector, myTeam -1) sees. Never another crew's password; pieces only to the agent who found them. */
 function breachView_(g, myTeam, e) {
   var br = g.breach, j = liveJoined_(g.id), now = Date.now(), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  var v = { phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
+  var v = { toReal: !!(br.practice && g.brReal), phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
     decoders: br.decoders.map(function (d) { return d ? brLabel_(br, j, d) : ''; }), crews: mates.map(function (m) { return m.length; }),
     filled: br.boxes.map(function (bx) { var per = {}; Object.keys(bx).forEach(function (k) { if (!bx[k].stale) { var c = k.split(':')[0]; per[c] = (per[c] || 0) + 1; } }); return per; }),
     log: br.log.slice(-15), attempt: br.attempt ? { t: br.attempt.t, c: br.attempt.c, res: br.attempt.res, done: br.attempt.done || '', left: Math.max(0, br.attempt.ends - now) } : null,
@@ -224,6 +225,9 @@ function breachView_(g, myTeam, e) {
 function breachControl_(g2, action) { var B = g2.breach, now = Date.now(); if (!B || livePhase_(g2) !== 'on') return false;
   if (action === 'brskip') { if (B.phase === 'vote' || B.phase === 'meet') breachTick_(g2, true); }
   else if (action === 'brglow') { if (B.phase === 'play' && !B.attempt) brGlow_(B, now); }
+  else if (action === 'brreal') { if (!B.practice || !g2.brReal) return false;      /* 4.171 the practice round becomes the real game: same crews and Decoders, a fresh network and passwords, the clock starts now */
+    var nb = breachNew_(B.n, Object.assign({}, g2.brOpt || {}, { brPractice: false })); nb.colors = B.colors; nb.decoders = B.decoders.slice(); nb.phase = 'play'; nb.glowNext = now + BR_GLOW_EVERY[0]; g2.breach = nb; g2.brReal = false;
+    g2.untimed = false; g2.ends = now + (g2.minutes || 15) * 60000; brLog_(nb, { kind: 'start' }); }
   else if (/^brdec:\d$/.test(action)) { var t = Math.floor(num_(action.split(':')[1])), m = brMates_(liveJoined_(g2.id), t).filter(function (e) { return e !== B.decoders[t]; }); if (m.length) { B.decoders[t] = m[Math.floor(Math.random() * m.length)]; brLog_(B, { kind: 'newdec', t: t }); } }
   else if (action === 'brpause') { if (!B.paused) { B.paused = true; B.pausedAt = now; B.pausedLeft = Math.max(0, g2.ends - now); g2.ends += 864e5; } else { B.paused = false; g2.ends = now + (B.pausedLeft || 0); if (B.attempt) B.attempt.ends += now - B.pausedAt; if (B.phase === 'vote') B.phaseEnds += now - B.pausedAt; } }
   else return false;

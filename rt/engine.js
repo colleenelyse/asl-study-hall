@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.170';
+var VERSION = '4.171';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2984,9 +2984,9 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   g.vocab = opt && opt.vocab === 'set' ? 'set' : 'mine';      /* 4.170 (Colleen: "each of these games play with the student's selected vocab by default and allow the teacher to override"): 'mine' = each student's own signs; 'set' = everyone the host's */
   if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
-  if (g.mode === 'vault') { g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
+  if (g.mode === 'vault') { if (teacher && opt) opt.vPrac = opt.vPrac !== false;      /* 4.171 a class Vault starts with a practice lock unless the teacher turns it off */ g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
   if (g.mode === 'breach' && !teacher && opt && opt.brDuo) { g.brDuo = true; g.teams = teams = 2; opt.brAuto = 0; g.late = false; }      /* 4.149 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): two crews of one */
-  if (g.mode === 'breach') { g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; g.brOpt = opt; }      /* 4.98 automatic crews: made at Start */
+  if (g.mode === 'breach') { if (opt && opt.brPracFirst) { opt.brPractice = true; g.brReal = true; } g.brOpt = opt || {};      /* 4.171 practice first, then the real game on the teacher's Start */ g.untimed = !!(opt && (opt.brUntil || opt.brPractice) && (opt.brPractice || opt.brEnd !== 'most'));      /* 4.100 most hacks always has a clock */ g.brAuto = opt && [3, 4, 5].indexOf(Math.floor(num_(opt.brAuto))) >= 0 ? Math.floor(num_(opt.brAuto)) : 0; if (g.brAuto) { g.teams = teams = 2; }      /* 4.98 automatic crews: made at Start */
     g.breach = breachNew_(teams, opt);      /* 4.92 untimed: until a crew wins; 4.93 a practice round is always untimed */ g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.68 Breach      // 4.58 the team escape room: one carnival for the class
   if (g.mode === 'case') { g.casec = caseNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.53 Case Closed
   if (g.mode === 'isle') { g.isle = isleNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.47 Treasure Island (the ways to earn share Sea Battle's field)
@@ -3064,7 +3064,7 @@ function api_liveControl(auth, code, action) {
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); } }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
-  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; livePut_(g); }      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
+  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
   if (engNew) { engineSetup_(g); livePut_(g); }      // 4.145 every other live class game runs in an engine room on asl.cool
@@ -3076,6 +3076,11 @@ function api_liveControl(auth, code, action) {
     if (action === 'seafire' && sea.phase === 'battle' && sea.fireStart > now) sea.fireStart = now;      // Open fire now (end the head start)
     if (action === 'seaskip' && sea.phase === 'battle' && sea.fireStart && now >= sea.fireStart) { var T = (sea.turnLen || 30) * 1000, k = Math.floor((now - sea.fireStart) / T); sea.fireStart -= (sea.fireStart + (k + 1) * T) - now; }      // Pass the cannons now: every team's next teammate
     seaTick_(g2); livePut_(g2); g = g2; });
+  if ((action === 'vgo' && g.vault && g.vault.hold) || (action === 'brreal' && g.breach && g.breach.practice && g.brReal)) lock_(function () { var g2 = liveGet_(g.id); if (!g2) return; var now = Date.now();      /* 4.171 "Start the clock" (Colleen: "the game clock shouldn't begin until the teacher evaluates that everyone is ready to play") */
+    g2.ends = now + g2.minutes * 60000; g2.untimed = false;
+    if (action === 'vgo') { if (g2.vault.rt) { try { rtPost_(g2.vault.rt, 'control', { action: 'vgo', ends: g2.ends }); } catch (e) {} } vaultGo_(g2.vault, now); }
+    else { if (g2.breach.rt) { try { rtPost_(g2.breach.rt, 'control', { action: 'brreal', ends: g2.ends }); } catch (e) {} } breachControl_(g2, 'brreal'); g2.ends = now + g2.minutes * 60000; }
+    livePut_(g2); g = g2; });
   if (g.breach && (action === 'brpause' || action === 'brskip' || action === 'brglow' || /^brdec:\d$/.test(action)) && livePhase_(g) === 'on') {
     if (g.breach.rt) { try { rtPost_(g.breach.rt, 'control', { action: action }); } catch (e) {} }      // 4.142 the asl.cool room runs it
     else lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.breach) return; if (breachControl_(g2, action)) livePut_(g2); g = g2; }); }
@@ -8640,11 +8645,12 @@ function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() *
   vaultShuf_(r, vaultShuf_(r, ['money', 'clock', 'keys']).slice(0, 2).concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
   if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count']).forEach(function (t) { list.push({ type: t, area: 'b' }); });
   list.push({ type: 'door', area: 'c' });
+  if (opt.vPrac) list.unshift({ type: 'money', area: 'a', practice: 1 });      /* 4.171 (Colleen: "maybe everyone plays a sample round with a step by step typed out instruction"): a practice lock first */
   var cnt = { 'in': 0, out: 0 }, prev = first === 'in' ? 'out' : 'in';      /* fixed doers first; everything else goes to whoever has had the facts less, then switches */
   list.forEach(function (x) { if (VAULT_KNOWER_FIXED[x.type]) cnt[VAULT_KNOWER_FIXED[x.type]]++; });
-  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return { type: x.type, area: x.area, knower: k }; });
+  var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return x.practice ? { type: x.type, area: x.area, knower: k, practice: 1 } : { type: x.type, area: x.area, knower: k }; });
   var gm = Math.floor(num_(opt.vGuard)); gm = [6, 8, 10, 12, 15, 20].indexOf(gm) >= 0 ? gm : len === 'short' ? 8 : 12;
-  return { seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
+  return { hold: !!opt.vPrac, seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
 function vaultAreaName_(a, side) { for (var i = 0; i < VAULT_STAGES.length; i++) if (VAULT_STAGES[i][0] === a) return VAULT_STAGES[i][side === 'out' ? 2 : 1]; return ''; }
 /** At Start: partners, sides, each pair's own details. */
 function vaultPairOf_(g, e) { var V = g.vault, i = V && V.byE[e]; return i == null ? null : V.pairs[i]; }
@@ -8666,11 +8672,11 @@ function vaultLootVal_(P) { return (P.loot || []).reduce(function (t, x) { retur
 /** What one student sees: only their own side of their own pair's current lock (me.mates = the partners' ids; names are added by the caller). */
 function vaultViewCore_(V, e) {
   if (!V) return null; var i0 = V.byE[e], P = i0 == null ? null : V.pairs[i0];
-  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length };
+  var base = { guided: V.guided, duo: V.duo, n: V.scenario.length, pk: V.scenario[0] && V.scenario[0].practice ? 1 : 0 };      /* 4.171 pk: a practice lock comes first */
   if (!P) return base;
   var side = P.side[e], k = P.k, cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, knower = sc.knower === side, end = vaultEnd_(V, P);
   vaultMeetDue_(P);
-  var v = { me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
+  var v = { pk: base.pk, me: { side: side, mates: P.m.filter(function (x) { return x !== e; }), guided: P.guided }, k: k, n: V.scenario.length, type: sc.type, area: sc.area, areaName: vaultAreaName_(sc.area, side), knower: knower, strikes: P.strikes, tot: P.tot, pen: P.pen, done: P.done ? Math.round((P.done - P.t0) / 1000) + P.pen : 0, elapsed: P.t0 ? Math.round((Date.now() - P.t0) / 1000) + P.pen : 0, hints: P.hints, cam: V.cam && sc.type === 'door', stuck: vaultStuck_(P) };
   if (!P.t0) { v.meet = { ready: !!P.ready[e], left: Math.max(0, Math.ceil((P.meet0 + VAULT_MEET_MS - Date.now()) / 1000)) };      /* 4.106 before the first lock: where you sit, where your partner sits */
     if (V.map && V.seat && V.seat[e]) { v.meet.map = V.map; v.meet.mine = V.seat[e]; v.meet.theirs = P.m.filter(function (x) { return x !== e && V.seat[x]; }).map(function (x) { return V.seat[x]; }); }
     return v; }
@@ -8680,6 +8686,8 @@ function vaultViewCore_(V, e) {
       shelf: P.x || end ? [] : VAULT_LOOT.filter(function (c) { return had.indexOf(c[0]) < 0 && 'abc'.indexOf(c[6]) <= stI; }).map(function (c) { return { key: c[0], name: c[1], img: c[2], locks: c[3], value: c[4] }; }) }; }
   if (end) { v.done = end.secs; v.caught = end.caught; return v; }
   if (P.done) return v;
+  if (V.hold) { v.hold = true; v.elapsed = 0; if (!sc.practice) { v.waitGo = true; return v; } }      /* 4.171 practice done: wait for the teacher's Start the clock */
+  if (sc.practice) v.prac = true;
   if (cur.extra) { v.extra = true; v.xk = P.x.done; v.xn = P.x.need; }
   if (sc.type === 'money') { if (knower) v.items = L.items; }
   if (sc.type === 'clock' || sc.type === 'door') { if (knower) v.lines = L.lines; else { v.color = L.color; v.place = L.place; v.digits = sc.type === 'door' ? L.ans.length : 0; } }
@@ -8696,7 +8704,12 @@ function vaultViewCore_(V, e) {
 }
 /** The projector: every pair's progress (names, lock, strikes, time); never the details. */
 function vaultBoardCore_(V) { if (!V) return null;
-  return { seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+  return { hold: !!V.hold, ready: V.hold ? V.pairs.filter(function (P) { return P.t0 && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice; }).length : 0, seat: V.seatNote || null, loot: !!V.loot, n: V.scenario.length, types: V.scenario.map(function (s) { return s.type; }), areas: V.scenario.map(function (s) { return s.area; }), pairs: V.pairs.map(function (P, i) { return { i: i, sides: P.m.map(function (x) { return P.side[x]; }), ids: P.m.slice(), k: P.k, strikes: P.strikes, tot: P.tot, meet: !P.t0, done: (function (en) { return en ? en.secs : 0; })(vaultEnd_(V, P)), caught: !!(vaultEnd_(V, P) || {}).caught, loot: V.loot ? vaultLootVal_(P) : null, alarm: V.loot ? Math.round(vaultAlarm_(V, P) * 100) / 100 : null, cracking: P.x ? P.x.name : '' }; }) }; }
+/** 4.171 the teacher's "Start the clock": every pair goes on from the practice lock (done or not); practice mistakes don't count; each pair's clock starts now
+    (a pair still finding each other starts when they do) */
+function vaultGo_(V, now) { if (!V || !V.hold) return false; V.hold = false; now = now || Date.now();
+  V.pairs.forEach(function (P) { if ((V.scenario[P.k] || {}).practice) { P.k++; P.turn = {}; } if (P.t0) P.t0 = now; P.pen = 0; P.tot = 0; P.strikes = 0; P.hints = 0; P.skips = 0; P.at = now; });
+  return true; }
 /** The meeting is over when every partner pressed "I found my partner" or a minute passed: the pair's clock starts. */
 function vaultMeetDue_(P) { if (!P.t0 && (P.m.every(function (e) { return P.ready[e]; }) || Date.now() - P.meet0 >= VAULT_MEET_MS)) P.t0 = Date.now(); return !!P.t0; }
 /** A student acts on their pair's current lock (pure: the caller saves and records): try an answer (the doer), pick a key, turn a key, or ask for a hint (On your own: +30 s). */
@@ -8705,6 +8718,7 @@ function vaultActCore_(V, e, act, a, now) {
     var cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, side = P.side[e], knower = sc.knower === side, out = { ok: true };
     if (act === 'ready') { P.ready[e] = 1; vaultMeetDue_(P); out.changed = true; return out; }
     if (!vaultMeetDue_(P)) return { none: true };
+    if (V.hold && !(V.scenario[Math.min(P.k, V.scenario.length - 1)] || {}).practice) return { none: true, hold: true };      /* 4.171 waiting for the teacher */
     var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided, v2: !!P.bot }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
       if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
@@ -9086,6 +9100,7 @@ function api_breachTry(auth, code, c, k, v) {
       brLog_(br, { kind: A.done, t: A.t, c: A.c });
       if (win && br.endMode === 'most') {      /* 4.100 (Colleen: "the most hacks in a set amount of time"): 1 point a crack, +1 for the first crew to crack that rival; nobody is out */
         var first = br.firstOn[A.c] == null, pts = first ? 2 : 1; if (first) br.firstOn[A.c] = A.t; br.score[A.t] = (br.score[A.t] || 0) + pts; brLog_(br, { kind: 'points', t: A.t, c: A.c, n: pts }); brNewPw_(br, A.c, now); }
+      else if (win && br.practice && W.g.brReal) { brNewPw_(br, A.c, now); }      /* 4.171 a practice round that leads into the real game: a crack is cheered, the password changes, and practice goes on until the teacher starts the real game */
       else if (win) { br.ranks.push(A.t); if (br.endMode === 'first' || br.ranks.length >= Math.min(3, br.n - 1)) g_end_(W.g, now + 6000); else brNewPw_(br, A.c, now); }
     }
     livePut_(W.g); return out; });
@@ -9105,7 +9120,7 @@ function brRight_(br, t) { return 0 + Object.keys(br.boxes[t] || {}).filter(func
 /** What one student (or the projector, myTeam -1) sees. Never another crew's password; pieces only to the agent who found them. */
 function breachView_(g, myTeam, e) {
   var br = g.breach, j = liveJoined_(g.id), now = Date.now(), mates = br.maps.map(function (m, t) { return brMates_(j, t); });
-  var v = { phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
+  var v = { toReal: !!(br.practice && g.brReal), phase: br.phase, left: br.phase === 'vote' || br.phase === 'meet' ? Math.max(0, br.phaseEnds - now) : 0, meet: br.phase === 'meet' ? { per: BR_MEET, names: mates.map(function (m) { return m.map(function (e) { return brLabel_(br, j, e); }); }) } : null, n: br.n, pat: brPat_(br.pat), untimed: !!g.untimed, practice: !!br.practice, colors: br.colors || null, endMode: br.endMode, voteBy: br.voteBy, paused: br.paused, ranks: br.endMode === 'most' ? (livePhase_(g) === 'over' ? brStand_(br) : []) : br.ranks, score: br.endMode === 'most' ? br.score || [] : null, cam: br.cam !== false,
     decoders: br.decoders.map(function (d) { return d ? brLabel_(br, j, d) : ''; }), crews: mates.map(function (m) { return m.length; }),
     filled: br.boxes.map(function (bx) { var per = {}; Object.keys(bx).forEach(function (k) { if (!bx[k].stale) { var c = k.split(':')[0]; per[c] = (per[c] || 0) + 1; } }); return per; }),
     log: br.log.slice(-15), attempt: br.attempt ? { t: br.attempt.t, c: br.attempt.c, res: br.attempt.res, done: br.attempt.done || '', left: Math.max(0, br.attempt.ends - now) } : null,
@@ -9128,6 +9143,9 @@ function breachView_(g, myTeam, e) {
 function breachControl_(g2, action) { var B = g2.breach, now = Date.now(); if (!B || livePhase_(g2) !== 'on') return false;
   if (action === 'brskip') { if (B.phase === 'vote' || B.phase === 'meet') breachTick_(g2, true); }
   else if (action === 'brglow') { if (B.phase === 'play' && !B.attempt) brGlow_(B, now); }
+  else if (action === 'brreal') { if (!B.practice || !g2.brReal) return false;      /* 4.171 the practice round becomes the real game: same crews and Decoders, a fresh network and passwords, the clock starts now */
+    var nb = breachNew_(B.n, Object.assign({}, g2.brOpt || {}, { brPractice: false })); nb.colors = B.colors; nb.decoders = B.decoders.slice(); nb.phase = 'play'; nb.glowNext = now + BR_GLOW_EVERY[0]; g2.breach = nb; g2.brReal = false;
+    g2.untimed = false; g2.ends = now + (g2.minutes || 15) * 60000; brLog_(nb, { kind: 'start' }); }
   else if (/^brdec:\d$/.test(action)) { var t = Math.floor(num_(action.split(':')[1])), m = brMates_(liveJoined_(g2.id), t).filter(function (e) { return e !== B.decoders[t]; }); if (m.length) { B.decoders[t] = m[Math.floor(Math.random() * m.length)]; brLog_(B, { kind: 'newdec', t: t }); } }
   else if (action === 'brpause') { if (!B.paused) { B.paused = true; B.pausedAt = now; B.pausedLeft = Math.max(0, g2.ends - now); g2.ends += 864e5; } else { B.paused = false; g2.ends = now + (B.pausedLeft || 0); if (B.attempt) B.attempt.ends += now - B.pausedAt; if (B.phase === 'vote') B.phaseEnds += now - B.pausedAt; } }
   else return false;

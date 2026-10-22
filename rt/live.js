@@ -14,7 +14,7 @@
      POST /end     {k}                              close the room
    Messages: screen -> {a:'view'} | {a:'act', act, arg, n} (Vault) | {a:'call', fn, args, n, right} (Breach);
              room -> {t:'v', v} (your view) | {t:'r', n, out, v} (a reply) | {t:'b', b} (the board) | {t:'over'} */
-import { vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultEnd_ } from './vault-core.js';
+import { vaultGo_, vaultViewCore_, vaultBoardCore_, vaultActCore_, vaultEnd_ } from './vault-core.js';
 import { ENV } from './gas-env.js';
 import { API, __setStatic } from './engine.js';
 import { rtUse, breachView_, breachTick_, breachDue_, breachControl_, api_breachVote, api_breachMove, api_breachNote, api_breachBox, api_breachTool, api_breachTry } from './breach-core.js';
@@ -68,6 +68,7 @@ export class LiveRoom {
       const st = this.s.store, cur = st.cache[key] ? JSON.parse(st.cache[key].v) : (st.props[key] ? JSON.parse(st.props[key]) : {}); cur[id] = body.entry; const raw = JSON.stringify(cur);
       st.cache[key] = { v: raw, x: Date.now() + 6 * 3600e3 }; if (st.props[key] != null) st.props[key] = raw; this.dirty = true; await this.save(); return json({ ok: true }); }      // a student who joined after Start
     if (op === 'join' && this.breach()) { const id = String(body.id || ''), t = Number(body.team); if (!/^p\d{1,3}$/.test(id) || !(t >= 0)) return json({ error: 'bad join' }, 400); this.s.j[id] = [id, '', t]; await this.save(); this.pushAll(); return json({ ok: true }); }
+    if (op === 'control' && this.s.kind === 'vault') { if (String(body.action || '') === 'vgo' && vaultGo_(this.s.v, Date.now())) { this.s.ends = Number(body.ends) || this.s.ends; await this.save(); this.ids().forEach(id => this.push(id, true)); this.pushBoard(true); } return json({ ok: true }); }      // ASL Study 4.171: the teacher starts the clock after the practice lock
     if (op === 'control' && this.breach()) { this.rt(); const ch = breachControl_(this.s.g, String(body.action || '')); if (ch) { await this.save(); this.pushAll(); } return json({ ok: true, changed: !!ch }); }
     if (op === 'stop') { this.setEnds(Math.min(this.ends(), Date.now())); if (this.breach()) this.s.g.breach.paused = false; await this.save(); this.sendAll({ t: 'over' }); this.pushBoard(true); return json({ ok: true }); }      // the teacher ended the game early
     if (op === 'end') { this.ctx.getWebSockets().forEach(ws => { try { ws.send(JSON.stringify({ t: 'over' })); ws.close(1000, 'over'); } catch (e) {} }); await this.ctx.storage.deleteAll(); this.s = null; return json({ ok: true }); }
