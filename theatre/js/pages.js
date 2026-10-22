@@ -28,6 +28,13 @@
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
   T.Pages.scenePages = scenePages;
+  /* the page number printed on a pdf page (from the script reader's items), or the pdf page number */
+  var printedMap = null, printedFor = null;
+  T.Pages.printed = function (n) {
+    var sc = T.show.script; if (!sc) return n;
+    if (printedFor !== sc) { printedFor = sc; printedMap = {}; sc.scenes.forEach(function (x) { x.items.forEach(function (it) { (it.boxes || []).forEach(function (b) { if (it.page != null && printedMap[b.n] == null) printedMap[b.n] = it.page; }); }); }); }
+    return printedMap[n] != null ? printedMap[n] : n;
+  };
   /* a line's boxes without the character's name (Colleen: highlight the line, not the name). The name is the first box when it sits on its own row;
      for scripts imported before 'named' was kept: a short, centered first box of two or more. */
   T.Pages.wordBoxes = function (it) {

@@ -257,3 +257,12 @@ has a "Watch the movie" box (`production.movieDays`, default 3, 0 for none); `st
 highlighted, yellow notes only they see (saved in their practice record, `rec.notes`, so they follow them), purple director's notes. Teacher: #/teacher/read
 ("Read the script"), highlight any character, her notes are `T.show.scriptNotes` (everyone sees them). Pages are drawn near the screen only.
 Line highlights everywhere skip the character's name (`T.Pages.wordBoxes`; the parser now marks `named`).
+
+**Light, sound and music cues** (Colleen: LX numbered from 5 at the top of the show, 1–4 kept for house cues; SX numbered from 1; MX use the script's
+music numbers; every blackout or scene change is a "Blue out"; for songs a light cue at the start and between verse / chorus / bridge / mood changes):
+js/cues.js. `T.show.cues.list` [{ id, k, n, y, text, sug, mx }]; LX/SX numbers follow page order (`T.cueLabel`). Suggestions (`T.Cues.refresh`,
+keeps accepted and hand-made cues): "#N – TITLE" in directions → MX, sound words → SX, blackout / spotlight / split scene / flashback → LX, Lights up
+at each scene, Blue out at each scene end, songs: start, new singer group, a chorus coming back (two repeated lines), a 3.5 s break (with lyrics timing),
+the end. On Read the script (teacher) cues sit beside the page (numbers only on phones); tap to accept, edit, move, delete, or play an MX.
+Teacher › Cue sheet: list, filter, accept all, print. Songs & tracks: "Add many band / guide-vocal tracks" matches file names by their leading number
+(songs and scene-change music, stored as tracks `mx<N>`); a Scene-change music table lists them. Students can turn cues on in The Script (off by default).

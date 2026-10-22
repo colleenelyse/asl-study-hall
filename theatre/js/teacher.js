@@ -100,11 +100,12 @@
     T.setBar('Teacher mode', '#/');
     var O = T.O(), sc = T.show.script, nLines = 0;
     if (sc) sc.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') nLines++; }); });
-    var trk = T.show.tracks || {}, nTr = Object.keys(trk).filter(function (k) { return trk[k].performance; }).length;
+    var trk = T.show.tracks || {}, nTr = O.songs.filter(function (s) { return trk[s.id] && trk[s.id].performance; }).length;
     var t = function (href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; };
     app.innerHTML = '<h2>' + esc(O.title) + '</h2><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p><div class="tiles">' +
       t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
       (T.Pages && T.Pages.ready() ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
+      (T.Pages && T.Pages.ready() ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
@@ -450,6 +451,9 @@
     app.innerHTML = '<div class="card"><p>Upload each song’s <b>rehearsal track</b> (with the guide vocals) and <b>performance track</b> (band only). They are saved encrypted, for this cast. MP3 works best (24 MB at most).</p>' +
       '<p class="row">' + (links.rehearsalFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.rehearsalFolder) + '">Rehearsal tracks folder</a>' : '') + (links.performanceFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.performanceFolder) + '">Performance tracks folder</a>' : '') + '</p>' +
       '<p class="muted small">Then <b>Make melody line</b> works out the tune from the two tracks, so students can hear a soft tone instead of the singers.</p>' +
+      '<p class="row"><label class="btn">Add many band tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="performance" hidden></label>' +
+      '<label class="btn">Add many guide-vocal tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="rehearsal" hidden></label>' +
+      '<span class="muted small">Pick a whole folder’s files: each goes to its music number from the start of its name (07_Announcement Transition 1.mp3 is #7), songs and scene-change music alike.</span></p>' +
       '<p class="row"><button class="btn primary" id="alllyr">Find lyrics timing for every song</button><span class="muted small">For the sheet music with a moving guide. Songs that already have a ✓ are left alone.</span></p></div>' +
       '<table class="tbl"><thead><tr><th>Song</th><th>Rehearsal (guide vocals)</th><th>Performance</th><th>Melody line</th></tr></thead><tbody>' + O.songs.map(function (s) {
         var t = tr[s.id] || {}, cell = function (kind) {
@@ -462,7 +466,17 @@
           '<td>' + (m ? '<span class="tag">' + m.notes.length + ' notes</span> ' : '') + '<button class="btn small" data-mel="' + s.id + '"' + (t.rehearsal && t.performance ? '' : ' disabled title="Upload both tracks first"') + '>' + (m ? 'Make again' : 'Make melody line') + '</button>' +
           ' <a class="btn small" href="#/teacher/songs/lyrics/' + s.id + '">' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? 'Lyrics timing ✓' : 'Lyrics timing') + '</a>' +
           ' <a class="btn small" href="#/teacher/songs/cues/' + s.id + '">' + (T.show.underscore && T.show.underscore[s.id] ? 'Lines over the music ✓' : 'Lines over the music') + '</a></td></tr>';
-      }).join('') + '</tbody></table><p id="st" class="muted" role="status"></p>';
+      }).join('') + '</tbody></table>' + changeMusic() + '<p id="st" class="muted" role="status"></p>';
+    function changeMusic() {
+      if (!T.Cues) return '';
+      var nums = T.Cues.musicNumbers(), songNums = O.songs.map(function (s) { return String(s.num); });
+      var list = Object.keys(nums).filter(function (n) { return songNums.indexOf(n) < 0; }).sort(function (a, b) { return a - b; });
+      if (!list.length) return '';
+      return '<h3 style="margin-top:20px">Scene-change music (MX cues)</h3><table class="tbl"><thead><tr><th>Music</th><th>Band track</th><th>Guide vocals</th></tr></thead><tbody>' + list.map(function (n) {
+        var t = tr['mx' + n] || {}, cell = function (k) { return '<td>' + (t[k] ? '<span class="tag">' + T.clock(t[k].dur) + '</span>' : '<span class="muted small">none</span>') + '</td>'; };
+        return '<tr><td><b>MX' + n + '</b> ' + esc(nums[n]) + '</td>' + cell('performance') + cell('rehearsal') + '</tr>';
+      }).join('') + '</tbody></table>';
+    }
     var st = document.getElementById('st');
     app.querySelectorAll('input[type=file][data-s]').forEach(function (inp) {
       inp.onchange = function () {
@@ -479,6 +493,33 @@
             });
           });
         }).then(function () { if (location.hash === '#/teacher/songs') songsPage(); }).catch(function (e) { st.textContent = ''; T.toast(e.message || 'That file would not open as audio.', 4000); });
+      };
+    });
+    app.querySelectorAll('input[data-many]').forEach(function (inp) {
+      inp.onchange = function () {
+        var kind = inp.dataset.many, files = [].slice.call(inp.files), nums = T.Cues ? T.Cues.musicNumbers() : {}, done = 0, skip = [];
+        var plan = files.map(function (f) {
+          var m = f.name.match(/^0*(\d+)[\s_.-]/), n = m && m[1], so = n && O.songs.find(function (s) { return String(s.num) === n; });
+          return so ? { f: f, id: so.id } : n && nums[n] ? { f: f, id: 'mx' + n } : (skip.push(f.name), null);
+        }).filter(Boolean);
+        if (!plan.length) { T.toast('None of those file names start with a music number from the script.', 5000); return; }
+        plan.reduce(function (p, x, i) {
+          return p.then(function () {
+            st.textContent = 'Uploading ' + x.f.name + ' (' + (i + 1) + ' of ' + plan.length + ')…';
+            return x.f.arrayBuffer().then(function (buf) {
+              return T.audioCtx().decodeAudioData(buf.slice(0)).then(function (ab) {
+                var ver = Date.now().toString(36);
+                return Store.putTrack(T.key, T.proof, x.id, kind, buf, ver).then(function () {
+                  tr[x.id] = tr[x.id] || {}; tr[x.id][kind] = { ver: ver, dur: Math.round(ab.duration * 10) / 10, size: x.f.size, name: x.f.name };
+                  if (mel[x.id]) delete mel[x.id]; done++;
+                });
+              });
+            }).catch(function () { skip.push(x.f.name); });
+          });
+        }, Promise.resolve()).then(function () { return save(done + ' tracks saved'); }).then(function () {
+          if (location.hash !== '#/teacher/songs') return;
+          songsPage(); document.getElementById('st').textContent = done + ' of ' + files.length + ' tracks saved.' + (skip.length ? ' Not used: ' + skip.join(', ') + '.' : '');
+        });
       };
     });
     document.getElementById('alllyr').onclick = function () {
