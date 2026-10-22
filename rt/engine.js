@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.159';
+var VERSION = '4.160';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8568,6 +8568,7 @@ function vaultPick_(r, a) { return a[Math.floor(r() * a.length)]; }
 function vaultShuf_(r, a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 /** One lock's details (the same type for every pair, different values). */
 function vaultLock_(type, r, o) { o = o || {};
+  if (o.v2 && !o.base) return vaultV2_(vaultLock_(type, r, { guided: o.guided, base: 1 }), r);      /* 4.160 the radio games: each lock gets the half that is in YOUR room */
   var codes = function (n, digits) { var seen = {}, out = []; while (out.length < n) { var c = String(Math.pow(10, digits - 1) + Math.floor(r() * 9 * Math.pow(10, digits - 1))); if (!seen[c]) { seen[c] = 1; out.push(c); } } return out; };
   if (type === 'money') { var bills = [1, 5, 10, 20], items = [], cents = 0;
     vaultShuf_(r, bills).slice(0, 1 + Math.floor(r() * 2)).forEach(function (b) { items.push('bill-' + b); cents += b * 100; });
@@ -8602,6 +8603,23 @@ function vaultLock_(type, r, o) { o = o || {};
     var lines2 = vaultShuf_(r, opts.map(function (d, i) { return [d, cc[i]]; })); return { type: type, seen: [[a1, c1], [a2, c2]], lines: lines2, ans: cc[0] }; }      /* the doer counts the animals on the camera; the knower's list gives the code */
   return { type: type };
 }
+/** 4.160 (Colleen: the solo Vault "felt silly and easy"; she picked "1 and 3": half from the radio, half from your own room, and no lock twice). For the radio games
+    (solo, Race a friend) each lock keeps its answer and gets what the player outside sees: a café price board and a receipt (money), the guards and their key rings
+    (keys), the bank ledger (boxes), a wiring chart from colors to switch symbols (lasers), a wall of people's clocks (clock), and the door's digits in listing order. */
+var VAULT_DRINKS = ['COFFEE', 'SODA-POP', 'WATER', 'TEA', 'MILK', 'ORANGE JUICE', 'HOT CHOCOLATE'], VAULT_WEAR = [['m', 'SHIRT'], ['m', 'JACKET'], ['w', 'SHIRT'], ['w', 'JACKET'], ['w', 'DRESS']], VAULT_SYMS = ['★', '●', '▲', '■'];
+var VAULT_SOLO = ['money', 'keys', 'boxes', 'lasers', 'clock'];      /* the radio games' locks (each once), then the door */
+function vaultPeople_(r, n) { var out = [], seen = {}, t = 0; while (out.length < n && t++ < 500) { var w = vaultPick_(r, VAULT_WEAR), c = vaultPick_(r, VAULT_COLORS.slice(0, 6)), k = w[0] + w[1] + c; if (seen[k]) continue; seen[k] = 1; var gl = r() < 0.3, ht = r() < 0.2; out.push({ sex: w[0], top: w[1], color: c, glasses: gl, hat: w[0] === 'm' && ht }); }      /* a hat only on a man: long hair always shows who is a woman */ return out; }      /* nobody shares MAN/WOMAN + what they wear + its color */
+function vaultV2_(L, r) { L.v2 = true;
+  if (L.type === 'money') { var dr = vaultShuf_(r, VAULT_DRINKS).slice(0, 6), board = dr.map(function (d) { return [d, 25 * (4 + Math.floor(r() * 12))]; }), two = vaultShuf_(r, board).slice(0, 2);
+    L.board = board; L.receipt = two.map(function (b) { return [1 + Math.floor(r() * 3), b[0]]; }); L.cents = L.receipt.reduce(function (t, x, i) { return t + x[0] * two[i][1]; }, 0); L.items = []; }
+  if (L.type === 'keys') { var g = vaultPeople_(r, L.keys.length); g.forEach(function (p, i) { p.ring = L.keys[i]; }); L.guards = g; L.who = g[L.keys.indexOf(L.color)]; }
+  if (L.type === 'boxes') { var own = [[L.name, L.sec, L.row, L.col]], tries = 0; while (own.length < 6 && tries++ < 100) { var si = Math.floor(r() * L.secs.length), sec = L.secs[si], i = Math.floor(r() * sec.names.length), nm = sec.names[i];
+      if (own.some(function (x) { return x[0] === nm; })) continue; own.push([nm, sec.label, Math.floor(i / L.cols) + 1, i % L.cols + 1]); } L.ledger = vaultShuf_(r, own); }
+  if (L.type === 'lasers') { var sy = vaultShuf_(r, VAULT_SYMS); L.sym = L.beams.map(function (c, i) { return sy[i]; }); L.chart = vaultShuf_(r, L.beams.map(function (c, i) { return [c, sy[i]]; })); }
+  if (L.type === 'clock') { var ppl = vaultPeople_(r, 4), seenT = {}; L.people = ppl.map(function (p) { var t; do { t = (1 + Math.floor(r() * 12)) + ':' + ('0' + 5 * Math.floor(r() * 12)).slice(-2); } while (seenT[t]); seenT[t] = 1; return [p, t]; });
+    var w = Math.floor(r() * 4); L.who = L.people[w][0]; L.ans = L.people[w][1]; }
+  if (L.type === 'door') { L.ans = String(1000 + Math.floor(r() * 9000)); L.order = vaultShuf_(r, [0, 1, 2, 3]); }
+  return L; }
 function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() * 1e9) + 1, r = vaultRnd_(seed), first = r() < 0.5 ? 'in' : 'out', len = opt.vLen === 'short' ? 'short' : 'full', list = [];
   vaultShuf_(r, vaultShuf_(r, ['money', 'clock', 'keys']).slice(0, 2).concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
   if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count']).forEach(function (t) { list.push({ type: t, area: 'b' }); });
@@ -8671,7 +8689,7 @@ function vaultActCore_(V, e, act, a, now) {
     var cur = vaultCur_(V, P), sc = cur.sc, L = cur.L, side = P.side[e], knower = sc.knower === side, out = { ok: true };
     if (act === 'ready') { P.ready[e] = 1; vaultMeetDue_(P); out.changed = true; return out; }
     if (!vaultMeetDue_(P)) return { none: true };
-    var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
+    var strike = function () { P.strikes++; P.tot++; P.pen += VAULT_STRIKE_S; out.good = false; if (P.strikes >= 3) { var fresh = vaultLock_(sc.type, vaultRnd_(P.rs + now % 100000), { guided: P.guided, v2: !!P.bot }); if (cur.extra) P.x.locks[P.x.done] = fresh; else P.locks[P.k] = fresh; P.strikes = 0; P.turn = {}; out.reshuffled = true; } };
     var solved = function () { P.at = now; if (cur.extra) { P.x.done++; P.strikes = 0; P.turn = {}; out.good = true; if (P.x.done >= P.x.need) { var c = P.x; P.loot = (P.loot || []).concat([[c.key, c.value, c.item]]); out.loot = { key: c.key, img: c.img, item: c.item, value: c.value, total: vaultLootVal_(P) }; P.xk = c.knowers[c.need - 1]; P.x = null; } return; }      /* a loot lock: the container opens after its last one */
       if (sc.type === 'boxes') out.found = L.inside; P.k++; P.strikes = 0; P.turn = {}; out.good = true; if (P.k >= V.scenario.length) { P.done = now; out.escaped = true; out.pair = i0; if (V.versus || V.pairs.every(function (q) { return q.done || vaultEnd_(V, q); })) out.allDone = true; } };      /* 4.151 versus: the first one out ends it */      /* everyone out: the game ends 20 s later */
     if (act === 'hint') { if (V.guided || P.guided) return { none: true }; P.hints++; P.pen += VAULT_HINT_S; out.hint = true; }
@@ -8696,11 +8714,12 @@ function vaultActCore_(V, e, act, a, now) {
     through the same bank on their own, with a partner on the RADIO (the computer: 'bot', always the one with the facts), on the solo lock list (no floor grid,
     monitors or counting). Same locks, each player's own codes; the first one out wins (the game ends 20 seconds later). */
 function vaultVersusStart_(g) { var V = g.vault, joined = liveJoinedSure_(g.id), who = Object.keys(joined), r = vaultRnd_(V.seed + 31), now = Date.now();
-  var pick = function (a) { return vaultPick_(r, a); }, three = vaultShuf_(r, ['money', 'clock', 'keys']), np = vaultShuf_(r, ['nameplate', 'bars']), list = vaultShuf_(r, three.slice(0, 2).concat(['boxes', np[0]])).map(function (t) { return { type: t, area: 'a', knower: 'in' }; });
-  if (V.len !== 'short') vaultShuf_(r, ['lasers', np[1], three[2]]).forEach(function (t) { list.push({ type: t, area: 'b', knower: 'in' }); });
-  list.push({ type: 'door', area: 'c', knower: 'in' }); V.scenario = list; V.byE = {};
+  var list = vaultSoloList_(r, V.len); V.scenario = list; V.byE = {};      /* 4.160 each lock once, then the door */
   V.pairs = who.map(function (e, i) { var rr = vaultRnd_(V.seed + 7919 * (i + 1)), side = {}; side[e] = 'out'; side.bot = 'in'; V.byE[e] = i;
-    return { m: [e, 'bot'], side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: { bot: 1 }, done: 0, guided: V.guided, locks: list.map(function (sc) { return vaultLock_(sc.type, rr, { guided: V.guided }); }), turn: {}, rs: V.seed + 104729 * (i + 1), bot: true }; }); }
+    return { m: [e, 'bot'], side: side, k: 0, strikes: 0, tot: 0, pen: 0, hints: 0, t0: 0, meet0: now, ready: { bot: 1 }, done: 0, guided: V.guided, locks: list.map(function (sc) { return vaultLock_(sc.type, rr, { guided: V.guided, v2: true }); }), turn: {}, rs: V.seed + 104729 * (i + 1), bot: true }; }); }
+/** 4.160 the radio games' lock list: short = 4 of the 5, full = all 5 (each once), the lasers in the corridor, then the door */
+function vaultSoloList_(r, len) { var pick = vaultShuf_(r, VAULT_SOLO).slice(0, len === 'short' ? 4 : 5), a = pick.filter(function (t) { return t !== 'lasers'; }).map(function (t) { return { type: t, area: 'a', knower: 'in' }; });
+  if (pick.indexOf('lasers') >= 0) a.push({ type: 'lasers', area: 'b', knower: 'in' }); a.push({ type: 'door', area: 'c', knower: 'in' }); return a; }
 /* RT-SHARED-END */
 /** 4.138 / 4.159 seating-chart partners for The Vault: a student in the LEFT half of the room is paired with one in the RIGHT half at the mirror spot (the same row,
     the same distance from the middle), or as close to it as possible; a partner of the other strength when it's a tie. 4.159 (Colleen: "students partners were all
