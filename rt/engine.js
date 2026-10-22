@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.168';
+var VERSION = '4.169';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -7794,12 +7794,18 @@ function api_clawGrab(auth, play, x, z) {
   cache.remove('clwp:' + str_(play));
   x = Math.max(0, Math.min(1, num_(x))); z = z === undefined || z === null ? 0.5 : Math.max(0, Math.min(1, num_(z)));
   var near = null; g.layout.forEach(function (l, j) { var lz = typeof l.z === 'number' ? l.z : 0.5, d = Math.sqrt(Math.pow((l.x - x) / 0.085, 2) + Math.pow((lz - z) / 0.2, 2)); if (d <= 1 && (!near || d < near.d)) near = { d: d, l: l, j: j }; });
+  /* 4.169 (Colleen: "the claw should not always drop the egg. students should win something each session they play in this game"): until a student wins a real
+     prize today, the claw reaches the nearest egg, holds it, carries it to the chute, and it is never an empty capsule. After that, the usual odds. */
+  var props = PropertiesService.getDocumentProperties(), wonKey = 'clw:' + dayStr_() + ':w:' + id.key, lucky = !props.getProperty(wonKey);
+  if (!near && lucky) g.layout.forEach(function (l, j) { var lz = typeof l.z === 'number' ? l.z : 0.5, d = Math.sqrt(Math.pow((l.x - x) / 0.085, 2) + Math.pow((lz - z) / 0.2, 2)); if (!near || d < near.d) near = { d: d, l: l, j: j }; });
   if (!near) return { win: false, miss: true };      // 4.30: the bigger eggs are easier to line up (0.085 across, 0.2 front-to-back)
-  var hold = CLAW_ODDS[near.l.p.rarity][1] + 0.12 * (1 - near.d);      // lined up well (across and front-to-back): a better grip
-  if (Math.random() > hold) return { win: false, slip: true, at: near.j, name: near.l.p.name };
-  if (Math.random() < CLAW_CARRY_DROP) return { win: false, dropped: true, at: near.j, name: near.l.p.name };      // it fell on the way to the chute
+  var hold = CLAW_ODDS[near.l.p.rarity][1] + 0.12 * (1 - Math.min(1, near.d));      // lined up well (across and front-to-back): a better grip
+  if (!lucky && Math.random() > hold) return { win: false, slip: true, at: near.j, name: near.l.p.name };
+  if (!lucky && Math.random() < CLAW_CARRY_DROP) return { win: false, dropped: true, at: near.j, name: near.l.p.name };      // it fell on the way to the chute
   var S = st.settings, p = near.l.p, label = p.name;
+  if (p.kind === 'empty' && lucky) { var real = clawPrizes_().filter(function (q) { return q.kind !== 'empty'; }); if (real.length) { p = real.filter(function (q) { return q.rarity === 'common'; })[0] || real[0]; label = p.name; } }      /* the day's first prize is never empty */
   if (p.kind === 'empty') return { win: true, empty: true, at: near.j, rarity: p.rarity, prize: { kind: 'empty', name: p.name } };      // made it to the chute… and it was empty
+  props.setProperty(wonKey, '1');
   return lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row), owned = ownedList_(o), got = null;
