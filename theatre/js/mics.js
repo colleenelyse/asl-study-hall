@@ -83,6 +83,25 @@
         if (bm < 0) out.push(xu); else place(xu, bm);
       });
     });
+    // still left out: wear different mics in different scenes (Colleen: keep going back to the same mic number whenever possible; if not, mixing is
+    // fine). Each scene takes a free mic, the one used last time first; a change of mic only ever happens at a scene change.
+    out.slice().forEach(function (u) {
+      var pick = [], last = -1;
+      for (var k = 0; k < sc[u.id].length; k++) {
+        var i = sc[u.id][k], free = [];
+        for (var m = 0; m < N; m++) if (!speak[m][i]) free.push(m);
+        if (!free.length) return;
+        var m2 = free.indexOf(last) >= 0 ? last : free.sort(function (a, b) { return mixCost(a, i) - mixCost(b, i); })[0];
+        pick.push([m2, i]); last = m2;
+      }
+      pick.forEach(function (x) { speak[x[0]][x[1]] = u.id; });
+      out.splice(out.indexOf(u), 1); u.split = true;
+    });
+    function mixCost(m, i) {      // a mic nobody needs near this scene is easiest to borrow
+      var c = 0; for (var j = Math.max(0, i - 1); j <= Math.min(S - 1, i + 1); j++) if (speak[m][j]) c++;
+      return c;
+    }
+
     // who wears each mic in each scene: the next person to speak on it puts it on in the scene change before (or the last speaker keeps it)
     var wear = speak.map(function (row) {
       var w = row.slice(), cur = null, first = row.find(Boolean) || null;
@@ -170,14 +189,18 @@
         var seq = []; r.wear[m].forEach(function (w, i) { if (w && (!seq.length || seq[seq.length - 1].w !== w)) seq.push({ w: w, from: i }); });
         return '<li><b>Mic ' + (m + 1) + ':</b> ' + (seq.length ? seq.map(function (x, k) { return esc(names[x.w]) + (k ? ' (from Scene ' + esc(O.scenes[x.from].num) + ')' : ''); }).join(' → ') : '<span class="muted">free</span>') + '</li>';
       }).join('') + '</ol>' +
+      (r.who.some(function (u) { return u.split; }) ? '<p class="small">' + sym('🔀') + 'Changes mic numbers (always at a scene change): ' + r.who.filter(function (u) { return u.split; }).map(function (u) {
+        return '<b>' + esc(names[u.id]) + '</b> (' + r.sc[u.id].map(function (i) { var m = r.speak.findIndex(function (row) { return row[i] === u.id; }); return 'Sc ' + esc(O.scenes[i].num) + ': Mic ' + (m + 1); }).join(', ') + ')';
+      }).join('; ') + '</p>' : '') +
       (r.out.length || r.hand.length ? '<div class="card"><h3>Not on a body mic</h3><ul>' + r.hand.map(function (u) { return '<li>🎤 <b>' + esc(names[u.id]) + '</b>: handheld (pinned)</li>'; }).join('') +
         r.out.map(function (u) { return '<li>⚠️ <b>' + esc(names[u.id]) + '</b> (' + r.tot[u.id] + ' lines, Scene ' + r.sc[u.id].map(function (i) { return O.scenes[i].num; }).join(', ') + '): ' + suggest(u) + '</li>'; }).join('') + '</ul></div>' : '') +
       '<div class="card noprint"><h3>Who needs a mic</h3><p class="muted small">Pin someone to a mic (or a handheld) and the plot is worked out again around them.</p><table class="tbl"><thead><tr><th>Who</th><th>Lines</th><th>Scenes</th><th>Mic</th></tr></thead><tbody>' +
       r.who.map(function (u) {
         var opts = '<option value="">Auto</option>' + r.speak.map(function (x, m) { return '<option value="' + (m + 1) + '"' + (String(M.pin[u.id]) === String(m + 1) ? ' selected' : '') + '>Mic ' + (m + 1) + '</option>'; }).join('') + '<option value="hand"' + (M.pin[u.id] === 'hand' ? ' selected' : '') + '>Handheld</option>';
-        var on = r.speak.findIndex(function (row) { return row.indexOf(u.id) >= 0; });
+        var mics = []; r.speak.forEach(function (row, m) { if (row.indexOf(u.id) >= 0) mics.push(m + 1); });
+        var on = mics.length ? mics[0] - 1 : -1;
         return '<tr><td><b>' + esc(names[u.id]) + '</b>' + (cast ? '<br><span class="small muted">' + esc(u.chars.map(function (c) { return T.charById(c).short; }).join(', ')) + '</span>' : '') + '</td><td>' + r.tot[u.id] + '</td><td class="small">' + r.sc[u.id].map(function (i) { return O.scenes[i].num; }).join(', ') +
-          '</td><td><select data-pin="' + esc(u.id) + '">' + opts + '</select> <span class="small muted">' + (on >= 0 ? 'now Mic ' + (on + 1) : M.pin[u.id] === 'hand' ? '' : 'no mic') + '</span></td></tr>';
+          '</td><td><select data-pin="' + esc(u.id) + '">' + opts + '</select> <span class="small muted">' + (on >= 0 ? 'now Mic ' + mics.join(' + ') : M.pin[u.id] === 'hand' ? '' : 'no mic') + '</span></td></tr>';
       }).join('') + '</tbody></table></div>';
     function swapList() {
       var w = T.micSwaps(), sn = function (i) { return 'Scene ' + O.scenes[i].num; };

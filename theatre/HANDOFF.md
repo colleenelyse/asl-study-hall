@@ -287,3 +287,7 @@ part music and part script now reads the script above the first song banner or s
 lines went from 357 to 389 (every centered speaker name in HSM JR is found but one, Jack Scott p78). Singer labels are placed where they sit along the
 staff: each lyric word goes to the label before it, so a staff line that changes singer is split (`pushLyric`); "+ TROY:" joins whoever is singing.
 Re-import the PDF to get these; importing clears lyrics timing only for songs whose lyric lines changed (find them again on Songs & tracks).
+Mic plot, more (Colleen: keep going back to the same mic number whenever possible; if not, mixing is fine; every switch at a scene change): someone
+who still will not fit on one mic now takes a free mic scene by scene (the one used last time first), so a change of mic only happens at a scene
+change; the page lists who changes numbers. HSM JR with Jack Scott and the Moderator on handhelds: Scenes 7 and 17 each have 10 people speaking or
+singing, so 10 body mics cover everyone (each on one mic number all show); 8 or 9 cannot.
