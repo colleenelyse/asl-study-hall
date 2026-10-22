@@ -568,10 +568,11 @@
       return '<div class="card off"><div class="head">' + sym('🚪') + '<div><div class="do">Off stage</div><div class="muted">' + mins(c.minutes) + '</div></div></div>' +
         (c.change ? '<div class="change">' + sym('👕') + 'Change into: ' + esc(c.change.name) + '</div>' : '') + '</div>';
     }
-    var s = c.scene, what;
-    if (c.song) what = sym('🎵') + (c.sing ? 'Singing “' + esc(c.song.title) + '”' : 'On stage for the song “' + esc(c.song.title) + '”');
+    var s = c.scene, what, place = c.moment.where && T.me.chars.map(function (id) { return c.moment.where[id]; }).filter(Boolean)[0];
+    if (c.song) what = sym('🎵') + (c.sing ? 'Singing “' + esc(c.song.title) + '”' : (place ? 'In the song “' : 'On stage for the song “') + esc(c.song.title) + '”');
     else what = sym('🗣️') + (c.lines ? 'Acting · ' + c.lines + ' line' + (c.lines === 1 ? '' : 's') : 'Acting (no lines: listen and react)');
     return '<div class="card on" style="--c:' + color(T.me.chars[0]) + '"><div class="head">' + sym(SCENE_SYM[s.icon] || '🎬') + '<div class="grow"><div class="muted small">Step ' + n + ' · Scene ' + s.num + ' · ' + esc(s.place) + '</div><div class="do">' + what + '</div></div></div>' +
+      (place ? '<p>' + sym('📍') + '<b>' + esc(place) + '</b></p>' : '') +
       (c.quickChange ? '<div class="change">' + sym('⚡') + 'Quick change first!</div>' : '') +
       (c.costume ? '<p>' + sym('👕') + 'Wearing: <b>' + esc(c.costume.name) + '</b></p>' : '') +
       '<p class="muted small">' + mins(c.minutes) + '</p></div>';

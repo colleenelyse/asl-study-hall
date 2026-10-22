@@ -104,6 +104,11 @@ Student supports added (research-backed, see the list Colleen was given 2026-10-
 - **Play the whole show** (My Songs): every song in order with the guide vocals, repeating, on an `<audio>` element so it plays with the screen off.
 - **Today**: the next class's job in large type with a Start button straight into the activity, then the rest of the shown weeks (a visual schedule).
 
+**Trench Crew** (Colleen's idea): a role for peers, group `helpers` ("Peer models"), not in the script. In "Get'cha Head in the Game" (k7) they are in the trench
+(the pit) facing the stage, modeling the choreography and catching stray basketballs. A moment's `where: { character: text }` says where someone is when it is
+not the stage; My Schedule shows it (📍) and says "In the song" instead of "On stage". Split song groups send peer models with the chorus (they model the dance).
+Teacher mode › On stage can add the Trench Crew to other numbers.
+
 Tests: `dev/test-api.mjs` (19), `dev/test-dates.js` (6), `dev/test-line-check.js`.
 
 ## Still to build

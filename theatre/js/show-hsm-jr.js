@@ -13,7 +13,7 @@ window.DEFAULT_SHOW = {
 
   groups: [
     { id: 'leads', name: 'Leads' }, { id: 'friends', name: 'Friends' }, { id: 'adults', name: 'Grown-ups' },
-    { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }
+    { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }, { id: 'helpers', name: 'Peer models' }
   ],
   characters: [
     { id: 'troy', name: 'Troy Bolton', short: 'Troy', group: 'leads', aliases: ['TROY'], desc: 'Captain of the basketball team. Everyone expects him to only play ball, but he finds out he loves to sing.' },
@@ -42,7 +42,9 @@ window.DEFAULT_SHOW = {
     { id: 'thespians', name: 'Thespians', short: 'Thespians', group: 'ensemble', aliases: ['THESPIANS'], desc: 'The drama club.' },
     { id: 'partykids', name: 'Party Kids', short: 'Party Kids', group: 'ensemble', aliases: ['PARTY KIDS'], desc: 'Teens at the New Year’s Eve party where Troy and Gabriella meet.' },
     { id: 'rebels', name: 'Rebels', short: 'Rebels', group: 'ensemble', aliases: ['REBELS'], desc: 'Students who break out of their group in “Stick to the Status Quo.”' },
-    { id: 'students', name: 'Students', short: 'Students', group: 'ensemble', aliases: ['STUDENTS', 'GROUP'], desc: 'Everyone else at East High.' }
+    { id: 'students', name: 'Students', short: 'Students', group: 'ensemble', aliases: ['STUDENTS', 'GROUP'], desc: 'Everyone else at East High.' },
+    /* not in the script: Colleen's idea (2026-10-21), peers in the trench for the basketball number */
+    { id: 'trench', name: 'Trench Crew', short: 'Trench Crew', group: 'helpers', aliases: [], desc: 'Peer models in the trench (the pit) for “Get’cha Head in the Game.” They do the choreography facing the stage so the cast can follow along, and they catch any basketball that bounces off the stage.' }
   ],
   /* speaker labels that mean several groups at once */
   labelGroups: { ALL: '*', CLIQUES: ['jocks', 'brainiacs', 'thespians', 'cheer'], 'JOCKS, BRAINIACS': ['jocks', 'brainiacs'] },
@@ -118,7 +120,7 @@ window.DEFAULT_SHOW = {
   ],
 
   /* the show in order, in moments a performer can picture: a stretch of talking, or one song.
-     on: who is on stage. '*' means the whole cast. big: a big group number: everyone in the ensemble and every small role joins
+     on: who is on stage. '*' means the whole cast. where: { character: where they are, if not on the stage itself }. big: a big group number: everyone in the ensemble and every small role joins
      (Colleen: as much stage time as possible; large group numbers include everyone, barring costume changes). out: taken off by the teacher. */
   moments: [
     { id: 'k1', scene: 's1', song: 'm1', on: '*' },
@@ -127,7 +129,7 @@ window.DEFAULT_SHOW = {
     { id: 'k4', scene: 's1', minutes: 3, on: ['troy', 'gabriella', 'chad', 'partykids'] },
     { id: 'k5', scene: 's2', minutes: 2.5, on: ['darbus', 'jack', 'troy', 'gabriella', 'chad', 'taylor', 'sharpay', 'ryan', 'kelsi', 'jocks', 'students'] },
     { id: 'k6', scene: 's3', minutes: 2, on: ['troy', 'gabriella', 'sharpay'] },
-    { id: 'k7', scene: 's4', song: 'm9', big: true, on: ['coach', 'troy', 'chad', 'zeke', 'jocks'] },
+    { id: 'k7', scene: 's4', song: 'm9', big: true, on: ['coach', 'troy', 'chad', 'zeke', 'jocks', 'trench'], where: { trench: 'In the trench (the pit), facing the stage: do the moves big so the cast can follow, and catch any basketball that bounces off' } },
     { id: 'k8', scene: 's4', minutes: 2, on: ['coach', 'troy', 'chad', 'zeke', 'jocks'] },
     { id: 'k9', scene: 's5', minutes: 2.5, on: ['tenny', 'gabriella', 'taylor', 'martha', 'kratnoff', 'brainiacs', 'sharpay', 'ryan', 'jack', 'students'] },
     { id: 'k10', scene: 's6', minutes: 3, on: ['darbus', 'coach', 'troy', 'gabriella', 'chad', 'taylor', 'sharpay', 'students'] },
@@ -181,6 +183,7 @@ window.DEFAULT_SHOW = {
     { id: 'c-sharpay-callback', who: 'sharpay', name: 'Callback costume', items: ['Sparkly performance outfit'], moments: ['k29', 'k30', 'k31', 'k33', 'k34', 'k35'] },
     { id: 'c-ryan-school', who: 'ryan', name: 'School outfit', items: ['Bright shirt', 'Hat', 'Vest'], moments: ['k1', 'k2', 'k5', 'k9', 'k11', 'k12', 'k13', 'k14', 'k17', 'k18', 'k19', 'k21', 'k26'] },
     { id: 'c-ryan-callback', who: 'ryan', name: 'Callback costume', items: ['Sparkly performance outfit', 'Hat'], moments: ['k29', 'k30', 'k31', 'k33', 'k34', 'k35'] },
-    { id: 'c-partykids', who: 'partykids', name: 'New Year’s party outfit', items: ['Party clothes', 'Party hat'], moments: ['k3', 'k4'] }
+    { id: 'c-partykids', who: 'partykids', name: 'New Year’s party outfit', items: ['Party clothes', 'Party hat'], moments: ['k3', 'k4'] },
+    { id: 'c-trench', who: 'trench', name: 'Trench Crew warm-ups', items: ['Wildcats T-shirt', 'Track pants', 'Sneakers', 'Sweatband'], moments: ['k7'] }
   ]
 };

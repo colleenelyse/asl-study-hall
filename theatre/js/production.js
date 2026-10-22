@@ -92,7 +92,8 @@
     if (g.everyone) return all;
     var ms = T.O().moments.filter(function (m) { return g.scenes.indexOf(m.scene) >= 0 || (m.song && g.songs.indexOf(m.song) >= 0); });
     return all.filter(function (c) {
-      if (g.only && (g.only === 'chorus') !== T.smallRole(T.charById(c))) return false;
+      var ch = T.charById(c), chorus = T.smallRole(ch) || (ch && ch.group === 'helpers');      // peer models go with the chorus: they model the dance
+      if (g.only && (g.only === 'chorus') !== chorus) return false;
       return ms.some(function (m) { return T.onFor(m, c); });
     });
   }
