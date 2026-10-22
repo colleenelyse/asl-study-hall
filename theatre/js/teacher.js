@@ -191,7 +191,7 @@
     // lyrics timing is kept per lyric line: a song whose lines now read differently needs its timing found again
     var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || 0) + it.lyrics.length; }); }); return o; };
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
-    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) delete LT[so.id]; });
+    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
     var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
     T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
@@ -472,6 +472,7 @@
       '<p class="row"><label class="btn">Add many band tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="performance" hidden></label>' +
       '<label class="btn">Add many guide-vocal tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="rehearsal" hidden></label>' +
       '<span class="muted small">Pick a whole folder’s files: each goes to its music number from the start of its name (07_Announcement Transition 1.mp3 is #7), songs and scene-change music alike.</span></p>' +
+      '<p class="row"><button class="btn" id="allpiano">🎹 Piano melody for every song</button><span class="muted small">The singer’s notes read from the sheet music, timed by the lyrics timing. Students turn it on in the song player.</span></p>' +
       '<p class="row"><button class="btn primary" id="alllyr">Find lyrics timing for every song</button><span class="muted small">For the sheet music with a moving guide. Songs that already have a ✓ are left alone.</span></p></div>' +
       '<table class="tbl"><thead><tr><th>Song</th><th>Rehearsal (guide vocals)</th><th>Performance</th><th>Melody line</th></tr></thead><tbody>' + O.songs.map(function (s) {
         var t = tr[s.id] || {}, cell = function (kind) {
@@ -482,6 +483,7 @@
         var m = mel[s.id];
         return '<tr><td><b>#' + esc(s.num) + '</b> ' + esc(s.title) + '</td>' + cell('rehearsal') + cell('performance') +
           '<td>' + (m ? '<span class="tag">' + m.notes.length + ' notes</span> ' : '') + '<button class="btn small" data-mel="' + s.id + '"' + (t.rehearsal && t.performance ? '' : ' disabled title="Upload both tracks first"') + '>' + (m ? 'Make again' : 'Make melody line') + '</button>' +
+          ' <button class="btn small" data-piano="' + s.id + '"' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? '' : ' disabled title="Find the lyrics timing first"') + '>' + (T.show.sheetMelody && T.show.sheetMelody[s.id] ? '🎹 Piano ✓ ' + T.show.sheetMelody[s.id].notes.length + ' notes' : '🎹 Piano from the sheet music') + '</button>' +
           ' <a class="btn small" href="#/teacher/songs/lyrics/' + s.id + '">' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? 'Lyrics timing ✓' : 'Lyrics timing') + '</a>' +
           ' <a class="btn small" href="#/teacher/songs/cues/' + s.id + '">' + (T.show.underscore && T.show.underscore[s.id] ? 'Lines over the music ✓' : 'Lines over the music') + '</a></td></tr>';
       }).join('') + '</tbody></table>' + changeMusic() + '<p id="st" class="muted" role="status"></p>';
@@ -513,6 +515,23 @@
         }).then(function () { if (location.hash === '#/teacher/songs') songsPage(); }).catch(function (e) { st.textContent = ''; T.toast(e.message || 'That file would not open as audio.', 4000); });
       };
     });
+    app.querySelectorAll('button[data-piano]').forEach(function (b) {
+      b.onclick = function () {
+        var id = b.dataset.piano; b.disabled = true; st.textContent = 'Reading the notes on the sheet music…';
+        makePiano(id).then(function (n) { return save(n + ' piano notes saved'); }).then(function () { songsPage(); })
+          .catch(function (e) { b.disabled = false; st.textContent = ''; T.toast(e.message || 'Could not read the notes.', 5000); });
+      };
+    });
+    document.getElementById('allpiano').onclick = function () {
+      var b = this, todo = O.songs.filter(function (s) { return T.show.lyricTimes && T.show.lyricTimes[s.id]; }), done = 0, miss = [];
+      if (!todo.length) { T.toast('Find the lyrics timing first (the button below).', 4000); return; }
+      b.disabled = true;
+      todo.reduce(function (p, s, k) {
+        return p.then(function () { st.textContent = 'Reading the notes for “' + s.title + '” (' + (k + 1) + ' of ' + todo.length + ')…'; return makePiano(s.id).then(function (n) { if (n) done++; else miss.push(s.title); }, function () { miss.push(s.title); }); });
+      }, Promise.resolve()).then(function () { return save('Piano melody saved for ' + done + ' songs'); }).then(function () {
+        songsPage(); document.getElementById('st').textContent = 'Piano melody for ' + done + ' of ' + todo.length + ' songs.' + (miss.length ? ' Not read: ' + miss.join(', ') + '.' : '');
+      });
+    };
     app.querySelectorAll('input[data-many]').forEach(function (inp) {
       inp.onchange = function () {
         var kind = inp.dataset.many, files = [].slice.call(inp.files), nums = T.Cues ? T.Cues.musicNumbers() : {}, done = 0, skip = [];
@@ -548,7 +567,7 @@
       todo.reduce(function (p, s, k) {
         return p.then(function () {
           st.textContent = 'Listening to “' + s.title + '” (' + (k + 1) + ' of ' + todo.length + ')… about a minute each.';
-          return autoLyrics(s.id).then(function (r) { if (r.n) { L[s.id] = { kind: 'performance', lines: r.lines }; done++; } else miss.push(s.title); }, function () { miss.push(s.title); });
+          return autoLyrics(s.id).then(function (r) { if (r.n) { L[s.id] = { kind: 'performance', lines: r.lines }; done++; return makePiano(s.id).catch(function () {}); } else miss.push(s.title); }, function () { miss.push(s.title); });
         });
       }, Promise.resolve()).then(function () {
         return save('Lyrics timing saved for ' + done + ' song' + (done === 1 ? '' : 's'));
@@ -647,6 +666,16 @@
   /* when each lyric line (and syllable) is sung, for the bouncing ball on the real pages: found in the guide vocals (the singing left when the
      band track is taken away, lyric lines matched in order to sung stretches, syllables to the sung notes), or tapped by hand; nudge, test, save.
      T.show.lyricTimes[song] = { kind: 'performance', lines: [{ t, e, s: [syllable starts] }] } on the band track's clock, in the script's lyric order. */
+  /* the piano melody from the sheet music (sheet-melody.js), made from the lyrics timing */
+  function makePiano(songId) {
+    return SheetMelody.make(songId).then(function (notes) {
+      var P = T.show.sheetMelody = T.show.sheetMelody || {};
+      if (notes.length) P[songId] = { notes: notes, made: Date.now() }; else delete P[songId];
+      return notes.length;
+    });
+  }
+  T.makePiano = makePiano;
+
   function lyricItem(songId) {
     var song = T.songById(songId), scene = song && T.sceneById(song.scene), src = scene && T.scriptScene(scene);
     return src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
@@ -702,7 +731,7 @@
         var base = function (v) { return kind === 'performance' ? v : v - off; };
         if (!times.some(Boolean)) { delete L[songId]; return save('Cleared'); }
         L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: x.s.map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
-        save('Lyrics timing saved');
+        makePiano(songId).catch(function () {}).then(function () { save('Lyrics timing saved (and the piano melody with it)'); });
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); draw(); }; });
       app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, x.t - 1); audio.play(); draw(); }); }; });

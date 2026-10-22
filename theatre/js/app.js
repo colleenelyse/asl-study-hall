@@ -833,7 +833,8 @@
       var mine = l.who && isMine(l.who, scene, null, songMoment(song));
       return '<div class="lyric' + (mine ? ' mine' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + '</span>' : '') + esc(l.text) + '</div>';
     }).join('') : '<p class="muted">' + (T.show.script ? 'No lyrics for this song in the script.' : 'Lyrics appear after your teacher adds the script.') + '</p>';
-    var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!(mel && mel.notes && mel.notes.length) };
+    var piano = T.show.sheetMelody && T.show.sheetMelody[song.id];      // the singer's notes read from the sheet music, played as a piano
+    var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
       (canFollow ? '<div id="follow" class="pages" style="margin-bottom:14px"></div>' : item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + (T.Pages && T.Pages.ready() ?
@@ -865,7 +866,7 @@
       P.gp.gain.value = st.guide && P.buf.guide ? 0 : 1; P.gg.gain.value = st.guide ? 1 : 0;
       if (P.buf.perf) { var a = ctx.createBufferSource(); a.buffer = P.buf.perf; a.connect(P.gp); a.start(P.t0, at); P.nodes.push(a); }
       if (P.buf.guide) { var g = ctx.createBufferSource(); g.buffer = P.buf.guide; g.connect(P.gg); var gat = P.buf.perf ? at + P.offset : at; if (gat >= 0) g.start(P.t0, gat); else g.start(P.t0 - gat, 0); P.nodes.push(g); }
-      if (st.melody && has.mel) P.mel = Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
+      if (st.melody && has.mel) P.mel = piano && piano.notes.length ? SheetMelody.schedule(ctx, P.master, piano.notes, P.t0, at, { volume: 0.3 }) : Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
       tick(); drawBtns();
     }
     function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); }
@@ -891,7 +892,7 @@
         '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song">' +
         keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
-        sw('melody', 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
+        sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
         sw('follow', 'Bouncing ball on the music', !!canFollow, 'your teacher has not timed the lyrics yet') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
         '<div class="row" style="margin-top:10px">' + icon('loop') + '<button class="btn small" id="la">Loop from here</button><button class="btn small" id="lb">to here</button><button class="btn small quiet" id="lc">No loop</button><span class="muted small" id="lt"></span></div>';

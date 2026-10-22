@@ -310,3 +310,12 @@ song (`isMine(label, scene, chars, moment)`, `T.songMomentFor`), not everyone an
 are no longer Gabriella's. Singer labels: read from the text on the line only (a time signature or sharp beside "RYAN:" no longer hides it), a
 label split over two lines ("SHARPAY," / "RYAN:") is joined, a label in pieces ("MS." "DARBUS:") is read, and a lone "SHARPAY," is never a lyric.
 HSM JR: 386 spoken lines (three junk lines gone), 515 sung lines, every one with a singer. Re-import the PDF to get it.
+
+**Piano melody from the sheet music** (Colleen: a piano plunks the vocal notes, from the top line of music with lyrics; no notes where nobody
+sings): js/sheet-melody.js. Staff lines and barlines from the page's drawing (pdf.js operator list, following save/restore/transform); noteheads
+from the Maestro music font (œ ˙ w; ¿ = rhythm-only for spoken words, skipped); pitch from the note's height (treble clef), key signatures
+(after the clef or partway along) and accidentals to the next barline; top note of a chord. Only the staff a lyric line sits under; with two vocal
+staves at once, the upper one. Each note is timed by the lyrics timing (a note over a syllable starts with it; others placed by position), so it
+follows the recording. `T.show.sheetMelody[songId] = { notes: [{ t, d, midi }] }`; the song player's melody switch plays it as a piano
+(`SheetMelody.schedule`) when it exists, else the old tone. Songs & tracks: 🎹 per song and "Piano melody for every song"; finding or saving lyrics
+timing remakes it; an import that changes a song's lyrics clears it.
