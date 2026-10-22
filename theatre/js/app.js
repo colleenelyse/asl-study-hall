@@ -828,7 +828,8 @@
     var trk = (T.show.tracks && T.show.tracks[song.id]) || {}, mel = T.show.melody && T.show.melody[song.id];
     var s = scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
     var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
-    var canFollow = T.Follow && T.Follow.ready(song.id);      // the real pages with a bouncing ball
+    var canFollow = T.Follow && T.Follow.ready(song.id);      // a bouncing ball (needs the lyrics timing)
+    var canSheet = T.Follow && T.Follow.canShow(song.id);      // the song's real sheet music pages (need only the script PDF)
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
       var mine = l.who && isMine(l.who, scene, null, songMoment(song));
       return '<div class="lyric' + (mine ? ' mine' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + '</span>' : '') + esc(l.text) + '</div>';
@@ -837,10 +838,15 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
-      (canFollow ? '<div id="follow" class="pages" style="margin-bottom:14px"></div>' : item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + (T.Pages && T.Pages.ready() ?
-        'The real sheet music with a moving guide shows here once your teacher saves this song’s lyrics timing (Teacher › Songs & tracks › Lyrics timing).' :
-        'The real sheet music with a moving guide shows here once your teacher imports the script PDF.') + '</p>' : '') +
+      (canSheet ? '<div class="row noprint" style="margin:0 0 8px"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ' with the bouncing ball' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label></div>' +
+        '<div id="follow" class="pages" style="margin-bottom:14px"' + (st.follow ? '' : ' hidden') + '></div>' +
+        (canFollow ? '' : '<p class="muted small">' + sym('⚪') + 'The bouncing ball comes once your teacher finds this song’s lyrics timing.</p>') :
+        item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + 'The real sheet music shows here once your teacher imports the script PDF.</p>' : '') +
       '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
+    // the sheet music shows right away, with or without a track
+    var fh0 = document.getElementById('follow'), ss = document.getElementById('showsheet');
+    if (fh0 && st.follow) T.Follow.mount(fh0, song.id);
+    if (ss) ss.onchange = function () { st.follow = ss.checked; ls('songOpts', st); fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id); };
     if (!(has.perf || has.guide)) return;
     var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: (mel && mel.offset) || 0 };
     var ctx = audioCtx();
@@ -893,7 +899,6 @@
         keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
         sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
-        sw('follow', 'Bouncing ball on the music', !!canFollow, 'your teacher has not timed the lyrics yet') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
         '<div class="row" style="margin-top:10px">' + icon('loop') + '<button class="btn small" id="la">Loop from here</button><button class="btn small" id="lb">to here</button><button class="btn small quiet" id="lc">No loop</button><span class="muted small" id="lt"></span></div>';
       document.getElementById('spp').onclick = function () { P.playing ? pause() : start(P.pos); };
@@ -914,7 +919,6 @@
       document.getElementById('la').onclick = function () { P.loopA = now(); if (P.loopB != null && P.loopB <= P.loopA) P.loopB = null; lt(); };
       document.getElementById('lb').onclick = function () { var t = now(); if (t > (P.loopA || 0) + 1) { P.loopB = t; lt(); if (P.playing) start(P.loopA || 0); } };
       document.getElementById('lc').onclick = function () { P.loopA = P.loopB = null; lt(); };
-      var fh0 = document.getElementById('follow'); if (fh0) { fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id); }
       tick();
     }
     keys({ Space: function () { var b = document.getElementById('spp'); if (b) b.click(); }, ArrowLeft: function () { var b = document.getElementById('sb'); if (b) b.click(); } });

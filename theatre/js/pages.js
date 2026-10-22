@@ -89,7 +89,8 @@
   }
   function songPages(it) {
     var lo = 1e9, hi = 0;
-    (it.boxes || []).concat(it.lyrics.map(function (l) { return l.box; }).filter(Boolean)).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); });
+    var lyr = it.lyrics.map(function (l) { return l.box; }).filter(Boolean);      // the song's own music (its cue can sit on the page before)
+    (lyr.length ? lyr : it.boxes || []).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); });
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
   function paint(host, pages) {      // draw pages into placeholders that are there and still empty
@@ -104,7 +105,8 @@
     });
   }
   T.Follow = {
-    ready: function (songId) { var lt = T.show.lyricTimes && T.show.lyricTimes[songId]; return !!(T.Pages.ready() && lt && songItem(songId)); },
+    ready: function (songId) { var lt = T.show.lyricTimes && T.show.lyricTimes[songId]; return !!(T.Pages.ready() && lt && songItem(songId)); },      // the ball (needs the lyrics timing)
+    canShow: function (songId) { return !!(T.Pages && T.Pages.ready() && songItem(songId)); },      // the song's pages (need only the script PDF)
     /* show the song's pages in host (or reuse the pages already there, in a scene's page view) */
     mount: function (host, songId) {
       var it = songItem(songId); if (!it) return Promise.resolve();

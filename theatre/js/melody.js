@@ -243,8 +243,11 @@
     for (var i = 0; i <= n; i++) { f.push(new Array(m + 1).fill(INF)); back.push(new Array(m + 1).fill(null)); }
     f[0][0] = 0;
     for (var j = 1; j <= m; j++) { f[0][j] = f[0][j - 1] + SKIP; back[0][j] = [0, j - 1]; }
+    var SKIPLINE = 1.2;      // a line with no stretch of its own (a one-word piece sung in the same breath as its neighbor): filled in afterwards
+    for (i = 1; i <= n; i++) { f[i][0] = f[i - 1][0] + SKIPLINE; back[i][0] = [i - 1, 0]; }
     for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
       if (f[i][j - 1] + SKIP < f[i][j]) { f[i][j] = f[i][j - 1] + SKIP; back[i][j] = [i, j - 1]; }
+      if (f[i - 1][j] + SKIPLINE < f[i][j]) { f[i][j] = f[i - 1][j] + SKIPLINE; back[i][j] = [i - 1, j]; }
       for (var w = 1; w <= 4 && j - w >= 0; w++) {
         var a = R[j - w], b = R[j - 1], gaps = 0;
         for (var q = j - w; q < j - 1; q++) gaps += R[q + 1].s - R[q].e;
@@ -256,6 +259,19 @@
     var bj = 0; for (j = 0; j <= m; j++) if (f[n][j] < f[n][bj]) bj = j;
     var out = new Array(n).fill(null), ci = n, cj = bj;
     while (ci > 0 || cj > 0) { var bk = back[ci][cj]; if (!bk) break; if (bk.length === 4) out[ci - 1] = { t: bk[2], e: bk[3] }; ci = bk[0]; cj = bk[1]; }
+    // a skipped line shares the stretch of the found line before it (or after it, at the start), by syllables
+    for (i = 0; i < n; i++) {
+      if (!out[i] || (out[i + 1] !== null && i + 1 < n) || i + 1 >= n) continue;
+      var k = i + 1; while (k < n && !out[k]) k++;
+      var grp = []; for (q = i; q < k; q++) grp.push(q);
+      shareOut(grp);
+    }
+    if (n && !out[0]) { var f0 = out.findIndex(Boolean); if (f0 > 0) { var g0 = []; for (q = 0; q <= f0; q++) g0.push(q); shareOut(g0, f0); } }
+    function shareOut(idx, from) {
+      var src = out[from == null ? idx[0] : from], tot = 0, acc = 0;
+      idx.forEach(function (q) { tot += syls[q] || 1; });
+      idx.forEach(function (q) { var t0 = src.t + (src.e - src.t) * acc / tot; acc += syls[q] || 1; out[q] = { t: +t0.toFixed(2), e: +(src.t + (src.e - src.t) * acc / tot).toFixed(2) }; });
+    }
     return out;
   }
   /* when each of k syllables starts inside one line: the sung notes that begin there, spread evenly (a held note or a run of notes on one

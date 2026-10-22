@@ -319,3 +319,11 @@ staves at once, the upper one. Each note is timed by the lyrics timing (a note o
 follows the recording. `T.show.sheetMelody[songId] = { notes: [{ t, d, midi }] }`; the song player's melody switch plays it as a piano
 (`SheetMelody.schedule`) when it exists, else the old tone. Songs & tracks: 🎹 per song and "Piano melody for every song"; finding or saving lyrics
 timing remakes it; an import that changes a song's lyrics clears it.
+
+**Sheet music always on the song page; guide vocals in Lyrics timing** (Colleen: "i still don't see the pdf of the sheet music to follow along";
+"when i do lyric timing… play the guide vocal version so i can hear it"): the song player shows the song's real pages as soon as the script PDF
+is saved (`T.Follow.canShow`), with or without a track or lyrics timing, behind a "Sheet music" switch; the bouncing ball joins once the lyrics
+are timed. A song's pages start at its own music (its lyrics), not the page with its cue. Lyrics timing plays the guide vocals when uploaded:
+times are shown and tapped on the guide's clock and saved on the band track's clock, using the two tracks' offset (`T.show.trackOffset`, worked
+out once, or from Find). The lyric matcher (`Melody.alignLyrics`) may skip a line with no stretch of its own (a one-word piece sung in one breath
+with its neighbor, now that lines split at singer names) and gives it its share of the neighbor's time by syllables.
