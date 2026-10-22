@@ -107,7 +107,7 @@
       (T.Pages && T.Pages.ready() ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
       (T.Pages && T.Pages.ready() ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
       (T.Pages && T.Pages.ready() ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '') +
-      (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', ((T.show.micPlot && T.show.micPlot.n) || 8) + ' body mics') : '') +
+      (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '') +
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +

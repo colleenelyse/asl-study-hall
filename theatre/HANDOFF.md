@@ -291,3 +291,5 @@ Mic plot, more (Colleen: keep going back to the same mic number whenever possibl
 who still will not fit on one mic now takes a free mic scene by scene (the one used last time first), so a change of mic only happens at a scene
 change; the page lists who changes numbers. HSM JR with Jack Scott and the Moderator on handhelds: Scenes 7 and 17 each have 10 people speaking or
 singing, so 10 body mics cover everyone (each on one mic number all show); 8 or 9 cannot.
+The show file can carry a starting mic plot (`micPlot` in show-hsm-jr.js: 10 mics, Jack Scott and the Moderator on handhelds); a plot saved
+before (no `v`) moves to it once, keeping the station and helper (`T.micSettings`). Pins can be on a character or an actor.

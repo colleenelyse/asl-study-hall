@@ -11,6 +11,14 @@
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
 
+  function settings() {
+    var D = window.DEFAULT_SHOW, M = T.show.micPlot;      // a show saved before micPlot was in the show file takes it from there (same show)
+    var d = T.O().micPlot || (D && D.title === T.O().title && D.micPlot) || { n: 8, pin: {} };
+    if (!M || !M.v) M = { v: 2, n: d.n, pin: Object.assign({}, d.pin), where: M && M.where, helper: M && M.helper };
+    return M;
+  }
+  T.micSettings = settings;
+
   function units() {      // the people who wear mics: actors when cast (all their characters), otherwise characters
     var cast = (T.show.cast || []).filter(function (a) { return (a.chars || []).length; }), byChar = {}, list = [];
     if (cast.length) cast.forEach(function (a) { list.push({ id: a.id, name: a.name.split(' ')[0], chars: a.chars }); a.chars.forEach(function (c) { byChar[c] = a.id; }); });
@@ -44,6 +52,8 @@
     var d = needs(), S = d.per.length, tot = {}, sc = {};
     d.U.list.forEach(function (u) { var s = [], t = 0; d.per.forEach(function (p, i) { if (p[u.id]) { s.push(i); t += p[u.id].s + p[u.id].g; } }); sc[u.id] = s; tot[u.id] = t; });
     var who = d.U.list.filter(function (u) { return sc[u.id].length; }).sort(function (a, b) { return tot[b.id] - tot[a.id]; });
+    var pinOf = {}; who.forEach(function (u) { var p = pin[u.id]; u.chars.forEach(function (c) { if (!p && pin[c]) p = pin[c]; }); if (p) pinOf[u.id] = p; });
+    pin = pinOf;
     var speak = []; for (var m = 0; m < N; m++) speak.push(new Array(S).fill(null));
     var out = [], hand = [], place = function (u, m) { sc[u.id].forEach(function (i) { speak[m][i] = u.id; }); };
     var cost = function (u, m) {
@@ -115,7 +125,7 @@
   /* the swaps, in show order (Colleen: written into each performer's track: give up or get a mic, when, where, and who is helping).
      A mic changes hands after the giver's last scene on it and before the next person's first scene; the helper meets them at the mic station. */
   function swaps() {
-    var M = T.show.micPlot || { n: 8, pin: {} }, r = plan(M.n || 8, M.pin || {}), O = T.O(), names = {}, out = [];
+    var M = settings(), r = plan(M.n || 8, M.pin || {}), O = T.O(), names = {}, out = [];
     r.d.U.list.forEach(function (u) { names[u.id] = u.name; });
     r.speak.forEach(function (row, m) {
       var runs = []; row.forEach(function (u, i) { if (!u) return; var l = runs[runs.length - 1]; if (l && l.u === u) l.to = i; else runs.push({ u: u, from: i, to: i }); });
@@ -132,10 +142,10 @@
   T.micSwaps = swaps;
   /* one person's mic steps: [{ scene index, before|after, text, quick }] (chars: their characters; actorId when cast) */
   T.micSteps = function (chars, actorId) {
-    if (!T.show.script || !T.show.micPlot) return [];
+    if (!T.show.script) return [];
     var w = swaps(), cast = (T.show.cast || []).some(function (a) { return (a.chars || []).length; }), O = T.O();      // units: actor ids when cast, character ids for roles not cast yet
     var mine = function (u) { return (cast && actorId && u === actorId) || chars.indexOf(u) >= 0; }, sn = function (i) { return O.scenes[i] ? 'Scene ' + O.scenes[i].num : ''; };
-    var out = [], helping = w.plan.d.U.list.length && (T.show.micPlot.helper && T.show.micPlot.helper === actorId);
+    var M = settings(), out = [], helping = !!(M.helper && M.helper === actorId);
     w.list.forEach(function (x) {
       if (mine(x.u)) {
         if (x.kind === 'get') out.push(x.at < 0 ? { i: 0, when: 'before', mic: x.mic, text: 'Before the show: put on Mic ' + x.mic + ' (' + w.helper + ' helps you at ' + w.where + ').' } :
@@ -151,8 +161,8 @@
   T.teacherPages.mics = function () {
     T.setBar('Mic plot', '#/teacher');
     if (!T.show.script) { app.innerHTML = '<div class="card"><p>Import the script first: the plot is worked out from who speaks and sings in each scene.</p></div>'; return; }
-    var fresh = !T.show.micPlot, M = T.show.micPlot = T.show.micPlot || { n: 8, pin: {} }, O = T.O();
-    if (fresh) T.saveShow('Mic plot made: performers see their mic swaps in My Schedule');
+    var fresh = !T.show.micPlot || !T.show.micPlot.v, M = T.show.micPlot = settings(), O = T.O();
+    if (fresh) T.saveShow('Mic plot for ' + M.n + ' mics saved: performers see their mic swaps in My Schedule');
     var r = plan(M.n, M.pin), names = {}; r.d.U.list.forEach(function (u) { names[u.id] = u.name; });
     var swaps = 0; r.wear.forEach(function (row) { for (var i = 1; i < row.length; i++) if (row[i] && row[i - 1] && row[i] !== row[i - 1]) swaps++; });
     var lines = 0, covered = 0; r.who.forEach(function (u) { lines += r.tot[u.id]; if (r.out.indexOf(u) < 0 && r.hand.indexOf(u) < 0) covered += r.tot[u.id]; });
@@ -172,7 +182,7 @@
       '<label class="row" style="gap:6px">Mic helper <select id="mh"><option value="">' + esc(M.helperName || 'Someone on crew') + '</option>' + (T.show.cast || []).map(function (a) { return '<option value="' + esc(a.id) + '"' + (M.helper === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
       '<span class="grow"></span><button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div>' +
       (function () {
-        var over = O.scenes.map(function (sc, i) { return { s: sc, n: Object.keys(r.d.per[i]).length }; }).filter(function (x) { return x.n > M.n; });
+        var over = O.scenes.map(function (sc, i) { return { s: sc, n: Object.keys(r.d.per[i]).filter(function (u) { return !r.hand.some(function (h) { return h.id === u; }); }).length }; }).filter(function (x) { return x.n > M.n; });      // handheld people don't need a body mic
         return over.length ? '<p class="err" style="margin-top:8px">' + sym('⚠️') + 'More people speak or sing than there are mics in ' + over.map(function (x) { return 'Scene ' + esc(x.s.num) + ' (' + x.n + ' people)'; }).join(', ') + ': someone there needs a handheld or a shared mic.</p>' : '';
       })() +
       '<p class="muted small">Bold: speaks or sings in that scene. “Wearing it”: keeps the mic on until the next swap. ↻ swap: the mic changes hands in the scene change before. Group singing (ALL, JOCKS…) is for area or choir mics.</p></div>' +
@@ -196,11 +206,12 @@
         r.out.map(function (u) { return '<li>⚠️ <b>' + esc(names[u.id]) + '</b> (' + r.tot[u.id] + ' lines, Scene ' + r.sc[u.id].map(function (i) { return O.scenes[i].num; }).join(', ') + '): ' + suggest(u) + '</li>'; }).join('') + '</ul></div>' : '') +
       '<div class="card noprint"><h3>Who needs a mic</h3><p class="muted small">Pin someone to a mic (or a handheld) and the plot is worked out again around them.</p><table class="tbl"><thead><tr><th>Who</th><th>Lines</th><th>Scenes</th><th>Mic</th></tr></thead><tbody>' +
       r.who.map(function (u) {
-        var opts = '<option value="">Auto</option>' + r.speak.map(function (x, m) { return '<option value="' + (m + 1) + '"' + (String(M.pin[u.id]) === String(m + 1) ? ' selected' : '') + '>Mic ' + (m + 1) + '</option>'; }).join('') + '<option value="hand"' + (M.pin[u.id] === 'hand' ? ' selected' : '') + '>Handheld</option>';
+        var pv = M.pin[u.id] || u.chars.map(function (c) { return M.pin[c]; }).filter(Boolean)[0];      // a pin on the actor, or on one of their characters
+        var opts = '<option value="">Auto</option>' + r.speak.map(function (x, m) { return '<option value="' + (m + 1) + '"' + (String(pv) === String(m + 1) ? ' selected' : '') + '>Mic ' + (m + 1) + '</option>'; }).join('') + '<option value="hand"' + (pv === 'hand' ? ' selected' : '') + '>Handheld</option>';
         var mics = []; r.speak.forEach(function (row, m) { if (row.indexOf(u.id) >= 0) mics.push(m + 1); });
         var on = mics.length ? mics[0] - 1 : -1;
         return '<tr><td><b>' + esc(names[u.id]) + '</b>' + (cast ? '<br><span class="small muted">' + esc(u.chars.map(function (c) { return T.charById(c).short; }).join(', ')) + '</span>' : '') + '</td><td>' + r.tot[u.id] + '</td><td class="small">' + r.sc[u.id].map(function (i) { return O.scenes[i].num; }).join(', ') +
-          '</td><td><select data-pin="' + esc(u.id) + '">' + opts + '</select> <span class="small muted">' + (on >= 0 ? 'now Mic ' + mics.join(' + ') : M.pin[u.id] === 'hand' ? '' : 'no mic') + '</span></td></tr>';
+          '</td><td><select data-pin="' + esc(u.id) + '">' + opts + '</select> <span class="small muted">' + (on >= 0 ? 'now Mic ' + mics.join(' + ') : pv === 'hand' ? '' : 'no mic') + '</span></td></tr>';
       }).join('') + '</tbody></table></div>';
     function swapList() {
       var w = T.micSwaps(), sn = function (i) { return 'Scene ' + O.scenes[i].num; };
@@ -218,6 +229,8 @@
     document.getElementById('mw').onchange = function () { M.where = this.value.trim() || 'the mic table, stage left'; T.saveShow('Mic station saved').then(T.teacherPages.mics); };
     document.getElementById('mh').onchange = function () { if (this.value) M.helper = this.value; else delete M.helper; T.saveShow('Mic helper saved').then(T.teacherPages.mics); };
     document.getElementById('mn').onchange = function () { var v = Math.max(1, Math.min(40, parseInt(this.value, 10) || 8)); M.n = v; T.saveShow('Mic plot for ' + v + ' mics').then(T.teacherPages.mics); };
-    app.querySelectorAll('[data-pin]').forEach(function (s) { s.onchange = function () { if (s.value) M.pin[s.dataset.pin] = s.value; else delete M.pin[s.dataset.pin]; T.saveShow('Mic plot saved').then(T.teacherPages.mics); }; });
+    app.querySelectorAll('[data-pin]').forEach(function (s) { s.onchange = function () {
+      var u = r.who.find(function (x) { return x.id === s.dataset.pin; }); (u ? u.chars : []).forEach(function (c) { delete M.pin[c]; });
+      if (s.value) M.pin[s.dataset.pin] = s.value; else delete M.pin[s.dataset.pin]; T.saveShow('Mic plot saved').then(T.teacherPages.mics); }; });
   };
 })();

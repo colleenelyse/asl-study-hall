@@ -105,6 +105,9 @@ window.DEFAULT_SHOW = {
       sensory: ['Game buzzer', 'Loud cheering and applause', 'Bows at the end'] }
   ],
 
+  // the mic plot this show starts from (Colleen 2026-10-22: plan for 10 body mics; Jack Scott and the Moderator use a handheld)
+  micPlot: { n: 10, pin: { jack: 'hand', moderator: 'hand' } },
+
   songs: [
     { id: 'm1', num: '1', title: 'Wildcat Cheer', scene: 's1', page: 1, minutes: 1.5 },
     { id: 'm2', num: '2', title: 'Start of Something New', scene: 's1', page: 3, minutes: 3.5 },
