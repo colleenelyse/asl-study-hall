@@ -304,3 +304,9 @@ sets `data-show` on the page (`T.showTheme`, `applyTheme`; a show saved before t
 East High: school red and white tokens (light and dark), the Graduate varsity font for the title bar and banner only (`--font-show`), pennant
 stripe under the bar, a school-color top on tiles, and `T.showBanner()` on the student and teacher home pages (a basketball and spotlight drawn
 in SVG for the app). A student's own color, page tint and high contrast still win. Nothing from Disney (no logo, show art or movie fonts).
+
+**Highlighting fix** (Colleen: Gabriella's script lit up Jack Scott / Ms. Darbus lines): ALL in a sung line now means everyone on stage for that
+song (`isMine(label, scene, chars, moment)`, `T.songMomentFor`), not everyone anywhere in the scene, so the auditioners' ALL lines in "Auditions"
+are no longer Gabriella's. Singer labels: read from the text on the line only (a time signature or sharp beside "RYAN:" no longer hides it), a
+label split over two lines ("SHARPAY," / "RYAN:") is joined, a label in pieces ("MS." "DARBUS:") is read, and a lone "SHARPAY," is never a lyric.
+HSM JR: 386 spoken lines (three junk lines gone), 515 sung lines, every one with a singer. Re-import the PDF to get it.

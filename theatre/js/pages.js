@@ -155,7 +155,7 @@
       var inScene = chars.length && T.O().moments.some(function (m) { return m.scene === scene.id && T.onStage(m, chars); });
       src.items.forEach(function (it) {
         if (it.type === 'line' && chars.length && T.isMine(it.who, scene, chars)) T.Pages.wordBoxes(it).forEach(function (b) { mineLines.push(b); });
-        if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.box && l.who && chars.length && T.isMine(l.who, scene, chars)) mineLyr.push(l.box); });
+        if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.box && l.who && chars.length && T.isMine(l.who, scene, chars, mo)) mineLyr.push(l.box); }); }
       });
       if (inScene) scenePages(src).forEach(function (n) { bandPages[n] = 'Scene ' + scene.num; });
     });

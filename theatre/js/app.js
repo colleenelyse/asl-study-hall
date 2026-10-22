@@ -104,20 +104,24 @@
   function onStage(moment, chars) { return chars.some(function (c) { return onFor(moment, c); }); }
   T.onStage = onStage; T.onFor = onFor; T.smallRole = smallRole;
   function inScene(scene, chars) { return O().moments.some(function (m) { return m.scene === scene.id && onStage(m, chars); }); }
-  /* is this label me? ALL counts when I am in the scene */
-  function isMine(label, scene, chars) {
+  /* is this label me? ALL counts when I am on stage: for a sung line, on stage for that song (moment); for a spoken line, anywhere in the scene
+     (Colleen 2026-10-22: Gabriella's script lit up the auditioners' ALL lines in "Auditions", a song she is not in) */
+  function isMine(label, scene, chars, moment) {
     chars = chars || T.me.chars;
     var ids = labelChars(label);
-    if (ids.indexOf('*') >= 0) return inScene(scene, chars);
+    if (ids.indexOf('*') >= 0) return moment ? onStage(moment, chars) : inScene(scene, chars);
     return ids.some(function (id) { return chars.indexOf(id) >= 0; });
   }
   T.isMine = isMine;
   function myLines(scene) { var s = scriptScene(scene); if (!s) return 0; return s.items.filter(function (it) { return it.type === 'line' && isMine(it.who, scene); }).length; }
   function songMoment(song) { return O().moments.find(function (m) { return m.song === song.id; }); }
+  /* the moment of a song item in a scene's script (by its number) */
+  T.songMomentFor = function (scene, num) { var so = O().songs.find(function (x) { return x.scene === scene.id && String(x.num) === String(num); }); return so ? songMoment(so) : null; };
   function iSing(song, scene) {
     var s = scene && scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
     if (!item) return null;
-    return item.singers.some(function (l) { return isMine(l, scene); }) || item.lyrics.some(function (l) { return l.who && isMine(l.who, scene); });
+    var mo = songMoment(song);
+    return item.singers.some(function (l) { return isMine(l, scene, null, mo); }) || item.lyrics.some(function (l) { return l.who && isMine(l.who, scene, null, mo); });
   }
   function songMinutes(song) { var t = T.show.tracks && T.show.tracks[song.id], d = t && ((t.performance && t.performance.dur) || (t.rehearsal && t.rehearsal.dur)); return d ? d / 60 : song.minutes || 3; }
   T.songMinutes = songMinutes;
@@ -826,7 +830,7 @@
     var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
     var canFollow = T.Follow && T.Follow.ready(song.id);      // the real pages with a bouncing ball
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
-      var mine = l.who && isMine(l.who, scene);
+      var mine = l.who && isMine(l.who, scene, null, songMoment(song));
       return '<div class="lyric' + (mine ? ' mine' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + '</span>' : '') + esc(l.text) + '</div>';
     }).join('') : '<p class="muted">' + (T.show.script ? 'No lyrics for this song in the script.' : 'Lyrics appear after your teacher adds the script.') + '</p>';
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!(mel && mel.notes && mel.notes.length) };
@@ -930,7 +934,7 @@
     function kindFor(s) { var t = tr[s.id]; return st.singers ? (t.rehearsal ? 'rehearsal' : 'performance') : (t.performance ? 'performance' : 'rehearsal'); }
     function lyricsFor(s) {
       var scene = sceneById(s.scene), src = scene && scriptScene(scene), item = src && src.items.find(function (it) { return it.type === 'song' && it.num === s.num; });
-      return item && item.lyrics.length ? item.lyrics.map(function (l) { var mine = l.who && isMine(l.who, scene); return '<div class="lyric' + (mine ? ' mine' : '') + '">' + esc(l.text) + '</div>'; }).join('') : '<p class="muted">No lyrics yet.</p>';
+      return item && item.lyrics.length ? item.lyrics.map(function (l) { var mine = l.who && isMine(l.who, scene, null, songMoment(s)); return '<div class="lyric' + (mine ? ' mine' : '') + '">' + esc(l.text) + '</div>'; }).join('') : '<p class="muted">No lyrics yet.</p>';
     }
     function load(i, autoplay) {
       at = (i + list.length) % list.length; draw();

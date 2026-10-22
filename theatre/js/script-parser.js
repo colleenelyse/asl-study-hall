@@ -73,7 +73,7 @@
       return {
         y: l.y, x0: first.x, x1: end, text: text.replace(/\s+/g, ' ').trim(),
         bold: bold > n / 2, italic: italic > n / 2, glyphs: glyphs, size: first.size || 12, lyric: lyric,
-        parts: l.parts.map(function (p) { return { x: p.x, str: p.str }; }),
+        parts: l.parts.map(function (p) { return { x: p.x, str: p.str, size: p.size || 12 }; }),
         syl: [].concat.apply([], lyricParts.map(function (p) {      // where each sung word or syllable sits (for the bouncing ball); an item holding two words is split by its letters
           var str = p.str.replace(MUSIC_GLYPH_ALL, ' '), w = p.w || 0, out = [], re = /[A-Za-z’'][A-Za-z’',.!?]*/g, m;
           while ((m = re.exec(str))) out.push({ x: +(p.x + w * m.index / Math.max(1, str.length)).toFixed(1), w: +(w * m[0].length / Math.max(1, str.length)).toFixed(1), t: m[0] });
@@ -108,7 +108,7 @@
     var songNums = opts.songNumbers ? opts.songNumbers.map(String) : null;
     var stop = opts.stopPatterns || [/^actor[’']?s glossary$/i, /^show glossary$/i, /^credits and copyrights$/i];
     var scenes = [], scene = null, speaker = null, block = null, depth = 0, done = false;
-    var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', singerLabs = [], pendingHeading = null, printed = null;
+    var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', singerLabs = [], nameFrag = null, pendingHeading = null, printed = null;
     var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?:\s*$/;
     /* a lyric line, split where a singer label above it starts (Colleen: "many sung syllables were missed": a name printed partway along the staff
        starts that singer there, so the words before it still belong to the one before) */
@@ -203,21 +203,31 @@
         if (music && !(line.y > lastStave + 45 && !prevStave) && !(line.y < firstMusic - 4 && !/^[A-Z][A-Z .’',&]+:/.test(t))) {
           if (/#\s?\d/.test(t)) cues(t);
           var lyr = line.lyric ? cleanLyric(line.lyric) : '';
-          var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^\(/.test(t) && !/#\s?\d+\s*[–-]/.test(t) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);      // "(#22 – …" right under a staff is a stage direction
+          // the words on the line (music symbols left out): singer labels, or the first half of a label split over two lines ("SHARPAY," / "RYAN:")
+          var words = (line.parts || []).filter(function (p) { return p.size < 14 && p.str.trim() && !/^[\d\s+\-–]+$/.test(p.str); });
+          var labs = words.map(function (p) { var m = p.str.trim().match(LAB); return m ? { name: m[1].trim(), x: p.x, plus: /^[\d\s]*\+/.test(p.str) } : null; });
+          var fragLine = words.length && words.every(function (p) { return /^\+?\s*\(?[A-Z][A-Z .’'&]*[A-Z.]\)?,$/.test(p.str.trim()); });
+          var labLine = words.length && labs.every(Boolean);
+          if (words.length && !labLine) {      // one label printed in pieces ("MS." "DARBUS:")
+            var joined = words.map(function (p) { return p.str.trim(); }).join(' '), jm = joined.match(LAB);
+            if (jm) { labs = [{ name: jm[1].trim(), x: words[0].x, plus: /^[\d\s]*\+/.test(joined) }]; labLine = true; }
+          }
+          var lyricLike = !fragLine && !labLine && lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^\(/.test(t) && !/#\s?\d+\s*[–-]/.test(t) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);      // "(#22 – …" right under a staff is a stage direction
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
           if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
             pushLyric(line, lyr); addBox(lastSongItem);
             prevStave = false;
             continue;
           }
-          if (/^[\d\s+]*$/.test(t) || line.size >= 16) continue;          // measure numbers, the song's title banner
+          if (/^[\d\s+]*$/.test(t) || (line.size >= 16 && !labLine && !fragLine)) continue;          // measure numbers, the song's title banner (a label beside a big time signature still counts)
           // singer labels over the staves: "9 TROY:" "+ GABRIELLA, TROY:"
-          // one or more labels on the line, each where it starts along the staff
-          var labParts = (line.parts || []).filter(function (p) { return p.str.trim(); }), labs = labParts.map(function (p) { var m = p.str.trim().match(LAB); return m ? { name: m[1].trim(), x: p.x, plus: /^[\d\s]*\+/.test(p.str) } : null; });
-          var allLabs = labs.length && labParts.every(function (p, k) { return labs[k] || /^[\d\s+]+$/.test(p.str); }) && labs.some(Boolean);
-          var lab = t.match(LAB);
-          if ((allLabs || lab) && (line.size < 10 || line.bold || allLabs)) {
-            var found = allLabs ? labs.filter(Boolean) : [{ name: lab[1].trim(), x: line.x0, plus: /^[\d\s]*\+/.test(t) }];
+          // one or more labels on the line, each where it starts along the staff (a time signature or sharp on the same line doesn't matter)
+          if (fragLine) { nameFrag = { name: words.map(function (p) { return p.str.trim().replace(/^\+\s*/, '').replace(/^\(/, ''); }).join(' '), x: words[0].x, plus: /^\+/.test(words[0].str.trim()) }; continue; }
+          if (labLine) {
+            var found = labs.map(function (l) {
+              if (nameFrag && Math.abs(nameFrag.x - l.x) < 30) { l = { name: nameFrag.name + ' ' + l.name, x: Math.min(nameFrag.x, l.x), plus: nameFrag.plus || l.plus }; nameFrag = null; }
+              return l;
+            });
             found.forEach(function (f) { if (lastSongItem) splitNames(f.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); }); });
             singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
             continue;
