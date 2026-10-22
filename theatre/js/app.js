@@ -395,6 +395,7 @@
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       tile('#/story', 'book', 'The Story', 'What happens') +
+      (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +
       (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
       '</div>' + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');

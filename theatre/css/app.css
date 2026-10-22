@@ -234,3 +234,14 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   main { padding: 0; max-width: none; }
   .card { break-inside: avoid; box-shadow: none; }
 }
+
+/* the script with notes (script-view.js) */
+.scriptbar { position: sticky; top: 0; z-index: 5; }
+.scriptpages.adding .pdfpage { cursor: crosshair; outline: 3px dashed #c7a0ff; }
+.snote { position: absolute; transform: translate(-6px, -50%); z-index: 3; max-width: 46%; min-height: 26px; padding: 3px 8px; border: 0; border-radius: 6px 6px 6px 0;
+  background: #ffe14d; color: #3b3000; font: 600 clamp(10px, 1.5vw, 14px)/1.25 inherit; text-align: left; box-shadow: 0 2px 6px rgba(0,0,0,.3); cursor: pointer;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.snote.dir { background: #c7a0ff; color: #24104a; }
+.snote:focus-visible { outline: 3px solid #1d1a2e; }
+.snote-key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: #ffe14d; }
+.snote-key.dir { background: #c7a0ff; }

@@ -252,3 +252,8 @@ notes page show it; a day's Dance / Run-through / Show and tell group lists the 
 
 **Watch the movie** (Colleen: after the title is announced, before rehearsals begin in earnest): a 🎬 `watch` focus (everyone together); the semester plan
 has a "Watch the movie" box (`production.movieDays`, default 3, 0 for none); `starter(movie)` puts those days right after day one, before the audition days.
+
+**The script with notes** (Colleen: both modes see the actual PDF and add notes): js/script-view.js. Students: #/script (tile "The Script"), their lines
+highlighted, yellow notes only they see (saved in their practice record, `rec.notes`, so they follow them), purple director's notes. Teacher: #/teacher/read
+("Read the script"), highlight any character, her notes are `T.show.scriptNotes` (everyone sees them). Pages are drawn near the screen only.
+Line highlights everywhere skip the character's name (`T.Pages.wordBoxes`; the parser now marks `named`).

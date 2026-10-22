@@ -28,6 +28,14 @@
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
   T.Pages.scenePages = scenePages;
+  /* a line's boxes without the character's name (Colleen: highlight the line, not the name). The name is the first box when it sits on its own row;
+     for scripts imported before 'named' was kept: a short, centered first box of two or more. */
+  T.Pages.wordBoxes = function (it) {
+    var b = it.boxes || []; if (it.type !== 'line' || b.length < 2 && !it.named) return b;
+    if (it.named) return b.slice(1);
+    var sz = T.Pages.size(b[0].n), mid = b[0].x + b[0].w / 2;
+    return b[0].w < sz.w * 0.35 && Math.abs(mid - sz.w / 2) < sz.w * 0.12 ? b.slice(1) : b;
+  };
   /* one page drawn into a canvas at a width in CSS pixels */
   function draw(doc, n, width, scale) {
     return doc.getPage(n).then(function (pg) {
@@ -46,13 +54,10 @@
     items.forEach(function (x) {
       var it = x.it; if (it.type !== 'line' && it.type !== 'song' && !(it.type === 'dir' && o.dirs)) return;
       var cls = 'hl item ' + (it.type === 'line' ? 'line' + (x.mine ? ' mine' : '') : it.type), cover = it.type === 'line' && o.cover ? o.cover(x) : '';
-      var boxes = it.type === 'song' ? (it.boxes || []).slice(0, 1) : (it.boxes || []);
-      // a line's first box is the character's name when it sits on its own row (scripts imported before 'named' was kept: any line with 2+ boxes);
-      // the name stays readable, and the cover's hint goes in the first box of the words only
-      var nameAt = it.type === 'line' && (it.named || boxes.length > 1) ? 0 : -1, first = true;
-      boxes.forEach(function (b, k) {
+      var boxes = it.type === 'song' ? (it.boxes || []).slice(0, 1) : T.Pages.wordBoxes(it), first = true;      // the name is left plain
+      boxes.forEach(function (b) {
         var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!pg) return;
-        var cv = cover && k !== nameAt, txt = cv && first ? cover : ''; if (cv) first = false;
+        var cv = !!cover, txt = cv && first ? cover : ''; first = false;
         pg.insertAdjacentHTML('beforeend', '<div class="' + cls + (cv ? ' cover' : '') + '" data-i="' + x.i + '" style="' + pct(b, T.Pages.size(b.n)) + '">' + (txt ? '<span>' + txt + '</span>' : '') + '</div>');
       });
     });
@@ -140,7 +145,7 @@
       var src = T.scriptScene(scene); if (!src) return;
       var inScene = chars.length && T.O().moments.some(function (m) { return m.scene === scene.id && T.onStage(m, chars); });
       src.items.forEach(function (it) {
-        if (it.type === 'line' && chars.length && T.isMine(it.who, scene, chars)) (it.boxes || []).forEach(function (b) { mineLines.push(b); });
+        if (it.type === 'line' && chars.length && T.isMine(it.who, scene, chars)) T.Pages.wordBoxes(it).forEach(function (b) { mineLines.push(b); });
         if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.box && l.who && chars.length && T.isMine(l.who, scene, chars)) mineLyr.push(l.box); });
       });
       if (inScene) scenePages(src).forEach(function (n) { bandPages[n] = 'Scene ' + scene.num; });

@@ -30,6 +30,7 @@
       if (!o || recFor !== id) return;
       Object.keys(o.lines || {}).forEach(function (sc) { var a = rec.lines[sc] = rec.lines[sc] || {}; Object.keys(o.lines[sc]).forEach(function (k) { var x = o.lines[sc][k], y = a[k]; a[k] = !y ? x : [Math.max(x[0], y[0]), Math.max(x[1], y[1]), x[2] > y[2] ? x[2] : y[2]]; }); });
       Object.keys(o.songs || {}).forEach(function (so) { var x = o.songs[so], y = rec.songs[so] = rec.songs[so] || {}; ['l', 'd'].forEach(function (k) { if (x[k] && (!y[k] || x[k][1] > y[k][1])) y[k] = x[k]; }); y.plays = Math.max(x.plays || 0, y.plays || 0); });
+      Object.keys(o.notes || {}).forEach(function (k) { var x = o.notes[k], y = (rec.notes = rec.notes || {})[k]; if (!y || x.at > y.at) rec.notes[k] = x; });      // notes on the script: the later edit wins
       Object.keys(o.time || {}).forEach(function (d) { var x = o.time[d], y = rec.time[d] = rec.time[d] || {}; Object.keys(x).forEach(function (k) { y[k] = Math.max(x[k] || 0, y[k] || 0); }); });
       T.ls('progress:' + id, rec);
     }).catch(function () {});
@@ -41,7 +42,7 @@
   }
   function push() {
     var id = me(); if (!dirty || !id || !T.key || !rec) return;
-    dirty = false;
+    dirty = false; clearTimeout(timer);
     Store.putProgress(T.key, id, rec).catch(function () { dirty = true; });
   }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') push(); });
@@ -65,6 +66,9 @@
       var r = get(); if (!r) return;
       var t = r.time[day()] = r.time[day()] || {}; t[kind] = (t[kind] || 0) + secs; touch();
     },
+    /* my notes on the script pages: { id: { n page, x, y (PDF points), text, at, del } } (a deleted note is kept as del so other iPads learn of it) */
+    notes: function () { var r = get(); return r ? r.notes || {} : {}; },
+    saveNote: function (note) { var r = get(); if (!r) return; note.at = Date.now(); (r.notes = r.notes || {})[note.id] = note; touch(); push(); },
     playing: false,
     record: get
   };
