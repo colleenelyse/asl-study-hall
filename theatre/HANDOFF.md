@@ -273,3 +273,11 @@ words on the cue's color, a line to the spot) and the cue's line highlighted (cu
 director's notes; print or Save as PDF. Scene changes (`T.Cues.isChange`: Blue out: scene change, Lights up: Scene) are green everywhere.
 Printable pages draw with pdf.js intent 'print' (`T.Pages.draw(..., true)`) so they keep going in a hidden tab. Read the script › Go to puts the scene
 heading at the top of the screen.
+
+**Mic plot** (Colleen: 8 body mics that cover all spoken or sung lines; swaps written into each performer's track: give up or get a mic, when,
+where, who is helping): js/mics.js, Teacher › Mic plot. Units are actors once cast (a doubled actor keeps one mic), characters before. Ensemble
+group labels (Jocks, Students, ALL…) are chorus: area mics. Plan: most lines first, a mic shared only by people who never speak in the same scene,
+handoffs at a scene change cost more; someone left out who says more bumps the people in their way. Scenes with more speakers than mics are flagged.
+Settings in `T.show.micPlot` { n, pin { unit: mic | 'hand' }, where, helper (actor id) }. `T.micSteps(chars, actorId)` gives a person's steps, which
+`buildSchedule` puts on their My Schedule cards (🎙️, ⚡ for a handoff at a scene change); the helper (if a cast member) gets the swaps too.
+The page lists the swaps (print), each mic in order, who has no mic, and pins.

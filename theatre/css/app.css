@@ -267,3 +267,13 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   .withcues .cue { left: auto; right: 100%; margin-right: 6px; width: 188px; max-width: none; }
   .withcues .cue span { display: inline; }
 }
+/* mic plot (mics.js) */
+.micplot td, .micplot th { text-align: center; vertical-align: top; min-width: 84px; }
+.micplot tbody th { text-align: left; white-space: nowrap; }
+.micplot .mic-on { background: rgba(124, 196, 255, .28); }
+.micplot .mic-wear { opacity: .7; }
+.micplot .mic-swap { box-shadow: inset 0 3px 0 #ff8fc7; }
+.micplot .mic-free { opacity: .4; }
+.printonly { display: none; }
+@media print { .printonly { display: block; } .micplot { font-size: 10px; } .micplot td, .micplot th { min-width: 0; padding: 3px; } }
+.mic-quick td { background: rgba(255, 143, 199, .18); }

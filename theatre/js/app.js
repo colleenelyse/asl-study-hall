@@ -720,14 +720,20 @@
     // before my first entrance: "change into" my first costume
     var first = out.find(function (c) { return c.on; });
     if (out[0] && !out[0].on && first && first.costume) out[0].change = first.costume;
-    // after my last exit: done (except bows)
+    // mic swaps (mic plot): "before" goes on my first step in that scene, "after" on my last step in that scene (or the nearest one)
+    if (T.micSteps) T.micSteps(chars, T.me && T.me.id).forEach(function (x) {
+      var idx = function (c) { return O().scenes.indexOf(c.scene); }, pick = null;
+      if (x.when === 'before') pick = out.find(function (c) { return idx(c) >= x.i; }) || out[out.length - 1];
+      else { for (var k = out.length - 1; k >= 0; k--) if (idx(out[k]) <= x.i) { pick = out[k]; break; } pick = pick || out[0]; }
+      if (pick) (pick[x.when === 'before' ? 'micBefore' : 'micAfter'] = pick[x.when === 'before' ? 'micBefore' : 'micAfter'] || []).push(x);
+    });
     return out;
   }
   T.buildSchedule = buildSchedule;
   function schedCard(c, n) {
     if (!c.on) {
       return '<div class="card off"><div class="head">' + sym('🚪') + '<div><div class="do">Off stage</div><div class="muted">' + mins(c.minutes) + '</div></div></div>' +
-        (c.change ? '<div class="change">' + sym('👕') + 'Change into: ' + esc(c.change.name) + '</div>' : '') + '</div>';
+        (c.change ? '<div class="change">' + sym('👕') + 'Change into: ' + esc(c.change.name) + '</div>' : '') + micHtml(c) + '</div>';
     }
     var s = c.scene, what, place = c.moment.where && T.me.chars.map(function (id) { return c.moment.where[id]; }).filter(Boolean)[0];
     if (c.song) what = sym('🎵') + (c.sing ? 'Singing “' + esc(c.song.title) + '”' : (place ? 'In the song “' : 'On stage for the song “') + esc(c.song.title) + '”');
@@ -736,7 +742,10 @@
       (place ? '<p>' + sym('📍') + '<b>' + esc(place) + '</b></p>' : '') +
       (c.quickChange ? '<div class="change">' + sym('⚡') + 'Quick change first!</div>' : '') +
       (c.costume ? '<p>' + sym('👕') + 'Wearing: <b>' + esc(c.costume.name) + '</b></p>' : '') +
-      '<p class="muted small">' + mins(c.minutes) + '</p></div>';
+      micHtml(c) + '<p class="muted small">' + mins(c.minutes) + '</p></div>';
+  }
+  function micHtml(c) {
+    return (c.micBefore || []).concat(c.micAfter || []).map(function (x) { return '<div class="change mic-step">' + sym(x.quick ? '⚡' : '🎙️') + (x.quick ? '<b>Quick mic swap!</b> ' : '') + esc(x.text) + '</div>'; }).join('');
   }
   function schedulePage() {
     setBar('My Schedule', '#/home');
