@@ -591,6 +591,7 @@
           if (!alive) return;
           var now = audio.currentTime, tm = bar.querySelector('#stime'); if (tm) tm.textContent = T.clock(now) + ' / ' + T.clock(audio.duration || 0);
           while (fired < x.cues.length && now + adj >= x.cues[fired].t) cue(x.cues[fired++].y);
+          if (pagesOn() && T.Follow && T.Follow.ready(x.song.id)) T.Follow.update(document.getElementById('pages'), x.song.id, kind === 'performance' ? now : now - off);      // the ball on the scene's own pages
         }, 100);
       }).catch(function () { bar.innerHTML = '<span class="err">The track would not load.</span>'; });
       function cue(y) {
@@ -789,7 +790,8 @@
     setBar(song.title, '#/songs');
     var trk = (T.show.tracks && T.show.tracks[song.id]) || {}, mel = T.show.melody && T.show.melody[song.id];
     var s = scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
-    var st = Object.assign({ guide: true, melody: false, vol: 0.9 }, ls('songOpts') || {});
+    var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
+    var canFollow = T.Follow && T.Follow.ready(song.id);      // the real pages with a bouncing ball
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
       var mine = l.who && isMine(l.who, scene);
       return '<div class="lyric' + (mine ? ' mine' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + '</span>' : '') + esc(l.text) + '</div>';
@@ -797,6 +799,7 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!(mel && mel.notes && mel.notes.length) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
+      (canFollow ? '<div id="follow" class="pages" style="margin-bottom:14px"></div>' : '') +
       '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     if (!(has.perf || has.guide)) return;
     var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: (mel && mel.offset) || 0 };
@@ -835,6 +838,7 @@
         if (P.playing && t >= dur()) { pause(); P.pos = 0; if (!P.asked && T.askSongRating) { P.asked = true; T.askSongRating(song.id); } }
         if (P.playing) P.most = Math.max(P.most || 0, t / dur());
         var r = document.getElementById('pos'); if (r && !r.dragging) r.value = t;
+        var fh = document.getElementById('follow'); if (fh && st.follow) T.Follow.update(fh, song.id, t);
         var tm = document.getElementById('tm'); if (tm) tm.textContent = clock(t) + ' / ' + clock(dur());
         if (P.playing) P.raf = requestAnimationFrame(f);
       };
@@ -849,6 +853,7 @@
         keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
         sw('melody', 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
+        sw('follow', 'Bouncing ball on the music', !!canFollow, 'your teacher has not timed the lyrics yet') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
         '<div class="row" style="margin-top:10px">' + icon('loop') + '<button class="btn small" id="la">Loop from here</button><button class="btn small" id="lb">to here</button><button class="btn small quiet" id="lc">No loop</button><span class="muted small" id="lt"></span></div>';
       document.getElementById('spp').onclick = function () { P.playing ? pause() : start(P.pos); };
@@ -862,12 +867,14 @@
           st[inp.dataset.k] = inp.checked; ls('songOpts', st);
           if (inp.dataset.k === 'guide' && P.playing) { var t = ctx.currentTime; P.gp.gain.setTargetAtTime(st.guide ? 0 : 1, t, 0.05); P.gg.gain.setTargetAtTime(st.guide ? 1 : 0, t, 0.05); }
           if (inp.dataset.k === 'melody' && P.playing) start(now());
+          if (inp.dataset.k === 'follow') { var fh = document.getElementById('follow'); if (fh) { fh.hidden = !st.follow; if (st.follow) T.Follow.mount(fh, song.id); } }
         };
       });
       var lt = function () { document.getElementById('lt').textContent = P.loopB != null ? 'Looping ' + clock(P.loopA || 0) + ' to ' + clock(P.loopB) : P.loopA != null ? 'Loop starts at ' + clock(P.loopA) : ''; };
       document.getElementById('la').onclick = function () { P.loopA = now(); if (P.loopB != null && P.loopB <= P.loopA) P.loopB = null; lt(); };
       document.getElementById('lb').onclick = function () { var t = now(); if (t > (P.loopA || 0) + 1) { P.loopB = t; lt(); if (P.playing) start(P.loopA || 0); } };
       document.getElementById('lc').onclick = function () { P.loopA = P.loopB = null; lt(); };
+      var fh0 = document.getElementById('follow'); if (fh0) { fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id); }
       tick();
     }
     keys({ Space: function () { var b = document.getElementById('spp'); if (b) b.click(); }, ArrowLeft: function () { var b = document.getElementById('sb'); if (b) b.click(); } });

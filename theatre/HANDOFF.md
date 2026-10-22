@@ -207,6 +207,13 @@ new files every time (v2).
 Asked for, waiting on the district: students sign in with their school Google account at asl.cool/theatre (Google sign-in needs an OAuth client and, for
 students under 18, the district's Google admin to trust it).
 
+**Follow along with a bouncing ball** (Colleen: music notation following along with the tracks, a bouncing ball, looking like the real script): the reader now
+keeps each sung syllable's position (`lyric.syl`, split by letters when one printed item holds two words). Teacher mode › Songs & tracks › **Lyrics timing**:
+**Find them in the guide vocals** (`Melody.alignLyrics` on the sung stretches, `Melody.sylTimes` on the sung notes; `dev/test-lyrics.js`), or tap Now per line;
+Test, nudge, Save (`T.show.lyricTimes[song] = { kind: 'performance', lines: [{ t, e, s }] }`, band-track clock). `T.Follow` (pages.js) shows a song's real
+pages, highlights the line being sung, and moves a red ball (hop animation, none with reduced motion) to each syllable: in My Songs (switch **Bouncing ball
+on the music**) and on the scene's pages when a song plays inside a run. Re-import the PDF after updating so lyrics have syllable positions.
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

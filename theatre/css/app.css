@@ -184,6 +184,12 @@ label.f textarea { min-height: 120px; }
 .hl.line.mine.now { background: rgba(40, 180, 80, .65); box-shadow: 0 0 0 3px #1b7a43; }
 .hl.cover { background: #dcf5e1; mix-blend-mode: normal; color: #1b7a43; font-weight: 700; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; font-size: clamp(9px, 1.4vw, 15px); }
 .hl.cover.now { background: #a8e6b6; }
+.follow-line { position: absolute; background: rgba(255, 214, 0, .32); border-radius: 6px; mix-blend-mode: multiply; z-index: 1; pointer-events: none; transition: top .2s, left .2s; }
+.ball { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #e8384f; box-shadow: 0 2px 6px rgba(0,0,0,.35); z-index: 3; pointer-events: none; transition: left .18s ease-out, top .18s ease-out; }
+.ball.hop { animation: hop .3s ease-out; }
+@keyframes hop { 0% { transform: translateY(0); } 45% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .ball.hop { animation: none; } .ball, .follow-line { transition: none; } }
+:root[data-motion="0"] .ball.hop { animation: none; }
 .songdock:empty { display: none; }
 .songdock { position: fixed; left: 0; right: 0; bottom: 100px; z-index: 6; display: flex; justify-content: center; }
 .songdock .songbar { background: var(--card); border: 2px solid var(--accent); border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); max-width: 900px; }

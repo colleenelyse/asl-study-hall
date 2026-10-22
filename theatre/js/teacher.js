@@ -442,6 +442,7 @@
   /* ---------- Songs & tracks ---------- */
   function songsPage(args) {
     if (args && args[0] === 'cues' && T.songById(args[1])) return cuesPage(args[1]);
+    if (args && args[0] === 'lyrics' && T.songById(args[1])) return lyricsPage(args[1]);
     T.setBar('Songs & tracks', '#/teacher');
     var O = T.O(), tr = T.show.tracks = T.show.tracks || {}, mel = T.show.melody = T.show.melody || {};
     var links = O.links || {};
@@ -457,6 +458,7 @@
         var m = mel[s.id];
         return '<tr><td><b>#' + esc(s.num) + '</b> ' + esc(s.title) + '</td>' + cell('rehearsal') + cell('performance') +
           '<td>' + (m ? '<span class="tag">' + m.notes.length + ' notes</span> ' : '') + '<button class="btn small" data-mel="' + s.id + '"' + (t.rehearsal && t.performance ? '' : ' disabled title="Upload both tracks first"') + '>' + (m ? 'Make again' : 'Make melody line') + '</button>' +
+          ' <a class="btn small" href="#/teacher/songs/lyrics/' + s.id + '">' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? 'Lyrics timing ✓' : 'Lyrics timing') + '</a>' +
           ' <a class="btn small" href="#/teacher/songs/cues/' + s.id + '">' + (T.show.underscore && T.show.underscore[s.id] ? 'Lines over the music ✓' : 'Lines over the music') + '</a></td></tr>';
       }).join('') + '</tbody></table><p id="st" class="muted" role="status"></p>';
     var st = document.getElementById('st');
@@ -562,6 +564,79 @@
     var tick = setInterval(function () { var el = document.getElementById('tm'); if (el) el.textContent = T.clock(audio.currentTime) + ' (' + audio.currentTime.toFixed(1) + ' s)'; }, 200);
     T.cleanup.push(function () { clearInterval(tick); });
     var kh = function (e) { if (e.key === ' ' && !/input|textarea/i.test(e.target.tagName)) { e.preventDefault(); tapNow(); } };
+    document.addEventListener('keydown', kh); T.cleanup.push(function () { document.removeEventListener('keydown', kh); });
+  }
+
+  /* when each lyric line (and syllable) is sung, for the bouncing ball on the real pages: found in the guide vocals (the singing left when the
+     band track is taken away, lyric lines matched in order to sung stretches, syllables to the sung notes), or tapped by hand; nudge, test, save.
+     T.show.lyricTimes[song] = { kind: 'performance', lines: [{ t, e, s: [syllable starts] }] } on the band track's clock, in the script's lyric order. */
+  function lyricsPage(songId) {
+    var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
+    var item = src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
+    T.setBar('Lyrics timing', '#/teacher/songs');
+    if (!item || !item.lyrics.length) { app.innerHTML = '<p class="card">This song has no lyrics in the script. Import the script first.</p>'; return; }
+    if (!tr.performance && !tr.rehearsal) { app.innerHTML = '<p class="card">Upload this song’s tracks first.</p>'; return; }
+    var L = T.show.lyricTimes = T.show.lyricTimes || {}, mel = T.show.melody && T.show.melody[songId], off = (mel && mel.offset) || 0;
+    var lines = item.lyrics, cnt = function (l) { return (l.syl && l.syl.length) || l.text.split(/\s+/).length; };
+    var times = (L[songId] && L[songId].lines) ? JSON.parse(JSON.stringify(L[songId].lines)) : lines.map(function () { return null; });
+    var kind = tr.performance ? 'performance' : 'rehearsal', audio = new Audio(), url = null, loaded = false;
+    var load = function () { return Store.getTrack(T.key, songId, kind, tr[kind].ver).then(function (b) { url = URL.createObjectURL(new Blob([b])); audio.src = url; loaded = true; }); };
+    var spread = function (i) {      // syllables of a tapped line shared out until the next line
+      var t = times[i].t, e = times[i].e || ((times[i + 1] && times[i + 1].t) || t + cnt(lines[i]) * 0.45), k = cnt(lines[i]);
+      times[i].e = +e.toFixed(2); times[i].s = Melody.sylTimes([], t, e, k);
+    };
+    T.cleanup.push(function () { audio.pause(); if (url) URL.revokeObjectURL(url); });
+    function draw(msg) {
+      var nxt = times.findIndex(function (x) { return !x; });
+      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">For the bouncing ball on the real pages: when each lyric line is sung. Let the app find them in the guide vocals, or play the track and tap <b>Now</b> as each line starts. Then <b>Test</b> any line, nudge with − and +, and Save.</p>' +
+        '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div></div>' +
+        '<div class="card"><div class="row"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="grow">' + T.clock(audio.currentTime) + '</b>' +
+        '<button class="btn primary" id="now">Now: line ' + (nxt < 0 ? '—' : nxt + 1) + '</button></div><p class="muted small">Space = Now. Tapping uses the band track’s clock.</p></div>' +
+        '<div class="card">' + lines.map(function (l, i) {
+          var x = times[i];
+          return '<div class="switch" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + (l.who ? ' · ' + esc(l.who) : '') + '</span><br>' + esc(l.text) + '</span>' +
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button></span></div>';
+        }).join('') + '</div><div class="dock"><div class="in"><button class="btn quiet" id="clr">Clear all</button><button class="btn primary" id="sv" data-save>Save</button></div></div>';
+      var $ = function (id) { return document.getElementById(id); };
+      $('pl').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { if (audio.paused) audio.play(); else audio.pause(); draw(); }); };
+      $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
+      $('now').onclick = tap; $('find').onclick = find;
+      $('clr').onclick = function () { times = lines.map(function () { return null; }); draw(); };
+      $('sv').onclick = function () {
+        var base = function (v) { return kind === 'performance' ? v : v - off; };
+        if (!times.some(Boolean)) { delete L[songId]; return save('Cleared'); }
+        L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: x.s.map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
+        save('Lyrics timing saved');
+      };
+      app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); draw(); }; });
+      app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, x.t - 1); audio.play(); draw(); }); }; });
+    }
+    function tap() {
+      var i = times.findIndex(function (x) { return !x; });
+      if (i < 0 || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every line has a time.'); return; }
+      times[i] = { t: +audio.currentTime.toFixed(2) };
+      if (i > 0 && times[i - 1]) { times[i - 1].e = times[i].t; spread(i - 1); }
+      spread(i); draw();
+    }
+    function find() {
+      var ctx = T.audioCtx(), m = document.getElementById('msg');
+      m.textContent = 'Loading both tracks…';
+      var get = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { return ctx.decodeAudioData(b); }); };
+      Promise.all([get('rehearsal'), get('performance')]).then(function (r) {
+        m.textContent = 'Listening to the singing… (this can take a minute)';
+        return new Promise(function (ok) { setTimeout(ok, 50); }).then(function () {
+          var g = Melody.toMono(r[0]), p = Melody.toMono(r[1]), rate = r[0].sampleRate, offS = Melody.findOffset(g, p, rate), iso = Melody.isolate(g, p, offS);
+          var regions = Melody.voiceRegions(iso.voice, rate), notes = Melody.notes(iso.voice, rate), al = Melody.alignLyrics(regions, lines.map(cnt)), n = 0;
+          times = al.map(function (x, i) { if (!x) return null; n++; return { t: x.t, e: x.e, s: Melody.sylTimes(notes, x.t, x.e, cnt(lines[i])) }; });
+          if (kind !== 'performance') times = times.map(function (x) { return x && { t: x.t + offS / rate, e: x.e + offS / rate, s: x.s.map(function (v) { return v + offS / rate; }) }; });
+          draw('Found ' + n + ' of ' + lines.length + ' lines. Use Test to check them, nudge with − and +, then Save.');
+        });
+      }).catch(function (e) { m.textContent = ''; T.toast(e.message || 'Could not read the tracks.', 4000); });
+    }
+    draw();
+    var tk = setInterval(function () { var el = document.getElementById('tm'); if (el) el.textContent = T.clock(audio.currentTime) + ' (' + audio.currentTime.toFixed(1) + ' s)'; }, 200);
+    T.cleanup.push(function () { clearInterval(tk); });
+    var kh = function (e) { if (e.key === ' ' && !/input|textarea/i.test(e.target.tagName)) { e.preventDefault(); tap(); } };
     document.addEventListener('keydown', kh); T.cleanup.push(function () { document.removeEventListener('keydown', kh); });
   }
 

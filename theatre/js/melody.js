@@ -234,10 +234,46 @@
     return out;
   }
 
+  /* lyric lines onto the sung stretches, in order (like alignLines, but each line can take up to four stretches and the length follows its syllables) */
+  function alignLyrics(regions, syls) {
+    var R = regions.filter(function (g) { return g.sung; }), n = syls.length, m = R.length, INF = 1e9;
+    if (!n) return [];
+    var exp = syls.map(function (k) { return 0.4 + k * 0.36; }), SKIP = 0.8;
+    var f = [], back = [];
+    for (var i = 0; i <= n; i++) { f.push(new Array(m + 1).fill(INF)); back.push(new Array(m + 1).fill(null)); }
+    f[0][0] = 0;
+    for (var j = 1; j <= m; j++) { f[0][j] = f[0][j - 1] + SKIP; back[0][j] = [0, j - 1]; }
+    for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
+      if (f[i][j - 1] + SKIP < f[i][j]) { f[i][j] = f[i][j - 1] + SKIP; back[i][j] = [i, j - 1]; }
+      for (var w = 1; w <= 4 && j - w >= 0; w++) {
+        var a = R[j - w], b = R[j - 1], gaps = 0;
+        for (var q = j - w; q < j - 1; q++) gaps += R[q + 1].s - R[q].e;
+        if (gaps > 2) continue;
+        var c = f[i - 1][j - w] + Math.abs((b.e - a.s) - exp[i - 1]) / Math.max(exp[i - 1], 1) + gaps * 0.3;
+        if (c < f[i][j]) { f[i][j] = c; back[i][j] = [i - 1, j - w, a.s, b.e]; }
+      }
+    }
+    var bj = 0; for (j = 0; j <= m; j++) if (f[n][j] < f[n][bj]) bj = j;
+    var out = new Array(n).fill(null), ci = n, cj = bj;
+    while (ci > 0 || cj > 0) { var bk = back[ci][cj]; if (!bk) break; if (bk.length === 4) out[ci - 1] = { t: bk[2], e: bk[3] }; ci = bk[0]; cj = bk[1]; }
+    return out;
+  }
+  /* when each of k syllables starts inside one line: the sung notes that begin there, spread evenly (a held note or a run of notes on one
+     syllable is fine); with too few notes, the line's time is shared out */
+  function sylTimes(noteList, t, e, k) {
+    if (!k) return [];
+    var on = noteList.filter(function (x) { return x.t >= t - 0.05 && x.t < e; }).map(function (x) { return x.t; });
+    if (!on.length || on[0] - t > 0.4) on.unshift(t);
+    var out = [];
+    for (var i = 0; i < k; i++) out.push(on.length >= k ? on[Math.round(i * (on.length - 1) / Math.max(1, k - 1))] : +(t + (e - t) * i / k).toFixed(2));
+    for (i = 1; i < k; i++) if (out[i] <= out[i - 1]) out[i] = +(out[i - 1] + 0.05).toFixed(2);
+    return out.map(function (v) { return +v.toFixed(2); });
+  }
+
   var NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   function noteName(midi) { return NAMES[midi % 12] + (Math.floor(midi / 12) - 1); }
 
-  var api = { voiceRegions: voiceRegions, alignLines: alignLines, extract: extract, findOffset: findOffset, isolate: isolate, notes: notes, toMono: toMono, schedule: schedule, noteName: noteName, yin: yin };
+  var api = { voiceRegions: voiceRegions, alignLines: alignLines, alignLyrics: alignLyrics, sylTimes: sylTimes, extract: extract, findOffset: findOffset, isolate: isolate, notes: notes, toMono: toMono, schedule: schedule, noteName: noteName, yin: yin };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Melody = api;
 })(typeof window !== 'undefined' ? window : this);

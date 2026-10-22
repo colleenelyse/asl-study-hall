@@ -72,7 +72,12 @@
       var first = l.parts[0], end = last.x + (last.w || 0);
       return {
         y: l.y, x0: first.x, x1: end, text: text.replace(/\s+/g, ' ').trim(),
-        bold: bold > n / 2, italic: italic > n / 2, glyphs: glyphs, size: first.size || 12, lyric: lyric
+        bold: bold > n / 2, italic: italic > n / 2, glyphs: glyphs, size: first.size || 12, lyric: lyric,
+        syl: [].concat.apply([], lyricParts.map(function (p) {      // where each sung word or syllable sits (for the bouncing ball); an item holding two words is split by its letters
+          var str = p.str.replace(MUSIC_GLYPH_ALL, ' '), w = p.w || 0, out = [], re = /[A-Za-z’'][A-Za-z’',.!?]*/g, m;
+          while ((m = re.exec(str))) out.push({ x: +(p.x + w * m.index / Math.max(1, str.length)).toFixed(1), w: +(w * m[0].length / Math.max(1, str.length)).toFixed(1) });
+          return out;
+        }))
       };
     });
   }
@@ -174,7 +179,7 @@
           var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
           if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
-            lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box }); addBox(lastSongItem);
+            lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box, syl: line.syl }); addBox(lastSongItem);
             prevStave = false;
             continue;
           }

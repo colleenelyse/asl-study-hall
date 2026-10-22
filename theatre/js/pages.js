@@ -63,6 +63,58 @@
     }).catch(function (e) { var l = document.getElementById('pgload'); if (l) l.textContent = e.message || 'The pages would not load.'; });
   };
 
+  /* ---------- follow along: a song's real pages, the lyric line being sung, and a bouncing ball over each syllable ----------
+     (Colleen: the music notation following along with the tracks, a bouncing ball, looking like the real script) */
+  function songItem(songId) {
+    var so = T.songById(songId), sc = so && T.sceneById(so.scene), src = sc && T.scriptScene(sc);
+    return src && src.items.find(function (it) { return it.type === 'song' && it.num === so.num; });
+  }
+  function songPages(it) {
+    var lo = 1e9, hi = 0;
+    (it.boxes || []).concat(it.lyrics.map(function (l) { return l.box; }).filter(Boolean)).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); });
+    var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
+  }
+  function paint(host, pages) {      // draw pages into placeholders that are there and still empty
+    return T.Pages.doc().then(function (doc) {
+      var w = Math.min(host.clientWidth || 800, 900);
+      return pages.reduce(function (p, n) {
+        return p.then(function () {
+          var el = host.querySelector('.pdfpage[data-n="' + n + '"]'); if (!el || el.querySelector('canvas') || !document.body.contains(el)) return;
+          return draw(doc, n, w).then(function (r) { r.canvas.className = 'pdfcanvas'; el.insertBefore(r.canvas, el.firstChild); });
+        });
+      }, Promise.resolve());
+    });
+  }
+  T.Follow = {
+    ready: function (songId) { var lt = T.show.lyricTimes && T.show.lyricTimes[songId]; return !!(T.Pages.ready() && lt && songItem(songId)); },
+    /* show the song's pages in host (or reuse the pages already there, in a scene's page view) */
+    mount: function (host, songId) {
+      var it = songItem(songId); if (!it) return Promise.resolve();
+      var pages = songPages(it), missing = pages.filter(function (n) { return !host.querySelector('.pdfpage[data-n="' + n + '"]'); });
+      if (missing.length === pages.length) host.innerHTML = pages.map(function (n) { var sz = T.Pages.size(n); return '<div class="pdfpage" data-n="' + n + '" style="aspect-ratio:' + sz.w + '/' + sz.h + '"></div>'; }).join('');
+      host.dataset.follow = songId; host._at = null;
+      return paint(host, pages).catch(function () {});
+    },
+    /* move the highlight and the ball to time t (seconds, on the band track's clock) */
+    update: function (host, songId, t) {
+      var lt = T.show.lyricTimes && T.show.lyricTimes[songId], it = songItem(songId); if (!lt || !it) return;
+      var i = -1; lt.lines.forEach(function (x, k) { if (x && x.t <= t) i = k; });
+      var x = lt.lines[i], line = it.lyrics[i];
+      if (!x || !line || !line.box || t > x.e + 1.5) { host.querySelectorAll('.follow-line, .ball').forEach(function (e) { e.remove(); }); host._at = null; return; }
+      var j = 0; x.s.forEach(function (v, k) { if (v <= t) j = k; });
+      var key = i + ':' + j; if (host._at === key) return;
+      var page = host.querySelector('.pdfpage[data-n="' + line.box.n + '"]'); if (!page) return;
+      var sz = T.Pages.size(line.box.n), b = line.box, pc = function (v, d) { return (v / d * 100) + '%'; };
+      var hl = page.querySelector('.follow-line'); if (!hl) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); hl = document.createElement('div'); hl.className = 'follow-line'; page.appendChild(hl); }
+      hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h);
+      var syl = (line.syl || [])[Math.min(j, (line.syl || []).length - 1)];
+      var ball = page.querySelector('.ball'); if (!ball) { host.querySelectorAll('.ball').forEach(function (e) { e.remove(); }); ball = document.createElement('div'); ball.className = 'ball'; page.appendChild(ball); }
+      if (syl) { ball.style.left = pc(syl.x + syl.w / 2, sz.w); ball.style.top = pc(b.y - 11, sz.h); ball.classList.remove('hop'); void ball.offsetWidth; ball.classList.add('hop'); }
+      if (!host._at || host._at.split(':')[0] !== String(i)) hl.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
+      host._at = key;
+    }
+  };
+
   /* ---------- My script (print) ---------- */
   var COLORS = { green: '#5fd068', yellow: '#ffe14d', pink: '#ff8fc7', blue: '#7cc4ff', orange: '#ffb35c', purple: '#c7a0ff' };
   function printPage(who) {      // who: { name, chars, back }
