@@ -1,4 +1,5 @@
 import { LiveRoom, rtRoute } from './rt/live.js';      // 4.139 live class games (The Vault): asl.cool/rt/...
+import { theatreApi } from './theatre/api.js';      // asl.cool/theatre: the adaptive theatre app's encrypted show and tracks
 export { LiveRoom };
 /* asl.cool: serves the site's files, plus small endpoints for the home page, the teachers' share links and the admin page.
    Workers KV (binding LOCKS) holds one key, "state": { lock, vsalt, vhash, mytools, shares, updated }.
@@ -95,6 +96,7 @@ export default {
     if (host === 'www.aslstudyhall.com') return Response.redirect('https://aslstudyhall.com' + p + url.search, 301);
     if (host === 'aslstudyhall.com' && (p === '/' || p === '/index.html')) return env.ASSETS.fetch(new Request(new URL('/store/', req.url)));      // the storefront
     if (p.startsWith('/rt/')) return rtRoute(req, env, url);      // live class games (ASL Study 4.139)
+    if (p.startsWith('/theatre/api/')) return theatreApi(req, env, url, p);      // the theatre app (theatre/api.js)
     if (p === '/lookup') return lookup(url.searchParams.get('u') || '');      // admin > Featured Products: fill a card from a Shopify or TpT listing link
     if (p === '/products.json') {      // featured products: Colleen's picks in admin, or else every product in her Shopify store (Colleen: "i'll feature all of them")
       const st = await state(env, req), picked = (st && st.products) || [];

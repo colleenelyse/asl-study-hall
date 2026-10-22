@@ -1,0 +1,33 @@
+/* node theatre/dev/test-api.mjs — the theatre Worker API on a fake KV: setup, teacher proof, wrong-password limit, tracks */
+import { webcrypto as crypto } from 'node:crypto';
+import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
+const here = path.dirname(new URL(import.meta.url).pathname), tmp = path.join(os.tmpdir(), 'theatre-api-' + process.pid + '.mjs');
+fs.copyFileSync(path.join(here, '../api.js'), tmp);
+const { theatreApi } = await import(pathToFileURL(tmp));
+fs.unlinkSync(tmp);
+const kv = new Map(), env = { LOCKS: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } } };
+const b64 = a => Buffer.from(a).toString('base64');
+const call = (method, p, body, headers) => { const url = new URL('https://asl.cool/theatre/api/' + p); return theatreApi(new Request(url, { method, body, headers: Object.assign({ 'cf-connecting-ip': '1.2.3.4' }, headers || {}) }), env, url, url.pathname); };
+const proofOf = async (pw, vs) => b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Buffer.from(vs, 'base64'), iterations: 1000 }, await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']), 256));
+const hashOf = async p => Buffer.from(await crypto.subtle.digest('SHA-256', Buffer.from(p, 'base64'))).toString('hex');
+const enc = { iter: 250000, salt: 'c2FsdA==', iv: 'aXY=', data: 'ZGF0YQ==', wrap: { iv: 'aXY=', data: 'a2V5' } };
+let bad = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) bad++; };
+
+ok((await call('GET', 'show')).status === 404, 'no show before setup');
+ok((await call('POST', 'show', JSON.stringify({ enc }))).status === 400, 'setup needs a teacher password');
+const vs = b64(Buffer.from('vsalt-123')), proof = await proofOf('teach', vs);
+ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: await hashOf(proof) }))).status === 200, 'first save sets the teacher password');
+const g = await (await call('GET', 'show')).json();
+ok(g.enc.data === 'ZGF0YQ==' && g.vsalt === vs && !g.vhash, 'GET gives the encrypted show and salt, never the hash');
+ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: 'a'.repeat(64) }))).status === 403, 'a second setup without the proof is refused');
+ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 200, 'check: right teacher password');
+ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, enc, { data: 'bmV3' }) }))).status === 200, 'save with the proof');
+ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200, 'track upload with the proof');
+ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
+ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');
+ok((await call('POST', 'track/../x/performance', new Uint8Array(500), { 'x-proof': proof })).status === 404, 'odd track names are refused');
+const wrong = await proofOf('nope', vs);
+for (let i = 0; i < 5; i++) await call('POST', 'check', JSON.stringify({ proof: wrong }));
+ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 429, 'five wrong guesses lock this address for 10 minutes');
+ok(!JSON.stringify([...kv.entries()].filter(([k]) => k === 'theatre:show')).includes('teach'), 'no password is stored');
+process.exit(bad ? 1 : 0);

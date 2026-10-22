@@ -1,0 +1,76 @@
+/* asl.cool/theatre/api/... : the theatre app's storage (imported by worker.js; not served as a file, see .assetsignore).
+   KV (binding LOCKS), keys prefixed theatre: (never the home page's "state").
+   - theatre:show  { enc, vsalt, vhash, updated }. enc is the whole show (script lines, lyrics, cast, photos), encrypted in the browser
+     with a show key that only the cast password unwraps. The Worker never sees a password or the key.
+   - theatre:track:<songId>:<rehearsal|performance>  the track's bytes, encrypted the same way (12-byte iv, then AES-GCM data).
+   Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
+   The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
+const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6;
+const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function sha256hex(bytes) { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function same(a, b) { if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
+const okStr = (s, max) => typeof s === 'string' && s.length > 0 && s.length <= max;
+const okEnc = e => e && e.iter >= 100000 && okStr(e.salt, 100) && okStr(e.iv, 100) && okStr(e.data, MAX_SHOW) && e.wrap && okStr(e.wrap.iv, 100) && okStr(e.wrap.data, 200);
+
+/* the teacher's proof; counts wrong guesses per address */
+async function proven(env, req, proof, st) {
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'theatre:fail:' + ip;
+  const fails = +(await env.LOCKS.get(failKey) || 0);
+  if (fails >= MAX_FAILS) return json({ error: 'Too many wrong passwords. Wait 10 minutes and try again.' }, 429);
+  let ok = false; try { ok = same(await sha256hex(b64(proof || '')), st.vhash); } catch (e) {}
+  if (!ok) { await env.LOCKS.put(failKey, String(fails + 1), { expirationTtl: FAIL_WINDOW }); return json({ error: 'The teacher password is not right.' }, 403); }
+  await env.LOCKS.delete(failKey);
+  return null;
+}
+
+export async function theatreApi(req, env, url, p) {
+  if (!env.LOCKS) return json({ error: 'Saving is not set up yet (no KV).' }, 503);
+  const rest = p.slice('/theatre/api/'.length);
+  if (rest === 'show') {
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (req.method === 'GET') return st ? json({ enc: st.enc, vsalt: st.vsalt, updated: st.updated }) : json({ none: true }, 404);
+    if (req.method !== 'POST') return json({ error: 'GET or POST' }, 405);
+    let body; try { const t = await req.text(); if (t.length > MAX_SHOW + 2000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That show is too big or not readable.' }, 400); }
+    const newPw = body.newVsalt !== undefined;
+    if (newPw && (!okStr(body.newVsalt, 100) || !/^[0-9a-f]{64}$/.test(body.newVhash || ''))) return json({ error: 'The new teacher password was not right.' }, 400);
+    if (!okEnc(body.enc)) return json({ error: 'Something in the show was not right.' }, 400);
+    if (st && st.vhash) { const bad = await proven(env, req, body.proof, st); if (bad) return bad; }
+    else {
+      if (!newPw) return json({ error: 'Choose a teacher password first.' }, 400);
+      if (env.THEATRE_SETUP && body.setup !== env.THEATRE_SETUP) return json({ error: 'The setup code is not right.' }, 403);
+    }
+    const e = body.enc, next = { enc: { v: 1, iter: e.iter, salt: e.salt, iv: e.iv, data: e.data, wrap: { iv: e.wrap.iv, data: e.wrap.data } },
+      vsalt: newPw ? body.newVsalt : st.vsalt, vhash: newPw ? body.newVhash : st.vhash, updated: new Date().toISOString() };
+    await env.LOCKS.put('theatre:show', JSON.stringify(next));
+    return json({ ok: true, updated: next.updated });
+  }
+  if (rest === 'check') {      // is this the teacher password? (Teacher mode asks once per visit)
+    if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
+    const bad = await proven(env, req, body.proof, st); if (bad) return bad;
+    return json({ ok: true });
+  }
+  const m = rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
+  if (m) {
+    const key = 'theatre:track:' + m[1] + ':' + m[2];
+    if (req.method === 'GET') {
+      const v = await env.LOCKS.get(key, 'arrayBuffer');
+      return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404);
+    }
+    if (req.method !== 'POST' && req.method !== 'DELETE') return json({ error: 'GET, POST or DELETE' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (!st || !st.vhash) return json({ error: 'Save the show once before adding tracks.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    if (req.method === 'DELETE') { await env.LOCKS.delete(key); return json({ ok: true }); }
+    const len = +(req.headers.get('content-length') || 0);
+    if (len > MAX_TRACK) return json({ error: 'That track is too big (24 MB at most). Try an MP3.' }, 413);
+    const buf = await req.arrayBuffer();
+    if (buf.byteLength < 100 || buf.byteLength > MAX_TRACK) return json({ error: 'That track is empty or too big (24 MB at most).' }, 413);
+    await env.LOCKS.put(key, buf);
+    return json({ ok: true, size: buf.byteLength });
+  }
+  return json({ error: 'Not found' }, 404);
+}

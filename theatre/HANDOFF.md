@@ -48,27 +48,33 @@ sheet-music pages have spoken lines as `TROY: words` and singer labels like `9 T
 
 pdf.js in the browser: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js` (+ `pdf.worker.min.js`). Call `page.getOperatorList()` before `getTextContent()` so font names (bold/italic) resolve; `fromPdfJs` already does this.
 
-## Still to build (the screens)
+## Built in session 2 (2026-10-21): the app
 
-### Students (iPad)
-1. **Unlock**: cast password once per iPad (remember it; keep an encrypted offline copy in IndexedDB).
-2. **Who are you?** Big photo/initials cards of the cast; if no cast yet, pick a character.
-3. **Actor home**: big tiles: My Schedule · Practice Lines · My Songs · My Costumes · The Story. Settings (text size, high contrast, read-aloud speed, symbols).
-4. **Practice Lines** (pick a scene, then a mode):
-   - **Listen**: reads the scene aloud line by line (speechSynthesis, a different voice/pitch per character). Toggles: say names before each line, read stage directions, speed. Big play/pause/back/next; current line highlighted; tap a line to jump. Songs show a card with the track.
-   - **Run my role**: pick a character; app reads everyone else and **stops at my lines** until I say it. Microphone (webkitSpeechRecognition, works in iPad Safari on https) → `LineCheck.check()` → "You got it!" / "So close, you missed …" / "Not quite" + hint levels (`LineCheck.hint`) / "I didn't hear you". Options per actor: line shown / hint / hidden; **echo first** (app says my line, I repeat it); **"I did it" button instead of mic** for AAC and sign users; "say my line for me" (app speaks it as their voice); strictness. Lines labeled `ALL`, groups, or `TROY, GABRIELLA` count for each named role (map labels with `aliases` and `labelGroups`).
-5. **My Schedule** (Colleen's example: "Song 1 – on stage singing ___ · Song 2 – off stage, change into basketball uniform (__ minutes)"): walk the `moments` in order for the actor's characters. On stage: what I do (acting with N lines / singing which song), costume, props. Off stage: group consecutive off moments into one card with **about N minutes** (sum of moment minutes), and "change into X" when the next on-stage costume differs. Visual first-then layout, icons, printable.
-6. **My Songs**: list of my songs, with a player: performance track + toggles **Melody line on/off** and **Guide vocals on/off** (the bridge from rehearsal tracks to no support), volume, loop a section, lyrics alongside.
-7. **My Costumes**: costume cards with items checklist and photo, which moments.
-8. **The Story**: scene-by-scene story in plain language, read-aloud, sensory warnings, who's in it.
+| File | What it is |
+|---|---|
+| `index.html`, `css/app.css` | The page. Lexend + Atkinson Hyperlegible, light/dark/high contrast, text size, 56px+ targets, print styles |
+| `js/store.js` | Encryption and storage. A random **show key** encrypts the show; the cast password (PBKDF2-SHA256 250k) only wraps that key, so changing the cast password does not break the tracks. An iPad that ticks Remember keeps the show key (a CryptoKey in IndexedDB, never the password) plus the last encrypted copy, so it opens offline; Settings > Lock this iPad forgets both. Tracks: 12-byte iv + AES-GCM bytes, cached on the device by version |
+| `js/app.js` | Student screens: Unlock, Who are you?, Actor home, Practice Lines (Listen and Run my role), My Schedule, My Songs, My Costumes, The Story, Settings |
+| `js/teacher.js` | Teacher mode: Setup (both passwords), Script import + speaker names + per-scene edit (story, sensory warnings, lines, key words, lyrics, singers), Cast (photo, characters, practice settings per actor), On stage grid + minutes, Costumes, Songs & tracks (upload, Make melody line), Passwords & backup (encrypted backup file) |
+| `api.js` | The Worker API (imported by `worker.js`, hidden by `.assetsignore`): `GET/POST show`, `POST check`, `GET/POST/DELETE track/<song>/<rehearsal\|performance>`. KV keys `theatre:show`, `theatre:track:*`, `theatre:fail:<ip>` |
+| `dev/test-api.mjs` | 13 checks of the API on a fake KV (`node theatre/dev/test-api.mjs`) |
+| `dev/dev-server.mjs` | Local test server (site + API on an in-memory KV). Put the script PDF in a folder OUTSIDE the repo and pass it as the third argument |
 
-### Teacher mode (teacher password)
-- **Import script PDF** → review speaker labels → map to characters → review/edit lines and lyrics per scene. Rebuild `moments` from the parse (talk segments + songs, presence from speakers/singers), keeping the teacher's edits.
-- **Cast**: actors (name, characters, photo resized small, access settings above).
-- **On stage grid**: characters × moments, tap to toggle; minutes per moment.
-- **Costumes & props**: per character, which moments.
-- **Songs & tracks**: upload rehearsal (guide vocal) and performance tracks per song from the laptop (encrypted to KV); song lengths fill in from the audio; **Make melody line** runs `Melody.extract` once and saves the notes in the show.
-- **Passwords**, backup export/import, start a new show for next year.
+Parser fixes this session (`js/script-parser.js`): a scene heading or the "Actor's Glossary" heading at the very top of a page was being dropped as a page header
+(pdf.js gave 14 scenes and read the glossary as one of Troy's lines); now 17 scenes, 333 lines, 448 lyric lines. Split contractions in lyrics ("did n't") are rejoined.
+
+Tested in the browser with the real HSM JR PDF (kept outside the repo): setup, wrong/right teacher password, import (17 scenes, 333 lines, speaker names map automatically
+except SOLO and DUET in the Megamix, which the teacher chooses), cast, Run my role with a stand-in for speech recognition (silent / not quite / got it, then it moves on),
+"I did it", hints, schedule, encrypted track upload and download, melody line (9 of 9 test notes), song player (guide on/off, melody tone, loop), costumes, story,
+settings, phone and iPad widths. Not yet tried on a real iPad (microphone, voices) or on the live Worker.
+
+How students "say" a line: Run my role listens with webkitSpeechRecognition (iPad Safari, https only). AAC / sign users get the "I did it" button (set per actor, or on any device without speech recognition).
+
+## Still to build
+- **Show Control** (projector + sound system): unchanged from the plan below.
+- **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.
+- Lyrics: the parser still leaves a few split syllables ("hap pen"); the teacher can fix them in Script > scene > tap the song.
+- Try on a real iPad: the voices list, the microphone prompt, and Add to Home Screen.
 
 ### Show Control (projector + sound system)
 - Laptop plays performance tracks to the sound system from tracks stored on that laptop (IndexedDB), so performances don't depend on Wi-Fi.

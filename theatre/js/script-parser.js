@@ -16,7 +16,7 @@
   /* "Some - thing new __" printed under notes -> "Something new" */
   function cleanLyric(s) {
     return s.replace(MUSIC_GLYPH_ALL, ' ').replace(/_+/g, ' ').replace(/\s+-\s*|\s*-\s+/g, '').replace(/[–—]\s*$/, '')
-      .replace(/\s+([,.!?;:])/g, '$1').replace(/\s+/g, ' ').trim()
+      .replace(/\s+([,.!?;:])/g, '$1').replace(/(\w)\s+(n['’]t|['’](?:s|ll|re|ve|d|m))\b/g, '$1$2').replace(/\s+/g, ' ').trim()
       .replace(/(\w)\s+(er|ly|ta|na|al|y|e|ty|ry|ny|ble|tion|ing)\b(?=[\s,.!?;:]|$)/gi, '$1$2')          // a word's last syllable
       .replace(/\b(ev|un|re|pe|se|bi|hi|si|ri|de|ec|ti|be|pre|con|dis|ex)\s+(?=[a-z’']{2,})/g, '$1');      // a word's first syllable
   }
@@ -86,7 +86,7 @@
   /* a printed page number from a header or footer line, e.g. "8 Disney's High School Musical JR." */
   function pageFurniture(line, page) {
     var nearEdge = line.y > page.height * 0.9 || line.y < page.height * 0.07;
-    if (!nearEdge || line.text.length > 90) return null;
+    if (!nearEdge || line.text.length > 90 || SCENE.test(line.text)) return null;      // a scene can start at the very top of a page
     var m = line.text.match(/^(\d{1,3})\b/) || line.text.match(/\b(\d{1,3})$/);
     return { printed: m ? +m[1] : null };
   }
@@ -131,6 +131,7 @@
     for (var pi = 0; pi < pages.length && !done; pi++) {
       var page = pages[pi], lines = toLines(page), music = isMusicPage(lines);
       lines = lines.filter(function (l) {
+        if (stop.some(function (re) { return re.test(l.text); })) return true;      // the glossary heading sits at the top of its page
         var f = pageFurniture(l, page);
         if (f) {
           if (f.printed != null && l.text.replace(/[^A-Za-z]/g, '').length >= 8) pageMap.push([page.num, f.printed]);
