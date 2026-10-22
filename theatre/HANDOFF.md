@@ -126,6 +126,11 @@ shown to students with a switch; Cast list draft (starts from current roles; "Fi
 "Put everyone without a role in the ensemble"), then **Post** sets every student's roles. Nothing about gender is asked or used. **First two weeks**: a starter plan
 (week 1 whole-cast vocals, dance, read-through, crew tours; week 2 audition prep, auditions, callbacks), fills empty days only and shows week 1 to students.
 Teacher mode › Cast › Paste a class list makes this usable on day one.
+**The audition is the first week** (Colleen: teach the whole-cast numbers first and use that as the audition, starting with the finale, plus a short vocal selection
+of the student's choice): First two weeks = Megamix (Bows) vocals, Megamix dance, We're All in This Together (Reprise), Wildcat Cheer, run all three + crew tours;
+then pick your vocal selection (any song, about 30 seconds, chosen in the sign-up; sign or a buddy are fine), vocal selections for half the class each day
+(the other half reviews the finale dance), callbacks (a group with `callbacks: true` fills itself from the callback list), and the run-through when the cast list goes up.
+Audition notes › **Quick notes during a group number**: a star grid (singing, dance, acting/energy) for the whole class, saved as you tap.
 
 **Voices** (Colleen: the read-aloud voices were "terrible"): only the device's good English voices (joke voices removed, Premium/Enhanced/natural first, a pool of 6,
 gentle pitch changes). `pronounce()` fixes names from `outline.say` plus the teacher's list (Teacher mode › Script › How words are said, with Hear),

@@ -105,7 +105,7 @@
       .concat(g.songs.map(function (id) { var s = T.songById(id); return s ? '“' + s.title + '”' : ''; })).filter(Boolean);
     return g.everyone && !bits.length ? 'whole cast' : bits.join(', ');
   }
-  function groupName(g) { return focus(g.focus)[2] + (groupWhat(g) ? ': ' + groupWhat(g) : '') + (g.only ? ' (' + (g.only === 'chorus' ? 'chorus' : 'principals') + ')' : ''); }
+  function groupName(g) { if (g.callbacks) return 'Callbacks'; return focus(g.focus)[2] + (groupWhat(g) ? ': ' + groupWhat(g) : '') + (g.only ? ' (' + (g.only === 'chorus' ? 'chorus' : 'principals') + ')' : ''); }
   function away(a, s) { return P().conflicts.find(function (c) { return c.actor === a.id && c.date === s; }); }
   /* the app's practice ideas for one actor, most useful first (what is planned in the next two weeks), lines and songs taking turns */
   function practiceList(a, s) {
@@ -127,7 +127,7 @@
     for (var i = 0; i < Math.max(L.length, S.length); i++) { if (L[i]) out.push(L[i]); if (S[i]) out.push(S[i]); }
     return out.length ? out : [{ type: 'practice', icon: '🎧', text: 'Listen to the whole show and follow the words', href: '#/listen' }, { type: 'practice', icon: '📖', text: 'The Story: read the scenes you are in', href: '#/story' }, { type: 'practice', icon: '👕', text: 'My Costumes: check what you wear and when', href: '#/costumes' }];
   }
-  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.focus === 'trip') return g.everyone; if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
+  function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.focus === 'trip') return g.everyone; if (g.callbacks) { var cb = (T.show.casting || {}).callbacks || {}; return Object.keys(cb).some(function (k) { return cb[k].indexOf(a.id) >= 0; }); } if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
   /* the weekly crew day */
   var BIG_DAYS = ['run', 'tech', 'dress', 'show'];
   function exempt(a) { if (a.guest) return true; var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }

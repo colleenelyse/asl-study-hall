@@ -1,7 +1,7 @@
 /* asl.cool/theatre Casting: audition sign-ups (from students' iPads), audition notes, callbacks, and the cast list, so a class that only gets its roster
    a week before school can start on day one (Colleen, 2026-10-21). Also "Plan the first two weeks": whole-cast warm-up days, then audition days.
    T.show.casting = { open, callbacksShown, posted (date the cast list went up),
-     signups { actor: { roles [char ids, first choice first], any, lines|solo|dance: yes|maybe|notyet, how: class|video|buddy|aac, helps, pronouns, at } },
+     signups { actor: { roles [char ids, first choice first], any, vocal { song, part } (a short vocal selection they choose), lines|solo|dance: yes|maybe|notyet, how: class|video|buddy|aac, helps, pronouns, at } },
      notes { actor: { acting|singing|dance: 0-3, tags [], text, consider [char ids] } }, callbacks { char: [actor ids] }, draft { char: [actor ids] } }
    Students send sign-ups as encrypted notes (type 'audition'); Teacher mode › Casting takes them in. Nothing about gender is asked or used:
    any student can play any role. */
@@ -42,6 +42,7 @@
     if (!actor(n.actor) || !Array.isArray(n.roles)) return false;
     var ok = function (v) { return COMFORT.some(function (c) { return c[0] === v; }) ? v : 'maybe'; };
     C().signups[n.actor] = { roles: n.roles.filter(function (r) { return T.charById(r); }).slice(0, 6), any: !!n.any, lines: ok(n.lines), solo: ok(n.solo), dance: ok(n.dance),
+      vocal: n.vocal && T.songById(n.vocal.song) ? { song: n.vocal.song, part: String(n.vocal.part || '').slice(0, 120) } : null,
       how: HOW.some(function (h) { return h[0] === n.how; }) ? n.how : 'class', helps: String(n.helps || '').slice(0, 300), pronouns: String(n.pronouns || '').slice(0, 30), at: n._at };
     return true;
   };
@@ -62,7 +63,7 @@
     h += { signups: signupsView, notes: notesView, callbacks: callbacksView, cast: castView, start: startView }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
-    ({ signups: wireSignups, callbacks: wireCallbacks, cast: wireCast, start: wireStart }[tab] || function () {})();
+    ({ signups: wireSignups, callbacks: wireCallbacks, cast: wireCast, start: wireStart, notes: wireNotes }[tab] || function () {})();
     app.querySelectorAll('[data-stu]').forEach(function (el) { el.onclick = function () { T.go('#/teacher/casting/student/' + el.dataset.stu); }; });
   }
   var chips = function (ids) { return ids.map(function (id) { return T.charById(id) ? T.chip(id) : ''; }).join(''); };
@@ -76,17 +77,39 @@
         var s = c.signups[a.id];
         return '<div class="card" style="cursor:pointer" data-stu="' + a.id + '"><div class="row">' + T.face(a, 44) + '<div class="grow"><b>' + esc(a.name) + '</b>' + (s.pronouns ? ' <span class="muted small">(' + esc(s.pronouns) + ')</span>' : '') +
           '<br>' + chips(s.roles) + (s.any ? '<span class="tag">Any role is OK</span>' : '') + '</div></div>' +
+          (s.vocal && T.songById(s.vocal.song) ? '<p class="small">' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
           '<p class="muted small">' + comfortTxt(s) + ' · Audition: ' + esc((HOW.find(function (h) { return h[0] === s.how; }) || HOW[0])[1]) + '</p>' + (s.helps ? '<p class="small">' + sym('💛') + esc(s.helps) + '</p>' : '') + '</div>';
       }).join('') +
       (not.length ? '<details><summary class="btn quiet">Not signed up yet (' + not.length + ')</summary><p>' + not.map(function (a) { return '<button class="btn small" data-stu="' + a.id + '">' + esc(a.name) + '</button>'; }).join(' ') + '</p><p class="muted small">Tap a name to sign them up yourself.</p></details>' : '');
+  }
+  function wireNotes() {
+    var c = C(), t = null;
+    document.getElementById('qv').onclick = function () { quick = !quick; overview(); };
+    app.querySelectorAll('[data-q] button').forEach(function (b) {
+      b.onclick = function () {
+        var x = b.parentNode.dataset.q.split('|'), n = c.notes[x[0]] = c.notes[x[0]] || { acting: 0, singing: 0, dance: 0, tags: [], text: '', consider: [] }, v = +b.dataset.v;
+        n[x[1]] = n[x[1]] === v ? 0 : v;
+        b.parentNode.querySelectorAll('button').forEach(function (y) { y.setAttribute('aria-pressed', +y.dataset.v === n[x[1]]); });
+        clearTimeout(t); t = setTimeout(function () { T.saveShow('Notes saved'); }, 1500);
+      };
+    });
   }
   function wireSignups() {
     document.getElementById('open').onchange = function (e) { C().open = e.target.checked; T.saveShow(e.target.checked ? 'Auditions are open' : 'Auditions are closed').then(overview); };
   }
 
+  /* quick notes while the whole cast learns a number (the week-1 audition): one row each, tap the stars, saved as you go */
+  var quick = false;
+  function quickView() {
+    var c = C();
+    var seg = function (a, k) { var n = c.notes[a.id] || {}; return '<div class="seg" data-q="' + a.id + '|' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div>'; };
+    return '<p class="muted">Tap stars while they learn the number; it saves as you go. Scores are only for you.</p><table class="tbl"><thead><tr><th>Student</th><th>🎵 Singing</th><th>💃 Dance</th><th>🗣️ Acting / energy</th></tr></thead><tbody>' +
+      students().map(function (a) { return '<tr><td>' + T.face(a, 32) + ' ' + esc(a.name) + '</td><td>' + seg(a, 'singing') + '</td><td>' + seg(a, 'dance') + '</td><td>' + seg(a, 'acting') + '</td></tr>'; }).join('') + '</tbody></table>';
+  }
   function notesView() {
     var c = C();
-    return '<p class="muted">Tap a student to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
+    if (quick) return '<div class="row" style="margin-bottom:10px"><button class="btn small" id="qv">Back to students</button></div>' + quickView();
+    return '<div class="row" style="margin-bottom:10px"><button class="btn primary" id="qv">Quick notes during a group number</button></div><p class="muted">Or tap a student to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
       var n = c.notes[a.id], s = c.signups[a.id];
       return '<button class="person" data-stu="' + a.id + '" style="min-height:0">' + T.face(a, 56) + '<b>' + esc(a.name) + '</b><span>' +
         (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') + (s ? '' : ' · not signed up') + '</span></button>';
@@ -102,6 +125,7 @@
       var stars = function (k, label) { return '<div class="switch"><span>' + label + '</span><div class="seg" data-score="' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div></div>'; };
       app.innerHTML = '<div class="card"><div class="row">' + T.face(a, 64) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (s.pronouns ? '<span class="muted">' + esc(s.pronouns) + '</span>' : '') + '</div></div>' +
         '<p><b>Wants:</b> ' + (s.roles.length ? chips(s.roles) : '<span class="muted">no roles picked</span>') + (s.any ? ' <span class="tag">Any role is OK</span>' : '') + '</p>' +
+        (s.vocal && T.songById(s.vocal.song) ? '<p>' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
         '<p class="muted small">' + comfortTxt(s) + '</p>' + (s.helps ? '<p>' + sym('💛') + esc(s.helps) + '</p>' : '') +
         '<details><summary class="btn quiet small">Change their sign-up</summary>' + signupForm(s, 't') + '</details></div>' +
         '<div class="card"><h3>Audition notes</h3>' + stars('acting', '🗣️ Acting') + stars('singing', '🎵 Singing') + stars('dance', '💃 Dance') +
@@ -137,18 +161,24 @@
       '<label class="switch" style="margin-top:10px"><span><b>Any role is OK with me</b></span><input type="checkbox" id="' + p + 'any"' + (s.any ? ' checked' : '') + '></label>' +
       seg('lines', '🗣️ Speaking lines') + seg('solo', '🎤 Singing by myself') + seg('dance', '💃 Dancing') +
       '<div class="switch"><span>How I want to audition</span><div class="seg" data-' + p + 'how>' + HOW.map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (s.how === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
+      '<p style="margin-top:12px"><b>' + sym('🎤') + 'My vocal selection</b> <span class="muted small">(about 30 seconds of any song from the show. You can also sing it with a buddy, or show it with sign.)</span></p>' +
+      '<div class="row"><label class="f grow" style="margin:0">Song<select id="' + p + 'vs"><option value="">Choose…</option>' + T.O().songs.map(function (so) { return '<option value="' + so.id + '"' + (s.vocal && s.vocal.song === so.id ? ' selected' : '') + '>' + esc(so.title) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f grow" style="margin:0">Which part<input id="' + p + 'vp" maxlength="120" value="' + esc(s.vocal ? s.vocal.part : '') + '" placeholder="e.g. the first verse"></label></div>' +
+      (s.vocal && s.vocal.song ? '<p><a class="btn small" href="#/song/' + s.vocal.song + '">' + icon('songs') + 'Practice it</a></p>' : '') +
       '<label class="f">Things that help me (you can skip this)<input id="' + p + 'helps" maxlength="300" value="' + esc(s.helps) + '" placeholder="e.g. going first, a quiet room, my headphones, seeing the words"></label>' +
       '<label class="f">My pronouns (you can skip this)<input id="' + p + 'pro" maxlength="30" value="' + esc(s.pronouns) + '"></label>';
   }
   function readForm(s, p) {
     var any = document.getElementById(p + 'any'); if (!any) return;
     s.any = any.checked; s.helps = document.getElementById(p + 'helps').value.trim(); s.pronouns = document.getElementById(p + 'pro').value.trim();
+    var vs = document.getElementById(p + 'vs').value; s.vocal = vs ? { song: vs, part: document.getElementById(p + 'vp').value.trim() } : null;
   }
   function wireForm(s, p, redraw) {
     var keepForm = function () { readForm(s, p); };
     var reopen = function () { var dt = app.querySelector('details'); var o = dt && dt.open; redraw(); if (o) { var d2 = app.querySelector('details'); if (d2) d2.open = true; } };
     app.querySelectorAll('[data-' + p + 'role]').forEach(function (b) { b.onclick = function () { keepForm(); var r = b.getAttribute('data-' + p + 'role'), i = s.roles.indexOf(r); if (i >= 0) s.roles.splice(i, 1); else if (s.roles.length < 6) s.roles.push(r); reopen(); }; });
     app.querySelectorAll('[data-' + p + 'c] button').forEach(function (b) { b.onclick = function () { keepForm(); s[b.parentNode.getAttribute('data-' + p + 'c')] = b.dataset.v; reopen(); }; });
+    var vsel = document.getElementById(p + 'vs'); if (vsel) vsel.onchange = function () { keepForm(); reopen(); };
     app.querySelectorAll('[data-' + p + 'how] button').forEach(function (b) { b.onclick = function () { keepForm(); s.how = b.dataset.v; reopen(); }; });
   }
 
@@ -246,7 +276,7 @@
     var P = T.production(), first = P.term.first;
     if (!first) return '<p class="card">Set the first and last day of class first (Production › Calendar & crew).</p>';
     var days = starter(), has = days.filter(function (x) { return P.days[x.date]; }).length;
-    return '<div class="card"><h3>Plan the first two weeks</h3><p class="muted">A ready-made start you can change in Production. Students have no roles yet, so every day is whole-cast.</p>' +
+    return '<div class="card"><h3>Plan the first two weeks</h3><p class="muted">Week 1 teaches the numbers everyone is in, starting with the finale, and that is the audition: you watch and take notes while they learn (Audition notes › Quick notes). Week 2 adds a short vocal selection each student chooses (half the class each day), then callbacks. Every day stays editable in Production.</p>' +
       days.map(function (x) { return '<p><b>' + esc(T.prodDay(x.date)) + ':</b> ' + esc(x.label) + '</p>'; }).join('') +
       (has ? '<p class="err">' + has + ' of these days already have a plan; those stay as they are.</p>' : '') +
       '<div class="row end"><button class="btn primary" id="plan" data-save>Plan these days</button></div></div>';
@@ -256,19 +286,22 @@
     var P = T.production(), out = [], d = P.term.first;
     var classDays = []; for (var i = 0; classDays.length < 10 && i < 40; i++) { var s = addDays(d, i), w = parseD(s).getDay(); if (s <= P.term.last && w > 0 && w < 6 && P.term.off.indexOf(s) < 0) classDays.push(s); }
     var g = function (focus, songs, where) { return { id: 'g' + Math.random().toString(36).slice(2, 8), focus: focus, scenes: [], songs: songs.filter(Boolean), everyone: true, where: where || '', only: '' }; };
+    /* Colleen: teach the whole-cast numbers in week 1 and use that as the audition (time spent learning what everyone needs for the show anyway),
+       starting with the finale, plus a short vocal selection each student chooses. */
+    var both = function (n, where) { return [g('vocals', [SONG(n)], where), g('dance', [SONG(n)])]; };
     var plan = [
-      ['Welcome! Whole-cast vocals: “We’re All in This Together”', [g('vocals', [SONG('32')])], 'Welcome to the company! Today we learn the song everyone is in.'],
-      ['Whole-cast dance: “Wildcat Cheer”', [g('dance', [SONG('1')])], 'Wear shoes you can move in.'],
-      ['Read-through: listen to the whole story together', [g('acting', [])], 'We read the whole show together. You can follow along on your iPad (The Story).'],
-      ['Whole-cast vocals and dance: “Megamix (Bows)”', [g('vocals', [SONG('41')])], 'The bows song: everyone is in it.'],
-      ['Crew tours: visit each crew (set, costumes, props)', [], 'Today you visit every crew. Think about which one you would like.'],
-      ['Audition prep: pick roles and practice your side', [], 'Open Auditions on your iPad: sign up, then practice your side.'],
-      ['Audition prep: practice with a partner', [], 'Practice your side with a buddy. Videos are OK too.'],
-      ['Auditions', [g('acting', [], 'Stage')], 'Auditions today! Take a deep breath. Every audition is a good audition.'],
-      ['Auditions (and make-ups)', [g('acting', [], 'Stage')], 'More auditions today, and make-ups for anyone who was away.'],
-      ['Callbacks', [g('acting', [], 'Stage')], 'Callbacks are on your iPad. If you are not called back, that is OK: everyone gets a role.']
+      ['Welcome! Learn the finale: “Megamix (Bows)” (vocals)', [g('vocals', [SONG('41')])], 'Welcome to the company! We start with the finale, because everyone is in it. This week’s songs are your audition: just learn with us and have fun.'],
+      ['Finale dance: “Megamix (Bows)”', [g('dance', [SONG('41')])], 'Wear shoes you can move in. Watching your teacher, or a buddy, is a great way to learn the moves.'],
+      ['“We’re All in This Together” (vocals)', [g('vocals', [SONG('40')])], 'Another song the whole cast sings.'],
+      ['“Wildcat Cheer” (dance and cheer)', [g('dance', [SONG('1')])], 'The opening number! Loud, proud, and together.'],
+      ['Run all three songs, then crew tours', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'We run the songs we learned, then visit each crew (set, costumes, props).'],
+      ['Pick your vocal selection, and finale review', [g('vocals', [SONG('41')])], 'Open Auditions on your iPad: pick your roles and about 30 seconds of any song from the show. Practice it with My Songs (the loop button helps).'],
+      ['Vocal selections (half the class) · finale dance for everyone else', [g('vocals', [], 'your vocal selection, one at a time with the teacher'), g('dance', [SONG('41')])], 'Vocal selections today for half of us. Every audition is a good audition!', 'A'],
+      ['Vocal selections (the other half) · finale dance for everyone else', [g('vocals', [], 'your vocal selection, one at a time with the teacher'), g('dance', [SONG('41')])], 'Vocal selections today for the other half. Take a deep breath: you have got this!', 'B'],
+      ['Callbacks (reading scenes) · everyone else: “We’re All in This Together”', [Object.assign(g('acting', [], 'Stage'), { everyone: false, callbacks: true }), g('vocals', [SONG('40')])], 'Callbacks are on your iPad. Not called back? That is OK: everyone gets a role.'],
+      ['Run the whole-cast numbers · the cast list goes up!', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'Great work this week! Look for the cast list on your iPad after class.']
     ];
-    classDays.forEach(function (s, i) { var p = plan[i]; if (p) out.push({ date: s, label: p[0], groups: p[1], notes: p[2] }); });
+    classDays.forEach(function (s, i) { var p = plan[i]; if (p) out.push({ date: s, label: p[0], groups: p[1], notes: p[2], half: p[3] }); });
     return out;
   }
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
@@ -282,6 +315,7 @@
         if (P.days[x.date]) return;
         var assign = {}, tasks = {};
         if (!x.groups.length) students().forEach(function (a) { assign[a.id] = 'custom'; tasks[a.id] = x.label; });
+        if (x.half) { x.groups[0].everyone = false; x.groups[1].everyone = true; students().forEach(function (a, k) { if ((k % 2 === 0) === (x.half === 'A')) assign[a.id] = 'g:' + x.groups[0].id; }); }      // vocal selections: half the class each day
         P.days[x.date] = { groups: x.groups, assign: assign, tasks: tasks, notes: x.notes }; n++;
         if (i === 0) firstMon = x.date;
       });
