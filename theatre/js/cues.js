@@ -133,7 +133,7 @@
   var colorOf = function (c) { return SM_COLOR[isChange(c) ? 'SC' : c.k]; };
   T.teacherPages.smscript = function () {
     T.setBar('Stage manager script', '#/teacher/cues');
-    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>Import the script PDF first.</p></div>'; return; }
+    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not saved yet. Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).</p></div>'; return; }
     var st = Object.assign({ sug: true, notes: false }, T.ls('smScript') || {}), nS = T.cues().filter(function (c) { return c.sug; }).length;
     app.innerHTML = '<div class="card noprint"><h2>' + sym('📋') + 'Stage manager script</h2>' +
       '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span>, and the line where each one happens highlighted in its color.</p>' +
@@ -204,7 +204,7 @@
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.cues = function () {
     T.setBar('Cue sheet', '#/teacher');
-    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>Import the script PDF first.</p></div>'; return; }
+    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not saved yet. Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).</p></div>'; return; }
     var st = Object.assign({ k: '', sug: true }, T.ls('cueSheet') || {}), sc = T.show.script;
     var pageOf = T.Pages.printed;
     function draw() {

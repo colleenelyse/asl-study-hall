@@ -18,7 +18,7 @@
 
   function view(o) {      // o: { teacher, back }
     T.setBar('The script', o.back);
-    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not ready yet. ' + (o.teacher ? 'Import the script PDF on the Script page first.' : 'Your teacher saves them when importing the script.') + '</p></div>'; return; }
+    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not ready yet. ' + (o.teacher ? 'Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).' : 'Your teacher saves them when importing the script.') + '</p></div>'; return; }
     var sc = T.show.script, O = T.O(), adding = false;
     var st = Object.assign({ hl: o.teacher ? '' : 'mine', mine: true, dir: true, cues: !!o.teacher }, T.ls('scriptView' + (o.teacher ? 'T' : '')) || {});
     var keep = function () { T.ls('scriptView' + (o.teacher ? 'T' : ''), st); };

@@ -96,7 +96,18 @@
     };
   }
 
+  /* a script saved without its pages (a re-import whose PDF upload failed) while the PDF is still on the server: reconnect it */
+  function recoverPdf() {
+    var sc = T.show.script; if (!sc || sc.pdfVer || !sc.pages || recoverPdf.tried) return; recoverPdf.tried = true;
+    var ctl = new AbortController();
+    fetch('/theatre/api/pdf', { cache: 'no-store', signal: ctl.signal }).then(function (r) {
+      ctl.abort(); if (!r.ok) return;
+      sc.pdfVer = 'r' + Date.now().toString(36);
+      return save('Script pages reconnected').then(function () { if (/^#\/teacher\/?$/.test(location.hash)) home(); });
+    }).catch(function () {});
+  }
   function home() {
+    recoverPdf();
     T.setBar('Teacher mode', '#/');
     var O = T.O(), sc = T.show.script, nLines = 0;
     if (sc) sc.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') nLines++; }); });
@@ -104,9 +115,9 @@
     var t = function (href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; };
     app.innerHTML = '<h2>' + esc(O.title) + '</h2><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p><div class="tiles">' +
       t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
-      (T.Pages && T.Pages.ready() ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
-      (T.Pages && T.Pages.ready() ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
-      (T.Pages && T.Pages.ready() ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '') +
+      (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
+      (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
+      (sc ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '') +
       (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '') +
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
@@ -181,7 +192,8 @@
     var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || 0) + it.lyrics.length; }); }); return o; };
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
     O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) delete LT[so.id]; });
-    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages };
+    var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
+    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
     T.toast('Read ' + r.scenes.length + ' scenes and ' + n + ' lines. Check the speaker names, then Save.', 4000);
     scriptPage([]);

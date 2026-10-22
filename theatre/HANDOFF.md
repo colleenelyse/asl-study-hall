@@ -295,3 +295,6 @@ The show file can carry a starting mic plot (`micPlot` in show-hsm-jr.js: 10 mic
 before (no `v`) moves to it once, keeping the station and helper (`T.micSettings`). Pins can be on a character or an actor.
 A stage direction right under a staff ("(#22 – STATUS QUO – PLAYOFF…") is read as a direction, not lyrics or skipped; all 42 HSM JR music numbers
 are found, so "Add many … tracks" can place every file (songs and scene-change music) by its number.
+Re-importing keeps the saved pages (`pdfVer`) until the new PDF is saved; a show saved without `pdfVer` while the PDF is on the server is reconnected
+when the teacher home opens (`recoverPdf`). Read the script, Cue sheet and Stage manager script tiles show whenever there is a script; their pages
+explain what to do if the pages are not saved.
