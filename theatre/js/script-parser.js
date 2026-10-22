@@ -116,7 +116,7 @@
     function emit(item) {
       if (!scene) return null;
       item.page = printed != null ? printed : null;
-      if (item.type === 'line' && nameBox) { item.boxes = [nameBox]; nameBox = null; }
+      if (item.type === 'line' && nameBox) { item.boxes = [nameBox]; item.named = 1; nameBox = null; }
       addBox(item);
       scene.items.push(item);
       return item;

@@ -47,9 +47,13 @@
       var it = x.it; if (it.type !== 'line' && it.type !== 'song' && !(it.type === 'dir' && o.dirs)) return;
       var cls = 'hl item ' + (it.type === 'line' ? 'line' + (x.mine ? ' mine' : '') : it.type), cover = it.type === 'line' && o.cover ? o.cover(x) : '';
       var boxes = it.type === 'song' ? (it.boxes || []).slice(0, 1) : (it.boxes || []);
-      boxes.forEach(function (b) {
+      // a line's first box is the character's name when it sits on its own row (scripts imported before 'named' was kept: any line with 2+ boxes);
+      // the name stays readable, and the cover's hint goes in the first box of the words only
+      var nameAt = it.type === 'line' && (it.named || boxes.length > 1) ? 0 : -1, first = true;
+      boxes.forEach(function (b, k) {
         var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!pg) return;
-        pg.insertAdjacentHTML('beforeend', '<div class="' + cls + (cover ? ' cover' : '') + '" data-i="' + x.i + '" style="' + pct(b, T.Pages.size(b.n)) + '">' + (cover ? '<span>' + cover + '</span>' : '') + '</div>');
+        var cv = cover && k !== nameAt, txt = cv && first ? cover : ''; if (cv) first = false;
+        pg.insertAdjacentHTML('beforeend', '<div class="' + cls + (cv ? ' cover' : '') + '" data-i="' + x.i + '" style="' + pct(b, T.Pages.size(b.n)) + '">' + (txt ? '<span>' + txt + '</span>' : '') + '</div>');
       });
     });
     return T.Pages.doc().then(function (doc) {
