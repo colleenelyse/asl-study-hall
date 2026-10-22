@@ -448,7 +448,8 @@
     var links = O.links || {};
     app.innerHTML = '<div class="card"><p>Upload each song’s <b>rehearsal track</b> (with the guide vocals) and <b>performance track</b> (band only). They are saved encrypted, for this cast. MP3 works best (24 MB at most).</p>' +
       '<p class="row">' + (links.rehearsalFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.rehearsalFolder) + '">Rehearsal tracks folder</a>' : '') + (links.performanceFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.performanceFolder) + '">Performance tracks folder</a>' : '') + '</p>' +
-      '<p class="muted small">Then <b>Make melody line</b> works out the tune from the two tracks, so students can hear a soft tone instead of the singers.</p></div>' +
+      '<p class="muted small">Then <b>Make melody line</b> works out the tune from the two tracks, so students can hear a soft tone instead of the singers.</p>' +
+      '<p class="row"><button class="btn primary" id="alllyr">Find lyrics timing for every song</button><span class="muted small">For the sheet music with a moving guide. Songs that already have a ✓ are left alone.</span></p></div>' +
       '<table class="tbl"><thead><tr><th>Song</th><th>Rehearsal (guide vocals)</th><th>Performance</th><th>Melody line</th></tr></thead><tbody>' + O.songs.map(function (s) {
         var t = tr[s.id] || {}, cell = function (kind) {
           var x = t[kind];
@@ -479,6 +480,22 @@
         }).then(function () { if (location.hash === '#/teacher/songs') songsPage(); }).catch(function (e) { st.textContent = ''; T.toast(e.message || 'That file would not open as audio.', 4000); });
       };
     });
+    document.getElementById('alllyr').onclick = function () {
+      var L = T.show.lyricTimes = T.show.lyricTimes || {}, b = this;
+      var todo = O.songs.filter(function (s) { var t = tr[s.id] || {}, it = lyricItem(s.id); return t.rehearsal && t.performance && it && it.lyrics.length && !L[s.id]; });
+      if (!todo.length) { T.toast('Every song with both tracks and lyrics already has its timing.', 4000); return; }
+      b.disabled = true; var done = 0, miss = [];
+      todo.reduce(function (p, s, k) {
+        return p.then(function () {
+          st.textContent = 'Listening to “' + s.title + '” (' + (k + 1) + ' of ' + todo.length + ')… about a minute each.';
+          return autoLyrics(s.id).then(function (r) { if (r.n) { L[s.id] = { kind: 'performance', lines: r.lines }; done++; } else miss.push(s.title); }, function () { miss.push(s.title); });
+        });
+      }, Promise.resolve()).then(function () {
+        return save('Lyrics timing saved for ' + done + ' song' + (done === 1 ? '' : 's'));
+      }).then(function () {
+        songsPage(); document.getElementById('st').textContent = 'Saved ' + done + ' of ' + todo.length + '.' + (miss.length ? ' Not found: ' + miss.join(', ') + ' (open its Lyrics timing to tap it by hand).' : '') + ' Open any song’s Lyrics timing to Test and nudge.';
+      });
+    };
     app.querySelectorAll('button[data-mel]').forEach(function (b) {
       b.onclick = function () {
         var id = b.dataset.mel, t = tr[id], ctx = T.audioCtx();
@@ -570,6 +587,25 @@
   /* when each lyric line (and syllable) is sung, for the bouncing ball on the real pages: found in the guide vocals (the singing left when the
      band track is taken away, lyric lines matched in order to sung stretches, syllables to the sung notes), or tapped by hand; nudge, test, save.
      T.show.lyricTimes[song] = { kind: 'performance', lines: [{ t, e, s: [syllable starts] }] } on the band track's clock, in the script's lyric order. */
+  function lyricItem(songId) {
+    var song = T.songById(songId), scene = song && T.sceneById(song.scene), src = scene && T.scriptScene(scene);
+    return src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
+  }
+  var lyrCount = function (l) { return (l.syl && l.syl.length) || l.text.split(/\s+/).length; };
+  /* finds when each lyric line is sung, from the two tracks: { n found, lines on the band track's clock (null where not found) } */
+  function autoLyrics(songId) {
+    var tr = T.show.tracks[songId], ctx = T.audioCtx(), lines = lyricItem(songId).lyrics;
+    var get = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { return ctx.decodeAudioData(b); }); };
+    return Promise.all([get('rehearsal'), get('performance')]).then(function (r) {
+      return new Promise(function (ok) { setTimeout(ok, 50); }).then(function () {
+        var g = Melody.toMono(r[0]), p = Melody.toMono(r[1]), rate = r[0].sampleRate, offS = Melody.findOffset(g, p, rate), iso = Melody.isolate(g, p, offS);
+        var regions = Melody.voiceRegions(iso.voice, rate), notes = Melody.notes(iso.voice, rate), al = Melody.alignLyrics(regions, lines.map(lyrCount)), n = 0;
+        var out = al.map(function (x, i) { if (!x) return null; n++; return { t: x.t, e: x.e, s: Melody.sylTimes(notes, x.t, x.e, lyrCount(lines[i])) }; });
+        return { n: n, lines: out.map(function (x) { return x && { t: +x.t.toFixed(2), e: +x.e.toFixed(2), s: x.s.map(function (v) { return +v.toFixed(2); }) }; }) };
+      });
+    });
+  }
+
   function lyricsPage(songId) {
     var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
     var item = src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
@@ -620,17 +656,10 @@
     }
     function find() {
       var ctx = T.audioCtx(), m = document.getElementById('msg');
-      m.textContent = 'Loading both tracks…';
-      var get = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { return ctx.decodeAudioData(b); }); };
-      Promise.all([get('rehearsal'), get('performance')]).then(function (r) {
-        m.textContent = 'Listening to the singing… (this can take a minute)';
-        return new Promise(function (ok) { setTimeout(ok, 50); }).then(function () {
-          var g = Melody.toMono(r[0]), p = Melody.toMono(r[1]), rate = r[0].sampleRate, offS = Melody.findOffset(g, p, rate), iso = Melody.isolate(g, p, offS);
-          var regions = Melody.voiceRegions(iso.voice, rate), notes = Melody.notes(iso.voice, rate), al = Melody.alignLyrics(regions, lines.map(cnt)), n = 0;
-          times = al.map(function (x, i) { if (!x) return null; n++; return { t: x.t, e: x.e, s: Melody.sylTimes(notes, x.t, x.e, cnt(lines[i])) }; });
-          if (kind !== 'performance') times = times.map(function (x) { return x && { t: x.t + offS / rate, e: x.e + offS / rate, s: x.s.map(function (v) { return v + offS / rate; }) }; });
-          draw('Found ' + n + ' of ' + lines.length + ' lines. Use Test to check them, nudge with − and +, then Save.');
-        });
+      m.textContent = 'Listening to the singing… (this can take a minute)';
+      autoLyrics(songId).then(function (r) {
+        times = r.lines;      // both tracks are here, so this page plays the band track: same clock
+        draw('Found ' + r.n + ' of ' + lines.length + ' lines. Use Test to check them, nudge with − and +, then Save.');
       }).catch(function (e) { m.textContent = ''; T.toast(e.message || 'Could not read the tracks.', 4000); });
     }
     draw();

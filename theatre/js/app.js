@@ -799,7 +799,9 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!(mel && mel.notes && mel.notes.length) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
-      (canFollow ? '<div id="follow" class="pages" style="margin-bottom:14px"></div>' : '') +
+      (canFollow ? '<div id="follow" class="pages" style="margin-bottom:14px"></div>' : item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + (T.Pages && T.Pages.ready() ?
+        'The real sheet music with a moving guide shows here once your teacher saves this song’s lyrics timing (Teacher › Songs & tracks › Lyrics timing).' :
+        'The real sheet music with a moving guide shows here once your teacher imports the script PDF.') + '</p>' : '') +
       '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     if (!(has.perf || has.guide)) return;
     var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: (mel && mel.offset) || 0 };
