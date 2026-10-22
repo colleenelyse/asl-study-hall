@@ -293,3 +293,5 @@ change; the page lists who changes numbers. HSM JR with Jack Scott and the Moder
 singing, so 10 body mics cover everyone (each on one mic number all show); 8 or 9 cannot.
 The show file can carry a starting mic plot (`micPlot` in show-hsm-jr.js: 10 mics, Jack Scott and the Moderator on handhelds); a plot saved
 before (no `v`) moves to it once, keeping the station and helper (`T.micSettings`). Pins can be on a character or an actor.
+A stage direction right under a staff ("(#22 – STATUS QUO – PLAYOFF…") is read as a direction, not lyrics or skipped; all 42 HSM JR music numbers
+are found, so "Add many … tracks" can place every file (songs and scene-change music) by its number.

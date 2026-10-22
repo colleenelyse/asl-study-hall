@@ -203,7 +203,7 @@
         if (music && !(line.y > lastStave + 45 && !prevStave) && !(line.y < firstMusic - 4 && !/^[A-Z][A-Z .’',&]+:/.test(t))) {
           if (/#\s?\d/.test(t)) cues(t);
           var lyr = line.lyric ? cleanLyric(line.lyric) : '';
-          var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);
+          var lyricLike = lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^\(/.test(t) && !/#\s?\d+\s*[–-]/.test(t) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);      // "(#22 – …" right under a staff is a stage direction
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
           if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
             pushLyric(line, lyr); addBox(lastSongItem);
@@ -222,7 +222,8 @@
             singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
             continue;
           }
-          if (prevStave) { prevStave = false; continue; }                   // anything else right under a stave
+          var dirLike = /^\(/.test(t) || /#\s?\d+\s*[–-]/.test(t);
+          if (prevStave) { prevStave = false; if (!dirLike) continue; }        // anything else right under a stave (but a stage direction there counts)
           var startsDirM = /^\(/.test(t);
           if (depth > 0 || startsDirM || line.italic) {
             if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
