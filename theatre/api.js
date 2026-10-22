@@ -6,12 +6,18 @@
    - theatre:notes  [{ id, at, box }]: notes from students' iPads (a rehearsal conflict), encrypted with the show key on the iPad.
      Anyone may add one (small, a few per address per hour); only the teacher password reads and clears them.
    - theatre:pdf  the teacher's script PDF (for the script view that looks like the real pages), encrypted the same way as a track.
+   - theatre:voice:<line>:<tts|rec>  a line's audio, sealed: tts = made with ElevenLabs by the teacher, rec = a student's recording the teacher approved.
+     theatre:pending:<line>:<actor>  a student's recording waiting for the teacher's OK; theatre:pendinglist  [{ h, actor, at }].
+     Students may add recordings (sealed, small, limited per address). Colleen (2026-10-21): as students record their own lines, everyone hears them,
+     so recordings go live at once unless the teacher turns on checking first (theatre:autorec = '0'); every new one is on the teacher's list to remove.
+     theatre:voiceindex  { line: { tts: at, rec: { at, actor } } }: which lines have audio, read by every iPad (line ids are hashes; nothing readable).
    - theatre:progress:<actor>  one student's practice record (lines right/wrong, song ratings, minutes), encrypted with the show key on the iPad.
      The iPad reads and writes its own (no password: it is sealed, small, and limited per student); the teacher reads all of them with the teacher password.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
 const SETUP_SHA = '34f8cca6a9bd1ccfcf06a776a7dff687337235afa18b37051bea0f3da54b7c6b';
+const MAX_REC = 800000;      // a recorded line: about 30 seconds at most
 const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6, MAX_NOTES = 300, NOTES_PER_HOUR = 60;      // a school's iPads often share one address
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -116,9 +122,61 @@ export async function theatreApi(req, env, url, p) {
     await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 600 });
     return json({ ok: true });
   }
-  const m = rest === 'pdf' ? ['pdf'] : rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
+  /* line audio */
+  const index = async (h, src, val) => { const ix = (await env.LOCKS.get('theatre:voiceindex', 'json')) || {}; ix[h] = ix[h] || {}; if (val) ix[h][src] = val; else delete ix[h][src]; if (!Object.keys(ix[h]).length) delete ix[h]; await env.LOCKS.put('theatre:voiceindex', JSON.stringify(ix)); };
+  if (rest === 'voice/index') return json({ lines: (await env.LOCKS.get('theatre:voiceindex', 'json')) || {}, check: (await env.LOCKS.get('theatre:autorec')) === '0' });
+  if (rest === 'voice/settings') {
+    if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    let body; try { body = JSON.parse(await req.text()); } catch (e) { body = {}; }
+    const bad = await proven(env, req, body.proof, st); if (bad) return bad;
+    await env.LOCKS.put('theatre:autorec', body.check ? '0' : '1');
+    return json({ ok: true });
+  }
+  if (rest === 'voice/pending') {      // the teacher: recordings waiting
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    return json({ pending: (await env.LOCKS.get('theatre:pendinglist', 'json')) || [] });
+  }
+  const vp = rest.match(/^voice\/([a-z0-9]{6,20})\/(pending|approve)\/([a-z0-9]{2,16})$/);
+  if (vp) {
+    const pkey = 'theatre:pending:' + vp[1] + ':' + vp[3];
+    if (vp[2] === 'pending' && req.method === 'POST') {      // a student's iPad sends a recording (no password: sealed, small, limited)
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:recrate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= 200) return json({ error: 'Too many recordings from here this hour. Try again later.' }, 429);
+      const buf = await req.arrayBuffer();
+      if (buf.byteLength < 100 || buf.byteLength > MAX_REC) return json({ error: 'That recording is empty or too long (keep it under about 30 seconds).' }, 413);
+      const list = (await env.LOCKS.get('theatre:pendinglist', 'json')) || [];
+      if (list.length >= 600 && !list.some(x => x.h === vp[1] && x.actor === vp[3])) return json({ error: 'Your teacher has too many recordings waiting.' }, 507);
+      const live = (await env.LOCKS.get('theatre:autorec')) !== '0', at = new Date().toISOString();
+      if (live) { await env.LOCKS.put('theatre:voice:' + vp[1] + ':rec', buf); await index(vp[1], 'rec', { at, actor: vp[3] }); }
+      else await env.LOCKS.put(pkey, buf);
+      const next = list.filter(x => !(x.h === vp[1] && x.actor === vp[3])); next.push({ h: vp[1], actor: vp[3], at, live });
+      if (next.length > 600) next.splice(0, next.length - 600);
+      await env.LOCKS.put('theatre:pendinglist', JSON.stringify(next));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true, live });
+    }
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    const drop = async () => { const list = (await env.LOCKS.get('theatre:pendinglist', 'json')) || []; await env.LOCKS.put('theatre:pendinglist', JSON.stringify(list.filter(x => !(x.h === vp[1] && x.actor === vp[3])))); await env.LOCKS.delete(pkey); };
+    if (vp[2] === 'pending' && req.method === 'GET') { const v = (await env.LOCKS.get(pkey, 'arrayBuffer')) || (await env.LOCKS.get('theatre:voice:' + vp[1] + ':rec', 'arrayBuffer')); return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404); }
+    if (vp[2] === 'pending' && req.method === 'DELETE') {      // reject a waiting one, or take down a live one from that student
+      const ix = (await env.LOCKS.get('theatre:voiceindex', 'json')) || {}, r = ix[vp[1]] && ix[vp[1]].rec;
+      if (r && r.actor === vp[3]) { await env.LOCKS.delete('theatre:voice:' + vp[1] + ':rec'); await index(vp[1], 'rec', null); }
+      await drop(); return json({ ok: true });
+    }
+    if (vp[2] === 'approve' && req.method === 'POST') {
+      const v = await env.LOCKS.get(pkey, 'arrayBuffer'); if (!v) return json({ error: 'That recording is gone.' }, 404);
+      await env.LOCKS.put('theatre:voice:' + vp[1] + ':rec', v); await index(vp[1], 'rec', { at: new Date().toISOString(), actor: vp[3] }); await drop();
+      return json({ ok: true });
+    }
+    return json({ error: 'Not allowed' }, 405);
+  }
+  const vm = rest.match(/^voice\/([a-z0-9]{6,20})\/(tts|rec)$/);
+  const m = vm ? ['voice'] : rest === 'pdf' ? ['pdf'] : rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
   if (m) {
-    const key = rest === 'pdf' ? 'theatre:pdf' : 'theatre:track:' + m[1] + ':' + m[2];
+    const key = vm ? 'theatre:voice:' + vm[1] + ':' + vm[2] : rest === 'pdf' ? 'theatre:pdf' : 'theatre:track:' + m[1] + ':' + m[2];
     if (req.method === 'GET') {
       const v = await env.LOCKS.get(key, 'arrayBuffer');
       return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404);
@@ -127,12 +185,13 @@ export async function theatreApi(req, env, url, p) {
     const st = await env.LOCKS.get('theatre:show', 'json');
     if (!st || !st.vhash) return json({ error: 'Save the show once before adding tracks.' }, 400);
     const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
-    if (req.method === 'DELETE') { await env.LOCKS.delete(key); return json({ ok: true }); }
+    if (req.method === 'DELETE') { await env.LOCKS.delete(key); if (vm) await index(vm[1], vm[2], null); return json({ ok: true }); }
     const len = +(req.headers.get('content-length') || 0);
     if (len > MAX_TRACK) return json({ error: 'That track is too big (24 MB at most). Try an MP3.' }, 413);
     const buf = await req.arrayBuffer();
     if (buf.byteLength < 100 || buf.byteLength > MAX_TRACK) return json({ error: 'That track is empty or too big (24 MB at most).' }, 413);
     await env.LOCKS.put(key, buf);
+    if (vm) await index(vm[1], vm[2], vm[2] === 'rec' ? { at: new Date().toISOString(), actor: 'teacher' } : new Date().toISOString());
     return json({ ok: true, size: buf.byteLength });
   }
   return json({ error: 'Not found' }, 404);

@@ -195,6 +195,18 @@ the song bar above the buttons. **My script (print)**: my lines and lyrics I sin
 script; teachers print any track before casting (Tracks › Highlighted script for this track, `#/teacher/print/<character>`). Reader fixes this session:
 positions now use the page's real origin; a line near the footer is no longer dropped (357 lines, 463 lyric lines now). Re-import the PDF after updating.
 
+**Voices** (`js/voices.js`): every line plays a classmate's recording first, then ElevenLabs, then the device voice (`T.Voices.say`, used by Listen, Run my role,
+Say it for me, Echo, lines over the music). Students: Practice Lines › a scene › **Record my lines** (MediaRecorder, keep / try again; their own device plays
+their own recording at once). Recordings go live for everyone at once (Colleen) unless the teacher turns on checking first; Teacher mode › **Voices &
+recordings** lists every new one (play, OK, take down), and makes ElevenLabs lines: MTI-permission tick, her API key kept on her computer only (localStorage
+`xiKey`), a voice per character + one for group lines, quality (multilingual v2 or flash v2.5), a character count before making, only missing lines,
+names via the pronunciation list. API: `voice/<line>/<tts|rec>`, `voice/<line>/pending/<actor>`, `voice/<line>/approve/<actor>`, `voice/pending`,
+`voice/index` (which lines have audio; line ids are hashes), `voice/settings`. Not tried against the real ElevenLabs service (tested with a stand-in).
+**asl.cool/theatre-teacher** redirects to `/theatre/#/teacher`. An **update banner** appears when the app's files change on asl.cool; `sw.js` checks for
+new files every time (v2).
+Asked for, waiting on the district: students sign in with their school Google account at asl.cool/theatre (Google sign-in needs an OAuth client and, for
+students under 18, the district's Google admin to trust it).
+
 ## Still to build
 - **Show Control** (projector + sound system): unchanged from the plan below.
 - **Start a new show** for next year: needs a way to enter the new show's song list (the parser only treats cues whose numbers are songs as songs) and characters. Teacher mode can already add characters from unknown speaker names and adds scenes it does not know.

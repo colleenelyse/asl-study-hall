@@ -406,6 +406,7 @@
     if (!args[0]) return sceneList();
     var scene = sceneById(args[0]); if (!scene) return sceneList();
     if (!args[1]) return modePick(scene);
+    if (args[1] === 'record' && T.recordScene) return T.recordScene(scene);
     return practice(scene, args[1] === 'run' ? 'run' : 'listen', args[2]);      // args[2]: practice as another character (an audition side)
   }
   function sceneList() {
@@ -425,6 +426,7 @@
       '<div class="tiles" style="margin-top:16px">' +
       tile('#/lines/' + scene.id + '/listen', 'speak', 'Listen', 'Hear the whole scene') +
       (n ? tile('#/lines/' + scene.id + '/run', 'mic', 'Run my role', 'The app stops for your ' + n + ' line' + (n === 1 ? '' : 's')) : '') +
+      (n && T.me.id ? tile('#/lines/' + scene.id + '/record', 'mic', 'Record my lines', 'Your class hears your voice') : '') +
       '</div>';
   }
 
@@ -544,6 +546,7 @@
     }
     function setPP() { var b = document.getElementById('pp'); if (b) { b.innerHTML = icon(playing ? 'pause' : 'play'); b.setAttribute('aria-label', playing ? 'Pause' : 'Play'); } }
     function pause() { playing = false; gen++; Speech.stop(); if (listen.stop) listen.stop(); if (songStop) songStop(); closeTurn(); setPP(); }
+    if (T.Voices) T.Voices.load();      // which lines have real voices
     function play() { if (cur >= items.length) cur = 0; if (!visible(cur)) cur = nextIdx(cur); if (items[cur] && items[cur].it.type === 'song' && !trackOf(items[cur].song)) cur = nextIdx(cur); playing = true; setPP(); step(++gen); }
     function jump(i) { var was = playing; pause(); cur = Math.max(0, Math.min(i, items.length - 1)); if (!visible(cur)) cur = nextIdx(cur); mark(); if (was) play(); }
     function advance(g) { if (g !== gen) return; cur = nextIdx(cur); mark(); if (cur >= items.length) { playing = false; setPP(); toast('That is the end of the scene!'); return; } step(g); }
@@ -557,7 +560,7 @@
       if (mode === 'run' && x.mine) return myTurn(x, g);
       var text = LineCheck.spoken(it.text);
       var name = opt.names ? whoName(it.who) + '. ' : '';
-      Speech.say(name ? name : '', null).then(function () { return g === gen && Speech.say(text, x.chars[0]); }).then(function () { advance(g); });
+      (name ? Speech.say(name, null) : Promise.resolve()).then(function () { return g === gen && (T.Voices ? T.Voices.say(it, x.chars[0], x.mine) : Speech.say(text, x.chars[0])); }).then(function () { advance(g); });
     }
 
     /* ---- a song inside the run: the track plays here, and its lines over the music come on cue ---- */
@@ -594,7 +597,7 @@
         cur = y.i; mark();
         if (mode === 'run' && y.mine) return myTurn(y, g, true);
         audio.volume = 0.35;      // the music dips while the line is read
-        Speech.say((opt.names ? whoName(y.it.who) + '. ' : '') + LineCheck.spoken(y.it.text), y.chars[0]).then(function () { audio.volume = 1; });
+        (T.Voices ? T.Voices.say(y.it, y.chars[0], y.mine) : Speech.say(LineCheck.spoken(y.it.text), y.chars[0])).then(function () { audio.volume = 1; });
       }
     }
 
@@ -641,7 +644,7 @@
         if (a === 'miss') { rec(false); helped = true; fadeStep(x, -1); hintLevel = 3; return draw('<div class="fb close">That is OK! Here is the line. Say it once more, then tap I got it.</div>'); }
         if (a === 'skip') return done();
         if (a === 'hint') { helped = true; hintLevel = Math.min(3, hintLevel + 1); return draw(); }
-        if (a === 'for') { rec(false); fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g === gen) done(); }); }
+        if (a === 'for') { rec(false); fadeStep(x, -1); Speech.stop(); return (T.Voices ? T.Voices.say(x.it, x.chars[0] || myChars[0], true) : Speech.say(spokenLine, x.chars[0] || myChars[0])).then(function () { if (g === gen) done(); }); }
         if (a === 'mic') {
           Speech.stop();
           draw('', true);
@@ -662,7 +665,7 @@
       if (overMusic) { if (!opt.didIt) act('mic'); return; }
       if (opt.echo) {
         draw('<div class="fb close">' + sym('👂') + 'Listen, then say it after me.</div>');
-        Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g !== gen) return; draw(); if (!opt.didIt) act('mic'); });
+        (T.Voices ? T.Voices.say(x.it, x.chars[0] || myChars[0], true) : Speech.say(spokenLine, x.chars[0] || myChars[0])).then(function () { if (g !== gen) return; draw(); if (!opt.didIt) act('mic'); });
       } else if (!opt.didIt) {
         Speech.say('Your line!', null, { rate: 1.1 }).then(function () { if (g === gen) act('mic'); });
       }
@@ -1032,4 +1035,22 @@
   T.setMe = setMe;
   window.addEventListener('load', function () { setTimeout(function () { if (window.Store) Store.flushNotes(); }, 1500); });
   T.reload().then(route);
+
+  /* a new version on asl.cool: the page is one long-lived app, so tell the user and reload on a tap (Colleen could not see an update until she reloaded) */
+  (function watchForUpdates() {
+    var files = ['index.html', 'js/app.js', 'js/teacher.js', 'js/production.js'], tags = null;
+    var check = function () {
+      if (!navigator.onLine) return;
+      Promise.all(files.map(function (f) { return fetch(f, { method: 'HEAD', cache: 'no-store' }).then(function (r) { return r.headers.get('etag') || r.headers.get('last-modified') || ''; }).catch(function () { return ''; }); }))
+        .then(function (now) {
+          if (!tags) { tags = now; return; }
+          if (now.some(function (t, i) { return t && tags[i] && t !== tags[i]; }) && !document.getElementById('updbar')) {
+            var b = document.createElement('button'); b.id = 'updbar'; b.className = 'btn primary updbar'; b.textContent = 'A new version is ready. Tap to update.';
+            b.onclick = function () { location.reload(); }; document.body.appendChild(b);
+          }
+        });
+    };
+    check(); setInterval(check, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') check(); });
+  })();
 })();

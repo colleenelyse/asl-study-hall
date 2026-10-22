@@ -97,6 +97,7 @@ export default {
     if (host === 'aslstudyhall.com' && (p === '/' || p === '/index.html')) return env.ASSETS.fetch(new Request(new URL('/store/', req.url)));      // the storefront
     if (p.startsWith('/rt/')) return rtRoute(req, env, url);      // live class games (ASL Study 4.139)
     if (p.startsWith('/theatre/api/')) return theatreApi(req, env, url, p);      // the theatre app (theatre/api.js)
+    if (p === '/theatre-teacher' || p === '/theatre-teacher/') return Response.redirect(url.origin + '/theatre/#/teacher', 302);      // straight to the teacher password (students use /theatre)
     if (p === '/lookup') return lookup(url.searchParams.get('u') || '');      // admin > Featured Products: fill a card from a Shopify or TpT listing link
     if (p === '/products.json') {      // featured products: Colleen's picks in admin, or else every product in her Shopify store (Colleen: "i'll feature all of them")
       const st = await state(env, req), picked = (st && st.products) || [];

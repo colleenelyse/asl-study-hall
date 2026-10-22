@@ -90,6 +90,8 @@
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d; }); });
   }
 
+  /* where a sealed file lives on the server: a song's track, the script PDF, or a line's audio */
+  function pathFor(id, kind) { return id === '__pdf' ? 'pdf' : id.indexOf('__voice/') === 0 ? 'voice/' + id.slice(8) : 'track/' + id + '/' + kind; }
   var Store = {
     local: local, b64: b64, unb64: unb64,
     /* the saved show from asl.cool (or this device's copy when offline). {enc, vsalt, updated, offline} or null before setup */
@@ -167,6 +169,28 @@
       return fetch(API + 'notes', { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not clear the notes.'); });
     },
     /* tracks: encrypted bytes on the server, and a copy on this device */
+    /* a line's audio (ElevenLabs or an approved recording), sealed; and students' recordings waiting for the teacher */
+    putVoice: function (key, proof, h, src, bytes, ver) { return Store.putTrack(key, proof, '__voice/' + h + '/' + src, '', bytes, ver); },
+    getVoice: function (key, h, src, ver) { return Store.getTrack(key, '__voice/' + h + '/' + src, '', ver); },
+    sendRecording: function (key, h, actor, bytes) {
+      var iv = rand(12);
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, bytes).then(function (ct) {
+        var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+        return fetch(API + 'voice/' + h + '/pending/' + actor, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: out })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d; }); });
+      });
+    },
+    voiceIndex: function () {      // which lines have audio (kept on the device for offline use)
+      return getJSON('voice/index').then(function (d) { if (d) local.set('voiceIndex', d); return d || { lines: {} }; }).catch(function () { return local.get('voiceIndex').then(function (d) { return d || { lines: {} }; }); });
+    },
+    setVoiceCheck: function (proof, check) { return postJSON('voice/settings', { proof: proof, check: !!check }); },
+    pendingList: function (proof) { return fetch(API + 'voice/pending', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not load the recordings.'); return d.pending || []; }); }); },
+    getPending: function (key, proof, h, actor) {
+      return fetch(API + 'voice/' + h + '/pending/' + actor, { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('That recording would not load.'); return r.arrayBuffer(); })
+        .then(function (b) { var a = new Uint8Array(b); return crypto.subtle.decrypt({ name: 'AES-GCM', iv: a.subarray(0, 12) }, key, a.subarray(12)); });
+    },
+    approve: function (proof, h, actor) { return fetch(API + 'voice/' + h + '/approve/' + actor, { method: 'POST', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not approve it.'); }); },
+    reject: function (proof, h, actor) { return fetch(API + 'voice/' + h + '/pending/' + actor, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not remove it.'); }); },
     /* the script PDF: sealed, saved like a track, and kept on the device by version */
     putPdf: function (key, proof, bytes, ver) { return Store.putTrack(key, proof, '__pdf', '', bytes, ver); },
     getPdf: function (key, ver) { return Store.getTrack(key, '__pdf', '', ver); },
@@ -174,7 +198,7 @@
       var iv = rand(12);
       return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, bytes).then(function (ct) {
         var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
-        return fetch(API + (songId === '__pdf' ? 'pdf' : 'track/' + songId + '/' + kind), { method: 'POST', headers: { 'x-proof': proof, 'content-type': 'application/octet-stream' }, body: out })
+        return fetch(API + pathFor(songId, kind), { method: 'POST', headers: { 'x-proof': proof, 'content-type': 'application/octet-stream' }, body: out })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); var lk = 'track:' + songId + ':' + kind; return local.set(lk, out.buffer).then(function () { return local.set(lk + ':v', ver); }).then(function () { return d; }, function () { return d; }); }); });
       });
     },
@@ -188,7 +212,7 @@
         var cached = have === ver ? local.get(lk) : Promise.resolve(null);
         return cached.then(function (buf) {
           if (buf) return buf;
-          return fetch(API + (songId === '__pdf' ? 'pdf' : 'track/' + songId + '/' + kind), { cache: 'no-store' }).then(function (r) {
+          return fetch(API + pathFor(songId, kind), { cache: 'no-store' }).then(function (r) {
             if (r.status === 404) return null;
             if (!r.ok) throw new Error('Could not load the track (' + r.status + ').');
             return r.arrayBuffer().then(function (b) { return local.set(lk, b).then(function () { return local.set(lk + ':v', ver); }).then(function () { return b; }, function () { return b; }); });
