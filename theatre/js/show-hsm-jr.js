@@ -46,6 +46,8 @@ window.DEFAULT_SHOW = {
     /* not in the script: Colleen's idea (2026-10-21), peers in the trench for the basketball number */
     { id: 'trench', name: 'Trench Crew', short: 'Trench Crew', group: 'helpers', aliases: [], desc: 'Peer models in the trench (the pit) for “Get’cha Head in the Game.” They do the choreography facing the stage so the cast can follow along, and they catch any basketball that bounces off the stage.' }
   ],
+  /* how the read-aloud voice should say names it gets wrong (Teacher mode › Script › How words are said adds more) */
+  say: { 'Sharpay': 'Shar pay', 'Kelsi': 'Kelsey', 'McKessie': 'Mick Kessie', 'Kratnoff': 'Krat noff', 'Cyndra': 'Sindra', 'Get’cha': 'Getcha', "Get'cha": 'Getcha', 'Darbus': 'Dar bus' },
   /* speaker labels that mean several groups at once */
   labelGroups: { ALL: '*', CLIQUES: ['jocks', 'brainiacs', 'thespians', 'cheer'], 'JOCKS, BRAINIACS': ['jocks', 'brainiacs'] },
 

@@ -107,6 +107,7 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
+      t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list') +
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a student</a></p>';
@@ -140,6 +141,7 @@
         return '<a class="tile" style="min-height:90px" href="#/teacher/script/' + s.id + '"><b>Scene ' + s.num + '</b><span>' + esc(s.place) + ' · ' + n + ' lines</span></a>';
       }).join('') + '</div>' : '');
     if (sc) labelsCard();
+    sayCard();
     document.getElementById('pdf').onchange = function (e) {
       var f = e.target.files[0]; if (!f) return;
       var prog = document.getElementById('prog'); prog.textContent = 'Opening…';
@@ -174,6 +176,25 @@
     b.querySelector('button').onclick = function () { save('Script saved').then(function () { b.remove(); }); };
   }
   function titleCase(s) { return String(s).toLowerCase().replace(/(^|[\s/(-])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }).replace(/\b(A|P)\.m\./gi, function (m) { return m.toUpperCase(); }); }
+  /* how the read-aloud voice says words it gets wrong: the show's list plus the teacher's own (T.show.say; an empty value turns one off) */
+  function sayCard() {
+    var box = document.createElement('div'); box.className = 'card'; app.appendChild(box);
+    var mine = T.show.say = T.show.say || {}, base = T.O().say || {};
+    function draw() {
+      var all = {}; Object.keys(base).forEach(function (k) { all[k] = base[k]; }); Object.keys(mine).forEach(function (k) { all[k] = mine[k]; });
+      box.innerHTML = '<h2>How words are said</h2><p class="muted">If the read-aloud voice says a name or word wrong, spell it the way it sounds. Tap Hear to check.</p>' +
+        '<table class="tbl"><thead><tr><th>Word</th><th>Say it like</th><th></th></tr></thead><tbody>' + Object.keys(all).filter(function (k) { return all[k]; }).sort().map(function (k) {
+          return '<tr><td>' + esc(k) + '</td><td>' + esc(all[k]) + '</td><td><button class="btn small" data-hear="' + esc(k) + '">Hear</button> <button class="btn small quiet" data-del="' + esc(k) + '">Remove</button></td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div class="row" style="margin-top:10px"><label class="f grow" style="margin:0">Word<input id="sw" placeholder="e.g. Gabriella"></label><label class="f grow" style="margin:0">Say it like<input id="sl" placeholder="e.g. Gabby ella"></label>' +
+        '<button class="btn" id="sh">Hear</button><button class="btn primary" id="sa" data-save>Add</button></div>';
+      box.querySelectorAll('[data-hear]').forEach(function (b) { b.onclick = function () { T.Speech.stop(); T.Speech.say(b.dataset.hear); }; });
+      box.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var k = b.dataset.del; if (base[k]) mine[k] = ''; else delete mine[k]; save('Removed').then(draw); }; });
+      box.querySelector('#sh').onclick = function () { var w = box.querySelector('#sw').value.trim(), l = box.querySelector('#sl').value.trim(); T.Speech.stop(); T.Speech.say(l || w); };
+      box.querySelector('#sa').onclick = function () { var w = box.querySelector('#sw').value.trim(), l = box.querySelector('#sl').value.trim(); if (!w || !l) return; mine[w] = l; save('Added').then(draw); };
+    }
+    draw();
+  }
   /* every speaker and singer label in the script, and which characters it means */
   function labelsCard() {
     var counts = {};

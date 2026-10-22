@@ -161,24 +161,37 @@
   T.prodTask = task;
 
   /* ---------- days away sent from iPads ---------- */
+  /* notes from iPads: each kind has a handler (here: conflict, video; casting.js adds audition). A handler returns true when it added something.
+     Notes no handler knows are left on the server for the page that knows them. */
+  T.noteHandlers = T.noteHandlers || {};
+  T.noteHandlers.video = function (n) {      // a dance video link: waits for the teacher's OK
+    if (!actor(n.actor) || !/^https:\/\//.test(n.url || '') || !T.songById(n.song)) return false;
+    var V = T.show.videos = T.show.videos || [];
+    if (V.some(function (v) { return v.url === n.url; })) return false;
+    V.push({ id: uid('v'), song: n.song, title: String(n.title || 'Dance video').slice(0, 80), by: n.actor, url: String(n.url).slice(0, 500), ok: false, at: n._at });
+    return true;
+  };
+  T.noteHandlers.conflict = function (n) {
+    var p = P();
+    if (!actor(n.actor) || !/^\d{4}-\d{2}-\d{2}$/.test(n.date || '') || p.conflicts.some(function (c) { return c.actor === n.actor && c.date === n.date; })) return false;
+    p.conflicts.push({ id: uid('x'), actor: n.actor, date: n.date, why: String(n.why || '').slice(0, 200), from: 'student', sent: n._at });
+    return true;
+  };
   function pullNotes() {
     return Store.getNotes(T.key, T.proof).then(function (notes) {
-      if (!notes.length) return 0;
-      var added = 0, p = P();
+      var added = 0, done = [];
       notes.forEach(function (n) {
-        if (!n._junk && n.type === 'video' && actor(n.actor) && /^https:\/\//.test(n.url || '') && T.songById(n.song)) {      // a dance video link: waits for the teacher's OK
-          var V = T.show.videos = T.show.videos || [];
-          if (!V.some(function (v) { return v.url === n.url; })) { V.push({ id: uid('v'), song: n.song, title: String(n.title || 'Dance video').slice(0, 80), by: n.actor, url: String(n.url).slice(0, 500), ok: false, at: n._at }); added++; }
-          return;
-        }
-        if (n._junk || n.type !== 'conflict' || !actor(n.actor) || !/^\d{4}-\d{2}-\d{2}$/.test(n.date || '')) return;
-        if (p.conflicts.some(function (c) { return c.actor === n.actor && c.date === n.date; })) return;
-        p.conflicts.push({ id: uid('x'), actor: n.actor, date: n.date, why: String(n.why || '').slice(0, 200), from: 'student', sent: n._at }); added++;
+        var h = T.noteHandlers[n.type];
+        if (n._junk) { done.push(n._id); return; }
+        if (!h) return;
+        if (h(n)) added++;
+        done.push(n._id);
       });
-      var ids = notes.map(function (n) { return n._id; });
-      return (added ? T.saveShow(added + ' new note' + (added === 1 ? '' : 's') + ' from students') : Promise.resolve()).then(function () { return Store.clearNotes(T.proof, ids); }).then(function () { return added; });
+      if (!done.length) return 0;
+      return (added ? T.saveShow(added + ' new note' + (added === 1 ? '' : 's') + ' from students') : Promise.resolve()).then(function () { return Store.clearNotes(T.proof, done); }).then(function () { return added; });
     });
   }
+  T.pullNotes = pullNotes;
 
   /* ---------- Teacher: Production ---------- */
   var tab = 'week', week = null;

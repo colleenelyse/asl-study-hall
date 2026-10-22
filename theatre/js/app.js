@@ -164,24 +164,58 @@
   T.face = face;
 
   /* ---------- speech: a different voice for each character ---------- */
+  /* Speech: only the device's good English voices (Colleen, 2026-10-21: the voices were "terrible", because a 27-character show was being handed
+     every voice, joke voices included). Premium / Enhanced / natural voices first; a small pool; gentle pitch changes between characters.
+     Words go through pronounce() first: the show's name list (outline.say), the teacher's own list (T.show.say), and a few clean-ups. */
+  var JOKE = /bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|grandma|grandpa|eddy|flo\b|reed|rocko|sandy|shelley|hysterical|deranged|pipe organ/i;
+  function voiceScore(v) {
+    var n = v.name, sc = 0;
+    if (/premium|enhanced|natural|neural|siri|wavenet|studio/i.test(n)) sc += 20;
+    if (/google/i.test(n)) sc += 8;
+    if (/^en[-_]US/i.test(v.lang)) sc += 4; else if (/^en[-_](GB|AU|CA|IE|NZ)/i.test(v.lang)) sc += 3; else sc += 1;
+    if (/^(samantha|aaron|nicky|ava|allison|susan|tom|alex|evan|zoe|nathan|joelle|noelle|daniel|serena|karen|moira|tessa|kate|oliver)\b/i.test(n)) sc += 5;
+    if (/compact/i.test(n)) sc -= 6;
+    return sc;
+  }
   var Speech = T.Speech = {
-    voices: [],
+    voices: [], all: [],
     load: function () {
       if (!('speechSynthesis' in window)) return;
-      var all = speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang); });
-      // the plain, clear voices first (novelty voices last)
-      var odd = /bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|grandma|grandpa|eddy|flo|reed|rocko|sandy|shelley/i;
-      Speech.voices = all.filter(function (v) { return !odd.test(v.name); }).concat(all.filter(function (v) { return odd.test(v.name); }));
+      var en = speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang) && !JOKE.test(v.name); });
+      en.sort(function (a, b) { return voiceScore(b) - voiceScore(a); });
+      Speech.all = en;
+      var pick = T.prefs.voice && en.find(function (v) { return v.name === T.prefs.voice; });
+      /* my voice (Colleen: each student picks the voice that says their own lines, so they learn to listen for it); nobody else uses it */
+      var mineName = Speech.myVoiceName(), mine = mineName && en.find(function (v) { return v.name === mineName; });
+      Speech.mineVoice = mine || null;
+      var pool = en.slice(0, 6);
+      if (pick) pool = [pick].concat(pool.filter(function (v) { return v !== pick; }));
+      Speech.voices = T.prefs.oneVoice ? pool.slice(0, 1) : pool;
+      /* characters who would have had my voice get the most similar one left: same accent, not already in use if possible */
+      Speech.sub = null;
+      if (mine) {
+        var lang = function (v) { return String(v.lang).slice(0, 5).toLowerCase(); };
+        var free = en.filter(function (v) { return v !== mine && Speech.voices.indexOf(v) < 0; }), used = Speech.voices.filter(function (v) { return v !== mine; });
+        Speech.sub = free.find(function (v) { return lang(v) === lang(mine); }) || used.find(function (v) { return lang(v) === lang(mine); }) || free[0] || used[0] || null;
+      }
     },
+    mine: [],
+    myVoiceName: function () { return T.me ? ls('myVoice:' + (T.me.id || T.me.chars[0] || 'me')) : null; },
+    setMyVoice: function (name) { if (T.me) ls('myVoice:' + (T.me.id || T.me.chars[0] || 'me'), name || null); Speech.load(); },
+    /* the narrator is the first voice; characters share the pool, told apart by a gentle pitch change */
     voiceFor: function (charId) {
+      if (charId && Speech.mineVoice && Speech.mine.indexOf(charId) >= 0) return { voice: Speech.mineVoice, pitch: 1 };
       var i = charId ? O().characters.findIndex(function (c) { return c.id === charId; }) + 1 : 0, n = Speech.voices.length;
-      return { voice: n ? Speech.voices[i % n] : null, pitch: charId ? 0.8 + ((i * 3) % 7) * 0.08 : 1 };
+      var steps = [1, 0.92, 1.08, 0.96, 1.04], v = n ? Speech.voices[i % n] : null;
+      if (v && v === Speech.mineVoice && Speech.sub) v = Speech.sub;      // my voice is only mine
+      return { voice: v, pitch: charId ? steps[Math.floor(i / Math.max(1, n)) % steps.length] : 1 };
     },
     say: function (text, charId, opts) {
       opts = opts || {};
+      text = pronounce(text);
       return new Promise(function (done) {
         if (!('speechSynthesis' in window) || !text) return done();
-        var u = new SpeechSynthesisUtterance(text), v = Speech.voiceFor(charId), finished = false;
+        var u = new SpeechSynthesisUtterance(text), v = opts.mine && Speech.mineVoice ? { voice: Speech.mineVoice, pitch: 1 } : Speech.voiceFor(charId), finished = false;
         if (v.voice) u.voice = v.voice;
         u.lang = (v.voice && v.voice.lang) || 'en-US';
         u.pitch = v.pitch; u.rate = (opts.rate || T.prefs.rate || 1) * 0.95;
@@ -195,6 +229,20 @@
     },
     stop: function () { if ('speechSynthesis' in window) speechSynthesis.cancel(); if (Speech.current) { var c = Speech.current; Speech.current = null; c(); } }
   };
+  function sayList() { var out = {}, a = (T.show && T.O().say) || {}, b = (T.show && T.show.say) || {}; Object.keys(a).forEach(function (k) { out[k] = a[k]; }); Object.keys(b).forEach(function (k) { out[k] = b[k]; }); return out; }
+  function pronounce(text) {
+    var t = String(text || '');
+    var list = sayList();
+    Object.keys(list).sort(function (x, y) { return y.length - x.length; }).forEach(function (w) {
+      if (!list[w]) return;
+      t = t.replace(new RegExp('(^|[^A-Za-z’\'])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[^A-Za-z])', 'gi'), function (m, pre) { return pre + list[w]; });
+    });
+    return t.replace(/\bMs\./gi, 'Miz').replace(/\bMr\./gi, 'Mister').replace(/\bMrs\./gi, 'Missus')
+      .replace(/\s*[—–]+\s*/g, ', ').replace(/\.{3}|…/g, ', ').replace(/_+/g, ' ')
+      .replace(/\b([A-Z]{2,})\b/g, function (w) { return /^(OK|TV|DJ|USA|I)$/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase(); })      // shouting caps: say the word, do not spell it
+      .replace(/^[,\s]+/, '').replace(/\s+/g, ' ').trim();
+  }
+  T.pronounce = pronounce;
   if ('speechSynthesis' in window) { Speech.load(); speechSynthesis.onvoiceschanged = Speech.load; }
 
   /* ---------- listening (iPad Safari: webkitSpeechRecognition, needs https) ---------- */
@@ -233,6 +281,7 @@
   T.cleanup = [];
   function route() {
     T.cleanup.forEach(function (f) { try { f(); } catch (e) {} }); T.cleanup = [];
+    Speech.mine = T.me ? T.me.chars.slice() : []; Speech.load();
     Speech.stop();
     var parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
     var page = parts[0] || '';
@@ -316,6 +365,7 @@
       '<div><h2 style="margin:0">Hi, ' + esc(T.me.name) + '!</h2><div>' + who + '</div></div></div>' +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
+      (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +
       tile('#/schedule', 'stage', 'My Schedule', 'When I am on stage') +
       tile('#/lines', 'lines', 'Practice Lines', 'Listen and say my lines') +
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
@@ -331,7 +381,7 @@
     if (!args[0]) return sceneList();
     var scene = sceneById(args[0]); if (!scene) return sceneList();
     if (!args[1]) return modePick(scene);
-    return practice(scene, args[1] === 'run' ? 'run' : 'listen');
+    return practice(scene, args[1] === 'run' ? 'run' : 'listen', args[2]);      // args[2]: practice as another character (an audition side)
   }
   function sceneList() {
     setBar('Practice Lines', '#/home');
@@ -353,8 +403,10 @@
       '</div>';
   }
 
-  function practice(scene, mode) {
-    setBar('Scene ' + scene.num + (mode === 'run' ? ' · My lines' : ' · Listen'), '#/lines/' + scene.id);
+  function practice(scene, mode, asChar) {
+    var myChars = asChar && charById(asChar) ? [asChar] : T.me.chars;
+    Speech.mine = myChars.slice();
+    setBar('Scene ' + scene.num + (mode === 'run' ? (asChar ? ' · as ' + charById(asChar).short : ' · My lines') : ' · Listen'), asChar ? '#/auditions' : '#/lines/' + scene.id);
     var src = scriptScene(scene);
     if (!src) { app.innerHTML = '<div class="card">This scene is not in the script yet.</div>'; return; }
     var acc = T.me.access;
@@ -362,12 +414,12 @@
     if (!T.canListen) opt.didIt = true;
     var items = src.items.map(function (it, i) {
       var chars = it.type === 'line' ? labelChars(it.who).filter(function (c) { return c !== '*'; }) : [];
-      return { i: i, it: it, chars: chars, mine: it.type === 'line' && isMine(it.who, scene) };
+      return { i: i, it: it, chars: chars, mine: it.type === 'line' && isMine(it.who, scene, myChars) };
     });
     var cur = 0, playing = false, gen = 0, hintLevel = 0;
     /* Fade (the default): each of my lines starts shown, then a hint once I say it without help, then hidden; it steps back when I need help.
        Prompting with prompt fading is one of the evidence-based practices for autistic learners (NCAEP 2020). Kept on this iPad. */
-    var fadeKey = 'fade:' + (T.me.id || T.me.chars[0]) + ':' + scene.id, fade = ls(fadeKey) || {};
+    var fadeKey = 'fade:' + (T.me.id || myChars[0]) + ':' + (asChar ? asChar + ':' : '') + scene.id, fade = ls(fadeKey) || {};
     var fk = function (x) { return x.it.who + '|' + x.it.text.slice(0, 48); };
     function showFor(x) { return opt.show === 'auto' ? ['line', 'hint', 'hidden'][fade[fk(x)] || 0] : opt.show; }
     function fadeStep(x, d) { if (opt.show !== 'auto') return; fade[fk(x)] = Math.max(0, Math.min(2, (fade[fk(x)] || 0) + d)); ls(fadeKey, fade); }
@@ -456,7 +508,7 @@
     function myTurn(x, g) {
       var sh = showFor(x), helped = false;
       hintLevel = sh === 'hint' ? 1 : 0;
-      var c = color(T.me.chars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || T.me.chars[0]);
+      var c = color(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]);
       closeTurn();
       turnEl = document.createElement('div'); turnEl.className = 'turn'; turnEl.style.setProperty('--c', c);
       document.body.appendChild(turnEl);
@@ -468,7 +520,7 @@
       }
       function draw(fb, listening) {
         if (g !== gen || !turnEl) return;
-        turnEl.innerHTML = '<div class="in"><div class="row"><b class="grow" style="font-family:Lexend">' + sym('⭐') + 'Your turn!</b>' + chip(T.me.chars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || T.me.chars[0]) + '</div>' +
+        turnEl.innerHTML = '<div class="in"><div class="row"><b class="grow" style="font-family:Lexend">' + sym('⭐') + 'Your turn!</b>' + chip(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]) + '</div>' +
           '<div class="say">' + shown() + '</div>' + (fb || '') +
           '<div class="row">' +
           (opt.didIt ? '<button class="btn primary" data-a="did">' + icon('hand') + 'I did it</button>'
@@ -489,7 +541,7 @@
         if (a === 'did') { fadeStep(x, helped ? 0 : 1); return done('Nice!'); }
         if (a === 'skip') return done();
         if (a === 'hint') { helped = true; hintLevel = Math.min(3, hintLevel + 1); return draw(); }
-        if (a === 'for') { fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || T.me.chars[0]).then(function () { if (g === gen) done(); }); }
+        if (a === 'for') { fadeStep(x, -1); Speech.stop(); return Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g === gen) done(); }); }
         if (a === 'mic') {
           Speech.stop();
           draw('', true);
@@ -509,7 +561,7 @@
       draw();
       if (opt.echo) {
         draw('<div class="fb close">' + sym('👂') + 'Listen, then say it after me.</div>');
-        Speech.say(spokenLine, x.chars[0] || T.me.chars[0]).then(function () { if (g !== gen) return; draw(); if (!opt.didIt) act('mic'); });
+        Speech.say(spokenLine, x.chars[0] || myChars[0]).then(function () { if (g !== gen) return; draw(); if (!opt.didIt) act('mic'); });
       } else if (!opt.didIt) {
         Speech.say('Your line!', null, { rate: 1.1 }).then(function () { if (g === gen) act('mic'); });
       }
@@ -818,11 +870,27 @@
       '<label class="switch"><span>Movement and animation</span><input type="checkbox" data-b="motion"' + (p.motion ? ' checked' : '') + '></label>' +
       '<div class="switch"><span>Read-aloud speed</span>' + seg('rate', [[0.7, 'Slow'], [1, 'Normal'], [1.25, 'Fast']]) + '</div>' +
       '<div class="row" style="margin-top:10px"><button class="btn small" id="test">' + icon('speak') + 'Test the voice</button></div></div>' +
+      (T.me ? '<div class="card"><h3>' + sym('🗣️') + 'My voice</h3><p class="muted small">Pick the voice that says <b>your</b> lines when the app reads the scene, so you learn to listen for it. No other character will use it.</p><div class="row">' +
+        Speech.all.slice(0, 14).map(function (v) { return '<button type="button" class="btn small" data-myvoice="' + esc(v.name) + '" aria-pressed="' + (Speech.mineVoice === v) + '">' + esc(v.name.replace(/\s*\(.*\)$/, '')) + '</button>'; }).join('') +
+        (Speech.mineVoice ? '<button type="button" class="btn small quiet" data-myvoice="">No special voice</button>' : '') + '</div></div>' : '') +
+      '<div class="card"><h3>Story voice</h3><p class="muted small">Tap a voice to hear it and use it. It reads the story and the stage directions; the other characters share the best few voices.</p><div class="row">' +
+      Speech.all.slice(0, 14).map(function (v) { return '<button type="button" class="btn small" data-voice="' + esc(v.name) + '" aria-pressed="' + (Speech.voices[0] === v) + '">' + esc(v.name.replace(/\s*\(.*\)$/, '')) + '</button>'; }).join('') + '</div>' +
+      '<label class="switch"><span>Same voice for every character</span><input type="checkbox" data-b="oneVoice"' + (p.oneVoice ? ' checked' : '') + '></label>' +
+      '<details><summary class="btn quiet small">Get better voices (free)</summary><p class="small"><b>iPad:</b> Settings › Accessibility › Spoken Content › Voices › English. Download voices marked <b>Enhanced</b> or <b>Premium</b> (for example Ava, Zoe, Evan, Nathan). Then come back here and pick one.</p>' +
+      '<p class="small"><b>Mac:</b> System Settings › Accessibility › Spoken Content › System voice › Manage Voices. Safari shows the new voices; some other browsers do not.</p></details></div>' +
       (T.me ? '<div class="card"><div class="row">' + face(T.me, 56) + '<div class="grow"><b>' + esc(T.me.name) + '</b><br>' + T.me.chars.map(chip).join('') + '</div><a class="btn" href="#/who">Change</a></div></div>' : '') +
       '<div class="card"><div class="row"><a class="btn" href="#/teacher">Teacher mode</a><span class="grow"></span><button class="btn quiet" id="forget">' + icon('lock') + 'Lock this iPad</button></div></div>';
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { var k = b.parentNode.dataset.k; p[k] = k === 'theme' ? b.dataset.v : +b.dataset.v; T.savePrefs(); settingsPage(); }; });
-    app.querySelectorAll('input[data-b]').forEach(function (inp) { inp.onchange = function () { p[inp.dataset.b] = inp.checked; T.savePrefs(); }; });
+    app.querySelectorAll('input[data-b]').forEach(function (inp) { inp.onchange = function () { p[inp.dataset.b] = inp.checked; T.savePrefs(); if (inp.dataset.b === 'oneVoice') Speech.load(); }; });
     document.getElementById('test').onclick = function () { Speech.stop(); Speech.say('Break a leg! This is how fast I will read.'); };
+    app.querySelectorAll('[data-myvoice]').forEach(function (b) {
+      b.onclick = function () {
+        var n = b.dataset.myvoice; Speech.setMyVoice(n); Speech.stop();
+        if (n) Speech.say('Hi! This is my voice. I am ' + (T.me.chars[0] && charById(T.me.chars[0]) ? charById(T.me.chars[0]).short : T.me.name) + '.', T.me.chars[0] || null, { mine: true });
+        settingsPage();
+      };
+    });
+    app.querySelectorAll('[data-voice]').forEach(function (b) { b.onclick = function () { p.voice = b.dataset.voice; T.savePrefs(); Speech.load(); Speech.stop(); Speech.say('Hi! I am ' + b.dataset.voice.replace(/\s*\(.*\)$/, '') + '. Break a leg!'); settingsPage(); }; });
     document.getElementById('forget').onclick = function () {
       if (!confirm('Lock this iPad? The cast password will be needed again.')) return;
       Store.forget().then(function () { ls('me', null); T.show = null; T.key = null; T.me = null; T.go('#/'); });
