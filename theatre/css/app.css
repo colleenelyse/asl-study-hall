@@ -236,7 +236,6 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 }
 
 /* the script with notes (script-view.js) */
-@media (min-width: 700px) and (min-height: 700px) { .scriptbar { position: sticky; top: 0; z-index: 5; } }
 .scriptpages.adding .pdfpage { cursor: crosshair; outline: 3px dashed #c7a0ff; }
 .snote { position: absolute; transform: translate(-6px, -50%); z-index: 3; max-width: 46%; min-height: 26px; padding: 3px 8px; border: 0; border-radius: 6px 6px 6px 0;
   background: #ffe14d; color: #3b3000; font: 600 clamp(10px, 1.5vw, 14px)/1.25 inherit; text-align: left; box-shadow: 0 2px 6px rgba(0,0,0,.3); cursor: pointer;
@@ -249,15 +248,17 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   font: 600 clamp(9px, 1.25vw, 13px)/1.2 inherit; text-align: left; color: #1d1a2e; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.25);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cue b { font-weight: 800; }
-.cue-LX { background: #ffd36b; }
+.cue-LX { background: #ffe14d; }
 .cue-SX { background: #8fd3ff; }
 .cue-MX { background: #ff9fd0; }
+.cue-SC { background: #7ee08a; }
 .cue.sug { opacity: .82; border: 2px dashed #1d1a2e; }
-.cue-key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: linear-gradient(90deg, #ffd36b 33%, #8fd3ff 33% 66%, #ff9fd0 66%); }
+.cue-key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: linear-gradient(90deg, #ffe14d 33%, #8fd3ff 33% 66%, #ff9fd0 66%); }
 .cuesheet tr.sug td { opacity: .75; }
-.cuesheet tr.row-LX td:first-child { border-left: 6px solid #ffd36b; }
+.cuesheet tr.row-LX td:first-child { border-left: 6px solid #ffe14d; }
 .cuesheet tr.row-SX td:first-child { border-left: 6px solid #8fd3ff; }
 .cuesheet tr.row-MX td:first-child { border-left: 6px solid #ff9fd0; }
+.cuesheet tr.row-SC td:first-child { border-left: 6px solid #7ee08a; }
 .withcues .pdfpage { overflow: visible; }
 .pdfpage > .pdfcanvas { border-radius: 4px; }
 .withcues .cue span { display: none; }

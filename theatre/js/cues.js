@@ -123,6 +123,83 @@
     }
   };
 
+  /* ---------- the stage manager script (Colleen: "the original pdf with text added over the top"; light cues yellow, music pink, sound blue) ----------
+     every page of the real script, a little smaller, with a cue column down the left: each cue's number and words on its color, a line to the spot,
+     and that line of the script highlighted in the cue's color. Printed, or saved as a PDF from the print window. */
+  var SM_COLOR = { LX: '#ffe14d', MX: '#ff9fd0', SX: '#8fd3ff', SC: '#7ee08a' };
+  /* a scene change (Colleen: scene changes in green): the Blue out at a scene's end, and the Lights up that starts the next scene */
+  var isChange = function (c) { return c.k === 'LX' && /^(blue out: scene change|lights up: scene)/i.test(c.text); };
+  T.Cues.isChange = isChange;
+  var colorOf = function (c) { return SM_COLOR[isChange(c) ? 'SC' : c.k]; };
+  T.teacherPages.smscript = function () {
+    T.setBar('Stage manager script', '#/teacher/cues');
+    if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>Import the script PDF first.</p></div>'; return; }
+    var st = Object.assign({ sug: true, notes: false }, T.ls('smScript') || {}), nS = T.cues().filter(function (c) { return c.sug; }).length;
+    app.innerHTML = '<div class="card noprint"><h2>' + sym('📋') + 'Stage manager script</h2>' +
+      '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span>, and the line where each one happens highlighted in its color.</p>' +
+      '<label class="row" style="gap:6px"><input type="checkbox" id="sg"' + (st.sug ? ' checked' : '') + '>Include the ' + nS + ' suggested cues not accepted yet</label>' +
+      '<label class="row" style="gap:6px"><input type="checkbox" id="dn"' + (st.notes ? ' checked' : '') + '>Include the director’s notes</label>' +
+      '<div class="row end" style="margin-top:10px"><button class="btn primary" id="mk">' + icon('print') + 'Make it</button></div><p class="muted small">It takes a minute or two for the whole script. Then print, or choose “Save as PDF” in the print window. For your cast and crew only.</p></div><div id="out"></div>';
+    var keep = function () { T.ls('smScript', st); };
+    document.getElementById('sg').onchange = function () { st.sug = this.checked; keep(); };
+    document.getElementById('dn').onchange = function () { st.notes = this.checked; keep(); };
+    document.getElementById('mk').onclick = function () { makeSM(st, this); };
+  };
+  function makeSM(st, btn) {
+    var out = document.getElementById('out'), sc = T.show.script, list = T.cues().filter(function (c) { return st.sug || !c.sug; }), lab = T.cueLabel(T.cues());
+    var notes = st.notes ? (T.show.scriptNotes || []).filter(function (n) { return !n.del; }) : [];
+    var pages = (sc.pages || []).map(function (p) { return p.n; });
+    btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
+    var W = 1100, COL = 250, GAP = 18;
+    T.Pages.doc().then(function (doc) {
+      var i = 0;
+      return pages.reduce(function (p, n) {
+        return p.then(function () {
+          var sz = T.Pages.size(n), pw = W - COL - GAP - 10;
+          return T.Pages.draw(doc, n, pw, 1, true).then(function (r) {
+            var k = r.canvas.width / sz.w, ph = r.canvas.height, H = Math.max(ph + 20, Math.round(W * 11 / 8.5));
+            var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            var ctx = cv.getContext('2d'), ox = COL + GAP, oy = 10;
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(r.canvas, ox, oy);
+            var mine = list.filter(function (c) { return c.n === n; }).sort(order);
+            // the line where each cue happens, in its color (multiply keeps the words black)
+            ctx.globalCompositeOperation = 'multiply';
+            // cues on the same line share it in stripes, so the colors never mix
+            var groups = []; mine.forEach(function (c) { var g = groups[groups.length - 1]; if (g && Math.abs(g[0].y - c.y) < 8) g.push(c); else groups.push([c]); });
+            groups.forEach(function (g) { var h = 15 / g.length; g.forEach(function (c, j) { ctx.fillStyle = colorOf(c); ctx.fillRect(ox + 40 * k, oy + (g[0].y - 2 + j * h) * k, (sz.w - 70) * k, h * k); }); });
+            ctx.globalCompositeOperation = 'source-over';
+            // the cue column
+            ctx.fillStyle = '#555'; ctx.font = '600 13px system-ui, sans-serif'; ctx.fillText('STAGE MANAGER · page ' + T.Pages.printed(n), 10, 24);
+            var bottom = 34, items = mine.map(function (c) { return { y: c.y, color: colorOf(c), head: lab[c.id], text: c.text }; })
+              .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, color: '#e3d4ff', head: 'NOTE', text: x.text }; }))
+              .sort(function (a, b) { return a.y - b.y; });
+            items.forEach(function (c) {
+              ctx.font = '15px system-ui, sans-serif';
+              var lines = wrap(ctx, c.text, COL - 26), h = 24 + lines.length * 18 + 6, ty = oy + c.y * k, top = Math.max(ty - 12, bottom + 4);
+              ctx.fillStyle = c.color; round(ctx, 6, top, COL - 8, h, 7); ctx.fill();
+              ctx.fillStyle = '#1d1a2e'; ctx.font = '800 16px system-ui, sans-serif'; ctx.fillText(c.head, 14, top + 19);
+              ctx.font = '15px system-ui, sans-serif'; lines.forEach(function (l, j) { ctx.fillText(l, 14, top + 38 + j * 18); });
+              ctx.strokeStyle = c.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(COL - 2, top + 12); ctx.lineTo(ox + 40 * k, ty + 6 * k); ctx.stroke();
+              bottom = top + h;
+            });
+            var img = new Image(); img.className = 'printpage'; img.alt = 'Page ' + T.Pages.printed(n); img.src = cv.toDataURL('image/jpeg', 0.85);
+            out.appendChild(img); r.canvas.width = r.canvas.height = 0; cv.width = cv.height = 0;
+            var m = document.getElementById('mkp'); if (m) m.textContent = 'Making pages… ' + (++i) + ' of ' + pages.length;
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        var m = document.getElementById('mkp'); if (m) m.outerHTML = '<div class="row noprint" style="margin:10px 0"><button class="btn primary" onclick="print()">' + icon('print') + 'Print</button><span class="muted small">' + pages.length + ' pages · ' + list.length + ' cues</span></div>';
+        btn.disabled = false;
+      });
+    }).catch(function (e) { out.innerHTML = '<p class="err">' + esc(e.message || 'The pages would not load.') + '</p>'; btn.disabled = false; });
+  }
+  function wrap(ctx, text, w) {
+    var out = [], line = '';
+    text.split(/\s+/).forEach(function (word) { var t = line ? line + ' ' + word : word; if (ctx.measureText(t).width > w && line) { out.push(line); line = word; } else line = t; });
+    if (line) out.push(line); return out.slice(0, 4);
+  }
+  function round(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
   /* ---------- the cue sheet (teacher): every cue in order, filter, print ---------- */
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.cues = function () {
@@ -140,9 +217,10 @@
         '<label class="row" style="gap:6px"><input type="checkbox" id="ss"' + (st.sug ? ' checked' : '') + '>Show suggestions</label><span class="grow"></span>' +
         '<button class="btn" id="mk">' + (list.length ? 'Suggest again' : 'Suggest cues from the script') + '</button>' +
         (nS ? '<button class="btn" id="acc">Accept all ' + nS + ' suggestions</button>' : '') +
+        '<a class="btn" href="#/teacher/smscript">' + sym('📋') + 'Stage manager script</a>' +
         '<button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div><p id="st" class="muted small" role="status"></p></div>' +
         (rows.length ? '<table class="tbl cuesheet"><thead><tr><th>Cue</th><th>Page</th><th>What happens</th><th class="noprint"></th></tr></thead><tbody>' + rows.map(function (c) {
-          return '<tr class="row-' + c.k + (c.sug ? ' sug' : '') + '"><td><b>' + lab[c.id] + '</b></td><td>' + esc(pageOf(c.n)) + '</td><td>' + esc(c.text) + (c.sug ? ' <span class="tag noprint">suggested</span>' : '') + '</td>' +
+          return '<tr class="row-' + (isChange(c) ? 'SC' : c.k) + (c.sug ? ' sug' : '') + '"><td><b>' + lab[c.id] + '</b></td><td>' + esc(pageOf(c.n)) + '</td><td>' + esc(c.text) + (c.sug ? ' <span class="tag noprint">suggested</span>' : '') + '</td>' +
             '<td class="noprint">' + (c.k === 'MX' ? '<button class="btn small" data-play="' + c.mx + '">▶</button> ' : '') + '<a class="btn small" href="#/teacher/read/' + c.n + '">On the page</a></td></tr>';
         }).join('') + '</tbody></table>' : '<p class="card muted">No cues yet. Press <b>Suggest cues from the script</b>.</p>');
       app.querySelectorAll('#kf [data-v]').forEach(function (b) { b.onclick = function () { st.k = b.dataset.v; T.ls('cueSheet', st); draw(); }; });

@@ -106,6 +106,7 @@
       t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
       (T.Pages && T.Pages.ready() ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
       (T.Pages && T.Pages.ready() ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
+      (T.Pages && T.Pages.ready() ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '') +
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +

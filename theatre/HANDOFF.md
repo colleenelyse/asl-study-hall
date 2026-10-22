@@ -266,3 +266,10 @@ at each scene, Blue out at each scene end, songs: start, new singer group, a cho
 the end. On Read the script (teacher) cues sit beside the page (numbers only on phones); tap to accept, edit, move, delete, or play an MX.
 Teacher › Cue sheet: list, filter, accept all, print. Songs & tracks: "Add many band / guide-vocal tracks" matches file names by their leading number
 (songs and scene-change music, stored as tracks `mx<N>`); a Scene-change music table lists them. Students can turn cues on in The Script (off by default).
+
+**Stage manager script** (Colleen: the original PDF with the cues added over it; LX yellow, MX pink, SX blue, scene changes green): Teacher › Stage
+manager script (also from the Cue sheet), `T.teacherPages.smscript` in cues.js: every page drawn a little smaller with a cue column on the left (number +
+words on the cue's color, a line to the spot) and the cue's line highlighted (cues on the same line share it in stripes); optional suggested cues and
+director's notes; print or Save as PDF. Scene changes (`T.Cues.isChange`: Blue out: scene change, Lights up: Scene) are green everywhere.
+Printable pages draw with pdf.js intent 'print' (`T.Pages.draw(..., true)`) so they keep going in a hidden tab. Read the script › Go to puts the scene
+heading at the top of the screen.

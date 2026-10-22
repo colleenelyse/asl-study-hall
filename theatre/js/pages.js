@@ -44,13 +44,15 @@
     return b[0].w < sz.w * 0.35 && Math.abs(mid - sz.w / 2) < sz.w * 0.12 ? b.slice(1) : b;
   };
   /* one page drawn into a canvas at a width in CSS pixels */
-  function draw(doc, n, width, scale) {
+  function draw(doc, n, width, scale, print) {      // print: draw without waiting for the screen (keeps going in a hidden tab)
     return doc.getPage(n).then(function (pg) {
       var vp1 = pg.getViewport({ scale: 1 }), s = width / vp1.width * (scale || window.devicePixelRatio || 1), vp = pg.getViewport({ scale: s });
       var c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      return pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () { return { canvas: c, k: s, w: vp1.width, h: vp1.height }; });
+      return pg.render({ canvasContext: c.getContext('2d'), viewport: vp, intent: print ? 'print' : 'display' }).promise.then(function () { return { canvas: c, k: s, w: vp1.width, h: vp1.height }; });
     });
   }
+
+  T.Pages.draw = draw;
 
   /* ---------- Practice Lines: a scene as real pages, with highlight boxes over them ---------- */
   T.Pages.renderScene = function (host, src, items, o) {
@@ -163,7 +165,7 @@
       var i = 0;
       return pages.reduce(function (p, n) {
         return p.then(function () {
-          return draw(doc, n, 816, 1.6).then(function (r) {      // about 130 dpi on letter paper
+          return draw(doc, n, 816, 1.6, true).then(function (r) {      // about 130 dpi on letter paper
             var ctx = r.canvas.getContext('2d'), k = r.k;
             ctx.globalCompositeOperation = 'multiply';
             var fill = function (list, color) { ctx.fillStyle = color; list.forEach(function (b) { if (b.n === n) ctx.fillRect(b.x * k - 2, b.y * k - 1, b.w * k + 4, b.h * k + 2); }); };

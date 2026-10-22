@@ -26,12 +26,16 @@
     var dirNotes = function () { return (T.show.scriptNotes || []).filter(function (n) { return !n.del; }); };
     var myNotes = function () { if (o.teacher || !T.Progress) return []; var m = T.Progress.notes(); return Object.keys(m).map(function (k) { return m[k]; }).filter(function (n) { return !n.del; }); };
 
-    var scenes = O.scenes.map(function (s) { var src = T.scriptScene(s), p = src && T.Pages.scenePages(src); return p && p.length ? { s: s, n: p[0] } : null; }).filter(Boolean);
+    // where each scene starts: its heading sits just above its first item
+    var scenes = O.scenes.map(function (s) {
+      var src = T.scriptScene(s), it = src && src.items.find(function (x) { return x.boxes && x.boxes.length; });
+      return it ? { s: s, n: it.boxes[0].n, y: Math.max(0, it.boxes[0].y - 52) } : null;
+    }).filter(Boolean);
     var hlPick = o.teacher ?
       '<label class="row" style="gap:6px"><span>Highlight</span><select id="hl"><option value="">Nobody</option>' + O.characters.map(function (c) { return '<option value="' + c.id + '"' + (st.hl === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></label>' :
       (T.me && (T.me.chars || []).length ? '<label class="row" style="gap:6px"><input type="checkbox" id="hl"' + (st.hl === 'mine' ? ' checked' : '') + ' style="width:22px;height:22px"><span>Highlight my lines</span></label>' : '');
     app.innerHTML = '<div class="card noprint scriptbar"><div class="row" style="flex-wrap:wrap;gap:10px">' +
-      '<label class="row" style="gap:6px"><span>Go to</span><select id="go"><option value="">Scene…</option>' + scenes.map(function (x) { return '<option value="' + x.n + '">Scene ' + esc(x.s.num) + (x.s.place ? ' · ' + esc(x.s.place) : '') + '</option>'; }).join('') + '</select></label>' +
+      '<label class="row" style="gap:6px"><span>Go to</span><select id="go"><option value="">Scene…</option>' + scenes.map(function (x) { return '<option value="' + x.n + ':' + x.y + '">Scene ' + esc(x.s.num) + (x.s.place ? ' · ' + esc(x.s.place) : '') + '</option>'; }).join('') + '</select></label>' +
       hlPick + '<span class="grow"></span>' +
       '<button class="btn" id="add" aria-pressed="false">' + sym('📝') + 'Add a note</button>' +
       (o.teacher ? '<button class="btn" id="addc" aria-pressed="false">' + sym('💡') + 'Add a cue</button><a class="btn" href="#/teacher/cues">Cue sheet</a>' : '') + '</div>' +
@@ -62,7 +66,7 @@
       if (!o.teacher && st.mine) myNotes().forEach(function (n) { pins.push([n, false]); });
       if (st.cues) { var cl = T.cues(), lab = T.cueLabel(cl); cl.forEach(function (c) {
         var pg = host.querySelector('.pdfpage[data-n="' + c.n + '"]'), sz = T.Pages.size(c.n); if (!pg) return;
-        pg.insertAdjacentHTML('beforeend', '<button type="button" class="cue cue-' + c.k + (c.sug ? ' sug' : '') + '" data-cue="' + esc(c.id) + '" style="top:' + pct(c.y, sz.h) + '" aria-label="' + lab[c.id] + ': ' + esc(c.text) + '"><b>' + lab[c.id] + '</b><span> ' + esc(c.text) + '</span></button>');
+        pg.insertAdjacentHTML('beforeend', '<button type="button" class="cue cue-' + (T.Cues.isChange(c) ? 'SC' : c.k) + (c.sug ? ' sug' : '') + '" data-cue="' + esc(c.id) + '" style="top:' + pct(c.y, sz.h) + '" aria-label="' + lab[c.id] + ': ' + esc(c.text) + '"><b>' + lab[c.id] + '</b><span> ' + esc(c.text) + '</span></button>');
       }); }
       requestAnimationFrame(unstack);
       pins.forEach(function (x) {
@@ -104,14 +108,20 @@
 
     /* where I left off */
     var at = o.page || T.ls('scriptAt' + (o.teacher ? 'T' : ''));
-    if (at) setTimeout(function () { var el0 = host.querySelector('.pdfpage[data-n="' + at + '"]'); if (el0) el0.scrollIntoView(); }, 60);      // after the router's scroll to the top
+    if (at) setTimeout(function () { goTo(at, 0); }, 60);      // after the router's scroll to the top
     var sv = function () {
       var top = [].find.call(host.querySelectorAll('.pdfpage'), function (el) { return el.getBoundingClientRect().bottom > 80; });
       if (top) T.ls('scriptAt' + (o.teacher ? 'T' : ''), +top.dataset.n);
     }, svT = null, onScroll = function () { clearTimeout(svT); svT = setTimeout(sv, 400); };
     window.addEventListener('scroll', onScroll, { passive: true }); T.cleanup.push(function () { window.removeEventListener('scroll', onScroll); });
 
-    $('go').onchange = function () { var el = host.querySelector('.pdfpage[data-n="' + this.value + '"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); this.value = ''; };
+    /* a spot on a page (pdf points from the top) to the top of the screen, just under the title bar */
+    function goTo(n, y, smooth) {
+      var el = host.querySelector('.pdfpage[data-n="' + n + '"]'); if (!el) return;
+      var bar = document.getElementById('bar'), top = el.getBoundingClientRect().top + window.scrollY + (y || 0) / T.Pages.size(n).h * el.offsetHeight - (bar ? bar.offsetHeight : 0) - 6;
+      window.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+    }
+    $('go').onchange = function () { var v = this.value.split(':'); if (v[0]) goTo(+v[0], +v[1], true); this.value = ''; };
     if ($('hl')) $('hl').onchange = function () { st.hl = o.teacher ? this.value : (this.checked ? 'mine' : ''); keep(); overlay(); };
     if ($('smine')) $('smine').onchange = function () { st.mine = this.checked; keep(); overlay(); };
     if ($('sdir')) $('sdir').onchange = function () { st.dir = this.checked; keep(); overlay(); };
