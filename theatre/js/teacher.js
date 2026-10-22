@@ -270,7 +270,7 @@
     var cast = T.show.cast = T.show.cast || [];
     app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
       '<p class="muted">Students tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
-        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + '</span></button>';
+        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + '</span></button>';
       }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: students can start (the whole show, the story, crews) before they have roles. Until then, students pick a character.</p>');
     document.getElementById('roster').onclick = function () {
       var d = dialog('<h2>Paste a class list</h2><p class="muted">One student per line, the way they like to be called. “Last, First” is turned around. Names already on the list are skipped. Give them roles later (tap a student).</p>' +
@@ -300,6 +300,7 @@
     var d = dialog('<h2>' + (isNew ? 'Add an actor' : 'Edit actor') + '</h2>' +
       '<div class="row">' + '<span id="ph">' + T.face(a, 80) + '</span><label class="btn small">Photo<input type="file" accept="image/*" id="pf" hidden></label><button class="btn small quiet" id="pr">No photo</button></div>' +
       '<label class="f">Name<input id="nm" value="' + esc(a.name) + '" autocomplete="off"></label>' +
+      '<label class="switch"><span><b>Guest</b> (not in the class, e.g. a dancer who joins for tech week): only on run-through, tech, dress and show days, or days you call them</span><input type="checkbox" id="gu"' + (a.guest ? ' checked' : '') + '></label>' +
       '<p><b>Plays</b></p><div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 10px">' + O.characters.map(function (c) {
         return '<label class="switch"><span>' + T.chip(c.id) + '</span><input type="checkbox" value="' + c.id + '"' + (a.chars.indexOf(c.id) >= 0 ? ' checked' : '') + '></label>';
       }).join('') + '</div>' +
@@ -319,6 +320,7 @@
     if (!isNew) d.querySelector('#del').onclick = function () { if (!confirm('Remove ' + a.name + ' from the cast?')) return; T.show.cast = cast.filter(function (c) { return c.id !== a.id; }); save().then(function () { d.close(); castPage(); }); };
     d.querySelector('#ok').onclick = function () {
       a.name = d.querySelector('#nm').value.trim();
+      if (d.querySelector('#gu').checked) a.guest = true; else delete a.guest;
       a.chars = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return x.value; });
       if (!a.name) { T.toast('Type a name.'); return; }
       var i = cast.findIndex(function (c) { return c.id === a.id; }); if (i >= 0) cast[i] = a; else cast.push(a);

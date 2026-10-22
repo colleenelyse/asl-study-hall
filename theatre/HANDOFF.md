@@ -109,6 +109,10 @@ Student supports added (research-backed, see the list Colleen was given 2026-10-
 not the stage; My Schedule shows it (📍) and says "In the song" instead of "On stage". Split song groups send peer models with the chorus (they model the dance).
 Teacher mode › On stage can add the Trench Crew to other numbers.
 
+**Guests** (Colleen: if there are not enough peers for the stage and the trench, recruit a few dancers to rehearse a time or two in tech week and perform):
+Cast › an actor › **Guest**. A guest has no daily job, crew or class attendance; they join a group only on Run-through, Tech, Dress and Show days (or when the
+teacher sets their job by hand), and appear in attendance and on the call board only on those days. Not counted in Stage time.
+
 Tests: `dev/test-api.mjs` (19), `dev/test-dates.js` (6), `dev/test-line-check.js`.
 
 ## Still to build

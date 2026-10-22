@@ -10,6 +10,8 @@
    - Practice in the app: for those with no crew (the leads), chosen for them (lines for a scene coming up, a song with the guide vocals…), so nobody is ever without a job;
    - or the teacher's own words.
    Weeks are shown to students one at a time ("Show this week to students"), so the teacher can change plans until then.
+   Guests (cast.guest: performers who are not in the class, e.g. dancers recruited for tech week) have no daily job, crew or class attendance: they are in a group
+   only on Run-through, Tech, Dress and Show days, or when the teacher calls them by hand.
    T.show.production = { term: { first, last, off [dates] }, shown [Monday dates], stations [{ id, name, desc }],
      days { date: { groups [{ id, focus, scenes, songs, everyone, where }], assign { actor: 'g:<group>' | 'st:<station>' | 'app' | 'custom' }, tasks { actor: text }, notes } },
      crewHome { actor: station }, crewExempt [actor ids] (unset = actors who play a lead),
@@ -126,7 +128,8 @@
   }
   function autoGroup(a, r) { return r && r.groups.find(function (g) { if (g.everyone && !g.only) return true; var cs = groupChars(g); return a.chars.some(function (c) { return cs.indexOf(c) >= 0; }); }); }
   /* the weekly crew day */
-  function exempt(a) { var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }
+  var BIG_DAYS = ['run', 'tech', 'dress', 'show'];
+  function exempt(a) { if (a.guest) return true; var x = P().crewExempt; return x ? x.indexOf(a.id) >= 0 : a.chars.some(function (c) { var ch = T.charById(c); return ch && ch.group === 'leads'; }); }
   function homeStation(a) { var id = P().crewHome[a.id]; return id && P().stations.find(function (x) { return x.id === id; }); }
   function crewDayOf(a, mon) {
     if (exempt(a) || !homeStation(a)) return null;
@@ -141,6 +144,10 @@
   function task(a, s) {
     var r = plan(s), cf = away(a, s), how = r && r.assign && r.assign[a.id];
     if (cf) return { type: 'away', icon: '🙋', text: 'Away' + (cf.why ? ': ' + cf.why : '') };
+    if (a.guest && !how) {      // guests: only on the big rehearsal days
+      var gg = autoGroup(a, r);
+      return gg && BIG_DAYS.indexOf(gg.focus) >= 0 ? { type: 'stage', focus: gg.focus, icon: focus(gg.focus)[1], text: groupName(gg) + (gg.where ? ' · ' + gg.where : ''), group: gg.id } : { type: 'off', icon: '🏠', text: 'Guest: not called today' };
+    }
     if (how === 'custom' && r.tasks && r.tasks[a.id]) return { type: 'custom', icon: '📝', text: r.tasks[a.id] };
     if (!how && crewDayOf(a, monday(s)) === s) { var hs = homeStation(a); return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + hs.name + (hs.desc ? ' (' + hs.desc + ')' : '') }; }
     var g = how && how.slice(0, 2) === 'g:' ? r.groups.find(function (x) { return 'g:' + x.id === how; }) : (!how ? autoGroup(a, r) : null);
@@ -255,7 +262,7 @@
       '<a class="btn small" href="#/teacher/production/callboard/' + week + '">Call board</a></div>';
     return h + weekDays(week).map(function (s) {
       if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
-      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0 };
+      var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0 };
       people.forEach(function (a) { n[task(a, s).type]++; });
       return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' +
         (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +
@@ -276,7 +283,7 @@
   function timeView() {
     var days = classDays().filter(function (s) { return plan(s); }), cols = [['acting', '🗣️ Acting'], ['vocals', '🎵 Vocals'], ['dance', '💃 Dance'], ['other', '🎭 Other stage'], ['crew', '🛠️ Crew'], ['practice', '📱 App practice']];
     if (!days.length) return '<p class="card muted">Plan some days first. This shows how many days each student spends on stage, in each kind of group.</p>';
-    var rows = cast().map(function (a) {
+    var rows = cast().filter(function (a) { return !a.guest; }).map(function (a) {
       var c = { acting: 0, vocals: 0, dance: 0, other: 0, crew: 0, practice: 0, n: 0 };
       days.forEach(function (s) { var t = task(a, s); if (t.type === 'away') return; c.n++; if (t.type === 'stage') c[c[t.focus] !== undefined ? t.focus : 'other']++; else if (t.type === 'crew') c.crew++; else if (t.type === 'practice') c.practice++; });
       c.stage = c.acting + c.vocals + c.dance + c.other; return { a: a, c: c };
@@ -313,13 +320,13 @@
   }
   function attendanceView() {
     var p = P(), now = today(), days = classDays().filter(function (s) { return s <= now; }).reverse();
-    var cnt = {}; cast().forEach(function (a) { cnt[a.id] = { here: 0, late: 0, absent: 0, excused: 0 }; });
+    var cnt = {}; cast().filter(function (a) { return !a.guest; }).forEach(function (a) { cnt[a.id] = { here: 0, late: 0, absent: 0, excused: 0 }; });
     Object.keys(p.attendance).forEach(function (s) { var at = p.attendance[s]; Object.keys(at).forEach(function (id) { if (cnt[id] && cnt[id][at[id]] !== undefined) cnt[id][at[id]]++; }); });
     return '<div class="card"><h3>Take attendance</h3>' + (days.length ? '<div class="grid">' + days.slice(0, 10).map(function (s) {
       return '<a class="tile" style="min-height:90px" href="#/teacher/production/attend/' + s + '"><b>' + esc(dayName(s, true)) + '</b><span>' + (p.attendance[s] ? 'Taken ✓' : 'Not taken yet') + '</span></a>';
     }).join('') + '</div>' : '<p class="muted">No class days yet.</p>') + '</div>' +
       '<div class="card"><h3>So far</h3><table class="tbl"><thead><tr><th>Student</th>' + MARKS.map(function (m) { return '<th>' + m[1] + ' ' + m[2] + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      cast().map(function (a) { var c = cnt[a.id]; return '<tr><td>' + esc(a.name) + '</td>' + MARKS.map(function (m) { return '<td' + (m[0] === 'absent' && c.absent ? ' class="err"' : '') + '>' + c[m[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+      cast().filter(function (a) { return cnt[a.id]; }).map(function (a) { var c = cnt[a.id]; return '<tr><td>' + esc(a.name) + '</td>' + MARKS.map(function (m) { return '<td' + (m[0] === 'absent' && c.absent ? ' class="err"' : '') + '>' + c[m[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
 
   /* dance videos: choreography recorded by students (or the teacher), one list per song. Students share a link to the video in their school
@@ -453,7 +460,7 @@
   /* attendance: every student, every class day; a day away starts as Excused */
   function attendPage(s) {
     T.setBar('Attendance', '#/teacher/production/day/' + s);
-    var at = Object.assign({}, P().attendance[s] || {}), people = cast();
+    var at = Object.assign({}, P().attendance[s] || {}), people = cast().filter(function (a) { return !a.guest || task(a, s).type !== 'off'; });      // guests only on days they are called
     people.forEach(function (a) { if (!at[a.id] && away(a, s)) at[a.id] = 'excused'; });
     function draw() {
       app.innerHTML = '<h2>' + esc(dayName(s)) + '</h2><div class="row noprint" style="margin-bottom:12px"><button class="btn small" id="allhere">' + icon('check') + 'Everyone else is here</button></div>' +
@@ -481,7 +488,8 @@
       (days.length ? days.map(function (s) {
         var r = plan(s), groups = {}, order = [];
         cast().forEach(function (a) {
-          var t = task(a, s), k = t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
+          var t = task(a, s); if (t.type === 'off') return;
+          var k = t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
           if (!groups[k]) { groups[k] = []; order.push(k); }
           groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
         });
