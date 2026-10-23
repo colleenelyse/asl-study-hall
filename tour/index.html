@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>ASL Study: A Tour for Families</title>
+<!-- The family tour (Colleen 2026-10-23): no sign-in, no cookies, no ads, no analytics. Pictures: dev/tour-shots.py. The app: app.html (dev/build-tour.py). -->
+<style>
+:root { --ink: #1c1f3a; --soft: #555b7a; --bg: #fbf7ef; --card: #ffffff; --line: #e6dfcf; --gold: #f2b134; --blue: #2f6bff; --navy: #121534; --mint: #3dbf9a; --plum: #7b4fd1; --shadow: 0 10px 28px rgba(28, 31, 58, .12) }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; --shadow: 0 10px 28px rgba(0, 0, 0, .4); color-scheme: dark } }
+:root[data-theme="dark"] { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; --shadow: 0 10px 28px rgba(0, 0, 0, .4); color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, -apple-system, sans-serif }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+header.hero { background: linear-gradient(135deg, #121534, #2b2f7a 55%, #4b2f8a); color: #fff }
+header.hero .wrap { padding-block: 56px 48px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 36px; align-items: center }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; font-weight: 800; opacity: .8; margin: 0 0 8px }
+h1 { font-size: clamp(2rem, 4.6vw, 3.2rem); line-height: 1.1; margin: 0 0 14px; text-wrap: balance }
+h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); line-height: 1.2; margin: 0 0 8px; text-wrap: balance }
+h3 { font-size: 1.15rem; margin: 0 0 4px }
+.lead { font-size: 1.15rem; opacity: .92; max-width: 34em; margin: 0 0 22px }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 800; text-decoration: none; background: var(--gold); color: #1c1f3a; box-shadow: 0 4px 0 #b97f0f; transition: transform .1s }
+.btn:hover { transform: translateY(-1px) } .btn.ghost { background: rgba(255,255,255,.14); color: inherit; box-shadow: none; border: 2px solid rgba(255,255,255,.45) }
+.btn.small { padding: 8px 14px; font-size: .92rem; box-shadow: 0 3px 0 #b97f0f } .btn.blue { background: var(--blue); color: #fff; box-shadow: 0 3px 0 #1a3fa8 }
+.row { display: flex; gap: 10px; flex-wrap: wrap }
+.shot { width: 100%; max-width: 100%; border-radius: 16px; box-shadow: var(--shadow); display: block; border: 1px solid var(--line); background: #0d0f26 }
+.hero .shot { border-color: rgba(255,255,255,.2); box-shadow: 0 20px 50px rgba(0,0,0,.45); transform: rotate(1.5deg) }
+.promise { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: -26px auto 0; position: relative }
+.promise div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); font-size: .95rem }
+.promise b { display: block; font-size: 1.02rem }
+section { padding-block: 56px 8px }
+.intro { color: var(--soft); max-width: 46em; margin: 0 0 26px }
+.feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 32px; align-items: center; margin: 0 0 44px }
+.feature.flip { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) } .feature.flip .txt { order: 2 }
+.feature ul { margin: 8px 0 16px; padding-left: 1.2em } .feature li { margin: 4px 0 }
+.tag { display: inline-block; font-size: .74rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: #ffe9b3; color: #6b4a00; margin-bottom: 8px }
+.tag.cam { background: #d9f6ec; color: #0e5c45 } .tag.game { background: #e9e0ff; color: #42248e } .tag.teach { background: #dfe8ff; color: #1a3fa8 }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px }
+.gcard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column }
+.gcard img { width: 100%; aspect-ratio: 16 / 10.75; object-fit: cover; object-position: top; display: block; background: #0d0f26 }
+.gcard .in { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1 } .gcard p { margin: 0; color: var(--soft); font-size: .95rem } .gcard .row { margin-top: auto; padding-top: 6px }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none } .chips li { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: .92rem }
+.note { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--mint); border-radius: 12px; padding: 14px 18px; color: var(--soft); max-width: 52em }
+footer { padding-block: 48px 64px; color: var(--soft); font-size: .92rem; text-align: center }
+@media (max-width: 820px) { header.hero .wrap, .feature, .feature.flip { grid-template-columns: minmax(0, 1fr) } .feature.flip .txt { order: 0 } .hero .shot { transform: none } }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">A tour for families</p>
+      <h1>ASL Study: the app your student uses in ASL class</h1>
+      <p class="lead">Your student’s ASL teacher built this app for their classes: practice with real sign videos, a 3D hand that fingerspells and signs numbers, a webcam that reads your student’s fingerspelling, story games, class games for the projector, and tools that help the teacher see who needs help. Take a look around!</p>
+      <div class="row"><a class="btn" href="app.html">▶ Try it as a student</a><a class="btn ghost" href="#fingerspelling">See the 3D hand and webcam</a></div>
+    </div>
+    <img class="shot" src="shots/home.jpg" alt="The ASL Study home screen: Learn, Games, My Class, Letters, Numbers, the Sign of the Day and a test countdown" width="1280" height="860">
+  </div>
+</header>
+<div class="wrap">
+  <div class="promise">
+    <div><b>🔒 No sign-in, nothing sent</b>This tour runs on made-up sample students. Nothing you do leaves your computer, and it starts fresh when you reload.</div>
+    <div><b>🚫 No ads, no tracking</b>No cookies, no analytics, no ads on any page of the tour.</div>
+    <div><b>🎓 What students really use</b>It’s the real app. Students sign in with their school account; their work stays with the school.</div>
+  </div>
+</div>
+
+<main class="wrap">
+  <section id="practice">
+    <p class="eyebrow" style="color:var(--blue)">1 · Practice every sign</p>
+    <h2>Real sign videos, many ways to practice</h2>
+    <p class="intro">Every vocabulary sign from class has a short video. Students pick the units they are studying, and the app keeps track of which signs they know, which are new, and which keep tripping them up.</p>
+    <div class="feature">
+      <div class="txt"><span class="tag">Practice</span><h3>Learn, review, and remember</h3>
+        <ul><li><b>Learn</b>: a few signs at a time until they stick.</li><li><b>Daily Review</b>: the signs your student is about to forget come back.</li><li><b>Type It</b> and <b>Say It</b>: see the sign, give the meaning.</li><li><b>Streaks</b>, a <b>test countdown</b>, and a <b>Dictionary</b> of every sign.</li></ul>
+        <div class="row"><a class="btn small" href="app.html#go=home&act=play&g=learn">Try Learn</a><a class="btn small blue" href="app.html#go=dict">Open the Dictionary</a></div></div>
+      <img class="shot" src="shots/learn.jpg" alt="Choosing how many signs to learn" loading="lazy" width="1280" height="860">
+    </div>
+  </section>
+
+  <section id="fingerspelling">
+    <p class="eyebrow" style="color:var(--mint)">2 · Fingerspelling and numbers</p>
+    <h2>A 3D hand that signs, and a webcam that reads your student’s hand</h2>
+    <p class="intro">Fingerspelling and ASL numbers are some of the hardest parts of the language. The app has a 3D hand that signs any word or number at any speed, and a webcam game where your student signs to the camera and the app checks each handshape.</p>
+    <div class="feature flip">
+      <div class="txt"><span class="tag">Watch</span><h3>Type anything: the hand fingerspells it</h3>
+        <p>Words, names, whole sentences, from beginner speed up to the speed Deaf signers use, in different skin tones. Then games flip it around: the hand spells, your student types what they saw.</p>
+        <div class="row"><a class="btn small" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/?only=both#/show" target="_blank" rel="noopener">Try the 3D hand</a><a class="btn small blue" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/?only=both#/games" target="_blank" rel="noopener">All the games</a></div></div>
+      <img class="shot" src="shots/fs-hand.jpg" alt="The 3D hand fingerspelling the word FAMILY" loading="lazy" width="1280" height="860">
+    </div>
+    <div class="feature">
+      <div class="txt"><span class="tag">Numbers</span><h3>Numbers the way they are really signed</h3>
+        <p>ASL numbers follow their own rules: 2,026 is signed <b>2 · THOUSAND · 26</b>, with two hands. The hand signs any number up to 999,999,999, plus years, ages, times, money and math games.</p>
+        <div class="row"><a class="btn small" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/?only=both#/shownum" target="_blank" rel="noopener">Try any number</a><a class="btn small blue" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/?only=both#/shownum/year" target="_blank" rel="noopener">Try a year</a></div></div>
+      <img class="shot" src="shots/fs-num.jpg" alt="The hand signing 2,026 as 2, THOUSAND, 26" loading="lazy" width="1280" height="860">
+    </div>
+    <div class="feature flip">
+      <div class="txt"><span class="tag cam">📷 Webcam</span><h3>Fingerspell to the camera</h3>
+        <p>Your student signs each letter or number to the webcam, and the app recognizes the handshape and moves on. It teaches itself your student’s own hand, with games, a speed pacer and a “show me the handshape” helper.</p>
+        <p class="note" style="margin:10px 0 14px">🔒 The camera only watches the hand while the game is open, on your own computer. No video or picture is saved or sent anywhere.</p>
+        <div class="row"><a class="btn small" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/reader.html" target="_blank" rel="noopener">📷 Try letters</a><a class="btn small blue" href="https://colleenelyse.github.io/asl-study-hall/fingerspelling/reader.html?kind=numbers" target="_blank" rel="noopener">📷 Try numbers</a></div></div>
+      <img class="shot" src="shots/fs-cam.jpg" alt="Fingerspell to the Camera: sign the letter A" loading="lazy" width="1280" height="860">
+    </div>
+  </section>
+
+  <section id="games">
+    <p class="eyebrow" style="color:var(--plum)">3 · Story games</p>
+    <h2>Games where signing is the only way through</h2>
+    <p class="intro">Every game is built around the signs from class: escape rooms, a bank heist, a dinner party to seat, a haunted house. Your student has to read and use the signs to win.</p>
+    <div class="grid">
+      <div class="gcard"><img src="shots/vault.jpg" alt="The Vault" loading="lazy"><div class="in"><span class="tag game">Solo or partners</span><h3>🏦 The Vault</h3><p>Locked in a bank! A partner on a video call signs clues: a receipt, who has the key, whose clock to copy. In class, two classmates sit across the room and sign to each other.</p><div class="row"><a class="btn small" href="app.html#go=vasolo&act=vasgo">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/party.jpg" alt="Dinner Party" loading="lazy"><div class="in"><span class="tag game">Solo puzzle</span><h3>🍽️ Dinner Party</h3><p>Seat the world language teachers so every neighbor shares a language or a hobby, all from their signed invitations.</p><div class="row"><a class="btn small" href="app.html#go=party&act=dpgo">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/breach.jpg" alt="Breach" loading="lazy"><div class="in"><span class="tag game">Solo or teams</span><h3>🔓 Breach</h3><p>A hacker game: find the pieces of a rival crew’s password, read them from the hand, and crack it before they crack yours.</p><div class="row"><a class="btn small" href="app.html#go=brsolo&act=brsgo">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/house.jpg" alt="The Silent House" loading="lazy"><div class="in"><span class="tag game">Solo</span><h3>🕯️ The Silent House</h3><p>A spooky escape room: every lock opens with a sign, and missed signs come back to haunt you until you beat them.</p><div class="row"><a class="btn small" href="app.html#go=house&act=hsgo">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/manners.jpg" alt="Mind Your Manners" loading="lazy"><div class="in"><span class="tag game">Solo</span><h3>🫖 Mind Your Manners</h3><p>A tea party with porcelain dolls who only let you leave once every rule is right.</p><div class="row"><a class="btn small" href="app.html#go=manners">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/sea.jpg" alt="Sea Battle" loading="lazy"><div class="in"><span class="tag game">Solo or class</span><h3>⚓ Sea Battle</h3><p>Answer signs to earn cannonballs, then aim at the enemy fleet.</p><div class="row"><a class="btn small" href="app.html#go=seasolo">Play</a></div></div></div>
+      <div class="gcard"><img src="shots/claw.jpg" alt="Lucky Claw" loading="lazy"><div class="in"><span class="tag game">Reward</span><h3>🕹️ Lucky Claw</h3><p>Earn claw coins by answering signs, then try for a prize egg.</p><div class="row"><a class="btn small" href="app.html#go=claw">Play</a></div></div></div>
+    </div>
+    <h3 style="margin-top:34px">On the projector: class games</h3>
+    <p class="intro" style="margin-bottom:0">The whole class joins with a code and plays together, with teams balanced so everyone has a fair chance. (These need a class, so they are not in this tour.)</p>
+    <ul class="chips"><li>🏗️ Tower Climb</li><li>🏁 Race Day</li><li>👥 1 vs. The Mob</li><li>⚓ Sea Battle</li><li>🏝️ Treasure Island</li><li>🔓 Breach</li><li>🏦 The Vault (partners across the room)</li><li>🎪 Carnival After Dark (team escape room)</li><li>📷 Camera races</li></ul>
+  </section>
+
+  <section id="rewards">
+    <p class="eyebrow" style="color:#c7781a">4 · Rewards</p>
+    <h2>Reasons to come back every day</h2>
+    <div class="feature flip">
+      <div class="txt"><span class="tag">Rewards</span><h3>Tokens, tickets, characters and badges</h3>
+        <ul><li>Every right answer earns <b>Tokens</b> for characters, backgrounds and effects in the <b>Shop</b>.</li><li><b>Tickets</b> for real classroom prizes.</li><li>Collect every letter of the alphabet, badges, and a <b>Sign Collection</b>.</li><li>Streaks with freezes for days off, and a birthday celebration.</li></ul>
+        <div class="row"><a class="btn small" href="app.html#go=shop">Open the Shop</a><a class="btn small blue" href="app.html#go=me">See a student page</a></div></div>
+      <img class="shot" src="shots/me.jpg" alt="A student page with letters and badges" loading="lazy" width="1280" height="860">
+    </div>
+  </section>
+
+  <section id="teacher">
+    <p class="eyebrow" style="color:var(--blue)">5 · For the teacher</p>
+    <h2>Tools that show who needs help</h2>
+    <div class="feature">
+      <div class="txt"><span class="tag teach">Teacher</span><h3>The class dashboard (made-up students)</h3>
+        <p>Tickets and tokens for participation and effort with one tap. Behind it, the teacher also has:</p>
+        <ul class="chips" style="margin-bottom:14px"><li>Daily report</li><li>Vocab stats and problem spots</li><li>Student reports</li><li>Fingerspelling results</li><li>Test maker</li><li>Seating chart</li><li>Group maker</li><li>Name picker</li><li>Timer, dice and scoreboard</li><li>Sign of the Day</li><li>Prize queue</li></ul>
+        <div class="row"><a class="btn small" href="app.html#go=dash">Peek at the dashboard</a></div></div>
+      <img class="shot" src="shots/dash.jpg" alt="The teacher dashboard with sample students" loading="lazy" width="1280" height="860">
+    </div>
+  </section>
+
+  <section>
+    <div class="note"><b style="color:var(--ink)">About privacy.</b> Students sign in with their school Google account, and their progress is kept in the school’s Google account. Live class games run on this site with player numbers only, never names or emails. This tour uses no real student information at all.</div>
+  </section>
+</main>
+<footer><p>Built for ASL students by their teacher.</p><p><a class="btn" href="app.html">▶ Try it as a student</a></p></footer>
+</body>
+</html>
