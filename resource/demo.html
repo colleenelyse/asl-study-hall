@@ -100,6 +100,21 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .soon { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .soon .t { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
 .soon .t b { color: var(--ink); }
+.steps { display: flex; gap: 10px; margin: 6px 0 18px; }
+.stepb { flex: 1; min-width: 0; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 12px 6px 10px; text-align: center; cursor: pointer; font: inherit; color: var(--ink); }
+.stepb .n { width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; background: var(--chip); color: var(--soft); }
+.stepb .l { display: block; font-size: 15px; font-weight: 600; }
+.stepb.on { border-color: var(--brand); } .stepb.on .n { background: var(--brand); color: var(--onbrand, #fff); }
+.stepb.done .n { background: var(--up-soft); color: var(--up); } .stepb.lock { opacity: .5; }
+.btn.big { font-size: 18px; padding: 12px 26px; border-radius: 12px; }
+.stuffh { margin: 26px 0 10px; color: var(--soft); font-size: 15px; }
+.stiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; }
+.stile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
+.stile b { display: block; font-size: 15px; } .stile span { display: block; font-size: 13px; color: var(--soft); margin-top: 2px; }
+.stile.attn { border-color: var(--warn); background: var(--warn-soft); } .stile.attn span { color: var(--warn); }
+.stile.open { border: 2px solid var(--brand); }
+.tilepanel { margin-top: 12px; }
+@media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
 .savebar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 12px 16px; display: flex; justify-content: center; gap: 14px; align-items: center; z-index: 4; }
 .status { color: var(--soft); font-size: 14px; }
 .status.dirty { color: var(--warn); }
@@ -395,7 +410,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.78';
+var VERSION = '1.79';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -906,7 +921,7 @@ function api_saveProfile(p) {
       if (!day_(f.rows[f.i][SC.firstVisit])) stuSet_(f.i, 'firstVisit', today_());
       if (bd !== null && bd !== bdayCell_(f.rows[f.i][SC.bday])) { stuSet_(f.i, 'bday', bd); stuSet_(f.i, 'seen', bd ? bdayInitSeen_(bd) : ''); }
     }
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -918,7 +933,7 @@ function api_saveClasses(list) {
     saveClasses_(email, list);
     var f = stuFind_(email);
     if (f.i >= 0) stuSet_(f.i, 'checked', today_());   // they've checked their schedule
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -939,7 +954,7 @@ function api_teacherSaveGrades(email, g) {
     // a pasted class detail page: the same analysis and retake list a student's own paste saves
     var an = g.analyses || {};
     Object.keys(an).slice(0, 12).forEach(function (cls) { if (an[cls] && an[cls].summary) saveRetakes_(email, cls, an[cls].list || [], an[cls].summary); });
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -947,7 +962,7 @@ function api_teacherSaveGrades(email, g) {
 function api_teacherSaveClasses(email, list) {
   teacherOnly_();
   email = low_(email);
-  return locked_(function () { saveClasses_(email, list, myEmail_() + ' ' + today_()); return studentData_(email); });
+  return locked_(function () { saveClasses_(email, list, myEmail_() + ' ' + today_()); return fresh_(email); });
 }
 
 // "ASL Expressive Language (1); Algebra II Prep (2); …" for the Students tab's Enrollments cell.
@@ -1010,7 +1025,7 @@ function api_saveCheckin(c) {
       if (j >= 0) sheet_('Plans').getRange(j + 2, 4).setValue(steps_(c.lastSteps));
     }
     touch_(email);
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -1035,7 +1050,7 @@ function api_saveTest(t) {
     var rows = rows_('Tests'), i = t.id ? find_(rows, function (r) { return String(r[0]) === String(t.id) && low_(r[1]) === email; }) : -1;
     if (i >= 0) { row[6] = rows[i][6] === true; row[7] = rows[i][7]; sheet_('Tests').getRange(i + 2, 1, 1, row.length).setValues([row]); }
     else sheet_('Tests').appendRow(row);
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -1044,7 +1059,7 @@ function api_testDone(id, done) {
   return locked_(function () {
     var rows = rows_('Tests'), i = find_(rows, function (r) { return String(r[0]) === String(id) && low_(r[1]) === email; });
     if (i >= 0) sheet_('Tests').getRange(i + 2, 7).setValue(!!done);
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -1052,7 +1067,7 @@ function api_deleteTest(id) {
   var email = need_();
   return locked_(function () {
     rewrite_('Tests', function (r) { return !(String(r[0]) === String(id) && low_(r[1]) === email); }, []);
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -2734,7 +2749,7 @@ function api_confirmProfile(p) {
     stuSet_(f.i, 'cemail', String(p.counselorEmail || '').trim().toLowerCase());
     if (p.caseMgr) { stuSet_(f.i, 'caseMgr', clean_(p.caseMgr, 80)); stuSet_(f.i, 'caseMgrEmail', String(p.caseMgrEmail).trim().toLowerCase()); }
     stuSet_(f.i, 'profileOk', today_());
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 
@@ -2872,7 +2887,7 @@ function api_flagDayPlan(email, date, flag, note) {
     var cells = [flag ? 'Yes' : '', flag ? myEmail_() + ' ' + stamp_() : '', flag ? clean_(note, 300) : ''];
     if (i >= 0) sheet_('Daily plans').getRange(i + 2, 5, 1, 3).setValues([cells]);
     else if (flag) sheet_('Daily plans').appendRow([date, email, '', '', cells[0], cells[1], cells[2]]);
-    return studentData_(email);
+    return fresh_(email);
   });
 }
 // today's plan and the recent ones (newest first), with how often the plan was followed this semester
@@ -3281,11 +3296,19 @@ function teacherOnly_() { if (!isTeacher_(myEmail_())) throw new Error('Only tea
 function myEmail_() { try { return low_(Session.getActiveUser().getEmail()); } catch (e) { return ''; } }
 function need_() { var e = myEmail_(); if (!e) throw new Error('Please sign in with your school Google account.'); return e; }
 
+// Speed (1.79): a save that ends with fresh_(email) gets the student's whole page back AFTER the lock is let go, so the next
+// student's save doesn't wait for it, and each tab is read once (it used to take about 48 reads, inside the lock).
 function locked_(fn) {
-  var lock = LockService.getScriptLock();
+  var lock = LockService.getScriptLock(), out;
   lock.waitLock(20000);
-  try { return fn(); } finally { lock.releaseLock(); }
+  try { out = fn(); } finally { lock.releaseLock(); }
+  if (out && out.__fresh) {
+    var had = ROWS_MEMO; ROWS_MEMO = {};          // read after the writes, never from rows read before them
+    try { return studentData_(out.__fresh); } finally { ROWS_MEMO = had; }
+  }
+  return out;
 }
+function fresh_(email) { return { __fresh: email }; }
 
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function sheet_(name) { var sh = ss_().getSheetByName(name); if (!sh) { setup_(); sh = ss_().getSheetByName(name); } return sh; }
@@ -3478,6 +3501,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/checkday=1|nothing=1/.test(location.search)) window.isSchoolDay = function () { return true; };          // the demo works on a weekend too
   if (/checkday=1/.test(location.search)) setTimeout(function () { B.checkDay = B.today; go('checkin'); }, 1500);
   if (/nothing=1/.test(location.search)) setTimeout(function () { DP_EDIT = true; DP_NONE = 3; drawCheckin(); $('dpNone').scrollIntoView(); window.scrollBy(0, -200); }, 2500);
+  var tq = (location.search.match(/tile=(\w+)/) || [])[1]; if (tq) setTimeout(function () { tileOpen(tq); }, 2200);
   if (/teopen=1/.test(location.search)) setTimeout(function () { teOpen(); window.scrollTo(0, 300); }, 5000);
   window.google = { script: { run: (function mk(ok, no) {
     return new Proxy({}, { get: function (t, k) {
@@ -3644,7 +3668,7 @@ function go(v) {
 function drawNav() {
   var items = MODE === 'teacher'
     ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
-    : (gate() ? [] : [['checkin', 'Weekly check-in'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+    : (gate() ? [] : [['checkin', 'Today'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
   pb.hidden = !PREV;
@@ -4620,27 +4644,99 @@ function lastTestIn(cls) {
 }
 function soonTests() { return D.tests.filter(function (t) { var n = daysUntil(t.date); return !t.done && n >= 0 && n <= B.warn; }); }
 
+// The check-in, one big step at a time: (grades on grade check day,) today's plan, the checklist, the exit ticket.
+// Everything else waits in small "My stuff" tiles below, each opening its card when tapped.
+var STEP = null, GSUB = 0, TILE = null, CK_AFTER = null;          // STEP = { k, wasDone } when the student picked a step
+function checkMode() { return !!B.checkDay && B.today >= B.checkDay && graded().length > 0; }          // grade check day (or later that week)
+function stepList() {
+  var s = [], sd = isSchoolDay();
+  if (checkMode()) s.push({ k: 'grades', label: 'My grades', req: true });
+  if (F('dayPlan') && sd) s.push({ k: 'plan', label: 'My plan', req: true });
+  if (F('checklist') && sd && (B.checkItems || []).length) s.push({ k: 'check', label: 'Checklist' });
+  if (F('exit') && sd) s.push({ k: 'exit', label: 'Exit ticket' });
+  return s;
+}
+function stepDone(k) {
+  if (k === 'grades') return gradesDone() && GSUB !== 1;
+  if (k === 'plan') return !!(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan);
+  if (k === 'check') { var c = D.checklist || {}, dn = c.done || [], nt = c.noTime || []; return dn.length > 0 && B.checkItems.every(function (t) { return dn.indexOf(t) >= 0 || nt.indexOf(t) >= 0; }); }
+  if (k === 'exit') return !!D.exit;
+  return false;
+}
+function stepLock(list, i) { for (var j = 0; j < i; j++) if (list[j].req && !stepDone(list[j].k)) return j + 1; return 0; }          // the step number to finish first, or 0
+function stepGo(k) {
+  var list = stepList(), i = list.map(function (s) { return s.k; }).indexOf(k), lk = i < 0 ? 0 : stepLock(list, i);
+  if (lk) return toast('Finish step ' + lk + ' first');
+  if (DIRTY && !confirm('You have changes that are not saved. Leave without saving?')) return;
+  setDirty(false); STEP = { k: k, wasDone: stepDone(k) }; if (k !== 'grades') GSUB = 0; drawCheckin(); window.scrollTo(0, 0);
+}
+function weeklyOn() { return F('focus') || (CK.last && F('lookBack')) || F('talk') || F('plan') || F('help'); }
+function ckSaveBtn(label, after) { CK_AFTER = after || null; return '<div class="row" style="margin-top:4px"><button class="btn primary big" id="ckSave">' + label + '</button><span class="status" id="status"></span></div>'; }
 function drawCheckin() {
   if (!CK) initCK();
-  var tp = thisPlan(), done = graded().some(function (c) { return (D.grades[c.name] || {})[B.week] !== undefined; }) || !!tp;
-  var soon = soonTests();
-  var on = weekDay(D, B.week);
-  var h = '<h1>Weekly check-in: ' + fmtDay(B.today) + '</h1><p class="sub">' + (done ? '<span class="badge up">✓ Checked in' + (on !== B.week ? ' ' + fmtDay(on) : '') + '</span> You can update it any time this week.' : 'Check your grades, then make your plan for resource time.') + '</p>';
-  if (soon.length) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + ' · ' + fmtDay(t.date) + '</div>'; }).join('') + '</div>';
-  var num = 0, sec = function () { return ++num + '. '; };
-  if (needGrades()) {          // grade check day: the grade paste first, then today's plan
-    h = '<h1>📊 Grade check day: ' + fmtDay(B.today) + '</h1><p class="sub">Today, check every class in Infinite Campus and save your grades. Then make your plan for today.</p>' + h.replace(/^<h1>.*?<\/p>/, '') +
-      gradesCard(sec) + '<div class="savebar"><span class="status" id="status"></span><button class="btn primary" id="ckSave">Save my grades</button></div>' + dayPlanCard();
-    $('main').innerHTML = h; $('ckSave').onclick = saveCheckin;
-    var ic = document.querySelector('#icBox details'); if (ic) ic.open = true;          // the paste box starts open
-    return;
-  }
-  if (needDayPlan()) { $('main').innerHTML = h + dayPlanCard(); var ta = $('dpText'); if (ta) ta.focus(); return; }
-  h += iepCard() + winsCard() + teamCard() + dayPlanCard() + detailCard() + gradeGoalCard() + checklistCard() + exitCard() + myGoalCard() + missingCard() + finalsCard() + accomCard();
-
-  h += gradesCard(sec);
+  var list = stepList(), keys = list.map(function (s) { return s.k; });
+  if (STEP && (keys.indexOf(STEP.k) < 0 || (!STEP.wasDone && stepDone(STEP.k)))) STEP = null;          // a step just finished: on to the next one
+  var cur = STEP ? STEP.k : (list.filter(function (s, i) { return !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;
+  var soon = soonTests(), name = String(D.profile.name || '').split(' ')[0];
+  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? ' · <b>Grade check day</b>' : '') + '</p>';
+  if (soon.length) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
+  if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
+    var dn = stepDone(s.k), lk = stepLock(list, i);
+    return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
+  }).join('') + '</div>';
+  var nx = function () {          // the big "next" button under a finished step
+    var i = keys.indexOf(cur), n = list.slice(i + 1).filter(function (s) { return !stepDone(s.k); })[0];
+    return stepDone(cur) ? '<div class="row" style="justify-content:flex-end;margin-top:-4px"><button class="btn primary big" onclick="' + (n ? 'stepGo(\'' + n.k + '\')' : 'STEP={k:\'done\'};drawCheckin()') + '">' + (n ? 'Next: ' + n.label + ' →' : 'Finish →') + '</button></div>' : '';
+  };
+  var after = null;
+  if (cur === 'grades') {
+    if (GSUB === 1) { h += weeklyCards() + ckSaveBtn('Save my plan for the week', function () { GSUB = 0; STEP = null; }); after = 'week'; }
+    else {
+      h += gradesCard(function () { return ''; }) + ckSaveBtn(gradesDone() ? 'Save my grades' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : '');
+      after = 'grades';
+    }
+  } else if (cur === 'plan') h += dayPlanCard() + nx();
+  else if (cur === 'check') h += checklistCard() + nx();
+  else if (cur === 'exit') h += exitCard() + nx();
+  else h += list.length ? '<div class="card alldone"><h2>🎉 All done for today</h2><p style="margin:6px 0 0">Nice work. Your things are below' + (F('focus') ? ', or start the <a href="#" onclick="go(\'focus\');return false">⏱️ focus timer</a>' : '') + '.</p></div>'
+    : '<div class="card"><h2>No school today</h2><p class="small" style="margin:4px 0 0">Your things are below.</p></div>';
+  if (!gate()) h += myStuff(list);
+  $('main').innerHTML = h;
+  if (after === 'grades') { var ic = document.querySelector('#icBox details'); if (ic && !gradesDone()) ic.open = true; }
+  if (TILE === 'grades' || TILE === 'week' || after) drawSugg();
+  if ($('ckSave')) $('ckSave').onclick = saveCheckin;
+  if (cur === 'plan' && !stepDone('plan')) { var ta = $('dpText'); if (ta) ta.focus(); }
+}
+// My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
+function myStuff(list) {
+  var e = D.ef || {}, t = [], inSteps = list.some(function (s) { return s.k === 'grades'; });
+  var w = F('wins') ? myWins() : []; if (w.length) t.push(['wins', '🎉 My wins', w.length + ' new', true, winsCard]);
+  var iep = D.profile.iep; if (iep && iep.meet && iep.meet >= B.today) t.push(['iep', '📌 IEP meeting', shortDay(iep.meet), daysUntil(iep.meet) <= 7, iepCard]);
+  if (detailCard()) { var need = detailNeed().length, all = graded().length; t.push(['detail', '🔍 Detailed grades', need ? (all - need) + ' of ' + all + ' this week' : 'All done ✓', need > 0, detailCard]); }
+  if (!inSteps && graded().length) t.push(['grades', '📊 My grades', gradesDone() ? 'Checked this week ✓' : 'Check them any time', false, function () { return gradesCard(function () { return ''; }) + ckSaveBtn('Save my grades'); }]);
+  if (graded().length && weeklyOn()) t.push(['week', '🗓️ Plan for the week', thisPlan() ? 'Saved ✓' : 'Not made yet', false, function () { return weeklyCards() + ckSaveBtn('Save my plan for the week'); }]);
+  var mNow = 0; Object.keys(e.missingNow || {}).forEach(function (c) { mNow += e.missingNow[c].length; });
+  if (missingCard()) t.push(['missing', '📝 Missing work', mNow ? mNow + ' assignment' + (mNow === 1 ? '' : 's') : 'None ✓', mNow > 0, missingCard]);
+  if (gradeGoalCard()) { var gg = D.gradeGoals || {}, set = graded().filter(function (c) { return gg[c.name] !== undefined; }), ok = set.filter(function (c) { var n = nowGrade(D, c.name); return n !== null && n >= gg[c.name]; }).length; t.push(['goals', '🎯 Grade goals', set.length ? ok + ' of ' + set.length + ' on track' : 'Pick your goals', !set.length, gradeGoalCard]); }
+  if (finalsCard()) { var fd = (B.finalSched || []).map(function (s) { return s.date; }).sort()[0]; t.push(['finals', '📅 Finals', fd ? (daysUntil(fd) <= 0 ? 'This week' : 'In ' + daysUntil(fd) + ' days') : 'Plan ahead', false, finalsCard]); }
+  if (teamCard()) t.push(['team', '🤝 My support team', 'Who to ask', false, teamCard]);
+  if (accomCard()) t.push(['accom', '🧰 Accommodations', 'Tap when you use one', false, accomCard]);
+  if (myGoalCard()) t.push(['mygoal', '⭐ My goal', 'How I’m doing', false, myGoalCard]);
+  if (!t.length) return '';
+  var open = t.filter(function (x) { return x[0] === TILE; })[0];
+  return '<h2 class="stuffh">My stuff</h2><div class="stiles">' + t.map(function (x) {
+    return '<button class="stile' + (x[3] ? ' attn' : '') + (x[0] === TILE ? ' open' : '') + '" onclick="tileOpen(\'' + x[0] + '\')"><b>' + x[1] + '</b><span>' + esc(x[2]) + '</span></button>';
+  }).join('') + '</div>' + (open ? '<div class="tilepanel" id="tilePanel">' + open[4]() + '<button class="btn link" onclick="tileOpen(\'' + open[0] + '\')">▲ Close</button></div>' : '');
+}
+function tileOpen(k) {
+  if (DIRTY && !confirm('You have changes that are not saved. Leave without saving?')) return;
+  setDirty(false); TILE = TILE === k ? null : k; if (TILE === 'grades' || TILE === 'week') CK = null;
+  drawCheckin(); var p = $('tilePanel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// the weekly part: what to focus on, last week, talking with teachers, the plan for resource time
+function weeklyCards() {
+  var h = '', num = 0, sec = function () { return ++num + '. '; };
   if (F('focus')) h += '<div class="card focuscard"><h2>' + sec() + 'What to focus on this week</h2><div id="focusBox"></div></div>';
-
   if (CK.last && F('lookBack')) {
     var lp = CK.last;
     h += '<div class="card"><h2>' + sec() + 'Look back at last week</h2><p class="hint">Your plan from the week of ' + fmtDay(lp.week) + '. Check off what you did.</p>' +
@@ -4662,10 +4758,7 @@ function drawCheckin() {
       '<div id="steps">' + stepRows() + '</div><button class="btn small" onclick="stepAdd()">+ Add a step</button>' : '') +
     (F('help') ? (F('plan') ? '<p style="margin:16px 0 6px"><b>What do I need help with from my resource teacher?</b></p>' : '') + '<textarea maxlength="1000" placeholder="For example: I don’t understand the chemistry homework on moles." oninput="CK.plan.help=this.value;setDirty(true)">' + esc(CK.plan.help) + '</textarea>' : '') + '</div>';
 
-  h += '<div class="savebar"><span class="status" id="status" data-saved="' + (tp ? 'Saved' : '') + '">' + (tp ? 'Saved' : '') + '</span><button class="btn primary" id="ckSave">Save my check-in</button></div>';
-  $('main').innerHTML = h;
-  drawSugg();
-  $('ckSave').onclick = saveCheckin;
+  return h;
 }
 // the grades card (the Infinite Campus paste, then a row per class)
 function gradesCard(sec) {
@@ -4828,7 +4921,7 @@ function exitCard() {
 }
 function exSave() {
   var f = $('exF').value.trim(), n = $('exN').value.trim(); if (!f && !n) return alert('Write what you finished and what’s next.');
-  call('api_saveExit', f, n).then(function (x) { D.exit = x; EX_EDIT = false; $('exCard').outerHTML = exitCard(); toast('Exit ticket saved'); }).catch(oops);
+  call('api_saveExit', f, n).then(function (x) { D.exit = x; EX_EDIT = false; toast('Exit ticket saved'); if (VIEW === 'checkin') drawCheckin(); else $('exCard').outerHTML = exitCard(); }).catch(oops);
 }
 
 /* ---------- student: today's checklist (in resource), My goal, missing assignments by class ---------- */
@@ -4859,7 +4952,7 @@ function ckSet(k, how) {
     call('api_saveChecklist', B.checkItems.map(function (x) { return { text: x, done: done.indexOf(x) >= 0, noTime: noTime.indexOf(x) >= 0 }; })).then(function (r) {
       var all = r && r.done.length > 0 && r.done.length + r.noTime.length >= r.total;
       D.checklist = r; var card = $('ckCard'); if (card) card.outerHTML = checklistCard();
-      if (all) toast('Checklist done for today ✓');
+      if (all) { toast('Checklist done for today ✓'); if (VIEW === 'checkin') { STEP = { k: 'check', wasDone: true }; drawCheckin(); } }
     }).catch(oops);
   }, 700);
 }
@@ -5095,7 +5188,7 @@ function saveCheckin() {
   if (empty.length) return alert('It’s grade check day: type this week’s grade for every class. Still empty: ' + empty.map(function (c) { return c.name; }).join(', ') + '. (If a class has no grade in Infinite Campus yet, ask your teacher.)');
   var need = !F('lowWhy') ? [] : graded().filter(function (c) { var x = CK.lows[c.name]; return isLow(CK.grades[c.name]) && (!x.why.trim() || (!x.actions.length && !x.details.trim())); });
   if (need.length) {
-    var i = graded().indexOf(need[0]); $('lr' + i).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var i = graded().indexOf(need[0]), lr = $('lr' + i); if (lr) lr.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return alert('Your ' + need.map(function (c) { return c.name; }).join(' and ') + ' grade' + (need.length > 1 ? 's are' : ' is') + ' under ' + B.low + '%. Explain why and pick your plan to bring it up, then save.');
   }
   var lows = {}; graded().forEach(function (c) { if (isLow(CK.grades[c.name])) lows[c.name] = CK.lows[c.name]; });
@@ -5103,7 +5196,7 @@ function saveCheckin() {
   var plan = { focus: CK.plan.focus, steps: CK.plan.steps.filter(function (s) { return s.text.trim(); }), help: CK.plan.help, followed: CK.plan.followed, lookBack: CK.plan.lookBack };
   var missing = null; if (F('missing')) { missing = {}; graded().forEach(function (c) { missing[c.name] = CK.missing[c.name]; }); }
   call('api_saveCheckin', { talked: CK.talked.yes === null ? null : CK.talked, grades: CK.grades, lows: F('lowWhy') ? lows : {}, missing: missing, cplans: F('cplan') ? CK.cplan : null, plan: plan, lastSteps: CK.last ? CK.last.steps : null, lastWeek: CK.last ? CK.last.week : '' })
-    .then(function (d) { var was = !!gate(); D = d; setDirty(false); CK = null; toast(was ? 'Grades saved' : 'Check-in saved'); if (was && !gate()) go('checkin'); else drawCheckin(); })
+    .then(function (d) { var was = !!gate(), fn = CK_AFTER; D = d; setDirty(false); CK = null; CK_AFTER = null; toast(was ? 'Grades saved' : 'Saved'); if (fn) fn(); if (was && !gate()) go('checkin'); else drawCheckin(); })
     .catch(function (e) { oops(e); btn.disabled = false; });
 }
 
