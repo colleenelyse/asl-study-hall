@@ -94,6 +94,8 @@ export default {
     const url = new URL(req.url), p = url.pathname;
     const host = url.hostname.toLowerCase();
     if (host === 'www.aslstudyhall.com') return Response.redirect('https://aslstudyhall.com' + p + url.search, 301);
+    if (host === 'www.asl.cool') return Response.redirect('https://asl.cool' + p + url.search, 301);      // (once www.asl.cool is added to this Worker in Cloudflare)
+    if (/^\/tour(\/|$)/i.test(p) && !/^\/tour(\/|$)/.test(p)) return Response.redirect('https://asl.cool/tour' + p.slice(5) + url.search, 301);      // 2026-10-23 the family tour typed with a capital letter (a phone capitalizes "Tour")
     if (host === 'aslstudyhall.com' && (p === '/' || p === '/index.html')) return env.ASSETS.fetch(new Request(new URL('/store/', req.url)));      // the storefront
     if (p.startsWith('/rt/')) return rtRoute(req, env, url);      // live class games (ASL Study 4.139)
     if (p.startsWith('/theatre/api/')) return theatreApi(req, env, url, p);      // the theatre app (theatre/api.js)
