@@ -11464,7 +11464,7 @@ window.__media = {"hs-d": "data:image/webp;base64,UklGRtgfAABXRUJQVlA4WAoAAAAQAA
   var today = Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd'), tn = dayNum_(today), wk = weekKey_(tn);
   var dayAgo = function (k) { return Utilities.formatDate(new Date(Date.now() - k * 864e5), 'America/Chicago', 'yyyy-MM-dd'); };
 
-  data('Settings').forEach(function (r) { if (r[0] === 'Tower Climb picture link') r[1] = 'https://drive.google.com/file/d/DEMO_TOWER_PICTURE_0000000000000/view'; if (r[0] === 'Race Day picture link') r[1] = 'https://drive.google.com/file/d/DEMO_RACE_PICTURE_00000000000000/view'; if (r[0] === 'Mob stage picture link') r[1] = 'https://drive.google.com/file/d/DEMO_MOB_STAGE_PICTURE_0000000000/view'; });
+  data('Settings').forEach(function (r) { if (r[0] === 'Tower Climb picture link') r[1] = 'https://drive.google.com/file/d/DEMO_TOWER_PICTURE_0000000000000/view'; if (r[0] === 'Race Day picture link') r[1] = 'https://drive.google.com/file/d/DEMO_RACE_PICTURE_00000000000000/view'; if (r[0] === 'Mob stage picture link') r[1] = 'https://drive.google.com/file/d/DEMO_MOB_STAGE_PICTURE_0000000000/view'; if (r[0] === 'Fingerspelling page link') r[1] = 'https://colleenelyse.github.io/asl-study-hall/fingerspelling/'; });      // 2026-10-23 the family tour: the fingerspelling games and the camera (the GitHub copy never shows ads)
   var classes = [['1st Period ASL 1', 'ASL 1'], ['3rd Period ASL 1', 'ASL 1'], ['6th Period ASL 1', 'ASL 1'], ['5th Period ASL 2', 'ASL 2']];
   data('Classes').length = 1; classes.forEach(function (c) { data('Classes').push(c); });
   data('Units').push(['Unit 1', 'ASL 1', 'Yes', '']);
@@ -11546,6 +11546,19 @@ window.__media = {"hs-d": "data:image/webp;base64,UklGRtgfAABXRUJQVlA4WAoAAAAQAA
     } });
   }
   window.google = { script: { run: runner(null, null) } };
+  /* the family tour (dev/build-tour.py puts this inside dev/demo-seed.js): a sample of Colleen's Unit 2 signs with her own GIFs (asl.cool/tour/gifs), first in the
+     unit list so a family studies them by default, and the words Dinner Party and The Vault look for (languages, Deaf / hearing, drinks, hobbies) */
+  (function () {
+    var T = [['2.1', 'ASL', 'american sign language', 'asl'], ['2.1', 'English', '', 'english'], ['2.1', 'French', 'france', 'french'], ['2.1', 'German', 'germany', 'germany'], ['2.1', 'Italian', 'italy', 'italian'],
+      ['2.1', 'Spanish', 'spain', 'spanish'], ['2.1', 'Latin', '', 'latin'], ['2.1', 'Deaf', '', 'deaf'], ['2.1', 'Hearing', '', 'hearing'], ['2.1', 'Teach', 'teacher', 'teach'], ['2.1', 'Like', 'likes', 'like'],
+      ['2.2', 'Coffee', '', 'coffee'], ['2.2', 'Tea', '', 'tea'], ['2.2', 'Milk', '', 'milk'], ['2.2', 'Water', '', 'water'], ['2.2', 'Soda pop', 'soda, pop, soda-pop', 'soda'], ['2.2', 'Hot chocolate', '', 'hot chocolate'], ['2.2', 'Orange juice', '', 'orange juice'],
+      ['2.3', 'Bowling', '', 'bowling'], ['2.3', 'Camping', 'camp', 'camping'], ['2.3', 'Cooking', 'cook', 'cook'], ['2.3', 'Dancing', 'dance', 'dance'], ['2.3', 'Fishing', '', 'fishing'], ['2.3', 'Painting', 'paint', 'painting'],
+      ['2.3', 'Photography', 'photo', 'photography'], ['2.3', 'Shopping', 'shop', 'shopping'], ['2.3', 'Travel', '', 'travel'], ['2.3', 'TV watch', 'tv, watch tv, television', 'watch tv']];
+    window.__tourGifs = T.map(function (t) { return t[3]; });
+    var u2 = ss.insertSheet('Unit 2'); u2.getRange(1, 1, 1, UNIT_HEAD.length).setValues([UNIT_HEAD]);
+    T.forEach(function (t, i) { var key = 'tour_gif_' + i; window.__media[key] = 'gifs/' + encodeURIComponent(t[3]) + '.gif'; u2.appendRow([t[0], t[1], t[2], t[3] + '.gif', key, 'Matched', 'u2' + i.toString(36)]); });
+    var un = data('Units'); un.splice(1, 0, ['Unit 2', 'ASL 1', 'Yes', '']);
+  })();
   window.__env = env;
   /* preview only: sample classmates join a 1 vs. The Mob game and answer by themselves, so the game can be tried alone */
   window.__mob = { get: mobGet_, put: mobPut_ };
@@ -16152,7 +16165,7 @@ boot();
 (function () {
   window.__tour = true;
   const OK_TEACH = { dash: 1 }, SAY_CLASS = 'Class games are played together in class: the teacher puts a code on the projector and everyone joins. In this tour you can try the solo games.';
-  const ban = () => { const b = document.getElementById('demo'); if (b && /(^|&)shot=1/.test(location.hash.slice(1))) { b.hidden = true; return; } if (b) {      /* shot=1: the tour page's pictures, no banner */ b.hidden = false; b.innerHTML = '👋 <b>Family tour</b>: the real ASL Study app with made-up sample data. Nothing is saved and nothing about you is recorded. <a href="./" style="color:inherit;font-weight:800">← Back to the tour</a>'; } };
+  const ban = () => { const b = document.getElementById('demo'); if (b && /(^|&)shot=1/.test(location.hash.slice(1))) { b.hidden = true; return; } if (b) {      /* shot=1: the tour page's pictures, no banner */ b.hidden = false; b.innerHTML = '👋 <b>Family tour</b>: the real ASL Study app with made-up sample data. Nothing you do leaves your computer, and it starts fresh when you reload. <a href="./" style="color:inherit;font-weight:800">← Back to the tour</a>'; } };
   const say = t => { try { toast(t); } catch (e) {} };
   let wrapped = false;
   const wrap = () => { if (wrapped || typeof go !== 'function' || typeof ACT === 'undefined') return; wrapped = true;
