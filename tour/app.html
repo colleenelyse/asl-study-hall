@@ -284,7 +284,8 @@ h2.prompt .say, h1 .say { font-size: 1rem; margin-left: 6px }
 .artnoun { font-size: clamp(2rem, 6vw, 3.2rem); text-align: center } .artopts .opt { font: 700 1.4rem var(--display) }
 .prompt { text-align: center; font-size: 1.7rem }
 .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
-.opts.signs { gap: 10px }
+.opts.signs { gap: 10px; width: 100%; max-width: max(300px, calc(((100vh - 240px) / 2 - 16px) * 8 / 3 + 10px)); margin-inline: auto }      /* 4.175 (Colleen: on a Chromebook "you can only see two of the options at a time"): the four sign videos are sized so both rows fit the screen's height */
+@supports (height: 100dvh) { .opts.signs { max-width: max(300px, calc(((100dvh - 240px) / 2 - 16px) * 8 / 3 + 10px)) } }
 @media (max-width: 420px) { .opts:not(.signs):not(.two) { grid-template-columns: 1fr } }
 .opt { position: relative; min-height: 56px; padding: 12px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--surface); font: 600 1.05rem var(--display); text-align: center; overflow-wrap: anywhere }
 .opt.pic { padding: 6px } .opt.pic .sign { border-radius: 10px }
@@ -1360,7 +1361,7 @@ div.sts { cursor: default }
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.174';
+var VERSION = '4.175';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
