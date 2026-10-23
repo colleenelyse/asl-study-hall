@@ -16171,11 +16171,17 @@ boot();
   let wrapped = false;
   const wrap = () => { if (wrapped || typeof go !== 'function' || typeof ACT === 'undefined') return; wrapped = true;
     const go0 = go;
-    window.go = function (v) { const teach = typeof CHUNK_VIEW !== 'undefined' && CHUNK_VIEW[v] === 'teach';
-      if ((teach && !OK_TEACH[v]) || v === 'livehost' || v === 'liveboard') { say(v === 'livehost' || v === 'liveboard' ? SAY_CLASS : 'This teacher page is not part of the family tour. Try the class dashboard!'); return; }
+    const tools = new Set((typeof TEACH !== 'undefined' ? TEACH.map(t => t[0]) : []).concat(['photos', 'pics', 'mictest', 'codes', 'brsounds', 'brguide']));      /* every teacher tool, wherever its page lives */
+    window.go = function (v) { const teach = (typeof CHUNK_VIEW !== 'undefined' && CHUNK_VIEW[v] === 'teach') || tools.has(v);
+      if ((teach && !OK_TEACH[v]) || v === 'livehost' || v === 'liveboard') { say(v === 'livehost' || v === 'liveboard' ? SAY_CLASS : '🔒 This teacher tool is available in the full version of ASL Study. In the tour you can look at the class dashboard.'); return; }
       return go0.apply(this, arguments); };
     ['livejoin', 'vasduo', 'vascoop', 'brsduo'].forEach(k => { ACT[k] = () => say(k === 'livejoin' ? SAY_CLASS : 'Playing with a friend needs two students at school. Try the solo game!'); });
-    if (typeof TEACH !== 'undefined') TEACH.splice(0, TEACH.length, ...TEACH.filter(t => OK_TEACH[t[0]])); };
+    /* 2026-10-23 (Colleen: "show all the tools on the teacher dashboard though they can't be opened. when hovering over, note that they are available in the full version"):
+       every teacher tool stays in the menu, dimmed with a lock and a note */
+    const st = document.createElement('style'); st.textContent = '.tour-lock{opacity:.62;cursor:not-allowed!important;position:relative}.tour-lock::before{content:"🔒";position:absolute;top:-6px;right:-4px;font-size:11px}.tour-lock::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1c1f3a;color:#fff;padding:5px 10px;border-radius:8px;font:600 12px/1.3 system-ui,sans-serif;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:60;box-shadow:0 4px 12px rgba(0,0,0,.3)}.tour-lock:hover::after,.tour-lock:focus-visible::after{opacity:1}'; document.head.appendChild(st);
+    const lock = () => document.querySelectorAll('[data-a="tab"][data-t]').forEach(b => { const v = b.dataset.t, teach = (typeof CHUNK_VIEW !== 'undefined' && CHUNK_VIEW[v] === 'teach') || tools.has(v);
+      if (((teach && !OK_TEACH[v]) || v === 'livehost') && !b.classList.contains('tour-lock')) { b.classList.add('tour-lock'); b.dataset.tip = 'Available in the full version of ASL Study'; b.title = 'Available in the full version of ASL Study'; } });
+    new MutationObserver(lock).observe(document.body, { childList: true, subtree: true }); lock(); };
   /* the sign-up form: a made-up student, so families go straight in */
   let joined = false, opened = false; const t0 = Date.now();
   const tick = () => { ban(); wrap();
