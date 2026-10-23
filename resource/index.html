@@ -110,6 +110,7 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
     <div class="doors">
       <a class="door main" href="demo.html?as=teacher&amp;demo=1&amp;nobday"><div><b>Try the teacher view</b><span>Four made-up students, ready to click through</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=ort&amp;demo=1&amp;nobday"><div><b>Try a student’s view</b><span>Marcus, a junior with a low grade and an IEP meeting coming up</span></div><span class="go">Open →</span></a>
+      <a class="door" href="demo.html?as=jane&amp;demo=1&amp;nobday&amp;checkday=1"><div><b>See grade check day</b><span>Jane’s Friday: every grade first, then today’s plan</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=new&amp;nobday"><div><b>See a student’s first visit</b><span>Name, schedule pasted from Infinite Campus, profile</span></div><span class="go">Open →</span></a>
       <p class="note">The demo runs on sample data in your browser. Nothing you type is saved or sent anywhere.</p>
     </div>
@@ -130,7 +131,7 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
         <h3>The weekly check-in</h3>
         <p>One page, top to bottom, in the order a resource period goes.</p>
         <ul>
-          <li>A required plan for today’s resource time (with ideas from their missing work and tests)</li>
+          <li>A required plan for today’s resource time, first thing when they open the link (with ideas from their missing work and tests)</li>
           <li>“My wins” when a grade goes up or missing work is cleared</li>
           <li>Their IEP meeting date, case manager, counselor and assistant principal</li>
           <li>Grades and missing work for every class, pasted from Infinite Campus</li>
@@ -142,12 +143,35 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
 
     <div class="feat">
       <div class="txt">
+        <h3>Grade check day</h3>
+        <p>Once a week, on the day the teacher picks, the check-in opens with the grade paste box and every class, then today’s plan. Nothing else opens until every grade is saved.</p>
+        <ul>
+          <li>Students who already entered every grade earlier that week skip it</li>
+          <li>The school calendar is built in: no school on Friday moves it to Thursday, and there’s none in a finals week</li>
+          <li>Grades can still be entered on any day</li>
+        </ul>
+      </div>
+      <figure class="shot tall"><img src="img/checkday.jpg" alt="Grade check day: the grade paste box and every class's grade, then today's plan" loading="lazy"><figcaption>Jane’s Friday check-in.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>“I have nothing to work on”</h3>
+        <p>Instead of an empty plan, students go through a short list of things to check, one at a time, in order: missing work, Google Classroom, upcoming tests, retakes, working ahead, notes, asking a teacher.</p>
+        <p>The plan box stays open the whole time, so when the list jogs their memory they write the real plan. Only after the last item can they save “nothing to work on.”</p>
+      </div>
+      <figure class="shot"><img src="img/nothing.jpg" alt="The nothing-to-do checklist, three items checked, the rest waiting their turn" loading="lazy"><figcaption>The list is the teacher’s to change.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
         <h3>Which tests can I retake?</h3>
         <p>Students paste one class’s detailed Grades page. The app reads every assignment and applies the school’s retake rule: at least 75% of that unit’s coursework turned in on time.</p>
         <ul>
           <li>Tests under 80% get a clear “schedule your retake” or “too bad you didn’t submit your coursework on time”</li>
           <li>Missing work, with what full credit would do to the grade</li>
           <li>A weekly reminder until every class is done</li>
+          <li>Pasted the wrong page? “Paste again” replaces it</li>
         </ul>
       </div>
       <figure class="shot"><img src="img/analyze.jpg" alt="A class analysis showing the grade, missing work, and which tests can be retaken" loading="lazy"><figcaption>One pasted ASL 1 page, analyzed.</figcaption></figure>
