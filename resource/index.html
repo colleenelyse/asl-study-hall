@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="Resource Check-In: a Google Sheets app for resource classes. Screenshots and a clickable demo with made-up students.">
+<link rel="icon" type="image/png" href="/ily-o.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Resource Check-In</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: a planner-page feel. A short header with the two demo doors, then the week told from the student's side and the teacher's side,
+   each screen beside a few plain lines about what it does. One highlighter-yellow accent marks what a teacher would look for. */
+:root {
+  --bg: #f3f5fa;          /* cool paper */
+  --card: #ffffff;
+  --ink: #18203a;         /* deep ink blue */
+  --soft: #55607a;
+  --line: #dde2ee;
+  --brand: #2f4fd1;       /* the app's own blue */
+  --mark: #ffe066;        /* highlighter */
+  --mark-ink: #3b2f00;
+  --shot-bg: #e9edf6;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db0ff; --mark: #ffd84d; --mark-ink: #2a2200; --shot-bg: #1d2540; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db0ff; --mark: #ffd84d; --mark-ink: #2a2200; --shot-bg: #1d2540; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 400 16.5px/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); font-weight: 800; line-height: 1.02; }
+h2 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); font-weight: 800; line-height: 1.1; }
+h3 { font-size: 1.2rem; font-weight: 600; line-height: 1.25; }
+p { margin: 0; max-width: 62ch; }
+a { color: var(--brand); }
+.mark { background: linear-gradient(transparent 55%, var(--mark) 55%); color: inherit; padding: 0 .1em; }
+.eyebrow { font: 600 .78rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+
+/* header */
+header { padding-block: clamp(32px, 6vw, 64px) 8px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 32px; align-items: end; }
+.hero .lead { font-size: 1.15rem; color: var(--soft); margin-top: 14px; }
+.doors { display: grid; gap: 10px; }
+.door { display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; transition: transform .15s ease, border-color .15s ease; }
+.door:hover, .door:focus-visible { border-color: var(--brand); transform: translateY(-1px); outline: none; }
+.door b { display: block; font-weight: 600; }
+.door span { color: var(--soft); font-size: .9rem; }
+.door .go { margin-left: auto; color: var(--brand); font-weight: 600; white-space: nowrap; }
+.door.main { background: var(--brand); border-color: var(--brand); color: #fff; }
+.door.main span, .door.main .go { color: #e7ebff; }
+:root[data-theme="dark"] .door.main, :root[data-theme="dark"] .door.main span, :root[data-theme="dark"] .door.main .go { color: #0f1424; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .door.main, :root:not([data-theme="light"]) .door.main span, :root:not([data-theme="light"]) .door.main .go { color: #0f1424; } }
+.note { font-size: .85rem; color: var(--soft); }
+
+/* "what it replaces" strip */
+.replaces { margin-top: 36px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.replaces div { border-top: 3px solid var(--ink); padding-top: 10px; }
+.replaces b { display: block; font-family: var(--display); font-size: 1.05rem; }
+.replaces span { color: var(--soft); font-size: .95rem; }
+
+/* sections */
+section { padding-block: clamp(40px, 7vw, 72px) 0; }
+.sec-head { display: grid; gap: 8px; margin-bottom: 24px; }
+.feat { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 28px; align-items: start; padding-block: 22px; border-top: 1px solid var(--line); }
+.feat:nth-of-type(even) { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+.feat:nth-of-type(even) .txt { order: 2; }
+.txt { display: grid; gap: 10px; align-content: start; position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); }
+.txt ul { margin: 0; padding-left: 1.1em; color: var(--soft); display: grid; gap: 4px; }
+.shot { margin: 0; background: var(--shot-bg); border-radius: 14px; padding: 10px; min-width: 0; }
+.shot img { display: block; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(24, 32, 58, .12); }
+.shot.tall img { max-height: 760px; object-fit: cover; object-position: top; }
+.shot figcaption { font-size: .82rem; color: var(--soft); padding: 8px 4px 0; }
+
+/* smaller features */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.tile b { font-weight: 600; }
+.tile span { color: var(--soft); font-size: .93rem; }
+
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.facts .tile { padding: 16px 18px; }
+footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
+
+@media (max-width: 860px) {
+  .hero, .feat, .feat:nth-of-type(even) { grid-template-columns: minmax(0, 1fr); }
+  .feat:nth-of-type(even) .txt { order: 0; }
+  .txt { position: static; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .replaces, .facts { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) { .grid { grid-template-columns: minmax(0, 1fr); } .door .go { display: none; } }
+@media (prefers-reduced-motion: reduce) { .door { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">A Google Sheets app for resource classes</div>
+      <h1 style="margin-top:10px">Resource Check-In</h1>
+      <p class="lead">Every week, resource students check their grades, explain anything under a C, and plan their resource time. Every day, they write a plan and tick off a short checklist. The resource teacher sees the <span class="mark">whole caseload on one page</span>, with IEP goal data that builds itself.</p>
+    </div>
+    <div class="doors">
+      <a class="door main" href="demo.html?as=teacher&amp;demo=1&amp;nobday"><div><b>Try the teacher view</b><span>Four made-up students, ready to click through</span></div><span class="go">Open →</span></a>
+      <a class="door" href="demo.html?as=ort&amp;demo=1&amp;nobday"><div><b>Try a student’s view</b><span>Marcus, a junior with a low grade and an IEP meeting coming up</span></div><span class="go">Open →</span></a>
+      <a class="door" href="demo.html?as=new&amp;nobday"><div><b>See a student’s first visit</b><span>Name, schedule pasted from Infinite Campus, profile</span></div><span class="go">Open →</span></a>
+      <p class="note">The demo runs on sample data in your browser. Nothing you type is saved or sent anywhere.</p>
+    </div>
+  </div>
+  <div class="replaces">
+    <div><b>Replaces a weekly Google Doc</b><span>Students used to force-copy the same form every week. Now it’s one link, and last week is already there.</span></div>
+    <div><b>Runs in the teacher’s own Google account</b><span>A Google Sheet plus a web app, open only to school accounts. No outside service, no cost.</span></div>
+    <div><b>Turns on a little at a time</b><span>Four roll-out stages, from just grades up to goals and IEP data, and a switch for every feature.</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section aria-labelledby="stu">
+    <div class="sec-head"><div class="eyebrow">For students</div><h2 id="stu">What a student does</h2></div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>The weekly check-in</h3>
+        <p>One page, top to bottom, in the order a resource period goes.</p>
+        <ul>
+          <li>A required plan for today’s resource time (with ideas from their missing work and tests)</li>
+          <li>“My wins” when a grade goes up or missing work is cleared</li>
+          <li>Their IEP meeting date, case manager, counselor and assistant principal</li>
+          <li>Grades and missing work for every class, pasted from Infinite Campus</li>
+          <li>A short daily checklist and an exit ticket</li>
+        </ul>
+      </div>
+      <figure class="shot tall"><img src="img/checkin.jpg" alt="A student's weekly check-in: IEP meeting countdown, wins, support team, today's plan and this week's detailed grades" loading="lazy"><figcaption>Marcus’s check-in. The app works out his counselor and assistant principal from his grade and email.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Which tests can I retake?</h3>
+        <p>Students paste one class’s detailed Grades page. The app reads every assignment and applies the school’s retake rule: at least 75% of that unit’s coursework turned in on time.</p>
+        <ul>
+          <li>Tests under 80% get a clear “schedule your retake” or “too bad you didn’t submit your coursework on time”</li>
+          <li>Missing work, with what full credit would do to the grade</li>
+          <li>A weekly reminder until every class is done</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/analyze.jpg" alt="A class analysis showing the grade, missing work, and which tests can be retaken" loading="lazy"><figcaption>One pasted ASL 1 page, analyzed.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>My week</h3>
+        <p>Everything with a date in the next two weeks, day by day: tests, project steps, retakes, reminders, finals and the IEP meeting. Overdue steps sit on top.</p>
+      </div>
+      <figure class="shot"><img src="img/week.jpg" alt="My week: a day-by-day list of tests, steps and the IEP meeting" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Project planner</h3>
+        <p>Students paste a project’s directions and rubric. The app pulls out each requirement and rubric row and spreads them across the school days until it’s due, with a final rubric check. They adjust the dates and get a reminder before each step.</p>
+      </div>
+      <figure class="shot"><img src="img/planner.jpg" alt="Steps for a cell project, each with a date, made from pasted directions" loading="lazy"><figcaption>Built from a pasted Biology project sheet. Free; nothing leaves Google.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Finals planner</h3>
+        <p>A countdown to finals, each final with its day and time from the school’s exam schedule, notes on what the teacher said it will cover, and the accommodations the student plans to use on it.</p>
+      </div>
+      <figure class="shot"><img src="img/finals.jpg" alt="Finals planner with exam times, notes and planned accommodations" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Semester grade goals</h3>
+        <p>A goal for every class, with “on track” or points to go. Students can change a goal any time, but have to write why, and every change is kept with its date.</p>
+      </div>
+      <figure class="shot"><img src="img/goals.jpg" alt="Semester grade goals for each class" loading="lazy"></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="tea">
+    <div class="sec-head"><div class="eyebrow">For the resource teacher</div><h2 id="tea">What the teacher sees</h2></div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>The Overview</h3>
+        <p>Every student on one page, with what needs attention marked by color.</p>
+        <ul>
+          <li>Red only for an F or a class needed to graduate, so red still means something</li>
+          <li>Drops since last week outlined, with a small trend line for the semester</li>
+          <li>Today’s plan for each student, and who never wrote one</li>
+          <li>IEP meetings in the next 30 days</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/overview.jpg" alt="The teacher overview with IEP dates, counts and each student's grades" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>One student’s page</h3>
+        <p>Today’s plan with a “didn’t follow it” button, the IEP date, the support team, semester goals and finals, grades the teacher can enter, schedule fixes, emails to class teachers, counselors and families (translated for families), and a full progress report as a PDF.</p>
+      </div>
+      <figure class="shot tall"><img src="img/student-top.jpg" alt="A student's page in the teacher view" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>IEP goals and benchmarks</h3>
+        <p>The teacher picks once how a goal is measured: things the app tracks by itself (coursework turned in, missing work, checklists, plans followed) and their own data (trials, percents, counts). Each benchmark sets a target in plain words, like “at least 80%” or “no more than 2 missing assignments.”</p>
+        <ul>
+          <li>Executive functioning data kept for every student, every week</li>
+          <li>Self-reported missing work checked against the pasted pages automatically</li>
+        </ul>
+      </div>
+      <figure class="shot tall"><img src="img/goal.jpg" alt="Goals and executive functioning: measures with a chart and a benchmark with three targets" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Progress reports in one click</h3>
+        <p>A full report for each student: grades, low-grade plans, tests and retakes, goals and executive functioning, IEP benchmarks, and goal changes with the student’s reasons. At progress report time, one button makes a PDF for every student.</p>
+      </div>
+      <figure class="shot tall"><img src="img/report.jpg" alt="A printable progress report" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Start small</h3>
+        <p>Four roll-out stages turn features on in steps: Grades, then Planning, then Retakes, then Goals. Every feature also has its own switch.</p>
+      </div>
+      <figure class="shot"><img src="img/settings.jpg" alt="Settings with roll-out stages" loading="lazy"></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="more">
+    <div class="sec-head"><div class="eyebrow">Also included</div><h2 id="more">The smaller things that save time</h2></div>
+    <div class="grid">
+      <div class="tile"><b>Friday summary email</b><span>Good news first, then who didn’t check in, big drops, missing plans and IEP dates coming up.</span></div>
+      <div class="tile"><b>IEP date reminders</b><span>An email 21 and 7 days before each meeting and each progress report date.</span></div>
+      <div class="tile"><b>First-login profile</b><span>Students confirm their grade and case manager; counselor and AP fill in by themselves.</span></div>
+      <div class="tile"><b>Graduation warnings</b><span>A D or F in a class needed to graduate is flagged for the student and the teacher.</span></div>
+      <div class="tile"><b>Accommodations log</b><span>Students tap an accommodation when they use it; the teacher sees how often and where.</span></div>
+      <div class="tile"><b>Focus timer</b><span>Predict how much will get done, then report what did. The gap is good data.</span></div>
+      <div class="tile"><b>“See what they see”</b><span>The teacher previews the exact student view for any student.</span></div>
+      <div class="tile"><b>Schedules from Infinite Campus</b><span>Paste the schedule page; periods, levels, teachers and their emails fill in.</span></div>
+      <div class="tile"><b>Readable for every student</b><span>Color themes, text sizes and an OpenDyslexic font option.</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="facts">
+    <div class="sec-head"><div class="eyebrow">Privacy and setup</div><h2 id="facts">Built for a school account</h2></div>
+    <div class="facts">
+      <div class="tile"><b>Student privacy</b><span>Students are saved as first name and last initial only. The link opens only for school Google accounts, students see only their own information, and only the resource teacher (and anyone they add) sees the teacher view.</span></div>
+      <div class="tile"><b>Setup</b><span>About 20 minutes, once: make a copy of the sheet, paste a class list, publish the student link. A step-by-step guide comes with it.</span></div>
+      <div class="tile"><b>Cost</b><span>None. It runs inside Google Sheets in the teacher’s own account.</span></div>
+      <div class="tile"><b>New school year</b><span>One menu item saves a copy of the year and clears it. Counselors and assistant principals roll forward with their classes automatically.</span></div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>Made by Colleen Gibbons for resource teachers. The screens and the demo use made-up students.</p>
+</footer>
+</body>
+</html>
