@@ -119,7 +119,9 @@ function vaultViewCore_(V, e) {
     v.loot = { value: vaultLootVal_(P), items: (P.loot || []).map(function (x) { return x[2]; }), alarm: Math.round(vaultAlarm_(V, P) * 100) / 100, caught: !!(end && end.caught),
       x: P.x ? { key: P.x.key, name: P.x.name, img: P.x.img, done: P.x.done, need: P.x.need } : null,
       shelf: P.x || end ? [] : VAULT_LOOT.filter(function (c) { return had.indexOf(c[0]) < 0 && 'abc'.indexOf(c[6]) <= stI; }).map(function (c) { return { key: c[0], name: c[1], img: c[2], locks: c[3], value: c[4] }; }) }; }
-  if (end) { v.done = end.secs; v.caught = end.caught; return v; }
+  if (end) { v.done = end.secs; v.caught = end.caught;      /* 4.174 (Colleen: "make the vault end screen show who escaped first"): which pair out this was, by time */
+    if (!end.caught) { var outs = V.pairs.map(function (q) { return vaultEnd_(V, q); }).filter(function (x) { return x && !x.caught; }); v.place = 1 + outs.filter(function (x) { return x.secs < end.secs; }).length; v.outN = outs.length; v.pairsN = V.pairs.length; }
+    return v; }
   if (P.done) return v;
   if (V.hold) { v.hold = true; v.elapsed = 0; if (!sc.practice) { v.waitGo = true; return v; } }      /* 4.171 practice done: wait for the teacher's Start the clock */
   if (sc.practice) v.prac = true;
