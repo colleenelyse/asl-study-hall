@@ -121,7 +121,7 @@
         var st = sys[a].staves[b];
         if (below ? (y > st.bottom && y - st.bottom < 75) : (y < st.top && st.top - y < 45)) {
           var better = !below ? null : sys.some(function (x) { return x.staves.some(function (o) { return o !== st && y > o.bottom && o.bottom > st.bottom; }); });
-          if (!better) return { sys: sys[a], idx: b, key: curPage.num + ':' + sys[a].top.toFixed(1), staffKey: curPage.num + ':' + st.top.toFixed(1), many: sys[a].staves.length > 1 };
+          if (!better) return { sys: sys[a], st: st, idx: b, key: curPage.num + ':' + sys[a].top.toFixed(1), staffKey: curPage.num + ':' + st.top.toFixed(1), many: sys[a].staves.length > 1 };
         }
       }
       return null;
@@ -143,7 +143,7 @@
       var before = singerNow;
       if (loc && loc.many && singerByIdx[loc.idx] != null) singerNow = singerByIdx[loc.idx];      // each staff of a system keeps its own singer
       if (!labs.length || !syl.length) {
-        var parts0 = loc && loc.many ? phrases(syl) : [syl];
+        var parts0 = [].concat.apply([], (loc && loc.many ? phrases(syl) : [syl]).map(function (ps) { return measures(ps, loc); }));
         parts0.forEach(function (ps, k) { var e = entry(singerNow, ps, parts0.length > 1 ? null : lyr); if (e) addLyric(e, loc, k); });
         if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : before; }      // after a system, the top staff's singer carries on
         return;
@@ -157,7 +157,7 @@
         var r = runs[runs.length - 1]; if (r && r.who === who) r.syl.push(x); else runs.push({ who: who, syl: [x] });
       });
       var k = 0;
-      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); });
+      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (pp) { measures(pp, loc).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); }); });
       singerNow = labs[labs.length - 1].name;
       if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : singerNow; }
     }
@@ -167,6 +167,18 @@
       var a = ps[0], z = ps[ps.length - 1], t = text || cleanLyric(ps.map(function (x) { return x.t; }).join(' '));
       if (!t.replace(/[^A-Za-z]/g, '').length) return null;
       return { who: who, text: t, page: printed, box: text ? box : { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h }, syl: ps.map(strip) };
+    }
+    /* lit-up sections start at the beginning of a measure (Colleen: "count 1 or 5") and are at most two measures long ("a section and a half
+       should have been broken up into two"): a staff's words grouped by the barlines under them */
+    function measures(ps, loc) {
+      var bars = loc && loc.st && loc.st.bars; if (!bars || !bars.length || ps.length < 2) return [ps];
+      var mOf = function (x) { var c = x.x + x.w / 2, m = 0; bars.forEach(function (b) { if (b < c) m++; }); return m; };
+      var out = [], cur = [], first = null;
+      ps.forEach(function (x) { var m = mOf(x); if (cur.length && m - first >= 2) { out.push(cur); cur = []; first = null; } if (first == null) first = m; cur.push(x); });
+      if (cur.length) out.push(cur);
+      // a pickup of one or two syllables (a word leading into the next phrase) stays with the words before it on the line
+      for (var q = out.length - 1; q > 0; q--) if (out[q].length <= 2) { out[q - 1] = out[q - 1].concat(out[q]); out.splice(q, 1); }
+      return out;
     }
     /* in a system of several staves, a staff's words broken by rests are separate phrases (the other staff can sing in between) */
     function phrases(ps) {
@@ -439,7 +451,7 @@
         var pt = vp.convertToViewportPoint(tr[4], tr[5]);      // pages can have an offset origin (this script's start 20.88 points in)
         return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: size, font: font };
       });
-      pages.push({ num: n, width: vp.width, height: vp.height, items: items, systems: geo && geo.systems.length ? geo.systems.map(function (sy) { return { top: sy.top, bottom: sy.bottom, staves: sy.staves.map(function (st) { return { top: st.top, bottom: st.bottom }; }) }; }) : null });
+      pages.push({ num: n, width: vp.width, height: vp.height, items: items, systems: geo && geo.systems.length ? geo.systems.map(function (sy) { return { top: sy.top, bottom: sy.bottom, staves: sy.staves.map(function (st) { return { top: st.top, bottom: st.bottom, bars: st.bars.filter(function (b, i, a) { return !i || b - a[i - 1] > 4; }) }; }) }; }) : null });
       if (onProgress) onProgress(n, pdf.numPages);
     }
     return pages;

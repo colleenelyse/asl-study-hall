@@ -346,3 +346,10 @@ lyrics sorted by where they start. HSM JR: 552 sung lines, every one with a sing
 words or order.
 **Character colors** (Colleen 2026-10-23): Troy red, Gabriella purple, Sharpay pink, Ryan green, Chad blue, Taylor golden yellow, Zeke orange
 (`color` in show-hsm-jr.js; a show saved before takes them from the show file); chorus / group lines light up highlighter yellow.
+
+**Lyrics timing: Fix and singers; sections by measure** (Colleen 2026-10-23): 🎯 Fix on any line plays from 3 s before it; the next Now
+moves that line (keeping its syllable timing, so the piano follows) and the following taps fix the lines after it (she chose "keep playing";
+"Done fixing" ends it). The singer's name on a line opens a picker (characters, or Everyone); fixes are kept in `T.show.lyricWho[songNum]`
+["index|words"] and put back after a re-import (same line, or the same words in that song). Lit-up sections start at a measure ("count 1 or
+5") and are at most two measures long (`measures()` in the reader, using each staff's barlines kept in `page.systems`); a one- or two-syllable
+pickup stays with the words before it. HSM JR: 708 sections.

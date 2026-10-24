@@ -192,6 +192,12 @@
     var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || '') + it.lyrics.map(function (l) { return l.who + '|' + l.text; }).join('/'); }); }); return o; };      // the song's lines in order: a change in their words or order needs new timing
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
     O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
+    // the teacher's singer fixes (Lyrics timing): the same line (by number and words), or the same words anywhere in that song
+    var W = T.show.lyricWho || {};
+    r.scenes.forEach(function (s) { s.items.forEach(function (it) {
+      var w = it.type === 'song' && W[it.num]; if (!w) return;
+      it.lyrics.forEach(function (l, i) { var k = i + '|' + l.text; if (w[k]) l.who = w[k]; else { var m = Object.keys(w).find(function (kk) { return kk.slice(kk.indexOf('|') + 1) === l.text; }); if (m) l.who = w[m]; } });
+    }); });
     var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
     T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
@@ -733,19 +739,19 @@
        the screen (play, back, the time, Now with the words of the next line to tap, Save); while the track plays, the line being sung lights up
        and scrolls to the middle of the screen. */
     function draw(msg) {
-      var nxt = times.findIndex(function (x) { return !x; });
+      var nxt = fixAt != null ? fixAt : times.findIndex(function (x) { return !x; });
       app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up ¾ second before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
-          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + (l.who ? ' · ' + esc(l.who) : '') + '</span><br>' + esc(l.text) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button></span></div>';
+          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button><br>' + esc(l.text) + '</span>' +
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Play from 3 seconds before, then tap Now">🎯 Fix</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
-          '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time.' : '<span class="muted small">Next to tap · line ' + (nxt + 1) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
+          '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? '🎯 Fixing · line ' + (nxt + 1) + ' (keep tapping to fix the lines after it)' : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
-          '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button><span class="grow"></span><button class="btn small quiet" id="clr">Clear all</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
+          '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span><button class="btn small quiet" id="clr">Clear all</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var $ = function (id) { return document.getElementById(id); };
       lastRow = -1; follow(true);
@@ -761,14 +767,17 @@
         makePiano(songId).catch(function () {}).then(function () { save('Lyrics timing saved (and the piano melody with it)'); });
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); draw(); }; });
+      app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
+      if ($('fixdone')) $('fixdone').onclick = function () { fixAt = null; audio.pause(); draw(); };
+      app.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { pickSinger(+b.dataset.who); }; });
       app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, x.t - 1); audio.play(); var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('pause'); }); }; });
     }
-    var lastRow = -1;
+    var lastRow = -1, fixAt = null;      // fixAt: the line the next Now goes to while fixing (then the lines after it, in order)
     function follow(force) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
       var t = audio.currentTime, cur = -1;
       if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t) cur = i; });      // lit up a little early, like the song player
       if (audio.paused && !force) return;
-      var nxt = times.findIndex(function (x) { return !x; }), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
+      var nxt = fixAt != null ? fixAt : times.findIndex(function (x) { return !x; }), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
       app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); });
       var on = cur >= 0 && app.querySelector('.lt-row[data-row="' + cur + '"]'); if (on && !audio.paused) on.classList.add('lt-on');
       if (row !== lastRow && row >= 0) {
@@ -778,11 +787,40 @@
       }
     }
     function tap() {
-      var i = times.findIndex(function (x) { return !x; });
-      if (i < 0 || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every line has a time.'); return; }
-      times[i] = { t: +audio.currentTime.toFixed(2) };
-      if (i > 0 && times[i - 1]) { times[i - 1].e = times[i].t; spread(i - 1); }
-      spread(i); draw();
+      var fixing = fixAt != null, i = fixing ? fixAt : times.findIndex(function (x) { return !x; });
+      if (i < 0 || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every line has a time. Use 🎯 Fix on a line to change it.'); return; }
+      var t = +audio.currentTime.toFixed(2), old = times[i];
+      if (fixing && old) {      // move the line, keeping its own syllable timing (the piano follows it), and don't let it run into the next line
+        var d = t - old.t, next = times.slice(i + 1).find(Boolean);
+        times[i] = { t: t, e: +Math.min(old.e + d, next ? next.t : old.e + d).toFixed(2), s: (old.s || []).map(function (v) { return +(v + d).toFixed(2); }) };
+        if (times[i].e <= t) { times[i].e = +(t + 0.5).toFixed(2); spread(i); }
+      } else { times[i] = { t: t }; spread(i); }
+      var prev = times.slice(0, i).reverse().find(Boolean);
+      if (prev && prev.e > t) { prev.e = t; prev.s = prev.s.map(function (v) { return Math.min(v, t - 0.05); }); }
+      if (fixing) fixAt = i + 1 < lines.length ? i + 1 : null;      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
+      draw();
+    }
+    /* who sings a line, when the script reader got it wrong: kept in T.show.lyricWho so a re-import keeps it */
+    function pickSinger(i) {
+      var l = lines[i], O = T.O(), ids = T.labelChars(String(l.who || '').toUpperCase()), all = ids.indexOf('*') >= 0;
+      var d = dialog('<h2>Who sings line ' + (i + 1) + '?</h2><p class="muted">“' + esc(l.text) + '”</p><div class="choose" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">' +
+        O.characters.map(function (c) { return '<label class="switch"><span>' + T.chip(c.id) + '</span><input type="checkbox" value="' + c.id + '"' + (!all && ids.indexOf(c.id) >= 0 ? ' checked' : '') + '></label>'; }).join('') + '</div>' +
+        '<label class="switch"><span><b>Everyone (ALL)</b></span><input type="checkbox" id="wall"' + (all ? ' checked' : '') + '></label>' +
+        '<div class="row end"><button class="btn quiet" id="wx">Cancel</button><button class="btn primary" id="wok">OK</button></div>');
+      d.querySelector('#wx').onclick = function () { d.close(); };
+      d.querySelector('#wok').onclick = function () {
+        var pick = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return T.charById(x.value); });
+        var who = d.querySelector('#wall').checked ? 'ALL' : pick.map(function (c) { return ((c.aliases || [])[0] || c.name).toUpperCase(); }).join(', ');
+        if (!who) { T.toast('Pick who sings it.'); return; }
+        l.who = who;
+        var W = T.show.lyricWho = T.show.lyricWho || {}; (W[song.num] = W[song.num] || {})[i + '|' + l.text] = who;
+        d.close(); save('Singer saved').then(function () { draw(); });
+      };
+    }
+    function fixLine(i) {
+      fixAt = i;
+      var known = times[i] || times.slice(0, i).reverse().find(Boolean);
+      (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, (known ? known.t : 0) - 3); audio.play(); draw(); });
     }
     function find() {
       var ctx = T.audioCtx(), m = document.getElementById('msg');

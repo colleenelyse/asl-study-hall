@@ -325,3 +325,5 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .song-dock .time { min-width: 6.5em; text-align: right; font-variant-numeric: tabular-nums; }
 .song-dock-space { height: 110px; }
 @media (max-width: 520px) { .song-dock .in { flex-wrap: wrap; } .song-dock #pos { flex: 1 1 100%; order: 5; } .song-dock-space { height: 150px; } }
+.lt-who { border: 0; background: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; font: 600 .8em var(--font-body); color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
+.lt-who:hover, .lt-who:focus-visible { color: var(--ink); background: var(--line); }
