@@ -24,7 +24,10 @@ const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function sha256hex(bytes) { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function same(a, b) { if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
 const okStr = (s, max) => typeof s === 'string' && s.length > 0 && s.length <= max;
-const okEnc = e => e && e.iter >= 100000 && okStr(e.salt, 100) && okStr(e.iv, 100) && okStr(e.data, MAX_SHOW) && e.wrap && okStr(e.wrap.iv, 100) && okStr(e.wrap.data, 200);
+const okWrap = w => w && okStr(w.iv, 100) && okStr(w.data, 200);
+/* more: other passwords that open the show (parents, peer helpers), each wrapping the same show key (Colleen 2026-10-23) */
+const okMore = m => m === undefined || (Array.isArray(m) && m.length <= 30 && m.every(x => x && okStr(x.id, 40) && x.iter >= 100000 && okStr(x.salt, 100) && okWrap(x.wrap)));
+const okEnc = e => e && e.iter >= 100000 && okStr(e.salt, 100) && okStr(e.iv, 100) && okStr(e.data, MAX_SHOW) && okWrap(e.wrap) && okMore(e.more);
 
 /* the teacher's proof; counts wrong guesses per address */
 async function proven(env, req, proof, st) {
@@ -57,7 +60,8 @@ export async function theatreApi(req, env, url, p) {
       const ok = env.THEATRE_SETUP ? same(code, String(env.THEATRE_SETUP).toUpperCase()) : same(await sha256hex(new TextEncoder().encode(code)), SETUP_SHA);
       if (!ok) { await env.LOCKS.put(failKey, String(fails + 1), { expirationTtl: FAIL_WINDOW }); return json({ error: 'The setup code is not right.' }, 403); }
     }
-    const e = body.enc, next = { enc: { v: 1, iter: e.iter, salt: e.salt, iv: e.iv, data: e.data, wrap: { iv: e.wrap.iv, data: e.wrap.data } },
+    const e = body.enc, next = { enc: { v: 1, iter: e.iter, salt: e.salt, iv: e.iv, data: e.data, wrap: { iv: e.wrap.iv, data: e.wrap.data },
+      more: (e.more || []).map(x => ({ id: x.id, iter: x.iter, salt: x.salt, wrap: { iv: x.wrap.iv, data: x.wrap.data } })) },
       vsalt: newPw ? body.newVsalt : st.vsalt, vhash: newPw ? body.newVhash : st.vhash, updated: new Date().toISOString() };
     await env.LOCKS.put('theatre:show', JSON.stringify(next));
     return json({ ok: true, updated: next.updated });

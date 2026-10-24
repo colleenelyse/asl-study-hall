@@ -217,9 +217,16 @@
   T.studentPages.calendar = function () {
     T.setBar('My calendar', '#/today');
     var me = T.me && (T.show.cast || []).find(function (a) { return a.id === T.me.id; }), p = P(), t = X().today();
-    if (!me) { app.innerHTML = '<div class="card"><p>Your teacher has not put you on the class list yet.</p></div>'; return; }
+    /* everyone's day (Colleen: parents can "toggle on a full view of things like the calendar so they can see everything happening on a day") */
+    var canAll = !!(T.pass && T.pass.fullCal), all = canAll && (T.ls('calAll') || !me);
+    if (T.pass) T.setBar('Calendar', '#/home');
+    if (!me && !canAll) { app.innerHTML = '<div class="card"><p>Your teacher has not put you on the class list yet.</p></div>'; return; }
     var days = X().classDays().filter(function (d) { return d >= t && p.shown.indexOf(X().monday(d)) >= 0; });
-    app.innerHTML = '<h2>' + sym('🗓️') + 'My calendar</h2>' + (days.length ? days.map(function (d) { var j = T.prodTask(me, d); return '<div class="card row" style="margin-bottom:8px"><b style="min-width:150px">' + esc(X().dayName(d)) + '</b><span class="grow">' + sym(j.icon) + esc(j.text) + '</span>' + (j.href ? '<a class="btn small" href="' + j.href + '">Start</a>' : '') + '</div>'; }).join('') : '<div class="card"><p>Your teacher has not shown the next weeks yet.</p></div>');
+    var sw = canAll && me ? '<label class="switch card"><span><b>Show everyone</b><br><span class="muted small">Everything happening each day, not just ' + esc(T.me.name) + '’s part</span></span><input type="checkbox" id="calall"' + (all ? ' checked' : '') + '></label>' : '';
+    app.innerHTML = '<h2>' + sym('🗓️') + (T.pass ? 'Calendar' : 'My calendar') + '</h2>' + sw + (!days.length ? '<div class="card"><p>Your teacher has not shown the next weeks yet.</p></div>' :
+      all ? days.map(function (d) { return T.dayBoard(d, T.pass.who === 'parent'); }).join('') :
+      days.map(function (d) { var j = T.prodTask(me, d); return '<div class="card row" style="margin-bottom:8px"><b style="min-width:150px">' + esc(X().dayName(d)) + '</b><span class="grow">' + sym(j.icon) + esc(j.text) + '</span>' + (j.href && !T.pass ? '<a class="btn small" href="' + j.href + '">Start</a>' : '') + '</div>'; }).join(''));
+    var c = document.getElementById('calall'); if (c) c.onchange = function () { T.ls('calAll', c.checked); T.studentPages.calendar(); };
   };
 
   /* ---------- doubling: two roles for one student ---------- */

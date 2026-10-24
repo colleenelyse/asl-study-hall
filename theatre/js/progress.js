@@ -17,7 +17,7 @@
   /* ---------- this student's record ---------- */
   var rec = null, recFor = null, dirty = false, timer = null, merged = false;
   function blank() { return { v: 1, lines: {}, songs: {}, time: {} }; }
-  function me() { return T.me && T.me.id ? T.me.id : null; }
+  function me() { return T.me && T.me.id && !(T.pass && !T.pass.practice) ? T.me.id : null; }      // a parent's (or helper's) practice is not the student's, unless the teacher ticked it
   function get() {
     var id = me(); if (!id) return null;
     if (recFor !== id) { rec = T.ls('progress:' + id) || blank(); recFor = id; merged = false; mergeServer(); }

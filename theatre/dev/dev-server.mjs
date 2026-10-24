@@ -1,14 +1,21 @@
-/* Local test server for asl.cool/theatre: the site's files + theatre/api.js on an in-memory KV (nothing is saved after it stops).
+/* Local test server for asl.cool/theatre: the site's files + theatre/api.js on a KV kept in <private folder>/dev-kv (so a restart keeps the test show).
+   api.js is read again whenever it changes.
    node theatre/dev/dev-server.mjs <repo folder> 8830 <private folder>   then open http://localhost:8830/theatre/
    <private folder> is served at /__private/ for testing only (the licensed script PDF, test tracks). Keep it OUTSIDE the repo. */
 import http from 'node:http'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
 const ROOT = path.resolve(process.argv[2]), PORT = +process.argv[3] || 8787, PRIV = process.argv[4] ? path.resolve(process.argv[4]) : null;
-const tmp = path.join(os.tmpdir(), 'theatre-api-' + process.pid + '.mjs');      // api.js is an ES module in a plain .js file
-fs.copyFileSync(path.join(ROOT, 'theatre/api.js'), tmp);
-const { theatreApi } = await import(pathToFileURL(tmp));
-const kv = new Map();
+const API_FILE = path.join(ROOT, 'theatre/api.js');
+let theatreApi = null, apiAt = 0, apiN = 0;
+async function api() {      // api.js is an ES module in a plain .js file: copied to .mjs, and again when it changes
+  const at = fs.statSync(API_FILE).mtimeMs;
+  if (!theatreApi || at !== apiAt) { const tmp = path.join(os.tmpdir(), 'theatre-api-' + process.pid + '-' + (++apiN) + '.mjs'); fs.copyFileSync(API_FILE, tmp); theatreApi = (await import(pathToFileURL(tmp))).theatreApi; fs.unlinkSync(tmp); apiAt = at; }
+  return theatreApi;
+}
+const kv = new Map(), KVDIR = PRIV ? path.join(PRIV, 'dev-kv') : null;
+if (KVDIR) { fs.mkdirSync(KVDIR, { recursive: true }); for (const f of fs.readdirSync(KVDIR)) { const b = fs.readFileSync(path.join(KVDIR, f)), k = decodeURIComponent(f.slice(2)); kv.set(k, f[0] === 'b' ? b.buffer.slice(b.byteOffset, b.byteOffset + b.length) : b.toString('utf8')); } }
+const keep = (k, v) => { if (!KVDIR) return; const n = encodeURIComponent(k); for (const t of ['s_', 'b_']) fs.rmSync(path.join(KVDIR, t + n), { force: true }); if (v != null) fs.writeFileSync(path.join(KVDIR, (typeof v === 'string' ? 's_' : 'b_') + n), typeof v === 'string' ? v : Buffer.from(v instanceof ArrayBuffer ? new Uint8Array(v) : v)); };
 const LOCKS = { async get(k, type) { const v = kv.get(k); if (v == null) return null; if (type === 'json') return JSON.parse(v); if (type === 'arrayBuffer') return v; return v; },
-  async put(k, v) { kv.set(k, v); }, async delete(k) { kv.delete(k); },
+  async put(k, v) { kv.set(k, v); keep(k, v); }, async delete(k) { kv.delete(k); keep(k, null); },
   async list({ prefix }) { return { keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }; } };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.pdf': 'application/pdf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.webmanifest': 'application/manifest+json', '.webp': 'image/webp' };
 http.createServer(async (req, res) => {
@@ -16,7 +23,7 @@ http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/theatre/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
-    const r = await theatreApi(new Request(url, { method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body }), { LOCKS, THEATRE_SETUP: process.env.THEATRE_SETUP || 'DEV' }, url, url.pathname);
+    const r = await (await api())(new Request(url, { method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body }), { LOCKS, THEATRE_SETUP: process.env.THEATRE_SETUP || 'DEV' }, url, url.pathname);
     res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer())); return;
   }
   let base = ROOT, p = url.pathname;

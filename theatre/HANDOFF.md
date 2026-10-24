@@ -428,3 +428,10 @@ stripes via a gradient). Used for the lit-up lines (song pages, practice) and th
 - teacher.js Timing: 🎯 Fix clears the line's time (startFix/endFix, fixOld keeps its syllable timing; Done fixing or Save puts back an untapped line); ✕ Clear per line (and in the Sections bar); "Clear all timing" asks first. Undo ends a fix.
 
 - Passwords & backup › School sign-in: "Test the school sign-in" (T.testSignin in app.js; applySignin sees ls signinTest, toasts the result, returns to #/teacher/passwords). The student button only shows once a cast member has an email.
+
+## 2026-10-23: every password listed; other passwords (parents, peer helpers…)
+- Store: `unlockAny` (cast wrap, then enc.more wraps → { key, access id }), `save` opts `addPw {id,pw}` / `dropPw id`, `sealVault/openVault`. Saves and proof calls refuse without the teacher proof (no 403s that would lock the school's address).
+- api.js keeps `enc.more` (≤30, checked). test-api covers it. dev-server keeps its KV in <private>/dev-kv and reloads api.js when it changes.
+- T.show.vault: { teacher, cast, extra{id:pw} } sealed with the teacher password (T.tpw, memory only). Setup seeds it; cast/teacher changes update it; older passwords: "Type it once" (checked).
+- T.show.passes: [{ id, name, off, who student|parent|helper, pages[], teach[], fullCal, practice }]. The iPad remembers ls passId; T.usePass() on open (off/deleted → iPad locked). Parents: names shortened in memory to first + last initial (T.shortName); never saved (view only). Teacher sign-in on such an iPad re-reads the full show.
+- Routing: T.passAllows(page) for student pages; T.passTeach for view-only teacher pages (callboard, read, cues, smscript, mics). Calendar "Show everyone" (T.dayBoard, shared with the call board; parents: no Away or private notes). Practice is not recorded unless the checklist says so.

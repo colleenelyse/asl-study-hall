@@ -570,19 +570,22 @@
     var days = weekDays(mon).filter(isClassDay);
     app.innerHTML = '<div class="row noprint" style="justify-content:center;margin-bottom:10px"><a class="round" href="#/teacher/production/callboard/' + addDays(mon, -7) + '" aria-label="Last week">' + icon('prev') + '</a><b>Week of ' + esc(dayName(mon, true)) + '</b><a class="round" href="#/teacher/production/callboard/' + addDays(mon, 7) + '" aria-label="Next week">' + icon('next') + '</a><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
       '<h2 class="center">' + esc(T.O().title) + ' · Call board</h2>' + (P().shown.indexOf(mon) < 0 ? '<p class="center muted noprint">Students cannot see this week yet.</p>' : '') +
-      (days.length ? days.map(function (s) {
-        var r = plan(s), groups = {}, order = [];
-        cast().forEach(function (a) {
-          var t = task(a, s); if (t.type === 'off') return;
-          var k = t.type === 'trip' ? '🚌 ' + t.text : t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
-          if (!groups[k]) { groups[k] = []; order.push(k); }
-          groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
-        });
-        order.sort(function (x, y) { var rank = function (k) { return /^📱|^🙋|^🛠️|^📝/.test(k) ? 1 : 0; }; return rank(x) - rank(y); });
-        return '<div class="card"><h3>' + esc(dayName(s)) + '</h3>' + bookingLine(s) + (r && r.notes ? '<p class="muted">' + esc(r.notes) + '</p>' : '') +
-          order.map(function (k) { return '<p><b>' + esc(k) + ':</b> ' + groups[k].map(esc).join(' · ') + '</p>'; }).join('') + '</div>';
-      }).join('') : '<p class="center muted">No class days this week.</p>');
+      (days.length ? days.map(function (s) { return dayBoard(s); }).join('') : '<p class="center muted">No class days this week.</p>');
   }
+  /* one day of the call board: everyone, grouped by where they are. pub (a parent's full calendar): who is away and private notes are left out */
+  function dayBoard(s, pub) {
+    var r = plan(s), groups = {}, order = [];
+    cast().forEach(function (a) {
+      var t = task(a, s); if (t.type === 'off' || (pub && (t.type === 'away' || t.type === 'custom'))) return;
+      var k = t.type === 'trip' ? '🚌 ' + t.text : t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
+    });
+    order.sort(function (x, y) { var rank = function (k) { return /^📱|^🙋|^🛠️|^📝/.test(k) ? 1 : 0; }; return rank(x) - rank(y); });
+    return '<div class="card"><h3>' + esc(dayName(s)) + '</h3>' + bookingLine(s) + (r && r.notes && !pub ? '<p class="muted">' + esc(r.notes) + '</p>' : '') +
+      (order.length ? order.map(function (k) { return '<p><b>' + esc(k) + ':</b> ' + groups[k].map(esc).join(' · ') + '</p>'; }).join('') : '<p class="muted">Nothing planned yet.</p>') + '</div>';
+  }
+  T.dayBoard = dayBoard;
 
   /* ---------- Students: Today ---------- */
   T.studentPages = T.studentPages || {};

@@ -43,6 +43,13 @@
   T.routes.teacher = function (parts) {
     var page = parts[0] || '';
     if (!T.saved) return setupPage();
+    if (T.show && !T.proof && T.pass) {      // a parent or helper password: only the teacher pages its checklist allows, to look at
+      if (T.passTeach(page, parts.slice(1)) && (T.teacherPages || {})[page]) {
+        T.teacherPages[page](parts.slice(1)); window.scrollTo(0, 0);
+        var bk = document.getElementById('back'); if (bk) { bk.hidden = false; bk.dataset.to = '#/home'; }      // back to their home, not to Teacher mode
+        return;
+      }
+    }
     if (!T.show || !T.proof) return signIn();
     var fn = { '': home, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page] || (T.teacherPages || {})[page];
     if (page === 'setup') return home();
@@ -70,9 +77,10 @@
       if (c1 === t1) { msg.textContent = 'Use a different password for students and for you.'; return; }
       msg.textContent = 'Setting up…';
       var doc = { v: 1, outline: clone(window.DEFAULT_SHOW), script: null, labelMap: {}, cast: [], melody: {}, tracks: {} };
-      Store.newShowKey().then(function (key) {
+      Store.sealVault(t1, { teacher: t1, cast: c1, extra: {} }).then(function (v) { doc.vault = v; return Store.newShowKey(); }).then(function (key) {
         return Store.save(key, doc, null, { castPw: c1, newTeacherPw: t1, setup: val('sc') || undefined }).then(function (saved) {
           T.key = key; T.show = doc; T.saved = saved; Store.remember(key);
+          T.tpw = t1;
           return Store.proof(t1, saved.vsalt).then(function (p) { T.proof = p; T.go('#/teacher'); });
         });
       }).catch(function (err) { msg.textContent = err.message; });
@@ -89,11 +97,12 @@
     document.getElementById('f').onsubmit = function (e) {
       e.preventDefault();
       var msg = document.getElementById('msg'); msg.textContent = 'Checking…';
-      var open = T.show ? Promise.resolve() : Store.unlock(T.saved.enc, val('cp')).then(function (key) {
+      var open = T.show && T.pass ? Store.decryptShow(T.key, T.saved.enc).then(function (doc) { T.show = doc; T.pass = null; T.setMe(T.ls('me')); }) :      // a parent's or helper's iPad: the full show (full names) for the teacher
+        T.show ? Promise.resolve() : Store.unlock(T.saved.enc, val('cp')).then(function (key) {
         return Store.decryptShow(key, T.saved.enc).then(function (doc) { T.key = key; T.show = doc; Store.remember(key); T.setMe(T.ls('me')); });
       }).catch(function () { throw new Error('That is not the cast password.'); });
       open.then(function () { return Store.proof(val('tp'), T.saved.vsalt); })
-        .then(function (p) { return Store.checkTeacher(p).then(function () { T.proof = p; T.route(); }); })
+        .then(function (p) { return Store.checkTeacher(p).then(function () { T.proof = p; T.tpw = val('tp'); T.route(); }); })
         .catch(function (err) { msg.textContent = err.message; });
     };
   }
@@ -1163,7 +1172,7 @@
       };
     }, 0);
     var S = T.show.signin || {}, withEmail = (T.show.cast || []).filter(function (c) { return c.emailHash; }).length;
-    app.innerHTML = '<form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students tap <b>Sign in with Google</b> and the app finds them on the cast list (by their school email, saved as a scrambled code). They still type the cast password once on each device.</p>' +
+    app.innerHTML = '<div id="pwlist"></div><form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students tap <b>Sign in with Google</b> and the app finds them on the cast list (by their school email, saved as a scrambled code). They still type the cast password once on each device.</p>' +
       '<p class="small">Students on school Chromebooks are found by the app’s own school sign-in page (in your school Google account, like ASL Study Hall): nothing to set up but their emails. The Google Client ID below is only needed for devices that are not signed into a school account.</p>' +
       '<label class="f">Google Client ID (optional)<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
       '<label class="f">School email domain (only these accounts)<input id="sid" value="' + esc(S.domain || '') + '" autocomplete="off" placeholder="e.g. students.myschool.org"></label>' +
@@ -1178,14 +1187,18 @@
       '<label class="btn">Restore a backup<input type="file" id="ul" accept=".json,application/json" hidden></label></div></div>';
     document.getElementById('cf').onsubmit = function (e) {
       e.preventDefault();
-      Store.save(T.key, T.show, T.saved, { proof: T.proof, castPw: val('nc') }).then(function (s) { T.saved = s; T.toast('Cast password changed'); document.getElementById('nc').value = ''; }).catch(function (er) { T.toast(er.message, 4000); });
+      var c = val('nc');
+      withVault(function (V) { V.cast = c; }).then(function () { return Store.save(T.key, T.show, T.saved, { proof: T.proof, castPw: c }); })
+        .then(function (s) { T.saved = s; T.toast('Cast password changed'); passwordsPage(); }).catch(function (er) { T.toast(er.message, 4000); });
     };
     document.getElementById('tf').onsubmit = function (e) {
       e.preventDefault();
       var a = val('nt1'); if (a !== val('nt2')) { T.toast('The two passwords are not the same.'); return; }
-      Store.save(T.key, T.show, T.saved, { proof: T.proof, newTeacherPw: a }).then(function (s) { T.saved = s; return Store.proof(a, s.vsalt); })
-        .then(function (p) { T.proof = p; T.toast('Teacher password changed'); e.target.reset(); }).catch(function (er) { T.toast(er.message, 4000); });
+      openVault().then(function (V) { V.teacher = a; return Store.sealVault(a, V); }).then(function (v) { T.show.vault = v; return Store.save(T.key, T.show, T.saved, { proof: T.proof, newTeacherPw: a }); })      // the list is locked with the new teacher password
+        .then(function (s) { T.saved = s; T.tpw = a; return Store.proof(a, s.vsalt); })
+        .then(function (p) { T.proof = p; T.toast('Teacher password changed'); passwordsPage(); }).catch(function (er) { T.toast(er.message, 4000); });
     };
+    passwordList();
     document.getElementById('dl').onclick = function () {
       var blob = new Blob([JSON.stringify({ theatreBackup: 1, saved: T.saved.updated, enc: T.saved.enc })], { type: 'application/json' });
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'theatre-backup-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
@@ -1199,6 +1212,130 @@
         return Store.unlock(b.enc, pw).then(function (k) { return Store.decryptShow(k, b.enc); }).catch(function () { throw new Error('That cast password does not open this backup.'); })
           .then(function (doc) { if (!confirm('Replace the show with the backup from ' + new Date(b.saved).toLocaleString() + '?')) return; T.show = doc; return save('Backup restored'); });
       }).catch(function (er) { T.toast(er.message, 4000); });
+    };
+  }
+
+  /* ---------- every password, in full (Colleen 2026-10-23: "view a list of all passwords setup fully", and "add other passwords for access
+     for other types of people like parents, peer helpers") ----------
+     The passwords themselves are kept in T.show.vault, sealed with the teacher password: students' and parents' iPads carry it but cannot open it.
+     Each other password wraps the same show key (Store.save addPw / dropPw); what it opens is its checklist in T.show.passes. */
+  function openVault() {
+    if (!T.tpw) return Promise.reject(new Error('Open Teacher mode again to see the passwords.'));
+    var base = { teacher: T.tpw, cast: '', extra: {} };
+    if (!T.show.vault) return Promise.resolve(base);
+    return Store.openVault(T.tpw, T.show.vault).then(function (V) { V.extra = V.extra || {}; V.teacher = T.tpw; return V; }, function () { return base; });      // sealed with an older teacher password: start again
+  }
+  function withVault(change) {      // change the list and seal it again (saved with the next save)
+    return openVault().then(function (V) { change(V); return Store.sealVault(T.tpw, V); }).then(function (v) { T.show.vault = v; });
+  }
+  var PRESETS = {
+    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script'], fullCal: true, practice: false, teach: [] },
+    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, practice: true, teach: ['callboard', 'cues', 'mics'] },
+    student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, practice: true, teach: [] }
+  };
+  var WHO = { student: 'Picks their own picture (like a student)', parent: 'A parent: picks their student once (first names and last initials only)', helper: 'A helper: can switch between students' };
+  function passSummary(p) {
+    var pages = (p.pages || []).map(function (k) { var x = T.STUDENT_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1] : k; });
+    var teach = (p.teach || []).map(function (k) { var x = T.TEACH_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1].replace(/ \(.*\)$/, '') : k; });
+    return esc(WHO[p.who] || '') + '<br><span class="muted small">' + esc(pages.join(', ') || 'No student pages') + (p.fullCal ? ' · full calendar' : '') + (p.practice ? ' · practice counts' : '') +
+      (teach.length ? ' · view only: ' + esc(teach.join(', ')) : '') + '</span>';
+  }
+  function passwordList() {
+    var box = document.getElementById('pwlist'); if (!box) return;
+    var hide = T.ls('pwHide');
+    box.innerHTML = '<div class="card"><p class="muted">Opening the list of passwords…</p></div>';
+    openVault().then(function (V) {
+      var shown = function (pw, id) {
+        if (!pw) return '<span class="muted small">Not kept here yet.</span> <input id="' + id + '" type="text" autocomplete="off" autocapitalize="off" placeholder="Type it once" style="max-width:150px"> <button class="btn small" data-keep="' + id + '">Keep</button>';
+        return '<code class="pw">' + (hide ? '••••••••' : esc(pw)) + '</code> <button class="btn small quiet" data-copy="' + esc(pw) + '">Copy</button>';
+      };
+      var passes = T.show.passes || [];
+      box.innerHTML = '<div class="card"><div class="row"><h2 class="grow" style="margin:0">All passwords</h2><button class="btn small quiet" id="pwhide">' + (hide ? '👁 Show them' : 'Hide them') + '</button><button class="btn primary" id="pwadd">+ Add a password</button></div>' +
+        '<p class="muted small">Only Teacher mode can show these (they are locked with your teacher password). Turning a password off, or deleting it, locks every iPad that opened the show with it the next time it opens.</p>' +
+        '<table class="tbl"><thead><tr><th>Who</th><th>What it opens</th><th>Password</th><th></th></tr></thead><tbody>' +
+        '<tr><td><b>Teacher</b></td><td>Teacher mode: everything, and saving</td><td>' + shown(V.teacher, 'kt') + '</td><td></td></tr>' +
+        '<tr><td><b>Cast</b></td><td>Everything students see (full names)</td><td>' + shown(V.cast, 'kc') + '</td><td></td></tr>' +
+        passes.map(function (p) {
+          return '<tr' + (p.off ? ' style="opacity:.55"' : '') + '><td><b>' + esc(p.name) + '</b>' + (p.off ? '<br><span class="tag">turned off</span>' : '') + '</td><td>' + passSummary(p) + '</td><td>' + shown(V.extra[p.id], 'kx-' + p.id) + '</td>' +
+            '<td style="white-space:nowrap"><button class="btn small" data-pedit="' + p.id + '">Edit</button> <button class="btn small quiet" data-poff="' + p.id + '">' + (p.off ? 'Turn on' : 'Turn off') + '</button> <button class="btn small quiet" data-pdel="' + p.id + '">Delete</button></td></tr>';
+        }).join('') + '</tbody></table>' + (passes.length ? '' : '<p class="muted small">No other passwords yet. Add one for parents, peer helpers, or anyone else, and choose what it opens.</p>') + '</div>';
+      document.getElementById('pwhide').onclick = function () { T.ls('pwHide', !hide); passwordList(); };
+      document.getElementById('pwadd').onclick = function () { editPass(null, V); };
+      box.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { navigator.clipboard.writeText(b.dataset.copy).then(function () { T.toast('Copied'); }); }; });
+      box.querySelectorAll('[data-pedit]').forEach(function (b) { b.onclick = function () { editPass(passes.find(function (p) { return p.id === b.dataset.pedit; }), V); }; });
+      box.querySelectorAll('[data-poff]').forEach(function (b) { b.onclick = function () { var p = passes.find(function (x) { return x.id === b.dataset.poff; }); p.off = !p.off; save(p.off ? '“' + p.name + '” turned off' : '“' + p.name + '” turned on').then(passwordList); }; });
+      box.querySelectorAll('[data-pdel]').forEach(function (b) {
+        b.onclick = function () {
+          var p = passes.find(function (x) { return x.id === b.dataset.pdel; });
+          if (!confirm('Delete the password “' + p.name + '”? iPads that opened the show with it are locked the next time they open.')) return;
+          T.show.passes = passes.filter(function (x) { return x !== p; });
+          withVault(function (W) { delete W.extra[p.id]; }).then(function () { return Store.save(T.key, T.show, T.saved, { proof: T.proof, dropPw: p.id }); })
+            .then(function (s) { T.saved = s; T.toast('Deleted'); passwordList(); }).catch(function (er) { T.toast(er.message, 4000); });
+        };
+      });
+      box.querySelectorAll('[data-keep]').forEach(function (b) {      // a password made before the list existed: type it once, checked before it is kept
+        b.onclick = function () {
+          var id = b.dataset.keep, pw = val(id); if (!pw) return;
+          var check = id === 'kc' ? Store.unlock(T.saved.enc, pw) : Store.unlockAny(T.saved.enc, pw).then(function (r) { if (r.access !== id.slice(3)) throw 0; });
+          check.then(function () { return withVault(function (W) { if (id === 'kc') W.cast = pw; else W.extra[id.slice(3)] = pw; }); }, function () { throw new Error('That is not the password. Try again.'); })
+            .then(function () { return save('Kept in the list'); }).then(passwordList).catch(function (er) { T.toast(er.message, 4000); });
+        };
+      });
+    }).catch(function (er) { box.innerHTML = '<div class="card"><p class="err">' + esc(er.message) + '</p></div>'; });
+  }
+  function makePw() {
+    var w = ['maple', 'tiger', 'comet', 'river', 'piano', 'lemon', 'rocket', 'cactus', 'panda', 'violet', 'sunny', 'falcon', 'banjo', 'otter', 'pepper', 'meadow'];
+    var r = crypto.getRandomValues(new Uint32Array(3));
+    return w[r[0] % w.length] + '-' + w[r[1] % w.length] + '-' + (10 + r[2] % 90);
+  }
+  function editPass(p, V) {
+    var isNew = !p, cur = p ? JSON.parse(JSON.stringify(p)) : Object.assign({ name: '' }, JSON.parse(JSON.stringify(PRESETS.parent)));
+    var oldPw = p ? V.extra[p.id] || '' : '';
+    var box = function (name, val, label, on) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-' + name + '="' + val + '"' + (on ? ' checked' : '') + '></label>'; };
+    var d = dialog('<h2>' + (isNew ? 'Add a password' : 'Edit “' + esc(p.name) + '”') + '</h2>' +
+      '<label class="f">Name (who uses it)<input id="pn" value="' + esc(cur.name) + '" placeholder="Parents, Peer helpers…" autocomplete="off"></label>' +
+      '<label class="f">Password' + (isNew ? '' : ' (change it, or leave it)') + '<span class="row"><input id="pp" class="grow" type="text" autocomplete="off" autocapitalize="off" value="' + esc(isNew ? makePw() : oldPw) + '"' + (isNew || oldPw ? '' : ' placeholder="Not kept here: type a new one to change it"') + '><button type="button" class="btn small" id="pmk">Make one</button></span></label>' +
+      '<p class="small"><b>Start from:</b> <button type="button" class="btn small" data-preset="parent">Parent</button> <button type="button" class="btn small" data-preset="helper">Peer helper</button> <button type="button" class="btn small" data-preset="student">Student</button></p>' +
+      '<div id="pck"></div><p class="err" id="pmsg" role="alert"></p>' +
+      '<div class="row end"><button class="btn" id="pcn">Cancel</button><button class="btn primary" id="pok">' + (isNew ? 'Add it' : 'Save') + '</button></div>');
+    var draw = function () {
+      d.querySelector('#pck').innerHTML = '<h3>Who uses it</h3>' + Object.keys(WHO).map(function (k) { return '<label class="switch"><span>' + esc(WHO[k]) + '</span><input type="radio" name="pwho" value="' + k + '"' + (cur.who === k ? ' checked' : '') + '></label>'; }).join('') +
+        '<h3>Student pages it opens</h3>' + T.STUDENT_PAGES.map(function (x) { return box('pg', x[0], esc(x[1]), (cur.pages || []).indexOf(x[0]) >= 0); }).join('') +
+        box('fc', '1', '<b>Full calendar</b>: a “Show everyone” switch to see everything happening each day' + (cur.who === 'parent' ? ' (who is away and private notes stay hidden)' : ''), cur.fullCal) +
+        box('pr', '1', '<b>Practice counts</b> for the student they pick (off: practicing here is not recorded as the student’s)', cur.practice) +
+        '<h3>Teacher pages it can look at (never change)</h3>' + T.TEACH_PAGES.map(function (x) { return box('tp', x[0], esc(x[1]), (cur.teach || []).indexOf(x[0]) >= 0); }).join('');
+      d.querySelectorAll('[name=pwho]').forEach(function (r) { r.onchange = function () { read(); cur.who = r.value; draw(); }; });
+    };
+    var read = function () {
+      var q = function (sel) { return [].slice.call(d.querySelectorAll(sel)).filter(function (x) { return x.checked; }); };
+      var w = q('[name=pwho]')[0]; if (w) cur.who = w.value;
+      cur.pages = q('[data-pg]').map(function (x) { return x.dataset.pg; }); cur.teach = q('[data-tp]').map(function (x) { return x.dataset.tp; });
+      cur.fullCal = !!q('[data-fc]').length; cur.practice = !!q('[data-pr]').length;
+    };
+    draw();
+    d.querySelector('#pmk').onclick = function () { d.querySelector('#pp').value = makePw(); };
+    d.querySelectorAll('[data-preset]').forEach(function (b) { b.onclick = function () { Object.assign(cur, JSON.parse(JSON.stringify(PRESETS[b.dataset.preset]))); if (!d.querySelector('#pn').value.trim()) d.querySelector('#pn').value = { parent: 'Parents', helper: 'Peer helpers', student: 'Students' }[b.dataset.preset]; draw(); }; });
+    d.querySelector('#pcn').onclick = function () { d.close(); };
+    d.querySelector('#pok').onclick = function () {
+      read();
+      var name = d.querySelector('#pn').value.trim(), pw = d.querySelector('#pp').value.trim(), msg = d.querySelector('#pmsg');
+      if (!name) { msg.textContent = 'Give it a name (who uses it).'; return; }
+      var change = pw && pw !== oldPw;
+      if (isNew && !pw) { msg.textContent = 'Type a password, or press Make one.'; return; }
+      if (change && pw.length < 4) { msg.textContent = 'Use at least 4 characters.'; return; }
+      var used = [V.teacher, V.cast].concat(Object.keys(V.extra).filter(function (k) { return !p || k !== p.id; }).map(function (k) { return V.extra[k]; }));
+      if (change && used.indexOf(pw) >= 0) { msg.textContent = 'That password is already used. Each kind of person needs a different one.'; return; }
+      msg.textContent = 'Saving…'; d.querySelector('#pok').disabled = true;
+      var id = p ? p.id : 'p' + Math.random().toString(36).slice(2, 8);
+      (change ? Store.unlockAny(T.saved.enc, pw).then(function (r) { if (r.access !== id) throw new Error('That password is already used. Each kind of person needs a different one.'); }, function () {}) : Promise.resolve())      // also catches one this list does not know yet
+        .then(function () {
+          var rec = { id: id, name: name, who: cur.who, pages: cur.pages, teach: cur.teach, fullCal: cur.fullCal, practice: cur.practice, off: p ? p.off : false };
+          T.show.passes = (T.show.passes || []).filter(function (x) { return x.id !== id; }); T.show.passes.push(rec);
+          return change ? withVault(function (W) { W.extra[id] = pw; }) : null;
+        })
+        .then(function () { return Store.save(T.key, T.show, T.saved, { proof: T.proof, addPw: change ? { id: id, pw: pw } : null }); })
+        .then(function (s) { T.saved = s; d.close(); T.toast(isNew ? '“' + name + '” added' : 'Saved'); passwordList(); })
+        .catch(function (er) { msg.textContent = er.message; d.querySelector('#pok').disabled = false; });
     };
   }
 })();

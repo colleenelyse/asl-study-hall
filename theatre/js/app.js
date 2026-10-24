@@ -214,6 +214,33 @@
 
   var DEF_ACCESS = { show: 'auto', echo: false, didIt: false, mic: true, sayForMe: true, strict: 'medium' };
   T.DEF_ACCESS = DEF_ACCESS;
+  /* ---------- other passwords (Colleen 2026-10-23: parents, peer helpers…) ----------
+     T.show.passes: [{ id, name, off, who: 'student' | 'parent' | 'helper', pages: [student pages], teach: [teacher pages, view only],
+     fullCal, practice }]. The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
+  T.pass = null;
+  T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
+    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list']];
+  T.TEACH_PAGES = [['callboard', 'Call board (who is where, each day)'], ['read', 'The script (teacher view)'], ['cues', 'Cue sheet'], ['smscript', 'Stage manager script'], ['mics', 'Mic plot']];
+  T.shortName = function (n) { var w = String(n || '').trim().split(/\s+/); return w.length > 1 ? w[0] + ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.' : w[0] || ''; };
+  T.usePass = function () {      // false: this iPad's password was turned off or deleted
+    var id = ls('passId'); T.pass = null;
+    if (!id) return true;
+    var p = (T.show.passes || []).find(function (x) { return x.id === id; });
+    if (!p || p.off) return false;
+    T.pass = p;
+    if (p.who === 'parent') (T.show.cast || []).forEach(function (a) { a.name = T.shortName(a.name); });      // first name and last initial for parents (this copy is never saved: parents cannot save)
+    return true;
+  };
+  var PAGE_OF = { song: 'songs', listen: 'songs' };
+  T.passAllows = function (page) {
+    if (!T.pass || !page || ['home', 'who', 'settings', 'unlock'].indexOf(page) >= 0) return true;
+    return (T.pass.pages || []).indexOf(PAGE_OF[page] || page) >= 0;
+  };
+  T.passTeach = function (page, args) {      // a teacher page this password may look at (never change)
+    if (!T.pass) return false;
+    var k = page === 'production' && args && args[0] === 'callboard' ? 'callboard' : page;
+    return (T.pass.teach || []).indexOf(k) >= 0;
+  };
   function setMe(sel) {
     T.me = null;
     if (!sel || !T.show) return;
@@ -360,6 +387,7 @@
     if (!T.show) return unlockPage();
     if (applySignin()) return;
     if (!T.me && page !== 'settings') return whoPage();
+    if (!T.passAllows(page)) page = 'home';
     var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage, listen: listenPage }[page] || (T.studentPages || {})[page];
     (fn || homePage)(parts.slice(1));
     app.scrollTop = 0; window.scrollTo(0, 0);
@@ -378,8 +406,8 @@
       return;
     }
     app.innerHTML = '<form class="card" id="unlock" style="max-width:560px;margin:40px auto"><h2>' + sym('🎭') + 'Welcome to the show!</h2>' +
-      '<p>Type the <b>cast password</b>. Your teacher has it.</p>' +
-      '<label class="f">Cast password<input type="password" id="pw" autocomplete="current-password" autocapitalize="off" spellcheck="false" required></label>' +
+      '<p>Type the <b>password</b> your teacher gave you.</p>' +
+      '<label class="f">Password<input type="password" id="pw" autocomplete="current-password" autocapitalize="off" spellcheck="false" required></label>' +
       '<label class="switch"><span>Remember on this iPad</span><input type="checkbox" id="keep" checked></label>' +
       '<p class="err" id="msg" role="alert"></p><div class="row end"><button class="btn primary" type="submit">' + icon('lock') + 'Open</button></div>' +
       (T.saved.offline ? '<p class="muted small">No internet right now. Using the copy saved on this iPad.</p>' : '') + '</form>' +
@@ -389,13 +417,17 @@
       e.preventDefault();
       var pw = document.getElementById('pw').value, msg = document.getElementById('msg'), btn = f.querySelector('button');
       btn.disabled = true; msg.textContent = 'Opening…';
-      Store.unlock(T.saved.enc, pw).then(function (key) {
-        return Store.decryptShow(key, T.saved.enc).then(function (doc) {
-          T.key = key; T.show = doc;
-          if (document.getElementById('keep').checked) Store.remember(key);
+      Store.unlockAny(T.saved.enc, pw).then(function (r) {
+        return Store.decryptShow(r.key, T.saved.enc).then(function (doc) {
+          T.show = doc;
+          if ((ls('passId') || null) !== r.access) ls('me', null);      // a different kind of password on this iPad: pick again
+          ls('passId', r.access);
+          if (!T.usePass()) { T.show = null; ls('passId', null); msg.textContent = 'That password is turned off. Ask your teacher.'; btn.disabled = false; return; }
+          T.key = r.key;
+          if (document.getElementById('keep').checked) Store.remember(r.key);
           setMe(ls('me')); T.go(T.me ? '#/home' : '#/who');
         });
-      }).catch(function () { msg.textContent = 'That is not the cast password. Try again.'; btn.disabled = false; });
+      }).catch(function () { msg.textContent = 'That is not the password. Try again.'; btn.disabled = false; });
     };
     setTimeout(function () { var p = document.getElementById('pw'); if (p) p.focus(); }, 50);
   }
@@ -460,10 +492,14 @@
     var google = hasEmails && T.show.signin && T.show.signin.clientId;
     // the school sign-in page: tried once by itself (a quick hop to Google and back), and a button to try again
     var tried = false; try { tried = sessionStorage.getItem('signinTried') === '1'; } catch (e) {}
-    if (hasEmails && !T.me && !tried && !google) { goSignin(); return; }
+    if (hasEmails && !T.me && !tried && !google && !(T.pass && T.pass.who !== 'student')) { goSignin(); return; }
     var h = hasEmails ? '<div class="card center"><h2>Sign in with your school account</h2><p class="muted">The app finds you on the cast list.</p>' +
       (google ? '<div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div>' : '<button class="btn primary" id="schoolin">Use my school account</button>') + '</div>' : '';
-    h += '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
+    var pw = T.pass && T.pass.who;
+    if (pw === 'parent' || pw === 'helper') { h = ''; setBar(pw === 'parent' ? 'Your student' : 'Who are you helping?', T.me ? '#/home' : ''); }      // not their own picture: no school sign-in
+    h += pw === 'parent' ? '<h2>Which student is yours?</h2><p class="muted">Tap your student' + (pickChars ? '’s character' : '') + '. You can change it later in Settings.</p>' :
+      pw === 'helper' ? '<h2>Who are you helping today?</h2><p class="muted">Tap the student' + (pickChars ? '’s character' : '') + '. Switch any time from the home page.</p>' :
+      '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + ((c.chars || []).map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') || 'Role coming soon') + '</span></button>';
@@ -493,8 +529,11 @@
   function homePage() {
     setBar(O().title);
     var who = T.me.chars.map(chip).join('');
+    var pw = T.pass && T.pass.who, teach = T.pass ? T.TEACH_PAGES.filter(function (x) { return T.passTeach(x[0] === 'callboard' ? 'production' : x[0], x[0] === 'callboard' ? ['callboard'] : []); }) : [];
     app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
-      '<div><h2 style="margin:0">Hi, ' + esc(T.me.name) + '!</h2><div>' + who + '</div></div></div>' +
+      '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Helping ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
+      (pw === 'helper' ? '<a class="btn" href="#/who">Switch student</a>' : '') + '</div>' +
+      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (T.pass.practice ? '' : ' (practice here is not counted for the student)') + '</p>' : '') +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
       (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +
@@ -505,10 +544,11 @@
       tile('#/story', 'book', 'The Story', 'What happens') +
       (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +
       (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +
+      (T.pass && T.passAllows('calendar') && !T.passAllows('today') ? tile('#/calendar', 'sched', 'Calendar', 'What is happening each day') : '') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
-      '</div>' + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
+      '</div>' + (teach.length ? '<h3 style="margin-top:18px">Show pages (view only)</h3><div class="tiles">' + teach.map(function (x) { return '<a class="tile" href="#/teacher/' + (x[0] === 'callboard' ? 'production/callboard' : x[0]) + '">' + icon('book') + '<b>' + esc(x[1].replace(/ \(.*\)$/, '')) + '</b></a>'; }).join('') + '</div>' : '') + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
   }
-  function tile(href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; }
+  function tile(href, ic, name, sub) { if (!T.passAllows(href.replace(/^#\//, '').split('/')[0])) return ''; return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; }
 
   /* ---------- Practice Lines ---------- */
   function linesPage(args) {
@@ -1164,7 +1204,11 @@
       if (!saved) return;
       return (T.key ? Promise.resolve(T.key) : Store.rememberedKey()).then(function (key) {
         if (!key) return;
-        return Store.decryptShow(key, saved.enc).then(function (doc) { T.key = key; T.show = doc; setMe(ls('me')); })
+        return Store.decryptShow(key, saved.enc).then(function (doc) {
+          T.key = key; T.show = doc;
+          if (!T.usePass()) { T.key = null; T.show = null; T.pass = null; ls('passId', null); ls('me', null); return Store.forget(); }      // its password was turned off or deleted: lock this iPad
+          setMe(ls('me'));
+        })
           .catch(function () { T.key = null; T.show = null; return Store.forget(); });      // the cast password changed
       });
     }).catch(function (e) { T.loadError = e.message; });

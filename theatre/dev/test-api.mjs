@@ -24,6 +24,11 @@ ok(g.enc.data === 'ZGF0YQ==' && g.vsalt === vs && !g.vhash, 'GET gives the encry
 ok((await call('POST', 'show', JSON.stringify({ enc, newVsalt: vs, newVhash: 'a'.repeat(64) }))).status === 403, 'a second setup without the proof is refused');
 ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 200, 'check: right teacher password');
 ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, enc, { data: 'bmV3' }) }))).status === 200, 'save with the proof');
+const more = [{ id: 'a1', iter: 250000, salt: 'c2FsdA==', wrap: { iv: 'aXY=', data: 'a2V5' }, junk: 'x' }];
+ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, enc, { data: 'bmV3', more }) }))).status === 200, 'save with another password (a parent password)');
+const gm = await (await call('GET', 'show')).json();
+ok(gm.enc.more && gm.enc.more.length === 1 && gm.enc.more[0].id === 'a1' && !gm.enc.more[0].junk, 'the other passwords are kept (and only their parts)');
+ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, enc, { more: [{ id: 'a1', iter: 5, salt: 'eA==', wrap: { iv: 'aXY=', data: 'a2V5' } }] }) }))).status === 400, 'a weak extra password key is refused');
 ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200, 'track upload with the proof');
 ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
 ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');

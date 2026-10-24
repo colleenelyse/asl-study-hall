@@ -63,9 +63,37 @@
     return pwKey(castPw, unb64(enc.salt), enc.iter).then(function (k) { return open(k, enc.wrap); })
       .then(function (raw) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', true, ['encrypt', 'decrypt']); });
   }
+  /* the show key from any password that opens it: the cast password ({ key, access: null }) or another one (a parent or peer helper
+     password: { key, access: its id }). The other passwords are tried together. */
+  function unlockAny(enc, pw) {
+    return unlock(enc, pw).then(function (key) { return { key: key, access: null }; }, function () {
+      var more = enc.more || [];
+      if (!more.length) throw new Error('not the password');
+      return new Promise(function (ok, no) {
+        var left = more.length;
+        more.forEach(function (m) {
+          unlock({ salt: m.salt, iter: m.iter, wrap: m.wrap }, pw).then(function (key) { ok({ key: key, access: m.id }); }, function () { if (--left === 0) no(new Error('not the password')); });
+        });
+      });
+    });
+  }
+  function wrapKey(key, pw) {
+    var salt = rand(16);
+    return Promise.all([pwKey(pw, salt, ITER), crypto.subtle.exportKey('raw', key)]).then(function (r) {
+      return seal(r[0], r[1]).then(function (w) { return { iter: ITER, salt: b64(salt), wrap: w }; });
+    });
+  }
+  /* the teacher's list of every password, sealed with the teacher password (so only Teacher mode can show them) */
+  function sealVault(teacherPw, obj) {
+    var salt = rand(16);
+    return pwKey(teacherPw, salt, ITER).then(function (k) { return seal(k, te.encode(JSON.stringify(obj))); }).then(function (box) { return { iter: ITER, salt: b64(salt), box: box }; });
+  }
+  function openVault(teacherPw, v) {
+    return pwKey(teacherPw, unb64(v.salt), v.iter).then(function (k) { return open(k, v.box); }).then(function (b) { return JSON.parse(td.decode(b)); });
+  }
   function decryptShow(key, enc) { return open(key, enc).then(function (b) { return JSON.parse(td.decode(b)); }); }
   /* encrypt the show; the key is wrapped with the cast password (a new password, or the one this device unlocked with) */
-  function encryptShow(key, doc, castPw, prevEnc) {
+  function encryptShow(key, doc, castPw, prevEnc, more) {
     var body = seal(key, te.encode(JSON.stringify(doc)));
     var wrap;
     if (castPw) {
@@ -74,7 +102,7 @@
         return seal(r[0], r[1]).then(function (w) { return { iter: ITER, salt: b64(salt), wrap: w }; });
       });
     } else wrap = Promise.resolve({ iter: prevEnc.iter, salt: prevEnc.salt, wrap: prevEnc.wrap });
-    return Promise.all([body, wrap]).then(function (r) { return { iter: r[1].iter, salt: r[1].salt, wrap: r[1].wrap, iv: r[0].iv, data: r[0].data }; });
+    return Promise.all([body, wrap, more || Promise.resolve(prevEnc && prevEnc.more)]).then(function (r) { var e = { iter: r[1].iter, salt: r[1].salt, wrap: r[1].wrap, iv: r[0].iv, data: r[0].data }; if (r[2] && r[2].length) e.more = r[2]; return e; });
   }
 
   /* ---- the server ---- */
@@ -92,6 +120,7 @@
 
   /* where a sealed file lives on the server: a song's track, the script PDF, or a line's audio */
   function pathFor(id, kind) { return id === '__pdf' ? 'pdf' : id.indexOf('__voice/') === 0 ? 'voice/' + id.slice(8) : 'track/' + id + '/' + kind; }
+  function noProof() { return Promise.reject(new Error('View only.')); }      // never ask the server without the teacher password: wrong tries lock the school's address out
   var Store = {
     local: local, b64: b64, unb64: unb64,
     /* the saved show from asl.cool (or this device's copy when offline). {enc, vsalt, updated, offline} or null before setup */
@@ -103,22 +132,28 @@
         return local.get('enc').then(function (d) { if (!d) throw new Error('No internet, and this iPad has no copy of the show yet.'); d.offline = true; return d; });
       });
     },
-    unlock: unlock, decryptShow: decryptShow,
+    unlock: unlock, unlockAny: unlockAny, decryptShow: decryptShow, sealVault: sealVault, openVault: openVault,
     remember: function (key) { return local.set('key', key); },
     rememberedKey: function () { return local.get('key'); },
     forget: function () { return Promise.all([local.del('key'), local.del('enc'), local.del('me')]); },
     newShowKey: newShowKey,
     /* the teacher password, as proof for the server */
     proof: proofBits,
-    checkTeacher: function (proof) { return postJSON('check', { proof: proof }); },
-    /* save the show. opts: { proof, castPw (to set or change it), newTeacherPw, setup } */
+    checkTeacher: function (proof) { if (!proof) return noProof(); return postJSON('check', { proof: proof }); },
+    /* save the show. opts: { proof, castPw (to set or change it), newTeacherPw, setup, addPw: { id, pw } (add or change another password), dropPw: id } */
     save: function (key, doc, prev, opts) {
       opts = opts || {};
       var extra = opts.newTeacherPw ? (function () {
         var vs = b64(rand(16));
         return proofBits(opts.newTeacherPw, vs).then(sha256hex).then(function (h) { return { newVsalt: vs, newVhash: h }; });
       })() : Promise.resolve({});
-      return Promise.all([encryptShow(key, doc, opts.castPw, prev && prev.enc), extra]).then(function (r) {
+      if (!opts.proof && !opts.setup) return Promise.reject(new Error('View only: changes are not saved.'));      // never send a save without the teacher password (wrong tries lock the school out for 10 minutes)
+      var more = null;
+      if (opts.addPw || opts.dropPw) {
+        var keep = ((prev && prev.enc && prev.enc.more) || []).filter(function (m) { return m.id !== opts.dropPw && !(opts.addPw && m.id === opts.addPw.id); });
+        more = opts.addPw ? wrapKey(key, opts.addPw.pw).then(function (w) { return keep.concat([Object.assign({ id: opts.addPw.id }, w)]); }) : Promise.resolve(keep);
+      }
+      return Promise.all([encryptShow(key, doc, opts.castPw, prev && prev.enc, more), extra]).then(function (r) {
         var body = { proof: opts.proof, enc: r[0], setup: opts.setup };
         Object.assign(body, r[1]);
         return postJSON('show', body).then(function (d) {
@@ -133,7 +168,7 @@
     getProgress: function (key, actor) {
       return getJSON('progress/' + actor).then(function (d) { return d && d.box ? open(key, d.box).then(function (b) { return JSON.parse(td.decode(b)); }) : null; });
     },
-    allProgress: function (key, proof) {
+    allProgress: function (key, proof) { if (!proof) return noProof();
       return fetch(API + 'progress', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.records || []; }); })
         .then(function (list) { return Promise.all(list.map(function (x) { return open(key, x.box).then(function (b) { return { actor: x.actor, at: x.at, rec: JSON.parse(td.decode(b)) }; }, function () { return null; }); })); })
         .then(function (l) { return l.filter(Boolean); });
@@ -157,7 +192,7 @@
       return q.reduce(function (p, box) { return p.then(function () { return postJSON('notes', { box: box }).then(function () { left.shift(); }); }); }, Promise.resolve())
         .catch(function () {}).then(function () { try { localStorage.setItem('theatre:noteQueue', JSON.stringify(left)); } catch (e) {} return left.length; });
     },
-    getNotes: function (key, proof) {
+    getNotes: function (key, proof) { if (!proof) return noProof();
       return fetch(API + 'notes', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.notes || []; }); })
         .then(function (list) {
           return Promise.all(list.map(function (n) {
@@ -165,7 +200,7 @@
           }));
         });
     },
-    clearNotes: function (proof, ids) {
+    clearNotes: function (proof, ids) { if (!proof) return noProof();
       return fetch(API + 'notes', { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not clear the notes.'); });
     },
     /* tracks: encrypted bytes on the server, and a copy on this device */
@@ -183,18 +218,18 @@
     voiceIndex: function () {      // which lines have audio (kept on the device for offline use)
       return getJSON('voice/index').then(function (d) { if (d) local.set('voiceIndex', d); return d || { lines: {} }; }).catch(function () { return local.get('voiceIndex').then(function (d) { return d || { lines: {} }; }); });
     },
-    setVoiceCheck: function (proof, check) { return postJSON('voice/settings', { proof: proof, check: !!check }); },
-    pendingList: function (proof) { return fetch(API + 'voice/pending', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not load the recordings.'); return d.pending || []; }); }); },
-    getPending: function (key, proof, h, actor) {
+    setVoiceCheck: function (proof, check) { if (!proof) return noProof(); return postJSON('voice/settings', { proof: proof, check: !!check }); },
+    pendingList: function (proof) { if (!proof) return noProof(); return fetch(API + 'voice/pending', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not load the recordings.'); return d.pending || []; }); }); },
+    getPending: function (key, proof, h, actor) { if (!proof) return noProof();
       return fetch(API + 'voice/' + h + '/pending/' + actor, { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('That recording would not load.'); return r.arrayBuffer(); })
         .then(function (b) { var a = new Uint8Array(b); return crypto.subtle.decrypt({ name: 'AES-GCM', iv: a.subarray(0, 12) }, key, a.subarray(12)); });
     },
-    approve: function (proof, h, actor) { return fetch(API + 'voice/' + h + '/approve/' + actor, { method: 'POST', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not approve it.'); }); },
-    reject: function (proof, h, actor) { return fetch(API + 'voice/' + h + '/pending/' + actor, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not remove it.'); }); },
+    approve: function (proof, h, actor) { if (!proof) return noProof(); return fetch(API + 'voice/' + h + '/approve/' + actor, { method: 'POST', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not approve it.'); }); },
+    reject: function (proof, h, actor) { if (!proof) return noProof(); return fetch(API + 'voice/' + h + '/pending/' + actor, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not remove it.'); }); },
     /* the script PDF: sealed, saved like a track, and kept on the device by version */
     putPdf: function (key, proof, bytes, ver) { return Store.putTrack(key, proof, '__pdf', '', bytes, ver); },
     getPdf: function (key, ver) { return Store.getTrack(key, '__pdf', '', ver); },
-    putTrack: function (key, proof, songId, kind, bytes, ver) {
+    putTrack: function (key, proof, songId, kind, bytes, ver) { if (!proof) return noProof();
       var iv = rand(12);
       return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, bytes).then(function (ct) {
         var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
