@@ -882,7 +882,10 @@
     var view = 'timing', selSec = null, edited = false;
     /* sections that start together (a bracket: "Woh!" and "Get-" on one beat): a paired section (lyric.sync = how many sections back its
        partner is) always takes its partner's start; Now skips it */
-    var nextOpen = function () { return times.findIndex(function (x, i) { return !x && !(lines[i] && lines[i].sync); }); };
+    /* timing the sung lines and the spoken lines in separate passes (Colleen: "i can't program timing for both at the same time") */
+    var timeKind = T.ls('timeKind') || 'all';
+    var kindOk = function (i) { var l = lines[i]; return !l || timeKind === 'all' || (timeKind === 'spoken') === !!l.spoken; };
+    var nextOpen = function () { return times.findIndex(function (x, i) { return !x && !(lines[i] && lines[i].sync) && kindOk(i); }); };
     var applySync = function () {
       lines.forEach(function (l, i) {
         var p = l.sync && times[i - l.sync]; if (!p) return;
@@ -929,10 +932,11 @@
       app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
+        '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span></div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
-          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
+          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small quiet" data-show="' + i + '" title="Show this line on the sheet music">📍</button><button class="btn small quiet" data-del="' + i + '" title="Delete this line (it is not a lyric or a spoken line)">🗑</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
           (stopsOn ? '<div class="lt-stops" id="stops"><span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span></div>' : '') +
@@ -941,7 +945,7 @@
           (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var $ = function (id) { return document.getElementById(id); };
-      wireTabs(); lastRow = -1; follow(true); wireSlider();
+      wireTabs(); lastRow = -1; follow(true, true); wireSlider();
       $('undo1').onclick = undo;
       $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
@@ -962,6 +966,9 @@
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; if (x.h != null) x.h += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
+      app.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { timeKind = b.dataset.tk; T.ls('timeKind', timeKind); fixAt = null; draw(); }; });
+      app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.del; delSec(i); if (selSec != null && selSec >= lines.length) selSec = null; draw(); T.toast('Line ' + (i + 1) + ' deleted. ↶ Undo brings it back; Save keeps it.', 4000); }; });
+      app.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { audio.pause(); selSec = +b.dataset.show; view = 'sections'; draw(); }; });
       app.querySelectorAll('[data-hin]').forEach(function (inp) { inp.onchange = function () { if (typeEnd(+inp.dataset.hin, inp.value)) draw(); else inp.value = fmtH(times[+inp.dataset.hin]); }; });
       app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
@@ -983,6 +990,7 @@
       var host = document.getElementById('secpages');
       if (!T.Follow || !T.Follow.canShow(songId)) { host.innerHTML = '<p class="card muted">The script pages are not saved yet: import the script PDF first.</p>'; return secBar(); }
       T.Follow.mount(host, songId); overlay(); secBar();
+      if (selSec != null) setTimeout(function () { var n = host.querySelector('.sec-num[data-sec="' + selSec + '"]'); if (n) { n.scrollIntoView({ block: 'center' }); n.classList.add('sec-find'); } }, 120);      // 📍 from the Timing list (the pages keep their size while they draw)
       host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (b) { selSec = +b.dataset.sec; overlay(); secBar(); } });
     }
     function overlay(dragging) {
@@ -1163,11 +1171,12 @@
       times.splice(i + 1, 1); edited = true;
     }
     var lastRow = -1, fixAt = null, fixOld = null;      // fixOld: the fixed line's time before it was cleared (its syllable timing is kept, and it comes back if it is not tapped)      // fixAt: the line the next Now goes to while fixing (then the lines after it, in order)
-    function follow(force) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
+    function follow(force, quiet) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
       var t = audio.currentTime, cur = -1;
       var onNow = [];
       if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t) { cur = i; if (t <= T.lineEnd(x)) onNow.push(i); } });      // lit up a little early and until sung, like the song player
-      if (audio.paused && !force) return;
+      if (audio.paused && !force) { app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); }); return; }      // paused: nothing stays lit (Colleen: a line stayed highlighted)
+      if (quiet && audio.paused) return;      // a redraw while paused keeps the page where it is (Colleen: every click jumped back to one line)
       var nxt = fixAt != null ? fixAt : nextOpen(), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
       app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); });
       if (!audio.paused) onNow.forEach(function (k) { var on = app.querySelector('.lt-row[data-row="' + k + '"]'); if (on) on.classList.add('lt-on'); });
@@ -1190,7 +1199,7 @@
       var prev = times.slice(0, i).reverse().find(Boolean);
       if (prev && prev.e > t) { prev.e = t; prev.s = prev.s.map(function (v) { return Math.min(v, t - 0.05); }); }
       applySync();
-      if (fixing) { var nx = i + 1; while (nx < lines.length && lines[nx].sync) nx++; fixOld = null; fixAt = nx < lines.length ? nx : null; }      // Colleen: the next tap overrides the next line, but it is not cleared ahead of time      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
+      if (fixing) { var nx = i + 1; while (nx < lines.length && (lines[nx].sync || !kindOk(nx))) nx++; fixOld = null; fixAt = nx < lines.length ? nx : null; }      // Colleen: the next tap overrides the next line, but it is not cleared ahead of time      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
       draw();
     }
     /* who sings a line, when the script reader got it wrong: kept in T.show.lyricWho so a re-import keeps it */
