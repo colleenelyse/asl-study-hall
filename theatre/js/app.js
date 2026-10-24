@@ -254,9 +254,9 @@
     if (sel.cast) {
       var c = (T.show.cast || []).find(function (x) { return x.id === sel.cast; });
       if (c) { T.me = { id: c.id, name: c.name, chars: (c.chars || []).slice(), photo: c.photo, access: Object.assign({}, DEF_ACCESS, c.access || {}) }; T.loadPrefsFor(c.id); }
-    } else if (sel.char && charById(sel.char)) {
-      var ch = charById(sel.char);
-      T.me = { id: null, name: ch.short, chars: [ch.id], access: Object.assign({}, DEF_ACCESS, ls('access') || {}) };
+    } else if ((sel.chars || [sel.char]).some(charById)) {      // picked by character: one, or several (Colleen 2026-10-24: Kelsi and the Brainiacs)
+      var chs = (sel.chars || [sel.char]).map(charById).filter(Boolean);
+      T.me = { id: null, name: chs.map(function (x) { return x.short; }).join(' + '), chars: chs.map(function (x) { return x.id; }), access: Object.assign({}, DEF_ACCESS, ls('access') || {}) };
     }
   }
   function face(person, size) {
@@ -393,7 +393,7 @@
     if (page === 'teacher') return T.routes.teacher(parts.slice(1));
     if (!T.show) return unlockPage();
     if (applySignin()) return;
-    if (!T.me && page !== 'settings') return whoPage();
+    if (!T.me && page !== 'settings') return whoPage(page === 'who' ? parts.slice(1) : []);      // keeps #/who/character (pick a character) working before anyone is picked
     if (!T.passAllows(page)) page = 'home';
     var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage, listen: listenPage }[page] || (T.studentPages || {})[page];
     (fn || homePage)(parts.slice(1));
@@ -537,9 +537,10 @@
       (google ? '<div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div>' : '<button class="btn primary" id="schoolin">Use my school account</button>') + '</div>' : '';
     var pw = T.pass && T.pass.who;
     if (pw === 'parent' || pw === 'helper') { h = ''; setBar(pw === 'parent' ? 'Your Company member' : 'Working with an Artist', T.me ? '#/home' : ''); }      // not their own picture: no school sign-in
-    h += pw === 'parent' ? '<h2>Which Company member is yours?</h2><p class="muted">Tap your Company member' + (pickChars ? '’s character' : '') + '. You can change it later in Settings.</p>' :
+    var multi = pickChars || pw === 'parent';      // tap several, then Continue: a parent's children, or a role plus a group (Kelsi and the Brainiacs)
+    h += pw === 'parent' ? '<h2>Which Company members are yours?</h2><p class="muted">' + (pickChars ? 'Tap your Company member’s character (more than one if they play more than one part)' : 'Tap each of your Company members (brothers and sisters too)') + ', then Continue.</p>' :
       pw === 'helper' ? '<h2>Which Artist are you working with today?</h2><p class="muted">Tap the Artist' + (pickChars ? '’s character' : '') + '. Switch any time from the home page.</p>' :
-      '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
+      '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">' + (pickChars ? 'Tap your character. Playing more than one part (like Kelsi and the Brainiacs)? Tap each one, then Continue.' : 'Tap your picture.') + '</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + ((c.chars || []).map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') || 'Role coming soon') + '</span></button>';
@@ -557,9 +558,27 @@
     app.innerHTML = h;
     if (google) schoolSignIn(document.getElementById('gsi'));
     var si = document.getElementById('schoolin'); if (si) si.onclick = goSignin;
-    app.querySelectorAll('.person').forEach(function (b) {
+    if (multi) {
+      var was = pickChars ? (T.me && !T.me.id ? T.me.chars : []) : (T.parentKids ? T.parentKids() : []);
+      var bar = document.createElement('div'); bar.className = 'card'; bar.style.cssText = 'position:sticky;bottom:12px;z-index:5;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.3)';
+      bar.innerHTML = '<span class="grow" id="picked"></span><button class="btn primary" id="pickgo">Continue</button>'; app.appendChild(bar);
+      var picked = function () { return [].slice.call(app.querySelectorAll('.person[aria-pressed="true"]')); };
+      var show = function () { var l = picked(); document.getElementById('picked').textContent = l.length ? l.map(function (b) { return b.querySelector('b').textContent; }).join(' + ') : 'Tap ' + (pickChars ? 'a character' : 'your Company member'); document.getElementById('pickgo').disabled = !l.length; };
+      app.querySelectorAll('.person').forEach(function (b) {
+        var on = function (v) { b.setAttribute('aria-pressed', v); b.style.outline = v ? '4px solid var(--accent)' : ''; b.style.outlineOffset = v ? '2px' : ''; };
+        on(was.indexOf(b.dataset.cast || b.dataset.char) >= 0);
+        b.onclick = function () { on(b.getAttribute('aria-pressed') !== 'true'); show(); };
+      });
+      show();
+      document.getElementById('pickgo').onclick = function () {
+        var ids = picked().map(function (b) { return b.dataset.cast || b.dataset.char; }), sel;
+        if (pickChars) sel = ids.length === 1 ? { char: ids[0] } : { chars: ids };
+        else { if (T.parentKids) T.parentKids(ids); sel = { cast: T.me && ids.indexOf(T.me.id) >= 0 ? T.me.id : ids[0] }; }
+        if (!(T.pass && T.pass.preview)) ls('me', sel); setMe(sel); T.go('#/home');
+      };
+    } else app.querySelectorAll('.person').forEach(function (b) {
       b.onclick = function () {
-        var sel = b.dataset.cast ? { cast: b.dataset.cast } : { char: b.dataset.char };
+        var sel = { cast: b.dataset.cast };
         ls('me', sel); setMe(sel); T.go('#/home');
       };
     });
@@ -570,8 +589,9 @@
     setBar(O().title);
     var who = T.me.chars.map(chip).join('');
     var pw = T.pass && T.pass.who, teach = T.pass ? T.TEACH_PAGES.filter(function (x) { return T.passTeach(x[0] === 'callboard' ? 'production' : x[0], x[0] === 'callboard' ? ['callboard'] : []); }) : [];
-    app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
-      '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Working with ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
+    var kids = pw === 'parent' && T.parentKids ? T.parentKids().length : 0;      // a parent of several: no one child's picture at the top
+    app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + (kids > 1 ? '' : face(T.me, 72)) +
+      '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? (kids > 1 ? 'My Company members' : 'Following ' + esc(T.me.name)) : pw === 'helper' ? 'Working with ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
       (pw === 'helper' ? '<a class="btn" href="#/who">Switch Artist</a>' : '') + '</div>' +
       (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a Mentor”' : '') + '</p>' : '') +
       (pw === 'parent' && T.portalHome ? T.portalHome() : T.announceSection ? T.announceSection() : '') +      // parents: what needs their answer and the announcements first (portal.js); others: announcements (announce.js)
@@ -595,7 +615,8 @@
       '</div>' + (teach.length ? '<h3 style="margin-top:18px">Show pages (view only)</h3><div class="tiles">' + teach.map(function (x) { return '<a class="tile" href="#/teacher/' + (x[0] === 'callboard' ? 'production/callboard' : x[0]) + '">' + icon('book') + '<b>' + esc(x[1].replace(/ \(.*\)$/, '')) + '</b></a>'; }).join('') + '</div>' : '') + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
     if (T.announcePopup) T.announcePopup();      // a new announcement pops up once (announce.js)
   }
-  function tile(href, ic, name, sub) { if (!T.passAllows(href.replace(/^#\//, '').split('/')[0])) return ''; return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; }
+  /* T.kidLinks: a parent of several Company members has these on each child's card instead (portal.js) */
+  function tile(href, ic, name, sub) { if (!T.passAllows(href.replace(/^#\//, '').split('/')[0])) return ''; if (T.kidLinks && T.kidLinks(href)) return ''; return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; }
 
   /* ---------- Practice Lines ---------- */
   function linesPage(args) {

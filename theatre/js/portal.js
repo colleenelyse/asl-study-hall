@@ -188,8 +188,41 @@
     Store.queueNote(T.key, { type: 'portal', kind: 'contact', actor: a, data: c, stamp: Date.now(), sent: today() }).catch(function () {});
     var s = T.ls('portalSent') || {}; (s[a] = s[a] || {}).contact = today(); T.ls('portalSent', s); draft(a, 'contact', data);
   }
+  /* My Company members (Colleen 2026-10-24: "i don't want parents of siblings to have to switch back and forth"): every Company member this device
+     follows (ls myKids, chosen on Who are you?, several at once). With two or more, the home page has a card for each: their forms and their
+     Today / Schedule / Songs / Costumes / Lines; those links open the page for that child (#/family/open/<id>/<page>), so nobody switches. */
+  T.parentKids = function (set) {
+    var cast = T.show.cast || [], prev = (T.ls('myKids') || []).filter(function (id) { return cast.some(function (c) { return c.id === id; }); });
+    if (set) { set = set.slice(0, 8); if (!(T.pass && T.pass.preview)) T.ls('myKids', set); return set; }
+    if (T.me && T.me.id && prev.indexOf(T.me.id) < 0) { prev.push(T.me.id); if (!(T.pass && T.pass.preview)) T.ls('myKids', prev); }
+    return prev;
+  };
+  var KID_PAGES = [['today', '📅', 'Today'], ['schedule', '🎭', 'Schedule'], ['songs', '🎵', 'Songs'], ['lines', '💬', 'Lines'], ['costumes', '👕', 'Costumes']];
+  T.kidLinks = function (href) {
+    if (!(T.pass && T.pass.who === 'parent') || T.parentKids().length < 2) return false;
+    return KID_PAGES.some(function (k) { return href === '#/' + k[0]; });
+  };
+  function kidCard(id) {
+    var c = (T.show.cast || []).find(function (x) { return x.id === id; }); if (!c) return '';
+    var st = status(id), left = ITEMS.filter(function (x) { return !st[x[0]]; }).length, go = function (page) { return '#/family/open/' + encodeURIComponent(id) + '/' + page; };
+    return '<div class="card"><div class="row" style="flex-wrap:wrap"><h2 class="grow" style="margin:0">' + esc(c.name) + ' ' + (c.chars || []).map(T.chip).join('') + '</h2>' +
+      '<span class="tag ' + (left ? 'no-tag' : 'ok-tag') + '">' + (left ? left + ' form' + (left === 1 ? '' : 's') + ' to do' : '✓ All answered') + '</span></div>' +
+      ITEMS.map(function (x) {
+        return '<a class="todo" href="' + go('family/' + x[0]) + '"><span class="big" aria-hidden="true">' + x[1] + '</span><span><b>' + x[2] + '</b></span>' +
+          '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent</span>' : '<span class="tag no-tag">To do</span>') + '</span></a>';
+      }).join('') +
+      '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px">' + KID_PAGES.filter(function (k) { return T.passAllows(k[0]); }).map(function (k) { return '<a class="btn" href="' + go(k[0]) + '">' + sym(k[1]) + k[2] + '</a>'; }).join('') + '</div></div>';
+  }
   T.portalHome = function () {
-    var a = T.me && T.me.id; autoContact(a); var st = a ? status(a) : {}, news = T.annList ? T.annList('parent') : SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
+    var a = T.me && T.me.id, kids = T.parentKids(); kids.forEach(autoContact);
+    if (kids.length > 1) {      // brothers and sisters: a card each, no switching
+      var all = T.annList ? T.annList('parent') : [];
+      return kids.map(kidCard).join('') +
+        '<p><a class="btn" href="#/who">+ Add or remove a Company member</a></p>' +
+        '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2>' + (all.length ? all.slice(0, 3).map(newsItem).join('') + '<p><a class="btn" href="#/notifications">All notifications</a></p>' : '<p class="muted">Nothing yet. Announcements from the teacher will show here.</p>') + '</div>' +
+        '<h3>The show</h3>';
+    }
+    var st = a ? status(a) : {}, news = T.annList ? T.annList('parent') : SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
     var left = ITEMS.filter(function (x) { return !st[x[0]]; }).length;
     return '<div class="card"><h2 style="margin-top:0">' + sym('📝') + (a ? (left ? 'Needs your answer' : 'All answered, thank you!') : 'Family forms') + '</h2>' +
       (a ? '<p class="muted small">' + (left ? left + ' of ' + ITEMS.length + ' still to do. ' : '') + 'Your answers go only to the teachers, locked; you can change them any time.</p>' +
@@ -197,7 +230,7 @@
           return '<a class="todo" href="#/family/' + x[0] + '"><span class="big" aria-hidden="true">' + x[1] + '</span><span><b>' + x[2] + '</b><br><span class="muted small">' + x[3] + '</span></span>' +
             '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(st[x[0]]) ? ' ' + esc(day(st[x[0]])) : '') + '</span>' : '<span class="tag no-tag">To do</span>') + '</span></a>';
         }).join('')
-        : '<p>These forms are for each Company member. Once the class list is in the app, tap <b>Settings</b> and pick your Company member by name.</p>') + '</div>' +
+        : '<p>These forms are for each Company member. Once the class list is in the app, tap <b>Settings</b>, then <b>Change</b>, and pick your Company members by name.</p>') + '</div>' +
       '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2>' + (news.length ? news.slice(0, 3).map(newsItem).join('') +
         '<p><a class="btn" href="#/notifications">All notifications' + (news.length > 3 ? ' (' + news.length + ')' : '') + '</a></p>' : '<p class="muted">Nothing yet. Announcements from the teacher will show here.</p>') + '</div>' +
       '<h3>The show</h3>';
@@ -208,6 +241,11 @@
   T.studentPages.family = function (args) {
     var k = args[0] || '';
     if (k === 'news') { T.go('#/notifications'); return; }      // announce.js has every announcement now
+    if (k === 'open') {      // a child's card: open their page (#/family/open/<id>/<page>/…)
+      var id = args[1], c = (T.show.cast || []).find(function (x) { return x.id === id; });
+      if (c) { if (!(T.pass && T.pass.preview)) T.ls('me', { cast: id }); T.setMe({ cast: id }); }      // a teacher's preview changes nothing on the device
+      location.replace('#/' + (args.slice(2).map(encodeURIComponent).join('/') || 'home')); return;
+    }
     if (!T.me || !T.me.id) { T.setBar('Family forms', '#/home'); app.innerHTML = '<p class="card">Pick your Company member first: tap <b>Settings</b>, then choose your Company member by name. (Before the class list is in the app, the forms wait.)</p>'; return; }
     if (k === 'fit') return fitForm();
     if (k === 'sizes') return sizesForm();
