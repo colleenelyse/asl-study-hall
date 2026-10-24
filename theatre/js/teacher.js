@@ -64,7 +64,7 @@
     if (T.loadError) { app.innerHTML = '<div class="card"><p class="err">' + esc(T.loadError) + '</p><p>Check the internet connection, then reload.</p></div>'; return; }
     app.innerHTML = '<form class="card" id="f" style="max-width:640px;margin:auto"><h2>Set up the show</h2>' +
       '<p>Show: <b>' + esc(window.DEFAULT_SHOW.title) + '</b></p>' +
-      '<p class="muted">Two passwords. Company members use the <b>cast password</b> to open the show on their iPads. The <b>teacher password</b> is only for you: it is needed to change anything. Nobody can get these back, so write them down.</p>' +
+      '<p class="muted">Two passwords. Company members use the <b>cast password</b> to open the show on their devices. The <b>teacher password</b> is only for you: it is needed to change anything. Nobody can get these back, so write them down.</p>' +
       '<label class="f">Cast password (for the Company)<input id="c1" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label>' +
       '<label class="f">Teacher password<input id="t1" type="password" autocomplete="new-password" minlength="8" required></label>' +
       '<label class="f">Teacher password again<input id="t2" type="password" autocomplete="new-password" required></label>' +
@@ -420,7 +420,7 @@
     T.setBar('Cast', '#/teacher');
     var cast = T.show.cast = T.show.cast || [];
     app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="groups">Who sings with the groups</button><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
-      '<p class="muted">Company members tap their picture on the iPad. Photos are made small and saved encrypted. Tap someone to set <b>Artist</b> or <b>Mentor</b>.</p>' +
+      '<p class="muted">Company members tap their picture in the app. Photos are made small and saved encrypted. Tap someone to set <b>Artist</b> or <b>Mentor</b>.</p>' +
       [['artist', 'Company Artists'], ['mentor', 'Company Mentors'], ['', 'Not marked yet']].map(function (g) {
         var list = cast.filter(function (c) { return (T.COMPANY[c.company] ? c.company : '') === g[0]; });
         return list.length ? (cast.some(function (c) { return T.COMPANY[c.company]; }) ? '<h3 style="margin-top:14px">' + g[1] + ' <span class="muted small">(' + list.length + ')</span></h3>' : '') + '<div class="choose">' + list.map(personBtn).join('') + '</div>' : '';
@@ -1509,7 +1509,7 @@
       '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' Company members have a school email saved (Cast › tap a Company member, or paste the class list with emails).</p>' +
       '<div class="row end"><button type="button" class="btn" id="sitest">Test the school sign-in</button></div>' +
       '<p class="small muted">Test it any time, even before there is a cast: it goes to the school sign-in page and back. The first time, Google asks you to allow it; press Allow.</p></form>' +
-      '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
+      '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">Devices that already remember the show stay open. Use Settings › Lock this device on any you want closed.</p>' +
       '<label class="f">New cast password<input id="nc" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label><div class="row end"><button class="btn primary" data-save>Change the cast password</button></div></form>' +
       '<form class="card" id="tf"><h2>Teacher password</h2><label class="f">New teacher password<input id="nt1" type="password" minlength="8" autocomplete="new-password" required></label>' +
       '<label class="f">Again<input id="nt2" type="password" autocomplete="new-password" required></label><div class="row end"><button class="btn primary" data-save>Change the teacher password</button></div></form>' +
@@ -1612,7 +1612,7 @@
       };
       var passes = T.show.passes || [];
       box.innerHTML = '<div class="card"><div class="row"><h2 class="grow" style="margin:0">All passwords</h2><button class="btn small quiet" id="pwhide">' + (hide ? '👁 Show them' : 'Hide them') + '</button><button class="btn primary" id="pwadd">+ Add a password</button></div>' +
-        '<p class="muted small">Only Teacher mode can show these (they are locked with your teacher password). Turning a password off, or deleting it, locks every iPad that opened the show with it the next time it opens.</p>' +
+        '<p class="muted small">Only Teacher mode can show these (they are locked with your teacher password). Turning a password off, or deleting it, locks every device that opened the show with it the next time it opens.</p>' +
         '<table class="tbl"><thead><tr><th>Who</th><th>What it opens</th><th>Password</th><th></th></tr></thead><tbody>' +
         '<tr><td><b>Teacher</b></td><td>Teacher mode: everything, and saving</td><td>' + shown(V.teacher, 'kt') + '</td><td></td></tr>' +
         '<tr><td><b>Cast</b></td><td>Everything the Company sees (full names)</td><td>' + shown(V.cast, 'kc') + '</td><td></td></tr>' +
@@ -1628,7 +1628,7 @@
       box.querySelectorAll('[data-pdel]').forEach(function (b) {
         b.onclick = function () {
           var p = passes.find(function (x) { return x.id === b.dataset.pdel; });
-          if (!confirm('Delete the password “' + p.name + '”? iPads that opened the show with it are locked the next time they open.')) return;
+          if (!confirm('Delete the password “' + p.name + '”? Devices that opened the show with it are locked the next time they open.')) return;
           T.show.passes = passes.filter(function (x) { return x !== p; });
           withVault(function (W) { delete W.extra[p.id]; }).then(function () { return Store.save(T.key, T.show, T.saved, { proof: T.proof, dropPw: p.id }); })
             .then(function (s) { T.saved = s; T.toast('Deleted'); passwordList(); }).catch(function (er) { T.toast(er.message, 4000); });

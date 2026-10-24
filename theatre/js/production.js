@@ -387,14 +387,14 @@
     var rows = function (l) {
       return l.map(function (c) {
         var a = actor(c.actor), r = plan(c.date), g = a && autoGroup(a, r);
-        return '<tr><td>' + esc(dayName(c.date, true)) + '</td><td>' + (a ? esc(a.name) : '<span class="muted">(removed)</span>') + '</td><td>' + esc(c.why || '') + (c.from === 'student' ? ' <span class="tag">from iPad</span>' : '') + '</td>' +
+        return '<tr><td>' + esc(dayName(c.date, true)) + '</td><td>' + (a ? esc(a.name) : '<span class="muted">(removed)</span>') + '</td><td>' + esc(c.why || '') + (c.from === 'student' ? ' <span class="tag">from the app</span>' : '') + '</td>' +
           '<td>' + (g ? '<span class="err">Misses ' + esc(focus(g.focus)[2].toLowerCase()) + '</span>' : '') + '</td><td><button class="btn small quiet" data-del="' + c.id + '">Delete</button></td></tr>';
       }).join('');
     };
     var up = list.filter(function (c) { return c.date >= now; }), past = list.filter(function (c) { return c.date < now; });
     return '<div class="card"><h3>Add a day away</h3><div class="row"><label class="f grow" style="margin:0">Company member<select id="ca">' + cast().map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f" style="margin:0">Day<input type="date" id="cd" value="' + today() + '"></label><label class="f grow" style="margin:0">Why (optional)<input id="cw" maxlength="200" placeholder="e.g. field trip"></label><button class="btn primary" id="cadd" data-save>Add</button></div></div>' +
-      '<p class="muted">Company members can send their own from <b>Today</b> on their iPad. They show up here when you open Production.</p>' +
+      '<p class="muted">Company members can send their own from <b>Today</b> in the app. They show up here when you open Production.</p>' +
       (up.length ? '<table class="tbl"><thead><tr><th>Day</th><th>Who</th><th>Why</th><th></th><th></th></tr></thead><tbody>' + rows(up) + '</tbody></table>' : '<p>Nobody is away on a coming day.</p>') +
       (past.length ? '<details style="margin-top:14px"><summary class="btn quiet">Past (' + past.length + ')</summary><table class="tbl"><tbody>' + rows(past) + '</tbody></table></details>' : '');
   }

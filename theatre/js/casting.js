@@ -72,7 +72,7 @@
 
   function signupsView() {
     var c = C(), list = students(), done = list.filter(function (a) { return c.signups[a.id]; }), not = list.filter(function (a) { return !c.signups[a.id]; });
-    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Auditions are open</b><br><span class="muted small">' + (c.open ? 'Company members see Auditions on their iPad and can sign up.' : 'Company members cannot sign up yet.') + '</span></span><input type="checkbox" id="open"' + (c.open ? ' checked' : '') + '></label></div>' +
+    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Auditions are open</b><br><span class="muted small">' + (c.open ? 'Company members see Auditions in the app and can sign up.' : 'Company members cannot sign up yet.') + '</span></span><input type="checkbox" id="open"' + (c.open ? ' checked' : '') + '></label></div>' +
       '<h3>' + done.length + ' of ' + list.length + ' signed up</h3>' +
       (done.some(function (a) { return c.signups[a.id].excited; }) ? '<div class="card"><h3>' + sym('✨') + 'Talents to use</h3><p class="muted small">What each Company member is excited to do on stage. Work them into the choreography and staging; they also show on the Dance groups in Production.</p>' +
         done.filter(function (a) { return c.signups[a.id].excited; }).map(function (a) { return '<p><b>' + esc(a.name) + ':</b> ' + esc(c.signups[a.id].excited) + '</p>'; }).join('') + '</div>' : '') +
@@ -269,7 +269,7 @@
     document.getElementById('post').onclick = function () {
       var none = list.filter(function (a) { return !has(a); });
       if (none.length && !confirm(none.length + ' Company member(s) still have no role. Post anyway?')) return;
-      if (!confirm('Post the cast list? Every Company member’s roles will be set from this list, and they will see it on their iPad.')) return;
+      if (!confirm('Post the cast list? Every Company member’s roles will be set from this list, and they will see it in the app.')) return;
       list.forEach(function (a) { a.chars = Object.keys(d).filter(function (ch) { return d[ch].indexOf(a.id) >= 0; }); });
       c.posted = new Date().toISOString(); c.open = false;
       T.saveShow('The cast list is posted!').then(overview);
@@ -303,11 +303,11 @@
       ['“We’re All in This Together” (vocals)', [g('vocals', [SONG('40')])], 'Another song the whole cast sings.'],
       ['“Wildcat Cheer” (dance and cheer)', [g('dance', [SONG('1')])], 'The opening number! Loud, proud, and together.'],
       ['Run all three songs, then crew tours', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'We run the songs we learned, then visit each crew (set, costumes, props).'],
-      ['Pick your vocal selection, and finale review', [g('vocals', [SONG('41')])], 'Open Auditions on your iPad: pick your roles and about 30 seconds of any song from the show. Practice it with My Songs (the loop button helps).'],
+      ['Pick your vocal selection, and finale review', [g('vocals', [SONG('41')])], 'Open Auditions in the app: pick your roles and about 30 seconds of any song from the show. Practice it with My Songs (the loop button helps).'],
       ['Vocal selections (half the class) · finale dance for everyone else', [g('vocals', [], 'your vocal selection, one at a time with the teacher'), g('dance', [SONG('41')])], 'Vocal selections today for half of us. Every audition is a good audition!', 'A'],
       ['Vocal selections (the other half) · finale dance for everyone else', [g('vocals', [], 'your vocal selection, one at a time with the teacher'), g('dance', [SONG('41')])], 'Vocal selections today for the other half. Take a deep breath: you have got this!', 'B'],
-      ['Callbacks (reading scenes) · everyone else: “We’re All in This Together”', [Object.assign(g('acting', [], 'Stage'), { everyone: false, callbacks: true }), g('vocals', [SONG('40')])], 'Callbacks are on your iPad. Not called back? That is OK: everyone gets a role.'],
-      ['Run the whole-cast numbers · the cast list goes up!', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'Great work this week! Look for the cast list on your iPad after class.']
+      ['Callbacks (reading scenes) · everyone else: “We’re All in This Together”', [Object.assign(g('acting', [], 'Stage'), { everyone: false, callbacks: true }), g('vocals', [SONG('40')])], 'Callbacks are in the app. Not called back? That is OK: everyone gets a role.'],
+      ['Run the whole-cast numbers · the cast list goes up!', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'Great work this week! Look for the cast list in the app after class.']
     ];
     /* Colleen: watch the movie early, after the title is announced (day one) and before rehearsals begin in earnest */
     for (var mv = movie; mv > 0; mv--) plan.splice(1, 0, ['Watch the movie (part ' + mv + ' of ' + movie + ')', [g('watch', [], 'Everyone together')], 'We watch the movie together! Notice how each character changes, and listen for your favorite song.']);

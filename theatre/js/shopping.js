@@ -293,7 +293,7 @@
       '<div class="card"><h2>' + sym('🚌') + 'Our field trip</h2><ol class="big" style="font-size:1.05em;line-height:1.7">' +
       '<li>Ride with your group and your teacher.</li><li>Stay with your buddy in the store.</li><li>Look for things on this list. It is for <b>the whole show</b>, not only you.</li>' +
       '<li>Found one? Show your teacher, then tap <b>Found it!</b></li><li>Your teacher pays. Then we ride back to school.</li></ol>' +
-      '<p class="muted small">No Wi-Fi in the store is OK: what you find is saved on this iPad and sent when you are back at school.</p></div>' +
+      '<p class="muted small">No Wi-Fi in the store is OK: what you find is saved on this device and sent when you are back at school.</p></div>' +
       '<h3>' + left + ' things still to find</h3>' + all.map(function (it) {
         var st = state(it), ch = T.charById(it.who);
         return '<div class="card row" style="margin-bottom:10px;' + (st.s ? 'opacity:.55' : '') + '"><div class="grow"><b style="font-size:1.1em">' + esc(it.name) + '</b>' + (it.qty > 1 ? ' × ' + it.qty : '') +

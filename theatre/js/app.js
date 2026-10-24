@@ -445,9 +445,9 @@
     app.innerHTML = '<form class="card" id="unlock" style="max-width:560px;margin:40px auto"><h2>' + sym('🎭') + 'Welcome to the show!</h2>' +
       (T.parentGoogleBox ? T.parentGoogleBox() : '') + '<p>Type the <b>password</b> your teacher gave you.</p>' +
       '<label class="f">Password<input type="password" id="pw" autocomplete="current-password" autocapitalize="off" spellcheck="false" required></label>' +
-      '<label class="switch"><span>Remember on this iPad</span><input type="checkbox" id="keep" checked></label>' +
+      '<label class="switch"><span>Remember on this device</span><input type="checkbox" id="keep" checked></label>' +
       '<p class="err" id="msg" role="alert"></p><div class="row end"><button class="btn primary" type="submit">' + icon('lock') + 'Open</button></div>' +
-      (T.saved.offline ? '<p class="muted small">No internet right now. Using the copy saved on this iPad.</p>' : '') + '</form>' +
+      (T.saved.offline ? '<p class="muted small">No internet right now. Using the copy saved on this device.</p>' : '') + '</form>' +
       '<p class="center"><a href="#/teacher" class="muted">Teacher mode</a></p>';
     var f = document.getElementById('unlock');
     setTimeout(function () { var box = document.getElementById('pw'); if (box) box.focus({ preventScroll: true }); }, 50);      // ready to type
@@ -1245,7 +1245,7 @@
       '<details><summary class="btn quiet small">Get better voices (free)</summary><p class="small"><b>iPad:</b> Settings › Accessibility › Spoken Content › Voices › English. Download voices marked <b>Enhanced</b> or <b>Premium</b> (for example Ava, Zoe, Evan, Nathan). Then come back here and pick one.</p>' +
       '<p class="small"><b>Mac:</b> System Settings › Accessibility › Spoken Content › System voice › Manage Voices. Safari shows the new voices; some other browsers do not.</p></details></div>' +
       (T.me ? '<div class="card"><div class="row">' + face(T.me, 56) + '<div class="grow"><b>' + esc(T.me.name) + '</b><br>' + T.me.chars.map(chip).join('') + '</div><a class="btn" href="#/who">Change</a></div></div>' : '') +
-      '<div class="card"><div class="row"><a class="btn" href="#/teacher">Teacher mode</a><span class="grow"></span><button class="btn quiet" id="forget">' + icon('lock') + 'Lock this iPad</button></div></div>';
+      '<div class="card"><div class="row"><a class="btn" href="#/teacher">Teacher mode</a><span class="grow"></span><button class="btn quiet" id="forget">' + icon('lock') + 'Lock this device</button></div></div>';
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { var k = b.parentNode.dataset.k; p[k] = ['size', 'rate'].indexOf(k) >= 0 ? +b.dataset.v : b.dataset.v; T.savePrefs(); settingsPage(); }; });
     app.querySelectorAll('[data-accent]').forEach(function (b) { b.onclick = function () { p.accent = b.dataset.accent; T.savePrefs(); settingsPage(); }; });
     app.querySelectorAll('[data-tint]').forEach(function (b) { b.onclick = function () { p.tint = b.dataset.tint; T.savePrefs(); settingsPage(); }; });
@@ -1260,7 +1260,7 @@
     });
     app.querySelectorAll('[data-voice]').forEach(function (b) { b.onclick = function () { p.voice = b.dataset.voice; T.savePrefs(); Speech.load(); Speech.stop(); Speech.say('Hi! I am ' + b.dataset.voice.replace(/\s*\(.*\)$/, '') + '. Break a leg!'); settingsPage(); }; });
     document.getElementById('forget').onclick = function () {
-      if (!confirm('Lock this iPad? The cast password will be needed again.')) return;
+      if (!confirm('Lock this device? The cast password will be needed again.')) return;
       Store.forget().then(function () { ls('me', null); ls('gEmail', null); T.show = null; T.key = null; T.me = null; T.go('#/'); });
     };
   }

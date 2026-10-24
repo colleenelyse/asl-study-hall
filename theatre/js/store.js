@@ -129,7 +129,7 @@
         if (d && d.enc) local.set('enc', d);
         return d;
       }).catch(function () {
-        return local.get('enc').then(function (d) { if (!d) throw new Error('No internet, and this iPad has no copy of the show yet.'); d.offline = true; return d; });
+        return local.get('enc').then(function (d) { if (!d) throw new Error('No internet, and this device has no copy of the show yet.'); d.offline = true; return d; });
       });
     },
     unlock: unlock, unlockAny: unlockAny, decryptShow: decryptShow, sealVault: sealVault, openVault: openVault,
