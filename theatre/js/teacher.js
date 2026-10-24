@@ -1220,15 +1220,15 @@
     return openVault().then(function (V) { change(V); return Store.sealVault(T.tpw, V); }).then(function (v) { T.show.vault = v; });
   }
   var PRESETS = {
-    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script'], fullCal: true, practice: false, teach: [] },
-    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, practice: true, teach: ['callboard', 'cues', 'mics'] },
-    student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, practice: true, teach: [] }
+    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script'], fullCal: true, teach: [] },
+    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
+    student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
-  var WHO = { student: 'Picks their own picture (like a student)', parent: 'A parent: picks their student once (first names and last initials only)', helper: 'A helper: can switch between students' };
+  var WHO = { student: 'Picks their own picture (like a student; practice is saved)', parent: 'A parent: picks their student once (first names and last initials only; nothing is recorded)', helper: 'A helper: can switch between students (practice is saved for the student, marked “with a helper”)' };
   function passSummary(p) {
     var pages = (p.pages || []).map(function (k) { var x = T.STUDENT_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1] : k; });
     var teach = (p.teach || []).map(function (k) { var x = T.TEACH_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1].replace(/ \(.*\)$/, '') : k; });
-    return esc(WHO[p.who] || '') + '<br><span class="muted small">' + esc(pages.join(', ') || 'No student pages') + (p.fullCal ? ' · full calendar' : '') + (p.practice ? ' · practice counts' : '') +
+    return esc(WHO[p.who] || '') + '<br><span class="muted small">' + esc(pages.join(', ') || 'No student pages') + (p.fullCal ? ' · full calendar' : '') +
       (teach.length ? ' · view only: ' + esc(teach.join(', ')) : '') + '</span>';
   }
   function passwordList() {
@@ -1293,7 +1293,6 @@
       d.querySelector('#pck').innerHTML = '<h3>Who uses it</h3>' + Object.keys(WHO).map(function (k) { return '<label class="switch"><span>' + esc(WHO[k]) + '</span><input type="radio" name="pwho" value="' + k + '"' + (cur.who === k ? ' checked' : '') + '></label>'; }).join('') +
         '<h3>Student pages it opens</h3>' + T.STUDENT_PAGES.map(function (x) { return box('pg', x[0], esc(x[1]), (cur.pages || []).indexOf(x[0]) >= 0); }).join('') +
         box('fc', '1', '<b>Full calendar</b>: a “Show everyone” switch to see everything happening each day' + (cur.who === 'parent' ? ' (who is away and private notes stay hidden)' : ''), cur.fullCal) +
-        box('pr', '1', '<b>Practice counts</b> for the student they pick (off: practicing here is not recorded as the student’s)', cur.practice) +
         '<h3>Teacher pages it can look at (never change)</h3>' + T.TEACH_PAGES.map(function (x) { return box('tp', x[0], esc(x[1]), (cur.teach || []).indexOf(x[0]) >= 0); }).join('');
       d.querySelectorAll('[name=pwho]').forEach(function (r) { r.onchange = function () { read(); cur.who = r.value; draw(); }; });
     };
@@ -1301,7 +1300,7 @@
       var q = function (sel) { return [].slice.call(d.querySelectorAll(sel)).filter(function (x) { return x.checked; }); };
       var w = q('[name=pwho]')[0]; if (w) cur.who = w.value;
       cur.pages = q('[data-pg]').map(function (x) { return x.dataset.pg; }); cur.teach = q('[data-tp]').map(function (x) { return x.dataset.tp; });
-      cur.fullCal = !!q('[data-fc]').length; cur.practice = !!q('[data-pr]').length;
+      cur.fullCal = !!q('[data-fc]').length;
     };
     draw();
     d.querySelector('#pmk').onclick = function () { d.querySelector('#pp').value = makePw(); };
@@ -1320,7 +1319,7 @@
       var id = p ? p.id : 'p' + Math.random().toString(36).slice(2, 8);
       (change ? Store.unlockAny(T.saved.enc, pw).then(function (r) { if (r.access !== id) throw new Error('That password is already used. Each kind of person needs a different one.'); }, function () {}) : Promise.resolve())      // also catches one this list does not know yet
         .then(function () {
-          var rec = { id: id, name: name, who: cur.who, pages: cur.pages, teach: cur.teach, fullCal: cur.fullCal, practice: cur.practice, off: p ? p.off : false };
+          var rec = { id: id, name: name, who: cur.who, pages: cur.pages, teach: cur.teach, fullCal: cur.fullCal, off: p ? p.off : false };
           T.show.passes = (T.show.passes || []).filter(function (x) { return x.id !== id; }); T.show.passes.push(rec);
           return change ? withVault(function (W) { W.extra[id] = pw; }) : null;
         })

@@ -216,7 +216,7 @@
   T.DEF_ACCESS = DEF_ACCESS;
   /* ---------- other passwords (Colleen 2026-10-23: parents, peer helpers…) ----------
      T.show.passes: [{ id, name, off, who: 'student' | 'parent' | 'helper', pages: [student pages], teach: [teacher pages, view only],
-     fullCal, practice }]. The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
+     fullCal }]. Practice: never recorded for parents; a helper's is the student's, marked (progress.js). The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
   T.pass = null;
   T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
     ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list']];
@@ -533,7 +533,7 @@
     app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
       '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Helping ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
       (pw === 'helper' ? '<a class="btn" href="#/who">Switch student</a>' : '') + '</div>' +
-      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (T.pass.practice ? '' : ' (practice here is not counted for the student)') + '</p>' : '') +
+      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a helper”' : pw === 'parent' ? ' · nothing done here is recorded' : '') + '</p>' : '') +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
       (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +

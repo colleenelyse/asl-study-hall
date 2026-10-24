@@ -17,7 +17,7 @@
   /* ---------- this student's record ---------- */
   var rec = null, recFor = null, dirty = false, timer = null, merged = false;
   function blank() { return { v: 1, lines: {}, songs: {}, time: {} }; }
-  function me() { return T.me && T.me.id && !(T.pass && !T.pass.practice) ? T.me.id : null; }      // a parent's (or helper's) practice is not the student's, unless the teacher ticked it
+  function me() { return T.me && T.me.id && !(T.pass && T.pass.who === 'parent') ? T.me.id : null; }      // nothing is recorded on a parent's iPad (Colleen 2026-10-23); a helper's practice is the student's, marked
   function get() {
     var id = me(); if (!id) return null;
     if (recFor !== id) { rec = T.ls('progress:' + id) || blank(); recFor = id; merged = false; mergeServer(); }
@@ -64,7 +64,9 @@
     },
     addTime: function (kind, secs) {
       var r = get(); if (!r) return;
-      var t = r.time[day()] = r.time[day()] || {}; t[kind] = (t[kind] || 0) + secs; touch();
+      var t = r.time[day()] = r.time[day()] || {}; t[kind] = (t[kind] || 0) + secs;
+      if (T.pass && T.pass.who === 'helper') t.helped = (t.helped || 0) + secs;      // part of that time was with a peer helper
+      touch();
     },
     /* my notes on the script pages: { id: { n page, x, y (PDF points), text, at, del } } (a deleted note is kept as del so other iPads learn of it) */
     notes: function () { var r = get(); return r ? r.notes || {} : {}; },
@@ -120,7 +122,8 @@
       out.songs.push({ song: so, lyrics: x.l ? x.l[0] : 0, dance: x.d ? x.d[0] : null, last: x.l ? x.l[1] : '' });
     });
     var wk = day(new Date(Date.now() - 7 * 864e5));
-    Object.keys(r.time || {}).forEach(function (d) { var t = r.time[d], s = (t.lines || 0) + (t.songs || 0) + (t.listen || 0); out.seconds += s; if (d >= wk) out.week += s; });
+    out.helped = 0;
+    Object.keys(r.time || {}).forEach(function (d) { var t = r.time[d], s = (t.lines || 0) + (t.songs || 0) + (t.listen || 0); out.seconds += s; out.helped += t.helped || 0; if (d >= wk) out.week += s; });
     var parts = out.scenes.length + out.songs.length;
     out.coverage = parts ? (out.scenes.filter(function (x) { return x.done === x.total; }).length + out.songs.filter(function (x) { return x.lyrics; }).length) / parts : 1;
     out.struggles = out.scenes.filter(function (x) { return x.right + x.wrong >= 3 && x.mastery < 0.6; }).map(function (x) { return 'Scene ' + x.scene.num + ' (' + Math.round(x.mastery * 100) + '% right)'; })
@@ -202,7 +205,7 @@
       rows.map(function (x) {
         var pct = Math.round(x.an.coverage * 100);
         return '<tr style="cursor:pointer" data-a="' + x.a.id + '"><td>' + T.face(x.a, 32) + ' <b>' + esc(x.a.name) + '</b></td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b>' + (x.hasData ? '' : '<br><span class="muted small">no practice yet</span>') + '</td>' +
-          '<td>' + mins(x.an.week) + ' / ' + mins(x.an.seconds) + '</td><td>' + (x.an.struggles.length ? '<span class="err">' + x.an.struggles.slice(0, 3).map(esc).join('<br>') + '</span>' : '<span class="muted">—</span>') + '</td>' +
+          '<td>' + mins(x.an.week) + ' / ' + mins(x.an.seconds) + (x.an.helped ? '<br><span class="muted small">' + mins(x.an.helped) + ' with a helper</span>' : '') + '</td><td>' + (x.an.struggles.length ? '<span class="err">' + x.an.struggles.slice(0, 3).map(esc).join('<br>') + '</span>' : '<span class="muted">—</span>') + '</td>' +
           '<td>' + (x.missed.length ? x.missed.slice(0, 3).map(function (m) { return esc(T.prodDay ? T.prodDay(m.date, true) : m.date) + ': ' + esc(m.what); }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
       }).join('') + '</tbody></table><p class="muted small">Practice counts on the iPads: lines marked right or wrong, songs rated after singing, minutes on practice pages. A missed day counts as caught up once they practice that scene or song in the app afterward.</p>';
     app.querySelectorAll('[data-s]').forEach(function (b) { b.onclick = function () { sortBy = b.dataset.s; table(by); }; });
@@ -212,7 +215,7 @@
     var a = (T.show.cast || []).find(function (x) { return x.id === id; }); if (!a) return;
     T.setBar(a.name, '#/teacher/progress');
     var an = analyze(a, r), ms = missed(a, an, r), face = ['', '😟', '🙂', '🤩'];
-    app.innerHTML = '<div class="card row">' + T.face(a, 56) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (a.chars || []).map(T.chip).join('') + '</div><div><b>' + Math.round(an.coverage * 100) + '%</b> practiced<br>' + mins(an.week) + ' this week</div></div>' +
+    app.innerHTML = '<div class="card row">' + T.face(a, 56) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (a.chars || []).map(T.chip).join('') + '</div><div><b>' + Math.round(an.coverage * 100) + '%</b> practiced<br>' + mins(an.week) + ' this week' + (an.helped ? '<br><span class="muted small">' + mins(an.helped) + ' with a helper (all time)</span>' : '') + '</div></div>' +
       '<div class="card"><h3>Lines</h3><table class="tbl"><thead><tr><th>Scene</th><th>Tried</th><th>Right</th><th>Last practiced</th></tr></thead><tbody>' + an.scenes.map(function (x) {
         return '<tr><td>Scene ' + x.scene.num + ' · ' + esc(x.scene.place) + '</td><td>' + x.done + ' of ' + x.total + '</td><td' + (x.mastery !== null && x.mastery < 0.6 ? ' class="err"' : '') + '>' + (x.mastery === null ? '—' : Math.round(x.mastery * 100) + '% (' + x.right + ' ✓ ' + x.wrong + ' ✗)') + '</td><td>' + esc(x.last || 'never') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
