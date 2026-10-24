@@ -450,3 +450,10 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 .viewas-who select { max-width: 52vw; min-height: 40px; }
 .viewas-who .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 body:has(.viewas-bar) #app { padding-bottom: 110px; }
+
+/* Lyrics timing: point to a line on the music (teacher.js pointOnMusic) */
+.pick-music { position: fixed; inset: 0; z-index: 70; overflow: auto; background: var(--bg); padding: 0 max(12px, env(safe-area-inset-right)) 40px max(12px, env(safe-area-inset-left)); }
+.pick-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: max(10px, env(safe-area-inset-top)) 4px 10px; background: var(--bg); border-bottom: 2px solid var(--line); }
+.pick-tok { position: absolute; padding: 0; margin: 0; min-height: 0; border: 1px solid rgba(107, 63, 212, .45); border-radius: 3px; background: rgba(255, 225, 77, .18); cursor: pointer; z-index: 3; }
+.pick-tok:hover, .pick-tok:focus-visible { background: rgba(255, 225, 77, .55); outline: none; }
+.pick-tok.on { background: rgba(107, 63, 212, .45); }

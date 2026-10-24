@@ -1297,8 +1297,11 @@
        and the words are found there, in reading order, also across staves and onto the next page. Of several places with those words, the one
        not already a section and closest to where it belongs wins. Not found: the shortest start of it that is found (drag its end to finish),
        or added without a place on the music. */
-    var letters = function (s) { return String(s || '').toLowerCase().replace(/[^a-z]/g, ''); };
-    function songRows() {      // every printed lyric row on the song's pages (and the page before and after): [{ n, y, h, toks: [{ x, w, t, l }] }]
+    /* letters only, for matching: joined letters some PDFs use (ﬁ, ﬂ) and accents come apart first */
+    var letters = function (s) { return String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z]/g, ''); };
+    var GLYPH = /[œ‰Œ¿Ó∑ˆ˙»«Ä≈¬∫]/g;
+    var mctx = null, textW = function (str) { if (!mctx) { mctx = document.createElement('canvas').getContext('2d'); mctx.font = '10px "Times New Roman", serif'; } return mctx.measureText(str).width; };      // where each word sits inside a printed run
+    function songRows() {      // every printed row of words on the song's pages (and the page before and after): [{ n, y, h, toks: [{ x, w, t, l }] }]
       var ns = []; lines.forEach(function (l) { T.Pages.rawBoxes(l).forEach(function (b) { ns.push(b.n); }); });
       var lo = Math.max(1, Math.min.apply(null, ns) - 1), hi = Math.max.apply(null, ns) + 1;
       return T.Pages.doc().then(function (pdf) {
@@ -1307,33 +1310,66 @@
           return pdf.getPage(n).then(function (pg) {
             var vp = pg.getViewport({ scale: 1 });
             return pg.getTextContent().then(function (tc) {
-              var items = tc.items.filter(function (it) { return it.str !== undefined; }).map(function (it) { var tr = it.transform, pt = vp.convertToViewportPoint(tr[4], tr[5]); return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: Math.hypot(tr[2], tr[3]) || Math.hypot(tr[0], tr[1]), font: '' }; });
-              return ScriptParser._toLines({ items: items }).filter(function (r) { return r.syl && r.syl.length; }).map(function (r) {
-                return { n: n, y: +(r.y - r.size * 0.95).toFixed(1), h: +(r.size * 1.25).toFixed(1), toks: r.syl.map(function (y) { return { x: y.x, w: y.w, t: y.t, l: letters(y.t) }; }).filter(function (y) { return y.l; }) };
+              /* every text item, any size (spoken lines and titles too), split into words where it holds several; items on one baseline make a row */
+              var items = tc.items.filter(function (it) { return it.str && it.str.trim(); }).map(function (it) { var tr = it.transform, pt = vp.convertToViewportPoint(tr[4], tr[5]); return { str: it.str, x: pt[0], y: pt[1], w: it.width || 0, size: Math.hypot(tr[2], tr[3]) || Math.hypot(tr[0], tr[1]) || 12 }; })
+                .sort(function (p, q) { return p.y - q.y || p.x - q.x; });
+              var rows = [];
+              items.forEach(function (it) {
+                var tol = Math.max(2, it.size * 0.3), row = null;
+                for (var i = rows.length - 1; i >= 0 && i >= rows.length - 3; i--) if (Math.abs(rows[i].y0 - it.y) <= tol) { row = rows[i]; break; }
+                if (!row) { row = { y0: it.y, size: it.size, items: [] }; rows.push(row); }
+                row.items.push(it);
               });
+              return rows.map(function (r) {
+                var toks = [];
+                r.items.sort(function (p, q) { return p.x - q.x; }).forEach(function (p) {
+                  var str = p.str.replace(GLYPH, ' '), re = /[^\s\-–—_]+/g, m, full = textW(str) || 1;
+                  while ((m = re.exec(str))) { var lt = letters(m[0]); if (lt) toks.push({ x: +(p.x + p.w * textW(str.slice(0, m.index)) / full).toFixed(1), w: +(p.w * textW(m[0]) / full).toFixed(1), t: m[0], l: lt }); }
+                });
+                return { n: n, y: +(r.y0 - r.size * 0.95).toFixed(1), h: +(r.size * 1.25).toFixed(1), toks: toks };
+              }).filter(function (r) { return r.toks.length && r.toks.some(function (t) { return t.l.length >= 3; }); });      // a row of single letters is music symbols, not words
             });
           });
         })).then(function (pages) { return [].concat.apply([], pages); });
       });
     }
-    function matchAt(rows, target) {      // every place the letters of target are printed, in reading order; a line may go on to a later row
+    var isLabel = function (t) { var w = t.t.replace(/[:.,]$/, ''); return w.length > 1 && /^[A-Z][A-Z.’'&]*$/.test(w); };      // a singer's name printed on the staff
+    /* the printed syllables from a start, following the line onto later rows (skipping a name printed at a row's start), until `n` letters are
+       read or the words stop matching. fuzzy: keep reading while the letters roughly agree (a typo, a missed word). */
+    function walk(rows, ri, ti, target, fuzzy) {
+      var path = [], got = '', r = ri, k = ti, hops = 0;
+      var agree = function (s) { if (!fuzzy) return target.indexOf(s) === 0; return lev(target.slice(0, s.length), s) <= Math.max(1, Math.ceil(s.length * 0.25)); };
+      while (got.length < target.length && r < rows.length) {
+        var t = rows[r].toks[k];
+        if (!t) {      // the end of a row: go on in one of the next rows, at its first syllable after any printed name
+          var nx = -1, nk = 0;
+          for (var q = r + 1; q < Math.min(rows.length, r + 7) && nx < 0; q++) {
+            var j = 0; while (rows[q].toks[j] && isLabel(rows[q].toks[j]) && !agree(got + rows[q].toks[j].l)) j++;
+            if (rows[q].toks[j] && agree(got + rows[q].toks[j].l)) { nx = q; nk = j; }
+          }
+          if (nx < 0 || ++hops > 4) break; r = nx; k = nk; continue;
+        }
+        if (!agree(got + t.l)) break;
+        path.push({ x: t.x, w: t.w, t: t.t, _o: { n: rows[r].n, y: rows[r].y, h: rows[r].h } }); got += t.l; k++;
+      }
+      return { path: path, got: got };
+    }
+    function lev(a, b) {      // letters that differ (edits) between two strings
+      var m = a.length, n = b.length, d = []; for (var i = 0; i <= n; i++) d[i] = i;
+      for (var x = 1; x <= m; x++) { var prev = d[0]; d[0] = x; for (var y = 1; y <= n; y++) { var c = d[y]; d[y] = Math.min(d[y] + 1, d[y - 1] + 1, prev + (a[x - 1] === b[y - 1] ? 0 : 1)); prev = c; } }
+      return d[n];
+    }
+    function nameBefore(row, ti) { var nm = []; for (var q = ti - 1; q >= 0 && isLabel(row.toks[q]); q--) nm.unshift(row.toks[q].t.replace(/[:.,]$/, '')); return nm.join(' '); }
+    function matchAt(rows, target, fuzzy) {      // every place the letters of target are printed, in reading order; a line may go on to later rows
       var found = [];
       rows.forEach(function (row, ri) {
         row.toks.forEach(function (tk, ti) {
-          var path = [], want = target, r = ri, k = ti, hops = 0;
-          while (want && r < rows.length) {
-            var t = rows[r].toks[k];
-            if (!t) {      // the end of a row: go on in one of the next rows on, starting at its first syllable
-              var nx = -1; for (var q = r + 1; q < Math.min(rows.length, r + 4); q++) if (rows[q].toks[0] && want.indexOf(rows[q].toks[0].l) === 0) { nx = q; break; }
-              if (nx < 0 || ++hops > 3) break; r = nx; k = 0; continue;
-            }
-            if (want.indexOf(t.l) !== 0) break;
-            path.push({ x: t.x, w: t.w, t: t.t, _o: { n: rows[r].n, y: rows[r].y, h: rows[r].h } }); want = want.slice(t.l.length); k++;
-          }
-          if (!want && path.length) {      // a name printed in capitals just before the words (TROY: Sorry I'm late…): who says or sings it
-            var nm = []; for (var q = ti - 1; q >= 0 && /^[A-Z][A-Z.’']*$/.test(row.toks[q].t.replace(/[:.,]$/, '')); q--) nm.unshift(row.toks[q].t.replace(/[:.,]$/, ''));
-            path.name = nm.join(' '); found.push(path);
-          }
+          if (fuzzy ? lev(target.slice(0, tk.l.length), tk.l) > Math.floor(tk.l.length * 0.34) : target.indexOf(tk.l) !== 0) return;
+          var w = walk(rows, ri, ti, target, fuzzy);
+          if (!w.path.length) return;
+          if (!fuzzy && w.got !== target) return;
+          if (fuzzy) { if (w.got.length < target.length * 0.8) return; w.path.miss = lev(target, w.got) / target.length; if (w.path.miss > 0.25) return; }
+          w.path.name = nameBefore(row, ti); found.push(w.path);
         });
       });
       return found;
@@ -1353,76 +1389,137 @@
           else { if (prev != null && k < prev) d0 += prev - k; if (nxt != null && k > nxt) d0 += k - nxt; }
           return (used(path) ? 1e7 : 0) + d0;
         };
-        var ws = words.split(/\s+/), part = null, best = null;
-        for (var m = ws.length; m >= Math.min(3, ws.length) && !best; m--) {
-          var found = matchAt(rows, letters(ws.slice(0, m).join(' ')));
-          if (found.length) { best = found.sort(function (a, b) { return score(a) - score(b); })[0]; if (m < ws.length) part = ws.slice(0, m).join(' '); }
+        var ws = words.split(/\s+/), part = null, best = null, near = false;
+        var pick = function (found) { return found.sort(function (a, b) { return (score(a) + (a.miss || 0) * 5000) - (score(b) + (b.miss || 0) * 5000); })[0]; };
+        var all = matchAt(rows, letters(words));
+        if (all.length) best = pick(all);
+        if (!best || score(best) >= 1e7) {      // not printed exactly as typed: the same words with a few letters different (a typo, goin' / going)
+          var fz = matchAt(rows, letters(words), true).filter(function (p) { return score(p) < 1e7; });
+          if (fz.length) { best = pick(fz); near = true; }
         }
-        return { best: best, part: part, taken: !!(best && score(best) >= 1e7) };
+        for (var m = ws.length - 1; m >= Math.min(3, ws.length) && !best; m--) {      // only the start of it is printed as typed
+          var found = matchAt(rows, letters(ws.slice(0, m).join(' ')));
+          if (found.length) { best = pick(found); part = ws.slice(0, m).join(' '); }
+        }
+        return { best: best, part: part, near: near, taken: !!(best && score(best) >= 1e7) };
       });
     }
-    var placeNote = function (r, n) { var pg = r.best ? T.Pages.printed(T.Pages.rawBoxes(lines[n])[0] ? T.Pages.rawBoxes(lines[n])[0].n : 0) : null; return r.part ? 'Found the start (“' + r.part + '”) on page ' + pg + '. Drag the end of its highlight to the last word.' : 'Found it on page ' + pg + '.'; };
+    var placeNote = function (r, n) {
+      var pg = r.best ? T.Pages.printed(T.Pages.rawBoxes(lines[n])[0] ? T.Pages.rawBoxes(lines[n])[0].n : 0) : null;
+      return r.pointed ? 'Placed where you pointed on page ' + pg + '.' : r.part ? 'Found the start (“' + r.part + '”) on page ' + pg + '. Drag the end of its highlight to the last word.' :
+        r.near ? 'Found words very close to those on page ' + pg + ' (“' + lines[n].text + '”).' : 'Found it on page ' + pg + '.';
+    };
+    var notFound = 'Those words were not found on this song’s pages. Tap 👆 Point to it on the music, and tap its first and last word.';
+    /* a new section from a place on the music (found or pointed to) */
+    function insertLine(at, words, spoke, r) {
+      snapshot();
+      var named = r.best && r.best.name && T.labelChars(r.best.name).length ? r.best.name : '';
+      var l = { who: named || (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
+      setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; });
+      if (r.part && words) l.text = ScriptParser.cleanLyric(words);
+      kindTo(l, spoke, words);
+      lines.splice(at + 1, 0, l); times.splice(at + 1, 0, null);
+      lines.forEach(function (x, k) { if (x.sync && k > at + 1 && k - x.sync <= at + 1) x.sync++; });      // pairs that reach across the new line still find their partner
+      edited = true; selSec = at + 1;
+      T.toast(placeNote(r, at + 1) + ' Added as line ' + (at + 2) + '. Check who sings it (✎), time it with 🎯 Fix, then Save.', 8000);
+      draw();
+    }
     function addMissing() {
       if (!(T.Pages && T.Pages.ready())) { T.toast('The script pages are not saved yet: import the script PDF first.', 5000); return; }
       var after = selSec != null ? selSec : fixAt != null ? fixAt : Math.max(-1, nextOpen() - 1), spoke = !!(lines[after] && lines[after].spoken);      // like the line before it, to start
-      var d = dialog('<h2>Add a missing line</h2><p class="muted">Type the words of the line the way they are printed under the notes. The app finds them on this song’s pages and adds them as a section, lit up on the music.</p>' +
+      var d = dialog('<h2>Add a missing line</h2><p class="muted">Type the words of the line the way they are printed. The app finds them on this song’s pages and adds them as a section, lit up on the music. Or point to it on the music.</p>' +
         '<label class="f">The words<textarea id="mw" style="min-height:80px" placeholder="e.g. Stick to the stuff you know"></textarea></label>' +
         '<div class="switch"><span>It is</span><div class="seg" id="mk"><button type="button" data-sp="0" aria-pressed="' + !spoke + '">🎵 Sung</button><button type="button" data-sp="1" aria-pressed="' + spoke + '">🗣 Spoken</button></div></div>' +
         '<label class="f">Where it goes<select id="ma"><option value="-1">At the start, before line 1</option>' + lines.map(function (l, i) { return '<option value="' + i + '"' + (i === after ? ' selected' : '') + '>After line ' + (i + 1) + ': ' + esc(String(l.text || '').slice(0, 40)) + '</option>'; }).join('') + '</select></label>' +
-        '<p class="err" id="mm"></p><div class="row end"><button class="btn quiet" id="mx">Cancel</button><button class="btn primary" id="mok">Find it and add it</button></div>');
+        '<p class="err" id="mm"></p><div class="row end"><button class="btn quiet" id="mx">Cancel</button><button class="btn" id="mpt">👆 Point to it on the music</button><button class="btn primary" id="mok">Find it and add it</button></div>');
       d.querySelector('#mx').onclick = function () { d.close(); };
       wireKind(d, '#mk', function (v) { spoke = v; });
+      d.querySelector('#mpt').onclick = function () {
+        var words = d.querySelector('#mw').value.trim(), at = +d.querySelector('#ma').value; d.close();
+        pointOnMusic('Add a line after line ' + (at + 1), function (path) { insertLine(at, words, spoke, { best: path, pointed: true }); });
+      };
       d.querySelector('#mok').onclick = function () {
         var words = d.querySelector('#mw').value.trim(), at = +d.querySelector('#ma').value, msg = d.querySelector('#mm'), btn = this;
-        if (letters(words).length < 2) { msg.textContent = 'Type the words of the line first.'; return; }
+        if (letters(words).length < 2) { msg.textContent = 'Type the words of the line first, or point to it on the music.'; return; }
         btn.disabled = true; msg.textContent = 'Looking on the pages…';
         findPlace(words, at, null).then(function (r) {
-          if (r.taken) { msg.textContent = r.part ? 'Only the start (“' + r.part + '”) is printed on the pages, and it is already a section. Check the spelling of the rest.' : 'Those words are already a section on the music (use 📍 to find it).'; btn.disabled = false; return; }
-          snapshot();
-          var named = r.best && r.best.name && T.labelChars(r.best.name).length ? r.best.name : '';
-          var l = { who: named || (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
-          if (r.best) { setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; }); if (r.part) l.text = ScriptParser.cleanLyric(words); }
-          else { l.text = ScriptParser.cleanLyric(words); l.syl = []; }
-          kindTo(l, spoke, words);
-          lines.splice(at + 1, 0, l); times.splice(at + 1, 0, null);
-          lines.forEach(function (x, k) { if (x.sync && k > at + 1 && k - x.sync <= at + 1) x.sync++; });      // pairs that reach across the new line still find their partner
-          edited = true; selSec = at + 1; d.close();
-          T.toast((r.best ? placeNote(r, at + 1) + ' Added as line ' + (at + 2) + '.' : 'Those words are not printed on this song’s pages as typed, so line ' + (at + 2) + ' was added without a place on the music. Check the spelling, or ↶ Undo and try fewer words.') + (r.best ? ' Check who sings it (✎), time it with 🎯 Fix, then Save.' : ''), 8000);
-          draw();
+          btn.disabled = false;
+          if (r.taken) { msg.textContent = r.part ? 'Only the start (“' + r.part + '”) was found, and it is already a section. Check the rest, or point to it on the music.' : 'Those words are already a section on the music (use 📍 to find it).'; return; }
+          if (!r.best) { msg.textContent = notFound; return; }
+          d.close(); insertLine(at, words, spoke, r);
         }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
       };
     }
     /* change a section's words (Colleen 2026-10-24: "the ability to edit a line that you found since you missed some words"): she types the
        whole line as it should be; the words are found again on the pages near where the section was, and the section takes their place on the
-       music (more words or fewer). Who sings it stays; its start stays and the syllables are shared out again. */
+       music (more words or fewer), or she points to it. Who sings it stays; its start stays and the syllables are shared out again. */
     function editWords(i) {
       var l = lines[i]; if (!l) return;
-      var d = dialog('<h2>The words of line ' + (i + 1) + '</h2><p class="muted">Type the whole line the way it is printed under the notes, with any words that were missed. The app finds them on the pages near where this line is and fits its highlight to them.</p>' +
+      var d = dialog('<h2>The words of line ' + (i + 1) + '</h2><p class="muted">Type the whole line the way it is printed, with any words that were missed. The app finds them on the pages near where this line is and fits its highlight to them. Or point to it on the music.</p>' +
         '<label class="f">The words<textarea id="ew" style="min-height:80px">' + esc(l.text || '') + '</textarea></label>' +
         '<div class="switch"><span>It is</span><div class="seg" id="ek"><button type="button" data-sp="0" aria-pressed="' + !l.spoken + '">🎵 Sung</button><button type="button" data-sp="1" aria-pressed="' + !!l.spoken + '">🗣 Spoken</button></div></div>' +
         '<label class="switch"><span>Only change the words shown in the list (leave the highlight as it is)</span><input type="checkbox" id="eonly"></label>' +
-        '<p class="err" id="em"></p><div class="row end"><button class="btn quiet" id="ex">Cancel</button><button class="btn primary" id="eok">Find them and change the line</button></div>');
+        '<p class="err" id="em"></p><div class="row end"><button class="btn quiet" id="ex">Cancel</button><button class="btn" id="ept">👆 Point to it on the music</button><button class="btn primary" id="eok">Find them and change the line</button></div>');
       d.querySelector('#ex').onclick = function () { d.close(); };
       var spoke = !!l.spoken; wireKind(d, '#ek', function (v) { spoke = v; });
+      var apply = function (words, r) {
+        snapshot();
+        setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; });
+        if (r.part && words) l.text = ScriptParser.cleanLyric(words);
+        kindTo(l, spoke, words);
+        var x = times[i]; if (x) x.s = Melody.sylTimes([], x.t, x.e, l.spoken ? 0 : l.syl.length);
+        edited = true; selSec = i;
+        T.toast(placeNote(r, i) + ' Line ' + (i + 1) + ' now covers those words. Check its time with Test, then Save.', 7000);
+        refreshAfter();
+      };
+      d.querySelector('#ept').onclick = function () { var words = d.querySelector('#ew').value.trim(); d.close(); pointOnMusic('Line ' + (i + 1), function (path) { apply(words !== l.text ? words : '', { best: path, pointed: true }); }); };
       d.querySelector('#eok').onclick = function () {
         var words = d.querySelector('#ew').value.trim(), msg = d.querySelector('#em'), btn = this;
         if (letters(words).length < 2) { msg.textContent = 'Type the words of the line.'; return; }
-        var retime = function (n) { var x = times[i]; if (x) x.s = Melody.sylTimes([], x.t, x.e, n); };
         if (d.querySelector('#eonly').checked || !(T.Pages && T.Pages.ready())) {
           snapshot(); l.text = ScriptParser.cleanLyric(words); kindTo(l, spoke, words); edited = true; d.close(); T.toast('Line ' + (i + 1) + ' changed. Save keeps it.'); refreshAfter(); return;
         }
         btn.disabled = true; msg.textContent = 'Looking on the pages…';
         findPlace(words, i - 1, i).then(function (r) {
-          if (!r.best) { msg.textContent = 'Those words are not printed on this song’s pages as typed. Check the spelling, or tick “Only change the words shown in the list”.'; btn.disabled = false; return; }
-          if (r.taken) { msg.textContent = 'Those words are already another section on the music. Join the two lines instead (on the music: tap the line, then Join).'; btn.disabled = false; return; }
-          snapshot();
-          setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; });
-          if (r.part) l.text = ScriptParser.cleanLyric(words);
-          kindTo(l, spoke, words); retime(l.spoken ? 0 : l.syl.length); edited = true; selSec = i; d.close();
-          T.toast(placeNote(r, i) + ' Line ' + (i + 1) + ' now covers those words. Check its time with Test, then Save.', 7000);
-          refreshAfter();
+          btn.disabled = false;
+          if (!r.best) { msg.textContent = notFound; return; }
+          if (r.taken) { msg.textContent = 'Those words are already another section on the music. Join the two lines instead (on the music: tap the line, then Join).'; return; }
+          d.close(); apply(words, r);
         }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
       };
+    }
+    /* point to it on the music (when typing does not find it): every printed word on the song's pages can be tapped; tap the line's first word,
+       then its last. A line on two rows takes the rest of the first row and the start of the last. */
+    function pointOnMusic(title, done) {
+      var box = document.createElement('div'); box.className = 'pick-music';
+      box.innerHTML = '<div class="pick-bar"><b>' + esc(title) + '</b><span class="grow" id="pkmsg">Loading the pages…</span><button class="btn small" id="pkx">Cancel</button></div><div class="pages" id="pkpages"></div>';
+      document.body.appendChild(box);
+      var host = box.querySelector('#pkpages'), close = function () { box.remove(); }, msg = function (t) { box.querySelector('#pkmsg').textContent = t; };
+      box.querySelector('#pkx').onclick = close;
+      T.cleanup.push(close);
+      Promise.all([T.Follow.mount(host, songId), songRows()]).then(function (r) {
+        var rows = r[1], first = null, pc = function (v, dd) { return (v / dd * 100) + '%'; };
+        msg('Tap the first word of the line.');
+        rows.forEach(function (row, ri) {
+          var page = host.querySelector('.pdfpage[data-n="' + row.n + '"]'); if (!page) return;
+          var sz = T.Pages.size(row.n);
+          row.toks.forEach(function (t, ti) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-tok'; b.title = t.t; b.setAttribute('aria-label', t.t);
+            b.style.cssText = 'left:' + pc(t.x - 1, sz.w) + ';top:' + pc(row.y, sz.h) + ';width:' + pc(Math.max(t.w, 5) + 2, sz.w) + ';height:' + pc(row.h, sz.h);
+            b.onclick = function () {
+              if (!first) { first = { ri: ri, ti: ti }; b.classList.add('on'); msg('Now tap the last word of the line (tap the same word for a one-word line).'); return; }
+              var a = first, z = { ri: ri, ti: ti };
+              if (z.ri < a.ri || (z.ri === a.ri && z.ti < a.ti)) { var tmp = a; a = z; z = tmp; }
+              var path = [], add = function (rr, k) { var x = rows[rr].toks[k]; path.push({ x: x.x, w: x.w, t: x.t, _o: { n: rows[rr].n, y: rows[rr].y, h: rows[rr].h } }); }, k;
+              if (a.ri === z.ri) for (k = a.ti; k <= z.ti; k++) add(a.ri, k);
+              else { for (k = a.ti; k < rows[a.ri].toks.length; k++) add(a.ri, k); for (k = 0; k <= z.ti; k++) add(z.ri, k); }
+              path.name = nameBefore(rows[a.ri], a.ti);
+              close(); done(path);
+            };
+            page.appendChild(b);
+          });
+        });
+      }).catch(function (e) { msg(e.message || 'The pages could not be read.'); });
     }
     /* sung or spoken (Colleen 2026-10-24: "when i add a line, i need to be able to specify if its spoken or sung"). A spoken line keeps its place
        on the page (its rows) but no syllables, like the spoken lines the script reader finds: it lights up whole, and the piano skips it. */
