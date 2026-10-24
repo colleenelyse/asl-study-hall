@@ -1329,7 +1329,10 @@
             if (want.indexOf(t.l) !== 0) break;
             path.push({ x: t.x, w: t.w, t: t.t, _o: { n: rows[r].n, y: rows[r].y, h: rows[r].h } }); want = want.slice(t.l.length); k++;
           }
-          if (!want && path.length) found.push(path);
+          if (!want && path.length) {      // a name printed in capitals just before the words (TROY: Sorry I'm late…): who says or sings it
+            var nm = []; for (var q = ti - 1; q >= 0 && /^[A-Z][A-Z.’']*$/.test(row.toks[q].t.replace(/[:.,]$/, '')); q--) nm.unshift(row.toks[q].t.replace(/[:.,]$/, ''));
+            path.name = nm.join(' '); found.push(path);
+          }
         });
       });
       return found;
@@ -1360,12 +1363,14 @@
     var placeNote = function (r, n) { var pg = r.best ? T.Pages.printed(T.Pages.rawBoxes(lines[n])[0] ? T.Pages.rawBoxes(lines[n])[0].n : 0) : null; return r.part ? 'Found the start (“' + r.part + '”) on page ' + pg + '. Drag the end of its highlight to the last word.' : 'Found it on page ' + pg + '.'; };
     function addMissing() {
       if (!(T.Pages && T.Pages.ready())) { T.toast('The script pages are not saved yet: import the script PDF first.', 5000); return; }
-      var after = selSec != null ? selSec : fixAt != null ? fixAt : Math.max(-1, nextOpen() - 1);
+      var after = selSec != null ? selSec : fixAt != null ? fixAt : Math.max(-1, nextOpen() - 1), spoke = !!(lines[after] && lines[after].spoken);      // like the line before it, to start
       var d = dialog('<h2>Add a missing line</h2><p class="muted">Type the words of the line the way they are printed under the notes. The app finds them on this song’s pages and adds them as a section, lit up on the music.</p>' +
         '<label class="f">The words<textarea id="mw" style="min-height:80px" placeholder="e.g. Stick to the stuff you know"></textarea></label>' +
+        '<div class="switch"><span>It is</span><div class="seg" id="mk"><button type="button" data-sp="0" aria-pressed="' + !spoke + '">🎵 Sung</button><button type="button" data-sp="1" aria-pressed="' + spoke + '">🗣 Spoken</button></div></div>' +
         '<label class="f">Where it goes<select id="ma"><option value="-1">At the start, before line 1</option>' + lines.map(function (l, i) { return '<option value="' + i + '"' + (i === after ? ' selected' : '') + '>After line ' + (i + 1) + ': ' + esc(String(l.text || '').slice(0, 40)) + '</option>'; }).join('') + '</select></label>' +
         '<p class="err" id="mm"></p><div class="row end"><button class="btn quiet" id="mx">Cancel</button><button class="btn primary" id="mok">Find it and add it</button></div>');
       d.querySelector('#mx').onclick = function () { d.close(); };
+      wireKind(d, '#mk', function (v) { spoke = v; });
       d.querySelector('#mok').onclick = function () {
         var words = d.querySelector('#mw').value.trim(), at = +d.querySelector('#ma').value, msg = d.querySelector('#mm'), btn = this;
         if (letters(words).length < 2) { msg.textContent = 'Type the words of the line first.'; return; }
@@ -1373,9 +1378,11 @@
         findPlace(words, at, null).then(function (r) {
           if (r.taken) { msg.textContent = r.part ? 'Only the start (“' + r.part + '”) is printed on the pages, and it is already a section. Check the spelling of the rest.' : 'Those words are already a section on the music (use 📍 to find it).'; btn.disabled = false; return; }
           snapshot();
-          var l = { who: (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
+          var named = r.best && r.best.name && T.labelChars(r.best.name).length ? r.best.name : '';
+          var l = { who: named || (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
           if (r.best) { setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; }); if (r.part) l.text = ScriptParser.cleanLyric(words); }
           else { l.text = ScriptParser.cleanLyric(words); l.syl = []; }
+          kindTo(l, spoke, words);
           lines.splice(at + 1, 0, l); times.splice(at + 1, 0, null);
           lines.forEach(function (x, k) { if (x.sync && k > at + 1 && k - x.sync <= at + 1) x.sync++; });      // pairs that reach across the new line still find their partner
           edited = true; selSec = at + 1; d.close();
@@ -1391,15 +1398,17 @@
       var l = lines[i]; if (!l) return;
       var d = dialog('<h2>The words of line ' + (i + 1) + '</h2><p class="muted">Type the whole line the way it is printed under the notes, with any words that were missed. The app finds them on the pages near where this line is and fits its highlight to them.</p>' +
         '<label class="f">The words<textarea id="ew" style="min-height:80px">' + esc(l.text || '') + '</textarea></label>' +
+        '<div class="switch"><span>It is</span><div class="seg" id="ek"><button type="button" data-sp="0" aria-pressed="' + !l.spoken + '">🎵 Sung</button><button type="button" data-sp="1" aria-pressed="' + !!l.spoken + '">🗣 Spoken</button></div></div>' +
         '<label class="switch"><span>Only change the words shown in the list (leave the highlight as it is)</span><input type="checkbox" id="eonly"></label>' +
         '<p class="err" id="em"></p><div class="row end"><button class="btn quiet" id="ex">Cancel</button><button class="btn primary" id="eok">Find them and change the line</button></div>');
       d.querySelector('#ex').onclick = function () { d.close(); };
+      var spoke = !!l.spoken; wireKind(d, '#ek', function (v) { spoke = v; });
       d.querySelector('#eok').onclick = function () {
         var words = d.querySelector('#ew').value.trim(), msg = d.querySelector('#em'), btn = this;
         if (letters(words).length < 2) { msg.textContent = 'Type the words of the line.'; return; }
         var retime = function (n) { var x = times[i]; if (x) x.s = Melody.sylTimes([], x.t, x.e, n); };
         if (d.querySelector('#eonly').checked || !(T.Pages && T.Pages.ready())) {
-          snapshot(); l.text = ScriptParser.cleanLyric(words); edited = true; d.close(); T.toast('Line ' + (i + 1) + ' changed. Save keeps it.'); refreshAfter(); return;
+          snapshot(); l.text = ScriptParser.cleanLyric(words); kindTo(l, spoke, words); edited = true; d.close(); T.toast('Line ' + (i + 1) + ' changed. Save keeps it.'); refreshAfter(); return;
         }
         btn.disabled = true; msg.textContent = 'Looking on the pages…';
         findPlace(words, i - 1, i).then(function (r) {
@@ -1408,11 +1417,18 @@
           snapshot();
           setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; });
           if (r.part) l.text = ScriptParser.cleanLyric(words);
-          retime(l.syl.length); edited = true; selSec = i; d.close();
+          kindTo(l, spoke, words); retime(l.spoken ? 0 : l.syl.length); edited = true; selSec = i; d.close();
           T.toast(placeNote(r, i) + ' Line ' + (i + 1) + ' now covers those words. Check its time with Test, then Save.', 7000);
           refreshAfter();
         }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
       };
+    }
+    /* sung or spoken (Colleen 2026-10-24: "when i add a line, i need to be able to specify if its spoken or sung"). A spoken line keeps its place
+       on the page (its rows) but no syllables, like the spoken lines the script reader finds: it lights up whole, and the piano skips it. */
+    function wireKind(d, sel, set) { d.querySelectorAll(sel + ' [data-sp]').forEach(function (b) { b.onclick = function () { set(b.dataset.sp === '1'); d.querySelectorAll(sel + ' [data-sp]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }; }); }
+    function kindTo(l, spoken, words) {
+      if (spoken) { l.spoken = true; if (l.syl && l.syl.length) { var bs = T.Pages.rawBoxes(l); if (bs.length) { l.box = bs[0]; if (bs.length > 1) l.boxes = bs; } } l.syl = []; l.text = String(words || l.text).replace(/\s+/g, ' ').trim(); }
+      else delete l.spoken;
     }
     function refreshAfter() { if (view === 'sections') { overlay(); secBar(); } else draw(); }
     function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners
