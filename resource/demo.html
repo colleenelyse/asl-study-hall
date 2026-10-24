@@ -115,6 +115,7 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .stile.open { border: 2px solid var(--brand); }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
+.basehint { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--brand-soft); color: var(--ink); font-size: 13px; }
 .codebanner { border: 2px solid var(--up); background: var(--up-soft); font-size: 17px; }
 .acode { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 1.1em; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; letter-spacing: .04em; }
 .tcrow { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; align-items: center; }
@@ -429,7 +430,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.91';
+var VERSION = '1.96';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -478,7 +479,7 @@ var TABS = {
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
   // the grade each student wants to finish the semester with, per class; and what each class said the final exam will be like
   'Grade goals': ['Email', 'Semester', 'Class', 'Goal (%)', 'Updated', 'Reason for the change'],
-  'Final exams': ['Email', 'Semester', 'Class', 'Exam date', 'What it will look like', 'Updated', 'Accommodations I plan to use'],
+  'Final exams': ['Email', 'Semester', 'Class', 'Exam date', 'What it will look like', 'Updated', 'Accommodations I plan to use', 'Extended time: when', 'Alternate setting: where', 'Test style (Paper, Chromebook or Not sure yet)'],
   // the school's final exam schedule (change it each semester): which period's final is when
   'Final exam schedule': ['Date', 'Start', 'End', 'Period (or Make-up)'],
   // the school year (change it each year): days with no school, finals days, and the first and last day; the grade check day moves around them
@@ -3409,18 +3410,25 @@ function goalHist_(email) {
 }
 // Student: what a class said the final exam will look like (and when). Blank text and date removes it.
 // accoms: the accommodations they plan to use on this final (from their list). All blank removes it.
-function api_saveFinal(cls, date, text, accoms) {
+// x (1.92): { when, where } for extended time (which final exam period) and an alternate setting (where); left out = keep what was saved
+var FIN_EXT = /extended|extra time/i, FIN_ALT = /alternat|separate setting|location/i;
+function api_saveFinal(cls, date, text, accoms, x) {
   var email = need_(), sem = semStart_(); cls = clean_(cls, 60); text = clean_(text, 1500);
   date = /^\d{4}-\d\d-\d\d$/.test(String(date)) ? date : '';
-  var acc = (accoms || []).slice(0, 10).map(function (a) { return clean_(a, 60); }).filter(String).join('; ');
+  var list = (accoms || []).slice(0, 10).map(function (a) { return clean_(a, 60); }).filter(String), acc = list.join('; ');
   return locked_(function () {
-    rewrite_('Final exams', function (r) { return !(low_(r[0]) === email && day_(r[1]) === sem && String(r[2]) === cls); }, text || date || acc ? [[email, sem, cls, date, text, stamp_(), acc]] : []);
+    var old = rows_('Final exams').filter(function (r) { return low_(r[0]) === email && day_(r[1]) === sem && String(r[2]) === cls; })[0] || [];
+    var when = x && x.when !== undefined ? clean_(x.when, 120) : String(old[7] || ''), where = x && x.where !== undefined ? clean_(x.where, 120) : String(old[8] || '');
+    var style = x && x.style !== undefined ? (/^(Paper|Chromebook|Not sure yet)$/.test(String(x.style)) ? String(x.style) : '') : String(old[9] || '');
+    if (!list.some(function (a) { return FIN_EXT.test(a); })) when = '';          // only with extended time / an alternate setting chosen
+    if (!list.some(function (a) { return FIN_ALT.test(a); })) where = '';
+    rewrite_('Final exams', function (r) { return !(low_(r[0]) === email && day_(r[1]) === sem && String(r[2]) === cls); }, text || date || acc || style ? [[email, sem, cls, date, text, stamp_(), acc, when, where, style]] : []);
     return finals_(email);
   });
 }
 function finals_(email) {
   var sem = semStart_(), o = {};
-  rows_('Final exams').forEach(function (r) { if (low_(r[0]) === email && day_(r[1]) === sem) o[String(r[2])] = { date: day_(r[3]), text: String(r[4] || ''), updated: String(r[5] || ''), accoms: String(r[6] || '').split('; ').filter(String) }; });
+  rows_('Final exams').forEach(function (r) { if (low_(r[0]) === email && day_(r[1]) === sem) o[String(r[2])] = { date: day_(r[3]), text: String(r[4] || ''), updated: String(r[5] || ''), accoms: String(r[6] || '').split('; ').filter(String), when: String(r[7] || ''), where: String(r[8] || ''), style: String(r[9] || '') }; });
   return o;
 }
 // Teacher: every student's final with accommodations planned, in exam order (for testing rooms and extended time).
@@ -3430,7 +3438,7 @@ function finalsAccoms_(names) {
   rows_('Final exams').forEach(function (r) {
     if (day_(r[1]) !== sem || !String(r[6] || '')) return;
     var e = low_(r[0]), cls = String(r[2]), p = per[e + '|' + cls] || '', slot = finalSlot_(p, sched);
-    out.push({ email: e, name: names[e] || e, cls: cls, period: p, date: (slot && slot.date) || day_(r[3]), start: slot ? slot.start : '', end: slot ? slot.end : '', accoms: String(r[6]).split('; ').filter(String) });
+    out.push({ email: e, name: names[e] || e, cls: cls, period: p, date: (slot && slot.date) || day_(r[3]), start: slot ? slot.start : '', end: slot ? slot.end : '', accoms: String(r[6]).split('; ').filter(String), when: String(r[7] || ''), where: String(r[8] || ''), style: String(r[9] || '') });
   });
   return out.sort(function (a, b) { return (a.date || '9') + a.start < (b.date || '9') + b.start ? -1 : 1; });
 }
@@ -3943,8 +3951,8 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     g.setUser('ort123456@d204.lths.net');
     api_saveDayPlan('Finish the Ch. 6 worksheet for US History, then make flashcards for Thursday’s test');
     api_saveGradeGoals({ 'US History': 70, 'Algebra 2': 80, Biology: 80, 'Spanish 2': 90 });
-    api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting']);
-    api_saveFinal('Algebra 2', '', '', ['Formula card']);
+    api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting'], { when: 'Thursday, Dec 17 · 11:25am–1:05pm · Period 5', where: 'Testing Center', style: 'Paper' });
+    api_saveFinal('Algebra 2', '', '', ['Formula card'], { style: 'Chromebook' });
     g.setUser('smi513421@d204.lths.net');
     api_saveDayPlan('Study for the Geometry Unit 3 test');
     api_saveGradeGoals({ 'Geometry Prep': 80, Chemistry: 90, 'English II': 85 });
@@ -3957,6 +3965,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     api_saveBenchmark('ort123456@d204.lths.net', { text: 'By December, Marcus will start work within 1 minute in 4 of 5 trials, have 2 or fewer missing assignments, and turn in 80% of coursework.', targets: t1, by: addDays_(today, 50) });
     api_flagDayPlan('wil501777@d204.lths.net', addDays_(today, -1), true, 'On his phone most of the period');
   }
+  if (/demo=1/.test(location.search)) { g.setUser('smi513421@d204.lths.net'); api_saveFinal('Chemistry', '', '', ['Extended time', 'Reader'], { when: 'Friday, Dec 18 · 11:30am–1:00pm · Make-up', style: 'Chromebook' }); api_saveFinal('Geometry Prep', '', '', ['Alternate setting'], { where: 'Resource room', style: 'Paper' }); }
   if (/demo=1/.test(location.search)) {          // tests with the resource teacher: a request, a released access code, a paper test
     g.setUser('wil501777@d204.lths.net'); var dc = api_myData().classes.filter(function (c) { return !c.resource; })[0]; if (dc) api_testRequest('folder', dc.name, 'Chapter 5 quiz');
     g.setUser('ray@d204.lths.net');
@@ -4919,8 +4928,40 @@ function finalsCard() {
         '<button class="btn small" onclick="FIN_EDIT=' + x.k + ';drawCheckin()">' + (f.text ? 'Edit notes' : '+ What I was told') + '</button></div>' +
         (f.text ? '<p style="margin:6px 0 0;white-space:pre-wrap">' + esc(f.text) + '</p>' : '') +
         (accs.length ? '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline">I plan to use:</span>' + accs.map(function (a, ai) {
-          var on = f.accoms.indexOf(a) >= 0; return '<button class="btn small' + (on ? ' primary' : '') + '" onclick="finAcc(' + x.k + ',' + ai + ')">' + (on ? '✓ ' : '') + esc(a) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+          var on = f.accoms.indexOf(a) >= 0; return '<button class="btn small' + (on ? ' primary' : '') + '" onclick="finAcc(' + x.k + ',' + ai + ')">' + (on ? '✓ ' : '') + esc(a) + '</button>'; }).join('') + '</div>' : '') + finExtras(x.k, f) + '</div>';
     }).join('') + '</div>';
+}
+// 1.92: extended time asks WHEN (the final exam periods), an alternate setting asks WHERE
+var FIN_EXT = /extended|extra time/i, FIN_ALT = /alternat|separate setting|location/i, FIN_WHERE = ['Testing Center', 'Resource room', 'Library'];
+// "Wednesday, Dec 16 · 7:45am–9:25am · Period 2", in the order they're held (by day, then start time)
+function clockMin(t) { var m = /(\d{1,2}):?(\d{2})?\s*(am|pm)?/i.exec(String(t || '')); if (!m) return 9999; var h = +m[1] % 12, ap = (m[3] || '').toLowerCase(); if (ap === 'pm' || (!ap && h < 6)) h += 12; return h * 60 + (+m[2] || 0); }
+function finWhenText(s) {
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], d = utc(s.date);
+  return days[d.getUTCDay()] + ', ' + mons[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' · ' + s.start + '–' + s.end + ' · ' + (/^\d/.test(s.period) ? 'Period ' + s.period : s.period);
+}
+// the final exam slots of this student's BASE/ARC periods (set aside for accommodations like extended time) (1.94)
+function finMine() { var per = resPeriods().map(function (p) { return String(parseInt(p, 10)); }); return (B.finalSched || []).filter(function (s) { return per.indexOf(s.period) >= 0; }); }
+function finWhenOpts() {
+  return (B.finalSched || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : clockMin(a.start) - clockMin(b.start); }).map(finWhenText)
+    .concat(['Right after the exam, the same day', 'Not sure yet']);
+}
+function finExtras(k, f) {
+  var h = '';
+  if (f.accoms.length) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>✏️ How will you take it?</b></span>' +
+    [['Paper', '📄 Paper'], ['Chromebook', '💻 Chromebook'], ['Not sure yet', '🤷 I don’t know yet']].map(function (o) { return '<button class="btn small' + (f.style === o[0] ? ' primary' : '') + '" onclick="finExtra(' + k + ',\'style\',\'' + (f.style === o[0] ? '' : o[0]) + '\')">' + o[1] + '</button>'; }).join('') + '</div>';
+  var mine = finMine().map(finWhenText), dc = esc(B.dayClass || 'resource');
+  if (f.accoms.some(function (a) { return FIN_EXT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>⏱️ When will you use your extra time?</b></span><select style="max-width:420px" onchange="finExtra(' + k + ',\'when\',this.value)"><option value="">Pick a time</option>' +
+    finWhenOpts().map(function (o) { var my = mine.indexOf(o) >= 0; return '<option value="' + esc(o) + '"' + (o === f.when ? ' selected' : '') + '>' + (my ? '⭐ ' : '') + esc(o) + (my ? ' (your ' + dc + ' time)' : '') + '</option>'; }).join('') + (f.when && finWhenOpts().indexOf(f.when) < 0 ? '<option selected>' + esc(f.when) + '</option>' : '') + '</select></div>' +
+    (finMine().length ? '<div class="basehint">⭐ <b>Your ' + dc + ' final period ' + (finMine().length > 1 ? 'times are ' : 'is ') + finMine().map(function (s) { var t = finWhenText(s).split(' · '); return t[0] + ', ' + t[1] + ' (' + t[2] + ')'; }).join(' and ') + '.</b> ' + dc + ' is set aside for accommodations like extended time.</div>' : '');
+  if (f.accoms.some(function (a) { return FIN_ALT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>📍 Where?</b></span>' +
+    FIN_WHERE.map(function (w) { return '<button class="btn small' + (f.where === w ? ' primary' : '') + '" onclick="finExtra(' + k + ',\'where\',\'' + w + '\')">' + w + '</button>'; }).join('') +
+    '<input type="text" maxlength="120" style="max-width:220px" placeholder="Or type where" value="' + esc(FIN_WHERE.indexOf(f.where) < 0 ? f.where || '' : '') + '" onchange="finExtra(' + k + ',\'where\',this.value.trim())"></div>';
+  return h;
+}
+function finExtra(k, field, v) {
+  var c = graded()[k], f = (D.finals || {})[c.name] || { date: '', text: '', accoms: [] }, x = { when: f.when || '', where: f.where || '', style: f.style || '' };
+  x[field] = v; f[field] = v; D.finals[c.name] = f; drawCheckin();
+  call('api_saveFinal', c.name, f.date, f.text, f.accoms, x).then(function (r) { D.finals = r; toast('Saved'); }).catch(oops);
 }
 function finSave(k) {
   var c = graded()[k], f = (D.finals || {})[c.name] || { accoms: [] };
@@ -6127,12 +6168,53 @@ function drawUpcoming() {
   }).join('') + '</tbody></table>' : '<div class="empty">No tests listed for the next two weeks.</div>';
   h += '</div>';
   var fa = TD.finalsAccoms || [];
-  if (fa.length) h += '<h2 style="margin-top:20px">Finals: accommodations students plan to use</h2><p class="sub">From each student’s Finals planner, in exam order. Use it to set up testing rooms and extended time.</p><div class="card"><table><thead><tr><th>When</th><th>Student</th><th>Class</th><th>Accommodations</th></tr></thead><tbody>' + fa.map(function (x) {
-    return '<tr class="click" onclick="openStudent(\'' + esc(x.email) + '\')"><td>' + (x.date ? fmtDay(x.date) : '—') + (x.start ? '<small>' + esc(x.start + '–' + x.end) + (x.period ? ' · period ' + esc(x.period) : '') + '</small>' : '') + '</td><td><div class="person">' + avatar(x.email, x.name) + '<b>' + esc(x.name) + '</b></div></td><td>' + esc(x.cls) + '</td><td>' + esc(x.accoms.join(', ')) + '</td></tr>';
-  }).join('') + '</tbody></table></div>';
+  if (fa.length) h += '<div class="row" style="margin-top:20px"><h2 class="grow" style="margin:0">Finals: accommodations students plan to use</h2><div class="seg">' + [['period', 'By period'], ['time', 'By exam time'], ['student', 'By student']].map(function (o) { return '<button class="' + (FA_BY === o[0] ? 'on' : '') + '" onclick="FA_BY=\'' + o[0] + '\';drawUpcoming()">' + o[1] + '</button>'; }).join('') + '</div><button class="btn small" onclick="faPrint()">🖨️ Print this list</button></div>' +
+    '<p class="sub">From each student’s Finals planner. When they’ll use extended time, where for an alternate setting, and paper or Chromebook.</p>' + (FA_BY === 'period' ? faPeriods(fa, true) : '<div class="card">' + faTable(fa, true) + '</div>');
   $('main').innerHTML = h;
 }
 
+// the compiled finals accommodations list: by exam time (setting up rooms) or by student; printable (1.92)
+var FA_BY = 'period';
+function faRows(fa) { var l = fa.slice(); if (FA_BY === 'student') l.sort(function (a, b) { return a.name.localeCompare(b.name) || ((a.date || '9') + a.start < (b.date || '9') + b.start ? -1 : 1); }); return l; }
+function faTable(fa, click) {
+  return '<table><thead><tr>' + (FA_BY === 'student' ? '<th>Student</th><th>Final</th>' : '<th>Final</th><th>Student</th>') + '<th>Class</th><th>Accommodations</th><th>Extended time: when</th><th>Alternate setting: where</th><th>Test style</th></tr></thead><tbody>' + faRows(fa).map(function (x) {
+    var fin = (x.date ? fmtDay(x.date) : '—') + (x.start ? '<small>' + esc(x.start + '–' + x.end) + (x.period ? ' · period ' + esc(x.period) : '') + '</small>' : '');
+    var who = click ? '<div class="person">' + avatar(x.email, x.name) + '<b>' + esc(x.name) + '</b></div>' : '<b>' + esc(x.name) + '</b>';
+    return '<tr' + (click ? ' class="click" onclick="openStudent(\'' + esc(x.email) + '\')"' : '') + '>' + (FA_BY === 'student' ? '<td>' + who + '</td><td>' + fin + '</td>' : '<td>' + fin + '</td><td>' + who + '</td>') +
+      '<td>' + esc(x.cls) + '</td><td>' + esc(x.accoms.join(', ')) + '</td><td>' + (x.when ? esc(x.when) : x.accoms.some(function (a) { return FIN_EXT.test(a); }) ? '<span class="small" style="color:var(--warn)">not picked yet</span>' : '') + '</td><td>' + (x.where ? esc(x.where) : x.accoms.some(function (a) { return FIN_ALT.test(a); }) ? '<span class="small" style="color:var(--warn)">not picked yet</span>' : '') + '</td><td>' + faStyle(x) + '</td></tr>';
+  }).join('') + '</tbody></table>';
+}
+var FA_STYLE = { Paper: '📄 Paper', Chromebook: '💻 Chromebook', 'Not sure yet': '❓ Doesn’t know yet' };
+function faStyle(x) { return FA_STYLE[x.style] || '<span class="small" style="color:var(--warn)">not picked yet</span>'; }
+// By period (1.95): each final exam period in time order, with every accommodation to plan for in it: the students whose final it is,
+// and students using extended time in that period for another final. Totals at the top of each period.
+function faPeriods(fa, click) {
+  var slots = (B.finalSched || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : clockMin(a.start) - clockMin(b.start); });
+  var other = [], blocks = slots.map(function (sl) {
+    var t = finWhenText(sl), here = fa.filter(function (x) { return x.date === sl.date && x.start === sl.start; }).map(function (x) { return { x: x, extra: false }; });
+    fa.forEach(function (x) { if (x.when === t && !(x.date === sl.date && x.start === sl.start)) here.push({ x: x, extra: true }); });
+    return { sl: sl, t: t, rows: here };
+  });
+  fa.forEach(function (x) { if (!slots.some(function (sl) { return x.date === sl.date && x.start === sl.start; })) other.push({ x: x, extra: false }); });
+  if (other.length) blocks.push({ sl: null, t: 'Day or time not on the Final exam schedule', rows: other });
+  var row = function (r) {
+    var x = r.x, acc = r.extra ? ['Extended time'] : x.accoms.slice();
+    var accTxt = acc.map(function (a) { return esc(a) + (FIN_ALT.test(a) && x.where ? ' (' + esc(x.where) + ')' : '') + (!r.extra && FIN_EXT.test(a) && x.when ? ' <span class="small" style="display:inline">→ ' + esc(x.when.split(' · ').slice(0, 2).join(' ')) + '</span>' : ''); }).join(', ');
+    var who = click ? '<a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a>' : '<b>' + esc(x.name) + '</b>';
+    return '<tr><td>' + who + '</td><td>' + esc(x.cls) + (r.extra ? '<small>extra time for their ' + (x.period ? 'Period ' + esc(x.period) : '') + ' final</small>' : '') + '</td><td>' + accTxt + '</td><td>' + faStyle(x) + '</td></tr>';
+  };
+  return blocks.filter(function (b) { return b.rows.length; }).map(function (b) {
+    var tally = {}; b.rows.forEach(function (r) { (r.extra ? ['Extended time'] : r.x.accoms).forEach(function (a) { tally[a] = (tally[a] || 0) + 1; }); if (FA_STYLE[r.x.style]) tally[FA_STYLE[r.x.style]] = (tally[FA_STYLE[r.x.style]] || 0) + 1; });
+    return '<div class="card faslot"><div class="row" style="align-items:baseline"><h3 class="grow" style="margin:0">' + esc(b.t) + '</h3><span class="small">' + b.rows.length + ' student' + (b.rows.length === 1 ? '' : 's') + '</span></div>' +
+      '<div class="chips" style="margin:6px 0 8px">' + Object.keys(tally).map(function (k) { return '<span class="chip">' + esc(k) + ' <b>' + tally[k] + '</b></span>'; }).join('') + '</div>' +
+      '<table><thead><tr><th>Student</th><th>Class</th><th>Accommodations</th><th>Test style</th></tr></thead><tbody>' + b.rows.map(row).join('') + '</tbody></table></div>';
+  }).join('');
+}
+function faPrint() {
+  var w = printOpen();
+  printShow(w, '<h2 style="margin:0 0 4px">Final exams: accommodations students plan to use</h2><p style="margin:0 0 12px;color:#5b6476;font-size:13px">' + (FA_BY === 'student' ? 'By student' : FA_BY === 'period' ? 'By period' : 'By exam time') + ' · printed ' + fmtDay(B.today) + '</p>' +
+    '<style>table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #d9dee8;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f1f4fa}small{display:block;color:#5b6476}.faslot{break-inside:avoid;margin:0 0 18px}.faslot h3{font-size:15px;margin:0 0 4px}.chip{display:inline-block;border:1px solid #d9dee8;border-radius:12px;padding:1px 8px;margin:0 4px 4px 0;font-size:12px}.row{display:flex;gap:8px}.grow{flex:1}</style>' + (FA_BY === 'period' ? faPeriods(TD.finalsAccoms || [], false) : faTable(TD.finalsAccoms || [], false)), 'Finals accommodations');
+}
 /* ---------- teacher: the app's Settings page (each teacher decides what students do and see) ---------- */
 var SETS = null, SET_CHG = {};
 var SET_LABELS = {
