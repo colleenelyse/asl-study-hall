@@ -149,7 +149,8 @@
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
-      t('#/teacher/react', 'star', 'React to That!', '50 warmup prompts') +
+      t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +
+      t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
       t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings') +
       t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +
@@ -1562,8 +1563,9 @@
   function withVault(change) {      // change the list and seal it again (saved with the next save)
     return openVault().then(function (V) { change(V); return Store.sealVault(T.tpw, V); }).then(function (v) { T.show.vault = v; });
   }
+  T.openVault = openVault; T.withVault = withVault;      // volunteers.js keeps families' contacts here
   var PRESETS = {
-    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script', 'photos'], fullCal: true, teach: [] },
+    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script', 'photos', 'help'], fullCal: true, teach: [] },
     helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print', 'shop', 'photos'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
     student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
