@@ -207,7 +207,7 @@
     var cfg = T.show.eleven = T.show.eleven || { voices: {}, model: 'eleven_v3', ok: false }, key = T.ls('xiKey') || '';
     var people = {}; (T.show.cast || []).forEach(function (a) { people[a.id] = a.name; });
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
-    var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voicesFor(l.it, cfg.voices).length; }), chars2 = need.reduce(function (a, l) { return a + T.pronounce(LineCheck.spoken(l.it.text)).length * voicesFor(l.it, cfg.voices).length; }, 0);
+    var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voicesFor(l.it, cfg.voices).length; }), chars2 = need.reduce(function (a, l) { return a + cost(l, cfg); }, 0);
     app.innerHTML = (msg ? '<p class="card">' + esc(msg) + '</p>' : '') +
       '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by Company members · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
       '<p class="muted small">Company members rehearse with a castmate’s recording first, then ElevenLabs, then the device voice. Company members record in Practice Lines › a scene › Record my lines.</p></div>' +
@@ -222,8 +222,8 @@
       '<label class="f">Your ElevenLabs API key <span class="muted small">(kept on this computer only)</span><input id="xk" type="password" autocomplete="off" value="' + esc(key) + '" placeholder="From elevenlabs.io › your profile › API keys"></label>' +
       '<div class="row"><button class="btn" id="lv"' + (key ? '' : ' disabled') + '>Load my voices</button><label class="f" style="margin:0">Quality<select id="md">' + MODELS.map(function (m) { return '<option value="' + m[0] + '"' + (cfg.model === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></label></div>' +
       '<div id="vmap"></div>' +
-      '<p style="margin-top:12px">' + need.length + ' lines still to make, about <b>' + chars2.toLocaleString() + ' characters</b>' + (cfg.model === 'eleven_flash_v2_5' ? ' (about ' + Math.round(chars2 / 2).toLocaleString() + ' credits)' : ' (about the same number of credits)') + '.</p>' +
-      '<div class="row"><button class="btn primary" id="mk"' + (cfg.ok && key && need.length ? '' : ' disabled') + '>Make the missing lines</button><span class="muted small" id="mkst"></span></div>' +
+      '<p style="margin-top:12px">' + need.length + ' lines still to make, about <b>' + chars2.toLocaleString() + ' credits</b> if every one were made (tone notes included). The next step checks everything before anything is spent.</p>' +
+      '<div class="row"><button class="btn primary" id="mk"' + (cfg.ok && key && need.length ? '' : ' disabled') + '>Check, then make lines…</button><span class="muted small" id="mkst"></span></div>' +
       '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never Company members’ names.</p></div>' + toneCard(lines, index, cfg);
     var $ = function (id) { return document.getElementById(id); };
     $('chk').onchange = function (e) { Store.setVoiceCheck(T.proof, e.target.checked).then(function () { T.toast(e.target.checked ? 'New recordings wait for your OK' : 'New recordings go live at once'); }); };
@@ -250,18 +250,7 @@
           else showMap(vs);
         }).catch(function (e) { T.toast(e.message, 5000); });
     };
-    $('mk').onclick = function () {
-      if (!confirm('Make ' + need.length + ' lines with ElevenLabs (about ' + chars2.toLocaleString() + ' characters)?')) return;
-      var st = $('mkst'), done = 0, stop = false, btn = this; btn.disabled = true; btn.textContent = 'Making…';
-      st.innerHTML = '<button class="btn small quiet" id="halt">Stop</button>'; $('halt').onclick = function () { stop = true; };
-      need.reduce(function (p, l) {
-        return p.then(function () {
-          if (stop) return;
-          return makeLine(l, cfg)
-            .then(function () { done++; st.firstChild && (st.lastChild.textContent = ''); st.insertAdjacentText('beforeend', ' ' + done + ' of ' + need.length); });
-        });
-      }, Promise.resolve()).then(function () { T.teacherPages.voices(); T.toast(done + ' lines made'); }).catch(function (e) { T.toast(e.message, 6000); T.teacherPages.voices(); });
-    };
+    $('mk').onclick = function () { preflight(lines, index, cfg, function () { T.teacherPages.voices(); }); };
     /* the tone of each line: check it, change it, make that line again */
     var tsel = $('tch'); if (tsel) tsel.onchange = function () { toneChar = tsel.value; page(index, pending); setTimeout(function () { var c = $('tonecard'); if (c) c.scrollIntoView(); }, 0); };
     var again = function (msg) { var y = window.scrollY; page(index, pending); window.scrollTo(0, y); if (msg) T.toast(msg, 6000); };
@@ -332,8 +321,11 @@
     if (key && Object.keys(cfg.voices).length) $('lv').click();
   }
   /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
+  /* exactly what is sent for a line, and what it costs (one credit a character, for each voice) */
+  function sentText(l, cfg) { var tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), levelOf(l.h)) : ''; return (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l)); }
+  function cost(l, cfg) { var n = sentText(l, cfg).length * Math.max(1, voicesFor(l.it, cfg.voices).length); return cfg.model === 'eleven_flash_v2_5' ? Math.ceil(n / 2) : n; }
   function makeLine(l, cfg) {
-    var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), lvl) : '', text = (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l));
+    var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), text = sentText(l, cfg);
     var settings = cfg.model === 'eleven_v3' ? { stability: lvl >= 4 ? 0 : lvl <= 2 ? 1 : 0.5 } : undefined;
     var say = function (vid) {
       return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
@@ -372,6 +364,110 @@
   V.withLevel = withLevel;
   var myTones = function () { return (T.show.toneWords || []).slice(); };      // the teacher's own tone words (Add your own)
   V.TONES = TONES;
+  /* ---------- checks before a run (Colleen 2026-10-24: "make sure that I don't run a whole bunch of lines with incorrect tones and waste a
+     lot of credits … several checks before I execute a big project") ----------
+     1. She picks what to make: one character, one scene, or everything still missing.
+     2. Lines whose tone she has not checked, and lines whose words look wrong, are left out unless she ticks them in.
+     3. The cost, her credits left (when her key may read them) and what is left after; a run that costs more than she has cannot start.
+     4. A run starts with a few test lines (different characters and tones) and stops so she can listen; then it stops again after every
+        batch. She can stop at any stop; nothing more is spent.
+     5. A big run (over 2,000 credits) needs her to tick that she listened to test lines and they sound right. */
+  function suspect(l) {      // words the script reader may have garbled: odd symbols, music words, a cut-off ending, too short, sung capitals
+    if (fixes()[l.h] != null) return '';
+    var w = LineCheck.spoken(l.it.text), letters = w.replace(/[^A-Za-z0-9]/g, '');
+    if (/[<>{}|\\^~=_*#Ïï¨]/.test(w)) return 'odd symbols';
+    if (/\b(a tempo|rit\.|rall\.|cresc\.|segue|vamp|underscore|fermata|colla voce)\b/i.test(w)) return 'music words in it';
+    if (letters.length < 3 && !/^(no|oh|ok|me|hi|so|uh)$/i.test(letters)) return 'very short';
+    if (letters.length > 12 && letters === letters.toUpperCase()) return 'sung words in capitals';
+    if (/[A-Za-z]$/.test(w.trim())) return 'may be cut off';
+    return '';
+  }
+  function credits() {
+    return fetch('https://' + 'api.elevenlabs.io/v1/user/subscription', { headers: { 'xi-api-key': T.ls('xiKey') } })
+      .then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { return d && d.character_limit != null ? { left: d.character_limit - d.character_count, limit: d.character_limit } : null; }).catch(function () { return null; });
+  }
+  function preflight(lines, index, cfg, after) {
+    var todo = lines.filter(function (l) { return !made(l, index) && voicesFor(l.it, cfg.voices).length; });
+    var chars = T.O().characters.filter(function (c) { return todo.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
+    var scenes = T.O().scenes.filter(function (sc) { return todo.some(function (l) { return l.scene === sc; }); });
+    var noVoice = lines.filter(function (l) { return !made(l, index) && !voicesFor(l.it, cfg.voices).length; }).length;
+    var acct = null, d = document.createElement('dialog'); d.className = 'tone-dlg';
+    d.innerHTML = '<h2>Before making lines</h2><p class="muted">Nothing is spent until you tap Start. A run stops after a few test lines so you can listen, then after every batch.</p>' +
+      '<div class="row"><label class="f grow">Whose lines<select id="pfc"><option value="">Everyone</option>' + chars.map(function (c) { return '<option value="' + c.id + '"' + (c.id === toneChar ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f grow">Which scene<select id="pfs"><option value="">Every scene</option>' + scenes.map(function (sc) { return '<option value="' + sc.id + '">Scene ' + sc.num + ' · ' + esc(sc.place) + '</option>'; }).join('') + '</select></label></div>' +
+      '<label class="switch"><span>Include lines whose tone I have not checked yet <b id="pfu"></b></span><input type="checkbox" id="pfiu"></label>' +
+      '<label class="switch"><span>Include lines whose words may be wrong <b id="pfw"></b></span><input type="checkbox" id="pfiw"></label>' +
+      '<div class="row"><label class="f">Test lines first<select id="pft"><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option></select></label><label class="f">Then stop to listen every<select id="pfb"><option value="10">10 lines</option><option value="25" selected>25 lines</option><option value="50">50 lines</option></select></label></div>' +
+      '<div id="pfck"></div><div id="pfwl"></div>' +
+      '<label class="switch" id="pfbig" hidden><span><b>I made a few test lines with these tones and listened: they sound right.</b><br><span class="muted small">Needed for a run over 2,000 credits.</span></span><input type="checkbox" id="pfok"></label>' +
+      '<div class="row end"><button class="btn quiet" id="pfx">Cancel</button><button class="btn primary" id="pfgo">Start</button></div><div id="pfrun"></div>';
+    document.body.appendChild(d); d.showModal();
+    var $d = function (s) { return d.querySelector(s); }, run = [];
+    var close = function () { d.close(); d.remove(); };
+    d.addEventListener('cancel', function (e) { if (running) e.preventDefault(); else d.remove(); });
+    var running = false;
+    function pick() {
+      var c = $d('#pfc').value, sc = $d('#pfs').value;
+      var base = todo.filter(function (l) { return (!c || T.labelChars(l.it.who).indexOf(c) >= 0) && (!sc || l.scene.id === sc); });
+      var unchecked = base.filter(function (l) { return !checked(l); }), odd = base.filter(function (l) { return suspect(l); });
+      run = base.filter(function (l) { return ($d('#pfiu').checked || checked(l)) && ($d('#pfiw').checked || !suspect(l)); });
+      var total = run.reduce(function (a, l) { return a + cost(l, cfg); }, 0), plainN = run.filter(function (l) { return !toneOf(l); }).length;
+      $d('#pfu').textContent = '(' + unchecked.length + ')'; $d('#pfw').textContent = '(' + odd.length + ')';
+      var ok = function (good, txt) { return '<li>' + (good ? '✅ ' : '⚠️ ') + txt + '</li>'; };
+      var rest = acct ? acct.left - total : null;
+      $d('#pfck').innerHTML = '<h3 style="margin:10px 0 4px">Checks</h3><ul class="plain" style="list-style:none;padding:0;margin:0;line-height:1.7">' +
+        ok(cfg.model === 'eleven_v3', cfg.model === 'eleven_v3' ? 'Quality is “Most expressive”, so the tone notes are used.' : 'Quality is not “Most expressive”: the tone notes will NOT be used.') +
+        ok(!noVoice, noVoice ? noVoice + ' lines have no voice yet and are not in this run.' : 'Every line has a voice.') +
+        ok(!(unchecked.length && $d('#pfiu').checked), unchecked.length ? (($d('#pfiu').checked ? 'Includes ' : 'Leaves out ') + unchecked.length + ' lines whose tone you have not checked.') : 'You checked the tone of every line here.') +
+        ok(!(odd.length && $d('#pfiw').checked), odd.length ? (($d('#pfiw').checked ? 'Includes ' : 'Leaves out ') + odd.length + ' lines whose words may be wrong (listed below; fix them with ✎ Words).') : 'No lines with odd-looking words.') +
+        ok(!plainN, plainN ? plainN + ' lines will be said plainly (no tone).' : 'Every line has a tone.') +
+        '<li>🧾 This run: <b>' + run.length + ' lines, about ' + total.toLocaleString() + ' credits</b>.</li>' +
+        (acct ? ok(rest >= 0, 'Your ElevenLabs credits left: ' + acct.left.toLocaleString() + ' · after this run: <b>' + rest.toLocaleString() + '</b>' + (rest < 0 ? ' (not enough: choose fewer lines)' : '')) : '<li>ℹ️ Credits left could not be read. To see them here, give your API key the “User: Read” permission on elevenlabs.io.</li>') + '</ul>';
+      $d('#pfwl').innerHTML = odd.length ? '<details><summary>Lines whose words may be wrong (' + odd.length + ')</summary><ul class="small">' + odd.map(function (l) { return '<li>Scene ' + l.scene.num + ', ' + esc(l.it.who) + ': “' + esc(LineCheck.spoken(l.it.text).slice(0, 70)) + '” <span class="muted">(' + suspect(l) + ')</span></li>'; }).join('') + '</ul></details>' : '';
+      var big = total > 2000; $d('#pfbig').hidden = !big;
+      $d('#pfgo').disabled = !run.length || (acct && rest < 0) || (big && !$d('#pfok').checked);
+      $d('#pfgo').textContent = run.length ? 'Start: ' + Math.min(run.length, +$d('#pft').value) + ' test lines first' : 'Nothing to make';
+    }
+    ['#pfc', '#pfs', '#pfiu', '#pfiw', '#pft', '#pfb', '#pfok'].forEach(function (s) { $d(s).onchange = pick; });
+    $d('#pfx').onclick = function () { close(); };
+    pick(); credits().then(function (c) { acct = c; if (d.open && !running) pick(); });
+    /* test lines first: spread over characters and tones, so one listen covers the most */
+    function order(list, n) {
+      var first = [], seenWho = {}, seenTone = {}, take = function (ok) { list.forEach(function (l) { var k = l.it.who, t = toneOf(l); if (first.length < n && first.indexOf(l) < 0 && ok(k, t)) { first.push(l); seenWho[k] = 1; seenTone[t] = 1; } }); };
+      take(function (k, t) { return !seenWho[k] && !seenTone[t]; }); take(function (k) { return !seenWho[k]; }); take(function () { return true; });      // new voices and new tones first
+      return first.concat(list.filter(function (l) { return first.indexOf(l) < 0; }));
+    }
+    $d('#pfgo').onclick = function () {
+      running = true;
+      var testN = +$d('#pft').value, batch = +$d('#pfb').value, q = order(run, testN), at = 0, spent = 0, stopNow = false;
+      d.querySelectorAll('select,input,#pfgo,#pfx').forEach(function (x) { x.disabled = true; });
+      var box = $d('#pfrun');
+      function step(stopAt) {
+        var made2 = [];
+        box.innerHTML = '<p><b>Making…</b> <span id="pfn"></span></p><button class="btn small quiet" id="pfh">Stop</button>';
+        $d('#pfh').onclick = function () { stopNow = true; };
+        var go = function () {
+          if (stopNow || at >= stopAt) return Promise.resolve();
+          var l = q[at];
+          return makeLine(l, cfg).then(function () { spent += cost(l, cfg); made2.push(l); at++; var n = $d('#pfn'); if (n) n.textContent = at + ' of ' + q.length + ' · about ' + spent.toLocaleString() + ' credits used'; return go(); });
+        };
+        go().then(function () { return V.refresh(); }).then(function () { listen(made2); }).catch(function (e) { box.innerHTML = '<p class="err">' + esc(e.message) + '</p><p>' + at + ' lines made (about ' + spent.toLocaleString() + ' credits). Nothing more will be made.</p><button class="btn" id="pfdone">Close</button>'; $d('#pfdone').onclick = function () { close(); after(); }; });
+      }
+      function listen(list) {
+        var left = q.length - at;
+        box.innerHTML = '<h3>' + (at <= testN ? 'Listen to the test lines' : 'Listen to this batch') + '</h3><p class="muted small">' + at + ' of ' + q.length + ' made, about ' + spent.toLocaleString() + ' credits used.' + (left ? ' Nothing more is spent until you tap Keep going.' : '') + '</p>' +
+          list.map(function (l, i) { return '<div class="tone-row"><button type="button" class="btn small" data-pl="' + i + '">▶</button><div class="grow small"><b>' + esc(l.it.who) + '</b> ' + esc(withLevel(toneOf(l), levelOf(l.h)) || '(plain)') + '<br>' + esc(wordsOf(l).slice(0, 90)) + '</div></div>'; }).join('') +
+          '<div class="row end" style="margin-top:10px">' + (left ? '<button class="btn quiet" id="pfst">Something sounds wrong: stop here</button><button class="btn primary" id="pfkg">Sounds right: make the next ' + Math.min(batch, left) + '</button>' : '<button class="btn primary" id="pfdone">Done</button>') + '</div>';
+        box.querySelectorAll('[data-pl]').forEach(function (b) { b.onclick = function () { T.Speech.stop(); V.say(list[+b.dataset.pl].it, null, false); }; });
+        if ($d('#pfkg')) $d('#pfkg').onclick = function () { step(Math.min(q.length, at + batch)); };
+        var fin = function () { T.Speech.stop(); close(); after(); T.toast(at + ' lines made, about ' + spent.toLocaleString() + ' credits.' + (q.length - at ? ' ' + (q.length - at) + ' were not made.' : ''), 7000); };
+        if ($d('#pfst')) $d('#pfst').onclick = fin;
+        if ($d('#pfdone')) $d('#pfdone').onclick = fin;
+        box.scrollIntoView({ block: 'end' });
+      }
+      step(Math.min(q.length, testN));
+    };
+  }
   /* how far along: tones she has checked (her own, or a suggestion she said looks right) and lines made, for the show and one character */
   var checked = function (l) { return (T.show.tones || {})[l.h] != null; };
   var made = function (l, index) { var e = index.lines[l.h]; return !!(e && e.tts); };

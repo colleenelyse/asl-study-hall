@@ -544,3 +544,9 @@ stripes via a gradient). Used for the lit-up lines (song pages, practice) and th
 - **✎ Words**: the words sent to ElevenLabs for a line the script reader garbled ("> >.", "a tempo"); kept in localStorage `sayText` only (script text never goes to the server).
 - Her HSM JR guide (Claude's read of the whole script, Troy merged with ChatGPT's list) is ~/Downloads/HSM JR suggested tones.csv and theatre-notes/ in the ASL port folder; it holds script words, so never commit it.
 - Pronunciation: Sharpay and Darbus were already respelled by T.pronounce (show file `say`); this works on every ElevenLabs model.
+
+## Checks before a run (2026-10-24, voices.js preflight)
+- Colleen: "make sure that I don't run a whole bunch of lines with incorrect tones and waste a lot of credits … several checks before I execute a big project".
+- "Check, then make lines…" opens a dialog; nothing is spent until Start. Choose a character and/or scene. Lines whose tone she hasn't checked, and lines whose words look garbled (suspect(): odd symbols, music words like "a tempo", cut off mid-word, very short, sung capitals), are left out unless ticked; the garbled ones are listed.
+- Checklist: model is v3 (tones used), voices, unchecked/odd/plain counts, exact cost (cost(): tone tags + pronounced words × voices; flash is half), and credits left from /v1/user/subscription (needs the key's "User: Read" permission; otherwise a note). A run costing more than she has can't start; over 2,000 credits she must tick "I made a few test lines … they sound right".
+- The run makes 3/5/10 test lines first (spread over speakers and tones), stops to listen (▶ each), then stops after every 10/25/50. "Something sounds wrong: stop here" ends it; nothing more is spent.
