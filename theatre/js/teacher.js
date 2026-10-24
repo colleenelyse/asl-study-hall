@@ -1035,6 +1035,7 @@
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><button class="btn" id="addmiss" title="A whole line the app missed: type its words and it finds them on the pages">＋ Add a missing line</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part']] : []).concat([['part2', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
+        '<div class="row" style="margin:0 0 8px"><b>ALL in this song:</b> <span class="muted small grow">' + esc(allWhoText()) + '</span><button type="button" class="btn small" id="allwho">👥 Who is ALL?</button></div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + ' <button type="button" class="btn small quiet" data-words="' + i + '" title="Change the words of this line (add words that were missed)">✎ Words</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
@@ -1065,6 +1066,7 @@
       var $ = function (id) { return document.getElementById(id); };
       wireTabs(); lastRow = -1; follow(true, true); wireSlider();
       $('undo1').onclick = undo;
+      $('allwho').onclick = pickAll;
       $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
       if ($('now')) $('now').onclick = tap; $('find').onclick = find; $('addmiss').onclick = addMissing;
@@ -1527,6 +1529,28 @@
     function kindTo(l, spoken, words) {
       if (spoken) { l.spoken = true; if (l.syl && l.syl.length) { var bs = T.Pages.rawBoxes(l); if (bs.length) { l.box = bs[0]; if (bs.length > 1) l.boxes = bs; } } l.syl = []; l.text = String(words || l.text).replace(/\s+/g, ' ').trim(); }
       else delete l.spoken;
+    }
+    /* who ALL is in this song (by character, by Company member, or both): used wherever lines are matched to a student (their lines lit up,
+       the piano's My part, the red X, printed highlights). Nobody picked: everyone on stage in the song, as before. */
+    function allWhoText() {
+      var aw = (T.show.allWho || {})[songId]; if (!aw || !((aw.chars || []).length || (aw.cast || []).length)) return 'everyone on stage in this song';
+      var cast = T.show.cast || [];
+      return (aw.chars || []).map(function (c) { var x = T.charById(c); return x ? x.short : c; }).concat((aw.cast || []).map(function (id) { var a = cast.find(function (x) { return x.id === id; }); return a ? a.name : null; }).filter(Boolean)).join(', ');
+    }
+    function pickAll() {
+      var O = T.O(), aw = (T.show.allWho || {})[songId] || {}, cast = (T.show.cast || []).filter(function (a) { return a.name && !a.guest; });
+      var box = function (attr, id, label, on) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" ' + attr + '="' + id + '"' + (on ? ' checked' : '') + '></label>'; };
+      var d = dialog('<h2>Who is ALL in “' + esc(song.title) + '”?</h2><p class="muted">Lines marked ALL count for these people only (their lines light up, the piano’s My part, the red X, printed highlights). Pick characters, Company members, or both, for groupings like auditions. Pick nobody for everyone on stage in the song.</p>' +
+        '<h3>Characters</h3>' + O.groups.map(function (g) { var l = O.characters.filter(function (c) { return c.group === g.id; }); return l.length ? '<p class="muted small" style="margin:8px 0 2px">' + esc(g.name) + '</p><div class="choose" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">' + l.map(function (c) { return box('data-ac', c.id, T.chip(c.id), (aw.chars || []).indexOf(c.id) >= 0); }).join('') + '</div>' : ''; }).join('') +
+        '<h3 style="margin-top:14px">Company members</h3>' + (cast.length ? '<div class="choose" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">' + cast.map(function (a) { return box('data-am', a.id, esc(a.name), (aw.cast || []).indexOf(a.id) >= 0); }).join('') + '</div>' : '<p class="muted small">No Company members on the cast list yet.</p>') +
+        '<div class="row end" style="margin-top:12px"><button class="btn quiet" id="anone">Everyone on stage</button><button class="btn quiet" id="ax">Cancel</button><button class="btn primary" id="aok">Save</button></div>');
+      var put = function (v) { var A = T.show.allWho = T.show.allWho || {}; if (v) A[songId] = v; else delete A[songId]; d.close(); save(v ? 'ALL in this song saved' : 'ALL is everyone on stage again').then(function () { draw(); }); };
+      d.querySelector('#ax').onclick = function () { d.close(); };
+      d.querySelector('#anone').onclick = function () { put(null); };
+      d.querySelector('#aok').onclick = function () {
+        var ch = Array.from(d.querySelectorAll('[data-ac]:checked')).map(function (x) { return x.dataset.ac; }), cm = Array.from(d.querySelectorAll('[data-am]:checked')).map(function (x) { return x.dataset.am; });
+        put(ch.length || cm.length ? { chars: ch, cast: cm } : null);
+      };
     }
     function refreshAfter() { if (view === 'sections') { overlay(); secBar(); } else draw(); }
     function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners

@@ -122,7 +122,16 @@
   function isMine(label, scene, chars, moment) {
     chars = chars || T.me.chars;
     var ids = labelChars(label);
-    if (ids.indexOf('*') >= 0) return moment ? onStage(moment, chars) : inScene(scene, chars);
+    if (ids.indexOf('*') >= 0) {
+      /* who ALL is in this number (Colleen 2026-10-24: "declare who is 'all' in a number either by character name or by actor name … unusual
+         groupings for things like auditions"): T.show.allWho[song id] = { chars: [character ids], cast: [Company member ids] }; empty = everyone on stage */
+      var aw = moment && moment.song && T.show && T.show.allWho && T.show.allWho[moment.song];
+      if (aw && ((aw.chars || []).length || (aw.cast || []).length)) {
+        var meNow = T.me && (!arguments[2] || chars === T.me.chars || chars.join() === (T.me.chars || []).join());      // this student, not a track looked at by the teacher
+        return (aw.chars || []).some(function (id) { return chars.indexOf(id) >= 0 || groupMembers(id).some(function (c) { return chars.indexOf(c) >= 0; }); }) || !!(meNow && T.me.id && (aw.cast || []).indexOf(T.me.id) >= 0);
+      }
+      return moment ? onStage(moment, chars) : inScene(scene, chars);
+    }
     return ids.some(function (id) { return chars.indexOf(id) >= 0 || groupMembers(id).some(function (c) { return chars.indexOf(c) >= 0; }); });      // a group: its members too
   }
   T.isMine = isMine;
