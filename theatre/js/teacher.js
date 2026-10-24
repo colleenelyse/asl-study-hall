@@ -545,7 +545,19 @@
   function costumePage() {
     T.setBar('Costumes', '#/teacher');
     var O = T.O(); O.costumes = O.costumes || [];
+    /* starter looks added or changed in the show file after this show was saved (Colleen 2026-10-24: Rebels, Brainiacs, Jocks); the teacher picks each one */
+    var D = window.DEFAULT_SHOW, keep = O.costumeKeep = O.costumeKeep || [], sig = function (c) { return c.id + '|' + c.name + '|' + c.items.join(','); };
+    var news = D && D.title === O.title ? (D.costumes || []).filter(function (d) {
+      var mine = O.costumes.find(function (x) { return x.id === d.id; });
+      return keep.indexOf(sig(d)) < 0 && (!mine || sig(mine) !== sig(d));
+    }) : [];
     app.innerHTML = '<div class="row"><h2 class="grow">Costumes</h2><button class="btn primary" id="add">Add a costume</button></div>' +
+      (news.length ? '<div class="card"><h3>New starter looks</h3><p class="muted small">These were added or changed in the show\u2019s starting costume list after you set up your show. Pick the ones you want; your own changes stay unless you choose \u201cUse this.\u201d</p>' + news.map(function (d) {
+        var mine = O.costumes.find(function (x) { return x.id === d.id; });
+        return '<div class="switch" style="flex-wrap:wrap"><span class="grow">' + T.chip(d.who) + ' <b>' + esc(d.name) + '</b>: ' + esc(d.items.join(', ')) +
+          (mine ? '<br><span class="muted small">Yours now: ' + esc(mine.name) + ': ' + esc(mine.items.join(', ')) + '</span>' : '<br><span class="muted small">New</span>') + '</span>' +
+          '<button class="btn small primary" data-use="' + esc(d.id) + '" data-save>Use this</button> <button class="btn small" data-keep="' + esc(d.id) + '" data-save>' + (mine ? 'Keep mine' : 'Not for us') + '</button></div>';
+      }).join('') + '</div>' : '') +
       O.characters.map(function (c) {
         var list = O.costumes.filter(function (x) { return x.who === c.id; });
         if (!list.length) return '';
@@ -555,6 +567,12 @@
       }).join('');
     if (T.fillPhotos) T.fillPhotos(app, true);
     document.getElementById('add').onclick = function () { editCostume(null); };
+    app.querySelectorAll('[data-use]').forEach(function (b) { b.onclick = function () {
+      var d = news.find(function (x) { return x.id === b.dataset.use; }), i = O.costumes.findIndex(function (x) { return x.id === d.id; });
+      if (i >= 0) { O.costumes[i].name = d.name; O.costumes[i].items = d.items.slice(); } else O.costumes.push(JSON.parse(JSON.stringify(d)));      // a changed look keeps your moments
+      save().then(costumePage);
+    }; });
+    app.querySelectorAll('[data-keep]').forEach(function (b) { b.onclick = function () { keep.push(sig(news.find(function (x) { return x.id === b.dataset.keep; }))); save().then(costumePage); }; });
     app.querySelectorAll('[data-id]').forEach(function (el) { el.onclick = function () { editCostume(O.costumes.find(function (x) { return x.id === el.dataset.id; })); }; });
   }
   function editCostume(x) {
