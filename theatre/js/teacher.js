@@ -117,7 +117,7 @@
     }).then(function (pages) {
       var r = ScriptParser.parse(pages, { songNumbers: T.O().songs.map(function (s) { return s.num; }) });
       var n = applyImport(r, sc.file, null, true);
-      return save('Script re-read: ' + n + ' lines').then(function () { note(sym('✅') + 'The script was read again with the newest reader (' + n + ' lines). Songs whose lines changed need their lyrics timing found again (Songs & tracks).'); });
+      return save('Script re-read: ' + n + ' lines').then(function () { rereadScript.busy = false; note(sym('✅') + 'The script was read again with the newest reader (' + n + ' lines). Songs whose lines changed need their lyrics timing found again (Songs & tracks).'); });
     }).catch(function (e) { note(''); rereadScript.busy = false; T.toast('Could not re-read the script: ' + (e.message || e), 5000); });
   }
   function home() {
@@ -205,12 +205,26 @@
     O.scenes.sort(function (a, b) { return a.num - b.num; });
     // lyrics timing is kept per lyric line: a song whose lines now read differently needs its timing found again
     // songs whose sections the teacher edited (Sections on the music) stay as she left them
-    var K = T.show.lyricKeep || {}, oldSongs = {};
+    var K = T.show.lyricKeep || {}, oldSongs = {}, keptMoved = {};
     (T.show.script ? T.show.script.scenes : []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') oldSongs[it.num] = it; }); });
-    r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song' && K[it.num] && oldSongs[it.num]) it.lyrics = oldSongs[it.num].lyrics; }); });
+    r.scenes.forEach(function (s) { s.items.forEach(function (it) {
+      if (!(it.type === 'song' && K[it.num] && oldSongs[it.num])) return;
+      var kept = oldSongs[it.num].lyrics.slice(), keys = kept.map(function (l) { return (l.who || '') + '|' + l.text; });
+      var so = O.songs.find(function (x) { return String(x.num) === String(it.num); }), lt = so && T.show.lyricTimes && T.show.lyricTimes[so.id];
+      // spoken lines over the music the newer reader found and this edited song does not have yet: in, in page order
+      var at = function (l) { return l.box ? l.box.n * 10000 + l.box.y : 1e9; };
+      it.lyrics.forEach(function (l) {
+        if (!l.spoken || keys.indexOf((l.who || '') + '|' + l.text) >= 0) return;
+        var k = kept.findIndex(function (o) { return at(o) > at(l); }); k = k < 0 ? kept.length : k;
+        kept.splice(k, 0, l); if (lt && lt.lines) lt.lines.splice(k, 0, null);      // its timing stays; the new line waits for a time
+        kept.forEach(function (o, q) { if (o.sync && q > k && q - o.sync < k) o.sync++; });
+        keptMoved[it.num] = true;
+      });
+      it.lyrics = kept;
+    }); });
     var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || '') + it.lyrics.map(function (l) { return l.who + '|' + l.text; }).join('/'); }); }); return o; };      // the song's lines in order: a change in their words or order needs new timing
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
-    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
+    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num] && !keptMoved[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
     // the teacher's singer fixes (Lyrics timing): the same line (by number and words), or the same words anywhere in that song
     var W = T.show.lyricWho || {};
     r.scenes.forEach(function (s) { s.items.forEach(function (it) {
@@ -345,7 +359,7 @@
   function castPage() {
     T.setBar('Cast', '#/teacher');
     var cast = T.show.cast = T.show.cast || [];
-    app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
+    app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="groups">Who sings with the groups</button><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
       '<p class="muted">Students tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + (c.emailHash ? ' · ✉️' : '') + '</span></button>';
       }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: students can start (the whole show, the story, crews) before they have roles. Until then, students pick a character.</p>');
@@ -368,7 +382,22 @@
       };
     };
     document.getElementById('add').onclick = function () { editActor(null); };
+    document.getElementById('groups').onclick = groupsDialog;
     app.querySelectorAll('.person').forEach(function (b) { b.onclick = function () { editActor(cast.find(function (c) { return c.id === b.dataset.id; })); }; });
+  }
+  /* who sings with each group when the script names the group (a JOCKS line is Chad's and Zeke's too; a CHAD line is only Chad's) */
+  function groupsDialog() {
+    var O = T.O(), groups = O.characters.filter(function (c) { return c.group === 'ensemble'; }), named = O.characters.filter(function (c) { return c.group !== 'ensemble'; });
+    var cur = {}; groups.forEach(function (g) { cur[g.id] = T.groupMembers(g.id).slice(); });
+    var d = dialog('<h2>Who sings with the groups</h2><p class="muted">When the script says a group (JOCKS), these characters sing it too. When it names a character (CHAD), only that character does.</p>' +
+      groups.map(function (g) { return '<p style="margin:12px 0 4px"><b>' + esc(g.name) + '</b></p><div class="row" style="flex-wrap:wrap;gap:6px">' + named.map(function (c) {
+        return '<label class="chip-check"><input type="checkbox" data-g="' + g.id + '" value="' + c.id + '"' + (cur[g.id].indexOf(c.id) >= 0 ? ' checked' : '') + '>' + T.chip(c.id) + '</label>'; }).join('') + '</div>'; }).join('') +
+      '<div class="row end" style="margin-top:14px"><button class="btn" id="gx">Cancel</button><button class="btn primary" id="gok" data-save>Save</button></div>');
+    d.querySelector('#gx').onclick = function () { d.close(); };
+    d.querySelector('#gok').onclick = function () {
+      var G = {}; groups.forEach(function (g) { var m = Array.from(d.querySelectorAll('input[data-g="' + g.id + '"]:checked')).map(function (x) { return x.value; }); if (m.length) G[g.id] = m; });
+      T.show.groupMembers = G; save('Group singers saved').then(function () { d.close(); });
+    };
   }
   /* a hint the teacher can recognize, not the address: "j•••@school.org" */
   function emailHint(em) { var p = em.toLowerCase().split('@'); return p[0].charAt(0) + '•••@' + p[1]; }
@@ -900,7 +929,7 @@
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
           '<span class="grow"></span><button class="btn small" id="snm">−</button><b style="min-width:62px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
-        '<div class="row lt-controls"><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
+        '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
       $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; overlay(); secBar(); };
@@ -914,6 +943,7 @@
       $('sfix').onclick = function () { view = 'timing'; fixLine(i); };
       $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
       $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
+      $('sdel').onclick = function () { delSec(i); selSec = null; overlay(); secBar(); T.toast('Section deleted. ↶ Undo brings it back; Save keeps it.'); };
       bar.querySelectorAll('[data-split]').forEach(function (b) { b.onclick = function () { splitSec(i, +b.dataset.split); selSec = i + 1; overlay(); secBar(); }; });
     }
     function saveSections() { $sv(); }
@@ -973,6 +1003,11 @@
       var x = times[i], t2 = null;
       if (x) { var sk = x.s && x.s[k] != null ? x.s[k] : x.t; t2 = { t: sk, e: x.e, s: (x.s || []).slice(k) }; times[i] = { t: x.t, e: sk, s: (x.s || []).slice(0, k) }; }
       times.splice(i + 1, 0, t2); edited = true;
+    }
+    function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners
+      snapshot();
+      lines.forEach(function (l, k) { if (l.sync && k > i) { if (k - l.sync === i) delete l.sync; else if (k - l.sync < i) l.sync--; } });
+      lines.splice(i, 1); times.splice(i, 1); edited = true;
     }
     function joinSec(i) {
       var a = lines[i], b = lines[i + 1]; if (!a || !b) return;

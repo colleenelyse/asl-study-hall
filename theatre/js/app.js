@@ -122,9 +122,16 @@
     chars = chars || T.me.chars;
     var ids = labelChars(label);
     if (ids.indexOf('*') >= 0) return moment ? onStage(moment, chars) : inScene(scene, chars);
-    return ids.some(function (id) { return chars.indexOf(id) >= 0; });
+    return ids.some(function (id) { return chars.indexOf(id) >= 0 || groupMembers(id).some(function (c) { return chars.indexOf(c) >= 0; }); });      // a group: its members too
   }
   T.isMine = isMine;
+  /* the named characters who sing with a group (Chad and Zeke with the Jocks): the teacher's list, or the show file's for a show saved before */
+  function groupMembers(id) {
+    var G = T.show && T.show.groupMembers, D = window.DEFAULT_SHOW;
+    if (!G && D && D.title === O().title) G = D.groupMembers;
+    return (G && G[id]) || [];
+  }
+  T.groupMembers = groupMembers;
   function myLines(scene) { var s = scriptScene(scene); if (!s) return 0; return s.items.filter(function (it) { return it.type === 'line' && isMine(it.who, scene); }).length; }
   function songMoment(song) { return O().moments.find(function (m) { return m.song === song.id; }); }
   /* the moment of a song item in a scene's script (by its number) */

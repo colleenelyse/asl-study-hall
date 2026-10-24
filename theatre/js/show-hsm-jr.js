@@ -110,6 +110,10 @@ window.DEFAULT_SHOW = {
   // lettering font for titles, pennant stripes and a basketball drawn for the app. No Disney logo, show art or movie fonts.
   theme: { id: 'easthigh', color: '#b3121f', presents: 'East High Drama Club presents', cheer: 'Go Wildcats!' },
 
+  // who sings with a group when the script names the group (Colleen 2026-10-23: Chad is a Jock when he has no featured moment, "just Chad"
+  // when the script says CHAD; Troy is not one of the Jocks). The teacher changes these on the Cast page.
+  groupMembers: { jocks: ['chad', 'zeke'], brainiacs: ['taylor', 'martha'] },
+
   // the mic plot this show starts from (Colleen 2026-10-22: plan for 10 body mics; Jack Scott and the Moderator use a handheld)
   micPlot: { n: 10, pin: { jack: 'hand', moderator: 'hand' } },
 

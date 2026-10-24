@@ -409,3 +409,9 @@ Google; only asl.cool/theatre and localhost:8830 are allowed as return addresses
 and the student isn't known, it hops there once per browser session (`goSignin`), and `applySignin` matches the code to `cast[].emailHash` and
 remembers the student. Push changes with clasp --user school from a folder holding these two files and this .clasp.json scriptId (not inside
 ASL port); redeploy with `clasp update-deployment <deploymentId>` to keep the address. The Google Client ID route stays as an option.
+
+**Delete a section; spoken lines in edited songs; group singers** (Colleen 2026-10-23): Sections tab › 🗑 Delete (Undo brings it back;
+pairs after it keep their partners). A re-read keeps edited songs (lyricKeep) but now puts in the spoken lines a newer reader found, in page
+order, with an empty time each, keeping the song's saved timing (`keptMoved`); reader VERSION 2026-10-23.4; `rereadScript.busy` resets after a
+re-read. Group singers: `T.show.groupMembers` (show file default: jocks = Chad, Zeke; brainiacs = Taylor, Martha), edited on Cast › Who sings
+with the groups; `isMine` counts a group label for its members (a JOCKS line is Chad's; a CHAD line only Chad's; Troy not a Jock).
