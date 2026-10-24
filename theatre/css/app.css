@@ -369,4 +369,4 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 .tag.co-mentor { background: #e0f2fe; color: #0b4a6f; }
 
 /* a typed lyric time */
-.lt-tin { width: 74px; text-align: center; font-weight: 700; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card, #fff); color: inherit; font-variant-numeric: tabular-nums; }
+.lt-tin { width: 104px; min-width: 104px; flex: 0 0 auto; box-sizing: border-box; text-align: center; font-weight: 700; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card, #fff); color: inherit; font-variant-numeric: tabular-nums; }

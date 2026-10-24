@@ -791,6 +791,35 @@
     });
   }
 
+  /* where the singing of each line really stops (Colleen 2026-10-23: lines ending on a long note went dark too soon): the sung stretch in the
+     guide vocals that holds the line's last word, so a held note stays lit and the light still goes off in music with no words. Saved as h
+     (band track's clock); T.lineEnd uses it. If singing runs straight into the next line, a line stays lit until just after the next one starts. */
+  var regionCache = {};
+  function voiceRegionsFor(songId) {
+    var tr = T.show.tracks[songId]; if (!tr || !tr.rehearsal || !tr.performance) return Promise.resolve(null);
+    var key = songId + '|' + tr.rehearsal.ver + '|' + tr.performance.ver; if (regionCache[key]) return Promise.resolve(regionCache[key]);
+    var ctx = T.audioCtx(), get = function (k) { return Store.getTrack(T.key, songId, k, tr[k].ver).then(function (b) { return ctx.decodeAudioData(b); }); };
+    return Promise.all([get('rehearsal'), get('performance')]).then(function (r) {
+      var g = Melody.toMono(r[0]), p = Melody.toMono(r[1]), rate = r[0].sampleRate, iso = Melody.isolate(g, p, Melody.findOffset(g, p, rate));
+      return (regionCache[key] = Melody.voiceRegions(iso.voice, rate));
+    });
+  }
+  function addHolds(songId, lines) {      // lines on the band track's clock; each gets h where the singing of it stops
+    return voiceRegionsFor(songId).then(function (regs) {
+      if (!regs || !regs.length) return;
+      lines.forEach(function (x) {
+        if (!x) return; delete x.h;
+        var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t;
+        var next = lines.filter(function (y) { return y && y !== x && y.t > last + 0.05; }).reduce(function (m, y) { return Math.min(m, y.t); }, Infinity);
+        var reg = regs.find(function (g) { return g.s - 0.2 <= last && last <= g.e + 0.2; }) || regs.find(function (g) { return g.s > last && g.s < last + 0.6; });
+        if (!reg) return;
+        var end = Math.min(reg.e, next + 1, last + 12);
+        x.h = +Math.max(end, last + 0.4).toFixed(2);
+      });
+    }).catch(function () {});
+  }
+  T.addHolds = addHolds;
+
   function lyricsPage(songId) {
     var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
     var item = src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
@@ -805,7 +834,7 @@
     var off = TO[songId] != null ? TO[songId] : mel && mel.offset != null ? mel.offset : null;
     var lines = item.lyrics, cnt = function (l) { return (l.syl && l.syl.length) || l.text.split(/\s+/).length; };
     var kind = tr.rehearsal ? 'rehearsal' : 'performance', audio = new Audio(), url = null, loaded = false;
-    var shiftX = function (x, d) { return x && { t: x.t + d, e: x.e + d, s: (x.s || []).map(function (v) { return v + d; }) }; };
+    var shiftX = function (x, d) { if (!x) return x; var y = { t: x.t + d, e: x.e + d, s: (x.s || []).map(function (v) { return v + d; }) }; if (x.h != null) y.h = x.h + d; return y; };
     var saved = (L[songId] && L[songId].lines) ? JSON.parse(JSON.stringify(L[songId].lines)) : null;
     var times = lines.map(function () { return null; });
     var showSaved = function () { if (saved) times = saved.map(function (x) { return shiftX(x, kind === 'rehearsal' ? off : 0); }); };
@@ -908,9 +937,11 @@
         if (!times.some(Boolean)) { delete L[songId]; return save('Cleared'); }
         L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: x.s.map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
         if (edited) { (T.show.lyricKeep = T.show.lyricKeep || {})[song.num] = true; edited = false; }
-        makePiano(songId).catch(function () {}).then(function () { return save('Lyrics timing saved (and the piano melody with it)'); }).then(function () { view = 'sections'; selSec = null; draw(); });
+        T.toast('Saving… (finding where each line’s singing ends)', 3000);
+        addHolds(songId, L[songId].lines).then(function () { if (kind === 'rehearsal') L[songId].lines.forEach(function (x, i) { if (x && times[i]) { if (x.h != null) times[i].h = x.h + off; else delete times[i].h; } }); else L[songId].lines.forEach(function (x, i) { if (x && times[i]) { if (x.h != null) times[i].h = x.h; else delete times[i].h; } }); })
+          .then(function () { return makePiano(songId).catch(function () {}); }).then(function () { return save('Lyrics timing saved (and the piano melody with it)'); }).then(function () { view = 'sections'; selSec = null; draw(); });
       };
-      app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
+      app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; if (x.h != null) x.h += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
       app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
@@ -1040,9 +1071,9 @@
       var base = function (v) { return kind === 'performance' ? v : v - off; };
       L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: (x.s || []).map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
       if (edited) { (T.show.lyricKeep = T.show.lyricKeep || {})[song.num] = true; edited = false; }
-      makePiano(songId).catch(function () {}).then(function () { return save('Saved (and the piano melody with it)'); }).then(function () { overlay(); secBar(); });
+      addHolds(songId, L[songId].lines).then(function () { return makePiano(songId).catch(function () {}); }).then(function () { return save('Saved (and the piano melody with it)'); }).then(function () { overlay(); secBar(); });
     };
-    function nudge(i, d) { var x = times[i]; if (!x) return; snapshot(); x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); secBar(); }
+    function nudge(i, d) { var x = times[i]; if (!x) return; snapshot(); x.t += d; x.e += d; if (x.h != null) x.h += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); secBar(); }
     /* a section's boxes from its syllables (each knows which box it sits in) */
     function boxesFor(syl, boxesOf) {
       var out = [], idx = [];
@@ -1141,7 +1172,7 @@
     function endFix() { if (fixAt != null && fixOld && !times[fixAt]) { times[fixAt] = fixOld; applySync(); } fixAt = null; fixOld = null; }
     /* typed times (Colleen: "i want to be able to type in timings too"): seconds (47.15) or minutes:seconds (0:47.15) */
     function fmtT(x) { return x ? x.t.toFixed(2) : ''; }
-    function timeBox(attr, x) { return '<input ' + attr + ' class="lt-tin" inputmode="decimal" value="' + fmtT(x) + '" placeholder="—" aria-label="Start time in seconds" title="Type a time: 47.15 or 0:47.15">'; }
+    function timeBox(attr, x) { return '<input ' + attr + ' class="lt-tin" type="text" inputmode="decimal" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" value="' + fmtT(x) + '" placeholder="—" aria-label="Start time in seconds" title="Type a time: 47.15 or 0:47.15">'; }
     function typeTime(i, v) {
       v = String(v || '').trim(); if (!v) return false;
       var m = v.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)\s*s?$/); if (!m) { T.toast('Type seconds (47.15) or minutes and seconds (0:47.15).', 4000); return false; }

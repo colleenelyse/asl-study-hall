@@ -180,7 +180,10 @@
   }
   T.lyricColors = lyricColors;
   /* when a line's singing is done: its end, but not long after its last syllable starts (a line timed by tapping ends where the next one starts) */
-  function lineEnd(x) { var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t; return Math.min(x.e, last + 2.5); }
+  function lineEnd(x) {      // h: where the singing really stops (found on Save, from the guide vocals); else a guess
+    var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t;
+    return x.h != null ? x.h : Math.min(x.e, last + 2.5);
+  }
   T.lineEnd = lineEnd;
   function songItem(songId) {
     var so = T.songById(songId), sc = so && T.sceneById(so.scene), src = sc && T.scriptScene(sc);
@@ -202,6 +205,25 @@
         });
       }, Promise.resolve());
     });
+  }
+  /* the music scrolls along (Colleen 2026-10-23: "it doesn't do a good job scrolling down on the sheet music"): the line being sung (the one
+     that started last) is kept about a third of the way down the screen, and in music with no words the next line comes into view before it
+     starts. It moves only when the line drifts out of the comfortable band, smoothly, and waits 4 seconds after the reader scrolls. */
+  function keepInView(host, it, lt, on, t, mine) {
+    var now = Date.now(); if (now - (host._scrollAt || 0) < 700 || now - userScrolled < 4000) return;
+    var k = on.length ? on.reduce(function (a, b) { return lt.lines[b].t > lt.lines[a].t ? b : a; }) : -1;
+    if (k < 0) {      // nothing lit: the next line to be sung, if it is coming up soon
+      var best = Infinity;
+      lt.lines.forEach(function (x, j) { if (x && it.lyrics[j] && x.t > t && x.t - t < 6 && x.t < best && (!mine || mine(it.lyrics[j]))) { best = x.t; k = j; } });
+      if (k < 0) return;
+    }
+    var b = T.Pages.lyricBoxes(it.lyrics[k])[0]; if (!b) return;
+    var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
+    var r = page.getBoundingClientRect(), sz = T.Pages.size(b.n), y = r.top + b.y / sz.h * r.height;
+    var dock = document.querySelector('.songdock, .lt-dock'), visH = window.innerHeight - (dock ? dock.getBoundingClientRect().height : 0);
+    if (y > visH * 0.12 && y < visH * 0.55) return;
+    host._scrollAt = now;
+    window.scrollBy({ top: y - visH * 0.3, behavior: T.prefs.motion ? 'smooth' : 'auto' });
   }
   T.Follow = {
     ready: function (songId) { var lt = T.show.lyricTimes && T.show.lyricTimes[songId]; return !!(T.Pages.ready() && lt && songItem(songId)); },      // the ball (needs the lyrics timing)
@@ -227,6 +249,7 @@
       }
       var on = [];
       lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x) && (!mine || mine(it.lyrics[k]))) on.push(k); });
+      keepInView(host, it, lt, on, t, mine);
       var key = on.join(','); if (host._at === key) return;
       host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
       if (!on.length) { host._at = null; return; }
@@ -238,7 +261,6 @@
           if (si === 0 && before.indexOf(String(k)) < 0) newest = sh.el;
         });
       });
-      if (newest && Date.now() - userScrolled > 4000) newest.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
       host._at = key;
     }
   };
