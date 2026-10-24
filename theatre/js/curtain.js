@@ -41,7 +41,7 @@
     /* HSM JR: the bows go over the band track of #32 (We're All in This Together), Colleen's choice: a repeat of it in the full show, and its
        only use in the abridged school-day show */
     var m32 = O.id === 'hsm-jr' && O.songs.find(function (s) { return String(s.num) === '32'; });
-    return { music: { song: (c && c.music && c.music.song) || (m32 && m32.id) || (fin && fin.id) }, finale: fin && fin.id, crew: true, trench: 'stage', groups: groups,
+    return { music: { song: (c && c.music && c.music.song) || (m32 && m32.id) || (fin && fin.id), start: m32 ? 15 : 0, loop: true }, finale: fin && fin.id, crew: true, trench: 'stage', groups: groups,
       company: { note: 'After the Megamix, everyone in one line: one bow together, then point to the band and the crew.' } };
   }
   T.curtainPlan = plan;
@@ -79,11 +79,27 @@
     });
   }
   var READY = function () { tone([660, 880], 0.18, 0.18); }, GO = function () { tone([1046, 1318, 1568], 0.12, 0.3); };
-  function loadAudio(mu) {
-    var audio = new Audio(), url = null;
-    var p = Store.getTrack(T.key, mu.id, mu.kind, mu.ver).then(function (b) { if (!b) throw new Error('The bow music would not load.'); url = URL.createObjectURL(new Blob([b])); audio.src = url; return new Promise(function (ok) { if (audio.readyState >= 1) ok(); else audio.addEventListener('loadedmetadata', ok, { once: true }); }); });
-    T.cleanup.push(function () { audio.pause(); if (url) URL.revokeObjectURL(url); });
-    return { audio: audio, ready: p };
+  /* the bow music on its own clock (Colleen: "use track 32 fading in at roughly 15 seconds and loop it if necessary"): bow time 0 is `start`
+     seconds into the track; it fades in over 2.5 seconds; at the end of the track it goes back to `start` and keeps going, so bow times run on.
+     { audio, ready, time(), seek(bow time), play(), pause() } */
+  function loadAudio(mu, P) {
+    var audio = new Audio(), url = null, m = (P && P.music) || {}, start = Math.max(0, +m.start || 0), loop = m.loop !== false, laps = 0, fadeT = 0;
+    var span = function () { return Math.max(1, (audio.duration || 60) - start); };
+    var ready = Store.getTrack(T.key, mu.id, mu.kind, mu.ver).then(function (b) { if (!b) throw new Error('The bow music would not load.'); url = URL.createObjectURL(new Blob([b])); audio.src = url; return new Promise(function (ok) { if (audio.readyState >= 1) ok(); else audio.addEventListener('loadedmetadata', ok, { once: true }); }); })
+      .then(function () { audio.currentTime = start; });
+    var fade = function () { clearInterval(fadeT); audio.volume = 0; var v = 0; fadeT = setInterval(function () { v = Math.min(1, v + 0.04); audio.volume = v; if (v >= 1) clearInterval(fadeT); }, 100); };
+    var wrap = function () { if (loop && audio.duration && audio.currentTime >= audio.duration - 0.2) { laps++; audio.currentTime = start; } };
+    audio.addEventListener('timeupdate', wrap);
+    audio.addEventListener('ended', function () { if (!loop) return; laps++; audio.currentTime = start; audio.play(); });
+    var api = {
+      audio: audio, ready: ready, start: start, span: span,
+      time: function () { return laps * span() + Math.max(0, audio.currentTime - start); },
+      seek: function (bt) { bt = Math.max(0, bt); laps = loop ? Math.floor(bt / span()) : 0; audio.currentTime = start + (loop ? bt % span() : Math.min(bt, span())); },
+      play: function () { if (api.time() < 1) fade(); else audio.volume = 1; return audio.play(); },
+      pause: function () { audio.pause(); }
+    };
+    T.cleanup.push(function () { audio.pause(); clearInterval(fadeT); if (url) URL.revokeObjectURL(url); });
+    return api;
   }
 
   /* ---------- the player: the bow music with cues (the teacher's Rehearse, a student's Practice my bow) ---------- */
@@ -93,7 +109,7 @@
     var cues = P.groups.map(function (g, i) { return { i: i, g: g, t: g.at, color: COLORS[i % COLORS.length], label: 'Group ' + (i + 1) + ': ' + g.name, from: g.from }; })
       .filter(function (c) { return c.t != null && (!opts.only || opts.only.indexOf(c.i) >= 0); });
     if (!cues.length) { host.innerHTML = '<p class="card">' + (T.me ? 'Your teacher has not set the bow times yet.' : 'Set when each group goes first: “Set the times while it plays” (Teacher › Curtain call).') + '</p>'; return; }
-    var A = loadAudio(mu), audio = A.audio, raf = 0, fired = {}, readied = {};
+    var A = loadAudio(mu, P), audio = A.audio, raf = 0, fired = {}, readied = {};
     host.innerHTML = '<div class="bow-stage"><div class="bow-next" id="bnext"></div><div class="bow-go" id="bgo" hidden></div><div class="bow-lyric muted" id="bmus">' + sym('🎵') + esc(mu.name) + '</div></div>' +
       '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="round big" id="bpl" aria-label="Play">' + icon('play') + '</button><button class="btn small" id="bbk">Back 10 s</button><b id="btm" class="lt-time">0:00</b>' +
       (opts.starts ? cues.map(function (c) { return '<button class="btn small" data-bfrom="' + c.t + '">From group ' + (c.i + 1) + '</button>'; }).join('') : '') +
@@ -101,7 +117,7 @@
     var $ = function (id) { return host.querySelector('#' + id); }, chimes = function () { return $('bch') && $('bch').checked; };
     var last = cues[cues.length - 1].t;
     function frame() {
-      var t = audio.currentTime;
+      var t = A.time();
       $('btm').textContent = T.clock(t);
       cues.forEach(function (c) {
         if (!readied[c.i] && t >= c.t - 4 && t < c.t) { readied[c.i] = 1; if (chimes()) READY(); }
@@ -118,10 +134,10 @@
       if (!audio.paused) raf = requestAnimationFrame(frame);
     }
     function setPP() { var b = $('bpl'); if (b) { b.innerHTML = icon(audio.paused ? 'play' : 'pause'); b.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); } }
-    function seek(t) { fired = {}; readied = {}; cues.forEach(function (c) { if (c.t < t) { fired[c.i] = 1; readied[c.i] = 1; } }); audio.currentTime = Math.max(0, t); }
-    $('bpl').onclick = function () { A.ready.then(function () { if (audio.paused) { if (opts.startAt != null && audio.currentTime === 0) seek(opts.startAt); audio.play(); raf = requestAnimationFrame(frame); } else audio.pause(); setPP(); }); };
-    $('bbk').onclick = function () { A.ready.then(function () { seek(Math.max(0, audio.currentTime - 10)); frame(); }); };
-    host.querySelectorAll('[data-bfrom]').forEach(function (b) { b.onclick = function () { A.ready.then(function () { seek(+b.dataset.bfrom - 8); audio.play(); setPP(); raf = requestAnimationFrame(frame); }); }; });
+    function seek(t) { fired = {}; readied = {}; cues.forEach(function (c) { if (c.t < t) { fired[c.i] = 1; readied[c.i] = 1; } }); A.seek(Math.max(0, t)); }
+    $('bpl').onclick = function () { A.ready.then(function () { if (audio.paused) { if (opts.startAt != null && A.time() === 0) seek(opts.startAt); A.play(); raf = requestAnimationFrame(frame); } else audio.pause(); setPP(); }); };
+    $('bbk').onclick = function () { A.ready.then(function () { seek(Math.max(0, A.time() - 10)); frame(); }); };
+    host.querySelectorAll('[data-bfrom]').forEach(function (b) { b.onclick = function () { A.ready.then(function () { seek(+b.dataset.bfrom - 8); A.play(); setPP(); raf = requestAnimationFrame(frame); }); }; });
     audio.addEventListener('pause', function () { setPP(); frame(); }); audio.addEventListener('ended', function () { setPP(); frame(); });
     T.cleanup.push(function () { cancelAnimationFrame(raf); });
     frame();
@@ -144,6 +160,8 @@
         '<div class="row"><label class="f grow" style="margin:0">Bow music<select id="mus"><option value="">Pick…</option>' + withTracks.map(function (s) { return '<option value="s:' + s.id + '"' + (P.music && P.music.song === s.id && !P.music.own ? ' selected' : '') + '>Band track: ' + esc(s.title) + '</option>'; }).join('') + (P.music && P.music.own ? '<option value="own" selected>Your own bow music (uploaded)</option>' : '') + '</select></label>' +
         '<label class="btn" style="margin:0">' + sym('⬆️') + 'Upload bow music<input type="file" id="upl" accept="audio/*" hidden></label></div>' +
         (mu ? '' : '<p class="err">' + sym('⚠️') + 'Pick or upload the bow music (instrumental).</p>') +
+        '<div class="row"><label class="f" style="margin:0">Start this far into the track (seconds)<input id="mstart" inputmode="decimal" value="' + ((P.music && P.music.start) || 0) + '" style="width:90px"></label><span class="muted small">It fades in from there.</span>' +
+        '<label class="switch" style="border:0"><span>Loop it if the bows run longer</span><input type="checkbox" id="mloop"' + (!P.music || P.music.loop !== false ? ' checked' : '') + '></label></div>' +
         '<div class="row" style="margin-top:8px">' + (mu ? '<button class="btn primary" id="taps">' + sym('⏱') + 'Set the times while it plays</button><button class="btn" id="even">Spread them evenly</button>' : '') + '<a class="btn" href="#/teacher/curtain/run">' + icon('play') + 'Rehearse the bows</a><button class="btn quiet" onclick="print()">' + icon('print') + 'Print the bow plan</button></div><p class="muted small" id="tapmsg"></p></div>' +
         P.groups.map(function (g, i) {
           return '<div class="card bow-card" data-g="' + i + '" style="border-left:8px solid ' + COLORS[i % COLORS.length] + '"><div class="row"><b>Group ' + (i + 1) + '</b><input data-k="name" value="' + esc(g.name) + '" class="grow" aria-label="Group name">' +
@@ -151,7 +169,7 @@
             '<div class="row"><label class="f" style="margin:0">Goes at (in the bow music)<span class="row" style="gap:4px"><button type="button" class="btn small" data-nudge="' + i + '|-0.5" aria-label="Earlier">−</button><input data-k="at" value="' + fmt(g.at) + '" placeholder="0:00" style="width:80px"><button type="button" class="btn small" data-nudge="' + i + '|0.5" aria-label="Later">+</button></span></label>' +
             '<label class="f" style="margin:0">Enters from' + sel('data-k="from"', FROM, g.from) + '</label><label class="f" style="margin:0">Stands' + sel('data-k="row"', ROWS, g.row) + '</label>' +
             '<label class="f grow" style="margin:0">Note for them<input data-k="note" value="' + esc(g.note || '') + '" placeholder="e.g. hands joined, bow on 3"></label></div>' +
-            '<p class="muted small" style="margin:4px 0">Goes when ' + esc(listenFor(P, i)) + '.</p>' +
+            '<p class="muted small" style="margin:4px 0">Goes when ' + esc(listenFor(P, i)) + '. (Times count from where the bow music starts.)</p>' +
             '<details><summary class="small">Who: ' + esc(membersOf(g).map(function (m) { return m.name; }).join(', ') || 'nobody yet') + '</summary><div class="row" style="flex-wrap:wrap;margin-top:6px">' +
             O.characters.filter(function (c) { return c.group !== 'helpers'; }).map(function (c) { return '<label class="chipbox"><input type="checkbox" data-ch="' + c.id + '"' + (g.chars.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + T.chip(c.id) + '</label>'; }).join('') + '</div>' +
             ((T.show.cast || []).length ? '<p class="muted small" style="margin:8px 0 4px">Also these Company members (whatever their role):</p><div class="row" style="flex-wrap:wrap">' + (T.show.cast || []).filter(function (a) { return a.name; }).map(function (a) { return '<label class="chipbox"><input type="checkbox" data-am="' + a.id + '"' + ((g.cast || []).indexOf(a.id) >= 0 ? ' checked' : '') + '> ' + esc(a.name) + '</label>'; }).join('') + '</div>' : '') + '</details></div>';
@@ -170,13 +188,14 @@
           g.chars = Array.from(el.querySelectorAll('[data-ch]:checked')).map(function (x) { return x.dataset.ch; });
           g.cast = Array.from(el.querySelectorAll('[data-am]:checked')).map(function (x) { return x.dataset.am; });
         });
+        var ms = +document.getElementById('mstart').value; P.music = Object.assign({}, P.music, { start: isNaN(ms) ? 0 : Math.max(0, ms), loop: document.getElementById('mloop').checked });
         P.finale = document.getElementById('fin').value; P.company.note = document.getElementById('cnote').value.trim(); P.crew = document.getElementById('ccrew').checked;
       };
       var $ = function (id) { return document.getElementById(id); };
-      $('mus').onchange = function () { keep(); var v = this.value; if (v.slice(0, 2) === 's:') P.music = { song: v.slice(2) }; draw(); };
+      $('mus').onchange = function () { keep(); var v = this.value; if (v.slice(0, 2) === 's:') P.music = { song: v.slice(2), start: P.music && P.music.start, loop: !P.music || P.music.loop !== false }; draw(); };
       $('upl').onchange = function () {
         var f = this.files[0]; if (!f) return; keep(); var m = $('tapmsg'); m.textContent = 'Uploading ' + f.name + '…';
-        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver }; draw(); T.toast('Bow music uploaded. Save to keep it.'); }); }); })
+        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver, start: 0, loop: true }; draw(); T.toast('Bow music uploaded. Save to keep it.'); }); }); })
           .catch(function (e) { m.textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; });
       };
       app.querySelectorAll('[data-ch],[data-am]').forEach(function (s) { s.onchange = function () { keep(); draw(); }; });
@@ -191,19 +210,19 @@
       $('reset').onclick = function () { if (!confirm('Go back to the suggested bow groups? Your changes here are replaced (Save to keep it).')) return; var keepC = T.show.curtain; delete T.show.curtain; P = JSON.parse(JSON.stringify(plan())); if (keepC) T.show.curtain = keepC; draw(); };
       /* spread evenly: the groups share the bow music, a little in from the start, leaving room at the end for the last bow */
       if ($('even')) $('even').onclick = function () {
-        keep(); var A = loadAudio(mu), m = $('tapmsg'); m.textContent = 'Reading the length of the music…';
-        A.ready.then(function () { var d = A.audio.duration || 60, n = P.groups.length; P.groups.forEach(function (g, i) { g.at = +(2 + (d - 6) * i / n).toFixed(1); }); draw(); T.toast('Spread over ' + T.clock(d) + ' of music. Save to keep it.'); });
+        keep(); var A = loadAudio(mu, P), m = $('tapmsg'); m.textContent = 'Reading the length of the music…';
+        A.ready.then(function () { var d = A.span(), n = P.groups.length; P.groups.forEach(function (g, i) { g.at = +(2 + (d - 6) * i / n).toFixed(1); }); draw(); T.toast('Spread over ' + T.clock(d) + ' of music. Save to keep it.'); });
       };
       /* tap the times: the music plays; each tap of Now sets the next group's moment */
       if ($('taps')) $('taps').onclick = function () {
-        keep(); var A = loadAudio(mu), k = 0, m = $('tapmsg');
+        keep(); var A = loadAudio(mu, P), k = 0, m = $('tapmsg');
         var bar = document.createElement('div'); bar.className = 'dock'; bar.innerHTML = '<div class="in"><b id="tapwho"></b><span class="grow"></span><button class="btn primary lt-now" id="tapnow">Now</button><button class="btn" id="tapstop">Stop</button></div>';
         document.body.appendChild(bar);
         var show = function () { var w = document.getElementById('tapwho'); if (w) w.textContent = k < P.groups.length ? 'Tap Now when Group ' + (k + 1) + ' (' + P.groups[k].name + ') should walk on' : 'All set.'; };
         var end = function () { A.audio.pause(); bar.remove(); draw(); T.toast('Times set. Rehearse to check them, then Save.'); };
         show(); m.textContent = 'Loading the music…';
-        A.ready.then(function () { m.textContent = ''; A.audio.currentTime = 0; A.audio.play(); });
-        document.getElementById('tapnow').onclick = function () { if (k >= P.groups.length) return end(); P.groups[k].at = +A.audio.currentTime.toFixed(1); k++; show(); if (k >= P.groups.length) setTimeout(end, 800); };
+        A.ready.then(function () { m.textContent = ''; A.seek(0); A.play(); });
+        document.getElementById('tapnow').onclick = function () { if (k >= P.groups.length) return end(); P.groups[k].at = +A.time().toFixed(1); k++; show(); if (k >= P.groups.length) setTimeout(end, 800); };
         document.getElementById('tapstop').onclick = end;
         T.cleanup.push(function () { bar.remove(); });
       };
