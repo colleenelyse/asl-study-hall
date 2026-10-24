@@ -188,6 +188,7 @@
   /* settings follow the student (a shared iPad, or their own Chromebook): saved for this device and for the signed-in student */
   T.savePrefs = function () { ls('prefs', T.prefs); if (T.me && T.me.id) ls('prefs:' + T.me.id, T.prefs); applyPrefs(); };
   T.loadPrefsFor = function (id) { var mine = id && ls('prefs:' + id); if (mine) { T.prefs = Object.assign({}, DEF_PREFS, mine); applyPrefs(); } };
+  T.resetPrefs = function () { T.prefs = Object.assign({}, DEF_PREFS, ls('prefs') || {}); applyPrefs(); };      // back to this iPad's own settings (after View as)
   applyPrefs();
   /* the show's look (show file: theme), on every page and before unlocking (the public show file has it too) */
   function showTheme() {      // the loaded show's theme; a show saved before themes existed takes it from the show file when it is the same show
