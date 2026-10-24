@@ -287,7 +287,7 @@
     app.innerHTML = '<div class="card noprint"><h2>' + sym('🖍️') + 'Highlighted script: ' + esc(who.name) + '</h2>' + (who.chars.length ? '<p>' + who.chars.map(T.chip).join('') + '</p>' : '') +
       '<div class="switch"><span>Pages</span><div class="seg" data-pk="which"><button type="button" data-v="mine" aria-pressed="' + (pr.which === 'mine') + '">Only the scenes I am in</button><button type="button" data-v="all" aria-pressed="' + (pr.which === 'all') + '">The whole script</button></div></div>' +
       sw('lines', 'My lines') + sw('lyrics', 'Lyrics I sing') + sw('band', 'Edge band on my scenes and songs') +
-      (T.Emotions ? '<div class="switch"><span>Feeling pictures beside the lines</span><div class="seg" data-pk="feel"><button type="button" data-v="yes" aria-pressed="' + (pr.feel === 'yes') + '">Yes</button><button type="button" data-v="no" aria-pressed="' + (pr.feel === 'no') + '">No</button></div></div>' : '') +
+      (T.Emotions ? '<div class="switch"><span>Feeling icons in the gray strip, with who they are for</span><div class="seg" data-pk="feel"><button type="button" data-v="yes" aria-pressed="' + (pr.feel === 'yes') + '">Yes</button><button type="button" data-v="no" aria-pressed="' + (pr.feel === 'no') + '">No</button></div></div>' : '') +
       '<div class="row end" style="margin-top:10px"><button class="btn primary" id="mk">' + icon('print') + 'Make it</button></div><p class="muted small">Then print in color, or choose “Save as PDF” in the print window. For your cast only.</p></div><div id="out"></div>';
     app.querySelectorAll('[data-pk] [data-v], .swatch[data-pk]').forEach(function (b) { b.onclick = function () { var k = b.dataset.pk || b.parentNode.dataset.pk; pr[k] = b.dataset.c || b.dataset.v; T.ls('printPrefs', pr); printPage(who); }; });
     document.getElementById('mk').onclick = function () { make(who, pr); };
@@ -313,17 +313,24 @@
         return p.then(function () {
           return draw(doc, n, 816, 1.6, true).then(function (r) {      // about 130 dpi on letter paper
             var ctx = r.canvas.getContext('2d'), k = r.k;
+            var strip0 = feels.length ? (T.Emotions.strips[n] = null, T.Emotions.stripOf(n, r.canvas)) : null;      // find the gray strip before anything is drawn on the page
             ctx.globalCompositeOperation = 'multiply';
             var fill = function (list, color) { ctx.fillStyle = color; list.forEach(function (b) { if (b.n === n) ctx.fillRect(b.x * k - 2, b.y * k - 1, b.w * k + 4, b.h * k + 2); }); };
             fill(mineLines, COLORS[pr.lines]); fill(mineLyr, COLORS[pr.lyrics]);
             ctx.globalCompositeOperation = 'source-over';
             if (bandPages[n]) { ctx.fillStyle = COLORS[pr.band]; ctx.fillRect(r.canvas.width - 22 * k / 1.6, 0, 22 * k / 1.6, r.canvas.height); }
-            var page = r.canvas, mine = feels.filter(function (f) { return f.n === n && pics[f.icon]; });
-            if (feels.length) {      // a column just right of every page for the feeling pictures (the script's text runs nearly edge to edge; every page the same size)
-              var col = Math.round(page.width * 0.11), wide = document.createElement('canvas'); wide.width = page.width + col; wide.height = page.height;
-              var wc = wide.getContext('2d'); wc.fillStyle = '#fff'; wc.fillRect(0, 0, wide.width, wide.height); wc.drawImage(page, 0, 0);
-              mine.forEach(function (f) { var im = pics[f.icon], h = col * 1.25, w = h * im.width / im.height; wc.drawImage(im, page.width + (col - w) / 2, Math.max(0, Math.min(wide.height - h, f.y * k - h / 2)), w, h); });
-              page.width = page.height = 0; page = wide;
+            var page = r.canvas;
+            if (strip0) {      // feeling icons inside the page's gray strip, each with who it is for
+              T.Emotions.layout(n, strip0, feels).forEach(function (p) {
+                var im = pics[p.f.icon]; if (!im) return;
+                ctx.drawImage(im, p.x * k, p.y * k, p.w * k, p.h * k);
+                if (p.label) {
+                  var fs = Math.max(9, Math.round(7.5 * k)), cx = (p.x + p.w / 2) * k, ty = (p.y + p.h) * k + 2;
+                  ctx.font = '700 ' + fs + 'px system-ui, sans-serif'; var tw = ctx.measureText(p.label).width;
+                  ctx.fillStyle = '#fff'; ctx.fillRect(cx - tw / 2 - 4, ty, tw + 8, fs + 4);
+                  ctx.fillStyle = '#1d1a2e'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(p.label, cx, ty + 2); ctx.textAlign = 'start';
+                }
+              });
             }
             var img = new Image(); img.className = 'printpage'; img.alt = 'Page'; img.src = page.toDataURL('image/jpeg', 0.85);
             out.appendChild(img); page.width = page.height = 0;

@@ -55,13 +55,7 @@
       host.querySelectorAll('.hl, .snote, .cue, .feel').forEach(function (e) { e.remove(); });
       host.classList.toggle('withcues', !!st.cues);
       host.classList.toggle('withfeel', !!(st.feel && T.Emotions));
-      var lastY = {};      // icons close together stack downward instead of covering each other (about 50 points apart)
-      if (st.feel && T.Emotions) T.Emotions.all().sort(function (a, b) { return a.n - b.n || a.y - b.y; }).map(function (f) {
-        var y = f.y; if (lastY[f.n] != null && y < lastY[f.n] + 50) y = lastY[f.n] + 50; lastY[f.n] = y; return Object.assign({}, f, { y: y });
-      }).forEach(function (f) {      // feeling pictures just right of the page
-        var pg = host.querySelector('.pdfpage[data-n="' + f.n + '"]'), sz = T.Pages.size(f.n), ic = T.Emotions.ICON[f.icon]; if (!pg || !ic) return;
-        pg.insertAdjacentHTML('beforeend', '<button type="button" class="feel" data-feel="' + esc(f.id) + '" style="top:' + (f.y / sz.h * 100) + '%" aria-label="Feeling: ' + esc(ic.name) + '" title="' + esc(ic.name) + '"><img src="' + ic.file + '" alt=""></button>');
-      });
+      if (st.feel && T.Emotions) host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeFeel(pg, +pg.dataset.n, c); });
       var who = chars(), pct = function (v, d) { return (v / d * 100) + '%'; };
       if (who.length) O.scenes.forEach(function (scene) {
         var src = T.scriptScene(scene); if (!src) return;
@@ -82,6 +76,17 @@
       pins.forEach(function (x) {
         var n = x[0], pg = host.querySelector('.pdfpage[data-n="' + n.n + '"]'), sz = T.Pages.size(n.n); if (!pg) return;
         pg.insertAdjacentHTML('beforeend', '<button type="button" class="snote' + (x[1] ? ' dir' : '') + '" data-note="' + esc(n.id) + '" data-dir="' + (x[1] ? 1 : 0) + '" style="left:' + pct(n.x, sz.w) + ';top:' + pct(n.y, sz.h) + '" aria-label="' + (x[1] ? 'Director’s note' : 'My note') + ': ' + esc(n.text) + '"><span>' + esc(n.text) + '</span></button>');
+      });
+    }
+
+    /* feeling icons: inside the page's gray strip (found once the page is drawn), each labeled with who it is for */
+    function placeFeel(pg, n, canvas) {
+      pg.querySelectorAll('.feel').forEach(function (e) { e.remove(); });
+      if (!st.feel || !T.Emotions) return;
+      var sz = T.Pages.size(n), strip = T.Emotions.stripOf(n, canvas), pc = function (v, d) { return (v / d * 100) + '%'; };
+      T.Emotions.layout(n, strip).forEach(function (p) {
+        var ic = T.Emotions.ICON[p.f.icon];
+        pg.insertAdjacentHTML('beforeend', '<button type="button" class="feel" data-feel="' + esc(p.f.id) + '" style="left:' + pc(p.x, sz.w) + ';top:' + pc(p.y, sz.h) + ';width:' + pc(p.w, sz.w) + '" aria-label="' + esc(ic.name + (p.label ? ': ' + p.label : '')) + '" title="' + esc(ic.name + (p.label ? ' · ' + p.label : '')) + '"><img src="' + ic.file + '" alt="">' + (p.label ? '<span class="feel-who">' + esc(p.label) + '</span>' : '') + '</button>');
       });
     }
 
@@ -107,7 +112,7 @@
           T.Pages.doc().then(function (doc) { return doc.getPage(n).then(function (pg) {
             var vp1 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / vp1.width * Math.min(window.devicePixelRatio || 1, 2) });
             var cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); cv.className = 'pdfcanvas';
-            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) el.insertBefore(cv, el.firstChild); });
+            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) { el.insertBefore(cv, el.firstChild); placeFeel(el, n, cv); } });
           }); }).catch(function (er) { el.innerHTML = '<p class="err" style="padding:20px">' + esc(er.message || 'This page would not load.') + '</p>'; }).finally(function () { delete drawing[n]; });
         } else if (!e.isIntersecting && c) { c.width = c.height = 0; c.remove(); }
       });
@@ -140,7 +145,7 @@
     var setAdding = function (v, msg) { adding = v; $('add').setAttribute('aria-pressed', v === 'note'); if ($('addf')) $('addf').setAttribute('aria-pressed', v === 'feel'); if ($('addc')) $('addc').setAttribute('aria-pressed', v === 'cue' || !!(v && v.move)); $('addhelp').hidden = !v; if (msg) $('addhelp').textContent = msg; host.classList.toggle('adding', !!v); };
     $('add').onclick = function () { setAdding(adding === 'note' ? false : 'note', 'Tap the spot on a page where the note goes.'); };
     if ($('addc')) $('addc').onclick = function () { setAdding(adding === 'cue' ? false : 'cue', 'Tap the line on a page where the cue goes (it goes in the left margin).'); };
-    if ($('addf')) $('addf').onclick = function () { setAdding(adding === 'feel' ? false : 'feel', 'Tap the line on a page where the feeling goes (it goes just right of the page).'); if (!st.feel) { st.feel = true; keep(); if ($('sfeel')) $('sfeel').checked = true; overlay(); } };
+    if ($('addf')) $('addf').onclick = function () { setAdding(adding === 'feel' ? false : 'feel', 'Tap the line on a page where the feeling goes (it goes in the gray strip beside that line).'); if (!st.feel) { st.feel = true; keep(); if ($('sfeel')) $('sfeel').checked = true; overlay(); } };
 
     host.addEventListener('click', function (e) {
       var pin = e.target.closest('.snote'), cue = e.target.closest('.cue'), fe = e.target.closest('.feel');
@@ -154,27 +159,28 @@
       setAdding(false);
       if (mode === 'note') edit({ id: newId(), n: n, x: x, y: y, text: '' }, o.teacher, true);
       else if (mode === 'cue') cueEdit({ id: newId(), k: 'LX', n: n, y: y, text: '' }, true);
-      else if (mode === 'feel') feelPick(null, function (icon) { T.Emotions.add(n, y, icon); T.saveShow('Feeling added').then(overlay); });
+      else if (mode === 'feel') feelPick(null, function (icon, who) { T.Emotions.add(n, y, icon, who); T.saveShow('Feeling added').then(overlay); });
       else if (mode.move) { var c = T.cues().find(function (q) { return q.id === mode.move; }); if (c) { c.n = n; c.y = y; T.show.cues.list.sort(T.Cues.order); T.saveShow('Cue moved').then(overlay); } }
     });
 
     /* feeling pictures: everyone sees the name; the teacher changes or removes one */
     function feelPick(current, done) {
-      var d = ask('<h2>' + sym('🙂') + 'Pick a feeling</h2>' + T.Emotions.picker(current) + '<div class="row end" style="margin-top:10px"><button class="btn quiet" id="fx">Cancel</button></div>');
+      var d = ask('<h2>' + sym('🙂') + 'Pick a feeling</h2>' + T.Emotions.picker(current && current.icon, current && current.who) + '<div class="row end" style="margin-top:10px"><button class="btn quiet" id="fx">Cancel</button></div>');
       d.querySelector('#fx').onclick = function () { d.close(); };
-      d.querySelectorAll('[data-icon]').forEach(function (b) { b.onclick = function () { d.close(); done(b.dataset.icon); }; });
+      d.querySelectorAll('[data-icon]').forEach(function (b) { b.onclick = function () { var w = d.querySelector('#feelwho').value; d.close(); done(b.dataset.icon, w ? [w] : []); }; });
     }
     function feelOpen(id) {
       var f = T.Emotions.all().find(function (x) { return x.id === id; }); if (!f) return;
       var ic = T.Emotions.ICON[f.icon];
-      var d = ask('<div style="text-align:center"><img src="' + ic.file + '" alt="" style="height:160px"><h2 style="margin:8px 0">' + esc(ic.name) + '</h2>' +
+      var lab = T.Emotions.label(f.who);
+      var d = ask('<div style="text-align:center"><img src="' + ic.file + '" alt="" style="height:160px"><h2 style="margin:8px 0">' + esc(ic.name) + (lab ? ' · ' + esc(lab) : '') + '</h2>' +
         (f.auto && f.note ? '<p class="muted small">The script says “' + esc(f.note) + '” here.</p>' : '') +
         (o.teacher ? '' : '<p class="small"><a href="#/react">Practice feelings in React to That!</a></p>') + '</div>' +
         '<div class="row end" style="flex-wrap:wrap">' + (o.teacher ? '<button class="btn quiet" id="fd">Remove</button><button class="btn" id="fc">Change</button>' : '') + '<button class="btn primary" id="fk">Close</button></div>');
       d.querySelector('#fk').onclick = function () { d.close(); };
       if (!o.teacher) return;
       d.querySelector('#fd').onclick = function () { d.close(); T.Emotions.remove(f); T.saveShow('Feeling removed').then(overlay); };
-      d.querySelector('#fc').onclick = function () { d.close(); feelPick(f.icon, function (icon) { T.Emotions.change(f, icon); T.saveShow('Feeling changed').then(overlay); }); };
+      d.querySelector('#fc').onclick = function () { d.close(); feelPick(f, function (icon, who) { T.Emotions.change(f, icon, who); T.saveShow('Feeling changed').then(overlay); }); };
     }
 
     /* cues: anyone can read them; the teacher accepts, edits, moves and deletes */
