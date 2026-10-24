@@ -414,7 +414,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.84';
+var VERSION = '1.85';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -3778,7 +3778,7 @@ window.addEventListener('beforeunload', function (e) { if (DIRTY) { e.preventDef
 call('api_boot').then(function (b) {
   if (b.error === 'signin') { $('main').innerHTML = '<div class="card empty">Please open this link while signed in to your school Google account.</div>'; return; }
   B = withCheck(b); D = b.data || emptyD(); if (b.td) TD = b.td;
-  var wk = 'Work with my ' + (b.dayClass || 'resource') + ' teacher on it'; if (ACTIONS.indexOf(wk) < 0) ACTIONS.splice(4, 0, wk);          // a low grade's plan
+  var wk = 'Work with my ' + (b.dayClass || 'resource') + ' teacher on it'; if (ACTIONS.indexOf(wk) < 0) ACTIONS.splice(3, 0, wk);          // a low grade's plan
   $('brand').textContent = b.app; document.title = b.app;
   lookAfterBoot();
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
@@ -4940,7 +4940,7 @@ function gradesCard(sec) {
 }
 // "My plan" for each class: the choices (and colors) from the resource teacher's Google Doc. [label, pill background, text, matching low-grade choice]
 var CPLANS = [['No plan needed', '#cfe2f3', '#1c4587', ''], ['Get Help / Email Teacher', '#fce8b2', '#7f6000', 'Email my teacher'], ['Work on missing assignments', '#d9ead3', '#274e13', 'Turn in missing work'],
-  ['Schedule a Retake', '#f4cccc', '#990000', 'Retake or redo'], ['Go to Support', '#c9daf8', '#20124d', 'Resource / support time']];
+  ['Schedule a Retake', '#f4cccc', '#990000', 'Retake or redo'], ['Go to Support', '#c9daf8', '#20124d', 'Email my teacher and ask to be put in Support']];
 function cpStyle(v) { var p = CPLANS.filter(function (x) { return x[0] === v; })[0]; return p ? 'background:' + p[1] + ';color:' + p[2] + ';border-color:' + p[1] : ''; }
 function cpSelect(i, v) {
   return '<select class="cpsel" style="' + cpStyle(v) + '" onchange="cpSet(' + i + ',this)"><option value="">My plan…</option>' + CPLANS.map(function (p) { return '<option' + (p[0] === v ? ' selected' : '') + '>' + p[0] + '</option>'; }).join('') + '</select>';
@@ -4956,7 +4956,7 @@ function cpSet(i, el) {
     setHtml('steps', stepRows());
   }
   var p = CPLANS.filter(function (x) { return x[0] === v; })[0];          // a low grade: check the matching choice in the red box
-  if (p && p[3] && isLow(CK.grades[c.name]) && CK.lows[c.name].actions.indexOf(p[3]) < 0) { CK.lows[c.name].actions.push(p[3]); var lr = $('lr' + i); if (lr) lr.firstChild.innerHTML = lowBox(i); }
+  if (p && p[3] && isLow(CK.grades[c.name]) && lowActions(c).indexOf(p[3]) >= 0 && CK.lows[c.name].actions.indexOf(p[3]) < 0) { CK.lows[c.name].actions.push(p[3]); var lr = $('lr' + i); if (lr) lr.firstChild.innerHTML = lowBox(i); }
   drawSugg();
 }
 /* ---------- student: focus timer (predict how much you'll get done, then say how much you did) ---------- */
@@ -5177,7 +5177,9 @@ function mxBack(k) {
 }
 
 // A D or F (under the Low grade line): the student must say why and pick a plan before saving.
-var ACTIONS = ['Retake or redo', 'Email my teacher', 'Drop in for help', 'Resource / support time', 'Turn in missing work', 'Study or practice more', 'Tutoring', 'Other'];
+var ACTIONS = ['Retake or redo', 'Email my teacher', 'Drop in for help', 'Turn in missing work', 'Study or practice more', 'Tutoring', 'Other'];
+// Support is only for classes that count toward graduation, so this choice shows only on those (1.85)
+var SUPPORT_ACT = 'Email my teacher and ask to be put in Support';
 // The graduation requirement a class counts toward (same rule as the server's gradFor_), and whether a grade puts it at risk (D or F).
 function gradFor(cls) {
   var n = ' ' + String(cls || '').toLowerCase().replace(/[^a-z0-9&.\s-]/g, ' ').replace(/\s+/g, ' ') + ' ';
@@ -5197,6 +5199,7 @@ function coTeacher(c) {
 // The plan choices for a class; a co-taught class adds "Ask <co-teacher> for help".
 function lowActions(c) {
   var co = coTeacher(c), a = ACTIONS.slice();
+  if (gradFor(c.name)) a.splice(2, 0, SUPPORT_ACT);
   if (co) a.splice(2, 0, 'Ask ' + co.name + ' for help');
   return a;
 }
