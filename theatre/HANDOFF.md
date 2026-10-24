@@ -147,6 +147,12 @@ makeup and hair / supplies / other, Note) or **plans a build**: one thing the cr
 Mentors (the Mentor password, or a cast member marked Mentor) get a Shopping list tile on their home page; what they add is sent as a note (type `shopAdd`)
 and shows as "Sent, waiting for your teacher" until the teacher opens Production, which takes it in ("added by Sam L. (Mentor)"). New Mentor passwords include
 the Shopping list page; an existing Mentor password needs it ticked in its checklist.
+**Homework lists (2026-10-24):** before the shopping day (planned Wed Oct 13, 2027) every Company member makes a list for each of their characters on the
+Shopping list page (a tile on everyone's home page except parents): costume pieces and props, each with a guessed price, and a running total. "Fill in from
+the show's lists" copies the character's costume plot and props. The draft stays on the iPad (`ls shopHw`); **Send to my teacher** sends a note (type
+`shopList`); sending again replaces that student's earlier list for that character (things already marked found / have / skip stay). On the teacher's list
+each one is a "📝 Homework list · <character>" card with the guess total, and the summary line adds "students' lists guess $X more". The homework lists can
+repeat pieces that are already on the costume plot; mark the doubles Skip.
 
 **Practice data** (`js/progress.js`; API `/theatre/api/progress[/<actor>]`): like her flashcard app. In Run my role the first try at each line counts right or wrong
 (microphone result, or the student's own ✓ I got it / ✗ Not yet). After a song (track ends, or leaving after 60%+) students rate the words and the dance (😟 🙂 🤩,

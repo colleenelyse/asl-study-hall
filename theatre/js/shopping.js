@@ -6,7 +6,10 @@
    On the trip, students tap Found it!; the note waits on the iPad until there is Wi-Fi (Store.queueNote), then Teacher mode takes it in.
    Added things (Colleen 2026-10-24: "when a teacher or mentor thinks of something we need to purchase, they can add it"; and one prop they plan to build
    with the materials to buy for it): T.show.shop.extra [{ id, name, qty, kind, note, build, by, mentor, at }] and T.show.shop.builds [{ id, name, who, note, by, mentor, at }].
-   A teacher adds them on Production › Shopping; a Company Mentor adds them from the Shopping list page and they arrive as a note (type shopAdd). */
+   A teacher adds them on Production › Shopping; a Company Mentor adds them from the Shopping list page and they arrive as a note (type shopAdd).
+   Homework (Colleen 2026-10-24: before the shopping day "each student compiling a list for their character of props and costumes they're looking for and an
+   approximate budget"): every Company member builds a list for each of their characters on this iPad (ls shopHw), each thing with a guessed price and a total,
+   and sends it (note type shopList). It joins the teacher's list as extra items with who (the character), est (the guess) and hw (actor|character). */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
@@ -50,6 +53,9 @@
     return true;
   }
   /* a Company Mentor: the Mentor password, or a cast member marked Mentor */
+  /* a Company member who can make the homework list (not a parent) */
+  function canList() { return !!(T.me && T.me.id && T.me.chars.length && !(T.pass && T.pass.who === 'parent')); }
+  T.shopTile = function () { return T.shopCanAdd() ? 'Add what we need to buy' : canList() ? 'My list for the shopping day' : ''; };
   T.shopCanAdd = function () { return !!((T.pass && T.pass.who === 'helper') || (!T.pass && T.me && (actorById(T.me.id) || {}).company === 'mentor')); };
   /* every item to find: { key, kind, name, who (char), for (actor), sizes, qty, costume } */
   function items() {
@@ -63,7 +69,7 @@
     props().forEach(function (p) { out.push({ key: 'p|' + p.id, kind: 'prop', name: p.name, who: p.who, qty: p.qty || 1, prop: p, group: '2|' + p.who }); });
     extra().forEach(function (e) {
       var b = e.build && buildById(e.build); if (e.build && !b) return;
-      out.push({ key: 'x|' + e.id, kind: b ? 'build' : e.kind, name: e.name, who: b ? b.who : '', qty: e.qty || 1, extra: e, build: b, group: b ? '3|' + b.id : '4|' + kindOf(e.kind)[0] });
+      out.push({ key: 'x|' + e.id, kind: b ? 'build' : e.kind, name: e.name, who: b ? b.who : (e.who || ''), qty: e.qty || 1, extra: e, build: b, group: b ? '3|' + b.id : e.hw ? '5|' + e.who : '4|' + kindOf(e.kind)[0] });
     });
     return out;
   }
@@ -71,6 +77,7 @@
   function subLine(it, teacher) {
     if (it.kind === 'costume') return esc(it.costume) + ' · ' + (it.actor ? esc(it.actor.name) + (it.actor.sizes && (teacher || S().showSizes) ? ' (' + esc(it.actor.sizes) + ')' : '') : 'not cast yet');
     if (it.build) return teacher ? '' : 'for the build: ' + esc(it.build.name);      // the teacher sees it inside the build's own card
+    if (it.extra && it.extra.hw) { var a = actorById(it.extra.by); return esc(kindOf(it.extra.kind)[2].replace(/s$/, '')) + (it.extra.est ? ' · about ' + money(it.extra.est) : '') + (teacher && a ? ' · ' + esc(T.shortName(a.name)) + '’s list' : ''); }
     if (it.extra) return esc(kindOf(it.extra.kind)[2]) + (it.extra.note ? ' · ' + esc(it.extra.note) : '') + (teacher ? ' · ' + byLabel(it.extra) : '');
     return '';
   }
@@ -81,6 +88,21 @@
     if (typeof n.key !== 'string' || n.key.length > 120) return false;
     var cur = S().status[n.key]; if (cur && cur.s === 'bought') return false;
     S().status[n.key] = { s: 'bought', price: String(n.price || '').replace(/[^\d.]/g, '').slice(0, 8), by: n.actor, at: n._at };
+    return true;
+  };
+  T.noteHandlers.shopList = function (n) {      // a Company member's homework list for one character; sending again replaces it
+    var a = n && actorById(n.actor);
+    if (!a || !T.charById(n.char) || !Array.isArray(n.items)) return false;
+    var hw = a.id + '|' + n.char, s = S(), keep = [];
+    s.extra = extra().filter(function (e) {
+      if (e.hw !== hw) return true;
+      if (s.status['x|' + e.id]) { keep.push(e.name.toLowerCase()); return true; }      // already marked found / have / skip: stays
+      return false;
+    });
+    n.items.slice(0, 40).forEach(function (r) {
+      var nm = clean(r && r.name, 100); if (!nm || keep.indexOf(nm.toLowerCase()) >= 0) return;
+      extra().push({ id: nid('h-'), name: nm, qty: 1, kind: r.kind === 'prop' ? 'prop' : 'costume', note: '', est: String(r.price || '').replace(/[^\d.]/g, '').slice(0, 8), build: '', who: n.char, hw: hw, by: a.id, mentor: false, at: n._at });
+    });
     return true;
   };
   T.noteHandlers.shopAdd = function (n) {      // a Mentor added something to buy, or a build
@@ -122,10 +144,11 @@
   T.shopView = function () {
     var s = S(), all = items(), need = all.filter(function (it) { return !state(it).s; }).length;
     var spent = all.reduce(function (t, it) { var st = state(it); return t + (st.s === 'bought' ? +st.price || 0 : 0); }, 0);
+    var guess = all.reduce(function (t, it) { return t + (it.extra && it.extra.hw && !state(it).s ? +it.extra.est || 0 : 0); }, 0);
     var list = all.filter(function (it) { return filter === 'all' || !state(it).s; });
     var byWho = {}; builds().forEach(function (b) { byWho['3|' + b.id] = []; });      // every build gets a card, even with nothing to buy yet
     list.forEach(function (it) { (byWho[it.group] = byWho[it.group] || []).push(it); });
-    return '<div class="card"><div class="row"><b class="grow">' + need + ' of ' + all.length + ' still to find · spent ' + money(spent) + (s.budget ? ' of ' + money(s.budget) : '') + '</b>' +
+    return '<div class="card"><div class="row"><b class="grow">' + need + ' of ' + all.length + ' still to find · spent ' + money(spent) + (s.budget ? ' of ' + money(s.budget) : '') + (guess ? ' · students’ lists guess ' + money(guess) + ' more' : '') + '</b>' +
       '<label class="f" style="margin:0">Budget $<input id="bud" inputmode="decimal" value="' + esc(s.budget || '') + '" style="width:110px;display:inline-block"></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
       '<label class="switch"><span>Show sizes on the Company members’ list</span><input type="checkbox" id="ssz"' + (s.showSizes ? ' checked' : '') + '></label>' +
       '<div class="seg noprint"><button data-f="need" aria-pressed="' + (filter === 'need') + '">Still to find</button><button data-f="all" aria-pressed="' + (filter === 'all') + '">Everything</button></div>' +
@@ -139,6 +162,10 @@
           foot = '<div class="row noprint" style="margin-top:8px"><input data-bmat="' + b.id + '" maxlength="100" placeholder="Add a material, e.g. 2 sheets of foam board" class="grow" style="min-height:44px;border:2px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--card)"><button class="btn small" data-bmadd="' + b.id + '">Add</button></div>' +
             (l.length ? '' : '<p class="muted small">Nothing to buy for this build yet' + (filter === 'need' ? ', or it has all been found' : '') + '.</p>');
         } else if (g[0] === '4') { var kd = kindOf(g[1]); head = sym(kd[1]) + esc(kd[2]) + ' · added'; }
+        else if (g[0] === '5') {
+          var est = l.reduce(function (t, it) { return t + (+it.extra.est || 0); }, 0);
+          head = sym('📝') + 'Homework list · ' + (T.charById(g[1]) ? T.chip(g[1]) : esc(g[1])) + (est ? ' <span class="muted small" style="font-weight:normal">about ' + money(est) + '</span>' : '');
+        }
         else { var ch = T.charById(g[1]); head = (g[0] === '2' ? sym('🎒') + 'Props · ' : sym('👕') + 'Costumes · ') + (ch ? T.chip(g[1]) : esc(g[1])); }
         return '<div class="card"><h3>' + head + '</h3>' + l.map(function (it) {
           var st = state(it);
@@ -186,6 +213,61 @@
     };
   };
 
+  /* ---------- Students: the homework list for my character ---------- */
+  function hwAll() { return T.ls('shopHw') || {}; }
+  function hwMine() { var all = hwAll(); return all[T.me.id] || {}; }
+  function hwSave(mine) { var all = hwAll(); all[T.me.id] = mine; T.ls('shopHw', all); }
+  function hwTotal(rows) { return rows.reduce(function (t, r) { return t + (+r.price || 0); }, 0); }
+  function homework() {
+    var mine = hwMine();
+    return T.me.chars.map(function (cid) {
+      var d = mine[cid] || { rows: [] }, rows = d.rows.length ? d.rows : [{ name: '', kind: 'costume', price: '' }];
+      return '<div class="card" data-hw="' + cid + '"><h2>' + sym('📝') + 'My list for ' + T.chip(cid) + '</h2>' +
+        '<p>Homework before the shopping day: the costume pieces and props your character needs. Guess about what each one costs.</p>' +
+        rows.map(function (r, i) {
+          return '<div class="row" style="flex-wrap:wrap;margin-bottom:8px" data-i="' + i + '">' +
+            '<input data-hn maxlength="100" class="grow" placeholder="e.g. Red basketball jersey" value="' + esc(r.name) + '" style="min-height:48px;min-width:180px;border:2px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--card)">' +
+            '<div class="seg" data-hk>' + [['costume', '👕 Costume'], ['prop', '🎒 Prop']].map(function (k) { return '<button type="button" data-v="' + k[0] + '" aria-pressed="' + ((r.kind || 'costume') === k[0]) + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+            '<label class="small">about $<input data-hp inputmode="decimal" placeholder="0" value="' + esc(r.price) + '" style="width:80px;min-height:48px;border:2px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--card)"></label>' +
+            '<button class="btn small" data-hx aria-label="Take this off my list">✕</button></div>';
+        }).join('') +
+        '<div class="row" style="flex-wrap:wrap"><button class="btn" data-hadd>＋ Add a thing</button><button class="btn" data-hfill>Fill in from the show’s lists</button>' +
+        '<b class="grow" style="text-align:right">Total: about <span data-htot>' + money(hwTotal(rows)) + '</span></b></div>' +
+        '<div class="row end" style="margin-top:10px"><span class="muted small grow">' + (d.sent ? 'Sent ' + new Date(d.sent).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + '. Change it and send it again any time.' : 'Not sent yet.') + '</span>' +
+        '<button class="btn primary" data-hsend>Send to my teacher</button></div></div>';
+    }).join('');
+  }
+  function wireHomework() {
+    app.querySelectorAll('[data-hw]').forEach(function (card) {
+      var cid = card.dataset.hw;
+      var read = function () {
+        return Array.prototype.map.call(card.querySelectorAll('[data-i]'), function (row) {
+          var on = row.querySelector('[data-hk] [aria-pressed="true"]');
+          return { name: row.querySelector('[data-hn]').value, kind: on ? on.dataset.v : 'costume', price: row.querySelector('[data-hp]').value.replace(/[^\d.]/g, '') };
+        });
+      };
+      var keep = function (rows, redraw) { var m = hwMine(); m[cid] = { rows: rows, sent: (m[cid] || {}).sent || 0 }; hwSave(m); if (redraw) T.studentPages.shop(); else card.querySelector('[data-htot]').textContent = money(hwTotal(rows)); };
+      card.querySelectorAll('[data-hn],[data-hp]').forEach(function (inp) { inp.oninput = function () { keep(read()); }; });
+      card.querySelectorAll('[data-hk] button').forEach(function (b) { b.onclick = function () { b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); keep(read()); }; });
+      card.querySelectorAll('[data-hx]').forEach(function (b) { b.onclick = function () { var rows = read(); rows.splice(+b.closest('[data-i]').dataset.i, 1); keep(rows, true); }; });
+      card.querySelector('[data-hadd]').onclick = function () { var rows = read(); rows.push({ name: '', kind: 'costume', price: '' }); keep(rows, true); };
+      card.querySelector('[data-hfill]').onclick = function () {      // the show's costume plot and props for this character, minus what is already on the list
+        var rows = read().filter(function (r) { return r.name.trim(); }), have = rows.map(function (r) { return r.name.trim().toLowerCase(); }), n = 0;
+        var add = function (name, kind) { if (have.indexOf(name.toLowerCase()) < 0) { have.push(name.toLowerCase()); rows.push({ name: name, kind: kind, price: '' }); n++; } };
+        (T.O().costumes || []).forEach(function (c) { if (c.who === cid) c.items.forEach(function (x) { add(x, 'costume'); }); });
+        props().forEach(function (p) { if (p.who === cid) add(p.name, 'prop'); });
+        keep(rows, true); T.toast(n ? 'Added ' + n + ' from the show’s lists. Take off what you already have at home.' : 'Everything from the show’s lists is already here.');
+      };
+      card.querySelector('[data-hsend]').onclick = function () {
+        var rows = read().filter(function (r) { return r.name.trim(); });
+        if (!rows.length) { T.toast('Add at least one thing first.'); return; }
+        Store.queueNote(T.key, { type: 'shopList', actor: T.me.id, char: cid, items: rows }).catch(function () {});
+        var m = hwMine(); m[cid] = { rows: rows, sent: Date.now() }; hwSave(m);
+        T.toast('Sent to your teacher'); T.studentPages.shop();
+      };
+    });
+  }
+
   /* ---------- Students: the shopping list on a field trip ---------- */
   T.studentPages = T.studentPages || {};
   T.studentPages.shop = function () {
@@ -196,7 +278,7 @@
     var left = all.filter(function (it) { return !state(it).s; }).length;
     var canAdd = T.shopCanAdd(), sent = (T.ls('shopSent') || []).filter(function (x) { return !extra().some(function (e) { return e.id === x.cid || e.build === x.cid; }) && !buildById(x.cid); });
     T.ls('shopSent', sent);      // forget the ones the teacher has taken in
-    app.innerHTML = (canAdd ? '<div class="card"><h2>' + sym('🛒') + 'Thought of something we need?</h2><p>Add it here. Your teacher sees it the next time they open the shopping list.</p>' +
+    app.innerHTML = (canList() ? homework() : '') + (canAdd ? '<div class="card"><h2>' + sym('🛒') + 'Thought of something we need?</h2><p>Add it here. Your teacher sees it the next time they open the shopping list.</p>' +
       (sent.length ? '<p class="small"><b>Sent, waiting for your teacher:</b> ' + sent.map(function (x) { return esc(x.name); }).join(', ') + '</p>' : '') + '</div>' + addForms() : '') +
       '<div class="card"><h2>' + sym('🚌') + 'Our field trip</h2><ol class="big" style="font-size:1.05em;line-height:1.7">' +
       '<li>Ride with your group and your teacher.</li><li>Stay with your buddy in the store.</li><li>Look for things on this list. It is for <b>the whole show</b>, not only you.</li>' +
@@ -208,6 +290,7 @@
           '<br><span class="small">' + (ch ? T.chip(it.who) : '') + (it.kind === 'costume' && it.actor ? ' for ' + esc(it.actor.name) + (s.showSizes && it.actor.sizes ? ' · <b>' + esc(it.actor.sizes) + '</b>' : '') : '') + (it.kind === 'prop' && !it.extra ? ' prop' : '') + (it.extra ? ' ' + subLine(it, false) : '') + '</span></div>' +
           (st.s ? '<span class="tag">' + (st.pending ? 'Found! (will send)' : 'Found') + '</span>' : '<button class="btn primary" data-found="' + esc(it.key) + '">✓ Found it!</button>') + '</div>';
       }).join('');
+    if (canList()) wireHomework();
     if (canAdd) wireForms(function (o) {
       var helperPass = T.pass && T.pass.who === 'helper';
       o.type = 'shopAdd'; o.actor = helperPass ? '' : T.me.id; o.mentor = true;
