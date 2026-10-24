@@ -828,7 +828,7 @@
     var trk = (T.show.tracks && T.show.tracks[song.id]) || {}, mel = T.show.melody && T.show.melody[song.id];
     var s = scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
     var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
-    var canFollow = T.Follow && T.Follow.ready(song.id);      // a bouncing ball (needs the lyrics timing)
+    var canFollow = T.Follow && T.Follow.ready(song.id);      // the sung line lit up (needs the lyrics timing)
     var canSheet = T.Follow && T.Follow.canShow(song.id);      // the song's real sheet music pages (need only the script PDF)
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
       var mine = l.who && isMine(l.who, scene, null, songMoment(song));
@@ -838,9 +838,9 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
-      (canSheet ? '<div class="row noprint" style="margin:0 0 8px"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ' with the bouncing ball' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label></div>' +
+      (canSheet ? '<div class="row noprint" style="margin:0 0 8px"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ', the sung line lit up' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label></div>' +
         '<div id="follow" class="pages" style="margin-bottom:14px"' + (st.follow ? '' : ' hidden') + '></div>' +
-        (canFollow ? '' : '<p class="muted small">' + sym('⚪') + 'The bouncing ball comes once your teacher finds this song’s lyrics timing.</p>') :
+        (canFollow ? '' : '<p class="muted small">' + sym('⚪') + 'The sung line lights up once your teacher finds this song’s lyrics timing.</p>') :
         item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + 'The real sheet music shows here once your teacher imports the script PDF.</p>' : '') +
       '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     // the sheet music shows right away, with or without a track
@@ -893,10 +893,12 @@
     function drawBtns() { var b = document.getElementById('spp'); if (b) { b.innerHTML = icon(P.playing ? 'pause' : 'play'); b.setAttribute('aria-label', P.playing ? 'Pause' : 'Play'); } }
     function ui() {
       var sw = function (k, label, ok, note) { return '<label class="switch"><span>' + label + (ok ? '' : ' <span class="muted small">(' + note + ')</span>') + '</span><input type="checkbox" data-k="' + k + '"' + (st[k] && ok ? ' checked' : '') + (ok ? '' : ' disabled') + '></label>'; };
-      document.getElementById('pl').innerHTML =
-        '<div class="row" style="justify-content:center"><button class="round" id="sb" aria-label="Back 10 seconds">' + icon('back10') + '</button><button class="round big" id="spp" aria-label="Play">' + icon('play') + '</button><span class="time" id="tm"></span></div>' +
-        '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song">' +
-        keyHint('Space: play or pause · ←: back 10 seconds') +
+      /* Colleen: "very difficult to stop the song while watching… because of the automatic page scrolling and the music controls being at the
+         top": play, back and where-in-the-song sit in a bar fixed to the bottom of the screen */
+      var dk = document.getElementById('songbar'); if (!dk) { dk = document.createElement('div'); dk.id = 'songbar'; dk.className = 'dock song-dock'; app.appendChild(dk); app.insertAdjacentHTML('beforeend', '<div class="song-dock-space"></div>'); }
+      dk.innerHTML = '<div class="in"><button class="round" id="sb" aria-label="Back 10 seconds">' + icon('back10') + '</button><button class="round big" id="spp" aria-label="Play">' + icon('play') + '</button>' +
+        '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song"><span class="time" id="tm"></span></div>';
+      document.getElementById('pl').innerHTML = keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
         sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +

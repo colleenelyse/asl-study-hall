@@ -81,8 +81,22 @@
     }).catch(function (e) { var l = document.getElementById('pgload'); if (l) l.textContent = e.message || 'The pages would not load.'; });
   };
 
-  /* ---------- follow along: a song's real pages, the lyric line being sung, and a bouncing ball over each syllable ----------
-     (Colleen: the music notation following along with the tracks, a bouncing ball, looking like the real script) */
+  /* ---------- follow along: a song's real pages with the lyric line being sung lit up in the singer's color ----------
+     (Colleen: the music notation following along with the tracks, looking like the real script; 2026-10-23: no bouncing ball, "i like the
+     highlighted phrases… match the highlight/icon color for each character"; the highlight comes a little before the line is sung, LEAD seconds,
+     so the singer sees it in time; and the page stops scrolling by itself for a few seconds after the reader scrolls) */
+  var LEAD = 0.75;
+  T.LYRIC_LEAD = LEAD;
+  var userScrolled = 0;
+  ['wheel', 'touchmove'].forEach(function (ev) { window.addEventListener(ev, function () { userScrolled = Date.now(); }, { passive: true }); });
+  window.addEventListener('keydown', function (e) { if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End)$/.test(e.key)) userScrolled = Date.now(); });
+  /* the singer's color for a lyric label: one character's color, several side by side, the show's color for a group */
+  function lyricColors(who) {
+    var ids = who ? T.labelChars(String(who).toUpperCase()) : [];
+    var cs = ids.filter(function (id) { var c = T.charById(id); return id !== '*' && c && c.group !== 'ensemble'; }).map(T.color);
+    return cs.length ? cs : ['var(--accent)'];
+  }
+  T.lyricColors = lyricColors;
   function songItem(songId) {
     var so = T.songById(songId), sc = so && T.sceneById(so.scene), src = sc && T.scriptScene(sc);
     return src && src.items.find(function (it) { return it.type === 'song' && it.num === so.num; });
@@ -115,22 +129,19 @@
       host.dataset.follow = songId; host._at = null;
       return paint(host, pages).catch(function () {});
     },
-    /* move the highlight and the ball to time t (seconds, on the band track's clock) */
+    /* light up the lyric line for time t (seconds, on the band track's clock), LEAD seconds before it is sung */
     update: function (host, songId, t) {
       var lt = T.show.lyricTimes && T.show.lyricTimes[songId], it = songItem(songId); if (!lt || !it) return;
-      var i = -1; lt.lines.forEach(function (x, k) { if (x && x.t <= t) i = k; });
+      var i = -1; lt.lines.forEach(function (x, k) { if (x && x.t - LEAD <= t) i = k; });
       var x = lt.lines[i], line = it.lyrics[i];
-      if (!x || !line || !line.box || t > x.e + 1.5) { host.querySelectorAll('.follow-line, .ball').forEach(function (e) { e.remove(); }); host._at = null; return; }
-      var j = 0; x.s.forEach(function (v, k) { if (v <= t) j = k; });
-      var key = i + ':' + j; if (host._at === key) return;
+      if (!x || !line || !line.box || t > x.e + 1.2) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); host._at = null; return; }
+      var key = String(i); if (host._at === key) return;
       var page = host.querySelector('.pdfpage[data-n="' + line.box.n + '"]'); if (!page) return;
       var sz = T.Pages.size(line.box.n), b = line.box, pc = function (v, d) { return (v / d * 100) + '%'; };
       var hl = page.querySelector('.follow-line'); if (!hl) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); hl = document.createElement('div'); hl.className = 'follow-line'; page.appendChild(hl); }
-      hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h);
-      var syl = (line.syl || [])[Math.min(j, (line.syl || []).length - 1)];
-      var ball = page.querySelector('.ball'); if (!ball) { host.querySelectorAll('.ball').forEach(function (e) { e.remove(); }); ball = document.createElement('div'); ball.className = 'ball'; page.appendChild(ball); }
-      if (syl) { ball.style.left = pc(syl.x + syl.w / 2, sz.w); ball.style.top = pc(b.y - 11, sz.h); ball.classList.remove('hop'); void ball.offsetWidth; ball.classList.add('hop'); }
-      if (!host._at || host._at.split(':')[0] !== String(i)) hl.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
+      var cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(90deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
+      hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
+      if (Date.now() - userScrolled > 4000) hl.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
       host._at = key;
     }
   };

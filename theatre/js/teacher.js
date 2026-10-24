@@ -734,7 +734,7 @@
        and scrolls to the middle of the screen. */
     function draw(msg) {
       var nxt = times.findIndex(function (x) { return !x; });
-      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted small">When each lyric line is sung (for the bouncing ball and the piano). Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
+      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up ¾ second before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
@@ -766,7 +766,7 @@
     var lastRow = -1;
     function follow(force) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
       var t = audio.currentTime, cur = -1;
-      if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t <= t + 0.05) cur = i; });
+      if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t) cur = i; });      // lit up a little early, like the song player
       if (audio.paused && !force) return;
       var nxt = times.findIndex(function (x) { return !x; }), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
       app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); });

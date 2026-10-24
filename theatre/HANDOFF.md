@@ -330,3 +330,9 @@ with its neighbor, now that lines split at singer names) and gives it its share 
 Lyrics timing page layout (Colleen: "impossible to keep up with when the button is at the top"): the player is a bar fixed to the bottom
 (next line's words, play, back 3 s, time, Now, Clear, Save); while the track plays the sung line lights up and scrolls to the middle
 (`follow`), the next line to tap is outlined; on phones the words get a full line above the buttons.
+
+**Lit-up lines instead of the bouncing ball** (Colleen 2026-10-23): the ball is gone; the lyric line being sung lights up in the singer's
+character color (several singers side by side; groups in the show's color; `T.lyricColors`), `T.LYRIC_LEAD` = 0.75 s before its timed start
+(the tap marks the first sung word; the highlight comes early so singers see it in time; the Lyrics timing page lights rows the same way).
+The page stops scrolling by itself for 4 s after the reader scrolls (wheel, touch, keys). The song player's play / back / position are in a
+bar fixed to the bottom (`#songbar`); the switches, volume and loop stay in the card at the top.

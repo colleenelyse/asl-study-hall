@@ -193,12 +193,10 @@ label.f textarea { min-height: 120px; }
 .hl.line.mine.now { background: rgba(40, 180, 80, .65); box-shadow: 0 0 0 3px #1b7a43; }
 .hl.cover, .hl.line.mine.cover { background: #dcf5e1; mix-blend-mode: normal; color: #1b7a43; font-weight: 700; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; min-width: max-content; font-size: clamp(9px, 1.4vw, 15px); }
 .hl.cover.now, .hl.line.mine.cover.now { background: #a8e6b6; box-shadow: 0 0 0 3px #1b7a43; }
-.follow-line { position: absolute; background: rgba(255, 214, 0, .32); border-radius: 6px; mix-blend-mode: multiply; z-index: 1; pointer-events: none; transition: top .2s, left .2s; }
-.ball { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #e8384f; box-shadow: 0 2px 6px rgba(0,0,0,.35); z-index: 3; pointer-events: none; transition: left .18s ease-out, top .18s ease-out; }
-.ball.hop { animation: hop .3s ease-out; }
+.follow-line { position: absolute; border-radius: 6px; mix-blend-mode: multiply; opacity: .55; z-index: 1; pointer-events: none; transition: top .2s, left .2s;
+  box-shadow: 0 0 0 3px var(--fl, #ffd600); }
 @keyframes hop { 0% { transform: translateY(0); } 45% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .ball.hop { animation: none; } .ball, .follow-line { transition: none; } }
-:root[data-motion="0"] .ball.hop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .follow-line { transition: none; } }
 .songdock:empty { display: none; }
 .songdock { position: fixed; left: 0; right: 0; bottom: 100px; z-index: 6; display: flex; justify-content: center; }
 .songdock .songbar { background: var(--card); border: 2px solid var(--accent); border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); max-width: 900px; }
@@ -320,3 +318,10 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .lt-row.lt-on { background: color-mix(in srgb, var(--accent) 24%, var(--card)); box-shadow: inset 6px 0 0 var(--accent); }
 .lt-row.lt-next { box-shadow: inset 0 0 0 3px var(--accent); }
 @media (max-width: 520px) { .lt-now { flex: 1 1 100%; order: 5; } .lt-space { height: 240px; } .lt-row > .grow { flex: 1 1 100%; } .lt-row > .row { margin-left: auto; } .lt-dock .lt-controls .btn.small { min-height: 40px; } }
+
+/* song player: play, back and the song's position in a bar at the bottom */
+.song-dock .in { flex-wrap: nowrap; gap: 12px; }
+.song-dock #pos { flex: 1; min-width: 80px; }
+.song-dock .time { min-width: 6.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.song-dock-space { height: 110px; }
+@media (max-width: 520px) { .song-dock .in { flex-wrap: wrap; } .song-dock #pos { flex: 1 1 100%; order: 5; } .song-dock-space { height: 150px; } }
