@@ -33,6 +33,7 @@ http.createServer(async (req, res) => {
     const chunks = []; for await (const c of req) chunks.push(c); let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) {}
     const out = o => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
     if (body.key !== 'devkey') return out({ ok: false, error: 'The key is not right.' });
+    if (body.action === 'schedule') { box.scheduled = (body.reminders || []).slice(0, 400); save(); return out({ ok: true, scheduled: box.scheduled.length, daily: 1 }); }      // reminders wait in dev-mail.json
     let sent = 0, skipped = 0;
     for (const m of (body.messages || []).slice(0, 40)) { if (box.unsub.includes(sig(m.to))) { skipped++; continue; } box.sent.push({ at: new Date().toISOString(), name: body.name, to: m.to, subject: m.subject, text: m.text }); sent++; }
     save(); return out({ ok: true, sent, skipped, quota: 1500 - box.sent.length });

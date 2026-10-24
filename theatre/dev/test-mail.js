@@ -61,6 +61,23 @@ Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email
 ok(V.extra.portal.a1.contacts.length === 1 && sh.portal.got.a1.contact, 'no boxes ticked = no more emails to that address');
 ok(JSON.stringify(sh).indexOf('@') < 0, 'no addresses in the show');
 
+// reminders before the dates families committed to
+const pd = C.parseDates('12/7/2027 Full dress rehearsal, after school\n2027-12-10 – Evening show at 7:00 PM\nsoon: the cast party\n13/45/2027 nope');
+ok(pd.dates.length === 2 && pd.dates[0].date === '2027-12-07' && pd.dates[1].what === 'Evening show at 7:00 PM' && pd.bad.length === 2, 'show-week dates typed one per line; unreadable lines are listed back');
+ok(C.parseDates(C.datesText(C.DEF_DATES)).dates.length === C.DEF_DATES.length, 'the starting dates read back the same');
+const R = { today: '2027-11-30', days: [7, 2, 1], horizon: 35, title: 'HSM JR.', base: 'https://asl.cool/theatre/', sign: 'Ms. E',
+  dates: [{ date: '2027-12-07', what: 'The full dress rehearsal, after school' }, { date: '2027-12-01', what: 'Too soon' }],
+  families: [{ actor: 'a1', name: 'Sam', committed: true, contacts: [{ email: 'pat@x.org', name: 'Pat Lee' }] }, { actor: 'a2', name: 'Ana', committed: true, contacts: [{ email: 'pat@x.org', name: 'Pat Lee' }] },
+    { actor: 'a3', name: 'Bo', committed: false, contacts: [{ email: 'bo@x.org' }] }],
+  signups: [{ to: 'pat@x.org', name: 'Pat Lee', date: '2027-12-07', title: 'Company dinner', what: 'bringing Main dish', qty: '2', note: 'lasagna', page: '#/help/dinner/n1' }, { to: '555-1234', name: 'Kim', date: '2027-12-07', title: 'Ushers' }] };
+const rem = C.reminders(R);
+ok(rem.map(r => r.on).sort().join() === '2027-12-05,2027-12-06', '2 days and 1 day before; a week before has already passed; nothing for a date too soon');
+ok(rem.every(r => r.to === 'pat@x.org'), 'only families who signed the commitment (or signed up), only to email addresses');
+const r1 = rem.find(r => r.on === '2027-12-06');
+ok(/tomorrow/.test(r1.subject) && /The full dress rehearsal, after school \(Sam and Ana\)/.test(r1.text) && /Company dinner”: bringing Main dish ×2 \(lasagna\)/.test(r1.text), 'one email per family per date: both Company members, and what they are bringing');
+ok(/Stop these emails: \{UNSUB\}/.test(r1.text) && /https:\/\/asl\.cool\/theatre\/#\/today/.test(r1.text), 'a link to the app and a way to stop them');
+ok(C.reminders(R).map(r => r.id).join() === rem.map(r => r.id).join() && rem[0].id !== rem[1].id, 'the same reminder keeps its id (so the script never sends it twice)');
+ok(C.reminders(Object.assign({}, R, { horizon: 5 })).length === 1, 'only the next month or so is scheduled at a time');
 // the unsubscribe code: browser HMAC (hex) == the script's computeHmacSha256Signature turned to hex (signed bytes)
 const gs = fs.readFileSync(path.join(__dirname, '../mail-script/Code.gs'), 'utf8'), hex_ = eval('(' + gs.match(/function hex_\(bytes\) \{[\s\S]*?\n/)[0].replace(/^function hex_/, 'function') + ')');
 const signed = [...crypto.createHmac('sha256', 'k1').update('pat@home.com').digest()].map(b => b > 127 ? b - 256 : b);

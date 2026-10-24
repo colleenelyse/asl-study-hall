@@ -128,7 +128,65 @@
       '<p style="color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:8px">You get these emails from the ' + escH(title) + ' app. <a href="' + escH(ctx.unsub) + '" style="color:#777">Stop these emails</a></p></div>';
     return { to: r.to, subject: subject.slice(0, 180), text: text, html: html };
   }
-  var core = { KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose };
+  /* ---------- reminders (Colleen 2026-10-24: "i want the committments parents make to result in a few reminder emails leading up to the date of an
+     obligation"): before every date a family committed to (the show-week dates, for families who signed the commitment; the date of a need they signed
+     up for, with what they're bringing), an email `days` days before. One email per address per date and lead time. Only the next `horizon` days are
+     scheduled each time; Teacher mode sends the list to the school-account script, which sends them each morning. ---------- */
+  var DEF_DATES = [{ date: '2027-11-29', what: 'The final rehearsal weeks begin: please make being at school every day a priority, through Friday, December 10' },
+    { date: '2027-12-07', what: 'The full dress rehearsal, after school (required)' }, { date: '2027-12-09', what: 'The school-day show' },
+    { date: '2027-12-10', what: 'Evening show at 7:00 PM' }, { date: '2027-12-11', what: 'Evening show at 7:00 PM' }];
+  var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  var ymd = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+  var addDays = function (s, n) { var a = s.split('-'), d = new Date(+a[0], +a[1] - 1, +a[2]); d.setDate(d.getDate() + n); return ymd(d); };
+  var dayLong = function (s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); };
+  /* "12/7/2027 Full dress rehearsal" or "2027-12-07 …", one per line -> [{ date, what }] (lines without a readable date are returned in bad) */
+  function parseDates(text) {
+    var out = [], bad = [];
+    String(text || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean).forEach(function (l) {
+      var m = l.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s*[-–:,]?\s*(.*)$/), d;
+      if (m) d = m[1] + '-' + pad2(+m[2]) + '-' + pad2(+m[3]);
+      else { m = l.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*[-–:,]?\s*(.*)$/); if (m) d = (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + pad2(+m[1]) + '-' + pad2(+m[2]); }
+      var ok = d && !isNaN(new Date(d + 'T12:00:00')) && +d.slice(5, 7) <= 12 && +d.slice(8) <= 31;
+      if (ok && m[4].trim()) out.push({ date: d, what: m[4].trim().slice(0, 200) }); else bad.push(l);
+    });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    return { dates: out, bad: bad };
+  }
+  var datesText = function (l) { return l.map(function (x) { var a = x.date.split('-'); return +a[1] + '/' + +a[2] + '/' + a[0] + ' ' + x.what; }).join('\n'); };
+  function hashId(s) { var h1 = 0x811c9dc5, h2 = 0; for (var i = 0; i < s.length; i++) { h1 ^= s.charCodeAt(i); h1 = Math.imul(h1, 16777619) >>> 0; h2 = (h2 * 31 + s.charCodeAt(i)) >>> 0; } return 'r' + h1.toString(36) + h2.toString(36); }
+  /* R = { today, days: [7, 2, 1], horizon, dates: [{ date, what }], title, base, sign,
+          families: [{ actor, name (first), committed, contacts: [{ email, name }] }], signups: [{ to, name, date, title, what, qty, note, page }] }
+     -> [{ id, on, to, subject, text }] ({UNSUB} in text is filled in by the page) */
+  function reminders(R) {
+    var by = {}, last = addDays(R.today, R.horizon || 35);
+    var add = function (to, name, date, line, page) {
+      to = String(to || '').trim(); if (!okEmail(to)) return;
+      (R.days || [7, 2, 1]).forEach(function (n) {
+        var on = addDays(date, -n); if (on <= R.today || on > last) return;
+        var k = to.toLowerCase() + '|' + date + '|' + n, r = by[k] = by[k] || { to: to, name: name || '', date: date, n: n, lines: [], page: page };
+        if (r.lines.indexOf(line) < 0) r.lines.push(line); if (!r.name && name) r.name = name;
+      });
+    };
+    (R.families || []).forEach(function (f) {
+      if (!f.committed) return;
+      (R.dates || []).forEach(function (d) { (f.contacts || []).forEach(function (c) { add(c.email, c.name, d.date, d.what + ' (' + f.name + ')', '#/today'); }); });
+    });
+    (R.signups || []).forEach(function (s) {
+      if (!s.date) return;
+      add(s.to, s.name, s.date, 'You signed up for “' + s.title + '”' + (s.what && s.what !== s.title ? ': ' + s.what : '') + (+s.qty > 1 ? ' ×' + s.qty : '') + (s.note ? ' (' + s.note + ')' : ''), s.page || '#/help');
+    });
+    return Object.keys(by).sort().map(function (k) {
+      var r = by[k], when = r.n === 1 ? 'tomorrow' : r.n === 7 ? 'in one week' : 'in ' + r.n + ' days';
+      // a family with two Company members in the show gets one line per date: "(Sam)" and "(Ana)" joined
+      var lines = [], seen = {};
+      r.lines.forEach(function (l) { var m = l.match(/^(.*) \(([^()]*)\)$/); if (m && r.page === '#/today' && !/^You signed up/.test(l)) { if (seen[m[1]] !== undefined) { lines[seen[m[1]]] = lines[seen[m[1]]].replace(/\)$/, ' and ' + m[2] + ')'); return; } seen[m[1]] = lines.length; } lines.push(l); });
+      var subject = R.title + ': reminder for ' + dayLong(r.date).replace(/,.*$/, '') + ', ' + dayLong(r.date).split(', ')[1] + ' (' + when + ')';
+      var text = (r.name ? 'Hello ' + String(r.name).split(/\s+/)[0] + ',' : 'Hello,') + '\n\nA reminder for ' + dayLong(r.date) + ' (' + when + '):\n\n' + lines.map(function (l) { return '• ' + l; }).join('\n') +
+        '\n\nThank you for your commitment to the show!\n\nOpen the app: ' + R.base + r.page + (R.sign ? '\n\n' + R.sign : '') + '\n\n—\nYou get this reminder because of your commitment in the ' + R.title + ' app. Stop these emails: {UNSUB}';
+      return { id: hashId(k + '|' + lines.join('|')), on: addDays(r.date, -r.n), to: r.to, subject: subject.slice(0, 180), text: text };
+    });
+  }
+  var core = { KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose, DEF_DATES: DEF_DATES, parseDates: parseDates, datesText: datesText, reminders: reminders };
   root.MailCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -202,9 +260,44 @@
   }
   T.sendMail = send;
 
+  /* ---------- reminders: build the next month's list and give it to the school-account script (only when it changed) ---------- */
+  var remDates = function () { return M().dates && M().dates.length ? M().dates : C.DEF_DATES; };
+  var remDays = function () { return M().remDays && M().remDays.length ? M().remDays : [7, 2, 1]; };
+  function remList(vm) {
+    var d = new Date(), today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()), b = T.show.helpBoard || {}, help = vm.help || {};
+    var families = (T.show.cast || []).filter(function (a) { return !a.guest; }).map(function (a) {
+      var r = vm.portal[a.id] || {};
+      return { actor: a.id, name: String(a.name || '').split(/\s+/)[0], committed: !!r.commit, contacts: (r.contacts || []).filter(function (c) { return c.opts && (c.opts.general || c.opts.mine || c.opts.copies); }) };
+    });
+    var signups = (b.signups || []).map(function (s) {
+      var p = (b.posts || []).find(function (x) { return x.id === s.post; }), c = help[s.id]; if (!p || !p.when || p.closed || !c) return null;
+      var it = p.kind === 'meal' && (p.items || []).find(function (i) { return i.id === s.item; });
+      return { to: c.contact, name: c.name, date: p.when, title: p.title, what: it ? 'bringing ' + it.name : '', qty: s.qty, note: s.note, page: p.kind === 'meal' ? '#/help/dinner/' + p.id : '#/help' };
+    }).filter(Boolean);
+    return C.reminders({ today: today, days: remDays(), horizon: 35, dates: remDates(), title: T.O().title, base: location.origin + '/theatre/', sign: M().sign || '', families: families, signups: signups });
+  }
+  var remBusy = null;
+  T.syncReminders = function (force) {
+    if (!T.proof || !M().on || M().remOff || !T.openVault) return Promise.resolve(null);
+    if (remBusy) return remBusy;
+    remBusy = T.openVault().then(function (V) {
+      var m = V.extra.mail || {}; if (!m.url || !m.key) return null;
+      var vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {} }, list = remList(vm);
+      var h = JSON.stringify(list.map(function (r) { return r.id + r.on; }));
+      if (!force && T.ls('remHash') === h) return null;
+      return Promise.all(list.map(function (r) { return sig(vm.key, r.to).then(function (s) { r.text = r.text.replace('{UNSUB}', vm.url + '?u=' + s); return r; }); }))
+        .then(function (rs) { return fetch(vm.url, { method: 'POST', body: JSON.stringify({ key: vm.key, action: 'schedule', name: M().sign || T.O().title, reminders: rs }) }); })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (!d || !d.ok) throw new Error((d && d.error) || 'The email script said no.'); T.ls('remHash', h); T.ls('remLast', { at: Date.now(), n: d.scheduled, daily: d.daily, list: list.map(function (r) { return { on: r.on, to: r.to, subject: r.subject }; }) }); return d; });
+    }).finally(function () { remBusy = null; });
+    return remBusy;
+  };
+
   /* ---------- after every save in Teacher mode: anything new to email about? ---------- */
   var busy = false, pending = [];
+  var remTimer = null;
   T.mailAfterSave = function () {
+    clearTimeout(remTimer); remTimer = setTimeout(function () { T.syncReminders().catch(function () {}); }, 8000);      // reminders follow what was just saved
     if (busy || !T.show || !T.proof || !M().on) return;
     var now = snap(), seen = M().seen;
     if (!seen) { M().seen = now; return; }
@@ -283,8 +376,34 @@
           return '<tr><td><b>' + esc(a.name) + '</b> ' + T.companyTag(a) + '</td><td><input data-se="' + esc(a.id) + '" type="email" value="' + esc(vm.student[a.id] || '') + '" placeholder="' + esc(a.emailHint || '') + '" style="width:100%;min-width:180px;min-height:40px;border-radius:10px;border:2px solid var(--line);background:var(--card);padding:4px 8px"></td>' +
             '<td class="small">' + (cs.length ? cs.map(function (c) { return esc(c.name || '') + ' &lt;' + esc(c.email) + '&gt;' + (c.google ? ' <span class="tag ok-tag" title="Signed in with Google">G ✓</span>' : '') + ' <span class="muted">' + ['general', 'mine', 'copies'].filter(function (k) { return c.opts && c.opts[k]; }).map(function (k) { return { general: 'news', mine: 'changes', copies: 'copies' }[k]; }).join(', ') + '</span>'; }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
         }).join('') + '</tbody></table></div><div class="row end"><button class="btn primary" id="ese" data-save>Save school emails</button></div><p id="esst" class="small" role="status"></p></div>' +
+        '<div class="card" id="remcard"><h3 style="margin-top:0">' + sym('⏰') + 'Reminder emails</h3>' +
+        '<p class="small">Families get a reminder before each date they committed to: the show-week dates below (families who signed the show-week commitment, to their email from the Family portal) and the date of any need they signed up for on Volunteer and donate (with what they’re bringing). Your school account sends them each morning; the app gives it the next month’s reminders whenever Teacher mode is open.</p>' +
+        '<label class="switch"><span><b>Send reminder emails</b></span><input type="checkbox" id="ron"' + (m.remOff ? '' : ' checked') + '></label>' +
+        '<label class="f">Days before each date<input id="rdays" value="' + esc(remDays().join(', ')) + '" placeholder="7, 2, 1"></label>' +
+        '<label class="f">Show-week dates (one per line: the date, then what it is)<textarea id="rdates" rows="6">' + esc(C.datesText(remDates())) + '</textarea></label>' +
+        '<div class="row end"><button class="btn" id="rreset">Back to the starting dates</button><button class="btn primary" id="rsave" data-save>Save and update the reminders</button></div>' +
+        '<p id="rst" class="small" role="status"></p><div id="rlist"></div></div>' +
         '<div class="card"><h3 style="margin-top:0">' + sym('🗂️') + 'Sent</h3>' + (m.log.length ? m.log.map(function (l) { return '<p class="small"><b>' + esc(new Date(l.at).toLocaleString()) + '</b> · ' + l.n + ' email' + (l.n === 1 ? '' : 's') + '<br>' + esc(l.title) + '</p>'; }).join('') : '<p class="muted small">Nothing sent yet.</p>') + '</div>';
       if (T.googleCard) T.googleCard(document.getElementById('gcard'));
+      var remShow = function (msg) {
+        var L = T.ls('remLast'), st = document.getElementById('rst'), box = document.getElementById('rlist'); if (!st) return;
+        st.textContent = msg || (L ? 'Last updated ' + new Date(L.at).toLocaleString() + ': ' + L.n + ' reminder' + (L.n === 1 ? '' : 's') + ' waiting for the next month.' : '');
+        if (L && L.daily === -1) st.innerHTML += ' <b class="err">The email script needs one more OK: open it, choose “setup”, click Run, and allow it (this turns on the morning sending).</b>';
+        else if (L && L.daily === 0) st.innerHTML += ' <b class="err">The morning sending is not on yet: open the email script, choose “setup”, and click Run.</b>';
+        box.innerHTML = L && L.list && L.list.length ? '<details class="small"><summary>See the waiting reminders</summary><table class="tbl"><thead><tr><th>Sends</th><th>To</th><th>Subject</th></tr></thead><tbody>' +
+          L.list.map(function (r) { return '<tr><td>' + esc(r.on) + '</td><td>' + esc(r.to) + '</td><td>' + esc(r.subject) + '</td></tr>'; }).join('') + '</tbody></table></details>' : '';
+      };
+      remShow();
+      document.getElementById('ron').onchange = function () { if (this.checked) delete M().remOff; else M().remOff = true; T.saveShow(this.checked ? 'Reminder emails on' : 'Reminder emails off'); };
+      document.getElementById('rreset').onclick = function () { document.getElementById('rdates').value = C.datesText(C.DEF_DATES); document.getElementById('rdays').value = '7, 2, 1'; };
+      document.getElementById('rsave').onclick = function () {
+        var pd = C.parseDates(document.getElementById('rdates').value), days = document.getElementById('rdays').value.split(/[^\d]+/).map(Number).filter(function (n) { return n > 0 && n <= 60; });
+        if (pd.bad.length) { remShow('These lines need a date first, like 12/7/2027: ' + pd.bad.join(' · ')); return; }
+        if (!days.length) { remShow('Type how many days before, like 7, 2, 1.'); return; }
+        M().dates = pd.dates; M().remDays = days.filter(function (n, i, a) { return a.indexOf(n) === i; }).sort(function (a, b) { return b - a; });
+        remShow('Saving…');
+        T.saveShow('Reminder dates saved').then(function () { return T.syncReminders(true); }).then(function (d) { remShow(d ? null : 'Connect the email script above first.'); }, function (e) { remShow(e.message || String(e)); });
+      };
       document.getElementById('eon').onchange = function () { var on = this.checked; M().on = on; if (on && !M().seen) M().seen = snap(); T.saveShow(on ? 'You will be asked after saving something new' : 'Emails off'); };
       document.getElementById('esign').onchange = function () { M().sign = this.value.trim().slice(0, 80); T.saveShow('Saved'); };
       document.getElementById('esave').onclick = function () {
