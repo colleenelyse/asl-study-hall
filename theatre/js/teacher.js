@@ -749,7 +749,12 @@
         if (location.hash === '#/teacher/songs/lyrics/' + songId) draw();
       }).catch(function () { off = 0; showSaved(); if (location.hash === '#/teacher/songs/lyrics/' + songId) draw(); });
     }
-    var load = function () { return Store.getTrack(T.key, songId, kind, tr[kind].ver).then(function (b) { url = URL.createObjectURL(new Blob([b])); audio.src = url; loaded = true; }); };
+    var load = function () {      // ready to jump to a time once it resolves (a jump before the track is loaded would be lost)
+      return Store.getTrack(T.key, songId, kind, tr[kind].ver).then(function (b) {
+        url = URL.createObjectURL(new Blob([b])); audio.src = url; loaded = true;
+        return new Promise(function (ok) { if (audio.readyState >= 1) ok(); else audio.addEventListener('loadedmetadata', function () { ok(); }, { once: true }); });
+      });
+    };
     var spread = function (i) {      // syllables of a tapped line shared out until the next line
       var t = times[i].t, e = times[i].e || ((times[i + 1] && times[i + 1].t) || t + cnt(lines[i]) * 0.45), k = cnt(lines[i]);
       times[i].e = +e.toFixed(2); times[i].s = Melody.sylTimes([], t, e, k);
@@ -769,6 +774,24 @@
       T.toast('Undone. Press Save to keep it.');
       if (view === 'sections') { overlay(); secBar(); } else draw();
     };
+    var slider = function () { return '<input type="range" class="lt-pos" id="ltpos" min="0" max="' + (audio.duration > 0 ? audio.duration.toFixed(1) : (tr[kind].dur || 0)) + '" step="0.1" value="' + audio.currentTime.toFixed(1) + '" aria-label="Where in the song">'; };
+    var wireSlider = function () {
+      var r = document.getElementById('ltpos'); if (!r) return;
+      r.oninput = function () { r.dragging = true; var el = document.getElementById('tm'); if (el) el.textContent = T.clock(+r.value) + ' (' + (+r.value).toFixed(1) + ' s)'; };
+      r.onchange = function () {
+        r.dragging = false;
+        if (audio.paused) { seekTo = +r.value; return; }      // a paused track starts from here when play is pressed
+        audio.currentTime = +r.value; lastRow = -1; follow(true);
+      };
+    };
+    var seekTo = null;
+    var playPause = function () {
+      if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
+      (loaded ? Promise.resolve() : load()).then(function () {
+        if (audio.paused) { if (seekTo != null) { audio.currentTime = seekTo; seekTo = null; } audio.play(); } else audio.pause();
+        var b = document.getElementById('pl'); if (b) { b.innerHTML = icon(audio.paused ? 'play' : 'pause'); b.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); }
+      });
+    };
     var undoBtn = function (id) { return '<button class="btn small" id="' + id + '"' + (history.length ? '' : ' disabled') + ' title="Undo the last change">↶ Undo</button>'; };
     var tabs = function () { return '<div class="seg" style="margin:6px 0 8px"><button type="button" data-view="timing" aria-pressed="' + (view === 'timing') + '">⏱ Timing</button><button type="button" data-view="sections" aria-pressed="' + (view === 'sections') + '">🎼 Sections on the music</button></div>'; };
     var wireTabs = function () { app.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { view = b.dataset.view; selSec = null; draw(); }; }); };
@@ -785,13 +808,13 @@
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
           '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? '🎯 Fixing · line ' + (nxt + 1) + ' (keep tapping to fix the lines after it)' : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
-          '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
+          slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
           '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var $ = function (id) { return document.getElementById(id); };
-      wireTabs(); lastRow = -1; follow(true);
+      wireTabs(); lastRow = -1; follow(true); wireSlider();
       $('undo1').onclick = undo;
-      $('pl').onclick = function () { if (off == null) { T.toast('One moment: lining up the two tracks.'); return; } (loaded ? Promise.resolve() : load()).then(function () { if (audio.paused) audio.play(); else audio.pause(); $('pl').innerHTML = icon(audio.paused ? 'play' : 'pause'); $('pl').setAttribute('aria-label', audio.paused ? 'Play' : 'Pause'); }); };
+      $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
       $('now').onclick = tap; $('find').onclick = find;
       $('clr').onclick = function () { snapshot(); times = lines.map(function () { return null; }); draw(); };
@@ -807,7 +830,7 @@
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
       if ($('fixdone')) $('fixdone').onclick = function () { fixAt = null; audio.pause(); draw(); };
       app.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { pickSinger(+b.dataset.who); }; });
-      app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, x.t - 1); audio.play(); var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('pause'); }); }; });
+      app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('pause'); }); }; });
     }
     /* Sections on the music (Colleen: after Save, "show all the highlights i added in their sections simultaneously… edit the names, colors,
        starts and stops"): the song's real pages with every section lit up in its singer's colors and numbered. Tap one to edit it in the bar
@@ -845,19 +868,21 @@
     function secBar() {
       var bar = document.getElementById('secbar'); if (!bar) return;
       var i = selSec, l = i != null ? lines[i] : null, x = i != null ? times[i] : null, toks = l ? (l.syl || []).map(function (y) { return y.t; }) : [];
-      bar.innerHTML = !l ? '<div class="row lt-controls"><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
+      bar.innerHTML = slider() + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
           '<span class="grow"></span><button class="btn small" id="snm">−</button><b style="min-width:62px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
-        '<div class="row lt-controls"><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>';
+        '<div class="row lt-controls"><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
       $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; overlay(); secBar(); };
+      wireSlider();
+      if ($('pl')) $('pl').onclick = playPause;
       if (!l) return;
       $('sdone').onclick = function () { selSec = null; overlay(); secBar(); };
       $('swho').onclick = function () { pickSinger(i, function () { overlay(); secBar(); }); };
       $('snm').onclick = function () { nudge(i, -0.2); }; $('snp').onclick = function () { nudge(i, 0.2); };
-      $('stest').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, x.t - 1); audio.play(); }); };
+      $('stest').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); }); };
       $('sfix').onclick = function () { view = 'timing'; fixLine(i); };
       $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
       $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
@@ -993,7 +1018,13 @@
       }).catch(function (e) { m.textContent = ''; T.toast(e.message || 'Could not read the tracks.', 4000); });
     }
     draw();
-    var tk = setInterval(function () { var el = document.getElementById('tm'); if (el) el.textContent = T.clock(audio.currentTime) + ' (' + audio.currentTime.toFixed(1) + ' s)'; follow(false); }, 200);
+    var tk = setInterval(function () {
+      var r = document.getElementById('ltpos');
+      var now = seekTo != null && audio.paused ? seekTo : audio.currentTime;
+      if (r && !r.dragging) { if (audio.duration > 0 && +r.max !== +audio.duration.toFixed(1)) r.max = audio.duration.toFixed(1); r.value = now; }
+      var el = document.getElementById('tm'); if (el && !(r && r.dragging)) el.textContent = T.clock(now) + ' (' + now.toFixed(1) + ' s)';
+      follow(false);
+    }, 200);
     audio.addEventListener('ended', function () { var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('play'); });
     T.cleanup.push(function () { clearInterval(tk); });
     var kh = function (e) { if (e.key === ' ' && !/input|textarea/i.test(e.target.tagName)) { e.preventDefault(); tap(); } };

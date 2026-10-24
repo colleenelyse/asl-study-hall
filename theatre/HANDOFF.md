@@ -376,3 +376,6 @@ Undo and Reset (Colleen: "what if i used the merge lyrics incorrectly. there's n
 back through splits, joins, singer changes, nudges, taps, Find and Clear (`snapshot` / `undo`, 60 steps). Sections tab › "Reset this song"
 re-reads the saved PDF, puts that song's sections back as the reader makes them (✎ singer fixes stay), clears its lyricKeep mark, timing and
 piano.
+Lyrics timing: a song position slider (`#ltpos`) in both tabs' bottom bars (the Sections tab also gets play and the time). Dragging while it
+plays jumps there; while paused, the spot is remembered (`seekTo`) and play starts there (a jump on a paused, never-played track is lost).
+`load()` resolves once the track's metadata is in.

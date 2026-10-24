@@ -337,3 +337,4 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .sec-word { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 4px 7px; font: inherit; font-size: .95em; cursor: pointer; }
 .sec-word.first { cursor: default; font-weight: 700; }
 .sec-word:hover { border-color: var(--accent); }
+.lt-pos { width: 100%; margin: 0; }
