@@ -239,7 +239,24 @@
     }); });
     var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || '') + it.lyrics.map(function (l) { return l.who + '|' + l.text; }).join('/'); }); }); return o; };      // the song's lines in order: a change in their words or order needs new timing
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
-    O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num] && !keptMoved[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
+    /* a song whose lines read differently keeps its timing line by line (Colleen's timing is a lot of work): each line finds its old self by the
+       same singer and words, the same place on the page, or the same words; only lines with no match wait for a new time */
+    var newSongs = {}; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') newSongs[it.num] = it; }); });
+    O.songs.forEach(function (so) {
+      if (!LT[so.id] || was[so.num] === now[so.num] || keptMoved[so.num]) return;
+      var ol = oldSongs[so.num] ? oldSongs[so.num].lyrics : [], nl = newSongs[so.num] ? newSongs[so.num].lyrics : [], ot = LT[so.id].lines || [], used = {};
+      var fb = function (l) { var b = l.boxes ? l.boxes[0] : l.box; return b || null; };
+      var find = function (test) { for (var i = 0; i < ol.length; i++) if (!used[i] && ot[i] && test(ol[i])) { used[i] = 1; return i; } return -1; };
+      var kept = 0, lines = nl.map(function (l) {
+        var b = fb(l), i = find(function (o) { return (o.who || '') + '|' + o.text === (l.who || '') + '|' + l.text; });
+        if (i < 0 && b) i = find(function (o) { var c = fb(o); return c && c.n === b.n && Math.abs(c.y - b.y) < 3 && Math.abs(c.x - b.x) < 14; });
+        if (i < 0) i = find(function (o) { return o.text === l.text; });
+        if (i < 0) return null;
+        kept++; return ot[i];
+      });
+      if (!kept) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; return; }
+      LT[so.id].lines = lines;
+    });
     // the teacher's singer fixes (Lyrics timing): the same line (by number and words), or the same words anywhere in that song
     var W = T.show.lyricWho || {};
     r.scenes.forEach(function (s) { s.items.forEach(function (it) {
@@ -808,7 +825,7 @@
     return voiceRegionsFor(songId).then(function (regs) {
       if (!regs || !regs.length) return;
       lines.forEach(function (x) {
-        if (!x) return; delete x.h;
+        if (!x || x.hm) return; delete x.h;      // a stop set by hand stays
         var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t;
         var next = lines.filter(function (y) { return y && y !== x && y.t > last + 0.05; }).reduce(function (m, y) { return Math.min(m, y.t); }, Infinity);
         var reg = regs.find(function (g) { return g.s - 0.2 <= last && last <= g.e + 0.2; }) || regs.find(function (g) { return g.s > last && g.s < last + 0.6; });
@@ -834,7 +851,7 @@
     var off = TO[songId] != null ? TO[songId] : mel && mel.offset != null ? mel.offset : null;
     var lines = item.lyrics, cnt = function (l) { return (l.syl && l.syl.length) || l.text.split(/\s+/).length; };
     var kind = tr.rehearsal ? 'rehearsal' : 'performance', audio = new Audio(), url = null, loaded = false;
-    var shiftX = function (x, d) { if (!x) return x; var y = { t: x.t + d, e: x.e + d, s: (x.s || []).map(function (v) { return v + d; }) }; if (x.h != null) y.h = x.h + d; return y; };
+    var shiftX = function (x, d) { if (!x) return x; var y = { t: x.t + d, e: x.e + d, s: (x.s || []).map(function (v) { return v + d; }) }; if (x.h != null) y.h = x.h + d; if (x.hm) y.hm = true; return y; };
     var saved = (L[songId] && L[songId].lines) ? JSON.parse(JSON.stringify(L[songId].lines)) : null;
     var times = lines.map(function () { return null; });
     var showSaved = function () { if (saved) times = saved.map(function (x) { return shiftX(x, kind === 'rehearsal' ? off : 0); }); };
@@ -915,19 +932,21 @@
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
-          '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
+          (stopsOn ? '<div class="lt-stops" id="stops"><span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span></div>' : '') +
+          '<div class="lt-next-words" id="ltnext"' + (stopsOn ? ' hidden' : '') + '>' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
-          '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
+          (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var $ = function (id) { return document.getElementById(id); };
       wireTabs(); lastRow = -1; follow(true); wireSlider();
       $('undo1').onclick = undo;
       $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
-      $('now').onclick = tap; $('find').onclick = find;
+      if ($('now')) $('now').onclick = tap; $('find').onclick = find;
+      $('stopsb').onclick = function () { stopsOn = !stopsOn; if (stopsOn) fixAt = null; draw(); };
       $('clr').onclick = function () { if (!confirm('Clear the timing of every line in this song? (↶ Undo brings it back.)')) return; snapshot(); fixAt = null; fixOld = null; times = lines.map(function () { return null; }); draw(); };
       $('sv').onclick = function () {
         if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
@@ -935,14 +954,15 @@
         applySync();
         var base = function (v) { return kind === 'performance' ? v : v - off; };
         if (!times.some(Boolean)) { delete L[songId]; return save('Cleared'); }
-        L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: x.s.map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
+        L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: x.s.map(function (v) { return +base(v).toFixed(2); }) , h: x.hm ? +base(x.h).toFixed(2) : undefined, hm: x.hm || undefined } : null; }) };
         if (edited) { (T.show.lyricKeep = T.show.lyricKeep || {})[song.num] = true; edited = false; }
         T.toast('Saving… (finding where each line’s singing ends)', 3000);
-        addHolds(songId, L[songId].lines).then(function () { if (kind === 'rehearsal') L[songId].lines.forEach(function (x, i) { if (x && times[i]) { if (x.h != null) times[i].h = x.h + off; else delete times[i].h; } }); else L[songId].lines.forEach(function (x, i) { if (x && times[i]) { if (x.h != null) times[i].h = x.h; else delete times[i].h; } }); })
+        addHolds(songId, L[songId].lines).then(function () { if (kind === 'rehearsal') L[songId].lines.forEach(function (x, i) { if (x && times[i] && !times[i].hm) { if (x.h != null) times[i].h = x.h + off; else delete times[i].h; } }); else L[songId].lines.forEach(function (x, i) { if (x && times[i] && !times[i].hm) { if (x.h != null) times[i].h = x.h; else delete times[i].h; } }); })
           .then(function () { return makePiano(songId).catch(function () {}); }).then(function () { return save('Lyrics timing saved (and the piano melody with it)'); }).then(function () { view = 'sections'; selSec = null; draw(); });
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; if (x.h != null) x.h += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
+      app.querySelectorAll('[data-hin]').forEach(function (inp) { inp.onchange = function () { if (typeEnd(+inp.dataset.hin, inp.value)) draw(); else inp.value = fmtH(times[+inp.dataset.hin]); }; });
       app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
       if ($('fixdone')) $('fixdone').onclick = function () { endFix(); audio.pause(); draw(); };
@@ -1024,7 +1044,7 @@
           '<span class="grow"></span><button class="btn small" id="snm">−</button>' + timeBox('id="stin"', x) + '<button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
         '<p class="muted small" style="margin:4px 0">Drag the round handles at the ends of the highlight to shorten or stretch it' + (T.Pages.lyricBoxes(l).length > 1 ? '; ✕ takes a piece away' : '') + '.' + (l.cut ? ' <button class="btn small quiet" id="sfit">Fit to the words again</button>' : '') + '</p>' +
-        '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
+        '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button>' + joinMenu(i) + '<span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
       $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; overlay(); secBar(); };
@@ -1041,10 +1061,19 @@
       $('sclr').onclick = function () { clearLine(i); overlay(); secBar(); };
       $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
       $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
+      if ($('sjw')) $('sjw').onchange = function () { var j = +this.value; if (isNaN(j)) return; joinPair(i, j); selSec = Math.min(i, j); overlay(); secBar(); };
       $('sdel').onclick = function () { delSec(i); selSec = null; overlay(); secBar(); T.toast('Section deleted. ↶ Undo brings it back; Save keeps it.'); };
       bar.querySelectorAll('[data-split]').forEach(function (b) { b.onclick = function () { splitSec(i, +b.dataset.split); selSec = i + 1; overlay(); secBar(); }; });
     }
     function saveSections() { $sv(); }
+    function joinMenu(i) {      // the sections near this one, the same singer's first
+      var near = []; for (var k = Math.max(0, i - 6); k <= Math.min(lines.length - 1, i + 6); k++) if (k !== i && Math.abs(k - i) > 1) near.push(k);
+      if (!near.length) return '';
+      var same = function (k) { return String(lines[k].who || '') === String(lines[i].who || ''); };
+      near.sort(function (p, q) { return (same(q) - same(p)) || Math.abs(p - i) - Math.abs(q - i); });
+      return '<select id="sjw" class="btn small" aria-label="Join with another section"><option value="">Join with…</option>' + near.map(function (k) {
+        return '<option value="' + k + '">' + (k + 1) + ' · ' + esc(lines[k].who || '?') + ' · ' + esc(String(lines[k].text || '').slice(0, 28)) + '</option>'; }).join('') + '</select>';
+    }
     /* the song's sections as the script reader makes them (the saved PDF read again), the timing cleared to find again */
     function resetSong() {
       if (!confirm('Put “' + song.title + '” back the way the script reads it? Its sections and their timing are replaced; your ✎ singer fixes stay.')) return;
@@ -1069,7 +1098,7 @@
       if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
       applySync();
       var base = function (v) { return kind === 'performance' ? v : v - off; };
-      L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: (x.s || []).map(function (v) { return +base(v).toFixed(2); }) } : null; }) };
+      L[songId] = { kind: 'performance', lines: times.map(function (x) { return x ? { t: +base(x.t).toFixed(2), e: +base(x.e).toFixed(2), s: (x.s || []).map(function (v) { return +base(v).toFixed(2); }) , h: x.hm ? +base(x.h).toFixed(2) : undefined, hm: x.hm || undefined } : null; }) };
       if (edited) { (T.show.lyricKeep = T.show.lyricKeep || {})[song.num] = true; edited = false; }
       addHolds(songId, L[songId].lines).then(function () { return makePiano(songId).catch(function () {}); }).then(function () { return save('Saved (and the piano melody with it)'); }).then(function () { overlay(); secBar(); });
     };
@@ -1103,9 +1132,24 @@
       times.splice(i + 1, 0, t2); edited = true;
     }
     function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners
-      snapshot();
+      snapshot(); removeAt(i);
+    }
+    function removeAt(i) {
       lines.forEach(function (l, k) { if (l.sync && k > i) { if (k - l.sync === i) delete l.sync; else if (k - l.sync < i) l.sync--; } });
       lines.splice(i, 1); times.splice(i, 1); edited = true;
+    }
+    /* join two sections that are not side by side (Colleen: "i need to join 15 with 13… the problem seems to be the simultaneous singing
+       parts": two staves sung together take turns in the numbering, so one singer's words are every other section) */
+    function joinPair(i, j) {
+      var lo = Math.min(i, j), hi = Math.max(i, j), a = lines[lo], b = lines[hi]; if (!a || !b || lo === hi) return;
+      if (hi === lo + 1) return joinSec(lo);
+      snapshot();
+      var ab = T.Pages.rawBoxes(a), bb = T.Pages.rawBoxes(b);
+      var syl = a.syl.map(function (y) { return Object.assign({}, y, { _o: ab[y.b || 0] }); }).concat(b.syl.map(function (y) { return Object.assign({}, y, { _o: bb[y.b || 0] }); }));
+      setLine(a, syl, function (y) { return y._o; }); syl.forEach(function (y) { delete y._o; });
+      var x = times[lo], y2 = times[hi], n = syl.length;
+      times[lo] = x && y2 ? { t: x.t, e: Math.max(x.e, y2.e), s: (x.s || []).concat(y2.s || []) } : x || y2 ? (function (z) { var t = { t: z.t, e: z.e }; t.s = Melody.sylTimes([], t.t, t.e, n); return t; })(x || y2) : null;
+      removeAt(hi);
     }
     function joinSec(i) {
       var a = lines[i], b = lines[i + 1]; if (!a || !b) return;
@@ -1183,6 +1227,33 @@
       if (fixAt === i) { fixAt = null; fixOld = null; }
       applySync(); return true;
     }
+    /* when each line's light goes off (Colleen 2026-10-23: "a way to specify when the highlighter turns off for each line… watch it back and add
+       cut off times… in a round"): h is the stop, hm marks one set by hand (Save keeps it; the guide vocals fill only the others) */
+    var stopsOn = false, stopsKey = '';
+    function fmtH(x) { return x && x.hm && x.h != null ? x.h.toFixed(2) : ''; }
+    function endBox(attr, x) { return '<input ' + attr + ' class="lt-tin lt-hin" type="text" inputmode="decimal" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" value="' + fmtH(x) + '" placeholder="Ends: auto" aria-label="When the light goes off, in seconds" title="When this line’s light goes off. Empty: automatic."' + (x ? '' : ' disabled') + '>'; }
+    function typeEnd(i, v) {
+      var x = times[i]; if (!x) return false;
+      v = String(v || '').trim();
+      snapshot();
+      if (!v) { delete x.h; delete x.hm; return true; }      // back to the automatic end
+      var m = v.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)\s*s?$/); if (!m) { T.toast('Type seconds (52.4) or minutes and seconds (0:52.4).', 4000); return false; }
+      var h = +(((+m[1] || 0) * 60) + +m[2]).toFixed(2);
+      if (h <= x.t) { T.toast('The light has to go off after the line starts (' + x.t.toFixed(2) + ' s).', 4000); return false; }
+      x.h = h; x.hm = true; return true;
+    }
+    function drawStops() {      // a button for each line that has started in the last few seconds and has no stop yet
+      var box = document.getElementById('stops'); if (!box) return;
+      var nowT = function () { return seekTo != null && audio.paused ? seekTo : audio.currentTime; }, t = nowT(), open = [];
+      times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t && (t - x.t < 6 || t <= T.lineEnd(x) + 3) && t - x.t < 20 && !(x.hm && x.h <= t)) open.push(i); });      // lit now, or just went dark
+      var key = open.join(','); if (key === stopsKey) return; stopsKey = key;
+      box.innerHTML = (open.length ? open.map(function (i) { var cs = T.lyricColors(lines[i].who); return '<button type="button" class="btn lt-stop" data-stop="' + i + '" style="border-color:' + T.deepShade(cs[0]) + ';background:' + T.pastel(cs[0]) + '"><b>' + (i + 1) + '</b> ' + esc(lines[i].who || '') + ' · ' + esc(String(lines[i].text).slice(0, 26)) + ' <b>⏹</b></button>'; }).join('') : '<span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span>');
+      box.querySelectorAll('[data-stop]').forEach(function (b) { b.onclick = function () {
+        var i = +b.dataset.stop, x = times[i]; if (!x) return; snapshot();
+        x.h = +Math.max(nowT(), x.t + 0.2).toFixed(2); x.hm = true; stopsKey = ''; drawStops();
+        var hin = app.querySelector('[data-hin="' + i + '"]'); if (hin) hin.value = fmtH(x);
+      }; });
+    }
     function clearLine(i) { snapshot(); if (fixAt === i) { fixAt = null; fixOld = null; } times[i] = null; applySync(); }
     function fixLine(i) {
       snapshot();
@@ -1207,6 +1278,7 @@
       if (r && !r.dragging) { if (audio.duration > 0 && +r.max !== +audio.duration.toFixed(1)) r.max = audio.duration.toFixed(1); r.value = now; }
       var el = document.getElementById('tm'); if (el && !(r && r.dragging)) el.textContent = T.clock(now) + ' (' + now.toFixed(1) + ' s)';
       follow(false);
+      if (stopsOn) drawStops();
     }, 200);
     audio.addEventListener('ended', function () { var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('play'); });
     T.cleanup.push(function () { clearInterval(tk); });

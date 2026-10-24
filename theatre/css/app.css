@@ -370,3 +370,8 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 
 /* a typed lyric time */
 .lt-tin { width: 104px; min-width: 104px; flex: 0 0 auto; box-sizing: border-box; text-align: center; font-weight: 700; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card, #fff); color: inherit; font-variant-numeric: tabular-nums; }
+
+/* stop times: the Ends box, and the line buttons while setting the stops */
+.lt-hin { width: 112px; min-width: 112px; font-weight: 600; }
+.lt-stops { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 44px; }
+.lt-stop { border: 2px solid; color: #1d1a2e; font-size: .9em; padding: 6px 10px; }
