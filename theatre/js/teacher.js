@@ -149,6 +149,7 @@
       (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '') +
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent') +
+      t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups, cues on the Megamix, rehearse') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +

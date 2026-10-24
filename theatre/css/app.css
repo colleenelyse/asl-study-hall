@@ -457,3 +457,17 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .pick-tok { position: absolute; padding: 0; margin: 0; min-height: 0; border: 1px solid rgba(107, 63, 212, .45); border-radius: 3px; background: rgba(255, 225, 77, .18); cursor: pointer; z-index: 3; }
 .pick-tok:hover, .pick-tok:focus-visible { background: rgba(255, 225, 77, .55); outline: none; }
 .pick-tok.on { background: rgba(107, 63, 212, .45); }
+
+/* the curtain call (curtain.js) */
+.bow-stage { position: relative; min-height: 46vh; border: 3px solid var(--line); border-radius: 18px; padding: 18px; background: var(--card); display: flex; flex-direction: column; justify-content: space-between; gap: 12px; overflow: hidden; }
+.bow-next { border: 4px solid var(--line); border-radius: 14px; padding: 12px 16px; font-size: 1.3em; }
+.bow-next-who { font-weight: 800; font-size: 1.5em; }
+.bow-count { font-weight: 800; font-size: 3em; line-height: 1; }
+.bow-go { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; font-weight: 800; font-size: 5em; z-index: 2; }
+.bow-go-who { font-size: .4em; } .bow-go-from { font-size: .3em; opacity: .9; }
+.bow-lyric { font-size: 1.4em; font-weight: 700; text-align: center; min-height: 1.6em; }
+.bow-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.bow-steps > div { border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 1.1em; }
+.bow-n { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 800; margin-right: 6px; }
+.chipbox { display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px 2px 0; }
+@media (prefers-reduced-motion: reduce) { .bow-go { transition: none; } }
