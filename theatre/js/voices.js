@@ -220,7 +220,9 @@
       '<div class="card"><h3>ElevenLabs voices</h3>' +
       '<label class="switch"><span><b>I have permission from Music Theatre International</b> to make audio of the script for my cast.</span><input type="checkbox" id="mti"' + (cfg.ok ? ' checked' : '') + '></label>' +
       '<label class="f">Your ElevenLabs API key <span class="muted small">(kept on this computer only)</span><input id="xk" type="password" autocomplete="off" value="' + esc(key) + '" placeholder="From elevenlabs.io › your profile › API keys"></label>' +
-      '<div class="row"><button class="btn" id="lv"' + (key ? '' : ' disabled') + '>Load my voices</button><label class="f" style="margin:0">Quality<select id="md">' + MODELS.map(function (m) { return '<option value="' + m[0] + '"' + (cfg.model === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></label></div>' +
+      '<div class="row"><button class="btn" id="lv"' + (key ? '' : ' disabled') + '>Load my voices</button><label class="f" style="margin:0">Quality<select id="md">' + MODELS.map(function (m) { return '<option value="' + m[0] + '"' + (cfg.model === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="margin:0">Feelings<select id="clr">' + CLARITY.map(function (c) { return '<option value="' + c[0] + '"' + (clarity() === +c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label></div>' +
+      '<p class="muted small">Feelings: “A little clearer” sends each line’s feeling one step stronger than its Strength slider (normal goes as “very”), and never past “very” unless you chose “extremely”. Lines already made keep their old sound until you make them again.</p>' +
       '<div id="vmap"></div>' +
       '<p style="margin-top:12px">' + need.length + ' lines still to make, about <b>' + chars2.toLocaleString() + ' credits</b> if every one were made (tone notes included). The next step checks everything before anything is spent.</p>' +
       '<div class="row"><button class="btn primary" id="mk"' + (cfg.ok && key && need.length ? '' : ' disabled') + '>Check, then make lines…</button><span class="muted small" id="mkst"></span></div>' +
@@ -232,6 +234,7 @@
     app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm('Take this recording down?')) return; var x = b.dataset.rm.split('|'); Store.reject(T.proof, x[0], x[1]).then(T.teacherPages.voices); }; });
     $('mti').onchange = function (e) { cfg.ok = e.target.checked; T.saveShow('Saved').then(function () { page(index, pending); }); };
     $('xk').onchange = function (e) { T.ls('xiKey', e.target.value.trim()); page(index, pending); };
+    $('clr').onchange = function (e) { cfg.clarity = +e.target.value; T.saveShow('Feelings setting saved').then(function () { var y = window.scrollY; page(index, pending); window.scrollTo(0, y); }); };
     $('md').onchange = function (e) { cfg.model = e.target.value; T.saveShow('Saved').then(function () { page(index, pending); }); };
     var showMap = function (voices) {
       var opts = function (sel) { return '<option value="">Choose…</option>' + voices.map(function (v) { return '<option value="' + esc(v.voice_id) + '"' + (sel === v.voice_id ? ' selected' : '') + '>' + esc(v.name) + (v.labels && v.labels.accent ? ' · ' + esc(v.labels.accent) : '') + '</option>'; }).join(''); };
@@ -287,11 +290,11 @@
       T.ls('sayText', JSON.stringify(f)); again('Words saved on this computer. ↻ Make again to hear them.');
     }; });
     app.querySelectorAll('[data-tone]').forEach(function (inp) { inp.onchange = function () { var T2 = T.show.tones = T.show.tones || {}; var v = inp.value.trim(); if (v && !/^\[/.test(v)) v = v.split(/\s*,\s*/).map(function (w) { return '[' + w.replace(/[\[\]]/g, '') + ']'; }).join(' '); T2[inp.dataset.tone] = v; inp.value = v; if (typeof sends === 'function') sends(inp.dataset.tone); T.saveShow('Tone saved: make the line again to hear it'); }; });
-    var sends = function (h) { var sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'), r = app.querySelector('[data-lvl="' + h + '"]'); if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, r ? +r.value : 3) : ''; };
+    var sends = function (h) { var sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'), r = app.querySelector('[data-lvl="' + h + '"]'); if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, bump(r ? +r.value : 3)) : ''; };
     var toggle = function (inp, tag) { var cur = (inp.value.match(/\[[^\]]+\]/g) || []); var k = cur.indexOf(tag); if (k >= 0) cur.splice(k, 1); else cur.push(tag); inp.value = cur.join(' '); inp.onchange(); sends(inp.dataset.tone); };      // tones combine: [sarcastic] [slows down]
     app.querySelectorAll('[data-chip]').forEach(function (b) { b.onclick = function () { var h = b.dataset.chip.split('|')[0], tag = b.dataset.chip.split('|')[1]; toggle(app.querySelector('[data-tone="' + h + '"]'), tag); }; });
     app.querySelectorAll('[data-lvl]').forEach(function (r) {
-      var h = r.dataset.lvl, show = function () { var n = app.querySelector('[data-lvlname="' + h + '"]'), sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'); if (n) n.textContent = LEVEL_NAME[+r.value]; if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, +r.value) : ''; };
+      var h = r.dataset.lvl, show = function () { var n = app.querySelector('[data-lvlname="' + h + '"]'), sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'); if (n) n.textContent = LEVEL_NAME[+r.value]; if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, bump(+r.value)) : ''; };
       r.oninput = show;
       r.onchange = function () { var L3 = T.show.toneLevel = T.show.toneLevel || {}; if (+r.value === 3) delete L3[h]; else L3[h] = +r.value; var T2 = T.show.tones = T.show.tones || {}; if (T2[h] == null) T2[h] = toneOf(byH[h]); show(); T.saveShow('Strength saved: make the line again to hear it'); };
     });
@@ -322,7 +325,7 @@
   }
   /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
   /* exactly what is sent for a line, and what it costs (one credit a character, for each voice) */
-  function sentText(l, cfg) { var tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), levelOf(l.h)) : ''; return (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l)); }
+  function sentText(l, cfg) { var tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), bump(levelOf(l.h))) : ''; return (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l)); }
   function cost(l, cfg) { var n = sentText(l, cfg).length * Math.max(1, voicesFor(l.it, cfg.voices).length); return cfg.model === 'eleven_flash_v2_5' ? Math.ceil(n / 2) : n; }
   function makeLine(l, cfg) {
     var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), text = sentText(l, cfg);
@@ -357,6 +360,15 @@
   var LEVELS = [null, 'barely', 'slightly', '', 'very', 'extremely'], LEVEL_NAME = [null, 'barely', 'a little', 'normal', 'very', 'extremely'];
   var plain = {}; TONES.forEach(function (g) { if (/Reactions|Pace|Voice/.test(g[0])) g[1].forEach(function (t) { plain[t] = 1; }); });
   var levelOf = function (h) { var v = (T.show.toneLevel || {})[h]; if (v == null && (T.show.tones || {})[h] == null && sugg(h)) v = sugg(h)[1]; return v >= 1 && v <= 5 ? v : 3; };
+  /* how clear the feelings are, for the whole show (Colleen 2026-10-24: the recordings are for students who find emotion, tone and faces hard;
+     "slightly more expressive than a scene in a musical would be … not cartoonish not ridiculous but extra explicit"). It turns each line's
+     strength word up one step when sent: normal goes as [very nervous], a little as [nervous]. 0 = as written; 1 = a little clearer (the
+     default) stops at "very", so lines never reach "extremely" unless she chose it; 2 = much clearer may. The steadiness (stability) still
+     follows her own strength, so the boost does not switch on v3's Creative mode, which can add odd sounds. */
+  var CLARITY = [['0', 'As written'], ['1', 'A little clearer (for students who find feelings hard to read)'], ['2', 'Much clearer']];
+  var clarity = function () { var c = (T.show.eleven || {}).clarity; return c == null ? 1 : +c; };
+  function bump(v) { var c = clarity(); return !c ? v : c === 1 ? (v >= 4 ? v : v + 1) : Math.min(5, v + 1); }
+  V.bump = bump;
   function withLevel(tone, lvl) {
     var w = LEVELS[lvl]; if (!w) return tone;
     return String(tone || '').replace(/\[([^\]]+)\]/g, function (m, t) { return plain[t.toLowerCase()] || /^(barely|slightly|very|extremely|a little)\b/i.test(t) ? m : '[' + w + ' ' + t + ']'; });
@@ -417,6 +429,7 @@
       var rest = acct ? acct.left - total : null;
       $d('#pfck').innerHTML = '<h3 style="margin:10px 0 4px">Checks</h3><ul class="plain" style="list-style:none;padding:0;margin:0;line-height:1.7">' +
         ok(cfg.model === 'eleven_v3', cfg.model === 'eleven_v3' ? 'Quality is “Most expressive”, so the tone notes are used.' : 'Quality is not “Most expressive”: the tone notes will NOT be used.') +
+        '<li>🎭 Feelings: <b>' + esc(CLARITY[clarity()][1]) + '</b> (change it next to Quality).</li>' +
         ok(!noVoice, noVoice ? noVoice + ' lines have no voice yet and are not in this run.' : 'Every line has a voice.') +
         ok(!(unchecked.length && $d('#pfiu').checked), unchecked.length ? (($d('#pfiu').checked ? 'Includes ' : 'Leaves out ') + unchecked.length + ' lines whose tone you have not checked.') : 'You checked the tone of every line here.') +
         ok(!(odd.length && $d('#pfiw').checked), odd.length ? (($d('#pfiw').checked ? 'Includes ' : 'Leaves out ') + odd.length + ' lines whose words may be wrong (listed below; fix them with ✎ Words).') : 'No lines with odd-looking words.') +
@@ -456,7 +469,7 @@
       function listen(list) {
         var left = q.length - at;
         box.innerHTML = '<h3>' + (at <= testN ? 'Listen to the test lines' : 'Listen to this batch') + '</h3><p class="muted small">' + at + ' of ' + q.length + ' made, about ' + spent.toLocaleString() + ' credits used.' + (left ? ' Nothing more is spent until you tap Keep going.' : '') + '</p>' +
-          list.map(function (l, i) { return '<div class="tone-row"><button type="button" class="btn small" data-pl="' + i + '">▶</button><div class="grow small"><b>' + esc(l.it.who) + '</b> ' + esc(withLevel(toneOf(l), levelOf(l.h)) || '(plain)') + '<br>' + esc(wordsOf(l).slice(0, 90)) + '</div></div>'; }).join('') +
+          list.map(function (l, i) { return '<div class="tone-row"><button type="button" class="btn small" data-pl="' + i + '">▶</button><div class="grow small"><b>' + esc(l.it.who) + '</b> ' + esc(withLevel(toneOf(l), bump(levelOf(l.h))) || '(plain)') + '<br>' + esc(wordsOf(l).slice(0, 90)) + '</div></div>'; }).join('') +
           '<div class="row end" style="margin-top:10px">' + (left ? '<button class="btn quiet" id="pfst">Something sounds wrong: stop here</button><button class="btn primary" id="pfkg">Sounds right: make the next ' + Math.min(batch, left) + '</button>' : '<button class="btn primary" id="pfdone">Done</button>') + '</div>';
         box.querySelectorAll('[data-pl]').forEach(function (b) { b.onclick = function () { T.Speech.stop(); V.say(list[+b.dataset.pl].it, null, false); }; });
         if ($d('#pfkg')) $d('#pfkg').onclick = function () { step(Math.min(q.length, at + batch)); };
@@ -493,7 +506,7 @@
           '<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><input data-tone="' + l.h + '" value="' + esc(t) + '" placeholder="said plainly" style="width:200px">' + where +
           CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '<button type="button" class="btn small" data-more="' + l.h + '">＋ More tones</button><button type="button" class="btn small quiet" data-words="' + l.h + '">✎ Words</button></div>' +
           '<div class="row tone-lvl" style="gap:8px;margin-top:4px"><label class="small">Strength <input type="range" min="1" max="5" step="1" data-lvl="' + l.h + '" value="' + levelOf(l.h) + '" aria-label="How strong"></label><span class="small" data-lvlname="' + l.h + '">' + LEVEL_NAME[levelOf(l.h)] + '</span>' +
-          '<span class="muted small" data-sends="' + l.h + '">' + (t ? 'Sends: ' + esc(withLevel(t, levelOf(l.h))) : '') + '</span></div></div>' +
+          '<span class="muted small" data-sends="' + l.h + '">' + (t ? 'Sends: ' + esc(withLevel(t, bump(levelOf(l.h)))) : '') + '</span></div></div>' +
           '<div class="row" style="gap:4px"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button></div></div>';
       }).join('') + '</div>';
   }
