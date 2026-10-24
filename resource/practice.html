@@ -430,7 +430,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.95';
+var VERSION = '1.96';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -479,7 +479,7 @@ var TABS = {
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
   // the grade each student wants to finish the semester with, per class; and what each class said the final exam will be like
   'Grade goals': ['Email', 'Semester', 'Class', 'Goal (%)', 'Updated', 'Reason for the change'],
-  'Final exams': ['Email', 'Semester', 'Class', 'Exam date', 'What it will look like', 'Updated', 'Accommodations I plan to use', 'Extended time: when', 'Alternate setting: where', 'Test style (Paper or Chromebook)'],
+  'Final exams': ['Email', 'Semester', 'Class', 'Exam date', 'What it will look like', 'Updated', 'Accommodations I plan to use', 'Extended time: when', 'Alternate setting: where', 'Test style (Paper, Chromebook or Not sure yet)'],
   // the school's final exam schedule (change it each semester): which period's final is when
   'Final exam schedule': ['Date', 'Start', 'End', 'Period (or Make-up)'],
   // the school year (change it each year): days with no school, finals days, and the first and last day; the grade check day moves around them
@@ -3419,7 +3419,7 @@ function api_saveFinal(cls, date, text, accoms, x) {
   return locked_(function () {
     var old = rows_('Final exams').filter(function (r) { return low_(r[0]) === email && day_(r[1]) === sem && String(r[2]) === cls; })[0] || [];
     var when = x && x.when !== undefined ? clean_(x.when, 120) : String(old[7] || ''), where = x && x.where !== undefined ? clean_(x.where, 120) : String(old[8] || '');
-    var style = x && x.style !== undefined ? (/^(Paper|Chromebook)$/.test(String(x.style)) ? String(x.style) : '') : String(old[9] || '');
+    var style = x && x.style !== undefined ? (/^(Paper|Chromebook|Not sure yet)$/.test(String(x.style)) ? String(x.style) : '') : String(old[9] || '');
     if (!list.some(function (a) { return FIN_EXT.test(a); })) when = '';          // only with extended time / an alternate setting chosen
     if (!list.some(function (a) { return FIN_ALT.test(a); })) where = '';
     rewrite_('Final exams', function (r) { return !(low_(r[0]) === email && day_(r[1]) === sem && String(r[2]) === cls); }, text || date || acc || style ? [[email, sem, cls, date, text, stamp_(), acc, when, where, style]] : []);
@@ -4948,7 +4948,7 @@ function finWhenOpts() {
 function finExtras(k, f) {
   var h = '';
   if (f.accoms.length) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>✏️ How will you take it?</b></span>' +
-    [['Paper', '📄 Paper'], ['Chromebook', '💻 Chromebook']].map(function (o) { return '<button class="btn small' + (f.style === o[0] ? ' primary' : '') + '" onclick="finExtra(' + k + ',\'style\',\'' + (f.style === o[0] ? '' : o[0]) + '\')">' + o[1] + '</button>'; }).join('') + '</div>';
+    [['Paper', '📄 Paper'], ['Chromebook', '💻 Chromebook'], ['Not sure yet', '🤷 I don’t know yet']].map(function (o) { return '<button class="btn small' + (f.style === o[0] ? ' primary' : '') + '" onclick="finExtra(' + k + ',\'style\',\'' + (f.style === o[0] ? '' : o[0]) + '\')">' + o[1] + '</button>'; }).join('') + '</div>';
   var mine = finMine().map(finWhenText), dc = esc(B.dayClass || 'resource');
   if (f.accoms.some(function (a) { return FIN_EXT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>⏱️ When will you use your extra time?</b></span><select style="max-width:420px" onchange="finExtra(' + k + ',\'when\',this.value)"><option value="">Pick a time</option>' +
     finWhenOpts().map(function (o) { var my = mine.indexOf(o) >= 0; return '<option value="' + esc(o) + '"' + (o === f.when ? ' selected' : '') + '>' + (my ? '⭐ ' : '') + esc(o) + (my ? ' (your ' + dc + ' time)' : '') + '</option>'; }).join('') + (f.when && finWhenOpts().indexOf(f.when) < 0 ? '<option selected>' + esc(f.when) + '</option>' : '') + '</select></div>' +
@@ -6184,7 +6184,8 @@ function faTable(fa, click) {
       '<td>' + esc(x.cls) + '</td><td>' + esc(x.accoms.join(', ')) + '</td><td>' + (x.when ? esc(x.when) : x.accoms.some(function (a) { return FIN_EXT.test(a); }) ? '<span class="small" style="color:var(--warn)">not picked yet</span>' : '') + '</td><td>' + (x.where ? esc(x.where) : x.accoms.some(function (a) { return FIN_ALT.test(a); }) ? '<span class="small" style="color:var(--warn)">not picked yet</span>' : '') + '</td><td>' + faStyle(x) + '</td></tr>';
   }).join('') + '</tbody></table>';
 }
-function faStyle(x) { return x.style === 'Paper' ? '📄 Paper' : x.style === 'Chromebook' ? '💻 Chromebook' : '<span class="small" style="color:var(--warn)">not picked yet</span>'; }
+var FA_STYLE = { Paper: '📄 Paper', Chromebook: '💻 Chromebook', 'Not sure yet': '❓ Doesn’t know yet' };
+function faStyle(x) { return FA_STYLE[x.style] || '<span class="small" style="color:var(--warn)">not picked yet</span>'; }
 // By period (1.95): each final exam period in time order, with every accommodation to plan for in it: the students whose final it is,
 // and students using extended time in that period for another final. Totals at the top of each period.
 function faPeriods(fa, click) {
@@ -6203,7 +6204,7 @@ function faPeriods(fa, click) {
     return '<tr><td>' + who + '</td><td>' + esc(x.cls) + (r.extra ? '<small>extra time for their ' + (x.period ? 'Period ' + esc(x.period) : '') + ' final</small>' : '') + '</td><td>' + accTxt + '</td><td>' + faStyle(x) + '</td></tr>';
   };
   return blocks.filter(function (b) { return b.rows.length; }).map(function (b) {
-    var tally = {}; b.rows.forEach(function (r) { (r.extra ? ['Extended time'] : r.x.accoms).forEach(function (a) { tally[a] = (tally[a] || 0) + 1; }); if (r.x.style) tally[r.x.style === 'Paper' ? '📄 Paper' : '💻 Chromebook'] = (tally[r.x.style === 'Paper' ? '📄 Paper' : '💻 Chromebook'] || 0) + 1; });
+    var tally = {}; b.rows.forEach(function (r) { (r.extra ? ['Extended time'] : r.x.accoms).forEach(function (a) { tally[a] = (tally[a] || 0) + 1; }); if (FA_STYLE[r.x.style]) tally[FA_STYLE[r.x.style]] = (tally[FA_STYLE[r.x.style]] || 0) + 1; });
     return '<div class="card faslot"><div class="row" style="align-items:baseline"><h3 class="grow" style="margin:0">' + esc(b.t) + '</h3><span class="small">' + b.rows.length + ' student' + (b.rows.length === 1 ? '' : 's') + '</span></div>' +
       '<div class="chips" style="margin:6px 0 8px">' + Object.keys(tally).map(function (k) { return '<span class="chip">' + esc(k) + ' <b>' + tally[k] + '</b></span>'; }).join('') + '</div>' +
       '<table><thead><tr><th>Student</th><th>Class</th><th>Accommodations</th><th>Test style</th></tr></thead><tbody>' + b.rows.map(row).join('') + '</tbody></table></div>';
