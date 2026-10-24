@@ -444,7 +444,7 @@
   /* the music on a page, from its drawing: staves (five evenly spaced long level lines) and systems (staves joined by a bracket or line at the
      left: sung at the same time, read left to right; Colleen 2026-10-23). Thin rectangles count as lines; big ones are clipping, not drawing. */
   function geometry(ops, OPS, vp) {
-    var ctm = [1, 0, 0, 1, 0, 0], stack = [], segs = [];
+    var ctm = [1, 0, 0, 1, 0, 0], stack = [], segs = [], fills = [];      // fills: filled shapes (beams: four corners; ties and slurs: curves) for the piano reader
     var mul = function (a, b) { return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]]; };
     var ap = function (m, x, y) { return vp.convertToViewportPoint(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]); };
     ops.fnArray.forEach(function (f, i) {
@@ -453,18 +453,33 @@
       else if (f === OPS.restore) ctm = stack.pop() || ctm;
       else if (f === OPS.transform) ctm = mul(ctm, a);
       else if (f === OPS.constructPath) {
-        var k = 0, cur = null, args = a[1];
+        var k = 0, cur = null, args = a[1], pts = [], curved = false;
         a[0].forEach(function (op) {
-          if (op === OPS.moveTo) { cur = ap(ctm, args[k], args[k + 1]); k += 2; }
-          else if (op === OPS.lineTo) { var p = ap(ctm, args[k], args[k + 1]); k += 2; if (cur) segs.push([cur, p]); cur = p; }
+          if (op === OPS.moveTo) { cur = ap(ctm, args[k], args[k + 1]); pts.push(cur); k += 2; }
+          else if (op === OPS.lineTo) { var p = ap(ctm, args[k], args[k + 1]); k += 2; if (cur) segs.push([cur, p]); cur = p; pts.push(p); }
           else if (op === OPS.rectangle) {
             var p0 = ap(ctm, args[k], args[k + 1]), p1 = ap(ctm, args[k] + args[k + 2], args[k + 1] + args[k + 3]); k += 4;
             if (Math.abs(p1[1] - p0[1]) < 1.6) segs.push([[p0[0], (p0[1] + p1[1]) / 2], [p1[0], (p0[1] + p1[1]) / 2]]);
             else if (Math.abs(p1[0] - p0[0]) < 1.6) segs.push([[(p0[0] + p1[0]) / 2, p0[1]], [(p0[0] + p1[0]) / 2, p1[1]]]);
           }
-          else if (op === OPS.curveTo) k += 6; else if (op === OPS.curveTo2 || op === OPS.curveTo3) k += 4;
+          else if (op === OPS.curveTo) { curved = true; pts.push(ap(ctm, args[k + 4], args[k + 5])); k += 6; } else if (op === OPS.curveTo2 || op === OPS.curveTo3) { curved = true; pts.push(ap(ctm, args[k + 2], args[k + 3])); k += 4; }
         });
+        var nx = ops.fnArray[i + 1];
+        if (pts.length >= 3 && (nx === OPS.fill || nx === OPS.eoFill)) fills.push({ curved: curved, pts: pts });
       }
+    });
+    // beams: thin filled four-cornered bars (a little slanted); ties and slurs: filled curved shapes, from one end to the other
+    var beams = [], arcs = [];
+    fills.forEach(function (f) {
+      var xs = f.pts.map(function (p) { return p[0]; }), ys = f.pts.map(function (p) { return p[1]; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+      if (!f.curved && f.pts.length <= 5 && x1 - x0 > 4) {
+        var left = f.pts.filter(function (p) { return p[0] - x0 < 0.6; }), right = f.pts.filter(function (p) { return x1 - p[0] < 0.6; });
+        if (left.length >= 2 && right.length >= 2) {
+          var th = Math.abs(left[0][1] - left[1][1]);
+          if (th > 1.2 && th < 6) beams.push({ x0: x0, x1: x1, y0: (left[0][1] + left[1][1]) / 2, y1: (right[0][1] + right[1][1]) / 2 });
+        }
+      } else if (f.curved && x1 - x0 > 5) arcs.push({ x0: x0, x1: x1, y: ys.reduce(function (a, b) { return a + b; }, 0) / ys.length });
     });
     var hs = segs.filter(function (s) { return Math.abs(s[0][1] - s[1][1]) < 0.5 && Math.abs(s[0][0] - s[1][0]) > 60 && s[0][1] > -5 && s[0][1] < vp.height + 5; })
       .map(function (s) { return { y: s[0][1], x0: Math.min(s[0][0], s[1][0]), x1: Math.max(s[0][0], s[1][0]) }; }).sort(function (a, b) { return a.y - b.y; });
@@ -491,7 +506,8 @@
       systems = systems.filter(function (x) { return inSpan.indexOf(x) < 0; }).concat([merged]);
     });
     systems.sort(function (a, b) { return a.top - b.top; });
-    return { staves: staves, systems: systems };
+    var stems = ups.filter(function (u) { return u.y1 - u.y0 > 8 && u.y1 - u.y0 < 45; });
+    return { staves: staves, systems: systems, beams: beams, arcs: arcs, stems: stems };
   }
 
   /* a song's words as lines of a poem (Colleen 2026-10-23: "dividing the song as you would if it were written like poetry. the end word of a

@@ -962,7 +962,7 @@
       var H = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
-        '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part'], ['part2', 'Bottom part']] : [['part1', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
+        '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part'], ['part2', 'Bottom part']] : [['part1', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
@@ -1013,6 +1013,7 @@
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; if (x.h != null) x.h += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
       if ($('fillparts')) $('fillparts').onclick = fillParts;
+      if ($('partwho')) $('partwho').onclick = partSinger;
       if (!geoP) loadGeo().then(function () { if (maxParts > 1 && location.hash.indexOf('/lyrics/' + songId) > 0) draw(); });
       app.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { timeKind = b.dataset.tk; T.ls('timeKind', timeKind); fixAt = null; draw(); }; });
       app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.del; delSec(i); if (selSec != null && selSec >= lines.length) selSec = null; draw(); T.toast('Line ' + (i + 1) + ' deleted. ↶ Undo brings it back; Save keeps it.', 4000); }; });
@@ -1343,6 +1344,18 @@
     }
     /* the other parts take their times from the timed part, syllable by syllable: a word on the same note (the same place along the staff) gets
        the same time; between notes, by position; past the ends, at the pace of the nearest notes */
+    /* who sings a whole part of the brackets (Colleen: "assign different lines to different actors in songs where harmonies exist"): pick once,
+       every line of this part in the brackets takes it (kept through a re-read, like a ✎ fix) */
+    function partSinger() {
+      var want = +timeKind.slice(4), idx = [];
+      lines.forEach(function (l, i) { var p = partOf(l); if (!l.spoken && p && p.many && p.part === want) idx.push(i); });
+      if (!idx.length) { T.toast('This song has no lines in that part of a bracket.'); return; }
+      pickSinger(idx[0], function () {
+        var who = lines[idx[0]].who, W = T.show.lyricWho = T.show.lyricWho || {}, Ws = W[song.num] = W[song.num] || {};
+        idx.forEach(function (i) { lines[i].who = who; Ws[i + '|' + lines[i].text] = who; });
+        save(idx.length + ' lines in this part: ' + who + '. Save the timing to make the piano again.').then(function () { draw(); });
+      });
+    }
     function fillParts() {
       var want = +timeKind.slice(4), anchors = {}, n = 0, skipped = 0;
       var sylSys = function (l, y) { var bs = T.Pages.rawBoxes(l), b = bs[y.b || 0] || bs[0]; return b ? sysAt(b.n, b.y) : null; };

@@ -1020,6 +1020,19 @@
     });
     var dur = function () { return (P.buf.perf || P.buf.guide).duration; };
     var now = function () { return P.playing ? P.pos + (ctx.currentTime - P.t0) : P.pos; };
+    /* the piano's parts (Colleen 2026-10-24: "isolate and assign different lines to different actors in songs where harmonies exist"): each
+       note knows its staff in the bracket (p, 0 = top) and who sings it (w). My part: the student's own notes clear, the others soft. */
+    var pianoParts = piano && piano.notes ? piano.notes.reduce(function (m, n) { return Math.max(m, (n.p || 0) + 1); }, 1) : 1;
+    var songScene = T.sceneById(song.scene), songItemNum = song.num;
+    function noteMine(n) { if (!T.me || !T.me.chars || !T.me.chars.length || !n.w) return false; var mo = T.songMomentFor ? T.songMomentFor(songScene, songItemNum) : null; return T.isMine(n.w, songScene, T.me.chars, mo); }
+    function pianoPlay(at) {
+      var mode = st.piano || 'mine', ns = piano.notes, parts = [];
+      if (mode === 'mine' && ns.some(noteMine)) { parts.push([ns.filter(noteMine), 0.34]); parts.push([ns.filter(function (n) { return !noteMine(n); }), 0.07]); }
+      else if (mode === 'all') parts.push([ns, 0.22]);
+      else parts.push([ns.filter(function (n) { return !n.p; }), 0.3]);      // the melody: the top part
+      var runs = parts.map(function (x) { return SheetMelody.schedule(ctx, P.master, x[0], P.t0, at, { volume: x[1] }); });
+      return { stop: function () { runs.forEach(function (r) { r.stop(); }); } };
+    }
     function stopNodes() { P.nodes.forEach(function (n) { try { n.stop(); } catch (e) {} }); P.nodes = []; if (P.mel) { P.mel.stop(); P.mel = null; } }
     function start(at) {
       stopNodes();
@@ -1030,7 +1043,7 @@
       P.gp.gain.value = st.guide && P.buf.guide ? 0 : 1; P.gg.gain.value = st.guide ? 1 : 0;
       if (P.buf.perf) { var a = ctx.createBufferSource(); a.buffer = P.buf.perf; a.connect(P.gp); a.start(P.t0, at); P.nodes.push(a); }
       if (P.buf.guide) { var g = ctx.createBufferSource(); g.buffer = P.buf.guide; g.connect(P.gg); var gat = P.buf.perf ? at + P.offset : at; if (gat >= 0) g.start(P.t0, gat); else g.start(P.t0 - gat, 0); P.nodes.push(g); }
-      if (st.melody && has.mel) P.mel = piano && piano.notes.length ? SheetMelody.schedule(ctx, P.master, piano.notes, P.t0, at, { volume: 0.3 }) : Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
+      if (st.melody && has.mel) P.mel = piano && piano.notes.length ? pianoPlay(at) : Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
       tick(); drawBtns();
     }
     function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); }
@@ -1059,6 +1072,7 @@
       document.getElementById('pl').innerHTML = keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
         sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
+        (piano && piano.notes.length && (pianoParts > 1 || piano.notes.some(function (n) { return n.w; })) ? '<div class="switch"><span>Piano plays</span><div class="seg" id="pianoseg">' + [['mine', 'My part'], ['all', 'All parts'], ['top', 'Melody only']].map(function (o) { return '<button type="button" data-pm="' + o[0] + '" aria-pressed="' + ((st.piano || 'mine') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>' : '') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
         '<div class="row" style="margin-top:10px">' + icon('loop') + '<button class="btn small" id="la">Loop from here</button><button class="btn small" id="lb">to here</button><button class="btn small quiet" id="lc">No loop</button><span class="muted small" id="lt"></span></div>';
       document.getElementById('spp').onclick = function () { P.playing ? pause() : start(P.pos); };
@@ -1066,6 +1080,7 @@
       var pos = document.getElementById('pos');
       pos.oninput = function () { pos.dragging = true; document.getElementById('tm').textContent = clock(+pos.value) + ' / ' + clock(dur()); };
       pos.onchange = function () { pos.dragging = false; if (P.playing) start(+pos.value); else { P.pos = +pos.value; tick(); } };
+      app.querySelectorAll('[data-pm]').forEach(function (b) { b.onclick = function () { st.piano = b.dataset.pm; ls('songOpts', st); app.querySelectorAll('[data-pm]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); if (P.playing && st.melody) start(now()); }; });
       document.getElementById('vol').oninput = function (e) { st.vol = +e.target.value; if (P.master) P.master.gain.value = st.vol; ls('songOpts', st); };
       app.querySelectorAll('#pl input[data-k]').forEach(function (inp) {
         inp.onchange = function () {

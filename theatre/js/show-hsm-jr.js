@@ -11,6 +11,8 @@ window.DEFAULT_SHOW = {
   licenseNote: 'Performed under license from Music Theatre International. Script lines and lyrics are for this cast only.',
   links: { rehearsalFolder: 'https://drive.google.com/drive/folders/1oTAmJVz1E6LtZhVr8uqBhv1ZCpBZ6A_A', performanceFolder: 'https://drive.google.com/drive/folders/1TH1Tp166f7TxQ0-fSAhIeUD4uYuBPolo' },
 
+  // parts written in treble clef that these characters sing an octave lower (the piano plays them where they are sung)
+  lowVoices: ['troy', 'ryan', 'chad', 'zeke', 'coach', 'jack', 'kratnoff', 'james', 'jocks'],
   groups: [
     { id: 'leads', name: 'Leads' }, { id: 'friends', name: 'Friends' }, { id: 'adults', name: 'Grown-ups' },
     { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }, { id: 'helpers', name: 'Company Mentors' }

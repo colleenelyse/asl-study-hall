@@ -16,10 +16,10 @@
   var STEP_MIDI = [0, 2, 4, 5, 7, 9, 11];            // C D E F G A B
   var SHARPS = [3, 0, 4, 1, 5, 2, 6], FLATS = [6, 2, 5, 1, 4, 0, 3];      // F C G D A E B / B E A D G C F as letters 0=C … 6=B
 
-  /* one page: staves { top, bottom, space, bars: [x] } and the music-font characters { ch, x, y, size } */
+  /* one page: staves { top, bottom, space, bars: [x] }, beams, ties/slurs (arcs), stems, systems, and the music-font characters { ch, x, y, size } */
   async function readPage(pdf, n, lib) {
     var page = await pdf.getPage(n), vp = page.getViewport({ scale: 1 }), ops = await page.getOperatorList();
-    var staves = ScriptParser.geometry(ops, lib.OPS, vp).staves;      // staff lines and barlines (shared with the script reader)
+    var geo = ScriptParser.geometry(ops, lib.OPS, vp);      // staff lines, barlines, beams, ties, stems (shared with the script reader)
     var tc = await page.getTextContent(), glyphs = [];
     tc.items.forEach(function (it) {
       if (!it.str || !it.str.trim()) return;
@@ -28,101 +28,152 @@
       var p = vp.convertToViewportPoint(tr[4], tr[5]), str = it.str, w = it.width || 0;
       for (var c = 0; c < str.length; c++) if (str[c] !== ' ') glyphs.push({ ch: str[c], x: p[0] + w * c / Math.max(1, str.length), y: p[1], size: size });
     });
-    return { staves: staves, glyphs: glyphs };
+    return { staves: geo.staves, systems: geo.systems, beams: geo.beams || [], arcs: geo.arcs || [], stems: geo.stems || [], glyphs: glyphs };
   }
 
-  /* the notes on one staff, left to right: { x, midi, head } (the top note of a chord) */
-  function staffNotes(st, glyphs) {
-    var lo = st.top - st.space * 5, hi = st.bottom + st.space * 5;
+  /* what is on one staff, left to right (Colleen 2026-10-24: "improve the piano reader (octaves, beats, ties)"):
+     notes { x, midi, beats, tie (held on from the note before) } and rests { x, rest: true, beats }.
+     A note's length: whole w = 4 beats, half ˙ = 2, filled œ = 1, halved for each beam across its stem or flag on it (j eighth, r sixteenth),
+     and half again for a dot after it. A tie is a curve from one note to the next on the same pitch. */
+  var RESTS = { 'Œ': 1, 'Ó': 2, '‰': 0.5, '≈': 0.25, '∑': 4 };
+  function staffNotes(st, pg) {
+    var glyphs = pg.glyphs, lo = st.top - st.space * 5, hi = st.bottom + st.space * 5;
     var mine = glyphs.filter(function (g) { return g.y > lo && g.y < hi && g.x > st.x0 - 2 && g.x < st.x1 + 2; });
-    var half = st.space / 2, out = [];
+    var half = st.space / 2, headW = st.space * 1.25, out = [];
     var heads = mine.filter(function (g) { return HEADS[g.ch]; }).sort(function (a, b) { return a.x - b.x || a.y - b.y; });
-    // an accidental sits just before a notehead at its height; any other sharps or flats are a key signature (after the clef, or a key
-    // change partway along the staff), in force from there on
     var beforeNote = function (g) { return heads.some(function (h) { return h.x - g.x > 1 && h.x - g.x < 16 && Math.abs(g.y - h.y) < st.space * 0.7; }); };
     var keySigns = mine.filter(function (g) { return /[#b]/.test(g.ch) && !beforeNote(g); }).sort(function (a, b) { return a.x - b.x; });
-    var keys = [];      // [{ x, key }]: a run of sharps or flats close together is one key signature
+    var keys = [];
     keySigns.forEach(function (g) { var k = keys[keys.length - 1]; if (k && g.x - k.last < 12 && k.ch === g.ch) { k.count++; k.last = g.x; } else keys.push({ x: g.x, last: g.x, ch: g.ch, count: 1 }); });
     keys.forEach(function (k) { k.key = {}; (k.ch === '#' ? SHARPS : FLATS).slice(0, k.count).forEach(function (l) { k.key[l] = k.ch === '#' ? 1 : -1; }); });
     var keyAt = function (x) { var key = {}; keys.forEach(function (k) { if (k.x < x) key = k.key; }); return key; };
     var barOf = function (x) { var b = 0; st.bars.forEach(function (bx) { if (bx < x) b++; }); return b; };
-    var acc = {};      // "bar:step" -> -1 0 1 for the rest of the bar
+    var stemOf = function (h) {      // the stem on the note's right (up) or left (down) side, and where it ends
+      var best = null;
+      pg.stems.forEach(function (u) {
+        var side = Math.abs(u.x - (h.x + headW)) < 2.6 ? 'up' : Math.abs(u.x - h.x) < 2.6 ? 'down' : null; if (!side) return;
+        if (u.y0 > h.y + st.space || u.y1 < h.y - st.space * 1.2) return;
+        var end = Math.abs(u.y0 - h.y) > Math.abs(u.y1 - h.y) ? u.y0 : u.y1;
+        if (!best || Math.abs(end - h.y) > Math.abs(best.end - h.y)) best = { x: u.x, end: end };
+      });
+      return best;
+    };
+    var acc = {};
     heads.forEach(function (h) {
       var step = Math.round((st.bottom - h.y) / half);      // 0 = E4 on the bottom line of a treble staff
-      var d = 2 + step, oct = 4 + Math.floor(d / 7), letter = ((d % 7) + 7) % 7, key = keyAt(h.x);
-      var bar = barOf(h.x);
+      var d = 2 + step, oct = 4 + Math.floor(d / 7), letter = ((d % 7) + 7) % 7, key = keyAt(h.x), bar = barOf(h.x);
       var a = mine.find(function (g) { return /[#bn]/.test(g.ch) && g.x < h.x - 1 && g.x > h.x - 16 && Math.abs(g.y - h.y) < st.space * 0.7; });
       if (a) acc[bar + ':' + step] = a.ch === '#' ? 1 : a.ch === 'b' ? -1 : 0;
       var alter = acc[bar + ':' + step] != null ? acc[bar + ':' + step] : (key[letter] || 0);
       var midi = 12 * (oct + 1) + STEP_MIDI[letter] + alter;
+      var beats = h.ch === 'w' ? 4 : h.ch === '˙' ? 2 : 1;
+      if (h.ch === 'œ') {
+        var sm = stemOf(h), cuts = 0;
+        if (sm) {
+          pg.beams.forEach(function (b) {
+            if (sm.x < b.x0 - 1.5 || sm.x > b.x1 + 1.5) return;
+            var yb = b.y0 + (b.y1 - b.y0) * (sm.x - b.x0) / Math.max(1, b.x1 - b.x0);
+            if (Math.abs(yb - sm.end) < st.space * 1.7) cuts++;
+          });
+          if (!cuts) mine.forEach(function (g) { if ((g.ch === 'j' || g.ch === 'J') && Math.abs(g.x - sm.x) < 5) cuts = Math.max(cuts, 1); if ((g.ch === 'r' || g.ch === 'R') && Math.abs(g.x - sm.x) < 5) cuts = Math.max(cuts, 2); });
+        }
+        beats = 1 / Math.pow(2, Math.min(cuts, 3));
+      }
+      if (mine.some(function (g) { return g.ch === '.' && g.x > h.x + headW * 0.6 && g.x < h.x + headW + 9 && Math.abs(g.y - h.y) < st.space * 0.8; })) beats *= 1.5;
       var prev = out[out.length - 1];
-      if (prev && Math.abs(prev.x - h.x) < 3) { if (midi > prev.midi) { prev.midi = midi; } return; }      // a chord: the top note
-      out.push({ x: h.x, midi: midi, head: h.ch });
+      if (prev && !prev.rest && Math.abs(prev.x - h.x) < 3) { if (midi > prev.midi) prev.midi = midi; return; }      // a chord: the top note
+      out.push({ x: h.x, y: h.y, midi: midi, beats: beats, head: h.ch });
     });
+    mine.forEach(function (g) {
+      if (!RESTS[g.ch] || g.y < st.top - st.space || g.y > st.bottom + st.space) return;
+      var b = RESTS[g.ch]; if (mine.some(function (q) { return q.ch === '.' && q.x > g.x + 2 && q.x < g.x + 12 && Math.abs(q.y - g.y) < st.space; })) b *= 1.5;
+      out.push({ x: g.x, rest: true, beats: b });
+    });
+    out.sort(function (a, b) { return a.x - b.x; });
+    // ties: a curve from just after one note to the next note on the same pitch
+    for (var k = 1; k < out.length; k++) {
+      var p0 = out[k - 1], p1 = out[k]; if (p0.rest || p1.rest || p0.midi !== p1.midi) continue;
+      if (pg.arcs.some(function (c) { return c.x0 > p0.x - 2 && c.x0 < p0.x + headW + 7 && c.x1 > p1.x - 6 && c.x1 < p1.x + headW + 2 && Math.abs(c.y - p0.y) < st.space * 2.4; })) p1.tie = true;
+    }
     return out;
   }
 
-  /* the piano notes for a song. Needs the script pages, the song's lyrics and its lyrics timing. */
+  /* low voices sing parts written in treble clef an octave lower (the show's lowVoices, or the teacher's own list) */
+  function octaveFor(who) {
+    var T = root.T, ids = T.labelChars(String(who || '').toUpperCase()).filter(function (c) { return c !== '*'; });
+    var low = (T.show && T.show.lowVoices) || T.O().lowVoices || (root.DEFAULT_SHOW || {}).lowVoices || [];
+    return ids.length && ids.every(function (c) { return low.indexOf(c) >= 0; }) ? -12 : 0;
+  }
+
+  /* the piano notes for a song, every part: { t, d, midi, p (staff of its bracket, 0 = top), w (who sings it) }.
+     Each staff's notes are laid out by their beats between the sung syllables (from the lyrics timing), so held notes ring and rests are silent. */
   async function make(songId) {
     var T = root.T, so = T.songById(songId), scene = so && T.sceneById(so.scene), src = scene && T.scriptScene(scene);
     var item = src && src.items.find(function (it) { return it.type === 'song' && String(it.num) === String(so.num); });
     var lt = T.show.lyricTimes && T.show.lyricTimes[songId];
     if (!item || !item.lyrics.length) throw new Error('No lyrics for this song in the script.');
     if (!lt) throw new Error('Find this song’s lyrics timing first.');
-    var lib = await T.loadPdfJs(), pdf = await T.Pages.doc(), pages = {};
-    var lines = [];
+    var lib = await T.loadPdfJs(), pdf = await T.Pages.doc(), pages = {}, staffs = {};
     for (var i = 0; i < item.lyrics.length; i++) {
       var l = item.lyrics[i], tm = lt.lines[i];
       var bxs = l.boxes || (l.box ? [l.box] : []);
-      if (!bxs.length || !tm || !tm.s || !tm.s.length) continue;
-      for (var bi = 0; bi < bxs.length; bi++) {      // a line of the poem can run onto the next staff: each part under its own staff
+      if (l.spoken || !bxs.length || !tm || !tm.s || !tm.s.length) continue;
+      for (var bi = 0; bi < bxs.length; bi++) {
         var bx = bxs[bi];
         if (!pages[bx.n]) pages[bx.n] = await readPage(pdf, bx.n, lib);
         var pg = pages[bx.n], base = bx.y + bx.h;
-        var st = pg.staves.filter(function (s) { return s.bottom < base && base - s.bottom < s.space * 12; }).sort(function (a, b) { return b.bottom - a.bottom; })[0];      // the staff right above
+        var st = pg.staves.filter(function (s) { return s.bottom < base && base - s.bottom < s.space * 12; }).sort(function (a, b) { return b.bottom - a.bottom; })[0];
         if (!st) continue;
         var sy = (l.syl || []).map(function (s, k) { return { cx: s.x + s.w / 2, t: tm.s[k], b: s.b || 0 }; }).filter(function (s) { return s.t != null && s.b === bi; });
         if (!sy.length) continue;
-        lines.push({ i: i + bi / 10, st: st, n: bx.n, syl: sy, t: sy[0].t, e: bi === bxs.length - 1 ? tm.e : sy[sy.length - 1].t + 0.6, glyphs: pg.glyphs, x0: bx.x - 4, x1: bx.x + bx.w + 4 });
+        var key = bx.n + ':' + st.top.toFixed(1), S = staffs[key];
+        if (!S) {
+          var sys = (pg.systems || []).find(function (q) { return q.staves.indexOf(st) >= 0; });
+          S = staffs[key] = { st: st, pg: pg, part: sys ? sys.staves.indexOf(st) : 0, syl: [], lines: [] };
+        }
+        sy.forEach(function (q) { S.syl.push(q); });
+        S.lines.push({ who: l.who, x0: Math.min.apply(null, sy.map(function (q) { return q.cx; })) - 30, x1: Math.max.apply(null, sy.map(function (q) { return q.cx; })) + 60, e: tm.h != null ? tm.h : tm.e });
       }
     }
-    // harmony: two vocal staves sung at the same time -> keep the upper one
-    lines = lines.filter(function (a) {
-      return !lines.some(function (b) { return b !== a && b.n === a.n && b.st !== a.st && b.st.top < a.st.top && b.t < a.e - 0.2 && a.t < b.e - 0.2 && a.st.top - b.st.bottom < a.st.space * 14; });
-    });
-    var used = {}, notes = [];
-    lines.forEach(function (L) {
-      var key = L.n + ':' + L.st.top.toFixed(1) + ':' + L.t.toFixed(1) + ':' + (L.x0 || 0).toFixed(0);
-      if (used[key]) return; used[key] = 1;
-      var ns = staffNotes(L.st, L.glyphs).filter(function (nt) { return L.x0 == null || (nt.x > L.x0 - 14 && nt.x < L.x1 + 30); }); if (!ns.length || !L.syl.length) return;
-      // time each note: above a syllable -> that syllable; otherwise between its neighbours by position
-      var anchors = L.syl.slice().sort(function (a, b) { return a.cx - b.cx; });
-      var rate = anchors.length > 1 ? Math.max(0.004, (anchors[anchors.length - 1].t - anchors[0].t) / Math.max(1, anchors[anchors.length - 1].cx - anchors[0].cx)) : 0.02;
-      ns.forEach(function (nt) {
-        var hit = anchors.find(function (a) { return Math.abs(a.cx - (nt.x + 3.5)) < 9; });
-        var t;
-        if (hit) t = hit.t;
-        else {
-          var before = anchors.filter(function (a) { return a.cx < nt.x; }).pop(), after = anchors.find(function (a) { return a.cx > nt.x; });
-          if (before && after) t = before.t + (after.t - before.t) * (nt.x - before.cx) / Math.max(1, after.cx - before.cx);
-          else if (before) t = Math.min(before.t + (nt.x - before.cx) * rate, L.e || Infinity);
-          else t = Math.max(after.t - (after.cx - nt.x) * rate, L.t - 1.5);
-        }
-        notes.push({ t: t, midi: nt.midi, head: nt.head, anchored: !!hit });
+    // the song's pace, for notes before the first or after the last sung syllable on a staff
+    var paces = [], notes = [];
+    var layout = Object.keys(staffs).map(function (key) {
+      var S = staffs[key], ev = staffNotes(S.st, S.pg);
+      if (!ev.length) return null;
+      var minX = Math.min.apply(null, S.lines.map(function (L) { return L.x0; })), maxX = Math.max.apply(null, S.lines.map(function (L) { return L.x1; }));
+      ev = ev.filter(function (e) { return e.x > minX && e.x < maxX; });
+      var b = 0; ev.forEach(function (e) { e.b = b; b += e.beats; });
+      var anchors = [];
+      ev.forEach(function (e) {
+        if (e.rest || e.tie) return;
+        var hit = S.syl.find(function (q) { return Math.abs(q.cx - (e.x + S.st.space * 0.6)) < 9; });
+        if (hit && (!anchors.length || hit.t > anchors[anchors.length - 1].t + 0.02)) anchors.push({ b: e.b, t: hit.t });
+      });
+      for (var k = 1; k < anchors.length; k++) if (anchors[k].b > anchors[k - 1].b) paces.push((anchors[k].t - anchors[k - 1].t) / (anchors[k].b - anchors[k - 1].b));
+      return { S: S, ev: ev, anchors: anchors };
+    }).filter(Boolean);
+    paces.sort(function (a, b) { return a - b; });
+    var pace = paces.length ? paces[Math.floor(paces.length / 2)] : 0.5;      // seconds per beat (the middle value)
+    layout.forEach(function (Lo) {
+      var A = Lo.anchors; if (!A.length) return;
+      var timeAt = function (b) {      // beats on this staff -> seconds, through the sung syllables
+        for (var k = 1; k < A.length; k++) if (b <= A[k].b) { var a0 = A[k - 1], a1 = A[k]; return a0.t + (a1.t - a0.t) * (b - a0.b) / Math.max(0.001, a1.b - a0.b); }
+        var last = A[A.length - 1], first = A[0];
+        return b < first.b ? first.t - (first.b - b) * pace : last.t + (b - last.b) * pace;
+      };
+      var evs = Lo.ev;
+      evs.forEach(function (e, k) {
+        if (e.rest || e.tie) return;
+        var beats = e.beats, j = k + 1;
+        while (j < evs.length && evs[j].tie && !evs[j].rest) { beats += evs[j].beats; j++; }      // tied notes ring as one
+        var t = timeAt(e.b), end = timeAt(e.b + beats);
+        var L = Lo.S.lines.find(function (x) { return e.x >= x.x0 && e.x <= x.x1; }) || Lo.S.lines[0];
+        if (t > (L.e || Infinity) + 0.3) return;      // past the end of the singing (instrumental notes on the vocal staff)
+        notes.push({ t: +t.toFixed(2), d: +Math.max(0.12, Math.min(end - t, 4)).toFixed(2), midi: e.midi + octaveFor(L.who), p: Lo.S.part, w: L.who || '' });
       });
     });
-    notes.sort(function (a, b) { return a.t - b.t; });
-    // lengths: until the next note, no longer than the notehead allows
-    var out = [];
-    notes.forEach(function (n, k) {
-      if (out.length && Math.abs(out[out.length - 1].t - n.t) < 0.05) return;
-      var next = notes.slice(k + 1).find(function (m) { return m.t > n.t + 0.05; });
-      var d = Math.min(HEADS[n.head] || 1.2, next ? next.t - n.t : HEADS[n.head] || 1.2);
-      var prev = out[out.length - 1];
-      if (prev && !n.anchored && prev.midi === n.midi && n.t - (prev.t + prev.d) < 0.08) { prev.d = +(n.t + d - prev.t).toFixed(2); return; }      // a tie
-      out.push({ t: +n.t.toFixed(2), d: +Math.max(0.12, d).toFixed(2), midi: n.midi });
-    });
-    return out;
+    notes.sort(function (a, b) { return a.t - b.t || a.p - b.p; });
+    return notes;
   }
 
   /* a plunked piano: a few partials, a quick strike and a ringing decay */
@@ -145,5 +196,5 @@
     return { stop: function () { nodes.forEach(function (o) { try { o.stop(); } catch (e) {} }); } };
   }
 
-  root.SheetMelody = { make: make, schedule: schedule, _readPage: readPage, _staffNotes: staffNotes };
+  root.SheetMelody = { make: make, schedule: schedule, octaveFor: octaveFor, _readPage: readPage, _staffNotes: staffNotes };
 })(typeof window !== 'undefined' ? window : this);
