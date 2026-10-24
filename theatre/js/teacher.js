@@ -886,10 +886,10 @@
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before, then tap Now">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
-          '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? '🎯 Fixing · line ' + (nxt + 1) + ' (keep tapping to fix the lines after it)' : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
+          '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
           '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
@@ -912,6 +912,7 @@
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
+      app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
       if ($('fixdone')) $('fixdone').onclick = function () { endFix(); audio.pause(); draw(); };
       app.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { pickSinger(+b.dataset.who); }; });
@@ -989,7 +990,7 @@
       var i = selSec, l = i != null ? lines[i] : null, x = i != null ? times[i] : null, toks = l ? (l.syl || []).map(function (y) { return y.t; }) : [];
       bar.innerHTML = slider() + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
-          '<span class="grow"></span><button class="btn small" id="snm">−</button><b style="min-width:62px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
+          '<span class="grow"></span><button class="btn small" id="snm">−</button>' + timeBox('id="stin"', x) + '<button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
         '<p class="muted small" style="margin:4px 0">Drag the round handles at the ends of the highlight to shorten or stretch it' + (T.Pages.lyricBoxes(l).length > 1 ? '; ✕ takes a piece away' : '') + '.' + (l.cut ? ' <button class="btn small quiet" id="sfit">Fit to the words again</button>' : '') + '</p>' +
         '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
@@ -1005,6 +1006,7 @@
       $('snm').onclick = function () { nudge(i, -0.2); }; $('snp').onclick = function () { nudge(i, 0.2); };
       $('stest').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); }); };
       $('sfix').onclick = function () { view = 'timing'; fixLine(i); };
+      $('stin').onchange = function () { if (typeTime(i, this.value)) { overlay(); secBar(); } else this.value = fmtT(times[i]); };
       $('sclr').onclick = function () { clearLine(i); overlay(); secBar(); };
       $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
       $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
@@ -1104,7 +1106,7 @@
       var fixing = fixAt != null, i = fixing ? fixAt : nextOpen();
       if (i < 0 || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every line has a time. Use 🎯 Fix on a line to change it.'); return; }
       snapshot();
-      var t = +audio.currentTime.toFixed(2), old = fixing ? fixOld : times[i];
+      var t = +audio.currentTime.toFixed(2), old = fixing ? fixOld || times[i] : times[i];
       if (fixing && old) {      // move the line, keeping its own syllable timing (the piano follows it), and don't let it run into the next line
         var d = t - old.t, next = times.slice(i + 1).find(Boolean);
         times[i] = { t: t, e: +Math.min(old.e + d, next ? next.t : old.e + d).toFixed(2), s: (old.s || []).map(function (v) { return +(v + d).toFixed(2); }) };
@@ -1113,7 +1115,7 @@
       var prev = times.slice(0, i).reverse().find(Boolean);
       if (prev && prev.e > t) { prev.e = t; prev.s = prev.s.map(function (v) { return Math.min(v, t - 0.05); }); }
       applySync();
-      if (fixing) { var nx = i + 1; while (nx < lines.length && lines[nx].sync) nx++; fixOld = null; if (nx < lines.length) startFix(nx); else fixAt = null; }      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
+      if (fixing) { var nx = i + 1; while (nx < lines.length && lines[nx].sync) nx++; fixOld = null; fixAt = nx < lines.length ? nx : null; }      // Colleen: the next tap overrides the next line, but it is not cleared ahead of time      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
       draw();
     }
     /* who sings a line, when the script reader got it wrong: kept in T.show.lyricWho so a re-import keeps it */
@@ -1137,6 +1139,19 @@
        lights up or shows from it while the song plays, and Now gives it a fresh one. Done fixing before tapping puts the old time back. */
     function startFix(i) { endFix(); fixAt = i; fixOld = times[i] || null; times[i] = null; applySync(); }
     function endFix() { if (fixAt != null && fixOld && !times[fixAt]) { times[fixAt] = fixOld; applySync(); } fixAt = null; fixOld = null; }
+    /* typed times (Colleen: "i want to be able to type in timings too"): seconds (47.15) or minutes:seconds (0:47.15) */
+    function fmtT(x) { return x ? x.t.toFixed(2) : ''; }
+    function timeBox(attr, x) { return '<input ' + attr + ' class="lt-tin" inputmode="decimal" value="' + fmtT(x) + '" placeholder="—" aria-label="Start time in seconds" title="Type a time: 47.15 or 0:47.15">'; }
+    function typeTime(i, v) {
+      v = String(v || '').trim(); if (!v) return false;
+      var m = v.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)\s*s?$/); if (!m) { T.toast('Type seconds (47.15) or minutes and seconds (0:47.15).', 4000); return false; }
+      var t = +(((+m[1] || 0) * 60) + +m[2]).toFixed(2), x = times[i];
+      snapshot();
+      if (x) { var d = t - x.t; times[i] = { t: t, e: +(x.e + d).toFixed(2), s: (x.s || []).map(function (s) { return +(s + d).toFixed(2); }) }; }      // the whole line moves, its syllables with it
+      else { times[i] = { t: t }; spread(i); }
+      if (fixAt === i) { fixAt = null; fixOld = null; }
+      applySync(); return true;
+    }
     function clearLine(i) { snapshot(); if (fixAt === i) { fixAt = null; fixOld = null; } times[i] = null; applySync(); }
     function fixLine(i) {
       snapshot();
