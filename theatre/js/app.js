@@ -575,6 +575,7 @@
       tile('#/lines', 'lines', 'Practice Lines', 'Listen and say my lines') +
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
+      (T.shopCanAdd && T.shopCanAdd() ? tile('#/shop', 'shirt', 'Shopping list', 'Add what we need to buy') : '') +
       tile('#/story', 'book', 'The Story', 'What happens') +
       (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +
       (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +

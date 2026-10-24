@@ -1544,7 +1544,7 @@
   }
   var PRESETS = {
     parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script'], fullCal: true, teach: [] },
-    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
+    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print', 'shop'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
     student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
   var WHO = { student: 'Picks their own picture (a Company member; practice is saved)', parent: 'A parent: picks their Company member once (first names and last initials only; practice is not saved to them)', helper: 'A Company Mentor: can switch between Artists (practice is saved for the Artist, marked “with a Mentor”)' };

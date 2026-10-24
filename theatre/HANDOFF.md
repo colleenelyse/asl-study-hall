@@ -141,6 +141,12 @@ the most similar one left; per student on the device), **Story voice**, "same vo
 the crews; the other half has class as usual). One shopping list for the whole show: every costume piece for every student who wears it (sizes from Cast, shown to
 students only with a switch) and props (`outline.props` starter list, the teacher adds more). Students on the trip open it from Today: a "what will happen" list and
 **Found it!** with a price; saved on the iPad and sent when back on Wi-Fi (`Store.queueNote` / `flushNotes`, type `shop`). Budget and money spent.
+**Adding to the list (2026-10-24):** a teacher or a Company Mentor adds anything we need to buy (What, How many, Kind: costumes / props / set and paint /
+makeup and hair / supplies / other, Note) or **plans a build**: one thing the crew will make plus its materials, one per line, kept as typed. Stored in
+`T.show.shop.extra` and `T.show.shop.builds`; each build has its own card (✕ removes the build and its materials; an Add box for one more material).
+Mentors (the Mentor password, or a cast member marked Mentor) get a Shopping list tile on their home page; what they add is sent as a note (type `shopAdd`)
+and shows as "Sent, waiting for your teacher" until the teacher opens Production, which takes it in ("added by Sam L. (Mentor)"). New Mentor passwords include
+the Shopping list page; an existing Mentor password needs it ticked in its checklist.
 
 **Practice data** (`js/progress.js`; API `/theatre/api/progress[/<actor>]`): like her flashcard app. In Run my role the first try at each line counts right or wrong
 (microphone result, or the student's own ✓ I got it / ✗ Not yet). After a song (track ends, or leaving after 60%+) students rate the words and the dance (😟 🙂 🤩,
