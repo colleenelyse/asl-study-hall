@@ -481,3 +481,10 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .tone-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px dashed var(--line); flex-wrap: wrap; }
 .tone-dlg { max-width: 760px; }
 .tone-dlg [aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+/* tone section progress (voices.js) */
+.tone-prog { display: grid; gap: 6px; margin: 8px 0 12px; }
+.tone-prog .pl { display: flex; justify-content: space-between; gap: 8px; font-size: .92em; }
+.tone-prog .pb { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.tone-prog .pb i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.tone-prog .pb.made i { background: var(--good); }
+.tag.sugg { background: var(--warn-bg); color: var(--warn); }

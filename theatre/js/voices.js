@@ -132,7 +132,13 @@
     var icon = near[0] && T.Emotions.ICON[near[0].icon];
     return icon ? tagOf(icon.name || icon.label || '') : '';
   }
-  function toneOf(l) { var t = (T.show.tones || {})[l.h]; return t != null ? t : autoTone(l.it, l.scene); }
+  /* suggested tones (Colleen 2026-10-24: "i don't want the majority of lines to be said plainly"): imported from a tone guide (a CSV, see
+     importTones), kept by line id only, as T.show.toneSugg[id] = [tags, strength]. Her own choice always wins; ✓ Looks right makes it hers. */
+  var sugg = function (h) { return (T.show.toneSugg || {})[h]; };
+  function toneOf(l) { var t = (T.show.tones || {})[l.h], g = sugg(l.h); return t != null ? t : g ? g[0] : autoTone(l.it, l.scene); }
+  /* the words sent for a line, when the script reader got them wrong ("> >.", a tempo marking): kept on this computer only, never on the server */
+  var fixes = function () { try { return JSON.parse(T.ls('sayText') || '{}'); } catch (e) { return {}; } };
+  var wordsOf = function (l) { var f = fixes()[l.h]; return f != null ? f : LineCheck.spoken(l.it.text); };
   V.toneOf = toneOf;
   function allLines() {      // every spoken line: dialogue, and lines spoken inside songs (for Lines for AAC; the guide tracks already have them in rehearsal)
     var out = [];
@@ -257,7 +263,40 @@
       }, Promise.resolve()).then(function () { T.teacherPages.voices(); T.toast(done + ' lines made'); }).catch(function (e) { T.toast(e.message, 6000); T.teacherPages.voices(); });
     };
     /* the tone of each line: check it, change it, make that line again */
-    var tsel = $('tch'); if (tsel) tsel.onchange = function () { toneChar = tsel.value; page(index, pending); };
+    var tsel = $('tch'); if (tsel) tsel.onchange = function () { toneChar = tsel.value; page(index, pending); setTimeout(function () { var c = $('tonecard'); if (c) c.scrollIntoView(); }, 0); };
+    var again = function (msg) { var y = window.scrollY; page(index, pending); window.scrollTo(0, y); if (msg) T.toast(msg, 6000); };
+    $('texp').onclick = function () { exportTones(lines); };
+    $('timp').onclick = function () { $('tfile').value = ''; $('tfile').click(); };
+    $('tfile').onchange = function () {
+      var f = this.files[0]; if (!f) return;
+      f.text().then(function (txt) {
+        var d = document.createElement('dialog'); d.className = 'tone-dlg';
+        d.innerHTML = '<h2>Import “' + esc(f.name) + '”</h2><p>How should its tones come in?</p>' +
+          '<label class="switch"><span><b>As suggestions</b><br><span class="muted small">Each shows “suggested” until you tap ✓ Looks right or change it. Your own choices stay.</span></span><input type="radio" name="tas" value="s" checked></label>' +
+          '<label class="switch"><span><b>As my tones</b><br><span class="muted small">They replace the tones you chose for those lines.</span></span><input type="radio" name="tas" value="m"></label>' +
+          (toneChar ? '<p class="muted small">If the file has no Character column, lines said by more than one character go to ' + esc((T.charById(toneChar) || {}).name || '') + ' (the character chosen now).</p>' : '') +
+          '<p class="err" id="tim"></p><div class="row end"><button class="btn quiet" id="tix">Cancel</button><button class="btn primary" id="tio">Import</button></div>';
+        document.body.appendChild(d); d.showModal();
+        d.querySelector('#tix').onclick = function () { d.close(); d.remove(); };
+        d.querySelector('#tio').onclick = function () {
+          try {
+            var r = importTones(txt, lines, d.querySelector('[name=tas]:checked').value === 'm');
+            d.close(); d.remove();
+            T.saveShow('Tones imported').then(function () { again(r.found + ' lines got a tone.' + (r.blank ? ' ' + r.blank + ' rows had no tone and were left as they were.' : '') + (r.missed.length ? ' ' + r.missed.length + ' rows did not match a line (first: “' + r.missed[0] + '”).' : '')); });
+          } catch (e) { d.querySelector('#tim').textContent = e.message; }
+        };
+      });
+    };
+    var keep = function (h) { var g = sugg(h); if (!g) return; (T.show.tones = T.show.tones || {})[h] = g[0]; var L3 = T.show.toneLevel = T.show.toneLevel || {}; if (g[1] === 3) delete L3[h]; else L3[h] = g[1]; };
+    app.querySelectorAll('[data-okt]').forEach(function (b) { b.onclick = function () { keep(b.dataset.okt); T.saveShow('Kept').then(function () { again(); }); }; });
+    if ($('tall')) $('tall').onclick = function () { lines.forEach(function (l) { if (T.labelChars(l.it.who).indexOf(toneChar) >= 0 && !checked(l)) keep(l.h); }); T.saveShow('All kept').then(function () { again(); }); };
+    app.querySelectorAll('[data-words]').forEach(function (b) { b.onclick = function () {
+      var h = b.dataset.words, l = byH[h], f = fixes(), now = wordsOf(l);
+      var v = prompt('The words ElevenLabs says for this line (the script itself does not change). Empty = back to the script’s words.', now);
+      if (v == null) return; v = v.trim();
+      if (!v || v === LineCheck.spoken(l.it.text)) delete f[h]; else f[h] = v;
+      T.ls('sayText', JSON.stringify(f)); again('Words saved on this computer. ↻ Make again to hear them.');
+    }; });
     app.querySelectorAll('[data-tone]').forEach(function (inp) { inp.onchange = function () { var T2 = T.show.tones = T.show.tones || {}; var v = inp.value.trim(); if (v && !/^\[/.test(v)) v = v.split(/\s*,\s*/).map(function (w) { return '[' + w.replace(/[\[\]]/g, '') + ']'; }).join(' '); T2[inp.dataset.tone] = v; inp.value = v; if (typeof sends === 'function') sends(inp.dataset.tone); T.saveShow('Tone saved: make the line again to hear it'); }; });
     var sends = function (h) { var sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'), r = app.querySelector('[data-lvl="' + h + '"]'); if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, r ? +r.value : 3) : ''; };
     var toggle = function (inp, tag) { var cur = (inp.value.match(/\[[^\]]+\]/g) || []); var k = cur.indexOf(tag); if (k >= 0) cur.splice(k, 1); else cur.push(tag); inp.value = cur.join(' '); inp.onchange(); sends(inp.dataset.tone); };      // tones combine: [sarcastic] [slows down]
@@ -265,7 +304,7 @@
     app.querySelectorAll('[data-lvl]').forEach(function (r) {
       var h = r.dataset.lvl, show = function () { var n = app.querySelector('[data-lvlname="' + h + '"]'), sd = app.querySelector('[data-sends="' + h + '"]'), inp = app.querySelector('[data-tone="' + h + '"]'); if (n) n.textContent = LEVEL_NAME[+r.value]; if (sd) sd.textContent = inp && inp.value ? 'Sends: ' + withLevel(inp.value, +r.value) : ''; };
       r.oninput = show;
-      r.onchange = function () { var L3 = T.show.toneLevel = T.show.toneLevel || {}; if (+r.value === 3) delete L3[h]; else L3[h] = +r.value; show(); T.saveShow('Strength saved: make the line again to hear it'); };
+      r.onchange = function () { var L3 = T.show.toneLevel = T.show.toneLevel || {}; if (+r.value === 3) delete L3[h]; else L3[h] = +r.value; var T2 = T.show.tones = T.show.tones || {}; if (T2[h] == null) T2[h] = toneOf(byH[h]); show(); T.saveShow('Strength saved: make the line again to hear it'); };
     });
     app.querySelectorAll('[data-more]').forEach(function (b) { b.onclick = function () {
       var inp = app.querySelector('[data-tone="' + b.dataset.more + '"]'), l = byH[b.dataset.more];
@@ -294,7 +333,7 @@
   }
   /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
   function makeLine(l, cfg) {
-    var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), lvl) : '', text = (tone ? tone + ' ' : '') + T.pronounce(LineCheck.spoken(l.it.text));
+    var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), lvl) : '', text = (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l));
     var settings = cfg.model === 'eleven_v3' ? { stability: lvl >= 4 ? 0 : lvl <= 2 ? 1 : 0.5 } : undefined;
     var say = function (vid) {
       return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
@@ -325,7 +364,7 @@
      It also sets v3's stability: strong lines are freer (0, Creative), soft ones steadier (1, Robust). */
   var LEVELS = [null, 'barely', 'slightly', '', 'very', 'extremely'], LEVEL_NAME = [null, 'barely', 'a little', 'normal', 'very', 'extremely'];
   var plain = {}; TONES.forEach(function (g) { if (/Reactions|Pace|Voice/.test(g[0])) g[1].forEach(function (t) { plain[t] = 1; }); });
-  var levelOf = function (h) { var v = (T.show.toneLevel || {})[h]; return v >= 1 && v <= 5 ? v : 3; };
+  var levelOf = function (h) { var v = (T.show.toneLevel || {})[h]; if (v == null && (T.show.tones || {})[h] == null && sugg(h)) v = sugg(h)[1]; return v >= 1 && v <= 5 ? v : 3; };
   function withLevel(tone, lvl) {
     var w = LEVELS[lvl]; if (!w) return tone;
     return String(tone || '').replace(/\[([^\]]+)\]/g, function (m, t) { return plain[t.toLowerCase()] || /^(barely|slightly|very|extremely|a little)\b/i.test(t) ? m : '[' + w + ' ' + t + ']'; });
@@ -333,21 +372,87 @@
   V.withLevel = withLevel;
   var myTones = function () { return (T.show.toneWords || []).slice(); };      // the teacher's own tone words (Add your own)
   V.TONES = TONES;
+  /* how far along: tones she has checked (her own, or a suggestion she said looks right) and lines made, for the show and one character */
+  var checked = function (l) { return (T.show.tones || {})[l.h] != null; };
+  var made = function (l, index) { var e = index.lines[l.h]; return !!(e && e.tts); };
+  function bar(label, n, of, cls) { var pc = of ? Math.round(n / of * 100) : 0; return '<div class="pl"><span>' + label + '</span><b>' + n + ' of ' + of + ' · ' + pc + '%</b></div><div class="pb' + (cls ? ' ' + cls : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + of + '" aria-valuenow="' + n + '" aria-label="' + esc(label) + '"><i style="width:' + pc + '%"></i></div>'; }
   function toneCard(lines, index, cfg) {
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     if (!toneChar || !chars.some(function (c) { return c.id === toneChar; })) toneChar = chars[0] && chars[0].id;
-    var mine = lines.filter(function (l) { return T.labelChars(l.it.who).indexOf(toneChar) >= 0; });
-    return '<div class="card"><h3>' + sym('🎭') + 'The tone of each line</h3><p class="muted small">Each line is sent with a tone note in brackets, like [sarcastic] or [whispers] (only with “Most expressive”). The app starts from the acting notes in the script and your feeling icons; type your own for lines it can’t know, like sarcasm. Leave a line empty to have it said plainly. Then ↻ Make again and ▶ listen.</p>' +
+    var linesOf = function (id) { return lines.filter(function (l) { return T.labelChars(l.it.who).indexOf(id) >= 0; }); };
+    var mine = linesOf(toneChar), ch = T.charById(toneChar) || { name: '' }, fx = fixes();
+    var open = mine.filter(function (l) { return !checked(l) && sugg(l.h); }).length, nSugg = Object.keys(T.show.toneSugg || {}).length;
+    return '<div class="card" id="tonecard"><h3>' + sym('🎭') + 'The tone of each line</h3><p class="muted small">Each line is sent with a tone note in brackets, like [sarcastic] or [whispers] (only with “Most expressive”). A <span class="tag sugg">suggested</span> tone comes from a tone guide you imported; tap ✓ Looks right to keep it, or change it. Your own choices always win. Then ↻ Make again and ▶ listen.</p>' +
       (cfg.model !== 'eleven_v3' ? '<p class="err small">Pick “Most expressive” above so the tone notes are used.</p>' : '') +
-      '<label class="f">Character<select id="tch">' + chars.map(function (c) { return '<option value="' + c.id + '"' + (c.id === toneChar ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></label>' +
+      '<div class="tone-prog">' + bar('Whole show: tones checked', lines.filter(checked).length, lines.length) + bar('Whole show: lines made', lines.filter(function (l) { return made(l, index); }).length, lines.length, 'made') +
+      bar(esc(ch.name) + ': tones checked', mine.filter(checked).length, mine.length) + bar(esc(ch.name) + ': lines made', mine.filter(function (l) { return made(l, index); }).length, mine.length, 'made') + '</div>' +
+      '<div class="row"><button class="btn" id="timp">' + sym('⬆️') + 'Import a tone guide (CSV)</button><button class="btn quiet" id="texp">' + sym('⬇️') + 'Save all tones as a CSV</button><input type="file" id="tfile" accept=".csv,.tsv,.txt,text/csv" hidden></div>' +
+      '<p class="muted small">' + (nSugg ? nSugg + ' lines have a suggested tone. ' : '') + 'A tone guide is a spreadsheet saved as CSV with a column for the line’s words and one for the tone (and, if you like, the character and the strength, 1 to 5 or “a little”, “very”). The words stay on this computer.</p>' +
+      '<label class="f">Character<select id="tch">' + chars.map(function (c) { var L = linesOf(c.id), k = L.filter(checked).length; return '<option value="' + c.id + '"' + (c.id === toneChar ? ' selected' : '') + '>' + (k === L.length ? '✓ ' : '') + esc(c.name) + ' · ' + k + ' of ' + L.length + ' checked</option>'; }).join('') + '</select></label>' +
+      (open ? '<div class="row"><button class="btn good" id="tall">✓ All ' + open + ' suggestions for ' + esc(ch.name) + ' look right</button></div>' : '') +
       mine.map(function (l) {
-        var own = (T.show.tones || {})[l.h], t = own != null ? own : autoTone(l.it, l.scene), e = index.lines[l.h];
-        return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + (l.inSong ? ' · in a song' : '') + '</span><div>' + esc(LineCheck.spoken(l.it.text)) + '</div>' +
-          '<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><input data-tone="' + l.h + '" value="' + esc(t) + '" placeholder="said plainly" style="width:170px">' + (own == null && t ? '<span class="muted small">from the script</span>' : '') +
-          CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '<button type="button" class="btn small" data-more="' + l.h + '">＋ More tones</button></div>' +
+        var own = (T.show.tones || {})[l.h], g = sugg(l.h), t = toneOf(l), e = index.lines[l.h], fixed = fx[l.h] != null;
+        var where = own != null ? '<span class="tag">✓ checked</span>' : g ? '<span class="tag sugg">suggested</span><button type="button" class="btn small good" data-okt="' + l.h + '">✓ Looks right</button>' : t ? '<span class="muted small">from the script</span>' : '';
+        return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + (l.inSong ? ' · in a song' : '') + '</span><div>' + esc(wordsOf(l)) + (fixed ? ' <span class="muted small">(words fixed for ElevenLabs)</span>' : '') + '</div>' +
+          '<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><input data-tone="' + l.h + '" value="' + esc(t) + '" placeholder="said plainly" style="width:200px">' + where +
+          CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '<button type="button" class="btn small" data-more="' + l.h + '">＋ More tones</button><button type="button" class="btn small quiet" data-words="' + l.h + '">✎ Words</button></div>' +
           '<div class="row tone-lvl" style="gap:8px;margin-top:4px"><label class="small">Strength <input type="range" min="1" max="5" step="1" data-lvl="' + l.h + '" value="' + levelOf(l.h) + '" aria-label="How strong"></label><span class="small" data-lvlname="' + l.h + '">' + LEVEL_NAME[levelOf(l.h)] + '</span>' +
           '<span class="muted small" data-sends="' + l.h + '">' + (t ? 'Sends: ' + esc(withLevel(t, levelOf(l.h))) : '') + '</span></div></div>' +
           '<div class="row" style="gap:4px"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button></div></div>';
       }).join('') + '</div>';
   }
+  /* ---------- tone guides (Colleen 2026-10-24: "a bulk tone import feature so the complete CSV guide can be loaded into your app") ----------
+     Reads a CSV (or tab-separated text pasted from a chat) and finds each row's line by its words, and its character when there is a column
+     for it. Columns are found by their headings: the line ("Line", "Exact line…"), the tone ("Tone", "…tags…"), the character, the strength.
+     Rows land as suggestions, or as her own tones when she chooses that. Nothing from the file is sent anywhere; only tags and line ids are saved. */
+  function parseTable(txt) {
+    txt = String(txt || '').replace(/^﻿/, '');
+    var first = txt.split(/\r?\n/)[0] || '', sep = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? '\t' : ',';
+    var rows = [], row = [], cell = '', q = false;
+    for (var i = 0; i < txt.length; i++) {
+      var c = txt[i];
+      if (q) { if (c === '"') { if (txt[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+      else if (c === '"' && !cell) q = true;
+      else if (c === sep) { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return x.trim(); }); });
+  }
+  var normT = function (s) { return String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ').normalize('NFKD').replace(/[^a-z0-9]/g, ''); };
+  var STRENGTH = { barely: 1, 'a little': 2, slightly: 2, little: 2, normal: 3, '': 3, medium: 3, very: 4, strong: 4, extremely: 5, 'very strong': 5 };
+  function strengthOf(v) { v = String(v || '').toLowerCase().trim(); var n = parseInt(v, 10); if (n >= 1 && n <= 5) return n; return STRENGTH[v] != null ? STRENGTH[v] : 3; }
+  function tagsOf(v) { v = String(v || '').trim(); if (!v || /^(plain|said plainly|none|-)$/i.test(v)) return ''; return /\[/.test(v) ? (v.match(/\[[^\]]+\]/g) || []).join(' ') : v.split(/\s*[,;]\s*/).filter(Boolean).map(function (w) { return '[' + w + ']'; }).join(' '); }
+  function importTones(txt, lines, asMine) {
+    var rows = parseTable(txt); if (rows.length < 2) throw new Error('That file has no rows.');
+    var head = rows[0].map(function (h) { return h.toLowerCase().trim(); }), col = function (re, not) { for (var i = 0; i < head.length; i++) if (re.test(head[i]) && !(not && not.test(head[i]))) return i; return -1; };
+    var cLine = col(/line|words|text|dialogue/, /number|tone|tag|status|#/), cTone = col(/tag|tone/, /strength|status|rationale/), cWho = col(/character|speaker|who|role/), cStr = col(/strength|level|intensity/);
+    if (cLine < 0 || cTone < 0) throw new Error('The file needs a column called “Line” (the words) and one called “Tone”.');
+    var who = function (l) { return T.labelChars(l.it.who).join(','); };
+    var byText = {}; lines.forEach(function (l) { var k = normT(wordsOf(l)); (byText[k] = byText[k] || []).push(l); });
+    var tones = T.show.tones = T.show.tones || {}, lv = T.show.toneLevel = T.show.toneLevel || {}, sg = T.show.toneSugg = T.show.toneSugg || {};
+    var out = { found: 0, missed: [], blank: 0 };
+    rows.slice(1).forEach(function (r) {
+      var words = r[cLine] || '', k = normT(words), tag = tagsOf(r[cTone]), lvl = strengthOf(cStr >= 0 ? r[cStr] : ''), ids = cWho >= 0 && r[cWho] ? T.labelChars(r[cWho].trim()).join(',') : '';
+      if (k.length < 2) return;
+      var cand = byText[k] || lines.filter(function (l) { var t = normT(wordsOf(l)); return k.length >= 12 && (t.indexOf(k) === 0 || k.indexOf(t) === 0) && t.length >= 6; });
+      if (ids) { var same = cand.filter(function (l) { return who(l) === ids; }); if (same.length) cand = same; }
+      else if (cand.length > 1 && toneChar) { var his = cand.filter(function (l) { return T.labelChars(l.it.who).indexOf(toneChar) >= 0; }); if (his.length) cand = his; }      // no character column: the character on screen
+      if (!cand.length) { out.missed.push(words.slice(0, 60)); return; }
+      if (!tag) { out.blank++; return; }      // an empty tone in a guide is left alone (her wish: few lines said plainly)
+      cand.forEach(function (l) {
+        if (asMine) { tones[l.h] = tag; if (lvl === 3) delete lv[l.h]; else lv[l.h] = lvl; }
+        else sg[l.h] = [tag, lvl];
+        out.found++;
+      });
+    });
+    return out;
+  }
+  function exportTones(lines) {
+    var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var rows = [['Scene', 'Character', 'Line', 'Tone', 'Strength (1-5)', 'Checked']].concat(lines.map(function (l) { return [l.scene.num, l.it.who, wordsOf(l), toneOf(l), levelOf(l.h), checked(l) ? 'yes' : '']; }));
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n')], { type: 'text/csv' })); a.download = (T.O().title || 'Show') + ' tones.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  V.importTones = importTones; V.parseTable = parseTable;
 })();
