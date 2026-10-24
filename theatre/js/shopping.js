@@ -400,16 +400,16 @@
   T.studentPages.photos = function (args) {
     T.setBar('Costume photos', '#/home');
     if (args && args[0] === 'research') return researchPage();
-    var all = args && args[0] === 'all', due = photoDue(), take = canList() && !all;
+    var all = args && args[0] === 'all', due = photoDue(), teach = !!T.proof, take = (canList() && !all) || teach;      // a teacher can add a photo for any character (Colleen), OK'd at once
     var head = '<div class="card"><h2>' + sym('📸') + 'Costume and prop photos</h2><p>After the shopping trip, take a photo of each finished costume and prop. The costume crew, the cast and the Mentors use them to get everything right at every rehearsal.</p>' +
       (due ? '<p><b>Take them by ' + esc(nice(due.due)) + '</b> (5 school days after the trip).</p>' : '') +
       photoTabs(all ? 'all' : 'mine') + '</div>';
-    var chars = all ? T.O().characters.map(function (c) { return c.id; }) : T.me.chars;
+    var chars = all || (teach && !canList()) || !T.me ? T.O().characters.map(function (c) { return c.id; }) : T.me.chars;
     app.innerHTML = head + '<div id="phList"><p class="muted">Loading…</p></div>';
     photoList(true).then(function (l) {
       var ok = function (t) { return l.some(function (p) { return p.kind === t.kind && p.ref === t.ref && (p.ok || sentHere().indexOf(p.id) >= 0); }); };
       var html = chars.map(function (cid) {
-        var ts = photoTargets(cid); if (all) ts = ts.filter(function (t) { return l.some(function (p) { return p.ok && p.kind === t.kind && p.ref === t.ref; }); });
+        var ts = photoTargets(cid); if (all && !teach) ts = ts.filter(function (t) { return l.some(function (p) { return p.ok && p.kind === t.kind && p.ref === t.ref; }); });
         if (!ts.length) return '';
         return '<h3>' + T.chip(cid) + '</h3>' + ts.map(function (t) {
           return '<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow"><b>' + sym(t.kind === 'costume' ? '👕' : t.kind === 'prop' ? '🎒' : '🔨') + esc(t.name) + '</b><br><span class="muted small">' + esc(t.sub) + '</span></div>' +
@@ -417,7 +417,7 @@
             T.photoSlot(t.kind, t.ref) + '</div>';
         }).join('');
       }).join('');
-      document.getElementById('phList').innerHTML = html || '<div class="card"><p class="muted">' + (all ? 'No photos yet.' : 'Nothing to photograph for your character yet.') + '</p></div>';
+      document.getElementById('phList').innerHTML = html || '<div class="card"><p class="muted">' + (all ? 'No photos yet.' : canList() ? 'Nothing to photograph for your character yet.' : 'Photos are taken after the shopping trip, once you have a role in the show.') + '</p></div>';
       T.fillPhotos(app);
       app.querySelectorAll('[data-take]').forEach(function (inp) {
         inp.onchange = function () {
@@ -449,9 +449,10 @@
   /* seal and send one picture; this iPad remembers it so it shows here while it waits for the teacher */
   function sendPhoto(kind, ref, char, img, caption) {
     var id = 'ph-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    return Store.putPhoto(T.key, { id: id, actor: (T.me && T.me.id) || 'none', kind: kind, ref: ref, char: char }, { caption: caption, img: img }).then(function () {
+    var teach = !!T.proof;
+    return Store.putPhoto(T.key, { id: id, actor: teach ? 'teacher' : (T.me && T.me.id) || 'none', kind: kind, ref: ref, char: char }, { caption: caption, img: img }).then(function () { return teach ? Store.photoOk(T.proof, id) : null; }).then(function () {
       var m = sentHere(); m.push(id); T.ls('photoSent', m.slice(-200)); PH.list = null;
-      T.toast('Sent! Your teacher will check it.');
+      T.toast(teach ? 'Photo added.' : 'Sent! Your teacher will check it.');
     }, function (e) { throw new Error(navigator.onLine ? e.message : 'No Wi-Fi. Try again when you are back on the school Wi-Fi.'); });
   }
 
@@ -563,6 +564,7 @@
         (due ? '<p>Due <b>' + esc(nice(due.due)) + '</b>, 5 school days after the field trip on ' + esc(nice(due.trip)) + (today > due.due ? (missing ? ' · <b>past due</b>' : '') : left != null ? ' · ' + left + ' school day' + (left === 1 ? '' : 's') + ' left' : '') + '.</p>' :
           '<p class="muted small">Put a 🚌 Field trip group in a day’s plan, and the photos are due 5 school days after it.</p>') +
         '<p class="muted small">In a day’s plan, add a 📸 Costume and prop photos group (pick scenes, or set jobs one by one) to take turns.</p>' +
+        '<p><a class="btn" href="#/photos/all">' + sym('📸') + 'Add photos yourself</a> <span class="muted small">For any character’s costumes, props and builds; yours need no OK.</span></p>' +
         (wait.length ? '<h3>Waiting for your OK (' + wait.length + ')</h3>' + wait.map(function (p) {
           var a = actorById(p.actor);
           return '<div class="switch" style="flex-wrap:wrap" data-pw="' + p.id + '"><span class="grow">' + (T.charById(p.char) ? T.chip(p.char) : '') + ' <span class="muted small">' + (a ? 'from ' + esc(a.name) : '') + '</span>' + T.photoSlot(p.kind, p.ref) + '</span>' +
