@@ -18,6 +18,9 @@
      ref, at, ok }]: ids only (actor ids are random; char and ref are the show outline's ids), nothing readable. Anyone may add one (sealed, small, limited per
      address); it waits for the teacher's OK (ok false) before other iPads show it. Only the teacher password approves or removes.
      kind research: a student's costume research picture (ref = the character), board: the teacher's choice board of outfit pictures for a character.
+   - theatre:google  { clientId, gated: [pass ids] } (Colleen 2026-10-24: "require parents to sign in with a google account and use that email for
+     communication"). A password listed in gated (a parent password) is left out of GET show; its key wrap is given only by POST gpass with a Google
+     ID token this Worker checks (Google's signature, this app's Client ID, not expired, a verified email). Nothing from the token is kept.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
@@ -46,12 +49,32 @@ async function proven(env, req, proof, st) {
   return null;
 }
 
+/* Google sign-in for parents: the ID token checked against Google's public keys (cached an hour) */
+let gCerts = null, gCertsAt = 0;
+const unb64url = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function googleClaims(token, clientId, env) {
+  if (env.THEATRE_DEV_GOOGLE && /^dev:[^@\s]+@[^@\s]+$/.test(token)) return { email: token.slice(4), email_verified: true };      // the local test server only
+  const parts = String(token).split('.'); if (parts.length !== 3) return null;
+  const head = JSON.parse(new TextDecoder().decode(unb64url(parts[0]))), claims = JSON.parse(new TextDecoder().decode(unb64url(parts[1])));
+  if (head.alg !== 'RS256') return null;
+  if (!gCerts || Date.now() - gCertsAt > 36e5 || !gCerts.keys.some(k => k.kid === head.kid)) { gCerts = await (await fetch('https:' + '//www.googleapis.com/oauth2/v3/certs')).json(); gCertsAt = Date.now(); }
+  const jwk = (gCerts.keys || []).find(k => k.kid === head.kid); if (!jwk) return null;
+  const key = await crypto.subtle.importKey('jwk', { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const good = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, unb64url(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+  if (!good || claims.aud !== clientId || ['accounts.google.com', 'https://accounts.google.com'].indexOf(claims.iss) < 0 || !(claims.exp * 1000 > Date.now()) || claims.email_verified !== true || !claims.email) return null;
+  return claims;
+}
 export async function theatreApi(req, env, url, p) {
   if (!env.LOCKS) return json({ error: 'Saving is not set up yet (no KV).' }, 503);
   const rest = p.slice('/theatre/api/'.length);
   if (rest === 'show') {
     const st = await env.LOCKS.get('theatre:show', 'json');
-    if (req.method === 'GET') return st ? json({ enc: st.enc, vsalt: st.vsalt, updated: st.updated }) : json({ none: true }, 404);
+    const gated = ((await env.LOCKS.get('theatre:google', 'json')) || {}).gated || [];
+    if (req.method === 'GET') {
+      if (!st) return json({ none: true }, 404);
+      const more = (st.enc.more || []).filter(m => gated.indexOf(m.id) < 0), e = Object.assign({}, st.enc); if (st.enc.more) e.more = more;      // parent passwords that need Google sign-in: only through gpass
+      return json({ enc: e, vsalt: st.vsalt, updated: st.updated, gated: gated.length > 0 });
+    }
     if (req.method !== 'POST') return json({ error: 'GET or POST' }, 405);
     let body; try { const t = await req.text(); if (t.length > MAX_SHOW + 2000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That show is too big or not readable.' }, 400); }
     const newPw = body.newVsalt !== undefined;
@@ -69,8 +92,37 @@ export async function theatreApi(req, env, url, p) {
     const e = body.enc, next = { enc: { v: 1, iter: e.iter, salt: e.salt, iv: e.iv, data: e.data, wrap: { iv: e.wrap.iv, data: e.wrap.data },
       more: (e.more || []).map(x => ({ id: x.id, iter: x.iter, salt: x.salt, wrap: { iv: x.wrap.iv, data: x.wrap.data } })) },
       vsalt: newPw ? body.newVsalt : st.vsalt, vhash: newPw ? body.newVhash : st.vhash, updated: new Date().toISOString() };
+    // the teacher's copy has no gated wraps (GET leaves them out): keep the stored ones unless this save replaces or drops them
+    const drop = Array.isArray(body.drop) ? body.drop : [];
+    if (st && st.enc && st.enc.more) st.enc.more.forEach(m => { if (gated.indexOf(m.id) >= 0 && drop.indexOf(m.id) < 0 && !next.enc.more.some(x => x.id === m.id)) next.enc.more.push(m); });
+    if (next.enc.more.length > 30) return json({ error: 'Too many passwords.' }, 400);
     await env.LOCKS.put('theatre:show', JSON.stringify(next));
+    if (drop.some(id => gated.indexOf(id) >= 0)) { const g = (await env.LOCKS.get('theatre:google', 'json')) || {}; g.gated = (g.gated || []).filter(id => drop.indexOf(id) < 0); await env.LOCKS.put('theatre:google', JSON.stringify(g)); }
     return json({ ok: true, updated: next.updated });
+  }
+  if (rest === 'google') {      // the Client ID (public) and which passwords need Google sign-in; the teacher sets them
+    const g = (await env.LOCKS.get('theatre:google', 'json')) || {};
+    if (req.method === 'GET') return json({ clientId: g.clientId || '', gated: (g.gated || []).length > 0 });
+    if (req.method !== 'POST') return json({ error: 'GET or POST' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
+    const bad = await proven(env, req, body.proof, st); if (bad) return bad;
+    if (body.clientId !== undefined) { const c = String(body.clientId).trim(); if (c && !/^[\w.-]{10,200}\.apps\.googleusercontent\.com$|^dev$/.test(c)) return json({ error: 'That does not look like a Google Client ID (it ends in .apps.googleusercontent.com).' }, 400); g.clientId = c; }
+    if (Array.isArray(body.gated)) g.gated = body.gated.filter(id => okStr(id, 40)).slice(0, 30);
+    await env.LOCKS.put('theatre:google', JSON.stringify(g));
+    return json({ ok: true, clientId: g.clientId || '', gated: (g.gated || []).length > 0 });
+  }
+  if (rest === 'gpass') {      // a parent signed in with Google: the parent passwords' key wraps (the parent password still opens them)
+    if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:grate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+    if (n >= 30) return json({ error: 'Too many sign-ins from here. Wait an hour and try again.' }, 429);
+    await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+    const g = (await env.LOCKS.get('theatre:google', 'json')) || {}, st = await env.LOCKS.get('theatre:show', 'json');
+    if (!g.clientId || !st) return json({ error: 'Google sign-in is not set up yet. Tell the teacher.' }, 400);
+    let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
+    let c = null; try { c = await googleClaims(String(body.token || ''), g.clientId, env); } catch (e) { c = null; }
+    if (!c) return json({ error: 'Google sign-in did not work. Try again.' }, 403);
+    return json({ more: (st.enc.more || []).filter(m => (g.gated || []).indexOf(m.id) >= 0) });
   }
   if (rest === 'check') {      // is this the teacher password? (Teacher mode asks once per visit)
     if (req.method !== 'POST') return json({ error: 'POST only' }, 405);

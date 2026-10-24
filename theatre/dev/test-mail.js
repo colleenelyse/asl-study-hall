@@ -49,6 +49,7 @@ const mail = C.compose(pat, { title: 'High School Musical JR.', base: 'https://a
 ok(mail.subject === 'High School Musical JR.: 2 updates' && /Hello Pat,/.test(mail.text) && /https:\/\/asl\.cool\/theatre\/#\/song\/s1/.test(mail.text) && /Stop these emails: https/.test(mail.text), 'the email: subject, hello, a link for each item, how to stop');
 ok(!/<script/i.test(C.compose({ to: 'a@b.co', name: '<script>', items: [{ e: { title: '<b>x', text: '', page: '#/' }, copyOf: '' }] }, { title: 'T', base: '/', unsub: 'u' }).html), 'the HTML email escapes what was typed');
 
+ok(Pc.clean('contact', { email: 'pat@gmail.com', opts: { general: true }, google: true }).google === true && Pc.clean('contact', { email: 'pat@gmail.com', opts: {}, google: 'yes' }).google === false, 'sign-up: the Google mark is kept only as true');
 ok(Pc.clean('contact', { email: 'nope', opts: { general: true } }) === null, 'sign-up: a bad address is refused');
 const V = { extra: {} }, sh = {};
 Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email: 'pat@home.com', name: 'Pat', opts: { general: true }, dev: 'd1' }, stamp: 1 }, ['a1']);

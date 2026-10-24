@@ -139,6 +139,10 @@
     newShowKey: newShowKey,
     /* the teacher password, as proof for the server */
     proof: proofBits,
+    /* Google sign-in for parents (gsignin.js): the public Client ID, the teacher's settings, and a parent's token -> the parent passwords' key wraps */
+    google: function () { return getJSON('google').catch(function () { return null; }); },
+    setGoogle: function (proof, o) { if (!proof) return noProof(); return postJSON('google', Object.assign({ proof: proof }, o)); },
+    gpass: function (token) { return postJSON('gpass', { token: token }); },
     checkTeacher: function (proof) { if (!proof) return noProof(); return postJSON('check', { proof: proof }); },
     /* save the show. opts: { proof, castPw (to set or change it), newTeacherPw, setup, addPw: { id, pw } (add or change another password), dropPw: id } */
     save: function (key, doc, prev, opts) {
@@ -154,7 +158,7 @@
         more = opts.addPw ? wrapKey(key, opts.addPw.pw).then(function (w) { return keep.concat([Object.assign({ id: opts.addPw.id }, w)]); }) : Promise.resolve(keep);
       }
       return Promise.all([encryptShow(key, doc, opts.castPw, prev && prev.enc, more), extra]).then(function (r) {
-        var body = { proof: opts.proof, enc: r[0], setup: opts.setup };
+        var body = { proof: opts.proof, enc: r[0], setup: opts.setup, drop: opts.dropPw ? [opts.dropPw] : undefined };      // drop: the server also keeps parent keys it hides until Google sign-in
         Object.assign(body, r[1]);
         return postJSON('show', body).then(function (d) {
           var saved = { enc: r[0], vsalt: r[1].newVsalt || (prev && prev.vsalt), updated: d.updated };

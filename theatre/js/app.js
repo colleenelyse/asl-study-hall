@@ -232,6 +232,7 @@
     if (!id) return true;
     var p = (T.show.passes || []).find(function (x) { return x.id === id; });
     if (!p || p.off) return false;
+    if (p.google && !ls('gEmail')) return false;      // this parent password needs Google sign-in first (gsignin.js)
     T.pass = p;
     if (p.who === 'parent') (T.show.cast || []).forEach(function (a) { a.name = T.shortName(a.name); });      // first name and last initial for parents (this copy is never saved: parents cannot save)
     return true;
@@ -442,7 +443,7 @@
       return;
     }
     app.innerHTML = '<form class="card" id="unlock" style="max-width:560px;margin:40px auto"><h2>' + sym('🎭') + 'Welcome to the show!</h2>' +
-      '<p>Type the <b>password</b> your teacher gave you.</p>' +
+      (T.parentGoogleBox ? T.parentGoogleBox() : '') + '<p>Type the <b>password</b> your teacher gave you.</p>' +
       '<label class="f">Password<input type="password" id="pw" autocomplete="current-password" autocapitalize="off" spellcheck="false" required></label>' +
       '<label class="switch"><span>Remember on this iPad</span><input type="checkbox" id="keep" checked></label>' +
       '<p class="err" id="msg" role="alert"></p><div class="row end"><button class="btn primary" type="submit">' + icon('lock') + 'Open</button></div>' +
@@ -464,9 +465,10 @@
           if (document.getElementById('keep').checked) Store.remember(r.key);
           setMe(ls('me')); T.go(T.me ? '#/home' : '#/who');
         });
-      }).catch(function () { msg.textContent = 'That is not the password. Try again.'; btn.disabled = false; });
+      }).catch(function () { msg.textContent = 'That is not the password. Try again.' + (T.saved.gated && !ls('gEmail') ? ' Parents: sign in with Google above first.' : ''); btn.disabled = false; });
     };
     setTimeout(function () { var p = document.getElementById('pw'); if (p) p.focus(); }, 50);
+    if (T.parentGoogleWire) T.parentGoogleWire();
   }
 
   /* ---------- Who are you? ---------- */
@@ -1257,7 +1259,7 @@
     app.querySelectorAll('[data-voice]').forEach(function (b) { b.onclick = function () { p.voice = b.dataset.voice; T.savePrefs(); Speech.load(); Speech.stop(); Speech.say('Hi! I am ' + b.dataset.voice.replace(/\s*\(.*\)$/, '') + '. Break a leg!'); settingsPage(); }; });
     document.getElementById('forget').onclick = function () {
       if (!confirm('Lock this iPad? The cast password will be needed again.')) return;
-      Store.forget().then(function () { ls('me', null); T.show = null; T.key = null; T.me = null; T.go('#/'); });
+      Store.forget().then(function () { ls('me', null); ls('gEmail', null); T.show = null; T.key = null; T.me = null; T.go('#/'); });
     };
   }
 

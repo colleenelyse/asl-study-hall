@@ -270,7 +270,7 @@
         '<label class="f">Key (from the script’s “setup” log)<input id="ekey" value="' + esc(vm.key) + '" autocomplete="off" autocapitalize="off" spellcheck="false"></label>' +
         '<div class="row end"><button class="btn primary" id="esave" data-save>Save</button></div>' +
         '<div class="row" style="flex-wrap:wrap"><label class="f grow" style="margin:0">Send a test email to<input id="etest" type="email" placeholder="you@school.org"></label><button class="btn" id="etgo">Send a test</button></div><p id="est" class="small" role="status"></p></div>' +
-        '<div class="card"><h3 style="margin-top:0">' + sym('✍️') + 'Write an email now</h3>' +
+        '<div id="gcard"></div><div class="card"><h3 style="margin-top:0">' + sym('✍️') + 'Write an email now</h3>' +
         '<label class="f">Subject<input id="wt" maxlength="120" placeholder="e.g. Costume pieces due Friday"></label><label class="f">Message<textarea id="wx" maxlength="1500"></textarea></label>' +
         '<label class="f">The link opens<select id="wp">' + [['#/home', 'Their home page'], ['#/today', 'Today'], ['#/calendar', 'Calendar'], ['#/schedule', 'My Schedule'], ['#/songs', 'My Songs'], ['#/costumes', 'My Costumes'], ['#/help', 'Volunteer and donate (parents)']].map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></label>' +
         '<div class="row end"><button class="btn primary" id="wgo">Choose who gets it…</button></div></div>' +
@@ -278,9 +278,10 @@
         '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Company member</th><th>School email</th><th>Parents</th></tr></thead><tbody>' + cast.map(function (a) {
           var cs = (vm.portal[a.id] || {}).contacts || [];
           return '<tr><td><b>' + esc(a.name) + '</b> ' + T.companyTag(a) + '</td><td><input data-se="' + esc(a.id) + '" type="email" value="' + esc(vm.student[a.id] || '') + '" placeholder="' + esc(a.emailHint || '') + '" style="width:100%;min-width:180px;min-height:40px;border-radius:10px;border:2px solid var(--line);background:var(--card);padding:4px 8px"></td>' +
-            '<td class="small">' + (cs.length ? cs.map(function (c) { return esc(c.name || '') + ' &lt;' + esc(c.email) + '&gt; <span class="muted">' + ['general', 'mine', 'copies'].filter(function (k) { return c.opts && c.opts[k]; }).map(function (k) { return { general: 'news', mine: 'changes', copies: 'copies' }[k]; }).join(', ') + '</span>'; }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
+            '<td class="small">' + (cs.length ? cs.map(function (c) { return esc(c.name || '') + ' &lt;' + esc(c.email) + '&gt;' + (c.google ? ' <span class="tag ok-tag" title="Signed in with Google">G ✓</span>' : '') + ' <span class="muted">' + ['general', 'mine', 'copies'].filter(function (k) { return c.opts && c.opts[k]; }).map(function (k) { return { general: 'news', mine: 'changes', copies: 'copies' }[k]; }).join(', ') + '</span>'; }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
         }).join('') + '</tbody></table></div><div class="row end"><button class="btn primary" id="ese" data-save>Save school emails</button></div><p id="esst" class="small" role="status"></p></div>' +
         '<div class="card"><h3 style="margin-top:0">' + sym('🗂️') + 'Sent</h3>' + (m.log.length ? m.log.map(function (l) { return '<p class="small"><b>' + esc(new Date(l.at).toLocaleString()) + '</b> · ' + l.n + ' email' + (l.n === 1 ? '' : 's') + '<br>' + esc(l.title) + '</p>'; }).join('') : '<p class="muted small">Nothing sent yet.</p>') + '</div>';
+      if (T.googleCard) T.googleCard(document.getElementById('gcard'));
       document.getElementById('eon').onchange = function () { var on = this.checked; M().on = on; if (on && !M().seen) M().seen = snap(); T.saveShow(on ? 'You will be asked after saving something new' : 'Emails off'); };
       document.getElementById('esign').onchange = function () { M().sign = this.value.trim().slice(0, 80); T.saveShow('Saved'); };
       document.getElementById('esave').onclick = function () {

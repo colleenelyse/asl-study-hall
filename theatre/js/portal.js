@@ -82,7 +82,7 @@
       var em = str(d.email, 120);
       if (!/^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[a-z]{2,}$/i.test(em)) return null;
       var o = {}; MAIL_OPTS.forEach(function (x) { o[x[0]] = !!(d.opts && d.opts[x[0]] === true); });
-      return { email: em, name: str(d.name, 80), opts: o, dev: str(d.dev, 24) };
+      return { email: em, name: str(d.name, 80), opts: o, dev: str(d.dev, 24), google: d.google === true };
     }
     if (kind === 'commit') {
       var items = Array.isArray(d.items) ? d.items.map(function (x) { return str(x, 400); }).filter(Boolean).slice(0, 12) : [];
@@ -179,8 +179,17 @@
     ['video', '🎥', 'Rehearsal video permission', 'Filming dance rehearsals and scene runs, for learning'],
     ['contact', '📧', 'Email updates', 'News, changes for your Company member, copies of their emails']];
   /* the top of a family's home page: what needs their answer, and the newest news */
+  /* a parent signed in with Google: that email becomes the family's contact for this Company member, once (news and changes; they can change it) */
+  function autoContact(a) {
+    var g = T.googleContact && T.googleContact(); if (!a || !g || !g.email) return;
+    var d = draft(a, 'contact'); if (d && d.email === g.email) return;
+    var dev = T.ls('portalDev'); if (!dev) { dev = 'd' + Math.random().toString(36).slice(2, 12); T.ls('portalDev', dev); }
+    var data = { name: g.name || '', email: g.email, opts: { general: true, mine: true, copies: false }, dev: dev, google: true }, c = C.clean('contact', data); if (!c) return;
+    Store.queueNote(T.key, { type: 'portal', kind: 'contact', actor: a, data: c, stamp: Date.now(), sent: today() }).catch(function () {});
+    var s = T.ls('portalSent') || {}; (s[a] = s[a] || {}).contact = today(); T.ls('portalSent', s); draft(a, 'contact', data);
+  }
   T.portalHome = function () {
-    var a = T.me && T.me.id, st = a ? status(a) : {}, news = SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
+    var a = T.me && T.me.id; autoContact(a); var st = a ? status(a) : {}, news = SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
     var left = ITEMS.filter(function (x) { return !st[x[0]]; }).length;
     return '<div class="card"><h2 style="margin-top:0">' + sym('📝') + (a ? (left ? 'Needs your answer' : 'All answered, thank you!') : 'Family forms') + '</h2>' +
       (a ? '<p class="muted small">' + (left ? left + ' of ' + ITEMS.length + ' still to do. ' : '') + 'Your answers go only to the teachers, locked; you can change them any time.</p>' +
@@ -262,19 +271,20 @@
     f.onsubmit = function (e) { e.preventDefault(); send('video', { answer: (f.querySelector('input[name=va]:checked') || {}).value, signer: v('vs'), date: v('vd'), note: v('vn') }).catch(fail); };
   }
   function contactForm() {
-    var d = draft(T.me.id, 'contact') || { opts: { general: true, mine: true } }, dev = T.ls('portalDev');
+    var d = draft(T.me.id, 'contact') || { opts: { general: true, mine: true } }, dev = T.ls('portalDev'), g = T.googleContact && T.googleContact();
+    if (g && g.email) { d.email = g.email; d.name = d.name || g.name; }
     if (!dev) { dev = 'd' + Math.random().toString(36).slice(2, 12); T.ls('portalDev', dev); }
     var f = shell('Email updates', '<h2 style="margin-top:0">' + sym('📧') + 'Email updates</h2><p>Get an email when there is something new, with a link straight to it in the app. Each person who wants emails can sign up from their own phone. ' +
       'To stop, untick every box and send, or use “Stop these emails” at the bottom of any email.</p>',
       '<label class="f">Your name<input id="mn" maxlength="80" autocomplete="name" value="' + esc(d.name || '') + '"></label>' +
-      '<label class="f">Your email<input id="me" type="email" maxlength="120" autocomplete="email" value="' + esc(d.email || '') + '"></label>' +
+      '<label class="f">Your email' + (g && g.email ? ' <span class="muted small">(from your Google sign-in)</span>' : '') + '<input id="me" type="email" maxlength="120" autocomplete="email" value="' + esc(d.email || '') + '"' + (g && g.email ? ' readonly' : '') + '></label>' +
       '<fieldset style="border:0;padding:0;margin:14px 0"><legend><b>Email me about</b></legend>' + C.MAIL_OPTS.map(function (x) {
         return '<label class="agree"><input type="checkbox" data-o="' + x[0] + '"' + (d.opts && d.opts[x[0]] ? ' checked' : '') + '><span>' + esc(x[1]) + '</span></label>';
       }).join('') + '</fieldset>');
     f.onsubmit = function (e) {
       e.preventDefault(); var o = {}; f.querySelectorAll('[data-o]').forEach(function (c) { o[c.dataset.o] = c.checked; });
       if (!/@/.test(v('me'))) { fail(new Error('Please type your email address.')); return; }
-      send('contact', { name: v('mn'), email: v('me').trim(), opts: o, dev: dev }, C.MAIL_OPTS.some(function (x) { return o[x[0]]; }) ? 'Thank you! Emails will come to ' + v('me').trim() + '.' : 'Sent: no more emails to that address.').catch(fail);
+      send('contact', { name: v('mn'), email: v('me').trim(), opts: o, dev: dev, google: !!(g && g.email && g.email === v('me').trim().toLowerCase()) }, C.MAIL_OPTS.some(function (x) { return o[x[0]]; }) ? 'Thank you! Emails will come to ' + v('me').trim() + '.' : 'Sent: no more emails to that address.').catch(fail);
     };
   }
   function sizesForm() {
@@ -350,10 +360,10 @@
         '<button class="btn noprint" onclick="print()">' + icon('print') + 'Print</button></div>' +
         '<p class="small">Sizes ' + cnt('sizes') + ' of ' + list.length + ' · Sensory ' + cnt('sensory') + ' · Commitment signed ' + cnt('commit') + ' of ' + list.length + ' · Video permission ' + cnt('video') + ' (' + list.filter(function (a) { return P[a.id] && P[a.id].video && P[a.id].video.answer === 'no'; }).length + ' no filming) · Fitting permission (needs help): ' +
         need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer === 'yes'; }).length + ' yes, ' + need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer !== 'yes'; }).length + ' no, ' + need.filter(function (a) { return !P[a.id].fit; }).length + ' not answered</p>' +
-        (list.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Company member</th><th title="Mark the Company members who need help trying on clothes. Only teachers see this mark.">Needs help trying on</th><th>Fitting</th><th>Sizes</th><th>Sensory</th><th>Commitment</th><th>Video</th><th class="noprint"></th></tr></thead><tbody>' +
+        (list.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Company member</th><th>Parents (email)</th><th title="Mark the Company members who need help trying on clothes. Only teachers see this mark.">Needs help trying on</th><th>Fitting</th><th>Sizes</th><th>Sensory</th><th>Commitment</th><th>Video</th><th class="noprint"></th></tr></thead><tbody>' +
           list.map(function (a) {
             var r = P[a.id] || {}, f = fitOf(a);
-            return '<tr><td><b>' + esc(a.name) + '</b> ' + T.companyTag(a) + '</td><td><input type="checkbox" data-need="' + esc(a.id) + '" aria-label="Needs help trying on: ' + esc(a.name) + '"' + (r.fitNeed ? ' checked' : '') + '></td>' +
+            return '<tr><td><b>' + esc(a.name) + '</b> ' + T.companyTag(a) + '</td><td class="small">' + ((r.contacts || []).map(function (c) { return esc(c.email) + (c.google ? ' <span class="tag ok-tag" title="Signed in with Google">G ✓</span>' : ''); }).join('<br>') || '<span class="muted">—</span>') + '</td><td><input type="checkbox" data-need="' + esc(a.id) + '" aria-label="Needs help trying on: ' + esc(a.name) + '"' + (r.fitNeed ? ' checked' : '') + '></td>' +
               '<td>' + (f ? '<span class="tag ' + (r.fit.answer === 'yes' ? 'ok-tag' : '') + '">' + esc(f) + '</span>' : r.fitNeed ? '<span class="tag no-tag">Not answered</span>' : '<span class="muted small">—</span>') + '</td>' +
               '<td>' + mark(r.sizes, '✓ ' + day(r.sizes && r.sizes.at)) + '</td><td>' + mark(r.sensory, '✓ ' + day(r.sensory && r.sensory.at)) + '</td>' +
               '<td>' + (r.commit ? '<span class="tag ok-tag">✓ Signed</span>' + (r.commit.items.join('\n') !== commitItems().join('\n') ? '<br><span class="muted small">an earlier wording</span>' : '') : '<span class="tag no-tag">Not yet</span>') + '</td>' +
