@@ -112,9 +112,42 @@
     var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?:\s*$/;
     /* a lyric line, split where a singer label above it starts (Colleen: "many sung syllables were missed": a name printed partway along the staff
        starts that singer there, so the words before it still belong to the one before) */
+    /* bracketed systems (Colleen 2026-10-23: staves joined by a bracket at the left are sung at the same time, so their lyrics go in order left to
+       right across the system, and each staff keeps its own singer): where a line sits, the system's lyrics held until the system is done */
+    var curPage = null, sysBuf = [], sysKey = null, singerByIdx = {}, labsByStaff = {};
+    function staffAt(y, below) {      // the staff a lyric sits under (below = false: the staff a label sits over)
+      var sys = curPage && curPage.systems; if (!sys) return null;
+      for (var a = 0; a < sys.length; a++) for (var b = 0; b < sys[a].staves.length; b++) {
+        var st = sys[a].staves[b];
+        if (below ? (y > st.bottom && y - st.bottom < 75) : (y < st.top && st.top - y < 45)) {
+          var better = !below ? null : sys.some(function (x) { return x.staves.some(function (o) { return o !== st && y > o.bottom && o.bottom > st.bottom; }); });
+          if (!better) return { sys: sys[a], idx: b, key: curPage.num + ':' + sys[a].top.toFixed(1), staffKey: curPage.num + ':' + st.top.toFixed(1), many: sys[a].staves.length > 1 };
+        }
+      }
+      return null;
+    }
+    function flushSys() {
+      if (!sysBuf.length) return;
+      var song = sysBuf[0].song;
+      sysBuf.sort(function (a, b) { return a.e.box.x - b.e.box.x || a.k - b.k; }).forEach(function (x) { song.lyrics.push(x.e); });
+      sysBuf = []; sysKey = null;
+    }
+    function addLyric(e, loc, k) {
+      if (!loc || !loc.many) { flushSys(); lastSongItem.lyrics.push(e); return; }
+      if (sysKey !== loc.key || (sysBuf.length && sysBuf[0].song !== lastSongItem)) flushSys();
+      sysKey = loc.key; sysBuf.push({ e: e, k: sysBuf.length + k, song: lastSongItem });
+    }
     function pushLyric(line, lyr) {
-      var syl = line.syl || [], labs = singerLabs; singerLabs = [];
-      if (!labs.length || !syl.length) { lastSongItem.lyrics.push({ who: singerNow, text: lyr, page: printed, box: box, syl: syl.map(strip) }); return; }
+      var loc = staffAt(line.y, true), syl = line.syl || [], labs = singerLabs; singerLabs = [];
+      if (loc) { labs = (labsByStaff[loc.staffKey] || []).concat(labs); delete labsByStaff[loc.staffKey]; }
+      var before = singerNow;
+      if (loc && loc.many && singerByIdx[loc.idx] != null) singerNow = singerByIdx[loc.idx];      // each staff of a system keeps its own singer
+      if (!labs.length || !syl.length) {
+        var parts0 = loc && loc.many ? phrases(syl) : [syl];
+        parts0.forEach(function (ps, k) { var e = entry(singerNow, ps, parts0.length > 1 ? null : lyr); if (e) addLyric(e, loc, k); });
+        if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : before; }      // after a system, the top staff's singer carries on
+        return;
+      }
       var cur = singerNow;
       labs.forEach(function (l) { if (l.plus && cur && splitNames(cur).indexOf(l.name) < 0) l.name = cur + ', ' + l.name; cur = l.name; });      // "+ TROY:" joins whoever is singing
       var runs = [];
@@ -123,12 +156,24 @@
         labs.forEach(function (l) { if (x.x + x.w >= l.x - 4) who = l.name; });
         var r = runs[runs.length - 1]; if (r && r.who === who) r.syl.push(x); else runs.push({ who: who, syl: [x] });
       });
-      runs.forEach(function (r) {
-        var a = r.syl[0], z = r.syl[r.syl.length - 1], text = cleanLyric(r.syl.map(function (x) { return x.t; }).join(' '));
-        var b = { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h };
-        if (text.replace(/[^A-Za-z]/g, '').length) lastSongItem.lyrics.push({ who: r.who, text: text, page: printed, box: b, syl: r.syl.map(strip) });
-      });
+      var k = 0;
+      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); });
       singerNow = labs[labs.length - 1].name;
+      if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : singerNow; }
+    }
+    /* one lyric entry from a run of syllables (text: the line's own words when it is the whole line) */
+    function entry(who, ps, text) {
+      if (!ps.length) return text ? { who: who, text: text, page: printed, box: box, syl: [] } : null;
+      var a = ps[0], z = ps[ps.length - 1], t = text || cleanLyric(ps.map(function (x) { return x.t; }).join(' '));
+      if (!t.replace(/[^A-Za-z]/g, '').length) return null;
+      return { who: who, text: t, page: printed, box: text ? box : { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h }, syl: ps.map(strip) };
+    }
+    /* in a system of several staves, a staff's words broken by rests are separate phrases (the other staff can sing in between) */
+    function phrases(ps) {
+      var out = [], cur = [];
+      ps.forEach(function (x, i) { var prev = ps[i - 1]; if (prev && x.x - (prev.x + prev.w) > 48) { out.push(cur); cur = []; } cur.push(x); });
+      if (cur.length) out.push(cur);
+      return out.length ? out : [ps];
     }
     var strip = function (x) { return { x: x.x, w: x.w }; };
     var dialogueX = null;
@@ -151,8 +196,9 @@
         var num = m[1], title = m[2].replace(/\s+[A-Z]$/, '').replace(/[\s,(–-]+$/, '').trim();
         var isSong = songNums ? songNums.indexOf(num) >= 0 : false;
         if (isSong && lastSong !== num) {
+          flushSys();
           lastSongItem = emit({ type: 'song', num: num, title: title, singers: [], lyrics: [] });
-          singerNow = ''; singerLabs = [];
+          singerNow = ''; singerLabs = []; singerByIdx = {}; labsByStaff = {};
           lastSong = num; block = null;
         } else if (!isSong && opts.keepCues) {
           emit({ type: 'cue', num: num, title: title });
@@ -164,7 +210,7 @@
     var prevStave = false;
 
     for (var pi = 0; pi < pages.length && !done; pi++) {
-      var page = pages[pi], lines = toLines(page), music = isMusicPage(lines);
+      var page = pages[pi], lines = toLines(page), music = isMusicPage(lines); curPage = page;
       // a page that is part music, part script (a song ends and the scene goes on): below the last staff and its lyrics is ordinary script
       var lastStave = music ? Math.max.apply(null, lines.filter(function (l) { return l.glyphs; }).map(function (l) { return l.y; }).concat([0])) : 0;
       // …and above the first song banner or staff (a scene's last lines before the song starts on the same page)
@@ -229,7 +275,9 @@
               return l;
             });
             found.forEach(function (f) { if (lastSongItem) splitNames(f.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); }); });
-            singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
+            var under = staffAt(line.y, false);
+            if (under) labsByStaff[under.staffKey] = (labsByStaff[under.staffKey] || []).concat(found).sort(function (a, b) { return a.x - b.x; });
+            else singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
             continue;
           }
           var dirLike = /^\(/.test(t) || /#\s?\d+\s*[–-]/.test(t);
@@ -287,6 +335,7 @@
           block = emit({ type: 'line', who: speaker, text: t });
         }
       }
+      flushSys();      // a system never runs past the end of a page
     }
 
     // pdf page -> printed page: the offset most running heads agree on
@@ -321,12 +370,66 @@
   }
 
   /* pdf.js page -> the plain shape parse() expects. Call after page.getOperatorList() so font names resolve. */
+  /* the music on a page, from its drawing: staves (five evenly spaced long level lines) and systems (staves joined by a bracket or line at the
+     left: sung at the same time, read left to right; Colleen 2026-10-23). Thin rectangles count as lines; big ones are clipping, not drawing. */
+  function geometry(ops, OPS, vp) {
+    var ctm = [1, 0, 0, 1, 0, 0], stack = [], segs = [];
+    var mul = function (a, b) { return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]]; };
+    var ap = function (m, x, y) { return vp.convertToViewportPoint(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]); };
+    ops.fnArray.forEach(function (f, i) {
+      var a = ops.argsArray[i];
+      if (f === OPS.save) stack.push(ctm.slice());
+      else if (f === OPS.restore) ctm = stack.pop() || ctm;
+      else if (f === OPS.transform) ctm = mul(ctm, a);
+      else if (f === OPS.constructPath) {
+        var k = 0, cur = null, args = a[1];
+        a[0].forEach(function (op) {
+          if (op === OPS.moveTo) { cur = ap(ctm, args[k], args[k + 1]); k += 2; }
+          else if (op === OPS.lineTo) { var p = ap(ctm, args[k], args[k + 1]); k += 2; if (cur) segs.push([cur, p]); cur = p; }
+          else if (op === OPS.rectangle) {
+            var p0 = ap(ctm, args[k], args[k + 1]), p1 = ap(ctm, args[k] + args[k + 2], args[k + 1] + args[k + 3]); k += 4;
+            if (Math.abs(p1[1] - p0[1]) < 1.6) segs.push([[p0[0], (p0[1] + p1[1]) / 2], [p1[0], (p0[1] + p1[1]) / 2]]);
+            else if (Math.abs(p1[0] - p0[0]) < 1.6) segs.push([[(p0[0] + p1[0]) / 2, p0[1]], [(p0[0] + p1[0]) / 2, p1[1]]]);
+          }
+          else if (op === OPS.curveTo) k += 6; else if (op === OPS.curveTo2 || op === OPS.curveTo3) k += 4;
+        });
+      }
+    });
+    var hs = segs.filter(function (s) { return Math.abs(s[0][1] - s[1][1]) < 0.5 && Math.abs(s[0][0] - s[1][0]) > 60 && s[0][1] > -5 && s[0][1] < vp.height + 5; })
+      .map(function (s) { return { y: s[0][1], x0: Math.min(s[0][0], s[1][0]), x1: Math.max(s[0][0], s[1][0]) }; }).sort(function (a, b) { return a.y - b.y; });
+    // staff lines run (nearly) the width of the music; beams and the like are shorter level lines that would break the even spacing
+    var longest = Math.max.apply(null, hs.map(function (h) { return h.x1 - h.x0; }).concat([0]));
+    hs = hs.filter(function (h) { return h.x1 - h.x0 > Math.min(160, longest * 0.45); });
+    var ys = []; hs.forEach(function (h) { var l = ys[ys.length - 1]; if (!l || h.y - l.y > 0.8) ys.push({ y: h.y, x0: h.x0, x1: h.x1 }); else { l.x0 = Math.min(l.x0, h.x0); l.x1 = Math.max(l.x1, h.x1); } });
+    var staves = [];
+    for (var i = 0; i + 4 < ys.length; i++) {
+      var g = ys.slice(i, i + 5), sp = (g[4].y - g[0].y) / 4, even = g.every(function (l, j) { return j === 0 || Math.abs(l.y - g[j - 1].y - sp) < 0.6; });
+      if (even && sp > 2 && sp < 12) { staves.push({ top: g[0].y, bottom: g[4].y, space: sp, x0: g[0].x0, x1: g[0].x1, bars: [] }); i += 4; }
+    }
+    var ups = segs.filter(function (s) { return Math.abs(s[0][0] - s[1][0]) < 0.6; }).map(function (s) { return { x: s[0][0], y0: Math.min(s[0][1], s[1][1]), y1: Math.max(s[0][1], s[1][1]) }; });
+    // barlines: an upright line across the whole staff (in a bracketed system it runs through all its staves)
+    ups.forEach(function (u) { staves.forEach(function (st) { if (u.y0 <= st.top + 1 && u.y1 >= st.bottom - 1 && u.y1 - u.y0 < 260 && u.x > st.x0 + 8 && st.bars.indexOf(u.x) < 0) st.bars.push(u.x); }); });
+    staves.forEach(function (st) { st.bars.sort(function (a, b) { return a - b; }); });
+    // systems: a tall line at the left edge of the staves joins the staves it spans
+    var systems = staves.map(function (st) { return { top: st.top, bottom: st.bottom, staves: [st] }; });
+    ups.forEach(function (u) {
+      if (u.y1 - u.y0 < 30) return;
+      var inSpan = systems.filter(function (sy) { return sy.staves.some(function (st) { return u.x < st.x0 + 6 && u.x > st.x0 - 12 && st.top >= u.y0 - 3 && st.bottom <= u.y1 + 3; }); });
+      if (inSpan.length < 2) return;
+      var merged = { top: Math.min.apply(null, inSpan.map(function (x) { return x.top; })), bottom: Math.max.apply(null, inSpan.map(function (x) { return x.bottom; })), staves: [].concat.apply([], inSpan.map(function (x) { return x.staves; })).sort(function (a, b) { return a.top - b.top; }) };
+      systems = systems.filter(function (x) { return inSpan.indexOf(x) < 0; }).concat([merged]);
+    });
+    systems.sort(function (a, b) { return a.top - b.top; });
+    return { staves: staves, systems: systems };
+  }
+
   async function fromPdfJs(pdf, onProgress) {
     var pages = [];
     for (var n = 1; n <= pdf.numPages; n++) {
       var page = await pdf.getPage(n);
       var vp = page.getViewport({ scale: 1 });
-      try { await page.getOperatorList(); } catch (e) {}
+      var geo = null;
+      try { var ops = await page.getOperatorList(); var OPS = (root.pdfjsLib && root.pdfjsLib.OPS) || null; if (OPS) geo = geometry(ops, OPS, vp); } catch (e) {}
       var tc = await page.getTextContent();
       var items = tc.items.filter(function (it) { return it.str !== undefined; }).map(function (it) {
         var tr = it.transform, size = Math.hypot(tr[2], tr[3]) || Math.hypot(tr[0], tr[1]);
@@ -336,13 +439,13 @@
         var pt = vp.convertToViewportPoint(tr[4], tr[5]);      // pages can have an offset origin (this script's start 20.88 points in)
         return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: size, font: font };
       });
-      pages.push({ num: n, width: vp.width, height: vp.height, items: items });
+      pages.push({ num: n, width: vp.width, height: vp.height, items: items, systems: geo && geo.systems.length ? geo.systems.map(function (sy) { return { top: sy.top, bottom: sy.bottom, staves: sy.staves.map(function (st) { return { top: st.top, bottom: st.bottom }; }) }; }) : null });
       if (onProgress) onProgress(n, pdf.numPages);
     }
     return pages;
   }
 
-  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, _toLines: toLines };
+  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
 })(typeof window !== 'undefined' ? window : this);

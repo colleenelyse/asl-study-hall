@@ -69,7 +69,11 @@
   var SPIKE = ['#d6336c', '#1c7ed6', '#e8590c', '#2f9e44', '#7048e8', '#0c8599', '#c2255c', '#5c940d', '#ae3ec9', '#f08c00', '#1971c2', '#e03131', '#087f5b', '#9c36b5', '#d9480f', '#364fc7'];
   function charById(id) { return O().characters.find(function (c) { return c.id === id; }); }
   T.charById = charById;
-  function color(id) { var c = charById(id); if (c && c.color) return c.color; var i = O().characters.findIndex(function (x) { return x.id === id; }); return SPIKE[(i < 0 ? 0 : i) % SPIKE.length]; }
+  function color(id) {
+    var c = charById(id); if (c && c.color) return c.color;
+    var D = window.DEFAULT_SHOW, d = D && D.title === O().title && D.characters.find(function (x) { return x.id === id; });      // a show saved before the colors were picked
+    if (d && d.color) return d.color;
+    var i = O().characters.findIndex(function (x) { return x.id === id; }); return SPIKE[(i < 0 ? 0 : i) % SPIKE.length]; }
   T.color = color;
   function chip(id) { var c = charById(id); return '<span class="chip" style="--c:' + color(id) + '">' + esc(c ? c.short : id) + '</span>'; }
   T.chip = chip;

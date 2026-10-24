@@ -90,11 +90,11 @@
   var userScrolled = 0;
   ['wheel', 'touchmove'].forEach(function (ev) { window.addEventListener(ev, function () { userScrolled = Date.now(); }, { passive: true }); });
   window.addEventListener('keydown', function (e) { if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End)$/.test(e.key)) userScrolled = Date.now(); });
-  /* the singer's color for a lyric label: one character's color, several side by side, the show's color for a group */
+  /* the singer's color for a lyric label: one character's color, several side by side, highlighter yellow for a chorus or group */
   function lyricColors(who) {
     var ids = who ? T.labelChars(String(who).toUpperCase()) : [];
     var cs = ids.filter(function (id) { var c = T.charById(id); return id !== '*' && c && c.group !== 'ensemble'; }).map(T.color);
-    return cs.length ? cs : ['var(--accent)'];
+    return cs.length ? cs : ['#ffe94d'];      // a chorus or group: a highlighter yellow
   }
   T.lyricColors = lyricColors;
   function songItem(songId) {

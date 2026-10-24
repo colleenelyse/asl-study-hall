@@ -18,40 +18,8 @@
 
   /* one page: staves { top, bottom, space, bars: [x] } and the music-font characters { ch, x, y, size } */
   async function readPage(pdf, n, lib) {
-    var page = await pdf.getPage(n), vp = page.getViewport({ scale: 1 }), ops = await page.getOperatorList(), OPS = lib.OPS;
-    var ctm = [1, 0, 0, 1, 0, 0], stack = [], segs = [];
-    var mul = function (a, b) { return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]]; };
-    var ap = function (m, x, y) { return vp.convertToViewportPoint(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]); };
-    ops.fnArray.forEach(function (f, i) {
-      var a = ops.argsArray[i];
-      if (f === OPS.save) stack.push(ctm.slice());
-      else if (f === OPS.restore) ctm = stack.pop() || ctm;
-      else if (f === OPS.transform) ctm = mul(ctm, a);
-      else if (f === OPS.constructPath) {
-        var k = 0, cur = null, args = a[1];
-        a[0].forEach(function (op) {
-          if (op === OPS.moveTo) { cur = ap(ctm, args[k], args[k + 1]); k += 2; }
-          else if (op === OPS.lineTo) { var p = ap(ctm, args[k], args[k + 1]); k += 2; if (cur) segs.push([cur, p]); cur = p; }
-          else if (op === OPS.rectangle) { var x = args[k], y = args[k + 1], w = args[k + 2], h = args[k + 3]; k += 4; var p0 = ap(ctm, x, y), p1 = ap(ctm, x + w, y + h); segs.push([p0, [p1[0], p0[1]]]); segs.push([p0, [p0[0], p1[1]]]); }
-          else if (op === OPS.curveTo) k += 6; else if (op === OPS.curveTo2 || op === OPS.curveTo3) k += 4;
-        });
-      }
-    });
-    // staff lines: long level lines in groups of five, evenly spaced
-    var hs = segs.filter(function (s) { return Math.abs(s[0][1] - s[1][1]) < 0.5 && Math.abs(s[0][0] - s[1][0]) > 60; })
-      .map(function (s) { return { y: s[0][1], x0: Math.min(s[0][0], s[1][0]), x1: Math.max(s[0][0], s[1][0]) }; }).sort(function (a, b) { return a.y - b.y; });
-    var ys = []; hs.forEach(function (h) { if (!ys.length || h.y - ys[ys.length - 1].y > 0.8) ys.push({ y: h.y, x0: h.x0, x1: h.x1 }); else { var l = ys[ys.length - 1]; l.x0 = Math.min(l.x0, h.x0); l.x1 = Math.max(l.x1, h.x1); } });
-    var staves = [];
-    for (var i = 0; i + 4 < ys.length; i++) {
-      var g = ys.slice(i, i + 5), sp = (g[4].y - g[0].y) / 4, even = g.every(function (l, j) { return j === 0 || Math.abs(l.y - g[j - 1].y - sp) < 0.6; });
-      if (even && sp > 2 && sp < 12) { staves.push({ top: g[0].y, bottom: g[4].y, space: sp, x0: g[0].x0, x1: g[0].x1, bars: [] }); i += 4; }
-    }
-    segs.forEach(function (s) {
-      if (Math.abs(s[0][0] - s[1][0]) > 0.5) return;
-      var y0 = Math.min(s[0][1], s[1][1]), y1 = Math.max(s[0][1], s[1][1]);
-      staves.forEach(function (st) { if (Math.abs(y0 - st.top) < 1 && Math.abs(y1 - st.bottom) < 1) st.bars.push(s[0][0]); });
-    });
-    staves.forEach(function (st) { st.bars.sort(function (a, b) { return a - b; }); });
+    var page = await pdf.getPage(n), vp = page.getViewport({ scale: 1 }), ops = await page.getOperatorList();
+    var staves = ScriptParser.geometry(ops, lib.OPS, vp).staves;      // staff lines and barlines (shared with the script reader)
     var tc = await page.getTextContent(), glyphs = [];
     tc.items.forEach(function (it) {
       if (!it.str || !it.str.trim()) return;

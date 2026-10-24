@@ -15,14 +15,15 @@ window.DEFAULT_SHOW = {
     { id: 'leads', name: 'Leads' }, { id: 'friends', name: 'Friends' }, { id: 'adults', name: 'Grown-ups' },
     { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }, { id: 'helpers', name: 'Peer models' }
   ],
+  // colors (Colleen 2026-10-23): Troy red, Gabriella purple, Sharpay pink, Ryan green, Chad blue, Taylor golden yellow, Zeke orange; the rest any
   characters: [
-    { id: 'troy', name: 'Troy Bolton', short: 'Troy', group: 'leads', aliases: ['TROY'], desc: 'Captain of the basketball team. Everyone expects him to only play ball, but he finds out he loves to sing.' },
-    { id: 'gabriella', name: 'Gabriella Montez', short: 'Gabriella', group: 'leads', aliases: ['GABRIELLA'], desc: 'The new student. Very smart and a little shy. She loves to sing but is nervous to try.' },
-    { id: 'sharpay', name: 'Sharpay Evans', short: 'Sharpay', group: 'leads', aliases: ['SHARPAY'], desc: 'The star of every school musical. Dramatic and bossy. She does not want anyone to take her spot.' },
-    { id: 'ryan', name: 'Ryan Evans', short: 'Ryan', group: 'leads', aliases: ['RYAN'], desc: 'Sharpay’s twin brother. A great singer and dancer who usually follows Sharpay, until he stands up for what is right.' },
-    { id: 'chad', name: 'Chad Danforth', short: 'Chad', group: 'friends', aliases: ['CHAD'], desc: 'Troy’s best friend on the team. Basketball is his whole world at first.' },
-    { id: 'taylor', name: 'Taylor McKessie', short: 'Taylor', group: 'friends', aliases: ['TAYLOR'], desc: 'President of the Science Club. Confident and in charge. She wants Gabriella on the Decathlon team.' },
-    { id: 'zeke', name: 'Zeke Baylor', short: 'Zeke', group: 'friends', aliases: ['ZEKE'], desc: 'A basketball player with a secret: he loves to bake. He has a crush on Sharpay.' },
+    { id: 'troy', color: '#d62828', name: 'Troy Bolton', short: 'Troy', group: 'leads', aliases: ['TROY'], desc: 'Captain of the basketball team. Everyone expects him to only play ball, but he finds out he loves to sing.' },
+    { id: 'gabriella', color: '#7b2cbf', name: 'Gabriella Montez', short: 'Gabriella', group: 'leads', aliases: ['GABRIELLA'], desc: 'The new student. Very smart and a little shy. She loves to sing but is nervous to try.' },
+    { id: 'sharpay', color: '#f2549b', name: 'Sharpay Evans', short: 'Sharpay', group: 'leads', aliases: ['SHARPAY'], desc: 'The star of every school musical. Dramatic and bossy. She does not want anyone to take her spot.' },
+    { id: 'ryan', color: '#2b9348', name: 'Ryan Evans', short: 'Ryan', group: 'leads', aliases: ['RYAN'], desc: 'Sharpay’s twin brother. A great singer and dancer who usually follows Sharpay, until he stands up for what is right.' },
+    { id: 'chad', color: '#1f6fd6', name: 'Chad Danforth', short: 'Chad', group: 'friends', aliases: ['CHAD'], desc: 'Troy’s best friend on the team. Basketball is his whole world at first.' },
+    { id: 'taylor', color: '#e0a800', name: 'Taylor McKessie', short: 'Taylor', group: 'friends', aliases: ['TAYLOR'], desc: 'President of the Science Club. Confident and in charge. She wants Gabriella on the Decathlon team.' },
+    { id: 'zeke', color: '#f07f0c', name: 'Zeke Baylor', short: 'Zeke', group: 'friends', aliases: ['ZEKE'], desc: 'A basketball player with a secret: he loves to bake. He has a crush on Sharpay.' },
     { id: 'martha', name: 'Martha Cox', short: 'Martha', group: 'friends', aliases: ['MARTHA', 'MARTHA COX', 'COX'], desc: 'A Brainiac with a secret: she loves to dance hip-hop.' },
     { id: 'kelsi', name: 'Kelsi Nielsen', short: 'Kelsi', group: 'friends', aliases: ['KELSI'], desc: 'The student who wrote the school musical. Quiet, kind, and quick with a comeback for Sharpay.' },
     { id: 'darbus', name: 'Ms. Darbus', short: 'Ms. Darbus', group: 'adults', aliases: ['MS. DARBUS', 'DARBUS'], desc: 'The drama teacher. Big personality, strict rules, and she truly loves theater and her students.' },

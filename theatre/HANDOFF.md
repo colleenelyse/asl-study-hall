@@ -336,3 +336,13 @@ character color (several singers side by side; groups in the show's color; `T.ly
 (the tap marks the first sung word; the highlight comes early so singers see it in time; the Lyrics timing page lights rows the same way).
 The page stops scrolling by itself for 4 s after the reader scrolls (wheel, touch, keys). The song player's play / back / position are in a
 bar fixed to the bottom (`#songbar`); the switches, volume and loop stay in the card at the top.
+
+**Bracketed systems** (Colleen 2026-10-23: staves joined by a bracket at the left are sung at the same time; read left to right across the
+system; each staff keeps its own singer): `ScriptParser.geometry` (shared with sheet-melody.js) finds staves (only full-length level lines, so
+beams don't break them; thin rectangles count, clipping boxes don't), barlines (also ones running through several staves) and systems (a tall
+line at the staves' left edge). `fromPdfJs` stores `page.systems`; `parse` puts each lyric line under its staff, gives singer labels to the
+staff under them, keeps a singer per staff (`singerByIdx`), splits a staff's words at rests (> 48 pt) inside a system, and adds a system's
+lyrics sorted by where they start. HSM JR: 552 sung lines, every one with a singer. Import clears lyrics timing when a song's lines change in
+words or order.
+**Character colors** (Colleen 2026-10-23): Troy red, Gabriella purple, Sharpay pink, Ryan green, Chad blue, Taylor golden yellow, Zeke orange
+(`color` in show-hsm-jr.js; a show saved before takes them from the show file); chorus / group lines light up highlighter yellow.

@@ -189,7 +189,7 @@
     });
     O.scenes.sort(function (a, b) { return a.num - b.num; });
     // lyrics timing is kept per lyric line: a song whose lines now read differently needs its timing found again
-    var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || 0) + it.lyrics.length; }); }); return o; };
+    var lyrN = function (scenes) { var o = {}; (scenes || []).forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'song') o[it.num] = (o[it.num] || '') + it.lyrics.map(function (l) { return l.who + '|' + l.text; }).join('/'); }); }); return o; };      // the song's lines in order: a change in their words or order needs new timing
     var was = lyrN(T.show.script && T.show.script.scenes), now = lyrN(r.scenes), LT = T.show.lyricTimes || {};
     O.songs.forEach(function (so) { if (LT[so.id] && was[so.num] !== now[so.num]) { delete LT[so.id]; if (T.show.sheetMelody) delete T.show.sheetMelody[so.id]; } });
     var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
