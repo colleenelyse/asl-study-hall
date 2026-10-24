@@ -250,8 +250,13 @@
       printed = page.num;              // pdf page for now; turned into printed numbers at the end
       prevStave = false;
       if (music) depth = 0;            // an unclosed ( on sheet music never spills onto the next page
+      /* words hidden at the bottom of a music page that are really printed at the top of the next page (Colleen 2026-10-23, "Start of
+         Something New": a hidden copy of TROY's next line got stuck onto GABRIELLA's) */
+      var nextTop = {};
+      if (music && pages[pi + 1]) toLines(pages[pi + 1]).forEach(function (l) { if (l.y < 220 && /^[A-Z][A-Z .’',&]+?:\s+\S/.test(l.text)) nextTop[l.text.trim()] = 1; });
       for (var li = 0; li < lines.length; li++) {
         var line = lines[li], t = line.text;
+        if (music && line.y > lastStave + 45 && nextTop[String(t).trim()]) continue;
         box = { n: page.num, x: +line.x0.toFixed(1), y: +(line.y - line.size * 0.95).toFixed(1), w: +(line.x1 - line.x0).toFixed(1), h: +(line.size * 1.25).toFixed(1) };
         if (stop.some(function (re) { return re.test(t); })) { done = true; break; }
 
@@ -322,7 +327,8 @@
             continue;
           }
           var dirLike = /^\(/.test(t) || /#\s?\d+\s*[–-]/.test(t);
-          if (prevStave) { prevStave = false; if (!dirLike) continue; }        // anything else right under a stave (but a stage direction there counts)
+          var saidLike = /^([A-Z][A-Z .’',&]+?):\s+\S/.test(t);      // "GABRIELLA: Oh no, I have to go." under a staff with no words (Colleen 2026-10-23)
+          if (prevStave) { prevStave = false; if (!dirLike && !saidLike) continue; }        // anything else right under a stave (but a stage direction or a spoken line there counts)
           var startsDirM = /^\(/.test(t);
           var sp = depth === 0 && line.italic && t.match(/^([A-Z][A-Z .’',&]+?)\s?:\s*(\([^)]*\))\s*(.*)$/);      // "KELSI: (nods to GABRIELLA)" in italics, the words on the next line
           if (sp) { startSpeech(sp[1].trim(), tidy(sp[2] + ' ' + sp[3]), box); block._y = line.y; block._n = page.num; continue; }
@@ -559,7 +565,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-23.5';
+  var VERSION = '2026-10-23.6';
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
