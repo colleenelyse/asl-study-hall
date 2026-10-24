@@ -17,6 +17,7 @@
      for the costume crew, performers and Mentors), sealed with the show key on the iPad (the photo and its caption). theatre:photoindex [{ id, actor, char, kind,
      ref, at, ok }]: ids only (actor ids are random; char and ref are the show outline's ids), nothing readable. Anyone may add one (sealed, small, limited per
      address); it waits for the teacher's OK (ok false) before other iPads show it. Only the teacher password approves or removes.
+     kind research: a student's costume research picture (ref = the character), board: the teacher's choice board of outfit pictures for a character.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
@@ -164,7 +165,7 @@ export async function theatreApi(req, env, url, p) {
   }
   /* costume and prop photos */
   if (rest === 'photo/index') return json({ photos: (await env.LOCKS.get('theatre:photoindex', 'json')) || [] });
-  const ph = rest.match(/^photo\/([a-z0-9-]{6,24})(?:\/(ok)|\/([a-z0-9-]{1,40})\/(costume|prop|build)\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,60}))?$/);
+  const ph = rest.match(/^photo\/([a-z0-9-]{6,24})(?:\/(ok)|\/([a-z0-9-]{1,40})\/(costume|prop|build|research|board)\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,60}))?$/);
   if (ph) {
     const id = ph[1], pkey = 'theatre:photo:' + id;
     if (req.method === 'GET' && !ph[2] && !ph[3]) { const v = await env.LOCKS.get(pkey, 'arrayBuffer'); return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404); }

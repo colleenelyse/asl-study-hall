@@ -160,6 +160,11 @@ Each photo waits for the teacher's OK (Production › Shopping › Costume and p
 Costumes page, the shopping list (costume groups, props, builds) and "All the photos", a reference for the crew, cast and Mentors. A 📸 Costume and prop
 photos group in a day's plan gives that job (by rotation: pick scenes, or set jobs one by one). The same card shows the due date (5 school days after the
 last 🚌 Field trip day) and, for every character in the cast, what still has no photo and who plays it. Photos are kept on each iPad after the first look.
+**Costume research (2026-10-24):** before the shopping trip (plan: assigned Sep 20, due Oct 1, 2027), each student adds 3 to 5 pictures of outfits their character
+would wear (Costume photos › 🔍 Costume research), each with one short reason: tap one or more reasons (for non-writers and AAC users) and/or type one. Same sealed
+photos, kind `research` (ref = the character); each waits for the teacher's OK. The teacher's **choice board** (kind `board`, added on Production › Shopping and
+OK'd at once) gives outfit pictures to pick from for students who find research hard. Teacher card: due date (`T.show.shop.researchDue`), who has turned in 3
+or more. Approved pictures show on My Costumes, the teacher's Costumes page and beside that character's shopping homework list.
 
 **Practice data** (`js/progress.js`; API `/theatre/api/progress[/<actor>]`): like her flashcard app. In Run my role the first try at each line counts right or wrong
 (microphone result, or the student's own ✓ I got it / ✗ Not yet). After a song (track ends, or leaving after 60%+) students rate the words and the dance (😟 🙂 🤩,

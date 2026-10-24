@@ -72,9 +72,11 @@ ok((await call('DELETE', 'voice/q9q9q9q9/pending/a8', undefined, { 'x-proof': pr
 const wrong = await proofOf('nope', vs);
 ok((await call('POST', 'photo/ph-abc123/s1/costume/troy/c-troy-1', new Uint8Array(800))).status === 200, 'a Company member sends a sealed photo (no password)');
 ok((await call('POST', 'photo/ph-abc123/s1/costume/troy/c-troy-1', new Uint8Array(800))).status === 409, 'the same photo id twice is refused');
+ok((await call('POST', 'photo/ph-res001/s1/research/troy/troy', new Uint8Array(800))).status === 200, 'a costume research picture comes in the same way');
+ok((await call('POST', 'photo/ph-bad001/s1/selfie/troy/troy', new Uint8Array(800))).status === 404, 'an unknown kind of photo is refused');
 ok((await call('POST', 'photo/ph-big999/s1/prop/troy/p-balls', new Uint8Array(1000000))).status === 413, 'a photo that is too big is refused');
 let pi = (await (await call('GET', 'photo/index')).json()).photos;
-ok(pi.length === 1 && pi[0].ok === false && pi[0].char === 'troy' && pi[0].ref === 'c-troy-1', 'the photo index holds ids only, waiting for the teacher');
+ok(pi.length === 2 && pi[0].ok === false && pi[0].char === 'troy' && pi[0].ref === 'c-troy-1', 'the photo index holds ids only, waiting for the teacher');
 ok((await call('GET', 'photo/ph-abc123')).status === 200, 'anyone gets the sealed photo bytes');
 ok((await call('POST', 'photo/ph-abc123/ok')).status === 403, 'only the teacher OKs a photo');
 ok((await call('POST', 'photo/ph-abc123/ok', undefined, { 'x-proof': proof })).status === 200, 'the teacher OKs a photo');

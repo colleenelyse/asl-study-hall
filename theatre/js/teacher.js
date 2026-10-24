@@ -562,7 +562,7 @@
       O.characters.map(function (c) {
         var list = O.costumes.filter(function (x) { return x.who === c.id; });
         if (!list.length) return '';
-        return '<div class="card"><h3>' + T.chip(c.id) + '</h3>' + list.map(function (x) {
+        return '<div class="card"><h3>' + T.chip(c.id) + '</h3>' + (T.photoSlot ? T.photoSlot('research', c.id, 'Costume research pictures') : '') + list.map(function (x) {
           return '<div class="switch" style="cursor:pointer" data-id="' + esc(x.id) + '"><span><b>' + esc(x.name) + '</b> <span class="muted small">' + esc(x.items.join(', ')) + '</span></span><span class="muted small">' + x.moments.length + ' moments</span></div>' + (T.photoSlot ? T.photoSlot('costume', x.id) : '');
         }).join('') + '</div>';
       }).join('');

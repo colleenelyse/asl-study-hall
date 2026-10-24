@@ -1167,6 +1167,7 @@
         '<div style="margin-top:8px">' + c.items.map(function (it, i) { return '<label class="switch"><span>' + esc(it) + '</span><input type="checkbox" data-c="' + esc(c.id) + '" data-i="' + i + '"' + (got.indexOf(i) >= 0 ? ' checked' : '') + '></label>'; }).join('') + '</div>' +
         '<p class="muted small">Wear it in scene' + (scenes.length === 1 ? ' ' : 's ') + scenes.join(', ') + '</p></div>';
     }).join('') + '</div>';
+    if (T.photoSlot) app.insertAdjacentHTML('beforeend', T.me.chars.map(function (c) { return T.photoSlot('research', c, 'Costume research pictures for ' + T.charById(c).short); }).join(''));
     if (T.fillPhotos) T.fillPhotos(app);
     app.querySelectorAll('input[data-c]').forEach(function (inp) {
       inp.onchange = function () { var k = 'check:' + inp.dataset.c, got = ls(k) || [], i = +inp.dataset.i; got = got.filter(function (x) { return x !== i; }); if (inp.checked) got.push(i); ls(k, got); };

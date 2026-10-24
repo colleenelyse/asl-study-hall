@@ -12,7 +12,10 @@
    and sends it (note type shopList). It joins the teacher's list as extra items with who (the character), est (the guess) and hw (actor|character).
    Photos (Colleen 2026-10-24): within 5 school days after the trip, Company members photograph each finished costume look and prop (a 📸 group in a day's
    plan, by rotation). Sealed with the show key (Store.putPhoto); each waits for the teacher's OK, then shows on My Costumes, the Costumes page, the shopping
-   list and the Costume photos page, a reference for the costume crew, the cast and the Mentors. Production › Shopping shows who is still missing photos. */
+   list and the Costume photos page, a reference for the costume crew, the cast and the Mentors. Production › Shopping shows who is still missing photos.
+   Costume research (Colleen 2026-10-24: "doing research and bringing pictures of outfits they think their character would wear, not just pics of their character
+   in the movie"): before the trip, 3 to 5 outfit pictures per character, each with one short reason (tap a reason, or type one), the same sealed photos with
+   kind research (ref = the character). The teacher's choice board (kind board) gives outfit pictures to pick from for students who find research hard. */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
@@ -230,6 +233,7 @@
       var d = mine[cid] || { rows: [] }, rows = d.rows.length ? d.rows : [{ name: '', kind: 'costume', price: '' }];
       return '<div class="card" data-hw="' + cid + '"><h2>' + sym('📝') + 'My list for ' + T.chip(cid) + '</h2>' +
         '<p>Homework before the shopping day: the costume pieces and props your character needs. Guess about what each one costs.</p>' +
+        T.photoSlot('research', cid, 'My costume research pictures (look at them while you make the list):') +
         rows.map(function (r, i) {
           return '<div class="row" style="flex-wrap:wrap;margin-bottom:8px" data-i="' + i + '">' +
             '<input data-hn maxlength="100" class="grow" placeholder="e.g. Red basketball jersey" value="' + esc(r.name) + '" style="min-height:48px;min-width:180px;border:2px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--card)">' +
@@ -329,7 +333,7 @@
   }
   function sentHere() { return T.ls('photoSent') || []; }      // photos this iPad sent: shown here while they wait for the teacher
   function okImg(o) { return o && /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(o.img || ''); }
-  T.photoSlot = function (kind, ref) { return '<div class="photo-slot" data-pk="' + kind + '" data-pr="' + esc(ref) + '" style="display:flex;flex-wrap:wrap;gap:8px"></div>'; };
+  T.photoSlot = function (kind, ref, label, del) { return '<div class="photo-slot" data-pk="' + kind + '" data-pr="' + esc(ref) + '"' + (label ? ' data-label="' + esc(label) + '"' : '') + (del ? ' data-del="1"' : '') + ' style="display:flex;flex-wrap:wrap;gap:8px"></div>'; };
   /* fill every photo spot on the page; teacher: waiting photos too */
   T.fillPhotos = function (root, teacher) {
     var slots = (root || app).querySelectorAll('.photo-slot'); if (!slots.length || !T.key || !window.Store) return;
@@ -339,7 +343,8 @@
         var ps = l.filter(function (p) { return p.kind === sl.dataset.pk && p.ref === sl.dataset.pr && (!sl.dataset.only || p.id === sl.dataset.only) && (p.ok || teacher || mine.indexOf(p.id) >= 0); });
         if (!ps.length) return;
         sl.style.margin = '8px 0';
-        sl.innerHTML = ps.map(function (p) { return '<figure data-ph="' + p.id + '" style="margin:0;width:120px"><div style="width:120px;height:120px;border-radius:10px;background:var(--line);overflow:hidden"></div>' + (p.ok ? '' : '<span class="tag small">' + (teacher ? 'Waiting for your OK' : 'Waiting for the teacher') + '</span>') + '</figure>'; }).join('');
+        sl.innerHTML = (sl.dataset.label ? '<p class="muted small" style="width:100%;margin:0">' + esc(sl.dataset.label) + '</p>' : '') + ps.map(function (p) { return '<figure data-ph="' + p.id + '" style="margin:0;width:120px"><div style="width:120px;height:120px;border-radius:10px;background:var(--line);overflow:hidden"></div>' + (p.ok ? '' : '<span class="tag small">' + (teacher ? 'Waiting for your OK' : 'Waiting for the teacher') + '</span>') + (teacher && sl.dataset.del ? '<button class="btn small" data-rm="' + p.id + '">✕ Remove</button>' : '') + '</figure>'; }).join('');
+        sl.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm('Remove this picture?')) return; Store.photoDel(T.proof, b.dataset.rm).then(function () { PH.list = null; b.closest('figure').remove(); T.toast('Removed'); }, function (e) { T.toast(e.message); }); }; });
         ps.forEach(function (p) {
           Store.getPhoto(T.key, p.id).then(function (o) {
             var f = sl.querySelector('[data-ph="' + p.id + '"]'); if (!f || !okImg(o)) return;
@@ -394,10 +399,11 @@
 
   T.studentPages.photos = function (args) {
     T.setBar('Costume photos', '#/home');
+    if (args && args[0] === 'research') return researchPage();
     var all = args && args[0] === 'all', due = photoDue(), take = canList() && !all;
     var head = '<div class="card"><h2>' + sym('📸') + 'Costume and prop photos</h2><p>After the shopping trip, take a photo of each finished costume and prop. The costume crew, the cast and the Mentors use them to get everything right at every rehearsal.</p>' +
       (due ? '<p><b>Take them by ' + esc(nice(due.due)) + '</b> (5 school days after the trip).</p>' : '') +
-      '<div class="seg"><a class="btn small" href="#/photos" aria-pressed="' + !all + '">' + (canList() ? 'My photos to take' : 'My character') + '</a><a class="btn small" href="#/photos/all" aria-pressed="' + all + '">All the photos</a></div></div>';
+      photoTabs(all ? 'all' : 'mine') + '</div>';
     var chars = all ? T.O().characters.map(function (c) { return c.id; }) : T.me.chars;
     app.innerHTML = head + '<div id="phList"><p class="muted">Loading…</p></div>';
     photoList(true).then(function (l) {
@@ -428,10 +434,7 @@
             box.querySelector('#ok').onclick = function () {
               var b = box.querySelector('#ok'); b.disabled = true; b.textContent = 'Sending…';
               var id = 'ph-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-              Store.putPhoto(T.key, { id: id, actor: T.me.id || 'none', kind: bits[0], ref: bits[1], char: bits[2] }, { caption: clean(box.querySelector('#cap').value, 160), img: img }).then(function () {
-                var m = sentHere(); m.push(id); T.ls('photoSent', m.slice(-200));
-                close(); T.toast('Sent! Your teacher will check it.'); T.studentPages.photos(args);
-              }, function (e) { b.disabled = false; b.textContent = 'Send it'; T.toast(navigator.onLine ? e.message : 'No Wi-Fi. Try again when you are back on the school Wi-Fi.'); });
+              sendPhoto(bits[0], bits[1], bits[2], img, clean(box.querySelector('#cap').value, 160)).then(function () { close(); T.studentPages.photos(args); }, function (e) { b.disabled = false; b.textContent = 'Send it'; T.toast(e.message); });
             };
           }, function (e) { T.toast(e.message); inp.value = ''; });
         };
@@ -439,11 +442,117 @@
     });
   };
 
+  function photoTabs(on) {
+    return '<div class="seg">' + [['research', '#/photos/research', '🔍 Costume research'], ['mine', '#/photos', canList() ? '📸 My photos to take' : '📸 My character'], ['all', '#/photos/all', 'All the photos']].map(function (t) {
+      return '<a class="btn small" href="' + t[1] + '" aria-pressed="' + (on === t[0]) + '">' + t[2] + '</a>'; }).join('') + '</div>';
+  }
+  /* seal and send one picture; this iPad remembers it so it shows here while it waits for the teacher */
+  function sendPhoto(kind, ref, char, img, caption) {
+    var id = 'ph-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    return Store.putPhoto(T.key, { id: id, actor: (T.me && T.me.id) || 'none', kind: kind, ref: ref, char: char }, { caption: caption, img: img }).then(function () {
+      var m = sentHere(); m.push(id); T.ls('photoSent', m.slice(-200)); PH.list = null;
+      T.toast('Sent! Your teacher will check it.');
+    }, function (e) { throw new Error(navigator.onLine ? e.message : 'No Wi-Fi. Try again when you are back on the school Wi-Fi.'); });
+  }
+
+  /* ---------- Students: costume research (before the shopping trip) ---------- */
+  var REASONS = ['🎨 The colors fit my character', '🏫 My character would wear this at school', '✨ It shows who my character is', '👥 It matches my character’s group', '💃 I can move and dance in it', '🛒 We could find it at a store like Goodwill'];
+  /* one short reason for a picture: tap one (non-writers, AAC users) or type one */
+  function reasonDialog(img, title, done) {
+    var box = document.createElement('dialog');
+    box.innerHTML = '<h2>' + sym('🔍') + esc(title) + '</h2><img src="' + img + '" alt="" style="max-width:100%;max-height:34vh;border-radius:12px;display:block;margin:0 auto">' +
+      '<p><b>Why would your character wear this?</b> Tap one, or say it in your own words.</p><div class="row" style="flex-wrap:wrap">' +
+      REASONS.map(function (r, i) { return '<button type="button" class="btn small" data-r="' + i + '" aria-pressed="false">' + esc(r) + '</button>'; }).join('') + '</div>' +
+      '<label class="f">In my own words (you can skip this)<input id="own" maxlength="160"></label>' +
+      '<div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok">Send it</button></div>';
+    document.body.appendChild(box); box.showModal();
+    var close = function () { box.close(); box.remove(); };
+    box.querySelectorAll('[data-r]').forEach(function (b) { b.onclick = function () { b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); }; });
+    box.querySelector('#cn').onclick = function () { close(); done(null); };
+    box.querySelector('#ok').onclick = function () {
+      var picked = Array.prototype.filter.call(box.querySelectorAll('[data-r]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return REASONS[+b.dataset.r].replace(/^\S+\s/, ''); });
+      var own = clean(box.querySelector('#own').value, 160), why = clean(picked.concat(own ? [own] : []).join('. '), 300);
+      if (!why) { T.toast('Tap a reason, or type one.'); return; }
+      var b = box.querySelector('#ok'); b.disabled = true; b.textContent = 'Sending…';
+      done(why, close, function () { b.disabled = false; b.textContent = 'Send it'; });
+    };
+  }
+  function researchPage() {
+    T.setBar('Costume photos', '#/home');
+    var due = S().researchDue;
+    app.innerHTML = '<div class="card"><h2>' + sym('🔍') + 'Costume research</h2><p>Find <b>3 to 5 pictures of outfits your character would wear</b>. Look for real clothes, not only pictures from the movie. For each one, tell why.</p>' +
+      (due ? '<p><b>Due ' + esc(nice(due)) + '.</b></p>' : '') + '<p class="muted small">Then you use your pictures to make your list for the shopping day.</p>' + photoTabs('research') + '</div><div id="phList"><p class="muted">Loading…</p></div>';
+    photoList(true).then(function (l) {
+      var mine = sentHere(), can = canList();
+      document.getElementById('phList').innerHTML = T.me.chars.map(function (cid) {
+        var n = l.filter(function (p) { return p.kind === 'research' && p.char === cid && (p.actor === T.me.id || mine.indexOf(p.id) >= 0); }).length;
+        var board = l.filter(function (p) { return p.kind === 'board' && p.ref === cid && p.ok; }).length;
+        return '<div class="card"><div class="row" style="flex-wrap:wrap"><h3 class="grow">' + T.chip(cid) + ' <span class="tag">' + n + ' of 3–5' + (n >= 3 ? ' ✓' : '') + '</span></h3>' +
+          (can ? '<label class="btn primary">' + icon('camera') + 'Add a picture<input type="file" accept="image/*" hidden data-research="' + cid + '"></label>' +
+            (board ? '<button class="btn" data-board="' + cid + '">Pick from the choice board (' + board + ')</button>' : '') : '') + '</div>' +
+          '<p class="muted small">A screenshot or a saved picture works. Ask your teacher or a Mentor if you would like help finding some.</p>' +
+          T.photoSlot('research', cid) + '</div>';
+      }).join('');
+      T.fillPhotos(app);
+      var send = function (cid, img) {
+        reasonDialog(img, 'For ' + T.charById(cid).short, function (why, close, retry) {
+          if (!why) return;
+          sendPhoto('research', cid, cid, img, why).then(function () { close(); researchPage(); }, function (e) { retry(); T.toast(e.message); });
+        });
+      };
+      app.querySelectorAll('[data-research]').forEach(function (inp) {
+        inp.onchange = function () { var f = inp.files && inp.files[0]; if (!f) return; shrink(f).then(function (img) { inp.value = ''; send(inp.dataset.research, img); }, function (e) { inp.value = ''; T.toast(e.message); }); };
+      });
+      app.querySelectorAll('[data-board]').forEach(function (b) {
+        b.onclick = function () {
+          var cid = b.dataset.board, ps = l.filter(function (p) { return p.kind === 'board' && p.ref === cid && p.ok; });
+          var box = document.createElement('dialog');
+          box.innerHTML = '<h2>Pick an outfit for ' + esc(T.charById(cid).short) + '</h2><div class="row" style="flex-wrap:wrap" id="bg">' + ps.map(function (p) { return '<button class="btn" data-pick="' + p.id + '" style="width:130px;height:130px;padding:4px;overflow:hidden" aria-label="Pick this outfit"></button>'; }).join('') + '</div><div class="row end"><button class="btn" id="cn">Cancel</button></div>';
+          document.body.appendChild(box); box.showModal();
+          box.querySelector('#cn').onclick = function () { box.close(); box.remove(); };
+          var imgs = {};
+          ps.forEach(function (p) { Store.getPhoto(T.key, p.id).then(function (o) { if (!okImg(o)) return; imgs[p.id] = o.img; var t = box.querySelector('[data-pick="' + p.id + '"]'); if (t) t.innerHTML = '<img src="' + o.img + '" alt="' + esc(o.caption || 'Outfit') + '" style="width:100%;height:100%;object-fit:cover;border-radius:8px">'; }); });
+          box.querySelectorAll('[data-pick]').forEach(function (t) { t.onclick = function () { var img = imgs[t.dataset.pick]; if (!img) return; box.close(); box.remove(); send(cid, img); }; });
+        };
+      });
+    });
+  }
+
+  /* ---------- Teacher: costume research turned in, and the choice board ---------- */
+  function researchAdmin(l, redraw) {
+    var s = S(), cast = (T.show.cast || []).filter(function (a) { return (a.chars || []).length; });
+    var count = function (a) { return l.filter(function (p) { return p.kind === 'research' && p.actor === a.id; }).length; };
+    var done = cast.filter(function (a) { return count(a) >= 3; }).length;
+    return '<h3>' + sym('🔍') + 'Costume research</h3><div class="row" style="flex-wrap:wrap"><label class="f" style="margin:0">Due<input type="date" id="rdue" value="' + esc(s.researchDue || '') + '"></label>' +
+      '<span class="grow">' + (cast.length ? '<b>' + done + ' of ' + cast.length + '</b> have turned in 3 or more pictures.' : '') + '</span></div>' +
+      (cast.length ? '<div class="row" style="flex-wrap:wrap;margin:8px 0">' + cast.map(function (a) { var n = count(a); return '<span class="tag"' + (n >= 3 ? '' : ' style="opacity:.7"') + '>' + esc(T.shortName(a.name)) + ': ' + (n >= 3 ? n + ' ✓' : n ? n + ' so far' : 'not yet') + '</span>'; }).join(' ') + '</div>' : '') +
+      '<p class="muted small">Students add pictures on Costume photos › 🔍 Costume research; each one waits for your OK above. Approved pictures show on My Costumes, your Costumes page and next to that character’s shopping homework list.</p>' +
+      '<h3>Choice board</h3><p class="muted small">Outfit pictures for a character, for students who find research hard: they pick one and give a reason.</p>' +
+      '<div class="row" style="flex-wrap:wrap"><label class="f" style="margin:0">For<select id="bch">' + T.O().characters.map(function (c) { return '<option value="' + c.id + '">' + esc(c.short) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="btn">Add pictures<input type="file" accept="image/*" multiple hidden id="bfile"></label></div>' +
+      T.O().characters.map(function (c) { return l.some(function (p) { return p.kind === 'board' && p.ref === c.id; }) ? T.photoSlot('board', c.id, c.short, true) : ''; }).join('');
+  }
+  function wireResearchAdmin(box, redraw) {
+    var s = S();
+    box.querySelector('#rdue').onchange = function (e) { s.researchDue = e.target.value; T.saveShow('Due date saved'); };
+    box.querySelector('#bfile').onchange = function (e) {
+      var files = Array.prototype.slice.call(e.target.files || []), cid = box.querySelector('#bch').value;
+      files.reduce(function (p, f) {
+        return p.then(function () {
+          return shrink(f).then(function (img) {
+            var id = 'ph-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            return Store.putPhoto(T.key, { id: id, actor: 'teacher', kind: 'board', ref: cid, char: cid }, { caption: '', img: img }).then(function () { return Store.photoOk(T.proof, id); });
+          });
+        });
+      }, Promise.resolve()).then(function () { T.toast('Added to the choice board'); PH.list = null; redraw(); }, function (err) { T.toast(err.message); });
+    };
+  }
+
   /* ---------- Teacher: photos waiting, and who still needs to take theirs ---------- */
   function photoAdmin(redraw) {
     var box = document.getElementById('phAdmin'); if (!box) return;
     photoList(true).then(function (l) {
-      var wait = l.filter(function (p) { return !p.ok; }), due = photoDue(), days = T.prod ? T.prod.classDays() : [], today = T.prod ? T.prod.today() : '';
+      var wait = l.filter(function (p) { return !p.ok && p.kind !== 'board'; }), due = photoDue(), days = T.prod ? T.prod.classDays() : [], today = T.prod ? T.prod.today() : '';
       var played = {}; (T.show.cast || []).forEach(function (a) { (a.chars || []).forEach(function (c) { (played[c] = played[c] || []).push(a); }); });
       var missing = Object.keys(played).map(function (cid) {
         var miss = photoTargets(cid).filter(function (t) { return !l.some(function (p) { return p.kind === t.kind && p.ref === t.ref; }); });
@@ -459,9 +568,10 @@
           return '<div class="switch" style="flex-wrap:wrap" data-pw="' + p.id + '"><span class="grow">' + (T.charById(p.char) ? T.chip(p.char) : '') + ' <span class="muted small">' + (a ? 'from ' + esc(a.name) : '') + '</span>' + T.photoSlot(p.kind, p.ref) + '</span>' +
             '<button class="btn small primary" data-pok="' + p.id + '">✓ OK</button><button class="btn small" data-pdel="' + p.id + '">✕ Remove</button></div>';
         }).join('') : '') +
+        researchAdmin(l, redraw) +
         (Object.keys(played).length ? (missing ? '<h3>Still to photograph</h3>' + missing : '<p><b>Every costume and prop has a photo.</b></p>') : '<p class="muted small">Once the cast list is in, this shows who still has photos to take.</p>');
       box.querySelectorAll('[data-pw]').forEach(function (row) { row.querySelector('.photo-slot').dataset.only = row.dataset.pw; });      // a waiting row shows only its own photo
-      T.fillPhotos(box, true);
+      T.fillPhotos(box, true); wireResearchAdmin(box, redraw);
       box.querySelectorAll('[data-pok]').forEach(function (b) { b.onclick = function () { Store.photoOk(T.proof, b.dataset.pok).then(function () { T.toast('OK: everyone can see it'); PH.list = null; redraw(); }, function (e) { T.toast(e.message); }); }; });
       box.querySelectorAll('[data-pdel]').forEach(function (b) { b.onclick = function () { if (!confirm('Remove this photo?')) return; Store.photoDel(T.proof, b.dataset.pdel).then(function () { T.toast('Removed'); PH.list = null; redraw(); }, function (e) { T.toast(e.message); }); }; });
     });
