@@ -18,7 +18,9 @@
 (function (root) {
   'use strict';
   /* ---------- the rules, without the page (dev/test-portal.js runs these in node) ---------- */
-  var KINDS = ['fit', 'sizes', 'sensory', 'commit', 'video'];
+  var KINDS = ['fit', 'sizes', 'sensory', 'commit', 'video', 'contact'];
+  var MAIL_OPTS = [['general', 'News and requests from the teacher (volunteer needs, show dates, reminders)'], ['mine', 'Changes for my Company member (a new role, song or solo, new dance videos, the week’s plan)'],
+    ['copies', 'A copy of every email my Company member gets from the app']];
   var SIZE_FIELDS = [
     ['height', 'Height', 'e.g. 5 ft 2 in'], ['weight', 'Weight (optional, helps with fit)', 'e.g. 110 lb'],
     ['shirt', 'Shirt / top', 'e.g. Youth L, Adult S, Women’s M'], ['undershirt', 'Undershirt / camisole', 'e.g. Adult S'],
@@ -76,6 +78,12 @@
       if (!VIDEO[d.answer] || !str(d.signer, 80)) return null;
       return { answer: d.answer, signer: str(d.signer, 80), date: isDate(d.date) ? d.date : '', note: str(d.note, 300) };
     }
+    if (kind === 'contact') {      // email updates (mail.js): no box ticked = stop emails to this address
+      var em = str(d.email, 120);
+      if (!/^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[a-z]{2,}$/i.test(em)) return null;
+      var o = {}; MAIL_OPTS.forEach(function (x) { o[x[0]] = !!(d.opts && d.opts[x[0]] === true); });
+      return { email: em, name: str(d.name, 80), opts: o, dev: str(d.dev, 24) };
+    }
     if (kind === 'commit') {
       var items = Array.isArray(d.items) ? d.items.map(function (x) { return str(x, 400); }).filter(Boolean).slice(0, 12) : [];
       if (!items.length || !d.agree || d.agree.length !== items.length || !d.agree.every(function (a) { return a === true; })) return null;
@@ -92,7 +100,13 @@
     var P = V.extra.portal = V.extra.portal || {}, r = P[n.actor] = P[n.actor] || {};
     if (r[n.kind] && r[n.kind].stamp && n.stamp && r[n.kind].stamp > n.stamp) return true;      // an older copy arrived after a newer one
     data.at = at; data.stamp = typeof n.stamp === 'number' ? n.stamp : 0;
-    r[n.kind] = data;
+    if (n.kind === 'contact') {      // one address per device (a family's phone), or per address; sending again from that device replaces it
+      var low = data.email.toLowerCase();
+      r.contacts = (r.contacts || []).filter(function (c) { return !(data.dev && c.dev === data.dev) && c.email.toLowerCase() !== low; });
+      if (MAIL_OPTS.some(function (x) { return data.opts[x[0]]; })) r.contacts.push(data);
+      r.contacts = r.contacts.slice(-6);
+      r.contact = { at: at, stamp: data.stamp };
+    } else r[n.kind] = data;
     var sp = show.portal = show.portal || {}, g = sp.got = sp.got || {}; (g[n.actor] = g[n.actor] || {})[n.kind] = at || 'yes';
     return true;
   }
@@ -118,7 +132,7 @@
     var out = []; keys.forEach(function (k) { if (!m[k[0]]) return; if (k[0] === 'shoeWidth') { if (out.length && /^shoes /.test(out[out.length - 1])) out[out.length - 1] += ' ' + m.shoeWidth; return; } out.push(k[1] + ' ' + m[k[0]]); });
     return out.join(', ').slice(0, 160);
   }
-  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
+  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
     clean: clean, takeNote: takeNote, addSchool: addSchool, checkAgain: checkAgain, summary: summary };
   root.PortalCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
@@ -162,7 +176,8 @@
   var ITEMS = [['fit', '👕', 'Fitting permission', 'For the shopping trip: may a teacher help with trying on clothes?'],
     ['sizes', '📏', 'Clothing sizes', 'Detailed sizes, so costumes fit'], ['sensory', '🧸', 'Sensory and clothing needs', 'Fabrics, tags, makeup, hair, what helps'],
     ['commit', '📅', 'Show-week commitment', 'The dates we need everyone, checked and signed'],
-    ['video', '🎥', 'Rehearsal video permission', 'Filming dance rehearsals and scene runs, for learning']];
+    ['video', '🎥', 'Rehearsal video permission', 'Filming dance rehearsals and scene runs, for learning'],
+    ['contact', '📧', 'Email updates', 'News, changes for your Company member, copies of their emails']];
   /* the top of a family's home page: what needs their answer, and the newest news */
   T.portalHome = function () {
     var a = T.me && T.me.id, st = a ? status(a) : {}, news = SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
@@ -190,11 +205,12 @@
     if (k === 'sensory') return senseForm();
     if (k === 'commit') return commitForm();
     if (k === 'video') return videoForm();
+    if (k === 'contact') return contactForm();
     T.go('#/home');
   };
   function send(kind, data, okMsg) {
     var a = T.me.id, d = C.clean(kind, data);
-    if (!d) return Promise.reject(new Error(kind === 'commit' ? 'Please tick every box and type your name.' : kind === 'fit' || kind === 'video' ? 'Please choose an answer, and type your name to sign.' : 'Please fill in at least one box.'));
+    if (!d) return Promise.reject(new Error(kind === 'commit' ? 'Please tick every box and type your name.' : kind === 'contact' ? 'That email address doesn’t look right.' : kind === 'fit' || kind === 'video' ? 'Please choose an answer, and type your name to sign.' : 'Please fill in at least one box.'));
     var note = { type: 'portal', kind: kind, actor: a, data: d, stamp: Date.now(), sent: today() };
     if (JSON.stringify(note).length > C.NOTE_MAX) return Promise.reject(new Error('That is a little too long to send. Please shorten the longest answers.'));
     return Store.queueNote(T.key, note).catch(function () {}).then(function () {
@@ -204,7 +220,7 @@
   }
   function shell(title, intro, body) {
     T.setBar(title, '#/home');
-    var sentAt = status(T.me.id)[{ 'Fitting permission': 'fit', 'Clothing sizes': 'sizes', 'Sensory and clothing needs': 'sensory', 'Show-week commitment': 'commit', 'Rehearsal video permission': 'video' }[title]];
+    var sentAt = status(T.me.id)[{ 'Fitting permission': 'fit', 'Clothing sizes': 'sizes', 'Sensory and clothing needs': 'sensory', 'Show-week commitment': 'commit', 'Rehearsal video permission': 'video', 'Email updates': 'contact' }[title]];
     app.innerHTML = '<form class="card" id="pf" style="max-width:760px;margin:auto"><p class="muted small">For <b>' + esc(T.me.name) + '</b> · ' + sym('🔒') + 'only the teachers can read this.' +
       (sentAt ? ' <span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(sentAt) ? ' ' + esc(day(sentAt)) : '') + '</span> Sending again replaces it.' : '') + '</p>' + intro + body +
       '<p id="pe" class="err" role="alert"></p><div class="row end"><a class="btn" href="#/home">Cancel</a><button class="btn primary" type="submit">Send to the teachers</button></div>' +
@@ -244,6 +260,22 @@
       '<label class="f">Date<input id="vd" type="date" value="' + esc(d.date || today()) + '"></label>' +
       '<label class="f">Anything we should know? (optional)<input id="vn" maxlength="300" value="' + esc(d.note || '') + '" placeholder="e.g. OK to film, but please keep their face out of shared videos"></label>');
     f.onsubmit = function (e) { e.preventDefault(); send('video', { answer: (f.querySelector('input[name=va]:checked') || {}).value, signer: v('vs'), date: v('vd'), note: v('vn') }).catch(fail); };
+  }
+  function contactForm() {
+    var d = draft(T.me.id, 'contact') || { opts: { general: true, mine: true } }, dev = T.ls('portalDev');
+    if (!dev) { dev = 'd' + Math.random().toString(36).slice(2, 12); T.ls('portalDev', dev); }
+    var f = shell('Email updates', '<h2 style="margin-top:0">' + sym('📧') + 'Email updates</h2><p>Get an email when there is something new, with a link straight to it in the app. Each person who wants emails can sign up from their own phone. ' +
+      'To stop, untick every box and send, or use “Stop these emails” at the bottom of any email.</p>',
+      '<label class="f">Your name<input id="mn" maxlength="80" autocomplete="name" value="' + esc(d.name || '') + '"></label>' +
+      '<label class="f">Your email<input id="me" type="email" maxlength="120" autocomplete="email" value="' + esc(d.email || '') + '"></label>' +
+      '<fieldset style="border:0;padding:0;margin:14px 0"><legend><b>Email me about</b></legend>' + C.MAIL_OPTS.map(function (x) {
+        return '<label class="agree"><input type="checkbox" data-o="' + x[0] + '"' + (d.opts && d.opts[x[0]] ? ' checked' : '') + '><span>' + esc(x[1]) + '</span></label>';
+      }).join('') + '</fieldset>');
+    f.onsubmit = function (e) {
+      e.preventDefault(); var o = {}; f.querySelectorAll('[data-o]').forEach(function (c) { o[c.dataset.o] = c.checked; });
+      if (!/@/.test(v('me'))) { fail(new Error('Please type your email address.')); return; }
+      send('contact', { name: v('mn'), email: v('me').trim(), opts: o, dev: dev }, C.MAIL_OPTS.some(function (x) { return o[x[0]]; }) ? 'Thank you! Emails will come to ' + v('me').trim() + '.' : 'Sent: no more emails to that address.').catch(fail);
+    };
   }
   function sizesForm() {
     var d = draft(T.me.id, 'sizes') || {};
@@ -309,7 +341,7 @@
       var cnt = function (k) { return list.filter(function (a) { return P[a.id] && P[a.id][k]; }).length; };
       var need = list.filter(function (a) { return P[a.id] && P[a.id].fitNeed; });
       var fitOf = function (a) { var f = P[a.id] && P[a.id].fit; return f ? { yes: '✓ Yes', no: 'No: sizes', self: 'Not needed' }[f.answer] : ''; };
-      app.innerHTML = '<div class="card noprint"><h2 style="margin-top:0">' + sym('🏠') + 'What families see</h2><p class="muted small">Parent passwords open a portal: five forms for their Company member (fitting permission, clothing sizes, sensory and clothing needs, the show-week commitment, rehearsal video permission), your news, then the show pages. ' +
+      app.innerHTML = '<div class="card noprint"><h2 style="margin-top:0">' + sym('🏠') + 'What families see</h2><p class="muted small">Parent passwords open a portal: five forms for their Company member (fitting permission, clothing sizes, sensory and clothing needs, the show-week commitment, rehearsal video permission), a sign-up for email updates (see Emails), your news, then the show pages. ' +
         'Answers come here locked with the teacher password; nobody with the cast or a parent password can read them.</p></div>' +
         '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'News for families</h2><div class="noprint"><label class="f">Headline<input id="nt" maxlength="100" placeholder="e.g. Shopping trip on Wednesday!"></label>' +
         '<label class="f">Message<textarea id="nx" maxlength="1200" placeholder="What families need to know"></textarea></label><div class="row end"><button class="btn primary" id="np" data-save>Post</button></div></div>' +

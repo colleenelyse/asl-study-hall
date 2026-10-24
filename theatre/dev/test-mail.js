@@ -1,0 +1,67 @@
+/* node theatre/dev/test-mail.js — notification emails (js/mail.js): what is new since the last snapshot, who gets what, the email itself;
+   the parents' email sign-up (portal.js, kind contact); the unsubscribe code matches the school-account script's (mail-script/Code.gs) */
+const C = require('../js/mail.js'), Pc = require('../js/portal.js'), crypto = require('crypto'), fs = require('fs'), path = require('path');
+let bad = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) bad++; };
+const O = { songs: [{ id: 's1', title: 'Bop to the Top' }, { id: 's2', title: 'Auditions' }], characters: [{ id: 'troy', name: 'Troy Bolton', group: 'leads' }, { id: 'ens', name: 'Students', group: 'ensemble' }],
+  moments: [{ song: 's1', on: ['troy'] }, { song: 's2', on: ['ens'] }, { on: '*' }] };
+const h = { O, onStage: (m, chars) => m.on === '*' || chars.some(c => m.on.indexOf(c) >= 0), soloSongs: chars => chars.includes('troy') ? ['s1'] : [], dayName: d => d, time12: t => t };
+const show = { cast: [{ id: 'a1', name: 'Sam Lee', chars: [], company: 'artist' }, { id: 'a2', name: 'Ana Ruiz', chars: [], company: 'mentor' }, { id: 'g', name: 'Guest', guest: true, chars: [] }],
+  portal: { news: [] }, helpBoard: { posts: [] }, videos: [], production: { shown: [], performances: [] } };
+const seen = C.snapshot(show, h);
+ok(!seen.cast.g, 'guests are left out');
+ok(C.diff(seen, C.snapshot(show, h), show, h).length === 0, 'nothing new, no emails');
+show.portal.news.push({ id: 'n1', title: 'Shopping Wednesday', text: 'Bring water' });
+show.cast[0].chars = ['troy']; show.cast[1].chars = ['ens'];
+show.videos.push({ id: 'v1', song: 's1', ok: false });
+let ev = C.diff(seen, C.snapshot(show, h), show, h);
+ok(ev.some(e => e.kind === 'news' && e.title === 'Shopping Wednesday'), 'new news is found');
+ok(!ev.some(e => e.kind === 'video'), 'a video waiting for the OK is not news');
+const role = ev.find(e => e.kind === 'role');
+ok(role && role.actors[0] === 'a1' && /Sam has a role: Troy Bolton/.test(role.title) && /Bop to the Top/.test(role.text), 'a new role, with its songs');
+ok(!ev.some(e => e.kind === 'song' && e.actors[0] === 'a1') && !ev.some(e => e.kind === 'solo' && e.actors[0] === 'a1'), 'a new role does not also send its songs one by one');
+ok(ev.some(e => e.kind === 'role' && e.actors[0] === 'a2'), 'ensemble roles count too');
+const s2 = C.snapshot(show, h);
+show.videos[0].ok = true; show.production.shown.push('2027-09-13');
+O.moments[1].on = ['ens', 'troy'];      // Troy joins Auditions (Sam), and Ana gets a solo line
+h.soloSongs = chars => chars.includes('troy') ? ['s1'] : chars.includes('ens') ? ['s2'] : [];
+ev = C.diff(s2, C.snapshot(show, h), show, h);
+ok(ev.some(e => e.kind === 'video' && e.actors.join() === 'a1'), 'an OK’d dance video goes to the people in that song');
+ok(ev.some(e => e.kind === 'week'), 'a week shown on the calendar');
+ok(ev.some(e => e.kind === 'song' && e.actors[0] === 'a1' && /Auditions/.test(e.title) && !/chorus/.test(e.title)), 'added to a musical number');
+ok(ev.some(e => e.kind === 'solo' && e.actors[0] === 'a2' && /solo line in “Auditions”/.test(e.title)), 'a new solo line');
+show.cast[1].chars = []; ok(!C.diff(C.snapshot(show, h), C.snapshot(show, h), show, h).length, 'snapshots are steady');
+
+const P = { cast: show.cast, student: { a1: 'sam@school.org' },
+  contacts: { a1: [{ email: 'pat@home.com', name: 'Pat Lee', opts: { general: true, mine: false, copies: true } }, { email: 'kim@home.com', name: 'Kim', opts: { general: false, mine: true, copies: false } }],
+    a2: [{ email: 'Pat@Home.com', name: 'Pat Lee', opts: { general: true } }] } };
+const news = { id: 'news:n1', kind: 'news', title: 'Shopping', text: 'x', page: '#/home', actors: null };
+let r = C.plan([news], { 'news:n1': { a: false, m: false, p: true } }, P);
+ok(r.length === 1 && r[0].to === 'pat@home.com', 'news to parents who want news, once per address (two Company members, one email)');
+r = C.plan([news], { 'news:n1': { a: true, m: false, p: false } }, P);
+ok(r.map(x => x.to).sort().join() === 'pat@home.com,sam@school.org' && r.find(x => x.to === 'pat@home.com').items[0].copyOf === 'Sam', 'Artists get it; a parent who asked for copies gets a copy');
+const vid = { id: 'video:v1', kind: 'video', title: 'New dance video', text: '', page: '#/song/s1', actors: ['a1'] };
+r = C.plan([news, vid], { 'news:n1': { p: true }, 'video:v1': { a: true, p: true } }, P);
+const pat = r.find(x => x.to === 'pat@home.com'), kim = r.find(x => x.to === 'kim@home.com');
+ok(pat.items.length === 2 && kim.items.length === 1 && kim.items[0].e.kind === 'video', 'one email per person with everything new for them; "changes for my Company member" gets the video');
+ok(C.plan([news], { 'news:n1': { a: false, m: false, p: false } }, P).length === 0, 'nobody ticked, nobody emailed');
+ok(C.plan([vid], { 'video:v1': { m: true } }, P).length === 0, 'Mentors ticked: an Artist’s video goes to nobody');
+const mail = C.compose(pat, { title: 'High School Musical JR.', base: 'https://asl.cool/theatre/', sign: 'Ms. E', unsub: 'https://script.google.com/x?u=ab' });
+ok(mail.subject === 'High School Musical JR.: 2 updates' && /Hello Pat,/.test(mail.text) && /https:\/\/asl\.cool\/theatre\/#\/song\/s1/.test(mail.text) && /Stop these emails: https/.test(mail.text), 'the email: subject, hello, a link for each item, how to stop');
+ok(!/<script/i.test(C.compose({ to: 'a@b.co', name: '<script>', items: [{ e: { title: '<b>x', text: '', page: '#/' }, copyOf: '' }] }, { title: 'T', base: '/', unsub: 'u' }).html), 'the HTML email escapes what was typed');
+
+ok(Pc.clean('contact', { email: 'nope', opts: { general: true } }) === null, 'sign-up: a bad address is refused');
+const V = { extra: {} }, sh = {};
+Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email: 'pat@home.com', name: 'Pat', opts: { general: true }, dev: 'd1' }, stamp: 1 }, ['a1']);
+Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email: 'kim@home.com', name: 'Kim', opts: { mine: true }, dev: 'd2' }, stamp: 2 }, ['a1']);
+ok(V.extra.portal.a1.contacts.length === 2, 'two family members from two phones');
+Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email: 'pat.new@home.com', name: 'Pat', opts: { general: true, copies: true }, dev: 'd1' }, stamp: 3 }, ['a1']);
+ok(V.extra.portal.a1.contacts.map(c => c.email).sort().join() === 'kim@home.com,pat.new@home.com', 'the same phone changing its address replaces it');
+Pc.takeNote(V, sh, { type: 'portal', kind: 'contact', actor: 'a1', data: { email: 'kim@home.com', opts: {}, dev: 'd2' }, stamp: 4 }, ['a1']);
+ok(V.extra.portal.a1.contacts.length === 1 && sh.portal.got.a1.contact, 'no boxes ticked = no more emails to that address');
+ok(JSON.stringify(sh).indexOf('@') < 0, 'no addresses in the show');
+
+// the unsubscribe code: browser HMAC (hex) == the script's computeHmacSha256Signature turned to hex (signed bytes)
+const gs = fs.readFileSync(path.join(__dirname, '../mail-script/Code.gs'), 'utf8'), hex_ = eval('(' + gs.match(/function hex_\(bytes\) \{[\s\S]*?\n/)[0].replace(/^function hex_/, 'function') + ')');
+const signed = [...crypto.createHmac('sha256', 'k1').update('pat@home.com').digest()].map(b => b > 127 ? b - 256 : b);
+ok(hex_(signed) === crypto.createHmac('sha256', 'k1').update('pat@home.com').digest('hex'), 'the script’s unsubscribe code matches the app’s');
+process.exit(bad ? 1 : 0);

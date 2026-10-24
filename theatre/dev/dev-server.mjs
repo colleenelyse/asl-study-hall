@@ -2,7 +2,7 @@
    api.js is read again whenever it changes.
    node theatre/dev/dev-server.mjs <repo folder> 8830 <private folder>   then open http://localhost:8830/theatre/
    <private folder> is served at /__private/ for testing only (the licensed script PDF, test tracks). Keep it OUTSIDE the repo. */
-import http from 'node:http'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
+import http from 'node:http'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url'; import crypto from 'node:crypto';
 const ROOT = path.resolve(process.argv[2]), PORT = +process.argv[3] || 8787, PRIV = process.argv[4] ? path.resolve(process.argv[4]) : null;
 const API_FILE = path.join(ROOT, 'theatre/api.js');
 let theatreApi = null, apiAt = 0, apiN = 0;
@@ -25,6 +25,17 @@ http.createServer(async (req, res) => {
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
     const r = await (await api())(new Request(url, { method: req.method, headers: req.headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body }), { LOCKS, THEATRE_SETUP: process.env.THEATRE_SETUP || 'DEV' }, url, url.pathname);
     res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer())); return;
+  }
+  if (url.pathname === '/__mail') {      // a stand-in for theatre/mail-script (key "devkey"): records emails in <private>/dev-mail.json instead of sending
+    const file = PRIV ? path.join(PRIV, 'dev-mail.json') : null, box = file && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { sent: [], unsub: [] };
+    const sig = a => crypto.createHmac('sha256', 'devkey').update(String(a).trim().toLowerCase()).digest('hex'), save = () => file && fs.writeFileSync(file, JSON.stringify(box, null, 1));
+    if (req.method === 'GET') { const u = url.searchParams.get('u') || ''; if (/^[0-9a-f]{64}$/.test(u)) { box.unsub = box.unsub.filter(x => x !== u); if (url.searchParams.get('undo') !== '1') box.unsub.push(u); save(); } res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end('<p>Unsubscribed (dev)</p>'); return; }
+    const chunks = []; for await (const c of req) chunks.push(c); let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) {}
+    const out = o => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
+    if (body.key !== 'devkey') return out({ ok: false, error: 'The key is not right.' });
+    let sent = 0, skipped = 0;
+    for (const m of (body.messages || []).slice(0, 40)) { if (box.unsub.includes(sig(m.to))) { skipped++; continue; } box.sent.push({ at: new Date().toISOString(), name: body.name, to: m.to, subject: m.subject, text: m.text }); sent++; }
+    save(); return out({ ok: true, sent, skipped, quota: 1500 - box.sent.length });
   }
   let base = ROOT, p = url.pathname;
   if (PRIV && p.startsWith('/__private/')) { base = PRIV; p = p.slice('/__private'.length); }      // test-only files outside the repo (the licensed PDF)

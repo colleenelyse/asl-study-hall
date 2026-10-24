@@ -11,7 +11,7 @@
 
   function save(msg) {
     var btns = app.querySelectorAll('[data-save]'); btns.forEach(function (b) { b.disabled = true; });
-    return Store.save(T.key, T.show, T.saved, { proof: T.proof }).then(function (s) { T.saved = s; T.toast(msg || 'Saved for everyone'); })
+    return Store.save(T.key, T.show, T.saved, { proof: T.proof }).then(function (s) { T.saved = s; T.toast(msg || 'Saved for everyone'); if (T.mailAfterSave) T.mailAfterSave(); })      // mail.js: anything new to email about?
       .catch(function (e) { T.toast(e.message, 4000); throw e; })
       .finally(function () { btns.forEach(function (b) { b.disabled = false; }); });
   }
@@ -152,6 +152,7 @@
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +
       t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>') +
+      t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails') +
       t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough') +
       t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
