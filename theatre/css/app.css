@@ -327,3 +327,13 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 @media (max-width: 520px) { .song-dock .in { flex-wrap: wrap; } .song-dock #pos { flex: 1 1 100%; order: 5; } .song-dock-space { height: 150px; } }
 .lt-who { border: 0; background: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; font: 600 .8em var(--font-body); color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
 .lt-who:hover, .lt-who:focus-visible { color: var(--ink); background: var(--line); }
+
+/* Lyrics timing: every section on the music */
+.sec-box { position: absolute; border-radius: 5px; opacity: .5; mix-blend-mode: multiply; cursor: pointer; z-index: 2; }
+.sec-box.untimed { opacity: .25; outline: 2px dashed #555; }
+.sec-box.sel { opacity: .75; outline: 3px solid #1d1a2e; z-index: 3; }
+.sec-num { position: absolute; left: 0; top: 50%; transform: translate(-110%, -50%); font: 800 11px/1 var(--font-body); background: #fff; color: #1d1a2e; border-radius: 4px; padding: 2px 3px; mix-blend-mode: normal; box-shadow: 0 0 0 1px #1d1a2e; }
+.sec-words { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.sec-word { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 4px 7px; font: inherit; font-size: .95em; cursor: pointer; }
+.sec-word.first { cursor: default; font-weight: 700; }
+.sec-word:hover { border-color: var(--accent); }

@@ -488,7 +488,7 @@
     return pages;
   }
 
-  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, _toLines: toLines };
+  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
 })(typeof window !== 'undefined' ? window : this);

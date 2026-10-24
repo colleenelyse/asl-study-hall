@@ -364,3 +364,8 @@ Oh), and at 18 to 24 syllables. A line can run onto the next staff: `lyric.boxes
 `T.Pages.lyricBoxes(l)` everywhere (lit-up lines, print, script view, song pages), and the piano reads each part under its own staff.
 HSM JR: 635 lines. The light goes off when a line's last word is done (last syllable + 1.6 s, or its end) and comes back LEAD before the
 next line (Colleen: off during music between lines).
+**Sections on the music** (Colleen: after Save, show all the sections at once to edit names, colors, starts and stops): the Lyrics timing page
+has two tabs; Save switches to "Sections on the music": the song's pages with every section lit in its singer's colors and numbered
+(`drawSections`, `overlay`). Tap one: the bottom bar edits who sings it (color follows), its start (− + Test, Fix), and its words (tap a
+syllable to start a new section there, `splitSec`; join with the one before or after, `joinSec`), keeping the times in step. A song edited
+this way is marked in `T.show.lyricKeep` and kept as it is when the script is imported again.
