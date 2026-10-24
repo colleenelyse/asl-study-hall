@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.175';
+var VERSION = '4.176';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1547,7 +1547,7 @@ function doGet() {
   try { name = CacheService.getScriptCache().get('appName') || PropertiesService.getScriptProperties().getProperty('appName') || name; } catch (e) {}
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(name)
-    .setFaviconUrl('https:' + '/' + '/colleenelyse.github.io/asl-study-hall/ily-o.png')      // 3.83: the ILY hand as the tab icon (Colleen)
+    .setFaviconUrl('https:' + '/' + '/colleenelyse.github.io/asl-study-hall/img/logo-64.png')      // 4.176: the colorful ILY hand (the asl.cool logo) as the tab icon (Colleen)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 
