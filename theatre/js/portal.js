@@ -181,7 +181,7 @@
   /* the top of a family's home page: what needs their answer, and the newest news */
   /* a parent signed in with Google: that email becomes the family's contact for this Company member, once (news and changes; they can change it) */
   function autoContact(a) {
-    var g = T.googleContact && T.googleContact(); if (!a || !g || !g.email) return;
+    var g = T.googleContact && T.googleContact(); if (!a || !g || !g.email || (T.pass && T.pass.preview)) return;      // not while the teacher previews (viewas.js)
     var d = draft(a, 'contact'); if (d && d.email === g.email) return;
     var dev = T.ls('portalDev'); if (!dev) { dev = 'd' + Math.random().toString(36).slice(2, 12); T.ls('portalDev', dev); }
     var data = { name: g.name || '', email: g.email, opts: { general: true, mine: true, copies: false }, dev: dev, google: true }, c = C.clean('contact', data); if (!c) return;

@@ -17,7 +17,7 @@ ok(C.clean('commit', { items, agree: items.map(() => true), signer: 'Pat Lee', s
 const cc = C.clean('commit', { items, agree: items.map(() => true), signer: 'Pat Lee' });
 ok(C.clean('commit', cc) && C.clean('commit', cc).signer === 'Pat Lee', 'a cleaned commitment is still accepted when the teacher takes it in');
 ok(C.takeNote({ extra: {} }, {}, { type: 'portal', kind: 'commit', actor: 'a1', data: cc, _at: '2027-09-01' }, ids), 'a commitment note from a family is taken');
-for (const k of C.KINDS) { const d = { fit: { answer: 'yes', signer: 'P' }, sizes: { shirt: 'M' }, sensory: { tags: 'x' }, commit: cc, video: { answer: 'yes', signer: 'P' } }[k]; ok(C.clean(k, C.clean(k, d)) !== null, k + ': cleaning twice still passes (the family cleans, then the teacher)'); }
+for (const k of C.KINDS) { const d = { fit: { answer: 'yes', signer: 'P' }, sizes: { shirt: 'M' }, sensory: { tags: 'x' }, commit: cc, video: { answer: 'yes', signer: 'P' }, contact: { email: 'p@x.org', opts: { general: true } } }[k]; ok(C.clean(k, C.clean(k, d)) !== null, k + ': cleaning twice still passes (the family cleans, then the teacher)'); }
 ok(C.clean('video', { answer: 'class', signer: 'Pat Lee' }).answer === 'class' && C.clean('video', { answer: 'no' }) === null, 'video permission: signed answers only');
 
 const V = { extra: {} }, show = {};
