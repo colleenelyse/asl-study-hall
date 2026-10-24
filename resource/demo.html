@@ -115,6 +115,13 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .stile.open { border: 2px solid var(--brand); }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
+.calc { max-width: 430px !important; }
+#calcIn { font-size: 22px; padding: 10px 12px; margin-top: 10px; font-family: var(--font); }
+.calcout { min-height: 26px; text-align: right; font-size: 18px; margin: 6px 2px 8px; }
+.calcgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.ck { font: inherit; font-size: 16px; font-weight: 600; padding: 12px 0; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); cursor: pointer; }
+.ck.num { background: var(--card); font-size: 18px; } .ck.fn2 { color: var(--brand); } .ck.eq { background: var(--brand); color: var(--onbrand, #fff); border-color: var(--brand); font-size: 20px; }
+.ck:active { transform: scale(.96); } .calch { display: block; text-align: left; padding: 2px 0; }
 .pqrow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--line); } .pqrow.off { opacity: .5; }
 .pollnames { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-top: 12px; }
 .pollcard { border: 2px solid var(--brand); text-align: center; padding: 26px 20px; }
@@ -419,7 +426,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.88';
+var VERSION = '1.90';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -563,6 +570,7 @@ var DEFAULTS = [
   ['Students: what I need help with', 'Yes', 'Students tell the resource teacher what they need help with.'],
   ['Students: paste schedule from Infinite Campus', 'Yes', 'Students can fill in their schedule by pasting the Infinite Campus Schedule page.'],
   ['Students: can change their schedule', 'Yes', 'The My schedule page. No: after their first visit, only the teacher changes schedules (the January check still happens).'],
+  ['Students: calculator', 'Yes', 'A 🧮 Calculator in the students’ menu (parentheses, exponents, square roots, sin/cos/tan, log, π and more). It opens over any page.'],
   ['Students: tests and reminders page', 'Yes', 'Students list upcoming tests and projects (and see their retakes).'],
   ['Students: their own email reminders', 'Yes', 'Students can set email reminders for themselves.'],
   ['Students: my progress page', 'Yes', 'Charts of each class grade over time.']
@@ -583,7 +591,7 @@ var SETTING_UI = {
   'Students: tips to spot patterns': ['Each week, students…', 'yesno'], 'Common accommodations': ['Goals and daily checklist', 'text'], 'Students: see My goal': ['Goals and daily checklist', 'yesno'], 'IEP benchmarks': ['Goals and daily checklist', 'yesno'], 'Case managers: see their students': ['Class setup', 'yesno'], 'Weekly summary email (Fridays)': ['Class setup', 'yesno'], 'Weekly summary goes to': ['Class setup', 'list'], 'Students: daily plan for class time': ['Goals and daily checklist', 'yesno'], 'What students call this class': ['Goals and daily checklist', 'text'], 'Nothing-to-do checklist': ['Goals and daily checklist', 'text'], 'Grade check day': ['Each week, students…', 'choice', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'None']], 'Students: semester grade goals': ['Each week, students…', 'yesno'], 'Students: my support team': ['Each week, students…', 'yesno'], 'Assistant principals': ['Class setup', 'text'], 'Students: My week page': ['Each week, students…', 'yesno'], 'Students: wins': ['Each week, students…', 'yesno'], 'Students: see their IEP meeting': ['Goals and daily checklist', 'yesno'], 'IEP date reminders (days before)': ['Goals and daily checklist', 'text'], 'Progress report dates': ['Class setup', 'dates'], 'Students: project planner': ['Each week, students…', 'yesno'], 'Students: final exam notes': ['Each week, students…', 'yesno'], 'Students: see their benchmarks': ['Goals and daily checklist', 'yesno'], 'Test may be coming after (school days)': ['Each week, students…', 'number'], 'Students: what I need help with': ['Each week, students…', 'yesno'],
   'Paste grades from Infinite Campus': ['Infinite Campus', 'yesno'], 'Students: paste schedule from Infinite Campus': ['Infinite Campus', 'yesno'],
   'Class grade analysis': ['Infinite Campus', 'yesno'], 'Students: detailed grades every week': ['Infinite Campus', 'yesno'], 'Retake: coursework turned in on time': ['Infinite Campus', 'number'], 'Suggest retakes for tests under': ['Infinite Campus', 'number'],
-  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
+  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: calculator': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
   'Test reminder emails': ['Pages and tools', 'text'], 'Students: my progress page': ['Pages and tools', 'yesno'], 'Students: can change their schedule': ['Pages and tools', 'yesno'],
   'Students: choose fonts and colors': ['Look', 'yesno'],
   'Default colors': ['Look', 'choice', ['auto', 'classic', 'calm', 'night', 'contrast', 'neon', 'pastelnight', 'ocean', 'sunset', 'candy']],
@@ -818,6 +826,7 @@ var NEW_YEAR_STEPS = ['Counselors tab: the counselors who had the seniors now ha
   'Final exam schedule tab: the new semester’s exam days and times.',
   'School calendar tab: the new year’s no-school days, finals days, and first and last day (the grade check day moves around them).',
   'Settings rows Schedule check dates and Progress report dates: this year’s dates.',
+  'Daily questions tab: every question is unused again (done for you). Untick or add questions for the new year.',
   'Students tab: paste your new class list, then Resource Check-In > Set up or repair this sheet.'];
 // Counselors and assistant principals follow their class for four years; whoever had the seniors who just graduated loops back to
 // the new freshman class (Class of graduated + 4). Case managers start over (they're on the Students tab, which is cleared).
@@ -834,6 +843,10 @@ function rollYear_(gradYear) {
     if (new RegExp('(^|;)\\s*' + n + '\\s*=').test(t)) return;
     st.getRange(i + 2, 2).setValue(t.replace(new RegExp('(^|;)(\\s*)' + g + '(\\s*=)'), '$1$2' + n + '$3'));
   });
+  // 1.89: every question of the day is unused again (the Date asked column is emptied); the list itself is kept
+  var dq = ss_().getSheetByName('Daily questions');
+  if (dq && dq.getLastRow() > 1 && /^use$/i.test(String(dq.getRange(1, 1).getValue()))) dq.getRange(2, 9, dq.getLastRow() - 1, 1).clearContent();
+  PropertiesService.getDocumentProperties().deleteProperty('checkOverride');
   if (ROWS_MEMO) ROWS_MEMO = {};
 }
 function endOfYear() {
@@ -3622,7 +3635,7 @@ function settings_() {
     f: { missing: on('Students: missing assignments'), lowWhy: on('Students: explain low grades'), focus: on('Students: what to focus on'),
       lookBack: on('Students: look back at last week'), plan: on('Students: plan for resource time'), help: on('Students: what I need help with'),
       schedPaste: on('Students: paste schedule from Infinite Campus'), editSchedule: on('Students: can change their schedule'),
-      tests: on('Students: tests and reminders page'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
+      tests: on('Students: tests and reminders page'), calc: on('Students: calculator'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
       missList: on('Students: missing assignments list'), talk: on('Students: talking with teachers question'), grad: on('Students: graduation warnings'),
       coteach: on('Students: co-teacher reminder'), tips: on('Students: tips to spot patterns'),
       freeTime: on('Students: free time page'), projects: on('Students: break up projects'), exit: on('Students: exit ticket'), reminders: on('Students: their own email reminders'), progress: on('Students: my progress page') }
@@ -4077,7 +4090,7 @@ function go(v) {
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
     ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
-    : (gate() ? [] : [['checkin', 'Today'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+    : (gate() ? [] : [['checkin', 'Today'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
   pb.hidden = !PREV;
@@ -4089,6 +4102,7 @@ function drawNav() {
   $('who').innerHTML = MODE === 'teacher' ? 'Teacher' : esc(D.profile.name || B.email) + (B.teacher ? ' · <a href="#" onclick="startOver();return false" style="color:var(--down)">Start over</a>' : '');
 }
 function navTo(v) {
+  if (v === 'calc') return calcOpen();          // opens over the page
   if (v === 'seating') { if (B.url) window.open(B.url + '?view=seating', '_top'); else toast('Publish the app first (Deploy) to use seating charts.'); return; }
   if (v === 'me') {
     if (DIRTY && !confirm('Leave without saving?')) return; setDirty(false);
@@ -6865,6 +6879,103 @@ function ovSet(on, cancelNext) {
     draw();
   }).catch(oops);
 }
+/* ---------- 🧮 calculator (1.90): a students' scientific calculator that opens over any page ---------- */
+// CALC-START (the math: read the expression ourselves, never run it as code; dev/test.js checks it)
+var CALC_FN = { sin: 1, cos: 1, tan: 1, asin: 1, acos: 1, atan: 1, sqrt: 1, cbrt: 1, log: 1, ln: 1, abs: 1 };
+function calcEval(src, deg, ans) {
+  var s = String(src).replace(/×/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/π/g, ' pi ').replace(/√/g, ' sqrt ').replace(/\s+/g, ' ').trim().toLowerCase();
+  var t = [], i = 0, m;
+  while (i < s.length) {
+    var c = s.charAt(i);
+    if (c === ' ') { i++; continue; }
+    if ((m = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/.exec(s.slice(i)))) { t.push({ k: 'n', v: parseFloat(m[0]) }); i += m[0].length; continue; }
+    if ((m = /^[a-z]+/.exec(s.slice(i)))) { t.push({ k: 'w', v: m[0] }); i += m[0].length; continue; }
+    if ('+-*/^()!%,'.indexOf(c) >= 0) { t.push({ k: c }); i++; continue; }
+    throw new Error('I don’t know “' + c + '”.');
+  }
+  var p = 0, peek = function () { return t[p] || { k: '' }; }, eat = function (k) { if (peek().k !== k) throw new Error(k === ')' ? 'Check your parentheses.' : 'Something is missing.'); p++; };
+  var toRad = function (x) { return deg ? x * Math.PI / 180 : x; }, fromRad = function (x) { return deg ? x * 180 / Math.PI : x; };
+  var fact = function (n) { if (n < 0 || Math.round(n) !== n || n > 170) throw new Error('Factorial needs a whole number from 0 to 170.'); var r = 1; for (var k = 2; k <= n; k++) r *= k; return r; };
+  var trig = function (x) { var r = Math.round(x * 1e12) / 1e12; return r; };
+  var call = function (f, x) {
+    if (f === 'sin') return trig(Math.sin(toRad(x))); if (f === 'cos') return trig(Math.cos(toRad(x)));
+    if (f === 'tan') { if (deg && Math.abs(((x % 180) + 180) % 180 - 90) < 1e-12) throw new Error('tan is undefined there.'); return trig(Math.tan(toRad(x))); }
+    if (f === 'asin' || f === 'acos') { if (x < -1 || x > 1) throw new Error(f + ' needs a number from -1 to 1.'); return fromRad(f === 'asin' ? Math.asin(x) : Math.acos(x)); }
+    if (f === 'atan') return fromRad(Math.atan(x));
+    if (f === 'sqrt') { if (x < 0) throw new Error('No square root of a negative number (in real numbers).'); return Math.sqrt(x); }
+    if (f === 'cbrt') return Math.cbrt ? Math.cbrt(x) : (x < 0 ? -Math.pow(-x, 1 / 3) : Math.pow(x, 1 / 3));
+    if (f === 'log' || f === 'ln') { if (x <= 0) throw new Error(f + ' needs a number above 0.'); return f === 'ln' ? Math.log(x) : Math.log(x) / Math.LN10; }
+    return Math.abs(x);
+  };
+  var starts = function () { var k = peek().k; return k === 'n' || k === 'w' || k === '('; };          // the next token begins a value (for 2π, 3(4), 2sqrt9)
+  function expr() { var v = term(); while (peek().k === '+' || peek().k === '-') { var o = t[p++].k, r = term(); v = o === '+' ? v + r : v - r; } return v; }
+  function term() {
+    var v = unary();
+    for (;;) {
+      var k = peek().k;
+      if (k === '*') { p++; v *= unary(); } else if (k === '/') { p++; var d = unary(); if (d === 0) throw new Error('You can’t divide by 0.'); v /= d; }
+      else if (starts()) v *= power(); else return v;
+    }
+  }
+  function unary() { if (peek().k === '-') { p++; return -unary(); } if (peek().k === '+') { p++; return unary(); } return power(); }
+  function power() { var b = post(); if (peek().k === '^') { p++; var e = unary(), r = Math.pow(b, e); if (isNaN(r)) throw new Error('That power has no real answer.'); return r; } return b; }
+  function post() { var v = prim(); for (;;) { if (peek().k === '!') { p++; v = fact(v); } else if (peek().k === '%') { p++; v = v / 100; } else return v; } }
+  function prim() {
+    var x = t[p++] || { k: '' };
+    if (x.k === 'n') return x.v;
+    if (x.k === '(') { var v = expr(); eat(')'); return v; }
+    if (x.k === 'w') {
+      if (x.v === 'pi') return Math.PI; if (x.v === 'e') return Math.E;
+      if (x.v === 'ans') { if (ans === null || ans === undefined) throw new Error('No answer yet.'); return ans; }
+      if (CALC_FN[x.v]) { if (peek().k === '(') { p++; var a = expr(); eat(')'); return call(x.v, a); } return call(x.v, power()); }
+      throw new Error('I don’t know “' + x.v + '”.');
+    }
+    throw new Error(x.k === ')' ? 'Check your parentheses.' : 'Something is missing.');
+  }
+  if (!t.length) throw new Error('Type a problem first.');
+  var out = expr(); if (p < t.length) throw new Error(peek().k === ')' ? 'Check your parentheses.' : 'Something is missing.');
+  if (!isFinite(out)) throw new Error('That number is too big.');
+  return parseFloat(out.toPrecision(12));
+}
+// CALC-END
+var CALC = { deg: true, ans: null, hist: [] };
+try { var cs = JSON.parse(localStorage.getItem('rci-calc') || 'null'); if (cs) { CALC.deg = cs.deg !== false; CALC.hist = cs.hist || []; CALC.ans = cs.ans === undefined ? null : cs.ans; } } catch (e) {}
+function calcKeep() { try { localStorage.setItem('rci-calc', JSON.stringify({ deg: CALC.deg, hist: CALC.hist.slice(0, 8), ans: CALC.ans })); } catch (e) {} }
+var CALC_KEYS = [['sin', 'sin('], ['cos', 'cos('], ['tan', 'tan('], ['log', 'log('], ['ln', 'ln('], ['AC', '#clear'],
+  ['x²', '^2'], ['xʸ', '^'], ['√', '√('], ['(', '('], [')', ')'], ['⌫', '#back'],
+  ['π', 'π'], ['e', 'e'], ['7', '7'], ['8', '8'], ['9', '9'], ['÷', '÷'],
+  ['|x|', 'abs('], ['n!', '!'], ['4', '4'], ['5', '5'], ['6', '6'], ['×', '×'],
+  ['1/x', '#inv'], ['%', '%'], ['1', '1'], ['2', '2'], ['3', '3'], ['−', '−'],
+  ['±', '#neg'], ['Ans', 'Ans'], ['0', '0'], ['.', '.'], ['=', '#eq'], ['+', '+']];
+function calcOpen() {
+  if ($('calcModal')) { $('calcIn').focus(); return; }
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'calcModal';
+  el.onclick = function (e) { if (e.target === el) el.remove(); };
+  el.innerHTML = '<div class="card calc"><div class="row"><h2 class="grow">🧮 Calculator</h2><div class="seg" id="calcAng">' + ['Deg', 'Rad'].map(function (x, k) { return '<button class="' + ((k === 0) === CALC.deg ? 'on' : '') + '" onclick="calcAngle(' + (k === 0) + ')">' + x + '</button>'; }).join('') + '</div><button class="btn link" onclick="$(\'calcModal\').remove()">✕</button></div>' +
+    '<input type="text" id="calcIn" autocomplete="off" spellcheck="false" placeholder="Type or tap: 2(3+4)^2" onkeydown="if(event.key===\'Enter\'){event.preventDefault();calcKey(\'#eq\');}" oninput="calcLive()">' +
+    '<div id="calcOut" class="calcout">&nbsp;</div>' +
+    '<div class="calcgrid">' + CALC_KEYS.map(function (k, i) { return '<button class="ck' + (/^[0-9.]$/.test(k[0]) ? ' num' : k[1] === '#eq' ? ' eq' : k[1].charAt(0) === '#' ? ' fn2' : '') + '" onclick="calcKey(' + i + ')">' + k[0] + '</button>'; }).join('') + '</div>' +
+    '<div id="calcHist"></div><p class="small" style="margin:8px 0 0">Tip: parentheses first. −2² is −4, and (−2)² is 4. Deg/Rad changes sin, cos and tan.</p></div>';
+  document.body.appendChild(el); calcHist(); $('calcIn').focus();
+}
+function calcAngle(d) { CALC.deg = d; calcKeep(); var b = $('calcAng').children; b[0].className = d ? 'on' : ''; b[1].className = d ? '' : 'on'; calcLive(); }
+function calcIns(txt) { var f = $('calcIn'), a = f.selectionStart == null ? f.value.length : f.selectionStart, z = f.selectionEnd == null ? a : f.selectionEnd; f.value = f.value.slice(0, a) + txt + f.value.slice(z); f.focus(); f.setSelectionRange(a + txt.length, a + txt.length); calcLive(); }
+function calcKey(i) {
+  var f = $('calcIn'), k = typeof i === 'number' ? CALC_KEYS[i][1] : i, v = f.value.trim();
+  if (k === '#clear') { f.value = ''; $('calcOut').innerHTML = '&nbsp;'; f.focus(); return; }
+  if (k === '#back') { var a = f.selectionStart || f.value.length; if (a) { f.value = f.value.slice(0, a - 1) + f.value.slice(a); f.setSelectionRange(a - 1, a - 1); } f.focus(); calcLive(); return; }
+  if (k === '#neg') { f.value = v ? '−(' + v + ')' : '−'; f.focus(); calcLive(); return; }
+  if (k === '#inv') { f.value = v ? '1/(' + v + ')' : '1/'; f.focus(); calcLive(); return; }
+  if (k === '#eq') {
+    if (!v) return;
+    try { var r = calcEval(v, CALC.deg, CALC.ans); CALC.ans = r; CALC.hist.unshift([v, r]); CALC.hist = CALC.hist.slice(0, 8); calcKeep(); f.value = String(r); $('calcOut').innerHTML = '<span class="small">' + esc(v) + ' =</span> <b>' + esc(String(r)) + '</b>'; calcHist(); }
+    catch (e) { $('calcOut').innerHTML = '<span style="color:var(--down)">' + esc(e.message) + '</span>'; }
+    f.focus(); return;
+  }
+  calcIns(k);
+}
+function calcLive() { var v = $('calcIn').value.trim(), o = $('calcOut'); if (!v) { o.innerHTML = '&nbsp;'; return; } try { o.innerHTML = '<span class="small">= ' + esc(String(calcEval(v, CALC.deg, CALC.ans))) + '</span>'; } catch (e) { o.innerHTML = '&nbsp;'; } }
+function calcHist() { var h = $('calcHist'); if (!h) return; h.innerHTML = CALC.hist.length ? '<div class="small" style="margin-top:10px"><b>Recent</b> (tap to use again)</div>' + CALC.hist.map(function (x, k) { return '<button class="btn link small calch" onclick="$(\'calcIn\').value=CALC.hist[' + k + '][0];calcLive()">' + esc(x[0]) + ' = <b>' + esc(String(x[1])) + '</b></button>'; }).join('') : ''; }
 /* ---------- case managers: their students, then each one's full progress report ---------- */
 var CM_SEL = null, CM_HTML = '';
 function drawCm() {
