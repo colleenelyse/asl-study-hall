@@ -883,7 +883,7 @@
     /* sections that start together (a bracket: "Woh!" and "Get-" on one beat): a paired section (lyric.sync = how many sections back its
        partner is) always takes its partner's start; Now skips it */
     /* timing the sung lines and the spoken lines in separate passes (Colleen: "i can't program timing for both at the same time") */
-    var timeKind = T.ls('timeKind') || 'all';
+    var timeKind = T.ls('timeKind') || 'all';      // part0 top, part1 middle (three staves only), part2 bottom (Colleen: two staves are top and bottom)
     /* one part at a time (Colleen 2026-10-24: "a whole vertical line of joined brackets… simultaneous but different singing… focus on one at a
        time and then reference those times for other syllables on the same note"): which staff of a bracketed system each line is sung on, read
        from the PDF's drawing (works for edited songs too). part 0 = the top staff; lines on a staff of their own count as part 0. */
@@ -900,7 +900,7 @@
     }
     function sysAt(n, y) {      // the system and staff a lyric at (page n, y = top of its words) is sung on
       var best = null;
-      (geo[n] || []).forEach(function (sy) { sy.staves.forEach(function (st, k) { var d = y - st.bottom; if (d > -4 && d < 75 && (!best || d < best.d)) best = { d: d, key: n + ':' + sy.top.toFixed(1), part: k, many: sy.staves.length > 1 }; }); });
+      (geo[n] || []).forEach(function (sy) { sy.staves.forEach(function (st, k) { var d = y - st.bottom; if (d > -4 && d < 75 && (!best || d < best.d)) best = { d: d, key: n + ':' + sy.top.toFixed(1), part: k === 0 ? 0 : k === sy.staves.length - 1 ? 2 : 1, many: sy.staves.length > 1 }; }); });
       return best;
     }
     function partOf(l) { var b = T.Pages.rawBoxes(l)[0]; return b ? sysAt(b.n, b.y) : null; }
@@ -909,7 +909,7 @@
       if (timeKind === 'sung' || timeKind === 'spoken') return (timeKind === 'spoken') === !!l.spoken;
       if (l.spoken) return false;
       var want = +timeKind.slice(4), p = partOf(l);
-      return p ? (p.many ? p.part === want : want === 0) : want === 0;
+      return p ? (p.many ? p.part === want : want === 0) : want === 0;      // a staff of its own counts as the top
     };
     var nextOpen = function () { return times.findIndex(function (x, i) { return !x && !(lines[i] && lines[i].sync) && kindOk(i); }); };
     var applySync = function () {
@@ -962,7 +962,7 @@
       var H = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
-        '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part'], ['part2', 'Bottom part']] : [['part1', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
+        '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part']] : []).concat([['part2', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
@@ -1014,7 +1014,7 @@
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
       if ($('fillparts')) $('fillparts').onclick = fillParts;
       if ($('partwho')) $('partwho').onclick = partSinger;
-      if (!geoP) loadGeo().then(function () { if (maxParts > 1 && location.hash.indexOf('/lyrics/' + songId) > 0) draw(); });
+      if (!geoP) loadGeo().then(function () { if (timeKind === 'part1' && maxParts < 3) timeKind = 'part2'; if (maxParts > 1 && location.hash.indexOf('/lyrics/' + songId) > 0) draw(); });
       app.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { timeKind = b.dataset.tk; T.ls('timeKind', timeKind); fixAt = null; draw(); }; });
       app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.del; delSec(i); if (selSec != null && selSec >= lines.length) selSec = null; draw(); T.toast('Line ' + (i + 1) + ' deleted. ↶ Undo brings it back; Save keeps it.', 4000); }; });
       app.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { selSec = +b.dataset.show; if (isSplit()) { overlay(); secBar(); pickRow(); showSec(selSec, true); return; } audio.pause(); view = 'sections'; draw(); }; });
