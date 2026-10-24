@@ -115,6 +115,8 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .stile.open { border: 2px solid var(--brand); }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
+.pqrow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--line); } .pqrow.off { opacity: .5; }
+.pollnames { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-top: 12px; }
 .pollcard { border: 2px solid var(--brand); text-align: center; padding: 26px 20px; }
 .pollq { font-size: 26px; font-weight: 700; margin: 10px 0 18px; line-height: 1.25; }
 .pollch { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
@@ -417,7 +419,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.87';
+var VERSION = '1.88';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -456,7 +458,7 @@ var TABS = {
   // a student's typed missing count, checked against the detailed page they pasted that week (filled in by the app)
   // missing work a student says can't be turned in any more (it leaves their missing list; the teacher sees it with the reason)
   // the question of the day (just for fun): the next undated question is used on each school day, and gets that day's date
-  'Daily questions': ['Date (filled in when it is asked)', 'Question', 'Answer choices (separated with semicolons; blank = students type an answer)'],
+  'Daily questions': ['Use', 'Question', 'Answer 1', 'Answer 2', 'Answer 3', 'Answer 4', 'Time of year (blank = any time)', 'Category', 'Date asked'],
   'Question answers': ['Date', 'Email', 'Question', 'Answer'],
   'Missing explained': ['Date', 'Email', 'Class', 'Assignment', 'Why it won’t be turned in'],
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
@@ -482,7 +484,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25 };   // Students columns
-var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Missing explained': [1], 'Daily questions': [1], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -550,7 +552,7 @@ var DEFAULTS = [
   ['Students: test may be coming', 'Yes', 'When a class has had no test for a while (see the next row), students are nudged to find out when the next one is and add it to their list.'],
   ['Test may be coming after (school days)', 10, 'How many school days (Monday to Friday) without a test before the nudge starts.'],
   ['Students: missing assignments', 'Yes', 'Students enter how many assignments are missing in each class (and which ones).'],
-  ['Students: question of the day', 'Yes', 'A just-for-fun question students see first each school day (before the grade check or their plan), from the Daily questions tab. They can skip it. You see everyone’s answers on the Overview.'],
+  ['Students: question of the day', 'Yes', 'A just-for-fun question students see first each school day (before the grade check or their plan), from the Daily questions tab (Use = No: never asked; Time of year: asked in that season first). They can skip it. You see the answers on the Overview, and 📚 Browse questions there to turn questions on or off or ask one today.'],
   ['Testing Center appointment link', 'https:' + '/' + '/lths.net/testingcenter', 'The web address where students make a Testing Center appointment. It shows as a link under a low grade’s plan choices. Empty: the LTHS Testing Center page; None: no link.'],
   ['Drop-In Center locations', '', 'Where the Drop-In Center is at each campus: Campus = place, separated with semicolons (North Campus = Room 140; South Campus = Library). Students see their own campus (from their assistant principal’s campus). Empty: nothing shown.'],
   ['Students: explain low grades', 'Yes', 'A grade under the Low grade line needs a short reason and a plan before the check-in saves.'],
@@ -651,6 +653,7 @@ function setup_() {
     var sh = ss.getSheetByName(name), head = TABS[name];
     if (!sh) sh = ss.insertSheet(name);
     else if (name === 'Students') migrateStudents_(sh);
+    else if (name === 'Daily questions') migratePolls_(sh);
     if (sh.getMaxColumns() < head.length) sh.insertColumnsAfter(sh.getMaxColumns(), head.length - sh.getMaxColumns());
     sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
     sh.setFrozenRows(1);
@@ -663,7 +666,7 @@ function setup_() {
   var fe = ss.getSheetByName('Final exam schedule');
   if (fe && fe.getLastRow() < 2) fe.getRange(2, 1, FINAL_DEFAULT.length, 4).setValues(FINAL_DEFAULT);
   var dq = ss.getSheetByName('Daily questions');
-  if (dq && dq.getLastRow() < 2) dq.getRange(2, 1, POLL_DEFAULT.length, 3).setValues(POLL_DEFAULT);
+  if (dq && dq.getLastRow() < 2) dq.getRange(2, 1, POLL_DEFAULT.length, 9).setValues(POLL_DEFAULT);
   var sc = ss.getSheetByName('School calendar');
   if (sc && sc.getLastRow() < 2) sc.getRange(2, 1, CAL_DEFAULT.length, 3).setValues(CAL_DEFAULT);
   var cmT = ss.getSheetByName('Case managers');
@@ -1472,33 +1475,232 @@ function fullHtml_(f, td) {
 function api_reportHtmlRead_(email) { teacherOnly_(); return reportHtml_(reportData_(low_(email), true), { full: true }); }
 // 1.87: the question of the day. Colleen: "just for fun and to build relationships". The Daily questions tab holds the list; on
 // a school day the question dated today is used, or else the first undated one gets today's date (so each is asked once, in order).
-var POLL_DEFAULT = [
-  ['', 'Pizza or tacos?', 'Pizza; Tacos'], ['', 'Would you rather be able to fly or be invisible?', 'Fly; Be invisible'],
-  ['', 'Morning person or night owl?', 'Morning person; Night owl'], ['', 'What’s the best snack?', ''],
-  ['', 'Would you rather live at the beach or in the mountains?', 'Beach; Mountains'], ['', 'Cats or dogs?', 'Cats; Dogs; Both; Neither'],
-  ['', 'What song have you had stuck in your head lately?', ''], ['', 'Summer or winter?', 'Summer; Winter'],
-  ['', 'If you could have any superpower, what would it be?', ''], ['', 'Would you rather read the book or watch the movie?', 'Read the book; Watch the movie'],
-  ['', 'What’s something that made you smile this week?', ''], ['', 'Sweet or salty?', 'Sweet; Salty']];
+var POLL_DEFAULT = [          // Colleen's 150 questions (dev/questions.txt): Use, Question, Answer 1-4, Time of year, Category, Date asked
+  ['Yes', 'Who would be the funniest substitute teacher?', '🧌 Shrek', '👽 Stitch', '🤖 Baymax', '🕷️ Spider-Man', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Who should announce the morning news?', '🦇 Batman', '👠 Barbie', '🧙 Gandalf', '🐸 Kermit', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Who should run the school library?', '🧙 Hermione', '🦉 Duolingo owl', '🧸 Paddington', '🦇 Wednesday', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Pick a sidekick for a field trip.', '🤖 R2-D2', '🦎 Pascal', '🐉 Toothless', '🐿️ Scrat', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Who would win a staring contest?', '🗿 The Rock', '👀 Wednesday', '🐈 Puss in Boots', '🤖 WALL-E', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Who should lead a school pep rally?', '🎀 Hello Kitty', '🦖 Godzilla', '👑 Bowser', '🦸 Deadpool', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Which character would you trust with your lunch?', '🐻 Paddington', '👽 Stitch', '🦸 Superman', '🦝 Rocket', '', 'Pop Culture & Characters', ''],
+  ["Yes", "Who'd be best at hiding in a school?", "🦎 Randall", "🥷 Ninja Turtle", "👻 Casper", "🕷️ Spider-Man", "", "Pop Culture & Characters", ""],
+  ['Yes', 'Choose a fictional pet for a week.', '🐉 Toothless', '⚡ Pikachu', '🧡 Garfield', '🦄 Unicorn', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Who would give the best life advice?', '🧘 Yoda', '🎀 Barbie', '🐢 Master Oogway', '🧸 Winnie-the-Pooh', '', 'Pop Culture & Characters', ''],
+  ['Yes', 'Pick a game world for a field trip.', '⛏️ Minecraft', '🧱 Roblox', '🍄 Mario', '🏝️ Animal Crossing', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Which game would make the best school?', '🏰 Hogwarts Legacy', '🧱 Roblox', '🍄 Mario Kart', '⛏️ Minecraft', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'What kind of game do you enjoy most?', '🏎️ Racing', '🏗️ Building', '🕵️ Mystery', '🎵 Rhythm', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Pick a game item to bring to school.', '🍄 Super Mushroom', '💎 Diamond sword', '🪂 Glider', '🧪 Healing potion', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Choose your dream gaming room.', '🌈 RGB lights', '🛋️ Giant couch', '🎮 Arcade wall', '🪑 Racing seat', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'How do you play a new game?', '🗺️ Explore first', '🎯 Start missions', '🎨 Customize', '😂 Cause chaos', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Pick a game for a class tournament.', '🏎️ Mario Kart', '🕺 Just Dance', '⚽ Rocket League', '🫘 Fall Guys', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Which game creature would be a fun class pet?', '🐺 Minecraft wolf', '⚡ Pikachu', '🐉 Ender Dragon', '🦝 Tom Nook', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Choose a game night vibe.', '🎧 Cozy solo', '🤝 Co-op team', '🏆 Competition', '😂 Total chaos', '', 'Gaming & Virtual Worlds', ''],
+  ['Yes', 'Pick a fictional concert to attend.', '🎤 HUNTR/X', '🖤 Saja Boys', '🐿️ The Chipmunks', '🎸 The Muppets', '', 'Music & Performances', ''],
+  ['Yes', 'What makes a concert better?', '🎆 Big effects', '🪩 Dancing', '🎤 Sing-alongs', '🎸 Live instruments', '', 'Music & Performances', ''],
+  ['Yes', 'Which music mood fits today?', '🎧 Chill', '💃 Dance', '🎸 Rock', '🎻 Movie soundtrack', '', 'Music & Performances', ''],
+  ['Yes', 'Pick a surprise performer at lunch.', '🎤 Sabrina Carpenter', '💜 Olivia Rodrigo', '🎸 Billie Eilish', '🪩 Chappell Roan', '', 'Music & Performances', ''],
+  ['Yes', 'Which kind of music video wins?', '🎬 Storyline', '💃 Choreography', '🌈 Cool visuals', '😂 Comedy', '', 'Music & Performances', ''],
+  ['Yes', 'Choose a concert seat.', '🎤 Front row', '🪩 Middle floor', '🏟️ Upper level', '📺 Big screen view', '', 'Music & Performances', ''],
+  ['Yes', 'Which school talent show act would win?', '🪄 Magic tricks', '💃 Dance crew', '🎤 Singing', '🎭 Comedy', '', 'Music & Performances', ''],
+  ['Yes', 'Who would you cast as the school DJ?', '🎤 Bruno Mars', '🪩 Dua Lipa', '🎧 Marshmello', '🎸 Post Malone', '', 'Music & Performances', ''],
+  ['Yes', 'Choose one extra at a concert.', '🎊 Confetti', '🔥 Fireworks', '💡 Light bracelets', '🫧 Bubbles', '', 'Music & Performances', ''],
+  ['Yes', 'Choose a movie-night genre.', '😂 Comedy', '🦸 Superhero', '🔍 Mystery', '🚀 Sci-fi', '', 'Movies & Shows', ''],
+  ['Yes', 'Pick a movie setting to explore.', '🏰 Hogwarts', '🪸 Pandora', '🌃 Gotham', '🍄 Mushroom Kingdom', '', 'Movies & Shows', ''],
+  ['Yes', 'Who should direct the school play?', '🎬 Ken', '🕵️ Wednesday', '🦖 Rex', '🧙 Dumbledore', '', 'Movies & Shows', ''],
+  ['Yes', 'Which movie snack matters most?', '🍿 Popcorn', '🍫 Chocolate', '🧀 Nachos', '🍬 Gummies', '', 'Movies & Shows', ''],
+  ['Yes', 'Pick a fictional ride to school.', '🪄 Flying broom', '🚀 Millennium Falcon', '🚗 Batmobile', '🐉 Dragon', '', 'Movies & Shows', ''],
+  ['Yes', 'Which movie companion do you want?', '🤖 Baymax', '🐉 Toothless', '⚡ Pikachu', '👽 Grogu', '', 'Movies & Shows', ''],
+  ["Yes", "What's the best type of movie ending?", "😊 Happy", "😮 Big twist", "😂 Funny", "🤯 Cliffhanger", "", "Movies & Shows", ""],
+  ['Yes', 'Pick a movie makeover for the cafeteria.', '🩷 Barbie Dreamhouse', '🧙 Hogwarts hall', '🚀 Spaceship', '🌊 Underwater palace', '', 'Movies & Shows', ''],
+  ['Yes', 'Which video always gets your attention?', '🐈 Cat chaos', '🍰 Cake decorating', '🎮 Gaming clips', '🦝 Funny animals', '', 'Internet & Memes', ''],
+  ["Yes", "Pick a meme reaction for today.", "😭 Cry laughing", "💀 I'm done", "👀 Side-eye", "✨ Main character", "", "Internet & Memes", ""],
+  ['Yes', 'Which trend would you actually try?', '🎨 Mini art', '🍓 Snack recipe', '💃 Dance challenge', '📸 Photo challenge', '', 'Internet & Memes', ''],
+  ['Yes', 'Which pet would go viral fastest?', '🦆 Dramatic duck', '🐈 Grumpy cat', '🦎 Dancing gecko', '🦜 Talking bird', '', 'Internet & Memes', ''],
+  ['Yes', 'Which internet sound is more satisfying?', '⌨️ Keyboard taps', '🌧️ Rain sounds', '🧊 Ice crunch', '📦 Unboxing', '', 'Internet & Memes', ''],
+  ['Yes', 'Which kind of post would you save?', '🐶 Cute animals', '🍪 Recipes', '🎨 Art ideas', '😂 Memes', '', 'Internet & Memes', ''],
+  ['Yes', 'What should get a dramatic reveal?', '🥪 Sandwich', '✏️ Pencil', '🧦 Socks', '🍌 Banana', '', 'Internet & Memes', ''],
+  ['Yes', 'Pick a viral challenge style.', '🪩 Dance', '🎨 Draw', '🧩 Build', '🍳 Cook', '', 'Internet & Memes', ''],
+  ['Yes', 'Who should coach the basketball team?', '🏀 Bugs Bunny', '🦸 Wonder Woman', '💪 Mr. Incredible', '🐢 Ninja Turtle', '', 'Characters at School', ''],
+  ['Yes', 'Who would be most likely to eat your homework?', '🐶 Scooby-Doo', '🦖 Rex', '🧌 Shrek', '🦈 Baby Shark', '', 'Characters at School', ''],
+  ['Yes', 'Who should take school photos?', '📸 Spider-Man', '🎀 Barbie', '🦇 Batman', '🦎 Pascal', '', 'Characters at School', ''],
+  ['Yes', 'Which character would be the best hall monitor?', '🛡️ Captain America', '👀 Wednesday', '🤖 WALL-E', '🦸 Elastigirl', '', 'Characters at School', ''],
+  ['Yes', 'Pick a fictional substitute for art class.', '🎨 Rapunzel', '🧱 Emmet', '🖌️ Bob Ross', '🩷 Barbie', '', 'Characters at School', ''],
+  ['Yes', 'Who should design the school mascot?', '⚡ Pikachu', '🦉 Hedwig', '🐉 Toothless', '🦊 Nick Wilde', '', 'Characters at School', ''],
+  ['Yes', 'Who should teach cooking?', '🐀 Remy', '👨‍🍳 Swedish Chef', '🐻 Paddington', '🍄 Toad', '', 'Characters at School', ''],
+  ['Yes', 'Pick a fictional bus driver.', '🚌 Ms. Frizzle', '🍄 Luigi', '👽 Stitch', '🚀 Buzz Lightyear', '', 'Characters at School', ''],
+  ['Yes', 'Who should decorate the hallways?', '🎨 Rapunzel', '🪩 Ken', '🧽 Minion', '🧱 Emmet', '', 'Characters at School', ''],
+  ['Yes', 'Who would make the funniest class president?', '🐸 Kermit', '🦊 Judy Hopps', '🍄 Toad', '👑 Bowser', '', 'Characters at School', ''],
+  ['Yes', 'Choose a drink for movie night.', '🧋 Boba', '🥤 Slushie', '🍓 Smoothie', '🍋 Lemonade', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Which sweet snack wins?', '🍓 Chocolate berries', '🍪 Giant cookie', '🍡 Mochi', '🍰 Cheesecake', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Pick a noodle night.', '🍜 Ramen', '🍝 Spaghetti', '🧀 Mac and cheese', '🥢 Stir-fried noodles', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Pick your popcorn upgrade.', '🧈 Extra butter', '🍫 Chocolate', '🌶️ Spicy', '🧂 Plain salt', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Choose a food video to watch.', '🎂 Cake art', '🍜 Noodle making', '🍕 Giant pizza', '🍭 Candy making', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Best fries to share with a group?', '🍟 Shoestring', '🥔 Waffle fries', '🌀 Curly fries', '🧀 Cheese fries', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Pick a flavor combo.', '🍫 Sweet and salty', '🌶️ Sweet and spicy', '🍋 Sour and sweet', '🧄 Savory and spicy', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Best way to eat a cookie?', '🥛 With milk', '🍦 With ice cream', '🔥 Warm', '🍪 Straight from bag', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Pick a midnight-snack vibe.', '🍕 Pizza', '🥣 Cereal', '🍓 Fruit', '🥨 Pretzels', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'Which dessert deserves its own movie?', '🍦 Ice cream', '🍩 Doughnut', '🧁 Cupcake', '🍫 Brownie', '', 'Food & Viral Snacks', ''],
+  ['Yes', 'What should every desk have?', '🔌 Charger', '🪴 Tiny plant', '🧸 Mini plush', '💡 Desk lamp', '', 'School Life & Humor', ''],
+  ['Yes', 'Pick a school-day soundtrack.', '🎵 Lo-fi beats', '🎸 Rock', '🎹 Piano', '🤫 Silence', '', 'School Life & Humor', ''],
+  ['Yes', 'Which school upgrade sounds best?', '🛋️ Sofas', '🌳 Outdoor classes', '🎮 Game room', '🎨 Art wall', '', 'School Life & Humor', ''],
+  ['Yes', 'Pick a new school bell sound.', '🐈 Meow', '🎺 Fanfare', '🎵 Chime', '🦆 Quack', '', 'School Life & Humor', ''],
+  ['Yes', 'Which lunch setup would you choose?', '🌳 Picnic tables', '🛋️ Lounge', '☀️ Rooftop', '🎨 Colorful cafe', '', 'School Life & Humor', ''],
+  ['Yes', 'Pick a classroom chair.', '🪑 Swivel chair', '🛋️ Beanbag', '🪵 Rocking chair', '🏖️ Beach chair', '', 'School Life & Humor', ''],
+  ['Yes', 'Best way to spend a free class day?', '🎲 Games', '🎬 Movie', '🎨 Crafts', '🌳 Outside', '', 'School Life & Humor', ''],
+  ["Yes", "What's the ideal Friday activity?", "🎮 Games", "🎬 Short movie", "🧁 Snacks", "🎨 Creative time", "", "School Life & Humor", ""],
+  ['Yes', 'Pick a totally silly school mascot.', '🦆 Duck in sneakers', '🍕 Dancing pizza', '🛼 Skating sloth', '🥔 Happy potato', '', 'School Life & Humor', ''],
+  ['Yes', 'Which crossover would be funniest?', '🦇 Batman at Barbie Land', '🍄 Mario at Hogwarts', '👽 Stitch in Minecraft', '🧌 Shrek in space', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Pick a wild game crossover.', '🧱 Roblox x Mario', '⛏️ Minecraft x Pokémon', '🏎️ Mario x Fortnite', '🏝️ Animal Crossing x Sims', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Who should host a cooking show?', '🦇 Batman', '👑 Bowser', '🧙 Yoda', '👽 Stitch', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'What should be added to Mario Kart?', '🦕 Dinosaurs', '🛸 UFOs', '🌈 Rainbow animals', '🛼 Roller skates', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Pick a character for a dance contest.', '🕷️ Spider-Man', '🧌 Shrek', '🦆 Donald Duck', '🤖 Optimus Prime', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Which world needs a coffee shop?', '🧙 Hogwarts', '🚀 Star Wars', '🦇 Gotham', '⛏️ Minecraft', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Pick a new superhero sidekick.', '🦆 Angry goose', '🐈 Sleepy cat', '🥑 Dancing avocado', '🦎 Tiny lizard', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Who should host a game show?', '🎤 Ken', '🐸 Kermit', '🦊 Nick Wilde', '🤖 Baymax', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Pick an impossible team-up.', '🐢 Ninja Turtles + Barbie', '🦇 Batman + Mario', '⚡ Pikachu + Stitch', '🐉 Toothless + Grogu', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Choose a fantasy cafeteria chef.', '🐀 Remy', '🍄 Toad', '🤖 Baymax', '🧙 Hagrid', '', 'Hypothetical Crossovers', ''],
+  ['Yes', 'Which sign is the most fun to use?', '🤟 I LOVE YOU', '🌈 RAINBOW', '🐢 TURTLE', '🍕 PIZZA', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Pick a funny word to fingerspell.', '🦖 DINOSAUR', '🍝 SPAGHETTI', '🦄 UNICORN', '🪩 DISCO', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Which character should learn ASL?', '🐉 Toothless', '⚡ Pikachu', '👽 Stitch', '🤖 R2-D2', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Pick a new ASL classroom poster.', '🎮 Video games', '🍜 Foods', '🐾 Animals', '🎬 Movies', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'What would make fingerspelling fun?', '✨ Sparkles', '🌈 Rainbow trails', '🎆 Fireworks', '🫧 Bubbles', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Pick a handshape for a mascot.', '🤟 ILY', '✌️ V', '👌 F', '👍 A', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Which sign topic should we chat about?', '🍔 Food', '🎮 Games', '🐈 Animals', '🌦️ Weather', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'What should a silent movie feature?', '🦖 Dinosaurs', '🚀 Space', '🏫 School', '🐉 Dragons', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Pick a theme for a signed story.', '🕵️ Mystery', '😂 Comedy', '🦸 Superheroes', '🐾 Animal adventure', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'Which word looks coolest in fingerspelling?', '⚡ ZIGZAG', '🪩 DISCO', '🦈 SHARK', '🎮 GAME', '', 'ASL & Deaf Culture Fun', ''],
+  ['Yes', 'What is your main-character energy today?', '😎 Confident', '😴 Sleepy', '🤪 Chaotic', '🌿 Peaceful', '', 'Mood & Personal Style', ''],
+  ['Yes', 'Pick your energy meter.', '🔋 Full', '🪫 Low', '⚡ Halfway', '🔌 Charging', '', 'Mood & Personal Style', ''],
+  ["Yes", "Choose today's color vibe.", "💜 Purple", "💙 Blue", "🧡 Orange", "💚 Green", "", "Mood & Personal Style", ""],
+  ['Yes', 'Which playlist fits your mood?', '🎵 Chill', '🔥 Hype', '🌧️ Moody', '✨ Happy', '', 'Mood & Personal Style', ''],
+  ['Yes', 'Pick an emoji for this morning.', '☀️ Sunny', '☁️ Cloudy', '⚡ Electric', '🌙 Dreamy', '', 'Mood & Personal Style', ''],
+  ['Yes', 'Your ideal background noise?', '🎧 Music', '🌧️ Rain', '🌊 Ocean', '🤫 Quiet', '', 'Mood & Personal Style', ''],
+  ["Yes", "Pick today's outfit vibe.", "🧢 Sporty", "🧸 Cozy", "🪩 Bright", "🖤 Simple", "", "Mood & Personal Style", ""],
+  ["Yes", "What's your focus mode today?", "🎯 Locked in", "🪴 Slow and steady", "💡 Creative", "☕ Warming up", "", "Mood & Personal Style", ""],
+  ['Yes', 'Pick a virtual room vibe.', '🌌 Galaxy', '🌿 Forest', '🌊 Ocean', '🎮 Arcade', '', 'Mood & Personal Style', ''],
+  ['Yes', 'Choose a tiny thing to have as a pet.', '🐉 Dragon', '🦖 T. rex', '🛸 UFO', '☁️ Cloud', '', 'Random & Ridiculous', ''],
+  ['Yes', 'What should rain from the sky for one minute?', '🍿 Popcorn', '🌸 Petals', '🫧 Bubbles', '🧸 Plushies', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Pick a strange elevator sound.', '🎺 Trumpet', '🐈 Meow', '🦆 Quack', '🎵 Piano', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Which animal would win a dance battle?', '🦩 Flamingo', '🦍 Gorilla', '🦦 Otter', '🐧 Penguin', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Pick a ridiculous hat.', '🍕 Pizza slice', '🪩 Disco ball', '🌵 Cactus', '🐙 Octopus', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Name a pet rock.', '🪨 Rocky', '🌟 Pebbles', '👑 Sir Stone', '🍟 Nugget', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Pick a weird room for one afternoon.', '🫧 Bubble room', '🍭 Candy room', '🌌 Zero gravity', '🪩 Disco room', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Choose a giant inflatable for the gym.', '🦆 Duck', '🦖 Dinosaur', '🍩 Doughnut', '🐸 Frog', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Which would make a funnier parade?', '🦆 Ducks on scooters', '🐈 Cats in hats', '🦖 Tiny dinosaurs', '🐢 Racing turtles', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Pick a silly new Olympic sport.', '🛏️ Bed racing', '🥨 Pretzel tossing', '🧦 Sock skating', '🪑 Chair spinning', '', 'Random & Ridiculous', ''],
+  ['Yes', 'Choose a weekend adventure.', '🎢 Theme park', '🏖️ Beach', '🏙️ Big city', '🏕️ Camping', '', 'Travel & Adventures', ''],
+  ['Yes', 'Pick a place for a video game quest.', '🏰 Castle', '🌋 Volcano', '🌌 Space station', '🌊 Underwater city', '', 'Travel & Adventures', ''],
+  ['Yes', 'Which fictional vacation sounds best?', '🏰 Hogwarts', '🩷 Barbie Land', '🏝️ Animal Crossing', '🌌 Star Wars planet', '', 'Travel & Adventures', ''],
+  ['Yes', 'Pick an unusual mode of travel.', '🛸 UFO', '🐉 Dragon', '🚀 Rocket', '🛼 Roller skates', '', 'Travel & Adventures', ''],
+  ["Yes", "What's your ideal day out?", "🛍️ Shops", "🖼️ Museum", "🎢 Rides", "🌳 Park", "", "Travel & Adventures", ""],
+  ['Yes', 'Which nature sight would you pick?', '🌌 Northern lights', '🌋 Lava flow', '🐋 Whales', '🌊 Giant waterfall', '', 'Travel & Adventures', ''],
+  ['Yes', 'Choose a magical hotel room.', '🌊 Underwater', '🌳 Treehouse', '☁️ Cloud castle', '🚀 Spaceship', '', 'Travel & Adventures', ''],
+  ['Yes', 'Pick a day trip with your class.', '🦈 Aquarium', '🎢 Amusement park', '🎬 Movie studio', '🪐 Planetarium', '', 'Travel & Adventures', ''],
+  ['Yes', 'Pick a weekend project.', '🎨 Painting', '🍪 Baking', '🎮 Gaming', '🌱 Gardening', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Choose a hobby to try for a day.', '🛹 Skateboarding', '🪄 Magic tricks', '🎸 Guitar', '📸 Photography', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'What kind of challenge sounds fun?', '🧩 Puzzle', '🏃 Obstacle course', '🎨 Drawing', '🎮 Game tournament', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Pick a cozy weekend activity.', '📚 Read', '🎬 Watch a movie', '🧸 Nap', '🧩 Puzzle', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Choose a creative competition.', '🧱 LEGO building', '🎂 Cake decorating', '🎨 Painting', '🎬 Short videos', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Pick a new skill to download.', '🎹 Piano', '🪄 Magic', '🛹 Skateboarding', '🎨 Digital art', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'What would you build with friends?', '🏰 Blanket fort', '🏎️ Cardboard car', '🪐 Model planet', '🎢 Marble run', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Which activity needs a sequel?', '🎲 Board game night', '🍕 Pizza night', '🎬 Movie marathon', '🎤 Karaoke', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Choose a rainy-day activity.', '🎮 Gaming', '🎨 Art', '🍰 Baking', '📚 Reading', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Which hobby space would you love?', '🎮 Game nook', '🎨 Art studio', '🎧 Music room', '🌿 Plant corner', '', 'Weekend & Hobbies', ''],
+  ['Yes', 'Best first-week class activity?', '🎲 Games', '🎨 Make something', '🎤 Introductions', '🧩 Team challenge', 'Back to school', 'Back to School', ''],
+  ['Yes', 'Pick a locker theme for this year.', '🌌 Space', '🐈 Cats', '🎮 Gaming', '🪩 Disco', 'Back to school', 'Back to School', ''],
+  ['Yes', 'Choose a fall movie-night snack.', '🍿 Caramel popcorn', '🍎 Apple slices', '🍪 Cookies', '☕ Hot cocoa', 'Fall', 'Fall & Halloween', ''],
+  ['Yes', 'Pick a fall weekend vibe.', '🍁 Leaf walk', '🎃 Pumpkin patch', '🎬 Movie night', '🧸 Cozy indoors', 'Fall', 'Fall & Halloween', ''],
+  ['Yes', 'Pick a Halloween costume vibe.', '👻 Spooky', '😂 Funny', '🎬 Movie character', '🎮 Game character', 'Halloween', 'Fall & Halloween', ''],
+  ['Yes', 'Which Halloween guest is funniest?', '👹 Beetlejuice', '🖤 Wednesday', '👻 Ghostface mask', '💚 Frankenstein', 'Halloween', 'Fall & Halloween', ''],
+  ['Yes', 'Choose a spooky house feature.', '🕯️ Floating candles', '🚪 Secret door', '🦇 Friendly bats', '👻 Silly ghosts', 'Halloween', 'Fall & Halloween', ''],
+  ['Yes', 'Best Halloween candy texture?', '🍫 Chocolate', '🍬 Chewy', '🍭 Hard candy', '🍪 Crunchy', 'Halloween', 'Fall & Halloween', ''],
+  ['Yes', 'Who should build your snow fort?', '⛏️ Steve', '🧊 Elsa', '🐧 Pingu', '🤖 Baymax', 'Winter/snow', 'Winter & Snow', ''],
+  ['Yes', 'Choose a snow-day plan.', '🛷 Sledding', '⛄ Snowman', '🎬 Movies', '🎮 Games', 'Winter/snow', 'Winter & Snow', ''],
+  ['Yes', 'Choose a winter movie setting.', '🏔️ Snowy mountain', '🏰 Ice castle', '🌃 Cozy city', '🌲 Winter forest', 'Winter/snow', 'Winter & Snow', ''],
+  ["Yes", "Choose a Valentine's candy.", "🍫 Chocolate", "🍬 Gummies", "🍭 Lollipop", "🍪 Cookie", "Valentine's Day", "Valentine's & Kindness", ""],
+  ["Yes", "Pick a heart color for today.", "❤️ Red", "💜 Purple", "💛 Yellow", "🩷 Pink", "Valentine's Day", "Valentine's & Kindness", ""],
+  ["Yes", "Choose a kindness surprise for class.", "📝 Nice notes", "🎨 Tiny drawings", "🍬 Treats", "👏 Big applause", "Valentine's Day", "Valentine's & Kindness", ""],
+  ['Yes', 'Pick a spring break vibe.', '🌳 Outside', '🎮 Games', '🎬 Movies', '🎨 Projects', 'Spring', 'Spring & End of Year', ''],
+  ['Yes', 'Pick the best spring weather.', '🌤️ Breezy sun', '🌧️ Light rain', '☀️ Warm sunshine', '☁️ Cool clouds', 'Spring', 'Spring & End of Year', ''],
+  ['Yes', 'Which spring animal is cutest?', '🦆 Duckling', '🐸 Frog', '🐰 Bunny', '🦋 Butterfly', 'Spring', 'Spring & End of Year', ''],
+  ['Yes', 'Choose an end-of-year class event.', '🎮 Game day', '🍿 Movie day', '🎨 Art day', '🌳 Outdoor day', 'End of year', 'Spring & End of Year', ''],
+  ['Yes', 'Which summer adventure sounds best?', '🏖️ Beach', '🎢 Theme park', '🏕️ Camping', '🏙️ City exploring', 'End of year', 'Spring & End of Year', ''],
+  ['Yes', 'Pick a year-end celebration treat.', '🍦 Ice cream', '🍕 Pizza', '🧁 Cupcakes', '🍿 Popcorn', 'End of year', 'Spring & End of Year', '']];
+// 1.87's tab (Date, Question, Choices) → the 1.88 columns. The 1.87 sample questions are dropped (Colleen's list replaces them);
+// questions the teacher added are kept, with their date.
+var POLL_SAMPLE_187 = ['Pizza or tacos?', 'Would you rather be able to fly or be invisible?', 'Morning person or night owl?', 'What’s the best snack?', 'Would you rather live at the beach or in the mountains?', 'Cats or dogs?', 'What song have you had stuck in your head lately?', 'Summer or winter?', 'If you could have any superpower, what would it be?', 'Would you rather read the book or watch the movie?', 'What’s something that made you smile this week?', 'Sweet or salty?'];
+function migratePolls_(sh) {
+  if (sh.getLastRow() < 1 || !/^date/i.test(String(sh.getRange(1, 1).getValue()))) return;
+  var n = sh.getLastRow() - 1, old = n > 0 ? sh.getRange(2, 1, n, 3).getValues() : [];
+  var keep = old.filter(function (r) { return String(r[1]).trim() && POLL_SAMPLE_187.indexOf(String(r[1]).trim()) < 0; }).map(function (r) {
+    var c = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
+    return ['Yes', String(r[1]).trim(), c[0] || '', c[1] || '', c[2] || '', c[3] || '', '', 'My questions', day_(r[0])];
+  });
+  if (n > 0) sh.getRange(2, 1, n, Math.max(3, sh.getLastColumn())).clearContent();
+  var rows = keep.concat(keep.length ? POLL_DEFAULT : []);          // with none kept, setup fills in the default list below
+  if (rows.length) { if (sh.getMaxColumns() < 9) sh.insertColumnsAfter(sh.getMaxColumns(), 9 - sh.getMaxColumns()); sh.getRange(2, 1, rows.length, 9).setValues(rows); }
+}
+// Time of year → the dates it's in season (month-day, inclusive; winter wraps around New Year). Blank or unknown = any time.
+var POLL_SEASONS = [[/back to school/i, '08-01', '09-15'], [/halloween/i, '10-15', '10-31'], [/fall|autumn/i, '09-22', '11-30'], [/valentine/i, '02-01', '02-14'],
+  [/winter|snow/i, '12-01', '02-28'], [/spring/i, '03-20', '05-31'], [/end of (the )?year|summer/i, '05-10', '06-15']];
+function pollSeason_(t, today) {          // 0 = any time; -1 = out of season; otherwise how many days long the season is (shorter = more special)
+  t = String(t || '').trim(); if (!t) return 0;
+  var s = POLL_SEASONS.filter(function (x) { return x[0].test(t); })[0]; if (!s) return 0;
+  var md = today.slice(5), wrap = s[1] > s[2], inn = wrap ? (md >= s[1] || md <= s[2]) : (md >= s[1] && md <= s[2]);
+  if (!inn) return -1;
+  var y = +today.slice(0, 4), d = function (m) { return Date.UTC(y, +m.slice(0, 2) - 1, +m.slice(3)); };
+  return Math.round(((wrap ? d(s[2]) + 365 * 864e5 : d(s[2])) - d(s[1])) / 864e5) + 1;
+}
+function pollRow_(r) { return { use: !/^no/i.test(String(r[0]).trim()), q: String(r[1] || '').trim(), choices: [r[2], r[3], r[4], r[5]].map(function (x) { return String(x || '').trim(); }).filter(String), season: String(r[6] || '').trim(), cat: String(r[7] || '').trim(), asked: day_(r[8]) }; }
+// The question of the day: the one dated today, or else a new one gets today's date (once): a question in season if there is one
+// (the most special season first, like Halloween before Fall), otherwise a random any-time question not asked yet.
 function pollToday_(today) {
   var w = new Date(today + 'T12:00:00Z').getUTCDay(); if (!w || w === 6 || noSchool_(today)) return null;
-  var find = function () { var rows = rows_('Daily questions'), i = find_(rows, function (r) { return day_(r[0]) === today && String(r[1]).trim(); }); return { rows: rows, i: i }; };
+  var find = function () { var rows = rows_('Daily questions'), i = find_(rows, function (r) { return day_(r[8]) === today && String(r[1]).trim(); }); return { rows: rows, i: i }; };
   var f = find();
   if (f.i < 0) {
-    if (!f.rows.some(function (r) { return !day_(r[0]) && String(r[1]).trim(); })) return null;          // the list is used up
-    locked_(function () {          // the first visit today gives the next question today's date (once)
+    var pick = function (rows) {
+      var c = []; rows.forEach(function (r, j) { var p = pollRow_(r); if (p.use && p.q && !p.asked && p.choices.length !== 1) c.push({ j: j, s: pollSeason_(p.season, today) }); });
+      var ins = c.filter(function (x) { return x.s > 0; }); if (ins.length) { var min = Math.min.apply(null, ins.map(function (x) { return x.s; })); c = ins.filter(function (x) { return x.s === min; }); }
+      else c = c.filter(function (x) { return x.s === 0; });
+      return c.length ? c[Math.floor(Math.random() * c.length)].j : -1;
+    };
+    if (pick(f.rows) < 0) return null;          // nothing left to ask
+    locked_(function () {
       if (ROWS_MEMO) delete ROWS_MEMO['Daily questions'];
       var g = find(); if (g.i >= 0) return;
-      var j = find_(g.rows, function (r) { return !day_(r[0]) && String(r[1]).trim(); }); if (j >= 0) sheet_('Daily questions').getRange(j + 2, 1).setValue(today);
+      var j = pick(g.rows); if (j >= 0) sheet_('Daily questions').getRange(j + 2, 9).setValue(today);
     });
     if (ROWS_MEMO) delete ROWS_MEMO['Daily questions'];
     f = find(); if (f.i < 0) return null;
   }
-  var r = f.rows[f.i];
-  return { q: String(r[1]).trim(), choices: String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 8) };
+  var p = pollRow_(f.rows[f.i]);
+  return { q: p.q, choices: p.choices, cat: p.cat };
+}
+// 📚 Browse questions (teacher): every question with its row, Use, answers, time of year, category and the date it was asked
+function api_pollListRead_() {
+  teacherOnly_();
+  return rows_('Daily questions').map(function (r, i) { var p = pollRow_(r); p.row = i + 2; return p; }).filter(function (p) { return p.q; });
+}
+function api_pollUse(row, use) {
+  teacherOnly_(); row = Number(row);
+  return locked_(function () { if (row >= 2) sheet_('Daily questions').getRange(row, 1).setValue(use ? 'Yes' : 'No'); return true; });
+}
+// ask this one today instead (today's other question goes back in line, unless students already answered it)
+function api_pollAskToday(row) {
+  teacherOnly_(); row = Number(row); var today = today_();
+  locked_(function () {
+    var sh = sheet_('Daily questions'), rows = rows_('Daily questions');
+    rows.forEach(function (r, i) { if (day_(r[8]) === today && i + 2 !== row) sh.getRange(i + 2, 9).setValue(''); });
+    if (row >= 2) sh.getRange(row, 9).setValue(today);
+    if (ROWS_MEMO) delete ROWS_MEMO['Daily questions'];
+  });
+  var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); });
+  return pollResults_(today, nm);
 }
 function pollFor_(email, today) {
   var p = pollToday_(today); if (!p) return null;
-  var a = rows_('Question answers').filter(function (r) { return day_(r[0]) === today && low_(r[1]) === email; })[0];
+  var a = rows_('Question answers').filter(function (r) { return day_(r[0]) === today && low_(r[1]) === email && String(r[2]) === p.q; })[0];          // today's question (the teacher may switch it)
   p.answer = a ? String(a[3]) : ''; return p;
 }
 function api_answerPoll(answer) {
@@ -1510,7 +1712,7 @@ function api_answerPoll(answer) {
 // the Overview: today's question, how many picked each answer, and each student's answer
 function pollResults_(today, names) {
   var p = pollToday_(today); if (!p) return null;
-  var ans = rows_('Question answers').filter(function (r) { return day_(r[0]) === today; }).map(function (r) { return { name: names[low_(r[1])] || low_(r[1]), answer: String(r[3]) }; });
+  var ans = rows_('Question answers').filter(function (r) { return day_(r[0]) === today && String(r[2]) === p.q; }).map(function (r) { return { name: names[low_(r[1])] || low_(r[1]), answer: String(r[3]) }; });
   p.answers = ans; return p;
 }
 // 1.84: missing work a student says can't be turned in any more: { class: { assignment: { why, date } } }
@@ -3519,6 +3721,7 @@ function api_teacher() { var a = arguments; return memo_(function () { return ap
 function api_teacherStudent() { var a = arguments; return memo_(function () { return api_teacherStudentRead_.apply(null, a); }); }
 function api_photos() { var a = arguments; return memo_(function () { return api_photosRead_.apply(null, a); }); }
 function api_reportHtml() { var a = arguments; return memo_(function () { return api_reportHtmlRead_.apply(null, a); }); }
+function api_pollList() { var a = arguments; return memo_(function () { return api_pollListRead_.apply(null, a); }); }
 function api_cmReport() { var a = arguments; return memo_(function () { return api_cmReportRead_.apply(null, a); }); }
 function api_calendarHtml() { var a = arguments; return memo_(function () { return api_calendarHtmlRead_.apply(null, a); }); }
 function api_reportContacts() { var a = arguments; return memo_(function () { return api_reportContactsRead_.apply(null, a); }); }
@@ -5693,16 +5896,77 @@ function spark(h) {
   var pts = h.map(function (v, i) { return (i * W / (h.length - 1)).toFixed(1) + ',' + (H - 1 - (v - lo) * (H - 2) / r).toFixed(1); }).join(' ');
   return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
-// 1.87: today's question of the day: how many picked each answer, and who said what (folded)
+// 1.87: today's question of the day. 1.88: the teacher switches between a pie chart and who said what (grouped by answer,
+// names A to Z); the choice is remembered on this computer.
+var POLL_VIEW = null; try { POLL_VIEW = localStorage.getItem('rci-pollview'); } catch (e) {}
+var PIE_COLORS = ['#3355d1', '#e8833a', '#2e9d6a', '#c2457a', '#8a63d2', '#d4a72c', '#1f9bb5', '#7a8597'];
+function pollGroups(p) {
+  var real = (p.answers || []).filter(function (x) { return x.answer !== '(skipped)'; }), by = {}, keys = (p.choices || []).slice();
+  real.forEach(function (x) { (by[x.answer] = by[x.answer] || []).push(x.name); if (keys.indexOf(x.answer) < 0) keys.push(x.answer); });
+  return keys.map(function (k) { return { k: k, names: (by[k] || []).sort(function (a, b) { return a.localeCompare(b); }) }; }).filter(function (g) { return g.names.length || (p.choices || []).indexOf(g.k) >= 0; });
+}
+function pieSvg(groups, total) {
+  var r = 70, cx = 80, cy = 80, a0 = -Math.PI / 2, h = '<svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="Pie chart of the answers">';
+  var live = groups.filter(function (g) { return g.names.length; });
+  if (live.length === 1) return h + '<circle cx="80" cy="80" r="70" fill="' + PIE_COLORS[groups.indexOf(live[0]) % PIE_COLORS.length] + '"/></svg>';
+  groups.forEach(function (g, i) {
+    if (!g.names.length) return;
+    var a1 = a0 + 2 * Math.PI * g.names.length / total, big = a1 - a0 > Math.PI ? 1 : 0;
+    var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    h += '<path d="M' + cx + ' ' + cy + ' L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A' + r + ' ' + r + ' 0 ' + big + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + ' Z" fill="' + PIE_COLORS[i % PIE_COLORS.length] + '" stroke="#fff" stroke-width="2"/>';
+    a0 = a1;
+  });
+  return h + '</svg>';
+}
+// 📚 Browse questions: every question by category; turn one on or off (Use), or ask it today
+var PQ = null, PQ_CAT = '', PQ_Q = '';
+function pqOpen() {
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'pqModal';
+  el.onclick = function (e) { if (e.target === el) pqClose(); };
+  el.innerHTML = '<div class="card" style="max-width:820px"><p class="small">Loading the questions…</p></div>'; document.body.appendChild(el);
+  call('api_pollList').then(function (l) { PQ = l; pqDraw(); }).catch(function (e) { pqClose(); oops(e); });
+}
+function pqClose() { var m = $('pqModal'); if (m) m.remove(); }
+function pqDraw() {
+  var m = $('pqModal'); if (!m || !PQ) return;
+  var cats = []; PQ.forEach(function (q) { if (q.cat && cats.indexOf(q.cat) < 0) cats.push(q.cat); });
+  var qq = PQ_Q.toLowerCase(), list = PQ.filter(function (q) { return (!PQ_CAT || q.cat === PQ_CAT) && (!qq || (q.q + ' ' + q.choices.join(' ')).toLowerCase().indexOf(qq) >= 0); });
+  var left = PQ.filter(function (q) { return q.use && !q.asked; }).length;
+  m.firstChild.innerHTML = '<div class="row"><h2 class="grow">📚 Questions of the day</h2><button class="btn link" onclick="pqClose()">✕ Close</button></div>' +
+    '<p class="small" style="margin:2px 0 10px">' + PQ.length + ' questions · ' + left + ' not asked yet. Untick to never ask one. In season, its seasonal questions come first. Add or change questions on the <b>Daily questions</b> tab.</p>' +
+    '<div class="row" style="gap:8px;margin-bottom:10px"><select onchange="PQ_CAT=this.value;pqDraw()" style="max-width:260px"><option value="">All categories</option>' + cats.map(function (c) { return '<option' + (c === PQ_CAT ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+    '<input type="text" class="grow" placeholder="Search" value="' + esc(PQ_Q) + '" oninput="PQ_Q=this.value;clearTimeout(window.PQT);window.PQT=setTimeout(pqDraw,250)"></div>' +
+    '<div style="max-height:60vh;overflow:auto">' + list.map(function (q) {
+      var today = q.asked === B.today;
+      return '<div class="pqrow' + (q.use ? '' : ' off') + '"><label title="Use this question"><input type="checkbox"' + (q.use ? ' checked' : '') + ' onchange="pqUse(' + q.row + ',this.checked)"></label>' +
+        '<div class="grow"><b>' + esc(q.q) + '</b><div class="small">' + esc(q.choices.join(' · ')) + '</div><div class="small" style="margin-top:2px">' + esc(q.cat) + (q.season ? ' · 🗓️ ' + esc(q.season) : '') + (q.asked ? ' · asked ' + (today ? '<b>today</b>' : shortDay(q.asked)) : '') + '</div></div>' +
+        (today ? '<span class="badge up">Today</span>' : q.use ? '<button class="btn small" onclick="pqToday(' + q.row + ')">Ask today</button>' : '') + '</div>';
+    }).join('') + (list.length ? '' : '<p class="small">No questions match.</p>') + '</div>';
+}
+function pqUse(row, on) {
+  call('api_pollUse', row, on).then(function () { PQ.forEach(function (q) { if (q.row === row) q.use = on; }); pqDraw(); }).catch(oops);
+}
+function pqToday(row) {
+  if (!confirm('Ask this question today? Students who already answered today’s question will be asked this one too.')) return;
+  call('api_pollAskToday', row).then(function (p) { PQ.forEach(function (q) { if (q.asked === B.today) q.asked = ''; if (q.row === row) q.asked = B.today; }); if (TD) TD.poll = p; pqDraw(); var el = $('pollCard'); if (el) el.outerHTML = pollNotice(); toast('Today’s question changed'); }).catch(oops);
+}
+function pollView(v) { POLL_VIEW = POLL_VIEW === v ? null : v; try { localStorage.setItem('rci-pollview', POLL_VIEW || ''); } catch (e) {} var el = $('pollCard'); if (el) el.outerHTML = pollNotice(); }
 function pollNotice() {
-  var p = TD && TD.poll; if (!p) return '';
-  var a = p.answers || [], real = a.filter(function (x) { return x.answer !== '(skipped)'; }), tally = {};
-  real.forEach(function (x) { tally[x.answer] = (tally[x.answer] || 0) + 1; });
-  var keys = (p.choices || []).length ? p.choices.slice() : []; Object.keys(tally).forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
-  return '<div class="card" style="margin-bottom:14px"><div class="row"><b class="grow">💬 Question of the day: ' + esc(p.q) + '</b><span class="small">' + real.length + ' answered' + (a.length > real.length ? ' · ' + (a.length - real.length) + ' skipped' : '') + '</span></div>' +
-    (keys.length && (p.choices || []).length ? '<div class="chips" style="margin-top:6px">' + keys.map(function (k) { return '<span class="chip">' + esc(k) + ' <b>' + (tally[k] || 0) + '</b></span>'; }).join('') + '</div>' : '') +
-    (real.length ? '<details style="margin-top:6px"><summary class="small">Who said what</summary><div style="margin-top:4px">' + real.map(function (x) { return '<div class="small" style="display:block;margin:2px 0"><b>' + esc(x.name) + ':</b> ' + esc(x.answer) + '</div>'; }).join('') + '</div></details>'
-      : '<p class="small" style="margin:6px 0 0">No answers yet today. Questions come from the Daily questions tab.</p>') + '</div>';
+  var p = TD && TD.poll; if (!p) return F('poll') ? '<div class="row" style="margin-bottom:10px"><button class="btn small" onclick="pqOpen()">📚 Browse questions</button><span class="small" style="display:inline">No question of the day today.</span></div>' : '';
+  var a = p.answers || [], groups = pollGroups(p), total = groups.reduce(function (n, g) { return n + g.names.length; }, 0), skipped = a.length - total;
+  var h = '<div class="card" id="pollCard" style="margin-bottom:14px"><div class="row"><b class="grow">💬 Question of the day: ' + esc(p.q) + '</b><span class="small">' + total + ' answered' + (skipped ? ' · ' + skipped + ' skipped' : '') + '</span><button class="btn small" onclick="pqOpen()">📚 Browse questions</button></div>';
+  if (!total) return h + '<p class="small" style="margin:6px 0 0">No answers yet today. Questions come from the Daily questions tab.</p></div>';
+  var pct = function (n) { return Math.round(100 * n / total) + '%'; };
+  h += '<div class="row" style="margin-top:8px;gap:6px"><button class="btn small' + (POLL_VIEW === 'pie' ? ' primary' : '') + '" onclick="pollView(\'pie\')">🥧 Pie chart</button><button class="btn small' + (POLL_VIEW === 'names' ? ' primary' : '') + '" onclick="pollView(\'names\')">👥 Who said what</button>' +
+    (POLL_VIEW ? '' : '<span class="small" style="display:inline">' + groups.filter(function (g) { return g.names.length; }).map(function (g) { return esc(g.k) + ' <b>' + g.names.length + '</b>'; }).join(' · ') + '</span>') + '</div>';
+  if (POLL_VIEW === 'pie') h += '<div class="row" style="margin-top:12px;gap:22px;align-items:center">' + pieSvg(groups, total) + '<div>' + groups.map(function (g, i) {
+    return '<div style="margin:4px 0;display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:4px;background:' + PIE_COLORS[i % PIE_COLORS.length] + ';display:inline-block"></span><b>' + esc(g.k) + '</b> <span class="small" style="display:inline">' + g.names.length + ' (' + pct(g.names.length) + ')</span></div>';
+  }).join('') + '</div></div>';
+  if (POLL_VIEW === 'names') h += '<div class="pollnames">' + groups.map(function (g, i) {
+    return '<div class="pollgrp"><div style="border-bottom:3px solid ' + PIE_COLORS[i % PIE_COLORS.length] + ';padding-bottom:4px;margin-bottom:6px"><b>' + esc(g.k) + '</b> <span class="small" style="display:inline">' + g.names.length + '</span></div>' +
+      (g.names.length ? g.names.map(function (n) { return '<div style="margin:2px 0">' + esc(n) + '</div>'; }).join('') : '<div class="small">Nobody</div>') + '</div>';
+  }).join('') + '</div>';
+  return h + '</div>';
 }
 // IEP meetings, annual reviews and re-evaluations in the next 30 days
 function iepNotice() {
