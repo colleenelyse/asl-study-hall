@@ -640,9 +640,10 @@
       var nums = T.Cues.musicNumbers(), songNums = O.songs.map(function (s) { return String(s.num); });
       var list = Object.keys(nums).filter(function (n) { return songNums.indexOf(n) < 0; }).sort(function (a, b) { return a - b; });
       if (!list.length) return '';
-      return '<h3 style="margin-top:20px">Scene-change music (MX cues)</h3><table class="tbl"><thead><tr><th>Music</th><th>Band track</th><th>Guide vocals</th></tr></thead><tbody>' + list.map(function (n) {
-        var t = tr['mx' + n] || {}, cell = function (k) { return '<td>' + (t[k] ? '<span class="tag">' + T.clock(t[k].dur) + '</span>' : '<span class="muted small">none</span>') + '</td>'; };
-        return '<tr><td><b>MX' + n + '</b> ' + esc(nums[n]) + '</td>' + cell('performance') + cell('rehearsal') + '</tr>';
+      return '<h3 style="margin-top:20px">Scene-change music (MX cues)</h3><p class="muted small">Each MX cue in the script plays the music connected here (songs use their own tracks above). The cue sheet, Read the script and the stage manager script show which cues have music.</p><table class="tbl"><thead><tr><th>Music</th><th>Band track (performance)</th><th>Guide vocals</th><th></th></tr></thead><tbody>' + list.map(function (n) {
+        var id = 'mx' + n, t = tr[id] || {}, cell = function (k) { return '<td>' + (t[k] ? '<span class="tag">' + T.clock(t[k].dur) + '</span> <span class="muted small">' + esc(t[k].name || '') + '</span> ' : '<span class="muted small">none</span> ') +
+          '<label class="btn small">' + (t[k] ? 'Replace' : 'Upload') + '<input type="file" accept="audio/*,.mp3,.m4a,.wav" data-s="' + id + '" data-k="' + k + '" hidden></label></td>'; };
+        return '<tr><td><b>MX' + n + '</b> ' + esc(nums[n]) + '</td>' + cell('performance') + cell('rehearsal') + '<td>' + (t.performance || t.rehearsal ? '<button class="btn small" data-mxplay="' + n + '">▶</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table>';
     }
     var st = document.getElementById('st');
@@ -683,11 +684,24 @@
     app.querySelectorAll('input[data-many]').forEach(function (inp) {
       inp.onchange = function () {
         var kind = inp.dataset.many, files = [].slice.call(inp.files), nums = T.Cues ? T.Cues.musicNumbers() : {}, done = 0, skip = [];
-        var plan = files.map(function (f) {
-          var m = f.name.match(/^0*(\d+)[\s_.-]/), n = m && m[1], so = n && O.songs.find(function (s) { return String(s.num) === n; });
-          return so ? { f: f, id: so.id } : n && nums[n] ? { f: f, id: 'mx' + n } : (skip.push(f.name), null);
-        }).filter(Boolean);
-        if (!plan.length) { T.toast('None of those file names start with a music number from the script.', 5000); return; }
+        inp.value = '';
+        /* the music number in a file name: at the start ("07_…"), after # or No., or the first number on its own ("HSMJR - 03 - Playoff") */
+        var guess = function (name) {
+          var b = name.replace(/\.[a-z0-9]+$/i, ''), m = b.match(/^0*(\d{1,2})(?!\d)/) || b.match(/(?:#|no\.?\s*|track\s*)0*(\d{1,2})(?!\d)/i) || b.match(/(?:^|[^\d])0*(\d{1,2})(?!\d)/);
+          var n = m && m[1], so = n && O.songs.find(function (s) { return String(s.num) === n; });
+          return so ? so.id : n && nums[n] ? 'mx' + n : '';
+        };
+        var opts = O.songs.map(function (s) { return [s.id, '#' + s.num + ' ' + s.title]; }).concat(Object.keys(nums).filter(function (n) { return !O.songs.some(function (s) { return String(s.num) === n; }); }).sort(function (a, b) { return a - b; }).map(function (n) { return ['mx' + n, 'MX' + n + ' ' + nums[n]]; }));
+        var dlg = document.createElement('dialog'); document.body.appendChild(dlg);
+        dlg.innerHTML = '<h2>Connect the ' + (kind === 'performance' ? 'band' : 'guide-vocal') + ' tracks</h2><p class="muted small">Check that each file goes to the right music number. Pick Skip for any file you don’t want.</p>' +
+          '<div style="max-height:55vh;overflow:auto">' + files.map(function (f, i) { var g = guess(f.name); return '<div class="switch" style="flex-wrap:wrap"><span class="grow small">' + esc(f.name) + '</span><select data-fi="' + i + '"><option value="">Skip</option>' + opts.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === g ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div>' +
+          '<div class="row end" style="margin-top:10px"><button class="btn quiet" id="bx">Cancel</button><button class="btn primary" id="bu">Upload</button></div>';
+        dlg.showModal(); dlg.addEventListener('close', function () { dlg.remove(); });
+        dlg.querySelector('#bx').onclick = function () { dlg.close(); };
+        dlg.querySelector('#bu').onclick = function () {
+        var plan = files.map(function (f, i) { var id = dlg.querySelector('[data-fi="' + i + '"]').value; return id ? { f: f, id: id } : (skip.push(f.name), null); }).filter(Boolean);
+        dlg.close();
+        if (!plan.length) { T.toast('No files were connected to a music number.', 4000); return; }
         plan.reduce(function (p, x, i) {
           return p.then(function () {
             st.textContent = 'Uploading ' + x.f.name + ' (' + (i + 1) + ' of ' + plan.length + ')…';
@@ -705,8 +719,12 @@
           if (location.hash !== '#/teacher/songs') return;
           songsPage(); document.getElementById('st').textContent = done + ' of ' + files.length + ' tracks saved.' + (skip.length ? ' Not used: ' + skip.join(', ') + '.' : '');
         });
+        };
       };
     });
+    var mxPlaying = null;
+    app.querySelectorAll('[data-mxplay]').forEach(function (b) { b.onclick = function () { if (mxPlaying) { mxPlaying.pause(); mxPlaying = null; return; } mxPlaying = T.Cues.play(b.dataset.mxplay); }; });
+    T.cleanup.push(function () { if (mxPlaying) mxPlaying.pause(); });
     document.getElementById('alllyr').onclick = function () {
       var L = T.show.lyricTimes = T.show.lyricTimes || {}, b = this;
       var todo = O.songs.filter(function (s) { var t = tr[s.id] || {}, it = lyricItem(s.id); return t.rehearsal && t.performance && it && it.lyrics.length && !L[s.id]; });

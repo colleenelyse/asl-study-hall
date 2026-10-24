@@ -113,6 +113,9 @@
       return out;
     },
     trackId: function (num) { var so = T.O().songs.find(function (s) { return String(s.num) === String(num); }); return so ? so.id : 'mx' + num; },
+    /* the music connected to MX<num>: { kind, name, dur } or null */
+    music: function (num) { var t = (T.show.tracks || {})[T.Cues.trackId(num)] || {}, kind = t.performance ? 'performance' : t.rehearsal ? 'rehearsal' : null; return kind ? { kind: kind, name: t[kind].name || '', dur: t[kind].dur } : null; },
+    musicText: function (num) { var m = T.Cues.music(num); return m ? (m.kind === 'performance' ? 'band track' : 'guide vocals only') + ' ' + T.clock(m.dur) : 'no music connected yet'; },
     play: function (num) {      // a music cue's music (the band track; the guide vocals if that is all there is)
       var id = T.Cues.trackId(num), t = (T.show.tracks || {})[id] || {}, kind = t.performance ? 'performance' : t.rehearsal ? 'rehearsal' : null;
       if (!kind) { T.toast('No music uploaded for MX' + num + ' yet.'); return null; }
@@ -172,12 +175,12 @@
     if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
     if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
     btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
-    var W = 1100, COL = 250, GAP = 18;
+    var W = 1100, COL = 250, GAP = 18, RCOL = marks.length ? 230 : 0;      // props, set and costume boxes go in their own column on the right (Colleen: not with the cues)
     T.Pages.doc().then(function (doc) {
       var i = 0;
       return pages.reduce(function (p, n) {
         return p.then(function () {
-          var sz = T.Pages.size(n), pw = W - COL - GAP - 10;
+          var sz = T.Pages.size(n), pw = W - COL - GAP - 10 - (RCOL ? RCOL + GAP : 0);
           return T.Pages.draw(doc, n, pw, 1, true).then(function (r) {
             var k = r.canvas.width / sz.w, ph = r.canvas.height, H = Math.max(ph + 20, Math.round(W * 11 / 8.5));
             var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -194,19 +197,23 @@
             ctx.globalCompositeOperation = 'source-over';
             // the cue column
             ctx.fillStyle = '#555'; ctx.font = '600 13px system-ui, sans-serif'; ctx.fillText('STAGE MANAGER · page ' + T.Pages.printed(n), 10, 24);
-            var bottom = 34, items = mine.map(function (c) { return { y: c.y, color: colorOf(c), head: lab[c.id], text: c.text }; })
-              .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, color: '#e3d4ff', head: 'NOTE', text: x.text }; }))
-              .concat(here)
-              .sort(function (a, b) { return a.y - b.y; });
-            items.forEach(function (c) {
-              ctx.font = '15px system-ui, sans-serif';
-              var lines = wrap(ctx, c.text, COL - 26), h = 24 + lines.length * 18 + 6, ty = oy + c.y * k, top = Math.max(ty - 12, bottom + 4);
-              ctx.fillStyle = c.color; round(ctx, 6, top, COL - 8, h, 7); ctx.fill();
-              ctx.fillStyle = '#1d1a2e'; ctx.font = '800 16px system-ui, sans-serif'; ctx.fillText(c.head, 14, top + 19);
-              ctx.font = '15px system-ui, sans-serif'; lines.forEach(function (l, j) { ctx.fillText(l, 14, top + 38 + j * 18); });
-              ctx.strokeStyle = c.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(COL - 2, top + 12); ctx.lineTo(ox + 40 * k, ty + 6 * k); ctx.stroke();
-              bottom = top + h;
-            });
+            var cueItems = mine.map(function (c) { return { y: c.y, color: colorOf(c), head: lab[c.id], text: c.text + (c.k === 'MX' ? ' · ' + T.Cues.musicText(c.mx) : '') }; })
+              .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, color: '#e3d4ff', head: 'NOTE', text: x.text }; }));
+            // a column of boxes: x0..x0+w, each with a line to the spot on the page (lineX)
+            var column = function (list, x0, w, lineX, fromRight) {
+              var bottom = 34;
+              list.sort(function (a, b) { return a.y - b.y; }).forEach(function (c) {
+                ctx.font = '15px system-ui, sans-serif';
+                var lines = wrap(ctx, c.text, w - 26), h = 24 + lines.length * 18 + 6, ty = oy + c.y * k, top = Math.max(ty - 12, bottom + 4);
+                ctx.fillStyle = c.color; round(ctx, x0, top, w - 8, h, 7); ctx.fill();
+                ctx.fillStyle = '#1d1a2e'; ctx.font = '800 16px system-ui, sans-serif'; ctx.fillText(c.head, x0 + 8, top + 19);
+                ctx.font = '15px system-ui, sans-serif'; lines.forEach(function (l, j) { ctx.fillText(l, x0 + 8, top + 38 + j * 18); });
+                ctx.strokeStyle = c.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(fromRight ? x0 : x0 + w - 8, top + 12); ctx.lineTo(lineX, ty + 6 * k); ctx.stroke();
+                bottom = top + h;
+              });
+            };
+            column(cueItems, 6, COL, ox + 40 * k, false);      // cues and notes on the left
+            if (RCOL && here.length) column(here, ox + r.canvas.width + GAP, RCOL, ox + (sz.w - 30) * k, true);      // props, set and costume on the right
             var img = new Image(); img.className = 'printpage'; img.alt = 'Page ' + T.Pages.printed(n); img.src = cv.toDataURL('image/jpeg', 0.85);
             out.appendChild(img); r.canvas.width = r.canvas.height = 0; cv.width = cv.height = 0;
             var m = document.getElementById('mkp'); if (m) m.textContent = 'Making pages… ' + (++i) + ' of ' + pages.length;
@@ -245,7 +252,7 @@
         '<a class="btn" href="#/teacher/smscript">' + sym('📋') + 'Stage manager script</a>' +
         '<button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div><p id="st" class="muted small" role="status"></p></div>' +
         (st.k === 'PR' ? propsTable() : st.k === 'CO' ? costumeTable() : rows.length ? '<table class="tbl cuesheet"><thead><tr><th>Cue</th><th>Page</th><th>What happens</th><th class="noprint"></th></tr></thead><tbody>' + rows.map(function (c) {
-          return '<tr class="row-' + (isChange(c) ? 'SC' : c.k) + (c.sug ? ' sug' : '') + '"><td><b>' + lab[c.id] + '</b></td><td>' + esc(pageOf(c.n)) + '</td><td>' + esc(c.text) + (c.sug ? ' <span class="tag noprint">suggested</span>' : '') + '</td>' +
+          return '<tr class="row-' + (isChange(c) ? 'SC' : c.k) + (c.sug ? ' sug' : '') + '"><td><b>' + lab[c.id] + '</b></td><td>' + esc(pageOf(c.n)) + '</td><td>' + esc(c.text) + (c.k === 'MX' ? ' <span class="tag">' + esc(T.Cues.musicText(c.mx)) + '</span>' + (T.Cues.music(c.mx) ? '' : ' <a class="small noprint" href="#/teacher/songs">Connect music</a>') : '') + (c.sug ? ' <span class="tag noprint">suggested</span>' : '') + '</td>' +
             '<td class="noprint">' + (c.k === 'MX' ? '<button class="btn small" data-play="' + c.mx + '">▶</button> ' : '') + '<a class="btn small" href="#/teacher/read/' + c.n + '">On the page</a></td></tr>';
         }).join('') + '</tbody></table>' : '<p class="card muted">No cues yet. Press <b>Suggest cues from the script</b>.</p>');
       app.querySelectorAll('[data-ncount]').forEach(function (inp) { inp.onchange = function () { var o = need(inp.dataset.ncount), v = Math.max(0, Math.round(+inp.value || 0)); if (v) o.count = v; else delete o.count; T.saveShow('Saved').then(draw); }; });

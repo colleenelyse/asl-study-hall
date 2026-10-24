@@ -187,7 +187,7 @@
     function cueOpen(id) {
       var c = T.cues().find(function (q) { return q.id === id; }); if (!c) return;
       var lab = T.cueLabel(T.cues())[c.id], player = null;
-      var d = ask('<h2>' + sym(c.k === 'LX' ? '💡' : c.k === 'SX' ? '🔔' : '🎵') + lab + (c.sug ? ' <span class="tag">suggested</span>' : '') + '</h2><p>' + esc(c.text) + '</p>' +
+      var d = ask('<h2>' + sym(c.k === 'LX' ? '💡' : c.k === 'SX' ? '🔔' : '🎵') + lab + (c.sug ? ' <span class="tag">suggested</span>' : '') + '</h2><p>' + esc(c.text) + '</p>' + (c.k === 'MX' ? '<p class="small">' + sym('🎵') + 'Music: ' + esc(T.Cues.musicText(c.mx)) + (T.Cues.music(c.mx) || !o.teacher ? '' : ' · <a href="#/teacher/songs">Connect music</a>') + '</p>' : '') +
         '<div class="row end" style="flex-wrap:wrap">' + (c.k === 'MX' ? '<button class="btn" id="cp">▶ Play the music</button>' : '') +
         (o.teacher ? '<button class="btn quiet" id="cd">Delete</button><button class="btn" id="cm">Move</button><button class="btn" id="ce">Edit</button>' + (c.sug ? '<button class="btn" id="ca">Accept</button>' : '') : '') +
         '<button class="btn primary" id="cc">Close</button></div>');
