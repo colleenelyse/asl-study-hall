@@ -149,6 +149,7 @@
       t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
+      t('#/teacher/react', 'star', 'React to That!', '50 warmup prompts') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
       t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings') +
       t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +

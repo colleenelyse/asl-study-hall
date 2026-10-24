@@ -220,7 +220,7 @@
      fullCal }]. Practice: never recorded for parents; a helper's is the student's, marked (progress.js). The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
   T.pass = null;
   T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
-    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list'], ['photos', 'Costume and prop photos']];
+    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list'], ['react', 'React to That! (reaction practice)'], ['photos', 'Costume and prop photos']];
   T.TEACH_PAGES = [['callboard', 'Call board (who is where, each day)'], ['read', 'The script (teacher view)'], ['cues', 'Cue sheet'], ['smscript', 'Stage manager script'], ['mics', 'Mic plot']];
   /* in the Company (Colleen 2026-10-23): a.company is 'artist' (Company Artist) or 'mentor' (Company Mentor), or not set yet */
   T.COMPANY = { artist: 'Artist', mentor: 'Mentor' };
@@ -578,6 +578,7 @@
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       (T.shopTile && T.shopTile() ? tile('#/shop', 'shirt', 'Shopping list', T.shopTile()) : '') +
       (T.photosTile && T.photosTile() ? tile('#/photos', 'camera', 'Costume photos', T.photosTile()) : '') +
+      tile('#/react', 'star', 'React to That!', 'Practice reacting') +
       tile('#/story', 'book', 'The Story', 'What happens') +
       (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +
       (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +
