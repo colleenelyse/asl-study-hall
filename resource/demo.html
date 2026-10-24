@@ -414,7 +414,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.82';
+var VERSION = '1.83';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -908,9 +908,10 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), checkDay: checkDay_(today, st.checkDay), offToday: calendar_().off[today] || '', dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
+    check: checkBoot_(today, st),          // grade check day (1.83: with the teacher's override)
     data: isTeacher_(email) || cm.length ? null : studentView_(studentData_(email), st), td: isTeacher_(email) ? teacherData_('') : null
   };
 }
@@ -1746,6 +1747,38 @@ function checkDay_(today, dayName) {
   for (var k = 0; k < 5; k++) if (cal.finals[addDays_(week, k)]) return '';
   for (var d = addDays_(week, i); d >= week; d = addDays_(d, -1)) if (!cal.off[d]) return d;
   return '';
+}
+// 1.83: the teacher can make TODAY a grade check day (Overview button). Saved in the sheet's document properties as
+// { day, cancel }: cancel = the next scheduled check day, when the teacher said this one counts for the week ('' = keep it).
+function checkOv_() { try { var o = JSON.parse(PropertiesService.getDocumentProperties().getProperty('checkOverride') || 'null'); return o && o.day ? o : { day: '', cancel: '' }; } catch (e) { return { day: '', cancel: '' }; } }
+// the scheduled check day for the week of date t, unless the teacher cancelled it
+function schedCheck_(t, dayName, ov) { var d = checkDay_(t, dayName); return d && d === ov.cancel ? '' : d; }
+// The grade check that applies today: { day, since }. day = the latest check day this week that has come (scheduled or the
+// teacher's); since = grades must be entered on or after this date to count ('' = any time this week). A scheduled day kept
+// after an override day needs grades entered after the override; an override after a scheduled day needs new ones too.
+function checkInfo_(today, dayName) {
+  var ov = checkOv_(), week = weekOf_(today), n = schedCheck_(today, dayName, ov), o = ov.day && weekOf_(ov.day) === week ? ov.day : '';
+  var c = [n, o].filter(function (d) { return d && d <= today; }).sort(), day = c.pop() || '', since = '';
+  if (day && day === n && o && o < n) since = addDays_(o, 1);
+  if (day && day === o && n && n < o) since = addDays_(n, 1);
+  return { day: day, since: since };
+}
+// the next scheduled check day after a date (up to 6 weeks ahead), for the "cancel or keep it?" question
+function nextCheck_(after, dayName) {
+  for (var k = 0; k < 6; k++) { var d = checkDay_(addDays_(weekOf_(after), 7 * k), dayName); if (d && d > after) return d; }
+  return '';
+}
+function api_setCheckOverride(on, cancelNext) {
+  teacherOnly_();
+  var today = today_(), st = settings_(), props = PropertiesService.getDocumentProperties();
+  if (on) props.setProperty('checkOverride', JSON.stringify({ day: today, cancel: cancelNext ? nextCheck_(today, st.checkDay) : '', by: myEmail_() }));
+  else props.deleteProperty('checkOverride');
+  return checkBoot_(today, st);
+}
+// the grade check fields of the boot (also sent back after the teacher changes the override)
+function checkBoot_(today, st) {
+  var info = checkInfo_(today, st.checkDay), ov = checkOv_();
+  return { checkDay: info.day, checkSince: info.since, checkOv: ov.day === today ? ov : null, checkNext: nextCheck_(today, st.checkDay), checkName: st.checkDay };
 }
 // the final exam slot for a class period ("5A" → 5th period's final), or null
 function finalSlot_(period, sched) { var n = parseInt(String(period), 10); return isNaN(n) ? null : (sched || finalSched_()).filter(function (s) { return s.period === String(n); })[0] || null; }
@@ -3715,7 +3748,7 @@ window.addEventListener('beforeunload', function (e) { if (DIRTY) { e.preventDef
 /* ---------- start ---------- */
 call('api_boot').then(function (b) {
   if (b.error === 'signin') { $('main').innerHTML = '<div class="card empty">Please open this link while signed in to your school Google account.</div>'; return; }
-  B = b; D = b.data || emptyD(); if (b.td) TD = b.td;
+  B = withCheck(b); D = b.data || emptyD(); if (b.td) TD = b.td;
   $('brand').textContent = b.app; document.title = b.app;
   lookAfterBoot();
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
@@ -4374,7 +4407,10 @@ function anOpen(i) {
 var DP_EDIT = false, DP_NONE = null, DP_DRAFT = null;
 // Grade check day (the teacher's weekday, moved for no-school days, none in finals weeks): from that day to the end of the week,
 // a student who hasn't entered every class's grade this week must do it first.
-function gradesDone() { return graded().every(function (c) { return (D.grades[c.name] || {})[B.week] !== undefined; }); }
+// the boot's grade check fields (checkDay, checkSince, checkOv, checkNext) sit on B like the rest
+function withCheck(b) { if (b && b.check) Object.keys(b.check).forEach(function (k) { b[k] = b.check[k]; }); return b; }
+// every class has this week's grade (after the teacher's override, entered on or after B.checkSince)
+function gradesDone() { return graded().every(function (c) { return (D.grades[c.name] || {})[B.week] !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince); }); }
 function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !!B.checkDay && B.today >= B.checkDay && graded().length > 0 && !gradesDone(); }
 function needDayPlan() { return MODE === 'student' && !(PREV && PREV.skip) && F('dayPlan') && isSchoolDay() && !(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan); }
 function dayPlanCard() {
@@ -5483,7 +5519,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
@@ -5645,7 +5681,7 @@ function drawSettings() {
     if (!Object.keys(SET_CHG).length) return toast('Nothing changed');
     var btn = this; btn.disabled = true;
     call('api_saveSettings', SET_CHG).then(function (r) { SETS = r; SET_CHG = {}; setDirty(false); return call('api_boot'); })
-      .then(function (b) { B = b; $('brand').textContent = b.app; TD = null; toast('Settings saved'); drawSettings(); })
+      .then(function (b) { B = withCheck(b); $('brand').textContent = b.app; TD = null; toast('Settings saved'); drawSettings(); })
       .catch(function (e) { oops(e); btn.disabled = false; });
   };
 }
@@ -5795,7 +5831,7 @@ function drawRetakes() {
 function previewAs(email) {
   call('api_previewAs', email).then(function (b) {
     PREV = { B: B, D: D, email: email };
-    b.look = B.look; B = b; D = b.data; MODE = 'student'; CK = null; SCH = null;
+    b.look = B.look; B = withCheck(b); D = b.data; MODE = 'student'; CK = null; SCH = null;
     go('checkin');
   }).catch(oops);
 }
@@ -6388,6 +6424,29 @@ function calPick(id) {
 function calOpen(email, month, name) {
   var w = printOpen();
   call('api_calendarHtml', email, month).then(function (html) { printShow(w, html, (name || 'My') + ' calendar ' + month); }).catch(function (e) { printClose(w); oops(e); });
+}
+/* ---------- the teacher makes today a grade check day (and cancels or keeps the next scheduled one) ---------- */
+function ovOpen() {
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'ovModal';
+  el.onclick = function (e) { if (e.target === el) el.remove(); };
+  var nx = B.checkNext ? fmtDay(B.checkNext) : '', h;
+  if (B.checkOv) h = '<h2>📊 Today is a grade check day</h2><p>Students enter every grade before anything else today.' + (B.checkOv.cancel ? ' The scheduled check on <b>' + fmtDay(B.checkOv.cancel) + '</b> is cancelled.' : '') + '</p>' +
+    '<div class="row"><button class="btn" onclick="ovSet(false)">Undo: today is a normal day' + (B.checkOv.cancel ? ' (and ' + fmtDay(B.checkOv.cancel) + ' is back)' : '') + '</button><button class="btn link" onclick="$(\'ovModal\').remove()">Close</button></div>';
+  else h = '<h2>📊 Make today a grade check day?</h2><p>Today, students will enter every grade before anything else (like on ' + esc(B.checkName && B.checkName !== 'None' ? B.checkName + 's' : 'a grade check day') + ').</p>' +
+    (nx ? '<p style="margin-bottom:6px"><b>What about the next scheduled grade check, ' + nx + '?</b></p><div style="display:grid;gap:8px">' +
+      '<button class="btn primary" onclick="ovSet(true,true)">Cancel ' + nx + ': today counts for the week</button>' +
+      '<button class="btn" onclick="ovSet(true,false)">Keep ' + nx + ' as planned (students check again then)</button></div>'
+      : '<div class="row"><button class="btn primary" onclick="ovSet(true,false)">Yes, make today a grade check day</button></div>') +
+    '<button class="btn link" style="margin-top:8px" onclick="$(\'ovModal\').remove()">Never mind</button>';
+  el.innerHTML = '<div class="card" style="max-width:520px">' + h + '</div>';
+  document.body.appendChild(el);
+}
+function ovSet(on, cancelNext) {
+  call('api_setCheckOverride', on, !!cancelNext).then(function (c) {
+    B.check = c; withCheck(B); var m = $('ovModal'); if (m) m.remove();
+    toast(on ? 'Today is a grade check day' + (cancelNext && c.checkOv && c.checkOv.cancel ? '; ' + fmtDay(c.checkOv.cancel) + ' is cancelled' : '') : 'Back to the normal schedule');
+    draw();
+  }).catch(oops);
 }
 /* ---------- case managers: their students, then each one's full progress report ---------- */
 var CM_SEL = null, CM_HTML = '';
