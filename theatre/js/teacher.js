@@ -94,6 +94,7 @@
       (T.show ? '' : '<label class="f">Cast password<input id="cp" type="password" autocapitalize="off" required></label>') +
       '<label class="f">Teacher password<input id="tp" type="password" autocomplete="current-password" required></label>' +
       '<p class="err" id="msg" role="alert"></p><div class="row end"><button class="btn primary" type="submit">Open Teacher mode</button></div></form>';
+    setTimeout(function () { var box = document.getElementById(T.show ? 'tp' : 'cp'); if (box) box.focus({ preventScroll: true }); }, 50);      // ready to type (Colleen)
     document.getElementById('f').onsubmit = function (e) {
       e.preventDefault();
       var msg = document.getElementById('msg'); msg.textContent = 'Checking…';

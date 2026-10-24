@@ -447,6 +447,7 @@
       (T.saved.offline ? '<p class="muted small">No internet right now. Using the copy saved on this iPad.</p>' : '') + '</form>' +
       '<p class="center"><a href="#/teacher" class="muted">Teacher mode</a></p>';
     var f = document.getElementById('unlock');
+    setTimeout(function () { var box = document.getElementById('pw'); if (box) box.focus({ preventScroll: true }); }, 50);      // ready to type
     f.onsubmit = function (e) {
       e.preventDefault();
       var pw = document.getElementById('pw').value, msg = document.getElementById('msg'), btn = f.querySelector('button');
