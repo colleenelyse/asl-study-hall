@@ -175,7 +175,32 @@
     if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
     if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
     btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
-    var W = 1100, COL = 250, GAP = 18, RCOL = marks.length ? 230 : 0;      // props, set and costume boxes go in their own column on the right (Colleen: not with the cues)
+    var W = 1100, COL = 250, GAP = 18, RCOL = marks.length ? 230 : 0;      // props, set and costume go in their own column on the right (Colleen: not with the cues)
+    /* prompt-book style (Colleen's samples): cues on the same line are one call ("LX 22 / SX 2 GO [what happens]"), and every call gets a
+       Standby before it: right after the call before (when it is within about a page), else about 200 points ahead */
+    var calls = [];
+    list.slice().sort(order).forEach(function (c) { var last = calls[calls.length - 1]; if (last && last.n === c.n && Math.abs(last.y - c.y) < 8) last.cues.push(c); else calls.push({ n: c.n, y: c.y, cues: [c] }); });
+    var standbys = {}, pageH = function (n) { return T.Pages.size(n).h; };
+    var gapOf = function (a, b) { var d = 0; for (var q = a.n; q < b.n; q++) d += pageH(q); return d + b.y - a.y; };
+    /* calls close together (within about 150 points) share one standby, like "Standby LX 10–14 · SX 4–6" */
+    var clusters = [];
+    calls.forEach(function (cl) { var last = clusters[clusters.length - 1]; if (last && gapOf(last[last.length - 1], cl) < 150) last.push(cl); else clusters.push([cl]); });
+    clusters.forEach(function (cs, j) {
+      var first = cs[0], prev = clusters[j - 1], at;
+      if (prev) { var pl = prev[prev.length - 1]; if (gapOf(pl, first) < 480) at = { n: pl.n, y: pl.y + 16 }; }
+      if (!at) at = first.y - 200 >= 30 ? { n: first.n, y: first.y - 200 } : (pages.indexOf(first.n - 1) >= 0 ? { n: first.n - 1, y: pageH(first.n - 1) - 90 } : { n: first.n, y: Math.max(20, first.y - 60) });
+      var key = at.n + ':' + Math.round(at.y), all = [].concat.apply([], cs.map(function (c) { return c.cues; }));
+      (standbys[key] = standbys[key] || { n: at.n, y: at.y, cues: [] }).cues = standbys[key].cues.concat(all);
+    });
+    var ranges = function (cs) {      // "LX 10–14 · SX 4–6 · MX 7"
+      var by = {};
+      cs.forEach(function (c) { var m = String(lab[c.id]).match(/^([A-Z]+)(.*)$/); (by[m[1]] = by[m[1]] || []).push(m[2]); });
+      return ['LX', 'SX', 'MX'].filter(function (k) { return by[k]; }).map(function (k) {
+        var nums = by[k].map(Number).filter(function (x) { return !isNaN(x); }).sort(function (a, b) { return a - b; }), out = [], i = 0;
+        while (i < nums.length) { var a = nums[i]; while (i + 1 < nums.length && nums[i + 1] === nums[i] + 1) i++; out.push(a === nums[i] ? String(a) : a + '–' + nums[i]); i++; }
+        return k + ' ' + (out.join(', ') || by[k].join(', '));
+      }).join(' · ');
+    };
     T.Pages.doc().then(function (doc) {
       var i = 0;
       return pages.reduce(function (p, n) {
@@ -186,34 +211,48 @@
             var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
             var ctx = cv.getContext('2d'), ox = COL + GAP, oy = 10;
             ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(r.canvas, ox, oy);
-            var mine = list.filter(function (c) { return c.n === n; }).sort(order);
-            // the line where each cue happens, in its color (multiply keeps the words black)
-            ctx.globalCompositeOperation = 'multiply';
-            // cues on the same line share it in stripes, so the colors never mix
+            var mine = calls.filter(function (c) { return c.n === n && c.cues.some(function (q) { return list.indexOf(q) >= 0; }); });
             var here = marks.filter(function (x) { return x.n === n; });
-            var lit = mine.map(function (c) { return { y: c.y, color: colorOf(c) }; }).concat(here.map(function (x) { return { y: x.y, color: x.color }; })).sort(function (a, b) { return a.y - b.y; });
+            // the line where each call happens: a light tint in its color (multiply keeps the words black) and a rule under it, as in a prompt book
+            ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.55;
+            var lit = [];
+            mine.forEach(function (c) { c.cues.forEach(function (q) { lit.push({ y: c.y, color: colorOf(q) }); }); });
+            here.forEach(function (x) { lit.push({ y: x.y, color: x.color }); });
+            lit.sort(function (a, b) { return a.y - b.y; });
             var groups = []; lit.forEach(function (c) { var g = groups[groups.length - 1]; if (g && Math.abs(g[0].y - c.y) < 8) { if (!g.some(function (x) { return x.color === c.color; })) g.push(c); } else groups.push([c]); });
             groups.forEach(function (g) { var h = 15 / g.length; g.forEach(function (c, j) { ctx.fillStyle = c.color; ctx.fillRect(ox + 40 * k, oy + (g[0].y - 2 + j * h) * k, (sz.w - 70) * k, h * k); }); });
-            ctx.globalCompositeOperation = 'source-over';
-            // the cue column
+            ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
             ctx.fillStyle = '#555'; ctx.font = '600 13px system-ui, sans-serif'; ctx.fillText('STAGE MANAGER · page ' + T.Pages.printed(n), 10, 24);
-            var cueItems = mine.map(function (c) { return { y: c.y, color: colorOf(c), head: lab[c.id], text: c.text + (c.k === 'MX' ? ' · ' + T.Cues.musicText(c.mx) : '') }; })
-              .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, color: '#e3d4ff', head: 'NOTE', text: x.text }; }));
-            // a column of boxes: x0..x0+w, each with a line to the spot on the page (lineX)
-            var column = function (list, x0, w, lineX, fromRight) {
+            /* entries: { y, kind: 'go' | 'sb' | 'note' | 'mark', chips: [[text, color]], text } */
+            var left = mine.map(function (c) {
+              var desc = c.cues.map(function (q) { return q.text + (q.k === 'MX' ? ' · ' + T.Cues.musicText(q.mx) : ''); }).filter(function (t, i2, a) { return a.indexOf(t) === i2; }).join('; ');
+              return { y: c.y, kind: 'go', chips: c.cues.map(function (q) { return [String(lab[q.id]).replace(/^([A-Z]+)/, '$1 '), colorOf(q)]; }), text: '[' + desc + ']' };
+            }).concat(Object.keys(standbys).map(function (key) { return standbys[key]; }).filter(function (sb) { return sb.n === n && sb.cues.some(function (q) { return list.indexOf(q) >= 0; }); })
+              .map(function (sb) { return { y: sb.y, kind: 'sb', chips: [], text: 'Standby ' + ranges(sb.cues.filter(function (q) { return list.indexOf(q) >= 0; })) }; }))
+              .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, kind: 'note', chips: [['NOTE', '#e3d4ff']], text: x.text }; }));
+            var right = here.map(function (x) { return { y: x.y, kind: 'mark', chips: [[x.head, x.color]], text: x.text }; });
+            var column = function (list2, x0, w, lineX, fromRight) {
               var bottom = 34;
-              list.sort(function (a, b) { return a.y - b.y; }).forEach(function (c) {
-                ctx.font = '15px system-ui, sans-serif';
-                var lines = wrap(ctx, c.text, w - 26), h = 24 + lines.length * 18 + 6, ty = oy + c.y * k, top = Math.max(ty - 12, bottom + 4);
-                ctx.fillStyle = c.color; round(ctx, x0, top, w - 8, h, 7); ctx.fill();
-                ctx.fillStyle = '#1d1a2e'; ctx.font = '800 16px system-ui, sans-serif'; ctx.fillText(c.head, x0 + 8, top + 19);
-                ctx.font = '15px system-ui, sans-serif'; lines.forEach(function (l, j) { ctx.fillText(l, x0 + 8, top + 38 + j * 18); });
-                ctx.strokeStyle = c.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(fromRight ? x0 : x0 + w - 8, top + 12); ctx.lineTo(lineX, ty + 6 * k); ctx.stroke();
+              list2.sort(function (a, b) { return a.y - b.y || (a.kind === 'sb' ? -1 : 1); }).forEach(function (c) {
+                ctx.font = (c.kind === 'sb' ? 'italic ' : '') + '15px system-ui, sans-serif';
+                var lines = wrap(ctx, c.text, w - (c.kind === 'sb' ? 44 : 24)), head = c.chips.length ? 24 : 0, h = head + lines.length * 18 + 8, ty = oy + c.y * k, top = Math.max(ty - 12, bottom + 6);
+                if (c.kind === 'sb') { ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; round(ctx, x0, top, w - 8, h, h / 2); ctx.stroke(); }
+                var x = x0 + 8;
+                c.chips.forEach(function (ch) { ctx.font = '800 15px system-ui, sans-serif'; var tw = ctx.measureText(ch[0]).width; ctx.fillStyle = ch[1]; round(ctx, x - 3, top + 3, tw + 6, 21, 4); ctx.fill(); ctx.fillStyle = '#1d1a2e'; ctx.fillText(ch[0], x, top + 19); x += tw + 9; });
+                if (c.kind === 'go') { ctx.font = '900 16px system-ui, sans-serif'; ctx.fillStyle = '#1d1a2e'; ctx.fillText('GO', x, top + 19); }
+                ctx.fillStyle = '#1d1a2e'; ctx.font = (c.kind === 'sb' ? 'italic 600 ' : '') + '15px system-ui, sans-serif';
+                lines.forEach(function (l, j) { ctx.fillText(l, x0 + (c.kind === 'sb' ? 14 : 8), top + head + 16 + j * 18); });
+                if (c.kind !== 'sb') {      // a rule under the entry, then on to its line in the script
+                  var ry = top + h - 2; ctx.strokeStyle = '#1d1a2e'; ctx.lineWidth = 1.5; ctx.beginPath();
+                  if (fromRight) { ctx.moveTo(x0 + w - 8, ry); ctx.lineTo(x0, ry); ctx.lineTo(lineX, ty + 13 * k); ctx.lineTo(lineX - (sz.w - 70) * k * 0.25, ty + 13 * k); }
+                  else { ctx.moveTo(x0, ry); ctx.lineTo(x0 + w - 8, ry); ctx.lineTo(lineX, ty + 13 * k); ctx.lineTo(lineX + (sz.w - 70) * k, ty + 13 * k); }
+                  ctx.stroke();
+                }
                 bottom = top + h;
               });
             };
-            column(cueItems, 6, COL, ox + 40 * k, false);      // cues and notes on the left
-            if (RCOL && here.length) column(here, ox + r.canvas.width + GAP, RCOL, ox + (sz.w - 30) * k, true);      // props, set and costume on the right
+            column(left, 6, COL, ox + 40 * k, false);      // cues, standbys and notes on the left
+            if (RCOL && right.length) column(right, ox + r.canvas.width + GAP, RCOL, ox + (sz.w - 30) * k, true);      // props, set and costume on the right
             var img = new Image(); img.className = 'printpage'; img.alt = 'Page ' + T.Pages.printed(n); img.src = cv.toDataURL('image/jpeg', 0.85);
             out.appendChild(img); r.canvas.width = r.canvas.height = 0; cv.width = cv.height = 0;
             var m = document.getElementById('mkp'); if (m) m.textContent = 'Making pages… ' + (++i) + ' of ' + pages.length;
