@@ -266,6 +266,8 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .cuesheet tr.row-SX td:first-child { border-left: 6px solid #8fd3ff; }
 .cuesheet tr.row-MX td:first-child { border-left: 6px solid #ff9fd0; }
 .cuesheet tr.row-SC td:first-child { border-left: 6px solid #7ee08a; }
+.cuesheet tr.row-PR td:first-child { border-left: 6px solid #ffb35c; }
+.cuesheet tr.row-CO td:first-child { border-left: 6px solid #ff7f7f; }
 .withcues .pdfpage { overflow: visible; }
 .pdfpage > .pdfcanvas { border-radius: 4px; }
 .withcues .cue span { display: none; }

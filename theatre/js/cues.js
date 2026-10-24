@@ -126,7 +126,8 @@
   /* ---------- the stage manager script (Colleen: "the original pdf with text added over the top"; light cues yellow, music pink, sound blue) ----------
      every page of the real script, a little smaller, with a cue column down the left: each cue's number and words on its color, a line to the spot,
      and that line of the script highlighted in the cue's color. Printed, or saved as a PDF from the print window. */
-  var SM_COLOR = { LX: '#ffe14d', MX: '#ff9fd0', SX: '#8fd3ff', SC: '#7ee08a' };
+  var SM_COLOR = { LX: '#ffe14d', MX: '#ff9fd0', SX: '#8fd3ff', SC: '#7ee08a', PR: '#ffb35c', CO: '#ff7f7f' };      // props and set orange, costume red (Colleen 2026-10-24)
+  T.Cues.COLOR = SM_COLOR;
   /* a scene change (Colleen: scene changes in green): the Blue out at a scene's end, and the Lights up that starts the next scene */
   var isChange = function (c) { return c.k === 'LX' && /^(blue out: scene change|lights up: scene)/i.test(c.text); };
   T.Cues.isChange = isChange;
@@ -134,21 +135,42 @@
   T.teacherPages.smscript = function () {
     T.setBar('Stage manager script', '#/teacher/cues');
     if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not saved yet. Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).</p></div>'; return; }
-    var st = Object.assign({ sug: true, notes: false }, T.ls('smScript') || {}), nS = T.cues().filter(function (c) { return c.sug; }).length;
+    var st = Object.assign({ sug: true, notes: false, props: true, costume: true }, T.ls('smScript') || {}), nS = T.cues().filter(function (c) { return c.sug; }).length;
     app.innerHTML = '<div class="card noprint"><h2>' + sym('📋') + 'Stage manager script</h2>' +
-      '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span>, and the line where each one happens highlighted in its color.</p>' +
+      '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span> <span class="tag" style="background:' + SM_COLOR.PR + ';color:#1d1a2e">props and set</span> <span class="tag" style="background:' + SM_COLOR.CO + ';color:#1d1a2e">costume</span>, and the line where each one happens highlighted in its color.</p>' +
       '<label class="row" style="gap:6px"><input type="checkbox" id="sg"' + (st.sug ? ' checked' : '') + '>Include the ' + nS + ' suggested cues not accepted yet</label>' +
+      '<label class="row" style="gap:6px"><input type="checkbox" id="pp"' + (st.props ? ' checked' : '') + '>Include props and set pieces (how many, and who)</label>' +
+      '<label class="row" style="gap:6px"><input type="checkbox" id="cc"' + (st.costume ? ' checked' : '') + '>Highlight costume notes</label>' +
       '<label class="row" style="gap:6px"><input type="checkbox" id="dn"' + (st.notes ? ' checked' : '') + '>Include the director’s notes</label>' +
       '<div class="row end" style="margin-top:10px"><button class="btn primary" id="mk">' + icon('print') + 'Make it</button></div><p class="muted small">It takes a minute or two for the whole script. Then print, or choose “Save as PDF” in the print window. For your cast and crew only.</p></div><div id="out"></div>';
     var keep = function () { T.ls('smScript', st); };
     document.getElementById('sg').onchange = function () { st.sug = this.checked; keep(); };
     document.getElementById('dn').onchange = function () { st.notes = this.checked; keep(); };
+    document.getElementById('pp').onchange = function () { st.props = this.checked; keep(); };
+    document.getElementById('cc').onchange = function () { st.costume = this.checked; keep(); };
     document.getElementById('mk').onclick = function () { makeSM(st, this); };
   };
+  /* props, set pieces and costume notes (needs.js), with the teacher's own counts and the ones she marked not needed */
+  function needsList() {
+    var r = T.Needs.fromShow(), ov = (T.show.needs || {});
+    r.items = r.items.filter(function (it) { return !(ov[it.key] && ov[it.key].off); });
+    r.items.forEach(function (it) { it.show = howMany(it, ov[it.key]); });
+    return r;
+  }
+  T.Cues.needs = needsList;
+  function howMany(it, o) {
+    if (o && o.count) return String(o.count);
+    var n = Math.max(it.count, it.listQty || 0);
+    return n + (it.eachOf.length ? ' + one for each of the ' + it.eachOf.map(function (g) { var c = T.charById(g); return c ? c.short : g; }).join(', ') : '');
+  }
+  function whoText(ids) { return ids.map(function (id) { var c = T.charById(id); return c ? c.short : id; }).join(', ') || 'set dressing'; }
   function makeSM(st, btn) {
     var out = document.getElementById('out'), sc = T.show.script, list = T.cues().filter(function (c) { return st.sug || !c.sug; }), lab = T.cueLabel(T.cues());
     var notes = st.notes ? (T.show.scriptNotes || []).filter(function (n) { return !n.del; }) : [];
     var pages = (sc.pages || []).map(function (p) { return p.n; });
+    var need = (st.props || st.costume) && T.Needs ? needsList() : { items: [], costume: [] }, marks = [];
+    if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
+    if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
     btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
     var W = 1100, COL = 250, GAP = 18;
     T.Pages.doc().then(function (doc) {
@@ -165,13 +187,16 @@
             // the line where each cue happens, in its color (multiply keeps the words black)
             ctx.globalCompositeOperation = 'multiply';
             // cues on the same line share it in stripes, so the colors never mix
-            var groups = []; mine.forEach(function (c) { var g = groups[groups.length - 1]; if (g && Math.abs(g[0].y - c.y) < 8) g.push(c); else groups.push([c]); });
-            groups.forEach(function (g) { var h = 15 / g.length; g.forEach(function (c, j) { ctx.fillStyle = colorOf(c); ctx.fillRect(ox + 40 * k, oy + (g[0].y - 2 + j * h) * k, (sz.w - 70) * k, h * k); }); });
+            var here = marks.filter(function (x) { return x.n === n; });
+            var lit = mine.map(function (c) { return { y: c.y, color: colorOf(c) }; }).concat(here.map(function (x) { return { y: x.y, color: x.color }; })).sort(function (a, b) { return a.y - b.y; });
+            var groups = []; lit.forEach(function (c) { var g = groups[groups.length - 1]; if (g && Math.abs(g[0].y - c.y) < 8) { if (!g.some(function (x) { return x.color === c.color; })) g.push(c); } else groups.push([c]); });
+            groups.forEach(function (g) { var h = 15 / g.length; g.forEach(function (c, j) { ctx.fillStyle = c.color; ctx.fillRect(ox + 40 * k, oy + (g[0].y - 2 + j * h) * k, (sz.w - 70) * k, h * k); }); });
             ctx.globalCompositeOperation = 'source-over';
             // the cue column
             ctx.fillStyle = '#555'; ctx.font = '600 13px system-ui, sans-serif'; ctx.fillText('STAGE MANAGER · page ' + T.Pages.printed(n), 10, 24);
             var bottom = 34, items = mine.map(function (c) { return { y: c.y, color: colorOf(c), head: lab[c.id], text: c.text }; })
               .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, color: '#e3d4ff', head: 'NOTE', text: x.text }; }))
+              .concat(here)
               .sort(function (a, b) { return a.y - b.y; });
             items.forEach(function (c) {
               ctx.font = '15px system-ui, sans-serif';
@@ -213,16 +238,18 @@
       app.innerHTML = '<div class="card noprint"><h2>' + sym('💡') + 'Light, sound and music cues</h2>' +
         '<p class="muted small">LX light cues start at 5 (1–4 are for house cues), SX sound cues start at 1, MX music cues use the script’s numbers. Every blackout or scene change is a <b>Blue out</b>. ' +
         'Suggestions have a dashed outline until you accept them. Add, move and edit cues on <a href="#/teacher/read">Read the script</a>.</p>' +
-        '<div class="row" style="flex-wrap:wrap;gap:8px"><div class="seg" id="kf">' + [['', 'All']].concat(Object.keys(KINDS).map(function (k) { return [k, k]; })).map(function (x) { return '<button type="button" data-v="' + x[0] + '" aria-pressed="' + (st.k === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="row" style="flex-wrap:wrap;gap:8px"><div class="seg" id="kf">' + [['', 'All']].concat(Object.keys(KINDS).map(function (k) { return [k, k]; })).concat([['PR', 'Props & set'], ['CO', 'Costume notes']]).map(function (x) { return '<button type="button" data-v="' + x[0] + '" aria-pressed="' + (st.k === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>' +
         '<label class="row" style="gap:6px"><input type="checkbox" id="ss"' + (st.sug ? ' checked' : '') + '>Show suggestions</label><span class="grow"></span>' +
         '<button class="btn" id="mk">' + (list.length ? 'Suggest again' : 'Suggest cues from the script') + '</button>' +
         (nS ? '<button class="btn" id="acc">Accept all ' + nS + ' suggestions</button>' : '') +
         '<a class="btn" href="#/teacher/smscript">' + sym('📋') + 'Stage manager script</a>' +
         '<button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div><p id="st" class="muted small" role="status"></p></div>' +
-        (rows.length ? '<table class="tbl cuesheet"><thead><tr><th>Cue</th><th>Page</th><th>What happens</th><th class="noprint"></th></tr></thead><tbody>' + rows.map(function (c) {
+        (st.k === 'PR' ? propsTable() : st.k === 'CO' ? costumeTable() : rows.length ? '<table class="tbl cuesheet"><thead><tr><th>Cue</th><th>Page</th><th>What happens</th><th class="noprint"></th></tr></thead><tbody>' + rows.map(function (c) {
           return '<tr class="row-' + (isChange(c) ? 'SC' : c.k) + (c.sug ? ' sug' : '') + '"><td><b>' + lab[c.id] + '</b></td><td>' + esc(pageOf(c.n)) + '</td><td>' + esc(c.text) + (c.sug ? ' <span class="tag noprint">suggested</span>' : '') + '</td>' +
             '<td class="noprint">' + (c.k === 'MX' ? '<button class="btn small" data-play="' + c.mx + '">▶</button> ' : '') + '<a class="btn small" href="#/teacher/read/' + c.n + '">On the page</a></td></tr>';
         }).join('') + '</tbody></table>' : '<p class="card muted">No cues yet. Press <b>Suggest cues from the script</b>.</p>');
+      app.querySelectorAll('[data-ncount]').forEach(function (inp) { inp.onchange = function () { var o = need(inp.dataset.ncount), v = Math.max(0, Math.round(+inp.value || 0)); if (v) o.count = v; else delete o.count; T.saveShow('Saved').then(draw); }; });
+      app.querySelectorAll('[data-noff]').forEach(function (b) { b.onclick = function () { var o = need(b.dataset.noff); o.off = !o.off; T.saveShow(o.off ? 'Marked not needed' : 'Back on the list').then(draw); }; });
       app.querySelectorAll('#kf [data-v]').forEach(function (b) { b.onclick = function () { st.k = b.dataset.v; T.ls('cueSheet', st); draw(); }; });
       document.getElementById('ss').onchange = function () { st.sug = this.checked; T.ls('cueSheet', st); draw(); };
       document.getElementById('mk').onclick = function () {
@@ -232,6 +259,33 @@
       var acc = document.getElementById('acc'); if (acc) acc.onclick = function () { T.cues().forEach(function (c) { delete c.sug; }); T.saveShow('All cues accepted').then(draw); };
       var playing = null;
       app.querySelectorAll('[data-play]').forEach(function (b) { b.onclick = function () { if (playing) { playing.pause(); playing = null; return; } playing = T.Cues.play(b.dataset.play); }; });
+    }
+    function need(key) { var N = T.show.needs = T.show.needs || {}; return (N[key] = N[key] || {}); }
+    function chips(ids) { return ids.map(function (id) { return T.charById(id) ? T.chip(id) : esc(id); }).join(' ') || '<span class="muted">set dressing</span>'; }
+    function propsTable() {
+      if (!T.show.script) return '<p class="card muted">Add the script first.</p>';
+      var all = T.Needs.fromShow().items, ov = T.show.needs || {};
+      all.sort(function (a, b) { return ((ov[a.key] || {}).off ? 1 : 0) - ((ov[b.key] || {}).off ? 1 : 0); });
+      return '<p class="muted small noprint">Found in the stage directions, plus your props list (Production › Shopping). <b>How many</b>: one for each person who has their own (“his phone”), or the number in the words; type your own number to change it. Who is the person named just before it in the directions.</p>' +
+        ['prop', 'set'].map(function (kind) {
+          var l = all.filter(function (it) { return it.kind === kind; }); if (!l.length) return '';
+          return '<h3>' + (kind === 'prop' ? sym('🎒') + 'Props' : sym('🪑') + 'Set pieces') + '</h3><table class="tbl cuesheet"><thead><tr><th>' + (kind === 'prop' ? 'Prop' : 'Set piece') + '</th><th>How many</th><th>Who</th><th>Scenes</th><th class="noprint"></th></tr></thead><tbody>' + l.map(function (it) {
+            var o = ov[it.key] || {};
+            return '<tr class="row-PR' + (o.off ? ' sug' : '') + '"><td><b>' + esc(it.name) + '</b>' + (o.off ? ' <span class="tag">not needed</span>' : '') + (it.onlyList ? '<br><span class="muted small">from your props list (not in the directions)</span>' : '') + '</td>' +
+              '<td><span class="printonly">' + esc(howMany(it, o)) + '</span><span class="noprint"><input data-ncount="' + esc(it.key) + '" inputmode="numeric" value="' + esc(o.count || '') + '" placeholder="' + esc(String(Math.max(it.count, it.listQty || 0))) + '" style="width:64px;min-height:40px;border:2px solid var(--line);border-radius:10px;padding:2px 8px;background:var(--card)">' +
+              (it.eachOf.length && !o.count ? ' <span class="small">+ one for each of the ' + esc(whoText(it.eachOf)) + '</span>' : '') + (it.listQty && it.listQty !== it.count && !o.count ? '<br><span class="muted small">props list: ' + it.listQty + ' · directions: ' + it.count + '</span>' : '') + '</span></td>' +
+              '<td>' + chips(it.who) + '</td><td>' + esc(it.scenes.join(', ')) + '</td>' +
+              '<td class="noprint"><button class="btn small" data-noff="' + esc(it.key) + '">' + (o.off ? 'Needed after all' : 'Not needed') + '</button>' + (it.spots[0] ? ' <a class="btn small" href="#/teacher/read/' + it.spots[0].n + '">On the page</a>' : '') + '</td></tr>';
+          }).join('') + '</tbody></table>';
+        }).join('');
+    }
+    function costumeTable() {
+      if (!T.show.script) return '<p class="card muted">Add the script first.</p>';
+      var l = T.Needs.fromShow().costume;
+      return '<p class="muted small noprint">Every place the script mentions clothing (wearing, glasses, jerseys, costumes…), in the directions and in the lines. On the stage manager script they are highlighted in red. Your costume plot is on the Costumes page.</p>' +
+        (l.length ? '<table class="tbl cuesheet"><thead><tr><th>Scene</th><th>Page</th><th>The script says</th><th>Who</th><th class="noprint"></th></tr></thead><tbody>' + l.map(function (c) {
+          return '<tr class="row-CO"><td>' + esc(c.num) + '</td><td>' + esc(pageOf(c.n)) + '</td><td>“' + esc(c.text) + '”</td><td>' + (c.who.length ? chips(c.who) : c.said.length ? '<span class="small">said by</span> ' + chips(c.said) : '') + '</td><td class="noprint"><a class="btn small" href="#/teacher/read/' + c.n + '">On the page</a></td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="card muted">The script does not mention clothing anywhere.</p>');
     }
     draw();
   };
