@@ -346,14 +346,14 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 /* one outline per line (pages.js T.Pages.shapes): an SVG over the page, only the shape takes clicks */
 .line-shape { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .line-shape path { pointer-events: visiblePainted; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
-.line-shape.follow-line { z-index: 1; mix-blend-mode: multiply; opacity: .55; transition: none; box-shadow: none; background: none; border-radius: 0; }
-.line-shape.follow-line path { stroke-width: 2.5; }
+.line-shape.follow-line { z-index: 1; mix-blend-mode: multiply; opacity: 1; transition: none; box-shadow: none; background: none; border-radius: 0; }
+.line-shape.follow-line path { stroke-width: 2; }      /* pastel fill, a clear outline (multiply: the black print shows through, white becomes the pastel) */
 .line-shape.follow-line.spoken path, .line-shape.sec-box.spoken path { stroke: #1d1a2e; stroke-dasharray: 3 3; }
-.line-shape.sec-box { z-index: 2; mix-blend-mode: multiply; opacity: .5; outline: none; background: none; border-radius: 0; }
+.line-shape.sec-box { z-index: 2; mix-blend-mode: multiply; opacity: 1; outline: none; background: none; border-radius: 0; }
 .line-shape.sec-box path { cursor: pointer; }
-.line-shape.sec-box.untimed { opacity: .28; }
+.line-shape.sec-box.untimed { opacity: .45; }
 .line-shape.sec-box.untimed path { stroke: #555; stroke-dasharray: 4 3; }
-.line-shape.sec-box.sel { opacity: .75; z-index: 3; }
+.line-shape.sec-box.sel { opacity: 1; z-index: 3; }
 .line-shape.sec-box.sel path { stroke: #1d1a2e; stroke-width: 3; }
 .sec-num { position: absolute; transform: translate(-110%, -50%); z-index: 4; cursor: pointer; }
 

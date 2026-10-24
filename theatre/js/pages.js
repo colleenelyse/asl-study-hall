@@ -97,12 +97,13 @@
         var last = band[band.length - 1]; pts.push([last.x0, last.b]);
         for (var j = band.length - 1; j > 0; j--) { pts.push([band[j].x0, band[j].t]); pts.push([band[j - 1].x0, band[j].t]); }
         var id = 'sg' + (++shapeN), cs = o.colors || ['#ffe94d'];
-        var fill = cs.length > 1 ? 'url(#' + id + ')' : cs[0];
-        var grad = cs.length > 1 ? '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' + cs.map(function (c, k) { return '<stop offset="' + (k / cs.length) + '" stop-color="' + c + '"/><stop offset="' + ((k + 1) / cs.length) + '" stop-color="' + c + '"/>'; }).join('') + '</linearGradient></defs>' : '';
+        var stripes = function (gid, f) { return '<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' + cs.map(function (c, k) { return '<stop offset="' + (k / cs.length) + '" stop-color="' + f(c) + '"/><stop offset="' + ((k + 1) / cs.length) + '" stop-color="' + f(c) + '"/>'; }).join('') + '</linearGradient>'; };
+        var fill = cs.length > 1 ? 'url(#' + id + ')' : T.pastel(cs[0]), line = cs.length > 1 ? 'url(#' + id + 'o)' : T.deepShade(cs[0]);      // two singers: stripes, outline too
+        var grad = cs.length > 1 ? '<defs>' + stripes(id, T.pastel) + stripes(id + 'o', T.deepShade) + '</defs>' : '';
         var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
         svg.setAttribute('viewBox', '0 0 ' + sz.w + ' ' + sz.h); svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('class', 'line-shape ' + (o.cls || '')); if (o.data) Object.keys(o.data).forEach(function (k) { svg.dataset[k] = o.data[k]; });
-        svg.innerHTML = grad + '<path d="M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + ' Z" fill="' + fill + '" stroke="' + cs[0] + '"/>' + (o.title ? '<title>' + T.esc(o.title) + '</title>' : '');
+        svg.innerHTML = grad + '<path d="M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + ' Z" fill="' + fill + '" stroke="' + line + '"/>' + (o.title ? '<title>' + T.esc(o.title) + '</title>' : '');
         page.appendChild(svg); out.push({ el: svg, page: page, top: band[0].t, left: band[0].x0, sz: sz });
       });
     });
@@ -179,6 +180,17 @@
     return cs.length ? cs : ['#ffe94d'];      // a chorus or group: a highlighter yellow
   }
   T.lyricColors = lyricColors;
+  /* highlighter shades (Colleen 2026-10-23, from her pastel palettes: "clearly outlined but filled in with pastel shades that don't overlap to make
+     any portion darker"): each character's color made into a soft pastel fill and a deeper outline of the same hue */
+  function hsl(hex) {
+    var n = parseInt(String(hex).replace('#', '').replace(/^(.)(.)(.)$/, '$1$1$2$2$3$3'), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn, h = 0, sa = 0;
+    if (d) { sa = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+    return [h, sa, l];
+  }
+  function shade(hex, sat, light) { var x = hsl(hex); return 'hsl(' + Math.round(x[0]) + ',' + Math.round(Math.min(x[1], sat) * 100) + '%,' + Math.round(light * 100) + '%)'; }
+  T.pastel = function (hex) { return shade(hex, 0.85, 0.84); };
+  T.deepShade = function (hex) { return shade(hex, 0.65, 0.42); };
   /* when a line's singing is done: its end, but not long after its last syllable starts (a line timed by tapping ends where the next one starts) */
   function lineEnd(x) {      // h: where the singing really stops (found on Save, from the guide vocals); else a guess
     var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t;
