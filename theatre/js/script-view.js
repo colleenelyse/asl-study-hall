@@ -57,7 +57,7 @@
         var src = T.scriptScene(scene); if (!src) return;
         src.items.forEach(function (it) {
           if (it.type === 'line' && T.isMine(it.who, scene, who)) T.Pages.wordBoxes(it).forEach(function (b) { put(b, 'hl line mine'); });
-          if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.box && l.who && T.isMine(l.who, scene, who, mo)) put(l.box, 'hl song'); }); }
+          if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.who && T.isMine(l.who, scene, who, mo)) T.Pages.lyricBoxes(l).forEach(function (b) { put(b, 'hl song'); }); }); }
         });
       });
       function put(b, cls) { var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'), sz = T.Pages.size(b.n); if (pg) pg.insertAdjacentHTML('beforeend', '<div class="' + cls + '" style="left:' + pct(b.x - 2, sz.w) + ';top:' + pct(b.y - 1, sz.h) + ';width:' + pct(b.w + 4, sz.w) + ';height:' + pct(b.h + 2, sz.h) + '"></div>'); }

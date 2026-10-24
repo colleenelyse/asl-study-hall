@@ -355,3 +355,12 @@ moves that line (keeping its syllable timing, so the piano follows) and the foll
 pickup stays with the words before it. HSM JR: 708 sections.
 A performer who plays several roles keeps one color in all of them (`color` in app.js): their first role with a picked color (a lead's
 wins), else their first role; a lyric line sung by two of their roles lights up in that one color.
+
+**Songs split like a poem** (Colleen 2026-10-23: "dividing the song as you would if it were written like poetry. the end word of a phrase
+meant to complete a rhyme scheme should be the last word in a line"): `poetic()` in the reader replaces the two-measure sections. Words in
+singing order; a line ends after . ! ? ; : , after a comma or dash once it has 5 syllables, at a rest or held note (a gap much wider than the
+staff's usual word spacing) once it has 3, when the singer changes, before a capitalized word (lyric lines start with a capital; not I or
+Oh), and at 18 to 24 syllables. A line can run onto the next staff: `lyric.boxes` (box = the first), each syllable knows its box (`b`);
+`T.Pages.lyricBoxes(l)` everywhere (lit-up lines, print, script view, song pages), and the piano reads each part under its own staff.
+HSM JR: 635 lines. The light goes off when a line's last word is done (last syllable + 1.6 s, or its end) and comes back LEAD before the
+next line (Colleen: off during music between lines).

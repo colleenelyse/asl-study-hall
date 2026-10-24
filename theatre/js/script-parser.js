@@ -143,7 +143,7 @@
       var before = singerNow;
       if (loc && loc.many && singerByIdx[loc.idx] != null) singerNow = singerByIdx[loc.idx];      // each staff of a system keeps its own singer
       if (!labs.length || !syl.length) {
-        var parts0 = [].concat.apply([], (loc && loc.many ? phrases(syl) : [syl]).map(function (ps) { return measures(ps, loc); }));
+        var parts0 = loc && loc.many ? phrases(syl) : [syl];
         parts0.forEach(function (ps, k) { var e = entry(singerNow, ps, parts0.length > 1 ? null : lyr); if (e) addLyric(e, loc, k); });
         if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : before; }      // after a system, the top staff's singer carries on
         return;
@@ -157,7 +157,7 @@
         var r = runs[runs.length - 1]; if (r && r.who === who) r.syl.push(x); else runs.push({ who: who, syl: [x] });
       });
       var k = 0;
-      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (pp) { measures(pp, loc).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); }); });
+      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); });
       singerNow = labs[labs.length - 1].name;
       if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : singerNow; }
     }
@@ -168,18 +168,6 @@
       if (!t.replace(/[^A-Za-z]/g, '').length) return null;
       return { who: who, text: t, page: printed, box: text ? box : { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h }, syl: ps.map(strip) };
     }
-    /* lit-up sections start at the beginning of a measure (Colleen: "count 1 or 5") and are at most two measures long ("a section and a half
-       should have been broken up into two"): a staff's words grouped by the barlines under them */
-    function measures(ps, loc) {
-      var bars = loc && loc.st && loc.st.bars; if (!bars || !bars.length || ps.length < 2) return [ps];
-      var mOf = function (x) { var c = x.x + x.w / 2, m = 0; bars.forEach(function (b) { if (b < c) m++; }); return m; };
-      var out = [], cur = [], first = null;
-      ps.forEach(function (x) { var m = mOf(x); if (cur.length && m - first >= 2) { out.push(cur); cur = []; first = null; } if (first == null) first = m; cur.push(x); });
-      if (cur.length) out.push(cur);
-      // a pickup of one or two syllables (a word leading into the next phrase) stays with the words before it on the line
-      for (var q = out.length - 1; q > 0; q--) if (out[q].length <= 2) { out[q - 1] = out[q - 1].concat(out[q]); out.splice(q, 1); }
-      return out;
-    }
     /* in a system of several staves, a staff's words broken by rests are separate phrases (the other staff can sing in between) */
     function phrases(ps) {
       var out = [], cur = [];
@@ -187,7 +175,7 @@
       if (cur.length) out.push(cur);
       return out.length ? out : [ps];
     }
-    var strip = function (x) { return { x: x.x, w: x.w }; };
+    var strip = function (x) { return { x: x.x, w: x.w, t: x.t }; };
     var dialogueX = null;
 
     /* where each item sits on the PDF page (pdf page number, x, y from the top, width, height), so the app can highlight the real pages */
@@ -376,7 +364,7 @@
     }
 
     scenes.forEach(function (s) {
-      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); });
+      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') it.lyrics = poetic(it.lyrics); });
     });
     return { scenes: scenes, speakers: speakers, pages: pages.map(function (pg) { return { n: pg.num, w: pg.width, h: pg.height }; }) };
   }
@@ -433,6 +421,49 @@
     });
     systems.sort(function (a, b) { return a.top - b.top; });
     return { staves: staves, systems: systems };
+  }
+
+  /* a song's words as lines of a poem (Colleen 2026-10-23: "dividing the song as you would if it were written like poetry. the end word of a
+     phrase meant to complete a rhyme scheme should be the last word in a line"): the words in singing order, a line ending after a word with
+     ending punctuation (. ! ? ; :), after a comma or dash once the line has 5 syllables, when the singer changes, or after 16 syllables. A line
+     can run from one staff onto the next: it then has several boxes (lyric.boxes; lyric.box is the first), and each syllable knows its box (b). */
+  function poetic(list) {
+    var out = [], cur = null;
+    var close = function () { if (cur) { var e = finishLine(cur); if (e) out.push(e); } cur = null; };
+    list.forEach(function (e) {
+      if (!e.syl || !e.syl.length || e.syl.some(function (x) { return x.t == null; })) { close(); out.push(e); return; }
+      // a rest or a held note: a gap after a word much wider than this staff's usual space between words
+      var gaps = e.syl.slice(1).map(function (x, k) { return x.x - (e.syl[k].x + e.syl[k].w); }).sort(function (a, b) { return a - b; });
+      var usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0, wide = Math.max(28, usual * 2.4);
+      e.syl.forEach(function (x, k) {
+        var w = String(x.t || '');
+        if (cur && cur.who !== e.who) close();
+        if (cur && cur.n >= 3 && /^[A-Z]/.test(w) && !/^I(?![a-z])/.test(w) && !/^O(h|oh)?\b/.test(w)) close();      // a capital starts a line of the poem
+        if (!cur) cur = { who: e.who, page: e.page, parts: [], n: 0 };
+        var p = cur.parts[cur.parts.length - 1];
+        if (!p || p.src !== e) { p = { src: e, syl: [] }; cur.parts.push(p); }
+        p.syl.push(x); cur.n++;
+        var next = e.syl[k + 1], rest = next && next.x - (x.x + x.w) > wide;
+        if (/[.!?;:]["”’')]*$/.test(w) || (/[,–—]["”’')]*$/.test(w) && cur.n >= 5) || (rest && cur.n >= 3) || cur.n >= 24 || (cur.n >= 18 && rest)) close();
+      });
+    });
+    close();
+    return out;
+  }
+  function finishLine(cur) {
+    var boxes = [], syl = [];
+    cur.parts.forEach(function (p) {
+      var b = p.src.box, a = p.syl[0], z = p.syl[p.syl.length - 1];
+      var bx = { n: b.n, x: +(a.x - 1).toFixed(1), y: b.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: b.h }, last = boxes[boxes.length - 1];
+      if (last && last.n === bx.n && Math.abs(last.y - bx.y) < 1) { var x1 = Math.max(last.x + last.w, bx.x + bx.w); last.x = Math.min(last.x, bx.x); last.w = +(x1 - last.x).toFixed(1); }
+      else boxes.push(bx);
+      p.syl.forEach(function (x) { syl.push({ x: x.x, w: x.w, t: x.t, b: boxes.length - 1 }); });
+    });
+    var text = cleanLyric(syl.map(function (x) { return x.t; }).join(' '));
+    if (!text.replace(/[^A-Za-z]/g, '').length) return null;
+    var e = { who: cur.who, text: text, page: cur.page, box: boxes[0], syl: syl };
+    if (boxes.length > 1) e.boxes = boxes;
+    return e;
   }
 
   async function fromPdfJs(pdf, onProgress) {

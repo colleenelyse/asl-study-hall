@@ -73,13 +73,18 @@
     var lines = [];
     for (var i = 0; i < item.lyrics.length; i++) {
       var l = item.lyrics[i], tm = lt.lines[i];
-      if (!l.box || !tm || !tm.s || !tm.s.length) continue;
-      if (!pages[l.box.n]) pages[l.box.n] = await readPage(pdf, l.box.n, lib);
-      var pg = pages[l.box.n], base = l.box.y + l.box.h;
-      // the staff right above the lyric line
-      var st = pg.staves.filter(function (s) { return s.bottom < base && base - s.bottom < s.space * 12; }).sort(function (a, b) { return b.bottom - a.bottom; })[0];
-      if (!st) continue;
-      lines.push({ i: i, st: st, n: l.box.n, syl: (l.syl || []).map(function (s, k) { return { cx: s.x + s.w / 2, t: tm.s[k] }; }).filter(function (s) { return s.t != null; }), t: tm.t, e: tm.e, glyphs: pg.glyphs });
+      var bxs = l.boxes || (l.box ? [l.box] : []);
+      if (!bxs.length || !tm || !tm.s || !tm.s.length) continue;
+      for (var bi = 0; bi < bxs.length; bi++) {      // a line of the poem can run onto the next staff: each part under its own staff
+        var bx = bxs[bi];
+        if (!pages[bx.n]) pages[bx.n] = await readPage(pdf, bx.n, lib);
+        var pg = pages[bx.n], base = bx.y + bx.h;
+        var st = pg.staves.filter(function (s) { return s.bottom < base && base - s.bottom < s.space * 12; }).sort(function (a, b) { return b.bottom - a.bottom; })[0];      // the staff right above
+        if (!st) continue;
+        var sy = (l.syl || []).map(function (s, k) { return { cx: s.x + s.w / 2, t: tm.s[k], b: s.b || 0 }; }).filter(function (s) { return s.t != null && s.b === bi; });
+        if (!sy.length) continue;
+        lines.push({ i: i + bi / 10, st: st, n: bx.n, syl: sy, t: sy[0].t, e: bi === bxs.length - 1 ? tm.e : sy[sy.length - 1].t + 0.6, glyphs: pg.glyphs, x0: bx.x - 4, x1: bx.x + bx.w + 4 });
+      }
     }
     // harmony: two vocal staves sung at the same time -> keep the upper one
     lines = lines.filter(function (a) {
@@ -87,9 +92,9 @@
     });
     var used = {}, notes = [];
     lines.forEach(function (L) {
-      var key = L.n + ':' + L.st.top.toFixed(1) + ':' + L.t.toFixed(1);
+      var key = L.n + ':' + L.st.top.toFixed(1) + ':' + L.t.toFixed(1) + ':' + (L.x0 || 0).toFixed(0);
       if (used[key]) return; used[key] = 1;
-      var ns = staffNotes(L.st, L.glyphs); if (!ns.length || !L.syl.length) return;
+      var ns = staffNotes(L.st, L.glyphs).filter(function (nt) { return L.x0 == null || (nt.x > L.x0 - 14 && nt.x < L.x1 + 30); }); if (!ns.length || !L.syl.length) return;
       // time each note: above a syllable -> that syllable; otherwise between its neighbours by position
       var anchors = L.syl.slice().sort(function (a, b) { return a.cx - b.cx; });
       var rate = anchors.length > 1 ? Math.max(0.004, (anchors[anchors.length - 1].t - anchors[0].t) / Math.max(1, anchors[anchors.length - 1].cx - anchors[0].cx)) : 0.02;

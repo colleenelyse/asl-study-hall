@@ -24,10 +24,11 @@
   /* the pdf pages a scene covers (from its first box to its last, so its sheet music is included) */
   function scenePages(src) {
     var lo = 1e9, hi = 0;
-    src.items.forEach(function (it) { (it.boxes || []).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); }); (it.lyrics || []).forEach(function (l) { if (l.box) { lo = Math.min(lo, l.box.n); hi = Math.max(hi, l.box.n); } }); });
+    src.items.forEach(function (it) { (it.boxes || []).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); }); (it.lyrics || []).forEach(function (l) { T.Pages.lyricBoxes(l).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); }); }); });
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
   T.Pages.scenePages = scenePages;
+  T.Pages.lyricBoxes = function (l) { return l.boxes || (l.box ? [l.box] : []); };
   /* the page number printed on a pdf page (from the script reader's items), or the pdf page number */
   var printedMap = null, printedFor = null;
   T.Pages.printed = function (n) {
@@ -105,7 +106,7 @@
   }
   function songPages(it) {
     var lo = 1e9, hi = 0;
-    var lyr = it.lyrics.map(function (l) { return l.box; }).filter(Boolean);      // the song's own music (its cue can sit on the page before)
+    var lyr = [].concat.apply([], it.lyrics.map(T.Pages.lyricBoxes));      // the song's own music (its cue can sit on the page before)
     (lyr.length ? lyr : it.boxes || []).forEach(function (b) { lo = Math.min(lo, b.n); hi = Math.max(hi, b.n); });
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
@@ -135,15 +136,21 @@
     update: function (host, songId, t) {
       var lt = T.show.lyricTimes && T.show.lyricTimes[songId], it = songItem(songId); if (!lt || !it) return;
       var i = -1; lt.lines.forEach(function (x, k) { if (x && x.t - LEAD <= t) i = k; });
-      var x = lt.lines[i], line = it.lyrics[i];
-      if (!x || !line || !line.box || t > x.e + 1.2) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); host._at = null; return; }
+      var x = lt.lines[i], line = it.lyrics[i], boxes = line ? T.Pages.lyricBoxes(line) : [];
+      // the light goes off when the line's last word is done (Colleen: off during the music between, back on LEAD before the next words)
+      var end = x ? Math.min(x.e, ((x.s && x.s.length ? x.s[x.s.length - 1] : x.t) + 1.6)) : 0;
+      if (!x || !boxes.length || t > end + 0.3) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); host._at = null; return; }
       var key = String(i); if (host._at === key) return;
-      var page = host.querySelector('.pdfpage[data-n="' + line.box.n + '"]'); if (!page) return;
-      var sz = T.Pages.size(line.box.n), b = line.box, pc = function (v, d) { return (v / d * 100) + '%'; };
-      var hl = page.querySelector('.follow-line'); if (!hl) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); hl = document.createElement('div'); hl.className = 'follow-line'; page.appendChild(hl); }
+      host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
       var cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
-      hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
-      if (Date.now() - userScrolled > 4000) hl.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
+      var pc = function (v, d) { return (v / d * 100) + '%'; }, first = null;
+      boxes.forEach(function (b) {      // a line of the poem can run onto the next staff: every part of it lights up
+        var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
+        var sz = T.Pages.size(b.n), hl = document.createElement('div'); hl.className = 'follow-line';
+        hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
+        page.appendChild(hl); first = first || hl;
+      });
+      if (first && Date.now() - userScrolled > 4000) first.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
       host._at = key;
     }
   };
@@ -170,7 +177,7 @@
       var inScene = chars.length && T.O().moments.some(function (m) { return m.scene === scene.id && T.onStage(m, chars); });
       src.items.forEach(function (it) {
         if (it.type === 'line' && chars.length && T.isMine(it.who, scene, chars)) T.Pages.wordBoxes(it).forEach(function (b) { mineLines.push(b); });
-        if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.box && l.who && chars.length && T.isMine(l.who, scene, chars, mo)) mineLyr.push(l.box); }); }
+        if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.who && chars.length && T.isMine(l.who, scene, chars, mo)) T.Pages.lyricBoxes(l).forEach(function (b) { mineLyr.push(b); }); }); }
       });
       if (inScene) scenePages(src).forEach(function (n) { bandPages[n] = 'Scene ' + scene.num; });
     });
