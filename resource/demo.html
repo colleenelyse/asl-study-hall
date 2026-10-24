@@ -414,7 +414,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.85';
+var VERSION = '1.86';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -544,6 +544,8 @@ var DEFAULTS = [
   ['Students: test may be coming', 'Yes', 'When a class has had no test for a while (see the next row), students are nudged to find out when the next one is and add it to their list.'],
   ['Test may be coming after (school days)', 10, 'How many school days (Monday to Friday) without a test before the nudge starts.'],
   ['Students: missing assignments', 'Yes', 'Students enter how many assignments are missing in each class (and which ones).'],
+  ['Testing Center appointment link', '', 'The web address where students make a Testing Center appointment. It shows as a link under a low grade’s plan choices. Empty: no link.'],
+  ['Drop-In Center locations', '', 'Where the Drop-In Center is at each campus: Campus = place, separated with semicolons (North Campus = Room 140; South Campus = Library). Students see their own campus (from their assistant principal’s campus). Empty: nothing shown.'],
   ['Students: explain low grades', 'Yes', 'A grade under the Low grade line needs a short reason and a plan before the check-in saves.'],
   ['Students: what to focus on', 'Yes', 'The "What to focus on this week" box with suggestions students can add to their plan.'],
   ['Students: look back at last week', 'Yes', 'Students check off last week\'s steps and say whether they followed their plan.'],
@@ -558,7 +560,7 @@ var DEFAULTS = [
 ];
 // How the app's Settings page shows each row: [group, kind]. kind: yesno, number, text, list (comma list), dates, link
 var SETTING_UI = {
-  'Students: missing assignments': ['Each week, students…', 'yesno'], 'Students: explain low grades': ['Each week, students…', 'yesno'],
+  'Students: missing assignments': ['Each week, students…', 'yesno'], 'Students: explain low grades': ['Each week, students…', 'yesno'], 'Testing Center appointment link': ['Each week, students…', 'link'], 'Drop-In Center locations': ['Each week, students…', 'text'],
   'Students: what to focus on': ['Each week, students…', 'yesno'], 'Students: look back at last week': ['Each week, students…', 'yesno'],
   'Students: plan for resource time': ['Each week, students…', 'yesno'], 'Students: plan for each class': ['Each week, students…', 'yesno'],
   'Students: test may be coming': ['Each week, students…', 'yesno'],
@@ -910,7 +912,7 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
     check: checkBoot_(today, st),          // grade check day (1.83: with the teacher's override)
@@ -3351,6 +3353,8 @@ function settings_() {
     retakeOnTime: Number(v['Retake: coursework turned in on time']) || 75,
     retakeBelow: Number(v['Suggest retakes for tests under']) || 80,
     testGap: Number(v['Test may be coming after (school days)']) || 10,
+    testingLink: /^https:/.test(String(v['Testing Center appointment link'] || '').trim()) ? String(v['Testing Center appointment link']).trim() : '',
+    dropIn: String(v['Drop-In Center locations'] || '').split(';').map(function (x) { var m = /^\s*(.*?)\s*=\s*(.+?)\s*$/.exec(x); return m ? { campus: m[1], where: m[2] } : (x.trim() ? { campus: '', where: x.trim() } : null); }).filter(Boolean),
     checkDay: String(v['Grade check day'] === undefined ? 'Friday' : v['Grade check day']).trim(), dayClass: String(v['What students call this class'] || 'BASE/ARC').trim(),
     nothingItems: String(v['Nothing-to-do checklist'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
     checkItems: String(v['Daily checklist items'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
@@ -5177,7 +5181,7 @@ function mxBack(k) {
 }
 
 // A D or F (under the Low grade line): the student must say why and pick a plan before saving.
-var ACTIONS = ['Retake or redo', 'Email my teacher', 'Drop in for help', 'Turn in missing work', 'Study or practice more', 'Tutoring', 'Other'];
+var ACTIONS = ['Retake or redo', 'Email my teacher', 'Visit the Drop-In Center during study hall', 'Make an appointment at the Testing Center', 'Turn in missing work', 'Study or practice more', 'Other'];
 // Support is only for classes that count toward graduation, so this choice shows only on those (1.85)
 var SUPPORT_ACT = 'Email my teacher and ask to be put in Support';
 // The graduation requirement a class counts toward (same rule as the server's gradFor_), and whether a grade puts it at risk (D or F).
@@ -5212,10 +5216,18 @@ function lowBox(i) {
       var on = x.actions.indexOf(a) >= 0;
       return '<label class="' + (on ? 'on' : '') + '"><input type="checkbox"' + (on ? ' checked' : '') + ' onchange="lowAct(' + i + ',' + k + ',this)">' + a + '</label>';
     }).join('') + '</div>' +
+    lowHelp() +
     '<input type="text" maxlength="500" placeholder="Details: what, when and with whom (Retake the Unit 3 quiz Thursday after school)" value="' + esc(x.details) + '" oninput="lowSet(' + i + ',\'details\',this.value)">' +
     (co ? '<div style="margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line)">💛 <b>' + esc(co.name) + '</b> is a co-teacher in your ' + esc(c.name) + ' class and is there to help you too.' +
       (co.email ? ' <a href="mailto:' + esc(co.email) + '?subject=' + encodeURIComponent('Help with ' + c.name) + '" data-cls="' + esc(c.name) + '">✉️ Email ' + esc(co.name) + '</a>' : '') + '</div>' : '') +
     (c.temail ? '<p class="small" style="margin:8px 0 0">' + teacherMail(c, c.name) + '</p>' : '') + '</div>';
+}
+// under the plan choices: the Testing Center appointment link and this student's campus Drop-In Center (Settings rows, 1.86)
+function lowHelp() {
+  var bits = [], camp = D.profile.ap && D.profile.ap.campus, di = B.dropIn || [], mine = di.filter(function (d) { return camp && d.campus.toLowerCase() === String(camp).toLowerCase(); });
+  if (B.testingLink) bits.push('📅 <a href="' + esc(B.testingLink) + '" target="_blank" rel="noopener">Make a Testing Center appointment</a>');
+  (mine.length ? mine : di).forEach(function (d) { bits.push('📍 Drop-In Center' + (d.campus ? ' (' + esc(d.campus) + ')' : '') + ': ' + esc(d.where)); });
+  return bits.length ? '<p class="small" style="margin:2px 0 8px">' + bits.join(' &nbsp;·&nbsp; ') + '</p>' : '';
 }
 function lowSet(i, k, v) { CK.lows[graded()[i].name][k] = v; setDirty(true); }
 function lowAct(i, k, el) {
