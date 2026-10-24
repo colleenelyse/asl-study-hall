@@ -471,3 +471,8 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .bow-n { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 800; margin-right: 6px; }
 .chipbox { display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px 2px 0; }
 @media (prefers-reduced-motion: reduce) { .bow-go { transition: none; } }
+
+/* Lines for AAC (aac.js) */
+.aac-line { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px dashed var(--line); }
+.aac-n { min-width: 1.8em; font-weight: 800; color: var(--muted); }
+.aac-text { font-size: 1.15em; font-weight: 600; }
