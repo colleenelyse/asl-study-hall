@@ -55,7 +55,7 @@
     var c = cfg(), ms = T.O().moments, ideas = T.O().cutIdeas || [], notes = T.O().cutNotes || [];
     var full = lengthOf([]), now = lengthOf(c.cut), over = now > c.target, prev = false;
     return '<div class="card"><h3>' + sym('🏫') + 'School-day version (45 minutes, bell to bell)</h3>' +
-      '<p class="muted">For the in-school shows. Untick a moment to cut it from the school-day show; evening shows keep everything. Students see both versions in My Schedule.</p>' +
+      '<p class="muted">For the in-school shows. Untick a moment to cut it from the school-day show; evening shows keep everything. Company members see both versions in My Schedule.</p>' +
       '<p class="small" style="color:var(--warn)">⚠️ Ask Music Theatre International for written permission before performing a shortened version: their license usually does not allow cuts without it.</p>' +
       notes.map(function (n) { return '<p class="small">' + sym('💡') + esc(n) + '</p>'; }).join('') +
       '<div class="row"><label class="f" style="margin:0">Minutes of show<br><span class="muted small">(the period minus seating and bows)</span><input id="tg" inputmode="numeric" value="' + c.target + '" style="width:90px"></label>' +

@@ -201,11 +201,11 @@
     var all = rows.filter(function (x) { return x.an.coverage >= 1; });
     app.innerHTML = '<div class="row" style="margin-bottom:12px"><div class="seg">' + [['help', 'Needs help first'], ['done', 'Most done'], ['time', 'Most practice']].map(function (s) { return '<button data-s="' + s[0] + '" aria-pressed="' + (sortBy === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div></div>' +
       (all.length ? '<div class="card">' + sym('🏅') + '<b>Practiced everything they are in:</b> ' + all.map(function (x) { return esc(x.a.name); }).join(', ') + '</div>' : '') +
-      '<table class="tbl"><thead><tr><th>Student</th><th>Practiced</th><th>Time (7 days / all)</th><th>Struggling with</th><th>Missed in class, not caught up</th></tr></thead><tbody>' +
+      '<table class="tbl"><thead><tr><th>Company member</th><th>Practiced</th><th>Time (7 days / all)</th><th>Struggling with</th><th>Missed in class, not caught up</th></tr></thead><tbody>' +
       rows.map(function (x) {
         var pct = Math.round(x.an.coverage * 100);
         return '<tr style="cursor:pointer" data-a="' + x.a.id + '"><td>' + T.face(x.a, 32) + ' <b>' + esc(x.a.name) + '</b></td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b>' + (x.hasData ? '' : '<br><span class="muted small">no practice yet</span>') + '</td>' +
-          '<td>' + mins(x.an.week) + ' / ' + mins(x.an.seconds) + (x.an.helped ? '<br><span class="muted small">' + mins(x.an.helped) + ' with a helper</span>' : '') + '</td><td>' + (x.an.struggles.length ? '<span class="err">' + x.an.struggles.slice(0, 3).map(esc).join('<br>') + '</span>' : '<span class="muted">—</span>') + '</td>' +
+          '<td>' + mins(x.an.week) + ' / ' + mins(x.an.seconds) + (x.an.helped ? '<br><span class="muted small">' + mins(x.an.helped) + ' with a Mentor</span>' : '') + '</td><td>' + (x.an.struggles.length ? '<span class="err">' + x.an.struggles.slice(0, 3).map(esc).join('<br>') + '</span>' : '<span class="muted">—</span>') + '</td>' +
           '<td>' + (x.missed.length ? x.missed.slice(0, 3).map(function (m) { return esc(T.prodDay ? T.prodDay(m.date, true) : m.date) + ': ' + esc(m.what); }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
       }).join('') + '</tbody></table><p class="muted small">Practice counts on the iPads: lines marked right or wrong, songs rated after singing, minutes on practice pages. A missed day counts as caught up once they practice that scene or song in the app afterward.</p>';
     app.querySelectorAll('[data-s]').forEach(function (b) { b.onclick = function () { sortBy = b.dataset.s; table(by); }; });
@@ -215,7 +215,7 @@
     var a = (T.show.cast || []).find(function (x) { return x.id === id; }); if (!a) return;
     T.setBar(a.name, '#/teacher/progress');
     var an = analyze(a, r), ms = missed(a, an, r), face = ['', '😟', '🙂', '🤩'];
-    app.innerHTML = '<div class="card row">' + T.face(a, 56) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (a.chars || []).map(T.chip).join('') + '</div><div><b>' + Math.round(an.coverage * 100) + '%</b> practiced<br>' + mins(an.week) + ' this week' + (an.helped ? '<br><span class="muted small">' + mins(an.helped) + ' with a helper (all time)</span>' : '') + '</div></div>' +
+    app.innerHTML = '<div class="card row">' + T.face(a, 56) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (a.chars || []).map(T.chip).join('') + '</div><div><b>' + Math.round(an.coverage * 100) + '%</b> practiced<br>' + mins(an.week) + ' this week' + (an.helped ? '<br><span class="muted small">' + mins(an.helped) + ' with a Mentor (all time)</span>' : '') + '</div></div>' +
       '<div class="card"><h3>Lines</h3><table class="tbl"><thead><tr><th>Scene</th><th>Tried</th><th>Right</th><th>Last practiced</th></tr></thead><tbody>' + an.scenes.map(function (x) {
         return '<tr><td>Scene ' + x.scene.num + ' · ' + esc(x.scene.place) + '</td><td>' + x.done + ' of ' + x.total + '</td><td' + (x.mastery !== null && x.mastery < 0.6 ? ' class="err"' : '') + '>' + (x.mastery === null ? '—' : Math.round(x.mastery * 100) + '% (' + x.right + ' ✓ ' + x.wrong + ' ✗)') + '</td><td>' + esc(x.last || 'never') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +

@@ -141,9 +141,9 @@
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voiceFor(l.it, cfg.voices); }), chars2 = need.reduce(function (a, l) { return a + T.pronounce(LineCheck.spoken(l.it.text)).length; }, 0);
     app.innerHTML = (msg ? '<p class="card">' + esc(msg) + '</p>' : '') +
-      '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by students · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
-      '<p class="muted small">Students rehearse with a classmate’s recording first, then ElevenLabs, then the device voice. Students record in Practice Lines › a scene › Record my lines.</p></div>' +
-      '<div class="card"><h3>Students’ recordings</h3><label class="switch"><span><b>Check recordings before others hear them</b><br><span class="muted small">Off: a recording is in everyone’s rehearsals right away, and you can take any one down here.</span></span><input type="checkbox" id="chk"' + (index.check ? ' checked' : '') + '></label>' +
+      '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by Company members · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
+      '<p class="muted small">Company members rehearse with a castmate’s recording first, then ElevenLabs, then the device voice. Company members record in Practice Lines › a scene › Record my lines.</p></div>' +
+      '<div class="card"><h3>Company members’ recordings</h3><label class="switch"><span><b>Check recordings before others hear them</b><br><span class="muted small">Off: a recording is in everyone’s rehearsals right away, and you can take any one down here.</span></span><input type="checkbox" id="chk"' + (index.check ? ' checked' : '') + '></label>' +
       (pending.length ? pending.slice().reverse().slice(0, 80).map(function (p) {
         var l = byH[p.h];
         return '<div class="switch" style="flex-wrap:wrap"><span class="grow"><b>' + esc(people[p.actor] || 'A student') + '</b> ' + (p.live ? '<span class="tag">everyone hears it</span>' : '<span class="tag">waiting for you</span>') + '<br><span class="small">' + (l ? 'Scene ' + l.scene.num + ': ' + esc(l.it.text.slice(0, 80)) : '(a line that changed)') + '</span></span>' +
@@ -156,7 +156,7 @@
       '<div id="vmap"></div>' +
       '<p style="margin-top:12px">' + need.length + ' lines still to make, about <b>' + chars2.toLocaleString() + ' characters</b>' + (cfg.model === 'eleven_flash_v2_5' ? ' (about ' + Math.round(chars2 / 2).toLocaleString() + ' credits)' : ' (about the same number of credits)') + '.</p>' +
       '<div class="row"><button class="btn primary" id="mk"' + (cfg.ok && key && need.length ? '' : ' disabled') + '>Make the missing lines</button><span class="muted small" id="mkst"></span></div>' +
-      '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never students’ names.</p></div>';
+      '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never Company members’ names.</p></div>';
     var $ = function (id) { return document.getElementById(id); };
     $('chk').onchange = function (e) { Store.setVoiceCheck(T.proof, e.target.checked).then(function () { T.toast(e.target.checked ? 'New recordings wait for your OK' : 'New recordings go live at once'); }); };
     app.querySelectorAll('[data-play]').forEach(function (b) { b.onclick = function () { var x = b.dataset.play.split('|'); Store.getPending(T.key, T.proof, x[0], x[1]).then(function (buf) { new Audio(URL.createObjectURL(new Blob([buf]))).play(); }).catch(function (e) { T.toast(e.message); }); }; });

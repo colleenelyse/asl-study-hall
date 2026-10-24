@@ -44,9 +44,9 @@
     var byWho = {}; list.forEach(function (it) { var k = it.kind + '|' + it.who; (byWho[k] = byWho[k] || []).push(it); });
     return '<div class="card"><div class="row"><b class="grow">' + need + ' of ' + all.length + ' still to find · spent ' + money(spent) + (s.budget ? ' of ' + money(s.budget) : '') + '</b>' +
       '<label class="f" style="margin:0">Budget $<input id="bud" inputmode="decimal" value="' + esc(s.budget || '') + '" style="width:110px;display:inline-block"></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
-      '<label class="switch"><span>Show sizes on the students’ list</span><input type="checkbox" id="ssz"' + (s.showSizes ? ' checked' : '') + '></label>' +
+      '<label class="switch"><span>Show sizes on the Company members’ list</span><input type="checkbox" id="ssz"' + (s.showSizes ? ' checked' : '') + '></label>' +
       '<div class="seg noprint"><button data-f="need" aria-pressed="' + (filter === 'need') + '">Still to find</button><button data-f="all" aria-pressed="' + (filter === 'all') + '">Everything</button></div>' +
-      '<p class="muted small">Field trips: in a day’s plan, add a 🚌 Field trip group. “Two trips: half the class each” sends each half on a different day. Students open this list from Today.</p></div>' +
+      '<p class="muted small">Field trips: in a day’s plan, add a 🚌 Field trip group. “Two trips: half the class each” sends each half on a different day. Company members open this list from Today.</p></div>' +
       Object.keys(byWho).sort().map(function (k) {
         var l = byWho[k], it0 = l[0], ch = T.charById(it0.who);
         return '<div class="card"><h3>' + (it0.kind === 'prop' ? sym('🎒') + 'Props · ' : sym('👕') + 'Costumes · ') + (ch ? T.chip(it0.who) : esc(it0.who)) + '</h3>' + l.map(function (it) {

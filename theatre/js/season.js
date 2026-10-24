@@ -157,7 +157,7 @@
       '<tr><td>Runs week</td><td>' + L.runs.length + ' days</td><td class="muted small">' + (L.runs[0] ? esc(X().dayName(L.runs[0], true)) + ' – ' + esc(X().dayName(L.runs[L.runs.length - 1], true)) : '') + '</td></tr>' +
       '<tr><td>Show week</td><td>' + L.show.length + ' days</td><td class="muted small">' + (L.show[0] ? esc(X().dayName(L.show[0], true)) + ' – ' + esc(X().dayName(L.show[L.show.length - 1], true)) : '') + '</td></tr></tbody></table>' +
       '<div class="row"><button class="btn primary" id="splan" data-save>Plan the semester</button>' + (gen ? '<button class="btn quiet" id="sclear" data-save>Clear the ' + gen + ' planned days</button>' : '') + '</div>' +
-      '<p class="muted small">Then look at <b>Tracks</b> for each character’s calendar, and <b>Stage time</b> to see the balance. Weeks still need “Show this week to students”.</p></div>';
+      '<p class="muted small">Then look at <b>Tracks</b> for each character’s calendar, and <b>Stage time</b> to see the balance. Weeks still need “Show this week to Company members”.</p></div>';
   };
   T.wireSeason = function (redraw) {
     var p = P(), b = document.getElementById('splan'); if (!b) return;
@@ -199,7 +199,7 @@
       '<div class="card"><h2>' + T.chip(track) + ' rehearsal calendar</h2><p>' + me.n.called + ' days called · 🗣️ ' + me.n.acting + ' acting · 🎵 ' + me.n.vocals + ' vocals · 💃 ' + me.n.dance + ' dance · 🔁 ' + (me.n.run + me.n.dress) + ' runs' +
       (me.gap >= 8 ? ' · <span class="err">' + me.gap + ' class days in a row without a call</span>' : '') + '</p><p class="muted small">Days without a call: crew, or practice in the app.</p>' +
       Object.keys(weeks).map(function (w) {
-        return '<h3 style="margin:14px 0 4px">Week of ' + esc(X().dayName(w, true)) + (P().shown.indexOf(w) >= 0 ? '' : ' <span class="muted small">(not shown to students yet)</span>') + '</h3>' + weeks[w].map(function (d) {
+        return '<h3 style="margin:14px 0 4px">Week of ' + esc(X().dayName(w, true)) + (P().shown.indexOf(w) >= 0 ? '' : ' <span class="muted small">(not shown to Company members yet)</span>') + '</h3>' + weeks[w].map(function (d) {
           var j = jobFor(track, d), r = X().plan(d);
           return '<div class="switch" style="min-height:40px"><span style="min-width:120px"><b>' + esc(X().dayName(d, true)) + '</b></span><span class="grow">' + (j ? sym(X().focus(j.focus)[1]) + esc(j.text) : r ? '<span class="muted">' + sym('🛠️') + 'Crew or practice</span>' : '<span class="muted">Not planned yet</span>') + '</span></div>';
         }).join('');
@@ -259,9 +259,9 @@
     var best = D.pairs.filter(function (x) { return x.gap >= 2; }).slice(0, 12), tight = D.pairs.filter(function (x) { return x.gap === 1; }).slice(0, 6);
     var row = function (x) { return '<tr><td>' + T.chip(x.a.id) + ' <span class="muted small">' + x.la + ' lines</span></td><td>' + T.chip(x.b.id) + ' <span class="muted small">' + x.lb + ' lines</span></td><td>' + (x.mins >= 99 ? '—' : 'about ' + Math.max(1, Math.round(x.mins)) + ' min') + '</td></tr>'; };
     var seen = {}, fg = D.fromGroup.filter(function (x) { if (seen[x.c.id]) return false; seen[x.c.id] = 1; return true; });
-    return '<div class="card"><h3>' + sym('🎭') + 'Two roles, one student</h3><p>The show has <b>' + roles + ' named roles</b> (plus the groups)' + (kids ? ' and you have <b>' + kids + ' students</b>' + (short > 0 ? ': <b>' + short + ' roles</b> would need to be doubled, or given to students who are also in a group.' : '.') : '. Paste your class list to compare.') + '</p>' +
-      '<p class="muted small">Pairs below are never on stage at the same time (the whole-cast numbers, where a doubled student just appears once, are left out). The time is the shortest break between them, for a costume change. Leads are left out on purpose.</p></div>' +
-      (fg.length ? '<div class="card"><h3>Featured roles a group member can play</h3><p class="muted small">These are only on stage when their group is, so one student in the group plays the role for that moment.</p>' + fg.map(function (x) { return '<p>' + T.chip(x.c.id) + ' <span class="muted small">' + (D.lines[x.c.id] || 0) + ' lines</span> → a member of ' + T.chip(x.g.id) + '</p>'; }).join('') + '</div>' : '') +
+    return '<div class="card"><h3>' + sym('🎭') + 'Two roles, one Company member</h3><p>The show has <b>' + roles + ' named roles</b> (plus the groups)' + (kids ? ' and you have <b>' + kids + ' Company members</b>' + (short > 0 ? ': <b>' + short + ' roles</b> would need to be doubled, or given to Company members who are also in a group.' : '.') : '. Paste your class list to compare.') + '</p>' +
+      '<p class="muted small">Pairs below are never on stage at the same time (the whole-cast numbers, where a doubled Company member just appears once, are left out). The time is the shortest break between them, for a costume change. Leads are left out on purpose.</p></div>' +
+      (fg.length ? '<div class="card"><h3>Featured roles a group member can play</h3><p class="muted small">These are only on stage when their group is, so one Company member in the group plays the role for that moment.</p>' + fg.map(function (x) { return '<p>' + T.chip(x.c.id) + ' <span class="muted small">' + (D.lines[x.c.id] || 0) + ' lines</span> → a member of ' + T.chip(x.g.id) + '</p>'; }).join('') + '</div>' : '') +
       '<div class="card"><h3>Good pairs (time for a costume change)</h3>' + (best.length ? '<table class="tbl"><thead><tr><th>Role</th><th>and</th><th>Shortest break</th></tr></thead><tbody>' + best.map(row).join('') + '</tbody></table>' : '<p class="muted">None found.</p>') + '</div>' +
       (tight.length ? '<div class="card"><h3>Possible with a quick change</h3><p class="muted small">One goes off right before the other comes on.</p><table class="tbl"><tbody>' + tight.map(row).join('') + '</tbody></table></div>' : '');
   };

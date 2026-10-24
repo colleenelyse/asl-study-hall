@@ -72,9 +72,9 @@
 
   function signupsView() {
     var c = C(), list = students(), done = list.filter(function (a) { return c.signups[a.id]; }), not = list.filter(function (a) { return !c.signups[a.id]; });
-    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Auditions are open</b><br><span class="muted small">' + (c.open ? 'Students see Auditions on their iPad and can sign up.' : 'Students cannot sign up yet.') + '</span></span><input type="checkbox" id="open"' + (c.open ? ' checked' : '') + '></label></div>' +
+    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Auditions are open</b><br><span class="muted small">' + (c.open ? 'Company members see Auditions on their iPad and can sign up.' : 'Company members cannot sign up yet.') + '</span></span><input type="checkbox" id="open"' + (c.open ? ' checked' : '') + '></label></div>' +
       '<h3>' + done.length + ' of ' + list.length + ' signed up</h3>' +
-      (done.some(function (a) { return c.signups[a.id].excited; }) ? '<div class="card"><h3>' + sym('✨') + 'Talents to use</h3><p class="muted small">What each student is excited to do on stage. Work them into the choreography and staging; they also show on the Dance groups in Production.</p>' +
+      (done.some(function (a) { return c.signups[a.id].excited; }) ? '<div class="card"><h3>' + sym('✨') + 'Talents to use</h3><p class="muted small">What each Company member is excited to do on stage. Work them into the choreography and staging; they also show on the Dance groups in Production.</p>' +
         done.filter(function (a) { return c.signups[a.id].excited; }).map(function (a) { return '<p><b>' + esc(a.name) + ':</b> ' + esc(c.signups[a.id].excited) + '</p>'; }).join('') + '</div>' : '') +
       done.map(function (a) {
         var s = c.signups[a.id];
@@ -107,13 +107,13 @@
   function quickView() {
     var c = C();
     var seg = function (a, k) { var n = c.notes[a.id] || {}; return '<div class="seg" data-q="' + a.id + '|' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div>'; };
-    return '<p class="muted">Tap stars while they learn the number; it saves as you go. Scores are only for you.</p><table class="tbl"><thead><tr><th>Student</th><th>🎵 Singing</th><th>💃 Dance</th><th>🗣️ Acting / energy</th></tr></thead><tbody>' +
+    return '<p class="muted">Tap stars while they learn the number; it saves as you go. Scores are only for you.</p><table class="tbl"><thead><tr><th>Company member</th><th>🎵 Singing</th><th>💃 Dance</th><th>🗣️ Acting / energy</th></tr></thead><tbody>' +
       students().map(function (a) { return '<tr><td>' + T.face(a, 32) + ' ' + esc(a.name) + '</td><td>' + seg(a, 'singing') + '</td><td>' + seg(a, 'dance') + '</td><td>' + seg(a, 'acting') + '</td></tr>'; }).join('') + '</tbody></table>';
   }
   function notesView() {
     var c = C();
-    if (quick) return '<div class="row" style="margin-bottom:10px"><button class="btn small" id="qv">Back to students</button></div>' + quickView();
-    return '<div class="row" style="margin-bottom:10px"><button class="btn primary" id="qv">Quick notes during a group number</button></div><p class="muted">Or tap a student to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
+    if (quick) return '<div class="row" style="margin-bottom:10px"><button class="btn small" id="qv">Back to Company members</button></div>' + quickView();
+    return '<div class="row" style="margin-bottom:10px"><button class="btn primary" id="qv">Quick notes during a group number</button></div><p class="muted">Or tap a Company member to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
       var n = c.notes[a.id], s = c.signups[a.id];
       return '<button class="person" data-stu="' + a.id + '" style="min-height:0">' + T.face(a, 56) + '<b>' + esc(a.name) + '</b><span>' +
         (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') + (s ? '' : ' · not signed up') + '</span></button>';
@@ -192,7 +192,7 @@
 
   function callbacksView() {
     var c = C(), list = roles().filter(named);
-    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Show callbacks to students</b><br><span class="muted small">Students called back see which roles and what to practice.</span></span><input type="checkbox" id="cbs"' + (c.callbacksShown ? ' checked' : '') + '></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
+    return '<div class="card row"><label class="switch grow" style="border:0"><span><b>Show callbacks to Company members</b><br><span class="muted small">Company members called back see which roles and what to practice.</span></span><input type="checkbox" id="cbs"' + (c.callbacksShown ? ' checked' : '') + '></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
       '<p class="muted">★ wanted this role · ✓ in your “think about them for”.</p>' +
       list.map(function (ch) {
         var cb = c.callbacks[ch.id] || [], sd = side(ch.id);
@@ -208,7 +208,7 @@
   function wireCallbacks() {
     var c = C();
     var add = function (ch, id) { var l = c.callbacks[ch] = c.callbacks[ch] || []; if (l.indexOf(id) < 0) l.push(id); T.saveShow('Callback added').then(overview); };
-    document.getElementById('cbs').onchange = function (e) { c.callbacksShown = e.target.checked; T.saveShow(e.target.checked ? 'Students can see callbacks' : 'Callbacks hidden').then(overview); };
+    document.getElementById('cbs').onchange = function (e) { c.callbacksShown = e.target.checked; T.saveShow(e.target.checked ? 'Company members can see callbacks' : 'Callbacks hidden').then(overview); };
     app.querySelectorAll('[data-cbadd]').forEach(function (b) { b.onclick = function () { var x = b.dataset.cbadd.split('|'); add(x[0], x[1]); }; });
     app.querySelectorAll('[data-cbsel]').forEach(function (sel) { sel.onchange = function () { if (sel.value) add(sel.dataset.cbsel, sel.value); }; });
     app.querySelectorAll('[data-cbrm]').forEach(function (b) { b.onclick = function () { var x = b.dataset.cbrm.split('|'); c.callbacks[x[0]] = (c.callbacks[x[0]] || []).filter(function (i) { return i !== x[1]; }); T.saveShow('Removed').then(overview); }; });
@@ -220,7 +220,7 @@
     if (!Object.keys(d).length) list.forEach(function (a) { (a.chars || []).forEach(function (ch) { (d[ch] = d[ch] || []).push(a.id); }); });      // start from the roles students already have
     var roleOf = function (a) { return Object.keys(d).filter(function (ch) { return d[ch].indexOf(a.id) >= 0; }); };
     var none = list.filter(function (a) { return !roleOf(a).length; });
-    return '<div class="card"><p>' + (c.posted ? sym('✅') + 'Posted ' + new Date(c.posted).toLocaleDateString() + '. Changes here go to students when you post again.' : 'This is a draft. Students see it only when you post it.') + '</p>' +
+    return '<div class="card"><p>' + (c.posted ? sym('✅') + 'Posted ' + new Date(c.posted).toLocaleDateString() + '. Changes here go to Company members when you post again.' : 'This is a draft. Company members see it only when you post it.') + '</p>' +
       '<div class="row"><button class="btn" id="auto">Fill in a draft for me</button><button class="btn" id="ens">Put everyone without a role in the ensemble</button><span class="grow"></span><button class="btn primary" id="post" data-save>Post the cast list</button></div>' +
       (none.length ? '<p class="err" style="margin-top:10px">' + none.length + ' student' + (none.length === 1 ? '' : 's') + ' without a role: ' + none.map(function (a) { return esc(a.name); }).join(', ') + '</p>' : '<p style="margin-top:10px">' + sym('🎉') + '<b>Everyone has a role.</b></p>') + '</div>' +
       T.O().groups.map(function (g) {
@@ -268,8 +268,8 @@
     }
     document.getElementById('post').onclick = function () {
       var none = list.filter(function (a) { return !has(a); });
-      if (none.length && !confirm(none.length + ' student(s) still have no role. Post anyway?')) return;
-      if (!confirm('Post the cast list? Every student’s roles will be set from this list, and they will see it on their iPad.')) return;
+      if (none.length && !confirm(none.length + ' Company member(s) still have no role. Post anyway?')) return;
+      if (!confirm('Post the cast list? Every Company member’s roles will be set from this list, and they will see it on their iPad.')) return;
       list.forEach(function (a) { a.chars = Object.keys(d).filter(function (ch) { return d[ch].indexOf(a.id) >= 0; }); });
       c.posted = new Date().toISOString(); c.open = false;
       T.saveShow('The cast list is posted!').then(overview);
@@ -284,7 +284,7 @@
     var P = T.production(), first = P.term.first;
     if (!first) return '<p class="card">Set the first and last day of class first (Production › Calendar & crew).</p>';
     var days = starter(), has = days.filter(function (x) { return P.days[x.date]; }).length;
-    return '<div class="card"><h3>Plan the first two weeks</h3><p class="muted">Week 1 teaches the numbers everyone is in, starting with the finale, and that is the audition: you watch and take notes while they learn (Audition notes › Quick notes). Week 2 adds a short vocal selection each student chooses (half the class each day), then callbacks. Every day stays editable in Production.</p>' +
+    return '<div class="card"><h3>Plan the first two weeks</h3><p class="muted">Week 1 teaches the numbers everyone is in, starting with the finale, and that is the audition: you watch and take notes while they learn (Audition notes › Quick notes). Week 2 adds a short vocal selection each Company member chooses (half the class each day), then callbacks. Every day stays editable in Production.</p>' +
       days.map(function (x) { return '<p><b>' + esc(T.prodDay(x.date)) + ':</b> ' + esc(x.label) + '</p>'; }).join('') +
       (has ? '<p class="err">' + has + ' of these days already have a plan; those stay as they are.</p>' : '') +
       '<div class="row end"><button class="btn primary" id="plan" data-save>Plan these days</button></div></div>';
@@ -356,7 +356,7 @@
     if (c.open) {
       var sent = T.ls('audition:' + me.id), s = sent || { roles: [], any: true, lines: 'maybe', solo: 'maybe', dance: 'maybe', how: 'class', helps: '', pronouns: '' };
       if (c.signups[me.id] && !sent) s = JSON.parse(JSON.stringify(c.signups[me.id]));
-      h += '<div class="card"><h2>' + sym('🎭') + 'Sign up for auditions</h2><p class="muted">Every student gets a role. Tap a role to read about it; pick the ones you would love to play.</p>' + signupForm(s, 's') +
+      h += '<div class="card"><h2>' + sym('🎭') + 'Sign up for auditions</h2><p class="muted">Every Company member gets a role. Tap a role to read about it; pick the ones you would love to play.</p>' + signupForm(s, 's') +
         '<p class="err" id="m"></p><div class="row end"><button class="btn primary" id="send">' + (sent || c.signups[me.id] ? 'Send my changes' : 'Send my sign-up') + '</button></div></div>';
       if (s.roles.length) h += '<div class="card"><h3>' + sym('📄') + 'Practice for your audition</h3>' + s.roles.map(sideCard).join('') + '</div>';
       app.innerHTML = h;

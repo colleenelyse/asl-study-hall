@@ -64,8 +64,8 @@
     if (T.loadError) { app.innerHTML = '<div class="card"><p class="err">' + esc(T.loadError) + '</p><p>Check the internet connection, then reload.</p></div>'; return; }
     app.innerHTML = '<form class="card" id="f" style="max-width:640px;margin:auto"><h2>Set up the show</h2>' +
       '<p>Show: <b>' + esc(window.DEFAULT_SHOW.title) + '</b></p>' +
-      '<p class="muted">Two passwords. Students use the <b>cast password</b> to open the show on their iPads. The <b>teacher password</b> is only for you: it is needed to change anything. Nobody can get these back, so write them down.</p>' +
-      '<label class="f">Cast password (for students)<input id="c1" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label>' +
+      '<p class="muted">Two passwords. Company members use the <b>cast password</b> to open the show on their iPads. The <b>teacher password</b> is only for you: it is needed to change anything. Nobody can get these back, so write them down.</p>' +
+      '<label class="f">Cast password (for the Company)<input id="c1" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label>' +
       '<label class="f">Teacher password<input id="t1" type="password" autocomplete="new-password" minlength="8" required></label>' +
       '<label class="f">Teacher password again<input id="t2" type="password" autocomplete="new-password" required></label>' +
       '<label class="f">Setup code (only for the first setup)<input id="sc" type="text" autocomplete="off" autocapitalize="characters" required placeholder="XXXX-XXXX-XXXX"></label>' +
@@ -74,7 +74,7 @@
       e.preventDefault();
       var c1 = val('c1'), t1 = val('t1'), t2 = val('t2'), msg = document.getElementById('msg');
       if (t1 !== t2) { msg.textContent = 'The two teacher passwords are not the same.'; return; }
-      if (c1 === t1) { msg.textContent = 'Use a different password for students and for you.'; return; }
+      if (c1 === t1) { msg.textContent = 'Use a different password for Company members and for you.'; return; }
       msg.textContent = 'Setting up…';
       var doc = { v: 1, outline: clone(window.DEFAULT_SHOW), script: null, labelMap: {}, cast: [], melody: {}, tracks: {} };
       Store.sealVault(t1, { teacher: t1, cast: c1, extra: {} }).then(function (v) { doc.vault = v; return Store.newShowKey(); }).then(function (key) {
@@ -150,13 +150,13 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
-      t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and students’ recordings') +
+      t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings') +
       t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +
       t('#/teacher/usage', 'check', 'App use', 'Which pages people use most') +
       t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list') +
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
-      '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a student</a></p>';
+      '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
   }
 
   /* ---------- Script: import and review ---------- */
@@ -326,7 +326,7 @@
     var scene = T.sceneById(sceneId), src = scene && T.scriptScene(scene);
     if (!src) return scriptPage([]);
     T.setBar('Scene ' + scene.num + ' lines', '#/teacher/script');
-    app.innerHTML = '<div class="card"><label class="f">Plain-language story (students hear this in The Story)<textarea id="story">' + esc(scene.story || '') + '</textarea></label>' +
+    app.innerHTML = '<div class="card"><label class="f">Plain-language story (Company members hear this in The Story)<textarea id="story">' + esc(scene.story || '') + '</textarea></label>' +
       '<label class="f">Heads up (sensory warnings, one per line)<textarea id="sens" style="min-height:80px">' + esc((scene.sensory || []).join('\n')) + '</textarea></label></div>' +
       '<p class="muted">Tap a line to fix it, or to add key words that must be said.</p><div class="script">' + src.items.map(function (it, i) {
         if (it.type === 'dir') return '<div class="item dir" data-i="' + i + '">' + esc(it.text) + '</div>';
@@ -375,11 +375,11 @@
     T.setBar('Cast', '#/teacher');
     var cast = T.show.cast = T.show.cast || [];
     app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="groups">Who sings with the groups</button><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
-      '<p class="muted">Students tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
+      '<p class="muted">Company members tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + (c.emailHash ? ' · ✉️' : '') + '</span></button>';
-      }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: students can start (the whole show, the story, crews) before they have roles. Until then, students pick a character.</p>');
+      }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: Company members can start (the whole show, the story, crews) before they have roles. Until then, Company members pick a character.</p>');
     document.getElementById('roster').onclick = function () {
-      var d = dialog('<h2>Paste a class list</h2><p class="muted">One student per line, the way they like to be called. “Last, First” is turned around. A school email on the line (after a tab or a comma) is saved for Sign in with Google, as a scrambled code. Names already on the list get their email added. Give them roles later (tap a student).</p>' +
+      var d = dialog('<h2>Paste a class list</h2><p class="muted">One Company member per line, the way they like to be called. “Last, First” is turned around. A school email on the line (after a tab or a comma) is saved for Sign in with Google, as a scrambled code. Names already on the list get their email added. Give them roles later (tap a Company member).</p>' +
         '<label class="f">Names<textarea id="nl" style="min-height:240px"></textarea></label><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Add them</button></div>');
       d.querySelector('#cn').onclick = function () { d.close(); };
       d.querySelector('#ok').onclick = function () {
@@ -393,7 +393,7 @@
           if (em) jobs.push(T.emailHash(em).then(function (h) { a.emailHash = h; a.emailHint = emailHint(em); e++; }));
         });
         if (!n && !jobs.length) { d.close(); return; }
-        Promise.all(jobs).then(function () { return save(n + ' students added' + (e ? ', ' + e + ' school emails saved' : '')); }).then(function () { d.close(); castPage(); });
+        Promise.all(jobs).then(function () { return save(n + ' Company members added' + (e ? ', ' + e + ' school emails saved' : '')); }).then(function () { d.close(); castPage(); });
       };
     };
     document.getElementById('add').onclick = function () { editActor(null); };
@@ -549,11 +549,11 @@
     var links = O.links || {};
     app.innerHTML = '<div class="card"><p>Upload each song’s <b>rehearsal track</b> (with the guide vocals) and <b>performance track</b> (band only). They are saved encrypted, for this cast. MP3 works best (24 MB at most).</p>' +
       '<p class="row">' + (links.rehearsalFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.rehearsalFolder) + '">Rehearsal tracks folder</a>' : '') + (links.performanceFolder ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(links.performanceFolder) + '">Performance tracks folder</a>' : '') + '</p>' +
-      '<p class="muted small">Then <b>Make melody line</b> works out the tune from the two tracks, so students can hear a soft tone instead of the singers.</p>' +
+      '<p class="muted small">Then <b>Make melody line</b> works out the tune from the two tracks, so Company members can hear a soft tone instead of the singers.</p>' +
       '<p class="row"><label class="btn">Add many band tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="performance" hidden></label>' +
       '<label class="btn">Add many guide-vocal tracks<input type="file" multiple accept="audio/*,.mp3,.m4a,.wav" data-many="rehearsal" hidden></label>' +
       '<span class="muted small">Pick a whole folder’s files: each goes to its music number from the start of its name (07_Announcement Transition 1.mp3 is #7), songs and scene-change music alike.</span></p>' +
-      '<p class="row"><button class="btn" id="allpiano">🎹 Piano melody for every song</button><span class="muted small">The singer’s notes read from the sheet music, timed by the lyrics timing. Students turn it on in the song player.</span></p>' +
+      '<p class="row"><button class="btn" id="allpiano">🎹 Piano melody for every song</button><span class="muted small">The singer’s notes read from the sheet music, timed by the lyrics timing. Company members turn it on in the song player.</span></p>' +
       '<p class="row"><button class="btn primary" id="alllyr">Find lyrics timing for every song</button><span class="muted small">For the sheet music with a moving guide. Songs that already have a ✓ are left alone.</span></p></div>' +
       '<table class="tbl"><thead><tr><th>Song</th><th>Rehearsal (guide vocals)</th><th>Performance</th><th>Melody line</th></tr></thead><tbody>' + O.songs.map(function (s) {
         var t = tr[s.id] || {}, cell = function (kind) {
@@ -1167,8 +1167,8 @@
       f.onsubmit = function (e) { e.preventDefault(); };      // (the Google Client ID fields were taken out: Colleen does not use one)
     }, 0);
     var S = T.show.signin || {}, withEmail = (T.show.cast || []).filter(function (c) { return c.emailHash; }).length;
-    app.innerHTML = '<div id="pwlist"></div><form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students signed into their school Google account are found on the cast list by the app’s own school sign-in page (like ASL Study Hall), by their school email (saved only as a scrambled code). They still type the cast password once on each device.</p>' +
-      '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' students have a school email saved (Cast › tap a student, or paste the class list with emails).</p>' +
+    app.innerHTML = '<div id="pwlist"></div><form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Company members signed into their school Google account are found on the cast list by the app’s own school sign-in page (like ASL Study Hall), by their school email (saved only as a scrambled code). They still type the cast password once on each device.</p>' +
+      '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' Company members have a school email saved (Cast › tap a Company member, or paste the class list with emails).</p>' +
       '<div class="row end"><button type="button" class="btn" id="sitest">Test the school sign-in</button></div>' +
       '<p class="small muted">Test it any time, even before there is a cast: it goes to the school sign-in page and back. The first time, Google asks you to allow it; press Allow.</p></form>' +
       '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
@@ -1214,8 +1214,8 @@
     T.setBar('App use', '#/teacher');
     app.innerHTML = '<div class="card"><p class="muted">Loading…</p></div>';
     var NAMES = {}; T.STUDENT_PAGES.forEach(function (x) { NAMES[x[0]] = x[1]; }); T.TEACH_PAGES.forEach(function (x) { NAMES['t-' + x[0]] = x[1].replace(/ \(.*\)$/, '') + ' (view only)'; });
-    Object.assign(NAMES, { home: 'Home page', who: 'Picking a student', settings: 'Settings', song: 'A song (playing it)', listen: 'Listening to a scene', unlock: 'Opening the show' });
-    var KINDS = [['parent', 'Parents'], ['helper', 'Peer helpers'], ['student', 'Students']];
+    Object.assign(NAMES, { home: 'Home page', who: 'Picking a Company member', settings: 'Settings', song: 'A song (playing it)', listen: 'Listening to a scene', unlock: 'Opening the show' });
+    var KINDS = [['parent', 'Parents'], ['helper', 'Company Mentors (Mentor password)'], ['student', 'The Company (cast password)']];
     Store.usage(T.proof).then(function (months) {
       var ms = Object.keys(months).sort().reverse();
       if (!ms.length) { app.innerHTML = '<div class="card"><h2>App use</h2><p class="muted">Nothing counted yet. Each page people open, and the minutes they spend on it, are added up here by month (no names).</p></div>'; return; }
@@ -1255,11 +1255,11 @@
     helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
     student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
-  var WHO = { student: 'Picks their own picture (like a student; practice is saved)', parent: 'A parent: picks their student once (first names and last initials only; practice is not saved to the student)', helper: 'A helper: can switch between students (practice is saved for the student, marked “with a helper”)' };
+  var WHO = { student: 'Picks their own picture (a Company member; practice is saved)', parent: 'A parent: picks their Company member once (first names and last initials only; practice is not saved to them)', helper: 'A Company Mentor: can switch between Artists (practice is saved for the Artist, marked “with a Mentor”)' };
   function passSummary(p) {
     var pages = (p.pages || []).map(function (k) { var x = T.STUDENT_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1] : k; });
     var teach = (p.teach || []).map(function (k) { var x = T.TEACH_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1].replace(/ \(.*\)$/, '') : k; });
-    return esc(WHO[p.who] || '') + '<br><span class="muted small">' + esc(pages.join(', ') || 'No student pages') + (p.fullCal ? ' · full calendar' : '') +
+    return esc(WHO[p.who] || '') + '<br><span class="muted small">' + esc(pages.join(', ') || 'No Company pages') + (p.fullCal ? ' · full calendar' : '') +
       (teach.length ? ' · view only: ' + esc(teach.join(', ')) : '') + '</span>';
   }
   function passwordList() {
@@ -1276,11 +1276,11 @@
         '<p class="muted small">Only Teacher mode can show these (they are locked with your teacher password). Turning a password off, or deleting it, locks every iPad that opened the show with it the next time it opens.</p>' +
         '<table class="tbl"><thead><tr><th>Who</th><th>What it opens</th><th>Password</th><th></th></tr></thead><tbody>' +
         '<tr><td><b>Teacher</b></td><td>Teacher mode: everything, and saving</td><td>' + shown(V.teacher, 'kt') + '</td><td></td></tr>' +
-        '<tr><td><b>Cast</b></td><td>Everything students see (full names)</td><td>' + shown(V.cast, 'kc') + '</td><td></td></tr>' +
+        '<tr><td><b>Cast</b></td><td>Everything the Company sees (full names)</td><td>' + shown(V.cast, 'kc') + '</td><td></td></tr>' +
         passes.map(function (p) {
           return '<tr' + (p.off ? ' style="opacity:.55"' : '') + '><td><b>' + esc(p.name) + '</b>' + (p.off ? '<br><span class="tag">turned off</span>' : '') + '</td><td>' + passSummary(p) + '</td><td>' + shown(V.extra[p.id], 'kx-' + p.id) + '</td>' +
             '<td style="white-space:nowrap"><button class="btn small" data-pedit="' + p.id + '">Edit</button> <button class="btn small quiet" data-poff="' + p.id + '">' + (p.off ? 'Turn on' : 'Turn off') + '</button> <button class="btn small quiet" data-pdel="' + p.id + '">Delete</button></td></tr>';
-        }).join('') + '</tbody></table>' + (passes.length ? '' : '<p class="muted small">No other passwords yet. Add one for parents, peer helpers, or anyone else, and choose what it opens.</p>') + '</div>';
+        }).join('') + '</tbody></table>' + (passes.length ? '' : '<p class="muted small">No other passwords yet. Add one for parents, Company Mentors, or anyone else, and choose what it opens.</p>') + '</div>';
       document.getElementById('pwhide').onclick = function () { T.ls('pwHide', !hide); passwordList(); };
       document.getElementById('pwadd').onclick = function () { editPass(null, V); };
       box.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { navigator.clipboard.writeText(b.dataset.copy).then(function () { T.toast('Copied'); }); }; });
@@ -1315,14 +1315,14 @@
     var oldPw = p ? V.extra[p.id] || '' : '';
     var box = function (name, val, label, on) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-' + name + '="' + val + '"' + (on ? ' checked' : '') + '></label>'; };
     var d = dialog('<h2>' + (isNew ? 'Add a password' : 'Edit “' + esc(p.name) + '”') + '</h2>' +
-      '<label class="f">Name (who uses it)<input id="pn" value="' + esc(cur.name) + '" placeholder="Parents, Peer helpers…" autocomplete="off"></label>' +
+      '<label class="f">Name (who uses it)<input id="pn" value="' + esc(cur.name) + '" placeholder="Parents, Mentors…" autocomplete="off"></label>' +
       '<label class="f">Password' + (isNew ? '' : ' (change it, or leave it)') + '<span class="row"><input id="pp" class="grow" type="text" autocomplete="off" autocapitalize="off" value="' + esc(isNew ? makePw() : oldPw) + '"' + (isNew || oldPw ? '' : ' placeholder="Not kept here: type a new one to change it"') + '><button type="button" class="btn small" id="pmk">Make one</button></span></label>' +
-      '<p class="small"><b>Start from:</b> <button type="button" class="btn small" data-preset="parent">Parent</button> <button type="button" class="btn small" data-preset="helper">Peer helper</button> <button type="button" class="btn small" data-preset="student">Student</button></p>' +
+      '<p class="small"><b>Start from:</b> <button type="button" class="btn small" data-preset="parent">Parent</button> <button type="button" class="btn small" data-preset="helper">Company Mentor</button> <button type="button" class="btn small" data-preset="student">Company member</button></p>' +
       '<div id="pck"></div><p class="err" id="pmsg" role="alert"></p>' +
       '<div class="row end"><button class="btn" id="pcn">Cancel</button><button class="btn primary" id="pok">' + (isNew ? 'Add it' : 'Save') + '</button></div>');
     var draw = function () {
       d.querySelector('#pck').innerHTML = '<h3>Who uses it</h3>' + Object.keys(WHO).map(function (k) { return '<label class="switch"><span>' + esc(WHO[k]) + '</span><input type="radio" name="pwho" value="' + k + '"' + (cur.who === k ? ' checked' : '') + '></label>'; }).join('') +
-        '<h3>Student pages it opens</h3>' + T.STUDENT_PAGES.map(function (x) { return box('pg', x[0], esc(x[1]), (cur.pages || []).indexOf(x[0]) >= 0); }).join('') +
+        '<h3>Company pages it opens</h3>' + T.STUDENT_PAGES.map(function (x) { return box('pg', x[0], esc(x[1]), (cur.pages || []).indexOf(x[0]) >= 0); }).join('') +
         box('fc', '1', '<b>Full calendar</b>: a “Show everyone” switch to see everything happening each day' + (cur.who === 'parent' ? ' (who is away and private notes stay hidden)' : ''), cur.fullCal) +
         '<h3>Teacher pages it can look at (never change)</h3>' + T.TEACH_PAGES.map(function (x) { return box('tp', x[0], esc(x[1]), (cur.teach || []).indexOf(x[0]) >= 0); }).join('');
       d.querySelectorAll('[name=pwho]').forEach(function (r) { r.onchange = function () { read(); cur.who = r.value; draw(); }; });
@@ -1335,7 +1335,7 @@
     };
     draw();
     d.querySelector('#pmk').onclick = function () { d.querySelector('#pp').value = makePw(); };
-    d.querySelectorAll('[data-preset]').forEach(function (b) { b.onclick = function () { Object.assign(cur, JSON.parse(JSON.stringify(PRESETS[b.dataset.preset]))); if (!d.querySelector('#pn').value.trim()) d.querySelector('#pn').value = { parent: 'Parents', helper: 'Peer helpers', student: 'Students' }[b.dataset.preset]; draw(); }; });
+    d.querySelectorAll('[data-preset]').forEach(function (b) { b.onclick = function () { Object.assign(cur, JSON.parse(JSON.stringify(PRESETS[b.dataset.preset]))); if (!d.querySelector('#pn').value.trim()) d.querySelector('#pn').value = { parent: 'Parents', helper: 'Company Mentors', student: 'Company members' }[b.dataset.preset]; draw(); }; });
     d.querySelector('#pcn').onclick = function () { d.close(); };
     d.querySelector('#pok').onclick = function () {
       read();

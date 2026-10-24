@@ -239,7 +239,7 @@
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
     var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
-    if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every student gets a job each day.</p>';
+    if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every Company member gets a job each day.</p>';
     h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, tracks: function () { return T.tracksView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
@@ -262,11 +262,11 @@
       '<label class="f">Paste bookings, one per line<textarea id="bk" placeholder="12/8/2026 Jazz Band Concert 7:30pm&#10;Dec 3 Fanfares and Carols 7pm"></textarea></label><p class="err" id="bm"></p>' +
       ((p.bookings || []).length ? '<details><summary class="btn quiet small">' + p.bookings.length + ' bookings saved</summary>' + p.bookings.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).map(function (b) { return '<div class="switch"><span><b>' + esc(dayName(b.date, true)) + '</b> ' + esc(b.text) + '</span><button class="btn small quiet" data-rmbk="' + b.id + '">Remove</button></div>'; }).join('') + '</details>' : '') +
       '<div class="row end"><button class="btn primary" id="bksv" data-save>Save bookings</button></div></div>' +
-      '<div class="card"><h2>Crew stations</h2><p class="muted">Jobs for students who are not on stage that day. Anyone without one practices in the app.</p>' +
+      '<div class="card"><h2>Crew stations</h2><p class="muted">Jobs for Company members who are not on stage that day. Anyone without one practices in the app.</p>' +
       (p.stations.length ? p.stations.map(function (st) { return '<div class="switch"><span><b>' + esc(st.name) + '</b> <span class="muted small">' + esc(st.desc || '') + '</span></span><button class="btn small quiet" data-rmst="' + st.id + '">Remove</button></div>'; }).join('') : '<p class="muted">None yet.</p>') +
       '<div class="row"><label class="f grow" style="margin:0">Station<input id="sn" placeholder="e.g. Props"></label><label class="f grow" style="margin:0">What to do (optional)<input id="sd" placeholder="e.g. paint the lockers"></label><button class="btn" id="sadd" data-save>Add</button></div></div>' +
-      (p.stations.length && cast().length ? '<div class="card"><h2>Everyone’s crew</h2><p class="muted">Each student works with their crew at least one day a week, on a day they are not needed on stage. Tick <b>Lead</b> for the biggest roles to skip the weekly crew day.</p>' +
-        '<table class="tbl"><thead><tr><th>Student</th><th>Crew</th><th>Lead</th></tr></thead><tbody>' + cast().map(function (a) {
+      (p.stations.length && cast().length ? '<div class="card"><h2>Everyone’s crew</h2><p class="muted">Each Company member works with their crew at least one day a week, on a day they are not needed on stage. Tick <b>Lead</b> for the biggest roles to skip the weekly crew day.</p>' +
+        '<table class="tbl"><thead><tr><th>Company member</th><th>Crew</th><th>Lead</th></tr></thead><tbody>' + cast().map(function (a) {
           return '<tr><td>' + esc(a.name) + '</td><td><select data-home="' + a.id + '"><option value="">Choose…</option>' + p.stations.map(function (st) { return '<option value="' + st.id + '"' + (p.crewHome[a.id] === st.id ? ' selected' : '') + '>' + esc(st.name) + '</option>'; }).join('') + '</select></td>' +
             '<td><input type="checkbox" data-lead="' + a.id + '"' + (exempt(a) ? ' checked' : '') + ' aria-label="Lead"></td></tr>';
         }).join('') + '</tbody></table><div class="row end" style="margin-top:10px"><button class="btn" id="even">Fill in the rest evenly</button><button class="btn primary" id="hsv" data-save>Save crews</button></div></div>' : '');
@@ -316,14 +316,14 @@
     if (!week) { var t = today(); week = monday(days.find(function (d) { return d >= t; }) || days[0] || t); }
     var isShown = p.shown.indexOf(week) >= 0, people = cast();
     var h = '<div class="row" style="justify-content:center;margin-bottom:10px"><button class="round" id="pw" aria-label="Last week">' + icon('prev') + '</button><h2 style="margin:0;text-align:center">Week of ' + esc(dayName(week, true)) + '</h2><button class="round" id="nw" aria-label="Next week">' + icon('next') + '</button></div>' +
-      '<div class="card row"><label class="switch grow" style="border:0"><span><b>Show this week to students</b><br><span class="muted small">' + (isShown ? 'Students can see this week on Today.' : 'Hidden: students see “Coming soon” for these days.') + '</span></span><input type="checkbox" id="shw"' + (isShown ? ' checked' : '') + '></label>' +
+      '<div class="card row"><label class="switch grow" style="border:0"><span><b>Show this week to Company members</b><br><span class="muted small">' + (isShown ? 'Company members can see this week on Today.' : 'Hidden: Company members see “Coming soon” for these days.') + '</span></span><input type="checkbox" id="shw"' + (isShown ? ' checked' : '') + '></label>' +
       '<a class="btn small" href="#/teacher/production/callboard/' + week + '">Call board</a></div>';
     return h + weekDays(week).map(function (s) {
       if (!isClassDay(s)) return '<div class="card" style="opacity:.6">' + esc(dayName(s)) + ' · ' + (p.term.off.indexOf(s) >= 0 ? 'No school' : 'Not a class day') + '</div>';
       var r = plan(s), n = { stage: 0, crew: 0, practice: 0, away: 0, custom: 0, off: 0, trip: 0, watch: 0 };
       people.forEach(function (a) { n[task(a, s).type]++; });
       return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="#/teacher/production/day/' + s + '"><div class="row"><b class="grow">' + esc(dayName(s)) + '</b>' + (p.attendance[s] ? '<span class="tag">attendance ✓</span>' : '') + '</div>' + bookingLine(s) +
-        (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: students go to their crew (leads practice in the app)</div>') +
+        (r && r.groups.length ? r.groups.map(function (g) { return '<div>' + sym(focus(g.focus)[1]) + esc(groupName(g)) + (g.where ? ' <span class="muted">· ' + esc(g.where) + '</span>' : '') + '</div>'; }).join('') : '<div class="muted">Not planned yet: Company members go to their crew (leads practice in the app)</div>') +
         '<div class="muted small">' + (n.trip ? n.trip + ' on the trip · ' : '') + n.stage + ' on stage · ' + n.crew + ' crew · ' + n.practice + ' practicing' + (n.custom ? ' · ' + n.custom + ' other' : '') + (n.away ? ' · <span class="err">' + n.away + ' away</span>' : '') + '</div></a>';
     }).join('');
   }
@@ -333,20 +333,20 @@
     document.getElementById('nw').onclick = function () { go(1); };
     document.getElementById('shw').onchange = function (e) {
       var p = P(); p.shown = p.shown.filter(function (w) { return w !== week; }); if (e.target.checked) p.shown.push(week);
-      T.saveShow(e.target.checked ? 'Students can see this week' : 'This week is hidden').then(overview);
+      T.saveShow(e.target.checked ? 'Company members can see this week' : 'This week is hidden').then(overview);
     };
   }
 
   /* how each student's days are spent (planned days so far and ahead), to keep everyone on stage as much as possible */
   function timeView() {
     var days = classDays().filter(function (s) { return plan(s); }), cols = [['acting', '🗣️ Acting'], ['vocals', '🎵 Vocals'], ['dance', '💃 Dance'], ['other', '🎭 Other stage'], ['crew', '🛠️ Crew'], ['practice', '📱 App practice']];
-    if (!days.length) return '<p class="card muted">Plan some days first. This shows how many days each student spends on stage, in each kind of group.</p>';
+    if (!days.length) return '<p class="card muted">Plan some days first. This shows how many days each Company member spends on stage, in each kind of group.</p>';
     var rows = cast().filter(function (a) { return !a.guest; }).map(function (a) {
       var c = { acting: 0, vocals: 0, dance: 0, other: 0, crew: 0, practice: 0, n: 0 };
       days.forEach(function (s) { var t = task(a, s); if (t.type === 'away') return; c.n++; if (t.type === 'stage') c[c[t.focus] !== undefined ? t.focus : 'other']++; else if (t.type === 'crew') c.crew++; else if (t.type === 'practice') c.practice++; });
       c.stage = c.acting + c.vocals + c.dance + c.other; return { a: a, c: c };
     }).sort(function (x, y) { return x.c.stage / (x.c.n || 1) - y.c.stage / (y.c.n || 1); });
-    return '<p class="muted">The ' + days.length + ' planned days. Fewest days on stage first, so you can see who to bring in.</p><table class="tbl"><thead><tr><th>Student</th><th>On stage</th>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    return '<p class="muted">The ' + days.length + ' planned days. Fewest days on stage first, so you can see who to bring in.</p><table class="tbl"><thead><tr><th>Company member</th><th>On stage</th>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
       rows.map(function (x) { var pct = x.c.n ? Math.round(100 * x.c.stage / x.c.n) : 0; return '<tr><td>' + esc(x.a.name) + '</td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b></td>' + cols.map(function (c) { return '<td>' + x.c[c[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>';
   }
 
@@ -360,15 +360,15 @@
       }).join('');
     };
     var up = list.filter(function (c) { return c.date >= now; }), past = list.filter(function (c) { return c.date < now; });
-    return '<div class="card"><h3>Add a day away</h3><div class="row"><label class="f grow" style="margin:0">Student<select id="ca">' + cast().map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
+    return '<div class="card"><h3>Add a day away</h3><div class="row"><label class="f grow" style="margin:0">Company member<select id="ca">' + cast().map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f" style="margin:0">Day<input type="date" id="cd" value="' + today() + '"></label><label class="f grow" style="margin:0">Why (optional)<input id="cw" maxlength="200" placeholder="e.g. field trip"></label><button class="btn primary" id="cadd" data-save>Add</button></div></div>' +
-      '<p class="muted">Students can send their own from <b>Today</b> on their iPad. They show up here when you open Production.</p>' +
+      '<p class="muted">Company members can send their own from <b>Today</b> on their iPad. They show up here when you open Production.</p>' +
       (up.length ? '<table class="tbl"><thead><tr><th>Day</th><th>Who</th><th>Why</th><th></th><th></th></tr></thead><tbody>' + rows(up) + '</tbody></table>' : '<p>Nobody is away on a coming day.</p>') +
       (past.length ? '<details style="margin-top:14px"><summary class="btn quiet">Past (' + past.length + ')</summary><table class="tbl"><tbody>' + rows(past) + '</tbody></table></details>' : '');
   }
   function wireAway() {
     document.getElementById('cadd').onclick = function () {
-      var a = document.getElementById('ca').value, d = document.getElementById('cd').value; if (!a || !d) { T.toast('Pick the student and the day.'); return; }
+      var a = document.getElementById('ca').value, d = document.getElementById('cd').value; if (!a || !d) { T.toast('Pick the Company member and the day.'); return; }
       if (!isClassDay(d)) { T.toast('That is not a class day.'); return; }
       if (P().conflicts.some(function (c) { return c.actor === a && c.date === d; })) { T.toast('Already there.'); return; }
       P().conflicts.push({ id: uid('x'), actor: a, date: d, why: document.getElementById('cw').value.trim(), from: 'teacher' });
@@ -383,7 +383,7 @@
     return '<div class="card"><h3>Take attendance</h3>' + (days.length ? '<div class="grid">' + days.slice(0, 10).map(function (s) {
       return '<a class="tile" style="min-height:90px" href="#/teacher/production/attend/' + s + '"><b>' + esc(dayName(s, true)) + '</b><span>' + (p.attendance[s] ? 'Taken ✓' : 'Not taken yet') + '</span></a>';
     }).join('') + '</div>' : '<p class="muted">No class days yet.</p>') + '</div>' +
-      '<div class="card"><h3>So far</h3><table class="tbl"><thead><tr><th>Student</th>' + MARKS.map(function (m) { return '<th>' + m[1] + ' ' + m[2] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      '<div class="card"><h3>So far</h3><table class="tbl"><thead><tr><th>Company member</th>' + MARKS.map(function (m) { return '<th>' + m[1] + ' ' + m[2] + '</th>'; }).join('') + '</tr></thead><tbody>' +
       cast().filter(function (a) { return cnt[a.id]; }).map(function (a) { var c = cnt[a.id]; return '<tr><td>' + esc(a.name) + '</td>' + MARKS.map(function (m) { return '<td' + (m[0] === 'absent' && c.absent ? ' class="err"' : '') + '>' + c[m[0]] + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
 
@@ -394,7 +394,7 @@
     var row = function (v) { var a = actor(v.by), s = T.songById(v.song); return '<div class="switch" style="flex-wrap:wrap"><span class="grow"><b>' + esc(v.title) + '</b><br><span class="muted small">' + esc(s ? s.title : '') + (a ? ' · by ' + esc(a.name) : '') + '</span></span>' +
       '<a class="btn small" href="' + esc(v.url) + '" target="_blank" rel="noopener">Watch</a>' + (v.ok ? '' : '<button class="btn small primary" data-okv="' + v.id + '">Share with the cast</button>') + '<button class="btn small quiet" data-rmv="' + v.id + '">Remove</button></div>'; };
     return '<div class="card"><h3>Waiting for your OK</h3>' + (pend.length ? pend.map(row).join('') : '<p class="muted">Nothing new.</p>') + '</div>' +
-      '<div class="card"><h3>Shared with the cast</h3>' + (ok.length ? ok.map(row).join('') : '<p class="muted">None yet. Students share them from My Songs.</p>') + '</div>' +
+      '<div class="card"><h3>Shared with the cast</h3>' + (ok.length ? ok.map(row).join('') : '<p class="muted">None yet. Company members share them from My Songs.</p>') + '</div>' +
       '<div class="card"><h3>Add one yourself</h3><div class="row"><label class="f grow" style="margin:0">Song<select id="vs">' + T.O().songs.map(function (s) { return '<option value="' + s.id + '">' + esc(s.title) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f grow" style="margin:0">Title<input id="vt" placeholder="e.g. Chorus, counts 1–32"></label></div><label class="f">Link<input id="vu" placeholder="https://drive.google.com/…"></label><div class="row end"><button class="btn primary" id="vadd" data-save>Add</button></div></div>';
   }
@@ -442,11 +442,11 @@
     function draw() {
       var people = cast();
       app.innerHTML = (isClassDay(s) ? '' : '<p class="card err">This is not a class day on your school calendar.</p>') + (bookingsOn(s).length ? '<div class="card">' + bookingLine(s, '') + '</div>' : '') +
-        '<p class="muted">Each group works on its own scenes or songs (Acting, Vocals, Dance…). Every student goes to the first group they are in; big group numbers bring the whole ensemble and the small roles. Anyone left over gets crew or practice in the app.</p>' +
+        '<p class="muted">Each group works on its own scenes or songs (Acting, Vocals, Dance…). Every Company member goes to the first group they are in; big group numbers bring the whole ensemble and the small roles. Anyone left over gets crew or practice in the app.</p>' +
         r.groups.map(function (g, gi) {
           var n = people.filter(function (a) { return task(a, s).group === g.id; }).length;
           return '<div class="card" data-g="' + gi + '"><div class="row"><label class="f grow" style="margin:0">Group ' + (gi + 1) + '<select data-k="focus">' + FOCUS.map(function (f) { return '<option value="' + f[0] + '"' + (f[0] === g.focus ? ' selected' : '') + '>' + f[1] + ' ' + f[2] + '</option>'; }).join('') + '</select></label>' +
-            '<label class="f grow" style="margin:0">Where / with whom<input data-k="where" value="' + esc(g.where || '') + '" placeholder="e.g. Stage, choir room, with Ms. Lee"></label><span class="tag">' + n + ' students</span><button class="btn small quiet" data-delg>Remove</button></div>' +
+            '<label class="f grow" style="margin:0">Where / with whom<input data-k="where" value="' + esc(g.where || '') + '" placeholder="e.g. Stage, choir room, with Ms. Lee"></label><span class="tag">' + n + ' Company members</span><button class="btn small quiet" data-delg>Remove</button></div>' +
             '<div class="row"><label class="switch grow" style="border:0"><span>Whole cast</span><input type="checkbox" data-k="everyone"' + (g.everyone ? ' checked' : '') + '></label>' +
             '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
             (g.focus === 'trip' ? '<button class="btn small" data-halves>Two trips: half the class each</button>' : '') +
@@ -458,11 +458,11 @@
             '<p class="muted small">Scenes</p><div class="row">' + O.scenes.map(function (sc) { return '<button type="button" class="btn small" data-sc="' + sc.id + '" aria-pressed="' + (g.scenes.indexOf(sc.id) >= 0) + '" title="' + esc(sc.place) + '">' + sc.num + '</button>'; }).join('') + '</div>' +
             '<p class="muted small" style="margin-top:10px">Songs <span class="small">(★ big number: the ensemble and small roles join)</span></p><div class="row">' + O.songs.map(function (so) { var m = O.moments.find(function (x) { return x.song === so.id; }); return '<button type="button" class="btn small" data-so="' + so.id + '" aria-pressed="' + (g.songs.indexOf(so.id) >= 0) + '">' + (m && m.big ? '★ ' : '') + esc(so.title) + '</button>'; }).join('') + '</div></div>';
         }).join('') +
-        (r.groups.some(function (g) { return g.focus === 'share'; }) ? '<div class="card"><h3>🌟 Spotlight solos</h3><p class="muted small">Students with a small solo line sing it for the class. Tap to choose.</p><div class="row">' +
+        (r.groups.some(function (g) { return g.focus === 'share'; }) ? '<div class="card"><h3>🌟 Spotlight solos</h3><p class="muted small">Company members with a small solo line sing it for the class. Tap to choose.</p><div class="row">' +
           (T.soloists ? T.soloists() : []).map(function (x) { return '<button type="button" class="btn small" data-spot="' + x.c + '" aria-pressed="' + ((r.spotlight || []).indexOf(x.c) >= 0) + '">' + esc(T.charById(x.c).short) + ' <span class="muted small">' + esc(x.song.title) + '</span></button>'; }).join('') + '</div></div>' : '') +
         '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip', 'share'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
         '<div class="card"><label class="f" style="margin:0">Note for everyone (they see it)<input id="nt" value="' + esc(r.notes || '') + '" placeholder="e.g. Wear shoes you can dance in."></label></div>' +
-        '<div class="card"><h3>Every student’s job</h3>' + people.map(function (a) {
+        '<div class="card"><h3>Every Company member’s job</h3>' + people.map(function (a) {
           var t = task(a, s), how = (r.assign || {})[a.id] || '';
           return '<div class="switch" style="flex-wrap:wrap"><span class="grow">' + T.face(a, 36) + ' <b>' + esc(a.name) + '</b><br><span class="muted small">' + sym(t.icon) + esc(t.text) + '</span></span>' +
             (t.type === 'away' ? '' : '<select data-job="' + a.id + '"><option value=""' + (how === '' ? ' selected' : '') + '>Automatic</option>' +
@@ -569,7 +569,7 @@
     T.setBar('Call board', '#/teacher/production');
     var days = weekDays(mon).filter(isClassDay);
     app.innerHTML = '<div class="row noprint" style="justify-content:center;margin-bottom:10px"><a class="round" href="#/teacher/production/callboard/' + addDays(mon, -7) + '" aria-label="Last week">' + icon('prev') + '</a><b>Week of ' + esc(dayName(mon, true)) + '</b><a class="round" href="#/teacher/production/callboard/' + addDays(mon, 7) + '" aria-label="Next week">' + icon('next') + '</a><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
-      '<h2 class="center">' + esc(T.O().title) + ' · Call board</h2>' + (P().shown.indexOf(mon) < 0 ? '<p class="center muted noprint">Students cannot see this week yet.</p>' : '') +
+      '<h2 class="center">' + esc(T.O().title) + ' · Call board</h2>' + (P().shown.indexOf(mon) < 0 ? '<p class="center muted noprint">Company members cannot see this week yet.</p>' : '') +
       (days.length ? days.map(function (s) { return dayBoard(s); }).join('') : '<p class="center muted">No class days this week.</p>');
   }
   /* one day of the call board: everyone, grouped by where they are. pub (a parent's full calendar): who is away and private notes are left out */

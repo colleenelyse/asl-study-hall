@@ -526,9 +526,9 @@
     var h = hasEmails ? '<div class="card center"><h2>Sign in with your school account</h2><p class="muted">The app finds you on the cast list.</p>' +
       (google ? '<div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div>' : '<button class="btn primary" id="schoolin">Use my school account</button>') + '</div>' : '';
     var pw = T.pass && T.pass.who;
-    if (pw === 'parent' || pw === 'helper') { h = ''; setBar(pw === 'parent' ? 'Your student' : 'Who are you helping?', T.me ? '#/home' : ''); }      // not their own picture: no school sign-in
-    h += pw === 'parent' ? '<h2>Which student is yours?</h2><p class="muted">Tap your student' + (pickChars ? '’s character' : '') + '. You can change it later in Settings.</p>' :
-      pw === 'helper' ? '<h2>Who are you helping today?</h2><p class="muted">Tap the student' + (pickChars ? '’s character' : '') + '. Switch any time from the home page.</p>' :
+    if (pw === 'parent' || pw === 'helper') { h = ''; setBar(pw === 'parent' ? 'Your Company member' : 'Working with an Artist', T.me ? '#/home' : ''); }      // not their own picture: no school sign-in
+    h += pw === 'parent' ? '<h2>Which Company member is yours?</h2><p class="muted">Tap your Company member' + (pickChars ? '’s character' : '') + '. You can change it later in Settings.</p>' :
+      pw === 'helper' ? '<h2>Which Artist are you working with today?</h2><p class="muted">Tap the Artist' + (pickChars ? '’s character' : '') + '. Switch any time from the home page.</p>' :
       '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
@@ -561,9 +561,9 @@
     var who = T.me.chars.map(chip).join('');
     var pw = T.pass && T.pass.who, teach = T.pass ? T.TEACH_PAGES.filter(function (x) { return T.passTeach(x[0] === 'callboard' ? 'production' : x[0], x[0] === 'callboard' ? ['callboard'] : []); }) : [];
     app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
-      '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Helping ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
-      (pw === 'helper' ? '<a class="btn" href="#/who">Switch student</a>' : '') + '</div>' +
-      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a helper”' : '') + '</p>' : '') +
+      '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Working with ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
+      (pw === 'helper' ? '<a class="btn" href="#/who">Switch Artist</a>' : '') + '</div>' +
+      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a Mentor”' : '') + '</p>' : '') +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
       (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +

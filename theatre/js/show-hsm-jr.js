@@ -13,7 +13,7 @@ window.DEFAULT_SHOW = {
 
   groups: [
     { id: 'leads', name: 'Leads' }, { id: 'friends', name: 'Friends' }, { id: 'adults', name: 'Grown-ups' },
-    { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }, { id: 'helpers', name: 'Peer models' }
+    { id: 'featured', name: 'Featured' }, { id: 'ensemble', name: 'Groups' }, { id: 'helpers', name: 'Company Mentors' }
   ],
   // colors (Colleen 2026-10-23): Troy red, Gabriella purple, Sharpay pink, Ryan green, Chad blue, Taylor golden yellow, Zeke orange; the rest any
   characters: [
@@ -45,7 +45,7 @@ window.DEFAULT_SHOW = {
     { id: 'rebels', name: 'Rebels', short: 'Rebels', group: 'ensemble', aliases: ['REBELS'], desc: 'Students who break out of their group in “Stick to the Status Quo.”' },
     { id: 'students', name: 'Students', short: 'Students', group: 'ensemble', aliases: ['STUDENTS', 'GROUP'], desc: 'Everyone else at East High.' },
     /* not in the script: Colleen's idea (2026-10-21), peers in the trench for the basketball number */
-    { id: 'trench', name: 'Trench Crew', short: 'Trench Crew', group: 'helpers', aliases: [], desc: 'Peer models in the trench (the pit) for “Get’cha Head in the Game.” They do the choreography facing the stage so the cast can follow along, and they catch any basketball that bounces off the stage.' }
+    { id: 'trench', name: 'Trench Crew', short: 'Trench Crew', group: 'helpers', aliases: [], desc: 'Company Mentors in the trench (the pit) for “Get’cha Head in the Game.” They do the choreography facing the stage so the cast can follow along, and they catch any basketball that bounces off the stage.' }
   ],
   /* how the read-aloud voice should say names it gets wrong (Teacher mode › Script › How words are said adds more) */
   say: { 'Sharpay': 'Shar pay', 'Kelsi': 'Kelsey', 'McKessie': 'Mick Kessie', 'Kratnoff': 'Krat noff', 'Cyndra': 'Sindra', 'Get’cha': 'Getcha', "Get'cha": 'Getcha', 'Darbus': 'Dar bus' },
