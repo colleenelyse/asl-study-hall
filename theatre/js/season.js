@@ -59,6 +59,7 @@
   /* ---------- the plan ---------- */
   function defaultShowMonday() {
     var t = P().term; if (!t.last) return '';
+    if (t.dayNumbers) return X().monday(t.last);      // by day number: the last five days are show week
     var d = parse(X().addDays(t.last, -7)), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1));
     return X().addDays(t.first, Math.round((d - parse(t.first)) / 864e5));
   }
@@ -147,7 +148,7 @@
     var order = units(); order.songs.sort(function (a, b) { return b.diff - a.diff; }); order.scenes.sort(function (a, b) { return b.diff - a.diff; });
     var gen = Object.keys(p.days).filter(function (d) { return p.days[d].gen; }).length;
     return '<div class="card"><h3>' + sym('🗓️') + 'Plan the semester</h3><p class="muted">Fills every empty class day from your school calendar, for every track, before anyone is cast. You can change any day after; days you already planned stay as they are.</p>' +
-      '<label class="f">Monday of show week<input type="date" id="smon" value="' + mon + '"></label>' +
+      (t.dayNumbers ? '<p>Show week: the last five days (' + esc(X().dayName(L.show[0] || mon)) + ' to ' + esc(X().dayName(L.show[L.show.length - 1] || mon)) + '). Runs week: the five days before.</p><input type="hidden" id="smon" value="' + mon + '">' : '<label class="f">Monday of show week<input type="date" id="smon" value="' + mon + '"></label>') +
       '<label class="switch"><span>Start with the two audition weeks</span><input type="checkbox" id="saud"' + (withAud ? ' checked' : '') + '></label>' +
       '<label class="f">🎬 Watch the movie: class periods, right after day one <span class="muted small">(about 98 minutes; 0 to skip)</span><input id="smov" inputmode="numeric" value="' + movie + '" style="width:90px"></label>' +
       '<details style="margin:6px 0"><summary class="btn quiet small">Teaching order: hardest first</summary><p class="muted small">Taught in this order, and the hardest ones come back on Wednesdays as easier things are added.</p><p class="small"><b>Songs:</b> ' + order.songs.map(function (x) { return esc(x.title); }).join(' → ') + '</p><p class="small"><b>Scenes:</b> ' + order.scenes.map(function (x) { return 'Scene ' + x.num; }).join(' → ') + '</p></details>' +
@@ -156,7 +157,7 @@
       '<tr><td>Rehearsals (music first, then scenes with vocals and dance at the same time)</td><td>' + L.work.length + ' days</td><td class="muted small">' + (L.work[0] ? esc(X().dayName(L.work[0], true)) + ' – ' + esc(X().dayName(L.work[L.work.length - 1], true)) : '') + '</td></tr>' +
       '<tr><td>Runs week</td><td>' + L.runs.length + ' days</td><td class="muted small">' + (L.runs[0] ? esc(X().dayName(L.runs[0], true)) + ' – ' + esc(X().dayName(L.runs[L.runs.length - 1], true)) : '') + '</td></tr>' +
       '<tr><td>Show week</td><td>' + L.show.length + ' days</td><td class="muted small">' + (L.show[0] ? esc(X().dayName(L.show[0], true)) + ' – ' + esc(X().dayName(L.show[L.show.length - 1], true)) : '') + '</td></tr></tbody></table>' +
-      '<div class="row"><button class="btn primary" id="splan" data-save>Plan the semester</button>' + (gen ? '<button class="btn quiet" id="sclear" data-save>Clear the ' + gen + ' planned days</button>' : '') + '</div>' +
+      '<div class="row"><button class="btn primary" id="splan" data-save>Plan the semester</button>' + (gen ? '<button class="btn quiet" id="sclear" data-save>Clear the ' + gen + ' planned days</button>' : '') + (Object.keys(p.days).length ? '<button class="btn" id="scsv">' + icon('print') + 'Download the plan (spreadsheet)</button>' : '') + '</div>' +
       '<p class="muted small">Then look at <b>Tracks</b> for each character’s calendar, and <b>Stage time</b> to see the balance. Weeks still need “Show this week to Company members”.</p></div>';
   };
   T.wireSeason = function (redraw) {
@@ -169,8 +170,28 @@
       var n = makePlan(mon, document.getElementById('saud').checked, p.movieDays);
       T.saveShow(n + ' days planned').then(redraw);
     };
+    var cv = document.getElementById('scsv'); if (cv) cv.onclick = planCsv;
     var c = document.getElementById('sclear'); if (c) c.onclick = function () { if (!confirm('Clear every day the semester plan made? Days you planned yourself stay.')) return; Object.keys(p.days).forEach(function (d) { if (p.days[d].gen) delete p.days[d]; }); T.saveShow('Cleared').then(redraw); };
   };
+
+  /* the plan as a spreadsheet: a row a class day; acting, vocals, dance and the rest in their own columns, each with who is called (characters) */
+  function planCsv() {
+    var p = P(), days = X().classDays(), dn = p.term.dayNumbers, O = T.O();
+    var who = function (g) { if (g.everyone && !g.only) return 'Everyone'; var cs = X().groupChars(g).map(function (c) { var ch = T.charById(c); return ch ? ch.short : c; }); return cs.join(', '); };
+    var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var rows = [['Day', 'Date', 'Week', 'Acting', 'Called for acting', 'Vocals', 'Called for vocals', 'Dance', 'Called for dance', 'Everyone / other', 'Notes']];
+    days.forEach(function (d, i) {
+      var r = p.days[d], col = { acting: [], vocals: [], dance: [], other: [] };
+      ((r && r.groups) || []).forEach(function (g) { var k = col[g.focus] ? g.focus : 'other'; col[k].push(g); });
+      var name = function (l) { return l.map(function (g) { return X().groupName(g) + (g.where ? ' (' + g.where + ')' : ''); }).join(' + '); };
+      var called = function (l) { return l.map(who).join(' / '); };
+      rows.push(['Day ' + (i + 1), dn ? '' : d, 'Week ' + (Math.floor(i / 5) + 1), name(col.acting), called(col.acting), name(col.vocals), called(col.vocals), name(col.dance), called(col.dance), name(col.other), (r && r.notes) || '']);
+    });
+    var csv = rows.map(function (r) { return r.map(q).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
+    a.download = (O.title || 'show').replace(/[^\w]+/g, '-') + '-rehearsal-plan.csv'; a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
 
   /* ---------- a calendar for every track (by character) ---------- */
   function jobFor(c, d) {
