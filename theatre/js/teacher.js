@@ -203,6 +203,25 @@
     };
   }
   /* the new parse replaces the lines; key words the teacher added carry over when the line is the same */
+  /* the teacher's singer fixes back onto a song's lines (w: { "index|words": who }). The same line number and words first; when lines moved
+     (new lines found earlier in the song), by the shift of the nearest fix that did match, and only onto the same words. Never by words alone:
+     two staves often sing the same words with different singers (Colleen 2026-10-24: "they still need to maintain their character colors"). */
+  T.applyWhoFixes = function (lyrics, w) {
+    var keys = Object.keys(w || {}).map(function (k) { var c = k.indexOf('|'); return { i: +k.slice(0, c), text: k.slice(c + 1), who: w[k] }; }).filter(function (k) { return !isNaN(k.i); });
+    var done = {}, placed = [];
+    keys.forEach(function (k) { var l = lyrics[k.i]; if (l && l.text === k.text) { l.who = k.who; done[k.i] = 1; k.ok = 1; placed.push({ i: k.i, d: 0 }); } });
+    var count = function (text, list) { return list.filter(function (x) { return x.text === text; }).length; };
+    keys.forEach(function (k) {      // words that appear once in the song and once among the fixes: a sure match, and its shift
+      if (k.ok || count(k.text, keys) !== 1 || count(k.text, lyrics) !== 1) return;
+      var j = lyrics.findIndex(function (l) { return l.text === k.text; }); if (j < 0 || done[j]) return;
+      lyrics[j].who = k.who; done[j] = 1; k.ok = 1; placed.push({ i: k.i, d: j - k.i });
+    });
+    keys.forEach(function (k) {
+      if (k.ok || !placed.length) return;
+      var near = placed.reduce(function (a, b) { return Math.abs(b.i - k.i) < Math.abs(a.i - k.i) ? b : a; }), j = k.i + near.d;
+      if (lyrics[j] && lyrics[j].text === k.text && !done[j]) { lyrics[j].who = k.who; done[j] = 1; k.ok = 1; }
+    });
+  };
   function applyImport(r, fileName, pdfBytes, quiet) {
     var old = T.show.script, keys = {};
     if (old) old.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.keyWords) keys[it.who + '|' + it.text] = it.keyWords; }); });
@@ -261,7 +280,7 @@
     var W = T.show.lyricWho || {};
     r.scenes.forEach(function (s) { s.items.forEach(function (it) {
       var w = it.type === 'song' && W[it.num]; if (!w) return;
-      it.lyrics.forEach(function (l, i) { var k = i + '|' + l.text; if (w[k]) l.who = w[k]; else { var m = Object.keys(w).find(function (kk) { return kk.slice(kk.indexOf('|') + 1) === l.text; }); if (m) l.who = w[m]; } });
+      T.applyWhoFixes(it.lyrics, w);
     }); });
     var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
     T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined, reader: ScriptParser.VERSION };
@@ -1169,7 +1188,7 @@
         var fresh = null; r.scenes.forEach(function (sc) { sc.items.forEach(function (it) { if (it.type === 'song' && String(it.num) === String(song.num)) fresh = it; }); });
         if (!fresh) throw new Error('This song was not found in the script.');
         var W = (T.show.lyricWho || {})[song.num] || {};
-        fresh.lyrics.forEach(function (l, i) { var k = i + '|' + l.text; if (W[k]) l.who = W[k]; else { var mm = Object.keys(W).find(function (kk) { return kk.slice(kk.indexOf('|') + 1) === l.text; }); if (mm) l.who = W[mm]; } });
+        T.applyWhoFixes(fresh.lyrics, W);
         snapshot();
         lines.splice.apply(lines, [0, lines.length].concat(fresh.lyrics));
         times = lines.map(function () { return null; });
