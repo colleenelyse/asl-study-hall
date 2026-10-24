@@ -259,8 +259,22 @@
     /* the tone of each line: check it, change it, make that line again */
     var tsel = $('tch'); if (tsel) tsel.onchange = function () { toneChar = tsel.value; page(index, pending); };
     app.querySelectorAll('[data-tone]').forEach(function (inp) { inp.onchange = function () { var T2 = T.show.tones = T.show.tones || {}; var v = inp.value.trim(); if (v && !/^\[/.test(v)) v = v.split(/\s*,\s*/).map(function (w) { return '[' + w.replace(/[\[\]]/g, '') + ']'; }).join(' '); T2[inp.dataset.tone] = v; inp.value = v; T.saveShow('Tone saved: make the line again to hear it'); }; });
-    app.querySelectorAll('[data-chip]').forEach(function (b) { b.onclick = function () { var h = b.dataset.chip.split('|')[0], tag = b.dataset.chip.split('|')[1], inp = app.querySelector('[data-tone="' + h + '"]'); inp.value = tag; inp.onchange(); }; });
-    app.querySelectorAll('[data-again]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.again]; if (!voicesFor(l.it, cfg.voices).length) { T.toast('Choose a voice for this character first.'); return; } b.disabled = true; b.textContent = 'Making…'; makeLine(l, cfg).then(function () { return V.refresh(); }).then(function () { b.disabled = false; b.textContent = '↻ Make again'; T.toast('Made. Tap ▶ to hear it.'); }).catch(function (e) { b.disabled = false; b.textContent = '↻ Make again'; T.toast(e.message, 6000); }); }; });
+    var toggle = function (inp, tag) { var cur = (inp.value.match(/\[[^\]]+\]/g) || []); var k = cur.indexOf(tag); if (k >= 0) cur.splice(k, 1); else cur.push(tag); inp.value = cur.join(' '); inp.onchange(); };      // tones combine: [sarcastic] [slows down]
+    app.querySelectorAll('[data-chip]').forEach(function (b) { b.onclick = function () { var h = b.dataset.chip.split('|')[0], tag = b.dataset.chip.split('|')[1]; toggle(app.querySelector('[data-tone="' + h + '"]'), tag); }; });
+    app.querySelectorAll('[data-more]').forEach(function (b) { b.onclick = function () {
+      var inp = app.querySelector('[data-tone="' + b.dataset.more + '"]'), l = byH[b.dataset.more];
+      var have = function (t) { return (inp.value.match(/\[[^\]]+\]/g) || []).indexOf('[' + t + ']') >= 0; };
+      var d = document.createElement('dialog'); d.className = 'tone-dlg';
+      d.innerHTML = '<h2>Tone of this line</h2><p class="muted">“' + esc(LineCheck.spoken(l.it.text)) + '”</p><p class="muted small">Tap to add or take away; they combine. ElevenLabs also follows other plain words you type in brackets.</p>' +
+        TONES.map(function (g) { return '<h3 style="margin:10px 0 4px">' + esc(g[0]) + '</h3><div class="row" style="flex-wrap:wrap;gap:4px">' + g[1].map(function (t) { return '<button type="button" class="btn small" data-t="' + esc(t) + '" aria-pressed="' + have(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>'; }).join('') +
+        '<div class="row end" style="margin-top:12px"><button class="btn quiet" id="tclr">Said plainly</button><button class="btn primary" id="tok">Done</button></div>';
+      document.body.appendChild(d); d.showModal();
+      d.querySelectorAll('[data-t]').forEach(function (x) { x.onclick = function () { toggle(inp, '[' + x.dataset.t + ']'); x.setAttribute('aria-pressed', have(x.dataset.t)); }; });
+      d.querySelector('#tclr').onclick = function () { inp.value = ''; inp.onchange(); d.close(); d.remove(); };
+      d.querySelector('#tok').onclick = function () { d.close(); d.remove(); };
+      d.addEventListener('cancel', function () { d.remove(); });
+    }; });
+    app.querySelectorAll('[data-again]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.again]; if (!voicesFor(l.it, cfg.voices).length) { T.toast('No ElevenLabs voice for this line yet: tap Load my voices in the ElevenLabs section above, and check that this character has a voice in its list.', 7000); var lv = document.getElementById('lv'); if (lv) lv.scrollIntoView({ block: 'center' }); return; } b.disabled = true; b.textContent = 'Making…'; makeLine(l, cfg).then(function () { return V.refresh(); }).then(function () { b.disabled = false; b.textContent = '↻ Make again'; T.toast('Made. Tap ▶ to hear it.'); }).catch(function (e) { b.disabled = false; b.textContent = '↻ Make again'; T.toast(e.message, 6000); }); }; });
     app.querySelectorAll('[data-hear]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.hear]; V.say(l.it, null, false); }; });
     if (key && Object.keys(cfg.voices).length) $('lv').click();
   }
@@ -278,7 +292,17 @@
       .then(function (b) { return Store.putVoice(T.key, T.proof, l.h, 'tts', b, Date.now().toString(36)); });
   }
   var toneChar = null;
-  var CHIPS = ['[sarcastic]', '[excited]', '[whispers]', '[nervous]', '[annoyed]', '[sad]', '[laughs]', '[shouting]', '[teasing]', '[dramatic]', '[deadpan]', '[sincere]'];
+  var CHIPS = ['[sarcastic]', '[excited]', '[whispers]', '[nervous]', '[annoyed]', '[sad]'];      // the quick ones on every line
+  /* ElevenLabs v3 audio tags (Colleen 2026-10-24: "add more words to describe tone … anything elevenlabs will recognize"); v3 also follows
+     other plain words in brackets, so the teacher can type her own */
+  var TONES = [
+    ['Feelings', ['happy', 'excited', 'cheerful', 'proud', 'confident', 'curious', 'surprised', 'amazed', 'hopeful', 'relieved', 'warm', 'loving', 'sincere', 'sad', 'sorrowful', 'disappointed', 'regretful', 'nervous', 'anxious', 'scared', 'hesitant', 'embarrassed', 'shy', 'confused', 'annoyed', 'frustrated', 'angry', 'furious', 'jealous', 'suspicious', 'appalled', 'disgusted', 'bored', 'tired', 'resigned']],
+    ['Attitude', ['sarcastic', 'deadpan', 'flatly', 'dramatically', 'playfully', 'teasing', 'mischievously', 'smug', 'bossy', 'pleading', 'dismissive', 'matter-of-fact', 'thoughtful', 'calm', 'serious', 'determined', 'commanding']],
+    ['Voice', ['whispers', 'quietly', 'softly', 'loudly', 'shouting', 'yelling', 'singsong', 'announcer voice', 'out of breath', 'voice cracking', 'mumbling']],
+    ['Reactions', ['laughs', 'chuckles', 'giggles', 'laughs nervously', 'sighs', 'exhales', 'gasps', 'gulps', 'scoffs', 'snorts', 'sniffs', 'clears throat', 'crying', 'groans', 'hums']],
+    ['Pace', ['rushed', 'fast', 'slowly', 'slows down', 'drawn out', 'stammers', 'pause', 'short pause', 'long pause', 'jumping in', 'interrupting']]
+  ];
+  V.TONES = TONES;
   function toneCard(lines, index, cfg) {
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     if (!toneChar || !chars.some(function (c) { return c.id === toneChar; })) toneChar = chars[0] && chars[0].id;
@@ -290,7 +314,7 @@
         var own = (T.show.tones || {})[l.h], t = own != null ? own : autoTone(l.it, l.scene), e = index.lines[l.h];
         return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + (l.inSong ? ' · in a song' : '') + '</span><div>' + esc(LineCheck.spoken(l.it.text)) + '</div>' +
           '<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><input data-tone="' + l.h + '" value="' + esc(t) + '" placeholder="said plainly" style="width:170px">' + (own == null && t ? '<span class="muted small">from the script</span>' : '') +
-          CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '</div></div>' +
+          CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '<button type="button" class="btn small" data-more="' + l.h + '">＋ More tones</button></div></div>' +
           '<div class="row" style="gap:4px"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button></div></div>';
       }).join('') + '</div>';
   }
