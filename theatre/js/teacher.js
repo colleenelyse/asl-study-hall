@@ -347,27 +347,31 @@
     var cast = T.show.cast = T.show.cast || [];
     app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
       '<p class="muted">Students tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
-        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + '</span></button>';
+        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + (c.emailHash ? ' · ✉️' : '') + '</span></button>';
       }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: students can start (the whole show, the story, crews) before they have roles. Until then, students pick a character.</p>');
     document.getElementById('roster').onclick = function () {
-      var d = dialog('<h2>Paste a class list</h2><p class="muted">One student per line, the way they like to be called. “Last, First” is turned around. Names already on the list are skipped. Give them roles later (tap a student).</p>' +
+      var d = dialog('<h2>Paste a class list</h2><p class="muted">One student per line, the way they like to be called. “Last, First” is turned around. A school email on the line (after a tab or a comma) is saved for Sign in with Google, as a scrambled code. Names already on the list get their email added. Give them roles later (tap a student).</p>' +
         '<label class="f">Names<textarea id="nl" style="min-height:240px"></textarea></label><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Add them</button></div>');
       d.querySelector('#cn').onclick = function () { d.close(); };
       d.querySelector('#ok').onclick = function () {
-        var have = cast.map(function (c) { return c.name.toLowerCase(); }), n = 0;
+        var n = 0, e = 0, jobs = [];
         d.querySelector('#nl').value.split('\n').forEach(function (line) {
-          var nm = line.replace(/\t.*$/, '').trim(); if (!nm) return;
+          var em = (line.match(/[^\s,;<>]+@[^\s,;<>]+\.[^\s,;<>]+/) || [])[0];
+          var nm = line.replace(em || '\u0000', '').replace(/[<>]/g, '').replace(/[\t,;\s]+$/, '').replace(/\t.*$/, '').trim(); if (!nm) return;
           var m = nm.match(/^([^,]+),\s*(.+)$/); if (m) nm = m[2] + ' ' + m[1];
-          if (have.indexOf(nm.toLowerCase()) >= 0) return;
-          have.push(nm.toLowerCase()); cast.push({ id: uid('a'), name: nm, chars: [], photo: '', access: Object.assign({}, T.DEF_ACCESS) }); n++;
+          var a = cast.find(function (c) { return c.name.toLowerCase() === nm.toLowerCase(); });
+          if (!a) { a = { id: uid('a'), name: nm, chars: [], photo: '', access: Object.assign({}, T.DEF_ACCESS) }; cast.push(a); n++; }
+          if (em) jobs.push(T.emailHash(em).then(function (h) { a.emailHash = h; a.emailHint = emailHint(em); e++; }));
         });
-        if (!n) { d.close(); return; }
-        save(n + ' students added').then(function () { d.close(); castPage(); });
+        if (!n && !jobs.length) { d.close(); return; }
+        Promise.all(jobs).then(function () { return save(n + ' students added' + (e ? ', ' + e + ' school emails saved' : '')); }).then(function () { d.close(); castPage(); });
       };
     };
     document.getElementById('add').onclick = function () { editActor(null); };
     app.querySelectorAll('.person').forEach(function (b) { b.onclick = function () { editActor(cast.find(function (c) { return c.id === b.dataset.id; })); }; });
   }
+  /* a hint the teacher can recognize, not the address: "j•••@school.org" */
+  function emailHint(em) { var p = em.toLowerCase().split('@'); return p[0].charAt(0) + '•••@' + p[1]; }
   function editActor(a) {
     var isNew = !a; a = a ? clone(a) : { id: uid('a'), name: '', chars: [], photo: '', access: Object.assign({}, T.DEF_ACCESS) };
     a.access = Object.assign({}, T.DEF_ACCESS, a.access || {});
@@ -377,6 +381,8 @@
     var d = dialog('<h2>' + (isNew ? 'Add an actor' : 'Edit actor') + '</h2>' +
       '<div class="row">' + '<span id="ph">' + T.face(a, 80) + '</span><label class="btn small">Photo<input type="file" accept="image/*" id="pf" hidden></label><button class="btn small quiet" id="pr">No photo</button></div>' +
       '<label class="f">Name<input id="nm" value="' + esc(a.name) + '" autocomplete="off"></label>' +
+      '<label class="f">School email (for Sign in with Google)<input id="em" type="email" autocomplete="off" autocapitalize="off" placeholder="' + (a.emailHash ? 'saved (' + esc(a.emailHint || 'hidden') + '): type a new one to change it' : 'e.g. jsmith@school.org') + '"></label>' +
+      (a.emailHash ? '<label class="switch"><span>Remove the saved school email</span><input type="checkbox" id="emx"></label>' : '') +
       '<label class="f">Sizes, for costume shopping (optional)<input id="sz" value="' + esc(a.sizes || '') + '" placeholder="e.g. shirt M, pants 10, shoes 7"></label>' +
       '<label class="switch"><span><b>Guest</b> (not in the class, e.g. a dancer who joins for tech week): only on run-through, tech, dress and show days, or days you call them</span><input type="checkbox" id="gu"' + (a.guest ? ' checked' : '') + '></label>' +
       '<p><b>Plays</b></p><div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:4px 10px">' + O.characters.map(function (c) {
@@ -402,8 +408,13 @@
       a.sizes = d.querySelector('#sz').value.trim(); if (!a.sizes) delete a.sizes;
       a.chars = Array.from(d.querySelectorAll('input[type=checkbox][value]:checked')).map(function (x) { return x.value; });
       if (!a.name) { T.toast('Type a name.'); return; }
-      var i = cast.findIndex(function (c) { return c.id === a.id; }); if (i >= 0) cast[i] = a; else cast.push(a);
-      save().then(function () { d.close(); castPage(); if (T.me && T.me.id === a.id) T.setMe({ cast: a.id }); });
+      var em = d.querySelector('#em').value.trim(), rm = d.querySelector('#emx');
+      if (em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { T.toast('That email does not look right.'); return; }
+      if (rm && rm.checked) { delete a.emailHash; delete a.emailHint; }
+      (em ? T.emailHash(em).then(function (h) { a.emailHash = h; a.emailHint = emailHint(em); }) : Promise.resolve()).then(function () {
+        var i = cast.findIndex(function (c) { return c.id === a.id; }); if (i >= 0) cast[i] = a; else cast.push(a);
+        return save();
+      }).then(function () { d.close(); castPage(); if (T.me && T.me.id === a.id) T.setMe({ cast: a.id }); });
     };
   }
 
@@ -1054,7 +1065,23 @@
   /* ---------- Passwords & backup ---------- */
   function passwordsPage() {
     T.setBar('Passwords & backup', '#/teacher');
-    app.innerHTML = '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
+    setTimeout(function () {
+      var f = document.getElementById('sif'); if (!f) return;
+      f.onsubmit = function (e) {
+        e.preventDefault();
+        var id = document.getElementById('sic').value.trim(), dom = document.getElementById('sid').value.trim().replace(/^@/, '').toLowerCase();
+        if (id && !/\.apps\.googleusercontent\.com$/.test(id)) { T.toast('That does not look like a Google Client ID (it ends in .apps.googleusercontent.com).', 5000); return; }
+        if (id) T.show.signin = { clientId: id, domain: dom || undefined }; else delete T.show.signin;
+        save(id ? 'School sign-in saved' : 'School sign-in turned off');
+      };
+    }, 0);
+    var S = T.show.signin || {}, withEmail = (T.show.cast || []).filter(function (c) { return c.emailHash; }).length;
+    app.innerHTML = '<form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students tap <b>Sign in with Google</b> and the app finds them on the cast list (by their school email, saved as a scrambled code). They still type the cast password once on each device.</p>' +
+      '<label class="f">Google Client ID<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
+      '<label class="f">School email domain (only these accounts)<input id="sid" value="' + esc(S.domain || '') + '" autocomplete="off" placeholder="e.g. students.myschool.org"></label>' +
+      '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' students have a school email saved (Cast › tap a student, or paste the class list with emails).</p>' +
+      '<div class="row end"><button class="btn primary" data-save>Save school sign-in</button></div></form>' +
+      '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
       '<label class="f">New cast password<input id="nc" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label><div class="row end"><button class="btn primary" data-save>Change the cast password</button></div></form>' +
       '<form class="card" id="tf"><h2>Teacher password</h2><label class="f">New teacher password<input id="nt1" type="password" minlength="8" autocomplete="new-password" required></label>' +
       '<label class="f">Again<input id="nt2" type="password" autocomplete="new-password" required></label><div class="row end"><button class="btn primary" data-save>Change the teacher password</button></div></form>' +

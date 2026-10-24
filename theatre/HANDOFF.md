@@ -392,3 +392,12 @@ skips it, and the list shows "⇄ with N"; "Find lyrics timing for every song" p
 "Only my lines light up" (Colleen 2026-10-23): a switch under the sheet music on a student's song page (`st.mineOnly`, `#follow` data-mine);
 T.Follow.update then lights only lines where `T.isMine(who, scene, T.me.chars, the song's moment)`: their character named (alone or with
 others), ALL when they are on stage for the song, a group (JOCKS) only for its members.
+
+**School sign-in** (Colleen 2026-10-23: the app should know from the school account who the student is; district OK to proceed): Teacher ›
+Passwords & backup › School sign-in: Google Client ID + school email domain (`T.show.signin`). Cast: a school email per student (actor editor,
+or "Name<tab>email" / "Last, First, email" in Paste a class list), stored only as `emailHash` = SHA-256("theatre:" + lowercase email) plus a
+hint ("j•••@school.org"); no readable address in the show. Who are you?: "Sign in with your school account" (Google Identity Services,
+auto_select + prompt, so a Chromebook signed into the school account signs in by itself after the first time); the token's email (and domain)
+is matched to the cast list and remembered on the device; the picture picker stays below. The cast password still unlocks the show once per
+device. Needs: an OAuth Web Client ID with https://asl.cool (and localhost for testing) as authorized JavaScript origins; the district allowing
+the app for students.

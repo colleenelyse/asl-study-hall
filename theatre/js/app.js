@@ -392,11 +392,43 @@
   }
 
   /* ---------- Who are you? ---------- */
+  /* School sign-in (Colleen 2026-10-23: "cant it tell from the cast list and the school account logged in who they are"): Sign in with
+     Google (the teacher's Client ID and school domain in T.show.signin), the account's email matched to the cast list. Emails are kept
+     only as a scrambled code (T.emailHash), never readable in the show. The cast password still unlocks the show once on each device. */
+  T.emailHash = function (email) {
+    var b = new TextEncoder().encode('theatre:' + String(email || '').trim().toLowerCase());
+    return crypto.subtle.digest('SHA-256', b).then(function (h) { return Array.from(new Uint8Array(h)).map(function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); });
+  };
+  var gsiP = null;
+  function loadGsi() {
+    if (window.google && window.google.accounts && window.google.accounts.id) return Promise.resolve();
+    return gsiP || (gsiP = new Promise(function (ok, no) { var s = document.createElement('script'); s.src = 'https:' + '//accounts.google.com/gsi/client'; s.async = true; s.onload = ok; s.onerror = function () { gsiP = null; no(new Error('Could not reach Google. Check the internet.')); }; document.head.appendChild(s); }));
+  }
+  function schoolSignIn(box) {
+    var S = T.show.signin; if (!S || !S.clientId || !box) return;
+    loadGsi().then(function () {
+      google.accounts.id.initialize({ client_id: S.clientId, hd: S.domain || undefined, auto_select: true, callback: function (resp) {
+        var p = {}; try { p = JSON.parse(decodeURIComponent(escape(atob(resp.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) {}
+        var email = String(p.email || '').toLowerCase();
+        if (!email || p.email_verified === false) { T.toast('Google did not share an email. Tap your picture instead.', 5000); return; }
+        if (S.domain && email.split('@')[1] !== S.domain.toLowerCase()) { T.toast('Use your school account (@' + S.domain + ').', 5000); return; }
+        T.emailHash(email).then(function (h) {
+          var a = (T.show.cast || []).find(function (c) { return c.emailHash === h; });
+          if (!a) { T.toast('Your school account is not on the cast list yet. Tap your picture below and tell your teacher.', 6000); return; }
+          var sel = { cast: a.id, google: 1 }; ls('me', sel); setMe(sel); T.go('#/home');
+        });
+      } });
+      google.accounts.id.renderButton(box, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with' });
+      google.accounts.id.prompt();      // signs right in when this device has used it before
+    }).catch(function (e) { box.textContent = e.message; });
+  }
   function whoPage(args) {
     setBar('Who are you?', T.me ? '#/home' : '');
     var cast = (T.show.cast || []).filter(function (c) { return c.name; });      // before casting, students are on the list with no role yet
     var pickChars = (args && args[0] === 'character') || !cast.length;
-    var h = '<h2>' + (pickChars ? 'Pick your character' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
+    var google = !pickChars && T.show.signin && T.show.signin.clientId && cast.some(function (c) { return c.emailHash; });
+    var h = google ? '<div class="card center"><h2>Sign in with your school account</h2><p class="muted">The app finds you on the cast list.</p><div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div></div>' : '';
+    h += '<h2>' + (pickChars ? 'Pick your character' : google ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + ((c.chars || []).map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') || 'Role coming soon') + '</span></button>';
@@ -412,6 +444,7 @@
       if (cast.length) h += '<p class="center"><a href="#/who" class="btn quiet">Back to the cast list</a></p>';
     }
     app.innerHTML = h;
+    if (google) schoolSignIn(document.getElementById('gsi'));
     app.querySelectorAll('.person').forEach(function (b) {
       b.onclick = function () {
         var sel = b.dataset.cast ? { cast: b.dataset.cast } : { char: b.dataset.char };
