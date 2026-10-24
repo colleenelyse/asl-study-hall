@@ -372,3 +372,7 @@ this way is marked in `T.show.lyricKeep` and kept as it is when the script is im
 **No more re-importing** (Colleen: "why do i have to keep reimporting the pdf?"): `ScriptParser.VERSION` stamps each reading (`script.reader`);
 when teacher mode opens on a reading by an older reader, `rereadScript` reads the saved PDF again (the same as an import: speaker names,
 key words, singer fixes, edited songs carry over) and saves. **Bump VERSION whenever the reader changes.**
+Undo and Reset (Colleen: "what if i used the merge lyrics incorrectly. there's no undo button"): ↶ Undo on both Lyrics timing tabs steps
+back through splits, joins, singer changes, nudges, taps, Find and Clear (`snapshot` / `undo`, 60 steps). Sections tab › "Reset this song"
+re-reads the saved PDF, puts that song's sections back as the reader makes them (✎ singer fixes stay), clears its lyricKeep mark, timing and
+piano.
