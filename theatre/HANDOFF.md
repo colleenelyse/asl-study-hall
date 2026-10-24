@@ -327,3 +327,6 @@ are timed. A song's pages start at its own music (its lyrics), not the page with
 times are shown and tapped on the guide's clock and saved on the band track's clock, using the two tracks' offset (`T.show.trackOffset`, worked
 out once, or from Find). The lyric matcher (`Melody.alignLyrics`) may skip a line with no stretch of its own (a one-word piece sung in one breath
 with its neighbor, now that lines split at singer names) and gives it its share of the neighbor's time by syllables.
+Lyrics timing page layout (Colleen: "impossible to keep up with when the button is at the top"): the player is a bar fixed to the bottom
+(next line's words, play, back 3 s, time, Now, Clear, Save); while the track plays the sung line lights up and scrolls to the middle
+(`follow`), the next line to tap is outlined; on phones the words get a full line above the buttons.

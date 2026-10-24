@@ -308,3 +308,15 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 :root[data-contrast="1"] .showhero-cheer { color: var(--ink); }
 @media (max-width: 420px) { .showhero-art { width: 60px; height: 60px; } .showhero-title { font-size: 1.35em; } }
 @media print { .showhero { display: none; } }
+
+/* Lyrics timing: the player in a bar at the bottom, the line being sung lit up */
+.lt-dock .in { flex-direction: column; align-items: stretch; gap: 6px; }
+.lt-next-words { font-weight: 700; font-size: 1.05em; line-height: 1.3; max-height: 3.2em; overflow: hidden; }
+.lt-controls { flex-wrap: wrap; gap: 8px; align-items: center; }
+.lt-time { min-width: 7.5em; font-variant-numeric: tabular-nums; }
+.lt-now { min-width: 8em; font-size: 1.15em; }
+.lt-space { height: 190px; }
+.lt-row { border-radius: 12px; transition: background .2s; }
+.lt-row.lt-on { background: color-mix(in srgb, var(--accent) 24%, var(--card)); box-shadow: inset 6px 0 0 var(--accent); }
+.lt-row.lt-next { box-shadow: inset 0 0 0 3px var(--accent); }
+@media (max-width: 520px) { .lt-now { flex: 1 1 100%; order: 5; } .lt-space { height: 240px; } .lt-row > .grow { flex: 1 1 100%; } .lt-row > .row { margin-left: auto; } .lt-dock .lt-controls .btn.small { min-height: 40px; } }
