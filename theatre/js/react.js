@@ -9,7 +9,10 @@
      Name it: hear it, then pick the feeling from pictures.
    Show Me (a support): the feeling's picture and how to show it come first, so practice never feels like a test.
    Pictures: img/act/<file> (theatre-notes/acting-pictures-list.md, the same pictures as the script margins); the emoji shows until one exists.
-   Practice stays on this device (T.ls 'reactSeen'); nothing is sent. */
+   Practice stays on this device (T.ls 'reactSeen'); nothing is sent.
+   Camera mirror (Colleen 2026-10-24: instead of, or as well as, shatter-safe mirrors): in Show it, the Chromebook or iPad camera shows the student's
+   face (mirrored) while they react, records about 4 seconds after "React!", and plays it back beside the feeling's picture. The video only ever
+   lives in this page's memory: never saved, never sent, gone when the next card starts. */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, app = document.getElementById('app');
@@ -124,9 +127,16 @@
   var LEVELS = [[1, 'Level 1: big feelings', '🎉', 'Happy, excited, surprised, scared, angry, grossed out'],
     [2, 'Level 2: quieter feelings', '🤏', 'Disappointed, nervous, confused, embarrassed, proud, relieved'],
     [3, 'Level 3: react as your character', '🎭', 'Who you are first, then what you hear']];
-  var st = { level: 1, mode: 'show', showMe: false, words: false, order: null, at: 0 };
-  function prefs() { var p = T.ls('react') || {}; ['level', 'mode', 'showMe', 'words'].forEach(function (k) { if (p[k] != null) st[k] = p[k]; }); }
-  function keep() { T.ls('react', { level: st.level, mode: st.mode, showMe: st.showMe, words: st.words }); }
+  var st = { level: 1, mode: 'show', showMe: false, words: false, cam: false, order: null, at: 0 };
+  var cam = { stream: null, url: null, rec: null };
+  var camOK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  function camOn() {
+    if (cam.stream) return Promise.resolve(cam.stream);
+    return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false }).then(function (s) { cam.stream = s; return s; });
+  }
+  function camOff() { if (cam.rec && cam.rec.state === 'recording') try { cam.rec.stop(); } catch (e) {} cam.rec = null; if (cam.url) URL.revokeObjectURL(cam.url); cam.url = null; if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); }); cam.stream = null; }
+  function prefs() { var p = T.ls('react') || {}; ['level', 'mode', 'showMe', 'words', 'cam'].forEach(function (k) { if (p[k] != null) st[k] = p[k]; }); }
+  function keep() { T.ls('react', { level: st.level, mode: st.mode, showMe: st.showMe, words: st.words, cam: st.cam }); }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function mine(x) { return !st.teacher && x.char && T.me && (T.me.chars || []).indexOf(x.char) >= 0; }      // on the projector nobody's role comes first
   function deck() {
@@ -153,6 +163,7 @@
       '<button type="button" data-v="name" aria-pressed="' + (st.mode === 'name') + '">Name it: pick the feeling</button></div></div>' +
       '<label class="switch"><span>Show Me: see the feeling and how to show it first</span><input type="checkbox" id="rs"' + (st.showMe ? ' checked' : '') + (st.mode === 'name' ? ' disabled' : '') + '></label>' +
       '<label class="switch"><span>Show the words too</span><input type="checkbox" id="rw"' + (st.words ? ' checked' : '') + '></label>' +
+      (camOK ? '<label class="switch"><span>' + sym('🪞') + 'Camera mirror: see your face while you react, then watch it back<br><span class="muted small">The video stays on this screen and is gone when you move on. Nothing is saved or sent.</span></span><input type="checkbox" id="rcm"' + (st.cam ? ' checked' : '') + (st.mode === 'name' ? ' disabled' : '') + '></label>' : '') +
       '<p class="muted small">More than one feeling can fit, and your character might feel something different. That’s OK. The app never grades your face: you look, compare, and try again.</p></div>' +
       '<h3>Pick a level</h3><div class="grid">' + LEVELS.map(function (L) {
         var n = ALL.filter(function (x) { return x.level === L[0]; }).length, done = ALL.filter(function (x, i) { return x.level === L[0] && seen[i]; }).length;
@@ -161,9 +172,14 @@
     app.querySelectorAll('#rm [data-v]').forEach(function (b) { b.onclick = function () { st.mode = b.dataset.v; keep(); start(back); }; });
     document.getElementById('rs').onchange = function () { st.showMe = this.checked; keep(); };
     document.getElementById('rw').onchange = function () { st.words = this.checked; keep(); };
+    var rcm = document.getElementById('rcm'); if (rcm) rcm.onchange = function () { st.cam = this.checked; keep(); };
+    T.cleanup.push(camOff);
     app.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { st.level = +b.dataset.l; keep(); st.order = deck(); st.at = 0; round(back); }; });
   }
 
+  function showMine(w) {      // the student's own reaction, played back mirrored beside the pictures
+    w.innerHTML = '<p class="small" style="margin:0 0 6px"><b>You</b></p><video src="' + cam.url + '" autoplay loop muted playsinline style="width:min(240px,70vw);border-radius:18px;transform:scaleX(-1);background:#000"></video>';
+  }
   function round(back) {
     var i = st.order[st.at], x = ALL[i];
     if (i == null) { start(back); return; }
@@ -179,6 +195,8 @@
       return;
     }
     delete x._primed;
+    var useCam = st.cam && camOK && st.mode === 'show';
+    if (cam.url) { URL.revokeObjectURL(cam.url); cam.url = null; }      // last card's video is gone
     var choices = null;
     if (st.mode === 'name') {      // the main feeling and two that don't fit, mixed up
       var others = shuffle(Object.keys(FEEL).filter(function (k) { return x.fit.indexOf(k) < 0; })).slice(0, 2);
@@ -187,15 +205,22 @@
     app.innerHTML = '<div class="card" style="text-align:center">' + roleCard + '<p class="muted">' + (st.mode === 'name' ? 'Listen. How would you feel?' : 'Listen, then react with your face and body.') + '</p>' +
       '<p id="rt" style="font-size:1.7em;font-weight:700;min-height:2.4em;margin:16px 0">' + (st.words ? '“' + esc(x.say) + '”' : sym('🔊') + '<span class="muted">Listening…</span>') + '</p>' +
       '<div id="rc" style="font-size:3em;font-weight:800;min-height:1.4em" aria-live="polite"></div>' +
+      (useCam ? '<div id="camwrap" style="display:flex;justify-content:center"><video id="cv" autoplay muted playsinline style="width:min(360px,80vw);border-radius:18px;transform:scaleX(-1);background:#000"></video></div><p id="cmsg" class="muted small"></p>' : '') +
       (choices ? '<div id="pick">' + row(choices.map(function (k) { return '<button class="btn" data-k="' + k + '" style="padding:10px;height:auto">' + pic(k, 90) + '</button>'; }).join('')) + '</div>' : '') +
       '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:10px;margin-top:10px"><button class="btn" id="ag">' + sym('🔁') + 'Hear it again</button>' +
       (choices ? '' : '<button class="btn primary" id="sh">' + sym('👀') + 'What fits?</button>') + '</div><div id="ans"></div></div>';
     var said = function () {
       if (st.mode === 'name') return;
       document.getElementById('rc').textContent = 'React!';
+      if (useCam && cam.stream && window.MediaRecorder) {      // about 4 seconds of the reaction, kept only in memory
+        var parts = [];
+        try { cam.rec = new MediaRecorder(cam.stream); } catch (e) { cam.rec = null; }
+        if (cam.rec) { var r = cam.rec; r.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); }; r.onstop = function () { if (parts.length && cam.rec === r) { cam.url = URL.createObjectURL(new Blob(parts, { type: r.mimeType || 'video/webm' })); var w = document.getElementById('mine'); if (w) showMine(w); } }; r.start(); setTimeout(function () { if (r.state === 'recording') r.stop(); }, 4000); }
+      }
       timer = setTimeout(function () { var c = document.getElementById('rc'); if (c) c.textContent = ''; }, 2500);
     };
     var speak = function () { T.Speech.stop(); clearTimeout(timer); document.getElementById('rc').textContent = ''; T.Speech.say(x.say).then(said); };
+    if (useCam) camOn().then(function (s) { var v = document.getElementById('cv'); if (v) v.srcObject = s; }, function () { var m = document.getElementById('cmsg'); if (m) m.textContent = 'The camera didn’t start. Check that the browser may use the camera, or turn Camera mirror off.'; });
     speak();
     document.getElementById('ag').onclick = speak;
     var reveal = function (lead) {
@@ -203,8 +228,9 @@
       document.getElementById('rt').innerHTML = '“' + esc(x.say) + '”';
       document.getElementById('rc').textContent = '';
       var sh = document.getElementById('sh'); if (sh) sh.style.display = 'none';
+      if (useCam) { var cw = document.getElementById('camwrap'); if (cw) cw.style.display = 'none'; if (cam.rec && cam.rec.state === 'recording') cam.rec.stop(); }
       document.getElementById('ans').innerHTML = (lead || '<h3 style="margin-top:18px">' + (x.fit.length > 1 ? 'These fit' : 'This fits') + '</h3>') +
-        row(x.fit.map(function (k, j) { return pic(k, j === 0 ? 150 : 110, true); }).join('')) +
+        row((useCam ? '<div id="mine" style="text-align:center"></div>' : '') + x.fit.map(function (k, j) { return pic(k, j === 0 ? 150 : 110, true); }).join('')) +      // my face beside the pictures
         (st.mode === 'show' ? '<p style="margin-top:16px">Did your face and body show it?</p>' : '<p style="margin-top:16px">Now try showing it with your face and body.</p>') +
         '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:10px">' +
         (st.mode === 'show' ? [['yes', '👍 Yes'], ['some', '🤏 Some of it'], ['no', '🔁 Not yet']] : [['yes', 'Next ➜'], ['no', '🔁 Practice this one again later']]).map(function (b) { return '<button class="btn' + (b[0] === 'yes' ? ' primary' : '') + '" data-m="' + b[0] + '">' + b[1] + '</button>'; }).join('') + '</div>';
@@ -216,7 +242,7 @@
         };
       });
     };
-    var sh = document.getElementById('sh'); if (sh) sh.onclick = function () { reveal(); };
+    var sh = document.getElementById('sh'); if (sh) sh.onclick = function () { reveal(); var w = document.getElementById('mine'); if (w && cam.url) showMine(w); };
     app.querySelectorAll('[data-k]').forEach(function (b) {
       b.onclick = function () {
         var good = x.fit.indexOf(b.dataset.k) >= 0;
