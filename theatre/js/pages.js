@@ -124,6 +124,27 @@
     var sz = T.Pages.size(b[0].n), mid = b[0].x + b[0].w / 2;
     return b[0].w < sz.w * 0.35 && Math.abs(mid - sz.w / 2) < sz.w * 0.12 ? b.slice(1) : b;
   };
+  /* a character's name inside stage directions (Colleen 2026-10-24: everything about the track highlighted, so actors find their blocking):
+     [{ n, y0, y1, name }] for every direction naming one of `chars` (a group name counts for its members, as for lines) */
+  T.Pages.dirNames = function (chars) {
+    var out = []; if (!chars || !chars.length || !T.show.script) return out;
+    T.O().scenes.forEach(function (scene) {
+      var src = T.scriptScene(scene); if (!src) return;
+      src.items.forEach(function (it) {
+        if (it.type !== 'dir' || !it.text || !(it.boxes || []).length) return;
+        var seen = {}, re = /\b[A-Z][A-Z.’'-]*[A-Z](?:\s+[A-Z][A-Z.’'-]*[A-Z])*\b/g, m;
+        while ((m = re.exec(it.text))) {
+          var nm = m[0].replace(/[’']$/, ''); if (seen[nm]) continue;
+          var ids = T.labelChars(nm) || [];
+          if (/^#?\d/.test(nm) || !ids.length || ids.indexOf('*') >= 0 || !T.isMine(nm, scene, chars)) continue;      // ALL is not a name to find
+          seen[nm] = 1;
+          var pages = {}; it.boxes.forEach(function (b) { var q = pages[b.n] = pages[b.n] || { y0: 1e9, y1: 0 }; q.y0 = Math.min(q.y0, b.y); q.y1 = Math.max(q.y1, b.y + b.h); });
+          Object.keys(pages).forEach(function (n) { out.push({ n: +n, y0: pages[n].y0, y1: pages[n].y1, name: nm }); });
+        }
+      });
+    });
+    return out;
+  };
   /* one page drawn into a canvas at a width in CSS pixels */
   function draw(doc, n, width, scale, print) {      // print: draw without waiting for the screen (keeps going in a hidden tab)
     return doc.getPage(n).then(function (pg) {
@@ -309,17 +330,21 @@
     });
     var pages = pr.which === 'all' || !chars.length ? (sc.pages || []).map(function (p) { return p.n; }) : Object.keys(bandPages).map(Number).sort(function (a, b) { return a - b; });
     out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
+    var dirN = chars.length ? T.Pages.dirNames(chars) : [], roleDeep = chars.length && T.color ? T.deepShade(T.color(chars[0])) : null;
     var feels = pr.feel === 'yes' && T.Emotions ? T.Emotions.all() : [], pics = {};
     Promise.all(feels.map(function (f) { return f.icon; }).filter(function (k, i, a) { return a.indexOf(k) === i; }).map(function (k) { return T.Emotions.img(k).then(function (im) { pics[k] = im; }); })).then(function () { return T.Pages.doc(); }).then(function (doc) {
       var i = 0;
       return pages.reduce(function (p, n) {
         return p.then(function () {
-          return draw(doc, n, 816, 1.6, true).then(function (r) {      // about 130 dpi on letter paper
+          var dnHere = dirN.filter(function (d) { return d.n === n; });
+          return Promise.all([draw(doc, n, 816, 1.6, true), dnHere.length && T.Cues && T.Cues.pageWords ? T.Cues.pageWords(doc, n) : null]).then(function (both) {      // about 130 dpi on letter paper
+            var r = both[0], runs = both[1];
             var ctx = r.canvas.getContext('2d'), k = r.k;
             var strip0 = feels.length ? (T.Emotions.strips[n] = null, T.Emotions.stripOf(n, r.canvas)) : null;      // find the gray strip before anything is drawn on the page
             ctx.globalCompositeOperation = 'multiply';
             var fill = function (list, color) { ctx.fillStyle = color; list.forEach(function (b) { if (b.n === n) ctx.fillRect(b.x * k - 2, b.y * k - 1, b.w * k + 4, b.h * k + 2); }); };
             fill(mineLines, colors[pr.lines]); fill(mineLyr, colors[pr.lyrics]);
+            if (runs) dnHere.forEach(function (d) { T.Cues.nameRects(runs, d.name, d.y0, d.y1).forEach(function (q) { ctx.fillStyle = colors[pr.lines]; ctx.fillRect((q.x - 1) * k, q.y * k, (q.w + 2) * k, q.h * k); if (roleDeep) { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = roleDeep; ctx.lineWidth = 2; ctx.strokeRect((q.x - 1) * k, q.y * k, (q.w + 2) * k, q.h * k); ctx.globalCompositeOperation = 'multiply'; } }); });      // my name in the stage directions
             ctx.globalCompositeOperation = 'source-over';
             if (bandPages[n]) { ctx.fillStyle = colors[pr.band]; ctx.fillRect(r.canvas.width - 22 * k / 1.6, 0, 22 * k / 1.6, r.canvas.height); }
             var page = r.canvas;

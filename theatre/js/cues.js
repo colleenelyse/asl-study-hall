@@ -163,6 +163,18 @@
   T.Cues.needs = needsList;
   T.Cues.pageWords = function (doc, n) { return pageWords(doc, n); };      // shared with Read the script (script-view.js)
   T.Cues.wordRects = function (runs, word, y) { return wordRects(runs, word, y); };
+  /* every place a name sits in a stretch of a page (exact capitals, so TROY in a direction and not "troy" in a word): [{x, y, w, h}] */
+  T.Cues.nameRects = function (runs, name, y0, y1) {
+    var out = [], mctx = wordRects.ctx || (wordRects.ctx = document.createElement('canvas').getContext('2d')); mctx.font = '20px "Times New Roman", Georgia, serif';
+    (runs || []).filter(function (r) { return r.base > y0 && r.base < y1 + 16; }).forEach(function (r) {
+      var at = -1; while ((at = r.s.indexOf(name, at + 1)) >= 0) {
+        var whole = mctx.measureText(r.s).width || 1, k2 = r.w / whole, x0 = mctx.measureText(r.s.slice(0, at)).width * k2, x1 = mctx.measureText(r.s.slice(0, at + name.length)).width * k2;
+        out.push({ x: r.x + x0, y: r.base - r.size * 0.82, w: x1 - x0, h: r.size * 1.08 });
+      }
+    });
+    if (!out.length && /\s/.test(name)) name.split(/\s+/).forEach(function (part) { if (part.length > 1) out = out.concat(T.Cues.nameRects(runs, part, y0, y1)); });      // a two-word name stored or printed in pieces
+    return out;
+  };
   function howMany(it, o) {
     if (o && o.count) return String(o.count);
     var n = Math.max(it.count, it.listQty || 0);

@@ -427,3 +427,6 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 .scriptpages { padding-bottom: 80px; }
 .scriptfab .btn { min-height: 44px; padding: 6px 12px; }
 .scriptfab .btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* a character's name inside a stage direction (their blocking) */
+.hlname { position: absolute; border-radius: 3px; mix-blend-mode: multiply; pointer-events: none; z-index: 1; }

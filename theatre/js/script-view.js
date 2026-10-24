@@ -62,7 +62,7 @@
       host.classList.toggle('withfeel', !!(st.feel && T.Emotions));
       host.classList.toggle('withprops', !!(o.teacher && st.props && T.Needs));
       propMarks = null;
-      host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeProps(pg, +pg.dataset.n); });
+      host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) { placeProps(pg, +pg.dataset.n); placeNames(pg, +pg.dataset.n); } });
       if (st.feel && T.Emotions) host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeFeel(pg, +pg.dataset.n, c); });
       var who = chars(), pct = function (v, d) { return (v / d * 100) + '%'; };
       var roleColor = who.length && T.color ? T.color(who[0]) : null;      // the character's own color for spoken and sung lines alike (Colleen: Sharpay is pink)
@@ -96,6 +96,23 @@
       T.Emotions.layout(n, strip).forEach(function (p) {
         var ic = T.Emotions.ICON[p.f.icon];
         pg.insertAdjacentHTML('beforeend', '<button type="button" class="feel" data-feel="' + esc(p.f.id) + '" style="left:' + pc(p.x, sz.w) + ';top:' + pc(p.y, sz.h) + ';width:' + pc(p.w, sz.w) + '" aria-label="' + esc(ic.name + (p.label ? ': ' + p.label : '')) + '" title="' + esc(ic.name + (p.label ? ' · ' + p.label : '')) + '"><img src="' + ic.file + '" alt="">' + (p.label ? '<span class="feel-who">' + esc(p.label) + '</span>' : '') + '</button>');
+      });
+    }
+
+    /* the highlighted character's name inside stage directions, in their color with a deeper outline (their blocking) */
+    var namesFor = null, namesList = [];
+    function placeNames(pg, n) {
+      pg.querySelectorAll('.hlname').forEach(function (e) { e.remove(); });
+      var who = chars(); if (!who.length || !T.Pages.dirNames || !T.Cues || !T.Cues.nameRects) return;
+      var key = who.join(','); if (namesFor !== key) { namesFor = key; namesList = T.Pages.dirNames(who); }
+      var mine = namesList.filter(function (d) { return d.n === n; }); if (!mine.length) return;
+      var col = T.color(who[0]);
+      (pageRuns[n] || (pageRuns[n] = T.Pages.doc().then(function (doc) { return T.Cues.pageWords(doc, n); }))).then(function (runs) {
+        if (!document.body.contains(pg)) return;
+        var sz = T.Pages.size(n), pc = function (v, d) { return (v / d * 100) + '%'; };
+        mine.forEach(function (d) { T.Cues.nameRects(runs, d.name, d.y0, d.y1).forEach(function (q) {
+          pg.insertAdjacentHTML('beforeend', '<div class="hlname" style="left:' + pc(q.x - 1, sz.w) + ';top:' + pc(q.y, sz.h) + ';width:' + pc(q.w + 2, sz.w) + ';height:' + pc(q.h, sz.h) + ';background:' + T.pastel(col) + ';box-shadow:inset 0 0 0 2px ' + T.deepShade(col) + '"></div>');
+        }); });
       });
     }
 
@@ -152,7 +169,7 @@
           T.Pages.doc().then(function (doc) { return doc.getPage(n).then(function (pg) {
             var vp1 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / vp1.width * Math.min(window.devicePixelRatio || 1, 2) });
             var cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); cv.className = 'pdfcanvas';
-            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) { el.insertBefore(cv, el.firstChild); placeFeel(el, n, cv); placeProps(el, n); } });
+            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) { el.insertBefore(cv, el.firstChild); placeFeel(el, n, cv); placeProps(el, n); placeNames(el, n); } });
           }); }).catch(function (er) { el.innerHTML = '<p class="err" style="padding:20px">' + esc(er.message || 'This page would not load.') + '</p>'; }).finally(function () { delete drawing[n]; });
         } else if (!e.isIntersecting && c) { c.width = c.height = 0; c.remove(); }
       });
