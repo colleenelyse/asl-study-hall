@@ -41,43 +41,7 @@
   var addDays = function (s, n) { var d = parse(s); d.setDate(d.getDate() + n); return ymd(d); };
   var today = function () { return ymd(new Date()); };
   var monday = function (s) { var d = parse(s), w = d.getDay(); d.setDate(d.getDate() - (w === 0 ? 6 : w - 1)); return ymd(d); };
-  /* Day 1, Day 2… (Colleen 2026-10-24: a plan "based on the first semester school schedule but instead of specific dates, call it day 1, day 2,
-     so that it can be fit into dates for fall 2027"): a stand-in calendar of school days (Mondays to Fridays from 2001-01-01, never shown);
-     every date shows as its day number until the real calendar is set, and then the plan moves onto it (moveToDates) */
-  var DAYS_FROM = '2001-01-01', dayNo = null, dayNoFor = null;
-  function dayNumber(s) {
-    var t = P().term; if (!t.dayNumbers) return 0;
-    if (dayNoFor !== t.last) { dayNo = {}; classDays().forEach(function (d, i) { dayNo[d] = i + 1; }); dayNoFor = t.last; }
-    return dayNo[s] || 0;
-  }
-  function dayName(s, short) {
-    var n = dayNumber(s); if (n) return 'Day ' + n;
-    if (P().term.dayNumbers) { var a = classDays().filter(function (d) { return d >= s; })[0]; return a ? 'Day ' + dayNumber(a) : 'After the last day'; }      // a Monday that is not a class day
-    return parse(s).toLocaleDateString('en-US', short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' });
-  }
-  function useDayNumbers(n) {      // n school days, Monday to Friday; a plan made by day number keeps its day numbers
-    var p0 = P(), was = p0.term.dayNumbers ? classDays() : [], keep = was.map(function (d) { return p0.days[d]; });
-    was.forEach(function (d) { delete p0.days[d]; });
-    Object.keys(p0.days).forEach(function (d) { if (d < '2002') delete p0.days[d]; });      // strays from an earlier day-number calendar
-    useDays(n);
-    var now = classDays(); keep.forEach(function (pl, i) { if (pl && now[i]) p0.days[now[i]] = pl; });
-  }
-  function useDays(n) {
-    var t = P().term, start = addDays(DAYS_FROM, (5 - n % 5) % 5), d = start, k = 0, last = d;      // Day 1 on the weekday that makes the last day a Friday (a full show week at the end)
-    while (k < n) { var w = parse(d).getDay(); if (w > 0 && w < 6) { k++; last = d; } d = addDays(d, 1); }
-    t.first = start; t.last = last; t.off = []; t.dayNumbers = true; dayNoFor = null; delete P().showMonday;
-  }
-  /* the real calendar is set: every planned day moves to the class day with the same number (Day 1 -> the first class day) */
-  function moveToDates(first, last, off) {
-    var p = P(), oldDays = classDays(), plans = oldDays.map(function (d) { return p.days[d]; });
-    p.term = { first: first, last: last, off: off || [] }; dayNoFor = null;
-    var newDays = classDays(), moved = 0, left = 0;
-    oldDays.forEach(function (d) { delete p.days[d]; });
-    plans.forEach(function (pl, i) { if (!pl) return; if (newDays[i]) { p.days[newDays[i]] = pl; moved++; } else left++; });
-    p.shown = []; delete p.showMonday;
-    return { moved: moved, left: left, days: newDays.length };
-  }
-  T.prodDayNumber = dayNumber;
+  function dayName(s, short) { return parse(s).toLocaleDateString('en-US', short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }); }
   T.prodDay = dayName;
   /* class days: Monday to Friday from the first day to the last, minus the days off */
   function isClassDay(s) { var t = P().term, w = parse(s).getDay(); return !!t.first && s >= t.first && s <= t.last && w > 0 && w < 6 && t.off.indexOf(s) < 0; }
@@ -224,7 +188,7 @@
   }
   T.prodTask = task;
   /* shared with season.js (the semester plan and track calendars) */
-  T.prod = { dayNumber: dayNumber, groupChars: groupChars, classDays: classDays, isClassDay: isClassDay, plan: plan, newGroup: newGroup, focus: focus, groupName: groupName, monday: monday, addDays: addDays, dayName: dayName, today: today, bookingsOn: function (s) { return (P().bookings || []).filter(function (b) { return b.date === s; }); } };
+  T.prod = { groupChars: groupChars, classDays: classDays, isClassDay: isClassDay, plan: plan, newGroup: newGroup, focus: focus, groupName: groupName, monday: monday, addDays: addDays, dayName: dayName, today: today, bookingsOn: function (s) { return (P().bookings || []).filter(function (b) { return b.date === s; }); } };
 
   /* ---------- days away sent from iPads ---------- */
   /* notes from iPads: each kind has a handler (here: conflict, video; casting.js adds audition). A handler returns true when it added something.
@@ -286,16 +250,12 @@
 
   function setupView() {
     var p = P(), t = p.term, n = classDays().length;
-    var dn = t.dayNumbers;
-    return (dn ? '<div class="card" style="border:3px solid var(--accent)"><h2>' + sym('🔢') + 'Planning by day number</h2><p>' + n + ' class days, shown as <b>Day 1 to Day ' + n + '</b>. When you know the real dates, set them below: Day 1 goes on the first class day, Day 2 on the next, and so on.</p>' +
-        '<div class="row"><label class="f" style="margin:0">Number of class days<input id="dnn" inputmode="numeric" value="' + n + '" style="width:90px"></label><button class="btn" id="dnset" data-save>Change</button></div></div>' :
-        '<div class="card"><h2>' + sym('🔢') + 'No dates yet?</h2><p class="muted">Plan by day number now (Day 1, Day 2…) and put the plan on real dates later.</p><div class="row"><label class="f" style="margin:0">Number of class days<input id="dnn" inputmode="numeric" value="78" style="width:90px"></label><button class="btn primary" id="dnset" data-save>Plan by day number</button></div><p class="muted small">78: a fall semester like LTHS 2026-27 (Aug 17 to a show week of Dec 7–11).</p></div>') +
-      '<div class="card"><h2>School calendar' + (dn ? ' (the real dates, when you have them)' : '') + '</h2><p class="muted">Class meets every school day, Monday to Friday, from the first day to the last, except the days off.</p>' +
-      '<div class="row"><label class="f grow">First day of class<input type="date" id="t1" value="' + (dn ? '' : t.first || '') + '"></label><label class="f grow">Last day of class<input type="date" id="t2" value="' + (dn ? '' : t.last || '') + '"></label></div>' +
+    return '<div class="card"><h2>School calendar</h2><p class="muted">Class meets every school day, Monday to Friday, from the first day to the last, except the days off.</p>' +
+      '<div class="row"><label class="f grow">First day of class<input type="date" id="t1" value="' + (t.first || '') + '"></label><label class="f grow">Last day of class<input type="date" id="t2" value="' + (t.last || '') + '"></label></div>' +
       '<label class="f">Paste the district’s no-school days<textarea id="t3" placeholder="One per line. Ranges work too:&#10;9/7/2026&#10;Nov 25 – Nov 27&#10;12/21/2026 - 1/1/2027"></textarea></label>' +
       '<p class="err" id="tm"></p>' +
-      (!dn && t.off.length ? '<details><summary class="btn quiet small">' + t.off.length + ' days off saved</summary><p class="muted small">Tap one to make it a class day again.</p><div class="row">' + t.off.map(function (s) { return '<button class="btn small" data-off="' + s + '">' + esc(dayName(s, true)) + ' ✕</button>'; }).join('') + '</div></details>' : '') +
-      (dn ? '' : '<p>' + (n ? '<b>' + n + ' class days</b>, about ' + Math.ceil(n / 5) + ' weeks' : 'Set the first and last day.') + '</p>') +
+      (t.off.length ? '<details><summary class="btn quiet small">' + t.off.length + ' days off saved</summary><p class="muted small">Tap one to make it a class day again.</p><div class="row">' + t.off.map(function (s) { return '<button class="btn small" data-off="' + s + '">' + esc(dayName(s, true)) + ' ✕</button>'; }).join('') + '</div></details>' : '') +
+      '<p>' + (n ? '<b>' + n + ' class days</b>, about ' + Math.ceil(n / 5) + ' weeks' : 'Set the first and last day.') + '</p>' +
       '<div class="row end"><button class="btn primary" id="tsv" data-save>Save the calendar</button></div></div>' +
       '<div class="card"><h2>Bookings in our theatre</h2><p class="muted">Concerts, other shows, assemblies: anything that needs the stage. They show as ⚠️ on those days, so the set is never in someone’s way (or theirs in ours) during tech week.</p>' +
       '<label class="f">Our theatre<input id="vn" value="' + esc(p.venueName || '') + '" placeholder="e.g. Reber Center"></label>' +
@@ -320,24 +280,10 @@
       T.saveShow(r.list.length ? r.list.length + ' bookings added' : 'Saved').then(function () { tab = 'setup'; overview(); if (r.bad.length) document.getElementById('bm').textContent = 'I could not find a date in: ' + r.bad.join(' · '); });
     };
     app.querySelectorAll('[data-rmbk]').forEach(function (b) { b.onclick = function () { p.bookings = p.bookings.filter(function (x) { return x.id !== b.dataset.rmbk; }); T.saveShow('Removed').then(overview); }; });
-    document.getElementById('dnset').onclick = function () {
-      var n = Math.round(+document.getElementById('dnn').value || 0);
-      if (n < 20 || n > 200) { T.toast('Type the number of class days (20 to 200).'); return; }
-      if (!p.term.dayNumbers && p.term.first && !confirm('Plan by day number instead of the dates set now? Days already planned on dates are not moved.')) return;
-      useDayNumbers(n);
-      T.saveShow('Planning by day number: Day 1 to Day ' + n).then(function () { tab = 'setup'; overview(); });
-    };
     document.getElementById('tsv').onclick = function () {
       var a = document.getElementById('t1').value, b = document.getElementById('t2').value, m = document.getElementById('tm');
       if (!a || !b || b < a) { m.textContent = 'Pick the first day and a last day after it.'; return; }
       var r = pasteDates(document.getElementById('t3').value, a);
-      if (p.term.dayNumbers) {      // the real dates: move the Day plan onto them
-        var planned = Object.keys(p.days).length;
-        if (planned && !confirm('Put the Day 1–' + classDays().length + ' plan on these dates? Day 1 goes on the first class day, Day 2 on the next, and so on.')) return;
-        var mv = moveToDates(a, b, r.dates.slice().sort());
-        T.saveShow(planned ? mv.moved + ' planned days moved onto the real calendar (' + mv.days + ' class days)' + (mv.left ? '. ' + mv.left + ' planned days did not fit: add class days or shorten the plan.' : '') : 'Calendar saved', 8000).then(function () { tab = 'setup'; overview(); });
-        return;
-      }
       p.term.first = a; p.term.last = b;
       r.dates.forEach(function (s) { if (p.term.off.indexOf(s) < 0) p.term.off.push(s); }); p.term.off.sort();
       T.saveShow(r.dates.length ? r.dates.length + ' days off added' : 'Calendar saved').then(function () {
