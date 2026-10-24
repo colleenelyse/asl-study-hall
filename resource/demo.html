@@ -429,7 +429,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.92';
+var VERSION = '1.93';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -3949,7 +3949,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     g.setUser('ort123456@d204.lths.net');
     api_saveDayPlan('Finish the Ch. 6 worksheet for US History, then make flashcards for Thursday’s test');
     api_saveGradeGoals({ 'US History': 70, 'Algebra 2': 80, Biology: 80, 'Spanish 2': 90 });
-    api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting'], { when: 'Fri, Dec 18 · Make-up (11:30am–1:00pm)', where: 'Testing Center' });
+    api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting'], { when: 'Friday, Dec 18 · 11:30am–1:00pm · Make-up', where: 'Testing Center' });
     api_saveFinal('Algebra 2', '', '', ['Formula card']);
     g.setUser('smi513421@d204.lths.net');
     api_saveDayPlan('Study for the Geometry Unit 3 test');
@@ -4930,7 +4930,15 @@ function finalsCard() {
 }
 // 1.92: extended time asks WHEN (the final exam periods), an alternate setting asks WHERE
 var FIN_EXT = /extended|extra time/i, FIN_ALT = /alternat|separate setting|location/i, FIN_WHERE = ['Testing Center', 'Resource room', 'Library'];
-function finWhenOpts() { return (B.finalSched || []).map(function (s) { return fmtDay(s.date) + ' · ' + (/^\d/.test(s.period) ? 'Period ' + s.period : s.period) + ' (' + s.start + '–' + s.end + ')'; }).concat(['Right after the exam, the same day', 'Not sure yet']); }
+// "Wednesday, Dec 16 · 7:45am–9:25am · Period 2", in the order they're held (by day, then start time)
+function clockMin(t) { var m = /(\d{1,2}):?(\d{2})?\s*(am|pm)?/i.exec(String(t || '')); if (!m) return 9999; var h = +m[1] % 12, ap = (m[3] || '').toLowerCase(); if (ap === 'pm' || (!ap && h < 6)) h += 12; return h * 60 + (+m[2] || 0); }
+function finWhenOpts() {
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return (B.finalSched || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : clockMin(a.start) - clockMin(b.start); }).map(function (s) {
+    var d = utc(s.date);
+    return days[d.getUTCDay()] + ', ' + mons[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' · ' + s.start + '–' + s.end + ' · ' + (/^\d/.test(s.period) ? 'Period ' + s.period : s.period);
+  }).concat(['Right after the exam, the same day', 'Not sure yet']);
+}
 function finExtras(k, f) {
   var h = '';
   if (f.accoms.some(function (a) { return FIN_EXT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>⏱️ When will you use your extra time?</b></span><select style="max-width:330px" onchange="finExtra(' + k + ',\'when\',this.value)"><option value="">Pick a time</option>' +
