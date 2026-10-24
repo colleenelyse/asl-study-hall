@@ -21,6 +21,9 @@
    - theatre:google  { clientId, gated: [pass ids] } (Colleen 2026-10-24: "require parents to sign in with a google account and use that email for
      communication"). A password listed in gated (a parent password) is left out of GET show; its key wrap is given only by POST gpass with a Google
      ID token this Worker checks (Google's signature, this app's Client ID, not expired, a verified email). Nothing from the token is kept.
+   - theatre:board:<id>  [{ id, at, box }]: a group's messages (the Company dinner plan: who brings what, and the families' chat), sealed with the
+     show key on the device. Anyone may add one (sealed, small, limited per address; 300 per board); everyone with the app reads them; only the
+     teacher password removes them (Colleen 2026-10-24: families splitting the cost of a Company dinner talk to one another in the app).
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
@@ -131,6 +134,33 @@ export async function theatreApi(req, env, url, p) {
     let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
     const bad = await proven(env, req, body.proof, st); if (bad) return bad;
     return json({ ok: true });
+  }
+  const bm = rest.match(/^board\/([a-z0-9-]{3,40})$/);
+  if (bm) {
+    const bk = 'theatre:board:' + bm[1], list = (await env.LOCKS.get(bk, 'json')) || [];
+    if (req.method === 'GET') return json({ msgs: list });
+    if (req.method === 'POST') {
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:boardrate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= NOTES_PER_HOUR) return json({ error: 'Too many messages from here. Try again later.' }, 429);
+      let body; try { const t = await req.text(); if (t.length > 4000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That message is too long.' }, 400); }
+      const b = body.box; if (!b || !okStr(b.iv, 100) || !okStr(b.data, 3500)) return json({ error: 'That message was not readable.' }, 400);
+      if (list.length >= 300) return json({ error: 'This group has too many messages. Tell the teacher.' }, 507);
+      const id = crypto.randomUUID();
+      list.push({ id, at: new Date().toISOString(), box: { iv: b.iv, data: b.data } });
+      await env.LOCKS.put(bk, JSON.stringify(list));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true, id });
+    }
+    if (req.method === 'DELETE') {      // the teacher removes messages (or the whole board)
+      const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+      const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+      let ids; try { ids = JSON.parse(await req.text()).ids; } catch (e) { ids = null; }
+      if (ids === 'all') { await env.LOCKS.delete(bk); return json({ ok: true }); }
+      if (!Array.isArray(ids)) return json({ error: 'Which messages?' }, 400);
+      await env.LOCKS.put(bk, JSON.stringify(list.filter(x => ids.indexOf(x.id) < 0)));
+      return json({ ok: true });
+    }
+    return json({ error: 'GET, POST or DELETE' }, 405);
   }
   if (rest === 'notes') {
     const list = (await env.LOCKS.get('theatre:notes', 'json')) || [];

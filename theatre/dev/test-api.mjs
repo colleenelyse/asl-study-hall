@@ -114,6 +114,15 @@ globalThis.fetch = realFetch;
 ok(!JSON.stringify([...kv.entries()]).includes('pat@gmail.com'), 'no parent email is kept');
 await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, enc, { more: [] }), drop: ['a1'] }));
 ok(JSON.parse(kv.get('theatre:show')).enc.more.length === 0 && !JSON.parse(kv.get('theatre:google')).gated.length, 'deleting the parent password removes it and its Google mark');
+// the Company dinner board: sealed messages anyone with the app adds and reads; only the teacher removes
+const box = { iv: 'aXY=', data: 'bXNn' };
+ok((await call('POST', 'board/dinner-1', JSON.stringify({ box }), { 'cf-connecting-ip': '8.8.8.1' })).status === 200, 'board: a family adds a sealed message (no password)');
+ok((await call('POST', 'board/Bad Id!', JSON.stringify({ box }))).status !== 200, 'board: only plain board names');
+ok((await call('POST', 'board/dinner-1', JSON.stringify({ box: { iv: 'aXY=', data: 'x'.repeat(5000) } }), { 'cf-connecting-ip': '8.8.8.1' })).status === 400, 'board: a message must be small');
+const bl = (await (await call('GET', 'board/dinner-1')).json()).msgs;
+ok(bl.length === 1 && bl[0].box.data === 'bXNn', 'board: everyone reads the sealed messages');
+ok((await call('DELETE', 'board/dinner-1', JSON.stringify({ ids: [bl[0].id] }), { 'cf-connecting-ip': '8.8.8.2' })).status === 403, 'board: only the teacher removes');
+ok((await call('DELETE', 'board/dinner-1', JSON.stringify({ ids: [bl[0].id] }), { 'x-proof': proof })).status === 200 && !(await (await call('GET', 'board/dinner-1')).json()).msgs.length, 'board: the teacher removes a message');
 for (let i = 0; i < 5; i++) await call('POST', 'check', JSON.stringify({ proof: wrong }));
 ok((await call('POST', 'check', JSON.stringify({ proof }))).status === 429, 'five wrong guesses lock this address for 10 minutes');
 ok(!JSON.stringify([...kv.entries()].filter(([k]) => k === 'theatre:show')).includes('teach'), 'no password is stored');

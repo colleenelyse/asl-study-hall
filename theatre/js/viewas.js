@@ -9,7 +9,7 @@
   var T = window.T, esc = T.esc;
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
   var saved = null, held = null, cur = null, bar = null;
-  var HOLD = ['sendNote', 'queueNote', 'putProgress', 'sendRecording', 'putPhoto', 'sendUsage'];
+  var HOLD = ['sendNote', 'queueNote', 'putProgress', 'sendRecording', 'putPhoto', 'sendUsage', 'boardPost'];      // boardPost: the Company dinner plan and chat (volunteers.js)
   function hold(on) {
     if (on && !held) { held = {}; HOLD.forEach(function (k) { if (!Store[k]) return; held[k] = Store[k]; Store[k] = function () { if (k !== 'sendUsage') T.toast('Preview: nothing is sent or saved for this student.'); return Promise.resolve({}); }; }); }
     else if (!on && held) { Object.keys(held).forEach(function (k) { Store[k] = held[k]; }); held = null; }

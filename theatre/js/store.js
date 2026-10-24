@@ -210,6 +210,16 @@
     clearNotes: function (proof, ids) { if (!proof) return noProof();
       return fetch(API + 'notes', { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not clear the notes.'); });
     },
+    /* a group's message board (the Company dinner), sealed with the show key; anyone with the app reads it, the teacher removes */
+    boardGet: function (key, id) {
+      return getJSON('board/' + id).then(function (d) {
+        return Promise.all(((d && d.msgs) || []).map(function (n) { return open(key, n.box).then(function (b) { var o = JSON.parse(td.decode(b)); o._id = n.id; o._at = n.at; return o; }, function () { return null; }); }));
+      }).then(function (l) { return l.filter(Boolean); });
+    },
+    boardPost: function (key, id, obj) { return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('board/' + id, { box: box }); }); },
+    boardDel: function (proof, id, ids) { if (!proof) return noProof();
+      return fetch(API + 'board/' + id, { method: 'DELETE', headers: { 'x-proof': proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: ids }) }).then(function (r) { if (!r.ok) throw new Error('Could not remove that.'); });
+    },
     /* tracks: encrypted bytes on the server, and a copy on this device */
     /* a line's audio (ElevenLabs or an approved recording), sealed; and students' recordings waiting for the teacher */
     putVoice: function (key, proof, h, src, bytes, ver) { return Store.putTrack(key, proof, '__voice/' + h + '/' + src, '', bytes, ver); },
