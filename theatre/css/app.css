@@ -430,3 +430,15 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 
 /* a character's name inside a stage direction (their blocking) */
 .hlname { position: absolute; border-radius: 3px; mix-blend-mode: multiply; pointer-events: none; z-index: 1; }
+
+/* "Not my turn" (redx.js): a red X over the screen while other people's lines are sung; a green frame when it is the student's turn */
+.redx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.redx[data-st=""] { display: none; }
+.redx-x { position: absolute; inset: 0; overflow: hidden; opacity: .55; }
+.redx-x::before, .redx-x::after { content: ""; position: absolute; left: 50%; top: 50%; height: 7vmin; max-height: 70px; background: #d7263d; border-radius: 99px; transform-origin: center; }
+.redx-x::before { transform: translate(-50%, -50%) rotate(45deg); width: 130vmin; }
+.redx-x::after { transform: translate(-50%, -50%) rotate(-45deg); width: 130vmin; }
+.redx[data-st="mine"] { box-shadow: inset 0 0 0 10px #2bb673; }
+.redx[data-st="mine"] .redx-x { display: none; }
+.redx-say { position: absolute; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); padding: 6px 16px; border-radius: 99px; font-weight: 800; font-size: 1.4em; color: #fff; background: #d7263d; }
+.redx[data-st="mine"] .redx-say { background: #2bb673; }

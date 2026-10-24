@@ -140,6 +140,61 @@
   }
   T.makeSemesterPlan = makePlan;
 
+  /* ---------- the two-block plan (Colleen, 2026-10-24): every class day in two blocks, every track placed in every block ---------- */
+  var minutesOf = function (d) { var t = P().term; if ((t.sip || []).indexOf(d) >= 0) return t.sipMin || 20; if (t.lateWd !== undefined && t.lateWd !== '' && parse(d).getDay() === +t.lateWd) return t.lateMin || 35; return t.minutes || 48; };
+  T.periodMinutes = minutesOf;
+  function makePlan2(showMon, withAuditions, movieDays) {
+    var RP = T.RehearsalPlan; if (!RP) return makePlan(showMon, withAuditions, movieDays);
+    var p = P(), L = layout(showMon, withAuditions, movieDays), made = 0, O = T.O();
+    if (withAuditions && T.applyStarter) made += T.applyStarter(movieDays);
+    if (!L.work.length) return made;
+    var work = L.work, n = work.length, at = function (f) { return work[Math.min(n - 1, Math.round(n * f))]; };
+    var fixed = {};
+    /* days already planned by hand (and field trips) stay as they are; the planner works around them */
+    work.forEach(function (d) {
+      var r = p.days[d]; if (!r || r.gen) return;
+      fixed[d] = r.groups.some(function (g) { return g.focus === 'trip'; }) ? { kind: 'trip', title: 'Field trip', mark: 'M', crewAll: true } : { kind: 'kept', title: r.notes || 'Planned by hand', mark: 'R' };
+    });
+    /* the first rehearsal week: the whole Company reads each act together (the first and third rehearsal days) */
+    var split = T.showSplit ? T.showSplit() : Math.ceil(O.scenes.length / 2), ids = O.scenes.map(function (x) { return x.id; });
+    var act1 = ids.slice(0, typeof split === 'number' ? split : Math.max(1, ids.indexOf(split))), act2 = ids.slice(act1.length);
+    if (!fixed[work[0]]) fixed[work[0]] = { kind: 'tableread', title: 'Table read, Act 1 (the whole Company)', scenes: act1 };
+    if (work[2] && !fixed[work[2]]) fixed[work[2]] = { kind: 'tableread', title: 'Table read, Act 2 (the whole Company)', scenes: act2 };
+    var trip = work.find(function (d) { return fixed[d] && fixed[d].kind === 'trip'; });
+    var plus = function (d, k) { return X().addDays(d, k); };
+    var windows = { sizes: [work[Math.min(n - 1, 15)], work[Math.min(n - 1, 19)]] };
+    if (trip) { windows.research = [plus(trip, -23), plus(trip, -12)]; windows.list = [plus(trip, -9), plus(trip, -5)]; windows.photos = [plus(trip, 1), plus(trip, 7)]; }
+    var credit = withAuditions ? ['1', '40', '41'].map(function (num) { var so = O.songs.find(function (x) { return x.num === num; }); return so ? [{ id: so.id + 'V', done: 'learn' }, { id: so.id + 'D', done: 'learn' }] : []; }).reduce(function (a, b) { return a.concat(b); }, []) : [];
+    var R = RP.plan(O, { days: work.map(function (d) { return { date: d, min: minutesOf(d) }; }), fixed: fixed, credit: credit, windows: windows, actSplit: act2[0],
+      deadlines: { scene: at(0.6), vocals: at(0.45), dance: at(0.8) } });
+    var KF = { A: 'acting', V: 'vocals', D: 'dance', R: 'run' }, all = O.characters.map(function (c) { return c.id; });
+    R.days.forEach(function (D) {
+      if (p.days[D.date] && !p.days[D.date].gen) return;      // keep what the teacher planned
+      if (!D.rooms || (!D.rooms.length && !(D.groupC || []).length)) return;
+      var groups = D.rooms.map(function (r) {
+        var pc = R.pieces[r.piece], sc = [], so = [];
+        if (pc) { if (pc.type === 'scene') sc = [pc.id]; else so = [pc.song.id]; }
+        if (r.tableread) sc = r.tableread.slice();
+        if (D.run && r.kind === 'R') D.run.pieces.forEach(function (id) { var q = R.pieces[id]; if (!q) return; if (q.type === 'scene') sc.push(q.id); else if (so.indexOf(q.song.id) < 0) so.push(q.song.id); });
+        return { id: uid('g'), focus: KF[r.kind] || 'run', scenes: sc, songs: so, everyone: r.people.length >= all.length - 1, chars: r.people.slice(), block: r.block || 0, only: pc && pc.part === 'p' ? 'principals' : pc && pc.part === 'c' ? 'chorus' : '',
+          where: r.room === 'AB' ? 'Both teachers together' : 'Room ' + r.room + ' (Teacher ' + r.room + ')', note: r.what };
+      }).concat((D.groupC || []).map(function (g) {
+        return { id: uid('g'), focus: 'card', scenes: [], songs: [], everyone: false, chars: g.people.slice(), block: g.block || 0, only: '', where: 'Group C',
+          card: Object.assign({ kind: g.task, each: g.each || {} }, RP.CARDS[g.task] || {}) };
+      }));
+      p.days[D.date] = { groups: groups, assign: {}, tasks: {}, notes: (D.theme ? D.theme + ': ' : '') + (D.title || D.rooms.filter(function (r) { return r.piece; }).map(function (r) { return r.what; }).join(' · ')),
+        gen: true, blocks: !!(D.blocks && D.blocks.length > 1), min: D.min, theme: D.theme || '', sizesCall: D.sizesCall || undefined };
+      made++;
+    });
+    /* the last five class days before show week (Colleen's order): Act 1 stumble-through, Act 2 stumble-through, Act 1 dress, Act 2 dress, full dress */
+    var g = function (focus, sc) { return { id: uid('g'), focus: focus, scenes: sc, songs: [], everyone: true, where: p.venueName || 'Stage', only: '' }; };
+    var finals = [['run', act1, 'Act 1 stumble-through: no stopping, scripts allowed'], ['run', act2, 'Act 2 stumble-through: no stopping, scripts allowed'], ['dress', act1, 'Act 1 dress rehearsal'], ['dress', act2, 'Act 2 dress rehearsal'], ['dress', ids, 'Full dress rehearsal (needs time after school)']];
+    L.runs.forEach(function (d, i) { if (p.days[d]) return; var f = finals[i] || finals[4]; p.days[d] = { groups: [g(f[0], f[1])], assign: {}, tasks: {}, notes: f[2] + '.', gen: true }; made++; });
+    if (L.show.length && !p.days[showMon] && T.buildShowWeek) { T.buildShowWeek(showMon, [], X().addDays(showMon, 4), '19:00'); made += 4; }
+    return made;
+  }
+  T.makeSemesterPlan2 = makePlan2;
+
   T.seasonView = function () {
     var p = P(), t = p.term;
     if (!t.first) return '<div class="card"><p>' + sym('📅') + 'Set the first and last day of class first (Calendar & crew).</p><button class="btn primary" data-goto="setup">Go to Calendar & crew</button></div>';
@@ -149,6 +204,8 @@
     return '<div class="card"><h3>' + sym('🗓️') + 'Plan the semester</h3><p class="muted">Fills every empty class day from your school calendar, for every track, before anyone is cast. You can change any day after; days you already planned stay as they are.</p>' +
       '<label class="f">Monday of show week<input type="date" id="smon" value="' + mon + '"></label>' +
       '<label class="switch"><span>Start with the two audition weeks</span><input type="checkbox" id="saud"' + (withAud ? ' checked' : '') + '></label>' +
+      (T.RehearsalPlan ? '<label class="f">Group C (students not in a teacher room) is led by<select id="sstaff"><option value="two"' + (p.staffing !== 'mentors' ? ' selected' : '') + '>Two teachers only: task cards students already know, in sight of an adult</option><option value="mentors"' + (p.staffing === 'mentors' ? ' selected' : '') + '>Trained Company Mentors</option></select></label>' +
+        '<p class="muted small">Each day runs in two blocks (or one on short days): two teacher rooms and Group C, every track placed in every block, the weekday themes (Monday Character, Tuesday Music, Wednesday Scenes, Thursday Dance, Friday Perform), no track doing the same kind of work three days in a row, and a weekly crew day for all but the leads. Period lengths come from Calendar & crew.</p>' : '') +
       '<label class="f">🎬 Watch the movie: class periods, right after day one <span class="muted small">(about 98 minutes; 0 to skip)</span><input id="smov" inputmode="numeric" value="' + movie + '" style="width:90px"></label>' +
       '<details style="margin:6px 0"><summary class="btn quiet small">Teaching order: hardest first</summary><p class="muted small">Taught in this order, and the hardest ones come back on Wednesdays as easier things are added.</p><p class="small"><b>Songs:</b> ' + order.songs.map(function (x) { return esc(x.title); }).join(' → ') + '</p><p class="small"><b>Scenes:</b> ' + order.scenes.map(function (x) { return 'Scene ' + x.num; }).join(' → ') + '</p></details>' +
       '<table class="tbl" style="margin:8px 0"><tbody>' +
@@ -162,11 +219,13 @@
   T.wireSeason = function (redraw) {
     var p = P(), b = document.getElementById('splan'); if (!b) return;
     document.getElementById('smon').onchange = function (e) { p.showMonday = e.target.value; T.saveShow('Saved').then(redraw); };
+    var stf = document.getElementById('sstaff'); if (stf) stf.onchange = function () { p.staffing = stf.value; T.saveShow('Saved: task cards now show the ' + (p.staffing === 'mentors' ? 'Mentor' : 'two-teacher') + ' version'); };
     b.onclick = function () {
       var mon = document.getElementById('smon').value; if (!mon || parse(mon).getDay() !== 1) { T.toast('Pick the Monday of show week.'); return; }
       p.showMonday = mon;
       p.movieDays = Math.max(0, Math.min(6, +document.getElementById('smov').value || 0));
-      var n = makePlan(mon, document.getElementById('saud').checked, p.movieDays);
+      var st = document.getElementById('sstaff'); if (st) p.staffing = st.value;
+      var n = (T.RehearsalPlan ? makePlan2 : makePlan)(mon, document.getElementById('saud').checked, p.movieDays);
       T.saveShow(n + ' days planned').then(redraw);
     };
     var c = document.getElementById('sclear'); if (c) c.onclick = function () { if (!confirm('Clear every day the semester plan made? Days you planned yourself stay.')) return; Object.keys(p.days).forEach(function (d) { if (p.days[d].gen) delete p.days[d]; }); T.saveShow('Cleared').then(redraw); };

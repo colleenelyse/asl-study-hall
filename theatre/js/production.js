@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['photos', '📸', 'Costume and prop photos'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['photos', '📸', 'Costume and prop photos'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie'], ['card', '📋', 'Task card']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -110,6 +110,7 @@
   function blank() { return { groups: [], assign: {}, tasks: {}, notes: '' }; }
   /* the characters a group needs: everyone on stage in its scenes and songs (big numbers bring the ensemble and small roles) */
   function groupChars(g) {
+    if (g.chars && g.chars.length) return g.chars.slice();      // the two-block planner names exactly who is in each room
     var all = T.O().characters.map(function (c) { return c.id; });
     if (g.everyone) return all;
     var ms = T.O().moments.filter(function (m) { return (g.scenes.indexOf(m.scene) >= 0 && !(g.focus === 'acting' && m.song)) || (m.song && g.songs.indexOf(m.song) >= 0); });      // an acting rehearsal of a scene calls its spoken parts, not its songs
@@ -160,9 +161,30 @@
     if (open.some(function (d) { return !autoGroup(a, plan(d)); })) return null;      // a day off stage this week: crew that day anyway
     return open.length ? open[open.length - 1] : null;      // on stage every day: crew on the last open day of the week
   }
-  /* one actor's job on one class day */
+  /* one actor's job on one class day. A day planned in two blocks gives a job for each block: { …Block 1's job, blocks: [b1, b2], groups: [id1, id2] } */
+  var blockView = function (r, b) { return Object.assign({}, r, { groups: r.groups.filter(function (g) { return !g.block || g.block === b; }) }); };
   function task(a, s) {
-    var r = plan(s), cf = away(a, s), how = r && r.assign && r.assign[a.id];
+    var r = plan(s);
+    if (!r || !r.blocks || !r.groups.some(function (g) { return g.block; })) return task1(a, s, r);
+    var t1 = task1(a, s, blockView(r, 1)), t2 = task1(a, s, blockView(r, 2));
+    if ((t1.group && t1.group === t2.group) || t1.text === t2.text || t1.type === 'away') return t1;
+    return Object.assign({}, t1, { text: 'Block 1: ' + t1.text + ' · Block 2: ' + t2.text, href: t1.href || t2.href, blocks: [t1, t2], groups: [t1.group, t2.group] });
+  }
+  /* a task card (Group C): the card in the staffing version the teacher chose, with this student's own scene or song */
+  function cardTask(a, g) {
+    var c = g.card || {}, v = P().staffing === 'mentors' ? 'mentors' : 'two', mine = '', href = null;
+    var each = c.each || {}, k = a.chars.filter(function (x) { return each[x]; })[0], piece = k && each[k];
+    if (piece) {
+      var sc = T.sceneById(piece), so = !sc && T.songById(String(piece).replace(/[VD][pc]?$/, ''));
+      mine = sc ? ' (Scene ' + sc.num + ')' : so ? ' (“' + so.title + '”)' : '';
+      href = sc ? '#/lines/' + sc.id + '/run' : so ? '#/song/' + so.id : null;
+    }
+    if (!href) href = { react: '#/react', research: '#/costumes', list: '#/shop', photos: '#/photos' }[c.kind] || null;
+    if (c.kind === 'crew' && homeStation(a)) return { type: 'crew', icon: '🛠️', text: 'Crew day: ' + homeStation(a).name + (homeStation(a).desc ? ' (' + homeStation(a).desc + ')' : ''), group: g.id };
+    return { type: ['crew', 'photos', 'runcrew'].indexOf(c.kind) >= 0 ? 'crew' : 'practice', icon: '📋', text: (c.name || 'Task card') + mine + ': ' + (c[v] || c.two || '') + (c.done ? ' Done when: ' + c.done + '.' : ''), href: href, group: g.id };
+  }
+  function task1(a, s, r) {
+    var cf = away(a, s), how = r && r.assign && r.assign[a.id];
     if (cf) return { type: 'away', icon: '🙋', text: 'Away' + (cf.why ? ': ' + cf.why : '') };
     if (a.guest && !how) {      // guests: only on the big rehearsal days
       var gg = autoGroup(a, r);
@@ -176,6 +198,7 @@
       if (spot) return { type: 'stage', focus: 'share', icon: '🌟', text: 'Show and tell: you sing your solo line for the class!' + (so ? ' (“' + so.title + '”)' : ''), href: so ? '#/song/' + so.id : null, group: g.id };
       return { type: 'stage', focus: 'share', icon: '🎤', text: 'Show and tell: every group shows the class what it worked on' + (g.where ? ' · ' + g.where : ''), group: g.id };
     }
+    if (g && g.focus === 'card') return cardTask(a, g);
     if (g && g.focus === 'watch') return { type: 'watch', icon: '🎬', text: 'Watch the movie together' + (g.where ? ' · ' + g.where : ''), group: g.id };
     if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
     if (g && g.focus === 'photos') return { type: 'photos', icon: '📸', text: 'Costume and prop photos: photograph your finished costumes and props' + (g.where ? ' · ' + g.where : ''), href: '#/photos', group: g.id };      // after the shopping trip (Colleen 2026-10-24)
@@ -238,15 +261,15 @@
     T.setBar('Production', '#/teacher');
     if (!P().term.first && !startedAtSetup) { tab = 'setup'; startedAtSetup = true; }      // first visit: start at the calendar; every tab still works after
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
-    var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
+    var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['mastery', 'Mastery'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every Company member gets a job each day.</p>';
-    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, tracks: function () { return T.tracksView(); } }[tab]();
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, mastery: function () { return T.masteryView ? T.masteryView() : ''; }, tracks: function () { return T.tracksView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
     app.querySelectorAll('[data-goto]').forEach(function (b) { b.onclick = function () { tab = b.dataset.goto; overview(); }; });
     if (tab === 'week' && !P().term.first) return;
-    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); }, season: function () { T.wireSeason(overview); }, tracks: function () { T.wireTracks(overview); } }[tab] || function () {})();
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); }, season: function () { T.wireSeason(overview); }, mastery: function () { if (T.wireMastery) T.wireMastery(overview); }, tracks: function () { T.wireTracks(overview); } }[tab] || function () {})();
   }
 
   function setupView() {
@@ -257,6 +280,11 @@
       '<p class="err" id="tm"></p>' +
       (t.off.length ? '<details><summary class="btn quiet small">' + t.off.length + ' days off saved</summary><p class="muted small">Tap one to make it a class day again.</p><div class="row">' + t.off.map(function (s) { return '<button class="btn small" data-off="' + s + '">' + esc(dayName(s, true)) + ' ✕</button>'; }).join('') + '</div></details>' : '') +
       '<p>' + (n ? '<b>' + n + ' class days</b>, about ' + Math.ceil(n / 5) + ' weeks' : 'Set the first and last day.') + '</p>' +
+      '<h3>Period lengths</h3><div class="row"><label class="f" style="margin:0">A class period (minutes)<input id="pmin" inputmode="numeric" value="' + (t.minutes || 48) + '" style="width:90px"></label>' +
+      '<label class="f" style="margin:0">Late-start day every week<select id="plate">' + [['', 'None'], ['1', 'Monday'], ['2', 'Tuesday'], ['3', 'Wednesday'], ['4', 'Thursday'], ['5', 'Friday']].map(function (o) { return '<option value="' + o[0] + '"' + (String(t.lateWd === undefined ? '' : t.lateWd) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="margin:0">Late-start period (minutes)<input id="plmin" inputmode="numeric" value="' + (t.lateMin || 35) + '" style="width:90px"></label></div>' +
+      '<label class="f">Early-dismissal days (shorter periods), one per line<textarea id="psip" placeholder="9/22/2027&#10;11/17/2027">' + esc((t.sip || []).join('\n')) + '</textarea></label>' +
+      '<label class="f">Early-dismissal period (minutes)<input id="psmin" inputmode="numeric" value="' + (t.sipMin || 20) + '" style="width:90px"></label>' +
       '<div class="row end"><button class="btn primary" id="tsv" data-save>Save the calendar</button></div></div>' +
       '<div class="card"><h2>Bookings in our theatre</h2><p class="muted">Concerts, other shows, assemblies: anything that needs the stage. They show as ⚠️ on those days, so the set is never in someone’s way (or theirs in ours) during tech week.</p>' +
       '<label class="f">Our theatre<input id="vn" value="' + esc(p.venueName || '') + '" placeholder="e.g. Reber Center"></label>' +
@@ -286,6 +314,9 @@
       if (!a || !b || b < a) { m.textContent = 'Pick the first day and a last day after it.'; return; }
       var r = pasteDates(document.getElementById('t3').value, a);
       p.term.first = a; p.term.last = b;
+      var num = function (id, lo, hi, d) { var v = +document.getElementById(id).value; return v >= lo && v <= hi ? v : d; };
+      p.term.minutes = num('pmin', 15, 120, 48); p.term.lateMin = num('plmin', 10, 120, 35); p.term.sipMin = num('psmin', 5, 120, 20);
+      p.term.lateWd = document.getElementById('plate').value; p.term.sip = pasteDates(document.getElementById('psip').value, a).dates;
       r.dates.forEach(function (s) { if (p.term.off.indexOf(s) < 0) p.term.off.push(s); }); p.term.off.sort();
       T.saveShow(r.dates.length ? r.dates.length + ' days off added' : 'Calendar saved').then(function () {
         tab = 'setup'; overview();
@@ -445,9 +476,11 @@
       app.innerHTML = (isClassDay(s) ? '' : '<p class="card err">This is not a class day on your school calendar.</p>') + (bookingsOn(s).length ? '<div class="card">' + bookingLine(s, '') + '</div>' : '') +
         '<p class="muted">Each group works on its own scenes or songs (Acting, Vocals, Dance…). Every Company member goes to the first group they are in; big group numbers bring the whole ensemble and the small roles. Anyone left over gets crew or practice in the app.</p>' +
         r.groups.map(function (g, gi) {
-          var n = people.filter(function (a) { return task(a, s).group === g.id; }).length;
+          var n = people.filter(function (a) { var t = task(a, s); return (t.groups || [t.group]).indexOf(g.id) >= 0; }).length;
           return '<div class="card" data-g="' + gi + '"><div class="row"><label class="f grow" style="margin:0">Group ' + (gi + 1) + '<select data-k="focus">' + FOCUS.map(function (f) { return '<option value="' + f[0] + '"' + (f[0] === g.focus ? ' selected' : '') + '>' + f[1] + ' ' + f[2] + '</option>'; }).join('') + '</select></label>' +
             '<label class="f grow" style="margin:0">Where / with whom<input data-k="where" value="' + esc(g.where || '') + '" placeholder="e.g. Stage, choir room, with Ms. Lee"></label><span class="tag">' + n + ' Company members</span><button class="btn small quiet" data-delg>Remove</button></div>' +
+            '<div class="row"><label class="f" style="margin:0">When<select data-k="block">' + [['', 'The whole period'], ['1', 'Block 1'], ['2', 'Block 2']].map(function (o) { return '<option value="' + o[0] + '"' + (String(g.block || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+            (g.card ? '<p class="small grow" style="margin:0">' + sym('📋') + '<b>' + esc(g.card.name) + ':</b> ' + esc(g.card[P().staffing === 'mentors' ? 'mentors' : 'two'] || '') + ' <span class="muted">Done when: ' + esc(g.card.done || '') + '</span></p>' : '') + '</div>' +
             '<div class="row"><label class="switch grow" style="border:0"><span>Whole cast</span><input type="checkbox" data-k="everyone"' + (g.everyone ? ' checked' : '') + '></label>' +
             '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
             (g.focus === 'trip' ? '<button class="btn small" data-halves>Two trips: half the class each</button>' : '') +
@@ -474,14 +507,14 @@
         }).join('') + (p.stations.length ? '<div class="row" style="margin-top:10px"><button class="btn small" id="copy">Same crew jobs the rest of the week</button></div>' : '<p class="muted small">Add crew stations under Calendar & crew.</p>') + '</div>' +
         '<div class="dock"><div class="in"><a class="btn" href="#/teacher/production/attend/' + s + '" id="att">' + icon('check') + 'Attendance</a><button class="btn quiet" id="clr">Clear this day</button><button class="btn primary" data-save id="sv">Save</button></div></div>';
       var keep = function () {
-        app.querySelectorAll('[data-g]').forEach(function (el) { var g = r.groups[+el.dataset.g]; g.focus = el.querySelector('[data-k=focus]').value; g.where = el.querySelector('[data-k=where]').value.trim(); g.only = el.querySelector('[data-k=only]').value; });
+        app.querySelectorAll('[data-g]').forEach(function (el) { var g = r.groups[+el.dataset.g]; g.focus = el.querySelector('[data-k=focus]').value; g.where = el.querySelector('[data-k=where]').value.trim(); g.only = el.querySelector('[data-k=only]').value; g.block = +el.querySelector('[data-k=block]').value || 0; if (g.block) r.blocks = true; });
         r.notes = document.getElementById('nt').value.trim();
         app.querySelectorAll('[data-txt]').forEach(function (i) { r.tasks[i.dataset.txt] = i.value; });
       };
       var gOf = function (el) { return r.groups[+el.closest('[data-g]').dataset.g]; };
       app.querySelectorAll('[data-sc],[data-so]').forEach(function (b) { b.onclick = function () { keep(); var g = gOf(b), list = b.dataset.sc ? g.scenes : g.songs, v = b.dataset.sc || b.dataset.so, i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); draw(); }; });
       app.querySelectorAll('[data-k=everyone]').forEach(function (c) { c.onchange = function () { keep(); gOf(c).everyone = c.checked; draw(); }; });
-      app.querySelectorAll('[data-k=focus],[data-k=only]').forEach(function (c) { c.onchange = function () { keep(); draw(); }; });
+      app.querySelectorAll('[data-k=focus],[data-k=only],[data-k=block]').forEach(function (c) { c.onchange = function () { keep(); draw(); }; });
       /* two trips (Colleen: each teacher goes once with half the class, to a different store, on a different day). Halves mix the crews so both
          trips have costume and props people. The other half has class as usual that day. */
       app.querySelectorAll('[data-halves]').forEach(function (b) {
@@ -601,9 +634,10 @@
       if (!shown(s)) return '<div class="card" style="opacity:.7"><b>' + esc(dayName(s)) + '</b><br><span class="muted">Coming soon</span></div>';
       var t = task(me, s), r = plan(s), pend = !away(me, s) && sent.some(function (x) { return x.date === s; });
       return '<div class="card"' + (big ? ' style="border:3px solid ' + T.color(me.chars[0]) + '"' : '') + '>' + (big ? '<span class="tag">' + (s === now ? 'Today' : 'Next class') + '</span>' : '') +
-        '<h3 style="margin-top:6px">' + esc(dayName(s)) + '</h3><p style="' + (big ? 'font-size:1.35em;font-weight:700;' : '') + 'margin:4px 0">' + sym(t.icon) + esc(t.text) + '</p>' +
+        '<h3 style="margin-top:6px">' + esc(dayName(s)) + '</h3>' + (t.blocks ? t.blocks.map(function (b, k) { return '<p style="' + (big ? 'font-size:1.2em;font-weight:700;' : '') + 'margin:6px 0"><span class="tag">Block ' + (k + 1) + '</span> ' + sym(b.icon) + esc(b.text) + (b.href && big ? ' <a class="btn small" href="' + b.href + '">Start</a>' : '') + '</p>'; }).join('') :
+          '<p style="' + (big ? 'font-size:1.35em;font-weight:700;' : '') + 'margin:4px 0">' + sym(t.icon) + esc(t.text) + '</p>') +
         (r && r.notes ? '<p class="card" style="background:var(--hi);margin:8px 0">' + sym('📌') + esc(r.notes) + '</p>' : '') +
-        '<div class="row" style="margin-top:8px">' + (t.href ? '<a class="btn' + (big ? ' primary' : ' small') + '" href="' + t.href + '">Start</a>' : '') +
+        '<div class="row" style="margin-top:8px">' + (t.href && !(t.blocks && big) ? '<a class="btn' + (big ? ' primary' : ' small') + '" href="' + t.href + '">Start</a>' : '') +
         (t.type === 'away' ? '' : pend ? '<span class="tag">Sent: I’ll be away</span>' : '<button class="btn small quiet" data-away="' + s + '">I’ll be away</button>') + '</div></div>';
     };
     app.innerHTML = (days.length ? card(days[0], true) : '<div class="card"><p>No more class days this year. Bravo!</p></div>') +

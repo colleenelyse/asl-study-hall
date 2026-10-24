@@ -219,6 +219,7 @@
     return x.h != null ? x.h : Math.min(x.e, last + 2.5);
   }
   T.lineEnd = lineEnd;
+  T.lineEnd = lineEnd;
   function songItem(songId) {
     var so = T.songById(songId), sc = so && T.sceneById(so.scene), src = sc && T.scriptScene(sc);
     return src && src.items.find(function (it) { return it.type === 'song' && it.num === so.num; });

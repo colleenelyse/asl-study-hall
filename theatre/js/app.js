@@ -991,6 +991,7 @@
     var trk = (T.show.tracks && T.show.tracks[song.id]) || {}, mel = T.show.melody && T.show.melody[song.id];
     var s = scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
     var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
+    if (T.RedX && T.RedX.forMe() && st.redx === undefined) st.redx = true;      // the teacher turned the red X on for this student
     var canFollow = T.Follow && T.Follow.ready(song.id);      // the sung line lit up (needs the lyrics timing)
     var canSheet = T.Follow && T.Follow.canShow(song.id);      // the song's real sheet music pages (need only the script PDF)
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
@@ -1054,7 +1055,7 @@
       if (st.melody && has.mel) P.mel = piano && piano.notes.length ? pianoPlay(at) : Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
       tick(); drawBtns();
     }
-    function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); }
+    function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); if (T.RedX) T.RedX.hide(); }
     function tick() {
       cancelAnimationFrame(P.raf);
       var f = function () {
@@ -1064,6 +1065,7 @@
         if (P.playing) P.most = Math.max(P.most || 0, t / dur());
         var r = document.getElementById('pos'); if (r && !r.dragging) r.value = t;
         var fh = document.getElementById('follow'); if (fh && st.follow) T.Follow.update(fh, song.id, t);
+        if (T.RedX && T.me && T.me.chars) T.RedX.show(st.redx && P.playing ? T.RedX.state(song.id, t, T.me.chars) : '');
         var tm = document.getElementById('tm'); if (tm) tm.textContent = clock(t) + ' / ' + clock(dur());
         if (P.playing) P.raf = requestAnimationFrame(f);
       };
@@ -1079,6 +1081,7 @@
         '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song"><span class="time" id="tm"></span></div>';
       document.getElementById('pl').innerHTML = keyHint('Space: play or pause · ←: back 10 seconds') +
         sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
+        (T.RedX && T.me && T.me.chars && T.me.chars.length ? sw('redx', '❌ Red X when it is not my turn to sing', T.RedX.ready(song.id), 'needs the lyrics timing') : '') +
         sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
         (piano && piano.notes.length && (pianoParts > 1 || piano.notes.some(function (n) { return n.w; })) ? '<div class="switch"><span>Piano plays</span><div class="seg" id="pianoseg">' + [['mine', 'My part'], ['all', 'All parts'], ['top', 'Melody only']].map(function (o) { return '<button type="button" data-pm="' + o[0] + '" aria-pressed="' + ((st.piano || 'mine') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>' : '') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
@@ -1095,6 +1098,7 @@
           st[inp.dataset.k] = inp.checked; ls('songOpts', st);
           if (inp.dataset.k === 'guide' && P.playing) { var t = ctx.currentTime; P.gp.gain.setTargetAtTime(st.guide ? 0 : 1, t, 0.05); P.gg.gain.setTargetAtTime(st.guide ? 1 : 0, t, 0.05); }
           if (inp.dataset.k === 'melody' && P.playing) start(now());
+          if (inp.dataset.k === 'redx' && !st.redx && T.RedX) T.RedX.hide();
           if (inp.dataset.k === 'follow') { var fh = document.getElementById('follow'); if (fh) { fh.hidden = !st.follow; if (st.follow) T.Follow.mount(fh, song.id); } }
         };
       });
@@ -1105,7 +1109,7 @@
       tick();
     }
     keys({ Space: function () { var b = document.getElementById('spp'); if (b) b.click(); }, ArrowLeft: function () { var b = document.getElementById('sb'); if (b) b.click(); } });
-    T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); if (!P.asked && (P.most || 0) > 0.6 && T.askSongRating) T.askSongRating(song.id); });
+    T.cleanup.push(function () { pause(); cancelAnimationFrame(P.raf); if (T.RedX) T.RedX.hide(); if (!P.asked && (P.most || 0) > 0.6 && T.askSongRating) T.askSongRating(song.id); });
   }
 
   /* ---------- Listen to the whole show ----------
