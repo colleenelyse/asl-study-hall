@@ -369,3 +369,6 @@ has two tabs; Save switches to "Sections on the music": the song's pages with ev
 (`drawSections`, `overlay`). Tap one: the bottom bar edits who sings it (color follows), its start (− + Test, Fix), and its words (tap a
 syllable to start a new section there, `splitSec`; join with the one before or after, `joinSec`), keeping the times in step. A song edited
 this way is marked in `T.show.lyricKeep` and kept as it is when the script is imported again.
+**No more re-importing** (Colleen: "why do i have to keep reimporting the pdf?"): `ScriptParser.VERSION` stamps each reading (`script.reader`);
+when teacher mode opens on a reading by an older reader, `rereadScript` reads the saved PDF again (the same as an import: speaker names,
+key words, singer fixes, edited songs carry over) and saves. **Bump VERSION whenever the reader changes.**

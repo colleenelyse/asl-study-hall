@@ -106,14 +106,29 @@
       return save('Script pages reconnected').then(function () { if (/^#\/teacher\/?$/.test(location.hash)) home(); });
     }).catch(function () {});
   }
+  /* the script was read by an older reader: read the saved PDF again here (the same as importing it again, keeping the speaker names,
+     key words, singer fixes and edited songs), then save */
+  function rereadScript() {
+    var sc = T.show.script; if (!sc || rereadScript.busy || !T.Pages || !T.Pages.ready() || sc.reader === ScriptParser.VERSION) return;
+    rereadScript.busy = true;
+    var note = function (t) { var el = document.getElementById('reread'); if (el) el.innerHTML = t; };
+    T.Pages.doc().then(function (pdf) {
+      return ScriptParser.fromPdfJs(pdf, function (n, N) { note(sym('🔄') + 'Updating how the script is read (the app got better at it)… page ' + n + ' of ' + N); });
+    }).then(function (pages) {
+      var r = ScriptParser.parse(pages, { songNumbers: T.O().songs.map(function (s) { return s.num; }) });
+      var n = applyImport(r, sc.file, null, true);
+      return save('Script re-read: ' + n + ' lines').then(function () { note(sym('✅') + 'The script was read again with the newest reader (' + n + ' lines). Songs whose lines changed need their lyrics timing found again (Songs & tracks).'); });
+    }).catch(function (e) { note(''); rereadScript.busy = false; T.toast('Could not re-read the script: ' + (e.message || e), 5000); });
+  }
   function home() {
     recoverPdf();
+    setTimeout(rereadScript, 300);
     T.setBar('Teacher mode', '#/');
     var O = T.O(), sc = T.show.script, nLines = 0;
     if (sc) sc.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') nLines++; }); });
     var trk = T.show.tracks || {}, nTr = O.songs.filter(function (s) { return trk[s.id] && trk[s.id].performance; }).length;
     var t = function (href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; };
-    app.innerHTML = T.showBanner() + '<p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p><div class="tiles">' +
+    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p><div class="tiles">' +
       t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
       (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
       (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
@@ -173,7 +188,7 @@
     };
   }
   /* the new parse replaces the lines; key words the teacher added carry over when the line is the same */
-  function applyImport(r, fileName, pdfBytes) {
+  function applyImport(r, fileName, pdfBytes, quiet) {
     var old = T.show.script, keys = {};
     if (old) old.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.keyWords) keys[it.who + '|' + it.text] = it.keyWords; }); });
     r.scenes.forEach(function (s) { s.items.forEach(function (it) { var k = keys[it.who + '|' + it.text]; if (k) it.keyWords = k; }); });
@@ -203,8 +218,9 @@
       it.lyrics.forEach(function (l, i) { var k = i + '|' + l.text; if (w[k]) l.who = w[k]; else { var m = Object.keys(w).find(function (kk) { return kk.slice(kk.indexOf('|') + 1) === l.text; }); if (m) l.who = w[m]; } });
     }); });
     var oldPdf = T.show.script && T.show.script.pdfVer;      // the saved pages keep working until the new ones are saved
-    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined };
+    T.show.script = { scenes: r.scenes, imported: new Date().toISOString(), file: fileName, pages: r.pages, pdfVer: oldPdf || undefined, reader: ScriptParser.VERSION };
     var n = 0; r.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') n++; }); });
+    if (quiet) return n;
     T.toast('Read ' + r.scenes.length + ' scenes and ' + n + ' lines. Check the speaker names, then Save.', 4000);
     scriptPage([]);
     var b = document.createElement('div'); b.className = 'card'; b.innerHTML = '<div class="row"><b class="grow">Not saved yet.</b><button class="btn primary" data-save>Save the script</button></div>';
