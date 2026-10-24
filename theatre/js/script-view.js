@@ -20,7 +20,7 @@
     T.setBar('The script', o.back);
     if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not ready yet. ' + (o.teacher ? 'Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).' : 'Your teacher saves them when importing the script.') + '</p></div>'; return; }
     var sc = T.show.script, O = T.O(), adding = false;
-    var st = Object.assign({ hl: o.teacher ? '' : 'mine', mine: true, dir: true, cues: !!o.teacher }, T.ls('scriptView' + (o.teacher ? 'T' : '')) || {});
+    var st = Object.assign({ hl: o.teacher ? '' : 'mine', mine: true, dir: true, cues: !!o.teacher, feel: true }, T.ls('scriptView' + (o.teacher ? 'T' : '')) || {});
     var keep = function () { T.ls('scriptView' + (o.teacher ? 'T' : ''), st); };
     var chars = function () { return o.teacher ? (st.hl ? [st.hl] : []) : (st.hl === 'mine' && T.me ? T.me.chars || [] : []); };
     var dirNotes = function () { return (T.show.scriptNotes || []).filter(function (n) { return !n.del; }); };
@@ -38,20 +38,30 @@
       '<label class="row" style="gap:6px"><span>Go to</span><select id="go"><option value="">Scene…</option>' + scenes.map(function (x) { return '<option value="' + x.n + ':' + x.y + '">Scene ' + esc(x.s.num) + (x.s.place ? ' · ' + esc(x.s.place) : '') + '</option>'; }).join('') + '</select></label>' +
       hlPick + '<span class="grow"></span>' +
       '<button class="btn" id="add" aria-pressed="false">' + sym('📝') + 'Add a note</button>' +
+      (o.teacher && T.Emotions ? '<button class="btn" id="addf" aria-pressed="false">' + sym('🙂') + 'Add a feeling</button>' : '') +
       (o.teacher ? '<button class="btn" id="addc" aria-pressed="false">' + sym('💡') + 'Add a cue</button><a class="btn" href="#/teacher/cues">Cue sheet</a>' : '') + '</div>' +
       '<div class="row small" style="gap:14px;margin-top:8px;flex-wrap:wrap">' +
       (o.teacher ? '<span class="muted">Your notes are director’s notes: everyone in the cast sees them.</span>' :
         '<label class="row" style="gap:6px"><input type="checkbox" id="smine"' + (st.mine ? ' checked' : '') + '><span class="snote-key"></span>My notes (only I see them)</label>' +
         '<label class="row" style="gap:6px"><input type="checkbox" id="sdir"' + (st.dir ? ' checked' : '') + '><span class="snote-key dir"></span>Director’s notes</label>') +
       '<label class="row" style="gap:6px"><input type="checkbox" id="scue"' + (st.cues ? ' checked' : '') + '><span class="cue-key"></span>Light, sound and music cues</label>' +
+      (T.Emotions ? '<label class="row" style="gap:6px"><input type="checkbox" id="sfeel"' + (st.feel ? ' checked' : '') + '>' + sym('🙂') + 'Feeling pictures</label>' : '') +
       '</div><p id="addhelp" class="muted small" hidden>Tap the spot on a page where the note goes.</p></div>' +
       '<div id="pages" class="pages scriptpages">' + sc.pages.map(function (p) { return '<div class="pdfpage" data-n="' + p.n + '" style="aspect-ratio:' + p.w + '/' + p.h + '"></div>'; }).join('') + '</div>';
     var host = document.getElementById('pages'), $ = function (id) { return document.getElementById(id); };
 
     /* highlights and pins (redrawn on every change; the page drawings stay) */
     function overlay() {
-      host.querySelectorAll('.hl, .snote, .cue').forEach(function (e) { e.remove(); });
+      host.querySelectorAll('.hl, .snote, .cue, .feel').forEach(function (e) { e.remove(); });
       host.classList.toggle('withcues', !!st.cues);
+      host.classList.toggle('withfeel', !!(st.feel && T.Emotions));
+      var lastY = {};      // icons close together stack downward instead of covering each other (about 50 points apart)
+      if (st.feel && T.Emotions) T.Emotions.all().sort(function (a, b) { return a.n - b.n || a.y - b.y; }).map(function (f) {
+        var y = f.y; if (lastY[f.n] != null && y < lastY[f.n] + 50) y = lastY[f.n] + 50; lastY[f.n] = y; return Object.assign({}, f, { y: y });
+      }).forEach(function (f) {      // feeling pictures just right of the page
+        var pg = host.querySelector('.pdfpage[data-n="' + f.n + '"]'), sz = T.Pages.size(f.n), ic = T.Emotions.ICON[f.icon]; if (!pg || !ic) return;
+        pg.insertAdjacentHTML('beforeend', '<button type="button" class="feel" data-feel="' + esc(f.id) + '" style="top:' + (f.y / sz.h * 100) + '%" aria-label="Feeling: ' + esc(ic.name) + '" title="' + esc(ic.name) + '"><img src="' + ic.file + '" alt=""></button>');
+      });
       var who = chars(), pct = function (v, d) { return (v / d * 100) + '%'; };
       if (who.length) O.scenes.forEach(function (scene) {
         var src = T.scriptScene(scene); if (!src) return;
@@ -126,12 +136,15 @@
     if ($('smine')) $('smine').onchange = function () { st.mine = this.checked; keep(); overlay(); };
     if ($('sdir')) $('sdir').onchange = function () { st.dir = this.checked; keep(); overlay(); };
     if ($('scue')) $('scue').onchange = function () { st.cues = this.checked; keep(); overlay(); };
-    var setAdding = function (v, msg) { adding = v; $('add').setAttribute('aria-pressed', v === 'note'); if ($('addc')) $('addc').setAttribute('aria-pressed', v === 'cue' || !!(v && v.move)); $('addhelp').hidden = !v; if (msg) $('addhelp').textContent = msg; host.classList.toggle('adding', !!v); };
+    if ($('sfeel')) $('sfeel').onchange = function () { st.feel = this.checked; keep(); overlay(); };
+    var setAdding = function (v, msg) { adding = v; $('add').setAttribute('aria-pressed', v === 'note'); if ($('addf')) $('addf').setAttribute('aria-pressed', v === 'feel'); if ($('addc')) $('addc').setAttribute('aria-pressed', v === 'cue' || !!(v && v.move)); $('addhelp').hidden = !v; if (msg) $('addhelp').textContent = msg; host.classList.toggle('adding', !!v); };
     $('add').onclick = function () { setAdding(adding === 'note' ? false : 'note', 'Tap the spot on a page where the note goes.'); };
     if ($('addc')) $('addc').onclick = function () { setAdding(adding === 'cue' ? false : 'cue', 'Tap the line on a page where the cue goes (it goes in the left margin).'); };
+    if ($('addf')) $('addf').onclick = function () { setAdding(adding === 'feel' ? false : 'feel', 'Tap the line on a page where the feeling goes (it goes just right of the page).'); if (!st.feel) { st.feel = true; keep(); if ($('sfeel')) $('sfeel').checked = true; overlay(); } };
 
     host.addEventListener('click', function (e) {
-      var pin = e.target.closest('.snote'), cue = e.target.closest('.cue');
+      var pin = e.target.closest('.snote'), cue = e.target.closest('.cue'), fe = e.target.closest('.feel');
+      if (fe && !adding) { feelOpen(fe.dataset.feel); return; }
       if (pin && !adding) { open(pin.dataset.note, pin.dataset.dir === '1'); return; }
       if (cue && !adding) { cueOpen(cue.dataset.cue); return; }
       if (!adding) return;
@@ -141,8 +154,28 @@
       setAdding(false);
       if (mode === 'note') edit({ id: newId(), n: n, x: x, y: y, text: '' }, o.teacher, true);
       else if (mode === 'cue') cueEdit({ id: newId(), k: 'LX', n: n, y: y, text: '' }, true);
+      else if (mode === 'feel') feelPick(null, function (icon) { T.Emotions.add(n, y, icon); T.saveShow('Feeling added').then(overlay); });
       else if (mode.move) { var c = T.cues().find(function (q) { return q.id === mode.move; }); if (c) { c.n = n; c.y = y; T.show.cues.list.sort(T.Cues.order); T.saveShow('Cue moved').then(overlay); } }
     });
+
+    /* feeling pictures: everyone sees the name; the teacher changes or removes one */
+    function feelPick(current, done) {
+      var d = ask('<h2>' + sym('🙂') + 'Pick a feeling</h2>' + T.Emotions.picker(current) + '<div class="row end" style="margin-top:10px"><button class="btn quiet" id="fx">Cancel</button></div>');
+      d.querySelector('#fx').onclick = function () { d.close(); };
+      d.querySelectorAll('[data-icon]').forEach(function (b) { b.onclick = function () { d.close(); done(b.dataset.icon); }; });
+    }
+    function feelOpen(id) {
+      var f = T.Emotions.all().find(function (x) { return x.id === id; }); if (!f) return;
+      var ic = T.Emotions.ICON[f.icon];
+      var d = ask('<div style="text-align:center"><img src="' + ic.file + '" alt="" style="height:160px"><h2 style="margin:8px 0">' + esc(ic.name) + '</h2>' +
+        (f.auto && f.note ? '<p class="muted small">The script says “' + esc(f.note) + '” here.</p>' : '') +
+        (o.teacher ? '' : '<p class="small"><a href="#/react">Practice feelings in React to That!</a></p>') + '</div>' +
+        '<div class="row end" style="flex-wrap:wrap">' + (o.teacher ? '<button class="btn quiet" id="fd">Remove</button><button class="btn" id="fc">Change</button>' : '') + '<button class="btn primary" id="fk">Close</button></div>');
+      d.querySelector('#fk').onclick = function () { d.close(); };
+      if (!o.teacher) return;
+      d.querySelector('#fd').onclick = function () { d.close(); T.Emotions.remove(f); T.saveShow('Feeling removed').then(overlay); };
+      d.querySelector('#fc').onclick = function () { d.close(); feelPick(f.icon, function (icon) { T.Emotions.change(f, icon); T.saveShow('Feeling changed').then(overlay); }); };
+    }
 
     /* cues: anyone can read them; the teacher accepts, edits, moves and deletes */
     function cueOpen(id) {

@@ -400,3 +400,15 @@ code.pw { font: 700 1.05em/1.2 ui-monospace, Menlo, monospace; background: var(-
 .lt-secbar.compact .sec-words { margin: 4px 0; }
 .lt-secbar.compact .sec-words .muted.small { display: none; }
 .lt-secbar.compact .lt-tin { width: 84px; min-width: 84px; }
+
+/* feeling pictures beside the script's lines (emotions.js) */
+.scriptpages.withfeel { padding-right: 64px; }
+.withfeel .pdfpage { overflow: visible; }
+.feel { position: absolute; left: calc(100% + 6px); transform: translateY(-50%); width: 52px; padding: 0; border: 0; background: none; z-index: 3; cursor: pointer; }
+.feel img { width: 100%; display: block; }
+.feel:focus-visible { outline: 3px solid var(--accent, #1d1a2e); border-radius: 8px; }
+@media (max-width: 600px) { .scriptpages.withfeel { padding-right: 44px; } .feel { width: 38px; left: calc(100% + 3px); } }
+.feelpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; max-height: 60vh; overflow: auto; }
+.feelpick button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: inherit; font: inherit; font-size: .8em; cursor: pointer; }
+.feelpick button[aria-pressed="true"] { border-color: var(--accent, #c7a0ff); }
+.feelpick img { height: 64px; }

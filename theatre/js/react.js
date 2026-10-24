@@ -8,7 +8,7 @@
      Show it: hear it, react with face and body, then see the picture, the name and how to show it. The app never judges a face.
      Name it: hear it, then pick the feeling from pictures.
    Show Me (a support): the feeling's picture and how to show it come first, so practice never feels like a test.
-   Pictures: img/act/<file> (theatre-notes/acting-pictures-list.md, the same pictures as the script margins); the emoji shows until one exists.
+   Pictures: Colleen's feeling icons in img/emotions/ (the same pictures as the script margins, emotions.js); Disgusted has none yet, so its emoji shows.
    Practice stays on this device (T.ls 'reactSeen'); nothing is sent.
    Camera mirror (Colleen 2026-10-24: instead of, or as well as, shatter-safe mirrors): in Show it, the Chromebook or iPad camera shows the student's
    face (mirrored) while they react, records about 4 seconds after "React!", and plays it back beside the feeling's picture. The video only ever
@@ -20,24 +20,24 @@
 
   /* feelings: [name, picture, emoji, how to show it] */
   var FEEL = {
-    happy: ['Happy', 'act-happy.png', '😄', 'big smile, bright eyes, clapping'],
-    excited: ['Excited', 'act-excited.png', '🤩', 'big smile, arms up, jumping, clapping'],
-    stunned: ['Surprised', 'act-stunned.png', '😲', 'wide eyes, open mouth, eyebrows up, a sudden jump back'],
-    hstunned: ['Happily surprised', 'act-happily-stunned.png', '🥹', 'wide eyes and a smile that keeps growing, hands to your face'],
-    sad: ['Sad', 'act-sad.png', '😢', 'shoulders drooping, frowning, looking down, moving slowly'],
-    annoyed: ['Annoyed', 'act-annoyed.png', '😒', 'eye roll, flat mouth, arms crossed, a big sigh'],
-    angry: ['Angry', 'act-angry.png', '😠', 'eyebrows down, tight shoulders, arms crossed, stomping'],
-    panic: ['Scared', 'act-panic.png', '😱', 'wide eyes, stepping back, hands over mouth, body tense'],
-    nervous: ['Nervous', 'act-nervous.png', '😬', 'biting your lip, worried eyebrows, fidgety hands'],
-    confused: ['Confused', 'act-confused.png', '😕', 'head tilted, one eyebrow up, scratching your head, looking around'],
-    embarrassed: ['Embarrassed', 'act-embarrassed.png', '😳', 'looking down, covering your face, an awkward smile'],
-    suspicious: ['Suspicious', 'act-suspicious.png', '🤨', 'narrowed eyes, looking sideways, leaning back'],
-    curious: ['Curious', 'act-curious.png', '🧐', 'leaning in, eyebrows up, finger on your chin'],
-    disgusted: ['Disgusted', 'act-disgusted.png', '🤢', 'wrinkled nose, pulling away, tongue out, grimacing'],
-    proud: ['Proud', 'act-proud.png', '😎', 'standing tall, a confident smile, hands on hips'],
-    relieved: ['Relieved', 'act-relieved.png', '😮‍💨', 'a deep sigh, shoulders relaxing, hand over your heart, a smile'],
-    moved: ['Thankful', 'act-moved.png', '🥲', 'hand on your heart, soft happy eyes'],
-    sympathetic: ['Sorry for them', 'act-sympathetic.png', '🫂', 'soft eyes, head tilted, reaching out to comfort']
+    happy: ['Happy', 'emotions/03_happy_open_arms.png', '😄', 'big smile, bright eyes, clapping'],
+    excited: ['Excited', 'emotions/21_cheering.png', '🤩', 'big smile, arms up, jumping, clapping'],
+    stunned: ['Surprised', 'emotions/08_shocked_gasp.png', '😲', 'wide eyes, open mouth, eyebrows up, a sudden jump back'],
+    hstunned: ['Happily surprised', 'emotions/33_surprised_gasp_alt.png', '🥹', 'wide eyes and a smile that keeps growing, hands to your face'],
+    sad: ['Sad', 'emotions/12_disappointed_slump.png', '😢', 'shoulders drooping, frowning, looking down, moving slowly'],
+    annoyed: ['Annoyed', 'emotions/06_annoyed_cross_arms.png', '😒', 'eye roll, flat mouth, arms crossed, a big sigh'],
+    angry: ['Angry', 'emotions/05_angry_fuming.png', '😠', 'eyebrows down, tight shoulders, arms crossed, stomping'],
+    panic: ['Scared', 'emotions/34_terrified_panic.png', '😱', 'wide eyes, stepping back, hands over mouth, body tense'],
+    nervous: ['Nervous', 'emotions/09_nervous_worried.png', '😬', 'biting your lip, worried eyebrows, fidgety hands'],
+    confused: ['Confused', 'emotions/07_confused_questioning.png', '😕', 'head tilted, one eyebrow up, scratching your head, looking around'],
+    embarrassed: ['Embarrassed', 'emotions/10_shy_blushing.png', '😳', 'looking down, covering your face, an awkward smile'],
+    suspicious: ['Suspicious', 'emotions/14_suspicious_thinking.png', '🤨', 'narrowed eyes, looking sideways, leaning back'],
+    curious: ['Curious', 'emotions/28_thoughtful_hand_chin.png', '🧐', 'leaning in, eyebrows up, finger on your chin'],
+    disgusted: ['Disgusted', 'act/act-disgusted.png', '🤢', 'wrinkled nose, pulling away, tongue out, grimacing'],
+    proud: ['Proud', 'emotions/16_proud_confident.png', '😎', 'standing tall, a confident smile, hands on hips'],
+    relieved: ['Relieved', 'emotions/32_calm_open_arms.png', '😮‍💨', 'a deep sigh, shoulders relaxing, hand over your heart, a smile'],
+    moved: ['Thankful', 'emotions/23_pleading_teary.png', '🥲', 'hand on your heart, soft happy eyes'],
+    sympathetic: ['Sorry for them', 'emotions/27_sad_small_worried.png', '🫂', 'soft eyes, head tilted, reaching out to comfort']
   };
   var BIG = ['happy', 'excited', 'stunned', 'hstunned', 'angry', 'annoyed', 'panic', 'disgusted'];      // level 1 feelings; the rest are level 2
 
@@ -147,7 +147,7 @@
   }
   function pic(k, size, cap) {
     var f = FEEL[k], sz = size || 96;
-    return '<figure style="margin:0;text-align:center;width:' + (sz + 40) + 'px"><img src="img/act/' + f[1] + '" alt="" width="' + sz + '" height="' + sz + '" style="border-radius:18px;background:var(--card);object-fit:contain" ' +
+    return '<figure style="margin:0;text-align:center;width:' + (sz + 40) + 'px"><img src="img/' + f[1] + '" alt="" width="' + sz + '" height="' + sz + '" style="border-radius:18px;background:var(--card);object-fit:contain" ' +
       'onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{textContent:\'' + f[2] + '\',style:\'font-size:' + Math.round(sz * 0.7) + 'px;line-height:' + sz + 'px\'}))">' +
       '<figcaption style="font-weight:700;font-size:1.15em;margin-top:6px">' + esc(f[0]) + '</figcaption>' + (cap ? '<div class="small muted" style="margin-top:4px">' + esc(f[3]) + '</div>' : '') + '</figure>';
   }
