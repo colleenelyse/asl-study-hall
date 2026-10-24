@@ -1036,7 +1036,7 @@
         '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part']] : []).concat([['part2', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
-          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
+          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + ' <button type="button" class="btn small quiet" data-words="' + i + '" title="Change the words of this line (add words that were missed)">✎ Words</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
             '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small quiet" data-from="' + i + '" title="Retime from here: play from just before this line; each Now sets the next line, to the end of the song">⏩</button><button class="btn small quiet" data-show="' + i + '" title="Show this line on the sheet music">📍</button><button class="btn small quiet" data-del="' + i + '" title="Delete this line (it is not a lyric or a spoken line)">🗑</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
@@ -1095,6 +1095,7 @@
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
       if ($('fixdone')) $('fixdone').onclick = function () { endFix(); audio.pause(); draw(); };
       app.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { pickSinger(+b.dataset.who); }; });
+      app.querySelectorAll('[data-words]').forEach(function (b) { b.onclick = function () { editWords(+b.dataset.words); }; });
       app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('pause'); }); }; });
     }
     /* Sections on the music (Colleen: after Save, "show all the highlights i added in their sections simultaneously… edit the names, colors,
@@ -1201,7 +1202,7 @@
           '<span class="grow"></span><button class="btn small" id="snm">−</button>' + timeBox('id="stin"', x) + '<button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
         '<p class="muted small" style="margin:4px 0">Drag the round handles at the ends of the highlight to shorten or stretch it' + (T.Pages.lyricBoxes(l).length > 1 ? '; ✕ takes a piece away' : '') + '.' + (l.cut ? ' <button class="btn small quiet" id="sfit">Fit to the words again</button>' : '') + '</p>' +
-        '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button>' + joinMenu(i) + '<span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
+        '<div class="row lt-controls"><button class="btn small" id="swords">✎ Edit the words</button><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button>' + joinMenu(i) + '<span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
       $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; refresh(); };
@@ -1209,6 +1210,7 @@
       if ($('pl')) $('pl').onclick = playPause;
       if (!l) return;
       $('sdone').onclick = function () { selSec = null; refresh(); };
+      $('swords').onclick = function () { editWords(i); };
       if ($('sfit')) $('sfit').onclick = function () { snapshot(); delete l.cut; edited = true; refresh(); };
       $('swho').onclick = function () { pickSinger(i, function () { refresh(); }); };
       $('snm').onclick = function () { nudge(i, -0.2); }; $('snp').onclick = function () { nudge(i, 0.2); };
@@ -1332,6 +1334,30 @@
       });
       return found;
     }
+    /* where typed words are printed: the place not already another section, nearest to where the line belongs (between the sections before and
+       after it); self: the section being changed, whose own place counts as free. { best, part } (part: only that start was found), or {} */
+    function findPlace(words, at, self) {
+      return songRows().then(function (rows) {
+        var others = lines.filter(function (l, k) { return k !== self; });
+        var used = function (path) { return others.some(function (l) { var bs = T.Pages.rawBoxes(l); return path.some(function (y) { return bs.some(function (b) { return b.n === y._o.n && Math.abs(b.y - y._o.y) < 2 && y.x >= b.x - 1 && y.x + y.w <= b.x + b.w + 1; }); }); }); };
+        var key = function (b) { return b ? b.n * 10000 + b.y : null; };
+        var here = self != null ? key(T.Pages.rawBoxes(lines[self])[0]) : null;
+        var prev = at >= 0 && lines[at] ? key(T.Pages.rawBoxes(lines[at])[0]) : null, nxt = lines[at + 1] ? key(T.Pages.rawBoxes(lines[at + 1])[0]) : null;
+        var score = function (path) {
+          var k = key(path[0]._o), d0 = 0;
+          if (here != null) d0 = Math.abs(k - here);      // a section being changed stays near where it was
+          else { if (prev != null && k < prev) d0 += prev - k; if (nxt != null && k > nxt) d0 += k - nxt; }
+          return (used(path) ? 1e7 : 0) + d0;
+        };
+        var ws = words.split(/\s+/), part = null, best = null;
+        for (var m = ws.length; m >= Math.min(3, ws.length) && !best; m--) {
+          var found = matchAt(rows, letters(ws.slice(0, m).join(' ')));
+          if (found.length) { best = found.sort(function (a, b) { return score(a) - score(b); })[0]; if (m < ws.length) part = ws.slice(0, m).join(' '); }
+        }
+        return { best: best, part: part, taken: !!(best && score(best) >= 1e7) };
+      });
+    }
+    var placeNote = function (r, n) { var pg = r.best ? T.Pages.printed(T.Pages.rawBoxes(lines[n])[0] ? T.Pages.rawBoxes(lines[n])[0].n : 0) : null; return r.part ? 'Found the start (“' + r.part + '”) on page ' + pg + '. Drag the end of its highlight to the last word.' : 'Found it on page ' + pg + '.'; };
     function addMissing() {
       if (!(T.Pages && T.Pages.ready())) { T.toast('The script pages are not saved yet: import the script PDF first.', 5000); return; }
       var after = selSec != null ? selSec : fixAt != null ? fixAt : Math.max(-1, nextOpen() - 1);
@@ -1344,31 +1370,51 @@
         var words = d.querySelector('#mw').value.trim(), at = +d.querySelector('#ma').value, msg = d.querySelector('#mm'), btn = this;
         if (letters(words).length < 2) { msg.textContent = 'Type the words of the line first.'; return; }
         btn.disabled = true; msg.textContent = 'Looking on the pages…';
-        songRows().then(function (rows) {
-          var used = function (path) { return lines.some(function (l) { var bs = T.Pages.rawBoxes(l); return path.some(function (y) { return bs.some(function (b) { return b.n === y._o.n && Math.abs(b.y - y._o.y) < 2 && y.x >= b.x - 1 && y.x + y.w <= b.x + b.w + 1; }); }); }); };
-          var key = function (b) { return b ? b.n * 10000 + b.y : null; };
-          var prev = at >= 0 ? key(T.Pages.rawBoxes(lines[at])[0]) : null, next = lines[at + 1] ? key(T.Pages.rawBoxes(lines[at + 1])[0]) : null;
-          var score = function (path) { var k = key(path[0]._o), d0 = 0; if (prev != null && k < prev) d0 += prev - k; if (next != null && k > next) d0 += k - next; return (used(path) ? 1e7 : 0) + d0; };
-          var ws = words.split(/\s+/), part = null, best = null;
-          for (var m = ws.length; m >= Math.min(3, ws.length) && !best; m--) {
-            var found = matchAt(rows, letters(ws.slice(0, m).join(' ')));
-            if (found.length) { best = found.sort(function (a, b) { return score(a) - score(b); })[0]; if (m < ws.length) part = ws.slice(0, m).join(' '); }
-          }
-          if (best && score(best) >= 1e7) { msg.textContent = part ? 'Only the start (“' + part + '”) is printed on the pages, and it is already a section. Check the spelling of the rest.' : 'Those words are already a section on the music (use 📍 to find it).'; btn.disabled = false; return; }
+        findPlace(words, at, null).then(function (r) {
+          if (r.taken) { msg.textContent = r.part ? 'Only the start (“' + r.part + '”) is printed on the pages, and it is already a section. Check the spelling of the rest.' : 'Those words are already a section on the music (use 📍 to find it).'; btn.disabled = false; return; }
           snapshot();
           var l = { who: (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
-          if (best) { setLine(l, best, function (y) { return y._o; }); best.forEach(function (y) { delete y._o; }); if (part) l.text = ScriptParser.cleanLyric(words); }
+          if (r.best) { setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; }); if (r.part) l.text = ScriptParser.cleanLyric(words); }
           else { l.text = ScriptParser.cleanLyric(words); l.syl = []; }
           lines.splice(at + 1, 0, l); times.splice(at + 1, 0, null);
           lines.forEach(function (x, k) { if (x.sync && k > at + 1 && k - x.sync <= at + 1) x.sync++; });      // pairs that reach across the new line still find their partner
           edited = true; selSec = at + 1; d.close();
-          var pg = best ? T.Pages.printed(best[0]._o ? best[0]._o.n : T.Pages.rawBoxes(l)[0].n) : null;
-          T.toast(best ? (part ? 'Found the start (“' + part + '”) on page ' + pg + ' and added it as line ' + (at + 2) + '. Drag the end of its highlight to the last word.' : 'Found it on page ' + pg + ' and added it as line ' + (at + 2) + '.') + ' Check who sings it (✎), time it with 🎯 Fix, then Save.' :
-            'Those words are not printed on this song’s pages as typed, so line ' + (at + 2) + ' was added without a place on the music. Check the spelling, or ↶ Undo and try fewer words.', 8000);
+          T.toast((r.best ? placeNote(r, at + 1) + ' Added as line ' + (at + 2) + '.' : 'Those words are not printed on this song’s pages as typed, so line ' + (at + 2) + ' was added without a place on the music. Check the spelling, or ↶ Undo and try fewer words.') + (r.best ? ' Check who sings it (✎), time it with 🎯 Fix, then Save.' : ''), 8000);
           draw();
         }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
       };
     }
+    /* change a section's words (Colleen 2026-10-24: "the ability to edit a line that you found since you missed some words"): she types the
+       whole line as it should be; the words are found again on the pages near where the section was, and the section takes their place on the
+       music (more words or fewer). Who sings it stays; its start stays and the syllables are shared out again. */
+    function editWords(i) {
+      var l = lines[i]; if (!l) return;
+      var d = dialog('<h2>The words of line ' + (i + 1) + '</h2><p class="muted">Type the whole line the way it is printed under the notes, with any words that were missed. The app finds them on the pages near where this line is and fits its highlight to them.</p>' +
+        '<label class="f">The words<textarea id="ew" style="min-height:80px">' + esc(l.text || '') + '</textarea></label>' +
+        '<label class="switch"><span>Only change the words shown in the list (leave the highlight as it is)</span><input type="checkbox" id="eonly"></label>' +
+        '<p class="err" id="em"></p><div class="row end"><button class="btn quiet" id="ex">Cancel</button><button class="btn primary" id="eok">Find them and change the line</button></div>');
+      d.querySelector('#ex').onclick = function () { d.close(); };
+      d.querySelector('#eok').onclick = function () {
+        var words = d.querySelector('#ew').value.trim(), msg = d.querySelector('#em'), btn = this;
+        if (letters(words).length < 2) { msg.textContent = 'Type the words of the line.'; return; }
+        var retime = function (n) { var x = times[i]; if (x) x.s = Melody.sylTimes([], x.t, x.e, n); };
+        if (d.querySelector('#eonly').checked || !(T.Pages && T.Pages.ready())) {
+          snapshot(); l.text = ScriptParser.cleanLyric(words); edited = true; d.close(); T.toast('Line ' + (i + 1) + ' changed. Save keeps it.'); refreshAfter(); return;
+        }
+        btn.disabled = true; msg.textContent = 'Looking on the pages…';
+        findPlace(words, i - 1, i).then(function (r) {
+          if (!r.best) { msg.textContent = 'Those words are not printed on this song’s pages as typed. Check the spelling, or tick “Only change the words shown in the list”.'; btn.disabled = false; return; }
+          if (r.taken) { msg.textContent = 'Those words are already another section on the music. Join the two lines instead (on the music: tap the line, then Join).'; btn.disabled = false; return; }
+          snapshot();
+          setLine(l, r.best, function (y) { return y._o; }); r.best.forEach(function (y) { delete y._o; });
+          if (r.part) l.text = ScriptParser.cleanLyric(words);
+          retime(l.syl.length); edited = true; selSec = i; d.close();
+          T.toast(placeNote(r, i) + ' Line ' + (i + 1) + ' now covers those words. Check its time with Test, then Save.', 7000);
+          refreshAfter();
+        }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
+      };
+    }
+    function refreshAfter() { if (view === 'sections') { overlay(); secBar(); } else draw(); }
     function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners
       snapshot(); removeAt(i);
     }
