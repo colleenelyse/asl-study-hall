@@ -163,6 +163,9 @@
         });
       });
     },
+    /* anonymous counts of which pages get used (no names), and the teacher's report */
+    sendUsage: function (k, pages) { return fetch(API + 'usage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: k, pages: pages }), keepalive: true }).catch(function () {}); },
+    usage: function (proof) { if (!proof) return noProof(); return fetch(API + 'usage', { headers: { 'x-proof': proof }, cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d.months || {}; }); }); },
     /* a student's practice record, sealed with the show key */
     putProgress: function (key, actor, obj) { return seal(key, te.encode(JSON.stringify(obj))).then(function (box) { return postJSON('progress/' + actor, { box: box }); }); },
     getProgress: function (key, actor) {

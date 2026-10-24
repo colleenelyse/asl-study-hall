@@ -393,6 +393,36 @@
     app.scrollTop = 0; window.scrollTo(0, 0);
   }
   T.route = route;
+
+  /* which parts of the app get used, counted anonymously by kind of password (student, parent, helper): page opens and active seconds,
+     sent in small batches and added up by month on the server (theatre/api.js usage). No name, student or device goes with them.
+     Teacher mode is not counted. Report: Teacher mode › App use. */
+  var use = { k: null, page: null, pages: {}, last: Date.now() };
+  function usePage() {
+    var parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean), page = parts[0] || 'home';
+    if (!T.show || !T.key || T.proof) return null;
+    if (page === 'teacher') { if (!T.pass) return null; page = 't-' + (parts[1] === 'production' && parts[2] === 'callboard' ? 'callboard' : parts[1] || 'home'); }
+    return page.replace(/[^a-z-]/g, '').slice(0, 24) || null;
+  }
+  function useKind() { return T.pass ? T.pass.who : 'student'; }
+  function useAdd(p, opens, secs) { if (!p) return; var x = use.pages[p] = use.pages[p] || [0, 0]; x[0] += opens; x[1] += secs; }
+  function useSend() {
+    if (!use.k || !Object.keys(use.pages).length || !navigator.onLine) return;
+    Store.sendUsage(use.k, use.pages); use.pages = {};
+  }
+  window.addEventListener('hashchange', function () {
+    var p = usePage(); if (!p) return;
+    if (use.k && use.k !== useKind()) useSend();
+    use.k = useKind(); use.page = p; useAdd(p, 1, 0);
+  });
+  ['pointerdown', 'keydown'].forEach(function (e) { document.addEventListener(e, function () { use.last = Date.now(); }, true); });
+  setInterval(function () {      // seconds on a page: only while it is showing and someone touched it in the last two minutes (or a track is playing)
+    var p = usePage(); if (!p || document.visibilityState !== 'visible') return;
+    if (Date.now() - use.last < 120000 || (T.Progress && T.Progress.playing)) { use.k = useKind(); useAdd(p, 0, 10); }
+  }, 10000);
+  setInterval(useSend, 60000);
+  setTimeout(function () { var p = usePage(); if (p) { use.k = useKind(); use.page = p; useAdd(p, 1, 0); } }, 3000);      // the page the app opened on
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') useSend(); });
   T.go = function (h) { if (location.hash === h) route(); else location.hash = h; };
   window.addEventListener('hashchange', route);
 
@@ -533,7 +563,7 @@
     app.innerHTML = T.showBanner() + '<div class="row" style="margin-bottom:16px">' + face(T.me, 72) +
       '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Helping ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
       (pw === 'helper' ? '<a class="btn" href="#/who">Switch student</a>' : '') + '</div>' +
-      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a helper”' : pw === 'parent' ? ' · nothing done here is recorded' : '') + '</p>' : '') +
+      (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a helper”' : '') + '</p>' : '') +
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
       (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +

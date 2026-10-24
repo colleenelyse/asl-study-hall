@@ -32,6 +32,12 @@ ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, en
 ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200, 'track upload with the proof');
 ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
 ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');
+ok((await call('POST', 'usage', JSON.stringify({ k: 'parent', pages: { calendar: [2, 90], 'Bad Page': [1, 1] } }))).status === 200, 'usage counts come in with no password');
+await call('POST', 'usage', JSON.stringify({ k: 'parent', pages: { calendar: [1, 30] } }));
+ok((await call('POST', 'usage', JSON.stringify({ k: 'spy', pages: {} }))).status === 400, 'only the known kinds are counted');
+ok((await call('GET', 'usage')).status === 403, 'only the teacher reads the usage counts');
+const um = (await (await call('GET', 'usage', undefined, { 'x-proof': proof })).json()).months, m0 = um[Object.keys(um)[0]];
+ok(m0.parent.calendar[0] === 3 && m0.parent.calendar[1] === 120 && !m0.parent['Bad Page'], 'usage is added up by month, page and kind');
 ok((await call('POST', 'pdf', new Uint8Array(800), { 'x-proof': proof })).status === 200 && (await call('GET', 'pdf')).status === 200, 'the script PDF saves and loads (sealed)');
 ok((await call('POST', 'pdf', new Uint8Array(800))).status === 403, 'saving the PDF needs the teacher password');
 ok((await call('POST', 'track/../x/performance', new Uint8Array(500), { 'x-proof': proof })).status === 404, 'odd track names are refused');

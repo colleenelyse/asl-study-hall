@@ -100,6 +100,37 @@ export async function theatreApi(req, env, url, p) {
     }
     return json({ error: 'GET, POST or DELETE' }, 405);
   }
+  /* which parts of the app get used (Colleen 2026-10-23: to see what is worth building out). Anonymous counts only: the kind of password
+     (student, parent, helper), the page, how many opens and seconds, added up by month. No name, student, device or address is kept. */
+  if (rest === 'usage') {
+    if (req.method === 'POST') {
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:userate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= 400) return json({ ok: true });      // a school's iPads share one address: quietly stop counting for the hour
+      let body; try { const t = await req.text(); if (t.length > 4000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'Not readable.' }, 400); }
+      const k = String(body.k || ''), pages = body.pages;
+      if (['student', 'parent', 'helper'].indexOf(k) < 0 || !pages || typeof pages !== 'object') return json({ error: 'Not readable.' }, 400);
+      const month = new Date().toISOString().slice(0, 7), key = 'theatre:usage:' + month, all = (await env.LOCKS.get(key, 'json')) || {}, mine = all[k] = all[k] || {};
+      for (const p of Object.keys(pages).slice(0, 40)) {
+        const v = pages[p]; if (!/^[a-z][a-z-]{0,23}$/.test(p) || !Array.isArray(v)) continue;
+        const opens = Math.max(0, Math.min(200, v[0] | 0)), secs = Math.max(0, Math.min(3600, v[1] | 0)), x = mine[p] = mine[p] || [0, 0];
+        x[0] += opens; x[1] += secs;
+      }
+      await env.LOCKS.put(key, JSON.stringify(all));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true });
+    }
+    if (req.method !== 'GET') return json({ error: 'GET or POST' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json');
+    if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    const out = {}; let cursor;
+    do {
+      const page = await env.LOCKS.list({ prefix: 'theatre:usage:', cursor });
+      for (const x of page.keys) out[x.name.slice('theatre:usage:'.length)] = await env.LOCKS.get(x.name, 'json');
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+    return json({ months: out });
+  }
   if (rest === 'progress') {      // the teacher: everyone's records
     if (req.method !== 'GET') return json({ error: 'GET only' }, 405);
     const st = await env.LOCKS.get('theatre:show', 'json');

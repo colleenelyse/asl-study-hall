@@ -152,6 +152,7 @@
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
       t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and students’ recordings') +
       t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +
+      t('#/teacher/usage', 'check', 'App use', 'Which pages people use most') +
       t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list') +
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
@@ -1206,6 +1207,36 @@
     };
   }
 
+  /* ---------- App use: anonymous counts of which pages get used, by kind of password (Colleen 2026-10-23: "see which portions are used
+     most and are worth considering building out"). Months are added up on the server; no names. ---------- */
+  T.teacherPages = T.teacherPages || {};
+  T.teacherPages.usage = function () {
+    T.setBar('App use', '#/teacher');
+    app.innerHTML = '<div class="card"><p class="muted">Loading…</p></div>';
+    var NAMES = {}; T.STUDENT_PAGES.forEach(function (x) { NAMES[x[0]] = x[1]; }); T.TEACH_PAGES.forEach(function (x) { NAMES['t-' + x[0]] = x[1].replace(/ \(.*\)$/, '') + ' (view only)'; });
+    Object.assign(NAMES, { home: 'Home page', who: 'Picking a student', settings: 'Settings', song: 'A song (playing it)', listen: 'Listening to a scene', unlock: 'Opening the show' });
+    var KINDS = [['parent', 'Parents'], ['helper', 'Peer helpers'], ['student', 'Students']];
+    Store.usage(T.proof).then(function (months) {
+      var ms = Object.keys(months).sort().reverse();
+      if (!ms.length) { app.innerHTML = '<div class="card"><h2>App use</h2><p class="muted">Nothing counted yet. Each page people open, and the minutes they spend on it, are added up here by month (no names).</p></div>'; return; }
+      var pick = T.ls('useMonth'); if (ms.indexOf(pick) < 0 && pick !== 'all') pick = ms[0];
+      var data = {};
+      (pick === 'all' ? ms : [pick]).forEach(function (m) { var M = months[m] || {}; Object.keys(M).forEach(function (k) { var d = data[k] = data[k] || {}; Object.keys(M[k]).forEach(function (p) { var x = d[p] = d[p] || [0, 0]; x[0] += M[k][p][0]; x[1] += M[k][p][1]; }); }); });
+      var label = function (m) { return new Date(m + '-15').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
+      var mins = function (s) { return s < 60 ? (s ? '<1 min' : '—') : Math.round(s / 60) + ' min'; };
+      app.innerHTML = '<div class="card"><div class="row"><h2 class="grow" style="margin:0">App use</h2><select id="um">' + ms.map(function (m) { return '<option value="' + m + '"' + (m === pick ? ' selected' : '') + '>' + label(m) + '</option>'; }).join('') + '<option value="all"' + (pick === 'all' ? ' selected' : '') + '>All months</option></select></div>' +
+        '<p class="muted small">How often each page was opened and how many minutes people spent on it (counted only while someone is using it), by kind of password. No names: just totals.</p></div>' +
+        KINDS.filter(function (k) { return data[k[0]]; }).map(function (k) {
+          var rows = Object.keys(data[k[0]]).map(function (p) { return { p: p, n: data[k[0]][p][0], s: data[k[0]][p][1] }; }).sort(function (a, b) { return b.s - a.s || b.n - a.n; });
+          var top = rows[0] ? rows[0].s || 1 : 1;
+          return '<div class="card"><h3>' + k[1] + '</h3><table class="tbl"><thead><tr><th>Page</th><th>Opened</th><th>Time</th><th style="width:35%"></th></tr></thead><tbody>' + rows.map(function (r) {
+            return '<tr><td>' + esc(NAMES[r.p] || r.p) + '</td><td>' + r.n + '×</td><td>' + mins(r.s) + '</td><td><div style="height:10px;border-radius:5px;background:var(--accent);width:' + Math.max(2, Math.round(r.s / top * 100)) + '%"></div></td></tr>';
+          }).join('') + '</tbody></table></div>';
+        }).join('');
+      document.getElementById('um').onchange = function () { T.ls('useMonth', this.value); T.teacherPages.usage(); };
+    }).catch(function (e) { app.innerHTML = '<div class="card"><p class="err">' + esc(e.message) + '</p></div>'; });
+  };
+
   /* ---------- every password, in full (Colleen 2026-10-23: "view a list of all passwords setup fully", and "add other passwords for access
      for other types of people like parents, peer helpers") ----------
      The passwords themselves are kept in T.show.vault, sealed with the teacher password: students' and parents' iPads carry it but cannot open it.
@@ -1224,7 +1255,7 @@
     helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
     student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
-  var WHO = { student: 'Picks their own picture (like a student; practice is saved)', parent: 'A parent: picks their student once (first names and last initials only; nothing is recorded)', helper: 'A helper: can switch between students (practice is saved for the student, marked “with a helper”)' };
+  var WHO = { student: 'Picks their own picture (like a student; practice is saved)', parent: 'A parent: picks their student once (first names and last initials only; practice is not saved to the student)', helper: 'A helper: can switch between students (practice is saved for the student, marked “with a helper”)' };
   function passSummary(p) {
     var pages = (p.pages || []).map(function (k) { var x = T.STUDENT_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1] : k; });
     var teach = (p.teach || []).map(function (k) { var x = T.TEACH_PAGES.find(function (y) { return y[0] === k; }); return x ? x[1].replace(/ \(.*\)$/, '') : k; });
