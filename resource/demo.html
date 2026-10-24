@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8"><link rel="icon" type="image/png" sizes="64x64" href="/img/logo-64.png"><link rel="icon" type="image/png" sizes="32x32" href="/img/logo-32.png"><link rel="apple-touch-icon" href="/img/logo-180.png">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=Andika:wght@400;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
@@ -6417,7 +6417,7 @@ function printClose(w) { try { if (w && !w.closed) w.close(); } catch (e) {} }
 function printShow(w, html, title) {
   if (!w || w.closed) { alert('Your browser blocked the report’s new tab. Allow pop-ups for this page (the icon at the right end of the address bar), then try again.'); return; }
   w.document.open();
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>body{margin:24px;font-family:Arial,sans-serif;color:#1d2433}@page{margin:0.5in}' +
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png"><style>body{margin:24px;font-family:Arial,sans-serif;color:#1d2433}@page{margin:0.5in}' +
     '.bar{position:sticky;top:0;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:14px}.bar button{font-size:14px;padding:6px 14px;margin-right:10px;cursor:pointer}' +
     '@media print{.bar{display:none}}</style></head><body><div class="bar"><button onclick="window.print()">🖨️ Print or save as PDF</button>In the print window, choose <b>Save as PDF</b> to keep a file. Close this tab when you’re done.</div>' + html + '</body></html>');
   w.document.close();
