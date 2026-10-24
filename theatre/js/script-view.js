@@ -65,14 +65,15 @@
       host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeProps(pg, +pg.dataset.n); });
       if (st.feel && T.Emotions) host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeFeel(pg, +pg.dataset.n, c); });
       var who = chars(), pct = function (v, d) { return (v / d * 100) + '%'; };
+      var roleColor = who.length && T.color ? T.color(who[0]) : null;      // the character's own color for spoken and sung lines alike (Colleen: Sharpay is pink)
       if (who.length) O.scenes.forEach(function (scene) {
         var src = T.scriptScene(scene); if (!src) return;
         src.items.forEach(function (it) {
-          if (it.type === 'line' && T.isMine(it.who, scene, who)) T.Pages.wordBoxes(it).forEach(function (b) { put(b, 'hl line mine'); });
-          if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.who && T.isMine(l.who, scene, who, mo)) T.Pages.lyricBoxes(l).forEach(function (b) { put(b, 'hl song'); }); }); }
+          if (it.type === 'line' && T.isMine(it.who, scene, who)) T.Pages.wordBoxes(it).forEach(function (b) { put(b, 'hl line mine', roleColor); });
+          if (it.type === 'song') { var mo = T.songMomentFor(scene, it.num); (it.lyrics || []).forEach(function (l) { if (l.who && T.isMine(l.who, scene, who, mo)) T.Pages.lyricBoxes(l).forEach(function (b) { put(b, 'hl song', roleColor); }); }); }
         });
       });
-      function put(b, cls) { var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'), sz = T.Pages.size(b.n); if (pg) pg.insertAdjacentHTML('beforeend', '<div class="' + cls + '" style="left:' + pct(b.x - 2, sz.w) + ';top:' + pct(b.y - 1, sz.h) + ';width:' + pct(b.w + 4, sz.w) + ';height:' + pct(b.h + 2, sz.h) + '"></div>'); }
+      function put(b, cls, col) { var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'), sz = T.Pages.size(b.n), paint = col && T.pastel ? ';background:' + T.pastel(col) + ';box-shadow:inset 0 0 0 1.5px ' + T.deepShade(col) : ''; if (pg) pg.insertAdjacentHTML('beforeend', '<div class="' + cls + '" style="left:' + pct(b.x - 2, sz.w) + ';top:' + pct(b.y - 1, sz.h) + ';width:' + pct(b.w + 4, sz.w) + ';height:' + pct(b.h + 2, sz.h) + paint + '"></div>'); }
       var pins = [];
       if (o.teacher || st.dir) dirNotes().forEach(function (n) { pins.push([n, true]); });
       if (!o.teacher && st.mine) myNotes().forEach(function (n) { pins.push([n, false]); });

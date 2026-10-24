@@ -140,6 +140,7 @@
     var pages = scenePages(src);
     host.innerHTML = '<p class="muted center" id="pgload">Loading the script pages…</p>' + pages.map(function (n) { var sz = T.Pages.size(n); return '<div class="pdfpage" data-n="' + n + '" style="aspect-ratio:' + sz.w + '/' + sz.h + '"></div>'; }).join('');
     var pct = function (b, sz) { return 'left:' + (b.x / sz.w * 100) + '%;top:' + (b.y / sz.h * 100) + '%;width:' + (b.w / sz.w * 100) + '%;height:' + (b.h / sz.h * 100) + '%'; };
+    var mc = T.me && (T.me.chars || []).length && T.color ? T.color(T.me.chars[0]) : null, mineVars = mc ? ';--mcf:' + T.pastel(mc) + ';--mcd:' + T.deepShade(mc) : '';      // my lines in my character's color
     // highlight boxes first, so they work while the pages load
     items.forEach(function (x) {
       var it = x.it; if (it.type !== 'line' && it.type !== 'song' && !(it.type === 'dir' && o.dirs)) return;
@@ -148,7 +149,7 @@
       boxes.forEach(function (b) {
         var pg = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!pg) return;
         var cv = !!cover, txt = cv && first ? cover : ''; first = false;
-        pg.insertAdjacentHTML('beforeend', '<div class="' + cls + (cv ? ' cover' : '') + '" data-i="' + x.i + '" style="' + pct(b, T.Pages.size(b.n)) + '">' + (txt ? '<span>' + txt + '</span>' : '') + '</div>');
+        pg.insertAdjacentHTML('beforeend', '<div class="' + cls + (cv ? ' cover' : '') + '" data-i="' + x.i + '" style="' + pct(b, T.Pages.size(b.n)) + mineVars + '">' + (txt ? '<span>' + txt + '</span>' : '') + '</div>');
       });
     });
     return T.Pages.doc().then(function (doc) {
@@ -280,10 +281,11 @@
   /* ---------- My script (print) ---------- */
   var COLORS = { green: '#5fd068', yellow: '#ffe14d', pink: '#ff8fc7', blue: '#7cc4ff', orange: '#ffb35c', purple: '#c7a0ff' };
   function printPage(who) {      // who: { name, chars, back }
-    var pr = Object.assign({ lines: 'green', lyrics: 'blue', band: 'purple', which: 'mine', feel: 'yes' }, T.ls('printPrefs') || {});
+    var pr = Object.assign({ lines: 'role', lyrics: 'role', band: 'role', which: 'mine', feel: 'yes' }, T.ls('printPrefs') || {});      // 'role' = the character's own color (Colleen)
+    var roleC = who.chars.length && T.color ? T.pastel(T.color(who.chars[0])) : '#bfe8c8', colors = Object.assign({ role: roleC }, COLORS);
     T.setBar('My script', who.back);
     if (!T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not ready yet. Your teacher saves them when importing the script.</p></div>'; return; }
-    var sw = function (k, label) { return '<div class="switch" style="flex-wrap:wrap"><span>' + label + '</span><div class="row">' + Object.keys(COLORS).map(function (c) { return '<button type="button" class="swatch" data-pk="' + k + '" data-c="' + c + '" aria-pressed="' + (pr[k] === c) + '" aria-label="' + c + '" title="' + c + '" style="--sw:' + COLORS[c] + '"></button>'; }).join('') + '</div></div>'; };
+    var sw = function (k, label) { return '<div class="switch" style="flex-wrap:wrap"><span>' + label + '</span><div class="row">' + Object.keys(colors).map(function (c) { return '<button type="button" class="swatch" data-pk="' + k + '" data-c="' + c + '" aria-pressed="' + (pr[k] === c) + '" aria-label="' + (c === 'role' ? 'my character’s color' : c) + '" title="' + (c === 'role' ? 'my character’s color' : c) + '" style="--sw:' + colors[c] + '"></button>'; }).join('') + '</div></div>'; };
     app.innerHTML = '<div class="card noprint"><h2>' + sym('🖍️') + 'Highlighted script: ' + esc(who.name) + '</h2>' + (who.chars.length ? '<p>' + who.chars.map(T.chip).join('') + '</p>' : '') +
       '<div class="switch"><span>Pages</span><div class="seg" data-pk="which"><button type="button" data-v="mine" aria-pressed="' + (pr.which === 'mine') + '">Only the scenes I am in</button><button type="button" data-v="all" aria-pressed="' + (pr.which === 'all') + '">The whole script</button></div></div>' +
       sw('lines', 'My lines') + sw('lyrics', 'Lyrics I sing') + sw('band', 'Edge band on my scenes and songs') +
@@ -293,6 +295,7 @@
     document.getElementById('mk').onclick = function () { make(who, pr); };
   }
   function make(who, pr) {
+    var colors = Object.assign({ role: who.chars.length && T.color ? T.pastel(T.color(who.chars[0])) : '#bfe8c8' }, COLORS);
     var out = document.getElementById('out'), btn = document.getElementById('mk'); btn.disabled = true;
     var sc = T.show.script, chars = who.chars, mineLines = [], mineLyr = [], bandPages = {};
     T.O().scenes.forEach(function (scene) {
@@ -316,9 +319,9 @@
             var strip0 = feels.length ? (T.Emotions.strips[n] = null, T.Emotions.stripOf(n, r.canvas)) : null;      // find the gray strip before anything is drawn on the page
             ctx.globalCompositeOperation = 'multiply';
             var fill = function (list, color) { ctx.fillStyle = color; list.forEach(function (b) { if (b.n === n) ctx.fillRect(b.x * k - 2, b.y * k - 1, b.w * k + 4, b.h * k + 2); }); };
-            fill(mineLines, COLORS[pr.lines]); fill(mineLyr, COLORS[pr.lyrics]);
+            fill(mineLines, colors[pr.lines]); fill(mineLyr, colors[pr.lyrics]);
             ctx.globalCompositeOperation = 'source-over';
-            if (bandPages[n]) { ctx.fillStyle = COLORS[pr.band]; ctx.fillRect(r.canvas.width - 22 * k / 1.6, 0, 22 * k / 1.6, r.canvas.height); }
+            if (bandPages[n]) { ctx.fillStyle = colors[pr.band]; ctx.fillRect(r.canvas.width - 22 * k / 1.6, 0, 22 * k / 1.6, r.canvas.height); }
             var page = r.canvas;
             if (strip0) {      // feeling icons inside the page's gray strip, each with who it is for
               T.Emotions.layout(n, strip0, feels).forEach(function (p) {
