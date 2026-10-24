@@ -141,7 +141,7 @@
     if (sc) sc.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') nLines++; }); });
     var trk = T.show.tracks || {}, nTr = O.songs.filter(function (s) { return trk[s.id] && trk[s.id].performance; }).length;
     var t = function (href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; };
-    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p><div class="tiles">' +
+    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + '<div class="tiles">' +
       t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
       (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
       (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
@@ -151,6 +151,8 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +
+      t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>') +
+      t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough') +
       t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted') +
       t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
       t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings') +
@@ -160,6 +162,7 @@
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
+    if (T.portalWaiting) T.portalWaiting().then(function (n) { var el = document.getElementById('famwait'); if (n && el) el.textContent = n + ' new family form' + (n === 1 ? '' : 's') + ' waiting'; });
   }
 
   /* ---------- Script: import and review ---------- */
@@ -554,7 +557,7 @@
       var mine = O.costumes.find(function (x) { return x.id === d.id; });
       return keep.indexOf(sig(d)) < 0 && (!mine || sig(mine) !== sig(d));
     }) : [];
-    app.innerHTML = '<div class="row"><h2 class="grow">Costumes</h2><button class="btn primary" id="add">Add a costume</button></div>' +
+    app.innerHTML = '<div class="row"><h2 class="grow">Costumes</h2><button class="btn primary" id="add">Add a costume</button></div>' + (T.sizeReminder ? T.sizeReminder('costumes') : '') +
       (news.length ? '<div class="card"><h3>New starter looks</h3><p class="muted small">These were added or changed in the show\u2019s starting costume list after you set up your show. Pick the ones you want; your own changes stay unless you choose \u201cUse this.\u201d</p>' + news.map(function (d) {
         var mine = O.costumes.find(function (x) { return x.id === d.id; });
         return '<div class="switch" style="flex-wrap:wrap"><span class="grow">' + T.chip(d.who) + ' <b>' + esc(d.name) + '</b>: ' + esc(d.items.join(', ')) +
