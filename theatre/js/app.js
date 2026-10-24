@@ -850,13 +850,16 @@
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
-      (canSheet ? '<div class="row noprint" style="margin:0 0 8px"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ', the sung line lit up' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label></div>' +
+      (canSheet ? '<div class="row noprint" style="margin:0 0 8px;flex-wrap:wrap"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ', the sung line lit up' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label>' +
+        (canFollow && T.me && T.me.chars && T.me.chars.length ? '<label class="switch" style="flex:1"><span>' + sym('⭐') + 'Only my lines light up</span><input type="checkbox" id="mineonly"' + (st.mineOnly ? ' checked' : '') + '></label>' : '') + '</div>' +
         '<div id="follow" class="pages" style="margin-bottom:14px"' + (st.follow ? '' : ' hidden') + '></div>' +
         (canFollow ? '' : '<p class="muted small">' + sym('⚪') + 'The sung line lights up once your teacher finds this song’s lyrics timing.</p>') :
         item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + 'The real sheet music shows here once your teacher imports the script PDF.</p>' : '') +
       '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     // the sheet music shows right away, with or without a track
-    var fh0 = document.getElementById('follow'), ss = document.getElementById('showsheet');
+    var fh0 = document.getElementById('follow'), ss = document.getElementById('showsheet'), mo1 = document.getElementById('mineonly');
+    if (fh0) fh0.dataset.mine = st.mineOnly ? '1' : '0';
+    if (mo1) mo1.onchange = function () { st.mineOnly = mo1.checked; ls('songOpts', st); fh0.dataset.mine = st.mineOnly ? '1' : '0'; fh0._at = null; };
     if (fh0 && st.follow) T.Follow.mount(fh0, song.id);
     if (ss) ss.onchange = function () { st.follow = ss.checked; ls('songOpts', st); fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id); };
     if (!(has.perf || has.guide)) return;

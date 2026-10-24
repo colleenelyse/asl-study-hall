@@ -389,3 +389,6 @@ Sections that start together (Colleen: in a bracket the JOCKS' "Woh!" and TROY's
 section starting at the same spot (|dx| < 14) in another staff of the same bracket as one a few sections before it: `lyric.sync` = how far
 back its partner is (HSM JR: 29 pairs). Lyrics timing gives it the partner's start after Find, taps, nudges and before Save (`applySync`), Now
 skips it, and the list shows "⇄ with N"; "Find lyrics timing for every song" pairs them too. Reader VERSION 2026-10-23.3.
+"Only my lines light up" (Colleen 2026-10-23): a switch under the sheet music on a student's song page (`st.mineOnly`, `#follow` data-mine);
+T.Follow.update then lights only lines where `T.isMine(who, scene, T.me.chars, the song's moment)`: their character named (alone or with
+others), ALL when they are on stage for the song, a group (JOCKS) only for its members.

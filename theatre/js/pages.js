@@ -140,8 +140,14 @@
       var lt = T.show.lyricTimes && T.show.lyricTimes[songId], it = songItem(songId); if (!lt || !it) return;
       // every line being sung is lit: from LEAD before its first word until its singing is done (Colleen: a line stays lit until it is sung,
       // even when the next one lights up; off during music with no words)
+      // "Only my lines" (Colleen 2026-10-23): the student's own lines only; ALL counts when they are on stage for the song, a group only for its members
+      var mine = null;
+      if (host.dataset.mine === '1' && T.me && T.me.chars && T.me.chars.length) {
+        var so = T.songById(songId), sc = so && T.sceneById(so.scene), mo = sc && T.songMomentFor(sc, it.num);
+        mine = function (l) { return !!(l.who && sc && T.isMine(l.who, sc, T.me.chars, mo)); };
+      }
       var on = [];
-      lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x)) on.push(k); });
+      lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x) && (!mine || mine(it.lyrics[k]))) on.push(k); });
       var key = on.join(','); if (host._at === key) return;
       host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
       if (!on.length) { host._at = null; return; }
