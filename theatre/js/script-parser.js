@@ -156,6 +156,7 @@
       sysBuf = []; sysKey = null;
     }
     function addLyric(e, loc, k) {
+      e._pg = curPage ? curPage.num : null; if (loc) e._sy = loc.sys.top;      // the staff row it belongs to (reading order, see readingOrder)
       if (!loc || !loc.many) { flushSys(); lastSongItem.lyrics.push(e); return; }
       if (sysKey !== loc.key || (sysBuf.length && sysBuf[0].song !== lastSongItem)) flushSys();
       sysKey = loc.key; sysBuf.push({ e: e, k: sysBuf.length + k, song: lastSongItem });
@@ -295,7 +296,7 @@
             continue;
           }
           var sw = smallWords(line), swText = sw.map(function (p) { return p.str.trim(); }).join(' ');
-          var tl = swText.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:\s*$/);      // "I don't think so!" and the next singer's label on one row
+          var tl = swText.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // "I don't think so!" and the next singer's label on one row
           if (tl && block && block.type === 'line' && block.overMusic && block._n === page.num && line.y - block._y < 30) {
             swText = tl[1]; var lab = { name: tl[2].replace(/[()]/g, '').trim(), x: sw[sw.length - 1].x, plus: false }, under0 = staffAt(line.y, false);
             if (lastSongItem) splitNames(lab.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
@@ -342,6 +343,12 @@
           }
           var said = t.match(/^([A-Z][A-Z .’',&]+?):\s+(\S.*)$/);       // "TROY: words" spoken over music
           if (said) said[2] = tidy(said[2]) || said[2];
+          var tl2 = said && said[2].match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // "ZEKE: … pandowdy. CLIQUES:" (the next singers' label on the same row)
+          if (tl2) {
+            said[2] = tl2[1]; var lab2 = { name: tl2[2].replace(/[()]/g, '').trim(), x: line.x1 - tl2[2].length * 6, plus: false }, u2 = staffAt(line.y, false);
+            if (lastSongItem) splitNames(lab2.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+            if (u2) labsByStaff[u2.staffKey] = (labsByStaff[u2.staffKey] || []).concat([lab2]); else singerLabs = singerLabs.concat([lab2]);
+          }
           if (said) {
             speaker = said[1].trim(); speakers[speaker] = (speakers[speaker] || 0) + 1;
             block = emit({ type: 'line', who: speaker, text: said[2], overMusic: true });
@@ -352,8 +359,14 @@
             continue;
           }
           if (block && block.type === 'line' && block.overMusic && !block._await && block._n === page.num && line.y - block._y < 30 && !lyricRow(lines, li) && !line.glyphs) {      // the next line of a spoken line, right under it
-            block.text = tidy(block.text + ' ' + t); addBox(block); block._y = line.y;
-            if (spokenLyric) { spokenLyric.text += ' ' + t; spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([box]); }
+            var t3 = t, tl3 = t.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // the next singers' label at the end of the row
+            if (tl3) {
+              t3 = tl3[1]; var lab3 = { name: tl3[2].replace(/[()]/g, '').trim(), x: line.x1 - tl3[2].length * 6, plus: false }, u3 = staffAt(line.y, false);
+              if (lastSongItem) splitNames(lab3.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+              if (u3) labsByStaff[u3.staffKey] = (labsByStaff[u3.staffKey] || []).concat([lab3]); else singerLabs = singerLabs.concat([lab3]);
+            }
+            block.text = tidy(block.text + ' ' + t3); addBox(block); block._y = line.y;
+            if (spokenLyric) { spokenLyric.text = tidy(spokenLyric.text + ' ' + t3); spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([box]); }
             continue;
           }
           continue;                                                          // anything else on a music page: skip
@@ -422,7 +435,7 @@
     }
 
     scenes.forEach(function (s) {
-      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') { it.lyrics = poetic(it.lyrics); pairStarts(it.lyrics, pages); } });
+      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') { it.lyrics = poetic(readingOrder(it.lyrics, pages)); pairStarts(it.lyrics, pages); } });
     });
     return { scenes: scenes, speakers: speakers, pages: pages.map(function (pg) { return { n: pg.num, w: pg.width, h: pg.height }; }) };
   }
@@ -485,6 +498,30 @@
      phrase meant to complete a rhyme scheme should be the last word in a line"): the words in singing order, a line ending after a word with
      ending punctuation (. ! ? ; :), after a comma or dash once the line has 5 syllables, when the singer changes, or after 16 syllables. A line
      can run from one staff onto the next: it then has several boxes (lyric.boxes; lyric.box is the first), and each syllable knows its box (b). */
+  /* reading order (Colleen 2026-10-23: "always start at the far left of the line and move right, then drop to the left of the next line"): a staff
+     row with its lyrics, and words spoken over it printed just above it (ZEKE: … over the repeat bars), read left to right, row by row, page by page */
+  function readingOrder(list, pages) {
+    var byNum = {}; (pages || []).forEach(function (p) { byNum[p.num] = p; });
+    var first = function (l) { var bs = l.boxes || (l.box ? [l.box] : []); return bs[0] || null; };
+    var rowAbove = function (l) {      // the staff row whose top is just below these spoken words
+      var bs = l.boxes || (l.box ? [l.box] : []), last = bs[bs.length - 1]; if (!last) return null;
+      var bottom = last.y + last.h, pgo = byNum[last.n], best = null;
+      ((pgo && pgo.systems) || []).forEach(function (sys) { if (sys.top > bottom - 4 && sys.top - bottom < 50 && (best == null || sys.top < best)) best = sys.top; });
+      return best == null ? null : { pg: last.n, sy: best };
+    };
+    var out = list.slice(), moves = [];
+    list.forEach(function (l) { if (l.spoken && l._sy == null) { var r = rowAbove(l); if (r) moves.push({ l: l, pg: r.pg, sy: r.sy }); } });
+    moves.forEach(function (m) {
+      var row = out.filter(function (o) { return o !== m.l && !o.spoken && o._pg === m.pg && o._sy != null && Math.abs(o._sy - m.sy) < 2; });
+      if (!row.length) return;      // nothing sung on that row: it stays where it was
+      var mx = first(m.l).x, at = row.find(function (o) { var b = first(o); return b && b.x > mx; });
+      out.splice(out.indexOf(m.l), 1);
+      var k = at ? out.indexOf(at) : out.indexOf(row[row.length - 1]) + 1;
+      out.splice(k, 0, m.l);
+    });
+    out.forEach(function (l) { delete l._pg; delete l._sy; });
+    return out;
+  }
   function poetic(list) {
     var out = [], cur = null;
     var close = function () { if (cur) { var e = finishLine(cur); if (e) out.push(e); } cur = null; };
@@ -565,7 +602,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-23.6';
+  var VERSION = '2026-10-23.7';
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
