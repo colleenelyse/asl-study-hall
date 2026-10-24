@@ -28,11 +28,56 @@
     var out = []; for (var n = lo; n <= hi && hi; n++) out.push(n); return out;
   }
   T.Pages.scenePages = scenePages;
-  T.Pages.lyricBoxes = function (l) { return l.boxes || (l.box ? [l.box] : []); };
+  /* a line's rows as the script reader stored them (split, join and the piano go by these: each syllable's b is an index into them) */
+  T.Pages.rawBoxes = function (l) { return l.boxes || (l.box ? [l.box] : []); };
+  /* a line's rows as they light up (Colleen: "keep it only on words"): each row trimmed to the words in it, a row with no words left off,
+     and the teacher's own ends from the Sections page (l.cut[k] = { x0, x1 } in PDF points, or 0 = this piece hidden). Spoken lines
+     (no syllables) keep their rows. The same objects come back until the line changes. */
+  var trimmed = new WeakMap();
+  T.Pages.lyricBoxes = function (l) {
+    var raw = T.Pages.rawBoxes(l), syl = l.syl || [], key = JSON.stringify(l.cut || null), c = trimmed.get(l);
+    if (c && c.raw === raw && c.syl === syl && c.key === key && c.n === syl.length) return c.out;
+    var out = [];
+    raw.forEach(function (b, k) {
+      var cut = l.cut && l.cut[k];
+      if (cut === 0) return;
+      var x0 = b.x, x1 = b.x + b.w;
+      if (syl.length) {
+        var mine = syl.filter(function (y) { return (y.b || 0) === k && y.x != null; });
+        if (!mine.length && !cut) return;
+        if (mine.length) { x0 = Math.min.apply(null, mine.map(function (y) { return y.x; })) - 1; x1 = Math.max.apply(null, mine.map(function (y) { return y.x + y.w; })) + 1; }
+      }
+      if (cut) { x0 = cut.x0; x1 = cut.x1; }
+      out.push({ n: b.n, x: x0, y: b.y, w: Math.max(4, x1 - x0), h: b.h, k: k });
+    });
+    trimmed.set(l, { raw: raw, syl: syl, key: key, n: syl.length, out: out });
+    return out;
+  };
   /* one shape per line (Colleen 2026-10-23: "lines should be encased by one polygon that outlines the whole line… shaped to the space the
      line occupies on the page"): a line's printed rows on a page, joined into one outline like a text selection. Each row's band is kept to
      its own printed row, so neighboring lines never overlap. Returns the shapes (SVG over each page), in order. */
-  var shapeN = 0;
+  var shapeN = 0, edges = new WeakMap();
+  /* where each row of a section may reach on the left and right: halfway to the next section on the same printed row (Colleen: the end of one
+     line's highlight ran over the first word of the next, making a dark overlap), so neighbors meet and never overlap */
+  T.Pages.setNeighbors = function (lyrics) {
+    var all = []; lyrics.forEach(function (l) { T.Pages.lyricBoxes(l).forEach(function (b) { all.push(b); }); });
+    all.forEach(function (b) {
+      var x0 = b.x - 3, x1 = b.x + b.w + 3, t = b.y + 0.5, bt = b.y + b.h - 0.5;
+      all.forEach(function (o) {
+        if (o === b || o.n !== b.n) return;
+        if (Math.abs(o.y - b.y) > 2) {      // rows stacked tightly (spoken lines): meet halfway between them too
+          if (o.x < b.x + b.w && b.x < o.x + o.w) {
+            if (o.y < b.y && o.y + o.h > b.y) t = Math.max(t, (o.y + o.h + b.y) / 2 + 0.3);
+            if (o.y > b.y && b.y + b.h > o.y) bt = Math.min(bt, (b.y + b.h + o.y) / 2 - 0.3);
+          }
+          return;
+        }
+        if (o.x + o.w / 2 < b.x + b.w / 2) x0 = Math.max(x0, (o.x + o.w + b.x) / 2 + 0.4);      // a neighbor to the left
+        else x1 = Math.min(x1, (b.x + b.w + o.x) / 2 - 0.4);                                     // a neighbor to the right
+      });
+      edges.set(b, { x0: x0, x1: Math.max(x1, x0 + 2), t: t, b: bt });
+    });
+  };
   T.Pages.shapes = function (host, boxes, o) {
     o = o || {};
     var out = [], byPage = {};
@@ -45,7 +90,7 @@
       rows.forEach(function (r) { var p = cur[cur.length - 1]; if (p && r.y - (p.y + p.h) > p.h * 0.9) { runs.push(cur); cur = []; } cur.push(r); });
       if (cur.length) runs.push(cur);
       runs.forEach(function (run) {
-        var pad = 3, band = run.map(function (r) { return { x0: r.x - pad, x1: r.x + r.w + pad, t: r.y + 0.5, b: r.y + r.h - 0.5 }; });
+        var band = run.map(function (r) { var e = edges.get(r) || { x0: r.x - 3, x1: r.x + r.w + 3, t: r.y + 0.5, b: r.y + r.h - 0.5 }; return { x0: e.x0, x1: e.x1, t: e.t, b: e.b }; });
         for (var i = 1; i < band.length; i++) { var m = (band[i - 1].b + band[i].t) / 2; band[i - 1].b = m; band[i].t = m; }      // rows meet, no seam
         var pts = [[band[0].x0, band[0].t], [band[0].x1, band[0].t]];
         band.forEach(function (r, i) { var nx = band[i + 1]; pts.push([r.x1, r.b]); if (nx) pts.push([nx.x1, r.b]); });
@@ -186,6 +231,7 @@
       host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
       if (!on.length) { host._at = null; return; }
       var pc = function (v, d) { return (v / d * 100) + '%'; }, newest = null, before = (host._at || '').split(',');
+      if (host._nb !== it) { T.Pages.setNeighbors(it.lyrics); host._nb = it; }
       on.forEach(function (k) {
         var line = it.lyrics[k], cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, q) { return c + ' ' + (q * 100 / cs.length) + '% ' + ((q + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
         T.Pages.shapes(host, T.Pages.lyricBoxes(line), { cls: 'follow-line' + (line.spoken ? ' spoken' : ''), colors: cs }).forEach(function (sh, si) {      // one outline per line, on every staff it runs onto

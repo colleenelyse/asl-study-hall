@@ -421,3 +421,8 @@ a page as one SVG path (rows joined like a text selection, each row's band kept 
 stripes via a gradient). Used for the lit-up lines (song pages, practice) and the Sections view (numbers are separate `.sec-num` badges).
 **Re-read from any teacher page**: opening any Teacher mode page with an out-of-date reading goes to the home page and re-reads first
 (`needsReread`); Script › "Re-read the saved script now" runs it by hand (`rereadScript(true)`).
+
+## 2026-10-23: highlights fit the words; drag the ends; Fix starts fresh
+- pages.js: `T.Pages.lyricBoxes(l)` now gives the rows as they light up: each row trimmed to its syllables, rows with no words left off, and the teacher's own ends from `l.cut[k]` ({x0,x1} PDF points, or 0 = hidden). `T.Pages.rawBoxes(l)` is the stored rows (split/join/piano use these; syllable `b` indexes them). `T.Pages.setNeighbors(lyrics)` makes sections on the same printed row (and tightly stacked rows) meet halfway, so no dark overlap.
+- teacher.js Sections: the selected section shows round end handles (drag) and ✕ per piece; "Fit to the words again" clears l.cut. setLine (split/join) drops l.cut.
+- teacher.js Timing: 🎯 Fix clears the line's time (startFix/endFix, fixOld keeps its syllable timing; Done fixing or Save puts back an untapped line); ✕ Clear per line (and in the Sections bar); "Clear all timing" asks first. Undo ends a fix.

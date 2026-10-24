@@ -831,6 +831,7 @@
     var snapshot = function () { history.push({ lines: JSON.parse(JSON.stringify(lines)), times: JSON.parse(JSON.stringify(times)), edited: edited }); if (history.length > 60) history.shift(); };
     var undo = function () {
       var h = history.pop(); if (!h) return;
+      fixAt = null; fixOld = null;      // Undo ends a fix; the line gets back the time it had
       lines.splice.apply(lines, [0, lines.length].concat(h.lines)); times = h.times; edited = h.edited || true;
       T.toast('Undone. Press Save to keep it.');
       if (view === 'sections') { overlay(); secBar(); } else draw();
@@ -865,12 +866,12 @@
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Play from 3 seconds before, then tap Now">🎯 Fix</button></span></div>';
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before, then tap Now">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
           '<div class="lt-next-words" id="ltnext">' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? '🎯 Fixing · line ' + (nxt + 1) + ' (keep tapping to fix the lines after it)' : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
-          '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
+          '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var $ = function (id) { return document.getElementById(id); };
       wireTabs(); lastRow = -1; follow(true); wireSlider();
@@ -878,9 +879,10 @@
       $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
       $('now').onclick = tap; $('find').onclick = find;
-      $('clr').onclick = function () { snapshot(); times = lines.map(function () { return null; }); draw(); };
+      $('clr').onclick = function () { if (!confirm('Clear the timing of every line in this song? (↶ Undo brings it back.)')) return; snapshot(); fixAt = null; fixOld = null; times = lines.map(function () { return null; }); draw(); };
       $('sv').onclick = function () {
         if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
+        if (fixAt != null) endFix();
         applySync();
         var base = function (v) { return kind === 'performance' ? v : v - off; };
         if (!times.some(Boolean)) { delete L[songId]; return save('Cleared'); }
@@ -890,7 +892,8 @@
       };
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { var q = b.dataset.nudge.split('|'), x = times[+q[0]]; if (!x) return; snapshot(); var d = +q[1]; x.t += d; x.e += d; x.s = x.s.map(function (v) { return v + d; }); applySync(); draw(); }; });
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
-      if ($('fixdone')) $('fixdone').onclick = function () { fixAt = null; audio.pause(); draw(); };
+      app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
+      if ($('fixdone')) $('fixdone').onclick = function () { endFix(); audio.pause(); draw(); };
       app.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { pickSinger(+b.dataset.who); }; });
       app.querySelectorAll('[data-test]').forEach(function (b) { b.onclick = function () { var x = times[+b.dataset.test]; (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); var pb = document.getElementById('pl'); if (pb) pb.innerHTML = icon('pause'); }); }; });
     }
@@ -910,9 +913,10 @@
       T.Follow.mount(host, songId); overlay(); secBar();
       host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (b) { selSec = +b.dataset.sec; overlay(); secBar(); } });
     }
-    function overlay() {
+    function overlay(dragging) {
       var host = document.getElementById('secpages'); if (!host) return;
-      host.querySelectorAll('.sec-box, .sec-num').forEach(function (e) { e.remove(); });
+      host.querySelectorAll(dragging ? '.sec-box, .sec-num' : '.sec-box, .sec-num, .sec-h, .sec-x').forEach(function (e) { e.remove(); });
+      T.Pages.setNeighbors(lines);      // neighbors on a row meet halfway
       var pc = function (v, d) { return (v / d * 100) + '%'; };
       lines.forEach(function (l, i) {
         var cs = T.lyricColors(l.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
@@ -923,14 +927,51 @@
           sh.page.appendChild(num);
         });
       });
+      if (selSec != null && lines[selSec] && !dragging) handles(host, selSec);
+    }
+    /* the selected section's ends (Colleen: "i don't have the ability to shorten this highlight to keep it only on words"): drag the round
+       handle at either end of a piece, or ✕ to take a piece away (a stray box with no words). Kept in l.cut, so a re-import keeps it. */
+    function handles(host, i) {
+      host.querySelectorAll('.sec-h, .sec-x').forEach(function (e) { e.remove(); });
+      var l = lines[i], shown = T.Pages.lyricBoxes(l);
+      shown.forEach(function (b) {
+        var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
+        var sz = T.Pages.size(b.n), pc = function (v, d) { return (v / d * 100) + '%'; }, mid = b.y + b.h / 2;
+        ['x0', 'x1'].forEach(function (side) {
+          var h = document.createElement('span'); h.className = 'sec-h'; h.title = 'Drag to move this end';
+          h.style.cssText = 'left:' + pc(side === 'x0' ? b.x : b.x + b.w, sz.w) + ';top:' + pc(mid, sz.h);
+          h.addEventListener('pointerdown', function (e) {
+            e.preventDefault(); e.stopPropagation(); snapshot(); h.setPointerCapture(e.pointerId);
+            var cut = l.cut = l.cut || {}, raf = 0;
+            var move = function (ev) {
+              var r = page.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * sz.w;
+              var c = cut[b.k] || { x0: b.x, x1: b.x + b.w };
+              c = side === 'x0' ? { x0: Math.min(x, c.x1 - 4), x1: c.x1 } : { x0: c.x0, x1: Math.max(x, c.x0 + 4) };
+              cut[b.k] = { x0: +c.x0.toFixed(1), x1: +c.x1.toFixed(1) };
+              h.style.left = pc(cut[b.k][side], sz.w);
+              if (!raf) raf = requestAnimationFrame(function () { raf = 0; overlay(true); });
+            };
+            var up = function () { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); edited = true; overlay(); secBar(); };
+            h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+          });
+          page.appendChild(h);
+        });
+        if (shown.length > 1) {
+          var x = document.createElement('button'); x.type = 'button'; x.className = 'sec-x'; x.textContent = '✕'; x.title = 'Take this piece away';
+          x.style.cssText = 'left:' + pc(b.x + b.w, sz.w) + ';top:' + pc(b.y, sz.h);
+          x.onclick = function (e) { e.stopPropagation(); snapshot(); (l.cut = l.cut || {})[b.k] = 0; edited = true; overlay(); secBar(); };
+          page.appendChild(x);
+        }
+      });
     }
     function secBar() {
       var bar = document.getElementById('secbar'); if (!bar) return;
       var i = selSec, l = i != null ? lines[i] : null, x = i != null ? times[i] : null, toks = l ? (l.syl || []).map(function (y) { return y.t; }) : [];
       bar.innerHTML = slider() + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
-          '<span class="grow"></span><button class="btn small" id="snm">−</button><b style="min-width:62px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button></div>' +
+          '<span class="grow"></span><button class="btn small" id="snm">−</button><b style="min-width:62px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
+        '<p class="muted small" style="margin:4px 0">Drag the round handles at the ends of the highlight to shorten or stretch it' + (T.Pages.lyricBoxes(l).length > 1 ? '; ✕ takes a piece away' : '') + '.' + (l.cut ? ' <button class="btn small quiet" id="sfit">Fit to the words again</button>' : '') + '</p>' +
         '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button><span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
@@ -939,10 +980,12 @@
       if ($('pl')) $('pl').onclick = playPause;
       if (!l) return;
       $('sdone').onclick = function () { selSec = null; overlay(); secBar(); };
+      if ($('sfit')) $('sfit').onclick = function () { snapshot(); delete l.cut; edited = true; overlay(); secBar(); };
       $('swho').onclick = function () { pickSinger(i, function () { overlay(); secBar(); }); };
       $('snm').onclick = function () { nudge(i, -0.2); }; $('snp').onclick = function () { nudge(i, 0.2); };
       $('stest').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); }); };
       $('sfix').onclick = function () { view = 'timing'; fixLine(i); };
+      $('sclr').onclick = function () { clearLine(i); overlay(); secBar(); };
       $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
       $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
       $('sdel').onclick = function () { delSec(i); selSec = null; overlay(); secBar(); T.toast('Section deleted. ↶ Undo brings it back; Save keeps it.'); };
@@ -991,12 +1034,12 @@
     }
     function setLine(l, syl, boxesOf) {
       var bx = boxesFor(syl, boxesOf);
-      l.syl = syl; l.box = bx[0]; if (bx.length > 1) l.boxes = bx; else delete l.boxes;
+      l.syl = syl; l.box = bx[0]; if (bx.length > 1) l.boxes = bx; else delete l.boxes; delete l.cut;
       l.text = ScriptParser.cleanLyric(syl.map(function (y) { return y.t; }).join(' '));
     }
     function splitSec(i, k) {
       snapshot();
-      var l = lines[i], old = T.Pages.lyricBoxes(l), of = function (y) { return old[y.b || 0]; };
+      var l = lines[i], old = T.Pages.rawBoxes(l), of = function (y) { return old[y.b || 0]; };
       var a = l.syl.slice(0, k).map(function (y) { return Object.assign({}, y); }), b = l.syl.slice(k).map(function (y) { return Object.assign({}, y); });
       var bOf = b.map(of), aOf = a.map(of);
       var n2 = { who: l.who, page: l.page };
@@ -1014,7 +1057,7 @@
     function joinSec(i) {
       var a = lines[i], b = lines[i + 1]; if (!a || !b) return;
       snapshot();
-      var ab = T.Pages.lyricBoxes(a), bb = T.Pages.lyricBoxes(b);
+      var ab = T.Pages.rawBoxes(a), bb = T.Pages.rawBoxes(b);
       var syl = a.syl.map(function (y) { return Object.assign({}, y, { _o: ab[y.b || 0] }); }).concat(b.syl.map(function (y) { return Object.assign({}, y, { _o: bb[y.b || 0] }); }));
       setLine(a, syl, function (y) { return y._o; }); syl.forEach(function (y) { delete y._o; });
       lines.splice(i + 1, 1);
@@ -1022,7 +1065,7 @@
       times[i] = x && y2 ? { t: x.t, e: y2.e, s: (x.s || []).concat(y2.s || []) } : x || y2;
       times.splice(i + 1, 1); edited = true;
     }
-    var lastRow = -1, fixAt = null;      // fixAt: the line the next Now goes to while fixing (then the lines after it, in order)
+    var lastRow = -1, fixAt = null, fixOld = null;      // fixOld: the fixed line's time before it was cleared (its syllable timing is kept, and it comes back if it is not tapped)      // fixAt: the line the next Now goes to while fixing (then the lines after it, in order)
     function follow(force) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
       var t = audio.currentTime, cur = -1;
       var onNow = [];
@@ -1041,7 +1084,7 @@
       var fixing = fixAt != null, i = fixing ? fixAt : nextOpen();
       if (i < 0 || audio.paused) { T.toast(audio.paused ? 'Play the track first.' : 'Every line has a time. Use 🎯 Fix on a line to change it.'); return; }
       snapshot();
-      var t = +audio.currentTime.toFixed(2), old = times[i];
+      var t = +audio.currentTime.toFixed(2), old = fixing ? fixOld : times[i];
       if (fixing && old) {      // move the line, keeping its own syllable timing (the piano follows it), and don't let it run into the next line
         var d = t - old.t, next = times.slice(i + 1).find(Boolean);
         times[i] = { t: t, e: +Math.min(old.e + d, next ? next.t : old.e + d).toFixed(2), s: (old.s || []).map(function (v) { return +(v + d).toFixed(2); }) };
@@ -1050,7 +1093,7 @@
       var prev = times.slice(0, i).reverse().find(Boolean);
       if (prev && prev.e > t) { prev.e = t; prev.s = prev.s.map(function (v) { return Math.min(v, t - 0.05); }); }
       applySync();
-      if (fixing) { var nx = i + 1; while (nx < lines.length && lines[nx].sync) nx++; fixAt = nx < lines.length ? nx : null; }      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
+      if (fixing) { var nx = i + 1; while (nx < lines.length && lines[nx].sync) nx++; fixOld = null; if (nx < lines.length) startFix(nx); else fixAt = null; }      // keep playing: the next tap fixes the line after it (untouched lines keep their times)
       draw();
     }
     /* who sings a line, when the script reader got it wrong: kept in T.show.lyricWho so a re-import keeps it */
@@ -1070,9 +1113,15 @@
         d.close(); save('Singer saved').then(function () { if (then) then(); else draw(); });
       };
     }
+    /* fixing a line (Colleen: "when i enter fix mode, it should clear the timing and start fresh"): its old time is cleared, so nothing
+       lights up or shows from it while the song plays, and Now gives it a fresh one. Done fixing before tapping puts the old time back. */
+    function startFix(i) { endFix(); fixAt = i; fixOld = times[i] || null; times[i] = null; applySync(); }
+    function endFix() { if (fixAt != null && fixOld && !times[fixAt]) { times[fixAt] = fixOld; applySync(); } fixAt = null; fixOld = null; }
+    function clearLine(i) { snapshot(); if (fixAt === i) { fixAt = null; fixOld = null; } times[i] = null; applySync(); }
     function fixLine(i) {
-      fixAt = i;
+      snapshot();
       var known = times[i] || times.slice(0, i).reverse().find(Boolean);
+      startFix(i);
       (loaded ? Promise.resolve() : load()).then(function () { audio.currentTime = Math.max(0, (known ? known.t : 0) - 3); audio.play(); draw(); });
     }
     function find() {
