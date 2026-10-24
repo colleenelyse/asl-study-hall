@@ -115,6 +115,9 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .stile.open { border: 2px solid var(--brand); }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
+.codebanner { border: 2px solid var(--up); background: var(--up-soft); font-size: 17px; }
+.acode { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 1.1em; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; letter-spacing: .04em; }
+.tcrow { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; align-items: center; }
 .calc { max-width: 430px !important; }
 #calcIn { font-size: 22px; padding: 10px 12px; margin-top: 10px; font-family: var(--font); }
 .calcout { min-height: 26px; text-align: right; font-size: 18px; margin: 6px 2px 8px; }
@@ -426,7 +429,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.90';
+var VERSION = '1.91';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -467,6 +470,10 @@ var TABS = {
   // the question of the day (just for fun): the next undated question is used on each school day, and gets that day's date
   'Daily questions': ['Use', 'Question', 'Answer 1', 'Answer 2', 'Answer 3', 'Answer 4', 'Time of year (blank = any time)', 'Category', 'Date asked'],
   'Question answers': ['Date', 'Email', 'Question', 'Answer'],
+  // students tell the resource teacher about tests ("I'm waiting for a test" / "I have a test in the folder"), and the teacher
+  // logs tests that arrived (paper from the mailbox, or an access code that is released to the student when they start)
+  'Test requests': ['ID', 'When', 'Email', 'Class', 'Kind', 'What', 'Status', 'Updated'],
+  'Tests received': ['ID', 'Received', 'Email', 'Class', 'What', 'How', 'Access code', 'Released', 'Done', 'Note', 'Logged by'],
   'Missing explained': ['Date', 'Email', 'Class', 'Assignment', 'Why it won’t be turned in'],
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
   // the grade each student wants to finish the semester with, per class; and what each class said the final exam will be like
@@ -491,7 +498,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25 };   // Students columns
-var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -570,6 +577,7 @@ var DEFAULTS = [
   ['Students: what I need help with', 'Yes', 'Students tell the resource teacher what they need help with.'],
   ['Students: paste schedule from Infinite Campus', 'Yes', 'Students can fill in their schedule by pasting the Infinite Campus Schedule page.'],
   ['Students: can change their schedule', 'Yes', 'The My schedule page. No: after their first visit, only the teacher changes schedules (the January check still happens).'],
+  ['Students: tests with my teacher', 'Yes', 'Students can tell you “I’m waiting for a test” or “I have a test in the folder”, and see tests you logged and access codes you released (📬 Tests & codes page).'],
   ['Students: calculator', 'Yes', 'A 🧮 Calculator in the students’ menu (parentheses, exponents, square roots, sin/cos/tan, log, π and more). It opens over any page.'],
   ['Students: tests and reminders page', 'Yes', 'Students list upcoming tests and projects (and see their retakes).'],
   ['Students: their own email reminders', 'Yes', 'Students can set email reminders for themselves.'],
@@ -591,7 +599,7 @@ var SETTING_UI = {
   'Students: tips to spot patterns': ['Each week, students…', 'yesno'], 'Common accommodations': ['Goals and daily checklist', 'text'], 'Students: see My goal': ['Goals and daily checklist', 'yesno'], 'IEP benchmarks': ['Goals and daily checklist', 'yesno'], 'Case managers: see their students': ['Class setup', 'yesno'], 'Weekly summary email (Fridays)': ['Class setup', 'yesno'], 'Weekly summary goes to': ['Class setup', 'list'], 'Students: daily plan for class time': ['Goals and daily checklist', 'yesno'], 'What students call this class': ['Goals and daily checklist', 'text'], 'Nothing-to-do checklist': ['Goals and daily checklist', 'text'], 'Grade check day': ['Each week, students…', 'choice', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'None']], 'Students: semester grade goals': ['Each week, students…', 'yesno'], 'Students: my support team': ['Each week, students…', 'yesno'], 'Assistant principals': ['Class setup', 'text'], 'Students: My week page': ['Each week, students…', 'yesno'], 'Students: wins': ['Each week, students…', 'yesno'], 'Students: see their IEP meeting': ['Goals and daily checklist', 'yesno'], 'IEP date reminders (days before)': ['Goals and daily checklist', 'text'], 'Progress report dates': ['Class setup', 'dates'], 'Students: project planner': ['Each week, students…', 'yesno'], 'Students: final exam notes': ['Each week, students…', 'yesno'], 'Students: see their benchmarks': ['Goals and daily checklist', 'yesno'], 'Test may be coming after (school days)': ['Each week, students…', 'number'], 'Students: what I need help with': ['Each week, students…', 'yesno'],
   'Paste grades from Infinite Campus': ['Infinite Campus', 'yesno'], 'Students: paste schedule from Infinite Campus': ['Infinite Campus', 'yesno'],
   'Class grade analysis': ['Infinite Campus', 'yesno'], 'Students: detailed grades every week': ['Infinite Campus', 'yesno'], 'Retake: coursework turned in on time': ['Infinite Campus', 'number'], 'Suggest retakes for tests under': ['Infinite Campus', 'number'],
-  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: calculator': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
+  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: calculator': ['Pages and tools', 'yesno'], 'Students: tests with my teacher': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
   'Test reminder emails': ['Pages and tools', 'text'], 'Students: my progress page': ['Pages and tools', 'yesno'], 'Students: can change their schedule': ['Pages and tools', 'yesno'],
   'Students: choose fonts and colors': ['Look', 'yesno'],
   'Default colors': ['Look', 'choice', ['auto', 'classic', 'calm', 'night', 'contrast', 'neon', 'pastelnight', 'ocean', 'sunset', 'candy']],
@@ -693,7 +701,7 @@ function setup_() {
 // The tabs in the order a teacher uses them: the everyday ones on the left, then goal data, then logs the app keeps,
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
-  ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Daily questions']],
+  ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
@@ -1185,7 +1193,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
 }
 
 function api_teacherStudentRead_(email) {
@@ -1727,6 +1735,65 @@ function pollResults_(today, names) {
   var p = pollToday_(today); if (!p) return null;
   var ans = rows_('Question answers').filter(function (r) { return day_(r[0]) === today && String(r[2]) === p.q; }).map(function (r) { return { name: names[low_(r[1])] || low_(r[1]), answer: String(r[3]) }; });
   p.answers = ans; return p;
+}
+// 1.91: tests with the resource teacher. Students: "I'm waiting for a test" (class) or "I have a test in the folder" (class + what).
+// The teacher logs tests that arrived (paper from the mailbox, or an access code a teacher emailed), date-stamped, and releases a
+// code to the student when they're ready to begin; Done when it's taken.
+var TC_KINDS = { waiting: 'Waiting for a test', folder: 'Test in the folder' };
+function tcFor_(email) {
+  var wk = addDays_(today_(), -14);
+  var req = rows_('Test requests').filter(function (r) { return low_(r[2]) === email && (String(r[6]) === 'Open' || day_(r[7] || r[1]) >= wk); })
+    .map(function (r) { return { id: String(r[0]), when: String(r[1]), cls: String(r[3]), kind: String(r[4]), what: String(r[5]), status: String(r[6]) }; }).reverse();
+  var got = rows_('Tests received').filter(function (r) { return low_(r[2]) === email && !String(r[8]); })
+    .map(function (r) { var rel = !!String(r[7]); return { id: String(r[0]), received: String(r[1]), cls: String(r[3]), what: String(r[4]), how: String(r[5]), code: rel ? String(r[6]) : '', released: rel }; });
+  return { requests: req, received: got };
+}
+function api_testRequest(kind, cls, what) {
+  var email = need_(); kind = TC_KINDS[kind] ? kind : ''; cls = clean_(cls, 60); what = clean_(what, 150);
+  if (!kind) throw new Error('Pick what you want to tell your teacher.');
+  if (!cls) throw new Error('Pick the class.');
+  if (kind === 'folder' && !what) throw new Error('Type what the test is (for example: Unit 3 test).');
+  locked_(function () { sheet_('Test requests').appendRow([Utilities.getUuid().slice(0, 8), stamp_(), email, cls, TC_KINDS[kind], what, 'Open', stamp_()]); });
+  return tcFor_(email);
+}
+function api_cancelTestRequest(id) {
+  var email = need_();
+  locked_(function () { var rows = rows_('Test requests'), i = find_(rows, function (r) { return String(r[0]) === String(id) && low_(r[2]) === email; }); if (i >= 0) sheet_('Test requests').getRange(i + 2, 7, 1, 2).setValues([['Cancelled', stamp_()]]); });
+  return tcFor_(email);
+}
+// the teacher's page: open requests, tests waiting to be taken, the last ones done
+function api_tcRead_() {
+  teacherOnly_();
+  var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); });
+  var req = rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).map(function (r) { return { id: String(r[0]), when: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), kind: String(r[4]), what: String(r[5]) }; });
+  var rec = rows_('Tests received').map(function (r) { return { id: String(r[0]), received: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), what: String(r[4]), how: String(r[5]), code: String(r[6]), released: String(r[7]), done: String(r[8]), note: String(r[9]) }; });
+  return { requests: req, waiting: rec.filter(function (x) { return !x.done; }), done: rec.filter(function (x) { return x.done; }).slice(-20).reverse() };
+}
+// t: {email, cls, what, how: 'paper' | 'code', code, note}. Stamped now; a matching open request (same student and class) is marked Done.
+function api_tcLog(t) {
+  teacherOnly_(); t = t || {};
+  var email = low_(t.email), cls = clean_(t.cls, 60), what = clean_(t.what, 150), code = clean_(t.code, 120), how = t.how === 'code' ? 'Access code' : 'Paper test (mailbox)';
+  if (!email) throw new Error('Pick the student.');
+  if (!cls) throw new Error('Pick the class.');
+  if (how === 'Access code' && !code) throw new Error('Type the access code.');
+  locked_(function () {
+    sheet_('Tests received').appendRow([Utilities.getUuid().slice(0, 8), stamp_(), email, cls, what, how, how === 'Access code' ? code : '', '', '', clean_(t.note, 300), myEmail_()]);
+    var rq = rows_('Test requests');
+    rq.forEach(function (r, i) { if (String(r[6]) === 'Open' && low_(r[2]) === email && String(r[3]) === cls) sheet_('Test requests').getRange(i + 2, 7, 1, 2).setValues([['Done', stamp_()]]); });
+  });
+  return api_tcRead_();
+}
+function tcSet_(id, col, val) {
+  teacherOnly_();
+  locked_(function () { var rows = rows_('Tests received'), i = find_(rows, function (r) { return String(r[0]) === String(id); }); if (i < 0) throw new Error('That test isn’t on the list any more.'); sheet_('Tests received').getRange(i + 2, col).setValue(val); });
+  return api_tcRead_();
+}
+function api_tcRelease(id, on) { return tcSet_(id, 8, on ? stamp_() : ''); }          // the student sees the code
+function api_tcDone(id, on) { return tcSet_(id, 9, on === false ? '' : stamp_()); }          // taken (it leaves the student's page)
+function api_tcRequest(id, status) {
+  teacherOnly_();
+  locked_(function () { var rows = rows_('Test requests'), i = find_(rows, function (r) { return String(r[0]) === String(id); }); if (i >= 0) sheet_('Test requests').getRange(i + 2, 7, 1, 2).setValues([[status === 'Open' ? 'Open' : 'Done', stamp_()]]); });
+  return api_tcRead_();
 }
 // 1.84: missing work a student says can't be turned in any more: { class: { assignment: { why, date } } }
 function explained_(email) {
@@ -3535,7 +3602,7 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = fr.i >= 0 ? String(fr.rows[fr.i][SC.goal] || '') : '';
-  var out = { email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? (function () { var g = goal_(email, ef); return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })() : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -3635,7 +3702,7 @@ function settings_() {
     f: { missing: on('Students: missing assignments'), lowWhy: on('Students: explain low grades'), focus: on('Students: what to focus on'),
       lookBack: on('Students: look back at last week'), plan: on('Students: plan for resource time'), help: on('Students: what I need help with'),
       schedPaste: on('Students: paste schedule from Infinite Campus'), editSchedule: on('Students: can change their schedule'),
-      tests: on('Students: tests and reminders page'), calc: on('Students: calculator'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
+      tests: on('Students: tests and reminders page'), calc: on('Students: calculator'), tc: on('Students: tests with my teacher'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
       missList: on('Students: missing assignments list'), talk: on('Students: talking with teachers question'), grad: on('Students: graduation warnings'),
       coteach: on('Students: co-teacher reminder'), tips: on('Students: tips to spot patterns'),
       freeTime: on('Students: free time page'), projects: on('Students: break up projects'), exit: on('Students: exit ticket'), reminders: on('Students: their own email reminders'), progress: on('Students: my progress page') }
@@ -3735,6 +3802,7 @@ function api_teacherStudent() { var a = arguments; return memo_(function () { re
 function api_photos() { var a = arguments; return memo_(function () { return api_photosRead_.apply(null, a); }); }
 function api_reportHtml() { var a = arguments; return memo_(function () { return api_reportHtmlRead_.apply(null, a); }); }
 function api_pollList() { var a = arguments; return memo_(function () { return api_pollListRead_.apply(null, a); }); }
+function api_tc() { var a = arguments; return memo_(function () { return api_tcRead_.apply(null, a); }); }
 function api_cmReport() { var a = arguments; return memo_(function () { return api_cmReportRead_.apply(null, a); }); }
 function api_calendarHtml() { var a = arguments; return memo_(function () { return api_calendarHtmlRead_.apply(null, a); }); }
 function api_reportContacts() { var a = arguments; return memo_(function () { return api_reportContactsRead_.apply(null, a); }); }
@@ -3867,7 +3935,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   api_addReminder({ date: addDays_(today, 2), message: 'Bring my calculator to Geometry' });
   g.setUser('ray@d204.lths.net'); api_saveTitles({ 'Daniel Kahn': 'Mr.', 'Rita Moreno': 'Ms.', 'Maria Diaz': 'Ms.' });
   if (/demo=1/.test(location.search)) {          // the showcase demo: returning students with goals, IEP dates, plans and finals filled in
-    g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Bell schedule link') r[1] = ''; });
+    if (!/bell=1/.test(location.search)) g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Bell schedule link') r[1] = ''; });
     [['smi513421@d204.lths.net', '10', 'Rosemary Bergman', 'rbergman@lths.net', 12], ['ort123456@d204.lths.net', '11', 'Rosemary Bergman', 'rbergman@lths.net', 9], ['wil501777@d204.lths.net', '9', 'Rosemary Bergman', 'rbergman@lths.net', 20]].forEach(function (x) {
       g.setUser(x[0]); api_confirmProfile({ grade: x[1], counselor: counselorFor_(classOf_(x[1]), nameStart_(x[0]))[0].name, counselorEmail: counselorFor_(classOf_(x[1]), nameStart_(x[0]))[0].email, caseMgr: x[2], caseMgrEmail: x[3] });
       g.setUser('ray@d204.lths.net'); api_saveIepDates(x[0], { meet: addDays_(today, x[4]) });
@@ -3888,6 +3956,12 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     var t1 = {}; t1[tr.id] = 80; t1[tm.id] = 2; t1[tt.id] = 80;
     api_saveBenchmark('ort123456@d204.lths.net', { text: 'By December, Marcus will start work within 1 minute in 4 of 5 trials, have 2 or fewer missing assignments, and turn in 80% of coursework.', targets: t1, by: addDays_(today, 50) });
     api_flagDayPlan('wil501777@d204.lths.net', addDays_(today, -1), true, 'On his phone most of the period');
+  }
+  if (/demo=1/.test(location.search)) {          // tests with the resource teacher: a request, a released access code, a paper test
+    g.setUser('wil501777@d204.lths.net'); var dc = api_myData().classes.filter(function (c) { return !c.resource; })[0]; if (dc) api_testRequest('folder', dc.name, 'Chapter 5 quiz');
+    g.setUser('ray@d204.lths.net');
+    var tl = api_tcLog({ email: 'ort123456@d204.lths.net', cls: 'Biology', what: 'Cell unit test', how: 'code', code: 'CELL-2291' }); api_tcRelease(tl.waiting[0].id, true);
+    api_tcLog({ email: 'smi513421@d204.lths.net', cls: 'Chemistry', what: 'Unit 2 test', how: 'paper', note: 'Extended time' });
   }
   if (/demo=1/.test(location.search) && !/poll=1/.test(location.search)) [['smi513421@d204.lths.net', 0], ['ort123456@d204.lths.net', 1], ['wil501777@d204.lths.net', 0]].forEach(function (x) {          // the sample students already answered today's question
     g.setUser(x[0]); var p = pollToday_(today_()); if (p) api_answerPoll(p.choices[x[1]] || 'Chips and salsa');
@@ -4080,6 +4154,7 @@ function go(v) {
   setDirty(false);
   VIEW = gate() || v;
   if (VIEW === 'checkin') CK = null;
+  if (VIEW === 'tc') TCD = null;
   if (VIEW === 'settings') SETS = null;
   if (VIEW === 'who') WHO = null;
   if (VIEW === 'schedule' || VIEW === 'tstudent' || VIEW === 'welcome') SCH = null;
@@ -4089,8 +4164,9 @@ function go(v) {
 
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
-    ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
+    ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
     : (gate() ? [] : [['checkin', 'Today'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+  items = items.filter(Boolean);
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
   pb.hidden = !PREV;
@@ -4116,7 +4192,7 @@ function navTo(v) {
 function draw() {
   var f = {
     welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
-    cm: drawCm, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent
+    cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent
   }[VIEW];
   f();
 }
@@ -5129,6 +5205,7 @@ function drawCheckin() {
   var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? ' · <b>Grade check day</b>' : '') + '</p>';
   if (soon.length) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
+  h += codeBanner();
   if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
     var dn = stepDone(s.k), lk = stepLock(list, i);
     return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
@@ -5170,6 +5247,8 @@ function myStuff(list) {
   if (finalsCard()) { var fd = (B.finalSched || []).map(function (s) { return s.date; }).sort()[0]; t.push(['finals', '📅 Finals', fd ? (daysUntil(fd) <= 0 ? 'This week' : 'In ' + daysUntil(fd) + ' days') : 'Plan ahead', false, finalsCard]); }
   if (teamCard()) t.push(['team', '🤝 My support team', 'Who to ask', false, teamCard]);
   if (accomCard()) t.push(['accom', '🧰 Accommodations', 'Tap when you use one', false, accomCard]);
+  if (F('tc') && D.tc) { var tcr = D.tc.received || [], rel = tcr.filter(function (x) { return x.released; }), op = (D.tc.requests || []).filter(function (x) { return x.status === 'Open'; });
+    t.push(['tc', '🧪 Tests with my teacher', rel.length ? '🔑 Your code is ready' : tcr.length ? 'Your test is here' : op.length ? op.length + ' waiting' : 'Waiting for a test?', rel.length + tcr.length > 0, tcCard]); }
   t.push(['cal', '📆 My calendar', 'What I did each day', false, function () { return '<div class="card"><h2>📆 My calendar</h2><p class="hint" style="margin:2px 0 10px">A wall calendar with what you did each day: your plan, exit ticket, checklist, focus time and more. Print it or save it as a PDF.</p><div class="row">' + calPick('calS') + '<button class="btn primary" onclick="calOpen(\'\',$(\'calS\').value,D.profile.name)">Make my calendar</button></div></div>'; }]);
   if (myGoalCard()) t.push(['mygoal', '⭐ My goal', 'How I’m doing', false, myGoalCard]);
   if (!t.length) return '';
@@ -5877,7 +5956,7 @@ function drawOverview() {
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
     '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -6976,6 +7055,73 @@ function calcKey(i) {
 }
 function calcLive() { var v = $('calcIn').value.trim(), o = $('calcOut'); if (!v) { o.innerHTML = '&nbsp;'; return; } try { o.innerHTML = '<span class="small">= ' + esc(String(calcEval(v, CALC.deg, CALC.ans))) + '</span>'; } catch (e) { o.innerHTML = '&nbsp;'; } }
 function calcHist() { var h = $('calcHist'); if (!h) return; h.innerHTML = CALC.hist.length ? '<div class="small" style="margin-top:10px"><b>Recent</b> (tap to use again)</div>' + CALC.hist.map(function (x, k) { return '<button class="btn link small calch" onclick="$(\'calcIn\').value=CALC.hist[' + k + '][0];calcLive()">' + esc(x[0]) + ' = <b>' + esc(String(x[1])) + '</b></button>'; }).join('') : ''; }
+/* ---------- 🧪 tests with the resource teacher (1.91) ---------- */
+// Students: "I'm waiting for a test" (class) or "I have a test in the folder" (class + what); they see tests the teacher logged and
+// access codes the teacher released. Teachers: 📬 Tests & codes (requests, log a test from the mailbox or an emailed code, release it).
+var TCK = null;
+function codeBanner() {
+  var rel = ((D.tc && D.tc.received) || []).filter(function (x) { return x.released && x.code; });
+  return rel.map(function (x) { return '<div class="card codebanner">🔑 <b>Your access code for ' + esc(x.cls) + (x.what ? ' (' + esc(x.what) + ')' : '') + ':</b> <span class="acode">' + esc(x.code) + '</span></div>'; }).join('');
+}
+function tcCard() {
+  var tc = D.tc || { requests: [], received: [] }, h = '<div class="card" id="tcCard"><h2>🧪 Tests with my teacher</h2>';
+  if (tc.received.length) h += tc.received.map(function (x) {
+    return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">' + (x.how === 'Access code' ? (x.released ? '🔑 Access code: <span class="acode">' + esc(x.code) + '</span>' : '🔒 Your teacher has your access code. Ask when you’re ready to start.') : '📄 Your paper test is here (since ' + shortDay(String(x.received).slice(0, 10)) + '). Ask your teacher when you’re ready.') + '</div></div>';
+  }).join('');
+  h += '<p style="margin:10px 0 6px"><b>Tell your teacher:</b></p><div class="row" style="gap:8px">' +
+    '<button class="btn' + (TCK === 'waiting' ? ' primary' : '') + '" onclick="TCK=TCK===\'waiting\'?null:\'waiting\';tcRedraw()">⏳ I’m waiting for a test</button>' +
+    '<button class="btn' + (TCK === 'folder' ? ' primary' : '') + '" onclick="TCK=TCK===\'folder\'?null:\'folder\';tcRedraw()">📂 I have a test in the folder</button></div>';
+  if (TCK) h += '<div class="row" style="margin-top:10px;gap:8px"><select id="tcCls" style="max-width:220px"><option value="">Which class?</option>' + graded().map(function (c) { return '<option>' + esc(c.name) + '</option>'; }).join('') + '</select>' +
+    '<input type="text" id="tcWhat" class="grow" maxlength="150" placeholder="' + (TCK === 'folder' ? 'What is it? (Unit 3 test)' : 'Which test? (optional)') + '"><button class="btn primary" onclick="tcSend()">Send</button></div>';
+  var op = tc.requests.filter(function (x) { return x.status !== 'Cancelled'; });
+  if (op.length) h += '<div style="margin-top:12px">' + op.map(function (x) {
+    return '<div class="small" style="display:block;margin:3px 0">' + (x.status === 'Open' ? '🕓' : '✅') + ' <b>' + esc(x.kind) + ':</b> ' + esc(x.cls) + (x.what ? ' · ' + esc(x.what) : '') + ' · ' + (x.status === 'Open' ? 'sent ' + shortDay(String(x.when).slice(0, 10)) + ' <button class="btn link small" style="padding:0 4px" onclick="tcCancel(\'' + esc(x.id) + '\')">Cancel</button>' : 'your teacher has it') + '</div>';
+  }).join('') + '</div>';
+  return h + '</div>';
+}
+function tcRedraw() { var c = $('tcCard'); if (c) c.outerHTML = tcCard(); }
+function tcSend() {
+  var cls = $('tcCls').value, what = $('tcWhat').value.trim();
+  if (!cls) return alert('Pick the class.');
+  if (TCK === 'folder' && !what) return alert('Type what the test is (for example: Unit 3 test).');
+  call('api_testRequest', TCK, cls, what).then(function (r) { D.tc = r; TCK = null; toast('Sent to your teacher'); tcRedraw(); }).catch(oops);
+}
+function tcCancel(id) { call('api_cancelTestRequest', id).then(function (r) { D.tc = r; tcRedraw(); }).catch(oops); }
+// teacher
+var TCD = null, TCF = { email: '', how: 'paper' };
+function tcNotice() { var n = TD && TD.tcOpen; return n ? '<div class="card" style="margin-bottom:14px;border-color:var(--warn);background:var(--warn-soft)">📬 <b>' + n + ' test request' + (n === 1 ? '' : 's') + '</b> from students. <a href="#" onclick="navTo(\'tc\');return false">Open Tests & codes</a></div>' : ''; }
+function drawTc() {
+  if (!TCD) { $('main').innerHTML = '<h1>📬 Tests & access codes</h1><p class="sub">Loading…</p>'; call('api_tc').then(function (d) { TCD = d; if (VIEW === 'tc') drawTc(); }).catch(oops); return; }
+  var studs = ((TD && TD.students) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name); }), me = studs.filter(function (x) { return x.email === TCF.email; })[0];
+  var h = '<h1>📬 Tests & access codes</h1><p class="sub">Students’ test requests, tests you picked up from your mailbox, and access codes to give out when a student is ready.</p>';
+  h += '<div class="card"><h2>Student requests</h2>' + (TCD.requests.length ? TCD.requests.map(function (r) {
+    return '<div class="tcrow row"><div class="grow"><b>' + esc(r.name) + '</b> · ' + esc(r.cls) + '<div class="small">' + esc(r.kind) + (r.what ? ': ' + esc(r.what) : '') + ' · ' + esc(String(r.when).slice(0, 16)) + '</div></div><button class="btn small" onclick="tcLogFor(\'' + esc(r.email) + '\',\'' + esc(r.cls).replace(/'/g, '') + '\')">Log the test</button><button class="btn small" onclick="tcReq(\'' + r.id + '\')">✓ Got it</button></div>';
+  }).join('') : '<p class="small" style="margin:4px 0 0">No open requests.</p>') + '</div>';
+  h += '<div class="card" id="tcLog"><h2>📥 I checked my mailbox / I have a new access code</h2><p class="hint" style="margin:2px 0 10px">Saved with today’s date and time, so you know when it arrived.</p>' +
+    '<div class="row" style="gap:8px"><select id="tfStu" style="max-width:220px" onchange="TCF.email=this.value;drawTc()"><option value="">Student</option>' + studs.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === TCF.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
+    '<select id="tfCls" style="max-width:200px"><option value="">Class</option>' + (me ? me.grades.map(function (g) { return '<option' + (g.cls === TCF.cls ? ' selected' : '') + '>' + esc(g.cls) + '</option>'; }).join('') : '') + '</select>' +
+    '<input type="text" id="tfWhat" class="grow" maxlength="150" placeholder="What is it? (Unit 3 test)"></div>' +
+    '<div class="row" style="margin-top:8px;gap:8px"><div class="seg">' + [['paper', '📄 Paper test from my mailbox'], ['code', '🔑 Access code']].map(function (o) { return '<button class="' + (TCF.how === o[0] ? 'on' : '') + '" onclick="TCF.how=\'' + o[0] + '\';TCF.cls=$(\'tfCls\').value;drawTc()">' + o[1] + '</button>'; }).join('') + '</div>' +
+    (TCF.how === 'code' ? '<input type="text" id="tfCode" style="max-width:220px" maxlength="120" placeholder="Access code">' : '') +
+    '<input type="text" id="tfNote" class="grow" maxlength="300" placeholder="Note (optional): extended time, due Friday…"><button class="btn primary" onclick="tcLog()">Save</button></div></div>';
+  h += '<div class="card"><h2>Waiting to be taken</h2>' + (TCD.waiting.length ? TCD.waiting.map(function (x) {
+    var code = x.how === 'Access code';
+    return '<div class="tcrow row"><div class="grow"><b>' + esc(x.name) + '</b> · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '<div class="small">' + (code ? '🔑 Access code <span class="acode">' + esc(x.code) + '</span>' + (x.released ? ' · <b>released</b> ' + esc(String(x.released).slice(5, 16)) : ' · not released yet') : '📄 Paper test') + ' · received ' + esc(String(x.received).slice(0, 16)) + (x.note ? ' · ' + esc(x.note) : '') + '</div></div>' +
+      (code ? '<button class="btn small' + (x.released ? '' : ' primary') + '" onclick="tcRel(\'' + x.id + '\',' + !x.released + ')">' + (x.released ? 'Hide again' : 'Release to student') + '</button>' : '') +
+      '<button class="btn small" onclick="tcDone(\'' + x.id + '\')">✓ Taken</button></div>';
+  }).join('') : '<p class="small" style="margin:4px 0 0">Nothing waiting.</p>') + '</div>';
+  if (TCD.done.length) h += '<details class="card"><summary><b>Done recently</b> (' + TCD.done.length + ')</summary>' + TCD.done.map(function (x) { return '<div class="small" style="display:block;margin:3px 0">' + esc(x.name) + ' · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + ' · ' + esc(x.how) + ' · received ' + esc(String(x.received).slice(0, 10)) + ' · taken ' + esc(String(x.done).slice(0, 10)) + ' <button class="btn link small" style="padding:0 4px" onclick="tcDone(\'' + x.id + '\',false)">Undo</button></div>'; }).join('') + '</details>';
+  $('main').innerHTML = h;
+}
+function tcLogFor(email, cls) { TCF.email = email; TCF.cls = cls; drawTc(); var w = $('tfWhat'); if (w) { $('tcLog').scrollIntoView({ behavior: 'smooth' }); w.focus(); } }
+function tcLog() {
+  var t = { email: $('tfStu').value, cls: $('tfCls').value, what: $('tfWhat').value.trim(), how: TCF.how, code: $('tfCode') ? $('tfCode').value.trim() : '', note: $('tfNote').value.trim() };
+  if (!t.email) return alert('Pick the student.'); if (!t.cls) return alert('Pick the class.'); if (t.how === 'code' && !t.code) return alert('Type the access code.');
+  call('api_tcLog', t).then(function (d) { TCD = d; TCF = { email: '', how: TCF.how }; if (TD) TD.tcOpen = d.requests.length; toast('Saved with today’s date'); drawTc(); }).catch(oops);
+}
+function tcRel(id, on) { call('api_tcRelease', id, on).then(function (d) { TCD = d; toast(on ? 'Released: the student sees the code now' : 'Hidden again'); drawTc(); }).catch(oops); }
+function tcDone(id, on) { call('api_tcDone', id, on).then(function (d) { TCD = d; drawTc(); }).catch(oops); }
+function tcReq(id) { call('api_tcRequest', id, 'Done').then(function (d) { TCD = d; if (TD) TD.tcOpen = d.requests.length; drawTc(); }).catch(oops); }
 /* ---------- case managers: their students, then each one's full progress report ---------- */
 var CM_SEL = null, CM_HTML = '';
 function drawCm() {
