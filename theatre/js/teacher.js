@@ -46,6 +46,8 @@
     if (!T.show || !T.proof) return signIn();
     var fn = { '': home, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page] || (T.teacherPages || {})[page];
     if (page === 'setup') return home();
+    // the script was read by an older reader: re-read it first (on the home page), whatever page was opened (a bookmark, or a page left open)
+    if (page && needsReread()) { T.toast('Updating how the script is read first (about a minute)…', 4000); location.replace('#/teacher'); return; }
     (fn || home)(parts.slice(1));
     window.scrollTo(0, 0);
   };
@@ -108,10 +110,11 @@
   }
   /* the script was read by an older reader: read the saved PDF again here (the same as importing it again, keeping the speaker names,
      key words, singer fixes and edited songs), then save */
-  function rereadScript() {
-    var sc = T.show.script; if (!sc || rereadScript.busy || !T.Pages || !T.Pages.ready() || sc.reader === ScriptParser.VERSION) return;
+  function needsReread() { var sc = T.show && T.show.script; return !!(sc && T.Pages && T.Pages.ready() && sc.reader !== ScriptParser.VERSION); }
+  function rereadScript(force) {
+    var sc = T.show.script; if (!sc || rereadScript.busy || !T.Pages || !T.Pages.ready() || (sc.reader === ScriptParser.VERSION && !force)) return;
     rereadScript.busy = true;
-    var note = function (t) { var el = document.getElementById('reread'); if (el) el.innerHTML = t; };
+    var note = function (t) { var el = document.getElementById('reread'); if (el) { el.innerHTML = t; el.hidden = !t; } };
     T.Pages.doc().then(function (pdf) {
       return ScriptParser.fromPdfJs(pdf, function (n, N) { note(sym('🔄') + 'Updating how the script is read (the app got better at it)… page ' + n + ' of ' + N); });
     }).then(function (pages) {
@@ -169,13 +172,15 @@
     var sc = T.show.script;
     app.innerHTML = '<div class="card"><h2>Import the script</h2><p>Choose the actor’s script PDF. It is read on this computer only; the lines are saved encrypted, for this cast.</p>' +
       '<label class="btn primary">' + icon('book') + 'Choose the PDF<input type="file" id="pdf" accept="application/pdf,.pdf" hidden></label> <span id="prog" class="muted"></span>' +
-      (sc ? '<p class="muted small">Now: ' + esc(sc.file || 'script') + ', imported ' + new Date(sc.imported).toLocaleDateString() + '. Importing again replaces the lines and keeps your key words.</p>' : '') + '</div>' +
+      (sc ? '<p class="muted small">Now: ' + esc(sc.file || 'script') + ', read ' + new Date(sc.imported).toLocaleDateString() + (sc.reader ? ' (reader ' + esc(sc.reader) + ')' : '') + '. Importing again replaces the lines and keeps your key words.</p>' : '') +
+      (sc && T.Pages && T.Pages.ready() ? '<p class="row"><button class="btn small" id="reread2">Re-read the saved script now</button><span class="muted small">Reads the saved PDF again with the newest reader; your speaker names, singer fixes and edited songs stay.</span></p>' : '') + '</div>' +
       '<div id="labels"></div>' + (sc ? '<h2>Scenes</h2><div class="grid">' + T.O().scenes.map(function (s) {
         var x = T.scriptScene(s), n = x ? x.items.filter(function (it) { return it.type === 'line'; }).length : 0;
         return '<a class="tile" style="min-height:90px" href="#/teacher/script/' + s.id + '"><b>Scene ' + s.num + '</b><span>' + esc(s.place) + ' · ' + n + ' lines</span></a>';
       }).join('') + '</div>' : '');
     if (sc) labelsCard();
     sayCard();
+    var rr = document.getElementById('reread2'); if (rr) rr.onclick = function () { rr.disabled = true; T.go('#/teacher'); setTimeout(function () { rereadScript(true); }, 400); };
     document.getElementById('pdf').onchange = function (e) {
       var f = e.target.files[0]; if (!f) return;
       var prog = document.getElementById('prog'); prog.textContent = 'Opening…';
@@ -903,22 +908,19 @@
       var host = document.getElementById('secpages');
       if (!T.Follow || !T.Follow.canShow(songId)) { host.innerHTML = '<p class="card muted">The script pages are not saved yet: import the script PDF first.</p>'; return secBar(); }
       T.Follow.mount(host, songId); overlay(); secBar();
-      host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box'); if (b) { selSec = +b.dataset.sec; overlay(); secBar(); } });
+      host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (b) { selSec = +b.dataset.sec; overlay(); secBar(); } });
     }
     function overlay() {
       var host = document.getElementById('secpages'); if (!host) return;
-      host.querySelectorAll('.sec-box').forEach(function (e) { e.remove(); });
+      host.querySelectorAll('.sec-box, .sec-num').forEach(function (e) { e.remove(); });
       var pc = function (v, d) { return (v / d * 100) + '%'; };
       lines.forEach(function (l, i) {
         var cs = T.lyricColors(l.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
-        T.Pages.lyricBoxes(l).forEach(function (b, bi) {
-          var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
-          var sz = T.Pages.size(b.n), el = document.createElement('div');
-          el.className = 'sec-box' + (i === selSec ? ' sel' : '') + (times[i] ? '' : ' untimed') + (l.spoken ? ' spoken' : ''); el.dataset.sec = i;
-          el.style.cssText = 'left:' + pc(b.x - 3, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 6, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';background:' + fill;
-          el.innerHTML = bi === 0 ? '<span class="sec-num">' + (i + 1) + '</span>' : '';
-          el.title = (i + 1) + ' · ' + (l.who || '') + ' · ' + l.text;
-          page.appendChild(el);
+        T.Pages.shapes(host, T.Pages.lyricBoxes(l), { cls: 'sec-box' + (i === selSec ? ' sel' : '') + (times[i] ? '' : ' untimed') + (l.spoken ? ' spoken' : ''), colors: cs, data: { sec: i }, title: (i + 1) + ' · ' + (l.who || '') + ' · ' + l.text }).forEach(function (sh, si) {
+          if (si) return;      // the section's number, at the start of its first part
+          var num = document.createElement('span'); num.className = 'sec-num'; num.textContent = i + 1; num.dataset.sec = i;
+          num.style.cssText = 'left:' + pc(sh.left, sh.sz.w) + ';top:' + pc(sh.top + 6, sh.sz.h);
+          sh.page.appendChild(num);
         });
       });
     }

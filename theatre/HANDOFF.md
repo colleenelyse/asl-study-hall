@@ -415,3 +415,9 @@ pairs after it keep their partners). A re-read keeps edited songs (lyricKeep) bu
 order, with an empty time each, keeping the song's saved timing (`keptMoved`); reader VERSION 2026-10-23.4; `rereadScript.busy` resets after a
 re-read. Group singers: `T.show.groupMembers` (show file default: jocks = Chad, Zeke; brainiacs = Taylor, Martha), edited on Cast › Who sings
 with the groups; `isMine` counts a group label for its members (a JOCKS line is Chad's; a CHAD line only Chad's; Troy not a Jock).
+**One outline per line** (Colleen: overlapping boxes on spoken lines were hard to read; "lines should be encased by one polygon that outlines the
+whole line… shaped to the space the line occupies"): `T.Pages.shapes(host, boxes, { cls, colors, data, title })` draws a line's printed rows on
+a page as one SVG path (rows joined like a text selection, each row's band kept to its own row so neighbors never overlap; several singers as
+stripes via a gradient). Used for the lit-up lines (song pages, practice) and the Sections view (numbers are separate `.sec-num` badges).
+**Re-read from any teacher page**: opening any Teacher mode page with an out-of-date reading goes to the home page and re-reads first
+(`needsReread`); Script › "Re-read the saved script now" runs it by hand (`rereadScript(true)`).

@@ -29,6 +29,40 @@
   }
   T.Pages.scenePages = scenePages;
   T.Pages.lyricBoxes = function (l) { return l.boxes || (l.box ? [l.box] : []); };
+  /* one shape per line (Colleen 2026-10-23: "lines should be encased by one polygon that outlines the whole line… shaped to the space the
+     line occupies on the page"): a line's printed rows on a page, joined into one outline like a text selection. Each row's band is kept to
+     its own printed row, so neighboring lines never overlap. Returns the shapes (SVG over each page), in order. */
+  var shapeN = 0;
+  T.Pages.shapes = function (host, boxes, o) {
+    o = o || {};
+    var out = [], byPage = {};
+    boxes.forEach(function (b) { (byPage[b.n] = byPage[b.n] || []).push(b); });
+    Object.keys(byPage).forEach(function (n) {
+      var page = host.querySelector('.pdfpage[data-n="' + n + '"]'); if (!page) return;
+      var sz = T.Pages.size(+n), rows = byPage[n].slice().sort(function (a, b) { return a.y - b.y; });
+      // rows that follow each other make one shape; a row far below (the next system) starts another
+      var runs = [], cur = [];
+      rows.forEach(function (r) { var p = cur[cur.length - 1]; if (p && r.y - (p.y + p.h) > p.h * 0.9) { runs.push(cur); cur = []; } cur.push(r); });
+      if (cur.length) runs.push(cur);
+      runs.forEach(function (run) {
+        var pad = 3, band = run.map(function (r) { return { x0: r.x - pad, x1: r.x + r.w + pad, t: r.y + 0.5, b: r.y + r.h - 0.5 }; });
+        for (var i = 1; i < band.length; i++) { var m = (band[i - 1].b + band[i].t) / 2; band[i - 1].b = m; band[i].t = m; }      // rows meet, no seam
+        var pts = [[band[0].x0, band[0].t], [band[0].x1, band[0].t]];
+        band.forEach(function (r, i) { var nx = band[i + 1]; pts.push([r.x1, r.b]); if (nx) pts.push([nx.x1, r.b]); });
+        var last = band[band.length - 1]; pts.push([last.x0, last.b]);
+        for (var j = band.length - 1; j > 0; j--) { pts.push([band[j].x0, band[j].t]); pts.push([band[j - 1].x0, band[j].t]); }
+        var id = 'sg' + (++shapeN), cs = o.colors || ['#ffe94d'];
+        var fill = cs.length > 1 ? 'url(#' + id + ')' : cs[0];
+        var grad = cs.length > 1 ? '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' + cs.map(function (c, k) { return '<stop offset="' + (k / cs.length) + '" stop-color="' + c + '"/><stop offset="' + ((k + 1) / cs.length) + '" stop-color="' + c + '"/>'; }).join('') + '</linearGradient></defs>' : '';
+        var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + sz.w + ' ' + sz.h); svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('class', 'line-shape ' + (o.cls || '')); if (o.data) Object.keys(o.data).forEach(function (k) { svg.dataset[k] = o.data[k]; });
+        svg.innerHTML = grad + '<path d="M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + ' Z" fill="' + fill + '" stroke="' + cs[0] + '"/>' + (o.title ? '<title>' + T.esc(o.title) + '</title>' : '');
+        page.appendChild(svg); out.push({ el: svg, page: page, top: band[0].t, left: band[0].x0, sz: sz });
+      });
+    });
+    return out;
+  };
   /* the page number printed on a pdf page (from the script reader's items), or the pdf page number */
   var printedMap = null, printedFor = null;
   T.Pages.printed = function (n) {
@@ -154,11 +188,8 @@
       var pc = function (v, d) { return (v / d * 100) + '%'; }, newest = null, before = (host._at || '').split(',');
       on.forEach(function (k) {
         var line = it.lyrics[k], cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, q) { return c + ' ' + (q * 100 / cs.length) + '% ' + ((q + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
-        T.Pages.lyricBoxes(line).forEach(function (b, bi) {      // a line of the poem can run onto the next staff: every part of it lights up
-          var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
-          var sz = T.Pages.size(b.n), hl = document.createElement('div'); hl.className = 'follow-line' + (line.spoken ? ' spoken' : '');
-          hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
-          page.appendChild(hl); if (bi === 0 && before.indexOf(String(k)) < 0) newest = hl;
+        T.Pages.shapes(host, T.Pages.lyricBoxes(line), { cls: 'follow-line' + (line.spoken ? ' spoken' : ''), colors: cs }).forEach(function (sh, si) {      // one outline per line, on every staff it runs onto
+          if (si === 0 && before.indexOf(String(k)) < 0) newest = sh.el;
         });
       });
       if (newest && Date.now() - userScrolled > 4000) newest.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
