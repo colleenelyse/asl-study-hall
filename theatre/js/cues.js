@@ -161,6 +161,8 @@
     return r;
   }
   T.Cues.needs = needsList;
+  T.Cues.pageWords = function (doc, n) { return pageWords(doc, n); };      // shared with Read the script (script-view.js)
+  T.Cues.wordRects = function (runs, word, y) { return wordRects(runs, word, y); };
   function howMany(it, o) {
     if (o && o.count) return String(o.count);
     var n = Math.max(it.count, it.listQty || 0);
@@ -286,7 +288,9 @@
   /* where some words sit near a line: the whole phrase inside one run of text, else each word on its own (a phrase broken over two lines) */
   function wordRects(runs, word, y) {
     var near = runs.filter(function (r) { return r.base > y - 30 && r.base < y + 45; }).sort(function (a, b) { return Math.abs(a.base - y - 10) - Math.abs(b.base - y - 10); });
-    var rectIn = function (r, a, len) { var cw = r.w / Math.max(1, r.s.length); return { x: r.x + a * cw, y: r.base - r.size * 0.82, w: len * cw, h: r.size * 1.08 }; };
+    /* letters differ in width: measure the run in a book font and share its real width out by that (better than by letter count) */
+    var mctx = wordRects.ctx || (wordRects.ctx = document.createElement('canvas').getContext('2d')); mctx.font = '20px "Times New Roman", Georgia, serif';
+    var rectIn = function (r, a, len) { var whole = mctx.measureText(r.s).width || 1, k2 = r.w / whole, x0 = mctx.measureText(r.s.slice(0, a)).width * k2, x1 = mctx.measureText(r.s.slice(0, a + len)).width * k2; return { x: r.x + x0, y: r.base - r.size * 0.82, w: x1 - x0, h: r.size * 1.08 }; };
     var lw = word.toLowerCase();
     for (var i = 0; i < near.length; i++) { var at = near[i].s.toLowerCase().indexOf(lw); if (at >= 0) return [rectIn(near[i], at, word.length)]; }
     var out = [];

@@ -323,7 +323,7 @@
             if (strip0) {      // feeling icons inside the page's gray strip, each with who it is for
               T.Emotions.layout(n, strip0, feels).forEach(function (p) {
                 var im = pics[p.f.icon]; if (!im) return;
-                ctx.drawImage(im, p.x * k, p.y * k, p.w * k, p.h * k);
+                ctx.save(); ctx.shadowColor = '#fff'; ctx.shadowBlur = 6 * k; [0, 1, 2].forEach(function () { ctx.drawImage(im, p.x * k, p.y * k, p.w * k, p.h * k); }); ctx.restore();      // a white glow off the gray strip
                 if (p.label) {
                   var fs = Math.max(9, Math.round(7.5 * k)), cx = (p.x + p.w / 2) * k, ty = (p.y + p.h) * k + 2;
                   ctx.font = '700 ' + fs + 'px system-ui, sans-serif'; var tw = ctx.measureText(p.label).width;

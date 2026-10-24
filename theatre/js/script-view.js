@@ -20,7 +20,7 @@
     T.setBar('The script', o.back);
     if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not ready yet. ' + (o.teacher ? 'Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).' : 'Your teacher saves them when importing the script.') + '</p></div>'; return; }
     var sc = T.show.script, O = T.O(), adding = false;
-    var st = Object.assign({ hl: o.teacher ? '' : 'mine', mine: true, dir: true, cues: !!o.teacher, feel: true }, T.ls('scriptView' + (o.teacher ? 'T' : '')) || {});
+    var st = Object.assign({ hl: o.teacher ? '' : 'mine', mine: true, dir: true, cues: !!o.teacher, feel: true, props: !!o.teacher }, T.ls('scriptView' + (o.teacher ? 'T' : '')) || {});
     var keep = function () { T.ls('scriptView' + (o.teacher ? 'T' : ''), st); };
     var chars = function () { return o.teacher ? (st.hl ? [st.hl] : []) : (st.hl === 'mine' && T.me ? T.me.chars || [] : []); };
     var dirNotes = function () { return (T.show.scriptNotes || []).filter(function (n) { return !n.del; }); };
@@ -45,8 +45,13 @@
         '<label class="row" style="gap:6px"><input type="checkbox" id="smine"' + (st.mine ? ' checked' : '') + '><span class="snote-key"></span>My notes (only I see them)</label>' +
         '<label class="row" style="gap:6px"><input type="checkbox" id="sdir"' + (st.dir ? ' checked' : '') + '><span class="snote-key dir"></span>Director’s notes</label>') +
       '<label class="row" style="gap:6px"><input type="checkbox" id="scue"' + (st.cues ? ' checked' : '') + '><span class="cue-key"></span>Light, sound and music cues</label>' +
+      (o.teacher && T.Needs ? '<label class="row" style="gap:6px"><input type="checkbox" id="sprops"' + (st.props ? ' checked' : '') + '><span class="cue-key" style="background:#ffb35c"></span>Props, set and costume</label>' : '') +
       (T.Emotions ? '<label class="row" style="gap:6px"><input type="checkbox" id="sfeel"' + (st.feel ? ' checked' : '') + '>' + sym('🙂') + 'Feeling pictures</label>' : '') +
       '</div><p id="addhelp" class="muted small" hidden>Tap the spot on a page where the note goes.</p></div>' +
+      '<div class="scriptfab noprint" role="toolbar" aria-label="Add to the script">' +      // floats with the page, so any page can get a feeling, cue or note (Colleen)
+      (o.teacher && T.Emotions ? '<button class="btn" data-fab="feel" aria-pressed="false">' + sym('🙂') + 'Add a feeling</button>' : '') +
+      (o.teacher ? '<button class="btn" data-fab="cue" aria-pressed="false">' + sym('💡') + 'Add a cue</button>' : '') +
+      '<button class="btn" data-fab="note" aria-pressed="false">' + sym('📝') + 'Add a note</button></div>' +
       '<div id="pages" class="pages scriptpages">' + sc.pages.map(function (p) { return '<div class="pdfpage" data-n="' + p.n + '" style="aspect-ratio:' + p.w + '/' + p.h + '"></div>'; }).join('') + '</div>';
     var host = document.getElementById('pages'), $ = function (id) { return document.getElementById(id); };
 
@@ -55,6 +60,9 @@
       host.querySelectorAll('.hl, .snote, .cue, .feel').forEach(function (e) { e.remove(); });
       host.classList.toggle('withcues', !!st.cues);
       host.classList.toggle('withfeel', !!(st.feel && T.Emotions));
+      host.classList.toggle('withprops', !!(o.teacher && st.props && T.Needs));
+      propMarks = null;
+      host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeProps(pg, +pg.dataset.n); });
       if (st.feel && T.Emotions) host.querySelectorAll('.pdfpage').forEach(function (pg) { var c = pg.querySelector('canvas'); if (c) placeFeel(pg, +pg.dataset.n, c); });
       var who = chars(), pct = function (v, d) { return (v / d * 100) + '%'; };
       if (who.length) O.scenes.forEach(function (scene) {
@@ -90,6 +98,37 @@
       });
     }
 
+    /* props, set pieces and costume (teacher): only their words tinted, a rule from the words to the right margin, a box beside the page
+       (Colleen's prompt-book samples; the same as the stage manager script's right column) */
+    var propMarks = null, pageRuns = {};
+    function marksAll() {
+      if (propMarks) return propMarks;
+      var C = T.Cues.COLOR, r = T.Cues.needs(), short = function (ids) { return (ids || []).map(function (id) { var c = T.charById(id); return c ? c.short : ''; }).filter(Boolean).join(', '); };
+      propMarks = [];
+      r.items.forEach(function (it) { it.spots.forEach(function (sp) { propMarks.push({ n: sp.n, y: sp.y, word: sp.word, color: it.kind === 'set' ? C.ST : C.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + (short(sp.who.length ? sp.who : it.who) ? ' · ' + short(sp.who.length ? sp.who : it.who) : '') + ' (' + it.show + ' in all)' }); }); });
+      r.costume.forEach(function (c) { propMarks.push({ n: c.n, y: c.y, word: c.word, color: C.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + short(c.who) : c.said.length ? ' (said by ' + short(c.said) + ')' : '') }); });
+      return propMarks;
+    }
+    function placeProps(pg, n) {
+      pg.querySelectorAll('.pword, .pline, .plink, .pnote').forEach(function (e) { e.remove(); });
+      if (!o.teacher || !st.props || !T.Needs || !T.Cues || !T.Cues.wordRects) return;
+      var mine = marksAll().filter(function (m) { return m.n === n; }).sort(function (a, b) { return a.y - b.y; }); if (!mine.length) return;
+      (pageRuns[n] || (pageRuns[n] = T.Pages.doc().then(function (doc) { return T.Cues.pageWords(doc, n); }))).then(function (runs) {
+        if (!document.body.contains(pg)) return;
+        var sz = T.Pages.size(n), pc = function (v, d) { return (v / d * 100) + '%'; }, last = -1e9, links = '';
+        mine.forEach(function (m) {
+          var rects = runs && m.word ? T.Cues.wordRects(runs, m.word, m.y) : [], end = rects[rects.length - 1];
+          rects.forEach(function (q) { pg.insertAdjacentHTML('beforeend', '<div class="pword" style="left:' + pc(q.x - 1, sz.w) + ';top:' + pc(q.y, sz.h) + ';width:' + pc(q.w + 2, sz.w) + ';height:' + pc(q.h, sz.h) + ';background:' + m.color + '"></div>'); });
+          var ly = end ? end.y + end.h : m.y + 13, lx = end ? end.x + end.w : sz.w * 0.92;
+          pg.insertAdjacentHTML('beforeend', '<div class="pline" style="left:' + pc(lx, sz.w) + ';top:' + pc(ly, sz.h) + '"></div>');
+          var by = Math.max(ly - 30, last + 40); last = by;      // boxes stack downward so none covers another
+          pg.insertAdjacentHTML('beforeend', '<div class="pnote" style="top:' + pc(by, sz.h) + '"><b style="background:' + m.color + '">' + esc(m.head) + '</b>' + esc(m.text) + '</div>');
+          links += '<line x1="0" y1="' + ly + '" x2="14" y2="' + (by + 30) + '" stroke="#1d1a2e" stroke-width="2" vector-effect="non-scaling-stroke"/>';
+        });
+        pg.insertAdjacentHTML('beforeend', '<svg class="plink" viewBox="0 0 14 ' + sz.h + '" preserveAspectRatio="none" aria-hidden="true">' + links + '</svg>');
+      });
+    }
+
     /* cues at the same spot: stack them downward so each can be read and tapped */
     function unstack() {
       host.querySelectorAll('.pdfpage').forEach(function (pg) {
@@ -112,7 +151,7 @@
           T.Pages.doc().then(function (doc) { return doc.getPage(n).then(function (pg) {
             var vp1 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: w / vp1.width * Math.min(window.devicePixelRatio || 1, 2) });
             var cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); cv.className = 'pdfcanvas';
-            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) { el.insertBefore(cv, el.firstChild); placeFeel(el, n, cv); } });
+            return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () { if (document.body.contains(el) && !el.querySelector('canvas')) { el.insertBefore(cv, el.firstChild); placeFeel(el, n, cv); placeProps(el, n); } });
           }); }).catch(function (er) { el.innerHTML = '<p class="err" style="padding:20px">' + esc(er.message || 'This page would not load.') + '</p>'; }).finally(function () { delete drawing[n]; });
         } else if (!e.isIntersecting && c) { c.width = c.height = 0; c.remove(); }
       });
@@ -142,9 +181,11 @@
     if ($('sdir')) $('sdir').onchange = function () { st.dir = this.checked; keep(); overlay(); };
     if ($('scue')) $('scue').onchange = function () { st.cues = this.checked; keep(); overlay(); };
     if ($('sfeel')) $('sfeel').onchange = function () { st.feel = this.checked; keep(); overlay(); };
-    var setAdding = function (v, msg) { adding = v; $('add').setAttribute('aria-pressed', v === 'note'); if ($('addf')) $('addf').setAttribute('aria-pressed', v === 'feel'); if ($('addc')) $('addc').setAttribute('aria-pressed', v === 'cue' || !!(v && v.move)); $('addhelp').hidden = !v; if (msg) $('addhelp').textContent = msg; host.classList.toggle('adding', !!v); };
+    if ($('sprops')) $('sprops').onchange = function () { st.props = this.checked; keep(); overlay(); };
+    var setAdding = function (v, msg) { adding = v; app.querySelectorAll('[data-fab]').forEach(function (b) { b.setAttribute('aria-pressed', v === b.dataset.fab); }); if (v && msg) T.toast(msg, 3500); $('add').setAttribute('aria-pressed', v === 'note'); if ($('addf')) $('addf').setAttribute('aria-pressed', v === 'feel'); if ($('addc')) $('addc').setAttribute('aria-pressed', v === 'cue' || !!(v && v.move)); $('addhelp').hidden = !v; if (msg) $('addhelp').textContent = msg; host.classList.toggle('adding', !!v); };
     $('add').onclick = function () { setAdding(adding === 'note' ? false : 'note', 'Tap the spot on a page where the note goes.'); };
     if ($('addc')) $('addc').onclick = function () { setAdding(adding === 'cue' ? false : 'cue', 'Tap the line on a page where the cue goes (it goes in the left margin).'); };
+    app.querySelectorAll('[data-fab]').forEach(function (b) { b.onclick = function () { var id = { feel: 'addf', cue: 'addc', note: 'add' }[b.dataset.fab]; if ($(id)) $(id).onclick(); }; });
     if ($('addf')) $('addf').onclick = function () { setAdding(adding === 'feel' ? false : 'feel', 'Tap the line on a page where the feeling goes (it goes in the gray strip beside that line).'); if (!st.feel) { st.feel = true; keep(); if ($('sfeel')) $('sfeel').checked = true; overlay(); } };
 
     host.addEventListener('click', function (e) {
