@@ -122,7 +122,7 @@
               who.forEach(function (x) { if (f.who.indexOf(x) < 0) f.who.push(x); });
               if (own) f.own = true;
               f.most = Math.max(f.most, n, own ? who.filter(function (x) { return !isGroup(x); }).length : 0);
-              var p = spot(it, (a + e) / 2); if (p) f.spots.push({ scene: sc.scene, num: sc.num, n: p.n, y: p.y, who: who, text: words(text, a, e) });
+              var p = spot(it, (a + e) / 2); if (p) f.spots.push({ scene: sc.scene, num: sc.num, n: p.n, y: p.y, who: who, word: m[0], text: words(text, a, e) });      // word: the exact words, highlighted alone on the stage manager script
             }
           });
         }

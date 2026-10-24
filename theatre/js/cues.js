@@ -172,8 +172,8 @@
     var notes = st.notes ? (T.show.scriptNotes || []).filter(function (n) { return !n.del; }) : [];
     var pages = (sc.pages || []).map(function (p) { return p.n; });
     var need = (st.props || st.costume) && T.Needs ? needsList() : { items: [], costume: [] }, marks = [];
-    if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: it.kind === 'set' ? SM_COLOR.ST : SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
-    if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
+    if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, word: s.word, color: it.kind === 'set' ? SM_COLOR.ST : SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
+    if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, word: c.word, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
     btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
     var W = 1100, COL = 250, GAP = 18, RCOL = marks.length ? 230 : 0;      // props, set and costume go in their own column on the right (Colleen: not with the cues)
     /* prompt-book style (Colleen's samples): cues on the same line are one call ("LX 22 / SX 2 GO [what happens]"), and every call gets a
@@ -206,7 +206,9 @@
       return pages.reduce(function (p, n) {
         return p.then(function () {
           var sz = T.Pages.size(n), pw = W - COL - GAP - 10 - (RCOL ? RCOL + GAP : 0);
-          return T.Pages.draw(doc, n, pw, 1, true).then(function (r) {
+          var hasMarks = marks.some(function (x) { return x.n === n && x.word; });
+          return Promise.all([T.Pages.draw(doc, n, pw, 1, true), hasMarks ? pageWords(doc, n) : null]).then(function (both) {
+            var r = both[0], runs = both[1];
             var k = r.canvas.width / sz.w, ph = r.canvas.height, H = Math.max(ph + 20, Math.round(W * 11 / 8.5));
             var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
             var ctx = cv.getContext('2d'), ox = COL + GAP, oy = 10;
@@ -217,7 +219,11 @@
             ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.55;
             var lit = [];
             mine.forEach(function (c) { c.cues.forEach(function (q) { lit.push({ y: c.y, color: colorOf(q) }); }); });
-            here.forEach(function (x) { lit.push({ y: x.y, color: x.color }); });
+            here.forEach(function (x) {      // props, set and costume: only their own words (Colleen), else the line
+              x.rects = runs && x.word ? wordRects(runs, x.word, x.y) : [];
+              if (x.rects.length) x.rects.forEach(function (q) { ctx.fillStyle = x.color; ctx.fillRect(ox + (q.x - 1) * k, oy + q.y * k, (q.w + 2) * k, q.h * k); });
+              else lit.push({ y: x.y, color: x.color });
+            });
             lit.sort(function (a, b) { return a.y - b.y; });
             var groups = []; lit.forEach(function (c) { var g = groups[groups.length - 1]; if (g && Math.abs(g[0].y - c.y) < 8) { if (!g.some(function (x) { return x.color === c.color; })) g.push(c); } else groups.push([c]); });
             groups.forEach(function (g) { var h = 15 / g.length; g.forEach(function (c, j) { ctx.fillStyle = c.color; ctx.fillRect(ox + 40 * k, oy + (g[0].y - 2 + j * h) * k, (sz.w - 70) * k, h * k); }); });
@@ -230,7 +236,7 @@
             }).concat(Object.keys(standbys).map(function (key) { return standbys[key]; }).filter(function (sb) { return sb.n === n && sb.cues.some(function (q) { return list.indexOf(q) >= 0; }); })
               .map(function (sb) { return { y: sb.y, kind: 'sb', chips: [], text: 'Standby ' + ranges(sb.cues.filter(function (q) { return list.indexOf(q) >= 0; })) }; }))
               .concat(notes.filter(function (x) { return x.n === n; }).map(function (x) { return { y: x.y, kind: 'note', chips: [['NOTE', '#e3d4ff']], text: x.text }; }));
-            var right = here.map(function (x) { return { y: x.y, kind: 'mark', chips: [[x.head, x.color]], text: x.text }; });
+            var right = here.map(function (x) { var q = x.rects && x.rects[x.rects.length - 1]; return { y: x.y, kind: 'mark', chips: [[x.head, x.color]], text: x.text, to: q ? { x: q.x + q.w, y: q.y + q.h } : null }; });
             var column = function (list2, x0, w, lineX, fromRight) {
               var bottom = 34;
               list2.sort(function (a, b) { return a.y - b.y || (a.kind === 'sb' ? -1 : 1); }).forEach(function (c) {
@@ -244,7 +250,8 @@
                 lines.forEach(function (l, j) { ctx.fillText(l, x0 + (c.kind === 'sb' ? 14 : 8), top + head + 16 + j * 18); });
                 if (c.kind !== 'sb') {      // a rule under the entry, then on to its line in the script
                   var ry = top + h - 2; ctx.strokeStyle = '#1d1a2e'; ctx.lineWidth = 1.5; ctx.beginPath();
-                  if (fromRight) { ctx.moveTo(x0 + w - 8, ry); ctx.lineTo(x0, ry); ctx.lineTo(lineX, ty + 13 * k); ctx.lineTo(lineX - (sz.w - 70) * k * 0.25, ty + 13 * k); }
+                  if (fromRight && c.to) { ctx.moveTo(x0 + w - 8, ry); ctx.lineTo(x0, ry); ctx.lineTo(ox + c.to.x * k, oy + c.to.y * k); }      // straight to the words
+                  else if (fromRight) { ctx.moveTo(x0 + w - 8, ry); ctx.lineTo(x0, ry); ctx.lineTo(lineX, ty + 13 * k); ctx.lineTo(lineX - (sz.w - 70) * k * 0.25, ty + 13 * k); }
                   else { ctx.moveTo(x0, ry); ctx.lineTo(x0 + w - 8, ry); ctx.lineTo(lineX, ty + 13 * k); ctx.lineTo(lineX + (sz.w - 70) * k, ty + 13 * k); }
                   ctx.stroke();
                 }
@@ -263,6 +270,31 @@
         btn.disabled = false;
       });
     }).catch(function (e) { out.innerHTML = '<p class="err">' + esc(e.message || 'The pages would not load.') + '</p>'; btn.disabled = false; });
+  }
+  /* the words on a PDF page with their places (points from the top-left, like the reader's boxes) */
+  function pageWords(doc, n) {
+    return doc.getPage(n).then(function (pg) {
+      var vp = pg.getViewport({ scale: 1 });
+      return pg.getTextContent().then(function (tc) {
+        return tc.items.filter(function (i) { return i.str && i.str.trim(); }).map(function (i) {
+          var pt = vp.convertToViewportPoint(i.transform[4], i.transform[5]), size = Math.hypot(i.transform[2], i.transform[3]) || i.height || 10;
+          return { s: i.str, x: pt[0], base: pt[1], w: i.width, size: size };
+        });
+      });
+    }).catch(function () { return null; });
+  }
+  /* where some words sit near a line: the whole phrase inside one run of text, else each word on its own (a phrase broken over two lines) */
+  function wordRects(runs, word, y) {
+    var near = runs.filter(function (r) { return r.base > y - 30 && r.base < y + 45; }).sort(function (a, b) { return Math.abs(a.base - y - 10) - Math.abs(b.base - y - 10); });
+    var rectIn = function (r, a, len) { var cw = r.w / Math.max(1, r.s.length); return { x: r.x + a * cw, y: r.base - r.size * 0.82, w: len * cw, h: r.size * 1.08 }; };
+    var lw = word.toLowerCase();
+    for (var i = 0; i < near.length; i++) { var at = near[i].s.toLowerCase().indexOf(lw); if (at >= 0) return [rectIn(near[i], at, word.length)]; }
+    var out = [];
+    word.split(/\s+/).filter(function (t) { return t.length > 1; }).forEach(function (t) {
+      var lt = t.toLowerCase(), r = near.find(function (q) { return q.s.toLowerCase().indexOf(lt) >= 0; });
+      if (r) out.push(rectIn(r, r.s.toLowerCase().indexOf(lt), t.length));
+    });
+    return out;
   }
   function wrap(ctx, text, w) {
     var out = [], line = '';
