@@ -375,21 +375,26 @@
     T.setBar('Cast', '#/teacher');
     var cast = T.show.cast = T.show.cast || [];
     app.innerHTML = '<div class="row"><h2 class="grow">Cast</h2><button class="btn" id="groups">Who sings with the groups</button><button class="btn" id="roster">Paste a class list</button><button class="btn primary" id="add">Add an actor</button></div>' +
-      '<p class="muted">Company members tap their picture on the iPad. Photos are made small and saved encrypted.</p><div class="choose">' + cast.map(function (c) {
-        return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b><span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + (c.emailHash ? ' · ✉️' : '') + '</span></button>';
-      }).join('') + '</div>' + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: Company members can start (the whole show, the story, crews) before they have roles. Until then, Company members pick a character.</p>');
+      '<p class="muted">Company members tap their picture on the iPad. Photos are made small and saved encrypted. Tap someone to set <b>Artist</b> or <b>Mentor</b>.</p>' +
+      [['artist', 'Company Artists'], ['mentor', 'Company Mentors'], ['', 'Not marked yet']].map(function (g) {
+        var list = cast.filter(function (c) { return (T.COMPANY[c.company] ? c.company : '') === g[0]; });
+        return list.length ? (cast.some(function (c) { return T.COMPANY[c.company]; }) ? '<h3 style="margin-top:14px">' + g[1] + ' <span class="muted small">(' + list.length + ')</span></h3>' : '') + '<div class="choose">' + list.map(personBtn).join('') + '</div>' : '';
+      }).join('') + (cast.length ? '' : '<p>No actors yet. Paste your class list when you get it: Company members can start (the whole show, the story, crews) before they have roles. Until then, Company members pick a character.</p>');
     document.getElementById('roster').onclick = function () {
-      var d = dialog('<h2>Paste a class list</h2><p class="muted">One Company member per line, the way they like to be called. “Last, First” is turned around. A school email on the line (after a tab or a comma) is saved for Sign in with Google, as a scrambled code. Names already on the list get their email added. Give them roles later (tap a Company member).</p>' +
+      var d = dialog('<h2>Paste a class list</h2><p class="muted">One Company member per line, the way they like to be called. Add <b>Artist</b> or <b>Mentor</b> on the line (after a tab or a comma) to mark them. “Last, First” is turned around. A school email on the line (after a tab or a comma) is saved for Sign in with Google, as a scrambled code. Names already on the list get their email added. Give them roles later (tap a Company member).</p>' +
         '<label class="f">Names<textarea id="nl" style="min-height:240px"></textarea></label><div class="row end"><button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Add them</button></div>');
       d.querySelector('#cn').onclick = function () { d.close(); };
       d.querySelector('#ok').onclick = function () {
         var n = 0, e = 0, jobs = [];
         d.querySelector('#nl').value.split('\n').forEach(function (line) {
           var em = (line.match(/[^\s,;<>]+@[^\s,;<>]+\.[^\s,;<>]+/) || [])[0];
+          var co = (line.match(/(?:^|[\t,;\s])(artist|mentor)\s*$/i) || line.match(/[\t,;]\s*(artist|mentor)\s*(?=[\t,;]|$)/i) || [])[1];      // “Artist” or “Mentor” on the line
+          if (co) line = line.replace(new RegExp('[\\t,;\\s]*' + co + '\\s*(?=[\\t,;]|$)', 'i'), '');
           var nm = line.replace(em || '\u0000', '').replace(/[<>]/g, '').replace(/[\t,;\s]+$/, '').replace(/\t.*$/, '').trim(); if (!nm) return;
           var m = nm.match(/^([^,]+),\s*(.+)$/); if (m) nm = m[2] + ' ' + m[1];
           var a = cast.find(function (c) { return c.name.toLowerCase() === nm.toLowerCase(); });
           if (!a) { a = { id: uid('a'), name: nm, chars: [], photo: '', access: Object.assign({}, T.DEF_ACCESS) }; cast.push(a); n++; }
+          if (co) a.company = co.toLowerCase();
           if (em) jobs.push(T.emailHash(em).then(function (h) { a.emailHash = h; a.emailHint = emailHint(em); e++; }));
         });
         if (!n && !jobs.length) { d.close(); return; }
@@ -399,6 +404,9 @@
     document.getElementById('add').onclick = function () { editActor(null); };
     document.getElementById('groups').onclick = groupsDialog;
     app.querySelectorAll('.person').forEach(function (b) { b.onclick = function () { editActor(cast.find(function (c) { return c.id === b.dataset.id; })); }; });
+  }
+  function personBtn(c) {
+    return '<button class="person" data-id="' + esc(c.id) + '">' + T.face(c) + '<b>' + esc(c.name) + '</b>' + T.companyTag(c) + '<span>' + (c.chars || []).map(function (id) { var x = T.charById(id); return x ? esc(x.short) : ''; }).join(', ') + ((c.chars || []).length ? '' : '<i>No role yet</i>') + (c.guest ? ' · <b>guest</b>' : '') + (c.emailHash ? ' · ✉️' : '') + '</span></button>';
   }
   /* who sings with each group when the script names the group (a JOCKS line is Chad's and Zeke's too; a CHAD line is only Chad's) */
   function groupsDialog() {
@@ -425,6 +433,7 @@
     var d = dialog('<h2>' + (isNew ? 'Add an actor' : 'Edit actor') + '</h2>' +
       '<div class="row">' + '<span id="ph">' + T.face(a, 80) + '</span><label class="btn small">Photo<input type="file" accept="image/*" id="pf" hidden></label><button class="btn small quiet" id="pr">No photo</button></div>' +
       '<label class="f">Name<input id="nm" value="' + esc(a.name) + '" autocomplete="off"></label>' +
+      '<div class="switch"><span><b>In the Company</b></span><div class="seg" id="co">' + [['artist', 'Artist'], ['mentor', 'Mentor'], ['', 'Not set']].map(function (o) { return '<button type="button" data-co="' + o[0] + '" aria-pressed="' + ((a.company || '') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>' +
       '<label class="f">School email (for Sign in with Google)<input id="em" type="email" autocomplete="off" autocapitalize="off" placeholder="' + (a.emailHash ? 'saved (' + esc(a.emailHint || 'hidden') + '): type a new one to change it' : 'e.g. jsmith@school.org') + '"></label>' +
       (a.emailHash ? '<label class="switch"><span>Remove the saved school email</span><input type="checkbox" id="emx"></label>' : '') +
       '<label class="f">Sizes, for costume shopping (optional)<input id="sz" value="' + esc(a.sizes || '') + '" placeholder="e.g. shirt M, pants 10, shoes 7"></label>' +
@@ -439,7 +448,8 @@
       sw('sayForMe', 'Allow “Say it for me”') +
       '<div class="switch"><span>How close it must be</span>' + seg('strict', [['loose', 'Loose'], ['medium', 'Medium'], ['exact', 'Exact']]) + '</div>' +
       '<div class="row end" style="margin-top:14px">' + (isNew ? '' : '<button class="btn quiet" id="del">Remove</button><span class="grow"></span>') + '<button class="btn" id="cn">Cancel</button><button class="btn primary" id="ok" data-save>Save</button></div>');
-    d.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { A[b.parentNode.dataset.k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }; });
+    d.querySelectorAll('#co button').forEach(function (b) { b.onclick = function () { if (b.dataset.co) a.company = b.dataset.co; else delete a.company; d.querySelectorAll('#co button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }; });
+    d.querySelectorAll('.seg[data-k] button').forEach(function (b) { b.onclick = function () { A[b.parentNode.dataset.k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }; });
     d.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { A[inp.dataset.k] = inp.checked; }; });
     d.querySelector('#pf').onchange = function (e) { var f = e.target.files[0]; if (f) photoFromFile(f, 240).then(function (u) { a.photo = u; d.querySelector('#ph').innerHTML = T.face(a, 80); }).catch(function (er) { T.toast(er.message); }); };
     d.querySelector('#pr').onclick = function () { a.photo = ''; d.querySelector('#ph').innerHTML = T.face(a, 80); };

@@ -221,6 +221,9 @@
   T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
     ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list']];
   T.TEACH_PAGES = [['callboard', 'Call board (who is where, each day)'], ['read', 'The script (teacher view)'], ['cues', 'Cue sheet'], ['smscript', 'Stage manager script'], ['mics', 'Mic plot']];
+  /* in the Company (Colleen 2026-10-23): a.company is 'artist' (Company Artist) or 'mentor' (Company Mentor), or not set yet */
+  T.COMPANY = { artist: 'Artist', mentor: 'Mentor' };
+  T.companyTag = function (a) { return a && T.COMPANY[a.company] ? '<span class="tag co-' + a.company + '">' + T.COMPANY[a.company] + '</span>' : ''; };
   T.shortName = function (n) { var w = String(n || '').trim().split(/\s+/); return w.length > 1 ? w[0] + ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.' : w[0] || ''; };
   T.usePass = function () {      // false: this iPad's password was turned off or deleted
     var id = ls('passId'); T.pass = null;
@@ -517,6 +520,7 @@
   function whoPage(args) {
     setBar('Who are you?', T.me ? '#/home' : '');
     var cast = (T.show.cast || []).filter(function (c) { return c.name; });      // before casting, students are on the list with no role yet
+    if (T.pass && T.pass.who === 'helper' && cast.some(function (c) { return c.company === 'artist'; }) && !(args && args[0] === 'all')) cast = cast.filter(function (c) { return c.company === 'artist'; });      // a Mentor works with an Artist
     var pickChars = (args && args[0] === 'character') || !cast.length;
     var hasEmails = !pickChars && cast.some(function (c) { return c.emailHash; });
     var google = hasEmails && T.show.signin && T.show.signin.clientId;

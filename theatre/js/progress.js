@@ -163,7 +163,7 @@
   };
 
   /* ---------- Teacher: Progress ---------- */
-  var sortBy = 'help';
+  var sortBy = 'help', coShow = '';      // coShow: all, or only Artists / Mentors
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.progress = function (args) {
     T.setBar('Progress', '#/teacher');
@@ -191,7 +191,7 @@
     return out;
   }
   function table(by) {
-    var rows = (T.show.cast || []).filter(function (a) { return !a.guest && (a.chars || []).length; }).map(function (a) {
+    var rows = (T.show.cast || []).filter(function (a) { return !a.guest && (a.chars || []).length && (!coShow || a.company === coShow); }).map(function (a) {
       var r = by[a.id], an = analyze(a, r), ms = missed(a, an, r);
       return { a: a, an: an, missed: ms.filter(function (m) { return !m.caught; }), hasData: !!r };
     });
@@ -199,16 +199,18 @@
       done: function (x, y) { return y.an.coverage - x.an.coverage; }, time: function (x, y) { return y.an.seconds - x.an.seconds; } };
     rows.sort(sorts[sortBy]);
     var all = rows.filter(function (x) { return x.an.coverage >= 1; });
-    app.innerHTML = '<div class="row" style="margin-bottom:12px"><div class="seg">' + [['help', 'Needs help first'], ['done', 'Most done'], ['time', 'Most practice']].map(function (s) { return '<button data-s="' + s[0] + '" aria-pressed="' + (sortBy === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div></div>' +
+    app.innerHTML = '<div class="row" style="margin-bottom:12px"><div class="seg">' + [['help', 'Needs help first'], ['done', 'Most done'], ['time', 'Most practice']].map(function (s) { return '<button data-s="' + s[0] + '" aria-pressed="' + (sortBy === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
+      ((T.show.cast || []).some(function (a) { return T.COMPANY[a.company]; }) ? '<div class="seg">' + [['', 'Everyone'], ['artist', 'Artists'], ['mentor', 'Mentors']].map(function (s) { return '<button data-co="' + s[0] + '" aria-pressed="' + (coShow === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' : '') + '</div>' +
       (all.length ? '<div class="card">' + sym('🏅') + '<b>Practiced everything they are in:</b> ' + all.map(function (x) { return esc(x.a.name); }).join(', ') + '</div>' : '') +
       '<table class="tbl"><thead><tr><th>Company member</th><th>Practiced</th><th>Time (7 days / all)</th><th>Struggling with</th><th>Missed in class, not caught up</th></tr></thead><tbody>' +
       rows.map(function (x) {
         var pct = Math.round(x.an.coverage * 100);
-        return '<tr style="cursor:pointer" data-a="' + x.a.id + '"><td>' + T.face(x.a, 32) + ' <b>' + esc(x.a.name) + '</b></td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b>' + (x.hasData ? '' : '<br><span class="muted small">no practice yet</span>') + '</td>' +
+        return '<tr style="cursor:pointer" data-a="' + x.a.id + '"><td>' + T.face(x.a, 32) + ' <b>' + esc(x.a.name) + '</b> ' + T.companyTag(x.a) + '</td><td><b' + (pct < 50 ? ' class="err"' : '') + '>' + pct + '%</b>' + (x.hasData ? '' : '<br><span class="muted small">no practice yet</span>') + '</td>' +
           '<td>' + mins(x.an.week) + ' / ' + mins(x.an.seconds) + (x.an.helped ? '<br><span class="muted small">' + mins(x.an.helped) + ' with a Mentor</span>' : '') + '</td><td>' + (x.an.struggles.length ? '<span class="err">' + x.an.struggles.slice(0, 3).map(esc).join('<br>') + '</span>' : '<span class="muted">—</span>') + '</td>' +
           '<td>' + (x.missed.length ? x.missed.slice(0, 3).map(function (m) { return esc(T.prodDay ? T.prodDay(m.date, true) : m.date) + ': ' + esc(m.what); }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
       }).join('') + '</tbody></table><p class="muted small">Practice counts on the iPads: lines marked right or wrong, songs rated after singing, minutes on practice pages. A missed day counts as caught up once they practice that scene or song in the app afterward.</p>';
     app.querySelectorAll('[data-s]').forEach(function (b) { b.onclick = function () { sortBy = b.dataset.s; table(by); }; });
+    app.querySelectorAll('[data-co]').forEach(function (b) { b.onclick = function () { coShow = b.dataset.co; table(by); }; });
     app.querySelectorAll('[data-a]').forEach(function (tr) { tr.onclick = function () { T.go('#/teacher/progress/' + tr.dataset.a); }; });
   }
   function detail(id, r) {
