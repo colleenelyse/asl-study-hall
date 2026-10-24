@@ -401,3 +401,11 @@ auto_select + prompt, so a Chromebook signed into the school account signs in by
 is matched to the cast list and remembered on the device; the picture picker stays below. The cast password still unlocks the show once per
 device. Needs: an OAuth Web Client ID with https://asl.cool (and localhost for testing) as authorized JavaScript origins; the district allowing
 the app for students.
+**School sign-in page** (Colleen: "ASL Study Hall remembers who they are by the Google account Chrome is logged into; how can that work but
+this can't?"): theatre/signin-script/ is a tiny Apps Script web app in her school account (scriptId 1vXplEAJVyuzAQTN7xvmBv59sRzKFXgkuAooIYoOZebIMXz5O2D6pyJAU,
+deployment AKfycbyPT5T6gQ6nB-fEqI7QkZ7eu-wSmQ9TGSiFu5iCJUHGoOcznJncTDeWo3OLz2k0Y4CPEA, execute as owner, domain only, like ASL Study).
+It reads Session.getActiveUser() and sends the student back to asl.cool/theatre/#/signin/<SHA-256("theatre:" + email)> (the email never leaves
+Google; only asl.cool/theatre and localhost:8830 are allowed as return addresses). The app: on Who are you?, when the cast has school emails
+and the student isn't known, it hops there once per browser session (`goSignin`), and `applySignin` matches the code to `cast[].emailHash` and
+remembers the student. Push changes with clasp --user school from a folder holding these two files and this .clasp.json scriptId (not inside
+ASL port); redeploy with `clasp update-deployment <deploymentId>` to keep the address. The Google Client ID route stays as an option.

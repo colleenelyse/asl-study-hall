@@ -1071,13 +1071,14 @@
         e.preventDefault();
         var id = document.getElementById('sic').value.trim(), dom = document.getElementById('sid').value.trim().replace(/^@/, '').toLowerCase();
         if (id && !/\.apps\.googleusercontent\.com$/.test(id)) { T.toast('That does not look like a Google Client ID (it ends in .apps.googleusercontent.com).', 5000); return; }
-        if (id) T.show.signin = { clientId: id, domain: dom || undefined }; else delete T.show.signin;
-        save(id ? 'School sign-in saved' : 'School sign-in turned off');
+        T.show.signin = Object.assign({}, T.show.signin || {}, { clientId: id || undefined, domain: dom || undefined });
+        save('School sign-in saved');
       };
     }, 0);
     var S = T.show.signin || {}, withEmail = (T.show.cast || []).filter(function (c) { return c.emailHash; }).length;
     app.innerHTML = '<form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students tap <b>Sign in with Google</b> and the app finds them on the cast list (by their school email, saved as a scrambled code). They still type the cast password once on each device.</p>' +
-      '<label class="f">Google Client ID<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
+      '<p class="small">Students on school Chromebooks are found by the app’s own school sign-in page (in your school Google account, like ASL Study Hall): nothing to set up but their emails. The Google Client ID below is only needed for devices that are not signed into a school account.</p>' +
+      '<label class="f">Google Client ID (optional)<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
       '<label class="f">School email domain (only these accounts)<input id="sid" value="' + esc(S.domain || '') + '" autocomplete="off" placeholder="e.g. students.myschool.org"></label>' +
       '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' students have a school email saved (Cast › tap a student, or paste the class list with emails).</p>' +
       '<div class="row end"><button class="btn primary" data-save>Save school sign-in</button></div></form>' +

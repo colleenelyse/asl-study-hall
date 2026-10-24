@@ -348,8 +348,10 @@
     Speech.stop();
     var parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
     var page = parts[0] || '';
+    if (page === 'signin') { ls('signinCode', parts[1] || 'none'); history.replaceState(null, '', location.pathname + '#/'); page = ''; parts = []; }      // back from the school sign-in page
     if (page === 'teacher') return T.routes.teacher(parts.slice(1));
     if (!T.show) return unlockPage();
+    if (applySignin()) return;
     if (!T.me && page !== 'settings') return whoPage();
     var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage, listen: listenPage }[page] || (T.studentPages || {})[page];
     (fn || homePage)(parts.slice(1));
@@ -399,6 +401,19 @@
     var b = new TextEncoder().encode('theatre:' + String(email || '').trim().toLowerCase());
     return crypto.subtle.digest('SHA-256', b).then(function (h) { return Array.from(new Uint8Array(h)).map(function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); });
   };
+  /* the school's own sign-in page (an Apps Script web app in Colleen's school account, like ASL Study Hall): it knows the school account
+     Chrome is signed into and sends the student back here with the scrambled code of their email (#/signin/<code>) */
+  var SIGNIN_PAGE = 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbyPT5T6gQ6nB-fEqI7QkZ7eu-wSmQ9TGSiFu5iCJUHGoOcznJncTDeWo3OLz2k0Y4CPEA/exec';
+  function signinPage() { var S = T.show && T.show.signin; return (S && S.page) || SIGNIN_PAGE; }
+  function goSignin() { try { sessionStorage.setItem('signinTried', '1'); } catch (e) {} location.href = signinPage() + '?r=' + encodeURIComponent(location.origin + location.pathname); }
+  function applySignin() {      // a code came back: find the student on the cast list and remember them on this device
+    var code = ls('signinCode'); if (!code) return false;
+    ls('signinCode', null);
+    if (code === 'none') { T.toast('The school account could not be read. Tap your picture instead.', 5000); return false; }
+    var a = (T.show.cast || []).find(function (c) { return c.emailHash === code; });
+    if (!a) { T.toast('Your school account is not on the cast list yet. Tap your picture and tell your teacher.', 6000); return false; }
+    var sel = { cast: a.id, school: 1 }; ls('me', sel); setMe(sel); location.replace('#/home'); return true;
+  }
   var gsiP = null;
   function loadGsi() {
     if (window.google && window.google.accounts && window.google.accounts.id) return Promise.resolve();
@@ -426,9 +441,14 @@
     setBar('Who are you?', T.me ? '#/home' : '');
     var cast = (T.show.cast || []).filter(function (c) { return c.name; });      // before casting, students are on the list with no role yet
     var pickChars = (args && args[0] === 'character') || !cast.length;
-    var google = !pickChars && T.show.signin && T.show.signin.clientId && cast.some(function (c) { return c.emailHash; });
-    var h = google ? '<div class="card center"><h2>Sign in with your school account</h2><p class="muted">The app finds you on the cast list.</p><div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div></div>' : '';
-    h += '<h2>' + (pickChars ? 'Pick your character' : google ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
+    var hasEmails = !pickChars && cast.some(function (c) { return c.emailHash; });
+    var google = hasEmails && T.show.signin && T.show.signin.clientId;
+    // the school sign-in page: tried once by itself (a quick hop to Google and back), and a button to try again
+    var tried = false; try { tried = sessionStorage.getItem('signinTried') === '1'; } catch (e) {}
+    if (hasEmails && !T.me && !tried && !google) { goSignin(); return; }
+    var h = hasEmails ? '<div class="card center"><h2>Sign in with your school account</h2><p class="muted">The app finds you on the cast list.</p>' +
+      (google ? '<div id="gsi" style="display:flex;justify-content:center;min-height:44px"></div>' : '<button class="btn primary" id="schoolin">Use my school account</button>') + '</div>' : '';
+    h += '<h2>' + (pickChars ? 'Pick your character' : hasEmails ? 'Or tap your picture' : 'Who are you?') + '</h2><p class="muted">Tap your ' + (pickChars ? 'character' : 'picture') + '.</p>';
     if (!pickChars) {
       h += '<div class="choose">' + cast.map(function (c) {
         return '<button class="person" data-cast="' + esc(c.id) + '">' + face(c) + '<b>' + esc(c.name) + '</b><span>' + ((c.chars || []).map(function (id) { var x = charById(id); return x ? esc(x.short) : ''; }).join(', ') || 'Role coming soon') + '</span></button>';
@@ -445,6 +465,7 @@
     }
     app.innerHTML = h;
     if (google) schoolSignIn(document.getElementById('gsi'));
+    var si = document.getElementById('schoolin'); if (si) si.onclick = goSignin;
     app.querySelectorAll('.person').forEach(function (b) {
       b.onclick = function () {
         var sel = b.dataset.cast ? { cast: b.dataset.cast } : { char: b.dataset.char };
