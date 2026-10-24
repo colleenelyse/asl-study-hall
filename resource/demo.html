@@ -414,7 +414,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.83';
+var VERSION = '1.84';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -451,6 +451,8 @@ var TABS = {
   // what the student will do in resource today (required each school day); the teacher can mark that they didn't follow it
   'Daily plans': ['Date', 'Email', 'Plan', 'Updated', 'Did not follow it', 'Marked by', 'Teacher note'],
   // a student's typed missing count, checked against the detailed page they pasted that week (filled in by the app)
+  // missing work a student says can't be turned in any more (it leaves their missing list; the teacher sees it with the reason)
+  'Missing explained': ['Date', 'Email', 'Class', 'Assignment', 'Why it won’t be turned in'],
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
   // the grade each student wants to finish the semester with, per class; and what each class said the final exam will be like
   'Grade goals': ['Email', 'Semester', 'Class', 'Goal (%)', 'Updated', 'Reason for the change'],
@@ -474,7 +476,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25 };   // Students columns
-var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Missing explained': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -670,7 +672,7 @@ function setup_() {
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes']],
-  ['#2e7d5b', ['IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Goal data history']],
+  ['#2e7d5b', ['IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
@@ -1417,6 +1419,8 @@ function efRows_(e) {
     ['Coursework turned in', p(e.turnedIn), e.perClass.map(function (c) { return c.cls + ' ' + c.pct + '%'; }).join(' · ')],
     ['Missing now', mnow, list(e.missingNow)],
     ['Missing this semester', e.missingSem, 'Core classes: ' + e.missingSemCore],
+    ['Missing, can’t be turned in (student’s reason)', Object.keys(e.missingExplained || {}).reduce(function (n, c) { return n + e.missingExplained[c].length; }, 0),
+      Object.keys(e.missingExplained || {}).map(function (c) { return e.missingExplained[c].map(function (x) { return c + ': ' + x.name + ' (“' + x.why + '”)'; }).join(' · '); }).join(' · ')],
     ['Turned in late this semester', e.lateSem || 0, list(e.latePer)],
     ['Reached out to teachers', (e.contacts.app + e.contacts.told) + ' this semester', e.contacts.app + ' with “Email my teacher” in the app, ' + e.contacts.told + ' other times · retakes scheduled: ' + e.contacts.retakes],
     ['Daily plan for class time', e.dayPlan.days + ' days written', e.dayPlan.flagged ? e.dayPlan.flagged + ' day' + (e.dayPlan.flagged === 1 ? '' : 's') + ' marked by the teacher: did nothing or didn’t follow it (' + p(e.dayPlan.followed) + ' followed)' : e.dayPlan.days ? 'Never marked as not followed' : ''],
@@ -1454,6 +1458,30 @@ function fullHtml_(f, td) {
 
 // Teacher: a student's report, for printing or saving as a PDF (the full progress report: grades, goals and benchmarks).
 function api_reportHtmlRead_(email) { teacherOnly_(); return reportHtml_(reportData_(low_(email), true), { full: true }); }
+// 1.84: missing work a student says can't be turned in any more: { class: { assignment: { why, date } } }
+function explained_(email) {
+  var out = {};
+  rows_('Missing explained').forEach(function (r) { if (low_(r[1]) === email) (out[String(r[2])] = out[String(r[2])] || {})[String(r[3])] = { why: String(r[4] || ''), date: day_(r[0]) }; });
+  return out;
+}
+function api_explainMissing(cls, name, why) {
+  var email = need_(); cls = clean_(cls, 60); name = clean_(name, 150); why = clean_(why, 300);
+  if (!cls || !name) throw new Error('Pick the assignment.');
+  if (!why) throw new Error('Pick a reason or type why it can’t be turned in.');
+  return locked_(function () {
+    rewrite_('Missing explained', function (r) { return !(low_(r[1]) === email && String(r[2]) === cls && String(r[3]) === name); }, [[today_(), email, cls, name, why]]);
+    return fresh_(email);
+  });
+}
+// the student (undo) or the teacher (put it back on the student's list)
+function api_unexplainMissing(cls, name, email) {
+  var me = need_(); email = low_(email || '') || me;
+  if (email !== me) teacherOnly_();
+  return locked_(function () {
+    rewrite_('Missing explained', function (r) { return !(low_(r[1]) === email && String(r[2]) === cls && String(r[3]) === name); }, []);
+    return fresh_(email);
+  });
+}
 // 1.80: case managers open the same link and see only the students who picked them (Students tab, Case manager email column):
 // a list of names, then each student's full progress report (everything the teacher's report has).
 function caseload_(email) {
@@ -2361,10 +2389,11 @@ function efData_(email) {
   var checks = praw.filter(function (r) { return r[8]; }), accurate = checks.filter(function (r) { return r[8] === 'Accurate'; }).length;
   // assignment history (missing / late this semester)
   var hist = rows_('Assignment history').filter(function (r) { return low_(r[0]) === email && (day_(r[3]) || day_(r[4])) >= sem; });
-  var missingNow = {}, missSem = 0, missSemCore = 0, latePer = {}, lateList = {}, lateSem = 0;
+  var missingNow = {}, missSem = 0, missSemCore = 0, latePer = {}, lateList = {}, lateSem = 0, exp = explained_(email), missingExplained = {};
   hist.forEach(function (r) {
-    var c = String(r[1]);
-    if (r[8] === 'Yes') (missingNow[c] = missingNow[c] || []).push(String(r[2]));
+    var c = String(r[1]), x = exp[c] && exp[c][String(r[2])];
+    if (r[8] === 'Yes' && x) (missingExplained[c] = missingExplained[c] || []).push({ name: String(r[2]), why: x.why, date: x.date });          // 1.84: off the list, with the reason
+    else if (r[8] === 'Yes') (missingNow[c] = missingNow[c] || []).push(String(r[2]));
     if (r[6] === 'Yes') { missSem++; if (isCore_(c)) missSemCore++; }
     if (r[7] === 'Yes') { latePer[c] = (latePer[c] || 0) + 1; lateSem++; (lateList[c] = lateList[c] || []).push(String(r[2])); }
   });
@@ -2390,7 +2419,7 @@ function efData_(email) {
     checkins: { weeks: checkedIn, of: 8 },
     followed: pct(fYes, followed.length), steps: pct(stepsDone, steps), stepsN: steps,
     accuracy: { pct: pct(accurate, checks.length), n: checks.length, weeks: praw.slice(-6).reverse().map(function (r) { return { week: day_(r[0]), check: String(r[8] || '') }; }) },
-    missingNow: missingNow, missingSem: missSem, missingSemCore: missSemCore, lateMax: lateMax, lateMaxCls: lateMaxCls, latePer: latePer, lateSem: lateSem, lateList: lateList,
+    missingNow: missingNow, missingExplained: missingExplained, explainedAll: exp, missingSem: missSem, missingSemCore: missSemCore, lateMax: lateMax, lateMaxCls: lateMaxCls, latePer: latePer, lateSem: lateSem, lateList: lateList,
     turnedIn: pct(turned, counted), perClass: perClass,
     contacts: { app: appEmails, told: told, retakes: retakesSched, recent: contacts.slice(-8).reverse().map(function (r) { return { when: when_(r[0]), cls: String(r[2]), how: String(r[3]) }; }) },
     observed: { pct: pct(obsMet, obs.length), n: obs.length, recent: obs.slice(-6).reverse().map(function (r) { return { date: day_(r[0]), started: r[2] === 'Yes', prompts: Number(r[3]) || 0, minutes: Number(r[4]) || 0, met: r[5] === 'Yes', note: String(r[6] || '') }; }) }
@@ -3236,7 +3265,7 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = fr.i >= 0 ? String(fr.rows[fr.i][SC.goal] || '') : '';
-  var out = { email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? (function () { var g = goal_(email, ef); return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })() : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -3749,6 +3778,7 @@ window.addEventListener('beforeunload', function (e) { if (DIRTY) { e.preventDef
 call('api_boot').then(function (b) {
   if (b.error === 'signin') { $('main').innerHTML = '<div class="card empty">Please open this link while signed in to your school Google account.</div>'; return; }
   B = withCheck(b); D = b.data || emptyD(); if (b.td) TD = b.td;
+  var wk = 'Work with my ' + (b.dayClass || 'resource') + ' teacher on it'; if (ACTIONS.indexOf(wk) < 0) ACTIONS.splice(4, 0, wk);          // a low grade's plan
   $('brand').textContent = b.app; document.title = b.app;
   lookAfterBoot();
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
@@ -5103,23 +5133,47 @@ function myGoalCard() {
     }).join('') : '') + '</div>';
 }
 // Missing assignments by class: what the last Infinite Campus paste found (still missing), or what the student typed this week.
+// 1.84: "Can't turn it in?": the student picks or types why (deadline passed, not accepted, Canvas closed); it leaves their list
+// and the teacher sees it with the reason. They can put it back.
+var MX = null, MX_ROWS = [], MX_WHY = ['The deadline to turn it in for credit has passed', 'My teacher isn’t accepting it anymore', 'The Canvas assignment is closed, so I can’t open it'];
 function missingCard() {
   if (!F('missing') || !F('missList')) return '';
-  var now = (D.ef && D.ef.missingNow) || {}, rows = [];
+  var now = (D.ef && D.ef.missingNow) || {}, ex = (D.ef && D.ef.explainedAll) || {}, rows = [];
   graded().forEach(function (c) {
     var list = (now[c.name] || []).slice();
     var typed = CK && CK.missing[c.name] && CK.missing[c.name].list ? CK.missing[c.name].list.split(/[;,]\s*/).filter(String) : [];
-    typed.forEach(function (t) { if (list.indexOf(t) < 0) list.push(t); });
+    typed.forEach(function (t) { if (list.indexOf(t) < 0 && !(ex[c.name] && ex[c.name][t])) list.push(t); });
     if (list.length) rows.push([c, list]);
   });
+  MX_ROWS = rows;
+  var gone = []; Object.keys(ex).forEach(function (c) { Object.keys(ex[c]).forEach(function (a) { gone.push([c, a, ex[c][a].why]); }); });
   var late = (D.ef && D.ef.lateList) || {}, lateCls = Object.keys(late).filter(function (c) { return late[c].length; });
-  return '<div class="card"><h2>📝 My missing assignments</h2>' + (rows.length ? rows.map(function (x) {
+  return '<div class="card" id="misCard"><h2>📝 My missing assignments</h2>' + (rows.length ? rows.map(function (x, i) {
     return '<p style="margin:10px 0 4px"><b>' + esc(x[0].name) + '</b> <span class="badge warn">' + x[1].length + '</span> <span class="small" style="display:inline">' + teacherLinks(x[0]) + '</span></p><ul style="margin:0;padding-left:20px">' +
-      x[1].map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>';
+      x[1].map(function (a, j) { var open = MX && MX.c === x[0].name && MX.a === a; return '<li style="margin-bottom:4px">' + esc(a) + (open ? mxForm() : ' <button class="btn link small" style="padding:0 4px" onclick="mxOpen(' + i + ',' + j + ')">Can’t turn it in?</button>') + '</li>'; }).join('') + '</ul>';
   }).join('') : '<p class="small" style="margin:4px 0 0">None that we know of. Paste each class’s Grades page from Infinite Campus to check.</p>') +
     (lateCls.length ? '<details style="margin-top:12px"><summary><b>⏰ Turned in late this semester</b> <span class="badge">' + lateCls.reduce(function (n, c) { return n + late[c].length; }, 0) + '</span></summary>' +
       lateCls.map(function (c) { return '<p style="margin:8px 0 2px"><b>' + esc(c) + '</b> <span class="badge">' + late[c].length + '</span></p><ul style="margin:0;padding-left:20px">' + late[c].map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>'; }).join('') +
-      '<p class="small" style="margin:8px 0 0">Late work still counts, but turning work in on time is what lets you retake tests.</p></details>' : '') + '</div>';
+      '<p class="small" style="margin:8px 0 0">Late work still counts, but turning work in on time is what lets you retake tests.</p></details>' : '') +
+    (gone.length ? '<details style="margin-top:10px"><summary class="small">Taken off my list (' + gone.length + ')</summary><ul style="margin:6px 0 0;padding-left:20px">' + gone.map(function (g, k) {
+      return '<li class="small" style="margin-bottom:4px"><b>' + esc(g[0]) + ':</b> ' + esc(g[1]) + ' · “' + esc(g[2]) + '” <button class="btn link small" style="padding:0 4px" onclick="mxBack(' + k + ')">Put it back</button></li>';
+    }).join('') + '</ul></details>' : '') + '</div>';
+}
+function mxForm() {
+  return '<div style="margin:6px 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><p class="small" style="margin:0 0 6px"><b>Why can’t it be turned in?</b> Pick one or type your own. It comes off your list, and your teacher will see your reason.</p>' +
+    '<div class="chips" style="margin-bottom:6px">' + MX_WHY.map(function (w) { return '<button class="chip" onclick="$(\'mxWhy\').value=this.textContent">' + esc(w) + '</button>'; }).join('') + '</div>' +
+    '<input type="text" id="mxWhy" maxlength="300" placeholder="Or type your own reason"><div class="row" style="margin-top:8px"><button class="btn primary small" onclick="mxSave()">Take it off my list</button><button class="btn link small" onclick="MX=null;mxRedraw()">Cancel</button></div></div>';
+}
+function mxRedraw() { var c = $('misCard'); if (c) c.outerHTML = missingCard(); }
+function mxOpen(i, j) { MX = { c: MX_ROWS[i][0].name, a: MX_ROWS[i][1][j] }; mxRedraw(); var w = $('mxWhy'); if (w) w.focus(); }
+function mxSave() {
+  var why = $('mxWhy').value.trim(); if (!why) return alert('Pick a reason, or type why it can’t be turned in.');
+  call('api_explainMissing', MX.c, MX.a, why).then(function (d) { D = d; MX = null; CK = null; toast('Taken off your list. Your teacher will see why.'); drawCheckin(); }).catch(oops);
+}
+function mxBack(k) {
+  var ex = (D.ef && D.ef.explainedAll) || {}, all = []; Object.keys(ex).forEach(function (c) { Object.keys(ex[c]).forEach(function (a) { all.push([c, a]); }); });
+  var g = all[k]; if (!g) return;
+  call('api_unexplainMissing', g[0], g[1]).then(function (d) { D = d; CK = null; toast('Back on your list'); drawCheckin(); }).catch(oops);
 }
 
 // A D or F (under the Low grade line): the student must say why and pick a plan before saving.
@@ -6029,6 +6083,8 @@ function efRows(e) {
     ['Coursework turned in', p(e.turnedIn), e.perClass.map(function (c) { return c.cls + ' ' + c.pct + '%'; }).join(' · ')],
     ['Missing now', mnow, Object.keys(e.missingNow).map(function (c) { return c + ' ' + e.missingNow[c].length; }).join(' · ')],
     ['Missing this semester (core classes)', e.missingSemCore, 'All classes: ' + e.missingSem],
+    ['Missing, can’t be turned in (student’s reason)', Object.keys(e.missingExplained || {}).reduce(function (n, c) { return n + e.missingExplained[c].length; }, 0),
+      Object.keys(e.missingExplained || {}).map(function (c) { return e.missingExplained[c].map(function (x) { return c + ': ' + x.name + ' (“' + x.why + '”, ' + shortDay(x.date) + ')'; }).join(' · '); }).join(' · ')],
     ['Late this semester', e.lateSem || 0, e.lateMax ? 'Most in one class: ' + e.lateMax + ' in ' + e.lateMaxCls + (Object.keys(e.latePer).length > 1 ? ' · ' + Object.keys(e.latePer).map(function (c) { return c + ' ' + e.latePer[c]; }).join(' · ') : '') : ''],
     ['Used “Email my teacher” in the app', e.contacts.app + ' this semester', ''],
     ['Said they emailed or talked to a teacher', e.contacts.told + ' this semester', 'Retakes scheduled: ' + e.contacts.retakes],
