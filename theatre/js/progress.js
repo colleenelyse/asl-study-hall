@@ -183,7 +183,7 @@
       var at = (p.attendance || {})[d] || {}, away = at[a.id] === 'absent' || at[a.id] === 'excused' || (p.conflicts || []).some(function (c) { return c.actor === a.id && c.date === d; });
       if (!away) return;
       (p.days[d].groups || []).forEach(function (g) {
-        if (g.focus === 'trip') return;
+        if (g.focus === 'trip' || g.focus === 'photos') return;
         g.scenes.forEach(function (sid) { var x = an.scenes.find(function (y) { return y.scene.id === sid; }); if (x) out.push({ date: d, what: g.focus + ' · Scene ' + x.scene.num, caught: !!x.last && x.last > d }); });
         g.songs.forEach(function (sid) { var x = an.songs.find(function (y) { return y.song.id === sid; }); if (x) out.push({ date: d, what: g.focus + ' · “' + x.song.title + '”', caught: !!x.last && x.last > d }); });
       });

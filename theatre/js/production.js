@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['photos', '📸', 'Costume and prop photos'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -178,6 +178,7 @@
     }
     if (g && g.focus === 'watch') return { type: 'watch', icon: '🎬', text: 'Watch the movie together' + (g.where ? ' · ' + g.where : ''), group: g.id };
     if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
+    if (g && g.focus === 'photos') return { type: 'photos', icon: '📸', text: 'Costume and prop photos: photograph your finished costumes and props' + (g.where ? ' · ' + g.where : ''), href: '#/photos', group: g.id };      // after the shopping trip (Colleen 2026-10-24)
     if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
     if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
     var st = how && how.slice(0, 3) === 'st:' && P().stations.find(function (x) { return 'st:' + x.id === how; });
@@ -460,7 +461,7 @@
         }).join('') +
         (r.groups.some(function (g) { return g.focus === 'share'; }) ? '<div class="card"><h3>🌟 Spotlight solos</h3><p class="muted small">Company members with a small solo line sing it for the class. Tap to choose.</p><div class="row">' +
           (T.soloists ? T.soloists() : []).map(function (x) { return '<button type="button" class="btn small" data-spot="' + x.c + '" aria-pressed="' + ((r.spotlight || []).indexOf(x.c) >= 0) + '">' + esc(T.charById(x.c).short) + ' <span class="muted small">' + esc(x.song.title) + '</span></button>'; }).join('') + '</div></div>' : '') +
-        '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip', 'share'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-bottom:14px">' + FOCUS.filter(function (f) { return ['acting', 'vocals', 'dance', 'trip', 'photos', 'share'].indexOf(f[0]) >= 0; }).map(function (f) { return '<button class="btn" data-addg="' + f[0] + '">+ ' + f[1] + ' ' + f[2] + ' group</button>'; }).join('') + '</div>' +
         '<div class="card"><label class="f" style="margin:0">Note for everyone (they see it)<input id="nt" value="' + esc(r.notes || '') + '" placeholder="e.g. Wear shoes you can dance in."></label></div>' +
         '<div class="card"><h3>Every Company member’s job</h3>' + people.map(function (a) {
           var t = task(a, s), how = (r.assign || {})[a.id] || '';
@@ -577,7 +578,7 @@
     var r = plan(s), groups = {}, order = [];
     cast().forEach(function (a) {
       var t = task(a, s); if (t.type === 'off' || (pub && (t.type === 'away' || t.type === 'custom'))) return;
-      var k = t.type === 'trip' ? '🚌 ' + t.text : t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
+      var k = t.type === 'trip' ? '🚌 ' + t.text : t.type === 'photos' ? '📸 Costume and prop photos' : t.type === 'stage' ? t.icon + ' ' + t.text : t.type === 'practice' ? '📱 Practice in the app' : t.type === 'crew' ? '🛠️ ' + t.text : t.type === 'away' ? '🙋 Away' : '📝 Other';
       if (!groups[k]) { groups[k] = []; order.push(k); }
       groups[k].push(t.type === 'custom' ? a.name + ' (' + t.text + ')' : a.name);
     });

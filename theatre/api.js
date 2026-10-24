@@ -13,11 +13,16 @@
      theatre:voiceindex  { line: { tts: at, rec: { at, actor } } }: which lines have audio, read by every iPad (line ids are hashes; nothing readable).
    - theatre:progress:<actor>  one student's practice record (lines right/wrong, song ratings, minutes), encrypted with the show key on the iPad.
      The iPad reads and writes its own (no password: it is sealed, small, and limited per student); the teacher reads all of them with the teacher password.
+   - theatre:photo:<id>  a photo of a finished costume or prop (Colleen 2026-10-24: students photograph what they bought after the shopping trip, as a reference
+     for the costume crew, performers and Mentors), sealed with the show key on the iPad (the photo and its caption). theatre:photoindex [{ id, actor, char, kind,
+     ref, at, ok }]: ids only (actor ids are random; char and ref are the show outline's ids), nothing readable. Anyone may add one (sealed, small, limited per
+     address); it waits for the teacher's OK (ok false) before other iPads show it. Only the teacher password approves or removes.
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
 const SETUP_SHA = '34f8cca6a9bd1ccfcf06a776a7dff687337235afa18b37051bea0f3da54b7c6b';
-const MAX_REC = 800000;      // a recorded line: about 30 seconds at most
+const MAX_REC = 800000;
+const MAX_PHOTO = 900000, MAX_PHOTOS = 800;      // a photo is made smaller on the iPad first (about 1280 px)      // a recorded line: about 30 seconds at most
 const MAX_FAILS = 5, FAIL_WINDOW = 600, MAX_SHOW = 8e6, MAX_TRACK = 24e6, MAX_NOTES = 300, NOTES_PER_HOUR = 60;      // a school's iPads often share one address
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -156,6 +161,37 @@ export async function theatreApi(req, env, url, p) {
     await env.LOCKS.put(key, JSON.stringify({ box: { iv: b.iv, data: b.data }, at: new Date().toISOString() }));
     await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 600 });
     return json({ ok: true });
+  }
+  /* costume and prop photos */
+  if (rest === 'photo/index') return json({ photos: (await env.LOCKS.get('theatre:photoindex', 'json')) || [] });
+  const ph = rest.match(/^photo\/([a-z0-9-]{6,24})(?:\/(ok)|\/([a-z0-9-]{1,40})\/(costume|prop|build)\/([a-z0-9-]{1,40})\/([a-z0-9-]{1,60}))?$/);
+  if (ph) {
+    const id = ph[1], pkey = 'theatre:photo:' + id;
+    if (req.method === 'GET' && !ph[2] && !ph[3]) { const v = await env.LOCKS.get(pkey, 'arrayBuffer'); return v ? new Response(v, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store' } }) : json({ none: true }, 404); }
+    if (req.method === 'POST' && ph[3]) {      // a Company member's iPad sends a photo (no password: sealed, small, limited)
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:photorate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= 120) return json({ error: 'Too many photos from here this hour. Try again later.' }, 429);
+      const buf = await req.arrayBuffer();
+      if (buf.byteLength < 100 || buf.byteLength > MAX_PHOTO) return json({ error: 'That photo is empty or too big.' }, 413);
+      const list = (await env.LOCKS.get('theatre:photoindex', 'json')) || [];
+      if (list.some(x => x.id === id)) return json({ error: 'That photo is already here.' }, 409);
+      if (list.length >= MAX_PHOTOS) return json({ error: 'Your teacher has too many photos. Ask them to remove some.' }, 507);
+      await env.LOCKS.put(pkey, buf);
+      list.push({ id, actor: ph[3], kind: ph[4], char: ph[5], ref: ph[6], at: new Date().toISOString(), ok: false });
+      await env.LOCKS.put('theatre:photoindex', JSON.stringify(list));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true });
+    }
+    if ((req.method === 'POST' && ph[2]) || (req.method === 'DELETE' && !ph[3])) {      // the teacher: OK a photo, or remove it
+      const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+      const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+      const list = (await env.LOCKS.get('theatre:photoindex', 'json')) || [];
+      if (req.method === 'DELETE') { await env.LOCKS.delete(pkey); await env.LOCKS.put('theatre:photoindex', JSON.stringify(list.filter(x => x.id !== id))); return json({ ok: true }); }
+      const x = list.find(y => y.id === id); if (!x) return json({ error: 'That photo is gone.' }, 404);
+      x.ok = true; await env.LOCKS.put('theatre:photoindex', JSON.stringify(list));
+      return json({ ok: true });
+    }
+    return json({ error: 'Not allowed' }, 405);
   }
   /* line audio */
   const index = async (h, src, val) => { const ix = (await env.LOCKS.get('theatre:voiceindex', 'json')) || {}; ix[h] = ix[h] || {}; if (val) ix[h][src] = val; else delete ix[h][src]; if (!Object.keys(ix[h]).length) delete ix[h]; await env.LOCKS.put('theatre:voiceindex', JSON.stringify(ix)); };

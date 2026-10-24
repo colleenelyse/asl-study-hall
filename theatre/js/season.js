@@ -187,7 +187,7 @@
     if (!track) track = O.characters[0].id;
     var stats = O.characters.map(function (c) {
       var n = { acting: 0, vocals: 0, dance: 0, run: 0, dress: 0, show: 0, other: 0, called: 0 }, gap = 0, cur = 0, started = false;
-      days.forEach(function (d) { var j = jobFor(c.id, d); if (j && ['crew', 'trip'].indexOf(j.focus) < 0) { n.called++; n[n[j.focus] !== undefined ? j.focus : 'other']++; started = true; cur = 0; } else if (started && X().plan(d)) { cur++; gap = Math.max(gap, cur); } });
+      days.forEach(function (d) { var j = jobFor(c.id, d); if (j && ['crew', 'trip', 'photos'].indexOf(j.focus) < 0) { n.called++; n[n[j.focus] !== undefined ? j.focus : 'other']++; started = true; cur = 0; } else if (started && X().plan(d)) { cur++; gap = Math.max(gap, cur); } });
       return { c: c, n: n, gap: gap };
     });
     var me = stats.find(function (x) { return x.c.id === track; });

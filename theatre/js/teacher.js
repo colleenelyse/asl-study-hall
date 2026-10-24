@@ -550,9 +550,10 @@
         var list = O.costumes.filter(function (x) { return x.who === c.id; });
         if (!list.length) return '';
         return '<div class="card"><h3>' + T.chip(c.id) + '</h3>' + list.map(function (x) {
-          return '<div class="switch" style="cursor:pointer" data-id="' + esc(x.id) + '"><span><b>' + esc(x.name) + '</b> <span class="muted small">' + esc(x.items.join(', ')) + '</span></span><span class="muted small">' + x.moments.length + ' moments</span></div>';
+          return '<div class="switch" style="cursor:pointer" data-id="' + esc(x.id) + '"><span><b>' + esc(x.name) + '</b> <span class="muted small">' + esc(x.items.join(', ')) + '</span></span><span class="muted small">' + x.moments.length + ' moments</span></div>' + (T.photoSlot ? T.photoSlot('costume', x.id) : '');
         }).join('') + '</div>';
       }).join('');
+    if (T.fillPhotos) T.fillPhotos(app, true);
     document.getElementById('add').onclick = function () { editCostume(null); };
     app.querySelectorAll('[data-id]').forEach(function (el) { el.onclick = function () { editCostume(O.costumes.find(function (x) { return x.id === el.dataset.id; })); }; });
   }
@@ -1543,8 +1544,8 @@
     return openVault().then(function (V) { change(V); return Store.sealVault(T.tpw, V); }).then(function (v) { T.show.vault = v; });
   }
   var PRESETS = {
-    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script'], fullCal: true, teach: [] },
-    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print', 'shop'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
+    parent: { who: 'parent', pages: ['today', 'schedule', 'calendar', 'songs', 'lines', 'costumes', 'story', 'script', 'photos'], fullCal: true, teach: [] },
+    helper: { who: 'helper', pages: ['today', 'schedule', 'calendar', 'lines', 'songs', 'costumes', 'story', 'script', 'print', 'shop', 'photos'], fullCal: true, teach: ['callboard', 'cues', 'mics'] },
     student: { who: 'student', pages: T.STUDENT_PAGES.map(function (x) { return x[0]; }), fullCal: false, teach: [] }
   };
   var WHO = { student: 'Picks their own picture (a Company member; practice is saved)', parent: 'A parent: picks their Company member once (first names and last initials only; practice is not saved to them)', helper: 'A Company Mentor: can switch between Artists (practice is saved for the Artist, marked “with a Mentor”)' };

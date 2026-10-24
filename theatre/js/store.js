@@ -218,6 +218,33 @@
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d; }); });
       });
     },
+    /* costume and prop photos: { caption, img (a JPEG data URL) } sealed with the show key; the index holds ids only */
+    photoIndex: function () {
+      return fetch(API + 'photo/index', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : { photos: [] }; }).then(function (d) { return d.photos || []; });
+    },
+    putPhoto: function (key, m, obj) {
+      var iv = rand(12);
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, te.encode(JSON.stringify(obj))).then(function (ct) {
+        var out = new Uint8Array(12 + ct.byteLength); out.set(iv, 0); out.set(new Uint8Array(ct), 12);
+        return fetch(API + 'photo/' + m.id + '/' + m.actor + '/' + m.kind + '/' + m.char + '/' + m.ref, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: out })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d; }); });
+      });
+    },
+    getPhoto: function (key, id) {      // a photo never changes, so this device keeps a copy
+      var lk = 'photo:' + id;
+      return local.get(lk).then(function (buf) {
+        return buf || fetch(API + 'photo/' + id, { cache: 'no-store' }).then(function (r) {
+          if (!r.ok) return null;
+          return r.arrayBuffer().then(function (b) { return local.set(lk, b).then(function () { return b; }, function () { return b; }); });
+        });
+      }, function () { return null; }).then(function (buf) {
+        if (!buf) return null;
+        var a = new Uint8Array(buf);
+        return crypto.subtle.decrypt({ name: 'AES-GCM', iv: a.subarray(0, 12) }, key, a.subarray(12)).then(function (b) { return JSON.parse(td.decode(b)); });
+      });
+    },
+    photoOk: function (proof, id) { if (!proof) return noProof(); return fetch(API + 'photo/' + id + '/ok', { method: 'POST', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not OK that photo.'); }); },
+    photoDel: function (proof, id) { if (!proof) return noProof(); return fetch(API + 'photo/' + id, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not remove that photo.'); }); },
     voiceIndex: function () {      // which lines have audio (kept on the device for offline use)
       return getJSON('voice/index').then(function (d) { if (d) local.set('voiceIndex', d); return d || { lines: {} }; }).catch(function () { return local.get('voiceIndex').then(function (d) { return d || { lines: {} }; }); });
     },

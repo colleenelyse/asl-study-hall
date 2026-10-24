@@ -24,6 +24,7 @@
   T.clock = clock;
 
   var ICON = {
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
     lines: '<path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     sched: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     songs: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
@@ -219,7 +220,7 @@
      fullCal }]. Practice: never recorded for parents; a helper's is the student's, marked (progress.js). The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
   T.pass = null;
   T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
-    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list']];
+    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list'], ['photos', 'Costume and prop photos']];
   T.TEACH_PAGES = [['callboard', 'Call board (who is where, each day)'], ['read', 'The script (teacher view)'], ['cues', 'Cue sheet'], ['smscript', 'Stage manager script'], ['mics', 'Mic plot']];
   /* in the Company (Colleen 2026-10-23): a.company is 'artist' (Company Artist) or 'mentor' (Company Mentor), or not set yet */
   T.COMPANY = { artist: 'Artist', mentor: 'Mentor' };
@@ -576,6 +577,7 @@
       tile('#/songs', 'songs', 'My Songs', 'Sing with the tracks') +
       tile('#/costumes', 'shirt', 'My Costumes', 'What I wear') +
       (T.shopTile && T.shopTile() ? tile('#/shop', 'shirt', 'Shopping list', T.shopTile()) : '') +
+      (T.photosTile && T.photosTile() ? tile('#/photos', 'camera', 'Costume photos', T.photosTile()) : '') +
       tile('#/story', 'book', 'The Story', 'What happens') +
       (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +
       (T.Pages && T.Pages.ready() && T.me.chars.length ? tile('#/print', 'print', 'My script', 'Print it with my highlights') : '') +
@@ -1160,10 +1162,11 @@
       var scenes = []; c.moments.forEach(function (mid) { var m = O().moments.find(function (x) { return x.id === mid; }); if (m) { var s = sceneById(m.scene); if (scenes.indexOf(s.num) < 0) scenes.push(s.num); } });
       scenes.sort(function (a, b) { return a - b; });
       return '<div class="card" style="border-top:8px solid ' + color(c.who) + '">' + (c.photo ? '<img src="' + esc(c.photo) + '" alt="" style="width:100%;border-radius:12px;margin-bottom:8px">' : '') +
-        '<h3>' + esc(c.name) + '</h3>' + chip(c.who) +
+        '<h3>' + esc(c.name) + '</h3>' + chip(c.who) + (T.photoSlot ? T.photoSlot('costume', c.id) : '') +
         '<div style="margin-top:8px">' + c.items.map(function (it, i) { return '<label class="switch"><span>' + esc(it) + '</span><input type="checkbox" data-c="' + esc(c.id) + '" data-i="' + i + '"' + (got.indexOf(i) >= 0 ? ' checked' : '') + '></label>'; }).join('') + '</div>' +
         '<p class="muted small">Wear it in scene' + (scenes.length === 1 ? ' ' : 's ') + scenes.join(', ') + '</p></div>';
     }).join('') + '</div>';
+    if (T.fillPhotos) T.fillPhotos(app);
     app.querySelectorAll('input[data-c]').forEach(function (inp) {
       inp.onchange = function () { var k = 'check:' + inp.dataset.c, got = ls(k) || [], i = +inp.dataset.i; got = got.filter(function (x) { return x !== i; }); if (inp.checked) got.push(i); ls(k, got); };
     });
