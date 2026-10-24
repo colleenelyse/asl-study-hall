@@ -115,7 +115,25 @@
   };
 
   /* ---------- Teacher: Voices & recordings ---------- */
-  var MODELS = [['eleven_multilingual_v2', 'Best quality'], ['eleven_flash_v2_5', 'Faster, about half the cost']];
+  var MODELS = [['eleven_v3', 'Most expressive: follows the tone notes'], ['eleven_multilingual_v2', 'Steady (no tone notes)'], ['eleven_flash_v2_5', 'Faster, about half the cost (no tone notes)']];
+  /* the tone of a line (Colleen 2026-10-24: "inflection notes and get the tone right for each line. some lines are sarcastic"), as ElevenLabs v3
+     audio tags like [sarcastic] [whispers]: the teacher's own note (T.show.tones[line id]); else the acting note in the line's parentheses,
+     like "(sarcastically)"; else the feeling icon beside the line on the page, if it is for this character. '' = said plainly. */
+  var TAG = { uninterested: 'bored', shocked: 'surprised', shushing: 'whispers', whispering: 'whispers', shouting: 'shouting', laughing: 'laughs', 'exhausted sigh': 'sighs', sighing: 'sighs' };
+  var tagOf = function (word) { var w = String(word || '').toLowerCase().trim(); if (/^(quietly|softly)$/.test(w)) return '[whispers]'; return '[' + (TAG[w] || w.replace(/ically$/, 'ic').replace(/ily$/, 'y').replace(/(\w{3})ly$/, '$1')) + ']'; };      // sarcastically → sarcastic, angrily → angry
+  var emoAll = null, emo = function () { return emoAll || (emoAll = T.Emotions.all()); };      // the feeling icons, read once per page
+  function autoTone(it, scene) {
+    var paren = [], m, re = /\(([^)]{2,40})\)/g;
+    while ((m = re.exec(it.text || ''))) { var p = m[1].trim(); if (!/[A-Z]{2,}/.test(p) && !/^to\b|^at\b|^re\b|^beat\b|^pause\b|^then\b/i.test(p) && p.split(/\s+/).length <= 3) paren.push(tagOf(p.replace(/^(a little|very|so)\s+/i, ''))); }
+    if (paren.length) return paren.slice(0, 2).join(' ');
+    if (!T.Emotions || !T.Pages) return '';
+    var bs = T.Pages.rawBoxes ? (it.boxes || (it.box ? [it.box] : [])) : [], ids = T.labelChars(it.who || '');
+    var near = emo().filter(function (e) { return bs.some(function (b) { return b.n === e.n && e.y >= b.y - 14 && e.y <= b.y + b.h + 14; }) && (!(e.who || []).length || (e.who || []).some(function (c) { return ids.indexOf(c) >= 0; })); });
+    var icon = near[0] && T.Emotions.ICON[near[0].icon];
+    return icon ? tagOf(icon.name || icon.label || '') : '';
+  }
+  function toneOf(l) { var t = (T.show.tones || {})[l.h]; return t != null ? t : autoTone(l.it, l.scene); }
+  V.toneOf = toneOf;
   function allLines() {      // every spoken line: dialogue, and lines spoken inside songs (for Lines for AAC; the guide tracks already have them in rehearsal)
     var out = [];
     T.O().scenes.forEach(function (sc) {
@@ -125,7 +143,8 @@
         if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken && l.who && String(l.text || '').trim()) out.push({ it: l, scene: sc, h: V.id(l), inSong: true }); });
       });
     });
-    return out;
+    var seen = {};      // a line the script reader found both in the scene and inside the song is one line (made, and paid for, once)
+    return out.filter(function (l) { if (seen[l.h]) return false; seen[l.h] = 1; return true; });
   }
   /* the voices for a line (Colleen 2026-10-24: group lines as "a small chorus"): one character, their voice; a group (JOCKS), ALL, or several
      names (TROY, GABRIELLA), up to three voices together: the named characters' or the group's own voice first, then the chorus voices */
@@ -178,7 +197,8 @@
     var lines = allLines(), byH = {}; lines.forEach(function (l) { byH[l.h] = l; });
     var rec = lines.filter(function (l) { var e = index.lines[l.h]; return e && e.rec; }).length, tts = lines.filter(function (l) { var e = index.lines[l.h]; return e && e.tts; }).length;
     var none = lines.filter(function (l) { return !index.lines[l.h]; }).length;
-    var cfg = T.show.eleven = T.show.eleven || { voices: {}, model: 'eleven_multilingual_v2', ok: false }, key = T.ls('xiKey') || '';
+    emoAll = null;
+    var cfg = T.show.eleven = T.show.eleven || { voices: {}, model: 'eleven_v3', ok: false }, key = T.ls('xiKey') || '';
     var people = {}; (T.show.cast || []).forEach(function (a) { people[a.id] = a.name; });
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voicesFor(l.it, cfg.voices).length; }), chars2 = need.reduce(function (a, l) { return a + T.pronounce(LineCheck.spoken(l.it.text)).length * voicesFor(l.it, cfg.voices).length; }, 0);
@@ -198,7 +218,7 @@
       '<div id="vmap"></div>' +
       '<p style="margin-top:12px">' + need.length + ' lines still to make, about <b>' + chars2.toLocaleString() + ' characters</b>' + (cfg.model === 'eleven_flash_v2_5' ? ' (about ' + Math.round(chars2 / 2).toLocaleString() + ' credits)' : ' (about the same number of credits)') + '.</p>' +
       '<div class="row"><button class="btn primary" id="mk"' + (cfg.ok && key && need.length ? '' : ' disabled') + '>Make the missing lines</button><span class="muted small" id="mkst"></span></div>' +
-      '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never Company members’ names.</p></div>';
+      '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never Company members’ names.</p></div>' + toneCard(lines, index, cfg);
     var $ = function (id) { return document.getElementById(id); };
     $('chk').onchange = function (e) { Store.setVoiceCheck(T.proof, e.target.checked).then(function () { T.toast(e.target.checked ? 'New recordings wait for your OK' : 'New recordings go live at once'); }); };
     app.querySelectorAll('[data-play]').forEach(function (b) { b.onclick = function () { var x = b.dataset.play.split('|'); Store.getPending(T.key, T.proof, x[0], x[1]).then(function (buf) { new Audio(URL.createObjectURL(new Blob([buf]))).play(); }).catch(function (e) { T.toast(e.message); }); }; });
@@ -231,20 +251,47 @@
       need.reduce(function (p, l) {
         return p.then(function () {
           if (stop) return;
-          var vids = voicesFor(l.it, cfg.voices);
-          var say = function (vid) {
-            return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
-              method: 'POST', headers: { 'xi-api-key': T.ls('xiKey'), 'content-type': 'application/json', accept: 'audio/mpeg' },
-              body: JSON.stringify({ text: T.pronounce(LineCheck.spoken(l.it.text)), model_id: cfg.model })
-            }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('ElevenLabs said ' + r.status + ': ' + t.slice(0, 120)); }); return r.arrayBuffer(); });
-          };
-          return vids.reduce(function (q, v) { return q.then(function (got) { return say(v).then(function (b) { return got.concat([b]); }); }); }, Promise.resolve([]))      // one at a time: the plan's rate limit
-            .then(function (bs) { return bs.length > 1 ? mixChorus(bs) : bs[0]; })
-            .then(function (b) { return Store.putVoice(T.key, T.proof, l.h, 'tts', b, Date.now().toString(36)); })
+          return makeLine(l, cfg)
             .then(function () { done++; st.firstChild && (st.lastChild.textContent = ''); st.insertAdjacentText('beforeend', ' ' + done + ' of ' + need.length); });
         });
       }, Promise.resolve()).then(function () { T.teacherPages.voices(); T.toast(done + ' lines made'); }).catch(function (e) { T.toast(e.message, 6000); T.teacherPages.voices(); });
     };
+    /* the tone of each line: check it, change it, make that line again */
+    var tsel = $('tch'); if (tsel) tsel.onchange = function () { toneChar = tsel.value; page(index, pending); };
+    app.querySelectorAll('[data-tone]').forEach(function (inp) { inp.onchange = function () { var T2 = T.show.tones = T.show.tones || {}; var v = inp.value.trim(); if (v && !/^\[/.test(v)) v = v.split(/\s*,\s*/).map(function (w) { return '[' + w.replace(/[\[\]]/g, '') + ']'; }).join(' '); T2[inp.dataset.tone] = v; inp.value = v; T.saveShow('Tone saved: make the line again to hear it'); }; });
+    app.querySelectorAll('[data-chip]').forEach(function (b) { b.onclick = function () { var h = b.dataset.chip.split('|')[0], tag = b.dataset.chip.split('|')[1], inp = app.querySelector('[data-tone="' + h + '"]'); inp.value = tag; inp.onchange(); }; });
+    app.querySelectorAll('[data-again]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.again]; if (!voicesFor(l.it, cfg.voices).length) { T.toast('Choose a voice for this character first.'); return; } b.disabled = true; b.textContent = 'Making…'; makeLine(l, cfg).then(function () { return V.refresh(); }).then(function () { b.disabled = false; b.textContent = '↻ Make again'; T.toast('Made. Tap ▶ to hear it.'); }).catch(function (e) { b.disabled = false; b.textContent = '↻ Make again'; T.toast(e.message, 6000); }); }; });
+    app.querySelectorAll('[data-hear]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.hear]; V.say(l.it, null, false); }; });
     if (key && Object.keys(cfg.voices).length) $('lv').click();
+  }
+  /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
+  function makeLine(l, cfg) {
+    var vids = voicesFor(l.it, cfg.voices), tone = cfg.model === 'eleven_v3' ? toneOf(l) : '', text = (tone ? tone + ' ' : '') + T.pronounce(LineCheck.spoken(l.it.text));
+    var say = function (vid) {
+      return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
+        method: 'POST', headers: { 'xi-api-key': T.ls('xiKey'), 'content-type': 'application/json', accept: 'audio/mpeg' },
+        body: JSON.stringify({ text: text, model_id: cfg.model })
+      }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('ElevenLabs said ' + r.status + ': ' + t.slice(0, 120)); }); return r.arrayBuffer(); });
+    };
+    return vids.reduce(function (q, v) { return q.then(function (got) { return say(v).then(function (b) { return got.concat([b]); }); }); }, Promise.resolve([]))      // one at a time: the plan's rate limit
+      .then(function (bs) { return bs.length > 1 ? mixChorus(bs) : bs[0]; })
+      .then(function (b) { return Store.putVoice(T.key, T.proof, l.h, 'tts', b, Date.now().toString(36)); });
+  }
+  var toneChar = null;
+  var CHIPS = ['[sarcastic]', '[excited]', '[whispers]', '[nervous]', '[annoyed]', '[sad]', '[laughs]', '[shouting]', '[teasing]', '[dramatic]', '[deadpan]', '[sincere]'];
+  function toneCard(lines, index, cfg) {
+    var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
+    if (!toneChar || !chars.some(function (c) { return c.id === toneChar; })) toneChar = chars[0] && chars[0].id;
+    var mine = lines.filter(function (l) { return T.labelChars(l.it.who).indexOf(toneChar) >= 0; });
+    return '<div class="card"><h3>' + sym('🎭') + 'The tone of each line</h3><p class="muted small">Each line is sent with a tone note in brackets, like [sarcastic] or [whispers] (only with “Most expressive”). The app starts from the acting notes in the script and your feeling icons; type your own for lines it can’t know, like sarcasm. Leave a line empty to have it said plainly. Then ↻ Make again and ▶ listen.</p>' +
+      (cfg.model !== 'eleven_v3' ? '<p class="err small">Pick “Most expressive” above so the tone notes are used.</p>' : '') +
+      '<label class="f">Character<select id="tch">' + chars.map(function (c) { return '<option value="' + c.id + '"' + (c.id === toneChar ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></label>' +
+      mine.map(function (l) {
+        var own = (T.show.tones || {})[l.h], t = own != null ? own : autoTone(l.it, l.scene), e = index.lines[l.h];
+        return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + (l.inSong ? ' · in a song' : '') + '</span><div>' + esc(LineCheck.spoken(l.it.text)) + '</div>' +
+          '<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><input data-tone="' + l.h + '" value="' + esc(t) + '" placeholder="said plainly" style="width:170px">' + (own == null && t ? '<span class="muted small">from the script</span>' : '') +
+          CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '</div></div>' +
+          '<div class="row" style="gap:4px"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button></div></div>';
+      }).join('') + '</div>';
   }
 })();

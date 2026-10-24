@@ -476,3 +476,6 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .aac-line { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px dashed var(--line); }
 .aac-n { min-width: 1.8em; font-weight: 800; color: var(--muted); }
 .aac-text { font-size: 1.15em; font-weight: 600; }
+
+/* the tone of each line (voices.js) */
+.tone-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px dashed var(--line); flex-wrap: wrap; }

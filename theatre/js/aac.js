@@ -19,7 +19,8 @@
         if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken) out.push({ scene: sc, it: l, text: clean(l.text), who: l.who, ids: T.labelChars(l.who), inSong: it.title || ('#' + it.num) }); });
       });
     });
-    return out.filter(function (x) { return x.text; });
+    var seen = {};      // the same line found in the scene and inside the song: once
+    return out.filter(function (x) { var k = x.who + '|' + x.text; if (!x.text || seen[k]) return false; seen[k] = 1; return true; });
   }
   /* a character's lines (a group's lines count for its members), each with the line before it as the cue */
   function linesFor(c) {
