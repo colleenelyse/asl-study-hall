@@ -344,7 +344,7 @@
   };
   function sayList() { var out = {}, a = (T.show && T.O().say) || {}, b = (T.show && T.show.say) || {}; Object.keys(a).forEach(function (k) { out[k] = a[k]; }); Object.keys(b).forEach(function (k) { out[k] = b[k]; }); return out; }
   function pronounce(text) {
-    var t = String(text || '');
+    var t = String(text || '').replace(/\b([A-Z]{2,})\b/g, function (w) { return /^(OK|TV|DJ|USA|I)$/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase(); });      // shouting caps in the script: say the word, do not spell it (before the list, so a respelling like DAR-bus keeps its capitals for stress)
     var list = sayList();
     Object.keys(list).sort(function (x, y) { return y.length - x.length; }).forEach(function (w) {
       if (!list[w]) return;
@@ -352,7 +352,6 @@
     });
     return t.replace(/\bMs\./gi, 'Miz').replace(/\bMr\./gi, 'Mister').replace(/\bMrs\./gi, 'Missus')
       .replace(/\s*[—–]+\s*/g, ', ').replace(/\.{3}|…/g, ', ').replace(/_+/g, ' ')
-      .replace(/\b([A-Z]{2,})\b/g, function (w) { return /^(OK|TV|DJ|USA|I)$/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase(); })      // shouting caps: say the word, do not spell it
       .replace(/^[,\s]+/, '').replace(/\s+/g, ' ').trim();
   }
   T.pronounce = pronounce;

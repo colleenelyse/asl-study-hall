@@ -554,3 +554,8 @@ stripes via a gradient). Used for the lit-up lines (song pages, practice) and th
 ## Feelings setting (2026-10-24, voices.js bump/clarity)
 - Colleen: the recordings are for students who find emotion, tone and faces hard, so by default "slightly more expressive than a scene in a musical … not cartoonish … but extra explicit".
 - T.show.eleven.clarity: 0 As written, 1 A little clearer (default when unset), 2 Much clearer. bump() raises the strength word sent by one step; at 1 it stops at "very" (only lines she set to extremely go out as extremely). Sound/timing tags are never prefixed. Stability still follows her own slider level (levelOf), so the boost doesn't turn on v3's Creative mode. Shown next to Quality, in each line's "Sends:" preview, and in the checks before a run.
+
+## Test spellings in ElevenLabs (2026-10-24, teacher.js sayCard + voices.js tryWords)
+- Colleen couldn't get Darbus right: How words are said › Hear uses the device voice, which says spellings differently from ElevenLabs.
+- New box under it, "Test in an ElevenLabs voice": pick a character's voice, the word, spellings separated by "/", a sentence with *; each spelling is said (played, not saved; ~30 credits each) and shows exactly what was sent; ▶ Again; "Use this one" saves it to T.show.say.
+- T.pronounce now lowers shouting capitals in the script BEFORE applying the list, so a respelling like "DAR-bus" keeps its capitals (stress) when sent.

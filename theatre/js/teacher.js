@@ -320,11 +320,52 @@
           return '<tr><td>' + esc(k) + '</td><td>' + esc(all[k]) + '</td><td><button class="btn small" data-hear="' + esc(k) + '">Hear</button> <button class="btn small quiet" data-del="' + esc(k) + '">Remove</button></td></tr>';
         }).join('') + '</tbody></table>' +
         '<div class="row" style="margin-top:10px"><label class="f grow" style="margin:0">Word<input id="sw" placeholder="e.g. Gabriella"></label><label class="f grow" style="margin:0">Say it like<input id="sl" placeholder="e.g. Gabby ella"></label>' +
-        '<button class="btn" id="sh">Hear</button><button class="btn primary" id="sa" data-save>Add</button></div>';
+        '<button class="btn" id="sh">Hear</button><button class="btn primary" id="sa" data-save>Add</button></div>' +
+        '<p class="muted small">Hear uses this device’s own voice. ElevenLabs may say the same spelling differently: test it below.</p>' + elevenTest();
       box.querySelectorAll('[data-hear]').forEach(function (b) { b.onclick = function () { T.Speech.stop(); T.Speech.say(b.dataset.hear); }; });
       box.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var k = b.dataset.del; if (base[k]) mine[k] = ''; else delete mine[k]; save('Removed').then(draw); }; });
       box.querySelector('#sh').onclick = function () { var w = box.querySelector('#sw').value.trim(), l = box.querySelector('#sl').value.trim(); T.Speech.stop(); T.Speech.say(l || w); };
+      wireEleven();
       box.querySelector('#sa').onclick = function () { var w = box.querySelector('#sw').value.trim(), l = box.querySelector('#sl').value.trim(); if (!w || !l) return; mine[w] = l; save('Added').then(draw); };
+    }
+    /* try spellings in a real ElevenLabs voice: each one said in a sentence, one after another, with "Use this one" */
+    var tries = [];
+    function elevenTest() {
+      var V = T.Voices, vs = V && V.elevenVoices();
+      var who = T.O().characters.filter(function (c) { return vs && vs[c.id]; });
+      if (!who.length) return '<div class="card" style="margin-top:12px;box-shadow:none;border:1px dashed var(--line)"><h3>Test in an ElevenLabs voice</h3><p class="muted small">Open Teacher mode › Voices & recordings on this computer, add your key and tap Load my voices; then you can test spellings here in the real voices.</p></div>';
+      return '<div class="card" style="margin-top:12px;box-shadow:none;border:1px dashed var(--line)"><h3>Test in an ElevenLabs voice</h3>' +
+        '<p class="muted small">Type the word and a few ways to spell it, with / between them. Each is said in a sentence in the voice you pick (about 30 credits each). Tap Use this one for the best, then remake lines that have the word.</p>' +
+        '<div class="row"><label class="f grow" style="margin:0">Voice<select id="ev">' + who.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="f grow" style="margin:0">Word<input id="ew" placeholder="Darbus"></label></div>' +
+        '<label class="f">Spellings to try<input id="es" placeholder="Darbuss / Dar-buss / DAR-bus"></label>' +
+        '<label class="f">Sentence <span class="muted small">(the word goes where * is)</span><input id="et" value="Good morning, Ms. *. I will see you after class."></label>' +
+        '<div class="row"><button class="btn primary" id="eg">Hear each in ElevenLabs</button><span class="muted small" id="em"></span></div><div id="er"></div></div>';
+    }
+    function wireEleven() {
+      var g = box.querySelector('#eg'); if (!g) return;
+      var ew = box.querySelector('#ew'), es = box.querySelector('#es'), et = box.querySelector('#et'), m = box.querySelector('#em'), out = box.querySelector('#er');
+      var showTries = function () {
+        out.innerHTML = tries.map(function (t, i) { return '<div class="switch"><span class="grow"><b>' + esc(t.sp) + '</b><br><span class="muted small">Sent: ' + esc(t.sent) + '</span></span><button class="btn small" data-again="' + i + '">▶ Again</button><button class="btn small good" data-use="' + i + '">Use this one</button></div>'; }).join('');
+        out.querySelectorAll('[data-again]').forEach(function (b) { b.onclick = function () { var t = tries[+b.dataset.again]; b.disabled = true; T.Voices.tryWords(t.sent, t.who).then(function () { b.disabled = false; }, function (e) { b.disabled = false; T.toast(e.message, 6000); }); }; });
+        out.querySelectorAll('[data-use]').forEach(function (b) { b.onclick = function () { var t = tries[+b.dataset.use]; mine[t.word] = t.sp; save(t.word + ' will be said as “' + t.sp + '”. Make its lines again to hear it.').then(function () { tries = []; draw(); }); }; });
+      };
+      g.onclick = function () {
+        var word = ew.value.trim(), who = box.querySelector('#ev').value, sps = es.value.split('/').map(function (x) { return x.trim(); }).filter(Boolean), sentence = et.value.indexOf('*') >= 0 ? et.value : '*. ' + et.value;
+        if (!word) { m.textContent = 'Type the word first.'; return; }
+        if (!sps.length) sps = [word];
+        tries = []; g.disabled = true;
+        sps.reduce(function (p, sp, i) {
+          return p.then(function () {
+            m.textContent = 'Saying ' + (i + 1) + ' of ' + sps.length + ': ' + sp;
+            var had = Object.prototype.hasOwnProperty.call(mine, word), old = mine[word];
+            mine[word] = sp; var sent = T.pronounce(sentence.replace(/\*/g, word));      // exactly what a real line would send with this spelling
+            if (had) mine[word] = old; else delete mine[word];
+            tries.push({ word: word, sp: sp, sent: sent, who: who }); showTries();
+            return T.Voices.tryWords(sent, who);
+          });
+        }, Promise.resolve()).then(function () { g.disabled = false; m.textContent = 'Tap ▶ Again to compare, then Use this one.'; }, function (e) { g.disabled = false; m.textContent = e.message; });
+      };
     }
     draw();
   }

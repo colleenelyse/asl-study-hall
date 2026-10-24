@@ -340,6 +340,19 @@
       .then(function (bs) { return bs.length > 1 ? mixChorus(bs) : bs[0]; })
       .then(function (b) { return Store.putVoice(T.key, T.proof, l.h, 'tts', b, Date.now().toString(36)); });
   }
+  /* say any words in a character's ElevenLabs voice, to test how a name is said (Colleen 2026-10-24: "i can't get it to say darbus right":
+     the Hear buttons in How words are said use the device's voice, not ElevenLabs'). Played, not saved. */
+  V.elevenVoices = function () { var cfg = T.show.eleven || {}; return T.ls('xiKey') && cfg.voices ? cfg.voices : null; };
+  V.tryWords = function (text, charId) {
+    var cfg = T.show.eleven || {}, vid = (cfg.voices || {})[charId];
+    if (!T.ls('xiKey')) return Promise.reject(new Error('Add your ElevenLabs key first (Teacher mode › Voices & recordings).'));
+    if (!vid) return Promise.reject(new Error('That character has no ElevenLabs voice yet.'));
+    return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
+      method: 'POST', headers: { 'xi-api-key': T.ls('xiKey'), 'content-type': 'application/json', accept: 'audio/mpeg' },
+      body: JSON.stringify({ text: text, model_id: cfg.model || 'eleven_v3' })
+    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('ElevenLabs said ' + r.status + ': ' + t.slice(0, 120)); }); return r.arrayBuffer(); })
+      .then(function (b) { return new Promise(function (done) { var a = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/mpeg' }))); a.onended = done; a.onerror = done; a.play().catch(done); }); });
+  };
   var toneChar = null;
   var CHIPS = ['[sarcastic]', '[excited]', '[whispers]', '[nervous]', '[annoyed]', '[sad]'];      // the quick ones on every line
   /* ElevenLabs v3 audio tags (Colleen 2026-10-24: "add more words to describe tone … anything elevenlabs will recognize"); v3 also follows
