@@ -109,13 +109,35 @@
     var stop = opts.stopPatterns || [/^actor[’']?s glossary$/i, /^show glossary$/i, /^credits and copyrights$/i];
     var scenes = [], scene = null, speaker = null, block = null, depth = 0, done = false;
     var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', singerLabs = [], nameFrag = null, pendingHeading = null, printed = null;
-    var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?:\s*$/;
+    var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?\s?:\s*$/;      // "KELSI :" (a space before the colon) too
     /* a lyric line, split where a singer label above it starts (Colleen: "many sung syllables were missed": a name printed partway along the staff
        starts that singer there, so the words before it still belong to the one before) */
     /* bracketed systems (Colleen 2026-10-23: staves joined by a bracket at the left are sung at the same time, so their lyrics go in order left to
        right across the system, and each staff keeps its own singer): where a line sits, the system's lyrics held until the system is done */
     var curPage = null, sysBuf = [], sysKey = null, singerByIdx = {}, labsByStaff = {};
     var trackOn = false, spokenLyric = null;      // the song's title banner has passed: the track is playing (spoken lines join the song's sections)
+    /* spoken words in a song (Colleen 2026-10-23, "What I've Been Looking For (Reprise)": KELSI: / Now together.): the small words on a line, a
+       sentence test, and whether a name on its own is a speaker (sentence words follow before the next notes) or a singer label over a staff */
+    var smallWords = function (l) { return (l.parts || []).filter(function (p) { return p.size < 14 && p.str.trim() && !/^[\d\s+\-–#]+$/.test(p.str); }); };
+    var sentence = function (s) { return /^[A-Z“"‘']/.test(s) && /[a-z]/.test(s) && /[.!?…”"’]$/.test(s) && !/:\s*$/.test(s); };
+    var wordsBox = function (l, ws) { var a = ws[0], z = ws[ws.length - 1], sz = a.size || 11; return { n: curPage.num, x: +a.x.toFixed(1), y: +(l.y - sz * 0.95).toFixed(1), w: +(z.x + z.str.trim().length * sz * 0.48 - a.x).toFixed(1), h: +(sz * 1.25).toFixed(1) }; };
+    var tidy = function (s) { return String(s).replace(/(\s+(?:\d+x)+|\s+\d+(?:-\d+)?)+\s*$/, '').trim(); };      // measure numbers and repeat marks after spoken words
+    function lyricRow(ls, j) { for (var k = j - 1; k >= 0 && ls[k].y > ls[j].y - 30; k--) if (ls[k].glyphs) return true; return false; }      // right under the notes
+    function speechFollows(ls, i) {
+      for (var j = i + 1; j < ls.length && ls[j].y < ls[i].y + 34; j++) {
+        if (ls[j].glyphs || lyricRow(ls, j)) return false;      // notes, or lyrics under them: a singer's label
+        var ws = smallWords(ls[j]).map(function (p) { return p.str.trim(); }).join(' ');
+        if (!ws || /^\(/.test(ws) || /^[a-z]/.test(ws)) continue;      // a direction or a marking like “with confidence”
+        return sentence(ws);
+      }
+      return false;
+    }
+    function startSpeech(who, text, bx) {      // a spoken line over the music; text may come on the next line
+      speaker = who; speakers[speaker] = (speakers[speaker] || 0) + 1;
+      block = emit({ type: 'line', who: speaker, text: text, overMusic: true });
+      spokenLyric = null; block._await = !text;
+      if (text && trackOn && lastSongItem) { spokenLyric = { who: speaker, text: text, page: printed, box: bx, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); }
+    }
     function staffAt(y, below) {      // the staff a lyric sits under (below = false: the staff a label sits over)
       var sys = curPage && curPage.systems; if (!sys) return null;
       for (var a = 0; a < sys.length; a++) for (var b = 0; b < sys[a].staves.length; b++) {
@@ -261,9 +283,25 @@
           }
           var lyricLike = !fragLine && !labLine && lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^\(/.test(t) && !/#\s?\d+\s*[–-]/.test(t) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);      // "(#22 – …" right under a staff is a stage direction
           if (line.glyphs && !lyricLike) { prevStave = true; continue; }
-          if (lyricLike && (prevStave || line.glyphs) && lastSongItem) {
+          var awaiting = block && block._await && block._n === page.num && line.y - block._y < 30;      // a speaker's name just above: these are their words
+          if (lyricLike && (prevStave || line.glyphs) && lastSongItem && !awaiting) {
             pushLyric(line, lyr); addBox(lastSongItem);
             prevStave = false;
+            continue;
+          }
+          var sw = smallWords(line), swText = sw.map(function (p) { return p.str.trim(); }).join(' ');
+          var tl = swText.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:\s*$/);      // "I don't think so!" and the next singer's label on one row
+          if (tl && block && block.type === 'line' && block.overMusic && block._n === page.num && line.y - block._y < 30) {
+            swText = tl[1]; var lab = { name: tl[2].replace(/[()]/g, '').trim(), x: sw[sw.length - 1].x, plus: false }, under0 = staffAt(line.y, false);
+            if (lastSongItem) splitNames(lab.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+            if (under0) labsByStaff[under0.staffKey] = (labsByStaff[under0.staffKey] || []).concat([lab]); else singerLabs = singerLabs.concat([lab]);
+            sw = sw.filter(function (p) { return p.x < lab.x; }); if (!sw.length) sw = smallWords(line);
+          }
+          if (block && block.type === 'line' && block.overMusic && block._n === page.num && block._y != null && line.y - block._y < 30 && sw.length && !lyricRow(lines, li) && !labLine && !fragLine && !line.italic && /^[A-Z“"‘'(]/.test(swText) && !/^\(/.test(swText) && !/^[\d\s+]*\(?[A-Z][A-Z .’',&]*[A-Z.]\)?\s*:/.test(swText)) {      // a new name starts a new line
+            var wb = wordsBox(line, sw);
+            swText = tidy(swText); block.text = (block.text ? block.text + ' ' : '') + swText; block.boxes = (block.boxes || []).concat([wb]); block._y = line.y; block._n = page.num;
+            if (block._await) { block._await = false; if (trackOn && lastSongItem) { spokenLyric = { who: block.who, text: swText, page: printed, box: wb, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); } }
+            else if (spokenLyric) { spokenLyric.text += ' ' + swText; spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([wb]); }
             continue;
           }
           if (line.size >= 16 && !labLine && !fragLine && /[A-Za-z]{3}/.test(t) && lastSongItem) trackOn = true;      // the song's title: the track starts here
@@ -271,6 +309,7 @@
           // singer labels over the staves: "9 TROY:" "+ GABRIELLA, TROY:"
           // one or more labels on the line, each where it starts along the staff (a time signature or sharp on the same line doesn't matter)
           if (fragLine) { nameFrag = { name: words.map(function (p) { return p.str.trim().replace(/^\+\s*/, '').replace(/^\(/, ''); }).join(' '), x: words[0].x, plus: /^\+/.test(words[0].str.trim()) }; continue; }
+          if (labLine && labs.length === 1 && !line.glyphs && speechFollows(lines, li)) { startSpeech(labs[0].name, '', box); block._y = line.y; block._n = page.num; continue; }
           if (labLine) {
             var found = labs.map(function (l) {
               if (nameFrag && Math.abs(nameFrag.x - l.x) < 30) { l = { name: nameFrag.name + ' ' + l.name, x: Math.min(nameFrag.x, l.x), plus: nameFrag.plus || l.plus }; nameFrag = null; }
@@ -285,6 +324,8 @@
           var dirLike = /^\(/.test(t) || /#\s?\d+\s*[–-]/.test(t);
           if (prevStave) { prevStave = false; if (!dirLike) continue; }        // anything else right under a stave (but a stage direction there counts)
           var startsDirM = /^\(/.test(t);
+          var sp = depth === 0 && line.italic && t.match(/^([A-Z][A-Z .’',&]+?)\s?:\s*(\([^)]*\))\s*(.*)$/);      // "KELSI: (nods to GABRIELLA)" in italics, the words on the next line
+          if (sp) { startSpeech(sp[1].trim(), tidy(sp[2] + ' ' + sp[3]), box); block._y = line.y; block._n = page.num; continue; }
           if (depth > 0 || startsDirM || line.italic) {
             if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
             else block = emit({ type: 'dir', text: t, _open: true });
@@ -294,16 +335,18 @@
             continue;
           }
           var said = t.match(/^([A-Z][A-Z .’',&]+?):\s+(\S.*)$/);       // "TROY: words" spoken over music
+          if (said) said[2] = tidy(said[2]) || said[2];
           if (said) {
             speaker = said[1].trim(); speakers[speaker] = (speakers[speaker] || 0) + 1;
             block = emit({ type: 'line', who: speaker, text: said[2], overMusic: true });
             // Colleen 2026-10-23: lines spoken after the song's title are over the track: they get timed and lit up with the song's sections
             if (trackOn && lastSongItem) { spokenLyric = { who: speaker, text: said[2], page: printed, box: box, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); }
             else spokenLyric = null;
+            block._y = line.y; block._n = page.num;
             continue;
           }
-          if (block && block.type === 'line' && block.overMusic) {
-            block.text += ' ' + t; addBox(block);
+          if (block && block.type === 'line' && block.overMusic && !block._await && block._n === page.num && line.y - block._y < 30 && !lyricRow(lines, li) && !line.glyphs) {      // the next line of a spoken line, right under it
+            block.text = tidy(block.text + ' ' + t); addBox(block); block._y = line.y;
             if (spokenLyric) { spokenLyric.text += ' ' + t; spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([box]); }
             continue;
           }
@@ -516,7 +559,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-23.4';
+  var VERSION = '2026-10-23.5';
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
