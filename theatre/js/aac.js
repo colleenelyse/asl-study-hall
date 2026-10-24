@@ -16,7 +16,7 @@
       var src = T.scriptScene(sc); if (!src) return;
       src.items.forEach(function (it) {
         if (it.type === 'line') out.push({ scene: sc, it: it, text: clean(it.text), who: it.who, ids: T.labelChars(it.who) });
-        if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken) out.push({ scene: sc, it: null, text: clean(l.text), who: l.who, ids: T.labelChars(l.who), inSong: it.title || ('#' + it.num) }); });
+        if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken) out.push({ scene: sc, it: l, text: clean(l.text), who: l.who, ids: T.labelChars(l.who), inSong: it.title || ('#' + it.num) }); });
       });
     });
     return out.filter(function (x) { return x.text; });
@@ -82,7 +82,7 @@
             var i = L.indexOf(l);
             return T.Voices.source(l.x.it, false).then(function (src) { return src && src.src === 'tts' ? Store.getVoice(T.key, src.h, 'tts', src.ver) : null; }).then(function (bytes) {
               if (!bytes) return;
-              var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' })); a.download = ch.short + ' ' + ('0' + (i + 1)).slice(-2) + ' - ' + l.x.text.split(/\s+/).slice(0, 5).join(' ').replace(/[^\w’' -]/g, '') + '.mp3';
+              var wav = new Uint8Array(bytes.slice ? bytes.slice(0, 4) : bytes)[0] === 0x52, a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: wav ? 'audio/wav' : 'audio/mpeg' })); a.download = ch.short + ' ' + ('0' + (i + 1)).slice(-2) + ' - ' + l.x.text.split(/\s+/).slice(0, 5).join(' ').replace(/[^\w’' -]/g, '') + (wav ? '.wav' : '.mp3');      // group lines are a chorus (WAV)
               document.body.appendChild(a); a.click(); a.remove(); m.textContent = 'Saved ' + (have.indexOf(l) + 1) + ' of ' + have.length + '…';
               return new Promise(function (ok) { setTimeout(ok, 350); });
             });

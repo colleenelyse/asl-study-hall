@@ -116,15 +116,57 @@
 
   /* ---------- Teacher: Voices & recordings ---------- */
   var MODELS = [['eleven_multilingual_v2', 'Best quality'], ['eleven_flash_v2_5', 'Faster, about half the cost']];
-  function allLines() {
+  function allLines() {      // every spoken line: dialogue, and lines spoken inside songs (for Lines for AAC; the guide tracks already have them in rehearsal)
     var out = [];
-    T.O().scenes.forEach(function (sc) { var src = T.scriptScene(sc); if (src) src.items.forEach(function (it) { if (it.type === 'line') out.push({ it: it, scene: sc, h: V.id(it) }); }); });
+    T.O().scenes.forEach(function (sc) {
+      var src = T.scriptScene(sc); if (!src) return;
+      src.items.forEach(function (it) {
+        if (it.type === 'line') out.push({ it: it, scene: sc, h: V.id(it) });
+        if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken && l.who && String(l.text || '').trim()) out.push({ it: l, scene: sc, h: V.id(l), inSong: true }); });
+      });
+    });
     return out;
   }
-  function voiceFor(it, map) {      // the character's ElevenLabs voice; group lines (ALL, CLIQUES…) use the group voice
-    var ids = T.labelChars(it.who).filter(function (c) { return c !== '*'; });
-    if (ids.length === 1 && T.charById(ids[0]) && T.charById(ids[0]).group !== 'ensemble') return map[ids[0]] || null;      // a character waits for its own voice
-    return map.__group || (ids[0] && map[ids[0]]) || null;      // ALL, CLIQUES, the chorus groups: the group voice
+  /* the voices for a line (Colleen 2026-10-24: group lines as "a small chorus"): one character, their voice; a group (JOCKS), ALL, or several
+     names (TROY, GABRIELLA), up to three voices together: the named characters' or the group's own voice first, then the chorus voices */
+  var CHORUS = ['__chorus1', '__chorus2', '__chorus3'];
+  function voicesFor(it, map) {
+    var all = T.labelChars(it.who), ids = all.filter(function (c) { return c !== '*'; });
+    if (ids.length === 1 && all.length === 1 && T.charById(ids[0]) && T.charById(ids[0]).group !== 'ensemble') return map[ids[0]] ? [map[ids[0]]] : [];      // a character waits for its own voice
+    var out = ids.map(function (c) { return map[c]; }).filter(Boolean);
+    var crowd = all.indexOf('*') >= 0 || ids.some(function (c) { var x = T.charById(c); return !x || x.group === 'ensemble'; });      // ALL or a group: the chorus joins; named characters together: just their voices
+    if (crowd) CHORUS.concat(['__group']).forEach(function (k) { if (map[k]) out.push(map[k]); });
+    return out.filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(0, 3);
+  }
+  V.voicesFor = voicesFor;
+  /* match the ElevenLabs voices to the characters by the names they were saved under ("HSM Troy", "HSM Ms. Darbus", "HSM Chorus 2") */
+  function matchByName(voices, map) {
+    var norm = function (s) { return String(s || '').toLowerCase().replace(/^hsm\s*[-:·]?\s*/, '').replace(/^(ms|mr|mrs)\.?\s+/, '').replace(/[^a-z0-9 ]/g, '').trim(); };
+    var n = 0;
+    voices.forEach(function (v) {
+      var nm = norm(v.name), m = nm.match(/^chorus\s*(\d)$/);
+      if (m && +m[1] >= 1 && +m[1] <= 3) { if (!map['__chorus' + m[1]]) { map['__chorus' + m[1]] = v.voice_id; n++; } return; }
+      var c = T.O().characters.find(function (c) { return [c.short, c.name].concat(c.aliases || []).some(function (x) { var k = norm(x); return k && (k === nm || k.split(' ').pop() === nm || k.split(' ')[0] === nm); }); });
+      if (c && !map[c.id]) { map[c.id] = v.voice_id; n++; }
+    });
+    return n;
+  }
+  /* three takes of a group line, layered a moment apart and spread left to right, as one sound file (WAV) */
+  function mixChorus(bufs) {
+    var ctx = T.audioCtx();
+    return Promise.all(bufs.map(function (b) { return ctx.decodeAudioData(b.slice(0)); })).then(function (abs) {
+      var rate = 44100, offs = [0, 0.05, 0.11], gains = [0.85, 0.72, 0.68], pans = [0, -0.45, 0.45];
+      var len = Math.ceil(Math.max.apply(null, abs.map(function (a, i) { return a.duration + offs[i]; })) * rate) + rate * 0.1;
+      var off = new OfflineAudioContext(2, len, rate);
+      abs.forEach(function (a, i) { var s = off.createBufferSource(), g = off.createGain(), p = off.createStereoPanner(); s.buffer = a; g.gain.value = gains[i]; p.pan.value = pans[i]; s.connect(g); g.connect(p); p.connect(off.destination); s.start(offs[i]); });
+      return off.startRendering();
+    }).then(function (ab) {      // 16-bit stereo WAV
+      var n = ab.length, out = new ArrayBuffer(44 + n * 4), d = new DataView(out), w = function (o, s) { for (var i = 0; i < s.length; i++) d.setUint8(o + i, s.charCodeAt(i)); };
+      w(0, 'RIFF'); d.setUint32(4, 36 + n * 4, true); w(8, 'WAVE'); w(12, 'fmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 2, true); d.setUint32(24, ab.sampleRate, true); d.setUint32(28, ab.sampleRate * 4, true); d.setUint16(32, 4, true); d.setUint16(34, 16, true); w(36, 'data'); d.setUint32(40, n * 4, true);
+      var L = ab.getChannelData(0), R = ab.getChannelData(1), o = 44;
+      for (var i = 0; i < n; i++) { [L[i], R[i]].forEach(function (x) { x = Math.max(-1, Math.min(1, x)); d.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2; }); }
+      return out;
+    });
   }
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.voices = function () {
@@ -139,7 +181,7 @@
     var cfg = T.show.eleven = T.show.eleven || { voices: {}, model: 'eleven_multilingual_v2', ok: false }, key = T.ls('xiKey') || '';
     var people = {}; (T.show.cast || []).forEach(function (a) { people[a.id] = a.name; });
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
-    var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voiceFor(l.it, cfg.voices); }), chars2 = need.reduce(function (a, l) { return a + T.pronounce(LineCheck.spoken(l.it.text)).length; }, 0);
+    var need = lines.filter(function (l) { var e = index.lines[l.h]; return !(e && e.tts) && voicesFor(l.it, cfg.voices).length; }), chars2 = need.reduce(function (a, l) { return a + T.pronounce(LineCheck.spoken(l.it.text)).length * voicesFor(l.it, cfg.voices).length; }, 0);
     app.innerHTML = (msg ? '<p class="card">' + esc(msg) + '</p>' : '') +
       '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by Company members · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
       '<p class="muted small">Company members rehearse with a castmate’s recording first, then ElevenLabs, then the device voice. Company members record in Practice Lines › a scene › Record my lines.</p></div>' +
@@ -168,15 +210,19 @@
     var showMap = function (voices) {
       var opts = function (sel) { return '<option value="">Choose…</option>' + voices.map(function (v) { return '<option value="' + esc(v.voice_id) + '"' + (sel === v.voice_id ? ' selected' : '') + '>' + esc(v.name) + (v.labels && v.labels.accent ? ' · ' + esc(v.labels.accent) : '') + '</option>'; }).join(''); };
       $('vmap').innerHTML = '<table class="tbl" style="margin-top:10px"><thead><tr><th>Character</th><th>Voice</th><th></th></tr></thead><tbody>' +
-        chars.concat([{ id: '__group', name: 'Group lines (ALL, CLIQUES…)' }]).map(function (c) {
-          return '<tr><td>' + (c.id === '__group' ? esc(c.name) : T.chip(c.id)) + '</td><td><select data-vc="' + c.id + '">' + opts(cfg.voices[c.id]) + '</select></td><td><button class="btn small" data-pre="' + c.id + '">' + icon('play') + 'Sample</button></td></tr>';
+        chars.concat([{ id: '__chorus1', name: 'Chorus voice 1' }, { id: '__chorus2', name: 'Chorus voice 2' }, { id: '__chorus3', name: 'Chorus voice 3' }]).map(function (c) {
+          return '<tr><td>' + (/^__/.test(c.id) ? esc(c.name) + ' <span class="muted small">(group lines: up to 3 voices together)</span>' : T.chip(c.id)) + '</td><td><select data-vc="' + c.id + '">' + opts(cfg.voices[c.id]) + '</select></td><td><button class="btn small" data-pre="' + c.id + '">' + icon('play') + 'Sample</button></td></tr>';
         }).join('') + '</tbody></table>';
       app.querySelectorAll('[data-vc]').forEach(function (s) { s.onchange = function () { if (s.value) cfg.voices[s.dataset.vc] = s.value; else delete cfg.voices[s.dataset.vc]; T.saveShow('Voice saved'); }; });
       app.querySelectorAll('[data-pre]').forEach(function (b) { b.onclick = function () { var v = voices.find(function (x) { return x.voice_id === cfg.voices[b.dataset.pre]; }); if (v && v.preview_url) new Audio(v.preview_url).play(); else T.toast('Choose a voice first.'); }; });
     };
     $('lv').onclick = function () {
       fetch('https://' + 'api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': T.ls('xiKey') } }).then(function (r) { if (!r.ok) throw new Error('ElevenLabs said ' + r.status + '. Check the key.'); return r.json(); })
-        .then(function (d) { showMap(d.voices || []); }).catch(function (e) { T.toast(e.message, 5000); });
+        .then(function (d) {
+          var vs = d.voices || [], n = matchByName(vs, cfg.voices);      // voices saved as "HSM Troy" and so on go to their characters by themselves
+          if (n) T.saveShow(n + ' voice' + (n === 1 ? '' : 's') + ' matched to characters by name').then(function () { page(index, pending, n + ' voices matched by their names. Check them below, then Make the missing lines.'); setTimeout(function () { showMap(vs); }, 0); });
+          else showMap(vs);
+        }).catch(function (e) { T.toast(e.message, 5000); });
     };
     $('mk').onclick = function () {
       if (!confirm('Make ' + need.length + ' lines with ElevenLabs (about ' + chars2.toLocaleString() + ' characters)?')) return;
@@ -185,11 +231,15 @@
       need.reduce(function (p, l) {
         return p.then(function () {
           if (stop) return;
-          var vid = voiceFor(l.it, cfg.voices);
-          return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
-            method: 'POST', headers: { 'xi-api-key': T.ls('xiKey'), 'content-type': 'application/json', accept: 'audio/mpeg' },
-            body: JSON.stringify({ text: T.pronounce(LineCheck.spoken(l.it.text)), model_id: cfg.model })
-          }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('ElevenLabs said ' + r.status + ': ' + t.slice(0, 120)); }); return r.arrayBuffer(); })
+          var vids = voicesFor(l.it, cfg.voices);
+          var say = function (vid) {
+            return fetch('https://' + 'api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vid) + '?output_format=mp3_44100_64', {
+              method: 'POST', headers: { 'xi-api-key': T.ls('xiKey'), 'content-type': 'application/json', accept: 'audio/mpeg' },
+              body: JSON.stringify({ text: T.pronounce(LineCheck.spoken(l.it.text)), model_id: cfg.model })
+            }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('ElevenLabs said ' + r.status + ': ' + t.slice(0, 120)); }); return r.arrayBuffer(); });
+          };
+          return vids.reduce(function (q, v) { return q.then(function (got) { return say(v).then(function (b) { return got.concat([b]); }); }); }, Promise.resolve([]))      // one at a time: the plan's rate limit
+            .then(function (bs) { return bs.length > 1 ? mixChorus(bs) : bs[0]; })
             .then(function (b) { return Store.putVoice(T.key, T.proof, l.h, 'tts', b, Date.now().toString(36)); })
             .then(function () { done++; st.firstChild && (st.lastChild.textContent = ''); st.insertAdjacentText('beforeend', ' ' + done + ' of ' + need.length); });
         });
