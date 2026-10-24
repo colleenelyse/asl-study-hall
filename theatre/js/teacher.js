@@ -1031,7 +1031,7 @@
       if (view === 'sections') return drawSections();
       var nxt = fixAt != null ? fixAt : nextOpen();
       var H = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
-        '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
+        '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><button class="btn" id="addmiss" title="A whole line the app missed: type its words and it finds them on the pages">＋ Add a missing line</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].concat(maxParts > 1 ? [['part0', '⬆ Top part']].concat(maxParts > 2 ? [['part1', 'Middle part']] : []).concat([['part2', '⬇ Bottom part']]) : []).map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span>' + (/^part/.test(timeKind) ? ' <button type="button" class="btn small" id="partwho" title="Set who sings every line of this part in the brackets">✎ Who sings this part</button>' : '') + (/^part/.test(timeKind) ? ' <button type="button" class="btn small primary" id="fillparts" title="Every other part in the brackets takes its times from this part, note by note">⤵ Fill the other parts from this one</button>' : '') + '</div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
@@ -1066,7 +1066,7 @@
       $('undo1').onclick = undo;
       $('pl').onclick = playPause;
       $('bk').onclick = function () { audio.currentTime = Math.max(0, audio.currentTime - 3); };
-      if ($('now')) $('now').onclick = tap; $('find').onclick = find;
+      if ($('now')) $('now').onclick = tap; $('find').onclick = find; $('addmiss').onclick = addMissing;
       $('stopsb').onclick = function () { stopsOn = !stopsOn; if (stopsOn) fixAt = null; draw(); };
       $('clr').onclick = function () { if (!confirm('Clear the timing of every line in this song? (↶ Undo brings it back.)')) return; snapshot(); fixAt = null; fixOld = null; times = lines.map(function () { return null; }); draw(); };
       $('sv').onclick = function () {
@@ -1288,6 +1288,86 @@
       var x = times[i], t2 = null;
       if (x) { var sk = x.s && x.s[k] != null ? x.s[k] : x.t; t2 = { t: sk, e: x.e, s: (x.s || []).slice(k) }; times[i] = { t: x.t, e: sk, s: (x.s || []).slice(0, k) }; }
       times.splice(i + 1, 0, t2); edited = true;
+    }
+    /* a whole line the script reader missed (Colleen 2026-10-24: "if a whole line is missing, i need a way to add it and have you find it on the
+       pages"): she types its words and where it goes; the song's pages are read again (the words printed under the notes, syllable by syllable)
+       and the words are found there, in reading order, also across staves and onto the next page. Of several places with those words, the one
+       not already a section and closest to where it belongs wins. Not found: the shortest start of it that is found (drag its end to finish),
+       or added without a place on the music. */
+    var letters = function (s) { return String(s || '').toLowerCase().replace(/[^a-z]/g, ''); };
+    function songRows() {      // every printed lyric row on the song's pages (and the page before and after): [{ n, y, h, toks: [{ x, w, t, l }] }]
+      var ns = []; lines.forEach(function (l) { T.Pages.rawBoxes(l).forEach(function (b) { ns.push(b.n); }); });
+      var lo = Math.max(1, Math.min.apply(null, ns) - 1), hi = Math.max.apply(null, ns) + 1;
+      return T.Pages.doc().then(function (pdf) {
+        var want = []; for (var n = lo; n <= Math.min(hi, pdf.numPages); n++) want.push(n);
+        return Promise.all(want.map(function (n) {
+          return pdf.getPage(n).then(function (pg) {
+            var vp = pg.getViewport({ scale: 1 });
+            return pg.getTextContent().then(function (tc) {
+              var items = tc.items.filter(function (it) { return it.str !== undefined; }).map(function (it) { var tr = it.transform, pt = vp.convertToViewportPoint(tr[4], tr[5]); return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: Math.hypot(tr[2], tr[3]) || Math.hypot(tr[0], tr[1]), font: '' }; });
+              return ScriptParser._toLines({ items: items }).filter(function (r) { return r.syl && r.syl.length; }).map(function (r) {
+                return { n: n, y: +(r.y - r.size * 0.95).toFixed(1), h: +(r.size * 1.25).toFixed(1), toks: r.syl.map(function (y) { return { x: y.x, w: y.w, t: y.t, l: letters(y.t) }; }).filter(function (y) { return y.l; }) };
+              });
+            });
+          });
+        })).then(function (pages) { return [].concat.apply([], pages); });
+      });
+    }
+    function matchAt(rows, target) {      // every place the letters of target are printed, in reading order; a line may go on to a later row
+      var found = [];
+      rows.forEach(function (row, ri) {
+        row.toks.forEach(function (tk, ti) {
+          var path = [], want = target, r = ri, k = ti, hops = 0;
+          while (want && r < rows.length) {
+            var t = rows[r].toks[k];
+            if (!t) {      // the end of a row: go on in one of the next rows on, starting at its first syllable
+              var nx = -1; for (var q = r + 1; q < Math.min(rows.length, r + 4); q++) if (rows[q].toks[0] && want.indexOf(rows[q].toks[0].l) === 0) { nx = q; break; }
+              if (nx < 0 || ++hops > 3) break; r = nx; k = 0; continue;
+            }
+            if (want.indexOf(t.l) !== 0) break;
+            path.push({ x: t.x, w: t.w, t: t.t, _o: { n: rows[r].n, y: rows[r].y, h: rows[r].h } }); want = want.slice(t.l.length); k++;
+          }
+          if (!want && path.length) found.push(path);
+        });
+      });
+      return found;
+    }
+    function addMissing() {
+      if (!(T.Pages && T.Pages.ready())) { T.toast('The script pages are not saved yet: import the script PDF first.', 5000); return; }
+      var after = selSec != null ? selSec : fixAt != null ? fixAt : Math.max(-1, nextOpen() - 1);
+      var d = dialog('<h2>Add a missing line</h2><p class="muted">Type the words of the line the way they are printed under the notes. The app finds them on this song’s pages and adds them as a section, lit up on the music.</p>' +
+        '<label class="f">The words<textarea id="mw" style="min-height:80px" placeholder="e.g. Stick to the stuff you know"></textarea></label>' +
+        '<label class="f">Where it goes<select id="ma"><option value="-1">At the start, before line 1</option>' + lines.map(function (l, i) { return '<option value="' + i + '"' + (i === after ? ' selected' : '') + '>After line ' + (i + 1) + ': ' + esc(String(l.text || '').slice(0, 40)) + '</option>'; }).join('') + '</select></label>' +
+        '<p class="err" id="mm"></p><div class="row end"><button class="btn quiet" id="mx">Cancel</button><button class="btn primary" id="mok">Find it and add it</button></div>');
+      d.querySelector('#mx').onclick = function () { d.close(); };
+      d.querySelector('#mok').onclick = function () {
+        var words = d.querySelector('#mw').value.trim(), at = +d.querySelector('#ma').value, msg = d.querySelector('#mm'), btn = this;
+        if (letters(words).length < 2) { msg.textContent = 'Type the words of the line first.'; return; }
+        btn.disabled = true; msg.textContent = 'Looking on the pages…';
+        songRows().then(function (rows) {
+          var used = function (path) { return lines.some(function (l) { var bs = T.Pages.rawBoxes(l); return path.some(function (y) { return bs.some(function (b) { return b.n === y._o.n && Math.abs(b.y - y._o.y) < 2 && y.x >= b.x - 1 && y.x + y.w <= b.x + b.w + 1; }); }); }); };
+          var key = function (b) { return b ? b.n * 10000 + b.y : null; };
+          var prev = at >= 0 ? key(T.Pages.rawBoxes(lines[at])[0]) : null, next = lines[at + 1] ? key(T.Pages.rawBoxes(lines[at + 1])[0]) : null;
+          var score = function (path) { var k = key(path[0]._o), d0 = 0; if (prev != null && k < prev) d0 += prev - k; if (next != null && k > next) d0 += k - next; return (used(path) ? 1e7 : 0) + d0; };
+          var ws = words.split(/\s+/), part = null, best = null;
+          for (var m = ws.length; m >= Math.min(3, ws.length) && !best; m--) {
+            var found = matchAt(rows, letters(ws.slice(0, m).join(' ')));
+            if (found.length) { best = found.sort(function (a, b) { return score(a) - score(b); })[0]; if (m < ws.length) part = ws.slice(0, m).join(' '); }
+          }
+          if (best && score(best) >= 1e7) { msg.textContent = part ? 'Only the start (“' + part + '”) is printed on the pages, and it is already a section. Check the spelling of the rest.' : 'Those words are already a section on the music (use 📍 to find it).'; btn.disabled = false; return; }
+          snapshot();
+          var l = { who: (lines[at] || lines[0] || {}).who || '', page: (lines[at] || lines[0] || {}).page };
+          if (best) { setLine(l, best, function (y) { return y._o; }); best.forEach(function (y) { delete y._o; }); if (part) l.text = ScriptParser.cleanLyric(words); }
+          else { l.text = ScriptParser.cleanLyric(words); l.syl = []; }
+          lines.splice(at + 1, 0, l); times.splice(at + 1, 0, null);
+          lines.forEach(function (x, k) { if (x.sync && k > at + 1 && k - x.sync <= at + 1) x.sync++; });      // pairs that reach across the new line still find their partner
+          edited = true; selSec = at + 1; d.close();
+          var pg = best ? T.Pages.printed(best[0]._o ? best[0]._o.n : T.Pages.rawBoxes(l)[0].n) : null;
+          T.toast(best ? (part ? 'Found the start (“' + part + '”) on page ' + pg + ' and added it as line ' + (at + 2) + '. Drag the end of its highlight to the last word.' : 'Found it on page ' + pg + ' and added it as line ' + (at + 2) + '.') + ' Check who sings it (✎), time it with 🎯 Fix, then Save.' :
+            'Those words are not printed on this song’s pages as typed, so line ' + (at + 2) + ' was added without a place on the music. Check the spelling, or ↶ Undo and try fewer words.', 8000);
+          draw();
+        }).catch(function (e) { btn.disabled = false; msg.textContent = e.message || 'The pages could not be read.'; });
+      };
     }
     function delSec(i) {      // a section that is not a lyric (a stray box): gone, and the pairs after it still point at their partners
       snapshot(); removeAt(i);
