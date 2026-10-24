@@ -353,3 +353,5 @@ moves that line (keeping its syllable timing, so the piano follows) and the foll
 ["index|words"] and put back after a re-import (same line, or the same words in that song). Lit-up sections start at a measure ("count 1 or
 5") and are at most two measures long (`measures()` in the reader, using each staff's barlines kept in `page.systems`); a one- or two-syllable
 pickup stays with the words before it. HSM JR: 708 sections.
+A performer who plays several roles keeps one color in all of them (`color` in app.js): their first role with a picked color (a lead's
+wins), else their first role; a lyric line sung by two of their roles lights up in that one color.

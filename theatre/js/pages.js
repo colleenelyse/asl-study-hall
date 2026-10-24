@@ -94,7 +94,8 @@
      color, the bottom the other), highlighter yellow for a chorus or group */
   function lyricColors(who) {
     var ids = who ? T.labelChars(String(who).toUpperCase()) : [];
-    var cs = ids.filter(function (id) { var c = T.charById(id); return id !== '*' && c && c.group !== 'ensemble'; }).map(T.color);
+    var cs = ids.filter(function (id) { var c = T.charById(id); return id !== '*' && c && c.group !== 'ensemble'; }).map(T.color)
+      .filter(function (c, i, all) { return all.indexOf(c) === i; });      // one performer in two of the roles: one color
     return cs.length ? cs : ['#ffe94d'];      // a chorus or group: a highlighter yellow
   }
   T.lyricColors = lyricColors;
