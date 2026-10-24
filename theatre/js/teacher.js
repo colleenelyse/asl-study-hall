@@ -165,7 +165,7 @@
       t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
       t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
-    if (T.syncReminders) setTimeout(function () { T.syncReminders().catch(function () {}); }, 1500);      // mail.js: the next month's reminder emails, to the school-account script
+    if (T.syncReminders) setTimeout(function () { T.syncReminders().catch(function () {}); if (T.reminderPrompt) T.reminderPrompt(); }, 1500);      // mail.js: reminder emails (asks for the teacher's OK first), to the school-account script
     if (T.portalWaiting) T.portalWaiting().then(function (n) { var el = document.getElementById('famwait'); if (n && el) el.textContent = n + ' new family form' + (n === 1 ? '' : 's') + ' waiting'; });
   }
 

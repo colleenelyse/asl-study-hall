@@ -167,9 +167,8 @@
         if (r.lines.indexOf(line) < 0) r.lines.push(line); if (!r.name && name) r.name = name;
       });
     };
-    (R.families || []).forEach(function (f) {
-      if (!f.committed) return;
-      (R.dates || []).forEach(function (d) { (f.contacts || []).forEach(function (c) { add(c.email, c.name, d.date, d.what + ' (' + f.name + ')', '#/today'); }); });
+    (R.families || []).forEach(function (f) {      // a date marked "(all families)" goes to every family with an email; the others to families who signed the commitment
+      (R.dates || []).forEach(function (d) { if (!f.committed && !/\(all families\)\s*$/i.test(d.what)) return; (f.contacts || []).forEach(function (c) { add(c.email, c.name, d.date, d.what.replace(/\s*\(all families\)\s*$/i, '') + ' (' + f.name + ')', '#/today'); }); });
     });
     (R.signups || []).forEach(function (s) {
       if (!s.date) return;
@@ -183,10 +182,30 @@
       var subject = R.title + ': reminder for ' + dayLong(r.date).replace(/,.*$/, '') + ', ' + dayLong(r.date).split(', ')[1] + ' (' + when + ')';
       var text = (r.name ? 'Hello ' + String(r.name).split(/\s+/)[0] + ',' : 'Hello,') + '\n\nA reminder for ' + dayLong(r.date) + ' (' + when + '):\n\n' + lines.map(function (l) { return '• ' + l; }).join('\n') +
         '\n\nThank you for your commitment to the show!\n\nOpen the app: ' + R.base + r.page + (R.sign ? '\n\n' + R.sign : '') + '\n\n—\nYou get this reminder because of your commitment in the ' + R.title + ' app. Stop these emails: {UNSUB}';
-      return { id: hashId(k + '|' + lines.join('|')), on: addDays(r.date, -r.n), to: r.to, subject: subject.slice(0, 180), text: text };
+      return { id: hashId(k + '|' + lines.join('|')), on: addDays(r.date, -r.n), to: r.to, subject: subject.slice(0, 180), text: text, date: r.date, n: r.n, gk: r.date + '|' + r.n, lines: lines };
     });
   }
-  var core = { KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose, DEF_DATES: DEF_DATES, parseDates: parseDates, datesText: datesText, reminders: reminders };
+  /* reminders grouped for the teacher's OK (Colleen 2026-10-24: "i want it to ask me on log in before it sends a reminder email if i want it sent"):
+     one group per date and lead time; ok = { 'date|n': 'yes' | 'no' | 'sent' }. Waiting = no answer yet, sending within `ahead` days, date still to come. */
+  function remGroups(list, ok, today, ahead) {
+    var last = addDays(today, ahead == null ? 7 : ahead), by = {};
+    list.forEach(function (r) {
+      var g = by[r.gk] = by[r.gk] || { gk: r.gk, date: r.date, n: r.n, on: r.on, to: [], whats: [], sample: r };
+      if (g.to.indexOf(r.to.toLowerCase()) < 0) g.to.push(r.to.toLowerCase());
+      r.lines.forEach(function (l) { var w = l.replace(/ \([^()]*\)$/, ''); if (/^You signed up/.test(l)) w = 'Volunteer and dinner sign-ups'; if (g.whats.indexOf(w) < 0) g.whats.push(w); });
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).filter(function (g) { return !(ok || {})[g.gk] && g.date > today && g.on <= last; })
+      .sort(function (a, b) { return a.on < b.on ? -1 : a.on > b.on ? 1 : a.date < b.date ? -1 : 1; });
+  }
+  /* dates the app knows about that are not on the reminder list yet: performances and field trips in the next `days` days */
+  function suggest(show, dates, today, days, off) {
+    var last = addDays(today, days || 60), have = (dates || []).map(function (d) { return d.date; }), out = [], prod = (show && show.production) || {};
+    var t12 = function (t) { if (!t) return ''; var a = t.split(':'), h = +a[0]; return ' at ' + (h % 12 || 12) + (a[1] === '00' ? '' : ':' + a[1]) + (h < 12 ? ' AM' : ' PM'); };
+    (prod.performances || []).forEach(function (p) { if (p.date > today && p.date <= last) out.push({ date: p.date, what: (p.kind === 'evening' ? 'Evening show' : 'School-day show') + t12(p.time) + (p.kind === 'evening' ? ' (all families)' : '') }); });
+    Object.keys(prod.days || {}).forEach(function (d) { if (d > today && d <= last && (prod.days[d].groups || []).some(function (g) { return g.focus === 'trip'; })) { var g = prod.days[d].groups.find(function (x) { return x.focus === 'trip'; }); out.push({ date: d, what: 'Field trip' + (g.where ? ' to ' + g.where : '') + ' (all families)' }); } });
+    return out.filter(function (x, i) { return have.indexOf(x.date) < 0 && (off || []).indexOf(x.date) < 0 && out.findIndex(function (y) { return y.date === x.date; }) === i; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  }
+  var core = { KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose, DEF_DATES: DEF_DATES, parseDates: parseDates, datesText: datesText, reminders: reminders, remGroups: remGroups, suggest: suggest, dayLong: dayLong, addDays: addDays };
   root.MailCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -261,6 +280,7 @@
   T.sendMail = send;
 
   /* ---------- reminders: build the next month's list and give it to the school-account script (only when it changed) ---------- */
+  var todayS = function () { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
   var remDates = function () { return M().dates && M().dates.length ? M().dates : C.DEF_DATES; };
   var remDays = function () { return M().remDays && M().remDays.length ? M().remDays : [7, 2, 1]; };
   function remList(vm) {
@@ -282,7 +302,7 @@
     if (remBusy) return remBusy;
     remBusy = T.openVault().then(function (V) {
       var m = V.extra.mail || {}; if (!m.url || !m.key) return null;
-      var vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {} }, list = remList(vm);
+      var ok = M().remOk || {}, today = todayS(), vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {} }, list = remList(vm).filter(function (r) { return ok[r.gk] === 'yes' && r.on > today; });      // only what the teacher said yes to
       var h = JSON.stringify(list.map(function (r) { return r.id + r.on; }));
       if (!force && T.ls('remHash') === h) return null;
       return Promise.all(list.map(function (r) { return sig(vm.key, r.to).then(function (s) { r.text = r.text.replace('{UNSUB}', vm.url + '?u=' + s); return r; }); }))
@@ -295,6 +315,78 @@
 
   /* ---------- after every save in Teacher mode: anything new to email about? ---------- */
   var busy = false, pending = [];
+  /* ---------- the teacher's OK, asked when Teacher mode opens ---------- */
+  function htmlOf(text) { return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:600px">' + esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, '<br>') + '</div>'; }
+  function remState() {      // { vm, list (all reminders, unfiltered), waiting groups, suggestions }
+    return T.openVault().then(function (V) {
+      var m = V.extra.mail || {}, vm = { url: m.url || '', key: m.key || '', portal: V.extra.portal || {}, help: V.extra.help || {} };
+      var list = remList(vm), today = todayS();
+      return { vm: vm, list: list, waiting: C.remGroups(list, M().remOk, today, 7), sugg: C.suggest(T.show, remDates(), today, 60, M().sugOff) };
+    });
+  }
+  /* yes / no for a group; a yes whose day has come (or passed) is sent right now */
+  function decide(st, gk, yes) {
+    var ok = M().remOk = M().remOk || {}, today = todayS();
+    if (!yes) { ok[gk] = 'no'; return Promise.resolve(0); }
+    var now = st.list.filter(function (r) { return r.gk === gk && r.on <= today; });
+    ok[gk] = now.length ? 'sent' : 'yes';
+    if (!now.length) return Promise.resolve(0);
+    return Promise.all(now.map(function (r) { return sig(st.vm.key, r.to).then(function (s) { var t = r.text.replace('{UNSUB}', st.vm.url + '?u=' + s); return { to: r.to, subject: r.subject, text: t, html: htmlOf(t) }; }); }))
+      .then(function (msgs) { return post(st.vm, msgs); }).then(function (res) { return res.sent; });
+  }
+  var lead = function (n) { return n === 1 ? 'the day before' : n === 7 ? 'one week before' : n + ' days before'; };
+  var short = function (d) { return C.dayLong(d).replace(/^(\w+), (\w+) (\d+)$/, function (m, w, mo, dd) { return w.slice(0, 3) + ', ' + mo.slice(0, 3) + ' ' + dd; }); };
+  function groupRow(g) {
+    return '<div style="border-bottom:1px solid var(--line);padding:8px 0" data-gk="' + esc(g.gk) + '"><b>' + esc(short(g.date)) + '</b>: ' + esc(g.whats.join('; ')) +
+      '<br><span class="small">Reminder ' + esc(lead(g.n)) + ' · ' + (g.on <= todayS() ? '<b>sends right away</b>' : 'sends ' + esc(short(g.on)) + ' morning') + ' · to ' + g.to.length + ' famil' + (g.to.length === 1 ? 'y' : 'ies') + '</span>' +
+      '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:6px"><button class="btn small primary" data-yes>✓ Send</button><button class="btn small" data-no>✕ Don’t send</button><button class="btn small quiet" data-see>Preview</button></div><pre class="small" data-pre hidden style="white-space:pre-wrap;background:var(--hi);padding:10px;border-radius:10px;font-family:inherit"></pre></div>';
+  }
+  function suggRow(x) {
+    return '<div style="border-bottom:1px solid var(--line);padding:8px 0" data-sd="' + esc(x.date) + '"><b>' + esc(short(x.date)) + '</b>: ' + esc(x.what.replace(/\s*\(all families\)$/, '')) + (/\(all families\)$/.test(x.what) ? ' <span class="tag">all families</span>' : '') +
+      '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:6px"><button class="btn small primary" data-add>+ Add to reminder dates</button><button class="btn small" data-off>Not this one</button></div></div>';
+  }
+  /* wire the rows in a container; done() after each change */
+  function wireRem(host, st, done) {
+    host.querySelectorAll('[data-gk]').forEach(function (row) {
+      var gk = row.dataset.gk, g = st.waiting.find(function (x) { return x.gk === gk; });
+      row.querySelector('[data-see]').onclick = function () { var pre = row.querySelector('[data-pre]'); pre.hidden = !pre.hidden; pre.textContent = g.sample.text.replace('{UNSUB}', '(a Stop these emails link)') + (g.to.length > 1 ? '\n\n(' + g.to.length + ' families get this, each with their own Company members and sign-ups)' : ''); };
+      var go = function (yes) { row.querySelectorAll('button').forEach(function (b) { b.disabled = true; }); decide(st, gk, yes).then(function (n) { return T.saveShow(yes ? (n ? n + ' reminder' + (n === 1 ? '' : 's') + ' sent' : 'Reminder approved') : 'Reminder skipped'); }).then(function () { return T.syncReminders(true); }).then(done, function (e) { T.toast(e.message || String(e), 5000); done(); }); };
+      row.querySelector('[data-yes]').onclick = function () { go(true); };
+      row.querySelector('[data-no]').onclick = function () { go(false); };
+    });
+    host.querySelectorAll('[data-sd]').forEach(function (row) {
+      var x = st.sugg.find(function (y) { return y.date === row.dataset.sd; });
+      row.querySelector('[data-add]').onclick = function () { M().dates = remDates().concat([x]).sort(function (a, b) { return a.date < b.date ? -1 : 1; }); T.saveShow('Added to the reminder dates').then(done); };
+      row.querySelector('[data-off]').onclick = function () { (M().sugOff = M().sugOff || []).push(x.date); T.saveShow('Saved').then(done); };
+    });
+  }
+  T.remApprovals = function (host) {      // the list on Teacher › Emails
+    if (!host || !M().on) return;
+    remState().then(function (st) {
+      host.innerHTML = '<h4>Waiting for your OK (the next week)</h4>' + (st.waiting.length ? st.waiting.map(groupRow).join('') : '<p class="muted small">Nothing waiting. Reminders for the coming week will ask here and when you open Teacher mode.</p>') +
+        (st.sugg.length ? '<h4>Suggested dates (coming up in the app)</h4>' + st.sugg.map(suggRow).join('') : '');
+      wireRem(host, st, function () { T.remApprovals(host); });
+    }).catch(function () {});
+  };
+  T.reminderPrompt = function () {      // Teacher mode opened: ask about the reminders for the coming week, once per visit
+    var asked = false; try { asked = sessionStorage.getItem('remAsked') === '1'; } catch (e) {}
+    if (asked || !T.proof || !M().on || M().remOff || document.querySelector('dialog[open]')) return;
+    remState().then(function (st) {
+      if (!st.vm.url || (!st.waiting.length && !st.sugg.length)) return;
+      try { sessionStorage.setItem('remAsked', '1'); } catch (e) {}
+      T.dialog('<h2>' + sym('⏰') + 'Reminder emails</h2><p class="small">' + (st.waiting.length ? 'These reminders are coming up. Nothing is sent unless you say so.' : 'Nothing to send this week.') + '</p><div id="rq"></div>' +
+        '<div class="row end"><button class="btn" id="rqlater">Decide later</button><button class="btn primary" id="rqall"' + (st.waiting.length ? '' : ' hidden') + '>✓ Send all of them</button></div>', function (d) {
+        var host = d.querySelector('#rq'), redraw = function () { remState().then(function (s2) { st = s2; host.innerHTML = (st.waiting.length ? st.waiting.map(groupRow).join('') : '<p class="muted">All decided. Thank you!</p>') + (st.sugg.length ? '<h3>Suggested dates</h3><p class="small muted">Coming up in the app, not on the reminder list yet.</p>' + st.sugg.map(suggRow).join('') : ''); d.querySelector('#rqall').hidden = !st.waiting.length; wireRem(host, st, redraw); }); };
+        redraw();
+        d.querySelector('#rqlater').onclick = function () { d.close(); };
+        d.querySelector('#rqall').onclick = function () {
+          var b = d.querySelector('#rqall'); b.disabled = true;
+          st.waiting.reduce(function (p, g) { return p.then(function () { return decide(st, g.gk, true); }); }, Promise.resolve())
+            .then(function () { return T.saveShow('Reminders approved'); }).then(function () { return T.syncReminders(true); }).then(function () { b.disabled = false; redraw(); }, function (e) { b.disabled = false; T.toast(e.message || String(e), 5000); });
+        };
+      });
+    }).catch(function () {});
+  };
   var remTimer = null;
   T.mailAfterSave = function () {
     clearTimeout(remTimer); remTimer = setTimeout(function () { T.syncReminders().catch(function () {}); }, 8000);      // reminders follow what was just saved
@@ -377,7 +469,7 @@
             '<td class="small">' + (cs.length ? cs.map(function (c) { return esc(c.name || '') + ' &lt;' + esc(c.email) + '&gt;' + (c.google ? ' <span class="tag ok-tag" title="Signed in with Google">G ✓</span>' : '') + ' <span class="muted">' + ['general', 'mine', 'copies'].filter(function (k) { return c.opts && c.opts[k]; }).map(function (k) { return { general: 'news', mine: 'changes', copies: 'copies' }[k]; }).join(', ') + '</span>'; }).join('<br>') : '<span class="muted">—</span>') + '</td></tr>';
         }).join('') + '</tbody></table></div><div class="row end"><button class="btn primary" id="ese" data-save>Save school emails</button></div><p id="esst" class="small" role="status"></p></div>' +
         '<div class="card" id="remcard"><h3 style="margin-top:0">' + sym('⏰') + 'Reminder emails</h3>' +
-        '<p class="small">Families get a reminder before each date they committed to: the show-week dates below (families who signed the show-week commitment, to their email from the Family portal) and the date of any need they signed up for on Volunteer and donate (with what they’re bringing). Your school account sends them each morning; the app gives it the next month’s reminders whenever Teacher mode is open.</p>' +
+        '<p class="small">Families get a reminder before each date they committed to: the show-week dates below (families who signed the show-week commitment; a date ending in “(all families)” goes to every family with an email) and the date of any need they signed up for on Volunteer and donate (with what they’re bringing). <b>Nothing is sent until you OK it</b>: when you open Teacher mode, the app asks about the reminders for the coming week. Your school account sends the ones you OK’d that morning.</p><div id="rappr"></div>' +
         '<label class="switch"><span><b>Send reminder emails</b></span><input type="checkbox" id="ron"' + (m.remOff ? '' : ' checked') + '></label>' +
         '<label class="f">Days before each date<input id="rdays" value="' + esc(remDays().join(', ')) + '" placeholder="7, 2, 1"></label>' +
         '<label class="f">Show-week dates (one per line: the date, then what it is)<textarea id="rdates" rows="6">' + esc(C.datesText(remDates())) + '</textarea></label>' +
@@ -387,13 +479,13 @@
       if (T.googleCard) T.googleCard(document.getElementById('gcard'));
       var remShow = function (msg) {
         var L = T.ls('remLast'), st = document.getElementById('rst'), box = document.getElementById('rlist'); if (!st) return;
-        st.textContent = msg || (L ? 'Last updated ' + new Date(L.at).toLocaleString() + ': ' + L.n + ' reminder' + (L.n === 1 ? '' : 's') + ' waiting for the next month.' : '');
+        st.textContent = msg || (L ? 'Last updated ' + new Date(L.at).toLocaleString() + ': ' + L.n + ' reminder' + (L.n === 1 ? '' : 's') + ' you OK’d waiting to be sent.' : '');
         if (L && L.daily === -1) st.innerHTML += ' <b class="err">The email script needs one more OK: open it, choose “setup”, click Run, and allow it (this turns on the morning sending).</b>';
         else if (L && L.daily === 0) st.innerHTML += ' <b class="err">The morning sending is not on yet: open the email script, choose “setup”, and click Run.</b>';
-        box.innerHTML = L && L.list && L.list.length ? '<details class="small"><summary>See the waiting reminders</summary><table class="tbl"><thead><tr><th>Sends</th><th>To</th><th>Subject</th></tr></thead><tbody>' +
+        box.innerHTML = L && L.list && L.list.length ? '<details class="small"><summary>See the reminders you OK’d</summary><table class="tbl"><thead><tr><th>Sends</th><th>To</th><th>Subject</th></tr></thead><tbody>' +
           L.list.map(function (r) { return '<tr><td>' + esc(r.on) + '</td><td>' + esc(r.to) + '</td><td>' + esc(r.subject) + '</td></tr>'; }).join('') + '</tbody></table></details>' : '';
       };
-      remShow();
+      remShow(); if (T.remApprovals) T.remApprovals(document.getElementById('rappr'));
       document.getElementById('ron').onchange = function () { if (this.checked) delete M().remOff; else M().remOff = true; T.saveShow(this.checked ? 'Reminder emails on' : 'Reminder emails off'); };
       document.getElementById('rreset').onclick = function () { document.getElementById('rdates').value = C.datesText(C.DEF_DATES); document.getElementById('rdays').value = '7, 2, 1'; };
       document.getElementById('rsave').onclick = function () {
@@ -402,7 +494,7 @@
         if (!days.length) { remShow('Type how many days before, like 7, 2, 1.'); return; }
         M().dates = pd.dates; M().remDays = days.filter(function (n, i, a) { return a.indexOf(n) === i; }).sort(function (a, b) { return b - a; });
         remShow('Saving…');
-        T.saveShow('Reminder dates saved').then(function () { return T.syncReminders(true); }).then(function (d) { remShow(d ? null : 'Connect the email script above first.'); }, function (e) { remShow(e.message || String(e)); });
+        T.saveShow('Reminder dates saved').then(function () { return T.syncReminders(true); }).then(function (d) { remShow(d ? null : 'Connect the email script above first.'); T.remApprovals(document.getElementById('rappr')); }, function (e) { remShow(e.message || String(e)); });
       };
       document.getElementById('eon').onchange = function () { var on = this.checked; M().on = on; if (on && !M().seen) M().seen = snap(); T.saveShow(on ? 'You will be asked after saving something new' : 'Emails off'); };
       document.getElementById('esign').onchange = function () { M().sign = this.value.trim().slice(0, 80); T.saveShow('Saved'); };

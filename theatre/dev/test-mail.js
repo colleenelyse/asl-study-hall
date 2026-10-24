@@ -78,6 +78,19 @@ ok(/tomorrow/.test(r1.subject) && /The full dress rehearsal, after school \(Sam 
 ok(/Stop these emails: \{UNSUB\}/.test(r1.text) && /https:\/\/asl\.cool\/theatre\/#\/today/.test(r1.text), 'a link to the app and a way to stop them');
 ok(C.reminders(R).map(r => r.id).join() === rem.map(r => r.id).join() && rem[0].id !== rem[1].id, 'the same reminder keeps its id (so the script never sends it twice)');
 ok(C.reminders(Object.assign({}, R, { horizon: 5 })).length === 1, 'only the next month or so is scheduled at a time');
+// the teacher's OK first (asked when Teacher mode opens), and suggested dates
+const all = C.reminders(Object.assign({}, R, { today: '2027-11-25' }));
+let wg = C.remGroups(all, {}, '2027-11-25', 7);
+ok(wg.length && wg.every(g => g.on <= '2027-12-02') && wg[0].on === '2027-11-29' && wg[0].gk === '2027-12-01|2', 'waiting for an OK: the reminders sending in the next week, soonest first');
+const g7 = wg.find(g => g.gk === '2027-12-07|7');
+ok(g7 && g7.to.length === 1 && g7.whats.includes('The full dress rehearsal, after school') && g7.whats.includes('Volunteer and dinner sign-ups'), 'one line per date and lead time: who and what it is about');
+ok(!C.remGroups(all, { '2027-12-07|7': 'yes' }, '2027-11-25', 7).some(g => g.gk === '2027-12-07|7') && !C.remGroups(all, { '2027-12-07|7': 'no' }, '2027-11-25', 7).some(g => g.gk === '2027-12-07|7'), 'once answered (yes or no), it does not ask again');
+const allFam = C.reminders(Object.assign({}, R, { today: '2027-11-25', dates: [{ date: '2027-12-10', what: 'Evening show at 7 PM (all families)' }] }));
+ok(allFam.some(r => r.to === 'bo@x.org') && !/all families/.test(allFam[0].text), 'a date marked “(all families)” goes to families who did not sign the commitment too');
+const showS = { production: { performances: [{ id: 'p1', date: '2027-12-10', time: '19:00', kind: 'evening' }, { id: 'p2', date: '2027-12-09', time: '10:00', kind: 'school' }, { id: 'p3', date: '2027-12-07', kind: 'school' }],
+  days: { '2027-10-13': { groups: [{ focus: 'trip', where: 'Target' }] }, '2027-10-14': { groups: [{ focus: 'acting' }] } } } };
+const sg = C.suggest(showS, [{ date: '2027-12-07', what: 'Dress' }], '2027-10-01', 75, ['2027-12-09']);
+ok(sg.map(x => x.date).join() === '2027-10-13,2027-12-10' && /Field trip to Target \(all families\)/.test(sg[0].what) && sg[1].what === 'Evening show at 7 PM (all families)', 'suggested dates: field trips and performances not on the list yet (and not turned down)');
 // the unsubscribe code: browser HMAC (hex) == the script's computeHmacSha256Signature turned to hex (signed bytes)
 const gs = fs.readFileSync(path.join(__dirname, '../mail-script/Code.gs'), 'utf8'), hex_ = eval('(' + gs.match(/function hex_\(bytes\) \{[\s\S]*?\n/)[0].replace(/^function hex_/, 'function') + ')');
 const signed = [...crypto.createHmac('sha256', 'k1').update('pat@home.com').digest()].map(b => b > 127 ? b - 256 : b);
