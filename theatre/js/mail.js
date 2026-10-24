@@ -19,7 +19,7 @@
 (function (root) {
   'use strict';
   var KINDS = {
-    news: { icon: '📣', name: 'News for families', general: true, def: { a: false, m: false, p: true }, page: '#/home' },
+    news: { icon: '📣', name: 'Announcements', general: true, def: { a: false, m: false, p: true }, page: '#/home' },
     need: { icon: '🤝', name: 'Volunteer and donation needs', general: true, def: { a: false, m: false, p: true }, page: '#/help' },
     week: { icon: '📅', name: 'A new week on the calendar', general: false, def: { a: true, m: true, p: true }, page: '#/today' },
     perf: { icon: '🎟️', name: 'Performances and tickets', general: true, def: { a: true, m: true, p: true }, page: '#/today' },
@@ -51,7 +51,7 @@
     var castById = {}; (show.cast || []).forEach(function (a) { castById[a.id] = a; });
     var song = function (id) { return O.songs.find(function (s) { return s.id === id; }) || { title: 'a song' }; };
     var char = function (id) { return O.characters.find(function (c) { return c.id === id; }) || { name: id, short: id }; };
-    added('news').forEach(function (id) { var n = show.portal.news.find(function (x) { return x.id === id; }); out.push({ id: 'news:' + id, kind: 'news', title: n.title, text: n.text || '', page: KINDS.news.page, actors: null }); });
+    added('news').forEach(function (id) { var n = show.portal.news.find(function (x) { return x.id === id; }); out.push({ id: 'news:' + id, kind: 'news', title: n.title, text: n.text || '', page: '#/notifications', actors: null, to: n.to || 'parents' }); });
     added('need').forEach(function (id) { var p = show.helpBoard.posts.find(function (x) { return x.id === id; }); out.push({ id: 'need:' + id, kind: 'need', title: 'The show needs: ' + p.title, text: p.detail || '', page: KINDS.need.page, actors: null }); });
     added('video').forEach(function (id) {
       var v = show.videos.find(function (x) { return x.id === id; }), so = song(v.song), m = O.moments.find(function (x) { return x.song === v.song; });
@@ -229,7 +229,10 @@
   }
   function chooser(events) {
     var picks = {};
-    events.forEach(function (e) { var d = M().picks[e.kind] || C.KINDS[e.kind].def; picks[e.id] = { a: !!d.a, m: e.actors ? !!d.a : !!d.m, p: !!d.p }; });
+    events.forEach(function (e) {
+      var d = M().picks[e.kind] || C.KINDS[e.kind].def; picks[e.id] = { a: !!d.a, m: e.actors ? !!d.a : !!d.m, p: !!d.p };
+      if (e.to) { var st = e.to !== 'parents', pa = e.to !== 'students'; picks[e.id] = { a: st, m: st, p: pa }; }      // an announcement: the people it was posted for
+    });
     var box = function (e, k, label) { return '<label style="display:inline-flex;gap:6px;align-items:center;margin-right:14px;font-weight:400"><input type="checkbox" data-e="' + esc(e.id) + '" data-k="' + k + '"' + (picks[e.id][k] ? ' checked' : '') + ' style="width:24px;height:24px">' + label + '</label>'; };
     T.dialog('<h2>' + sym('📧') + 'Who gets an email?</h2><p class="muted small">Everyone ticked gets one email with everything new for them, and a link to open it. Parents only get what they asked for in the Family portal; parents who asked for copies get a copy of what their Company member gets.</p>' +
       events.map(function (e) {

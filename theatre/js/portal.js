@@ -189,7 +189,7 @@
     var s = T.ls('portalSent') || {}; (s[a] = s[a] || {}).contact = today(); T.ls('portalSent', s); draft(a, 'contact', data);
   }
   T.portalHome = function () {
-    var a = T.me && T.me.id; autoContact(a); var st = a ? status(a) : {}, news = SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
+    var a = T.me && T.me.id; autoContact(a); var st = a ? status(a) : {}, news = T.annList ? T.annList('parent') : SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; });
     var left = ITEMS.filter(function (x) { return !st[x[0]]; }).length;
     return '<div class="card"><h2 style="margin-top:0">' + sym('📝') + (a ? (left ? 'Needs your answer' : 'All answered, thank you!') : 'Family forms') + '</h2>' +
       (a ? '<p class="muted small">' + (left ? left + ' of ' + ITEMS.length + ' still to do. ' : '') + 'Your answers go only to the teachers, locked; you can change them any time.</p>' +
@@ -198,8 +198,8 @@
             '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(st[x[0]]) ? ' ' + esc(day(st[x[0]])) : '') + '</span>' : '<span class="tag no-tag">To do</span>') + '</span></a>';
         }).join('')
         : '<p>These forms are for each Company member. Once the class list is in the app, tap <b>Settings</b> and pick your Company member by name.</p>') + '</div>' +
-      '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'News from the teacher</h2>' + (news.length ? news.slice(0, 3).map(newsItem).join('') +
-        (news.length > 3 ? '<p><a class="btn" href="#/family/news">All news (' + news.length + ')</a></p>' : '') : '<p class="muted">Nothing yet. News from the teacher will show here.</p>') + '</div>' +
+      '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2>' + (news.length ? news.slice(0, 3).map(newsItem).join('') +
+        '<p><a class="btn" href="#/notifications">All notifications' + (news.length > 3 ? ' (' + news.length + ')' : '') + '</a></p>' : '<p class="muted">Nothing yet. Announcements from the teacher will show here.</p>') + '</div>' +
       '<h3>The show</h3>';
   };
   function newsItem(n) { return '<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>' + esc(n.title) + '</b> <span class="muted small">' + esc(day(n.at)) + '</span>' + (n.text ? '<div style="white-space:pre-wrap">' + esc(n.text) + '</div>' : '') + '</div>'; }
@@ -207,7 +207,7 @@
   T.studentPages = T.studentPages || {};
   T.studentPages.family = function (args) {
     var k = args[0] || '';
-    if (k === 'news') { T.setBar('News', '#/home'); app.innerHTML = '<div class="card">' + (SP().news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; }).map(newsItem).join('') || '<p class="muted">Nothing yet.</p>') + '</div>'; return; }
+    if (k === 'news') { T.go('#/notifications'); return; }      // announce.js has every announcement now
     if (!T.me || !T.me.id) { T.setBar('Family forms', '#/home'); app.innerHTML = '<p class="card">Pick your Company member first: tap <b>Settings</b>, then choose your Company member by name. (Before the class list is in the app, the forms wait.)</p>'; return; }
     if (k === 'fit') return fitForm();
     if (k === 'sizes') return sizesForm();
@@ -353,9 +353,7 @@
       var fitOf = function (a) { var f = P[a.id] && P[a.id].fit; return f ? { yes: '✓ Yes', no: 'No: sizes', self: 'Not needed' }[f.answer] : ''; };
       app.innerHTML = '<div class="card noprint"><h2 style="margin-top:0">' + sym('🏠') + 'What families see</h2><p class="muted small">Parent passwords open a portal: five forms for their Company member (fitting permission, clothing sizes, sensory and clothing needs, the show-week commitment, rehearsal video permission), a sign-up for email updates (see Emails), your news, then the show pages. ' +
         'Answers come here locked with the teacher password; nobody with the cast or a parent password can read them.</p></div>' +
-        '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'News for families</h2><div class="noprint"><label class="f">Headline<input id="nt" maxlength="100" placeholder="e.g. Shopping trip on Wednesday!"></label>' +
-        '<label class="f">Message<textarea id="nx" maxlength="1200" placeholder="What families need to know"></textarea></label><div class="row end"><button class="btn primary" id="np" data-save>Post</button></div></div>' +
-        (sp.news.length ? sp.news.slice().sort(function (x, y) { return y.at < x.at ? -1 : 1; }).map(function (n) { return '<div class="row" style="border-bottom:1px solid var(--line);padding:6px 0"><div class="grow"><b>' + esc(n.title) + '</b> <span class="muted small">' + esc(day(n.at)) + '</span><div class="small" style="white-space:pre-wrap">' + esc(n.text) + '</div></div><button class="btn small quiet noprint" data-nd="' + esc(n.id) + '" data-save>Delete</button></div>'; }).join('') : '<p class="muted">No news posted yet.</p>') + '</div>' +
+        '<div class="card noprint"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2><p class="small">News for families is now on its own page, where you choose Company members, parents or both: <a class="btn small" href="#/teacher/announce">Announcements</a></p></div>' +
         '<div class="card"><div class="row" style="flex-wrap:wrap"><h2 class="grow" style="margin:0">' + sym('📝') + 'Answers</h2><div class="seg noprint" id="ff">' + [['all', 'Everyone'], ['artist', 'Artists'], ['mentor', 'Mentors']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (filt === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
         '<button class="btn noprint" onclick="print()">' + icon('print') + 'Print</button></div>' +
         '<p class="small">Sizes ' + cnt('sizes') + ' of ' + list.length + ' · Sensory ' + cnt('sensory') + ' · Commitment signed ' + cnt('commit') + ' of ' + list.length + ' · Video permission ' + cnt('video') + ' (' + list.filter(function (a) { return P[a.id] && P[a.id].video && P[a.id].video.answer === 'no'; }).length + ' no filming) · Fitting permission (needs help): ' +
@@ -376,11 +374,6 @@
         '<label class="f">Show-week commitment: one line for each box they tick<textarea id="wc" rows="7">' + esc(commitItems().join('\n')) + '</textarea></label>' +
         '<p class="muted small">Families who signed an earlier wording keep their signature; the Answers table marks it “an earlier wording.”</p>' +
         '<div class="row end"><button class="btn" id="wreset">Back to the starting words</button><button class="btn primary" id="wsave" data-save>Save the wording</button></div></div>';
-      document.getElementById('np').onclick = function () {
-        var t = v('nt').trim(); if (!t) { T.toast('Type a headline first.'); return; }
-        SP().news.push({ id: uid('n'), at: today(), title: t.slice(0, 100), text: v('nx').trim().slice(0, 1200) }); T.saveShow('Posted for families').then(draw);
-      };
-      app.querySelectorAll('[data-nd]').forEach(function (b) { b.onclick = function () { if (!confirm('Delete this news?')) return; SP().news = SP().news.filter(function (n) { return n.id !== b.dataset.nd; }); T.saveShow('Deleted').then(draw); }; });
       app.querySelectorAll('#ff button').forEach(function (b) { b.onclick = function () { filt = b.dataset.v; T.ls('famFilter', filt); draw(); }; });
       app.querySelectorAll('[data-need]').forEach(function (c) { c.onchange = function () {
         var id = c.dataset.need, on = c.checked;

@@ -152,6 +152,7 @@
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +
+      t('#/teacher/announce', 'bulb', 'Announcements', 'For Company members and parents; they pop up once') +
       t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>') +
       t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails') +
       t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough') +

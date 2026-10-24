@@ -240,7 +240,7 @@
   var PAGE_OF = { song: 'songs', listen: 'songs' };
   T.passAllows = function (page) {
     if (page === 'family') return !!(T.pass && T.pass.who === 'parent');      // the Family portal forms (portal.js): every parent password, nobody else
-    if (!T.pass || !page || ['home', 'who', 'settings', 'unlock'].indexOf(page) >= 0) return true;
+    if (!T.pass || !page || ['home', 'who', 'settings', 'unlock', 'notifications'].indexOf(page) >= 0) return true;
     return (T.pass.pages || []).indexOf(PAGE_OF[page] || page) >= 0;
   };
   T.passTeach = function (page, args) {      // a teacher page this password may look at (never change)
@@ -574,9 +574,10 @@
       '<div class="grow"><h2 style="margin:0">' + (pw === 'parent' ? 'Following ' + esc(T.me.name) : pw === 'helper' ? 'Working with ' + esc(T.me.name) : 'Hi, ' + esc(T.me.name) + '!') + '</h2><div>' + who + '</div></div>' +
       (pw === 'helper' ? '<a class="btn" href="#/who">Switch Artist</a>' : '') + '</div>' +
       (T.pass ? '<p class="muted small">' + esc(T.pass.name || '') + ' · view only' + (pw === 'helper' ? ' · practice here is saved for ' + esc(T.me.name) + ', marked “with a Mentor”' : '') + '</p>' : '') +
-      (pw === 'parent' && T.portalHome ? T.portalHome() : '') +      // parents: what needs their answer and the teacher's news first
+      (pw === 'parent' && T.portalHome ? T.portalHome() : T.announceSection ? T.announceSection() : '') +      // parents: what needs their answer and the announcements first (portal.js); others: announcements (announce.js)
       '<div class="tiles">' +
       tile('#/today', 'sched', 'Today', 'My job in class') +
+      (T.annTile ? tile('#/notifications', 'bulb', 'Notifications', T.annTile()) : '') +
       (T.auditionsTile && T.auditionsTile() ? tile('#/auditions', 'star', 'Auditions', T.show.casting.posted ? 'The cast list is up!' : T.show.casting.callbacksShown ? 'Callbacks' : 'Sign up and practice') : '') +
       tile('#/schedule', 'stage', 'My Schedule', 'When I am on stage') +
       tile('#/lines', 'lines', 'Practice Lines', 'Listen and say my lines') +
@@ -592,6 +593,7 @@
       (T.pass && T.passAllows('calendar') && !T.passAllows('today') ? tile('#/calendar', 'sched', 'Calendar', 'What is happening each day') : '') +
       tile('#/settings', 'gear', 'Settings', 'Text size, colors, voice') +
       '</div>' + (teach.length ? '<h3 style="margin-top:18px">Show pages (view only)</h3><div class="tiles">' + teach.map(function (x) { return '<a class="tile" href="#/teacher/' + (x[0] === 'callboard' ? 'production/callboard' : x[0]) + '">' + icon('book') + '<b>' + esc(x[1].replace(/ \(.*\)$/, '')) + '</b></a>'; }).join('') + '</div>' : '') + (T.show.script ? '' : '<p class="card muted" style="margin-top:18px">Your teacher has not added the script yet, so lines and lyrics are not here yet.</p>');
+    if (T.announcePopup) T.announcePopup();      // a new announcement pops up once (announce.js)
   }
   function tile(href, ic, name, sub) { if (!T.passAllows(href.replace(/^#\//, '').split('/')[0])) return ''; return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; }
 
