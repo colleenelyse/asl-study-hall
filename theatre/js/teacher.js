@@ -930,7 +930,13 @@
       var want = +timeKind.slice(4), p = partOf(l);
       return p ? (p.many ? p.part === want : want === 0) : want === 0;      // a staff of its own counts as the top
     };
-    var nextOpen = function () { return times.findIndex(function (x, i) { return !x && !(lines[i] && lines[i].sync) && kindOk(i); }); };
+    var nextOpen = function () {      // the first untimed line after where the song is (Colleen: cleared lines below her spot, and Now went back to an earlier line)
+      var open = function (x, i) { return !x && !(lines[i] && lines[i].sync) && kindOk(i); };
+      var pos = audio.paused && seekTo != null ? seekTo : audio.currentTime, last = -1;
+      times.forEach(function (x, i) { if (x && x.t <= pos + 0.3) last = i; });
+      for (var i = last + 1; i < times.length; i++) if (open(times[i], i)) return i;
+      return times.findIndex(open);
+    };
     var applySync = function () {
       lines.forEach(function (l, i) {
         var p = l.sync && times[i - l.sync]; if (!p) return;
@@ -985,11 +991,11 @@
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
           return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + (kindOk(i) ? '' : ' lt-other') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + (l.sync ? ' <span class="tag" title="Starts together with section ' + (i + 1 - l.sync) + '">⇄ with ' + (i + 1 - l.sync) + '</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
-            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small quiet" data-show="' + i + '" title="Show this line on the sheet music">📍</button><button class="btn small quiet" data-del="' + i + '" title="Delete this line (it is not a lyric or a spoken line)">🗑</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
+            '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button>' + timeBox('data-tin="' + i + '"', x) + '<button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button>' + endBox('data-hin="' + i + '"', x) + '<button class="btn small quiet" data-from="' + i + '" title="Retime from here: play from just before this line; each Now sets the next line, to the end of the song">⏩</button><button class="btn small quiet" data-show="' + i + '" title="Show this line on the sheet music">📍</button><button class="btn small quiet" data-del="' + i + '" title="Delete this line (it is not a lyric or a spoken line)">🗑</button><button class="btn small" data-fix="' + i + '" title="Clears this line’s time and plays from 3 seconds before; tap Now when it starts. The lines after it keep their times.">🎯 Fix</button><button class="btn small quiet" data-clear="' + i + '"' + (x ? '' : ' disabled') + ' title="Clear this line’s time">✕ Clear</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
           (stopsOn ? '<div class="lt-stops" id="stops"><span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span></div>' : '') +
-          '<div class="lt-next-words" id="ltnext"' + (stopsOn ? ' hidden' : '') + '>' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
+          '<div class="lt-next-words" id="ltnext"' + (stopsOn ? ' hidden' : '') + '>' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixRun ? '⏩ Retiming · line ' + (nxt + 1) + ' (each Now sets the next line, to the end; Done fixing when you are finished)' : fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
           (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
@@ -1036,6 +1042,7 @@
       if (!geoP) loadGeo().then(function () { if (timeKind === 'part1' && maxParts < 3) timeKind = 'part2'; if (maxParts > 1 && location.hash.indexOf('/lyrics/' + songId) > 0) draw(); });
       app.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { timeKind = b.dataset.tk; T.ls('timeKind', timeKind); fixAt = null; draw(); }; });
       app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.del; delSec(i); if (selSec != null && selSec >= lines.length) selSec = null; draw(); T.toast('Line ' + (i + 1) + ' deleted. ↶ Undo brings it back; Save keeps it.', 4000); }; });
+      app.querySelectorAll('[data-from]').forEach(function (b) { b.onclick = function () { runFrom(+b.dataset.from); }; });
       app.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { selSec = +b.dataset.show; if (isSplit()) { overlay(); secBar(); pickRow(); showSec(selSec, true); return; } audio.pause(); view = 'sections'; draw(); }; });
       app.querySelectorAll('[data-hin]').forEach(function (inp) { inp.onchange = function () { if (typeEnd(+inp.dataset.hin, inp.value)) draw(); else inp.value = fmtH(times[+inp.dataset.hin]); }; });
       app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
@@ -1320,7 +1327,15 @@
     /* fixing a line (Colleen: "when i enter fix mode, it should clear the timing and start fresh"): its old time is cleared, so nothing
        lights up or shows from it while the song plays, and Now gives it a fresh one. Done fixing before tapping puts the old time back. */
     function startFix(i) { endFix(); fixAt = i; fixOld = times[i] || null; times[i] = null; applySync(); }
-    function endFix() { if (fixAt != null && fixOld && !times[fixAt]) { times[fixAt] = fixOld; applySync(); } fixAt = null; fixOld = null; }
+    function endFix() { if (fixAt != null && fixOld && !times[fixAt]) { times[fixAt] = fixOld; applySync(); } fixAt = null; fixOld = null; fixRun = false; }
+    /* retime from here (Colleen: "pick up at a certain place in the song and keep marking time through the end of the track"): play from just
+       before line i; each Now gives the next line its new time and moves on, nothing is cleared ahead */
+    var fixRun = false;
+    function runFrom(i) {
+      endFix(); fixAt = i; fixRun = true;
+      var known = times[i] || times.slice(0, i).reverse().find(Boolean);
+      (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, (known ? known.t : 0) - 3); audio.play(); draw(); });
+    }
     /* typed times (Colleen: "i want to be able to type in timings too"): seconds (47.15) or minutes:seconds (0:47.15) */
     function fmtT(x) { return x ? x.t.toFixed(2) : ''; }
     function timeBox(attr, x) { return '<input ' + attr + ' class="lt-tin" type="text" inputmode="decimal" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" value="' + fmtT(x) + '" placeholder="—" aria-label="Start time in seconds" title="Type a time: 47.15 or 0:47.15">'; }
