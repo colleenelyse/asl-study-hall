@@ -129,7 +129,7 @@
   /* ---------- the stage manager script (Colleen: "the original pdf with text added over the top"; light cues yellow, music pink, sound blue) ----------
      every page of the real script, a little smaller, with a cue column down the left: each cue's number and words on its color, a line to the spot,
      and that line of the script highlighted in the cue's color. Printed, or saved as a PDF from the print window. */
-  var SM_COLOR = { LX: '#ffe14d', MX: '#ff9fd0', SX: '#8fd3ff', SC: '#7ee08a', PR: '#ffb35c', CO: '#ff7f7f' };      // props and set orange, costume red (Colleen 2026-10-24)
+  var SM_COLOR = { LX: '#ffe14d', MX: '#ff9fd0', SX: '#8fd3ff', SC: '#7ee08a', PR: '#ffb35c', ST: '#3ccfbd', CO: '#ff7f7f' };      // props orange, set pieces teal, costume red: none used by the cues on the left (Colleen 2026-10-24)
   T.Cues.COLOR = SM_COLOR;
   /* a scene change (Colleen: scene changes in green): the Blue out at a scene's end, and the Lights up that starts the next scene */
   var isChange = function (c) { return c.k === 'LX' && /^(blue out: scene change|lights up: scene)/i.test(c.text); };
@@ -140,7 +140,7 @@
     if (!T.Pages || !T.Pages.ready()) { app.innerHTML = '<div class="card"><p>The script pages are not saved yet. Go to <a href="#/teacher/script">Script</a>, choose the PDF, and press <b>Save the script</b> (wait for “Script and pages saved”).</p></div>'; return; }
     var st = Object.assign({ sug: true, notes: false, props: true, costume: true }, T.ls('smScript') || {}), nS = T.cues().filter(function (c) { return c.sug; }).length;
     app.innerHTML = '<div class="card noprint"><h2>' + sym('📋') + 'Stage manager script</h2>' +
-      '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span> <span class="tag" style="background:' + SM_COLOR.PR + ';color:#1d1a2e">props and set</span> <span class="tag" style="background:' + SM_COLOR.CO + ';color:#1d1a2e">costume</span>, and the line where each one happens highlighted in its color.</p>' +
+      '<p>The real script with every cue written beside it: <span class="tag" style="background:' + SM_COLOR.LX + ';color:#1d1a2e">LX light</span> <span class="tag" style="background:' + SM_COLOR.MX + ';color:#1d1a2e">MX music</span> <span class="tag" style="background:' + SM_COLOR.SX + ';color:#1d1a2e">SX sound</span> <span class="tag" style="background:' + SM_COLOR.SC + ';color:#1d1a2e">scene change</span> <span class="tag" style="background:' + SM_COLOR.PR + ';color:#1d1a2e">props</span> <span class="tag" style="background:' + SM_COLOR.ST + ';color:#1d1a2e">set pieces</span> <span class="tag" style="background:' + SM_COLOR.CO + ';color:#1d1a2e">costume</span>, and the line where each one happens highlighted in its color.</p>' +
       '<label class="row" style="gap:6px"><input type="checkbox" id="sg"' + (st.sug ? ' checked' : '') + '>Include the ' + nS + ' suggested cues not accepted yet</label>' +
       '<label class="row" style="gap:6px"><input type="checkbox" id="pp"' + (st.props ? ' checked' : '') + '>Include props and set pieces (how many, and who)</label>' +
       '<label class="row" style="gap:6px"><input type="checkbox" id="cc"' + (st.costume ? ' checked' : '') + '>Highlight costume notes</label>' +
@@ -172,7 +172,7 @@
     var notes = st.notes ? (T.show.scriptNotes || []).filter(function (n) { return !n.del; }) : [];
     var pages = (sc.pages || []).map(function (p) { return p.n; });
     var need = (st.props || st.costume) && T.Needs ? needsList() : { items: [], costume: [] }, marks = [];
-    if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
+    if (st.props) need.items.forEach(function (it) { it.spots.forEach(function (s) { marks.push({ n: s.n, y: s.y, color: it.kind === 'set' ? SM_COLOR.ST : SM_COLOR.PR, head: it.kind === 'set' ? 'SET' : 'PROP', text: it.name + ' · ' + whoText(s.who.length ? s.who : it.who) + ' (' + it.show + ' in all)' }); }); });
     if (st.costume) need.costume.forEach(function (c) { marks.push({ n: c.n, y: c.y, color: SM_COLOR.CO, head: 'COSTUME', text: '“' + c.text + '”' + (c.who.length ? ' · ' + whoText(c.who) : c.said.length ? ' (said by ' + whoText(c.said) + ')' : '') }); });
     btn.disabled = true; out.innerHTML = '<p class="muted noprint" id="mkp">Making ' + pages.length + ' pages…</p>';
     var W = 1100, COL = 250, GAP = 18, RCOL = marks.length ? 230 : 0;      // props, set and costume go in their own column on the right (Colleen: not with the cues)
@@ -317,7 +317,7 @@
           var l = all.filter(function (it) { return it.kind === kind; }); if (!l.length) return '';
           return '<h3>' + (kind === 'prop' ? sym('🎒') + 'Props' : sym('🪑') + 'Set pieces') + '</h3><table class="tbl cuesheet"><thead><tr><th>' + (kind === 'prop' ? 'Prop' : 'Set piece') + '</th><th>How many</th><th>Who</th><th>Scenes</th><th class="noprint"></th></tr></thead><tbody>' + l.map(function (it) {
             var o = ov[it.key] || {};
-            return '<tr class="row-PR' + (o.off ? ' sug' : '') + '"><td><b>' + esc(it.name) + '</b>' + (o.off ? ' <span class="tag">not needed</span>' : '') + (it.onlyList ? '<br><span class="muted small">from your props list (not in the directions)</span>' : '') + '</td>' +
+            return '<tr class="row-' + (kind === 'set' ? 'ST' : 'PR') + (o.off ? ' sug' : '') + '"><td><b>' + esc(it.name) + '</b>' + (o.off ? ' <span class="tag">not needed</span>' : '') + (it.onlyList ? '<br><span class="muted small">from your props list (not in the directions)</span>' : '') + '</td>' +
               '<td><span class="printonly">' + esc(howMany(it, o)) + '</span><span class="noprint"><input data-ncount="' + esc(it.key) + '" inputmode="numeric" value="' + esc(o.count || '') + '" placeholder="' + esc(String(Math.max(it.count, it.listQty || 0))) + '" style="width:64px;min-height:40px;border:2px solid var(--line);border-radius:10px;padding:2px 8px;background:var(--card)">' +
               (it.eachOf.length && !o.count ? ' <span class="small">+ one for each of the ' + esc(whoText(it.eachOf)) + '</span>' : '') + (it.listQty && it.listQty !== it.count && !o.count ? '<br><span class="muted small">props list: ' + it.listQty + ' · directions: ' + it.count + '</span>' : '') + '</span></td>' +
               '<td>' + chips(it.who) + '</td><td>' + esc(it.scenes.join(', ')) + '</td>' +
