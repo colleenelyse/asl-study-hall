@@ -338,3 +338,6 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .sec-word.first { cursor: default; font-weight: 700; }
 .sec-word:hover { border-color: var(--accent); }
 .lt-pos { width: 100%; margin: 0; }
+/* spoken lines over the music: marked so they stand out from the singing */
+.follow-line.spoken, .sec-box.spoken { outline: 2px dotted #1d1a2e; outline-offset: 1px; }
+.lyric.spoken { font-style: italic; }

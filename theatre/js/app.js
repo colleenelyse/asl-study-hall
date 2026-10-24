@@ -844,7 +844,7 @@
     var canSheet = T.Follow && T.Follow.canShow(song.id);      // the song's real sheet music pages (need only the script PDF)
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
       var mine = l.who && isMine(l.who, scene, null, songMoment(song));
-      return '<div class="lyric' + (mine ? ' mine' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + '</span>' : '') + esc(l.text) + '</div>';
+      return '<div class="lyric' + (mine ? ' mine' : '') + (l.spoken ? ' spoken' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + (l.spoken ? ' 🗣' : '') + '</span>' : '') + esc(l.text) + '</div>';
     }).join('') : '<p class="muted">' + (T.show.script ? 'No lyrics for this song in the script.' : 'Lyrics appear after your teacher adds the script.') + '</p>';
     var piano = T.show.sheetMelody && T.show.sheetMelody[song.id];      // the singer's notes read from the sheet music, played as a piano
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };

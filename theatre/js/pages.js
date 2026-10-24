@@ -86,7 +86,7 @@
      (Colleen: the music notation following along with the tracks, looking like the real script; 2026-10-23: no bouncing ball, "i like the
      highlighted phrases… match the highlight/icon color for each character"; the highlight comes a little before the line is sung, LEAD seconds,
      so the singer sees it in time; and the page stops scrolling by itself for a few seconds after the reader scrolls) */
-  var LEAD = 0.75;
+  var LEAD = 0.4;      // Colleen 2026-10-23: ¾ second was too long
   T.LYRIC_LEAD = LEAD;
   var userScrolled = 0;
   ['wheel', 'touchmove'].forEach(function (ev) { window.addEventListener(ev, function () { userScrolled = Date.now(); }, { passive: true }); });
@@ -100,6 +100,9 @@
     return cs.length ? cs : ['#ffe94d'];      // a chorus or group: a highlighter yellow
   }
   T.lyricColors = lyricColors;
+  /* when a line's singing is done: its end, but not long after its last syllable starts (a line timed by tapping ends where the next one starts) */
+  function lineEnd(x) { var last = x.s && x.s.length ? x.s[x.s.length - 1] : x.t; return Math.min(x.e, last + 2.5); }
+  T.lineEnd = lineEnd;
   function songItem(songId) {
     var so = T.songById(songId), sc = so && T.sceneById(so.scene), src = sc && T.scriptScene(sc);
     return src && src.items.find(function (it) { return it.type === 'song' && it.num === so.num; });
@@ -135,22 +138,24 @@
     /* light up the lyric line for time t (seconds, on the band track's clock), LEAD seconds before it is sung */
     update: function (host, songId, t) {
       var lt = T.show.lyricTimes && T.show.lyricTimes[songId], it = songItem(songId); if (!lt || !it) return;
-      var i = -1; lt.lines.forEach(function (x, k) { if (x && x.t - LEAD <= t) i = k; });
-      var x = lt.lines[i], line = it.lyrics[i], boxes = line ? T.Pages.lyricBoxes(line) : [];
-      // the light goes off when the line's last word is done (Colleen: off during the music between, back on LEAD before the next words)
-      var end = x ? Math.min(x.e, ((x.s && x.s.length ? x.s[x.s.length - 1] : x.t) + 1.6)) : 0;
-      if (!x || !boxes.length || t > end + 0.3) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); host._at = null; return; }
-      var key = String(i); if (host._at === key) return;
+      // every line being sung is lit: from LEAD before its first word until its singing is done (Colleen: a line stays lit until it is sung,
+      // even when the next one lights up; off during music with no words)
+      var on = [];
+      lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x)) on.push(k); });
+      var key = on.join(','); if (host._at === key) return;
       host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
-      var cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
-      var pc = function (v, d) { return (v / d * 100) + '%'; }, first = null;
-      boxes.forEach(function (b) {      // a line of the poem can run onto the next staff: every part of it lights up
-        var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
-        var sz = T.Pages.size(b.n), hl = document.createElement('div'); hl.className = 'follow-line';
-        hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
-        page.appendChild(hl); first = first || hl;
+      if (!on.length) { host._at = null; return; }
+      var pc = function (v, d) { return (v / d * 100) + '%'; }, newest = null, before = (host._at || '').split(',');
+      on.forEach(function (k) {
+        var line = it.lyrics[k], cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, q) { return c + ' ' + (q * 100 / cs.length) + '% ' + ((q + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
+        T.Pages.lyricBoxes(line).forEach(function (b, bi) {      // a line of the poem can run onto the next staff: every part of it lights up
+          var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
+          var sz = T.Pages.size(b.n), hl = document.createElement('div'); hl.className = 'follow-line' + (line.spoken ? ' spoken' : '');
+          hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
+          page.appendChild(hl); if (bi === 0 && before.indexOf(String(k)) < 0) newest = hl;
+        });
       });
-      if (first && Date.now() - userScrolled > 4000) first.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
+      if (newest && Date.now() - userScrolled > 4000) newest.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
       host._at = key;
     }
   };

@@ -115,6 +115,7 @@
     /* bracketed systems (Colleen 2026-10-23: staves joined by a bracket at the left are sung at the same time, so their lyrics go in order left to
        right across the system, and each staff keeps its own singer): where a line sits, the system's lyrics held until the system is done */
     var curPage = null, sysBuf = [], sysKey = null, singerByIdx = {}, labsByStaff = {};
+    var trackOn = false, spokenLyric = null;      // the song's title banner has passed: the track is playing (spoken lines join the song's sections)
     function staffAt(y, below) {      // the staff a lyric sits under (below = false: the staff a label sits over)
       var sys = curPage && curPage.systems; if (!sys) return null;
       for (var a = 0; a < sys.length; a++) for (var b = 0; b < sys[a].staves.length; b++) {
@@ -198,7 +199,7 @@
         if (isSong && lastSong !== num) {
           flushSys();
           lastSongItem = emit({ type: 'song', num: num, title: title, singers: [], lyrics: [] });
-          singerNow = ''; singerLabs = []; singerByIdx = {}; labsByStaff = {};
+          singerNow = ''; singerLabs = []; singerByIdx = {}; labsByStaff = {}; trackOn = false; spokenLyric = null;
           lastSong = num; block = null;
         } else if (!isSong && opts.keepCues) {
           emit({ type: 'cue', num: num, title: title });
@@ -265,6 +266,7 @@
             prevStave = false;
             continue;
           }
+          if (line.size >= 16 && !labLine && !fragLine && /[A-Za-z]{3}/.test(t) && lastSongItem) trackOn = true;      // the song's title: the track starts here
           if (/^[\d\s+]*$/.test(t) || (line.size >= 16 && !labLine && !fragLine)) continue;          // measure numbers, the song's title banner (a label beside a big time signature still counts)
           // singer labels over the staves: "9 TROY:" "+ GABRIELLA, TROY:"
           // one or more labels on the line, each where it starts along the staff (a time signature or sharp on the same line doesn't matter)
@@ -295,9 +297,16 @@
           if (said) {
             speaker = said[1].trim(); speakers[speaker] = (speakers[speaker] || 0) + 1;
             block = emit({ type: 'line', who: speaker, text: said[2], overMusic: true });
+            // Colleen 2026-10-23: lines spoken after the song's title are over the track: they get timed and lit up with the song's sections
+            if (trackOn && lastSongItem) { spokenLyric = { who: speaker, text: said[2], page: printed, box: box, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); }
+            else spokenLyric = null;
             continue;
           }
-          if (block && block.type === 'line' && block.overMusic) { block.text += ' ' + t; addBox(block); continue; }
+          if (block && block.type === 'line' && block.overMusic) {
+            block.text += ' ' + t; addBox(block);
+            if (spokenLyric) { spokenLyric.text += ' ' + t; spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([box]); }
+            continue;
+          }
           continue;                                                          // anything else on a music page: skip
         }
 
@@ -490,7 +499,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-23.1';
+  var VERSION = '2026-10-23.2';
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;

@@ -798,12 +798,12 @@
     function draw(msg) {
       if (view === 'sections') return drawSections();
       var nxt = fixAt != null ? fixAt : times.findIndex(function (x) { return !x; });
-      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up ¾ second before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
+      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="card lt-list">' + lines.map(function (l, i) {
           var x = times[i];
-          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button><br>' + esc(l.text) + '</span>' +
+          return '<div class="switch lt-row' + (i === nxt ? ' lt-next' : '') + '" data-row="' + i + '" style="flex-wrap:wrap"><span class="grow"><span class="muted small">' + (i + 1) + ' · </span><button type="button" class="lt-who" data-who="' + i + '" title="Change who sings this">' + esc(l.who || 'Who sings this?') + ' ✎</button>' + (l.spoken ? ' <span class="tag">🗣 spoken</span>' : '') + '<br>' + (l.spoken ? '<i>' + esc(l.text) + '</i>' : esc(l.text)) + '</span>' +
             '<span class="row" style="gap:4px"><button class="btn small" data-nudge="' + i + '|-0.2" aria-label="Earlier">−</button><b style="min-width:58px;text-align:center">' + (x ? x.t.toFixed(2) + ' s' : '—') + '</b><button class="btn small" data-nudge="' + i + '|0.2" aria-label="Later">+</button><button class="btn small" data-test="' + i + '"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" data-fix="' + i + '" title="Play from 3 seconds before, then tap Now">🎯 Fix</button></span></div>';
         }).join('') + '</div><div class="lt-space"></div>' +
         '<div class="dock lt-dock"><div class="in">' +
@@ -857,7 +857,7 @@
         T.Pages.lyricBoxes(l).forEach(function (b, bi) {
           var page = host.querySelector('.pdfpage[data-n="' + b.n + '"]'); if (!page) return;
           var sz = T.Pages.size(b.n), el = document.createElement('div');
-          el.className = 'sec-box' + (i === selSec ? ' sel' : '') + (times[i] ? '' : ' untimed'); el.dataset.sec = i;
+          el.className = 'sec-box' + (i === selSec ? ' sel' : '') + (times[i] ? '' : ' untimed') + (l.spoken ? ' spoken' : ''); el.dataset.sec = i;
           el.style.cssText = 'left:' + pc(b.x - 3, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 6, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';background:' + fill;
           el.innerHTML = bi === 0 ? '<span class="sec-num">' + (i + 1) + '</span>' : '';
           el.title = (i + 1) + ' · ' + (l.who || '') + ' · ' + l.text;
@@ -959,11 +959,12 @@
     var lastRow = -1, fixAt = null;      // fixAt: the line the next Now goes to while fixing (then the lines after it, in order)
     function follow(force) {      // light up the line being sung and keep it in the middle of the screen; outline the next line to tap
       var t = audio.currentTime, cur = -1;
-      if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t) cur = i; });      // lit up a little early, like the song player
+      var onNow = [];
+      if (!audio.paused || force) times.forEach(function (x, i) { if (x && x.t - (T.LYRIC_LEAD || 0) <= t) { cur = i; if (t <= T.lineEnd(x)) onNow.push(i); } });      // lit up a little early and until sung, like the song player
       if (audio.paused && !force) return;
       var nxt = fixAt != null ? fixAt : times.findIndex(function (x) { return !x; }), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
       app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); });
-      var on = cur >= 0 && app.querySelector('.lt-row[data-row="' + cur + '"]'); if (on && !audio.paused) on.classList.add('lt-on');
+      if (!audio.paused) onNow.forEach(function (k) { var on = app.querySelector('.lt-row[data-row="' + k + '"]'); if (on) on.classList.add('lt-on'); });
       if (row !== lastRow && row >= 0) {
         var el = app.querySelector('.lt-row[data-row="' + row + '"]');
         if (el && (!force || nxt >= 0)) el.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });

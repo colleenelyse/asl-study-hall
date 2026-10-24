@@ -379,3 +379,9 @@ piano.
 Lyrics timing: a song position slider (`#ltpos`) in both tabs' bottom bars (the Sections tab also gets play and the time). Dragging while it
 plays jumps there; while paused, the spot is remembered (`seekTo`) and play starts there (a jump on a paused, never-played track is lost).
 `load()` resolves once the track's metadata is in.
+
+**Spoken lines in songs; overlap; 0.4 s** (Colleen 2026-10-23): lines spoken over the music once the song's title banner has passed ("after
+the heading of a song is listed, that is when the track starts"), at the start or in the middle, join the song's sections (`spoken: true`,
+no syllables) so they are timed and lit up too; marked 🗣 spoken / italic / dotted outline. Reader VERSION 2026-10-23.2 (teacher mode
+re-reads on its own). `T.LYRIC_LEAD` = 0.4 s. Every line being sung is lit at once: from LEAD before its first word until its singing is
+done (`T.lineEnd`: its end, at most 2.5 s after its last syllable), so close lines overlap; the Lyrics timing rows light the same way.
