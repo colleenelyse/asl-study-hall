@@ -924,12 +924,16 @@
       });
     };
     var undoBtn = function (id) { return '<button class="btn small" id="' + id + '"' + (history.length ? '' : ' disabled') + ' title="Undo the last change">↶ Undo</button>'; };
-    var tabs = function () { return '<div class="seg" style="margin:6px 0 8px"><button type="button" data-view="timing" aria-pressed="' + (view === 'timing') + '">⏱ Timing</button><button type="button" data-view="sections" aria-pressed="' + (view === 'sections') + '">🎼 Sections on the music</button></div>'; };
-    var wireTabs = function () { app.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { view = b.dataset.view; selSec = null; draw(); }; }); };
+    var tabs = function () { if (wide() && splitOn) return '<div class="row" style="margin:6px 0 8px"><span class="muted small grow">The music with every section is beside the list.</span><button type="button" class="btn small" id="splitoff">One at a time</button></div>'; return (wide() ? '<button type="button" class="btn small" id="spliton" style="float:right">⇆ Side by side</button>' : '') + '<div class="seg" style="margin:6px 0 8px"><button type="button" data-view="timing" aria-pressed="' + (view === 'timing') + '">⏱ Timing</button><button type="button" data-view="sections" aria-pressed="' + (view === 'sections') + '">🎼 Sections on the music</button></div>'; };
+    var wireTabs = function () {
+      var so = document.getElementById('splitoff'), sn = document.getElementById('spliton');
+      if (so) so.onclick = function () { splitOn = false; T.ls('ltSplit', false); draw(); };
+      if (sn) sn.onclick = function () { splitOn = true; T.ls('ltSplit', true); view = 'timing'; draw(); };
+      app.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { view = b.dataset.view; selSec = null; draw(); }; }); };
     function draw(msg) {
       if (view === 'sections') return drawSections();
       var nxt = fixAt != null ? fixAt : nextOpen();
-      app.innerHTML = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
+      var H = '<div class="card"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() + '<p class="muted small">When each lyric line is sung (for the lit-up lines and the piano). Tap <b>Now</b> right as the first word is sung; the line lights up a moment (0.4 second) before that for the singers. Let the app find them, or play and press <b>Now</b> (or Space) as each line starts. Then <b>Test</b> a line, nudge it with − and +, and Save.</p>' +
         '<div class="row"><button class="btn primary" id="find"' + (tr.rehearsal && tr.performance ? '' : ' disabled title="Needs both tracks"') + '>Find them in the guide vocals</button><span class="muted small" id="msg">' + (msg || '') + '</span></div>' +
         '<p class="muted small">' + (kind === 'rehearsal' ? sym('🎤') + 'Playing the guide vocals (with the singers).' : 'Playing the band track (upload the guide vocals to hear the singers).') + (kind === 'rehearsal' && off == null ? ' <b>Lining up the two tracks…</b>' : '') + '</p></div>' +
         '<div class="row" style="margin:0 0 8px"><b>Time:</b> <div class="seg" id="tkind">' + [['all', 'Everything'], ['sung', '🎵 Sung lines'], ['spoken', '🗣 Spoken lines']].map(function (o) { return '<button type="button" data-tk="' + o[0] + '" aria-pressed="' + (timeKind === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div><span class="muted small">Now goes only to the lines you pick; the others keep their times.</span></div>' +
@@ -944,6 +948,22 @@
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
           (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
+      var split = wide() && splitOn && T.Follow && T.Follow.canShow(songId);
+      if (!split) app.innerHTML = H;
+      else {
+        var cut = H.indexOf('<div class="dock lt-dock">'), left = H.slice(0, cut), dock = H.slice(cut);
+        var keepY = window.scrollY, lt = document.getElementById('ltleft');
+        if (lt && document.getElementById('secpages')) {      // the music stays; only the list and the player bar are drawn again
+          lt.innerHTML = left; var old = app.querySelector('.lt-dock'); if (old) old.outerHTML = dock; else app.insertAdjacentHTML('beforeend', dock);
+          window.scrollTo(0, keepY);
+        } else {
+          app.innerHTML = '<div class="lt-split"><div class="lt-left" id="ltleft">' + left + '</div><div class="lt-right" id="ltright"><div id="secbar" class="lt-secbar"></div><div id="secpages" class="pages"></div></div></div>' + dock;
+          var host = document.getElementById('secpages');
+          T.Follow.mount(host, songId);
+          host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (!b) return; selSec = +b.dataset.sec; overlay(); secBar(); var r = pickRow(); if (r) r.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
+        }
+        litKey = ''; overlay(); secBar(); pickRow();
+      }
       var $ = function (id) { return document.getElementById(id); };
       wireTabs(); lastRow = -1; follow(true, true); wireSlider();
       $('undo1').onclick = undo;
@@ -968,7 +988,7 @@
       app.querySelectorAll('[data-fix]').forEach(function (b) { b.onclick = function () { fixLine(+b.dataset.fix); }; });
       app.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { timeKind = b.dataset.tk; T.ls('timeKind', timeKind); fixAt = null; draw(); }; });
       app.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.del; delSec(i); if (selSec != null && selSec >= lines.length) selSec = null; draw(); T.toast('Line ' + (i + 1) + ' deleted. ↶ Undo brings it back; Save keeps it.', 4000); }; });
-      app.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { audio.pause(); selSec = +b.dataset.show; view = 'sections'; draw(); }; });
+      app.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { selSec = +b.dataset.show; if (isSplit()) { overlay(); secBar(); pickRow(); showSec(selSec, true); return; } audio.pause(); view = 'sections'; draw(); }; });
       app.querySelectorAll('[data-hin]').forEach(function (inp) { inp.onchange = function () { if (typeEnd(+inp.dataset.hin, inp.value)) draw(); else inp.value = fmtH(times[+inp.dataset.hin]); }; });
       app.querySelectorAll('[data-tin]').forEach(function (inp) { inp.onchange = function () { if (typeTime(+inp.dataset.tin, inp.value)) draw(); else inp.value = fmtT(times[+inp.dataset.tin]); }; });
       app.querySelectorAll('[data-clear]').forEach(function (b) { b.onclick = function () { clearLine(+b.dataset.clear); draw(); }; });
@@ -980,7 +1000,34 @@
        starts and stops"): the song's real pages with every section lit up in its singer's colors and numbered. Tap one to edit it in the bar
        at the bottom: who sings it (the color follows), its start (− + Test, or Fix), and which words it covers (start a new section at a word,
        or join it with the one before or after). Edited songs are kept as they are when the script is imported again (T.show.lyricKeep). */
+    /* side by side (Colleen 2026-10-23: "the timings coding page on one panel and the sheet music right beside it… instead of toggling back and
+       forth"): on a wide screen the list is on the left and the song's pages with every section on the right; tapping a section picks its line on
+       the left, 📍 on a line shows its section on the right, the lines being sung light up on the music and it scrolls along. */
+    var wide = function () { return window.innerWidth >= 1000; };
+    var splitOn = T.ls('ltSplit') !== false;
+    function isSplit() { return wide() && splitOn && !!document.getElementById('ltleft'); }
+    function refresh() { if (isSplit()) draw(); else { overlay(); secBar(); } }
+    function pickRow() {      // the selected section's line in the list
+      app.querySelectorAll('.lt-row.lt-pick').forEach(function (r) { r.classList.remove('lt-pick'); });
+      var r = selSec != null && app.querySelector('.lt-row[data-row="' + selSec + '"]'); if (r) r.classList.add('lt-pick');
+      return r;
+    }
+    function showSec(i, pulse) {      // bring section i into view in the music panel
+      var pane = document.getElementById('ltright'), n = pane && pane.querySelector('.sec-num[data-sec="' + i + '"]'); if (!n) return;
+      var pr = pane.getBoundingClientRect(), nr = n.getBoundingClientRect(), y = nr.top - pr.top;
+      if (pulse || y < 60 || y > pr.height * 0.7) pane.scrollTo({ top: pane.scrollTop + y - pr.height * 0.35, behavior: T.prefs.motion && !pulse ? 'smooth' : 'auto' });
+      if (pulse) { n.classList.remove('sec-find'); void n.offsetWidth; n.classList.add('sec-find'); }
+    }
+    var litKey = '', paneScrollAt = 0;
+    function lightMusic(onNow) {      // the lines being sung, lit on the music panel
+      var pane = document.getElementById('ltright'); if (!pane) return;
+      var key = onNow.join(','); if (key === litKey) return; litKey = key;
+      pane.querySelectorAll('.sec-box.sec-on').forEach(function (e) { e.classList.remove('sec-on'); });
+      onNow.forEach(function (k) { pane.querySelectorAll('.sec-box[data-sec="' + k + '"]').forEach(function (e) { e.classList.add('sec-on'); }); });
+      if (onNow.length && Date.now() - paneScrollAt > 700) { paneScrollAt = Date.now(); showSec(onNow[onNow.length - 1]); }
+    }
     function drawSections() {
+      if (wide() && splitOn) { view = 'timing'; return draw(); }
       app.innerHTML = '<div class="card noprint"><h2>' + sym('🎵') + esc(song.title) + '</h2>' + tabs() +
         '<p class="muted small">Every section, lit up in its singer’s colors and numbered. Tap one to change who sings it, when it starts, or where it starts and ends. Then Save.</p>' +
         '<p class="row"><button class="btn small" id="sreset">Reset this song</button><span class="muted small" id="sresetmsg">Puts the sections back the way the script reads them (your ✎ singer fixes stay). Then find the timing again.</span></p></div>' +
@@ -1047,7 +1094,8 @@
     function secBar() {
       var bar = document.getElementById('secbar'); if (!bar) return;
       var i = selSec, l = i != null ? lines[i] : null, x = i != null ? times[i] : null, toks = l ? (l.syl || []).map(function (y) { return y.t; }) : [];
-      bar.innerHTML = slider() + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
+      if (isSplit() && !l) { bar.innerHTML = '<p class="muted small" style="margin:4px 0">Tap a section on the music to change it: who sings it, where it starts and ends, join or split it.</p>'; return; }
+      bar.innerHTML = (isSplit() ? '' : slider()) + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
           '<span class="grow"></span><button class="btn small" id="snm">−</button>' + timeBox('id="stin"', x) + '<button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
@@ -1055,23 +1103,24 @@
         '<div class="row lt-controls"><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button>' + joinMenu(i) + '<span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
-      $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; overlay(); secBar(); };
+      $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; refresh(); };
       wireSlider();
       if ($('pl')) $('pl').onclick = playPause;
       if (!l) return;
-      $('sdone').onclick = function () { selSec = null; overlay(); secBar(); };
-      if ($('sfit')) $('sfit').onclick = function () { snapshot(); delete l.cut; edited = true; overlay(); secBar(); };
-      $('swho').onclick = function () { pickSinger(i, function () { overlay(); secBar(); }); };
+      $('sdone').onclick = function () { selSec = null; refresh(); };
+      if ($('sfit')) $('sfit').onclick = function () { snapshot(); delete l.cut; edited = true; refresh(); };
+      $('swho').onclick = function () { pickSinger(i, function () { refresh(); }); };
       $('snm').onclick = function () { nudge(i, -0.2); }; $('snp').onclick = function () { nudge(i, 0.2); };
       $('stest').onclick = function () { (loaded ? Promise.resolve() : load()).then(function () { seekTo = null; audio.currentTime = Math.max(0, x.t - 1); audio.play(); }); };
       $('sfix').onclick = function () { view = 'timing'; fixLine(i); };
-      $('stin').onchange = function () { if (typeTime(i, this.value)) { overlay(); secBar(); } else this.value = fmtT(times[i]); };
-      $('sclr').onclick = function () { clearLine(i); overlay(); secBar(); };
-      $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; overlay(); secBar(); };
-      $('sjn').onclick = function () { joinSec(i); overlay(); secBar(); };
-      if ($('sjw')) $('sjw').onchange = function () { var j = +this.value; if (isNaN(j)) return; joinPair(i, j); selSec = Math.min(i, j); overlay(); secBar(); };
-      $('sdel').onclick = function () { delSec(i); selSec = null; overlay(); secBar(); T.toast('Section deleted. ↶ Undo brings it back; Save keeps it.'); };
-      bar.querySelectorAll('[data-split]').forEach(function (b) { b.onclick = function () { splitSec(i, +b.dataset.split); selSec = i + 1; overlay(); secBar(); }; });
+      $('stin').onchange = function () { if (typeTime(i, this.value)) { refresh(); } else this.value = fmtT(times[i]); };
+      $('sclr').onclick = function () { clearLine(i); refresh(); };
+      $('sjp').onclick = function () { joinSec(i - 1); selSec = i - 1; refresh(); };
+      $('sjn').onclick = function () { joinSec(i); refresh(); };
+      if ($('sjw')) $('sjw').onchange = function () { var j = +this.value; if (isNaN(j)) return; joinPair(i, j); selSec = Math.min(i, j); refresh(); };
+      $('sdel').onclick = function () { delSec(i); selSec = null; refresh(); T.toast('Section deleted. ↶ Undo brings it back; Save keeps it.'); };
+      bar.querySelectorAll('[data-split]').forEach(function (b) { b.onclick = function () { splitSec(i, +b.dataset.split); selSec = i + 1; refresh(); }; });
+      if (isSplit()) { ['sv2', 'undo2'].forEach(function (id) { var e = $(id); if (e) e.remove(); }); bar.classList.add('compact'); }      // the player bar below has Undo and Save
     }
     function saveSections() { $sv(); }
     function joinMenu(i) {      // the sections near this one, the same singer's first
@@ -1180,6 +1229,7 @@
       var nxt = fixAt != null ? fixAt : nextOpen(), row = nxt >= 0 && (cur < 0 || nxt <= cur + 1) ? nxt : cur;
       app.querySelectorAll('.lt-row.lt-on').forEach(function (r) { r.classList.remove('lt-on'); });
       if (!audio.paused) onNow.forEach(function (k) { var on = app.querySelector('.lt-row[data-row="' + k + '"]'); if (on) on.classList.add('lt-on'); });
+      if (isSplit()) lightMusic(audio.paused ? [] : onNow);
       if (row !== lastRow && row >= 0) {
         var el = app.querySelector('.lt-row[data-row="' + row + '"]');
         if (el && (!force || nxt >= 0)) el.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
