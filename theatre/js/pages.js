@@ -90,7 +90,8 @@
   var userScrolled = 0;
   ['wheel', 'touchmove'].forEach(function (ev) { window.addEventListener(ev, function () { userScrolled = Date.now(); }, { passive: true }); });
   window.addEventListener('keydown', function (e) { if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End)$/.test(e.key)) userScrolled = Date.now(); });
-  /* the singer's color for a lyric label: one character's color, several side by side, highlighter yellow for a chorus or group */
+  /* the singer's color for a lyric label: one character's color, several as stripes top to bottom (Colleen: the top half of the letters one
+     color, the bottom the other), highlighter yellow for a chorus or group */
   function lyricColors(who) {
     var ids = who ? T.labelChars(String(who).toUpperCase()) : [];
     var cs = ids.filter(function (id) { var c = T.charById(id); return id !== '*' && c && c.group !== 'ensemble'; }).map(T.color);
@@ -139,7 +140,7 @@
       var page = host.querySelector('.pdfpage[data-n="' + line.box.n + '"]'); if (!page) return;
       var sz = T.Pages.size(line.box.n), b = line.box, pc = function (v, d) { return (v / d * 100) + '%'; };
       var hl = page.querySelector('.follow-line'); if (!hl) { host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); }); hl = document.createElement('div'); hl.className = 'follow-line'; page.appendChild(hl); }
-      var cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(90deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
+      var cs = lyricColors(line.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
       hl.style.cssText = 'left:' + pc(b.x - 4, sz.w) + ';top:' + pc(b.y - 2, sz.h) + ';width:' + pc(b.w + 8, sz.w) + ';height:' + pc(b.h + 4, sz.h) + ';--fl:' + cs[0] + ';background:' + fill;
       if (Date.now() - userScrolled > 4000) hl.scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
       host._at = key;
