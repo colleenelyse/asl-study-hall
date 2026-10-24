@@ -1163,21 +1163,12 @@
     setTimeout(function () {
       var f = document.getElementById('sif'); if (!f) return;
       document.getElementById('sitest').onclick = function () { T.testSignin(); };
-      f.onsubmit = function (e) {
-        e.preventDefault();
-        var id = document.getElementById('sic').value.trim(), dom = document.getElementById('sid').value.trim().replace(/^@/, '').toLowerCase();
-        if (id && !/\.apps\.googleusercontent\.com$/.test(id)) { T.toast('That does not look like a Google Client ID (it ends in .apps.googleusercontent.com).', 5000); return; }
-        T.show.signin = Object.assign({}, T.show.signin || {}, { clientId: id || undefined, domain: dom || undefined });
-        save('School sign-in saved');
-      };
+      f.onsubmit = function (e) { e.preventDefault(); };      // (the Google Client ID fields were taken out: Colleen does not use one)
     }, 0);
     var S = T.show.signin || {}, withEmail = (T.show.cast || []).filter(function (c) { return c.emailHash; }).length;
-    app.innerHTML = '<div id="pwlist"></div><form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students tap <b>Sign in with Google</b> and the app finds them on the cast list (by their school email, saved as a scrambled code). They still type the cast password once on each device.</p>' +
-      '<p class="small">Students on school Chromebooks are found by the app’s own school sign-in page (in your school Google account, like ASL Study Hall): nothing to set up but their emails. The Google Client ID below is only needed for devices that are not signed into a school account.</p>' +
-      '<label class="f">Google Client ID (optional)<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
-      '<label class="f">School email domain (only these accounts)<input id="sid" value="' + esc(S.domain || '') + '" autocomplete="off" placeholder="e.g. students.myschool.org"></label>' +
+    app.innerHTML = '<div id="pwlist"></div><form class="card" id="sif"><h2>School sign-in</h2><p class="muted">Students signed into their school Google account are found on the cast list by the app’s own school sign-in page (like ASL Study Hall), by their school email (saved only as a scrambled code). They still type the cast password once on each device.</p>' +
       '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' students have a school email saved (Cast › tap a student, or paste the class list with emails).</p>' +
-      '<div class="row end"><button type="button" class="btn" id="sitest">Test the school sign-in</button><button class="btn primary" data-save>Save school sign-in</button></div>' +
+      '<div class="row end"><button type="button" class="btn" id="sitest">Test the school sign-in</button></div>' +
       '<p class="small muted">Test it any time, even before there is a cast: it goes to the school sign-in page and back. The first time, Google asks you to allow it; press Allow.</p></form>' +
       '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
       '<label class="f">New cast password<input id="nc" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label><div class="row end"><button class="btn primary" data-save>Change the cast password</button></div></form>' +
