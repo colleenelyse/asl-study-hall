@@ -115,6 +115,7 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .stile.open { border: 2px solid var(--brand); }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
+.basehint { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--brand-soft); color: var(--ink); font-size: 13px; }
 .codebanner { border: 2px solid var(--up); background: var(--up-soft); font-size: 17px; }
 .acode { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 1.1em; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; letter-spacing: .04em; }
 .tcrow { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; align-items: center; }
@@ -429,7 +430,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.93';
+var VERSION = '1.94';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -4932,17 +4933,22 @@ function finalsCard() {
 var FIN_EXT = /extended|extra time/i, FIN_ALT = /alternat|separate setting|location/i, FIN_WHERE = ['Testing Center', 'Resource room', 'Library'];
 // "Wednesday, Dec 16 · 7:45am–9:25am · Period 2", in the order they're held (by day, then start time)
 function clockMin(t) { var m = /(\d{1,2}):?(\d{2})?\s*(am|pm)?/i.exec(String(t || '')); if (!m) return 9999; var h = +m[1] % 12, ap = (m[3] || '').toLowerCase(); if (ap === 'pm' || (!ap && h < 6)) h += 12; return h * 60 + (+m[2] || 0); }
+function finWhenText(s) {
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], d = utc(s.date);
+  return days[d.getUTCDay()] + ', ' + mons[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' · ' + s.start + '–' + s.end + ' · ' + (/^\d/.test(s.period) ? 'Period ' + s.period : s.period);
+}
+// the final exam slots of this student's BASE/ARC periods (set aside for accommodations like extended time) (1.94)
+function finMine() { var per = resPeriods().map(function (p) { return String(parseInt(p, 10)); }); return (B.finalSched || []).filter(function (s) { return per.indexOf(s.period) >= 0; }); }
 function finWhenOpts() {
-  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], mons = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return (B.finalSched || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : clockMin(a.start) - clockMin(b.start); }).map(function (s) {
-    var d = utc(s.date);
-    return days[d.getUTCDay()] + ', ' + mons[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' · ' + s.start + '–' + s.end + ' · ' + (/^\d/.test(s.period) ? 'Period ' + s.period : s.period);
-  }).concat(['Right after the exam, the same day', 'Not sure yet']);
+  return (B.finalSched || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : clockMin(a.start) - clockMin(b.start); }).map(finWhenText)
+    .concat(['Right after the exam, the same day', 'Not sure yet']);
 }
 function finExtras(k, f) {
   var h = '';
-  if (f.accoms.some(function (a) { return FIN_EXT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>⏱️ When will you use your extra time?</b></span><select style="max-width:330px" onchange="finExtra(' + k + ',\'when\',this.value)"><option value="">Pick a time</option>' +
-    finWhenOpts().map(function (o) { return '<option' + (o === f.when ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + (f.when && finWhenOpts().indexOf(f.when) < 0 ? '<option selected>' + esc(f.when) + '</option>' : '') + '</select></div>';
+  var mine = finMine().map(finWhenText), dc = esc(B.dayClass || 'resource');
+  if (f.accoms.some(function (a) { return FIN_EXT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>⏱️ When will you use your extra time?</b></span><select style="max-width:420px" onchange="finExtra(' + k + ',\'when\',this.value)"><option value="">Pick a time</option>' +
+    finWhenOpts().map(function (o) { var my = mine.indexOf(o) >= 0; return '<option value="' + esc(o) + '"' + (o === f.when ? ' selected' : '') + '>' + (my ? '⭐ ' : '') + esc(o) + (my ? ' (your ' + dc + ' time)' : '') + '</option>'; }).join('') + (f.when && finWhenOpts().indexOf(f.when) < 0 ? '<option selected>' + esc(f.when) + '</option>' : '') + '</select></div>' +
+    (finMine().length ? '<div class="basehint">⭐ <b>Your ' + dc + ' final period ' + (finMine().length > 1 ? 'times are ' : 'is ') + finMine().map(function (s) { var t = finWhenText(s).split(' · '); return t[0] + ', ' + t[1] + ' (' + t[2] + ')'; }).join(' and ') + '.</b> ' + dc + ' is set aside for accommodations like extended time.</div>' : '');
   if (f.accoms.some(function (a) { return FIN_ALT.test(a); })) h += '<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span class="small" style="display:inline"><b>📍 Where?</b></span>' +
     FIN_WHERE.map(function (w) { return '<button class="btn small' + (f.where === w ? ' primary' : '') + '" onclick="finExtra(' + k + ',\'where\',\'' + w + '\')">' + w + '</button>'; }).join('') +
     '<input type="text" maxlength="120" style="max-width:220px" placeholder="Or type where" value="' + esc(FIN_WHERE.indexOf(f.where) < 0 ? f.where || '' : '') + '" onchange="finExtra(' + k + ',\'where\',this.value.trim())"></div>';
