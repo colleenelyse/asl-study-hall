@@ -373,7 +373,7 @@
     }
 
     scenes.forEach(function (s) {
-      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') it.lyrics = poetic(it.lyrics); });
+      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') { it.lyrics = poetic(it.lyrics); pairStarts(it.lyrics, pages); } });
     });
     return { scenes: scenes, speakers: speakers, pages: pages.map(function (pg) { return { n: pg.num, w: pg.width, h: pg.height }; }) };
   }
@@ -459,6 +459,23 @@
     close();
     return out;
   }
+  /* sections that start together (Colleen 2026-10-23: in a bracket, the JOCKS sing "Woh!" at the same time TROY sings "Get-": they light up
+     together): one starting at the same spot as a section a little before it, in another staff of the same bracket, gets sync: how many
+     sections back its partner is. Timing gives a paired section its partner's start. */
+  function pairStarts(list, pages) {
+    var sysOf = function (b) {
+      var pg = pages.find(function (p) { return p.num === b.n; }), sys = pg && pg.systems; if (!sys) return null;
+      return sys.find(function (sy) { return sy.staves.length > 1 && b.y > sy.top - 8 && b.y < sy.bottom + 75; }) || null;
+    };
+    list.forEach(function (l, i) {
+      if (!l.box || l.spoken) return;
+      var sy = sysOf(l.box); if (!sy) return;
+      for (var j = i - 1; j >= Math.max(0, i - 4); j--) {
+        var o = list[j]; if (!o.box || o.spoken || o.box.n !== l.box.n) continue;
+        if (sysOf(o.box) === sy && Math.abs(o.box.y - l.box.y) > 10 && Math.abs(o.box.x - l.box.x) < 14) { l.sync = i - j; return; }
+      }
+    });
+  }
   function finishLine(cur) {
     var boxes = [], syl = [];
     cur.parts.forEach(function (p) {
@@ -499,7 +516,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-23.2';
+  var VERSION = '2026-10-23.3';
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;

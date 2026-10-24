@@ -385,3 +385,7 @@ the heading of a song is listed, that is when the track starts"), at the start o
 no syllables) so they are timed and lit up too; marked 🗣 spoken / italic / dotted outline. Reader VERSION 2026-10-23.2 (teacher mode
 re-reads on its own). `T.LYRIC_LEAD` = 0.4 s. Every line being sung is lit at once: from LEAD before its first word until its singing is
 done (`T.lineEnd`: its end, at most 2.5 s after its last syllable), so close lines overlap; the Lyrics timing rows light the same way.
+Sections that start together (Colleen: in a bracket the JOCKS' "Woh!" and TROY's "Get-" on one beat light up together): `pairStarts` marks a
+section starting at the same spot (|dx| < 14) in another staff of the same bracket as one a few sections before it: `lyric.sync` = how far
+back its partner is (HSM JR: 29 pairs). Lyrics timing gives it the partner's start after Find, taps, nudges and before Save (`applySync`), Now
+skips it, and the list shows "⇄ with N"; "Find lyrics timing for every song" pairs them too. Reader VERSION 2026-10-23.3.
