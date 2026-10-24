@@ -426,3 +426,5 @@ stripes via a gradient). Used for the lit-up lines (song pages, practice) and th
 - pages.js: `T.Pages.lyricBoxes(l)` now gives the rows as they light up: each row trimmed to its syllables, rows with no words left off, and the teacher's own ends from `l.cut[k]` ({x0,x1} PDF points, or 0 = hidden). `T.Pages.rawBoxes(l)` is the stored rows (split/join/piano use these; syllable `b` indexes them). `T.Pages.setNeighbors(lyrics)` makes sections on the same printed row (and tightly stacked rows) meet halfway, so no dark overlap.
 - teacher.js Sections: the selected section shows round end handles (drag) and ✕ per piece; "Fit to the words again" clears l.cut. setLine (split/join) drops l.cut.
 - teacher.js Timing: 🎯 Fix clears the line's time (startFix/endFix, fixOld keeps its syllable timing; Done fixing or Save puts back an untapped line); ✕ Clear per line (and in the Sections bar); "Clear all timing" asks first. Undo ends a fix.
+
+- Passwords & backup › School sign-in: "Test the school sign-in" (T.testSignin in app.js; applySignin sees ls signinTest, toasts the result, returns to #/teacher/passwords). The student button only shows once a cast member has an email.

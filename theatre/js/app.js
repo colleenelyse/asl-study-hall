@@ -412,10 +412,18 @@
      Chrome is signed into and sends the student back here with the scrambled code of their email (#/signin/<code>) */
   var SIGNIN_PAGE = 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbyPT5T6gQ6nB-fEqI7QkZ7eu-wSmQ9TGSiFu5iCJUHGoOcznJncTDeWo3OLz2k0Y4CPEA/exec';
   function signinPage() { var S = T.show && T.show.signin; return (S && S.page) || SIGNIN_PAGE; }
+  T.testSignin = function () { ls('signinTest', 1); location.href = signinPage() + '?r=' + encodeURIComponent(location.origin + location.pathname); };
   function goSignin() { try { sessionStorage.setItem('signinTried', '1'); } catch (e) {} location.href = signinPage() + '?r=' + encodeURIComponent(location.origin + location.pathname); }
   function applySignin() {      // a code came back: find the student on the cast list and remember them on this device
     var code = ls('signinCode'); if (!code) return false;
     ls('signinCode', null);
+    if (ls('signinTest')) {      // the teacher's test from Passwords & backup: say what happened and go back there
+      ls('signinTest', null);
+      var who = code !== 'none' && (T.show.cast || []).find(function (c) { return c.emailHash === code; });
+      T.toast(code === 'none' ? 'The school sign-in page could not read the school account. Make sure Chrome is signed into your school Google account, then try again.' :
+        '✅ The school sign-in works: Google told the app who you are.' + (who ? ' You are on the cast as ' + who.name + '.' : ' (Your email is not on the cast list, which is fine until there is a cast.)'), 9000);
+      location.replace('#/teacher/passwords'); return true;
+    }
     if (code === 'none') { T.toast('The school account could not be read. Tap your picture instead.', 5000); return false; }
     var a = (T.show.cast || []).find(function (c) { return c.emailHash === code; });
     if (!a) { T.toast('Your school account is not on the cast list yet. Tap your picture and tell your teacher.', 6000); return false; }

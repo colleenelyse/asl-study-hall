@@ -1153,6 +1153,7 @@
     T.setBar('Passwords & backup', '#/teacher');
     setTimeout(function () {
       var f = document.getElementById('sif'); if (!f) return;
+      document.getElementById('sitest').onclick = function () { T.testSignin(); };
       f.onsubmit = function (e) {
         e.preventDefault();
         var id = document.getElementById('sic').value.trim(), dom = document.getElementById('sid').value.trim().replace(/^@/, '').toLowerCase();
@@ -1167,7 +1168,8 @@
       '<label class="f">Google Client ID (optional)<input id="sic" value="' + esc(S.clientId || '') + '" autocomplete="off" placeholder="…apps.googleusercontent.com"></label>' +
       '<label class="f">School email domain (only these accounts)<input id="sid" value="' + esc(S.domain || '') + '" autocomplete="off" placeholder="e.g. students.myschool.org"></label>' +
       '<p class="small">' + withEmail + ' of ' + (T.show.cast || []).length + ' students have a school email saved (Cast › tap a student, or paste the class list with emails).</p>' +
-      '<div class="row end"><button class="btn primary" data-save>Save school sign-in</button></div></form>' +
+      '<div class="row end"><button type="button" class="btn" id="sitest">Test the school sign-in</button><button class="btn primary" data-save>Save school sign-in</button></div>' +
+      '<p class="small muted">Test it any time, even before there is a cast: it goes to the school sign-in page and back. The first time, Google asks you to allow it; press Allow.</p></form>' +
       '<form class="card" id="cf"><h2>Cast password</h2><p class="muted">iPads that already remember the show stay open. Use Settings › Lock this iPad on any you want closed.</p>' +
       '<label class="f">New cast password<input id="nc" type="text" autocomplete="off" autocapitalize="off" minlength="4" required></label><div class="row end"><button class="btn primary" data-save>Change the cast password</button></div></form>' +
       '<form class="card" id="tf"><h2>Teacher password</h2><label class="f">New teacher password<input id="nt1" type="password" minlength="8" autocomplete="new-password" required></label>' +
