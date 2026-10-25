@@ -138,7 +138,7 @@
   var MENUS = [
     { id: 'script', icon: 'book', name: 'The script', sub: 'Import it, read it, who is on stage when' },
     { id: 'people', icon: 'star', name: 'Casting and the cast', sub: 'Sign-ups, callbacks, the cast list' },
-    { id: 'rehearse', icon: 'sched', name: 'Rehearsals', sub: 'The plan, attendance, progress, warmups, bows' },
+    { id: 'rehearse', icon: 'sched', name: 'Rehearsals', sub: 'The plan, attendance, progress, warmups, bows, partner classes' },
     { id: 'music', icon: 'songs', name: 'Music and voices', sub: 'Tracks, ElevenLabs voices, lines for AAC' },
     { id: 'tech', icon: 'bulb', name: 'Tech and the show', sub: 'Cues, stage manager script, mics, open captions' },
     { id: 'costumes', icon: 'shirt', name: 'Costumes', sub: 'Costumes and sizes' },
@@ -183,7 +183,8 @@
       ['tech', (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '')],
       ['people', t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors')],
       ['app', t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent')],
-      ['rehearse', t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups, cues on the Megamix, rehearse')],
+      ['rehearse', t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups in 8-counts, the countdown, rehearse')],
+      ['rehearse', t('#/teacher/partners', 'sched', 'Partner classes', esc(T.partnersSummary ? T.partnersSummary() : 'Sessions with other classes, and calendar invitations'))],
       ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines as ElevenLabs sound files for an AAC device')],
       ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],
       ['tech', (T.show.script ? t('#/teacher/captedit', 'book', 'Edit the captions', T.show.captionDoc ? 'Your edited caption script' : 'Fix words, who says it, missing lines') : '')],
