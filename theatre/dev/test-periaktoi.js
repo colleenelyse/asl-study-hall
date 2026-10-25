@@ -79,4 +79,6 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   ok(PK.sceneChecks(Q, sc).some(m => /door in use/.test(m.msg)), 'the scene says the door is in use');
   sc.towers.B.lock = false; ok(PK.sceneChecks(Q, sc).some(m => m.lv === 'bad' && /wheels locked/.test(m.msg)), 'door in use needs B locked');
   sc.towers.B.lock = true; sc.towers.B.want = 'B2'; sc.towers.B.rot = PK.rotFor(Q, 'B', 'B2').rot; ok(PK.sceneChecks(Q, sc).some(m => m.lv === 'bad' && /isn’t facing the audience/.test(m.msg)), 'door in use needs B1 facing the audience'); }
+{ const Q = PK.fresh(), i = Q.scenes.findIndex(x => x.id === 's2'), ch = PK.change(Q, Q.scenes[i - 1], Q.scenes[i]), ch2 = PK.change(Q, Q.scenes[i], Q.scenes[i + 1]);
+  ok((Q.scenes[i].doorOpen || [])[0] === 'B1' && ch.doors.some(d => d.act === 'open') && ch2.doors.some(d => d.act === 'close') && Q.practicals.B1.hinge === 'right' && Q.practicals.B1.swing === 'in', 'Homeroom uses the B1 door (hinged inside on the right, opening in): opened before, closed after'); }
 process.exit(bad ? 1 : 0);

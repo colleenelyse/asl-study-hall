@@ -22,7 +22,7 @@
      u = where along the face (0 = its left edge, 1 = its right edge, as you look at it), w = width, d = how far it sticks out, z = height of its middle */
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
-    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33, door: true, h: 80 / 12, swing: 'in' },      // opens into the tower so it can't tip (Colleen 2026-10-25)
+    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33, door: true, h: 80 / 12, swing: 'in', hinge: 'right' },      // opens into the tower so it can't tip; hinges inside, on the right as the audience sees it (Colleen 2026-10-25)
     'A2-clock': { name: '12″ classroom analog clock (real, on the printed circle)', u: 0.65, w: 1, h: 1, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
     'A2-plant': { name: 'Hanging plant on a wall hook (real)', u: 0.9, w: 1, h: 2.6, d: 1.3, z: 6.5, show: 'plant' },      // the bracket at the top right of her A2 art
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
@@ -418,7 +418,7 @@
       S(1, 'Wildcat cheer', hall, { notes: 'Part A. The East High hallway is the preset, in place as the audience arrives; the show opens on the Wildcat cheer.' }),
       part('s1b', 'New Year’s Eve flashback', 'Part B. Same set. The karaoke flashback plays in the stage-left side area (shimmer curtain).', { zones: ['nye'] }),
       part('s1c', 'Back to East High', 'Part C. Same set, back in the East High hallway.'),
-      S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }),
+      S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }, { doorOpen: ['B1'], notes: 'Uses the B1 door: the back of B is opened and braced.' }),      // Colleen 2026-10-25
       S(3, 'Main hallway', hall),
       S(4, 'Gym', { B: 'B1', C: 'C3', D: 'D1' }),      // the gym shows the doorway on B, not the moss wall (Colleen 2026-10-25)
       S(5, 'Bio / chem classroom', { A: 'A2', B: 'B1' }),

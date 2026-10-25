@@ -53,7 +53,10 @@
       else P.scenes.splice(1, 0, b, c);
       queueSave(); }
     if (P.practicals && P.practicals.B1 && P.practicals.B1.door == null) { P.practicals.B1.door = true; P.practicals.B1.h = PK.PRACTICALS.B1.h; }
-    if (P.practicals && P.practicals.B1 && P.practicals.B1.door && !P.practicals.B1.swing) P.practicals.B1.swing = 'in';      // opens into the tower so it can't tip (Colleen 2026-10-25)      // B1 is a walk-through door (2026-10-25)
+    if (P.practicals && P.practicals.B1 && P.practicals.B1.door && !P.practicals.B1.swing) P.practicals.B1.swing = 'in';
+    if (P.practicals && P.practicals.B1 && P.practicals.B1.door && !P.practicals.B1.hinge) P.practicals.B1.hinge = 'right';      // hinges inside the triangle, on the right (Colleen 2026-10-25)
+    if (!P.doorSet) { P.doorSet = 1; var hr = P.scenes.find(function (x) { return x.id === 's2'; });      // Homeroom uses the B1 door (Colleen 2026-10-25)
+      if (hr && !P.scenes.some(function (x) { return (x.doorOpen || []).length; })) { hr.doorOpen = ['B1']; hr.towers.B.lock = true; } queueSave(); }      // opens into the tower so it can't tip (Colleen 2026-10-25)      // B1 is a walk-through door (2026-10-25)
     if (!P.lineups) P.lineups = PK.lineupDefaults();
     if (!P.lights || P.lights.every(function (a) { return a.drawn && !a.v; })) P.lights = PK.lightDefaults(P);      // read again from her drawing as seen from the audience (2026-10-25)      // her five lighting areas plus all of left / all of right (2026-10-25)
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
@@ -250,7 +253,7 @@
         if (pq.rim) { var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) }; out.push('<circle class="pk-rim" cx="' + rc.x + '" cy="' + (-rc.y) + '" r="0.75"/>'); }
       });
       g.faces.forEach(function (f) { var pr = P.practicals && P.practicals[f.id]; if (!pr || !pr.door || (sh.doors || []).indexOf(f.id) < 0) return;      // the door in use: a gap in the wall and the swing drawn into the tower, like a floor plan
-        var L = Math.hypot(f.r.x - f.l.x, f.r.y - f.l.y), ux = (f.r.x - f.l.x) / L, uy = (f.r.y - f.l.y) / L, m = L * pr.u, H = { x: f.l.x + ux * (m - pr.w / 2), y: f.l.y + uy * (m - pr.w / 2) }, Rg = { x: H.x + ux * pr.w, y: H.y + uy * pr.w }, E = { x: H.x - f.n.x * pr.w, y: H.y - f.n.y * pr.w };
+        var L = Math.hypot(f.r.x - f.l.x, f.r.y - f.l.y), ux = (f.r.x - f.l.x) / L, uy = (f.r.y - f.l.y) / L, m = L * pr.u, s0 = pr.hinge === 'right' ? 1 : -1, H = { x: f.l.x + ux * (m + s0 * pr.w / 2), y: f.l.y + uy * (m + s0 * pr.w / 2) }, Rg = { x: H.x - s0 * ux * pr.w, y: H.y - s0 * uy * pr.w }, E = { x: H.x - f.n.x * pr.w, y: H.y - f.n.y * pr.w };      // H = the hinge, Rg = the other jamb, E = the open door's edge
         var cr = (Rg.x - H.x) * (-(E.y - H.y)) - (-(Rg.y - H.y)) * (E.x - H.x);
         out.push('<line x1="' + H.x + '" y1="' + (-H.y) + '" x2="' + Rg.x + '" y2="' + (-Rg.y) + '" class="pk-doorgap"/><line x1="' + H.x + '" y1="' + (-H.y) + '" x2="' + E.x + '" y2="' + (-E.y) + '" class="pk-doorleaf"/><path d="M' + Rg.x + ',' + (-Rg.y) + ' A' + pr.w + ',' + pr.w + ' 0 0,' + (cr > 0 ? 1 : 0) + ' ' + E.x + ',' + (-E.y) + '" class="pk-doorarc"><title>' + f.id + ' door in use: opens into the tower</title></path>'); });
       out.push('<text x="' + q.x + '" y="' + (-q.y + 0.45) + '" class="pk-letter" text-anchor="middle">' + t + '</text>');
@@ -405,7 +408,7 @@
       var bad = PK.sceneChecks(P, x).some(function (m) { return m.lv === 'bad'; }) || (i && PK.change(P, P.scenes[i - 1], x).warn.some(function (m) { return m.lv === 'bad'; }));
       return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
-    document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
+    document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + ((x.doorOpen || []).length ? ' 🚪' : '') + '</option>'; }).join('');
     if (!V.simple) document.getElementById('pkRight').innerHTML = (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower (in any view) to change its face and where it stands. On the map from above you can also drag it.</p>' + lineUpRow()) + scenePanel(sc);      // the picked piece first, so its controls are in view
     if (V.simple) { var pp = plainPanel(ch, checks); document.getElementById('pkBottom').innerHTML = pp.bottom; document.getElementById('pkRight').innerHTML = pp.side; }      // Simple: the step bar and the clicked tower beside the picture
     else document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
