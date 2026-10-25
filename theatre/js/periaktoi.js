@@ -7,7 +7,7 @@
   'use strict';
   var T = window.T, PK = window.PK, esc = T.esc, app = document.getElementById('app');
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
-  var V = { pics: true, zoom: 'towers', view: 'split', labels: true, spikes: true, paths: true, sweep: true, rim: true, routes: true, clear: false, speed: 1, loop: false };
+  var V = { proj: 'flat', pics: true, zoom: 'towers', view: 'split', labels: true, spikes: true, paths: true, sweep: true, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
@@ -225,39 +225,46 @@
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
     var c = s.prosc / 2, whole = V.zoom === 'stage', halfW = whole ? c + s.sideDeck + 1 : 14;
     var camY = crew ? s.curtain + s.crew : -(s.apron + s.house), sign = crew ? -1 : 1, line = PK.towerLine(scene());
+    var flat = V.proj !== 'persp';      // true shape (default): a straight-on elevation, no perspective, so every tower keeps its exact 60° geometry and the crew view is an exact mirror
     var depth = function (y) { return Math.max(0.5, (y - camY) * sign); };
-    var refD = depth(line), F = (W * 0.48) * refD / halfW, m = W * 0.035;
+    var refD = depth(line), F = (W * 0.48) * refD / halfW, m = W * 0.035, S = W * 0.48 / halfW;
     var hz = m + (s.height + 1.6 - s.eye) * F / refD;      // the tops of the towers sit just under the top edge
-    var nearY = crew ? line + 1.5 : (whole ? -s.apron : line - 10);
-    var H = Math.round(hz + s.eye * F / depth(nearY) + m);
+    var nearY = crew ? line + 1.5 : (whole ? -s.apron : line - 10), base = m + (s.height + 1.6) * S;
+    var H = flat ? Math.round(base + 1.6 * S + m) : Math.round(hz + s.eye * F / depth(nearY) + m);
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    var g = cv.getContext('2d'), pr = function (x, y, z) { var d = depth(y); return { x: W / 2 + sign * x * F / d, y: hz - (z - s.eye) * F / d }; };
+    var g = cv.getContext('2d'), pr = flat ? function (x, y, z) { return { x: W / 2 + sign * x * S, y: base - z * S }; } : function (x, y, z) { var d = depth(y); return { x: W / 2 + sign * x * F / d, y: hz - (z - s.eye) * F / d }; };
+    var far = function (x, y) { return flat ? sign * y : Math.hypot(x, y - camY); };      // larger = farther from the viewer (drawn first)
+    var sees = function (n, px, py) { return flat ? -sign * n.y > 0.01 : n.x * (0 - px) + n.y * (camY - py) > 0.01; };
+    var hidden = function (y) { return flat ? y > s.curtain : (y - camY) * sign < 2; };      // behind the main curtain (true shape) or behind the viewer
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#07060b'; g.fillRect(0, 0, W, H);
     var poly = function (pts, fill, stroke) { g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.stroke(); } };
     if (!crew) poly([pr(-c, s.curtain, 0), pr(c, s.curtain, 0), pr(c, s.curtain, 22), pr(-c, s.curtain, 22)], '#4a0d14');      // the main curtain
-    var deck = [pr(-c, s.curtain, 0)]; for (var i = 0; i <= 40; i++) { var x = -c + 2 * c * i / 40; deck.push(pr(x, PK.frontY(s, x), 0)); } deck.push(pr(c, s.curtain, 0));
-    poly(deck, '#2b2620', '#5b5040');
-    poly([pr(-c - s.sideDeck, 0, 0), pr(-c, 0, 0), pr(-c, -s.edgeSide, 0), pr(-c - s.sideDeck, -s.edgeSide, 0)], '#2b2620', '#5b5040');
-    poly([pr(c, 0, 0), pr(c + s.sideDeck, 0, 0), pr(c + s.sideDeck, -s.edgeSide, 0), pr(c, -s.edgeSide, 0)], '#2b2620', '#5b5040');
+    if (flat) { g.fillStyle = '#2b2620'; g.fillRect(0, base, W, H - base); g.fillStyle = '#5b5040'; g.fillRect(0, base, W, Math.max(1, W * 0.002)); }      // the stage floor, edge on
+    else {
+      var deck = [pr(-c, s.curtain, 0)]; for (var i = 0; i <= 40; i++) { var x = -c + 2 * c * i / 40; deck.push(pr(x, PK.frontY(s, x), 0)); } deck.push(pr(c, s.curtain, 0));
+      poly(deck, '#2b2620', '#5b5040');
+      poly([pr(-c - s.sideDeck, 0, 0), pr(-c, 0, 0), pr(-c, -s.edgeSide, 0), pr(-c - s.sideDeck, -s.edgeSide, 0)], '#2b2620', '#5b5040');
+      poly([pr(c, 0, 0), pr(c + s.sideDeck, 0, 0), pr(c + s.sideDeck, -s.edgeSide, 0), pr(c, -s.edgeSide, 0)], '#2b2620', '#5b5040');
+    }
     if (!crew) {      // the proscenium wall, the side-area backdrops
       poly([pr(-c - s.sideDeck - 3, 0, 0), pr(-c, 0, 0), pr(-c, 0, 22), pr(c, 0, 22), pr(c, 0, 0), pr(c + s.sideDeck + 3, 0, 0), pr(c + s.sideDeck + 3, 0, 30), pr(-c - s.sideDeck - 3, 0, 30)], '#16141c');
       var zs = sh.zones;
       poly([pr(c + 0.3, 0, 0), pr(c + s.sideDeck - 0.3, 0, 0), pr(c + s.sideDeck - 0.3, 0, 10), pr(c + 0.3, 0, 10)], zs.indexOf('nye') >= 0 ? '#c9c4d6' : '#2a2833');
       poly([pr(-c - s.sideDeck + 0.3, 0, 0), pr(-c - 0.3, 0, 0), pr(-c - 0.3, 0, 10), pr(-c - s.sideDeck + 0.3, 0, 10)], zs.indexOf('hort') >= 0 ? '#3f7a45' : '#22302a');
     } else {
-      g.fillStyle = '#8a86a0'; g.font = Math.round(W * 0.016) + 'px sans-serif'; g.textAlign = 'center'; g.fillText('▼ the audience is out there, past the front edge ▼', W / 2, pr(0, -s.apron, 0).y + W * 0.03);
+      g.fillStyle = '#8a86a0'; g.font = Math.round(W * 0.016) + 'px sans-serif'; g.textAlign = 'center'; g.fillText('▼ the audience is out there, past the front edge ▼', W / 2, flat ? base + 1.1 * S : pr(0, -s.apron, 0).y + W * 0.03);
     }
     var cam = { x: 0, y: camY }, draws = [];
     TW.forEach(function (t) {
       var q = sh.towers[t], gm = PK.geom(P, t, q, s), lit = sh.lit(t);
       gm.faces.forEach(function (f) {
-        if (f.n.x * (cam.x - f.c.x) + f.n.y * (cam.y - f.c.y) <= 0.01 || (f.c.y - camY) * sign < 1) return;      // facing away from this camera, or behind it
-        draws.push({ d: Math.hypot(f.c.x - cam.x, f.c.y - cam.y), f: function () { face(g, pr, f, s, lit, t); } });
+        if (!sees(f.n, f.c.x, f.c.y) || (!flat && (f.c.y - camY) * sign < 1)) return;      // facing away from the viewer, or behind the camera
+        draws.push({ d: far(f.c.x, f.c.y), f: function () { face(g, pr, f, s, lit, t); } });
       });
       gm.prot.forEach(function (pq) { if (!pq.show) return;      // real pieces mounted over the printed wall: corkboard, clock, hanging plant
-        if (pq.n.x * (cam.x - pq.mid.x) + pq.n.y * (cam.y - pq.mid.y) <= 0.01) return;
+        if (!sees(pq.n, pq.mid.x, pq.mid.y)) return;
         var hw = pq.w / 2, out = pq.show === 'plant' ? pq.d * 0.6 : pq.d, at = function (k, z) { return pr(pq.mid.x + pq.ax.x * hw * k + pq.n.x * out, pq.mid.y + pq.ax.y * hw * k + pq.n.y * out, z); };
-        draws.push({ d: Math.hypot(pq.mid.x - cam.x, pq.mid.y - cam.y) - 0.05, f: function () {
+        draws.push({ d: far(pq.mid.x, pq.mid.y) - 0.05, f: function () {
           var lo = pq.z - pq.h / 2, hi = pq.z + pq.h / 2, path = [];
           if (pq.show === 'cork') path = [at(-1, hi), at(1, hi), at(1, lo), at(-1, lo)];
           else for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; path.push(at(Math.cos(q2), pq.z + Math.sin(q2) * pq.h / 2)); }
@@ -266,16 +273,16 @@
           if (pq.show === 'clock') { var c0 = at(0, pq.z), c1 = at(0, pq.z + pq.h * 0.3), c2 = at(0.25, pq.z); g.beginPath(); g.moveTo(c0.x, c0.y); g.lineTo(c1.x, c1.y); g.moveTo(c0.x, c0.y); g.lineTo(c2.x, c2.y); g.stroke(); }
           if (lit > 0.01) { g.fillStyle = 'rgba(0,0,0,' + lit + ')'; g.fill(); } } }); });
       gm.prot.forEach(function (pq) { if (!pq.rim) return; var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) };
-        draws.push({ d: Math.hypot(rc.x - cam.x, rc.y - cam.y), f: function () { var ring = []; for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; ring.push(pr(rc.x + 0.75 * Math.cos(q2), rc.y + 0.75 * Math.sin(q2), pq.z)); }
+        draws.push({ d: far(rc.x, rc.y), f: function () { var ring = []; for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; ring.push(pr(rc.x + 0.75 * Math.cos(q2), rc.y + 0.75 * Math.sin(q2), pq.z)); }
           g.beginPath(); ring.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.strokeStyle = 'rgba(255,106,0,' + (1 - lit * 0.8) + ')'; g.lineWidth = Math.max(2, W * 0.003); g.stroke(); } }); });
-      draws.push({ d: Math.hypot(q.x - cam.x, q.y - cam.y) - 0.01, f: function () { if (!V.labels) return; var p = pr(q.x, q.y, s.height + 0.6); g.fillStyle = COL[t]; g.font = 'bold ' + Math.round(W * 0.022) + 'px Lexend, sans-serif'; g.textAlign = 'center'; g.fillText(t, p.x, p.y); } });
+      draws.push({ d: far(q.x, q.y) - 3, f: function () { if (!V.labels) return; var p = pr(q.x, q.y, s.height + 0.6); g.fillStyle = COL[t]; g.font = 'bold ' + Math.round(W * 0.022) + 'px Lexend, sans-serif'; g.textAlign = 'center'; g.fillText(t, p.x, p.y); } });
     });
     (sh.items || []).forEach(function (it) {
-      if ((it.y - camY) * sign < 2) return;
-      draws.push({ d: Math.hypot(it.x - cam.x, it.y - cam.y), f: function () { box(g, pr, PK.rectPoly(it.x, it.y, it.w, it.d, it.rot), it.kind === 'plants' ? 2.5 : 1.5, it.kind === 'plants' ? '#3d7a3a' : '#6c6480'); } });
+      if (hidden(it.y)) return;
+      draws.push({ d: far(it.x, it.y), f: function () { box(g, pr, PK.rectPoly(it.x, it.y, it.w, it.d, it.rot), it.kind === 'plants' ? 2.5 : 1.5, it.kind === 'plants' ? '#3d7a3a' : '#6c6480'); } });
     });
-    PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x || (x.y - camY) * sign < 2) return; var f = PK.tableFoot(P, id, x, x.k);
-      draws.push({ d: Math.hypot(x.x - cam.x, x.y - cam.y), f: function () { box(g, pr, f.poly, f.h, '#9a8a70'); if (V.labels) { var p = pr(x.x, x.y, f.h + 0.4); g.fillStyle = '#fff'; g.font = Math.round(W * 0.012) + 'px sans-serif'; g.textAlign = 'center'; g.fillText(id, p.x, p.y); } } }); });
+    PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x || hidden(x.y)) return; var f = PK.tableFoot(P, id, x, x.k);
+      draws.push({ d: far(x.x, x.y), f: function () { box(g, pr, f.poly, f.h, '#9a8a70'); if (V.labels) { var p = pr(x.x, x.y, f.h + 0.4); g.fillStyle = '#fff'; g.font = Math.round(W * 0.012) + 'px sans-serif'; g.textAlign = 'center'; g.fillText(id, p.x, p.y); } } }); });
     draws.sort(function (a, b) { return b.d - a.d; }).forEach(function (x) { x.f(); });
     if (V.labels) {
       g.font = Math.round(W * 0.015) + 'px sans-serif'; g.fillStyle = '#cfc9e6';
@@ -693,6 +700,7 @@
       '<select id="pkWhen" title="When towers turn"><option value="auto">Turn where there’s room</option><option value="during">Turn while rolling</option><option value="before">Turn, then roll</option><option value="after">Roll, then turn</option></select>' +
       '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label>' +
       '<span class="pk-gap"></span><div class="pk-seg"><button data-view="over">Bird’s-eye</button><button data-view="aud">Audience</button><button data-view="crew">Crew</button><button data-view="split">All three</button><button data-view="ledger">Ledger</button></div>' +
+      '<select id="pkProj" title="Audience and crew views"><option value="flat">Front views: true shape</option><option value="persp">Front views: perspective</option></select>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
       '<details class="pk-show"><summary>Show ▾</summary><div>' + [['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
@@ -708,6 +716,7 @@
     $('pkScrub').oninput = function () { if (!cur) return; if (!anim) { var ch = PK.change(P, P.scenes[cur - 1], scene()); anim = { from: cur - 1, to: cur, ch: ch, u: 0, playing: false, dur: duration(ch), last: 0 }; } anim.playing = false; anim.u = this.value / 1000; setPlayBtn(); drawViews(); };
     $('pkSpeed').onchange = function () { V.speed = +this.value; };
     $('pkWhen').value = P.turnWhen || 'auto'; $('pkWhen').onchange = function () { snap(); P.turnWhen = this.value; P.turnWhenSet = true; stop(); changed(); };
+    $('pkProj').value = V.proj; $('pkProj').onchange = function () { V.proj = this.value; drawViews(); };
     $('pkZoom').value = V.zoom; $('pkZoom').onchange = function () { V.zoom = this.value; drawViews(); };
     $('pkLoop').onchange = function () { V.loop = this.checked; };
     app.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { V.view = b.dataset.view; rebuild(); }; });
