@@ -151,6 +151,7 @@
       t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent') +
       t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups, cues on the Megamix, rehearse') +
       t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines to copy into an AAC device') +
+      (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '') +
       t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
       t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
       t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +

@@ -496,3 +496,9 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .tone-prog .pb i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
 .tone-prog .pb.made i { background: var(--good); }
 .tag.sugg { background: var(--warn-bg); color: var(--warn); }
+/* open captions preview (captions.js) */
+.cap-prev { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 10px 0; }
+.cap-prev figure { margin: 0; }
+.cap-prev figcaption { font-size: .9em; color: var(--muted); margin-bottom: 4px; }
+.cap-prev canvas { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line); background: #000; }
+.cap-who { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0; }
