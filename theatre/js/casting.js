@@ -211,7 +211,7 @@
   }
   function wireCallbacks() {
     var c = C();
-    var add = function (ch, id) { var l = c.callbacks[ch] = c.callbacks[ch] || []; if (l.indexOf(id) < 0) l.push(id); cfWarn(id); T.saveShow('Callback added').then(overview); };
+    var add = function (ch, id) { var l = c.callbacks[ch] = c.callbacks[ch] || []; if (l.indexOf(id) < 0) l.push(id); T.saveShow('Callback added').then(overview).then(function () { cfWarn(id); }); };
     document.getElementById('cbs').onchange = function (e) { c.callbacksShown = e.target.checked; T.saveShow(e.target.checked ? 'Company members can see callbacks' : 'Callbacks hidden').then(overview); };
     app.querySelectorAll('[data-cbadd]').forEach(function (b) { b.onclick = function () { var x = b.dataset.cbadd.split('|'); add(x[0], x[1]); }; });
     app.querySelectorAll('[data-cbsel]').forEach(function (sel) { sel.onchange = function () { if (sel.value) add(sel.dataset.cbsel, sel.value); }; });
@@ -239,7 +239,7 @@
   function wireCast() {
     var c = C(), d = c.draft, list = students();
     var redraw = function () { T.saveShow('Draft saved').then(overview); };
-    app.querySelectorAll('[data-add]').forEach(function (sel) { sel.onchange = function () { if (!sel.value) return; (d[sel.dataset.add] = d[sel.dataset.add] || []).push(sel.value); cfWarn(sel.value); redraw(); }; });
+    app.querySelectorAll('[data-add]').forEach(function (sel) { sel.onchange = function () { if (!sel.value) return; var id = sel.value; (d[sel.dataset.add] = d[sel.dataset.add] || []).push(id); T.saveShow('Draft saved').then(overview).then(function () { cfWarn(id); }); }; });      // the warning after the save message
     app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { var x = b.dataset.rm.split('|'); d[x[0]] = (d[x[0]] || []).filter(function (i) { return i !== x[1]; }); if (!d[x[0]].length) delete d[x[0]]; redraw(); }; });
     var has = function (a) { return Object.keys(d).some(function (ch) { return d[ch].indexOf(a.id) >= 0; }); };
     /* a starting point, never the final word: named roles go to callbacks first, then first choices, highest notes first; one named role each */
