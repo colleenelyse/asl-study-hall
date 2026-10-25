@@ -160,24 +160,28 @@
     var act1 = ids.slice(0, typeof split === 'number' ? split : Math.max(1, ids.indexOf(split))), act2 = ids.slice(act1.length);
     if (!fixed[work[0]]) fixed[work[0]] = { kind: 'tableread', title: 'Table read, Act 1 (the whole Company)', scenes: act1 };
     if (work[2] && !fixed[work[2]]) fixed[work[2]] = { kind: 'tableread', title: 'Table read, Act 2 (the whole Company)', scenes: act2 };
+    /* consent and touch (Colleen 2026-10-24: "an early whole group lesson and practice with consent for physical touch. even if the script says so"):
+       the whole Company, between the two table reads, before anything is staged (moves.js) */
+    var CONSENT = 'Consent and touch: the whole Company learns and practices tapping in';
+    if (work[1] && !fixed[work[1]]) fixed[work[1]] = { kind: 'consent', title: CONSENT, mark: 'A', rooms: [{ room: 'AB', block: 0, piece: null, kind: 'C', people: O.characters.filter(function (c) { return c.group !== 'helpers'; }).map(function (c) { return c.id; }), what: CONSENT }] };
     var trip = work.find(function (d) { return fixed[d] && fixed[d].kind === 'trip'; });
     var plus = function (d, k) { return X().addDays(d, k); };
     var windows = { sizes: [work[Math.min(n - 1, 15)], work[Math.min(n - 1, 19)]] };
     if (trip) { windows.research = [plus(trip, -23), plus(trip, -12)]; windows.list = [plus(trip, -9), plus(trip, -5)]; windows.photos = [plus(trip, 1), plus(trip, 7)]; }
     var credit = withAuditions ? ['1', '40', '41'].map(function (num) { var so = O.songs.find(function (x) { return x.num === num; }); return so ? [{ id: so.id + 'V', done: 'learn' }, { id: so.id + 'D', done: 'learn' }] : []; }).reduce(function (a, b) { return a.concat(b); }, []) : [];
-    var R = RP.plan(O, { days: work.map(function (d) { return { date: d, min: minutesOf(d) }; }), fixed: fixed, credit: credit, windows: windows, actSplit: act2[0],
+    var R = RP.plan(O, { days: work.map(function (d) { return { date: d, min: minutesOf(d) }; }), fixed: fixed, credit: credit, windows: windows, actSplit: act2[0], bits: T.Moves ? T.Moves.forPlan() : [],
       deadlines: { scene: at(0.6), vocals: at(0.45), dance: at(0.8) } });
-    var KF = { A: 'acting', V: 'vocals', D: 'dance', R: 'run' }, all = O.characters.map(function (c) { return c.id; });
+    var KF = { A: 'acting', V: 'vocals', D: 'dance', R: 'run', C: 'consent' }, all = O.characters.map(function (c) { return c.id; });
     R.days.forEach(function (D) {
       if (p.days[D.date] && !p.days[D.date].gen) return;      // keep what the teacher planned
       if (!D.rooms || (!D.rooms.length && !(D.groupC || []).length)) return;
       var groups = D.rooms.map(function (r) {
         var pc = R.pieces[r.piece], sc = [], so = [];
-        if (pc) { if (pc.type === 'scene') sc = [pc.id]; else so = [pc.song.id]; }
+        if (pc) { if (pc.type === 'scene') sc = [pc.id]; else if (pc.type === 'bit') { sc = [pc.sc.id]; if (pc.bit.song) so = [pc.bit.song]; } else so = [pc.song.id]; }
         if (r.tableread) sc = r.tableread.slice();
         if (D.run && r.kind === 'R') D.run.pieces.forEach(function (id) { var q = R.pieces[id]; if (!q) return; if (q.type === 'scene') sc.push(q.id); else if (so.indexOf(q.song.id) < 0) so.push(q.song.id); });
         return { id: uid('g'), focus: KF[r.kind] || 'run', scenes: sc, songs: so, everyone: r.people.length >= all.length - 1, chars: r.people.slice(), block: r.block || 0, only: pc && pc.part === 'p' ? 'principals' : pc && pc.part === 'c' ? 'chorus' : '',
-          where: r.room === 'AB' ? 'Both teachers together' : 'Room ' + r.room + ' (Teacher ' + r.room + ')', note: r.what };
+          where: r.room === 'AB' ? 'Both teachers together' : 'Room ' + r.room + ' (Teacher ' + r.room + ')', note: r.what, bit: pc && pc.type === 'bit' ? pc.bit.id : undefined };
       }).concat((D.groupC || []).map(function (g) {
         return { id: uid('g'), focus: 'card', scenes: [], songs: [], everyone: false, chars: g.people.slice(), block: g.block || 0, only: '', where: 'Group C',
           card: Object.assign({ kind: g.task, each: g.each || {} }, RP.CARDS[g.task] || {}) };

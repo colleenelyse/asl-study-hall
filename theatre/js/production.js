@@ -21,7 +21,7 @@
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, icon = T.icon, app = document.getElementById('app');
-  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['photos', '📸', 'Costume and prop photos'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie'], ['card', '📋', 'Task card']];
+  var FOCUS = [['acting', '🗣️', 'Acting'], ['vocals', '🎵', 'Vocals'], ['dance', '💃', 'Dance'], ['run', '🔁', 'Run-through'], ['tech', '💡', 'Tech'], ['dress', '👗', 'Dress rehearsal'], ['show', '🌟', 'Show'], ['trip', '🚌', 'Field trip'], ['photos', '📸', 'Costume and prop photos'], ['crew', '🛠️', 'Crew time'], ['share', '🎤', 'Show and tell'], ['watch', '🎬', 'Watch the movie'], ['card', '📋', 'Task card'], ['consent', '🤝', 'Consent and touch']];
   var MARKS = [['here', '✅', 'Here'], ['late', '⏰', 'Late'], ['absent', '❌', 'Absent'], ['excused', '📝', 'Excused']];
   var focus = function (k) { return FOCUS.find(function (x) { return x[0] === k; }) || FOCUS[0]; };
   var uid = function (p) { return p + Math.random().toString(36).slice(2, 8); };
@@ -125,7 +125,9 @@
       .concat(g.songs.map(function (id) { var s = T.songById(id); return s ? '“' + s.title + '”' : ''; })).filter(Boolean);
     return g.everyone && !bits.length ? 'whole cast' : bits.join(', ');
   }
-  function groupName(g) { if (g.callbacks) return 'Callbacks'; return focus(g.focus)[2] + (groupWhat(g) ? ': ' + groupWhat(g) : '') + (g.only ? ' (' + (g.only === 'chorus' ? 'chorus' : 'principals') + ')' : ''); }
+  function groupName(g) { if (g.callbacks) return 'Callbacks';
+    var bt = g.bit && T.Moves && T.Moves.list().find(function (b) { return b.id === g.bit; }), bs = bt && T.sceneById(bt.scene);      // a physical moment rehearsed on its own
+    if (bt) return '🎯 Moment (Scene ' + (bs ? bs.num : '') + '): ' + bt.what; return focus(g.focus)[2] + (groupWhat(g) ? ': ' + groupWhat(g) : '') + (g.only ? ' (' + (g.only === 'chorus' ? 'chorus' : 'principals') + ')' : ''); }
   function away(a, s) { return P().conflicts.find(function (c) { return c.actor === a.id && c.date === s; }); }
   /* the app's practice ideas for one actor, most useful first (what is planned in the next two weeks), lines and songs taking turns */
   function practiceList(a, s) {
@@ -199,11 +201,13 @@
       return { type: 'stage', focus: 'share', icon: '🎤', text: 'Show and tell: every group shows the class what it worked on' + (g.where ? ' · ' + g.where : ''), group: g.id };
     }
     if (g && g.focus === 'card') return cardTask(a, g);
+    if (g && g.focus === 'consent') return { type: 'stage', focus: 'consent', icon: '🤝', text: 'Consent and touch: the whole Company learns and practices how we tap in before any touch' + (g.where ? ' · ' + g.where : ''), group: g.id };
     if (g && g.focus === 'watch') return { type: 'watch', icon: '🎬', text: 'Watch the movie together' + (g.where ? ' · ' + g.where : ''), group: g.id };
     if (g && g.focus === 'crew') return { type: 'crew', icon: '🛠️', text: (g.where || 'Crew time') };
     if (g && g.focus === 'photos') return { type: 'photos', icon: '📸', text: 'Costume and prop photos: photograph your finished costumes and props' + (g.where ? ' · ' + g.where : ''), href: '#/photos', group: g.id };      // after the shopping trip (Colleen 2026-10-24)
     if (g && g.focus === 'trip') return { type: 'trip', icon: '🚌', text: 'Field trip' + (g.where ? ': ' + g.where : '') + ' · shop for the whole show', href: '#/shop', trip: true };
-    if (g) return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : ''), group: g.id };
+    if (g) { var tb = T.Moves ? T.Moves.touchIn(g, a.chars) : [];      // a scene or song with touch: tap in first (moves.js)
+      return { type: 'stage', focus: g.focus, icon: focus(g.focus)[1], text: groupName(g) + (g.where ? ' · ' + g.where : '') + (tb.length ? ' · ' + T.Moves.tapText(tb, a.chars, g) : ''), group: g.id, touch: tb }; }
     var st = how && how.slice(0, 3) === 'st:' && P().stations.find(function (x) { return 'st:' + x.id === how; });
     if (!how && !st && homeStation(a)) st = homeStation(a);      // not in a group today: with their crew
     if (st) return { type: 'crew', icon: '🛠️', text: 'Crew: ' + st.name + (st.desc ? ' (' + st.desc + ')' : '') };
@@ -261,15 +265,15 @@
     T.setBar('Production', '#/teacher');
     if (!P().term.first && !startedAtSetup) { tab = 'setup'; startedAtSetup = true; }      // first visit: start at the calendar; every tab still works after
     var vp = (T.show.videos || []).filter(function (v) { return !v.ok; }).length;
-    var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['mastery', 'Mastery'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['setup', 'Calendar & crew']];
+    var tabs = [['week', 'Week'], ['season', 'Semester plan'], ['tracks', 'Tracks'], ['mastery', 'Mastery'], ['time', 'Stage time'], ['away', 'Days away'], ['attendance', 'Attendance'], ['videos', 'Dance videos' + (vp ? ' (' + vp + ' new)' : '')], ['shop', 'Shopping'], ['perf', 'Performances'], ['moves', 'Touch & moments'], ['setup', 'Calendar & crew']];
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
     if (!cast().length) h += '<p class="card">Add the cast first (Teacher mode › Cast) so every Company member gets a job each day.</p>';
-    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, mastery: function () { return T.masteryView ? T.masteryView() : ''; }, tracks: function () { return T.tracksView(); } }[tab]();
+    h += { week: weekView, time: timeView, away: awayView, attendance: attendanceView, videos: videosView, setup: setupView, shop: function () { return T.shopView(); }, perf: function () { return T.perfView(); }, season: function () { return T.seasonView(); }, mastery: function () { return T.masteryView ? T.masteryView() : ''; }, moves: function () { return T.movesView ? T.movesView() : ''; }, tracks: function () { return T.tracksView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
     app.querySelectorAll('[data-goto]').forEach(function (b) { b.onclick = function () { tab = b.dataset.goto; overview(); }; });
     if (tab === 'week' && !P().term.first) return;
-    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); }, season: function () { T.wireSeason(overview); }, mastery: function () { if (T.wireMastery) T.wireMastery(overview); }, tracks: function () { T.wireTracks(overview); } }[tab] || function () {})();
+    ({ week: wireWeek, away: wireAway, setup: wireSetup, videos: wireVideos, shop: function () { T.wireShop(overview); }, perf: function () { T.wirePerf(overview); }, season: function () { T.wireSeason(overview); }, mastery: function () { if (T.wireMastery) T.wireMastery(overview); }, moves: function () { if (T.wireMoves) T.wireMoves(overview); }, tracks: function () { T.wireTracks(overview); } }[tab] || function () {})();
   }
 
   function setupView() {
@@ -485,6 +489,10 @@
             '<label class="f" style="margin:0">Who<select data-k="only">' + Object.keys(ONLY).map(function (k) { return '<option value="' + k + '"' + ((g.only || '') === k ? ' selected' : '') + '>' + ONLY[k] + '</option>'; }).join('') + '</select></label>' +
             (g.focus === 'trip' ? '<button class="btn small" data-halves>Two trips: half the class each</button>' : '') +
             (g.songs.length && !g.only ? '<button class="btn small" data-split title="Principals sing in one place while the chorus learns the dance in another">Split: singers + chorus dance</button>' : '') + '</div>' +
+            (function () {      // touch in this group's scenes and songs: everyone in it taps in first (moves.js)
+              var tb = T.Moves ? T.Moves.touchIn(g) : [], bt = g.bit && T.Moves && T.Moves.list().find(function (x) { return x.id === g.bit; });
+              return (bt ? '<p class="small" style="margin:6px 0"><b>' + sym('🎯') + 'A moment on its own, just these people:</b> ' + esc(bt.what) + (bt.why ? ' <span class="muted">(' + esc(bt.why) + ')</span>' : '') + '</p>' : '') + (tb.length ? '<p class="small" style="background:var(--warn-bg);padding:6px 10px;border-radius:10px">' + sym('🤝') + '<b>Tap in first:</b> ' + tb.map(function (b) { return esc(b.what) + ' (' + b.chars.map(function (c) { var x = T.charById(c); return esc(x ? x.short : c); }).join(', ') + ')'; }).join(' · ') + '</p>' : '');
+            })() +
             (function () {      // talents in this group (from the audition sign-ups), so the choreography can use them
               var su = (T.show.casting || {}).signups || {}, who = people.filter(function (a) { return task(a, s).group === g.id && su[a.id] && su[a.id].excited; });
               return who.length && ['dance', 'run', 'share'].indexOf(g.focus) >= 0 ? '<p class="small" style="background:var(--hi);padding:6px 10px;border-radius:10px">' + sym('✨') + '<b>Talents here:</b> ' + who.map(function (a) { return esc(a.name) + ': ' + esc(su[a.id].excited); }).join(' · ') + '</p>' : '';

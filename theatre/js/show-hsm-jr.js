@@ -177,6 +177,36 @@ window.DEFAULT_SHOW = {
   ],
 
   /* props to start from (our own list; Teacher mode › Production › Shopping changes it) */
+  /* touch and physical moments (Colleen 2026-10-24: "we have to have an early whole group lesson and practice with consent for physical touch, even
+     if the script says so. we tap in with anyone before a scene where we touch"; "Troy twirls Gabriella, who bumps into Zeke - this will need
+     some dedicated rehearsal time. look for other moments, primarily physical movements that have a smaller group of students than the scene").
+     In our own words. touch: the people in it tap in first. own: minutes of rehearsal on its own, with just these people (0 = none);
+     the semester plan gives it that time before its scene is staged (moves.js, rehearsal-plan.js). The teacher can change any of these. */
+  bits: [
+    { id: 'b1', scene: 's1', chars: ['jack', 'jocks'], what: 'Jack Scott trips and drops his books; the Jocks help him up', touch: true, own: 10, why: 'a safe stage fall' },
+    { id: 'b2', scene: 's1', song: 'm2', chars: ['troy', 'gabriella'], what: 'Troy and Gabriella swap phones and take photos as the New Year hits', own: 5, why: 'props on the music' },
+    { id: 'b3', scene: 's1', chars: ['ryan', 'sharpay'], what: 'Ryan pulls Sharpay away', touch: true, own: 0 },
+    { id: 'b4', scene: 's2', chars: ['darbus', 'gabriella', 'ryan', 'sharpay', 'troy'], what: 'The ringing phones, the phone bucket and the gong', own: 5, why: 'props and sound cues' },
+    { id: 'b5', scene: 's4', song: 'm9', chars: ['troy', 'chad', 'zeke', 'jocks', 'coach'], what: 'Basketball drills with real balls', own: 15, why: 'ball handling, room to move' },
+    { id: 'b6', scene: 's7', chars: ['kelsi', 'sharpay'], what: 'Kelsi bumps into Sharpay', touch: true, own: 5, why: 'a safe bump' },
+    { id: 'b7', scene: 's7', chars: ['gabriella', 'troy'], what: 'Gabriella taps Troy on the shoulder', touch: true, own: 0 },
+    { id: 'b8', scene: 's7', chars: ['kelsi', 'troy'], what: 'Kelsi trips and her sheet music flies; Troy helps pick it up', own: 10, why: 'a safe trip, papers everywhere' },
+    { id: 'b9', scene: 's9', song: 'm21', chars: ['troy', 'gabriella', 'zeke', 'sharpay'], what: 'Troy twirls Gabriella, she bumps Zeke, and the cake ends up on Sharpay', touch: true, own: 20, why: 'a chain of moves on the music, a rehearsal cake, clean-up' },
+    { id: 'b10', scene: 's12', chars: ['darbus', 'troy'], what: 'Ms. Darbus bumps into Troy as he runs in', touch: true, own: 5, why: 'a safe bump' },
+    { id: 'b11', scene: 's13', chars: ['chad', 'zeke', 'troy', 'taylor', 'gabriella'], what: 'The phone call across the split stage', own: 10, why: 'timing between the two sides' },
+    { id: 'b12', scene: 's14', chars: ['troy', 'gabriella', 'kelsi'], what: 'Troy comes in through the house singing into his phone; Kelsi hugs them both', touch: true, own: 10, why: 'the aisle and the stairs' },
+    { id: 'b13', scene: 's16', song: 'm33', chars: ['gabriella', 'moderator', 'brainiacs'], what: 'Gabriella races to the timer and hits the buzzer; then the lights go out', own: 5, why: 'a sound cue and a blackout' },
+    { id: 'b14', scene: 's16', chars: ['chad', 'troy', 'gabriella', 'taylor'], what: 'Chad pulls Troy aside; Gabriella hugs Taylor; Troy high-fives Chad and runs out', touch: true, own: 5, why: 'quick exits' },
+    { id: 'b15', scene: 's16', chars: ['troy', 'gabriella'], what: 'Troy and Gabriella run in through the house', own: 5, why: 'the aisle and the stairs' },
+    { id: 'b16', scene: 's16', chars: ['ryan', 'sharpay'], what: 'Ryan pulls Sharpay to the side', touch: true, own: 0 },
+    { id: 'b17', scene: 's16', song: 'm38', chars: ['students', 'jocks', 'brainiacs', 'thespians', 'cheer', 'rebels'], what: 'The students stand up in the house and rush the stage', own: 10, why: 'everyone on the stairs at once' },
+    { id: 'b18', scene: 's16', chars: ['coach', 'troy'], what: 'Coach Bolton pulls Troy aside', touch: true, own: 0 },
+    { id: 'b19', scene: 's17', chars: ['troy', 'jocks', 'brainiacs', 'thespians'], what: 'Everyone huddles around Troy after the game', touch: true, own: 0 },
+    { id: 'b20', scene: 's17', chars: ['darbus', 'coach'], what: 'Ms. Darbus and Coach Bolton high-five', touch: true, own: 0 },
+    { id: 'b21', scene: 's17', chars: ['jack', 'kelsi'], what: 'Jack Scott and Kelsi trip and fall together, then help each other up', touch: true, own: 10, why: 'a safe stage fall for two' },
+    { id: 'b22', scene: 's17', chars: ['ryan', 'sharpay', 'gabriella', 'zeke'], what: 'Ryan brings Sharpay over to Gabriella; Zeke comes to Sharpay', touch: true, own: 0 },
+    { id: 'b23', scene: 's17', song: 'm40', chars: ['troy', 'gabriella'], what: 'Troy and Gabriella hold hands', touch: true, own: 0 }
+  ],
   props: [
     { id: 'p-balls', name: 'Basketballs', who: 'jocks', qty: 6, scenes: ['s4', 's16'] },
     { id: 'p-whistle', name: 'Whistle on a lanyard', who: 'coach', qty: 1, scenes: ['s4', 's12'] },

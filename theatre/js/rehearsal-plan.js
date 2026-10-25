@@ -62,13 +62,24 @@
         mk('D', '', ppl, min * (whole ? 12 : big ? 8 : 4), min * 4, { after: v, whole: whole });
       }
     });
+    /* physical moments with a few people (cfg.bits, moves.js: a twirl into a bump, a stage fall, a run through the house): rehearsed on their own,
+       just those people, soon after their scene (or song) is first staged */
+    (cfg.bits || []).forEach(function (b) {
+      var sc = S.scenes.find(function (x) { return x.id === b.scene; }), ppl = (b.chars || []).filter(function (c) { return ALL.indexOf(c) >= 0; });
+      if (!sc || !(b.own > 0) || !ppl.length) return;
+      pieces.push({ id: 'bit:' + b.id, type: 'bit', kind: 'A', sc: sc, bit: b, label: 'Moment: ' + b.what + ' (Scene ' + sc.num + ')', short: 'Moment (Scene ' + sc.num + '): ' + b.what,
+        people: ppl, min: 1, learn: b.own, polish: Math.round(b.own / 2), done: 0, last: -99, n: 0, diff: 1.5, order: sceneOrder.indexOf(b.scene) + 0.2,
+        parent: b.song ? b.song + 'D' : b.scene });
+    });
     var byId = {}; pieces.forEach(function (p) { byId[p.id] = p; });
+    pieces.forEach(function (p) { if (p.type === 'bit') p.parent = byId[p.parent + 'p'] || byId[p.parent] || null; });      // a big number: the featured part's dance
     Object.keys(cfg.hold || {}).forEach(function (k) { if (byId[k]) byId[k].hold = cfg.hold[k]; });
     (cfg.credit || []).forEach(function (c) { var p = byId[c.id]; if (p) { p.done = c.done === 'learn' ? p.learn : c.done; p.n = 1; p.last = 0; } });
     var learned = function (p) { return p.done >= p.learn; };
     var i0 = 0;
     var ready = function (p) {      // music before dance; both halves before putting a number together
       if (p.hold && days[i0].date < p.hold) return false;
+      if (p.type === 'bit' && p.parent && !(p.parent.done > 0)) return false;      // a moment comes after its scene (or dance) is first staged
       if (p.after && p.after.done < p.after.learn * 0.5 && !(p.after.together && p.after.n)) return false;
       if (p.needs && p.needs.some(function (q) { return q.done < q.learn * 0.6; })) return false;
       return true;
@@ -95,7 +106,8 @@
     function value(p, people, i, theme, blockMin) {
       var frac = i / N, rem = p.learn ? Math.max(0, p.learn - p.done) / p.learn : 0, pol = p.polish ? Math.max(0, p.learn + p.polish - p.done) / (p.learn + p.polish) : 0;
       var v = (p.kind === theme ? ({ 1: 22, 2: 24, 3: 30, 4: 24 })[days[i].wd] || 20 : 0) + rem * (12 + 30 * frac) + pol * 6 + p.diff * (1 - frac) * 0.8 + Math.min(i - p.last, 12) * 0.35;
-      if (rem > 0 && p.done === 0) { var dl = deadline(p); v += 60 * Math.pow(Math.min(1, i / dl), 3); }      // never started, and its deadline is coming
+      if (rem > 0 && p.done === 0 && p.type !== 'bit') { var dl = deadline(p); v += 60 * Math.pow(Math.min(1, i / dl), 3); }      // never started, and its deadline is coming
+      if (p.type === 'bit' && rem > 0) v += 30 + (p.parent ? Math.min(i - p.parent.last, 10) * 2 : 0);      // its scene or dance has been staged: now the moment
       if (p.big && rem === 0) v += Math.min(i - p.last, 10) * 0.6;      // the hardest numbers keep coming back
       if (rem === 0 && pol === 0) v -= 8;      // done: only as a review
       v -= varietyCost(people, p.kind, i) * 3;
@@ -107,7 +119,7 @@
     }
     function callable(p, free, i) {      // who in this piece can come: free now, and not a third day of this kind
       var ok = p.people.filter(function (c) { return free.indexOf(c) >= 0 && !third(c, i, p.kind); });
-      if (p.type === 'scene' && ok.length < p.people.length) return null;      // a scene needs every actor
+      if ((p.type === 'scene' || p.type === 'bit') && ok.length < p.people.length) return null;      // a scene (or a moment) needs every actor
       if (ok.length < Math.min(2, p.people.length) || ok.length < p.people.length * 0.6) return null;
       return ok;
     }
@@ -222,6 +234,7 @@
         var wk = out.filter(function (x) { return x.kind === 'work' && weekOf(x.day - 1) === weekOf(i); });
         /* a song is run as the whole number (sung and danced) once its parts are half learned; otherwise the part that was worked */
         var runItem = function (p) {
+          if (p.type === 'bit') return null;      // runs with its scene
           if (p.type === 'scene') return p.done >= p.learn * 0.5 ? p : null;
           var whole = pieces.find(function (q) { return q.song === p.song && q.kind === 'D' && !q.part; });
           var parts = pieces.filter(function (q) { return q.song === p.song && q.part; });
