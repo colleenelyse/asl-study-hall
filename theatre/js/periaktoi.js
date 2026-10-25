@@ -7,7 +7,7 @@
   'use strict';
   var T = window.T, PK = window.PK, esc = T.esc, app = document.getElementById('app');
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
-  var V = { zoom: 'towers', view: 'split', labels: true, spikes: true, paths: true, sweep: true, rim: true, routes: true, clear: false, speed: 1, loop: false };
+  var V = { pics: true, zoom: 'towers', view: 'split', labels: true, spikes: true, paths: true, sweep: true, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
@@ -63,10 +63,12 @@
       var mine = versions(list, id), pick = P.art && P.art[id]; a.versions = mine;      // a face can have several versions (D3-Academic-Corridor.jpg, D3-Academic-Corridor-v2.jpg…): her pick, else the plain one
       var f = mine.indexOf(pick) >= 0 ? pick : mine.find(function (n) { return n.indexOf(PK.FILES[id] + '.') === 0; }) || mine[0]; if (!f) return; a.file = f;
       if (a.versions.length > 1 && sel && document.getElementById('pkRight')) draw();
-      var im = new Image(); im.onload = function () { a.img = fit(im, a); a.real = true; drawViews(); }; im.src = 'img/set/' + f;
+      var im = new Image(); im.onload = function () { a.img = fit(im, a); a.real = true; symbolArt(id); drawViews(); }; im.src = 'img/set/' + f;
     });
     return a;
   }
+  function artUrl(id) { var a = art(id); return a.img.tagName === 'IMG' ? a.img.src : (a.url && a.urlFor === a.img ? a.url : (a.urlFor = a.img, a.url = a.img.toDataURL('image/jpeg', 0.7))); }
+  function symbolArt(id) { var im = document.getElementById('pkArtImg-' + id); if (im) im.setAttribute('href', artUrl(id)); }
   function fit(im, a) {      // never stretched: a picture that is not 1:2 sits at its true shape on a dark face, and is flagged
     var r = im.width / im.height; a.ratio = r; a.off = Math.abs(r - 0.5) > 0.01;
     if (!a.off) return im;
@@ -140,6 +142,7 @@
     out.push('<line x1="' + (-c) + '" y1="' + (-s.curtain) + '" x2="' + c + '" y2="' + (-s.curtain) + '" class="pk-drape"/><text x="' + (-c + 0.6) + '" y="' + (-s.curtain - 0.35) + '" class="pk-t red">Main curtain (grand drape), ' + PK.ft(s.curtain) + ' upstage of PL</text>');
     out.push('<line x1="' + (-c - s.wing) + '" y1="0" x2="' + (-c) + '" y2="0" class="pk-wall"/><line x1="' + c + '" y1="0" x2="' + (c + s.wing) + '" y2="0" class="pk-wall"/>');
     out.push('<text x="' + (-c - 0.4) + '" y="-0.6" class="pk-t dim" text-anchor="end">proscenium</text><text x="' + (c + 0.4) + '" y="-0.6" class="pk-t dim">proscenium</text>');
+    out.push('<defs>' + ['A', 'B', 'C', 'D'].map(function (t) { return [1, 2, 3].map(function (k) { var id = t + k; return '<symbol id="pkArt-' + id + '" viewBox="0 0 240 480" preserveAspectRatio="xMidYMid slice"><image id="pkArtImg-' + id + '" href="' + artUrl(id) + '" width="240" height="480" preserveAspectRatio="xMidYMid slice"/></symbol>'; }).join(''); }).join('') + '</defs>');
     out.push('<g id="pkZones"></g>');
     out.push('<text x="0" y="' + (s.apron + 2.6) + '" class="pk-t big" text-anchor="middle">▼ AUDIENCE (downstage edge) ▼</text>');
     out.push('<text x="' + (b.x0 + 0.8) + '" y="' + (s.apron + 2.6) + '" class="pk-t">STAGE RIGHT (A side) · house left</text><text x="' + (b.x1 - 0.8) + '" y="' + (s.apron + 2.6) + '" class="pk-t" text-anchor="end">STAGE LEFT (D side) · house right</text>');
@@ -187,8 +190,12 @@
       var q = sh.towers[t], g = PK.geom(P, t, q, s), dim = sh.lit(t), isSel = sel === t;
       if (V.sweep || isSel && !anim) out.push('<circle class="pk-sweep' + (g.sweep > Rr + 0.01 ? ' rim' : '') + '" cx="' + q.x + '" cy="' + (-q.y) + '" r="' + g.sweep + '"><title>' + t + ' sweeps this circle when it turns' + (g.sweep > Rr + 0.01 ? ' (its rim included)' : '') + '</title></circle>');
       out.push('<g class="pk-tower' + (isSel ? ' sel' : '') + '" data-t="' + t + '"><polygon points="' + g.poly.map(pt).join(' ') + '" fill="' + mix(COL[t], dim) + '" class="pk-body"/>');
+      if (V.pics) g.faces.forEach(function (f) {      // a strip of the face's own picture along the outside of its edge (cropped from the middle, never stretched)
+        var L = Math.hypot(f.r.x - f.l.x, f.r.y - f.l.y), ang = Math.atan2(-(f.r.y - f.l.y), f.r.x - f.l.x) * 180 / Math.PI;
+        out.push('<use href="#pkArt-' + f.id + '" x="0" y="0.06" width="' + L + '" height="0.7" transform="translate(' + f.l.x + ',' + (-f.l.y) + ') rotate(' + ang + ')" opacity="' + (1 - dim * 0.7) + '" class="pk-pic"/>');
+      });
       g.faces.forEach(function (f) {
-        var toAud = Math.abs(f.a) < 89.5, lx = f.c.x + f.n.x * 0.75, ly = f.c.y + f.n.y * 0.75;
+        var toAud = Math.abs(f.a) < 89.5, lo = V.pics ? 1.15 : 0.75, lx = f.c.x + f.n.x * lo, ly = f.c.y + f.n.y * lo;
         out.push('<line data-face="' + f.id + '" x1="' + f.l.x + '" y1="' + (-f.l.y) + '" x2="' + f.r.x + '" y2="' + (-f.r.y) + '" class="pk-face' + (toAud ? ' aud' : '') + '"/>');
         out.push('<line data-face="' + f.id + '" x1="' + f.l.x + '" y1="' + (-f.l.y) + '" x2="' + f.r.x + '" y2="' + (-f.r.y) + '" class="pk-hit"/>');
         if (V.labels) out.push('<text x="' + lx + '" y="' + (-ly + 0.25) + '" class="pk-t face' + (toAud ? ' aud' : '') + '" text-anchor="middle">' + f.id + '</text>');
@@ -349,7 +356,7 @@
       '<div class="pk-f">Part in the scene' + seg('role', ['featured', 'supporting', 'masking'], ['Featured', 'Supporting', 'Masking / dark']) + '</div>' +
       '<div class="pk-f">Wheels' + seg('lock', [true, false], ['Locked', 'Rolling']) + '</div>' +
       '<details' + ([1, 2, 3].some(function (k) { return (art(t + k).versions || []).length > 1; }) ? ' open' : '') + '><summary>Faces on ' + t + '</summary><ul class="pk-faces">' + [1, 2, 3].map(function (k) { var A = art(t + k), id = t + k;
-        return '<li><b>' + id + '</b> ' + esc(PK.FACES[id]) + (A.real ? (A.off ? ' <b class="pk-bad">⚠ this picture is ' + (Math.round(A.ratio * 100) / 100) + ' : 1, not 1:2; shown without stretching. Re-export it at 1:2 (e.g. 1200 × 2400).</b>' : '') : ' <i>(placeholder art)</i>') + ((A.versions || []).length > 1 ? '<br>Version <select data-art="' + id + '">' + A.versions.map(function (f, i) { return '<option value="' + esc(f) + '"' + (f === A.file ? ' selected' : '') + '>' + (i + 1) + ': ' + esc(f.replace(PK.FILES[id], '').replace(/^-/, '').replace(/\.\w+$/, '') || 'main') + '</option>'; }).join('') + '</select>' : '') + '</li>'; }).join('') + '</ul>' +
+        return '<li><b>' + id + '</b> ' + esc(PK.FACES[id]) + (A.real && /concept/.test(A.file || '') ? ' <i>(concept stand-in until your final arrives)</i>' : '') + (A.real ? (A.off ? ' <b class="pk-bad">⚠ this picture is ' + (Math.round(A.ratio * 100) / 100) + ' : 1, not 1:2; shown without stretching. Re-export it at 1:2 (e.g. 1200 × 2400).</b>' : '') : ' <i>(placeholder art)</i>') + ((A.versions || []).length > 1 ? '<br>Version <select data-art="' + id + '">' + A.versions.map(function (f, i) { return '<option value="' + esc(f) + '"' + (f === A.file ? ' selected' : '') + '>' + (i + 1) + ': ' + esc(f.replace(PK.FILES[id], '').replace(/^-/, '').replace(/\.\w+$/, '') || 'main') + '</option>'; }).join('') + '</select>' : '') + '</li>'; }).join('') + '</ul>' +
       '<p class="pk-help small">Face order around ' + t + ': ' + (w ? '1 → 2 → 3 go <b>' + w + '</b> seen from above (confirmed).' : 'taken from your triangle diagram (' + (P.towers[t].wind === 'cw' ? 'clockwise' : 'counterclockwise') + '); not checked on the real tower yet. Confirm it in Stage & towers.') + '</p></details></div>';
   }
   function tablePanel(id) {
@@ -680,7 +687,7 @@
       '<span class="pk-gap"></span><div class="pk-seg"><button data-view="over">Bird’s-eye</button><button data-view="aud">Audience</button><button data-view="crew">Crew</button><button data-view="split">All three</button><button data-view="ledger">Ledger</button></div>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
-      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
+      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
       '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div>' +
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +
