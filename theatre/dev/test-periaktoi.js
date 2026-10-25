@@ -59,4 +59,10 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   const a = Q.scenes[0], b = Q.scenes[1];
   ok(b.same === 's1' && b.sub && JSON.stringify(a.towers) === JSON.stringify(b.towers), 'scene 1 is 1a and 1b: the same set');
   b.towers.A.lit = 'low'; PK.applyLinks(Q, b); ok(a.towers.A.lit === 'full' && b.towers.A.lit === 'low', '1a and 1b keep their own lighting'); }
+// lighting areas (her drawing, 2026-10-25)
+{ const Q = PK.fresh(), sc = Q.scenes[2];
+  ok(Q.lights.length === 7 && ['sr', 'left', 'center', 'right', 'sl', 'allL', 'allR'].every(id => Q.lights.some(a => a.id === id)), 'seven lighting areas from her drawing');
+  PK.lineUp(Q, sc, 'home'); sc.areas = ['left']; PK.lightTowers(Q, sc);
+  ok(sc.towers.A.lit === 'full' && sc.towers.D.lit === 'dark', 'only the left area up: A is lit, D goes dark');
+  sc.areas = ['allR']; PK.lightTowers(Q, sc); ok(sc.towers.D.lit === 'full' && sc.towers.C.lit === 'full' && sc.towers.A.lit === 'dark', 'all of right lights C and D'); }
 process.exit(bad ? 1 : 0);

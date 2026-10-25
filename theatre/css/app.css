@@ -724,3 +724,7 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-wface.on { box-shadow: 0 0 0 2px #ffcf6b inset; background: #3a2d10; }
 .pk-wcol button.pk-mini.on { background: #2f6b3a; color: #fff; }
 @media (max-width: 760px) { .pk-wgrid { grid-template-columns: repeat(2, 1fr); } .pk-setup-faces { grid-template-columns: 1fr; } .pk-setup-lineup { grid-template-columns: 1fr; } }
+.pk-setup-area { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr) auto; gap: 8px; align-items: end; background: #221e30; border-radius: 10px; padding: 8px 10px; margin: 8px 0; }
+.pk-setup-area .pk-f { font-size: 12px; margin: 0; } .pk-setup-area input { width: 100%; }
+.pk-areas button.on { background: #6b5a1c; color: #fff3cf; border-color: #ffd25c; }
+@media (max-width: 760px) { .pk-setup-area { grid-template-columns: 1fr 1fr; } }
