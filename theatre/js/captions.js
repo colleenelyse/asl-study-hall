@@ -727,5 +727,7 @@
     timeline: function (cue) { var o = opt(); o.lead = Math.max(0.5, (+o.lead || 0) - 0.5); return songTimeline(cue, o, true); },
     keyOf: keyOf, ease: ease, SCROLL: SCROLL, fonts: fontsReady
   };
-  T.Captions = { perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, needsHelp: needsHelp, helpO: helpO, HELP_CUE: HELP_CUE, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  /* the show runner (js/caprun.js) draws live with the same code */
+  var live = { cv: cv, cvP: cvP, W: W, H: H, PS: PS, audience: drawAudience, performer: drawPerformer, scroll: drawScroll, at: at, firstWords: firstWords, keyOf: keyOf, ease: ease, SCROLL: SCROLL, fonts: fontsReady };
+  T.Captions = { live: live, perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, needsHelp: needsHelp, helpO: helpO, HELP_CUE: HELP_CUE, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();

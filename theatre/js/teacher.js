@@ -187,6 +187,7 @@
       ['rehearse', t('#/teacher/partners', 'sched', 'Partner classes', esc(T.partnersSummary ? T.partnersSummary() : 'Sessions with other classes, and calendar invitations'))],
       ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines as ElevenLabs sound files for an AAC device')],
       ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],
+      ['tech', (T.show.script ? t('#/teacher/caprun', 'bulb', 'Run the captions', T.ls('capRun') === '1' ? 'This laptop is ready: open the runner' : 'One laptop, one operator, no QLab: get it ready') : '')],
       ['tech', (T.show.script ? t('#/teacher/captedit', 'book', 'Edit the captions', T.show.captionDoc ? 'Your edited caption script' : 'Fix words, who says it, missing lines') : '')],
       ['script', t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when')],
       ['costumes', t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes')],

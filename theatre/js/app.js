@@ -401,6 +401,7 @@
     if (page === 'teacher') return T.routes.teacher(parts.slice(1));
     if (!T.show) return unlockPage();
     if (applySignin()) return;
+    if (page === 'captions-run' && T.runCaptions) return T.runCaptions();      // the caption runner (js/caprun.js): no character to pick, works offline
     if (!T.me && page !== 'settings') return whoPage(page === 'who' ? parts.slice(1) : []);      // keeps #/who/character (pick a character) working before anyone is picked
     if (!T.passAllows(page)) page = 'home';
     var fn = { '': homePage, home: homePage, who: whoPage, lines: linesPage, schedule: schedulePage, songs: songsPage, song: songPage, costumes: costumesPage, story: storyPage, settings: settingsPage, unlock: unlockPage, listen: listenPage }[page] || (T.studentPages || {})[page];
