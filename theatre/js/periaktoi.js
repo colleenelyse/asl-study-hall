@@ -7,7 +7,7 @@
   'use strict';
   var T = window.T, PK = window.PK, esc = T.esc, app = document.getElementById('app');
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
-  var V = { proj: 'flat', pics: true, zoom: 'towers', view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
+  var V = { proj: 'real', pics: true, zoom: 'towers', view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
@@ -22,6 +22,11 @@
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
+    PK.TABLES.forEach(function (id) { var t = P.tables && P.tables[id]; if (t && !t.model && t.open.l === 8) {      // the school's real tables: Sico 10 ft stool tables
+      var f = PK.fresh().tables[id]; t.model = f.model; t.open = f.open; t.seats = f.seats; t.seatH = f.seatH; t.stand.model = false; t.stand.open = false;
+      var u = P.spikes && P.spikes['CF-UNITED']; if (u && u[id] && Math.abs(Math.abs(u[id].x) - 4) < 1e-6) u[id].x = (u[id].x < 0 ? -1 : 1) * 5;
+      var sp = P.spikes && P.spikes['CF-SEPARATE']; if (sp && sp[id] && Math.abs(sp[id].y + 10.5) < 1e-6) sp[id].y = -11.5; if (u && u[id] && Math.abs(u[id].y + 14) < 1e-6) u[id].y = -15;
+      P.scenes.forEach(function (sc) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via[0]) { q.via[0].x = (id === 'T1' ? -7 : 9); q.via[0].y = -15; } }); } });
     var s1 = P.scenes[0]; if (s1 && s1.name === 'East High / New Year’s Eve') { var f1 = PK.fresh().scenes[0]; s1.name = f1.name; s1.notes = f1.notes; }      // scene 1 is the East High preset
     if (P.practicals && P.practicals['A2-clock'] && P.practicals['A2-clock'].w === 0.77) { P.practicals['A2-clock'].w = 1; P.practicals['A2-clock'].h = 1; }      // a 12″ clock (her production notes)
     P.scenes.forEach(function (sc) { if (sc.id === 's13' && !(sc.items || []).some(function (it) { return it.id === 'bench'; })) (sc.items = sc.items || []).push({ id: 'bench', kind: 'prop', name: 'Locker-room bench (mobile)', x: sc.towers.C.x, y: -6, w: 6, d: 1.25, rot: 0 }); });      // the new default: turn where there's room
@@ -225,6 +230,14 @@
   /* ---------- audience and crew views (canvas, simple perspective from the same data) ---------- */
   function front(cv, crew) {
     if (!cv) return;
+    var host = cv.parentNode, real = V.proj === 'real' && window.PK3D && !V.no3d;
+    host.querySelectorAll('.pk3d').forEach(function (x) { x.style.display = real ? '' : 'none'; }); cv.style.display = real ? 'none' : '';
+    if (real) {      // the realistic 3D view (js/periaktoi-3d.js, three.js)
+      var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
+      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
+        artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, fallback: function () { V.no3d = true; drawViews(); } });
+      return;
+    }
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
     var c = s.prosc / 2, whole = V.zoom === 'stage', reach = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c ? Math.abs(x.towers[t].x) : 0; })); })), halfW = whole ? c + s.sideDeck + 1 : Math.max(14, reach + PK.R(s) + 1);      // the towers view fits this scene and the one before it (so a change stays in frame)
     var camY = crew ? s.curtain + s.crew : -(s.apron + s.house), sign = crew ? -1 : 1, line = PK.towerLine(scene());
@@ -732,7 +745,7 @@
       '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label></span>' +
       '<span class="pk-gap"></span><div class="pk-seg pk-views"><button data-view="aud">From the audience</button><button data-view="crew">From backstage</button><button data-view="over">From above</button><button data-view="split" class="pk-adv">All three</button><button data-view="ledger" class="pk-adv">Ledger</button></div>' +
       '<button id="pkMode" class="pk-mode">' + (V.simple ? '✎ Edit' : '✓ Done editing') + '</button>' +
-      '<div class="pk-adv pk-advrow"><select id="pkProj" title="Audience and crew views"><option value="flat">Front views: true shape</option><option value="persp">Front views: perspective</option></select>' +
+      '<div class="pk-adv pk-advrow"><select id="pkProj" title="Audience and crew views"><option value="real">Front views: realistic 3D</option><option value="flat">Front views: true shape (exact widths)</option></select>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
       '<details class="pk-show"><summary>Show ▾</summary><div>' + [['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +

@@ -134,8 +134,9 @@
   var TABLES = ['T1', 'T2'];
   var TSTATE = { stored: 'Stored (folded)', preset: 'Preset (folded, near its entrance)', parked: 'Parked (folded, temporary)', deployed: 'Deployed (open, secured)' };
   var ZKIND = { upstage: 'Upstage storage', wing: 'Side wing', preset: 'Concealed preset', parking: 'Temporary parking' };
+  var SICO = 'Sico 10 ft mobile stool table (like SchoolExcess CST177): 10 ft × 30″ gray top, 29″ high, 12 navy stools 17″ high, chrome frame';      // the school's tables (Colleen 2026-10-25)
   function tableDefaults() {      // every size is a stand-in until the school's tables are measured; `stand` lists what has not been measured
-    var t = function (name, gap) { return { name: name, model: '', open: { l: 8, w: 2.5, h: 2.5 }, bench: 1.25, folded: { l: 5, w: 2.5, h: 6 }, clear: 0.5, crew: 2, openSecs: 20, closeSecs: 20, gap: gap, stand: { model: true, open: true, bench: true, folded: true, crew: true, secs: true } }; };
+    var t = function (name, gap) { return { name: name, model: SICO, open: { l: 10, w: 2.5, h: 29 / 12 }, seats: 12, seatH: 17 / 12, bench: 1.25, folded: { l: 5, w: 2.5, h: 6 }, clear: 0.5, crew: 2, openSecs: 20, closeSecs: 20, gap: gap, stand: { model: false, open: false, bench: true, folded: true, crew: true, secs: true } }; };
     return { T1: t('Table 1', 'BC'), T2: t('Table 2', 'BC') };      // long tables with attached benches; open width = tabletop + a bench each side
   }
   function towerLine(sc) { return TOWERS.reduce(function (a, t) { return a + sc.towers[t].y; }, 0) / 4; }
@@ -157,7 +158,7 @@
     return { pair: pair, x: (x0 + x1) / 2, y: (sc.towers[pair[0]].y + sc.towers[pair[1]].y) / 2, width: x1 - x0, need: spec.folded.w + 2 * spec.clear };
   }
   /* where a table travels in a change: straight, or through its gap when it crosses the towers' line */
-  function tableRoute(P, id, a, b, sc) {
+  function tableRoute(P, id, a, b, sc, v) {      // v: 0 = through the opening, then sideways at the spike's depth; 1 = sideways just in front of the towers, then straight to the spike
     if (b.via && b.via.length) return [{ x: a.x, y: a.y }].concat(b.via.map(function (p) { return { x: p.x, y: p.y }; }), [{ x: b.x, y: b.y }]);      // her own route
     if (Math.hypot(a.x - b.x, a.y - b.y) < 0.01) return [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
     var st = P.stage, c = st.prosc / 2, line = towerLine(sc);
@@ -173,7 +174,8 @@
     var from = head[head.length - 1], to = tail[0], mid = [];
     if ((from.y > line) !== (to.y > line) && P.tables[id].gap) {      // crossing the towers' line: through its opening
       var g = gapInfo(P, sc, id), up = from.y > line, back = Math.min(st.curtain - 0.6, Math.max(g.y + 2.6, line + 2.6)), front = g.y - r(st) - P.tables[id].folded.l / 2 - P.tables[id].clear - 0.5;      // straightened out before it enters the opening
-      mid = up ? [{ x: g.x, y: back }, { x: g.x, y: front }] : [{ x: g.x, y: front }, { x: g.x, y: back }];
+      var far = up ? to : from, deep = far.y < front - 0.01 ? [v ? { x: far.x, y: front } : { x: g.x, y: far.y }] : [];      // square corners, so it never cuts past a table already set
+      mid = up ? [{ x: g.x, y: back }, { x: g.x, y: front }].concat(deep) : deep.concat([{ x: g.x, y: front }, { x: g.x, y: back }]);
     }
     return head.concat(mid, tail);
   }
@@ -269,9 +271,18 @@
     (P.tables ? TABLES : []).forEach(function (id) {
       var a = from.tables && from.tables[id], b = to.tables && to.tables[id]; if (!a || !b) return;
       var open = a.state !== 'deployed' && b.state === 'deployed', fold = a.state === 'deployed' && b.state !== 'deployed';
-      var route = tableRoute(P, id, a, b, open ? to : from), len = 0, own = !!(b.via && b.via.length); for (var i = 1; i < route.length; i++) len += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y);
+      var route = tableRoute(P, id, a, b, open ? to : from, 0), len = 0, own = !!(b.via && b.via.length); for (var i = 1; i < route.length; i++) len += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y);
       var order = to.tableOrder || 'T1', span = order === 'together' ? [0, 1] : (order === id ? [0, 0.5] : [0.5, 1]);
       tmoves.push({ id: id, span: span, from: a, to: b, route: route, dist: len < 0.01 ? 0 : len, open: open, fold: fold, own: own, via: !own && route.some(function (p) { return Math.abs(p.y - towerLine(open ? to : from)) < 3 && Math.abs(p.x - gapInfo(P, open ? to : from, id).x) < 0.01; }) ? P.tables[id].gap : '' });
+    });
+    tmoves.forEach(function (tm) {      // pick the route shape that clears the towers and the other table (where it stands while this one moves)
+      if (!tm.dist || tm.own) return;
+      var sc = tm.open ? to : from, sol = solids(P, sc), spec = P.tables[tm.id];
+      var others = tmoves.filter(function (o) { return o.id !== tm.id; }).map(function (o) { var at = o.span[1] <= tm.span[0] ? o.to : o.span[0] >= tm.span[1] ? o.from : null; return at && tableFoot(P, o.id, at).poly; }).filter(Boolean);
+      var hits = function (route) { var n = 0, t2 = Object.assign({}, tm, { route: route, span: [0, 1] });
+        for (var k = 1; k < 60; k++) { var q = tableBetween(P, t2, k / 60), pad = tableFoot(P, tm.id, q, q.k).pad; sol.concat(others.map(function (p) { return { poly: p }; })).forEach(function (o) { if (polysOverlap(pad, o.poly)) n++; }); } return n; };
+      var r1 = tableRoute(P, tm.id, tm.from, tm.to, sc, 1), h0 = hits(tm.route), h1 = h0 ? hits(r1) : 0;
+      if (h0 && h1 < h0) { tm.route = r1; var L = 0; for (var i = 1; i < r1.length; i++) L += Math.hypot(r1[i].x - r1[i - 1].x, r1[i].y - r1[i - 1].y); tm.dist = L; }
     });
     var warn = [], roomAt = function (m, when) {      // nothing inside its turning circle at that end of its trip
       var at = m[when], sw = geom(P, m.t, at, st).sweep;
@@ -420,7 +431,7 @@
   }
   /* table spike presets: a marked spot AND direction for each table (tape color, arrow and table number on the floor) */
   function spikeDefaults(P) {
-    var t = P.tables.T1, L = t.open.l, y = -10.5;
+    var t = P.tables.T1, L = t.open.l, y = -11.5;      // 10-ft tables: their upstage ends 3 ft clear of B and C
     return {
       'CF-SEPARATE': { name: 'CF-SEPARATE', tape: 'blue', note: 'Scene 9, and scene 15 opening', T1: { x: -4.5, y: y, rot: 90 }, T2: { x: 4.5, y: y, rot: 90 } },
       'CF-UNITED': { name: 'CF-UNITED', tape: 'green', note: 'Scene 15, the long banquet table', T1: { x: -L / 2, y: y - 3.5, rot: 0 }, T2: { x: L / 2, y: y - 3.5, rot: 0 } }
