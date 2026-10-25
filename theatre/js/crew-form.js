@@ -12,8 +12,8 @@
 
   fetch(API + 'crew/form', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (f) {
     if (!f || !f.pub) { app.innerHTML = '<div class="card"><h2>Not open yet</h2><p>This form isn’t ready yet. Please check back soon, or ask the theatre teacher.</p></div>'; return; }
-    F = f; document.title = 'Tech Week Crew · ' + f.title; document.getElementById('title').textContent = 'Tech Week Crew';
-    if (!f.open) { app.innerHTML = '<div class="card"><h2>Thank you!</h2><p>Our crew is full for ' + esc(f.title) + '. Thank you for wanting to help!</p></div>'; return; }
+    F = f; document.title = 'Tech Week Crew application · ' + f.title; document.getElementById('title').textContent = 'Tech Week Crew application';
+    if (!f.open) { app.innerHTML = '<div class="card"><h2>Applications are closed</h2><p>We are not taking applications for the ' + esc(f.title) + ' crew right now. Thank you for wanting to help!</p></div>'; return; }
     draw();
   }, function () { app.innerHTML = '<div class="card"><h2>No connection</h2><p>The form could not load. Check the internet and try again.</p></div>'; });
 
@@ -26,8 +26,8 @@
   function draw() {
     var f = F;
     app.innerHTML =
-      '<div class="card"><h2>' + esc(f.title) + ': Tech Week Crew</h2><p>' + esc(f.intro) + '</p>' + (f.due ? '<p><b>Please answer by ' + esc(longDay(f.due)) + '.</b></p>' : '') +
-      '<p class="muted small">🔒 Your answers go only to the theatre teachers.</p></div>' +
+      '<div class="card"><h2>' + esc(f.title) + ': Tech Week Crew application</h2><p>' + esc(f.intro) + '</p>' + (f.due ? '<p><b>Please answer by ' + esc(longDay(f.due)) + '.</b></p>' : '') +
+      '<p class="muted small">🔒 Your application goes only to the theatre teachers.</p></div>' +
       '<div class="card"><h3>About you</h3>' +
       '<label class="f">Your first and last name <span class="need">*</span><input id="nm" maxlength="80" autocomplete="name" value="' + esc(a.name || '') + '"></label>' +
       '<label class="f">Grade<select id="gr">' + ['', '9', '10', '11', '12', 'Other'].map(function (g) { return '<option' + (a.grade === g ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select></label>' +
@@ -45,7 +45,8 @@
       '<label class="f">Food allergies or a special diet, for the crew dinners (optional)<input id="fo" maxlength="300" value="' + esc(a.food || '') + '"></label>' +
       '<label class="f">Anything else? (optional)<textarea id="cm" maxlength="600" style="min-height:80px">' + esc(a.comments || '') + '</textarea></label>' +
       '<label class="hp" aria-hidden="true">Leave this empty<input id="hp" tabindex="-1" autocomplete="off"></label>' +
-      '<p id="err" class="err" role="alert"></p><div class="row end"><button class="btn primary" id="send">Send my answers</button></div></div>';
+      '<p class="small">Applying doesn’t guarantee a spot on the crew. The theatre teachers will email you if you are chosen, or if we need you later.</p>' +
+      '<p id="err" class="err" role="alert"></p><div class="row end"><button class="btn primary" id="send">Send my application</button></div></div>';
 
     app.querySelectorAll('.q[data-q] .seg').forEach(function (seg) {
       var q = seg.closest('.q'), id = q.dataset.q;
@@ -97,12 +98,12 @@
     b.disabled = true; err.textContent = '';
     C.seal(F.pub, ans).then(function (box) { return fetch(API + 'crew/in', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ box: box }) }); })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || 'The server said ' + r.status); }); })
-      .then(function () { a.sent = new Date().toISOString(); ls('crewDraft', a); done(); }, function (e) { b.disabled = false; err.textContent = (e.message || String(e)) + ' Your answers are still here; try again.'; });
+      .then(function () { a.sent = new Date().toISOString(); ls('crewDraft', a); done(); }, function (e) { b.disabled = false; err.textContent = (e.message || String(e)) + ' Your application is still here; try again.'; });
   }
   function done() {
     window.scrollTo(0, 0);
-    app.innerHTML = '<div class="card"><h2>Thank you, ' + esc(String(a.name || '').split(/\s+/)[0]) + '! 🎭</h2><p>Your answers went to the theatre teachers. They will be in touch by email.</p>' +
-      '<p class="small">Need to change something? Open this page again on this device: your answers will be here, and sending again replaces the ones before.</p><button class="btn" id="again">Change my answers</button></div>';
+    app.innerHTML = '<div class="card"><h2>Thank you for applying, ' + esc(String(a.name || '').split(/\s+/)[0]) + '! 🎭</h2><p>Your application went to the theatre teachers. Not everyone is chosen right away, but we may call on you as the show comes together. If you are chosen, we will email you.</p>' +
+      '<p class="small">Need to change something? Open this page again on this device: your application will be here, and sending it again replaces the one before.</p><button class="btn" id="again">Change my application</button></div>';
     document.getElementById('again').onclick = draw;
   }
 })();

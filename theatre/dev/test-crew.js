@@ -24,8 +24,12 @@ let bad = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c)
   const t = C.tally(P, [s, { id: 'b', ans: { '2027-12-04': 'n' }, jobs: [] }], { '2027-12-04': 3 });
   ok(t[0].y === 1 && t[0].n === 1 && t[0].short && t[1].m === 1 && t[2].none === 1 && !t[1].short, 'gaps: can come / maybe / can’t / no answer, short against the number needed');
   ok(C.tally(P, [s, { id: 'b', ans: { '2027-12-04': 'y' }, jobs: [] }], {}, 'props')[0].y === 1, 'filter by a way to help');
-  const csv = C.csv(P, [s], { [s.id]: { name: 'Jamie Rivera', email: 'jr@school.org', srcText: 'Ms. Lee', why: a.why, story: '=HYPERLINK("x")', notFor: 'Being on stage', food: 'peanuts' } });
-  ok(csv.charCodeAt(0) === 0xfeff && /"Jamie Rivera"/.test(csv) && /"Maybe: work until 5"/.test(csv) && /"Yes, I can miss the whole day"/.test(csv) && /"A teacher recommended me: Ms. Lee"/.test(csv) && /"'=HYPERLINK/.test(csv) && /Being on stage/.test(csv), 'spreadsheet: one row each, reasons, Thursday wording, which teacher, formulas made safe');
+  const ts = C.tally(P, [s, { id: 'b', ans: { '2027-12-04': 'y' }, jobs: [] }, { id: 'c', ans: { '2027-12-04': 'y' }, jobs: [] }], { '2027-12-04': 2 }, '', { [s.id]: 'yes', b: 'later', c: 'yes' });
+  ok(ts[0].y === 3 && ts[0].sel === 2 && !ts[0].short && C.tally(P, [s], { '2027-12-04': 1 }, '', {})[0].short, 'gaps count only Selected applicants who can come');
+  ok(C.statusName('yes') === 'Selected' && C.statusName('later') === 'Maybe later' && C.statusName('no') === 'Not this time' && C.statusName() === 'Not decided', 'decisions: Selected / Maybe later / Not this time / Not decided');
+  ok(/Apply to help/.test(C.def().intro) && /can’t take everyone/.test(C.def().intro) && C.def().intro !== C.OLD_INTRO, 'the welcome words say it is an application and not everyone is chosen');
+  const csv = C.csv(P, [s], { [s.id]: { name: 'Jamie Rivera', email: 'jr@school.org', srcText: 'Ms. Lee', why: a.why, story: '=HYPERLINK("x")', notFor: 'Being on stage', food: 'peanuts', status: 'later', note: 'strong with props' } });
+  ok(csv.charCodeAt(0) === 0xfeff && /"Jamie Rivera"/.test(csv) && /"Maybe: work until 5"/.test(csv) && /"Yes, I can miss the whole day"/.test(csv) && /"A teacher recommended me: Ms. Lee"/.test(csv) && /"'=HYPERLINK/.test(csv) && /Being on stage/.test(csv) && /"Maybe later"/.test(csv) && /strong with props/.test(csv), 'spreadsheet: one row each, reasons, Thursday wording, which teacher, formulas made safe');
   if (globalThis.crypto && crypto.subtle) {
     const k = await C.newKeys(), box = await C.seal(k.pub, a);
     ok(!JSON.stringify(box).includes('Rivera') && (await C.open(k.priv, box)).story === a.story, 'sealed with the public key; only the private key opens it');

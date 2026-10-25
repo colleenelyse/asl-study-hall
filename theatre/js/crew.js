@@ -23,7 +23,9 @@
     'Backstage and green room supervision (for actors who are offstage)', 'Props', 'Front of house (ushers, programs, tickets and concessions sales)',
     'Photos or video (at the Saturday rehearsal and the weekday evening rehearsals)', 'Assistant stage manager', 'Program or poster design',
     'I don’t know, but I want to help!'].join('\n');
-  var DEF_INTRO = 'Our adaptive theatre class is putting on a musical, and we need a crew for tech week and show week. Tell us when you can come and how you would like to help. No experience needed!';
+  var OLD_INTRO = 'Our adaptive theatre class is putting on a musical, and we need a crew for tech week and show week. Tell us when you can come and how you would like to help. No experience needed!';
+  /* an application (Colleen 2026-10-25: "let's make this 'an application' to help with the understanding that not everyone will be called to service- but they might") */
+  var DEF_INTRO = 'Our adaptive theatre class is putting on a musical, and we are building a crew for tech week and show week. Apply to help! No experience needed. We can’t take everyone, so we will choose a crew that fits what the show needs. If you aren’t chosen at first, we may still call on you as the show comes together.';
   var SOURCES = [['ape', 'Adaptive PE'], ['art', 'Art'], ['cul', 'Culinary'], ['board', 'Theatre Board'], ['rec', 'A teacher recommended me'], ['other', 'Other']];
   var CHOICE = { y: 'I can be there', m: 'Maybe', n: 'I can’t' };
   var THU_CHOICE = { y: 'Yes, I can miss the whole day', m: 'Maybe', n: 'No, I can’t' };
@@ -81,30 +83,34 @@
   /* the show's copy: nothing private */
   function showCopy(a, at) { return { id: personId(a.email), short: shortName(a.name), at: at || '', src: a.src, ans: a.ans, jobs: a.jobs }; }
   function srcName(p, priv) { var s = SOURCES.find(function (x) { return x[0] === p.src; }); return s ? s[1] + (priv && priv.srcText ? ': ' + priv.srcText : '') : ''; }
-  /* per date: how many can come, maybe, can't, no answer; short = fewer "can come" than needed */
-  function tally(P, people, need, job) {
+  /* per date: how many can come, maybe, can't, no answer; sel = Selected applicants who can come (status from the vault);
+     short = fewer Selected who can come than needed */
+  function tally(P, people, need, job, status) {
+    status = status || {};
     var list = (people || []).filter(function (p) { return !job || (p.jobs || []).indexOf(job) >= 0; });
     return allDates(P).map(function (d) {
-      var c = { id: d.id, date: d.date, what: d.what, y: 0, m: 0, n: 0, none: 0, need: +((need || {})[d.id]) || 0 };
-      list.forEach(function (p) { var v = (p.ans || {})[d.id]; if (v) c[v]++; else c.none++; });
-      c.short = c.need > 0 && c.y < c.need; return c;
+      var c = { id: d.id, date: d.date, what: d.what, y: 0, m: 0, n: 0, none: 0, sel: 0, need: +((need || {})[d.id]) || 0 };
+      list.forEach(function (p) { var v = (p.ans || {})[d.id]; if (v) c[v]++; else c.none++; if (v === 'y' && status[p.id] === 'yes') c.sel++; });
+      c.short = c.need > 0 && c.sel < c.need; return c;
     });
   }
+  var statusName = function (st) { var x = STATUS.find(function (s) { return s[0] === (st || ''); }); return x ? x[1] : 'Not decided'; };
+  var STATUS = [['', 'Not decided'], ['yes', 'Selected'], ['later', 'Maybe later'], ['no', 'Not this time']];
   var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   function dayShort(d) { var x = new Date(d + 'T12:00:00'); return DOW[x.getDay()] + ' ' + (x.getMonth() + 1) + '/' + x.getDate(); }
   function csvCell(v) { v = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }
   /* the spreadsheet, made in the teacher's browser: one row per volunteer, A–Z */
   function csv(P, people, priv) {
     priv = priv || {}; var ds = allDates(P), jobs = P.jobs || [];
-    var head = ['Name', 'Grade', 'Email', 'Comes from'].concat(ds.map(function (d) { return dayShort(d.date) + ': ' + d.what; }), ['Ways to help', 'About them', 'Would NOT enjoy / not good at', 'Food allergies', 'Comments', 'Answered']);
+    var head = ['Name', 'Status', 'Grade', 'Email', 'Comes from'].concat(ds.map(function (d) { return dayShort(d.date) + ': ' + d.what; }), ['Ways to help', 'About them', 'Would NOT enjoy / not good at', 'Food allergies', 'Comments', 'Private note', 'Answered']);
     var rows = (people || []).slice().sort(function (a, b) { var x = (priv[a.id] || {}).name || a.short, y = (priv[b.id] || {}).name || b.short; return x.localeCompare(y); }).map(function (p) {
       var q = priv[p.id] || {};
-      return [q.name || p.short, q.grade || '', q.email || '', srcName(p, q)].concat(ds.map(function (d) { var v = (p.ans || {})[d.id], w = (q.why || {})[d.id]; return v ? (isThu(P, d.id) ? THU_CHOICE : CHOICE)[v] + (w ? ': ' + w : '') : 'No answer'; }),
-        [(p.jobs || []).map(function (j) { var x = jobs.find(function (y) { return y.id === j; }); return x ? x.name : ''; }).filter(Boolean).join('; '), q.story || '', q.notFor || '', q.food || '', q.comments || '', p.at ? String(p.at).slice(0, 10) : '']);
+      return [q.name || p.short, statusName(q.status), q.grade || '', q.email || '', srcName(p, q)].concat(ds.map(function (d) { var v = (p.ans || {})[d.id], w = (q.why || {})[d.id]; return v ? (isThu(P, d.id) ? THU_CHOICE : CHOICE)[v] + (w ? ': ' + w : '') : 'No answer'; }),
+        [(p.jobs || []).map(function (j) { var x = jobs.find(function (y) { return y.id === j; }); return x ? x.name : ''; }).filter(Boolean).join('; '), q.story || '', q.notFor || '', q.food || '', q.comments || '', q.note || '', p.at ? String(p.at).slice(0, 10) : '']);
     });
     return '﻿' + [head].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n');
   }
-  var core = { def: def, parseDates: parseDates, datesText: datesText, parseJobs: parseJobs, publicForm: publicForm, allDates: allDates, isThu: isThu, clean: clean, missing: missing,
+  var core = { statusName: statusName, OLD_INTRO: OLD_INTRO, STATUS: STATUS, def: def, parseDates: parseDates, datesText: datesText, parseJobs: parseJobs, publicForm: publicForm, allDates: allDates, isThu: isThu, clean: clean, missing: missing,
     personId: personId, shortName: shortName, showCopy: showCopy, srcName: srcName, tally: tally, dayShort: dayShort, csv: csv, SOURCES: SOURCES, CHOICE: CHOICE, THU_CHOICE: THU_CHOICE };
   /* sealing (browser and node 20+): seal with the public key; open with the private key */
   var te = new TextEncoder(), td = new TextDecoder();
@@ -138,7 +144,7 @@
   if (typeof document === 'undefined' || !window.T || !window.Store) return;
   var T = window.T, C = window.CrewCore, esc = T.esc, icon = T.icon, app = document.getElementById('app'), API = '/theatre/api/';
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
-  function S() { var c = T.show.crew = T.show.crew || {}; c.form = c.form || C.def(); c.need = c.need || {}; c.people = c.people || []; return c; }
+  function S() { var c = T.show.crew = T.show.crew || {}; c.form = c.form || C.def(); if (c.form.intro === C.OLD_INTRO) c.form.intro = C.def().intro; c.need = c.need || {}; c.people = c.people || []; return c; }      // the first wording becomes the application wording
   var formUrl = function () { return location.origin + '/theatre/crew/'; };
   var P = function () { return C.publicForm(S().form, T.O().title); };
   var jsonOf = function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('The server said ' + r.status)); return d; }); };
@@ -167,7 +173,7 @@
           good.forEach(function (g) {
             var s = C.showCopy(g.a, g.at), i = c.people.findIndex(function (p) { return p.id === s.id; });
             if (i >= 0) { s.guest = c.people[i].guest; c.people[i] = s; } else c.people.push(s);
-            pp[s.id] = { name: g.a.name, grade: g.a.grade, email: g.a.email, srcText: g.a.srcText, why: g.a.why, story: g.a.story, notFor: g.a.notFor, food: g.a.food, comments: g.a.comments };
+            var was = pp[s.id] || {}; pp[s.id] = { status: was.status || '', note: was.note || '', name: g.a.name, grade: g.a.grade, email: g.a.email, srcText: g.a.srcText, why: g.a.why, story: g.a.story, notFor: g.a.notFor, food: g.a.food, comments: g.a.comments };
           });
         }).then(function () { return good.length ? T.saveShow(good.length + ' new crew answer' + (good.length === 1 ? '' : 's')) : null; })
           .then(function () { return fetch(API + 'crew/in', { method: 'DELETE', headers: { 'x-proof': T.proof, 'content-type': 'application/json' }, body: JSON.stringify({ ids: got.map(function (g) { return g.id; }) }) }); })
@@ -181,14 +187,17 @@
     var priv = (vm.crew || {}).people || {}, Pf = P(), ds = C.allDates(Pf);
     var out = [];
     S().people.forEach(function (p) {
-      var q = priv[p.id]; if (!q || !q.email) return;
+      var q = priv[p.id]; if (!q || !q.email || q.status !== 'yes') return;      // only applicants she selected
       ds.forEach(function (d) { if ((p.ans || {})[d.id] === 'y') out.push({ to: q.email, name: q.name, date: d.date, title: 'Tech Week Crew', what: d.what, page: 'crew/' }); });
     });
     return out;
   };
 
   T.teacherPages = T.teacherPages || {};
-  var job = '', priv = {};
+  var job = '', show = '', priv = {};
+  var stOf = function (id) { return (priv[id] || {}).status || ''; };
+  var statusMap = function () { var m = {}; Object.keys(priv).forEach(function (id) { m[id] = priv[id].status || ''; }); return m; };
+  var stTag = function (st) { return '<span class="tag" style="' + (st === 'yes' ? 'background:var(--good);color:#fff' : st === 'no' ? 'background:var(--line)' : st === 'later' ? 'background:var(--warn-bg)' : '') + '">' + esc(C.statusName(st)) + '</span>'; };
   T.teacherPages.crew = function () {
     T.setBar('Tech Week Crew', '#/teacher');
     app.innerHTML = '<p class="muted">Opening…</p>';
@@ -198,29 +207,29 @@
   };
   function mark(v) { return v === 'y' ? '<span style="color:var(--good);font-weight:700" title="Can be there">✓</span>' : v === 'm' ? '<span style="color:var(--warn);font-weight:700" title="Maybe">?</span>' : v === 'n' ? '<span style="color:var(--bad);font-weight:700" title="Can’t">✕</span>' : '<span class="muted">·</span>'; }
   function draw() {
-    var c = S(), Pf = P(), ds = C.allDates(Pf), f = c.form, people = c.people.filter(function (p) { return !job || (p.jobs || []).indexOf(job) >= 0; });
+    var c = S(), Pf = P(), ds = C.allDates(Pf), f = c.form, people = c.people.filter(function (p) { return (!job || (p.jobs || []).indexOf(job) >= 0) && (!show || stOf(p.id) === (show === 'none' ? '' : show)); });
     people.sort(function (a, b) { return ((priv[a.id] || {}).name || a.short).localeCompare((priv[b.id] || {}).name || b.short); });
-    var t = C.tally(Pf, c.people, c.need, job);
+    var t = C.tally(Pf, c.people, c.need, job, statusMap());
     app.innerHTML =
-      '<div class="card"><h2>' + sym('🛠️') + 'Tech Week Crew questionnaire</h2><p>Volunteers from other classes tell you when they can come and how they would like to help. <b>No password:</b> anyone with the link can fill it in.</p>' +
+      '<div class="card"><h2>' + sym('🛠️') + 'Tech Week Crew applications</h2><p>Students apply to help with tech week and show week: when they can come and how they would like to help. <b>No password:</b> anyone with the link can apply. You choose the crew: mark each applicant Selected, Maybe later or Not this time. Nobody is emailed automatically.</p>' +
       '<p><a href="' + esc(formUrl()) + '" target="_blank" rel="noopener"><b>' + esc(formUrl()) + '</b></a></p><div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn small" id="cpy">Copy the link</button><a class="btn small" href="' + esc(formUrl()) + '" target="_blank" rel="noopener">Open the form</a></div>' +
-      '<label class="switch"><span><b>The form is open</b> (off: it says the crew is full)</span><input type="checkbox" id="opn"' + (f.open !== false ? ' checked' : '') + '></label>' +
+      '<label class="switch"><span><b>Applications are open</b> (off: the form says applications are closed)</span><input type="checkbox" id="opn"' + (f.open !== false ? ' checked' : '') + '></label>' +
       '<p class="muted small">' + sym('🔒') + 'Answers are locked in the volunteer’s browser so only Teacher mode can open them. Names, emails and what they write stay in the teacher-only list; the show keeps first name + last initial and the answers per date.</p></div>' +
 
-      '<div class="card"><h3>' + sym('📅') + 'Who can come, and gaps to fill</h3><p class="small">Type how many people you need on each date. Short dates are red.</p><div class="tblwrap"><table class="tbl"><thead><tr><th>Date</th><th>Can come</th><th>Maybe</th><th>Can’t</th><th>Need</th></tr></thead><tbody>' +
-      t.map(function (x) { return '<tr' + (x.short ? ' style="background:var(--bad-bg)"' : '') + '><td><b>' + esc(C.dayShort(x.date)) + '</b> <span class="small">' + esc(x.what) + '</span></td><td><b>' + x.y + '</b>' + (x.short ? ' <span class="tag" style="background:var(--bad);color:#fff">' + (x.need - x.y) + ' short</span>' : '') + '</td><td>' + x.m + '</td><td>' + x.n + '</td><td><input data-need="' + esc(x.id) + '" inputmode="numeric" maxlength="3" style="width:64px" value="' + (x.need || '') + '"></td></tr>'; }).join('') +
+      '<div class="card"><h3>' + sym('📅') + 'Who can come, and gaps to fill</h3><p class="small">Type how many people you need on each date. A date is red until enough <b>Selected</b> applicants can come.</p><div class="tblwrap"><table class="tbl"><thead><tr><th>Date</th><th>Selected, can come</th><th>All who can come</th><th>Maybe</th><th>Can’t</th><th>Need</th></tr></thead><tbody>' +
+      t.map(function (x) { return '<tr' + (x.short ? ' style="background:var(--bad-bg)"' : '') + '><td><b>' + esc(C.dayShort(x.date)) + '</b> <span class="small">' + esc(x.what) + '</span></td><td><b>' + x.sel + '</b>' + (x.short ? ' <span class="tag" style="background:var(--bad);color:#fff">' + (x.need - x.sel) + ' short</span>' : '') + '</td><td>' + x.y + '</td><td>' + x.m + '</td><td>' + x.n + '</td><td><input data-need="' + esc(x.id) + '" inputmode="numeric" maxlength="3" style="width:64px" value="' + (x.need || '') + '"></td></tr>'; }).join('') +
       '</tbody></table></div></div>' +
 
-      '<div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3 class="grow" style="margin:0">' + sym('👥') + 'Volunteers (' + c.people.length + ')</h3><label class="small">Way to help <select id="job"><option value="">Everyone</option>' + Pf.jobs.map(function (j) { var n = c.people.filter(function (p) { return (p.jobs || []).indexOf(j.id) >= 0; }).length; return '<option value="' + esc(j.id) + '"' + (job === j.id ? ' selected' : '') + '>' + esc(j.name.replace(/\s*\(.*\)$/, '')) + ' (' + n + ')</option>'; }).join('') + '</select></label>' +
-      '<button class="btn small noprint" id="csv">⬇ Spreadsheet</button><button class="btn small noprint" onclick="print()">' + icon('print') + 'Print</button><button class="btn small noprint" id="chk">Check for new answers</button></div>' +
+      '<div class="card"><div class="row" style="flex-wrap:wrap;gap:8px"><h3 class="grow" style="margin:0">' + sym('👥') + 'Applicants (' + c.people.length + ')</h3><label class="small">Show <select id="show">' + [['', 'Everyone'], ['yes', 'Selected'], ['later', 'Maybe later'], ['none', 'Not decided'], ['no', 'Not this time']].map(function (o) { var n = c.people.filter(function (p) { return !o[0] || stOf(p.id) === (o[0] === 'none' ? '' : o[0]); }).length; return '<option value="' + o[0] + '"' + (show === o[0] ? ' selected' : '') + '>' + o[1] + ' (' + n + ')</option>'; }).join('') + '</select></label><label class="small">Way to help <select id="job"><option value="">Everyone</option>' + Pf.jobs.map(function (j) { var n = c.people.filter(function (p) { return (p.jobs || []).indexOf(j.id) >= 0; }).length; return '<option value="' + esc(j.id) + '"' + (job === j.id ? ' selected' : '') + '>' + esc(j.name.replace(/\s*\(.*\)$/, '')) + ' (' + n + ')</option>'; }).join('') + '</select></label>' +
+      '<button class="btn small noprint" id="mails">Copy these emails</button><button class="btn small noprint" id="csv">⬇ Spreadsheet</button><button class="btn small noprint" onclick="print()">' + icon('print') + 'Print</button><button class="btn small noprint" id="chk">Check for new answers</button></div>' +
       (people.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Name</th>' + ds.map(function (d) { return '<th title="' + esc(d.what) + '">' + esc(C.dayShort(d.date)) + '</th>'; }).join('') + '<th>Ways to help</th></tr></thead><tbody>' +
         people.map(function (p) {
           var q = priv[p.id] || {};
-          return '<tr><td><button class="btn quiet small" data-who="' + esc(p.id) + '" style="padding:4px 6px;text-align:left"><b>' + esc(q.name || p.short) + '</b></button>' + (p.guest ? ' <span class="tag">on the cast list</span>' : '') + '<br><span class="muted small">' + esc(C.srcName(p, q)) + '</span></td>' +
+          return '<tr><td><button class="btn quiet small" data-who="' + esc(p.id) + '" style="padding:4px 6px;text-align:left"><b>' + esc(q.name || p.short) + '</b></button>' + ' ' + stTag(q.status) + (p.guest ? ' <span class="tag">on the cast list</span>' : '') + '<br><span class="muted small">' + esc(C.srcName(p, q)) + '</span>' + (q.note ? '<br><span class="small">📝 ' + esc(q.note.length > 60 ? q.note.slice(0, 60) + '…' : q.note) + '</span>' : '') + '</td>' +
             ds.map(function (d) { var w = (q.why || {})[d.id]; return '<td' + (w ? ' title="' + esc(w) + '"' : '') + '>' + mark((p.ans || {})[d.id]) + (w ? ' <span class="small">💬</span>' : '') + '</td>'; }).join('') +
             '<td class="small">' + (p.jobs || []).map(function (j) { var x = Pf.jobs.find(function (y) { return y.id === j; }); return x ? esc(x.name.replace(/\s*\(.*\)$/, '')) : ''; }).filter(Boolean).join(', ') + '</td></tr>';
         }).join('') + '</tbody></table></div><p class="muted small">✓ can be there · ? maybe · ✕ can’t · 💬 they wrote why. Tap a name for everything they wrote.</p>'
-        : '<p class="muted">' + (job ? 'No one picked this yet.' : 'No answers yet. Share the link with the adaptive PE, art and culinary teachers and the Theatre Board.') + '</p>') + '</div>' +
+        : '<p class="muted">' + (job || show ? 'No one here yet.' : 'No applications yet. Share the link with the adaptive PE, art and culinary teachers and the Theatre Board.') + '</p>') + '</div>' +
 
       '<details class="card noprint"><summary><b>' + sym('✏️') + 'The questions</b></summary>' +
       '<label class="f">Welcome words at the top<textarea id="fi" maxlength="800">' + esc(f.intro) + '</textarea></label>' +
@@ -236,6 +245,12 @@
     document.getElementById('opn').onchange = function () { f.open = this.checked; publish().then(function () { return T.saveShow(f.open ? 'The crew form is open' : 'The crew form is closed'); }).catch(function (e) { T.toast(e.message || String(e), 6000); }); };
     app.querySelectorAll('[data-need]').forEach(function (inp) { inp.onchange = function () { var v = Math.max(0, Math.min(200, parseInt(inp.value, 10) || 0)); if (v) c.need[inp.dataset.need] = v; else delete c.need[inp.dataset.need]; T.saveShow('Saved').then(draw); }; });
     document.getElementById('job').onchange = function () { job = this.value; draw(); };
+    document.getElementById('show').onchange = function () { show = this.value; draw(); };
+    document.getElementById('mails').onclick = function () {      // to email the people shown, by hand (Colleen writes to them herself)
+      var list = people.map(function (p) { return (priv[p.id] || {}).email; }).filter(Boolean).join(', ');
+      if (!list) { T.toast('No emails here'); return; }
+      (navigator.clipboard ? navigator.clipboard.writeText(list) : Promise.reject()).then(function () { T.toast(people.length + ' email' + (people.length === 1 ? '' : 's') + ' copied: paste them into an email'); }, function () { T.dialog('<h2>Emails</h2><textarea style="width:100%;min-height:120px" readonly>' + esc(list) + '</textarea><div class="row end"><button class="btn primary" id="mx">Close</button></div>', function (d) { d.querySelector('#mx').onclick = function () { d.close(); }; }); });
+    };
     document.getElementById('csv').onclick = function () {
       var url = URL.createObjectURL(new Blob([C.csv(Pf, c.people, priv)], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
       a.href = url; a.download = 'tech-week-crew-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
@@ -256,6 +271,8 @@
     if (!p) return;
     var q = priv[p.id] || {}, Pf = P(), c = S();
     var d = T.dialog('<h2>' + esc(q.name || p.short) + '</h2><p class="small">' + esc([q.grade ? 'Grade ' + q.grade : '', C.srcName(p, q), q.email].filter(Boolean).join(' · ')) + (p.at ? '<br><span class="muted">Answered ' + esc(new Date(p.at).toLocaleDateString()) + '</span>' : '') + '</p>' +
+      '<div class="noprint" style="background:var(--hi);padding:10px 12px;border-radius:12px;margin:8px 0"><b>Your decision</b> <span class="muted small">(only teachers see this)</span><div class="seg" role="group" id="pst" style="margin:6px 0">' + C.STATUS.map(function (o) { return '<button type="button" data-st="' + o[0] + '" aria-pressed="' + ((q.status || '') === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>' +
+      '<label class="f" style="margin:6px 0">Private note<textarea id="pnote" maxlength="600" style="min-height:70px">' + esc(q.note || '') + '</textarea></label><div class="row end"><button class="btn small primary" id="psv">Save</button></div></div>' +
       '<h3>When they can come</h3><ul>' + C.allDates(Pf).map(function (x) { var a = (p.ans || {})[x.id], w = (q.why || {})[x.id]; return '<li>' + mark(a) + ' <b>' + esc(C.dayShort(x.date)) + '</b> ' + esc(x.what) + (a ? ': ' + esc((C.isThu(Pf, x.id) ? C.THU_CHOICE : C.CHOICE)[a]) : ': no answer') + (w ? '<br><i>“' + esc(w) + '”</i>' : '') + '</li>'; }).join('') + '</ul>' +
       '<h3>Ways to help</h3><p>' + ((p.jobs || []).map(function (j) { var x = Pf.jobs.find(function (y) { return y.id === j; }); return x ? esc(x.name) : ''; }).filter(Boolean).join('<br>') || '<span class="muted">None ticked</span>') + '</p>' +
       '<h3>About them</h3><p style="white-space:pre-wrap">' + esc(q.story || '') + '</p>' +
@@ -264,8 +281,15 @@
       '<div class="row end noprint" style="flex-wrap:wrap;gap:8px"><button class="btn" id="pdel">Delete</button>' + (p.guest ? '' : '<button class="btn" id="pgu">Add to the cast list as a Guest</button>') + '<button class="btn" onclick="print()">' + icon('print') + 'Print</button><button class="btn primary" id="px">Close</button></div>' +
       (p.guest ? '' : '<p class="muted small noprint">A Guest is on the call board and in attendance only on run-through, tech, dress and show days.</p>'), function (dl) {
       dl.querySelector('#px').onclick = function () { dl.close(); };
+      var st = q.status || '';
+      dl.querySelectorAll('#pst button').forEach(function (b) { b.onclick = function () { st = b.dataset.st; dl.querySelectorAll('#pst button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }; });
+      dl.querySelector('#psv').onclick = function () {
+        var note = dl.querySelector('#pnote').value.trim().slice(0, 600);
+        T.withVault(function (V) { var vc = V.extra.crew = V.extra.crew || {}, pp = vc.people = vc.people || {}; pp[p.id] = Object.assign(pp[p.id] || {}, { status: st, note: note }); })
+          .then(function () { priv[p.id] = Object.assign(priv[p.id] || {}, { status: st, note: note }); return T.saveShow((q.name || p.short) + ': ' + C.statusName(st)); }).then(function () { dl.close(); draw(); }, function (e) { T.toast(e.message || String(e), 6000); });
+      };
       dl.querySelector('#pdel').onclick = function () {
-        if (!confirm('Delete ' + (q.name || p.short) + '’s answers?')) return;
+        if (!confirm('Delete ' + (q.name || p.short) + '’s application?')) return;
         c.people = c.people.filter(function (x) { return x.id !== p.id; });
         T.withVault(function (V) { var vc = V.extra.crew || {}; if (vc.people) delete vc.people[p.id]; }).then(function () { return T.saveShow('Deleted'); }).then(function () { delete priv[p.id]; dl.close(); draw(); });
       };
