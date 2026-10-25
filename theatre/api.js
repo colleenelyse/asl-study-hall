@@ -24,6 +24,8 @@
    - theatre:board:<id>  [{ id, at, box }]: a group's messages (the Company dinner plan: who brings what, and the families' chat), sealed with the
      show key on the device. Anyone may add one (sealed, small, limited per address; 300 per board); everyone with the app reads them; only the
      teacher password removes them (Colleen 2026-10-24: families splitting the cost of a Company dinner talk to one another in the app).
+   - theatre:crewform / theatre:crewin  the Tech Week Crew questionnaire (no password): its questions and the teacher's public key, and the answers
+     sealed with that key (see crew/form below).
    Saving needs the teacher password: the browser sends PBKDF2(teacherPw, vsalt) as proof; the Worker compares SHA-256 of it with vhash.
    The first save sets vsalt/vhash, only while none exists (and with the THEATRE_SETUP secret, if one is set). */
 /* first-time setup needs Colleen's setup code (given to her privately; only its SHA-256 is here), or the THEATRE_SETUP secret if one is set */
@@ -126,6 +128,47 @@ export async function theatreApi(req, env, url, p) {
     let c = null; try { c = await googleClaims(String(body.token || ''), g.clientId, env); } catch (e) { c = null; }
     if (!c) return json({ error: 'Google sign-in did not work. Try again.' }, 403);
     return json({ more: (st.enc.more || []).filter(m => (g.gated || []).indexOf(m.id) >= 0) });
+  }
+  /* Tech Week Crew questionnaire (Colleen 2026-10-25: "the initial survey should be available without a password at all"): asl.cool/theatre/crew/.
+     crew/form: the questions (dates, ways to help, the intro words) and the teacher's PUBLIC key; anyone reads it, only the teacher password sets it.
+     crew/in: the answers, each sealed in the volunteer's browser with that public key (RSA-OAEP wraps a fresh AES-GCM key), so only the teacher's
+     private key (in the vault, teacher password) opens them. Anyone may add one (small, limited per address); only the teacher reads and clears them. */
+  if (rest === 'crew/form') {
+    if (req.method === 'GET') { const f = await env.LOCKS.get('theatre:crewform', 'json'); return f ? json(f) : json({ none: true }, 404); }
+    if (req.method !== 'POST') return json({ error: 'GET or POST' }, 405);
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    let body; try { const t = await req.text(); if (t.length > 20000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That form is too big or not readable.' }, 400); }
+    const bad = await proven(env, req, body.proof, st); if (bad) return bad;
+    const f = body.form;
+    if (!f || typeof f !== 'object' || !f.pub || f.pub.kty !== 'RSA' || !okStr(f.pub.n, 1000) || !okStr(f.pub.e, 10)) return json({ error: 'Something in the form was not right.' }, 400);
+    delete f.proof; await env.LOCKS.put('theatre:crewform', JSON.stringify(f));
+    return json({ ok: true });
+  }
+  if (rest === 'crew/in') {
+    const list = (await env.LOCKS.get('theatre:crewin', 'json')) || [];
+    if (req.method === 'POST') {
+      const ip = req.headers.get('cf-connecting-ip') || 'unknown', rk = 'theatre:crewrate:' + ip, n = +(await env.LOCKS.get(rk) || 0);
+      if (n >= NOTES_PER_HOUR) return json({ error: 'Too many answers from here this hour. Try again later.' }, 429);
+      if (!(await env.LOCKS.get('theatre:crewform'))) return json({ error: 'This form is not open yet.' }, 400);
+      let body; try { const t = await req.text(); if (t.length > 16000) throw 0; body = JSON.parse(t); } catch (e) { return json({ error: 'That is too long. Make the answers a little shorter.' }, 400); }
+      const b = body.box; if (!b || !okStr(b.k, 800) || !okStr(b.iv, 100) || !okStr(b.data, 15000)) return json({ error: 'Those answers were not readable.' }, 400);
+      if (list.length >= 400) return json({ error: 'The teacher has too many answers waiting. Please tell the teacher.' }, 507);
+      const id = crypto.randomUUID();
+      list.push({ id, at: new Date().toISOString(), box: { k: b.k, iv: b.iv, data: b.data } });
+      await env.LOCKS.put('theatre:crewin', JSON.stringify(list));
+      await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 3600 });
+      return json({ ok: true, id });
+    }
+    const st = await env.LOCKS.get('theatre:show', 'json'); if (!st || !st.vhash) return json({ error: 'The show is not set up yet.' }, 400);
+    const bad = await proven(env, req, req.headers.get('x-proof'), st); if (bad) return bad;
+    if (req.method === 'GET') return json({ answers: list });
+    if (req.method === 'DELETE') {      // the teacher took these into the vault
+      let ids; try { ids = JSON.parse(await req.text()).ids; } catch (e) { ids = null; }
+      if (!Array.isArray(ids)) return json({ error: 'Which answers?' }, 400);
+      await env.LOCKS.put('theatre:crewin', JSON.stringify(list.filter(x => ids.indexOf(x.id) < 0)));
+      return json({ ok: true });
+    }
+    return json({ error: 'GET, POST or DELETE' }, 405);
   }
   if (rest === 'check') {      // is this the teacher password? (Teacher mode asks once per visit)
     if (req.method !== 'POST') return json({ error: 'POST only' }, 405);

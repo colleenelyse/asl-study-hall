@@ -142,7 +142,7 @@
     { id: 'music', icon: 'songs', name: 'Music and voices', sub: 'Tracks, ElevenLabs voices, lines for AAC' },
     { id: 'tech', icon: 'bulb', name: 'Tech and the show', sub: 'Cues, stage manager script, mics, open captions' },
     { id: 'costumes', icon: 'shirt', name: 'Costumes', sub: 'Costumes and sizes' },
-    { id: 'family', icon: 'hand', name: 'Families and helpers', sub: 'Family portal, announcements, emails, volunteers' },
+    { id: 'family', icon: 'hand', name: 'Families and helpers', sub: 'Family portal, announcements, emails, volunteers, Tech Week Crew' },
     { id: 'app', icon: 'lock', name: 'The app', sub: 'View as, app use, passwords and backup' }
   ];
   var lastAll = null;
@@ -194,6 +194,7 @@
       ['family', t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>')],
       ['family', t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails')],
       ['costumes', t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough')],
+      ['family', t('#/teacher/crew', 'hand', 'Tech Week Crew', (function (n) { return n ? n + ' volunteer' + (n === 1 ? '' : 's') + ' answered' : 'Availability questionnaire for volunteers'; })(((T.show.crew || {}).people || []).length))],
       ['family', t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted')],
       ['music', t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks')],
       ['music', t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings')],

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1d1a2e">
+<title>Tech Week Crew</title><link rel="icon" type="image/png" sizes="512x512" href="../../img/logo-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  .q { border-top: 1px solid var(--line); padding: 12px 0; }
+  .miss { outline: 3px solid var(--bad); outline-offset: 4px; border-radius: 8px; }
+  .jobs label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-weight: 400; cursor: pointer; }
+  .jobs input, .src input { width: 26px; height: 26px; flex: none; }
+  .src label { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-weight: 400; cursor: pointer; }
+  .need { color: var(--bad); font-weight: 700; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+</style>
+</head>
+<body>
+<!-- asl.cool/theatre/crew: the Tech Week Crew questionnaire, open to anyone (no password). Answers are sealed in this browser with the teacher's
+     public key before they are sent; see js/crew.js. -->
+<header class="bar"><h1 id="title">Tech Week Crew</h1></header>
+<main id="app" tabindex="-1"><p class="muted">Loading…</p></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="../js/crew.js"></script>
+<script src="../js/crew-form.js"></script>
+</body>
+</html>

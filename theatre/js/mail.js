@@ -327,7 +327,7 @@
       var p = (b.posts || []).find(function (x) { return x.id === s.post; }), c = help[s.id]; if (!p || !p.when || p.closed || !c) return null;
       var it = p.kind === 'meal' && (p.items || []).find(function (i) { return i.id === s.item; });
       return { to: c.contact, name: c.name, date: p.when, title: p.title, what: it ? 'bringing ' + it.name : '', qty: s.qty, note: s.note, page: p.kind === 'meal' ? '#/help/dinner/' + p.id : '#/help' };
-    }).filter(Boolean);
+    }).filter(Boolean).concat(T.crewSignups ? T.crewSignups(vm) : []);      // crew.js: Tech Week Crew volunteers, each date they can come
     return C.reminders({ today: today, days: remDays(), horizon: 35, dates: remDates(), title: T.O().title, base: location.origin + '/theatre/', sign: M().sign || '', families: families, signups: signups });
   }
   /* forms still To do, for every Company member (portal.js: T.formDue, T.FORM_LABELS) */
@@ -348,7 +348,7 @@
     if (remBusy) return remBusy;
     remBusy = (T.portalPull ? T.portalPull().catch(function () {}) : Promise.resolve()).then(function () { return T.openVault(); }).then(function (V) {
       var m = V.extra.mail || {}; if (!m.url || !m.key) return null;
-      var ok = M().remOk || {}, today = todayS(), vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {}, student: m.students || {} }, list = remList(vm).filter(function (r) { return ok[r.gk] === 'yes' && r.on > today; });      // only what the teacher said yes to
+      var ok = M().remOk || {}, today = todayS(), vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {}, crew: V.extra.crew || {}, student: m.students || {} }, list = remList(vm).filter(function (r) { return ok[r.gk] === 'yes' && r.on > today; });      // only what the teacher said yes to
       list = list.concat(formList(vm));      // form reminders go out on their own (Colleen's choice): only to families whose form is still To do
       var h = JSON.stringify(list.map(function (r) { return r.id + r.on; }));
       if (!force && T.ls('remHash') === h) return null;
@@ -366,7 +366,7 @@
   function htmlOf(text) { return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:600px">' + esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, '<br>') + '</div>'; }
   function remState() {      // { vm, list (all reminders, unfiltered), waiting groups, suggestions }
     return T.openVault().then(function (V) {
-      var m = V.extra.mail || {}, vm = { url: m.url || '', key: m.key || '', portal: V.extra.portal || {}, help: V.extra.help || {} };
+      var m = V.extra.mail || {}, vm = { url: m.url || '', key: m.key || '', portal: V.extra.portal || {}, help: V.extra.help || {}, crew: V.extra.crew || {} };
       var list = remList(vm), today = todayS();
       return { vm: vm, list: list, waiting: C.remGroups(list, M().remOk, today, 7), sugg: C.suggest(T.show, remDates(), today, 60, M().sugOff) };
     });
