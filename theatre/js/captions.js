@@ -187,6 +187,147 @@
       return { put: function (path, blob) { zip.file(path, blob); return Promise.resolve(); }, done: function () { return zip.generateAsync({ type: 'blob' }).then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = title + '.zip'; document.body.appendChild(a); a.click(); a.remove(); return 'Downloaded ' + title + '.zip.'; }); } };
     });
   }
+  /* ---------- QLab (Colleen 2026-10-24: "build the QLab script that creates the caption cues automatically") ----------
+     Two files go in the captions folder: "QLab cue list.txt" (one cue a row, tab-separated) and "Build QLab cues.applescript", which she
+     opens in Script Editor and runs with her QLab workspace open. It makes:
+       • a cue list "Captions" for the caption operator: per spoken line a Group (fire all) holding a Stop for the caption before it and the
+         line's audience and performer pictures; at each song a Stop cue named "♪ … GO when the song starts" (clears the last caption);
+       • a cue list "Song captions": per song a Group holding its two videos, to drag into that song's audio group in her sound list, so the
+         captions start with the music.
+     Stages: the cues are named AUD … and PERF …; the script tries to set QLab 5 stages "Audience" and "Performer" and, if it cannot, says so
+     (select the AUD cues, set the stage once in the inspector). It never deletes or changes her other cues. */
+  function qlabData(cues) {
+    var clean = function (t) { return String(t || '').replace(/[\t\r\n]+/g, ' ').trim(); };
+    return ['kind\tnumber\tname\taudience\tperformer'].concat(cues.map(function (c) {
+      if (c.type === 'song') return ['song', 'C' + c.n, clean('♪ #' + c.song.num + ' ' + c.song.title + ' captions'), 'Song videos/' + fileOf(c, 'audience'), 'Song videos/' + fileOf(c, 'performer')].join('\t');
+      return ['still', 'C' + c.n, clean('S' + c.scene.num + ' ' + (c.card.name || whoName(c.card.who) + ':') + ' ' + c.card.text).slice(0, 70), 'Audience stills/' + fileOf(c, 'audience'), 'Performer stills/' + fileOf(c, 'performer')].join('\t');
+    })).join('\n') + '\n';
+  }
+  var QLAB_SCRIPT = [
+    '-- Build the caption cues in QLab 5 (made by asl.cool/theatre › Open captions).',
+    '-- 1. Open your show in QLab 5.  2. Open this file in Script Editor.  3. Press Run (▶).  4. Pick your captions folder.',
+    '-- It adds two cue lists, "Captions" and "Song captions". It does not change or delete any of your other cues.',
+    'use scripting additions',
+    'property stageTrouble : false',
+    'set theFolder to choose folder with prompt "Pick the captions folder (the one with Audience stills, Performer stills and Song videos)"',
+    'set base to POSIX path of theFolder',
+    'try',
+    '\tset raw to read (POSIX file (base & "QLab cue list.txt")) as «class utf8»',
+    'on error',
+    '\tdisplay dialog "That folder has no QLab cue list.txt. Pick the folder the app made." buttons {"OK"} default button 1',
+    '\treturn',
+    'end try',
+    'set rowsList to paragraphs of raw',
+    'set made to 0',
+    'set missingFiles to 0',
+    'set songCount to 0',
+    'set prevG to missing value',
+    'set AppleScript\'s text item delimiters to tab',
+    'tell application id "com.figure53.QLab.5"',
+    '\tactivate',
+    '\ttell front workspace',
+    '\t\tset capList to my listNamed("Captions")',
+    '\t\tset songList to my listNamed("Song captions")',
+    '\t\trepeat with ln in rowsList',
+    '\t\t\tset cols to text items of (ln as text)',
+    '\t\t\tif (count of cols) ≥ 5 and item 1 of cols is not "kind" then',
+    '\t\t\t\tset rowKind to item 1 of cols',
+    '\t\t\t\tset capName to item 3 of cols',
+    '\t\t\t\tif rowKind is "song" then',
+    '\t\t\t\t\t-- in the Captions list: a Stop that clears the last caption, GO when the song starts',
+    '\t\t\t\t\tset current cue list to capList',
+    '\t\t\t\t\tmake type "Stop"',
+    '\t\t\t\t\tset s to last item of (selected as list)',
+    '\t\t\t\t\tset q name of s to capName & " · GO when the song starts"',
+    '\t\t\t\t\tset q number of s to ""',
+    '\t\t\t\t\tif prevG is not missing value then set cue target of s to prevG',
+    '\t\t\t\t\tset current cue list to songList',
+    '\t\t\t\t\tset songCount to songCount + 1',
+    '\t\t\t\telse',
+    '\t\t\t\t\tset current cue list to capList',
+    '\t\t\t\tend if',
+    '\t\t\t\tmake type "Group"',
+    '\t\t\t\tset g to last item of (selected as list)',
+    '\t\t\t\tset q number of g to item 2 of cols',
+    '\t\t\t\tset q name of g to capName',
+    '\t\t\t\tmy fireAll(g)',
+    '\t\t\t\tif rowKind is "still" and prevG is not missing value then',
+    '\t\t\t\t\tmake type "Stop"',
+    '\t\t\t\t\tset s to last item of (selected as list)',
+    '\t\t\t\t\tset cue target of s to prevG',
+    '\t\t\t\t\tset q name of s to "clear the caption before"',
+    '\t\t\t\t\tset q number of s to ""',
+    '\t\t\t\t\tmove cue id (uniqueID of s) of parent of s to end of g',
+    '\t\t\t\tend if',
+    '\t\t\t\trepeat with k from 4 to 5',
+    '\t\t\t\t\tset p to base & (item k of cols)',
+    '\t\t\t\t\tif my fileExists(p) then',
+    '\t\t\t\t\t\tmake type "Video"',
+    '\t\t\t\t\t\tset v to last item of (selected as list)',
+    '\t\t\t\t\t\tset file target of v to (POSIX file p)',
+    '\t\t\t\t\t\tif k is 4 then',
+    '\t\t\t\t\t\t\tset q name of v to "AUD " & capName',
+    '\t\t\t\t\t\t\tmy putOnStage(v, "Audience")',
+    '\t\t\t\t\t\telse',
+    '\t\t\t\t\t\t\tset q name of v to "PERF " & capName',
+    '\t\t\t\t\t\t\tmy putOnStage(v, "Performer")',
+    '\t\t\t\t\t\tend if',
+    '\t\t\t\t\t\tmove cue id (uniqueID of v) of parent of v to end of g',
+    '\t\t\t\t\telse',
+    '\t\t\t\t\t\tset missingFiles to missingFiles + 1',
+    '\t\t\t\t\tend if',
+    '\t\t\t\tend repeat',
+    '\t\t\t\tif rowKind is "still" then set prevG to g',
+    '\t\t\t\tset made to made + 1',
+    '\t\t\tend if',
+    '\t\tend repeat',
+    '\t\tset current cue list to capList',
+    '\tend tell',
+    'end tell',
+    'set msg to "Made " & made & " caption cues (" & songCount & " songs in the Song captions list)."',
+    'if missingFiles > 0 then set msg to msg & return & return & missingFiles & " files were not in the folder, so those cues have no picture or video yet (make them in the app, then run this again on a new copy of the show)."',
+    'if stageTrouble then set msg to msg & return & return & "The stages could not be set by the script. In QLab: search for AUD, select those cues, and set their stage to Audience in the inspector; then the same for PERF and Performer."',
+    'set msg to msg & return & return & "Next: drag each group in Song captions into that song\'s audio group in your sound list, so the captions start with the music."',
+    'display dialog msg buttons {"OK"} default button 1',
+    '',
+    'on listNamed(capName)',
+    '\ttell application id "com.figure53.QLab.5"',
+    '\t\ttell front workspace',
+    '\t\t\ttry',
+    '\t\t\t\treturn first cue list whose q name is capName',
+    '\t\t\tend try',
+    '\t\t\tmake type "cue list"',
+    '\t\t\tset L to last cue list',
+    '\t\t\tset q name of L to capName',
+    '\t\t\treturn L',
+    '\t\tend tell',
+    '\tend tell',
+    'end listNamed',
+    'on fireAll(g)',
+    '\ttell application id "com.figure53.QLab.5"',
+    '\t\tset mode of g to timeline',
+    '\tend tell',
+    'end fireAll',
+    'on putOnStage(v, capName)',
+    '\ttell application id "com.figure53.QLab.5"',
+    '\t\ttry',
+    '\t\t\tset stage name of v to capName',
+    '\t\t\tif stage name of v is not capName then set stageTrouble to true',
+    '\t\ton error',
+    '\t\t\tset stageTrouble to true',
+    '\t\tend try',
+    '\tend tell',
+    'end putOnStage',
+    'on fileExists(p)',
+    '\ttry',
+    '\t\t(POSIX file p) as alias',
+    '\t\treturn true',
+    '\ton error',
+    '\t\treturn false',
+    '\tend try',
+    'end fileExists',
+    ''].join('\n');
+  var qlabFiles = function (cues) { return [['QLab cue list.txt', new Blob([qlabData(cues)], { type: 'text/plain' })], ['Build QLab cues.applescript', new Blob([QLAB_SCRIPT], { type: 'text/plain' })]]; };
   function cueSheet(cues) {
     var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     var rowsOut = [['Cue', 'Scene', 'Type', 'Who', 'Caption', 'Audience file', 'Performer file', 'How it runs']];
@@ -224,12 +365,14 @@
       '<div class="row"><button class="btn" id="pv">◀</button><span id="pn" class="grow center small"></span><button class="btn" id="nx">▶ Next cue</button></div>' +
       (songs.length ? '<div class="row"><label class="f grow" style="margin:0">Try a song with its band track' + sel('psong', preview.song || songs[0].song.id, songs.map(function (c) { return [c.song.id, '#' + c.song.num + ' ' + esc(c.song.title)]; })) + '</label><button class="btn primary" id="pplay">▶ Play with captions</button></div>' : '') + '</div>' +
       '<div class="card"><h3>Make the files</h3><p class="muted small">Chrome asks for a folder (make a new one, like “HSM captions”); other browsers download one zip file. Song videos take a little while each.</p>' +
-      '<div class="row" style="flex-wrap:wrap"><button class="btn primary" id="xall">Make everything</button><button class="btn" id="xsong">Just the song videos</button><button class="btn" id="xone">Just the song above (to test in QLab)</button><button class="btn" id="xst">Just the stills</button><button class="btn quiet" id="xcsv">Just the cue sheet</button></div><p id="xmsg" class="small"></p><div class="pb" id="xbar" hidden style="height:12px;border-radius:6px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--accent)"></i></div></div>' +
+      '<div class="row" style="flex-wrap:wrap"><button class="btn primary" id="xall">Make everything</button><button class="btn" id="xsong">Just the song videos</button><button class="btn" id="xone">Just the song above (to test in QLab)</button><button class="btn" id="xst">Just the stills</button><button class="btn quiet" id="xcsv">Just the cue sheet</button><button class="btn quiet" id="xql">Just the QLab script</button></div><p id="xmsg" class="small"></p><div class="pb" id="xbar" hidden style="height:12px;border-radius:6px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--accent)"></i></div></div>' +
       '<div class="card"><h3>In QLab</h3><ol class="small" style="line-height:1.6">' +
       '<li>Make two video surfaces: <b>Audience</b> (the projector on the movie screen) and <b>Performer</b> (the back-wall projector).</li>' +
       '<li>For each song: a Group cue set to “start all children simultaneously”, holding the song’s audio cue, its audience video (Audience surface) and its performer video (Performer surface).</li>' +
       '<li>For each spoken line: a Group cue holding its audience picture and performer picture, each set to hold, with the cue before it faded out. Your operator presses GO as the line starts.</li>' +
-      '<li>The cue sheet (CSV) lists every cue in order with its files. Open it in Sheets or Excel while you build.</li>' +
+      '<li><b>Let the script build it:</b> with your show open in QLab 5, open <b>Build QLab cues.applescript</b> (in the captions folder) in Script Editor, press Run ▶, and pick the captions folder. It adds a <b>Captions</b> list (a group for every line: GO as the line starts) and a <b>Song captions</b> list. Then drag each song’s group into that song’s audio group in your sound list. The first time, your Mac asks to let Script Editor control QLab: say OK. A whole show takes several minutes.</li>' +
+      '<li>The cue sheet (CSV) lists every cue in order with its files, if you would rather build by hand.</li>' +
+      '<li>The caption operator can run the Captions list from a second QLab window or QLab Remote on an iPad, with their own GO.</li>' +
       '<li>Check your QLab license: using two video outputs at once may need a QLab video license (they can be rented for just the show days).</li></ol></div>';
     var $ = function (id) { return document.getElementById(id); };
     var set = function (k, v) { var c = T.show.captions = T.show.captions || {}; c[k] = v; T.saveShow('Saved').then(T.teacherPages.captions); };
@@ -304,14 +447,15 @@
               return png();
             }).then(function (b) { return out.put('Performer stills/' + fileOf(c, 'performer'), b); }).then(function () { step(1); if (done % 20 === 0) msg.textContent = 'Stills: ' + done + ' of ' + steps + '…'; });
           });
-        }, Promise.resolve()).then(function () { return withCsv ? out.put('Cue sheet.csv', cueSheet(cues)) : null; }).then(function () { return out.done(); });
+        }, Promise.resolve()).then(function () { return withCsv ? out.put('Cue sheet.csv', cueSheet(cues)).then(function () { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()); }) : null; }).then(function () { return out.done(); });
       }).then(function (m) { busy(false); msg.textContent = m + ' ' + list.length + ' cues.'; show(preview.i); }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : (e.message || 'Something went wrong.'); show(preview.i); });
     }
     $('xall').onclick = function () { run(cues, true); };
     $('xsong').onclick = function () { run(songs, true); };
     $('xst').onclick = function () { run(stills, true); };
     $('xone').onclick = function () { var id = $('psong') ? $('psong').value : ''; var c = songs.find(function (x) { return x.song.id === id; }); if (c) run([c], false); else msg.textContent = 'No song with Lyrics timing yet.'; };
+    $('xql').onclick = function () { busy(true); sink((T.O().title || 'Show') + ' QLab script').then(function (out) { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()).then(function () { return out.done(); }); }).then(function (m) { busy(false); msg.textContent = m + ' Put these two files in the same folder as the pictures and videos.'; }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : e.message; }); };
     $('xcsv').onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(cueSheet(cues)); a.download = (T.O().title || 'Show') + ' caption cue sheet.csv'; document.body.appendChild(a); a.click(); a.remove(); };
   };
-  T.Captions = { build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  T.Captions = { qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();
