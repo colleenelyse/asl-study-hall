@@ -51,7 +51,7 @@
       }
     }
     if (!T.show || !T.proof) return signIn();
-    var fn = { '': home, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page] || (T.teacherPages || {})[page];
+    var fn = { '': home, menu: menuPage, script: scriptPage, cast: castPage, stage: stagePage, costumes: costumePage, songs: songsPage, passwords: passwordsPage }[page] || (T.teacherPages || {})[page];
     if (page === 'setup') return home();
     // the script was read by an older reader: re-read it first (on the home page), whatever page was opened (a bookmark, or a page left open)
     if (page && needsReread()) { T.toast('Updating how the script is read first (about a minute)…', 4000); location.replace('#/teacher'); return; }
@@ -133,7 +133,40 @@
       return save('Script re-read: ' + n + ' lines').then(function () { rereadScript.busy = false; note(sym('✅') + 'The script was read again with the newest reader (' + n + ' lines). Songs whose lines changed need their lyrics timing found again (Songs & tracks).'); });
     }).catch(function (e) { note(''); rereadScript.busy = false; T.toast('Could not re-read the script: ' + (e.message || e), 5000); });
   }
+  /* Teacher mode in tiers (Colleen 2026-10-24: "start categorizing all the cards on the theatre app dashboard with some tiered menus for
+     clarity"): the home page shows a few big groups; each opens a page with its own cards. Every card lives in one group. */
+  var MENUS = [
+    { id: 'script', icon: 'book', name: 'The script', sub: 'Import it, read it, who is on stage when' },
+    { id: 'people', icon: 'star', name: 'Casting and the cast', sub: 'Sign-ups, callbacks, the cast list' },
+    { id: 'rehearse', icon: 'sched', name: 'Rehearsals', sub: 'The plan, attendance, progress, warmups, bows' },
+    { id: 'music', icon: 'songs', name: 'Music and voices', sub: 'Tracks, ElevenLabs voices, lines for AAC' },
+    { id: 'tech', icon: 'bulb', name: 'Tech and the show', sub: 'Cues, stage manager script, mics, open captions' },
+    { id: 'costumes', icon: 'shirt', name: 'Costumes', sub: 'Costumes and sizes' },
+    { id: 'family', icon: 'hand', name: 'Families and helpers', sub: 'Family portal, announcements, emails, volunteers' },
+    { id: 'app', icon: 'lock', name: 'The app', sub: 'View as, app use, passwords and backup' }
+  ];
+  var lastAll = null;
+  /* a page opened from a group goes back to that group, not to the top of Teacher mode */
+  var lastMenu = null, setBar0 = T.setBar;
+  T.setBar = function (title, back) {
+    var h = location.hash;
+    if (back === '#/teacher' && lastMenu && /^#\/teacher\/./.test(h) && !/^#\/teacher\/menu\//.test(h)) back = '#/teacher/menu/' + lastMenu;
+    return setBar0.apply(this, [title, back].concat([].slice.call(arguments, 2)));
+  };
+  function menuTile(m, all) {
+    var n = all.filter(function (x) { return x[0] === m.id; }).length; if (!n) return '';
+    return '<a class="tile menu" href="#/teacher/menu/' + m.id + '">' + icon(m.icon) + '<b>' + m.name + '</b><span>' + (m.id === 'family' ? '<span id="famwait">' + m.sub + '</span>' : m.sub) + '</span><span class="menu-n">' + n + ' page' + (n === 1 ? '' : 's') + ' ›</span></a>';
+  }
+  function menuPage(args) {
+    var m = MENUS.find(function (x) { return x.id === args[0]; }); if (!m) return home();
+    if (!lastAll) { home(); if (!lastAll) return; }
+    lastMenu = m.id; T.setBar(m.name, '#/teacher');
+    app.innerHTML = '<div class="tiles">' + lastAll.filter(function (x) { return x[0] === m.id; }).map(function (x) { return x[1]; }).join('') + '</div>' +
+      '<p class="muted small center" style="margin-top:16px">' + MENUS.filter(function (x) { return x.id !== m.id; }).map(function (x) { return '<a href="#/teacher/menu/' + x.id + '">' + x.name + '</a>'; }).join(' · ') + '</p>';
+    if (m.id === 'family' && T.portalWaiting) T.portalWaiting().then(function (n) { var el = document.getElementById('famwait'); if (n && el) el.textContent = n + ' new family form' + (n === 1 ? '' : 's') + ' waiting'; });
+  }
   function home() {
+    lastMenu = null;
     recoverPdf();
     setTimeout(rereadScript, 300);
     T.setBar('Teacher mode', '#/');
@@ -141,32 +174,35 @@
     if (sc) sc.scenes.forEach(function (s) { s.items.forEach(function (it) { if (it.type === 'line') nLines++; }); });
     var trk = T.show.tracks || {}, nTr = O.songs.filter(function (s) { return trk[s.id] && trk[s.id].performance; }).length;
     var t = function (href, ic, name, sub) { return '<a class="tile" href="' + href + '">' + icon(ic) + '<b>' + name + '</b><span>' + sub + '</span></a>'; };
-    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + '<div class="tiles">' +
-      t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF') +
-      (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '') +
-      (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '') +
-      (sc ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '') +
-      (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '') +
-      t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors') +
-      t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent') +
-      t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups, cues on the Megamix, rehearse') +
-      t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines to copy into an AAC device') +
-      (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '') +
-      t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when') +
-      t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes') +
-      t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups') +
-      t('#/teacher/announce', 'bulb', 'Announcements', 'For Company members and parents; they pop up once') +
-      t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>') +
-      t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails') +
-      t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough') +
-      t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted') +
-      t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks') +
-      t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings') +
-      t('#/teacher/progress', 'check', 'Progress', 'Who practiced what') +
-      t('#/teacher/usage', 'check', 'App use', 'Which pages people use most') +
-      t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list') +
-      t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance') +
-      t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore') +
+    var all = [
+      ['script', t('#/teacher/script', 'book', 'Script', sc ? nLines + ' lines in ' + sc.scenes.length + ' scenes' : 'Import the PDF')],
+      ['script', (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '')],
+      ['tech', (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '')],
+      ['tech', (sc ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '')],
+      ['tech', (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '')],
+      ['people', t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors')],
+      ['app', t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent')],
+      ['rehearse', t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups, cues on the Megamix, rehearse')],
+      ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines to copy into an AAC device')],
+      ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],
+      ['script', t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when')],
+      ['costumes', t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes')],
+      ['rehearse', t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups')],
+      ['family', t('#/teacher/announce', 'bulb', 'Announcements', 'For Company members and parents; they pop up once')],
+      ['family', t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>')],
+      ['family', t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails')],
+      ['costumes', t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough')],
+      ['family', t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted')],
+      ['music', t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks')],
+      ['music', t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings')],
+      ['rehearse', t('#/teacher/progress', 'check', 'Progress', 'Who practiced what')],
+      ['app', t('#/teacher/usage', 'check', 'App use', 'Which pages people use most')],
+      ['people', t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list')],
+      ['rehearse', t('#/teacher/production', 'sched', 'Production', 'Rehearsals, who is called, attendance')],
+      ['app', t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore')],
+    ].filter(function (x) { return x[1]; });
+    lastAll = all;
+    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + '<div class="tiles">' + MENUS.map(function (m) { return menuTile(m, all); }).join('') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
     if (T.syncReminders) setTimeout(function () { T.syncReminders().catch(function () {}); if (T.reminderPrompt) T.reminderPrompt(); }, 1500);      // mail.js: reminder emails (asks for the teacher's OK first), to the school-account script
     if (T.portalWaiting) T.portalWaiting().then(function (n) { var el = document.getElementById('famwait'); if (n && el) el.textContent = n + ' new family form' + (n === 1 ? '' : 's') + ' waiting'; });

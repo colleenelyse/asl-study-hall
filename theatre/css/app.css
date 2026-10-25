@@ -503,3 +503,5 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .cap-prev canvas { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line); background: #000; }
 .cap-who { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0; }
 .cap-prev canvas#pp { max-width: 360px; }
+/* Teacher mode groups (teacher.js MENUS) */
+.tile.menu .menu-n { margin-top: auto; color: var(--accent); font-weight: 700; font-size: .9em; }
