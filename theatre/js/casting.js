@@ -55,6 +55,7 @@
     if (args[0] === 'student') return notesPage(args[1]);
     overview();
     (T.pullNotes ? T.pullNotes() : Promise.resolve(0)).then(function (n) { if (n) overview(); }).catch(function () {});
+    if (T.loadConflictNotes) T.loadConflictNotes().then(function () { if (/^#\/teacher\/casting/.test(location.hash) && !document.querySelector('dialog[open]')) T.route(); });      // the families' words about each conflict
   };
   function overview() {
     T.setBar('Casting', '#/teacher');
@@ -67,6 +68,9 @@
     ({ signups: wireSignups, callbacks: wireCallbacks, cast: wireCast, start: wireStart, notes: wireNotes }[tab] || function () {})();
     app.querySelectorAll('[data-stu]').forEach(function (el) { el.onclick = function () { T.go('#/teacher/casting/student/' + el.dataset.stu); }; });
   }
+  /* show-week conflicts from families (portal.js; Colleen 2026-10-25: decide case by case, but "make it known to the team when casting") */
+  var cf = function (a) { return T.conflictBadge ? T.conflictBadge(a.id) : ''; }, cfm = function (a) { return T.conflictMark ? T.conflictMark(a.id) : ''; };
+  var cfWarn = function (id) { var a = actor(id), t = T.conflictText && T.conflictText(id); if (a && t) T.toast('⚠️ ' + a.name + ' has a show-week conflict: ' + t, 7000); };
   var chips = function (ids) { return ids.map(function (id) { return T.charById(id) ? T.chip(id) : ''; }).join(''); };
   var comfortTxt = function (s) { var w = { yes: 'yes', maybe: 'maybe', notyet: 'not yet' }; return 'Lines: ' + w[s.lines] + ' · Solo singing: ' + w[s.solo] + ' · Dancing: ' + w[s.dance]; };
 
@@ -78,7 +82,7 @@
         done.filter(function (a) { return c.signups[a.id].excited; }).map(function (a) { return '<p><b>' + esc(a.name) + ':</b> ' + esc(c.signups[a.id].excited) + '</p>'; }).join('') + '</div>' : '') +
       done.map(function (a) {
         var s = c.signups[a.id];
-        return '<div class="card" style="cursor:pointer" data-stu="' + a.id + '"><div class="row">' + T.face(a, 44) + '<div class="grow"><b>' + esc(a.name) + '</b>' + (s.pronouns ? ' <span class="muted small">(' + esc(s.pronouns) + ')</span>' : '') +
+        return '<div class="card" style="cursor:pointer" data-stu="' + a.id + '"><div class="row">' + T.face(a, 44) + '<div class="grow"><b>' + esc(a.name) + '</b>' + (s.pronouns ? ' <span class="muted small">(' + esc(s.pronouns) + ')</span>' : '') + cf(a) +
           '<br>' + chips(s.roles) + (s.any ? '<span class="tag">Any role is OK</span>' : '') + '</div></div>' +
           (s.excited ? '<p class="small">' + sym('✨') + 'Excited to: <b>' + esc(s.excited) + '</b></p>' : '') +
           (s.vocal && T.songById(s.vocal.song) ? '<p class="small">' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
@@ -108,7 +112,7 @@
     var c = C();
     var seg = function (a, k) { var n = c.notes[a.id] || {}; return '<div class="seg" data-q="' + a.id + '|' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div>'; };
     return '<p class="muted">Tap stars while they learn the number; it saves as you go. Scores are only for you.</p><table class="tbl"><thead><tr><th>Company member</th><th>🎵 Singing</th><th>💃 Dance</th><th>🗣️ Acting / energy</th></tr></thead><tbody>' +
-      students().map(function (a) { return '<tr><td>' + T.face(a, 32) + ' ' + esc(a.name) + '</td><td>' + seg(a, 'singing') + '</td><td>' + seg(a, 'dance') + '</td><td>' + seg(a, 'acting') + '</td></tr>'; }).join('') + '</tbody></table>';
+      students().map(function (a) { return '<tr><td>' + T.face(a, 32) + ' ' + esc(a.name) + cfm(a) + '</td><td>' + seg(a, 'singing') + '</td><td>' + seg(a, 'dance') + '</td><td>' + seg(a, 'acting') + '</td></tr>'; }).join('') + '</tbody></table>';
   }
   function notesView() {
     var c = C();
@@ -116,7 +120,7 @@
     return '<div class="row" style="margin-bottom:10px"><button class="btn primary" id="qv">Quick notes during a group number</button></div><p class="muted">Or tap a Company member to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
       var n = c.notes[a.id], s = c.signups[a.id];
       return '<button class="person" data-stu="' + a.id + '" style="min-height:0">' + T.face(a, 56) + '<b>' + esc(a.name) + '</b><span>' +
-        (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') + (s ? '' : ' · not signed up') + '</span></button>';
+        (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') + (s ? '' : ' · not signed up') + (cfm(a) ? ' · ⚠️ show-week conflict' : '') + '</span></button>';
     }).join('') + '</div>';
   }
   /* one student: their sign-up (editable, for students who could not do it themselves) and the teacher's notes */
@@ -127,7 +131,7 @@
     var n = JSON.parse(JSON.stringify(c.notes[id] || { acting: 0, singing: 0, dance: 0, tags: [], text: '', consider: [] }));
     function draw() {
       var stars = function (k, label) { return '<div class="switch"><span>' + label + '</span><div class="seg" data-score="' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div></div>'; };
-      app.innerHTML = '<div class="card"><div class="row">' + T.face(a, 64) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (s.pronouns ? '<span class="muted">' + esc(s.pronouns) + '</span>' : '') + '</div></div>' +
+      app.innerHTML = '<div class="card"><div class="row">' + T.face(a, 64) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (s.pronouns ? '<span class="muted">' + esc(s.pronouns) + '</span>' : '') + '<div>' + cf(a) + '</div></div></div>' +
         '<p><b>Wants:</b> ' + (s.roles.length ? chips(s.roles) : '<span class="muted">no roles picked</span>') + (s.any ? ' <span class="tag">Any role is OK</span>' : '') + '</p>' +
         (s.excited ? '<p>' + sym('✨') + 'Excited to: <b>' + esc(s.excited) + '</b></p>' : '') +
         (s.vocal && T.songById(s.vocal.song) ? '<p>' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
@@ -200,14 +204,14 @@
         var others = students().filter(function (a) { return cb.indexOf(a.id) < 0; });
         var mark = function (a) { var s = c.signups[a.id], n = c.notes[a.id]; return (s && s.roles.indexOf(ch.id) >= 0 ? '★' : '') + (n && n.consider.indexOf(ch.id) >= 0 ? '✓' : ''); };
         return '<div class="card"><div class="row"><h3 class="grow">' + T.chip(ch.id) + '</h3><span class="muted small">' + (sd.scene ? 'Side: Scene ' + sd.scene.num : '') + (sd.song ? ' · Song: ' + esc(sd.song.title) : '') + '</span></div>' +
-          '<div class="row">' + cb.map(function (id) { var a = actor(id); return a ? '<button class="btn small" aria-pressed="true" data-cbrm="' + ch.id + '|' + id + '">' + esc(a.name) + ' ' + mark(a) + ' ✕</button>' : ''; }).join('') + '</div>' +
-          (want.filter(function (a) { return cb.indexOf(a.id) < 0; }).length ? '<p class="muted small">Suggested: ' + want.filter(function (a) { return cb.indexOf(a.id) < 0; }).map(function (a) { return '<button class="btn small quiet" data-cbadd="' + ch.id + '|' + a.id + '">+ ' + esc(a.name) + ' ' + mark(a) + '</button>'; }).join('') + '</p>' : '') +
-          '<label class="f" style="margin:6px 0 0">Add<select data-cbsel="' + ch.id + '"><option value="">Choose…</option>' + others.map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + ' ' + mark(a) + '</option>'; }).join('') + '</select></label></div>';
+          '<div class="row">' + cb.map(function (id) { var a = actor(id); return a ? '<button class="btn small" aria-pressed="true" data-cbrm="' + ch.id + '|' + id + '">' + esc(a.name) + ' ' + mark(a) + cfm(a) + ' ✕</button>' : ''; }).join('') + '</div>' +
+          (want.filter(function (a) { return cb.indexOf(a.id) < 0; }).length ? '<p class="muted small">Suggested: ' + want.filter(function (a) { return cb.indexOf(a.id) < 0; }).map(function (a) { return '<button class="btn small quiet" data-cbadd="' + ch.id + '|' + a.id + '">+ ' + esc(a.name) + ' ' + mark(a) + cfm(a) + '</button>'; }).join('') + '</p>' : '') +
+          '<label class="f" style="margin:6px 0 0">Add<select data-cbsel="' + ch.id + '"><option value="">Choose…</option>' + others.map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + ' ' + mark(a) + cfm(a) + '</option>'; }).join('') + '</select></label></div>';
       }).join('');
   }
   function wireCallbacks() {
     var c = C();
-    var add = function (ch, id) { var l = c.callbacks[ch] = c.callbacks[ch] || []; if (l.indexOf(id) < 0) l.push(id); T.saveShow('Callback added').then(overview); };
+    var add = function (ch, id) { var l = c.callbacks[ch] = c.callbacks[ch] || []; if (l.indexOf(id) < 0) l.push(id); cfWarn(id); T.saveShow('Callback added').then(overview); };
     document.getElementById('cbs').onchange = function (e) { c.callbacksShown = e.target.checked; T.saveShow(e.target.checked ? 'Company members can see callbacks' : 'Callbacks hidden').then(overview); };
     app.querySelectorAll('[data-cbadd]').forEach(function (b) { b.onclick = function () { var x = b.dataset.cbadd.split('|'); add(x[0], x[1]); }; });
     app.querySelectorAll('[data-cbsel]').forEach(function (sel) { sel.onchange = function () { if (sel.value) add(sel.dataset.cbsel, sel.value); }; });
@@ -220,22 +224,22 @@
     if (!Object.keys(d).length) list.forEach(function (a) { (a.chars || []).forEach(function (ch) { (d[ch] = d[ch] || []).push(a.id); }); });      // start from the roles students already have
     var roleOf = function (a) { return Object.keys(d).filter(function (ch) { return d[ch].indexOf(a.id) >= 0; }); };
     var none = list.filter(function (a) { return !roleOf(a).length; });
-    return '<div class="card"><p>' + (c.posted ? sym('✅') + 'Posted ' + new Date(c.posted).toLocaleDateString() + '. Changes here go to Company members when you post again.' : 'This is a draft. Company members see it only when you post it.') + '</p>' +
+    return (T.conflictSummary ? T.conflictSummary() : '') + '<div class="card"><p>' + (c.posted ? sym('✅') + 'Posted ' + new Date(c.posted).toLocaleDateString() + '. Changes here go to Company members when you post again.' : 'This is a draft. Company members see it only when you post it.') + '</p>' +
       '<div class="row"><button class="btn" id="auto">Fill in a draft for me</button><button class="btn" id="ens">Put everyone without a role in the ensemble</button><span class="grow"></span><button class="btn primary" id="post" data-save>Post the cast list</button></div>' +
       (none.length ? '<p class="err" style="margin-top:10px">' + none.length + ' student' + (none.length === 1 ? '' : 's') + ' without a role: ' + none.map(function (a) { return esc(a.name); }).join(', ') + '</p>' : '<p style="margin-top:10px">' + sym('🎉') + '<b>Everyone has a role.</b></p>') + '</div>' +
       T.O().groups.map(function (g) {
         var chs = T.O().characters.filter(function (ch) { return ch.group === g.id; }); if (!chs.length) return '';
         return '<h3 style="margin-top:18px">' + esc(g.name) + '</h3>' + chs.map(function (ch) {
           var who = d[ch.id] || [];
-          return '<div class="switch" style="flex-wrap:wrap"><span style="min-width:140px">' + T.chip(ch.id) + '</span><span class="grow">' + who.map(function (id) { var a = actor(id); return a ? '<button class="btn small" aria-pressed="true" data-rm="' + ch.id + '|' + id + '">' + esc(a.name) + ' ✕</button>' : ''; }).join(' ') + '</span>' +
-            '<select data-add="' + ch.id + '"><option value="">+ Add…</option>' + list.filter(function (a) { return who.indexOf(a.id) < 0; }).map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + (roleOf(a).length ? '' : ' (no role yet)') + '</option>'; }).join('') + '</select></div>';
+          return '<div class="switch" style="flex-wrap:wrap"><span style="min-width:140px">' + T.chip(ch.id) + '</span><span class="grow">' + who.map(function (id) { var a = actor(id); return a ? '<button class="btn small" aria-pressed="true" data-rm="' + ch.id + '|' + id + '">' + esc(a.name) + cfm(a) + ' ✕</button>' : ''; }).join(' ') + '</span>' +
+            '<select data-add="' + ch.id + '"><option value="">+ Add…</option>' + list.filter(function (a) { return who.indexOf(a.id) < 0; }).map(function (a) { return '<option value="' + a.id + '">' + esc(a.name) + (roleOf(a).length ? '' : ' (no role yet)') + cfm(a) + '</option>'; }).join('') + '</select></div>';
         }).join('');
       }).join('');
   }
   function wireCast() {
     var c = C(), d = c.draft, list = students();
     var redraw = function () { T.saveShow('Draft saved').then(overview); };
-    app.querySelectorAll('[data-add]').forEach(function (sel) { sel.onchange = function () { if (!sel.value) return; (d[sel.dataset.add] = d[sel.dataset.add] || []).push(sel.value); redraw(); }; });
+    app.querySelectorAll('[data-add]').forEach(function (sel) { sel.onchange = function () { if (!sel.value) return; (d[sel.dataset.add] = d[sel.dataset.add] || []).push(sel.value); cfWarn(sel.value); redraw(); }; });
     app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { var x = b.dataset.rm.split('|'); d[x[0]] = (d[x[0]] || []).filter(function (i) { return i !== x[1]; }); if (!d[x[0]].length) delete d[x[0]]; redraw(); }; });
     var has = function (a) { return Object.keys(d).some(function (ch) { return d[ch].indexOf(a.id) >= 0; }); };
     /* a starting point, never the final word: named roles go to callbacks first, then first choices, highest notes first; one named role each */

@@ -207,6 +207,7 @@
     lastAll = all;
     app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + '<div class="tiles">' + MENUS.map(function (m) { return menuTile(m, all); }).join('') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
+    if (T.portalMigrate) T.portalMigrate();      // portal.js: the full dress moved to Wed Dec 8 (once)
     if (T.syncReminders) setTimeout(function () { T.syncReminders().catch(function () {}); if (T.reminderPrompt) T.reminderPrompt(); }, 1500);      // mail.js: reminder emails (asks for the teacher's OK first), to the school-account script
     if (T.portalWaiting) T.portalWaiting().then(function (n) { var el = document.getElementById('famwait'); if (n && el) el.textContent = n + ' new family form' + (n === 1 ? '' : 's') + ' waiting'; });
   }

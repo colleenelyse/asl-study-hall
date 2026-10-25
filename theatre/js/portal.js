@@ -18,7 +18,14 @@
 (function (root) {
   'use strict';
   /* ---------- the rules, without the page (dev/test-portal.js runs these in node) ---------- */
-  var KINDS = ['fit', 'sizes', 'sensory', 'commit', 'video', 'contact'];
+  var KINDS = ['fit', 'sizes', 'sensory', 'commit', 'video', 'contact', 'conflicts'];
+  /* show-week dates families check for conflicts during audition week, before the cast list (Colleen 2026-10-25: "you can't be troy if you're out of
+     town for any of these dates"; casting decides case by case, but every conflict shows on the Casting pages). Teacher-editable: T.show.portal.weekDates */
+  var WEEK = [{ date: '2027-12-04', what: 'Saturday, December 4, 12:00–5:00 PM: rehearsal (the Saturday before the shows)' },
+    { date: '2027-12-06', what: 'Monday, December 6 to Friday, December 10: in school every day of show week' },
+    { date: '2027-12-08', what: 'Wednesday, December 8, 3:30–8:00 PM: the full dress rehearsal, after school' },
+    { date: '2027-12-09', what: 'Thursday, December 9: in school for the school-day shows (morning and afternoon)' },
+    { date: '2027-12-10', what: 'Friday, December 10, 7:00 PM: evening show' }, { date: '2027-12-11', what: 'Saturday, December 11, 7:00 PM: evening show' }];
   var MAIL_OPTS = [['general', 'News and requests from the teacher (volunteer needs, show dates, reminders)'], ['mine', 'Changes for my Company member (a new role, song or solo, new dance videos, the week’s plan)'],
     ['copies', 'A copy of every email my Company member gets from the app']];
   var SIZE_FIELDS = [
@@ -50,8 +57,9 @@
   var DEF_VIDEO = 'To help everyone learn, we film rehearsals such as dance numbers and scene runs. The videos are for teaching only: the Company and the teachers watch them in the app (locked with the show’s password) or in the school’s Google Drive to practice. They are never posted publicly or on social media, and they are deleted after the show.';
   var DEF_COMMIT = [
     'My Company member will make it a priority to be at school every day of the final rehearsal weeks, Monday, November 29 through Friday, December 10, 2027 (dress rehearsals happen in class).',
-    'My Company member will be at the one required after-school rehearsal: the full dress rehearsal on Tuesday, December 7, 2027, after school.',
-    'My Company member will be at every performance: the school-day show on Thursday, December 9, 2027, and the evening shows on Friday, December 10 and Saturday, December 11, 2027, at 7:00 PM.',
+    'My Company member will be at the Saturday rehearsal on December 4, 2027, from 12:00 to 5:00 PM.',
+    'My Company member will be at the full dress rehearsal on Wednesday, December 8, 2027, after school from 3:30 to 8:00 PM.',
+    'My Company member will be at every performance: the school-day shows on Thursday, December 9, 2027, and the evening shows on Friday, December 10 and Saturday, December 11, 2027, at 7:00 PM.',
     'We will tell the teacher as early as we can if something makes one of these dates impossible.'];
   var NOTE_MAX = 3600;      // the server takes a sealed note up to 5000 characters: about 3700 characters of form
   var str = function (v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n); };
@@ -77,6 +85,12 @@
     if (kind === 'video') {
       if (!VIDEO[d.answer] || !str(d.signer, 80)) return null;
       return { answer: d.answer, signer: str(d.signer, 80), date: isDate(d.date) ? d.date : '', note: str(d.note, 300) };
+    }
+    if (kind === 'conflicts') {      // { answers: { date: 'ok' | 'no' }, notes: { date: text }, signer, note }
+      var ans = {}, notes = {}, n = 0;
+      Object.keys(d.answers || {}).slice(0, 12).forEach(function (k) { if (isDate(k) && (d.answers[k] === 'ok' || d.answers[k] === 'no')) { ans[k] = d.answers[k]; n++; if (d.answers[k] === 'no') { var t = str((d.notes || {})[k], 120); if (t) notes[k] = t; } } });
+      if (!n) return null;
+      return { answers: ans, notes: notes, signer: str(d.signer, 80), note: str(d.note, 240) };
     }
     if (kind === 'contact') {      // email updates (mail.js): no box ticked = stop emails to this address
       var em = str(d.email, 120);
@@ -107,6 +121,7 @@
       r.contacts = r.contacts.slice(-6);
       r.contact = { at: at, stamp: data.stamp };
     } else r[n.kind] = data;
+    if (n.kind === 'conflicts') { var spc = show.portal = show.portal || {}, cfl = spc.conflict = spc.conflict || {}; cfl[n.actor] = { at: at, dates: Object.keys(data.answers).filter(function (k) { return data.answers[k] === 'no'; }).sort() }; }      // the dates only, for the Casting pages
     var sp = show.portal = show.portal || {}, g = sp.got = sp.got || {}; (g[n.actor] = g[n.actor] || {})[n.kind] = at || 'yes';
     return true;
   }
@@ -132,7 +147,7 @@
     var out = []; keys.forEach(function (k) { if (!m[k[0]]) return; if (k[0] === 'shoeWidth') { if (out.length && /^shoes /.test(out[out.length - 1])) out[out.length - 1] += ' ' + m.shoeWidth; return; } out.push(k[1] + ' ' + m[k[0]]); });
     return out.join(', ').slice(0, 160);
   }
-  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
+  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, WEEK: WEEK, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
     clean: clean, takeNote: takeNote, addSchool: addSchool, checkAgain: checkAgain, summary: summary };
   root.PortalCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
@@ -173,7 +188,7 @@
     C.KINDS.forEach(function (k) { out[k] = g[k] || s[k] || ''; });
     return out;
   }
-  var ITEMS = [['fit', '👕', 'Fitting permission', 'For the shopping trip: may a teacher help with trying on clothes?'],
+  var ITEMS = [['conflicts', '🗓️', 'Show-week conflicts', 'Before casting: can your Company member be at every show-week date?'], ['fit', '👕', 'Fitting permission', 'For the shopping trip: may a teacher help with trying on clothes?'],
     ['sizes', '📏', 'Clothing sizes', 'Detailed sizes, so costumes fit'], ['sensory', '🧸', 'Sensory and clothing needs', 'Fabrics, tags, makeup, hair, what helps'],
     ['commit', '📅', 'Show-week commitment', 'The dates we need everyone, checked and signed'],
     ['video', '🎥', 'Rehearsal video permission', 'Filming dance rehearsals and scene runs, for learning'],
@@ -253,6 +268,7 @@
     if (k === 'commit') return commitForm();
     if (k === 'video') return videoForm();
     if (k === 'contact') return contactForm();
+    if (k === 'conflicts') return conflictsForm();
     T.go('#/home');
   };
   function send(kind, data, okMsg) {
@@ -267,7 +283,7 @@
   }
   function shell(title, intro, body) {
     T.setBar(title, '#/home');
-    var sentAt = status(T.me.id)[{ 'Fitting permission': 'fit', 'Clothing sizes': 'sizes', 'Sensory and clothing needs': 'sensory', 'Show-week commitment': 'commit', 'Rehearsal video permission': 'video', 'Email updates': 'contact' }[title]];
+    var sentAt = status(T.me.id)[{ 'Fitting permission': 'fit', 'Clothing sizes': 'sizes', 'Sensory and clothing needs': 'sensory', 'Show-week commitment': 'commit', 'Rehearsal video permission': 'video', 'Email updates': 'contact', 'Show-week conflicts': 'conflicts' }[title]];
     app.innerHTML = '<form class="card" id="pf" style="max-width:760px;margin:auto"><p class="muted small">For <b>' + esc(T.me.name) + '</b> · ' + sym('🔒') + 'only the teachers can read this.' +
       (sentAt ? ' <span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(sentAt) ? ' ' + esc(day(sentAt)) : '') + '</span> Sending again replaces it.' : '') + '</p>' + intro + body +
       '<p id="pe" class="err" role="alert"></p><div class="row end"><a class="btn" href="#/home">Cancel</a><button class="btn primary" type="submit">Send to the teachers</button></div>' +
@@ -308,6 +324,70 @@
       '<label class="f">Anything we should know? (optional)<input id="vn" maxlength="300" value="' + esc(d.note || '') + '" placeholder="e.g. OK to film, but please keep their face out of shared videos"></label>');
     f.onsubmit = function (e) { e.preventDefault(); send('video', { answer: (f.querySelector('input[name=va]:checked') || {}).value, signer: v('vs'), date: v('vd'), note: v('vn') }).catch(fail); };
   }
+  var weekDates = function () { return SP().weekDates && SP().weekDates.length ? SP().weekDates : C.WEEK; };
+  T.weekDates = weekDates;
+  function conflictsForm() {
+    var d = draft(T.me.id, 'conflicts') || {}, ans = d.answers || {}, notes = d.notes || {};
+    var f = shell('Show-week conflicts', '<h2 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts</h2><p>Please tell us now, during audition week, if your Company member can’t be at any of these. ' +
+      'Big roles need someone there for all of them, so we look at these before the cast list goes up. A conflict does not keep anyone out of the show: everyone has a place in it.</p>',
+      weekDates().map(function (x) {
+        return '<fieldset style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0"><legend style="font-weight:700">' + esc(x.what) + '</legend><div class="seg" data-cd="' + esc(x.date) + '">' +
+          [['ok', 'We can be there'], ['no', 'Conflict']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (ans[x.date] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+          '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>What is the conflict? (optional)<input maxlength="120" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label></fieldset>';
+      }).join('') +
+      '<label class="f">Your name<input id="cfs" maxlength="80" autocomplete="name" value="' + esc(d.signer || '') + '"></label>' +
+      '<label class="f">Anything else? (optional)<input id="cfn" maxlength="240" value="' + esc(d.note || '') + '"></label><p class="muted small">If something changes later, send this again or tell the teacher right away.</p>');
+    f.querySelectorAll('[data-cd] button').forEach(function (b) { b.onclick = function () {
+      var k = b.parentNode.dataset.cd; ans[k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      f.querySelector('[data-cn="' + k + '"]').hidden = b.dataset.v !== 'no';
+    }; });
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      var miss = weekDates().filter(function (x) { return !ans[x.date]; });
+      if (miss.length) { fail(new Error('Please answer every date (' + miss.length + ' left).')); return; }
+      var nt = {}; f.querySelectorAll('[data-cn]').forEach(function (l) { var v = l.querySelector('input').value.trim(); if (v && ans[l.dataset.cn] === 'no') nt[l.dataset.cn] = v; });
+      var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date]; });
+      send('conflicts', { answers: keep, notes: nt, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length || weekDates().some(function (x) { return keep[x.date] === 'no'; }) ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
+    };
+  }
+  /* the full dress moved from Tue Dec 7 to Wed Dec 8, 3:30–8 PM, and a Saturday Dec 4 rehearsal (12–5 PM) was added (Colleen 2026-10-25): saved wording
+     and reminder dates that still say Dec 7 are changed once, when Teacher mode opens */
+  T.portalMigrate = function () {
+    if (!T.show || !T.proof || SP().mig1208) return;
+    var changed = false, sp = SP(), m = T.show.mail || {};
+    if (sp.commitItems && sp.commitItems.some(function (t) { return /December 7\b/.test(t); })) {
+      var out = []; sp.commitItems.forEach(function (t) { if (/December 7\b/.test(t)) out.push(C.DEF_COMMIT[1], C.DEF_COMMIT[2]); else out.push(t); });
+      sp.commitItems = out; changed = true;
+    }
+    if (m.dates && m.dates.some(function (d) { return d.date === '2027-12-07'; })) {
+      m.dates = m.dates.filter(function (d) { return d.date !== '2027-12-07'; }).concat([{ date: '2027-12-04', what: 'The Saturday rehearsal, 12:00 to 5:00 PM (required)' }, { date: '2027-12-08', what: 'The full dress rehearsal, after school, 3:30 to 8:00 PM (required)' }])
+        .filter(function (d, i, a) { return a.findIndex(function (x) { return x.date === d.date; }) === i; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      changed = true;
+    }
+    if (changed) { sp.mig1208 = true; T.saveShow('Updated: the full dress is now Wed Dec 8, 3:30–8 PM, plus Sat Dec 4, 12–5 PM').catch(function () {}); }
+  };
+  /* ---------- show-week conflicts on the Casting pages (casting.js) ---------- */
+  var shortDay = function (s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+  var cfNotes = {};      // the families' notes, from the vault, while Casting is open
+  T.loadConflictNotes = function () { return T.openVault ? T.openVault().then(function (V) { var P = V.extra.portal || {}; cfNotes = {}; Object.keys(P).forEach(function (id) { if (P[id].conflicts) cfNotes[id] = P[id].conflicts.notes || {}; }); }).catch(function () {}) : Promise.resolve(); };
+  T.conflictText = function (id) {
+    var c = (SP().conflict || {})[id]; if (!c || !c.dates.length) return '';
+    return c.dates.map(function (d) { var w = weekDates().find(function (x) { return x.date === d; }), n = (cfNotes[id] || {})[d]; return shortDay(d) + (n ? ' (' + n + ')' : ''); }).join(', ');
+  };
+  T.conflictMark = function (id) { return T.conflictText(id) ? ' ⚠️' : ''; };
+  T.conflictBadge = function (id) {
+    var t = T.conflictText(id), c = (SP().conflict || {})[id];
+    if (t) return ' <span class="tag no-tag" title="Show-week conflict">⚠️ Show-week conflict: ' + esc(t) + '</span>';
+    return c ? ' <span class="tag ok-tag" title="No show-week conflicts">✓ All show-week dates</span>' : ' <span class="tag" title="The family has not answered the show-week conflicts form">Show week: no answer yet</span>';
+  };
+  T.conflictSummary = function () {
+    var cast = (T.show.cast || []).filter(function (a) { return a.name && !a.guest; }), cfl = SP().conflict || {};
+    var withC = cast.filter(function (a) { return cfl[a.id] && cfl[a.id].dates.length; }), none = cast.filter(function (a) { return !cfl[a.id]; });
+    return '<div class="card" style="border-left:6px solid ' + (withC.length ? 'var(--bad)' : 'var(--line)') + '"><h3 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts (from families)</h3>' +
+      (withC.length ? withC.map(function (a) { return '<p style="margin:4px 0"><b>' + esc(a.name) + '</b>: ' + esc(T.conflictText(a.id)) + '</p>'; }).join('') : '<p class="small">No conflicts reported.</p>') +
+      (none.length ? '<p class="muted small">No answer yet (' + none.length + '): ' + none.map(function (a) { return esc(a.name); }).join(', ') + '</p>' : '') +
+      '<p class="muted small">Big roles need someone at every date. Decide case by case; a ⚠️ marks these Company members everywhere in Casting.</p></div>';
+  };
   function contactForm() {
     var d = draft(T.me.id, 'contact') || { opts: { general: true, mine: true } }, dev = T.ls('portalDev'), g = T.googleContact && T.googleContact();
     if (g && g.email) { d.email = g.email; d.name = d.name || g.name; }
@@ -396,12 +476,13 @@
         '<button class="btn noprint" onclick="print()">' + icon('print') + 'Print</button></div>' +
         '<p class="small">Sizes ' + cnt('sizes') + ' of ' + list.length + ' · Sensory ' + cnt('sensory') + ' · Commitment signed ' + cnt('commit') + ' of ' + list.length + ' · Video permission ' + cnt('video') + ' (' + list.filter(function (a) { return P[a.id] && P[a.id].video && P[a.id].video.answer === 'no'; }).length + ' no filming) · Fitting permission (needs help): ' +
         need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer === 'yes'; }).length + ' yes, ' + need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer !== 'yes'; }).length + ' no, ' + need.filter(function (a) { return !P[a.id].fit; }).length + ' not answered</p>' +
-        (list.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Company member</th><th>Parents (email)</th><th title="Mark the Company members who need help trying on clothes. Only teachers see this mark.">Needs help trying on</th><th>Fitting</th><th>Sizes</th><th>Sensory</th><th>Commitment</th><th>Video</th><th class="noprint"></th></tr></thead><tbody>' +
+        (list.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Company member</th><th>Parents (email)</th><th title="Mark the Company members who need help trying on clothes. Only teachers see this mark.">Needs help trying on</th><th>Fitting</th><th>Sizes</th><th>Sensory</th><th>Conflicts</th><th>Commitment</th><th>Video</th><th class="noprint"></th></tr></thead><tbody>' +
           list.map(function (a) {
             var r = P[a.id] || {}, f = fitOf(a);
             return '<tr><td><b>' + esc(a.name) + '</b> ' + T.companyTag(a) + '</td><td class="small">' + ((r.contacts || []).map(function (c) { return esc(c.email) + (c.google ? ' <span class="tag ok-tag" title="Signed in with Google">G ✓</span>' : ''); }).join('<br>') || '<span class="muted">—</span>') + '</td><td><input type="checkbox" data-need="' + esc(a.id) + '" aria-label="Needs help trying on: ' + esc(a.name) + '"' + (r.fitNeed ? ' checked' : '') + '></td>' +
               '<td>' + (f ? '<span class="tag ' + (r.fit.answer === 'yes' ? 'ok-tag' : '') + '">' + esc(f) + '</span>' : r.fitNeed ? '<span class="tag no-tag">Not answered</span>' : '<span class="muted small">—</span>') + '</td>' +
               '<td>' + mark(r.sizes, '✓ ' + day(r.sizes && r.sizes.at)) + '</td><td>' + mark(r.sensory, '✓ ' + day(r.sensory && r.sensory.at)) + '</td>' +
+              '<td>' + (r.conflicts ? (Object.keys(r.conflicts.answers).some(function (k) { return r.conflicts.answers[k] === 'no'; }) ? '<span class="tag no-tag">⚠️ ' + Object.keys(r.conflicts.answers).filter(function (k) { return r.conflicts.answers[k] === 'no'; }).map(shortDay).join(', ') + '</span>' : '<span class="tag ok-tag">✓ None</span>') : '<span class="tag">Not yet</span>') + '</td>' +
               '<td>' + (r.commit ? '<span class="tag ok-tag">✓ Signed</span>' + (r.commit.items.join('\n') !== commitItems().join('\n') ? '<br><span class="muted small">an earlier wording</span>' : '') : '<span class="tag no-tag">Not yet</span>') + '</td>' +
               '<td>' + (r.video ? '<span class="tag ' + (r.video.answer === 'no' ? 'no-tag' : 'ok-tag') + '">' + esc({ yes: '✓ Film and share', class: 'Teaching only', no: 'No filming' }[r.video.answer]) + '</span>' : '<span class="tag no-tag">Not yet</span>') + '</td>' +
               '<td class="noprint"><button class="btn small" data-see="' + esc(a.id) + '">See</button></td></tr>';
@@ -409,6 +490,7 @@
         '<div class="card noprint"><h2 style="margin-top:0">' + sym('✏️') + 'The wording families see</h2>' +
         '<label class="f">Fitting permission<textarea id="wf" rows="6">' + esc(fitText()) + '</textarea></label>' +
         '<label class="f">Rehearsal video permission<textarea id="wv" rows="5">' + esc(videoText()) + '</textarea></label>' +
+        '<label class="f">Show-week conflicts: the dates families check (one per line: the date, then the words they see)<textarea id="wd" rows="6">' + esc(weekDates().map(function (x) { var a = x.date.split('-'); return +a[1] + '/' + +a[2] + '/' + a[0] + ' ' + x.what; }).join('\n')) + '</textarea></label>' +
         '<label class="f">Show-week commitment: one line for each box they tick<textarea id="wc" rows="7">' + esc(commitItems().join('\n')) + '</textarea></label>' +
         '<p class="muted small">Families who signed an earlier wording keep their signature; the Answers table marks it “an earlier wording.”</p>' +
         '<div class="row end"><button class="btn" id="wreset">Back to the starting words</button><button class="btn primary" id="wsave" data-save>Save the wording</button></div></div>';
@@ -422,11 +504,13 @@
       document.getElementById('wsave').onclick = function () {
         var sp2 = SP(), ft = v('wf').trim(), ci = v('wc').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
         if (ft && ft !== C.DEF_FIT) sp2.fitText = ft.slice(0, 2000); else delete sp2.fitText;
+        if (window.MailCore) { var pd = window.MailCore.parseDates(v('wd')); if (pd.bad.length) { T.toast('These show-week lines need a date first, like 12/4/2027: ' + pd.bad.join(' · '), 6000); return; }
+          if (pd.dates.length && JSON.stringify(pd.dates) !== JSON.stringify(C.WEEK)) sp2.weekDates = pd.dates.slice(0, 12); else delete sp2.weekDates; }
         var vt = v('wv').trim(); if (vt && vt !== C.DEF_VIDEO) sp2.videoText = vt.slice(0, 2000); else delete sp2.videoText;
         if (ci.length && ci.join('\n') !== C.DEF_COMMIT.join('\n')) sp2.commitItems = ci.slice(0, 12).map(function (x) { return x.slice(0, 400); }); else delete sp2.commitItems;
         T.saveShow('Wording saved').then(draw);
       };
-      document.getElementById('wreset').onclick = function () { document.getElementById('wf').value = C.DEF_FIT; document.getElementById('wv').value = C.DEF_VIDEO; document.getElementById('wc').value = C.DEF_COMMIT.join('\n'); };
+      document.getElementById('wreset').onclick = function () { document.getElementById('wf').value = C.DEF_FIT; document.getElementById('wv').value = C.DEF_VIDEO; document.getElementById('wd').value = C.WEEK.map(function (x) { var a = x.date.split('-'); return +a[1] + '/' + +a[2] + '/' + a[0] + ' ' + x.what; }).join('\n'); document.getElementById('wc').value = C.DEF_COMMIT.join('\n'); };
     }
     app.innerHTML = '<p class="card muted">Opening the family answers…</p>';
     openP().then(function (x) { P = x; draw(); }).then(pull).then(function (n) { if (n) return openP().then(function (x) { P = x; draw(); T.toast(n + ' new family form' + (n === 1 ? '' : 's') + ' taken in'); }); })
@@ -443,6 +527,7 @@
       '<h3>' + sym('🧸') + 'Sensory and clothing needs</h3>' + (se ? '<table class="tbl">' + (mk ? '<tr><th style="width:40%">Stage makeup</th><td>' + esc(mk[1]) + '</td></tr>' : '') + rows(C.SENSE_FIELDS, se) + '</table><p class="muted small">Came in ' + esc(day(se.at)) + '</p>' : '<p class="muted">Not sent.</p>') +
       '<h3>' + sym('📅') + 'Show-week commitment</h3>' + (c ? '<ul>' + c.items.map(function (t) { return '<li>✓ ' + esc(t) + '</li>'; }).join('') + '</ul><p>Signed: ' + esc(c.signer) + (c.student ? ' and ' + esc(c.student) : '') + (c.date ? ', ' + esc(day(c.date)) : '') + '</p>' : '<p class="muted">Not signed yet.</p>') +
       '<h3>' + sym('🎥') + 'Rehearsal video permission</h3>' + (r.video ? '<p><b>' + esc(C.VIDEO[r.video.answer]) + '</b><br>Signed: ' + esc(r.video.signer) + (r.video.date ? ', ' + esc(day(r.video.date)) : '') + (r.video.note ? '<br>' + esc(r.video.note) : '') + '</p>' : '<p class="muted">Not answered.</p>') +
+      '<h3>' + sym('🗓️') + 'Show-week conflicts</h3>' + (r.conflicts ? '<ul>' + Object.keys(r.conflicts.answers).sort().map(function (k) { var w = weekDates().find(function (x) { return x.date === k; }); return '<li>' + (r.conflicts.answers[k] === 'no' ? '⚠️ <b>Conflict</b>' : '✓') + ' ' + esc(w ? w.what : k) + (r.conflicts.notes[k] ? ': ' + esc(r.conflicts.notes[k]) : '') + '</li>'; }).join('') + '</ul>' + (r.conflicts.note ? '<p>' + esc(r.conflicts.note) + '</p>' : '') + '<p class="muted small">From ' + esc(r.conflicts.signer || 'the family') + ', ' + esc(day(r.conflicts.at)) + '</p>' : '<p class="muted">Not answered.</p>') +
       '<h3>' + sym('🏫') + 'Sizes recorded at school</h3>' + ((r.school || []).length ? r.school.map(function (s) { return '<p><b>' + esc(day(s.at)) + '</b> ' + (s.ok ? '<span class="tag ok-tag">Enough</span>' : '<span class="tag no-tag">Not enough</span>') + (s.by ? ' · ' + esc(s.by) : '') + '</p><table class="tbl">' + rows(C.SIZE_FIELDS, s.sizes) + '</table>' + (s.note ? '<p class="small">' + esc(s.note) + '</p>' : ''); }).join('') : '<p class="muted">None yet.</p>') +
       '<div class="row end noprint"><button class="btn" onclick="print()">' + icon('print') + 'Print</button><button class="btn primary" id="dx">Close</button></div>', function (d) { d.querySelector('#dx').onclick = function () { d.close(); }; });
   }

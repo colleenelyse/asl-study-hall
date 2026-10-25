@@ -17,7 +17,7 @@ ok(C.clean('commit', { items, agree: items.map(() => true), signer: 'Pat Lee', s
 const cc = C.clean('commit', { items, agree: items.map(() => true), signer: 'Pat Lee' });
 ok(C.clean('commit', cc) && C.clean('commit', cc).signer === 'Pat Lee', 'a cleaned commitment is still accepted when the teacher takes it in');
 ok(C.takeNote({ extra: {} }, {}, { type: 'portal', kind: 'commit', actor: 'a1', data: cc, _at: '2027-09-01' }, ids), 'a commitment note from a family is taken');
-for (const k of C.KINDS) { const d = { fit: { answer: 'yes', signer: 'P' }, sizes: { shirt: 'M' }, sensory: { tags: 'x' }, commit: cc, video: { answer: 'yes', signer: 'P' }, contact: { email: 'p@x.org', opts: { general: true } } }[k]; ok(C.clean(k, C.clean(k, d)) !== null, k + ': cleaning twice still passes (the family cleans, then the teacher)'); }
+for (const k of C.KINDS) { const d = { fit: { answer: 'yes', signer: 'P' }, sizes: { shirt: 'M' }, sensory: { tags: 'x' }, commit: cc, video: { answer: 'yes', signer: 'P' }, contact: { email: 'p@x.org', opts: { general: true } }, conflicts: { answers: { '2027-12-04': 'no' }, notes: { '2027-12-04': 'wedding' } } }[k]; ok(C.clean(k, C.clean(k, d)) !== null, k + ': cleaning twice still passes (the family cleans, then the teacher)'); }
 ok(C.clean('video', { answer: 'class', signer: 'Pat Lee' }).answer === 'class' && C.clean('video', { answer: 'no' }) === null, 'video permission: signed answers only');
 
 const V = { extra: {} }, show = {};
@@ -44,4 +44,14 @@ ok(C.checkAgain(cast, show.sizeCheck, '2027-09-21').map(x => x.id).join() === 'a
 ok(V.extra.portal.a1.school.length === 2 && V.extra.portal.a1.school[0].ok, 'school records kept newest first');
 ok(!show.sizeCheck.a1.sizes && JSON.stringify(show.sizeCheck).indexOf('shirt') < 0, 'the show keeps only the date and Enough');
 ok(C.summary({ shirt: 'L', shoe: '8', shoeWidth: 'wide', brands: 'x' }, { shirt: 'M', waist: '28' }) === 'shirt M, waist 28, shoes 8 wide', 'shopping line: the school’s tag reading wins');
+// show-week conflicts (audition week, before the cast list): answers to the vault, only the conflict dates in the show
+const cf = C.clean('conflicts', { answers: { '2027-12-04': 'no', '2027-12-08': 'ok', 'bad': 'no', '2027-12-10': 'maybe' }, notes: { '2027-12-04': 'out of town', '2027-12-08': 'ignored' } });
+ok(Object.keys(cf.answers).join() === '2027-12-04,2027-12-08' && cf.notes['2027-12-04'] === 'out of town' && !cf.notes['2027-12-08'], 'conflicts: only real dates and answers; a note only with a conflict');
+ok(C.clean('conflicts', { answers: {} }) === null, 'conflicts: an empty form is refused');
+const V2 = { extra: {} }, sh2 = {};
+C.takeNote(V2, sh2, { type: 'portal', kind: 'conflicts', actor: 'a1', data: { answers: { '2027-12-04': 'no', '2027-12-08': 'ok' }, notes: { '2027-12-04': 'wedding' } }, _at: '2027-08-17' }, ids);
+ok(sh2.portal.conflict.a1.dates.join() === '2027-12-04' && JSON.stringify(sh2).indexOf('wedding') < 0 && V2.extra.portal.a1.conflicts.notes['2027-12-04'] === 'wedding', 'the show keeps the conflict dates (for Casting); the family’s words stay in the vault');
+C.takeNote(V2, sh2, { type: 'portal', kind: 'conflicts', actor: 'a1', data: { answers: { '2027-12-04': 'ok', '2027-12-08': 'ok' } }, _at: '2027-08-19' }, ids);
+ok(sh2.portal.conflict.a1.dates.length === 0, 'sending again with no conflicts clears them');
+ok(C.WEEK.some(w => w.date === '2027-12-08' && /3:30/.test(w.what)) && !C.WEEK.some(w => w.date === '2027-12-07') && C.DEF_COMMIT.some(t => /Wednesday, December 8/.test(t)) && !C.DEF_COMMIT.some(t => /December 7\b/.test(t)), 'the full dress is Wed Dec 8 (3:30–8 PM), plus Sat Dec 4');
 process.exit(bad ? 1 : 0);
