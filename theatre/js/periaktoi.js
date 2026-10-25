@@ -44,7 +44,8 @@
         P.scenes.forEach(function (sc) { PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via.length === 1) q.via[0] = { x: un[id].x + (id === 'T1' ? -2 : 4), y: un[id].y }; }); });
         PK.applySpikes(P); } }
     P.scenes.forEach(function (sc) { if (['s4', 's12', 's17'].indexOf(sc.id) >= 0 && sc.towers.B && sc.towers.B.want === 'B3') { sc.towers.B.want = 'B1'; sc.towers.B.rot = PK.rotFor(P, 'B', 'B1').rot; } });      // the gym shows the doorway on B (Colleen 2026-10-25)
-    PK.applySpikes(P);      // after any change above, every table on a spike stands exactly on it
+    PK.applySpikes(P);      // after any change above
+    if (!P.presetAhead) { undo.push(JSON.stringify(P)); PK.presetAhead(P); P.presetAhead = 1; queueSave(); }      // dark towers set up ahead (her rule, 2026-10-25); Undo takes it back, every table on a spike stands exactly on it
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
@@ -460,7 +461,7 @@
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
     side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
       '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
-      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Spread the turns: same pictures, turns moved into the dark">⟲ Smarter turns</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
     if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
@@ -747,17 +748,16 @@
   }
 
   /* ---------- Smarter turns: same lit pictures, turns moved into the dark and out of crowded changes (PK.fewerTurns) ---------- */
-  function smarterTurns() {
-    stop(); var r = PK.fewerTurns(P), b = r.before, a = r.after;
-    var row = function (name, x, y, better) { return '<tr><td>' + name + '</td><td>' + x + '</td><td>' + y + '</td><td>' + (better ? '✓' : '') + '</td></tr>'; };
-    T.dialog('<h2>Smarter turns</h2><p>Every lit scene keeps exactly the faces you set. Only towers that are dark for a scene change: they turn earlier, while dark, so busy changes get lighter.</p>' +
-      '<table class="pk-tab"><tr><th></th><th>Now</th><th>Smarter</th><th></th></tr>' + row('Turns in the whole show', b.turns, a.turns, a.turns < b.turns) + row('Total degrees turned', b.degrees + '°', a.degrees + '°', a.degrees < b.degrees) +
-      row('Turns done while the tower is dark', b.inDark, a.inDark, a.inDark > b.inDark) + row('Changes with 3 or 4 towers turning', b.busyChanges, a.busyChanges, a.busyChanges < b.busyChanges) + row('Most towers turning in one change', b.busiest, a.busiest, a.busiest < b.busiest) + '</table>' +
-      (r.changed ? '<p class="muted small">' + r.changed + ' dark tower position' + (r.changed === 1 ? '' : 's') + ' would change. Undo brings everything back.</p>' : '<p class="muted small">Your plan already turns as little as it can with these faces.</p>') +
-      '<p class="muted small">The number of turns comes from your faces: a tower must turn whenever the next lit scene needs a different face. Changing which face shows in a scene is the only way to cut turns further.</p>' +
-      '<div class="row" style="margin-top:12px">' + (r.changed ? '<button class="btn primary" id="stApply">Use smarter turns</button>' : '') + '<button class="btn" id="stCancel">' + (r.changed ? 'Keep mine' : 'Close') + '</button></div>', function (d) {
+  function smarterTurns() {      // run the set-up-ahead rule again (after her own edits), with a before/after
+    stop(); var trial = JSON.parse(JSON.stringify(P)), n = PK.presetAhead(trial), rot = function (Q) { return function (i, t) { return Q.scenes[i].towers[t].rot; }; };
+    var b = PK.turnStats(P, rot(P)), a = PK.turnStats(trial, rot(trial)), same = JSON.stringify(trial.scenes) === JSON.stringify(P.scenes);
+    var busy = function (Q) { return Q.scenes.map(function (sc, i) { if (!i) return ''; var c = PK.change(Q, Q.scenes[i - 1], sc), m = c.moves.filter(function (x) { return x.turn || x.dist; }); return '<tr><td>' + esc(label(i) + '. ' + sc.name) + '</td><td>' + (m.map(function (x) { return x.t + (x.turn ? ' ' + Math.abs(Math.round(x.turn)) + '°' : '') + (x.dist ? ' ↔' : '') + (sc.towers[x.t].lit === 'dark' ? ' (getting ready)' : ''); }).join(', ') || '—') + '</td></tr>'; }).join(''); };
+    T.dialog('<h2>Set up ahead</h2><p>The moment a tower goes dark it turns and slides, in that same change, to exactly what it needs for its next lit scene. Every turn takes the short way (60° or 120°). Lit scenes stay exactly as you set them.</p>' +
+      (same ? '<p><b>Your plan already does this.</b></p>' : '<p>' + n + ' tower' + (n === 1 ? '' : 's') + ' would get ready earlier. Changes with 3 or 4 towers moving: ' + b.busyChanges + ' → ' + a.busyChanges + '.</p>') +
+      '<details' + (same ? ' open' : '') + '><summary>What moves in each change</summary><table class="pk-tab">' + busy(same ? P : trial) + '</table></details>' +
+      '<div class="row" style="margin-top:12px">' + (same ? '' : '<button class="btn primary" id="stApply">Set up ahead</button>') + '<button class="btn" id="stCancel">' + (same ? 'Close' : 'Keep mine') + '</button></div>', function (d) {
       d.querySelector('#stCancel').onclick = function () { d.close(); };
-      var ap = d.querySelector('#stApply'); if (ap) ap.onclick = function () { snap(); PK.applyTurns(P, r); d.close(); changed(); T.toast('Turns spread out (Undo goes back)'); };
+      var ap = d.querySelector('#stApply'); if (ap) ap.onclick = function () { snap(); PK.presetAhead(P); d.close(); changed(); T.toast('Towers set up ahead (Undo goes back)'); };
     });
   }
 

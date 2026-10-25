@@ -501,6 +501,28 @@
     var changed = 0; S.forEach(function (sc, i) { TOWERS.forEach(function (t) { if (Math.abs(norm(plan[t][i] - sc.towers[t].rot)) > 0.5) changed++; }); });
     return { plan: plan, before: before, after: after, changed: changed };
   }
+  /* Set up ahead (Colleen 2026-10-25: "the most accomplished in a change … set up for as many scenes forward as needed"): the moment a tower goes
+     dark it turns and slides, in that same change, to what it needs at its next lit scene; every turn already takes the short way (60° or 120°).
+     A preset that would clash with a tower, a table, the curtain or a turning sweep waits (position first, then the turn) until it is safe. */
+  function presetAhead(P) {
+    var S = P.scenes, moved = 0;
+    var clean = function (k) { var bad = sceneChecks(P, S[k]).some(function (m) { return m.lv === 'bad'; }); if (bad) return false; return !(k && change(P, S[k - 1], S[k]).warn.some(function (m) { return m.lv === 'bad'; })) && !(k + 1 < S.length && change(P, S[k], S[k + 1]).warn.some(function (m) { return m.lv === 'bad'; })); };
+    TOWERS.forEach(function (t) {
+      for (var i = 1; i < S.length; i++) {
+        if (S[i].towers[t].lit !== 'dark' || S[i - 1].towers[t].lit === 'dark') continue;      // the first scene of a dark stretch
+        var k = i; while (k < S.length && S[k].towers[t].lit === 'dark') k++; if (k >= S.length) continue;      // dark to the end: nothing to set up
+        var goal = S[k].towers[t];
+        [['x', 'y', 'rot', 'want'], ['rot', 'want']].some(function (keys) {      // try turn + slide, then the turn alone
+          var keep = []; for (var j = i; j < k; j++) { var q = S[j].towers[t]; keep.push(JSON.stringify(q)); keys.forEach(function (key) { q[key] = goal[key]; }); }
+          var ok = true; for (var j2 = i - 1; j2 <= k && ok; j2++) if (j2 >= 0 && j2 < S.length) ok = clean(j2);
+          if (ok) { moved++; return true; }
+          for (var j3 = i; j3 < k; j3++) Object.assign(S[j3].towers[t], JSON.parse(keep[j3 - i]));
+          return false;
+        });
+      }
+    });
+    return moved;
+  }
   function applyTurns(P, res) { P.scenes.forEach(function (sc, i) { TOWERS.forEach(function (t) { var q = sc.towers[t], r = res.plan[t][i]; if (Math.abs(norm(r - q.rot)) > 0.5) { q.rot = r; var f = facing(P, t, r); q.want = f.kind === 'angled' ? null : f.faces.join('+'); } }); }); }
   function fresh() {      // diagram: Colleen 2026-10-25, her triangle diagram spins clockwise and 0° = face 2 flat to the audience
     var P = { v: 3, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'auto', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
@@ -508,12 +530,13 @@
     P.storage = storageDefaults(P.stage);
     P.spikes = spikeDefaults(P);
     P.scenes = library(P);
+    presetAhead(P); P.presetAhead = 1;
     return P;
   }
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

@@ -43,4 +43,8 @@ ok(['s4', 's12', 's17'].every(id => PK.facing(P, 'B', P.scenes.find(x => x.id ==
 const Q = PK.fresh(), lit0 = JSON.stringify(Q.scenes.map(sc => PK.TOWERS.map(t => sc.towers[t].lit !== 'dark' ? Math.round(sc.towers[t].rot) : null))), r = PK.fewerTurns(Q); PK.applyTurns(Q, r);
 ok(JSON.stringify(Q.scenes.map(sc => PK.TOWERS.map(t => sc.towers[t].lit !== 'dark' ? Math.round(sc.towers[t].rot) : null))) === lit0, 'smarter turns never change a lit scene');
 ok(r.after.turns <= r.before.turns && r.after.degrees <= r.before.degrees && r.after.inDark >= r.before.inDark, 'smarter turns: no more turning, more of it in the dark');
+const R = PK.fresh(); let ahead = true;
+R.scenes.forEach((sc, i) => { if (!i) return; PK.TOWERS.forEach(t => { const q = sc.towers[t]; if (q.lit === 'dark' && R.scenes[i - 1].towers[t].lit !== 'dark') { let k = i; while (k < R.scenes.length && R.scenes[k].towers[t].lit === 'dark') k++; if (k < R.scenes.length && Math.abs(PK.norm(q.rot - R.scenes[k].towers[t].rot)) > 0.5) ahead = false; } }); });
+ok(ahead, 'set up ahead: a tower that goes dark is already turned for its next lit scene');
+ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every(m => Math.abs(m.turn) <= 180)), 'every turn takes the short way');
 process.exit(bad ? 1 : 0);
