@@ -737,3 +737,4 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-front-map { display: block; width: 100%; max-width: 980px; background: #0d0c12; border-radius: 8px; margin: 10px 0; }
 .pk-setup-area { grid-template-columns: 1.4fr 1fr 1fr auto auto; }
 .pk .pk-door { font-size: 13px; padding: 4px 10px; } .pk .pk-door.on { background: #6b3f16; color: #ffe6c4; border-color: #e0a060; }
+.pk-doorgap { stroke: #120d09; stroke-width: 0.35; } .pk-doorleaf { stroke: #ff9a3c; stroke-width: 0.18; } .pk-doorarc { fill: none; stroke: #ff9a3c; stroke-width: 0.1; stroke-dasharray: 0.3 0.2; }

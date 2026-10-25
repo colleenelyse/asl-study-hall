@@ -187,11 +187,13 @@
         F.mat.color.setScalar(shade); F.mat.emissive = new T3.Color(ctx.sel === t ? 0x1c1636 : 0x000000); F.extras.forEach(function (e) { e.mesh.material.color.setScalar(shade); e.mesh.visible = ctx.overlaysOn; });
         var pr = P.practicals && P.practicals[f.id];
         if (pr && pr.door) {      // a walk-through door in use: it opens INTO the tower so the tower can't tip (Colleen 2026-10-25); seen through the dark doorway (hinge side is a stand-in)
-          var dd = F.door; if (!dd) { var dh = pr.h || 6.67, piv = new T3.Group(), leaf = new T3.Mesh(new T3.BoxGeometry(pr.w, dh, 0.12), new T3.MeshStandardMaterial({ color: 0x9a7650, roughness: 0.6 })), hole = new T3.Mesh(new T3.PlaneGeometry(pr.w, dh), new T3.MeshBasicMaterial({ color: 0x050505 }));
+          var dd = F.door; if (!dd) { var dh = pr.h || 6.67, piv = new T3.Group(), leaf = new T3.Mesh(new T3.BoxGeometry(pr.w, dh, 0.12), new T3.MeshStandardMaterial({ color: 0x9a7650, roughness: 0.6 })), hole = new T3.Mesh(new T3.PlaneGeometry(pr.w, dh), new T3.MeshBasicMaterial({ color: 0x120d09 }));
             leaf.position.set(pr.w / 2, 0, 0); piv.add(leaf); var x0 = (pr.u - 0.5) * s.face, yc = dh / 2 - s.height / 2;
             hole.position.set(x0, yc, 0.16); hole.renderOrder = 4; piv.position.set(x0 - pr.w / 2, yc, 0.18); piv.rotation.set(0, pr.swing === 'out' ? -1.2 : 1.2, 0); leaf.castShadow = true; if (pr.swing !== 'out') { leaf.material.depthTest = false; leaf.renderOrder = 6; }      // swung inside the tower: seen through the dark doorway
-            F.group.add(hole); F.group.add(piv); dd = F.door = { hole: hole, piv: piv }; }
-          var used = (sh.doors || []).indexOf(f.id) >= 0; dd.hole.visible = dd.piv.visible = used; dd.piv.children[0].material.color.setHex(0x9a7650).multiplyScalar(shade * (pr.swing === 'out' ? 1 : 0.55));
+            var frame = new T3.Group(), fm = new T3.MeshBasicMaterial({ color: 0xff9a3c }), bar = function (w, h, x, y) { var b = new T3.Mesh(new T3.BoxGeometry(w, h, 0.1), fm); b.position.set(x, y, 0); frame.add(b); };
+            bar(pr.w + 0.5, 0.25, 0, dh / 2 + 0.12); bar(0.25, dh, -pr.w / 2 - 0.12, 0); bar(0.25, dh, pr.w / 2 + 0.12, 0); frame.position.set(x0, yc, 0.2);      // a bright casing: OPEN reads from the back row
+            F.group.add(hole); F.group.add(piv); F.group.add(frame); dd = F.door = { hole: hole, piv: piv, frame: frame }; }
+          var used = (sh.doors || []).indexOf(f.id) >= 0; dd.hole.visible = dd.piv.visible = dd.frame.visible = used; dd.piv.children[0].material.color.setHex(0xd8b888).multiplyScalar(Math.max(0.45, shade) * (pr.swing === 'out' ? 1 : 0.85));
         }
       });
       tw.label.position.set(q.x, s.height + 1, -q.y); tw.label.visible = !!ctx.labels || !!ctx.crew;      // backstage always shows the tower letters

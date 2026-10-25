@@ -249,6 +249,10 @@
         out.push('<polygon class="pk-protp' + (pq.rim ? ' rim' : '') + '" points="' + pq.poly.map(pt).join(' ') + '"><title>' + esc(P.practicals[pq.id].name) + '</title></polygon>');
         if (pq.rim) { var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) }; out.push('<circle class="pk-rim" cx="' + rc.x + '" cy="' + (-rc.y) + '" r="0.75"/>'); }
       });
+      g.faces.forEach(function (f) { var pr = P.practicals && P.practicals[f.id]; if (!pr || !pr.door || (sh.doors || []).indexOf(f.id) < 0) return;      // the door in use: a gap in the wall and the swing drawn into the tower, like a floor plan
+        var L = Math.hypot(f.r.x - f.l.x, f.r.y - f.l.y), ux = (f.r.x - f.l.x) / L, uy = (f.r.y - f.l.y) / L, m = L * pr.u, H = { x: f.l.x + ux * (m - pr.w / 2), y: f.l.y + uy * (m - pr.w / 2) }, Rg = { x: H.x + ux * pr.w, y: H.y + uy * pr.w }, E = { x: H.x - f.n.x * pr.w, y: H.y - f.n.y * pr.w };
+        var cr = (Rg.x - H.x) * (-(E.y - H.y)) - (-(Rg.y - H.y)) * (E.x - H.x);
+        out.push('<line x1="' + H.x + '" y1="' + (-H.y) + '" x2="' + Rg.x + '" y2="' + (-Rg.y) + '" class="pk-doorgap"/><line x1="' + H.x + '" y1="' + (-H.y) + '" x2="' + E.x + '" y2="' + (-E.y) + '" class="pk-doorleaf"/><path d="M' + Rg.x + ',' + (-Rg.y) + ' A' + pr.w + ',' + pr.w + ' 0 0,' + (cr > 0 ? 1 : 0) + ' ' + E.x + ',' + (-E.y) + '" class="pk-doorarc"><title>' + f.id + ' door in use: opens into the tower</title></path>'); });
       out.push('<text x="' + q.x + '" y="' + (-q.y + 0.45) + '" class="pk-letter" text-anchor="middle">' + t + '</text>');
       if (isSel && !anim) { var k = PK.dir(q.rot), kx = q.x + k.x * (Rr + 0.9), ky = q.y + k.y * (Rr + 0.9);
         out.push('<line x1="' + q.x + '" y1="' + (-q.y) + '" x2="' + kx + '" y2="' + (-ky) + '" class="pk-knobline"/><circle data-knob="' + t + '" cx="' + kx + '" cy="' + (-ky) + '" r="0.45" class="pk-knob"><title>Drag to turn (snaps every 30°; hold Option for any angle)</title></circle>'); }
@@ -409,7 +413,14 @@
     document.getElementById('pkPlay').disabled = !prev && !anim;
     wirePanels();
     if (V.view === 'ledger') { var lg = document.querySelector('.pk-ledger'); if (lg) { lg.outerHTML = ledgerHtml(); document.getElementById('pkCsv').onclick = ledgerCsv; } }
-    drawViews();
+    drawViews(); fitOver();
+  }
+  function fitOver() {      // Simple mode: the map from above sits in the open space between the floating panels, never under them
+    var ow = document.getElementById('pkOverWrap'); if (!ow) return;
+    var top = document.getElementById('pkRight'), bt = document.getElementById('pkBottom'), sv = document.getElementById('pkOver');
+    if (V.simple && top && bt && sv) { var a = top.getBoundingClientRect().bottom, b = bt.getBoundingClientRect().top, room = Math.max(160, b - a - 16);
+      ow.style.marginTop = Math.max(0, a - ow.parentNode.getBoundingClientRect().top + 8) + 'px'; sv.style.height = room + 'px'; }
+    else { ow.style.marginTop = ''; if (sv) sv.style.height = ''; }
   }
   function scenePanel(sc) {
     var src = sc.same && P.scenes.find(function (x) { return x.id === sc.same; });
