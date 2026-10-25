@@ -26,7 +26,7 @@ ok(tb.l === P.tables.T1.open.l && tf.l === P.tables.T1.folded.l, 'a table’s fo
 const mid = PK.tableBetween(P, ch.tmoves[0], 0.25), end = PK.tableBetween(P, ch.tmoves[0], 1);
 ok(mid.k === 0 && end.k === 1 && end.label === 'deployed', 'a table travels folded and unfolds only at the end');
 ok(PK.ft(7.5) === '7′ 6″' && PK.parseFt('7\' 6"') === 7.5 && PK.parseFt('-2') === -2, 'feet and inches');
-ok(Math.abs(PK.frontY(P.stage, 0) + 20) < 1e-9 && Math.abs(PK.frontY(P.stage, 25.5) + 5) < 1e-9, 'the front edge: 20 ft at center, 5 ft at the proscenium');
+ok(Math.abs(PK.frontY(P.stage, 0) + 23.7) < 1e-9 && Math.abs(PK.frontY(P.stage, 24.9) + 19.4) < 1e-9 && Math.abs(PK.frontY(P.stage, 30) + 7) < 1e-9, 'the front edge traced from the Reber plan: 23′ 8″ from PL at center, 19′ 5″ at the walls; side decks 5 ft in front of the 2-ft wall');
 ok(PK.diagramAngle(P, 'A', S(9).towers.A.rot) === 180 && PK.diagramAngle(P, 'B', S(3).towers.B.rot) === 180 && PK.diagramAngle(P, 'D', S(9).towers.D.rot) === 300, 'her diagram (0° = face 2 flat, clockwise): A 180° = A1+A3, B 180° = B1+B3, D 300° = D2+D3');
 ok(JSON.stringify(S(9).towers) === JSON.stringify(S(15).towers) && S(15).same === 's9', 'scenes 9 and 15 have identical towers, linked');
 ok(['T1', 'T2'].every(id => S(9).tables[id].spike === 'CF-SEPARATE' && S(15).tables[id].spike === 'CF-SEPARATE' && S(9).tables[id].rot === 90), '9 and the start of 15 use the same CF-SEPARATE spikes, lengths up and downstage');

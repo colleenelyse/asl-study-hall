@@ -34,10 +34,13 @@
 
   function stageDefaults() {
     return {      // * = placeholder until the ground plan's numbers are typed in
-      prosc: 51,          // proscenium opening, wall to wall (Colleen: about 51 ft)
+      prosc: 50,          // proscenium opening, wall to wall (Colleen 2026-10-25: about 50 ft, the two walls on the Reber plan)
+      wallT: 2,           // proscenium wall thickness, downstage of PL (Colleen: about 2 ft)
+      border: 1 + 2 / 12, // the grand border (teaser) on lineset 1, 1′2″ upstage of PL
       curtain: 1 + 10 / 12,      // main curtain (grand drape), upstage of PL: lineset 2, 1′10″
-      apron: 20,          // PL to the curved front edge on the center line, pit cover included (Colleen: about 20 ft)
-      edgeSide: 5,        // PL to the front edge at each proscenium wall (Colleen: about 5 ft)
+      apron: 23.7,        // PL to the front edge on the center line, pit cover included (traced from the Reber seating plan, scaled to the 50-ft opening)
+      edge: [[0, 23.7], [4.6, 23.6], [9.2, 23.2], [13.8, 22.5], [18.4, 21.4], [23.1, 20.1], [24.9, 19.4]],      // the front edge traced from the plan: [feet from center, feet downstage of PL]
+      edgeSide: 5,        // * side decks past each proscenium wall: how deep, in front of the wall (Colleen: about 5 ft)
       sideDeck: 8,        // * how far the deck reaches past each proscenium wall (Horticulture HQ stage right, NYE karaoke stage left)
       wing: 12,           // * wing space behind each proscenium wall
       face: 4, height: 8, // tower faces 4 ft × 8 ft
@@ -47,7 +50,7 @@
       aisle: 3,           // * the narrowest path actors need between a table's bench and anything else
       eye: 5, house: 30,  // audience view camera: eye height and distance in front of PL
       crew: 4,            // crew view camera: distance upstage of the drape (tables stored right in front of it are left out of the picture)
-      placeholder: { sideDeck: true, wing: true, clear: true, curtainGap: true, aisle: true }
+      placeholder: { sideDeck: true, edgeSide: true, wing: true, clear: true, curtainGap: true, aisle: true }
     };
   }
   function R(st) { return st.face / R3; }            // center to a corner
@@ -126,8 +129,10 @@
   }
   /* the front edge of the deck: a circular arc through (±prosc/2, −edgeSide) and (0, −apron); straight past the proscenium walls */
   function frontY(st, x) {
-    var c = st.prosc / 2, s = Math.max(0.01, st.apron - st.edgeSide), rad = (c * c + s * s) / (2 * s);
-    if (Math.abs(x) >= c) return -st.edgeSide;
+    var c = st.prosc / 2, ax = Math.abs(x);
+    if (ax >= c) return -((st.wallT || 0) + st.edgeSide);
+    if (st.edge && st.edge.length) { var E = st.edge, k = 1; while (k < E.length && E[k][0] < ax) k++; if (k >= E.length) return -E[E.length - 1][1]; var a = E[k - 1], b = E[k], u = (ax - a[0]) / (b[0] - a[0]); return -(a[1] + (b[1] - a[1]) * u); }
+    var s = Math.max(0.01, st.apron - st.edgeSide), rad = (c * c + s * s) / (2 * s);
     return -(st.apron - rad + Math.sqrt(rad * rad - x * x));
   }
   /* ---------- the two cafeteria tables (Colleen 2026-10-25: tracked through storage, preset, entry, unfolding, use, folding and removal) ---------- */
@@ -192,7 +197,7 @@
     var g = (P.stage.curtainGap || 0) / 2;      // the curtain opens at center for the tables
     out.push({ who: 'curtain', what: 'the main curtain', poly: [{ x: -c, y: y }, { x: -g, y: y }, { x: -g, y: y + 0.2 }, { x: -c, y: y + 0.2 }] });
     out.push({ who: 'curtain', what: 'the main curtain', poly: [{ x: g, y: y }, { x: c, y: y }, { x: c, y: y + 0.2 }, { x: g, y: y + 0.2 }] });
-    [-1, 1].forEach(function (k) { out.push({ who: 'wall', what: 'the proscenium wall', poly: [{ x: k * c, y: -1 }, { x: k * (c + P.stage.wing), y: -1 }, { x: k * (c + P.stage.wing), y: 0 }, { x: k * c, y: 0 }] }); });
+    var wt = P.stage.wallT || 1; [-1, 1].forEach(function (k) { out.push({ who: 'wall', what: 'the proscenium wall', poly: [{ x: k * c, y: -wt }, { x: k * (c + P.stage.wing), y: -wt }, { x: k * (c + P.stage.wing), y: 0 }, { x: k * c, y: 0 }] }); });
     return out;
   }
 

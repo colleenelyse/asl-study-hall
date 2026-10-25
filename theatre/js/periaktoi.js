@@ -22,6 +22,7 @@
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
+    if (P.stage && P.stage.prosc === 51 && P.stage.apron === 20 && !P.stage.edge) { var ns = PK.stageDefaults(); ['prosc', 'apron', 'edge', 'wallT', 'border'].forEach(function (k) { P.stage[k] = ns[k]; }); }      // to scale from the Reber plan (2026-10-25)
     PK.TABLES.forEach(function (id) { var t = P.tables && P.tables[id]; if (t && !t.model && t.open.l === 8) {      // the school's real tables: Sico 10 ft stool tables
       var f = PK.fresh().tables[id]; t.model = f.model; t.open = f.open; t.seats = f.seats; t.seatH = f.seatH; t.stand.model = false; t.stand.open = false;
       var u = P.spikes && P.spikes['CF-UNITED']; if (u && u[id] && Math.abs(Math.abs(u[id].x) - 4) < 1e-6) u[id].x = (u[id].x < 0 ? -1 : 1) * 5;
@@ -142,7 +143,7 @@
     out.push('<rect x="' + (-c - s.wing) + '" y="' + (-s.curtain - 5) + '" width="' + s.wing + '" height="' + (s.curtain + 5) + '" fill="#17151f"/><rect x="' + c + '" y="' + (-s.curtain - 5) + '" width="' + s.wing + '" height="' + (s.curtain + 5) + '" fill="#17151f"/>');
     out.push('<text x="' + (-c - s.wing / 2) + '" y="' + (-s.curtain - 1) + '" class="pk-t dim" text-anchor="middle">SR wing</text><text x="' + (c + s.wing / 2) + '" y="' + (-s.curtain - 1) + '" class="pk-t dim" text-anchor="middle">SL wing</text>');
     out.push('<polygon class="pk-deck" points="' + (-c) + ',' + (-s.curtain) + ' ' + pts.join(' ') + ' ' + c + ',' + (-s.curtain) + '"/>');
-    out.push('<rect class="pk-deck" x="' + (-c - s.sideDeck) + '" y="0" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><rect class="pk-deck" x="' + c + '" y="0" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/>');
+    out.push('<rect class="pk-deck" x="' + (-c - s.sideDeck) + '" y="' + (s.wallT || 0) + '" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><rect class="pk-deck" x="' + c + '" y="' + (s.wallT || 0) + '" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/>');
     var grid = [];
     for (var gx = Math.ceil(-c - s.sideDeck); gx <= c + s.sideDeck; gx++) grid.push('<line x1="' + gx + '" y1="' + (-s.curtain) + '" x2="' + gx + '" y2="' + s.apron + '" class="' + (gx % 5 ? 'pk-g' : 'pk-g5') + '"/>');
     for (var gy = Math.ceil(-s.curtain); gy <= s.apron; gy++) grid.push('<line x1="' + (-c - s.sideDeck) + '" y1="' + gy + '" x2="' + (c + s.sideDeck) + '" y2="' + gy + '" class="' + (gy % 5 ? 'pk-g' : 'pk-g5') + '"/>');
@@ -151,7 +152,9 @@
     out.push('<line x1="0" y1="' + (-s.curtain) + '" x2="0" y2="' + s.apron + '" class="pk-cl"/>');
     out.push('<line x1="' + (-c) + '" y1="0" x2="' + c + '" y2="0" class="pk-pl"/><text x="' + (c - 0.6) + '" y="-0.3" class="pk-t dim" text-anchor="end">PL</text>');
     out.push('<line x1="' + (-c) + '" y1="' + (-s.curtain) + '" x2="' + c + '" y2="' + (-s.curtain) + '" class="pk-drape"/><text x="' + (-c + 0.6) + '" y="' + (-s.curtain - 0.35) + '" class="pk-t red">Main curtain (grand drape), ' + PK.ft(s.curtain) + ' upstage of PL</text>');
-    out.push('<line x1="' + (-c - s.wing) + '" y1="0" x2="' + (-c) + '" y2="0" class="pk-wall"/><line x1="' + c + '" y1="0" x2="' + (c + s.wing) + '" y2="0" class="pk-wall"/>');
+    var wt = s.wallT || 0.3;      // the proscenium wall (about 2 ft thick, downstage of PL) and the grand border on lineset 1
+    out.push('<rect x="' + (-c - s.wing) + '" y="0" width="' + s.wing + '" height="' + wt + '" class="pk-wallr"/><rect x="' + c + '" y="0" width="' + s.wing + '" height="' + wt + '" class="pk-wallr"/>');
+    if (s.border) out.push('<line x1="' + (-c) + '" y1="' + (-s.border) + '" x2="' + c + '" y2="' + (-s.border) + '" class="pk-border"/>');
     out.push('<text x="' + (-c - 0.4) + '" y="-0.6" class="pk-t dim" text-anchor="end">proscenium</text><text x="' + (c + 0.4) + '" y="-0.6" class="pk-t dim">proscenium</text>');
     out.push('<defs>' + ['A', 'B', 'C', 'D'].map(function (t) { return [1, 2, 3].map(function (k) { var id = t + k; return '<symbol id="pkArt-' + id + '" viewBox="0 0 240 480" preserveAspectRatio="xMidYMid slice"><image id="pkArtImg-' + id + '" href="' + artUrl(id) + '" width="240" height="480" preserveAspectRatio="xMidYMid slice"/></symbol>'; }).join(''); }).join('') + '</defs>');
     out.push('<g id="pkZones"></g>');
@@ -162,8 +165,8 @@
   }
   function zonesSvg(zones) {
     var s = st(), c = s.prosc / 2, on = function (z) { return zones.indexOf(z) >= 0 ? ' on' : ''; };
-    return '<rect class="pk-zone hort' + on('hort') + '" x="' + (-c - s.sideDeck) + '" y="0" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><text x="' + (-c - s.sideDeck / 2) + '" y="' + (s.edgeSide / 2 + 0.3) + '" class="pk-t" text-anchor="middle">Horticulture HQ</text>' +
-      '<rect class="pk-zone nye' + on('nye') + '" x="' + c + '" y="0" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><text x="' + (c + s.sideDeck / 2) + '" y="' + (s.edgeSide / 2 + 0.3) + '" class="pk-t" text-anchor="middle">NYE karaoke</text>' +
+    return '<rect class="pk-zone hort' + on('hort') + '" x="' + (-c - s.sideDeck) + '" y="' + (s.wallT || 0) + '" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><text x="' + (-c - s.sideDeck / 2) + '" y="' + ((s.wallT || 0) + s.edgeSide / 2 + 0.3) + '" class="pk-t" text-anchor="middle">Horticulture HQ</text>' +
+      '<rect class="pk-zone nye' + on('nye') + '" x="' + c + '" y="' + (s.wallT || 0) + '" width="' + s.sideDeck + '" height="' + s.edgeSide + '"/><text x="' + (c + s.sideDeck / 2) + '" y="' + ((s.wallT || 0) + s.edgeSide / 2 + 0.3) + '" class="pk-t" text-anchor="middle">NYE karaoke</text>' +
       '<line x1="' + (c + 0.3) + '" y1="0.15" x2="' + (c + s.sideDeck - 0.3) + '" y2="0.15" class="pk-shimmer' + on('nye') + '"/>';
   }
   var pt = function (p) { return p.x.toFixed(3) + ',' + (-p.y).toFixed(3); };

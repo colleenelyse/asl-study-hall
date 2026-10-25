@@ -623,3 +623,5 @@ dialog input.stand { background: var(--warn-bg); }
 @media (max-width: 1100px) { .pk.simple .pk-main { grid-template-columns: 1fr; } }
 .pk.simple .pk-sc small { display: none; }
 .pk-view canvas.pk3d { display: block; width: 100%; height: auto; cursor: grab; }
+.pk-wallr { fill: #3a3650; stroke: #8a86a0; stroke-width: 0.05; } .pk-border { stroke: #3b4f9c; stroke-width: 0.15; stroke-dasharray: 0.5 0.25; }
+.pk-drape { stroke: #2c3f8f !important; } .pk-t.red { fill: #8fa3e6 !important; }
