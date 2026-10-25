@@ -43,6 +43,7 @@
       if (Math.abs(gap) > 0.01 && Math.abs(gap) < Math.max(L1, L2)) { un.T1.x = mid - L1 / 2; un.T2.x = mid + L2 / 2;
         P.scenes.forEach(function (sc) { PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via.length === 1) q.via[0] = { x: un[id].x + (id === 'T1' ? -2 : 4), y: un[id].y }; }); });
         PK.applySpikes(P); } }
+    P.scenes.forEach(function (sc) { if (['s4', 's12', 's17'].indexOf(sc.id) >= 0 && sc.towers.B && sc.towers.B.want === 'B3') { sc.towers.B.want = 'B1'; sc.towers.B.rot = PK.rotFor(P, 'B', 'B1').rot; } });      // the gym shows the doorway on B (Colleen 2026-10-25)
     PK.applySpikes(P);      // after any change above, every table on a spike stands exactly on it
     if (cur >= P.scenes.length) cur = 0;
   }
@@ -459,7 +460,7 @@
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
     side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
       '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
-      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Spread the turns: same pictures, turns moved into the dark">⟲ Smarter turns</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
     if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
@@ -566,6 +567,7 @@
       }
     }
     app.querySelectorAll('[data-sview]').forEach(function (b) { b.onclick = function () { V.view = b.dataset.sview; rebuild(); }; });
+    if ($('pkSTurns')) $('pkSTurns').onclick = smarterTurns;
     if ($('pkSEdit')) $('pkSEdit').onclick = function () { V.simple = false; V.modeSet = true; T.teacherPages.set(); };
     if ($('pkSSel')) $('pkSSel').onchange = function () { stop(); cur = +this.value; draw(); };
     if ($('pkSPrev')) $('pkSPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
@@ -742,6 +744,21 @@
       var x = JSON.parse(txt); if (!x || !x.scenes || !x.stage || !x.towers) throw new Error('That file is not a periaktoi plan.');
       snap(); P = x; cur = 0; sel = null; rebuild(); changed(); T.toast('Plan loaded (Undo goes back)');
     }).catch(function (e) { T.toast(e.message || 'That file could not be read.', 4000); });
+  }
+
+  /* ---------- Smarter turns: same lit pictures, turns moved into the dark and out of crowded changes (PK.fewerTurns) ---------- */
+  function smarterTurns() {
+    stop(); var r = PK.fewerTurns(P), b = r.before, a = r.after;
+    var row = function (name, x, y, better) { return '<tr><td>' + name + '</td><td>' + x + '</td><td>' + y + '</td><td>' + (better ? '✓' : '') + '</td></tr>'; };
+    T.dialog('<h2>Smarter turns</h2><p>Every lit scene keeps exactly the faces you set. Only towers that are dark for a scene change: they turn earlier, while dark, so busy changes get lighter.</p>' +
+      '<table class="pk-tab"><tr><th></th><th>Now</th><th>Smarter</th><th></th></tr>' + row('Turns in the whole show', b.turns, a.turns, a.turns < b.turns) + row('Total degrees turned', b.degrees + '°', a.degrees + '°', a.degrees < b.degrees) +
+      row('Turns done while the tower is dark', b.inDark, a.inDark, a.inDark > b.inDark) + row('Changes with 3 or 4 towers turning', b.busyChanges, a.busyChanges, a.busyChanges < b.busyChanges) + row('Most towers turning in one change', b.busiest, a.busiest, a.busiest < b.busiest) + '</table>' +
+      (r.changed ? '<p class="muted small">' + r.changed + ' dark tower position' + (r.changed === 1 ? '' : 's') + ' would change. Undo brings everything back.</p>' : '<p class="muted small">Your plan already turns as little as it can with these faces.</p>') +
+      '<p class="muted small">The number of turns comes from your faces: a tower must turn whenever the next lit scene needs a different face. Changing which face shows in a scene is the only way to cut turns further.</p>' +
+      '<div class="row" style="margin-top:12px">' + (r.changed ? '<button class="btn primary" id="stApply">Use smarter turns</button>' : '') + '<button class="btn" id="stCancel">' + (r.changed ? 'Keep mine' : 'Close') + '</button></div>', function (d) {
+      d.querySelector('#stCancel').onclick = function () { d.close(); };
+      var ap = d.querySelector('#stApply'); if (ap) ap.onclick = function () { snap(); PK.applyTurns(P, r); d.close(); changed(); T.toast('Turns spread out (Undo goes back)'); };
+    });
   }
 
   /* ---------- the 17-scene ledger and the preliminary movement score ---------- */

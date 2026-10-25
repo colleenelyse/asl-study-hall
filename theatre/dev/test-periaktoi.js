@@ -39,4 +39,8 @@ const lane = PK.gapInfo(P, S(9), 'T1'); ok(lane.pair.join('') === 'BC' && lane.w
 ok(P.scenes.every((sc, i) => !i || !PK.change(P, P.scenes[i - 1], sc).warn.some(w => w.lv === 'bad')), 'no clashes in any change with the stand-in sizes');
 const old = JSON.parse(JSON.stringify(PK.fresh())); old.v = 2; old.scenes.forEach(sc => { if (sc.spike) { sc.towers.A.x = -11; sc.towers.B.x = -2.5; sc.towers.C.x = 2.5; sc.towers.D.x = 11; } });
 PK.migrate(old); ok(old.v === 3 && old.scenes.find(x => x.id === 's9').towers.B.x === -4.25, 'a saved plan from before the lane gets the lane');
+ok(['s4', 's12', 's17'].every(id => PK.facing(P, 'B', P.scenes.find(x => x.id === id).towers.B.rot).label === 'B1'), 'the gym shows the doorway (B1) on B');
+const Q = PK.fresh(), lit0 = JSON.stringify(Q.scenes.map(sc => PK.TOWERS.map(t => sc.towers[t].lit !== 'dark' ? Math.round(sc.towers[t].rot) : null))), r = PK.fewerTurns(Q); PK.applyTurns(Q, r);
+ok(JSON.stringify(Q.scenes.map(sc => PK.TOWERS.map(t => sc.towers[t].lit !== 'dark' ? Math.round(sc.towers[t].rot) : null))) === lit0, 'smarter turns never change a lit scene');
+ok(r.after.turns <= r.before.turns && r.after.degrees <= r.before.degrees && r.after.inDark >= r.before.inDark, 'smarter turns: no more turning, more of it in the dark');
 process.exit(bad ? 1 : 0);

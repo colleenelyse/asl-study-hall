@@ -395,7 +395,7 @@
       S(1, 'East High (preset): the hallway', hall, { notes: 'The preset: the signature East High hallway, as the audience sees it before the show starts. The New Year’s Eve karaoke vignette plays in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
       S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }),
       S(3, 'Main hallway', hall),
-      S(4, 'Gym', { B: 'B3', C: 'C3', D: 'D1' }),
+      S(4, 'Gym', { B: 'B1', C: 'C3', D: 'D1' }),      // the gym shows the doorway on B, not the moss wall (Colleen 2026-10-25)
       S(5, 'Bio / chem classroom', { A: 'A2', B: 'B1' }),
       S(6, 'Theatre / detention', box, { notes: 'Painting furniture.', items: [{ id: 'pt', kind: 'prop', name: 'Painting furniture', x: 0, y: -5, w: 4, d: 2, rot: 0 }] }),
       S(7, 'Theatre / auditions', box),
@@ -403,14 +403,14 @@
       S(9, 'Cafeteria', cafe, { notes: 'Stick to the Status Quo. A and D shift outward. Tables on CF-SEPARATE: side by side, lengths running up and downstage.', needTables: true, spike: 'CF-SEPARATE' }),
       S(10, 'Horticulture HQ', { A: { want: 'A2', x: -st.prosc / 2 + 3, y: -2.6 } }, { notes: 'A2 at the stage-right proscenium, with plants.', zones: ['hort'], items: [{ id: 'pl', kind: 'prop', name: 'Plants', x: -st.prosc / 2 - 2, y: -3, w: 3, d: 2, rot: 0 }] }),
       S(11, 'Study hall', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }, { notes: 'Adjustable.' }),
-      S(12, 'Gym', { B: 'B3', C: 'C3', D: 'D1' }),
+      S(12, 'Gym', { B: 'B1', C: 'C3', D: 'D1' }),
       S(13, 'Locker room / science (split)', { A: 'A2', C: 'C3' }, { notes: 'Locker room on C3 with the real hooks, gear and a mobile bench (her production notes).', items: [{ id: 'bench', kind: 'prop', name: 'Locker-room bench (mobile)', x: 2.5, y: -6, w: 6, d: 1.25, rot: 0 }] }),
       S(14, 'Theatre', box),
       S(15, 'Cafeteria', cafe, { notes: 'We’re All in This Together, opening: exactly the scene 9 picture (same towers, CF-SEPARATE).', needTables: true, spike: 'CF-SEPARATE', same: 's9' }),
       S(15, 'Cafeteria — united (at a cue you choose)', cafe, { alt: true, moment: true, cue: '', needTables: true, spike: 'CF-UNITED', same: 's9',
         notes: 'Part of the choreography, in full view, not a hidden change. 1 Students clear the tables and their paths. 2 Trained table movers release the tables. 3 Each table turns 90° and travels its own path. 4 They arrive end to end (CF-UNITED). 5 Secured and checked stable. 6 Performers come back to the long sides and the ends, so it reads as one communal table (La Vie Bohème). Nobody sits, stands or rides on a moving table.' }),
       S(16, 'Science — theatre — gym (all at once)', { A: 'A2', B: box.B, C: box.C, D: 'D1' }, { notes: 'Non-negotiable: A2 science, B2+C2 theatre, D1 gym at the same time. Tables out; watch the hoop.' }),
-      S(17, 'Gym / finale / bows', { B: 'B3', C: 'C3', D: 'D1' })
+      S(17, 'Gym / finale / bows', { B: 'B1', C: 'C3', D: 'D1' })
     ];
     var prev = null;      // a tower not named in a scene stays dark where it was, showing the same face(s)
     L.forEach(function (sc) {
@@ -471,6 +471,37 @@
     P.v = 3; applySpikes(P); applyLinks(P);
     return P;
   }
+  /* Fewer turns: a dark tower's facing does not change the picture, so for each tower pick the facing it holds while dark that makes the
+     whole show's turning smallest (dynamic programming over the scenes; lit scenes stay exactly as set). Cost = degrees turned + a little
+     for every separate turn, so it also prefers fewer turns. Returns the new rotations and before/after numbers; nothing changes until applied. */
+  function turnStats(P, rotOf) {
+    var turns = 0, deg = 0, busiest = 0, inDark = 0, busy = [];
+    for (var i = 1; i < P.scenes.length; i++) { var n = 0;
+      TOWERS.forEach(function (t) { var d = Math.abs(norm(rotOf(i, t) - rotOf(i - 1, t))); if (d > 0.5) { turns++; deg += d; n++; if (P.scenes[i - 1].towers[t].lit === 'dark' && P.scenes[i].towers[t].lit === 'dark') inDark++; } });
+      busy.push(n); busiest = Math.max(busiest, n); }
+    return { turns: turns, degrees: Math.round(deg), busiest: busiest, inDark: inDark, busyChanges: busy.filter(function (n) { return n >= 3; }).length };
+  }
+  function fewerTurns(P) {      // same lit pictures; turns moved into the dark and out of crowded changes
+    var S = P.scenes, plan = {}, rotOf = function (i, t) { return plan[t] ? plan[t][i] : S[i].towers[t].rot; };
+    var solve = function (t) {
+      var load = S.map(function (sc, i) { if (!i) return 0; var n = 0; TOWERS.forEach(function (o) { if (o !== t && Math.abs(norm(rotOf(i, o) - rotOf(i - 1, o))) > 0.5) n++; }); return n; });
+      var opts = S.map(function (sc) { var q = sc.towers[t]; if (q.lit !== 'dark') return [q.rot]; var o = []; for (var a = 0; a < 360; a += 60) o.push(norm(a)); if (o.every(function (x) { return Math.abs(norm(x - q.rot)) > 0.5; })) o.push(q.rot); return o; });
+      var cost = [opts[0].map(function () { return 0; })], from = [[]];
+      for (var i = 1; i < S.length; i++) { cost.push([]); from.push([]);
+        var dark = S[i - 1].towers[t].lit === 'dark' && S[i].towers[t].lit === 'dark';
+        opts[i].forEach(function (b, bi) { var best = Infinity, arg = 0;
+          opts[i - 1].forEach(function (a, ai) { var d = Math.abs(norm(b - a)), c = cost[i - 1][ai] + d + (d > 0.5 ? 6 + 25 * load[i] - (dark ? 10 : 0) : 0); if (c < best - 1e-9) { best = c; arg = ai; } });
+          cost[i][bi] = best; from[i][bi] = arg; }); }
+      var last = S.length - 1, bi = 0; cost[last].forEach(function (c, k) { if (c < cost[last][bi]) bi = k; });
+      var pick = []; for (var j = last; j >= 0; j--) { pick[j] = opts[j][bi]; bi = j ? from[j][bi] : 0; }
+      plan[t] = pick;
+    };
+    for (var round = 0; round < 4; round++) TOWERS.forEach(solve);      // each tower in turn, knowing where the others turn
+    var before = turnStats(P, function (i, t) { return S[i].towers[t].rot; }), after = turnStats(P, rotOf);
+    var changed = 0; S.forEach(function (sc, i) { TOWERS.forEach(function (t) { if (Math.abs(norm(plan[t][i] - sc.towers[t].rot)) > 0.5) changed++; }); });
+    return { plan: plan, before: before, after: after, changed: changed };
+  }
+  function applyTurns(P, res) { P.scenes.forEach(function (sc, i) { TOWERS.forEach(function (t) { var q = sc.towers[t], r = res.plan[t][i]; if (Math.abs(norm(r - q.rot)) > 0.5) { q.rot = r; var f = facing(P, t, r); q.want = f.kind === 'angled' ? null : f.faces.join('+'); } }); }); }
   function fresh() {      // diagram: Colleen 2026-10-25, her triangle diagram spins clockwise and 0° = face 2 flat to the audience
     var P = { v: 3, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'auto', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
     TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
@@ -482,7 +513,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;
