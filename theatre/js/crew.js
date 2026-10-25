@@ -29,7 +29,7 @@
   /* How did you hear about us? (Colleen 2026-10-25: "include all invited groups, the lion newspaper (assuming we get an early article), recommended by,
      and an other button that allows for typing"): tick any; the groups are editable on her page; Recommended by and Other always come last, each with a box */
   var DEF_GROUPS = ['Adaptive PE Leaders', 'Adaptive Art Leader', 'Adaptive Culinary Leader', 'Adaptive Tech Leader', 'Adaptive Music Leader', 'Best Buddies', 'Theatre Board', 'NHS',
-    'Theatre: Stage Tech', 'Choir', 'Dance Arts', 'Fashion & Interior Design', 'Film & TV', 'Digital Photo', 'Graphic Design', 'Marketing', 'The Lion (school newspaper)'].join('\n');
+    'Theatre: Stage Tech', 'Choir', 'Dance Arts', 'Fashion & Interior Design', 'Film & TV', 'Digital Photo', 'Graphic Design', 'Marketing', 'TCD Cosmetology (Technology Center of DuPage)', 'The Lion (school newspaper)'].join('\n');
   var SOURCES = [['ape', 'Adaptive PE'], ['art', 'Art'], ['cul', 'Culinary'], ['board', 'Theatre Board'], ['rec', 'A teacher recommended me'], ['other', 'Other']];      // the first version (one choice): read old answers only
   var CHOICE = { y: 'I can be there', m: 'Maybe', n: 'I can’t' };
   var THU_CHOICE = { y: 'Yes, I can miss the whole day', m: 'Maybe', n: 'No, I can’t' };
