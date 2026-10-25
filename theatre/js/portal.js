@@ -390,11 +390,11 @@
      already knows about (her choice), as many as needed. */
   function conflictsForm() {
     var d = draft(T.me.id, 'conflicts') || {}, ans = d.answers || {}, notes = d.notes || {};
-    weekDates().forEach(function (x) { if (!ans[x.date]) ans[x.date] = 'ok'; });      // "I will be in attendance" is already chosen
+    // no answer is chosen when the form opens (Colleen 2026-10-25: "i want them to have to knowingly click/select one or the other"); a family's own saved copy is kept
     var f = shell('Show-week conflicts', '<h2 style="margin-top:0">' + sym('🗓️') + 'Show week</h2><p>Please answer these now, during audition week. Big roles need someone at all of them, so we look at these before the cast list goes up. ' +
       'Every Company member has a part in the show.</p>',
       weekDates().map(function (x) {
-        return '<fieldset style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0"><legend style="font-weight:700">' + esc(x.what) + ' <span class="err" aria-hidden="true">*</span></legend><div class="seg" data-cd="' + esc(x.date) + '">' +
+        return '<fieldset data-cq="' + esc(x.date) + '" style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0;border-radius:8px"><legend style="font-weight:700">' + esc(x.what) + ' <span class="err" aria-hidden="true">*</span></legend><div class="seg" data-cd="' + esc(x.date) + '">' +
           [['ok', 'I will be in attendance'], ['no', 'I cannot attend']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (ans[x.date] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
           '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>Reason (required)<input maxlength="100" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label>' +
           '<p class="small card" data-cw="' + esc(x.date) + '" hidden style="margin:6px 0 0;background:var(--hi)">' + sym('💛') + esc(GENTLE) + '</p></fieldset>';
@@ -409,6 +409,7 @@
     if (firstNo) { var w0 = f.querySelector('[data-cw="' + firstNo + '"]'); if (w0) w0.hidden = false; }
     f.querySelectorAll('[data-cd] button').forEach(function (b) { b.onclick = function () {
       var k = b.parentNode.dataset.cd; ans[k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      f.querySelector('[data-cq="' + k + '"]').style.outline = '';
       var box = f.querySelector('[data-cn="' + k + '"]'); box.hidden = b.dataset.v !== 'no'; if (!box.hidden) box.querySelector('input').focus();
       if (b.dataset.v === 'no' && !noteShown) { noteShown = true; f.querySelector('[data-cw="' + k + '"]').hidden = false; }
     }; });
@@ -426,10 +427,13 @@
     f.querySelector('#addtrip').onclick = function () { if (trips.length < 12) { trips.push({ from: '', to: '', note: '' }); drawTrips(); var l = tripBox.querySelectorAll('[data-k=from]'); if (l.length) l[l.length - 1].focus(); } else T.toast('That is the most this form takes. Put the rest in Comments.'); };
     f.onsubmit = function (e) {
       e.preventDefault();
+      var open = weekDates().filter(function (x) { return ans[x.date] !== 'ok' && ans[x.date] !== 'no'; });
+      f.querySelectorAll('[data-cq]').forEach(function (q) { q.style.outline = open.some(function (x) { return x.date === q.dataset.cq; }) ? '3px solid var(--bad)' : ''; });
+      if (open.length) { fail(new Error('Please choose “I will be in attendance” or “I cannot attend” for every date (' + open.length + ' left).')); var q0 = f.querySelector('[data-cq="' + open[0].date + '"]'); q0.scrollIntoView({ block: 'center', behavior: 'smooth' }); var b1 = q0.querySelector('button'); if (b1) b1.focus({ preventScroll: true }); return; }
       var nt = {}, noReason = [];
       weekDates().forEach(function (x) { if (ans[x.date] !== 'no') return; var v2 = f.querySelector('[data-cn="' + x.date + '"] input').value.trim(); if (v2) nt[x.date] = v2; else noReason.push(x); });
       if (noReason.length) { fail(new Error('Please give a reason for each date you cannot attend (' + noReason.length + ' left).')); var b0 = f.querySelector('[data-cn="' + noReason[0].date + '"] input'); if (b0) b0.focus(); return; }
-      var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date] === 'no' ? 'no' : 'ok'; });
+      var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date]; });
       var tr = trips.filter(function (t) { return t.from || t.to || t.note; }).map(function (t) { return { from: t.from, to: t.to || t.from, note: t.note || '' }; });
       if (tr.some(function (t) { return !t.from || t.to < t.from; })) { fail(new Error('Each absence needs a From date (and a To date on or after it, if it is more than one day).')); return; }
       send('conflicts', { answers: keep, notes: nt, trips: tr, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
