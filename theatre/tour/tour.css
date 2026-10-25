@@ -151,7 +151,7 @@ ul.ticks li::before { content: '✓'; position: absolute; left: 0; color: var(--
 .lyr { padding: 6px 12px; border-radius: 10px; border: 2px solid transparent; transition: background .2s; }
 .lyr .who { font-size: .7em; font-weight: 700; letter-spacing: .08em; font-family: var(--font-head); opacity: .7; display: inline-block; width: 4.4em; }
 .lyr.lit { border-color: rgba(0,0,0,.25); }
-.lyr.lit.rosa { background: #fbd3d5; } .lyr.lit.theo { background: #e3d6fb; } .lyr.lit.all { background: #fff28a; }
+.lyr.lit.troy { background: #fbd3d5; } .lyr.lit.gabriella { background: #e3d6fb; } .lyr.lit.all, .lyr.lit.both { background: #fff28a; }
 .lyr.dimmed { opacity: .4; }
 .redx { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255,255,255,.55); pointer-events: none; }
 .redx svg { width: 62%; max-width: 260px; }
@@ -248,3 +248,6 @@ ol.refs li { margin: .35em 0; }
 .fit .opt > b { display: block; font-family: var(--font-head); font-size: .9em; margin-bottom: 6px; }
 
 footer { border-top: 1px solid var(--line); padding: 30px 16px 60px; text-align: center; color: var(--muted); font-size: .88em; }
+.lyr .bar { display: inline-block; height: 12px; border-radius: 99px; background: currentColor; opacity: .28; vertical-align: middle; }
+.lyr .who { width: 7.4em; }
+.lyr { display: flex; align-items: center; min-height: 40px; } .lyr .who { flex: none; }

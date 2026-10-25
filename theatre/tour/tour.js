@@ -170,19 +170,14 @@
   if (document.fonts) document.fonts.ready.then(placeMargin);
 
   /* ---------- the song with the red X ---------- */
-  var SONG = [      // [start s, who, words]: made-up lyrics
-    [0.0, 'all', 'Flour on the counter and the clock on the wall,'],
-    [3.2, 'all', 'Somebody open up the door for us all!'],
-    [6.4, 'rosa', 'I had a plan and it fell on the floor,'],
-    [9.6, 'theo', 'So knock, knock, knock on a brand new door.'],
-    [12.8, 'rosa', 'Will it be sweet? Will it be fine?'],
-    [16.0, 'theo', 'One tray at a time, one tray at a time.'],
-    [19.2, 'all', 'Open the door! Open the door!']
+  var SONG = [      // [start s, who, bar length %]: who sings each line; no words on this public page (the licensed lyrics stay in the app)
+    [0.0, 'troy', 70], [3.2, 'troy', 55], [6.4, 'gabriella', 75], [9.6, 'gabriella', 60],
+    [12.8, 'troy', 50], [14.4, 'gabriella', 50], [16.0, 'both', 80], [19.2, 'both', 65]
   ];
   var SONG_LEN = 23.2, NOTES = [60, 64, 67, 72, 67, 64, 65, 69, 72, 69, 65, 62, 67, 71, 74, 71, 67, 64, 60, 64, 67, 72, 76, 72, 67, 60, 64, 67, 72, 67, 64, 60];
-  var song = { me: 'theo', playing: false, t0: 0, raf: 0, ctx: null, nodes: [] };
-  $('#lyrics').innerHTML = SONG.map(function (l, k) { return '<div class="lyr ' + l[1] + '" data-k="' + k + '"><span class="who">' + l[1].toUpperCase() + '</span>' + esc(l[2]) + '</div>'; }).join('');
-  function mineAt(who) { return who === 'all' || who === song.me; }
+  var song = { me: 'troy', playing: false, t0: 0, raf: 0, ctx: null, nodes: [] };
+  $('#lyrics').innerHTML = SONG.map(function (l, k) { return '<div class="lyr ' + l[1] + '" data-k="' + k + '"><span class="who">' + l[1].toUpperCase() + '</span><span class="bar" style="width:' + l[2] + '%"></span></div>'; }).join('');
+  function mineAt(who) { return who === 'both' || who === song.me; }
   function tick() {
     var t = song.playing ? (song.ctx.currentTime - song.t0) : 0, cur = -1;
     SONG.forEach(function (l, k) { if (t >= l[0] - 0.3) cur = k; });
