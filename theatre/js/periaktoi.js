@@ -22,6 +22,7 @@
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
+    if (P.stage && P.stage.borderDrop == null) P.stage.borderDrop = 3.5;
     if (P.stage && (P.stage.proscH == null || P.stage.proscH === 24)) { P.stage.proscH = 16.5; if (P.stage.placeholder) delete P.stage.placeholder.proscH; }      // about 16–17 ft (Colleen)
     if (P.stage && P.stage.prosc === 51 && P.stage.apron === 20 && !P.stage.edge) { var ns = PK.stageDefaults(); ['prosc', 'apron', 'edge', 'wallT', 'border'].forEach(function (k) { P.stage[k] = ns[k]; }); }      // to scale from the Reber plan (2026-10-25)
     PK.TABLES.forEach(function (id) { var t = P.tables && P.tables[id]; if (t && !t.model && t.open.l === 8) {      // the school's real tables: Sico 10 ft stool tables
@@ -157,6 +158,7 @@
     for (var gy = Math.ceil(-s.curtain); gy <= s.apron; gy++) grid.push('<line x1="' + (-c - s.sideDeck) + '" y1="' + gy + '" x2="' + (c + s.sideDeck) + '" y2="' + gy + '" class="' + (gy % 5 ? 'pk-g' : 'pk-g5') + '"/>');
     out.push('<clipPath id="pkDeckClip"><polygon points="' + (-c) + ',' + (-s.curtain) + ' ' + pts.join(' ') + ' ' + c + ',' + (-s.curtain) + '"/><rect x="' + (-c - s.sideDeck) + '" y="0" width="' + (2 * c + 2 * s.sideDeck) + '" height="' + s.edgeSide + '"/></clipPath>');
     out.push('<g clip-path="url(#pkDeckClip)">' + grid.join('') + '</g>');
+    out.push('<polyline points="' + pts.join(' ') + '" class="pk-nose"/>');      // the 12″ wooden bullnose along the front edge
     out.push('<line x1="0" y1="' + (-s.curtain) + '" x2="0" y2="' + s.apron + '" class="pk-cl"/>');
     out.push('<line x1="' + (-c) + '" y1="0" x2="' + c + '" y2="0" class="pk-pl"/><text x="' + (c - 0.6) + '" y="-0.3" class="pk-t dim" text-anchor="end">PL</text>');
     out.push('<line x1="' + (-c) + '" y1="' + (-s.curtain) + '" x2="' + c + '" y2="' + (-s.curtain) + '" class="pk-drape"/><text x="' + (-c + 0.6) + '" y="' + (-s.curtain - 0.35) + '" class="pk-t red">Main curtain (grand drape), ' + PK.ft(s.curtain) + ' upstage of PL</text>');
@@ -271,7 +273,7 @@
     g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#07060b'; g.fillRect(0, 0, W, H);
     var poly = function (pts, fill, stroke) { g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.stroke(); } };
     if (!crew) poly([pr(-c, s.curtain, 0), pr(c, s.curtain, 0), pr(c, s.curtain, 22), pr(-c, s.curtain, 22)], '#4a0d14');      // the main curtain
-    if (flat) { g.fillStyle = '#2b2620'; g.fillRect(0, base, W, H - base); g.fillStyle = '#5b5040'; g.fillRect(0, base, W, Math.max(1, W * 0.002)); }      // the stage floor, edge on
+    if (flat) { g.fillStyle = '#121212'; g.fillRect(0, base, W, H - base); g.fillStyle = '#b8895a'; g.fillRect(0, base + 0.15 * S, W, Math.max(2, 0.8 * S)); }      // the black deck, edge on, and its wooden bullnose
     else {
       var deck = [pr(-c, s.curtain, 0)]; for (var i = 0; i <= 40; i++) { var x = -c + 2 * c * i / 40; deck.push(pr(x, PK.frontY(s, x), 0)); } deck.push(pr(c, s.curtain, 0));
       poly(deck, '#2b2620', '#5b5040');
@@ -657,7 +659,7 @@
 
   /* ---------- Stage & towers settings, export, import ---------- */
   function settings() {
-    var s = st(), F = [['prosc', 'Proscenium opening (wall to wall)'], ['proscH', 'Proscenium opening height'], ['curtain', 'Main curtain (grand drape): upstage of PL'], ['apron', 'Deck depth at center: PL to the curved front edge'], ['edgeSide', 'Deck depth at the proscenium walls'],
+    var s = st(), F = [['prosc', 'Proscenium opening (wall to wall)'], ['proscH', 'Proscenium opening height'], ['borderDrop', 'Grand border: hangs below the top of the opening'], ['curtain', 'Main curtain (grand drape): upstage of PL'], ['apron', 'Deck depth at center: PL to the curved front edge'], ['edgeSide', 'Deck depth at the proscenium walls'],
       ['sideDeck', 'Side decks past each proscenium wall (Horticulture HQ / NYE)'], ['wing', 'Wing space behind each wall'], ['face', 'Tower face width'], ['height', 'Tower height'], ['grid', 'Snap grid'], ['clear', 'Gap to keep (towers, drape)'], ['house', 'Audience view: seat distance in front of the front edge'], ['crew', 'Crew view: distance upstage of the drape']];
     T.dialog('<h2>Stage & towers</h2><p class="muted small">Feet and inches, like 25\' 6". Placeholders are marked; type over them when you have the real numbers.</p>' +
       F.map(function (f) { return '<label class="f">' + f[1] + (s.placeholder && s.placeholder[f[0]] ? ' <i>(placeholder)</i>' : '') + '<input data-st="' + f[0] + '" value="' + PK.ft(s[f[0]]) + '"></label>'; }).join('') +

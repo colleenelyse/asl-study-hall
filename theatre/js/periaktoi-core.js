@@ -39,6 +39,7 @@
       proscH: 16.5,       // proscenium opening height (Colleen: about 16–17 ft)
       person: 5.5,        // the person drawn for scale (5′ 6″)
       border: 1 + 2 / 12, // the grand border (teaser) on lineset 1, 1′2″ upstage of PL
+      borderDrop: 3.5,    // how far the grand border hangs below the top of the opening (Colleen: about 3½ ft)
       curtain: 1 + 10 / 12,      // main curtain (grand drape), upstage of PL: lineset 2, 1′10″
       apron: 23.7,        // PL to the front edge on the center line, pit cover included (traced from the Reber seating plan, scaled to the 50-ft opening)
       edge: [[0, 23.7], [4.6, 23.6], [9.2, 23.2], [13.8, 22.5], [18.4, 21.4], [23.1, 20.1], [24.9, 19.4]],      // the front edge traced from the plan: [feet from center, feet downstage of PL]

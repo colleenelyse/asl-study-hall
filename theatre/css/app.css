@@ -585,7 +585,7 @@ body.pk-wide main { max-width: none; padding: 10px 14px 60px; }
 .pk-ready { font-weight: 700; margin: 2px 0 6px; } .pk-ready.yes { color: #6fdc9b; } .pk-ready.no { color: #ffb0a8; }
 .pk-t { font-size: 0.75px; fill: #cfc9e6; font-family: system-ui, sans-serif; pointer-events: none; } .pk-t.dim { fill: #6f6a86; } .pk-t.red { fill: #e26a75; } .pk-t.big { font-size: 1.1px; font-weight: 700; fill: #ece8f8; }
 .pk-t.face { font-size: 0.6px; fill: #8a84a3; } .pk-t.face.aud { fill: #fff; font-weight: 700; }
-.pk-deck { fill: #241f1a; stroke: #5b5040; stroke-width: 0.08; }
+.pk-deck { fill: #141414; stroke: #3a3a3a; stroke-width: 0.08; }
 .pk-g { stroke: #2f2a24; stroke-width: 0.03; } .pk-g5 { stroke: #3d362e; stroke-width: 0.06; }
 .pk-cl { stroke: #4a4458; stroke-width: 0.06; stroke-dasharray: 0.4 0.3; } .pk-pl { stroke: #6f6a86; stroke-width: 0.06; stroke-dasharray: 0.2 0.2; }
 .pk-drape { stroke: #b3121f; stroke-width: 0.25; } .pk-wall { stroke: #8a86a0; stroke-width: 0.4; }
@@ -643,3 +643,6 @@ dialog input.stand { background: var(--warn-bg); }
 .pk.simple .pk-left, .pk.simple .pk-right { max-height: calc(100vh - 150px); }
 @media (max-width: 1250px) { .pk.simple .pk-main { grid-template-columns: 170px minmax(0, 1fr) 290px; } }
 @media (max-width: 980px) { .pk.simple .pk-main { grid-template-columns: 1fr; } .pk.simple .pk-left { max-height: 26vh; } }
+
+.pk-nose { fill: none; stroke: #b8895a; stroke-width: 0.9; stroke-linecap: round; opacity: .9; }
+.pk-g { stroke: #262626; } .pk-g5 { stroke: #333; }

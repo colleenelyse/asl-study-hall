@@ -52,8 +52,18 @@
     for (var i = 0; i <= 60; i++) { var x = -c + 2 * c * i / 60; shape.lineTo(x, ctx.PK.frontY(s, x)); }
     shape.lineTo(c, s.curtain); shape.lineTo(-c, s.curtain);
     var wood = woodTex(); wood.wrapS = wood.wrapT = T3.RepeatWrapping; wood.repeat.set(0.08, 0.08);
-    var floorMat = new T3.MeshStandardMaterial({ map: wood, roughness: 0.42, metalness: 0.05 });
+    var deck = canvasTex(512, 512, function (g, w, h) { g.fillStyle = '#121212'; g.fillRect(0, 0, w, h); for (var i = 0; i < 2600; i++) { var v = 18 + Math.round(Math.random() * 14); g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.5)'; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1); } g.strokeStyle = 'rgba(0,0,0,.6)'; for (var j = 0; j <= 4; j++) { g.beginPath(); g.moveTo(0, j * h / 4); g.lineTo(w, j * h / 4); g.stroke(); } });      // the black stage deck (painted, a little scuffed; 4×8 sheet seams)
+    deck.wrapS = deck.wrapT = T3.RepeatWrapping; deck.repeat.set(1 / 8, 1 / 8);
+    var floorMat = new T3.MeshStandardMaterial({ map: deck, roughness: 0.62, metalness: 0.02 });
     var floorMat2 = floorMat.clone(); floorMat2.side = T3.DoubleSide; var floor = new T3.Mesh(new T3.ShapeGeometry(shape), floorMat2); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+    // the front edge: a wooden bullnose about 12″ thick all the way around the curve, then a dark fascia down to the house floor
+    var edgePts = []; for (var e = 0; e <= 80; e++) { var ex = -c + 2 * c * e / 80; edgePts.push(new T3.Vector3(ex, -0.5, -ctx.PK.frontY(s, ex))); }
+    var edgeCurve = new T3.CatmullRomCurve3(edgePts), nose = new T3.Mesh(new T3.TubeGeometry(edgeCurve, 240, 0.5, 14, false), new T3.MeshStandardMaterial({ map: wood, color: 0xffe2bd, emissive: 0x2a1a0c, roughness: 0.35, metalness: 0.05 }));
+    nose.castShadow = nose.receiveShadow = true; scene.add(nose);
+    var fasc = []; edgePts.forEach(function (p) { fasc.push(p.x, -0.6, p.z + 0.02, p.x, -3.2, p.z + 0.02); });
+    var fg = new T3.BufferGeometry(); fg.setAttribute('position', new T3.Float32BufferAttribute(fasc, 3)); var idx = []; for (var q = 0; q < edgePts.length - 1; q++) { var a = q * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } fg.setIndex(idx); fg.computeVertexNormals();
+    scene.add(new T3.Mesh(fg, new T3.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 1, side: T3.DoubleSide })));
+    var house = new T3.Mesh(new T3.PlaneGeometry(200, 120), new T3.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 1 })); house.rotation.x = -Math.PI / 2; house.position.set(0, -3.2, 60); scene.add(house);
     [-1, 1].forEach(function (k) {      // side decks (Horticulture HQ stage right, NYE karaoke stage left)
       var g = new T3.PlaneGeometry(s.sideDeck, s.edgeSide), m = new T3.Mesh(g, floorMat); m.rotation.x = -Math.PI / 2; m.position.set(k * (c + s.sideDeck / 2), 0, (s.wallT || 0) + s.edgeSide / 2); m.receiveShadow = true; scene.add(m);
     });
@@ -65,7 +75,7 @@
     var wallBox = function (w, h, x, y) { var m = new T3.Mesh(new T3.BoxGeometry(w, h, wt), bricky(w, h)); m.position.set(x, y, wt / 2); m.receiveShadow = true; scene.add(m); };
     [-1, 1].forEach(function (k) { wallBox(14, 30, k * (c + s.sideDeck + 7), 15); wallBox(s.sideDeck, 30 - 10, k * (c + s.sideDeck / 2), 10 + (30 - 10) / 2); });      // beside the opening; the side decks' backdrops sit below 10 ft
     wallBox(2 * c + 4, 14, 0, ph + 7);      // above the opening
-    var border = new T3.Mesh(new T3.PlaneGeometry(2 * c, 3), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - 1.5, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (teaser), lineset 1
+    var bd = s.borderDrop || 3.5, border = new T3.Mesh(new T3.PlaneGeometry(2 * c + 2, bd + 1), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - bd + (bd + 1) / 2, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (lineset 1): its bottom edge about 3½ ft below the top of the opening
     W.nye = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ map: shimmerTex(), roughness: 0.25, metalness: 0.8 })); W.nye.position.set(c + s.sideDeck / 2, 5, wt + 0.05); scene.add(W.nye);
     W.hort = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ color: 0x3f7a45, roughness: 0.9 })); W.hort.position.set(-c - s.sideDeck / 2, 5, wt + 0.05); scene.add(W.hort);
     // light: two front-of-house spots from the box booms, a warm top fill, a little ambience
@@ -204,7 +214,7 @@
   }
   function draw(host, ctx) {
     if (!ready) { load().then(function () { ctx.redraw(); }).catch(function () { ctx.fallback(); }); return false; }
-    if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { build(ctx); faceSrc = {}; overlays = null; }
+    if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { try { build(ctx); } catch (e) { W = {}; ctx.fallback(); return false; } faceSrc = {}; overlays = null; }      // a half-built scene would fail on every frame
     loadOverlays(ctx); attachOverlays(ctx);
     var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick;
     var Wd = host.clientWidth; if (!Wd) return true; var H = Math.round(Math.min(Wd * 0.5, Math.max(260, window.innerHeight * 0.58)));      // never taller than the window allows, so the controls stay in view
