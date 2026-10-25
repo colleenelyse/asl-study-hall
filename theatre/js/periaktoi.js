@@ -62,9 +62,18 @@
       var mine = versions(list, id), pick = P.art && P.art[id]; a.versions = mine;      // a face can have several versions (D3-Academic-Corridor.jpg, D3-Academic-Corridor-v2.jpg…): her pick, else the plain one
       var f = mine.indexOf(pick) >= 0 ? pick : mine.find(function (n) { return n.indexOf(PK.FILES[id] + '.') === 0; }) || mine[0]; if (!f) return; a.file = f;
       if (a.versions.length > 1 && sel && document.getElementById('pkRight')) draw();
-      var im = new Image(); im.onload = function () { a.img = im; a.real = true; drawViews(); }; im.src = 'img/set/' + f;
+      var im = new Image(); im.onload = function () { a.img = fit(im, a); a.real = true; drawViews(); }; im.src = 'img/set/' + f;
     });
     return a;
+  }
+  function fit(im, a) {      // never stretched: a picture that is not 1:2 sits at its true shape on a dark face, and is flagged
+    var r = im.width / im.height; a.ratio = r; a.off = Math.abs(r - 0.5) > 0.01;
+    if (!a.off) return im;
+    var c = document.createElement('canvas'), w = im.width, h = Math.round(w * 2); if (r < 0.5) { h = im.height; w = Math.round(h / 2); }
+    c.width = w; c.height = h; var g = c.getContext('2d'); g.fillStyle = '#2a2833'; g.fillRect(0, 0, w, h);
+    var dw = r < 0.5 ? h * r : w, dh = r < 0.5 ? h : w / r; g.drawImage(im, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    g.fillStyle = '#ffcf6b'; g.font = 'bold ' + Math.round(w / 14) + 'px sans-serif'; g.textAlign = 'center'; g.fillText('Not 1:2: re-export', w / 2, Math.max(w / 10, (h - dh) / 2 - w / 20));
+    return c;
   }
   function versions(list, id) { return (list || []).filter(function (n) { return n.indexOf(PK.FILES[id]) === 0; }); }
   function placeholder(id) {
@@ -333,7 +342,7 @@
       '<div class="pk-f">Part in the scene' + seg('role', ['featured', 'supporting', 'masking'], ['Featured', 'Supporting', 'Masking / dark']) + '</div>' +
       '<div class="pk-f">Wheels' + seg('lock', [true, false], ['Locked', 'Rolling']) + '</div>' +
       '<details' + ([1, 2, 3].some(function (k) { return (art(t + k).versions || []).length > 1; }) ? ' open' : '') + '><summary>Faces on ' + t + '</summary><ul class="pk-faces">' + [1, 2, 3].map(function (k) { var A = art(t + k), id = t + k;
-        return '<li><b>' + id + '</b> ' + esc(PK.FACES[id]) + (A.real ? '' : ' <i>(placeholder art)</i>') + ((A.versions || []).length > 1 ? '<br>Version <select data-art="' + id + '">' + A.versions.map(function (f, i) { return '<option value="' + esc(f) + '"' + (f === A.file ? ' selected' : '') + '>' + (i + 1) + ': ' + esc(f.replace(PK.FILES[id], '').replace(/^-/, '').replace(/\.\w+$/, '') || 'first') + '</option>'; }).join('') + '</select>' : '') + '</li>'; }).join('') + '</ul>' +
+        return '<li><b>' + id + '</b> ' + esc(PK.FACES[id]) + (A.real ? (A.off ? ' <b class="pk-bad">⚠ this picture is ' + (Math.round(A.ratio * 100) / 100) + ' : 1, not 1:2; shown without stretching. Re-export it at 1:2 (e.g. 1200 × 2400).</b>' : '') : ' <i>(placeholder art)</i>') + ((A.versions || []).length > 1 ? '<br>Version <select data-art="' + id + '">' + A.versions.map(function (f, i) { return '<option value="' + esc(f) + '"' + (f === A.file ? ' selected' : '') + '>' + (i + 1) + ': ' + esc(f.replace(PK.FILES[id], '').replace(/^-/, '').replace(/\.\w+$/, '') || 'first') + '</option>'; }).join('') + '</select>' : '') + '</li>'; }).join('') + '</ul>' +
       '<p class="pk-help small">Face order around ' + t + ': ' + (w ? '1 → 2 → 3 go <b>' + w + '</b> seen from above (confirmed).' : 'taken from your triangle diagram (' + (P.towers[t].wind === 'cw' ? 'clockwise' : 'counterclockwise') + '); not checked on the real tower yet. Confirm it in Stage & towers.') + '</p></details></div>';
   }
   function tablePanel(id) {
