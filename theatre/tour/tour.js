@@ -9,33 +9,25 @@
   var store = { get: function (k) { try { return localStorage.getItem('tour:' + k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem('tour:' + k, v); } catch (e) {} } };
   function pressed(group, btn) { $$('button', group).forEach(function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); }); }
 
-  /* ---------- read aloud (the device's voice) ---------- */
-  var synth = window.speechSynthesis, voice = null;
-  function pickVoice() {
-    if (!synth) return;
-    var vs = synth.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
-    var good = vs.filter(function (v) { return /premium|enhanced|natural|google/i.test(v.name); });
-    voice = good[0] || vs[0] || null;
-  }
-  if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
-  function say(text, opts) {
-    opts = opts || {};
+  /* ---------- recorded voices only (Colleen: ElevenLabs recordings, never the device's voice) ----------
+     A line plays tour/audio/<id>.mp3 when that file exists; otherwise the words show on screen for a reading-time pause, silently.
+     audio/list.json names the recordings that exist. Buttons that only read aloud (data-audio) stay hidden until theirs does. */
+  var player = new Audio(), have = {};
+  function quiet() { player.pause(); }
+  function say(text, id) {
     return new Promise(function (done) {
-      if (!synth) { setTimeout(done, Math.min(4000, 400 + text.length * 55)); return; }
-      synth.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      if (voice) u.voice = voice;
-      u.rate = opts.rate || 0.95; u.pitch = opts.pitch || 1;
       var fin = false, end = function () { if (!fin) { fin = true; done(); } };
-      u.onend = end; u.onerror = end;
-      setTimeout(end, 1500 + text.length * 120);      // some browsers never fire onend
-      synth.speak(u);
+      quiet();
+      if (id && have[id]) {
+        player = new Audio('audio/' + id + '.mp3'); player.onended = end; player.onerror = end;
+        player.play().catch(end);
+      } else setTimeout(end, Math.min(4500, 900 + String(text).length * 45));
     });
   }
-  var SAYS = {
-    why: 'Theatre tools assume every actor can read and practice alone. Rehearsal apps expect actors to read a script, follow a printed schedule and practice by themselves. So students with disabilities end up depending on an adult for every line, every cue and every entrance. This app is built around the actual show and the actual student.'
-  };
-  $$('[data-say]').forEach(function (b) { b.onclick = function () { say(SAYS[b.dataset.say]); }; });
+  fetch('audio/list.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (ids) {      // the recordings made so far, e.g. ["rosa1", "react0"]
+    (Array.isArray(ids) ? ids : []).forEach(function (id) { have[id] = true; $$('[data-audio="' + id + '"]').forEach(function (b) { b.hidden = false; }); });
+  }).catch(function () {});
+  $$('[data-audio]').forEach(function (b) { if (b.id !== 'popSay') b.onclick = function () { say('', b.dataset.audio); }; });
 
   /* ---------- top bar progress ---------- */
   var prog = $('#prog');
@@ -67,10 +59,10 @@
 
   /* ---------- Practice Lines ---------- */
   var SCENE = [
-    { who: 'ROSA', c: 'rosa', text: 'The bake sale starts in ten minutes, and the oven just stopped working!' },
-    { who: 'THEO', c: 'theo', text: "Don't panic. My grandma has an oven, and she lives across the street.", mine: true },
-    { who: 'ROSA', c: 'rosa', text: 'Then what are we waiting for? Grab the trays!' },
-    { who: 'THEO', c: 'theo', text: "I'll carry the cupcakes. You bring the frosting.", mine: true }
+    { id: 'rosa1', who: 'ROSA', c: 'rosa', text: 'The bake sale starts in ten minutes, and the oven just stopped working!' },
+    { id: 'theo1', who: 'THEO', c: 'theo', text: "Don't panic. My grandma has an oven, and she lives across the street.", mine: true },
+    { id: 'rosa2', who: 'ROSA', c: 'rosa', text: 'Then what are we waiting for? Grab the trays!' },
+    { id: 'theo2', who: 'THEO', c: 'theo', text: "I'll carry the cupcakes. You bring the frosting.", mine: true }
   ];
   var pl = { i: -1, help: 0, strict: 'medium', running: false, tries: 0 };
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null;
@@ -93,13 +85,13 @@
     if (!l || !l.mine) { $('#plTurn').innerHTML = ''; return; }
     $('#plTurn').innerHTML = '<div class="row" style="margin-top:12px">' +
       (SR ? '<button class="btn primary mic" id="plMic">🎤 Say my line</button>' : '') +
-      '<button class="btn good" id="plDid">✓ I did it</button><button class="btn small" id="plHint">💡 Hint</button><button class="btn small" id="plSay">🔊 Say it for me</button></div>' +
+      '<button class="btn good" id="plDid">✓ I did it</button><button class="btn small" id="plHint">💡 Hint</button><button class="btn small" id="plSay" hidden>🔊 Say it for me</button></div>' +
       '<form class="typed" id="plType"><input id="plIn" autocomplete="off" aria-label="Type your line" placeholder="…or type your line"><button class="btn small">Check</button></form>' +
       (SR ? '' : '<p class="small muted">This browser has no speech recognition, so type or tap "I did it". Chromebooks and iPads listen.</p>');
     if ($('#plMic')) $('#plMic').onclick = listen;
     $('#plDid').onclick = function () { verdict({ verdict: 'pass' }, true); };
     $('#plHint').onclick = function () { pl.tries++; pl.help = Math.max(pl.help, 1); drawLines(); };
-    $('#plSay').onclick = function () { pl.tries++; say(LineCheck.spoken(l.text)); };
+    if (have[l.id]) { $('#plSay').hidden = false; $('#plSay').onclick = function () { pl.tries++; say(l.text, l.id); }; }
     $('#plType').onsubmit = function (e) { e.preventDefault(); var v = $('#plIn').value.trim(); if (v) check(v); };
   }
   function verdict(r, did) {
@@ -125,7 +117,7 @@
   }
   function stopRec() { if (rec) { try { rec.abort(); } catch (e) {} rec = null; } var m = $('#plMic'); if (m) m.classList.remove('listening'); }
   function listen() {
-    stopRec(); if (synth) synth.cancel();
+    stopRec(); quiet();
     rec = new SR(); rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 3;
     var m = $('#plMic'); m.classList.add('listening'); m.textContent = '🎤 Listening…';
     rec.onresult = function (e) { var a = e.results[0], best = a[0].transcript; check(best); };
@@ -138,10 +130,10 @@
     if (pl.i >= SCENE.length) { pl.running = false; drawLines(); $('#plTurn').innerHTML = ''; $('#plVerdict').innerHTML = '<div class="verdict pass">🌟 Scene done! In the app this practice is counted, and "Study next" suggests what to practice tomorrow.</div>'; $('#plStart').disabled = false; return; }
     drawLines(); turnUi();
     var l = SCENE[pl.i];
-    if (!l.mine) say(l.text).then(function () { if (pl.running && SCENE[pl.i] === l) setTimeout(next, 350); });
+    if (!l.mine) say(l.text, l.id).then(function () { if (pl.running && SCENE[pl.i] === l) setTimeout(next, 350); });
   }
   $('#plStart').onclick = function () { pl.running = true; pl.i = -1; this.disabled = true; next(); };
-  $('#plReset').onclick = function () { stopRec(); if (synth) synth.cancel(); pl.running = false; pl.i = -1; $('#plStart').disabled = false; $('#plTurn').innerHTML = ''; $('#plVerdict').innerHTML = ''; drawLines(); };
+  $('#plReset').onclick = function () { stopRec(); quiet(); pl.running = false; pl.i = -1; $('#plStart').disabled = false; $('#plTurn').innerHTML = ''; $('#plVerdict').innerHTML = ''; drawLines(); };
   $$('[data-help]').forEach(function (b) { b.onclick = function () { pl.help = +b.dataset.help; pressed(b.parentNode, b); drawLines(); }; });
   $$('[data-strict]').forEach(function (b) { b.onclick = function () { pl.strict = b.dataset.strict; pressed(b.parentNode, b); }; });
   drawLines();
@@ -260,8 +252,8 @@
     var a = BANK[rx.k], f = a[1], showMe = $('#showMe').checked && rx.kind === 'show';
     $('#rNext').disabled = true;
     $('#rBody').innerHTML = showMe ? '<p class="small muted">Show Me: here is the feeling first.</p><div class="feel-pics">' + pic(f) + '</div>' : '';
-    $('#rAnn').textContent = '🔊 Listen…';
-    say(a[0]).then(function () {
+    $('#rAnn').textContent = have['react' + rx.k] ? '🔊 Listen…' : a[0];
+    say(a[0], 'react' + rx.k).then(function () {
       $('#rAnn').textContent = a[0];
       if (rx.kind === 'show') {
         $('#rBody').innerHTML = '<div class="go">React!</div>' + (showMe ? '<div class="feel-pics">' + pic(f) + '</div>' : '');
@@ -321,9 +313,9 @@
 
   /* ---------- the announcement pop-up ---------- */
   var pop = $('#popup'), popFrom = null;
-  function closePop() { if (pop.hidden) return; pop.hidden = true; if (synth) synth.cancel(); if (popFrom) popFrom.focus(); }
+  function closePop() { if (pop.hidden) return; pop.hidden = true; quiet(); if (popFrom) popFrom.focus(); }
   $('#annDemo').onclick = function () { popFrom = this; pop.hidden = false; $('#popOk').focus(); };
   $('#popOk').onclick = closePop;
-  $('#popSay').onclick = function () { say($('#popH').textContent + ' ' + $('.popup p').textContent); };
+  $('#popSay').onclick = function () { say('', 'pop'); };
   pop.onclick = function (e) { if (e.target === pop) closePop(); };
 })();

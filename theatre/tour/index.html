@@ -89,7 +89,7 @@
     <div>
       <p class="lede">Rehearsal apps expect actors to read a script, follow a printed schedule and practice by themselves. Accessibility tools know nothing about the show. So students with disabilities end up depending on an adult for every line, every cue and every entrance.</p>
       <p>This app is built around <b>the actual show</b> and <b>the actual student</b>. The teacher imports the licensed script on her own device, and the app builds everything from it: every scene, every line by speaker, every song, who sings each part, and the stage directions.</p>
-      <button class="btn small say" data-say="why">🔊 Read this to me</button>
+      <button class="btn small say" data-audio="why" hidden>🔊 Read this to me</button>
     </div>
     <div class="grid2">
       <div class="card"><h3><span class="em">🧑‍🎤</span>Who it serves</h3><p class="small">Emerging readers, nonverbal students and AAC users, students who sign, autistic students, students with sensory needs, and students with vision or hearing needs, side by side with their peers.</p></div>
@@ -147,7 +147,7 @@
   <h2 id="h-lines">Practice Lines: the app reads the other parts and listens for yours.</h2>
   <div class="two">
     <div>
-      <p>You are <b style="color:var(--theo)">Theo</b> in our made-up sample show, <i>The Bake Sale</i>. The app reads Rosa's lines aloud. When it's your turn, say your line, type it, or tap <b>I did it</b>.</p>
+      <p>You are <b style="color:var(--theo)">Theo</b> in our made-up sample show, <i>The Bake Sale</i>. The app plays Rosa's lines. When it's your turn, say your line, type it, or tap <b>I did it</b>.</p>
       <ul class="ticks">
         <li><b>Paraphrase is OK.</b> It checks the words that carry the meaning, not every word in order, and it catches a dropped "not".</li>
         <li><b>Loose, medium or exact</b> checking, set for each student.</li>
@@ -167,7 +167,7 @@
       <div id="plTurn"></div>
       <div id="plVerdict" aria-live="polite"></div>
       <div class="row" style="margin-top:12px"><button class="btn primary" id="plStart">▶ Run my role</button><button class="btn small" id="plReset">Start over</button></div>
-      <p class="small muted" style="margin-top:8px" id="plNote">Your device's voice reads here. In the app, lines can be a classmate's recording or a recorded character voice.</p>
+      <p class="small muted" style="margin-top:8px" id="plNote">In the app, the other characters' lines play in recorded character voices (or a classmate's recording). Here they show on screen one at a time.</p>
     </div>
   </div>
 </section>
@@ -526,7 +526,7 @@
     <span class="tag">New announcement</span>
     <h3 id="popH">Picture day is Friday!</h3>
     <p>Wear your Company T-shirt. We will take cast photos on the stage during class. Smiles optional, jazz hands encouraged.</p>
-    <div class="row" style="margin-top:16px"><button class="btn" id="popSay">🔊 Read it to me</button><button class="btn primary" id="popOk">Got it</button></div>
+    <div class="row" style="margin-top:16px"><button class="btn" id="popSay" data-audio="pop" hidden>🔊 Read it to me</button><button class="btn primary" id="popOk">Got it</button></div>
   </div>
 </div>
 
