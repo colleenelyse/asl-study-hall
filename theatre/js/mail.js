@@ -186,6 +186,39 @@
       return { id: hashId(k + '|' + lines.join('|')), on: addDays(r.date, -r.n), to: r.to, subject: subject.slice(0, 180), text: text, date: r.date, n: r.n, gk: r.date + '|' + r.n, lines: lines };
     });
   }
+  /* ---------- reminders for Family portal forms that are not turned in (Colleen 2026-10-25: "automated reminders to students and parents to get these things
+     turned in by their deadline"; her choices: 7, 2, 1 days before and the day after, sent automatically, to parents and the Company member).
+     R = { today, days: [7, 2, 1, -1] (-1 = the day after), horizon, title, base, sign, due: { kind: date }, labels: { kind: name },
+           kids: [{ actor, name (first), done: { kind: true }, parents: [{ email, name }], student: email }] }
+     -> [{ id, on, to, subject, text }]: one email per address per day (brothers and sisters together); students are asked to remind a parent. ---------- */
+  function formReminders(R) {
+    var by = {}, last = addDays(R.today, R.horizon || 35);
+    (R.kids || []).forEach(function (k) {
+      Object.keys(R.due || {}).forEach(function (kind) {
+        var date = R.due[kind]; if (!date || (k.done || {})[kind] || !R.labels[kind]) return;
+        (R.days || [7, 2, 1, -1]).forEach(function (n) {
+          var on = addDays(date, -n); if (on <= R.today || on > last) return;
+          var when = n < 0 ? 'was due ' + (n === -1 ? 'yesterday' : -n + ' days ago') : n === 0 ? 'due today' : 'due ' + (n === 1 ? 'tomorrow' : n === 7 ? 'in one week' : 'in ' + n + ' days');
+          var put = function (to, name, student) {
+            to = String(to || '').trim(); if (!okEmail(to)) return;
+            var key = to.toLowerCase() + '|' + on, r = by[key] = by[key] || { to: to, name: name || '', on: on, student: student, items: [] };
+            r.items.push({ kid: k.name, actor: k.actor, kind: kind, label: R.labels[kind], date: date, when: when, late: n < 0 });
+          };
+          (k.parents || []).forEach(function (c) { put(c.email, c.name, false); });
+          if (k.student) put(k.student, k.name, true);
+        });
+      });
+    });
+    return Object.keys(by).sort().map(function (key) {
+      var r = by[key], late = r.items.some(function (x) { return x.late; });
+      var lines = r.items.map(function (x) { return '• ' + (r.student ? '' : x.kid + ': ') + x.label + ' (' + dayLong(x.date).replace(/^(\w+), (\w+) (\d+)$/, '$1, $2 $3') + ', ' + x.when + ')' + (r.student ? '' : '\n  Fill it in: ' + R.base + '#/family/open/' + x.actor + '/family/' + x.kind); });
+      var text = (r.name ? 'Hello ' + String(r.name).split(/\s+/)[0] + ',' : 'Hello,') + '\n\n' +
+        (r.student ? 'Please remind your parent or guardian to fill in ' + (r.items.length === 1 ? 'this form' : 'these forms') + ' in the ' + R.title + ' app (the parent version):\n\n' : 'Please fill in ' + (r.items.length === 1 ? 'this form' : 'these forms') + ' in the ' + R.title + ' app:\n\n') +
+        lines.join('\n\n') + (r.student ? '\n\nThey sign in at ' + R.base : '') + '\n\nThank you!' + (R.sign ? '\n\n' + R.sign : '') + '\n\n—\nYou get this because ' + (r.student ? 'you are in the show' : 'a form for your Company member is not turned in yet') + '. Stop these emails: {UNSUB}';
+      var subject = R.title + ': ' + (late ? 'a form is past due' : r.items.length === 1 ? r.items[0].label + ' ' + r.items[0].when : r.items.length + ' forms to turn in');
+      return { id: hashId('form|' + key + '|' + lines.join('|')), on: r.on, to: r.to, subject: subject.slice(0, 180), text: text, form: true };
+    });
+  }
   /* reminders grouped for the teacher's OK (Colleen 2026-10-24: "i want it to ask me on log in before it sends a reminder email if i want it sent"):
      one group per date and lead time; ok = { 'date|n': 'yes' | 'no' | 'sent' }. Waiting = no answer yet, sending within `ahead` days, date still to come. */
   function remGroups(list, ok, today, ahead) {
@@ -206,7 +239,7 @@
     Object.keys(prod.days || {}).forEach(function (d) { if (d > today && d <= last && (prod.days[d].groups || []).some(function (g) { return g.focus === 'trip'; })) { var g = prod.days[d].groups.find(function (x) { return x.focus === 'trip'; }); out.push({ date: d, what: 'Field trip' + (g.where ? ' to ' + g.where : '') + ' (all families)' }); } });
     return out.filter(function (x, i) { return have.indexOf(x.date) < 0 && (off || []).indexOf(x.date) < 0 && out.findIndex(function (y) { return y.date === x.date; }) === i; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
   }
-  var core = { KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose, DEF_DATES: DEF_DATES, parseDates: parseDates, datesText: datesText, reminders: reminders, remGroups: remGroups, suggest: suggest, dayLong: dayLong, addDays: addDays };
+  var core = { formReminders: formReminders, KINDS: KINDS, okEmail: okEmail, snapshot: snapshot, diff: diff, plan: plan, compose: compose, DEF_DATES: DEF_DATES, parseDates: parseDates, datesText: datesText, reminders: reminders, remGroups: remGroups, suggest: suggest, dayLong: dayLong, addDays: addDays };
   root.MailCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -297,13 +330,26 @@
     }).filter(Boolean);
     return C.reminders({ today: today, days: remDays(), horizon: 35, dates: remDates(), title: T.O().title, base: location.origin + '/theatre/', sign: M().sign || '', families: families, signups: signups });
   }
+  /* forms still To do, for every Company member (portal.js: T.formDue, T.FORM_LABELS) */
+  var formDays = function () { return M().formDays && M().formDays.length ? M().formDays : [7, 2, 1, -1]; };
+  function formList(vm) {
+    if (M().formOff || !T.formDue) return [];
+    var due = T.formDue(), d = new Date(), today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    var kids = (T.show.cast || []).filter(function (a) { return a.name && !a.guest; }).map(function (a) {
+      var r = vm.portal[a.id] || {}, done = {};
+      Object.keys(due).forEach(function (k) { done[k] = k === 'contact' ? !!(r.contacts || []).length : !!r[k]; });
+      return { actor: a.id, name: String(a.name).split(/\s+/)[0], done: done, parents: (r.contacts || []).filter(function (c) { return c.opts && (c.opts.general || c.opts.mine || c.opts.copies); }), student: (vm.student || {})[a.id] || '' };
+    });
+    return C.formReminders({ today: today, days: formDays(), horizon: 35, title: T.O().title, base: location.origin + '/theatre/', sign: M().sign || '', due: due, labels: T.FORM_LABELS || {}, kids: kids });
+  }
   var remBusy = null;
   T.syncReminders = function (force) {
     if (!T.proof || !M().on || M().remOff || !T.openVault) return Promise.resolve(null);
     if (remBusy) return remBusy;
-    remBusy = T.openVault().then(function (V) {
+    remBusy = (T.portalPull ? T.portalPull().catch(function () {}) : Promise.resolve()).then(function () { return T.openVault(); }).then(function (V) {
       var m = V.extra.mail || {}; if (!m.url || !m.key) return null;
-      var ok = M().remOk || {}, today = todayS(), vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {} }, list = remList(vm).filter(function (r) { return ok[r.gk] === 'yes' && r.on > today; });      // only what the teacher said yes to
+      var ok = M().remOk || {}, today = todayS(), vm = { url: m.url, key: m.key, portal: V.extra.portal || {}, help: V.extra.help || {}, student: m.students || {} }, list = remList(vm).filter(function (r) { return ok[r.gk] === 'yes' && r.on > today; });      // only what the teacher said yes to
+      list = list.concat(formList(vm));      // form reminders go out on their own (Colleen's choice): only to families whose form is still To do
       var h = JSON.stringify(list.map(function (r) { return r.id + r.on; }));
       if (!force && T.ls('remHash') === h) return null;
       return Promise.all(list.map(function (r) { return sig(vm.key, r.to).then(function (s) { r.text = r.text.replace('{UNSUB}', vm.url + '?u=' + s); return r; }); }))
@@ -473,6 +519,10 @@
         '<p class="small">Families get a reminder before each date they committed to: the show-week dates below (families who signed the show-week commitment; a date ending in “(all families)” goes to every family with an email) and the date of any need they signed up for on Volunteer and donate (with what they’re bringing). <b>Nothing is sent until you OK it</b>: when you open Teacher mode, the app asks about the reminders for the coming week. Your school account sends the ones you OK’d that morning.</p><div id="rappr"></div>' +
         '<label class="switch"><span><b>Send reminder emails</b></span><input type="checkbox" id="ron"' + (m.remOff ? '' : ' checked') + '></label>' +
         '<label class="f">Days before each date<input id="rdays" value="' + esc(remDays().join(', ')) + '" placeholder="7, 2, 1"></label>' +
+        '<h4>Form reminders (go out on their own)</h4><p class="small">Before each Family portal form is due (the due dates are on the Family portal page), families whose form is still To do get a reminder with a link to it, and the Company member gets one asking them to remind a parent. Brothers and sisters are in one email. A form turned in stops its reminders the next time Teacher mode is open.</p>' +
+        '<label class="switch"><span><b>Send form reminders</b></span><input type="checkbox" id="fon"' + (m.formOff ? '' : ' checked') + '></label>' +
+        '<label class="f">Days before the due date<input id="fdays" value="' + esc(formDays().filter(function (n) { return n > 0; }).join(', ')) + '" placeholder="7, 2, 1"></label>' +
+        '<label class="switch"><span>And the day after, if it is still not turned in</span><input type="checkbox" id="fafter"' + (formDays().indexOf(-1) >= 0 ? ' checked' : '') + '></label>' +
         '<label class="f">Show-week dates (one per line: the date, then what it is)<textarea id="rdates" rows="6">' + esc(C.datesText(remDates())) + '</textarea></label>' +
         '<div class="row end"><button class="btn" id="rreset">Back to the starting dates</button><button class="btn primary" id="rsave" data-save>Save and update the reminders</button></div>' +
         '<p id="rst" class="small" role="status"></p><div id="rlist"></div></div>' +
@@ -480,13 +530,16 @@
       if (T.googleCard) T.googleCard(document.getElementById('gcard'));
       var remShow = function (msg) {
         var L = T.ls('remLast'), st = document.getElementById('rst'), box = document.getElementById('rlist'); if (!st) return;
-        st.textContent = msg || (L ? 'Last updated ' + new Date(L.at).toLocaleString() + ': ' + L.n + ' reminder' + (L.n === 1 ? '' : 's') + ' you OK’d waiting to be sent.' : '');
+        st.textContent = msg || (L ? 'Last updated ' + new Date(L.at).toLocaleString() + ': ' + L.n + ' reminder' + (L.n === 1 ? '' : 's') + ' waiting to be sent (the ones you OK’d, and form reminders).' : '');
         if (L && L.daily === -1) st.innerHTML += ' <b class="err">The email script needs one more OK: open it, choose “setup”, click Run, and allow it (this turns on the morning sending).</b>';
         else if (L && L.daily === 0) st.innerHTML += ' <b class="err">The morning sending is not on yet: open the email script, choose “setup”, and click Run.</b>';
         box.innerHTML = L && L.list && L.list.length ? '<details class="small"><summary>See the reminders you OK’d</summary><table class="tbl"><thead><tr><th>Sends</th><th>To</th><th>Subject</th></tr></thead><tbody>' +
           L.list.map(function (r) { return '<tr><td>' + esc(r.on) + '</td><td>' + esc(r.to) + '</td><td>' + esc(r.subject) + '</td></tr>'; }).join('') + '</tbody></table></details>' : '';
       };
       remShow(); if (T.remApprovals) T.remApprovals(document.getElementById('rappr'));
+      document.getElementById('fon').onchange = function () { if (this.checked) delete M().formOff; else M().formOff = true; T.saveShow(this.checked ? 'Form reminders on' : 'Form reminders off'); };
+      var fdSave = function () { var n = document.getElementById('fdays').value.split(/[^\d]+/).map(Number).filter(function (x) { return x > 0 && x <= 60; }).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort(function (a, b) { return b - a; }); if (document.getElementById('fafter').checked) n.push(-1); M().formDays = n.length ? n : [7, 2, 1, -1]; T.saveShow('Form reminders saved'); };
+      document.getElementById('fdays').onchange = fdSave; document.getElementById('fafter').onchange = fdSave;
       document.getElementById('ron').onchange = function () { if (this.checked) delete M().remOff; else M().remOff = true; T.saveShow(this.checked ? 'Reminder emails on' : 'Reminder emails off'); };
       document.getElementById('rreset').onclick = function () { document.getElementById('rdates').value = C.datesText(C.DEF_DATES); document.getElementById('rdays').value = '7, 2, 1'; };
       document.getElementById('rsave').onclick = function () {

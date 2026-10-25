@@ -246,11 +246,22 @@
     C.KINDS.forEach(function (k) { out[k] = g[k] || s[k] || ''; });
     return out;
   }
+  /* due dates (Colleen 2026-10-25, her choice of the suggested dates; editable on Teacher › Family portal): T.show.portal.due[kind] */
+  var DUE = { conflicts: '2027-08-19', commit: '2027-08-27', video: '2027-08-27', contact: '2027-08-27', sizes: '2027-09-10', sensory: '2027-09-10', fit: '2027-09-10' };
+  T.formDue = function () { var d = SP().due || {}, out = {}; Object.keys(DUE).forEach(function (k) { var v = d[k] === undefined ? DUE[k] : d[k]; if (v) out[k] = v; }); return out; };
+  var shortD = function (s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+  function dueTag(kind) {      // "Due Thu, Aug 19" on a form still To do; red when close or late
+    var d = T.formDue()[kind]; if (!d) return '<span class="tag no-tag">To do</span>';
+    var t = today(), soon = d <= C0addDays(t, 3);
+    return '<span class="tag ' + (soon ? 'no-tag' : '') + '">' + (d < t ? 'Late · was due ' : 'Due ') + esc(shortD(d)) + '</span>';
+  }
+  var C0addDays = function (s, n) { var a = s.split('-'), x = new Date(+a[0], +a[1] - 1, +a[2]); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
   var ITEMS = [['conflicts', '🗓️', 'Show-week conflicts', 'Before casting: can your Company member be at every show-week date?'], ['fit', '👕', 'Fitting permission', 'For the shopping trip: may a teacher help with trying on clothes?'],
     ['sizes', '📏', 'Clothing sizes', 'Detailed sizes, so costumes fit'], ['sensory', '🧸', 'Sensory and clothing needs', 'Fabrics, tags, makeup, hair, what helps'],
     ['commit', '📅', 'Show-week commitment', 'The dates we need everyone, checked and signed'],
     ['video', '🎥', 'Rehearsal video permission', 'Filming dance rehearsals and scene runs, for learning'],
     ['contact', '📧', 'Email updates', 'News, changes for your Company member, copies of their emails']];
+  T.FORM_LABELS = {}; ITEMS.forEach(function (x) { T.FORM_LABELS[x[0]] = x[2]; });
   /* the top of a family's home page: what needs their answer, and the newest news */
   /* a parent signed in with Google: that email becomes the family's contact for this Company member, once (news and changes; they can change it) */
   function autoContact(a) {
@@ -282,11 +293,31 @@
       '<span class="tag ' + (left ? 'no-tag' : 'ok-tag') + '">' + (left ? left + ' form' + (left === 1 ? '' : 's') + ' to do' : '✓ All answered') + '</span></div>' +
       ITEMS.map(function (x) {
         return '<a class="todo" href="' + go('family/' + x[0]) + '"><span class="big" aria-hidden="true">' + x[1] + '</span><span><b>' + x[2] + '</b></span>' +
-          '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent</span>' : '<span class="tag no-tag">To do</span>') + '</span></a>';
+          '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent</span>' : dueTag(x[0])) + '</span></a>';
       }).join('') +
       '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px">' + KID_PAGES.filter(function (k) { return T.passAllows(k[0]); }).map(function (k) { return '<a class="btn" href="' + go(k[0]) + '">' + sym(k[1]) + k[2] + '</a>'; }).join('') + '</div></div>';
   }
+  var nudgedNow = '';      // shown in this visit already (two quick home pages must not both show it)
+  T.formNudge = function () {
+    if (!T.pass || T.pass.who !== 'parent' || T.pass.preview || document.querySelector('dialog[open]')) return;
+    var t = today(); if (T.ls('formNudged') === t || nudgedNow === t) return;
+    nudgedNow = t;
+    var kids = T.parentKids ? T.parentKids() : (T.me && T.me.id ? [T.me.id] : []), due = T.formDue(), list = [];
+    kids.forEach(function (id) { var c = (T.show.cast || []).find(function (x) { return x.id === id; }), st = status(id); if (!c) return;
+      ITEMS.forEach(function (x) { var d = due[x[0]]; if (d && !st[x[0]] && d <= C0addDays(t, 3)) list.push({ id: id, kid: c.name, kind: x[0], icon: x[1], label: x[2], d: d }); }); });
+    if (!list.length) return;
+    T.ls('formNudged', t);
+    var d = document.createElement('dialog'); d.className = 'annpop';
+    d.innerHTML = '<h2 style="margin-top:0">' + sym('📝') + (list.some(function (x) { return x.d < t; }) ? 'Forms to turn in' : 'Forms due soon') + '</h2>' +
+      list.map(function (x) { return '<div class="ann big"><div class="ann-t">' + x.icon + ' ' + esc(x.label) + '</div><div>' + (kids.length > 1 ? esc(x.kid) + ' · ' : '') + (x.d < t ? '<b>Late</b>: was due ' : 'Due ') + esc(day(x.d)) + '</div><a class="btn primary" style="margin-top:8px" href="#/family/open/' + encodeURIComponent(x.id) + '/family/' + x.kind + '">Fill it in</a></div>'; }).join('') +
+      '<button class="btn gotit" type="button" id="fnlater" style="width:100%;min-height:64px;font-size:1.2em;margin-top:14px">Later</button>';
+    document.body.appendChild(d); d.showModal();
+    var close = function () { d.close(); d.remove(); };
+    d.querySelector('#fnlater').onclick = close; d.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', close); });
+    d.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+  };
   T.portalHome = function () {
+    setTimeout(function () { if (/^#\/(home)?$/.test(location.hash || '#/') && T.formNudge) T.formNudge(); }, 700);      // after the announcement pop-up (announce.js) has had its turn
     var a = T.me && T.me.id, kids = T.parentKids(); kids.forEach(autoContact);
     if (kids.length > 1) {      // brothers and sisters: a card each, no switching
       var all = T.annList ? T.annList('parent') : [];
@@ -301,7 +332,7 @@
       (a ? '<p class="muted small">' + (left ? left + ' of ' + ITEMS.length + ' still to do. ' : '') + 'Your answers go only to the teachers, locked; you can change them any time.</p>' +
         ITEMS.map(function (x) {
           return '<a class="todo" href="#/family/' + x[0] + '"><span class="big" aria-hidden="true">' + x[1] + '</span><span><b>' + x[2] + '</b><br><span class="muted small">' + x[3] + '</span></span>' +
-            '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(st[x[0]]) ? ' ' + esc(day(st[x[0]])) : '') + '</span>' : '<span class="tag no-tag">To do</span>') + '</span></a>';
+            '<span class="st">' + (st[x[0]] ? '<span class="tag ok-tag">✓ Sent' + (/^\d{4}/.test(st[x[0]]) ? ' ' + esc(day(st[x[0]])) : '') + '</span>' : dueTag(x[0])) + '</span></a>';
         }).join('')
         : '<p>These forms are for each Company member. Once the class list is in the app, tap <b>Settings</b>, then <b>Change</b>, and pick your Company members by name.</p>') + '</div>' +
       '<div class="card"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2>' + (news.length ? news.slice(0, 3).map(newsItem).join('') +
@@ -543,6 +574,7 @@
         .then(function () { return n; });
     }).catch(function () { return 0; });
   }
+  T.portalPull = function () { return pull(); };      // mail.js: take in forms before working out who still needs a reminder
   T.portalWaiting = function () {      // how many family forms are waiting (Teacher home tile)
     if (!T.proof) return Promise.resolve(0);
     return Store.getNotes(T.key, T.proof).then(function (l) { return l.filter(function (n) { return n.type === 'portal'; }).length; }).catch(function () { return 0; });
@@ -578,6 +610,8 @@
               '<td class="noprint"><button class="btn small" data-see="' + esc(a.id) + '">See</button></td></tr>';
           }).join('') + '</tbody></table></div>' : '<p class="muted">Add the Company on the Cast page first.</p>') + '</div>' +
         '<div class="card noprint"><h2 style="margin-top:0">' + sym('✏️') + 'The wording families see</h2>' +
+        '<h3>Due dates</h3><p class="muted small">Families see “Due …” on each form; reminder emails go out before it (Emails page). Leave one empty for no due date.</p><div class="row" style="flex-wrap:wrap;gap:10px">' +
+          ITEMS.map(function (x) { return '<label class="f" style="margin:0;min-width:190px">' + x[1] + ' ' + esc(x[2]) + '<input type="date" data-due="' + x[0] + '" value="' + esc(T.formDue()[x[0]] || '') + '"></label>'; }).join('') + '</div>' +
         '<label class="f">Fitting permission<textarea id="wf" rows="6">' + esc(fitText()) + '</textarea></label>' +
         '<label class="f">Rehearsal video permission<textarea id="wv" rows="5">' + esc(videoText()) + '</textarea></label>' +
         '<label class="f">Show-week conflicts: the dates families check (one per line: the date, then the words they see)<textarea id="wd" rows="6">' + esc(weekDates().map(function (x) { var a = x.date.split('-'); return +a[1] + '/' + +a[2] + '/' + a[0] + ' ' + x.what; }).join('\n')) + '</textarea></label>' +
@@ -592,7 +626,8 @@
       }; });
       app.querySelectorAll('[data-see]').forEach(function (b) { b.onclick = function () { detail((T.show.cast || []).find(function (a) { return a.id === b.dataset.see; }), P[b.dataset.see] || {}); }; });
       document.getElementById('wsave').onclick = function () {
-        var sp2 = SP(), ft = v('wf').trim(), ci = v('wc').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+        var sp2 = SP(); sp2.due = sp2.due || {}; app.querySelectorAll('[data-due]').forEach(function (i) { var k = i.dataset.due; if (i.value === (DUE[k] || '')) delete sp2.due[k]; else sp2.due[k] = i.value; });
+        var ft = v('wf').trim(), ci = v('wc').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
         if (ft && ft !== C.DEF_FIT) sp2.fitText = ft.slice(0, 2000); else delete sp2.fitText;
         if (window.MailCore) { var pd = window.MailCore.parseDates(v('wd')); if (pd.bad.length) { T.toast('These show-week lines need a date first, like 12/4/2027: ' + pd.bad.join(' · '), 6000); return; }
           if (pd.dates.length && JSON.stringify(pd.dates) !== JSON.stringify(C.WEEK)) sp2.weekDates = pd.dates.slice(0, 12); else delete sp2.weekDates; }

@@ -91,6 +91,23 @@ const showS = { production: { performances: [{ id: 'p1', date: '2027-12-10', tim
   days: { '2027-10-13': { groups: [{ focus: 'trip', where: 'Target' }] }, '2027-10-14': { groups: [{ focus: 'acting' }] } } } };
 const sg = C.suggest(showS, [{ date: '2027-12-07', what: 'Dress' }], '2027-10-01', 75, ['2027-12-09']);
 ok(sg.map(x => x.date).join() === '2027-10-13,2027-12-10' && /Field trip to Target \(all families\)/.test(sg[0].what) && sg[1].what === 'Evening show at 7 PM (all families)', 'suggested dates: field trips and performances not on the list yet (and not turned down)');
+// reminders for forms still To do (sent on their own; parents and the Company member; siblings together; the day after too)
+const FR = { today: '2027-08-10', days: [7, 2, 1, -1], horizon: 35, title: 'HSM JR.', base: 'https://asl.cool/theatre/', sign: 'Ms. E',
+  due: { conflicts: '2027-08-19', sizes: '2027-09-10', contact: '2027-08-27' }, labels: { conflicts: 'Show-week conflicts', sizes: 'Clothing sizes' },
+  kids: [{ actor: 'a1', name: 'Sam', done: { sizes: true }, parents: [{ email: 'pat@x.org', name: 'Pat Lee' }], student: 'sam@school.org' },
+    { actor: 'a2', name: 'Ana', done: {}, parents: [{ email: 'pat@x.org', name: 'Pat Lee' }], student: '' },
+    { actor: 'a3', name: 'Bo', done: { conflicts: true, sizes: true }, parents: [{ email: 'bo@x.org' }] }] };
+const fr = C.formReminders(FR);
+ok(!fr.some(r => r.to === 'bo@x.org'), 'form reminders: nobody whose forms are all turned in');
+const p12 = fr.find(r => r.to === 'pat@x.org' && r.on === '2027-08-12');
+ok(p12 && /Sam: Show-week conflicts/.test(p12.text) && /Ana: Show-week conflicts/.test(p12.text) && !/Clothing sizes/.test(p12.text), 'brothers and sisters in one email; only forms still To do');
+ok(/https:\/\/asl\.cool\/theatre\/#\/family\/open\/a1\/family\/conflicts/.test(p12.text) && /Stop these emails: \{UNSUB\}/.test(p12.text), 'a link that opens that child’s form, and a way to stop');
+ok(fr.filter(r => r.to === 'pat@x.org' && /Show-week conflicts/.test(r.text)).map(r => r.on).join() === '2027-08-12,2027-08-17,2027-08-18,2027-08-20', '7, 2, 1 days before and the day after');
+ok(/past due/.test(fr.find(r => r.to === 'pat@x.org' && r.on === '2027-08-20').subject), 'the day after: "past due"');
+const st = fr.find(r => r.to === 'sam@school.org');
+ok(st && /remind your parent or guardian/.test(st.text) && !/family\/open/.test(st.text), 'the Company member is asked to remind a parent (no form link they cannot open)');
+ok(!fr.some(r => /Email updates/.test(r.text)) && fr.every(r => r.on > '2027-08-10' && r.on <= '2027-09-14'), 'no reminder for a form without a label; only the coming weeks');
+ok(C.formReminders(Object.assign({}, FR, { today: '2027-08-21' })).filter(r => /Show-week conflicts/.test(r.text)).length === 0, 'nothing more once the day after has passed');
 // the unsubscribe code: browser HMAC (hex) == the script's computeHmacSha256Signature turned to hex (signed bytes)
 const gs = fs.readFileSync(path.join(__dirname, '../mail-script/Code.gs'), 'utf8'), hex_ = eval('(' + gs.match(/function hex_\(bytes\) \{[\s\S]*?\n/)[0].replace(/^function hex_/, 'function') + ')');
 const signed = [...crypto.createHmac('sha256', 'k1').update('pat@home.com').digest()].map(b => b > 127 ? b - 256 : b);

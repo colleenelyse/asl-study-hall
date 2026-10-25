@@ -31,8 +31,10 @@
   T.parentGoogleBox = function () {
     if (!T.saved || !T.saved.gated) return '';
     var em = T.ls('gEmail');
+    // the parent password's key comes only with a fresh Google sign-in (it is not kept after the page reloads), so a returning parent signs in again (one tap)
     return '<div class="card" id="gpar" style="background:var(--hi)"><h3 style="margin-top:0">' + sym('👪') + 'Parents and families: sign in with Google first</h3>' +
-      (em ? '<p>✅ Signed in as <b>' + esc(em.email) + '</b>. Now type the parent password below. <button type="button" class="btn small quiet" id="gout">Not you?</button></p>' :
+      (em && T.gWraps ? '<p>✅ Signed in as <b>' + esc(em.email) + '</b>. Now type the parent password below. <button type="button" class="btn small quiet" id="gout">Not you?</button></p>' :
+       em ? '<p class="small">Welcome back! Tap <b>Sign in with Google</b> again (' + esc(em.email) + '), then type the parent password.</p><div id="gbtn" style="min-height:44px"></div><p id="gmsg" class="small" role="status"></p>' :
         '<p class="small">We ask parents to sign in so we know who you are and can send you news and reminders by email. We use only your email address, and only the teachers can see it.</p>' +
         '<div id="gbtn" style="min-height:44px"></div><p id="gmsg" class="small" role="status"></p>' + HOW) + '</div>';
   };
@@ -44,7 +46,7 @@
       msg.textContent = 'Checking…';
       Store.gpass(token).then(function (d) {
         var e = T.saved.enc, have = (e.more || []).map(function (m) { return m.id; });
-        e.more = (e.more || []).concat((d.more || []).filter(function (m) { return have.indexOf(m.id) < 0; }));
+        e.more = (e.more || []).concat((d.more || []).filter(function (m) { return have.indexOf(m.id) < 0; })); T.gWraps = true;
         var c = claims(token); T.ls('gEmail', { email: String(c.email || '').toLowerCase(), name: String(c.name || '').slice(0, 80) });
         T.route();
       }).catch(function (er) { msg.textContent = er.message || String(er); });
