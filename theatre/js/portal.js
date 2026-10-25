@@ -366,6 +366,7 @@
     var note = { type: 'portal', kind: kind, actor: a, data: d, stamp: Date.now(), sent: today() };
     if (JSON.stringify(note).length > C.NOTE_MAX) return Promise.reject(new Error('That is a little too long to send. Please shorten the longest answers.'));
     return Store.queueNote(T.key, note).catch(function () {}).then(function () {
+      if (T.pass && T.pass.preview) { T.toast('Preview: this is what families see after sending. Nothing was sent or saved.', 4000); T.go('#/home'); return; }      // View as (viewas.js)
       var s = T.ls('portalSent') || {}; (s[a] = s[a] || {})[kind] = today(); T.ls('portalSent', s);
       draft(a, kind, data); T.toast(okMsg || 'Sent to the teachers. Thank you!', 3000); T.go('#/home');
     });
