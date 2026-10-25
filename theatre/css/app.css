@@ -738,3 +738,13 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-setup-area { grid-template-columns: 1.4fr 1fr 1fr auto auto; }
 .pk .pk-door { font-size: 13px; padding: 4px 10px; } .pk .pk-door.on { background: #6b3f16; color: #ffe6c4; border-color: #e0a060; }
 .pk-doorgap { stroke: #120d09; stroke-width: 0.35; } .pk-doorleaf { stroke: #ff9a3c; stroke-width: 0.18; } .pk-doorarc { fill: none; stroke: #ff9a3c; stroke-width: 0.1; stroke-dasharray: 0.3 0.2; }
+/* My bow countdown (curtain.js countdown) */
+.bowcd { position: relative; border-radius: 22px; min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; overflow: hidden; color: #fff; transition: background .2s; }
+.bowcd .bowcd-x { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 260px; line-height: 1; color: rgba(255,255,255,.22); font-weight: 900; }
+.bowcd.wait { background: #b3121f; }
+.bowcd.wait .bowcd-x { display: flex; }
+.bowcd.ready { background: #e0a800; color: #1d1a2e; }
+.bowcd.go { background: #1b8a3c; }
+.bowcd.done { background: #2f6fd1; }
+.bowcd-big { position: relative; font: 800 clamp(48px, 12vw, 110px)/1.05 var(--font-head); letter-spacing: .02em; }
+.bowcd-small { position: relative; font-size: 1.4em; font-weight: 700; margin-top: 8px; }
