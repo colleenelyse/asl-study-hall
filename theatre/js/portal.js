@@ -100,11 +100,11 @@
     }
     if (kind === 'conflicts') {      // { answers: { date: 'ok' | 'no' }, notes: { date: text }, signer, note }
       var ans = {}, notes = {}, n = 0;
-      Object.keys(d.answers || {}).slice(0, 12).forEach(function (k) { if (isDate(k) && (d.answers[k] === 'ok' || d.answers[k] === 'no')) { ans[k] = d.answers[k]; n++; if (d.answers[k] === 'no') { var t = str((d.notes || {})[k], 120); if (t) notes[k] = t; } } });
+      Object.keys(d.answers || {}).slice(0, 12).forEach(function (k) { if (isDate(k) && (d.answers[k] === 'ok' || d.answers[k] === 'no')) { ans[k] = d.answers[k]; n++; if (d.answers[k] === 'no') { var t = str((d.notes || {})[k], 100); if (t) notes[k] = t; } } });
       if (!n) return null;
       // long absences this semester (Colleen: "only looking for huge over a week problems"): { from, to, note }, at most 6
-      var trips = (Array.isArray(d.trips) ? d.trips : []).filter(function (t) { return t && isDate(t.from) && isDate(t.to) && t.from <= t.to; }).slice(0, 6).map(function (t) { return { from: t.from, to: t.to, note: str(t.note, 120) }; });
-      return { answers: ans, notes: notes, trips: trips, signer: str(d.signer, 80), note: str(d.note, 240) };
+      var trips = (Array.isArray(d.trips) ? d.trips : []).filter(function (t) { return t && isDate(t.from) && isDate(t.to || t.from) && t.from <= (t.to || t.from); }).slice(0, 12).map(function (t) { return { from: t.from, to: t.to || t.from, note: str(t.note, 100) }; });
+      return { answers: ans, notes: notes, trips: trips, signer: str(d.signer, 80), note: str(d.note, 300) };
     }
     if (kind === 'contact') {      // email updates (mail.js): no box ticked = stop emails to this address
       var em = str(d.email, 120);
@@ -190,7 +190,22 @@
     pf.sort(function (a, b) { return (a.date + (a.time || '')) < (b.date + (b.time || '')) ? -1 : 1; });
     return changed;
   }
-  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, WEEK: WEEK, OLD_WEEK: OLD_WEEK, OLD_COMMIT: OLD_COMMIT, migrate: migrate, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
+  /* the casting spreadsheet (Colleen: "it'd be nice if i could receive a spreadsheet of this information for casting sessions"): CSV, one row per Company
+     member; made in the teacher's browser from the vault, never stored on the server */
+  function csvCell(v) { v = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }
+  function conflictsCsv(cast, P, week) {
+    var md = function (s) { var a = s.split('-'); return +a[1] + '/' + +a[2]; };
+    var head = ['Company member', 'Artist or Mentor', 'Roles now', 'Answered'].concat(week.map(function (w) { return w.what; })).concat(['Other absences', 'Comments', 'Answered by']);
+    var rows = cast.filter(function (a) { return a.name && !a.guest; }).slice().sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); }).map(function (a) {
+      var c = ((P[a.id] || {}).conflicts);
+      if (!c) return [a.name, a.company === 'artist' ? 'Artist' : a.company === 'mentor' ? 'Mentor' : '', a.roles || '', 'No answer yet'].concat(week.map(function () { return ''; })).concat(['', '', '']);
+      return [a.name, a.company === 'artist' ? 'Artist' : a.company === 'mentor' ? 'Mentor' : '', a.roles || '', /^\d{4}-\d{2}-\d{2}$/.test(c.at || '') ? md(c.at) + '/' + c.at.slice(0, 4) : 'yes'].concat(week.map(function (w) {
+        var x = c.answers[w.date]; return x === 'no' ? 'Cannot attend: ' + (c.notes[w.date] || '') : x === 'ok' ? 'Attending' : '';
+      })).concat([(c.trips || []).map(function (t) { return md(t.from) + (t.to !== t.from ? '–' + md(t.to) : '') + (t.note ? ': ' + t.note : ''); }).join('; '), c.note || '', c.signer || '']);
+    });
+    return '\ufeff' + [head].concat(rows).map(function (r) { return r.map(csvCell).join(','); }).join('\r\n') + '\r\n';      // the BOM lets Excel read the accents and dashes
+  }
+  var core = { conflictsCsv: conflictsCsv, KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, WEEK: WEEK, OLD_WEEK: OLD_WEEK, OLD_COMMIT: OLD_COMMIT, migrate: migrate, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
     clean: clean, takeNote: takeNote, addSchool: addSchool, checkAgain: checkAgain, summary: summary };
   root.PortalCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
@@ -370,49 +385,54 @@
   var GENTLE = 'Thank you for telling us now. Every Company member has a part in the show. Because leads are needed at every rehearsal and performance, a conflict on this date may mean a smaller role, so we can plan around it.';
   var weekDates = function () { return SP().weekDates && SP().weekDates.length ? SP().weekDates : C.WEEK; };
   T.weekDates = weekDates;
+  /* Colleen 2026-10-25: "first ask tech week specifics with the default of 'i will be in attendance' with the option 'i cannot attend' and a mandatory reason
+     box… all tech week questions are mandatory… underneath… additional absences for the other weeks… add a comments box". Other absences: any the family
+     already knows about (her choice), as many as needed. */
   function conflictsForm() {
     var d = draft(T.me.id, 'conflicts') || {}, ans = d.answers || {}, notes = d.notes || {};
-    var f = shell('Show-week conflicts', '<h2 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts</h2><p>Please tell us now, during audition week, if your Company member can’t be at any of these. ' +
-      'Big roles need someone there for all of them, so we look at these before the cast list goes up. A conflict does not keep anyone out of the show: everyone has a place in it.</p>',
+    weekDates().forEach(function (x) { if (!ans[x.date]) ans[x.date] = 'ok'; });      // "I will be in attendance" is already chosen
+    var f = shell('Show-week conflicts', '<h2 style="margin-top:0">' + sym('🗓️') + 'Show week</h2><p>Please answer these now, during audition week. Big roles need someone at all of them, so we look at these before the cast list goes up. ' +
+      'Every Company member has a part in the show.</p>',
       weekDates().map(function (x) {
-        return '<fieldset style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0"><legend style="font-weight:700">' + esc(x.what) + '</legend><div class="seg" data-cd="' + esc(x.date) + '">' +
-          [['ok', 'We can be there'], ['no', 'Conflict']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (ans[x.date] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-          '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>What is the conflict? (optional)<input maxlength="120" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label>' +
+        return '<fieldset style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0"><legend style="font-weight:700">' + esc(x.what) + ' <span class="err" aria-hidden="true">*</span></legend><div class="seg" data-cd="' + esc(x.date) + '">' +
+          [['ok', 'I will be in attendance'], ['no', 'I cannot attend']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (ans[x.date] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+          '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>Reason (required)<input maxlength="100" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label>' +
           '<p class="small card" data-cw="' + esc(x.date) + '" hidden style="margin:6px 0 0;background:var(--hi)">' + sym('💛') + esc(GENTLE) + '</p></fieldset>';
       }).join('') +
-      '<h3 style="margin-top:22px">' + sym('🧳') + 'Long trips or absences this semester</h3><p class="small">Is a family trip or anything else planned that will keep your Company member out of school for <b>more than a week</b> between August and December? Please list it so we can plan. Single days don’t need to be listed.</p>' +
-      '<div id="trips"></div><button type="button" class="btn small" id="addtrip">+ Add a trip or absence</button>' +
+      '<h3 style="margin-top:22px">' + sym('📅') + 'Other absences this semester</h3><p class="small">Do you already know about other days your Company member will miss school between August and December (a family trip, an appointment, a religious holiday)? Add each one so we can plan rehearsals around it. The big ones, like a trip of a week or more, matter most.</p>' +
+      '<div id="trips"></div><button type="button" class="btn small" id="addtrip">+ Add an absence</button>' +
+      '<label class="f">Comments (optional)<textarea id="cfn" maxlength="300" rows="3" style="min-height:80px">' + esc(d.note || '') + '</textarea></label>' +
       '<label class="f">Your name<input id="cfs" maxlength="80" autocomplete="name" value="' + esc(d.signer || '') + '"></label>' +
-      '<label class="f">Anything else? (optional)<input id="cfn" maxlength="240" value="' + esc(d.note || '') + '"></label><p class="muted small">If something changes later, send this again or tell the teacher right away.</p>');
-    // the gentle note (Colleen: "a little warning… or maybe this is taking things too seriously"): shown once, under the first date marked Conflict; the form sends as normal
+      '<p class="muted small">If something changes later, send this again or tell the teacher right away.</p>');
+    // the gentle note (Colleen said yes to it): shown once, under the first "I cannot attend"; the form sends as normal
     var noteShown = Object.keys(ans).some(function (k) { return ans[k] === 'no'; }), firstNo = Object.keys(ans).filter(function (k) { return ans[k] === 'no'; }).sort()[0];
     if (firstNo) { var w0 = f.querySelector('[data-cw="' + firstNo + '"]'); if (w0) w0.hidden = false; }
     f.querySelectorAll('[data-cd] button').forEach(function (b) { b.onclick = function () {
       var k = b.parentNode.dataset.cd; ans[k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
-      f.querySelector('[data-cn="' + k + '"]').hidden = b.dataset.v !== 'no';
+      var box = f.querySelector('[data-cn="' + k + '"]'); box.hidden = b.dataset.v !== 'no'; if (!box.hidden) box.querySelector('input').focus();
       if (b.dataset.v === 'no' && !noteShown) { noteShown = true; f.querySelector('[data-cw="' + k + '"]').hidden = false; }
     }; });
     var trips = (d.trips || []).slice(), tripBox = f.querySelector('#trips');
     var drawTrips = function () {
       tripBox.innerHTML = trips.map(function (t, i) {
         return '<div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;border-bottom:1px solid var(--line);padding:6px 0" data-ti="' + i + '"><label class="f" style="margin:0">From<input type="date" data-k="from" value="' + esc(t.from || '') + '"></label>' +
-          '<label class="f" style="margin:0">To<input type="date" data-k="to" value="' + esc(t.to || '') + '"></label><label class="f grow" style="margin:0">What it is (optional)<input data-k="note" maxlength="120" value="' + esc(t.note || '') + '" placeholder="e.g. family trip to Mexico"></label>' +
-          '<button type="button" class="btn small quiet" data-trm="' + i + '" aria-label="Remove">✕</button></div>';
+          '<label class="f" style="margin:0">To (if more than one day)<input type="date" data-k="to" value="' + esc(t.to && t.to !== t.from ? t.to : '') + '"></label><label class="f grow" style="margin:0">Reason<input data-k="note" maxlength="100" value="' + esc(t.note || '') + '" placeholder="e.g. family trip, appointment"></label>' +
+          '<button type="button" class="btn small quiet" data-trm="' + i + '" aria-label="Remove this absence">✕</button></div>';
       }).join('');
       tripBox.querySelectorAll('input').forEach(function (inp) { inp.onchange = function () { trips[+inp.closest('[data-ti]').dataset.ti][inp.dataset.k] = inp.value; }; });
       tripBox.querySelectorAll('[data-trm]').forEach(function (b) { b.onclick = function () { trips.splice(+b.dataset.trm, 1); drawTrips(); }; });
     };
     drawTrips();
-    f.querySelector('#addtrip').onclick = function () { if (trips.length < 6) { trips.push({ from: '', to: '', note: '' }); drawTrips(); } };
+    f.querySelector('#addtrip').onclick = function () { if (trips.length < 12) { trips.push({ from: '', to: '', note: '' }); drawTrips(); var l = tripBox.querySelectorAll('[data-k=from]'); if (l.length) l[l.length - 1].focus(); } else T.toast('That is the most this form takes. Put the rest in Comments.'); };
     f.onsubmit = function (e) {
       e.preventDefault();
-      var miss = weekDates().filter(function (x) { return !ans[x.date]; });
-      if (miss.length) { fail(new Error('Please answer every date (' + miss.length + ' left).')); return; }
-      var nt = {}; f.querySelectorAll('[data-cn]').forEach(function (l) { var v = l.querySelector('input').value.trim(); if (v && ans[l.dataset.cn] === 'no') nt[l.dataset.cn] = v; });
-      var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date]; });
-      var tr = trips.filter(function (t) { return t.from || t.to; });
-      if (tr.some(function (t) { return !t.from || !t.to || t.from > t.to; })) { fail(new Error('Each trip needs a From date and a To date (To on or after From).')); return; }
-      send('conflicts', { answers: keep, notes: nt, trips: tr, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length || weekDates().some(function (x) { return keep[x.date] === 'no'; }) ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
+      var nt = {}, noReason = [];
+      weekDates().forEach(function (x) { if (ans[x.date] !== 'no') return; var v2 = f.querySelector('[data-cn="' + x.date + '"] input').value.trim(); if (v2) nt[x.date] = v2; else noReason.push(x); });
+      if (noReason.length) { fail(new Error('Please give a reason for each date you cannot attend (' + noReason.length + ' left).')); var b0 = f.querySelector('[data-cn="' + noReason[0].date + '"] input'); if (b0) b0.focus(); return; }
+      var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date] === 'no' ? 'no' : 'ok'; });
+      var tr = trips.filter(function (t) { return t.from || t.to || t.note; }).map(function (t) { return { from: t.from, to: t.to || t.from, note: t.note || '' }; });
+      if (tr.some(function (t) { return !t.from || t.to < t.from; })) { fail(new Error('Each absence needs a From date (and a To date on or after it, if it is more than one day).')); return; }
+      send('conflicts', { answers: keep, notes: nt, trips: tr, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
     };
   }
   /* the final show-week schedule (Colleen 2026-10-25): Sat Dec 4 12–5 long rehearsal; Mon/Tue/Wed in class (Act 1, Act 2, clean-up); Wed Dec 8 3:30–8 final
@@ -429,7 +449,7 @@
   var span = function (t) { return shortDay(t.from) + (t.to !== t.from ? '–' + shortDay(t.to) : ''); };
   T.conflictText = function (id) {
     var c = (SP().conflict || {})[id]; if (!c || (!c.dates.length && !(c.trips || []).length)) return '';
-    return c.dates.map(function (d) { var w = weekDates().find(function (x) { return x.date === d; }), n = (cfNotes[id] || {})[d]; return shortDay(d) + (n ? ' (' + n + ')' : ''); }).concat((c.trips || []).map(function (t, i) { var tn = ((cfTrips[id] || [])[i] || {}).note; return '🧳 away ' + span(t) + (tn ? ' (' + tn + ')' : ''); })).join(', ');
+    return c.dates.map(function (d) { var w = weekDates().find(function (x) { return x.date === d; }), n = (cfNotes[id] || {})[d]; return shortDay(d) + (n ? ' (' + n + ')' : ''); }).concat((c.trips || []).map(function (t, i) { var tn = ((cfTrips[id] || [])[i] || {}).note; return '📅 absent ' + span(t) + (tn ? ' (' + tn + ')' : ''); })).join(', ');
   };
   T.conflictMark = function (id) { return T.conflictText(id) ? ' ⚠️' : ''; };
   T.conflictBadge = function (id) {
@@ -437,10 +457,19 @@
     if (t) return ' <span class="tag no-tag" title="Show-week conflicts and long absences">⚠️ ' + (c.dates.length ? 'Show-week conflict: ' : '') + esc(t) + '</span>';
     return c ? ' <span class="tag ok-tag" title="No show-week conflicts">✓ All show-week dates</span>' : ' <span class="tag" title="The family has not answered the show-week conflicts form">Show week: no answer yet</span>';
   };
+  T.downloadConflicts = function () {
+    return T.openVault().then(function (V) {
+      var P = V.extra.portal || {}, cast = (T.show.cast || []).map(function (a) { return { id: a.id, name: a.name, company: a.company, guest: a.guest, roles: (a.chars || []).map(function (c) { var x = T.charById(c); return x ? x.short : ''; }).filter(Boolean).join(', ') }; });
+      var blob = new Blob([C.conflictsCsv(cast, P, weekDates())], { type: 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'show-week-conflicts-' + today() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      T.toast('Spreadsheet downloaded (check your Downloads folder)', 4000);
+    }).catch(function (e) { T.toast(e.message || String(e), 5000); });
+  };
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-cfcsv]'); if (b && T.proof) T.downloadConflicts(); });
   T.conflictSummary = function () {
     var cast = (T.show.cast || []).filter(function (a) { return a.name && !a.guest; }), cfl = SP().conflict || {};
     var withC = cast.filter(function (a) { return T.conflictText(a.id); }), none = cast.filter(function (a) { return !cfl[a.id]; });
-    return '<div class="card" style="border-left:6px solid ' + (withC.length ? 'var(--bad)' : 'var(--line)') + '"><h3 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts and long absences (from families)</h3>' +
+    return '<div class="card" style="border-left:6px solid ' + (withC.length ? 'var(--bad)' : 'var(--line)') + '"><h3 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts and other absences (from families)</h3>' + '<p class="noprint"><button type="button" class="btn small" data-cfcsv>⬇ Download spreadsheet</button> <span class="muted small">For casting sessions: opens in Excel or Google Sheets. It is made on this computer from the locked answers.</span></p>' +
       (withC.length ? withC.map(function (a) { return '<p style="margin:4px 0"><b>' + esc(a.name) + '</b>: ' + esc(T.conflictText(a.id)) + '</p>'; }).join('') : '<p class="small">No conflicts reported.</p>') +
       (none.length ? '<p class="muted small">No answer yet (' + none.length + '): ' + none.map(function (a) { return esc(a.name); }).join(', ') + '</p>' : '') +
       '<p class="muted small">Big roles need someone at every date. Decide case by case; a ⚠️ marks these Company members everywhere in Casting.</p></div>';
@@ -530,7 +559,7 @@
         'Answers come here locked with the teacher password; nobody with the cast or a parent password can read them.</p></div>' +
         '<div class="card noprint"><h2 style="margin-top:0">' + sym('📣') + 'Announcements</h2><p class="small">News for families is now on its own page, where you choose Company members, parents or both: <a class="btn small" href="#/teacher/announce">Announcements</a></p></div>' +
         '<div class="card"><div class="row" style="flex-wrap:wrap"><h2 class="grow" style="margin:0">' + sym('📝') + 'Answers</h2><div class="seg noprint" id="ff">' + [['all', 'Everyone'], ['artist', 'Artists'], ['mentor', 'Mentors']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (filt === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-        '<button class="btn noprint" onclick="print()">' + icon('print') + 'Print</button></div>' +
+        '<button class="btn noprint" data-cfcsv>⬇ Conflicts spreadsheet</button> <button class="btn noprint" onclick="print()">' + icon('print') + 'Print</button></div>' +
         '<p class="small">Sizes ' + cnt('sizes') + ' of ' + list.length + ' · Sensory ' + cnt('sensory') + ' · Commitment signed ' + cnt('commit') + ' of ' + list.length + ' · Video permission ' + cnt('video') + ' (' + list.filter(function (a) { return P[a.id] && P[a.id].video && P[a.id].video.answer === 'no'; }).length + ' no filming) · Fitting permission (needs help): ' +
         need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer === 'yes'; }).length + ' yes, ' + need.filter(function (a) { return P[a.id].fit && P[a.id].fit.answer !== 'yes'; }).length + ' no, ' + need.filter(function (a) { return !P[a.id].fit; }).length + ' not answered</p>' +
         (list.length ? '<div class="tblwrap"><table class="tbl"><thead><tr><th>Company member</th><th>Parents (email)</th><th title="Mark the Company members who need help trying on clothes. Only teachers see this mark.">Needs help trying on</th><th>Fitting</th><th>Sizes</th><th>Sensory</th><th>Conflicts</th><th>Commitment</th><th>Video</th><th class="noprint"></th></tr></thead><tbody>' +

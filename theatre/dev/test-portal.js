@@ -72,4 +72,14 @@ ok(!old.mail.dates.some(d => d.date === '2027-12-07') && ['2027-12-04', '2027-12
 const pf = old.production.performances;
 ok(pf.filter(p => p.date === '2027-12-09').length === 2 && pf.filter(p => p.kind === 'evening').length === 2 && pf.find(p => p.id === 'e1').notes === 'Call time 5:00 PM', 'performances: two school-day shows, both evenings, call time noted (nothing removed)');
 ok(C.migrate(old) === false, 'running it again changes nothing');
+// other absences: one day (no To) is fine; the casting spreadsheet
+ok(C.clean('conflicts', { answers: { '2027-12-04': 'ok' }, trips: [{ from: '2027-09-03', note: 'dentist' }] }).trips[0].to === '2027-09-03', 'a single-day absence (no To date)');
+const Pv = { a1: { conflicts: { at: '2027-08-17', answers: { '2027-12-04': 'no', '2027-12-08': 'ok' }, notes: { '2027-12-04': 'wedding, "out of town"' }, trips: [{ from: '2027-10-04', to: '2027-10-15', note: 'family trip' }, { from: '2027-09-03', to: '2027-09-03', note: '=SUM(A1)' }], note: 'Thanks!', signer: 'Pat Lee' } }, a2: { conflicts: { at: '2027-08-18', answers: {}, notes: {}, trips: [], note: '=HYPERLINK("x")', signer: '' } } };
+const csv = C.conflictsCsv([{ id: 'a2', name: 'Ana Ruiz', company: 'artist' }, { id: 'a1', name: 'Sam Lee', company: 'mentor', roles: 'Troy' }, { id: 'g', name: 'Guest', guest: true }], Pv, C.WEEK.slice(0, 3));
+const lines = csv.replace(/^﻿/, '').trim().split('\r\n');
+ok(lines.length === 3 && /^"Company member","Artist or Mentor","Roles now","Answered","Saturday, December 4/.test(lines[0]), 'spreadsheet: a header row and one row per Company member (no guests), A to Z');
+ok(lines[1].includes('"\'=HYPERLINK(""x"")"'), 'spreadsheet: a cell starting with = is made safe (no formulas)');
+const csv2 = C.conflictsCsv([{ id: 'zz', name: 'Bo Kim', company: 'artist' }], Pv, C.WEEK.slice(0, 3)).replace(/^\ufeff/, '').trim().split('\r\n');
+ok(/^"Bo Kim","Artist","","No answer yet"/.test(csv2[1]), 'spreadsheet: who has not answered');
+ok(lines[2].includes('"Cannot attend: wedding, ""out of town"""') && lines[2].includes('"Attending"') && lines[2].includes('10/4–10/15: family trip; 9/3: =SUM(A1)') && lines[2].includes('"Thanks!","Pat Lee"'), 'spreadsheet: answers with reasons, other absences, comments; quotes and formulas made safe');
 process.exit(bad ? 1 : 0);
