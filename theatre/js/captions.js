@@ -82,49 +82,82 @@
   var mix = function (hex, to, k) { var n = parseInt(String(hex || '#ffd84d').slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255]; return 'rgb(' + c.map(function (v) { return Math.round(v + (to - v) * k); }).join(',') + ')'; };
   var baseColor = function (who) { var ids = T.labelChars(who || ''), c = ids.length === 1 && T.charById(ids[0]); return c && c.color ? c.color : '#e0b100'; };
   var round = function (x, y, w, h, r) { cx.beginPath(); if (cx.roundRect) cx.roundRect(x, y, w, h, r); else cx.rect(x, y, w, h); };
-  /* a card that fills the box (x, y, w, h): the biggest letters (up to `max`) that fit the whole line */
-  function perfCard(c, card, box, max, now, o) {
-    var col = baseColor(card.who), pastel = mix(col, 255, 0.55), tint = mix(col, 0, 0.84), name = String(card.name || '').replace(/:$/, '');
-    var fit = function (px) {
-      var pad = Math.round(px * 0.35), stripe = Math.max(14, Math.round(px * 0.16)), namePx = Math.max(30, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
-      c.font = '700 ' + px + 'px "Atkinson Hyperlegible", Arial, sans-serif';
-      var rs = [], cur = '', room = box.w - stripe - pad * 2;
-      String(card.text).split(' ').forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > room && cur) { rs.push(cur); cur = w; } else cur = t; }); if (cur) rs.push(cur);
-      var wide = rs.some(function (r) { return c.measureText(r).width > room; });
-      return { px: px, pad: pad, stripe: stripe, namePx: namePx, hName: hName, lh: lh, rs: rs, h: pad * 2 + hName + rs.length * lh - (lh - px), ok: !wide };
-    };
-    var lo = 24, hi = max, best = fit(lo);
-    while (hi - lo > 2) { var mid = Math.floor((lo + hi) / 2), f = fit(mid); if (f.ok && f.h <= box.h) { best = f; lo = mid; } else hi = mid; }      // the largest size that fits
-    var x = box.x, y = box.y, w = box.w, h = Math.min(box.h, best.h), r = Math.round(best.px * 0.3);
-    c.save(); if (!now) c.globalAlpha = 0.6;
+  /* the performer view scrolls like Practice Lines (Colleen 2026-10-24: "is it possible for the actor view to look like it's scrolling so they
+     can always see what's coming. i liked that layout"): the line just said at the top (dim, half off the edge), the line now big with its
+     ring, the next two lines below (dimmer, the last one running off the bottom). Each GO moves the list up one card; in song videos the cards
+     glide up (SCROLL seconds) as each new line comes. A state is { cur, nexts: [..] } of cards. The line just said does not stay:
+     "the just said spot should be off the top of the screen very quickly", so it leaves upward in the first half of the scroll. */
+  var SCROLL = 0.45, M0 = 36;
+  var keyOf = function (card) { return card ? (card.who || '') + '|' + (card.full || card.text) : ''; };
+  function measure(c, card, w, px) {
+    var name = String(card.name || '').replace(/:$/, ''), pad = Math.round(px * 0.35), stripe = Math.max(12, Math.round(px * 0.16)), namePx = Math.max(24, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
+    c.font = '700 ' + px + 'px "Atkinson Hyperlegible", Arial, sans-serif';
+    var rs = [], cur = '', room = w - stripe - pad * 2;
+    String(card.text).split(' ').forEach(function (x) { var t = cur ? cur + ' ' + x : x; if (c.measureText(t).width > room && cur) { rs.push(cur); cur = x; } else cur = t; }); if (cur) rs.push(cur);
+    return { name: name, px: px, pad: pad, stripe: stripe, namePx: namePx, hName: hName, lh: lh, rs: rs, h: pad * 2 + hName + rs.length * lh - (lh - px), ok: !rs.some(function (r) { return c.measureText(r).width > room; }) };
+  }
+  function fitPx(c, card, w, max, maxH) {      // the largest letters (24 to max) that fit in maxH
+    var lo = 24, hi = max, best = 24;
+    while (hi - lo > 2) { var mid = Math.floor((lo + hi) / 2), f = measure(c, card, w, mid); if (f.ok && f.h <= maxH) { best = mid; lo = mid; } else hi = mid; }
+    return best;
+  }
+  function drawCardAt(c, it) {
+    var card = it.card, f = measure(c, card, it.w, it.px), x = it.x, y = it.y, w = it.w, h = f.h, r = Math.round(f.px * 0.3);
+    var col = baseColor(card.who), pastel = mix(col, 255, 0.55), tint = mix(col, 0, 0.84);
     var rr = function (X, Y, Wd, Hd, R) { c.beginPath(); if (c.roundRect) c.roundRect(X, Y, Wd, Hd, R); else c.rect(X, Y, Wd, Hd); };
+    c.save(); c.globalAlpha = Math.max(0, Math.min(1, it.alpha));
     rr(x, y, w, h, r); c.fillStyle = tint; c.fill();
-    c.save(); rr(x, y, w, h, r); c.clip(); c.fillStyle = pastel; c.fillRect(x, y, best.stripe, h); c.restore();
-    if (now) { rr(x - 7, y - 7, w + 14, h + 14, r + 7); c.lineWidth = 7; c.strokeStyle = pastel; c.stroke(); }
+    c.save(); rr(x, y, w, h, r); c.clip(); c.fillStyle = pastel; c.fillRect(x, y, f.stripe, h); c.restore();
+    if (it.ring > 0) { c.globalAlpha = Math.max(0, Math.min(1, it.alpha * it.ring)); rr(x - 7, y - 7, w + 14, h + 14, r + 7); c.lineWidth = 7; c.strokeStyle = pastel; c.stroke(); c.globalAlpha = Math.max(0, Math.min(1, it.alpha)); }
     c.textBaseline = 'top';
-    var tx = x + best.stripe + best.pad;
-    if (name) { c.font = '700 ' + best.namePx + 'px Lexend, "Atkinson Hyperlegible", Arial, sans-serif'; if ('letterSpacing' in c) c.letterSpacing = Math.round(best.namePx * 0.06) + 'px'; c.fillStyle = pastel; c.fillText(name.toUpperCase(), tx, y + best.pad); if ('letterSpacing' in c) c.letterSpacing = '0px'; }
-    c.font = '700 ' + best.px + 'px "Atkinson Hyperlegible", Arial, sans-serif'; c.fillStyle = o.color;
-    best.rs.forEach(function (row, i) { c.fillText(row, tx, y + best.pad + best.hName + i * best.lh); });
+    var tx = x + f.stripe + f.pad;
+    if (f.name) { c.font = '700 ' + f.namePx + 'px Lexend, "Atkinson Hyperlegible", Arial, sans-serif'; if ('letterSpacing' in c) c.letterSpacing = Math.round(f.namePx * 0.06) + 'px'; c.fillStyle = pastel; c.fillText(f.name.toUpperCase(), tx, y + f.pad); if ('letterSpacing' in c) c.letterSpacing = '0px'; }
+    c.font = '700 ' + f.px + 'px "Atkinson Hyperlegible", Arial, sans-serif'; c.fillStyle = it.color;
+    f.rs.forEach(function (row, i) { c.fillText(row, tx, y + f.pad + f.hName + i * f.lh); });
     c.restore();
     return h;
   }
-  /* the current line takes most of the square, as big as it fits; the next line goes below it */
-  function drawPerformer(card0, next0, o) {
-    var c = cxP, m = 36;
-    c.fillStyle = '#000'; c.fillRect(0, 0, PS, PS);
-    var f1 = forPrompt(card0, o), f2 = forPrompt(next0, o), card = f1.card, next = f2.card;
-    if (next && next.song) next = { who: '', name: 'Next', text: '♪ ' + next.song };
-    var top = m;
-    if (card) top += perfCard(c, card, { x: m, y: m, w: PS - m * 2, h: next ? PS * 0.68 : PS - m * 2 }, f1.big > 1 ? 240 : 190, true, o) + 44;
-    if (next) perfCard(c, next, { x: m, y: Math.max(top, PS * 0.42), w: PS - m * 2, h: PS - m - Math.max(top, PS * 0.42) }, 90, false, o);
+  var songCard = function (c) { return c && c.song ? { who: '', name: 'Next', text: '♪ ' + c.song, full: '♪ ' + c.song } : c; };
+  /* where each card goes for a state */
+  function perfLayout(state, o) {
+    var c = cxP, w = PS - M0 * 2, items = [], y;
+    var put = function (card, yy, px, alpha, ring) { items.push({ key: keyOf(card), card: card, x: M0, y: yy, w: w, px: px, alpha: alpha, ring: ring, color: o.color }); return measure(c, card, w, px).h; };
+    var P = function (card) { return card ? forPrompt(songCard(card), o) : null; };
+    var cu = P(state.cur), nx = (state.nexts || []).filter(Boolean).map(P);
+    y = M0;
+    if (cu) { var cpx = fitPx(c, cu.card, w, cu.big > 1 ? 240 : 190, PS * (nx.length ? 0.56 : 0.86)); y += put(cu.card, y, cpx, 1, 1) + 40; }
+    nx.forEach(function (n, i) { var max = i ? 60 : 80, npx = Math.max(36, fitPx(c, n.card, w, max, Math.max(120, PS - y - M0))); y += put(n.card, y, npx, i ? 0.35 : 0.6, 0) + 26; });
+    return items;
+  }
+  function drawItems(items) { cxP.fillStyle = '#000'; cxP.fillRect(0, 0, PS, PS); items.forEach(function (it) { if (it.y < PS && it.alpha > 0.01) drawCardAt(cxP, it); }); }
+  function drawPerformer(state, o) { drawItems(state ? perfLayout(state, o) : []); }
+  /* between two states: each card moves from where it was to where it goes; new cards rise from below, the old top card leaves upward */
+  function drawScroll(s0, s1, e, o) {
+    var A = perfLayout(s0, o), B = perfLayout(s1, o), lerp = function (p, q) { return p + (q - p) * e; }, out = [];
+    B.forEach(function (b) {
+      var a = A.find(function (x) { return x.key === b.key; });
+      if (!a) a = { y: b.y + 160, px: b.px, alpha: 0, ring: 0 };
+      out.push({ key: b.key, card: b.card, x: b.x, w: b.w, color: b.color, y: lerp(a.y, b.y), px: Math.round(lerp(a.px, b.px)), alpha: lerp(a.alpha, b.alpha), ring: lerp(a.ring, b.ring) });
+    });
+    var fast = Math.min(1, e * 2);      // the line just said is gone in the first half
+    A.forEach(function (a) { if (!B.some(function (b) { return b.key === a.key; })) { var h = measure(cxP, a.card, a.w, a.px).h; out.push({ key: a.key, card: a.card, x: a.x, w: a.w, color: a.color, y: a.y - (a.y + h + 20) * fast, px: a.px, alpha: a.alpha * (1 - fast * 0.5), ring: a.ring * (1 - fast) }); } });
+    drawItems(out);
+  }
+  var ease = function (x) { return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+  /* a song's performer picture at time t: { key, draw } (key changes only when the picture does) */
+  function perfAt(segs, t, o) {
+    var j = -1; for (var i = 0; i < segs.length; i++) if (segs[i].a <= t && t < segs[i].b) { j = i; break; }
+    if (j < 0) return { key: 'none', draw: function () { drawPerformer(null, o); } };
+    var into = t - segs[j].a;
+    if (j > 0 && into < SCROLL) { var e = ease(into / SCROLL); return { key: j + ':' + Math.round(e * 60), draw: function () { drawScroll(segs[j - 1].state, segs[j].state, e, o); } }; }
+    return { key: String(j), draw: function () { drawPerformer(segs[j].state, o); } };
   }
   /* the fonts must be loaded before the canvas can draw with them */
   var fontsP = null;
   function fontsReady() { if (!fontsP) fontsP = document.fonts ? Promise.all(['700 60px "Atkinson Hyperlegible"', '600 60px "Atkinson Hyperlegible"', '700 30px Lexend'].map(function (f) { return document.fonts.load(f).catch(function () {}); })) : Promise.resolve(); return fontsP; }
   /* ---------- the show as caption cues ---------- */
   function cardsFor(who, text, sung, o, prevWho) {
-    var t = nice(text); if (!t) return [];
+    var t = nice(LineCheck.spoken(String(text || '')).replace(/\s*[—–-]{1,2}\s*$/, '—')); if (!t.replace(/[^A-Za-z0-9]/g, '')) return [];      // stage directions in parentheses are not said
     if (sung) t = '♪ ' + t + ' ♪';
     var name = o.names && who && (!sung || who !== prevWho) ? whoName(who) + ':' : '', base = { who: who, name: name, color: whoColor(who), sung: sung };
     var rs = rows(t, o.size, W - 160, name ? nameW(base, o.size) : 0), out = [];
@@ -171,13 +204,14 @@
     var nud = +o.nudge || 0;
     segs.forEach(function (s) { s.a += nud; s.b += nud; });
     if (!performer) return segs;
-    var lead = +o.lead || 0;
-    return segs.map(function (s, i) {      // show it early, keep it up until the next one appears (unless a long break)
-      var n2 = segs[i + 1], a = Math.max(0, s.a - lead), b = n2 ? Math.max(a + 0.3, n2.a - lead) : s.b;
-      if (n2 && n2.a - s.b > 4) b = s.b;
-      var nd = segs.slice(i + 1).find(function (z) { return z.card.full !== s.card.full || z.card.who !== s.card.who; });      // the next different line
-      return { a: a, b: b, card: s.card, next: nd && nd.card };
-    });
+    /* the performer's view: one step per line (not per audience caption), `lead` seconds early, held until the next line comes */
+    var lead = +o.lead || 0, D = [];
+    segs.forEach(function (s) { var d = D[D.length - 1]; if (d && keyOf(d.card) === keyOf(s.card)) d.end = s.b; else D.push({ card: s.card, a: s.a, end: s.b }); });
+    var lastA = -1;
+    return D.map(function (d, j) {
+      var a = j ? Math.max(lastA + SCROLL + 0.1, d.a - lead) : 0; lastA = a;
+      return { a: a, card: d.card, state: { cur: d.card, nexts: [D[j + 1] && D[j + 1].card, D[j + 2] && D[j + 2].card] }, end: d.end };
+    }).map(function (x, j, arr) { x.b = arr[j + 1] ? arr[j + 1].a : x.end + 2; return x; });
   }
   var at = function (segs, t) { for (var i = 0; i < segs.length; i++) if (segs[i].a <= t && t < segs[i].b) return segs[i]; return null; };
 
@@ -200,8 +234,9 @@
         if (err) return Promise.reject(err);
         var stop = Math.min(frames, i + 60);
         for (; i < stop; i++) {
-          var t = i / FPS, s = at(segs, t), key = s ? s.card.text + '|' + (s.next ? s.next.text : '') : '';
-          if (key !== shown) { if (performer) drawPerformer(s && s.card, s && s.next, o); else drawAudience(s && s.card, o); shown = key; }
+          var t = i / FPS;
+          if (performer) { var pf = perfAt(segs, t, o); if (pf.key !== shown) { pf.draw(); shown = pf.key; } }
+          else { var s = at(segs, t), key = s ? s.card.text : ''; if (key !== shown) { drawAudience(s && s.card, o); shown = key; } }
           var f = new VideoFrame(src, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
           enc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close();
         }
@@ -213,16 +248,17 @@
     });
   }
   var png = function (canvas) { return new Promise(function (ok) { (canvas || cv).toBlob(ok, 'image/png'); }); };
-  /* what the performer sees next after cue i: the next different line (a long line is two audience captions), or the coming song */
-  function nextFor(cues, i) {
-    var c = cues[i];
-    for (var j = i + 1; j < cues.length; j++) {
+  /* the performer's picture for still cue i: this line, then the next two different lines (a long line is two audience captions), or the song */
+  function stateFor(cues, i) {
+    var c = cues[i], nexts = [], last = c.card;
+    for (var j = i + 1; j < cues.length && nexts.length < 2; j++) {
       var n = cues[j];
-      if (n.type === 'song') return { text: '', song: '#' + n.song.num + ' ' + n.song.title };
-      if (!(c && c.card && n.card.full === c.card.full && n.card.who === c.card.who)) return n.card;
+      if (n.type === 'song') { nexts.push({ text: '', song: '#' + n.song.num + ' ' + n.song.title }); break; }
+      if (keyOf(n.card) !== keyOf(last)) { nexts.push(n.card); last = n.card; }
     }
-    return null;
+    return { cur: c.card, nexts: nexts };
   }
+
   var pad = function (n, k) { return ('0000' + n).slice(-(k || 3)); };
   var safe = function (s) { return String(s || '').replace(/[\/\\:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40); };
   var fileOf = function (c, view) { return c.type === 'song' ? 'Cue ' + pad(c.n) + ' - Song ' + c.song.num + ' ' + safe(c.song.title) + ' - ' + view + '.mp4' : 'Cue ' + pad(c.n) + ' - S' + pad(c.scene.num, 2) + ' ' + safe(whoName(c.card.who)) + ' - ' + view + '.png'; };
@@ -450,8 +486,8 @@
     function show(i) {
       preview.i = Math.max(0, Math.min(cues.length - 1, i)); var c = cues[preview.i]; if (!c) return;
       var card;
-      if (c.type === 'song') { var s = songTimeline(c, o, false)[0], sp = songTimeline(c, o, true)[0]; drawAudience(s && s.card, o); blit(pa); drawPerformer(sp && sp.card, sp && sp.next, o); blit(pp); }
-      else { card = c.card; drawAudience(card, o); blit(pa); drawPerformer(card, nextFor(cues, preview.i), o); blit(pp); }
+      if (c.type === 'song') { var s = songTimeline(c, o, false)[0], sp = songTimeline(c, o, true)[0]; drawAudience(s && s.card, o); blit(pa); drawPerformer(sp && sp.state, o); blit(pp); }
+      else { card = c.card; drawAudience(card, o); blit(pa); drawPerformer(stateFor(cues, preview.i), o); blit(pp); }
       $('pn').textContent = 'Cue ' + c.n + ' of ' + cues.length + ' · Scene ' + c.scene.num + (c.type === 'song' ? ' · ♪ song video (first line shown)' : ' · still');
     }
     $('pv').onclick = function () { show(preview.i - 1); };
@@ -465,7 +501,7 @@
         var sa = songTimeline(c, o, false), sp = songTimeline(c, o, true), ctx = T.audioCtx(), t0 = null, src = null, raf = 0;
         var tick = function () {
           var t = t0 == null ? 0 : ctx.currentTime - t0 + (k === 'rehearsal' && T.show.trackOffset && T.show.trackOffset[id] ? -T.show.trackOffset[id] : 0);
-          var s = at(sa, t), p = at(sp, t); drawAudience(s && s.card, o); blit(pa); drawPerformer(p && p.card, p && p.next, o); blit(pp);
+          var s = at(sa, t), p = at(sp, t); drawAudience(s && s.card, o); blit(pa); perfAt(sp, t, o).draw(); blit(pp);
           $('pn').textContent = '♪ #' + c.song.num + ' · ' + Math.floor(t / 60) + ':' + ('0' + Math.floor(t % 60)).slice(-2); raf = requestAnimationFrame(tick);
         };
         stopPlay = function () { cancelAnimationFrame(raf); try { src && src.stop(); } catch (e) {} stopPlay = null; b.textContent = '▶ Play with captions'; };
@@ -494,7 +530,7 @@
             }
             drawAudience(c.card, o);
             return png().then(function (b) { return out.put('Audience stills/' + fileOf(c, 'audience'), b); }).then(function () {
-              drawPerformer(c.card, nextFor(cues, cues.indexOf(c)), o);
+              drawPerformer(stateFor(cues, cues.indexOf(c)), o);
               return png(cvP);
             }).then(function (b) { return out.put('Performer stills/' + fileOf(c, 'performer'), b); }).then(function () { step(1); if (done % 20 === 0) msg.textContent = 'Stills: ' + done + ' of ' + steps + '…'; });
           });
@@ -508,5 +544,5 @@
     $('xql').onclick = function () { busy(true); sink((T.O().title || 'Show') + ' QLab script').then(function (out) { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()).then(function () { return out.done(); }); }).then(function (m) { busy(false); msg.textContent = m + ' Put these two files in the same folder as the pictures and videos.'; }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : e.message; }); };
     $('xcsv').onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(cueSheet(cues)); a.download = (T.O().title || 'Show') + ' caption cue sheet.csv'; document.body.appendChild(a); a.click(); a.remove(); };
   };
-  T.Captions = { qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  T.Captions = { perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();
