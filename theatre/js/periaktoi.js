@@ -22,6 +22,7 @@
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
+    if (P.stage && (P.stage.proscH == null || P.stage.proscH === 24)) { P.stage.proscH = 16.5; if (P.stage.placeholder) delete P.stage.placeholder.proscH; }      // about 16–17 ft (Colleen)
     if (P.stage && P.stage.prosc === 51 && P.stage.apron === 20 && !P.stage.edge) { var ns = PK.stageDefaults(); ['prosc', 'apron', 'edge', 'wallT', 'border'].forEach(function (k) { P.stage[k] = ns[k]; }); }      // to scale from the Reber plan (2026-10-25)
     PK.TABLES.forEach(function (id) { var t = P.tables && P.tables[id]; if (t && !t.model && t.open.l === 8) {      // the school's real tables: Sico 10 ft stool tables
       var f = PK.fresh().tables[id]; t.model = f.model; t.open = f.open; t.seats = f.seats; t.seatH = f.seatH; t.stand.model = false; t.stand.open = false;
@@ -249,7 +250,8 @@
     if (real) {      // the realistic 3D view (js/periaktoi-3d.js, three.js)
       var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
       PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.5 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
-        artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, fallback: function () { V.no3d = true; drawViews(); } });
+        artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, sel: sel,
+        onPick: function (t) { if (anim) return; sel = t; draw(); var b = document.getElementById('pkBottom'); if (t && b && V.simple) b.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, fallback: function () { V.no3d = true; drawViews(); } });
       return;
     }
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
@@ -369,8 +371,9 @@
       return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
     document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
-    document.getElementById('pkRight').innerHTML = scenePanel(sc) + (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower to select it. Click one of its faces (the colored edges) to turn that face to the audience. Drag a tower to move it; drag the round knob to turn it.</p>');
-    document.getElementById('pkBottom').innerHTML = V.simple ? plainPanel(ch, checks) : changePanel(ch, checks);
+    if (!V.simple) document.getElementById('pkRight').innerHTML = scenePanel(sc) + (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower to select it. Click one of its faces (the colored edges) to turn that face to the audience. Drag a tower to move it; drag the round knob to turn it.</p>');
+    if (V.simple) { var pp = plainPanel(ch, checks); document.getElementById('pkBottom').innerHTML = pp.bottom; document.getElementById('pkRight').innerHTML = pp.side; }      // Simple: the step bar and the clicked tower beside the picture
+    else document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
     document.getElementById('pkUndo').disabled = !undo.length; document.getElementById('pkRedo').disabled = !redo.length;
     document.getElementById('pkPlay').disabled = !prev && !anim;
     wirePanels();
@@ -428,9 +431,22 @@
   /* Simple mode: the change in a few plain sentences */
   function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return PK.SHORT[id].toLowerCase(); };
     return f.kind === 'flat' ? 'the ' + n(f.faces[0]) : f.kind === 'point' ? 'the ' + n(f.faces[0]) + ' and the ' + n(f.faces[1]) + ' (as a point)' : 'an angle'; }
+  function simpleTower(t) {      // Simple mode: the tower someone clicked, with big plain controls
+    var s = scene().towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+');
+    var thumb = function (id) { return '<img src="' + artUrl(id) + '" alt="">'; };
+    var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '">' + thumb(id) + '<span>' + esc(PK.SHORT[id]) + '</span></button>'; }).join('');
+    var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
+    var seg = function (k, vals, names) { return vals.map(function (v, i) { return '<button data-s' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join(''); };
+    return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span><button id="pkSClose">Done</button></div>' +
+      '<div class="pk-faces3">' + faces + '</div><div class="pk-help small">Or show two faces as a point:</div><div class="pk-faces3">' + points + '</div>' +
+      '<div class="pk-row"><span>Slide 6″:</span><button data-snudge="-1,0">◀ toward stage right</button><button data-snudge="1,0">toward stage left ▶</button><button data-snudge="0,1">▲ upstage</button><button data-snudge="0,-1">▼ downstage</button></div>' +
+      '<div class="pk-row"><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button></div></div>';
+  }
   function plainPanel(ch, checks) {
-    var sc = scene(), out = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length;
-    out.push('<h3>' + esc(label(cur) + '. ' + sc.name) + '</h3>');
+    var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
+    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small> ' + esc(label(cur) + '. ' + sc.name) + '</div>' +
+      '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button></div>');
+    side.push(sel && TW.indexOf(sel) >= 0 ? simpleTower(sel) : '<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
     var lines = [];
     if (!ch) lines.push('This is what the audience sees when the show starts.');
@@ -449,7 +465,7 @@
     out.push('<ul class="pk-plain">' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
     out.push('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to check (open ✎ Edit to see them)' : '✓ No problems found') + '</p>');
     if (sc.notes) out.push('<p class="pk-help">' + esc(sc.notes) + '</p>');
-    return out.join('');
+    return { side: side.join(''), bottom: out.join('') };
   }
   function changePanel(ch, checks) {
     var crewN = P.crew || 4, out = [];
@@ -498,7 +514,8 @@
     if ($('pkUp')) $('pkUp').onclick = function () { snap(); P.scenes.splice(cur - 1, 0, P.scenes.splice(cur, 1)[0]); cur--; changed(); };
     if ($('pkDown')) $('pkDown').onclick = function () { snap(); P.scenes.splice(cur + 1, 0, P.scenes.splice(cur, 1)[0]); cur++; changed(); };
     if ($('pkDel')) $('pkDel').onclick = function () { if (!confirm('Delete scene ' + (cur + 1) + ', ' + sc.name + '? (Undo brings it back.)')) return; snap(); P.scenes.splice(cur, 1); cur = Math.min(cur, P.scenes.length - 1); changed(); };
-    if (sel && TW.indexOf(sel) >= 0) {
+    if (V.simple) { /* Simple mode wires its own controls below */ }
+    else if (sel && TW.indexOf(sel) >= 0) {
       var t = sel, s = sc.towers[t];
       $('pkWant').onchange = function () { if (!/^[A-D]\d/.test(this.value)) return; snap(); setWant(t, this.value); changed(); };
       app.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { snap(); setRot(t, s.rot + +b.dataset.turn); changed(); }; });
@@ -532,6 +549,17 @@
         $('pkIRot').onclick = function () { snap(); it.rot = ((it.rot || 0) + 90) % 180; changed(); };
         $('pkIDel').onclick = function () { snap(); sc.items = sc.items.filter(function (x) { return x !== it; }); sel = null; changed(); };
       }
+    }
+    if ($('pkSPrev')) $('pkSPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
+    if ($('pkSNext')) $('pkSNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
+    if ($('pkSPlay')) $('pkSPlay').onclick = function () { stop(); play(); };
+    if ($('pkSClose')) $('pkSClose').onclick = function () { sel = null; draw(); };
+    if ($('pkSUndo')) $('pkSUndo').onclick = function () { stop(); step(true); };
+    if (V.simple && sel && TW.indexOf(sel) >= 0) {
+      var st0 = sc.towers[sel], tt = sel;
+      app.querySelectorAll('[data-swant]').forEach(function (b) { b.onclick = function () { snap(); setWant(tt, b.dataset.swant); changed(); }; });
+      app.querySelectorAll('[data-snudge]').forEach(function (b) { b.onclick = function () { var d = b.dataset.snudge.split(',').map(Number), gr = st().grid || 0.5; snap(); st0.x += d[0] * gr; st0.y += d[1] * gr; changed(); }; });
+      app.querySelectorAll('[data-slit]').forEach(function (b) { b.onclick = function () { snap(); st0.lit = b.dataset.slit; changed(); }; });
     }
     app.querySelectorAll('[data-status]').forEach(function (b) { b.onclick = function () { snap(); sc.status = b.dataset.status; changed(); }; });
     app.querySelectorAll('[data-crew]').forEach(function (b) { b.onclick = function () { snap(); P.crew = +b.dataset.crew; changed(); }; });
@@ -629,7 +657,7 @@
 
   /* ---------- Stage & towers settings, export, import ---------- */
   function settings() {
-    var s = st(), F = [['prosc', 'Proscenium opening (wall to wall)'], ['curtain', 'Main curtain (grand drape): upstage of PL'], ['apron', 'Deck depth at center: PL to the curved front edge'], ['edgeSide', 'Deck depth at the proscenium walls'],
+    var s = st(), F = [['prosc', 'Proscenium opening (wall to wall)'], ['proscH', 'Proscenium opening height'], ['curtain', 'Main curtain (grand drape): upstage of PL'], ['apron', 'Deck depth at center: PL to the curved front edge'], ['edgeSide', 'Deck depth at the proscenium walls'],
       ['sideDeck', 'Side decks past each proscenium wall (Horticulture HQ / NYE)'], ['wing', 'Wing space behind each wall'], ['face', 'Tower face width'], ['height', 'Tower height'], ['grid', 'Snap grid'], ['clear', 'Gap to keep (towers, drape)'], ['house', 'Audience view: seat distance in front of the front edge'], ['crew', 'Crew view: distance upstage of the drape']];
     T.dialog('<h2>Stage & towers</h2><p class="muted small">Feet and inches, like 25\' 6". Placeholders are marked; type over them when you have the real numbers.</p>' +
       F.map(function (f) { return '<label class="f">' + f[1] + (s.placeholder && s.placeholder[f[0]] ? ' <i>(placeholder)</i>' : '') + '<input data-st="' + f[0] + '" value="' + PK.ft(s[f[0]]) + '"></label>'; }).join('') +

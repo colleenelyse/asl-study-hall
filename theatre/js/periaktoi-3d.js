@@ -33,6 +33,14 @@
       var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.3, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     });
   }
+  function brickTex() {      // tan brick (the Reber's walls facing the house): one tile is 2′ 8″ square, 4 bricks across, 12 courses
+    return canvasTex(512, 512, function (g, w, h) {
+      g.fillStyle = '#b7a68a'; g.fillRect(0, 0, w, h);
+      var bw = w / 4, bh = h / 12;
+      for (var r = 0; r < 12; r++) for (var k = -1; k < 5; k++) { var x = k * bw + (r % 2 ? bw / 2 : 0), tone = 0.86 + ((r * 7 + k * 13) % 9) / 50;
+        g.fillStyle = 'rgb(' + Math.round(196 * tone) + ',' + Math.round(170 * tone) + ',' + Math.round(128 * tone) + ')'; g.fillRect(x + 3, r * bh + 3, bw - 6, bh - 6); }
+    });
+  }
   function shimmerTex() { return canvasTex(256, 512, function (g, w, h) { for (var x = 0; x < w; x += 2) { var v = 150 + Math.round(Math.random() * 105); g.fillStyle = 'rgb(' + v + ',' + v + ',' + (v + 10 > 255 ? 255 : v + 10) + ')'; g.fillRect(x, 0, 2, h); } }); }
 
   function build(ctx) {
@@ -52,10 +60,12 @@
     // the grand drape (seen only from the house) and the proscenium
     var vel = velvetTex(); vel.wrapS = T3.RepeatWrapping; vel.repeat.set(3, 1);
     var ph = s.proscH || 24, drape = new T3.Mesh(new T3.PlaneGeometry(2 * c, ph), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9, side: T3.FrontSide })); drape.position.set(0, ph / 2, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
-    var wallMat = new T3.MeshStandardMaterial({ color: 0x1a1820, roughness: 1 }), wt = s.wallT || 1;      // the proscenium wall, about 2 ft thick
-    [-1, 1].forEach(function (k) { var m = new T3.Mesh(new T3.BoxGeometry(14, 30, wt), wallMat); m.position.set(k * (c + s.sideDeck + 7), 15, wt / 2); scene.add(m); var m2 = new T3.Mesh(new T3.BoxGeometry(s.sideDeck, 30, wt), wallMat); m2.position.set(k * (c + s.sideDeck / 2), 15 + 10, wt / 2); scene.add(m2); });
-    var header = new T3.Mesh(new T3.BoxGeometry(2 * c + 4, 10, wt), wallMat); header.position.set(0, ph + 5, wt / 2); scene.add(header);
-    var border = new T3.Mesh(new T3.PlaneGeometry(2 * c, 5), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - 2.5, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (teaser), lineset 1
+    var brick = brickTex(), wt = s.wallT || 1;      // the proscenium wall, about 2 ft thick, tan brick on the house side
+    var bricky = function (w, h, d) { var t = brick.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T3.RepeatWrapping; t.repeat.set(w / 2.67, h / 2.67); return new T3.MeshStandardMaterial({ map: t, roughness: 0.95 }); };
+    var wallBox = function (w, h, x, y) { var m = new T3.Mesh(new T3.BoxGeometry(w, h, wt), bricky(w, h)); m.position.set(x, y, wt / 2); m.receiveShadow = true; scene.add(m); };
+    [-1, 1].forEach(function (k) { wallBox(14, 30, k * (c + s.sideDeck + 7), 15); wallBox(s.sideDeck, 30 - 10, k * (c + s.sideDeck / 2), 10 + (30 - 10) / 2); });      // beside the opening; the side decks' backdrops sit below 10 ft
+    wallBox(2 * c + 4, 14, 0, ph + 7);      // above the opening
+    var border = new T3.Mesh(new T3.PlaneGeometry(2 * c, 3), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - 1.5, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (teaser), lineset 1
     W.nye = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ map: shimmerTex(), roughness: 0.25, metalness: 0.8 })); W.nye.position.set(c + s.sideDeck / 2, 5, wt + 0.05); scene.add(W.nye);
     W.hort = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ color: 0x3f7a45, roughness: 0.9 })); W.hort.position.set(-c - s.sideDeck / 2, 5, wt + 0.05); scene.add(W.hort);
     // light: two front-of-house spots from the box booms, a warm top fill, a little ambience
@@ -70,7 +80,7 @@
       var grp = new T3.Group(), faces = {};
       [1, 2, 3].forEach(function (k) {
         var id = t + k, fg = new T3.Group(), mat = new T3.MeshStandardMaterial({ roughness: 0.78, metalness: 0 });
-        var mesh = new T3.Mesh(new T3.PlaneGeometry(s.face, s.height), mat); mesh.castShadow = true; mesh.receiveShadow = true; fg.add(mesh);
+        var mesh = new T3.Mesh(new T3.PlaneGeometry(s.face, s.height), mat); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.tower = t; mesh.userData.face = id; fg.add(mesh);
         faces[id] = { group: fg, mesh: mesh, mat: mat, extras: [] }; grp.add(fg);
       });
       var capMat = new T3.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, side: T3.DoubleSide }), r = s.face / Math.sqrt(3), tri = new T3.Shape();
@@ -127,7 +137,7 @@
       gm.faces.forEach(function (f) {
         var F = tw.faces[f.id]; setFace(ctx, f.id, F);
         F.group.position.set(f.c.x, s.height / 2, -f.c.y); F.group.rotation.set(0, Math.atan2(f.n.x, -f.n.y), 0);
-        F.mat.color.setScalar(shade); F.extras.forEach(function (e) { e.mesh.material.color.setScalar(shade); e.mesh.visible = ctx.overlaysOn; });
+        F.mat.color.setScalar(shade); F.mat.emissive = new T3.Color(ctx.sel === t ? 0x1c1636 : 0x000000); F.extras.forEach(function (e) { e.mesh.material.color.setScalar(shade); e.mesh.visible = ctx.overlaysOn; });
       });
       tw.label.position.set(q.x, s.height + 1, -q.y); tw.label.visible = !!ctx.labels;
       if (t === 'D') {      // the rim follows D1
@@ -182,7 +192,12 @@
     var drag = null;      // drag to look around (from the same seat); double-click to look straight at the stage again
     cv.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY, yaw: v.yaw, pitch: v.pitch }; cv.setPointerCapture(e.pointerId); });
     cv.addEventListener('pointermove', function (e) { if (!drag) return; v.yaw = Math.max(-0.6, Math.min(0.6, drag.yaw - (e.clientX - drag.x) * 0.004)); v.pitch = Math.max(-0.25, Math.min(0.35, drag.pitch + (e.clientY - drag.y) * 0.003)); if (v.redraw) v.redraw(); });
-    cv.addEventListener('pointerup', function () { drag = null; });
+    cv.addEventListener('pointerup', function (e) {      // a click (not a drag) picks the tower under the pointer
+      var d0 = drag; drag = null; if (!d0 || Math.hypot(e.clientX - d0.x, e.clientY - d0.y) > 4 || !v.onPick) return;
+      var r = cv.getBoundingClientRect(), m = new three.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), ray = new three.Raycaster(); ray.setFromCamera(m, v.camera);
+      var hit = ray.intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; });
+      v.onPick(hit ? hit.object.userData.tower : null, hit ? hit.object.userData.face : null);
+    });
     cv.addEventListener('wheel', function (e) { e.preventDefault(); v.dist = Math.max(0.35, Math.min(1.6, v.dist * Math.exp(e.deltaY * 0.001))); if (v.redraw) v.redraw(); }, { passive: false });
     cv.addEventListener('dblclick', function () { v.yaw = 0; v.pitch = 0; v.dist = 1; if (v.redraw) v.redraw(); });
     views.push(v); return v;
@@ -191,8 +206,8 @@
     if (!ready) { load().then(function () { ctx.redraw(); }).catch(function () { ctx.fallback(); }); return false; }
     if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { build(ctx); faceSrc = {}; overlays = null; }
     loadOverlays(ctx); attachOverlays(ctx);
-    var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw;
-    var Wd = host.clientWidth; if (!Wd) return true; var H = Math.round(Wd * 0.5);
+    var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick;
+    var Wd = host.clientWidth; if (!Wd) return true; var H = Math.round(Math.min(Wd * 0.5, Math.max(260, window.innerHeight * 0.58)));      // never taller than the window allows, so the controls stay in view
     if (v.canvas.width !== Math.round(Wd * v.renderer.getPixelRatio()) || v.h !== H) { v.renderer.setSize(Wd, H, false); v.canvas.style.width = '100%'; v.canvas.style.height = 'auto'; v.h = H; }
     update(ctx);
     W.drape.visible = W.border.visible = !ctx.crew;      // backstage looks out through where the drape would be
