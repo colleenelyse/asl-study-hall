@@ -6,7 +6,7 @@
    Songs: one video per song for each view, starting at 0:00 of the band track, timed from Lyrics timing (T.show.lyricTimes, band track
    clock). In QLab, put the video cue in a group with the song's audio cue and fire them together.
    Dialogue: one picture per caption card (PNG), numbered in cue order, for the caption operator to GO on each line.
-   Both views are 1920×1080, black except the words. Everything is made on this computer from the script imported here; nothing is uploaded. */
+   The audience view is 1920×1080 and the performer view a 1080×1080 square, black except the words. Everything is made on this computer from the script imported here; nothing is uploaded. */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc, app = document.getElementById('app');
@@ -33,6 +33,10 @@
   /* ---------- drawing ---------- */
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var cx = cv.getContext('2d');
+  /* the performer view is a square (Colleen 2026-10-24: "the actors will have a whole large square for projection space so theirs does not need
+     to be in a strip … make the text as large and as clear as possible") */
+  var PS = 1080, cvP = document.createElement('canvas'); cvP.width = PS; cvP.height = PS;
+  var cxP = cvP.getContext('2d');
   var font = function (px, bold) { return (bold ? '700 ' : '600 ') + px + 'px "Atkinson Hyperlegible", Arial, sans-serif'; };
   /* break words into rows that fit; the first row starts after the speaker's name */
   function rows(text, px, maxW, lead) {
@@ -66,29 +70,65 @@
      to deal with slightly smaller text"): 'full' = the whole line; 'cue' = only its first few words, much bigger. T.show.captions.prompt[char]. */
   function styleOf(who, o) { var ids = T.labelChars(who || '').filter(function (c) { return c !== '*'; }), p = (T.show.captions || {}).prompt || {}; return ids.length === 1 && p[ids[0]] ? p[ids[0]] : o.style; }
   function forPrompt(card, o) {
-    if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card, big: 1 };
-    var w = card.text.replace(/^♪\s*|\s*♪$/g, '').split(' '), short = w.slice(0, o.cueN).join(' ') + (w.length > o.cueN ? ' …' : '');
-    return { card: { who: card.who, name: card.name, color: card.color, text: (card.sung ? '♪ ' : '') + short }, big: 1.55 };
+    if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card && !card.song ? { who: card.who, name: card.pname != null ? card.pname : card.name, color: card.color, sung: card.sung, text: card.full || card.text } : card, big: 1 };
+    var w = (card.full || card.text).replace(/^♪\s*|\s*♪$/g, '').split(' '), short = w.slice(0, o.cueN).join(' ') + (w.length > o.cueN ? ' …' : '');
+    return { card: { who: card.who, name: card.pname || card.name, color: card.color, text: (card.sung ? '♪ ' : '') + short }, big: 1.55 };
   }
+  /* the performer view looks like the practice app (Colleen 2026-10-24: "the interface that the students use as their teleprompter should look
+     like what they were used to seeing in the practice app … borrowing colors of characters in pastels"; "match color and font but prioritize
+     visibility so maybe the font should be thicker or bold"): each line a rounded card with the character's color as a stripe on the left, the
+     speaker's name above in Lexend capitals, the words in Atkinson Hyperlegible, here bold; the line now has a ring, as in Practice Lines;
+     the next line is the card under it, dimmer. On black with pastel colors and a dark tint inside the card, so the back wall stays dim. */
+  var mix = function (hex, to, k) { var n = parseInt(String(hex || '#ffd84d').slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255]; return 'rgb(' + c.map(function (v) { return Math.round(v + (to - v) * k); }).join(',') + ')'; };
+  var baseColor = function (who) { var ids = T.labelChars(who || ''), c = ids.length === 1 && T.charById(ids[0]); return c && c.color ? c.color : '#e0b100'; };
+  var round = function (x, y, w, h, r) { cx.beginPath(); if (cx.roundRect) cx.roundRect(x, y, w, h, r); else cx.rect(x, y, w, h); };
+  /* a card that fills the box (x, y, w, h): the biggest letters (up to `max`) that fit the whole line */
+  function perfCard(c, card, box, max, now, o) {
+    var col = baseColor(card.who), pastel = mix(col, 255, 0.55), tint = mix(col, 0, 0.84), name = String(card.name || '').replace(/:$/, '');
+    var fit = function (px) {
+      var pad = Math.round(px * 0.35), stripe = Math.max(14, Math.round(px * 0.16)), namePx = Math.max(30, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
+      c.font = '700 ' + px + 'px "Atkinson Hyperlegible", Arial, sans-serif';
+      var rs = [], cur = '', room = box.w - stripe - pad * 2;
+      String(card.text).split(' ').forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > room && cur) { rs.push(cur); cur = w; } else cur = t; }); if (cur) rs.push(cur);
+      var wide = rs.some(function (r) { return c.measureText(r).width > room; });
+      return { px: px, pad: pad, stripe: stripe, namePx: namePx, hName: hName, lh: lh, rs: rs, h: pad * 2 + hName + rs.length * lh - (lh - px), ok: !wide };
+    };
+    var lo = 24, hi = max, best = fit(lo);
+    while (hi - lo > 2) { var mid = Math.floor((lo + hi) / 2), f = fit(mid); if (f.ok && f.h <= box.h) { best = f; lo = mid; } else hi = mid; }      // the largest size that fits
+    var x = box.x, y = box.y, w = box.w, h = Math.min(box.h, best.h), r = Math.round(best.px * 0.3);
+    c.save(); if (!now) c.globalAlpha = 0.6;
+    var rr = function (X, Y, Wd, Hd, R) { c.beginPath(); if (c.roundRect) c.roundRect(X, Y, Wd, Hd, R); else c.rect(X, Y, Wd, Hd); };
+    rr(x, y, w, h, r); c.fillStyle = tint; c.fill();
+    c.save(); rr(x, y, w, h, r); c.clip(); c.fillStyle = pastel; c.fillRect(x, y, best.stripe, h); c.restore();
+    if (now) { rr(x - 7, y - 7, w + 14, h + 14, r + 7); c.lineWidth = 7; c.strokeStyle = pastel; c.stroke(); }
+    c.textBaseline = 'top';
+    var tx = x + best.stripe + best.pad;
+    if (name) { c.font = '700 ' + best.namePx + 'px Lexend, "Atkinson Hyperlegible", Arial, sans-serif'; if ('letterSpacing' in c) c.letterSpacing = Math.round(best.namePx * 0.06) + 'px'; c.fillStyle = pastel; c.fillText(name.toUpperCase(), tx, y + best.pad); if ('letterSpacing' in c) c.letterSpacing = '0px'; }
+    c.font = '700 ' + best.px + 'px "Atkinson Hyperlegible", Arial, sans-serif'; c.fillStyle = o.color;
+    best.rs.forEach(function (row, i) { c.fillText(row, tx, y + best.pad + best.hName + i * best.lh); });
+    c.restore();
+    return h;
+  }
+  /* the current line takes most of the square, as big as it fits; the next line goes below it */
   function drawPerformer(card0, next0, o) {
-    cx.fillStyle = '#000'; cx.fillRect(0, 0, W, H); cx.textBaseline = 'top';
+    var c = cxP, m = 36;
+    c.fillStyle = '#000'; c.fillRect(0, 0, PS, PS);
     var f1 = forPrompt(card0, o), f2 = forPrompt(next0, o), card = f1.card, next = f2.card;
-    var px = Math.round(o.size * 1.15 * f1.big);
-    if (card) { var r1 = rows(card.text, px, W - 160, nameW(card, px)); drawRows(card, r1.slice(0, f1.big > 1 ? 2 : 4), px, 90, o.color); }
-    if (next) {
-      var px2 = Math.round(o.size * 1.15 * 0.8 * f2.big), r2 = rows(next.text, px2, W - 200, nameW(next, px2));
-      cx.font = font(Math.round(px2 * 0.6), true); cx.fillStyle = '#6f6f6f'; cx.fillText(next.song ? 'NEXT · ♪ ' + next.song : 'NEXT', (W - cx.measureText(next.song ? 'NEXT · ♪ ' + next.song : 'NEXT').width) / 2, H * 0.56);
-      drawRows(next, r2.slice(0, 3), px2, H * 0.56 + px2 * 0.9, o.color, true);
-    }
+    if (next && next.song) next = { who: '', name: 'Next', text: '♪ ' + next.song };
+    var top = m;
+    if (card) top += perfCard(c, card, { x: m, y: m, w: PS - m * 2, h: next ? PS * 0.68 : PS - m * 2 }, f1.big > 1 ? 240 : 190, true, o) + 44;
+    if (next) perfCard(c, next, { x: m, y: Math.max(top, PS * 0.42), w: PS - m * 2, h: PS - m - Math.max(top, PS * 0.42) }, 90, false, o);
   }
-
+  /* the fonts must be loaded before the canvas can draw with them */
+  var fontsP = null;
+  function fontsReady() { if (!fontsP) fontsP = document.fonts ? Promise.all(['700 60px "Atkinson Hyperlegible"', '600 60px "Atkinson Hyperlegible"', '700 30px Lexend'].map(function (f) { return document.fonts.load(f).catch(function () {}); })) : Promise.resolve(); return fontsP; }
   /* ---------- the show as caption cues ---------- */
   function cardsFor(who, text, sung, o, prevWho) {
     var t = nice(text); if (!t) return [];
     if (sung) t = '♪ ' + t + ' ♪';
     var name = o.names && who && (!sung || who !== prevWho) ? whoName(who) + ':' : '', base = { who: who, name: name, color: whoColor(who), sung: sung };
     var rs = rows(t, o.size, W - 160, name ? nameW(base, o.size) : 0), out = [];
-    for (var i = 0; i < rs.length; i += 2) out.push({ who: who, name: i ? '' : name, color: base.color, sung: sung, text: rs.slice(i, i + 2).join(' '), rows: rs.slice(i, i + 2), share: rs.slice(i, i + 2).join(' ').length });
+    for (var i = 0; i < rs.length; i += 2) out.push({ who: who, name: i ? '' : name, pname: o.names && who ? whoName(who) : '', full: t, color: base.color, sung: sung, text: rs.slice(i, i + 2).join(' '), rows: rs.slice(i, i + 2), share: rs.slice(i, i + 2).join(' ').length });      // full, pname: the performer view always shows the whole line and who says it
     return out;
   }
   function build() {
@@ -135,7 +175,8 @@
     return segs.map(function (s, i) {      // show it early, keep it up until the next one appears (unless a long break)
       var n2 = segs[i + 1], a = Math.max(0, s.a - lead), b = n2 ? Math.max(a + 0.3, n2.a - lead) : s.b;
       if (n2 && n2.a - s.b > 4) b = s.b;
-      return { a: a, b: b, card: s.card, next: n2 && n2.card };
+      var nd = segs.slice(i + 1).find(function (z) { return z.card.full !== s.card.full || z.card.who !== s.card.who; });      // the next different line
+      return { a: a, b: b, card: s.card, next: nd && nd.card };
     });
   }
   var at = function (segs, t) { for (var i = 0; i < segs.length; i++) if (segs[i].a <= t && t < segs[i].b) return segs[i]; return null; };
@@ -144,15 +185,16 @@
   function codec() {
     if (!window.VideoEncoder) return Promise.reject(new Error('This browser cannot make videos. Use Chrome (or Edge) on a recent computer.'));
     var tries = ['avc1.640028', 'avc1.4d0028', 'avc1.42e028'];
-    return tries.reduce(function (p, c) { return p.then(function (got) { return got || VideoEncoder.isConfigSupported({ codec: c, width: W, height: H, bitrate: 2e6, framerate: FPS }).then(function (r) { return r.supported ? c : null; }, function () { return null; }); }); }, Promise.resolve(null))
+    return tries.reduce(function (p, c) { return p.then(function (got) { return got || VideoEncoder.isConfigSupported({ codec: c, width: 1920, height: 1080, bitrate: 2e6, framerate: FPS }).then(function (r) { return r.supported ? c : null; }, function () { return null; }); }); }, Promise.resolve(null))
       .then(function (c) { if (!c) throw new Error('This computer cannot make H.264 video in the browser. Try Chrome on a Mac.'); return c; });
   }
   function makeVideo(cue, o, performer, prog) {
     var segs = songTimeline(cue, o, performer), last = segs.reduce(function (m, s) { return Math.max(m, s.b); }, 0), dur = last + 3, frames = Math.ceil(dur * FPS);
     return Promise.all([load(MUXER, 'Mp4Muxer'), codec()]).then(function (r) {
-      var M = r[0], muxer = new M.Muxer({ target: new M.ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H, frameRate: FPS }, fastStart: 'in-memory' }), err = null;
+      var vw = performer ? PS : W, vh = performer ? PS : H, src = performer ? cvP : cv;
+      var M = r[0], muxer = new M.Muxer({ target: new M.ArrayBufferTarget(), video: { codec: 'avc', width: vw, height: vh, frameRate: FPS }, fastStart: 'in-memory' }), err = null;
       var enc = new VideoEncoder({ output: function (ch, meta) { muxer.addVideoChunk(ch, meta); }, error: function (e) { err = e; } });
-      enc.configure({ codec: r[1], width: W, height: H, bitrate: 2e6, framerate: FPS, latencyMode: 'quality' });
+      enc.configure({ codec: r[1], width: vw, height: vh, bitrate: 2e6, framerate: FPS, latencyMode: 'quality' });
       var i = 0, shown = undefined;
       function more() {
         if (err) return Promise.reject(err);
@@ -160,7 +202,7 @@
         for (; i < stop; i++) {
           var t = i / FPS, s = at(segs, t), key = s ? s.card.text + '|' + (s.next ? s.next.text : '') : '';
           if (key !== shown) { if (performer) drawPerformer(s && s.card, s && s.next, o); else drawAudience(s && s.card, o); shown = key; }
-          var f = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+          var f = new VideoFrame(src, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
           enc.encode(f, { keyFrame: i % (FPS * 2) === 0 }); f.close();
         }
         if (prog) prog(i / frames);
@@ -170,7 +212,17 @@
       return more();
     });
   }
-  var png = function () { return new Promise(function (ok) { cv.toBlob(ok, 'image/png'); }); };
+  var png = function (canvas) { return new Promise(function (ok) { (canvas || cv).toBlob(ok, 'image/png'); }); };
+  /* what the performer sees next after cue i: the next different line (a long line is two audience captions), or the coming song */
+  function nextFor(cues, i) {
+    var c = cues[i];
+    for (var j = i + 1; j < cues.length; j++) {
+      var n = cues[j];
+      if (n.type === 'song') return { text: '', song: '#' + n.song.num + ' ' + n.song.title };
+      if (!(c && c.card && n.card.full === c.card.full && n.card.who === c.card.who)) return n.card;
+    }
+    return null;
+  }
   var pad = function (n, k) { return ('0000' + n).slice(-(k || 3)); };
   var safe = function (s) { return String(s || '').replace(/[\/\\:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40); };
   var fileOf = function (c, view) { return c.type === 'song' ? 'Cue ' + pad(c.n) + ' - Song ' + c.song.num + ' ' + safe(c.song.title) + ' - ' + view + '.mp4' : 'Cue ' + pad(c.n) + ' - S' + pad(c.scene.num, 2) + ' ' + safe(whoName(c.card.who)) + ' - ' + view + '.png'; };
@@ -361,7 +413,7 @@
       '<h3 style="margin-top:14px">Performer prompts</h3><p class="muted small">Pick a style for each character. <b>Whole line</b>: the full line in medium letters. <b>First words</b>: only the first ' + o.cueN + ' words, in much bigger letters, to get them started. The line coming up next uses its speaker’s style too.</p>' +
       '<div class="row" style="flex-wrap:wrap"><label class="f">Everyone else' + sel('cstyle', o.style, [['full', 'Whole line'], ['cue', 'First words']]) + '</label><label class="f">First words: how many' + sel('ccuen', o.cueN, [[3, '3 words'], [4, '4 words'], [5, '5 words'], [6, '6 words']]) + '</label></div>' +
       '<details><summary>Each character (' + Object.keys((T.show.captions || {}).prompt || {}).length + ' set)</summary><div class="cap-who">' + T.O().characters.filter(function (c) { return c.group !== 'helpers'; }).map(function (c) { var v = ((T.show.captions || {}).prompt || {})[c.id] || ''; return '<label class="f" style="margin:0">' + T.chip(c.id) + '<select data-pst="' + c.id + '"><option value="">Same as everyone</option><option value="full"' + (v === 'full' ? ' selected' : '') + '>Whole line</option><option value="cue"' + (v === 'cue' ? ' selected' : '') + '>First words</option></select></label>'; }).join('') + '</div></details>' +
-      '<div class="cap-prev"><figure><figcaption>Audience strip</figcaption><canvas id="pa" width="' + W + '" height="' + H + '"></canvas></figure><figure><figcaption>Performer view</figcaption><canvas id="pp" width="' + W + '" height="' + H + '"></canvas></figure></div>' +
+      '<div class="cap-prev"><figure><figcaption>Audience strip</figcaption><canvas id="pa" width="' + W + '" height="' + H + '"></canvas></figure><figure><figcaption>Performer view</figcaption><canvas id="pp" width="' + PS + '" height="' + PS + '"></canvas></figure></div>' +
       '<div class="row"><button class="btn" id="pv">◀</button><span id="pn" class="grow center small"></span><button class="btn" id="nx">▶ Next cue</button></div>' +
       (songs.length ? '<div class="row"><label class="f grow" style="margin:0">Try a song with its band track' + sel('psong', preview.song || songs[0].song.id, songs.map(function (c) { return [c.song.id, '#' + c.song.num + ' ' + esc(c.song.title)]; })) + '</label><button class="btn primary" id="pplay">▶ Play with captions</button></div>' : '') + '</div>' +
       '<div class="card"><h3>Make the files</h3><p class="muted small">Chrome asks for a folder (make a new one, like “HSM captions”); other browsers download one zip file. Song videos take a little while each.</p>' +
@@ -394,17 +446,17 @@
     app.querySelectorAll('[data-pst]').forEach(function (s2) { s2.onchange = function () { var c = T.show.captions = T.show.captions || {}, p = c.prompt = c.prompt || {}; if (s2.value) p[s2.dataset.pst] = s2.value; else delete p[s2.dataset.pst]; T.saveShow('Saved').then(function () { show(preview.i); }); }; });
     /* preview: step through the cues (a song shows its first line) */
     var pa = $('pa').getContext('2d'), pp = $('pp').getContext('2d');
-    var blit = function (ctx) { ctx.drawImage(cv, 0, 0); };
+    var blit = function (ctx) { ctx.drawImage(ctx === pp ? cvP : cv, 0, 0); };
     function show(i) {
       preview.i = Math.max(0, Math.min(cues.length - 1, i)); var c = cues[preview.i]; if (!c) return;
-      var card, next = cues[preview.i + 1];
+      var card;
       if (c.type === 'song') { var s = songTimeline(c, o, false)[0], sp = songTimeline(c, o, true)[0]; drawAudience(s && s.card, o); blit(pa); drawPerformer(sp && sp.card, sp && sp.next, o); blit(pp); }
-      else { card = c.card; drawAudience(card, o); blit(pa); drawPerformer(card, next ? (next.type === 'song' ? { text: '', song: '#' + next.song.num + ' ' + next.song.title } : next.card) : null, o); blit(pp); }
+      else { card = c.card; drawAudience(card, o); blit(pa); drawPerformer(card, nextFor(cues, preview.i), o); blit(pp); }
       $('pn').textContent = 'Cue ' + c.n + ' of ' + cues.length + ' · Scene ' + c.scene.num + (c.type === 'song' ? ' · ♪ song video (first line shown)' : ' · still');
     }
     $('pv').onclick = function () { show(preview.i - 1); };
     $('nx').onclick = function () { show(preview.i + 1); };
-    show(preview.i);
+    fontsReady().then(function () { show(preview.i); });
     if ($('pplay')) {
       $('psong').onchange = function () { preview.song = this.value; };
       $('pplay').onclick = function () {
@@ -431,7 +483,7 @@
       var title = (T.O().title || 'Show') + ' captions', done = 0, steps = list.reduce(function (s, c) { return s + (c.type === 'song' ? 20 : 1); }, 0) || 1;
       var step = function (w) { done += w; bar.firstChild.style.width = Math.round(done / steps * 100) + '%'; };
       busy(true); msg.textContent = 'Starting…';
-      return sink(title).then(function (out) {
+      return fontsReady().then(function () { return sink(title); }).then(function (out) {
         return list.reduce(function (p, c) {
           return p.then(function () {
             if (c.type === 'song') {
@@ -440,11 +492,10 @@
               return makeVideo(c, o, false, function (f) { bar.firstChild.style.width = Math.round((base + f * 10) / steps * 100) + '%'; }).then(function (v) { return out.put('Song videos/' + fileOf(c, 'audience'), v); })
                 .then(function () { return makeVideo(c, o, true, function (f) { bar.firstChild.style.width = Math.round((base + 10 + f * 10) / steps * 100) + '%'; }); }).then(function (v) { return out.put('Song videos/' + fileOf(c, 'performer'), v); }).then(function () { step(20); });
             }
-            var next = cues[cues.indexOf(c) + 1];
             drawAudience(c.card, o);
             return png().then(function (b) { return out.put('Audience stills/' + fileOf(c, 'audience'), b); }).then(function () {
-              drawPerformer(c.card, next ? (next.type === 'song' ? { text: '', song: '#' + next.song.num + ' ' + next.song.title } : next.card) : null, o);
-              return png();
+              drawPerformer(c.card, nextFor(cues, cues.indexOf(c)), o);
+              return png(cvP);
             }).then(function (b) { return out.put('Performer stills/' + fileOf(c, 'performer'), b); }).then(function () { step(1); if (done % 20 === 0) msg.textContent = 'Stills: ' + done + ' of ' + steps + '…'; });
           });
         }, Promise.resolve()).then(function () { return withCsv ? out.put('Cue sheet.csv', cueSheet(cues)).then(function () { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()); }) : null; }).then(function () { return out.done(); });
