@@ -23,6 +23,8 @@
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
     B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
+    'A2-clock': { name: 'Classroom analog clock (real, on the printed circle)', u: 0.65, w: 0.77, h: 0.77, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
+    'A2-plant': { name: 'Hanging plant on a wall hook (real)', u: 0.9, w: 1, h: 2.6, d: 1.3, z: 6.5, show: 'plant' },      // the bracket at the top right of her A2 art
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
     C3: { name: 'Hook rail with towel and jersey (real, added to the wall)', u: 0.075, w: 0.6, h: 2.5, d: 0.35, z: 4 },      // left edge of her locker-room art; the vinyl has no hooks (Colleen 2026-10-25)
     D1: { name: 'Real 18″ basketball rim (backboard printed)', u: 0.5, w: 1.5, d: 2, z: 5, rim: true }      // z: under the target square in her D1 art (about 5 ft)
@@ -88,13 +90,13 @@
     }
     var pts = []; faces.forEach(function (f) { [f.l, f.r].forEach(function (p) { if (!pts.some(function (q) { return Math.abs(q.x - p.x) < 1e-6 && Math.abs(q.y - p.y) < 1e-6; })) pts.push(p); }); });
     var prot = [];
-    faces.forEach(function (f) {
-      var pr = P.practicals && P.practicals[f.id]; if (!pr || !(pr.d > 0)) return;
+    faces.forEach(function (f) { Object.keys(P.practicals || {}).filter(function (key) { return key.slice(0, 2) === f.id; }).forEach(function (key) {      // a face can carry several (A2: clock and plant)
+      var pr = P.practicals[key]; if (!pr || !(pr.d > 0)) return;
       var ax = { x: f.r.x - f.l.x, y: f.r.y - f.l.y }, L = Math.hypot(ax.x, ax.y); ax.x /= L; ax.y /= L;
       var m = { x: f.l.x + ax.x * L * pr.u, y: f.l.y + ax.y * L * pr.u }, hw = pr.w / 2;
       var a = { x: m.x - ax.x * hw, y: m.y - ax.y * hw }, b = { x: m.x + ax.x * hw, y: m.y + ax.y * hw };
-      prot.push({ id: f.id, rim: pr.rim, show: pr.show, h: pr.h, ax: ax, mid: m, d: pr.d, z: pr.z, w: pr.w, n: f.n, poly: [a, b, { x: b.x + f.n.x * pr.d, y: b.y + f.n.y * pr.d }, { x: a.x + f.n.x * pr.d, y: a.y + f.n.y * pr.d }] });
-    });
+      prot.push({ id: key, face: f.id, rim: pr.rim, show: pr.show, h: pr.h, ax: ax, mid: m, d: pr.d, z: pr.z, w: pr.w, n: f.n, poly: [a, b, { x: b.x + f.n.x * pr.d, y: b.y + f.n.y * pr.d }, { x: a.x + f.n.x * pr.d, y: a.y + f.n.y * pr.d }] });
+    }); });
     var sweep = R(st); prot.forEach(function (q) { q.poly.forEach(function (p) { sweep = Math.max(sweep, Math.hypot(p.x - s.x, p.y - s.y)); }); });
     return { faces: faces, poly: pts, prot: prot, sweep: sweep };
   }

@@ -22,6 +22,7 @@
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';      // the new default: turn where there's room
+    if (P.practicals) ['A2-clock', 'A2-plant'].forEach(function (k) { if (!P.practicals[k]) P.practicals[k] = JSON.parse(JSON.stringify(PK.PRACTICALS[k])); });      // the real clock and hanging plant on the science room
     if (P.practicals && !P.practicals.C3) P.practicals.C3 = JSON.parse(JSON.stringify(PK.PRACTICALS.C3));      // the real hook rail on the locker room (2026-10-25)
     if (P.practicals && P.practicals.C1 && !P.practicals.C1.show) { P.practicals.C1.h = 2; P.practicals.C1.show = 'cork'; if (P.practicals.C1.z === 5) P.practicals.C1.z = 47 / 12; }      // the real corkboard, drawn on her C1 wall      // the rim lines up with the printed target square in her D1 art
     if (cur >= P.scenes.length) cur = 0;
@@ -253,11 +254,16 @@
         if (f.n.x * (cam.x - f.c.x) + f.n.y * (cam.y - f.c.y) <= 0.01 || (f.c.y - camY) * sign < 1) return;      // facing away from this camera, or behind it
         draws.push({ d: Math.hypot(f.c.x - cam.x, f.c.y - cam.y), f: function () { face(g, pr, f, s, lit, t); } });
       });
-      gm.prot.forEach(function (pq) { if (pq.show !== 'cork') return;      // the real corkboard, mounted over the printed wall
+      gm.prot.forEach(function (pq) { if (!pq.show) return;      // real pieces mounted over the printed wall: corkboard, clock, hanging plant
         if (pq.n.x * (cam.x - pq.mid.x) + pq.n.y * (cam.y - pq.mid.y) <= 0.01) return;
-        var hw = pq.w / 2, at = function (k, z) { return pr(pq.mid.x + pq.ax.x * hw * k + pq.n.x * pq.d, pq.mid.y + pq.ax.y * hw * k + pq.n.y * pq.d, z); };
-        draws.push({ d: Math.hypot(pq.mid.x - cam.x, pq.mid.y - cam.y) - 0.05, f: function () { var lo = pq.z - pq.h / 2, hi = pq.z + pq.h / 2, q = [at(-1, hi), at(1, hi), at(1, lo), at(-1, lo)];
-          g.beginPath(); q.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fillStyle = '#b98b5a'; g.fill(); g.lineWidth = Math.max(2, W * 0.003); g.strokeStyle = '#6b4425'; g.stroke();
+        var hw = pq.w / 2, out = pq.show === 'plant' ? pq.d * 0.6 : pq.d, at = function (k, z) { return pr(pq.mid.x + pq.ax.x * hw * k + pq.n.x * out, pq.mid.y + pq.ax.y * hw * k + pq.n.y * out, z); };
+        draws.push({ d: Math.hypot(pq.mid.x - cam.x, pq.mid.y - cam.y) - 0.05, f: function () {
+          var lo = pq.z - pq.h / 2, hi = pq.z + pq.h / 2, path = [];
+          if (pq.show === 'cork') path = [at(-1, hi), at(1, hi), at(1, lo), at(-1, lo)];
+          else for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; path.push(at(Math.cos(q2), pq.z + Math.sin(q2) * pq.h / 2)); }
+          g.beginPath(); path.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath();
+          g.fillStyle = pq.show === 'cork' ? '#b98b5a' : pq.show === 'clock' ? '#f4f2ea' : '#3f8a3a'; g.fill(); g.lineWidth = Math.max(2, W * 0.003); g.strokeStyle = pq.show === 'cork' ? '#6b4425' : pq.show === 'clock' ? '#222' : '#245a22'; g.stroke();
+          if (pq.show === 'clock') { var c0 = at(0, pq.z), c1 = at(0, pq.z + pq.h * 0.3), c2 = at(0.25, pq.z); g.beginPath(); g.moveTo(c0.x, c0.y); g.lineTo(c1.x, c1.y); g.moveTo(c0.x, c0.y); g.lineTo(c2.x, c2.y); g.stroke(); }
           if (lit > 0.01) { g.fillStyle = 'rgba(0,0,0,' + lit + ')'; g.fill(); } } }); });
       gm.prot.forEach(function (pq) { if (!pq.rim) return; var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) };
         draws.push({ d: Math.hypot(rc.x - cam.x, rc.y - cam.y), f: function () { var ring = []; for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; ring.push(pr(rc.x + 0.75 * Math.cos(q2), rc.y + 0.75 * Math.sin(q2), pq.z)); }
