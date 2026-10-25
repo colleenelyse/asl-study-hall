@@ -30,6 +30,7 @@
     var all = spokenLines(), out = [];
     all.forEach(function (x, i) {
       if (x.ids.indexOf('*') >= 0) return;
+      if (T.Voices && T.Voices.removed && T.Voices.removed(T.Voices.id(x.it))) return;      // removed in Voices & recordings: not a real line
       if (!T.isMine(x.who, x.scene, [c])) return;
       var prev = all[i - 1] && all[i - 1].scene === x.scene ? all[i - 1] : null;
       out.push({ x: x, cue: prev ? prev.text.split(/\s+/).slice(-6).join(' ') : '', cueWho: prev ? prev.who : '', group: T.labelChars(x.who).length > 1 });

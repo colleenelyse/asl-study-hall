@@ -269,6 +269,10 @@
         .then(function (b) { var a = new Uint8Array(b); return crypto.subtle.decrypt({ name: 'AES-GCM', iv: a.subarray(0, 12) }, key, a.subarray(12)); });
     },
     approve: function (proof, h, actor) { if (!proof) return noProof(); return fetch(API + 'voice/' + h + '/approve/' + actor, { method: 'POST', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not approve it.'); }); },
+    delVoice: function (proof, h, src) {      // take a line's audio away (Remove line / Delete recording in Voices & recordings)
+      if (!proof) return noProof();
+      return fetch(API + 'voice/' + h + '/' + src, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not delete it (' + r.status + ').'); return local.del('track:__voice/' + h + '/' + src + ':'); });
+    },
     reject: function (proof, h, actor) { if (!proof) return noProof(); return fetch(API + 'voice/' + h + '/pending/' + actor, { method: 'DELETE', headers: { 'x-proof': proof } }).then(function (r) { if (!r.ok) throw new Error('Could not remove it.'); }); },
     /* the script PDF: sealed, saved like a track, and kept on the device by version */
     putPdf: function (key, proof, bytes, ver) { return Store.putTrack(key, proof, '__pdf', '', bytes, ver); },

@@ -519,3 +519,8 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .ce-time { display: inline-flex; align-items: center; gap: 2px; }
 .ce-time input { width: 78px; text-align: center; min-height: 36px; }
 @media (max-width: 600px) { .ce-row { grid-template-columns: 1fr; } }
+/* What's left (voices.js) */
+.tone-left table td.ok { color: var(--good); font-weight: 700; }
+.tone-left tr[data-pickc] { cursor: pointer; }
+.tone-left tr.on td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tone-left tr.tot td { font-weight: 700; }

@@ -140,7 +140,7 @@
   var fixes = function () { try { return JSON.parse(T.ls('sayText') || '{}'); } catch (e) { return {}; } };
   var wordsOf = function (l) { var f = fixes()[l.h]; return f != null ? f : LineCheck.spoken(l.it.text); };
   V.toneOf = toneOf;
-  function allLines() {      // every spoken line: dialogue, and lines spoken inside songs (for Lines for AAC; the guide tracks already have them in rehearsal)
+  function allLines(withRemoved) {      // every spoken line: dialogue, and lines spoken inside songs (for Lines for AAC; the guide tracks already have them in rehearsal)
     var out = [];
     T.O().scenes.forEach(function (sc) {
       var src = T.scriptScene(sc); if (!src) return;
@@ -150,8 +150,13 @@
       });
     });
     var seen = {};      // a line the script reader found both in the scene and inside the song is one line (made, and paid for, once)
-    return out.filter(function (l) { if (seen[l.h]) return false; seen[l.h] = 1; return true; });
+    out = out.filter(function (l) { if (seen[l.h]) return false; seen[l.h] = 1; return true; });
+    return withRemoved ? out : out.filter(function (l) { return !removed(l.h); });
   }
+  /* lines the teacher removed (Colleen 2026-10-25: "i still don't see a way to delete the lines"): text the script reader picked up that is
+     not a line ("> >.", a stray mark). Left out of the list, the progress, every run and Lines for AAC; Bring back undoes it. */
+  var removed = function (h) { return !!(T.show.voiceSkip || {})[h]; };
+  V.removed = removed;
   /* the voices for a line (Colleen 2026-10-24: group lines as "a small chorus"): one character, their voice; a group (JOCKS), ALL, or several
      names (TROY, GABRIELLA), up to three voices together: the named characters' or the group's own voice first, then the chorus voices */
   var CHORUS = ['__chorus1', '__chorus2', '__chorus3'];
@@ -321,6 +326,23 @@
     }; });
     app.querySelectorAll('[data-again]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.again]; if (!voicesFor(l.it, cfg.voices).length) { T.toast('No ElevenLabs voice for this line yet: tap Load my voices in the ElevenLabs section above, and check that this character has a voice in its list.', 7000); var lv = document.getElementById('lv'); if (lv) lv.scrollIntoView({ block: 'center' }); return; } b.disabled = true; b.textContent = 'Making…'; makeLine(l, cfg).then(function () { return V.refresh(); }).then(function () { b.disabled = false; b.textContent = '↻ Make again'; var hb = app.querySelector('[data-hear="' + l.h + '"]'); if (hb) hb.disabled = false; T.toast('Made. Playing it now; tap ▶ to hear it again.'); return V.say(l.it, null, false); }).catch(function (e) { b.disabled = false; b.textContent = '↻ Make again'; T.toast(e.message, 6000); }); }; });
     app.querySelectorAll('[data-hear]').forEach(function (b) { b.onclick = function () { var l = byH[b.dataset.hear]; V.say(l.it, null, false); }; });
+    var again = function (msg) { var y = window.scrollY; V.refresh().then(function (ix) { page(ix, pending); window.scrollTo(0, y); if (msg) T.toast(msg, 5000); }); };
+    app.querySelectorAll('[data-delrec]').forEach(function (b) { b.onclick = function () {
+      var l = byH[b.dataset.delrec]; if (!confirm('Delete the ElevenLabs recording of “' + LineCheck.spoken(l.it.text).slice(0, 60) + '”? The line stays; it uses the device voice until you make it again.')) return;
+      b.disabled = true; Store.delVoice(T.proof, l.h, 'tts').then(function () { again('Recording deleted. ↻ Make again makes a new one.'); }).catch(function (e) { b.disabled = false; T.toast(e.message, 6000); });
+    }; });
+    app.querySelectorAll('[data-remove]').forEach(function (b) { b.onclick = function () {
+      var l = byH[b.dataset.remove], e = index.lines[l.h], rec = e && e.tts;
+      if (!confirm('Remove “' + LineCheck.spoken(l.it.text).slice(0, 60) + '” from the list? Use this for text that is not a real line.' + (rec ? ' Its ElevenLabs recording is deleted too.' : '') + ' You can bring it back from Removed lines at the bottom.')) return;
+      b.disabled = true;
+      (rec ? Store.delVoice(T.proof, l.h, 'tts') : Promise.resolve()).then(function () { (T.show.voiceSkip = T.show.voiceSkip || {})[l.h] = 1; return T.saveShow('Line removed'); }).then(function () { again('Removed. Bring it back from Removed lines at the bottom.'); }).catch(function (e) { b.disabled = false; T.toast(e.message, 6000); });
+    }; });
+    app.querySelectorAll('[data-okrec]').forEach(function (b) { b.onclick = function () { var h = b.dataset.okrec, e = index.lines[h], O = T.show.voiceOk = T.show.voiceOk || {}; if (O[h] === (e && e.tts)) delete O[h]; else O[h] = e && e.tts; T.saveShow(O[h] ? 'Approved' : 'Marked not checked').then(function () { again(); }); }; });
+    var flt = $('tflt'); if (flt) flt.onchange = function () { toneFilter = flt.value; again(); };
+    app.querySelectorAll('[data-pickc]').forEach(function (r) { r.onclick = function () { toneChar = r.dataset.pickc; again(); setTimeout(function () { var c = $('tch'); if (c) c.scrollIntoView({ block: 'center' }); }, 300); }; });
+    var lft = app.querySelector('.tone-left'); if (lft) lft.ontoggle = function () { leftOpen = lft.open; };
+    if ($('tlisten')) $('tlisten').onclick = function () { listenCheck(lines.filter(function (l) { return T.labelChars(l.it.who).indexOf(toneChar) >= 0 && made(l, index) && !approved(l, index); }), index, function () { again(); }); };
+    app.querySelectorAll('[data-back]').forEach(function (b) { b.onclick = function () { delete (T.show.voiceSkip || {})[b.dataset.back]; T.saveShow('Line brought back').then(function () { again(); }); }; });
     if (key && Object.keys(cfg.voices).length) $('lv').click();
   }
   /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
@@ -498,6 +520,53 @@
   var checked = function (l) { return (T.show.tones || {})[l.h] != null; };
   var made = function (l, index) { var e = index.lines[l.h]; return !!(e && e.tts); };
   function bar(label, n, of, cls) { var pc = of ? Math.round(n / of * 100) : 0; return '<div class="pl"><span>' + label + '</span><b>' + n + ' of ' + of + ' · ' + pc + '%</b></div><div class="pb' + (cls ? ' ' + cls : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + of + '" aria-valuenow="' + n + '" aria-label="' + esc(label) + '"><i style="width:' + pc + '%"></i></div>'; }
+  function removedList() {
+    var R = allLines(true).filter(function (l) { return removed(l.h); }); if (!R.length) return '';
+    return '<details style="margin-top:14px"><summary><b>Removed lines (' + R.length + ')</b> <span class="muted small">left out of the list, the runs and Lines for AAC</span></summary>' +
+      R.map(function (l) { return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + ' · ' + esc(l.it.who || '') + '</span><div>' + esc(LineCheck.spoken(l.it.text) || l.it.text) + '</div></div><button type="button" class="btn small" data-back="' + l.h + '">↩ Bring back</button></div>'; }).join('') + '</details>';
+  }
+  /* checking what is left (Colleen 2026-10-25: "give me tools to see what's left to make and check easily"): a recording she listened to and
+     approved (T.show.voiceOk[line] = the version she approved; making it again makes it unchecked); a table of what is left per character; a
+     filter for the list; Listen and check, which plays the unchecked recordings one after another */
+  var approved = function (l, index) { var e = index.lines[l.h]; return !!(e && e.tts && (T.show.voiceOk || {})[l.h] === e.tts); };
+  var toneFilter = 'all';
+  var FILTERS = [['all', 'All lines'], ['todo', 'Not made yet'], ['tone', 'Tone not checked'], ['listen', 'Made, not listened to'], ['ok', 'Approved']];
+  function passes(l, index) {
+    var m = made(l, index);
+    return toneFilter === 'todo' ? !m : toneFilter === 'tone' ? !checked(l) : toneFilter === 'listen' ? m && !approved(l, index) : toneFilter === 'ok' ? approved(l, index) : true;
+  }
+  function leftTable(lines, index, chars, linesOf) {
+    var row = function (id, name, L) {
+      var k = L.filter(checked).length, m = L.filter(function (l) { return made(l, index); }).length, a = L.filter(function (l) { return approved(l, index); }).length, done = L.length && a === L.length;
+      var cell = function (n) { return '<td class="' + (n === L.length ? 'ok' : '') + '">' + n + '</td>'; };
+      return '<tr' + (id ? ' data-pickc="' + id + '" class="' + (id === toneChar ? 'on' : '') + '"' : ' class="tot"') + '><td>' + (done ? '✅ ' : '') + name + '</td><td>' + L.length + '</td>' + cell(k) + cell(m) + cell(a) + '<td>' + (L.length - m ? '<b>' + (L.length - m) + '</b>' : '–') + '</td></tr>';
+    };
+    return '<details class="tone-left"' + (leftOpen ? ' open' : '') + '><summary><b>What’s left</b> · ' + (lines.length - lines.filter(function (l) { return made(l, index); }).length) + ' lines still to make, ' + lines.filter(function (l) { return made(l, index) && !approved(l, index); }).length + ' to listen to</summary>' +
+      '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Character</th><th>Lines</th><th>Tone checked</th><th>Made</th><th>Listened ✓</th><th>Left to make</th></tr></thead><tbody>' +
+      row('', 'Whole show', lines) + chars.map(function (c) { return row(c.id, esc(c.name), linesOf(c.id)); }).join('') + '</tbody></table></div><p class="muted small">Tap a character to work on them.</p></details>';
+  }
+  var leftOpen = true;
+  /* Listen and check: each unchecked recording plays in turn; Sounds right approves it, Skip leaves it, Play again, Stop */
+  function listenCheck(list, index, done) {
+    if (!list.length) return;
+    var i = 0, ok = 0, d = document.createElement('dialog'); d.className = 'tone-dlg';
+    document.body.appendChild(d); d.showModal();
+    var finish = function () { T.Speech.stop(); d.close(); d.remove(); T.saveShow(ok ? ok + ' approved' : 'Saved').then(done); };
+    var show = function () {
+      if (i >= list.length) { d.innerHTML = '<h2>All done</h2><p>' + ok + ' of ' + list.length + ' approved.' + (ok < list.length ? ' The ones you skipped stay in “Made, not listened to”.' : '') + '</p><div class="row end"><button class="btn primary" id="lcx">Close</button></div>'; d.querySelector('#lcx').onclick = finish; return; }
+      var l = list[i];
+      d.innerHTML = '<p class="muted small">' + (i + 1) + ' of ' + list.length + ' · Scene ' + l.scene.num + ' · ' + esc(l.it.who || '') + '</p><p style="font-size:1.4em;line-height:1.35">' + esc(wordsOf(l)) + '</p><p class="muted small">Tone: ' + esc(withLevel(toneOf(l), bump(levelOf(l.h))) || 'plain') + '</p>' +
+        '<div class="row end" style="flex-wrap:wrap"><button class="btn quiet" id="lcs">Stop</button><button class="btn" id="lcp">▶ Play again</button><button class="btn" id="lck">Skip</button><button class="btn good" id="lco">✓ Sounds right</button></div>';
+      var play = function () { T.Speech.stop(); V.say(l.it, null, false); };
+      d.querySelector('#lcs').onclick = finish;
+      d.querySelector('#lcp').onclick = play;
+      d.querySelector('#lck').onclick = function () { i++; show(); };
+      d.querySelector('#lco').onclick = function () { var e = index.lines[l.h]; (T.show.voiceOk = T.show.voiceOk || {})[l.h] = e && e.tts; ok++; i++; show(); };
+      play();
+    };
+    d.addEventListener('cancel', function (e) { e.preventDefault(); finish(); });
+    show();
+  }
   function toneCard(lines, index, cfg) {
     var chars = T.O().characters.filter(function (c) { return lines.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     if (!toneChar || !chars.some(function (c) { return c.id === toneChar; })) toneChar = chars[0] && chars[0].id;
@@ -507,12 +576,16 @@
     return '<div class="card" id="tonecard"><h3>' + sym('🎭') + 'The tone of each line</h3><p class="muted small">Each line is sent with a tone note in brackets, like [sarcastic] or [whispers] (only with “Most expressive”). A <span class="tag sugg">suggested</span> tone comes from a tone guide you imported; tap ✓ Looks right to keep it, or change it. Your own choices always win. Then ↻ Make again and ▶ listen.</p>' +
       (cfg.model !== 'eleven_v3' ? '<p class="err small">Pick “Most expressive” above so the tone notes are used.</p>' : '') +
       '<div class="tone-prog">' + bar('Whole show: tones checked', lines.filter(checked).length, lines.length) + bar('Whole show: lines made', lines.filter(function (l) { return made(l, index); }).length, lines.length, 'made') +
-      bar(esc(ch.name) + ': tones checked', mine.filter(checked).length, mine.length) + bar(esc(ch.name) + ': lines made', mine.filter(function (l) { return made(l, index); }).length, mine.length, 'made') + '</div>' +
+      bar(esc(ch.name) + ': tones checked', mine.filter(checked).length, mine.length) + bar(esc(ch.name) + ': lines made', mine.filter(function (l) { return made(l, index); }).length, mine.length, 'made') + bar(esc(ch.name) + ': listened to and approved', mine.filter(function (l) { return approved(l, index); }).length, mine.length, 'made') + '</div>' +
       '<div class="row"><button class="btn" id="timp">' + sym('⬆️') + 'Import a tone guide (CSV)</button><button class="btn quiet" id="texp">' + sym('⬇️') + 'Save all tones as a CSV</button><input type="file" id="tfile" accept=".csv,.tsv,.txt,text/csv" hidden></div>' +
       '<p class="muted small">' + (nSugg ? nSugg + ' lines have a suggested tone. ' : '') + 'A tone guide is a spreadsheet saved as CSV with a column for the line’s words and one for the tone (and, if you like, the character and the strength, 1 to 5 or “a little”, “very”). The words stay on this computer.</p>' +
+      leftTable(lines, index, chars, linesOf) +
       '<label class="f">Character<select id="tch">' + chars.map(function (c) { var L = linesOf(c.id), k = L.filter(checked).length; return '<option value="' + c.id + '"' + (c.id === toneChar ? ' selected' : '') + '>' + (k === L.length ? '✓ ' : '') + esc(c.name) + ' · ' + k + ' of ' + L.length + ' checked</option>'; }).join('') + '</select></label>' +
+      '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f" style="margin:0">Show<select id="tflt">' + FILTERS.map(function (f) { var n = mine.filter(function (l) { var keep = toneFilter; toneFilter = f[0]; var r = passes(l, index); toneFilter = keep; return r; }).length; return '<option value="' + f[0] + '"' + (toneFilter === f[0] ? ' selected' : '') + '>' + f[1] + ' (' + n + ')</option>'; }).join('') + '</select></label>' +
+      '<button class="btn" id="tlisten"' + (mine.some(function (l) { return made(l, index) && !approved(l, index); }) ? '' : ' disabled') + '>▶ Listen and check ' + esc(ch.name) + '’s new recordings</button></div>' +
       (open ? '<div class="row"><button class="btn good" id="tall">✓ All ' + open + ' suggestions for ' + esc(ch.name) + ' look right</button></div>' : '') +
-      mine.map(function (l) {
+      (mine.some(function (l) { return passes(l, index); }) ? '' : '<p class="muted">No lines here. ' + (toneFilter === 'todo' ? 'Every line for ' + esc(ch.name) + ' is made.' : toneFilter === 'listen' ? 'Every recording for ' + esc(ch.name) + ' is approved.' : '') + '</p>') +
+      mine.filter(function (l) { return passes(l, index); }).map(function (l) {
         var own = (T.show.tones || {})[l.h], g = sugg(l.h), t = toneOf(l), e = index.lines[l.h], fixed = fx[l.h] != null;
         var where = own != null ? '<span class="tag">✓ checked</span>' : g ? '<span class="tag sugg">suggested</span><button type="button" class="btn small good" data-okt="' + l.h + '">✓ Looks right</button>' : t ? '<span class="muted small">from the script</span>' : '';
         return '<div class="tone-row"><div class="grow"><span class="muted small">Scene ' + l.scene.num + (l.inSong ? ' · in a song' : '') + '</span><div>' + esc(wordsOf(l)) + (fixed ? ' <span class="muted small">(words fixed for ElevenLabs)</span>' : '') + '</div>' +
@@ -520,8 +593,11 @@
           CHIPS.map(function (c) { return '<button type="button" class="btn small quiet" data-chip="' + l.h + '|' + c + '">' + esc(c.slice(1, -1)) + '</button>'; }).join('') + '<button type="button" class="btn small" data-more="' + l.h + '">＋ More tones</button><button type="button" class="btn small quiet" data-words="' + l.h + '">✎ Words</button></div>' +
           '<div class="row tone-lvl" style="gap:8px;margin-top:4px"><label class="small">Strength <input type="range" min="1" max="5" step="1" data-lvl="' + l.h + '" value="' + levelOf(l.h) + '" aria-label="How strong"></label><span class="small" data-lvlname="' + l.h + '">' + LEVEL_NAME[levelOf(l.h)] + '</span>' +
           '<span class="muted small" data-sends="' + l.h + '">' + (t ? 'Sends: ' + esc(withLevel(t, bump(levelOf(l.h)))) : '') + '</span></div></div>' +
-          '<div class="row" style="gap:4px"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button></div></div>';
-      }).join('') + '</div>';
+          '<div class="row" style="gap:4px;flex-wrap:wrap"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button>' +
+          (e && e.tts ? (approved(l, index) ? '<button type="button" class="btn small good" data-okrec="' + l.h + '" title="Tap to mark it not checked">👂 ✓ Approved</button>' : '<button type="button" class="btn small" data-okrec="' + l.h + '">👂 Sounds right</button>') : '<span class="tag">not made yet</span>') +
+          (e && e.tts ? '<button type="button" class="btn small quiet" data-delrec="' + l.h + '" title="Throw away the ElevenLabs audio; the line stays">✖ Delete recording</button>' : '') +
+          '<button type="button" class="btn small quiet" data-remove="' + l.h + '" title="Not a real line: take it out of the list">🗑 Remove line</button></div></div>';
+      }).join('') + removedList() + '</div>';
   }
   /* ---------- tone guides (Colleen 2026-10-24: "a bulk tone import feature so the complete CSV guide can be loaded into your app") ----------
      Reads a CSV (or tab-separated text pasted from a chat) and finds each row's line by its words, and its character when there is a column
