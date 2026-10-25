@@ -68,7 +68,13 @@
   /* performer prompts, per character (Colleen 2026-10-24: "build both … I might even choose to mix and match the styles per performer. some
      might do better with bigger text but once they get started they can keep going and some will need to read the whole thing and will have
      to deal with slightly smaller text"): 'full' = the whole line; 'cue' = only its first few words, much bigger. T.show.captions.prompt[char]. */
-  function styleOf(who, o) { var ids = T.labelChars(who || '').filter(function (c) { return c !== '*'; }), p = (T.show.captions || {}).prompt || {}; return ids.length === 1 && p[ids[0]] ? p[ids[0]] : o.style; }
+  /* a line several characters say or sing together (a duet): First words when every one of them has First words (Colleen 2026-10-25: "doesn't
+     work on duet lines even if both characters singing have 4 words turned on"); if any of them reads the whole line, the whole line */
+  function styleOf(who, o) {
+    var ids = T.labelChars(String(who || '').replace(/\s*\/\s*/g, ', ')).filter(function (c) { return c !== '*'; }), p = (T.show.captions || {}).prompt || {};
+    if (!ids.length) return o.style;
+    return ids.every(function (id) { return (p[id] || o.style) === 'cue'; }) ? 'cue' : 'full';
+  }
   function forPrompt(card, o) {
     if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card && !card.song ? { key: card.key, who: card.who, name: card.pname != null ? card.pname : card.name, color: card.color, sung: card.sung, text: card.full || card.text } : card, big: 1 };
     var w = (card.full || card.text).replace(/^♪\s*|\s*♪$/g, '').split(' '), short = w.slice(0, o.cueN).join(' ') + (w.length > o.cueN ? ' …' : '');
@@ -214,7 +220,7 @@
           var so = T.O().songs.find(function (x) { return x.id === r.songId; }) || { id: r.songId, num: r.num, title: r.title };
           var timed = r.lines.some(function (l) { return lineTime(r.songId, l); });
           if (timed) cues.push({ n: ++n, type: 'song', scene: sc, song: so, lines: r.lines });
-          else { var prev = null; r.lines.forEach(function (l) { cardsFor(l.who, l.text, !l.spoken, o, prev).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c, untimed: so.title }); }); prev = l.who; }); }      // no Lyrics timing yet: stills, cued by hand
+          else { var prev = null; r.lines.forEach(function (l) { var who = l.who || prev; cardsFor(who, l.text, !l.spoken, o, prev).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c, untimed: so.title }); }); prev = who; }); }      // no Lyrics timing yet: stills, cued by hand
         }
       });
     });
@@ -225,7 +231,8 @@
     var L = cue.lines || [], tl = L.map(function (l) { return lineTime(cue.song.id, l); }), segs = [], prev = null;
     L.forEach(function (l, k) {
       var x = tl[k]; if (!x) return;
-      var cards = cardsFor(l.who, l.text, !l.spoken, o, prev); prev = l.who;
+      var who = l.who || prev;      // a lyric line with no singer label is still the singer before it (their color, their First words)
+      var cards = cardsFor(who, l.text, !l.spoken, o, prev); prev = who;
       var nxt = null; for (var j = k + 1; j < tl.length; j++) if (tl[j]) { nxt = tl[j].t; break; }
       var a = x.t, end = x.end, b = Math.min(nxt != null ? nxt : end + 2, end + 1.2);
       if (nxt != null && b > nxt) b = nxt;
