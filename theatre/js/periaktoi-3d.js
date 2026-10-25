@@ -141,14 +141,19 @@
     ctx.PK.TABLES.forEach(function (id) {
       var x = sh.tables[id]; if (!x || x.y > s.curtain) { if (W.tables[id]) W.tables[id].visible = false; return; }
       var spec = P.tables[id], k = x.k, g = W.tables[id];
-      if (!g) { g = W.tables[id] = new T3.Group(); var wood = new T3.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.6 }), metal = new T3.MeshStandardMaterial({ color: 0x777777, roughness: 0.4, metalness: 0.6 });
-        g.userData = { top: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), wood), b1: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), wood), b2: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), wood), fold: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), metal) };
-        Object.keys(g.userData).forEach(function (n) { g.userData[n].castShadow = true; g.userData[n].receiveShadow = true; g.add(g.userData[n]); }); W.scene.add(g); }
+      if (!g) {      // the school's Sico stool table: gray top, chrome frame, navy stools (or folded on its wheels)
+        g = W.tables[id] = new T3.Group(); var gray = new T3.MeshStandardMaterial({ color: 0x9a9da3, roughness: 0.55 }), chrome = new T3.MeshStandardMaterial({ color: 0xd8dade, roughness: 0.25, metalness: 0.9 }), navy = new T3.MeshStandardMaterial({ color: 0x1d2a55, roughness: 0.6 });
+        g.userData = { top: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), gray), frame: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), chrome), fold: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), gray), stools: [], posts: [] };
+        for (var i = 0; i < 12; i++) { var st0 = new T3.Mesh(new T3.CylinderGeometry(0.5, 0.5, 0.12, 20), navy), post = new T3.Mesh(new T3.CylinderGeometry(0.04, 0.04, 1, 8), chrome); g.userData.stools.push(st0); g.userData.posts.push(post); g.add(st0); g.add(post); }
+        ['top', 'frame', 'fold'].forEach(function (n) { g.add(g.userData[n]); });
+        g.traverse(function (m) { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); W.scene.add(g); }
       g.visible = true; seen[id] = 1;
       var u = g.userData, open = k > 0.5, L = spec.folded.l + (spec.open.l - spec.folded.l) * k;
-      u.top.visible = u.b1.visible = u.b2.visible = open; u.fold.visible = !open;
-      if (open) { u.top.scale.set(L, 0.12, spec.open.w); u.top.position.set(0, spec.open.h, 0);
-        [u.b1, u.b2].forEach(function (b, i) { b.scale.set(L, 0.1, spec.bench * 0.8); b.position.set(0, 1.5, (i ? 1 : -1) * (spec.open.w / 2 + spec.bench / 2)); }); }
+      u.top.visible = u.frame.visible = open; u.fold.visible = !open;
+      var n = spec.seats || 12, sh0 = spec.seatH || 1.42, per = Math.ceil(n / 2), sr = 0.5 * Math.min(1, k + 0.001);      // 12″ stools, 6 a side
+      u.stools.forEach(function (sm, i) { var on = open && i < n, side = i < per ? -1 : 1, j = i % per, x0 = (j + 0.5) / per * L - L / 2, z0 = side * (spec.open.w / 2 + spec.bench / 2);
+        sm.visible = u.posts[i].visible = on; if (!on) return; sm.scale.set(sr * 2, 1, sr * 2); sm.position.set(x0, sh0, z0); u.posts[i].scale.set(1, sh0, 1); u.posts[i].position.set(x0, sh0 / 2, z0); });
+      if (open) { u.top.scale.set(L, 0.1, spec.open.w); u.top.position.set(0, spec.open.h, 0); u.frame.scale.set(L * 0.92, 0.12, spec.open.w + spec.bench * 2 - 0.4); u.frame.position.set(0, 0.6, 0); }
       else { u.fold.scale.set(spec.folded.l, spec.folded.h, spec.folded.w); u.fold.position.set(0, spec.folded.h / 2, 0); }
       g.position.set(x.x, 0, -x.y); g.rotation.set(0, (x.rot || 0) * Math.PI / 180, 0);
     });
