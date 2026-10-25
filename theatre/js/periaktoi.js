@@ -7,7 +7,7 @@
   'use strict';
   var T = window.T, PK = window.PK, esc = T.esc, app = document.getElementById('app');
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
-  var V = { proj: 'flat', pics: true, zoom: 'towers', view: 'split', labels: true, spikes: true, paths: true, sweep: true, rim: true, routes: true, clear: false, speed: 1, loop: false };
+  var V = { proj: 'flat', pics: true, zoom: 'towers', view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
@@ -21,7 +21,10 @@
     if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
-    if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';      // the new default: turn where there's room
+    if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
+    var s1 = P.scenes[0]; if (s1 && s1.name === 'East High / New Year’s Eve') { var f1 = PK.fresh().scenes[0]; s1.name = f1.name; s1.notes = f1.notes; }      // scene 1 is the East High preset
+    if (P.practicals && P.practicals['A2-clock'] && P.practicals['A2-clock'].w === 0.77) { P.practicals['A2-clock'].w = 1; P.practicals['A2-clock'].h = 1; }      // a 12″ clock (her production notes)
+    P.scenes.forEach(function (sc) { if (sc.id === 's13' && !(sc.items || []).some(function (it) { return it.id === 'bench'; })) (sc.items = sc.items || []).push({ id: 'bench', kind: 'prop', name: 'Locker-room bench (mobile)', x: sc.towers.C.x, y: -6, w: 6, d: 1.25, rot: 0 }); });      // the new default: turn where there's room
     if (P.practicals) ['A2-clock', 'A2-plant'].forEach(function (k) { if (!P.practicals[k]) P.practicals[k] = JSON.parse(JSON.stringify(PK.PRACTICALS[k])); });      // the real clock and hanging plant on the science room
     if (P.practicals && !P.practicals.C3) P.practicals.C3 = JSON.parse(JSON.stringify(PK.PRACTICALS.C3));      // the real hook rail on the locker room (2026-10-25)
     if (P.practicals && P.practicals.C1 && !P.practicals.C1.show) { P.practicals.C1.h = 2; P.practicals.C1.show = 'cork'; if (P.practicals.C1.z === 5) P.practicals.C1.z = 47 / 12; }      // the real corkboard, drawn on her C1 wall      // the rim lines up with the printed target square in her D1 art
@@ -223,7 +226,7 @@
   function front(cv, crew) {
     if (!cv) return;
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
-    var c = s.prosc / 2, whole = V.zoom === 'stage', halfW = whole ? c + s.sideDeck + 1 : 14;
+    var c = s.prosc / 2, whole = V.zoom === 'stage', reach = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c ? Math.abs(x.towers[t].x) : 0; })); })), halfW = whole ? c + s.sideDeck + 1 : Math.max(14, reach + PK.R(s) + 1);      // the towers view fits this scene and the one before it (so a change stays in frame)
     var camY = crew ? s.curtain + s.crew : -(s.apron + s.house), sign = crew ? -1 : 1, line = PK.towerLine(scene());
     var flat = V.proj !== 'persp';      // true shape (default): a straight-on elevation, no perspective, so every tower keeps its exact 60° geometry and the crew view is an exact mirror
     var depth = function (y) { return Math.max(0.5, (y - camY) * sign); };
@@ -291,7 +294,7 @@
     }
   }
   function face(g, pr, f, s, dark, t) {
-    var A = art(f.id).img, iw = A.width, ih = A.height, N = 24;
+    var A = art(f.id).img, iw = A.width, ih = A.height, N = V.proj === 'persp' ? 24 : 1;      // true shape: one piece (no seams); perspective: thin slices
     for (var i = 0; i < N; i++) {
       var u0 = i / N, u1 = (i + 1) / N, p0 = { x: f.l.x + (f.r.x - f.l.x) * u0, y: f.l.y + (f.r.y - f.l.y) * u0 }, p1 = { x: f.l.x + (f.r.x - f.l.x) * u1, y: f.l.y + (f.r.y - f.l.y) * u1 };
       var t0 = pr(p0.x, p0.y, s.height), t1 = pr(p1.x, p1.y, s.height), b0 = pr(p0.x, p0.y, 0), b1 = pr(p1.x, p1.y, 0);
@@ -337,7 +340,7 @@
     }).join('');
     document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
     document.getElementById('pkRight').innerHTML = scenePanel(sc) + (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower to select it. Click one of its faces (the colored edges) to turn that face to the audience. Drag a tower to move it; drag the round knob to turn it.</p>');
-    document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
+    document.getElementById('pkBottom').innerHTML = V.simple ? plainPanel(ch, checks) : changePanel(ch, checks);
     document.getElementById('pkUndo').disabled = !undo.length; document.getElementById('pkRedo').disabled = !redo.length;
     document.getElementById('pkPlay').disabled = !prev && !anim;
     wirePanels();
@@ -391,6 +394,32 @@
     return '<div class="pk-box"><h3>' + esc(it.name) + '</h3><label class="pk-f">Name<input id="pkIName" value="' + esc(it.name) + '"></label>' +
       '<div class="pk-row"><label class="pk-f half">Width<input id="pkIW" value="' + PK.ft(it.w) + '"></label><label class="pk-f half">Depth<input id="pkID" value="' + PK.ft(it.d) + '"></label></div>' +
       '<div class="pk-row"><button id="pkIRot">Turn 90°</button><button id="pkIDel">Remove</button></div></div>';
+  }
+  /* Simple mode: the change in a few plain sentences */
+  function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return PK.SHORT[id].toLowerCase(); };
+    return f.kind === 'flat' ? 'the ' + n(f.faces[0]) : f.kind === 'point' ? 'the ' + n(f.faces[0]) + ' and the ' + n(f.faces[1]) + ' (as a point)' : 'an angle'; }
+  function plainPanel(ch, checks) {
+    var sc = scene(), out = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length;
+    out.push('<h3>' + esc(label(cur) + '. ' + sc.name) + '</h3>');
+    if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
+    var lines = [];
+    if (!ch) lines.push('This is what the audience sees when the show starts.');
+    else ch.moves.forEach(function (m) {
+      var bits = [];
+      if (m.dist) { var dx = m.to.x - m.from.x, dy = m.to.y - m.from.y, w = []; if (Math.abs(dx) > 0.05) w.push(dx < 0 ? 'toward stage right' : 'toward stage left'); if (Math.abs(dy) > 0.05) w.push(dy > 0 ? 'upstage' : 'downstage'); bits.push('slides ' + PK.ft(m.dist) + ' ' + w.join(' and ')); }
+      if (m.turn) bits.push('turns to show ' + faceWords(m.t, m.to.rot));
+      var was = LIT[m.from.lit] || 0, now = LIT[m.to.lit] || 0; if (now > 0.8 && was < 0.8) bits.push('goes dark'); if (was > 0.8 && now < 0.8) bits.push('lights up');
+      if (bits.length) lines.push('<b style="color:' + COL[m.t] + '">' + m.t + '</b> ' + bits.join(' and ') + '.');
+    });
+    if (ch) ch.tmoves.forEach(function (m) { var nm = P.tables[m.id].name;
+      if (m.open) lines.push(nm + ' rolls in folded and unfolds' + (m.to.spike ? ' on ' + m.to.spike : '') + '.');
+      else if (m.fold) lines.push(nm + ' folds and goes back to storage.');
+      else if (m.dist && m.from.state === 'deployed') lines.push(nm + ' turns and moves' + (m.to.spike ? ' to ' + m.to.spike : '') + ' (crew only; nobody on it).'); });
+    if (ch && !lines.length) lines.push('Nothing moves.');
+    out.push('<ul class="pk-plain">' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
+    out.push('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to check (open ✎ Edit to see them)' : '✓ No problems found') + '</p>');
+    if (sc.notes) out.push('<p class="pk-help">' + esc(sc.notes) + '</p>');
+    return out.join('');
   }
   function changePanel(ch, checks) {
     var crewN = P.crew || 4, out = [];
@@ -691,25 +720,29 @@
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.set = function () {
     T.setBar('Set and scene changes', '#/teacher');
-    load(); stop(); sel = null;
+    load(); stop(); sel = null; cur = 0;
+    try { V.simple = localStorage.getItem(LS + '-simple') !== '0'; } catch (e) { V.simple = true; }      // Simple (watch) mode unless she chose Edit last time
+    if (V.simple) { V.labels = false; if (V.view === 'split' || V.view === 'ledger') V.view = 'aud'; } else V.labels = true;      // always opens on scene 1, the East High preset
     document.body.classList.add('pk-wide');
-    app.innerHTML = '<div class="pk">' +
+    app.innerHTML = '<div class="pk' + (V.simple ? ' simple' : '') + '">' +
       '<div class="pk-top"><button id="pkPrev" title="[">‹</button><select id="pkSel"></select><button id="pkNext" title="]">›</button>' +
       '<button id="pkPlay" class="pk-primary" title="Space">▶ Play the change</button><input type="range" id="pkScrub" min="0" max="1000" value="1000" title="Scrub through the change">' +
-      '<select id="pkSpeed" title="Speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select>' +
+      '<span class="pk-adv"><select id="pkSpeed" title="Speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select>' +
       '<select id="pkWhen" title="When towers turn"><option value="auto">Turn where there’s room</option><option value="during">Turn while rolling</option><option value="before">Turn, then roll</option><option value="after">Roll, then turn</option></select>' +
-      '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label>' +
-      '<span class="pk-gap"></span><div class="pk-seg"><button data-view="over">Bird’s-eye</button><button data-view="aud">Audience</button><button data-view="crew">Crew</button><button data-view="split">All three</button><button data-view="ledger">Ledger</button></div>' +
-      '<select id="pkProj" title="Audience and crew views"><option value="flat">Front views: true shape</option><option value="persp">Front views: perspective</option></select>' +
+      '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label></span>' +
+      '<span class="pk-gap"></span><div class="pk-seg pk-views"><button data-view="aud">From the audience</button><button data-view="crew">From backstage</button><button data-view="over">From above</button><button data-view="split" class="pk-adv">All three</button><button data-view="ledger" class="pk-adv">Ledger</button></div>' +
+      '<button id="pkMode" class="pk-mode">' + (V.simple ? '✎ Edit' : '✓ Done editing') + '</button>' +
+      '<div class="pk-adv pk-advrow"><select id="pkProj" title="Audience and crew views"><option value="flat">Front views: true shape</option><option value="persp">Front views: perspective</option></select>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
       '<details class="pk-show"><summary>Show ▾</summary><div>' + [['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
-      '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div>' +
+      '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div></div>' +
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +
-      '<p class="pk-help small">Keys: [ ] scenes · Space play · Tab next tower · arrows nudge (Shift ×4) · Q / E turn 60° (Shift 120°) · 1 2 3 show that face flat · L light · ⌘Z undo. Option while dragging: no snapping. Saved in the show and on this computer; Export keeps a copy.</p></div>';
+      '<p class="pk-help small pk-adv">Keys: [ ] scenes · Space play · Tab next tower · arrows nudge (Shift ×4) · Q / E turn 60° (Shift 120°) · 1 2 3 show that face flat · L light · ⌘Z undo. Option while dragging: no snapping. Saved in the show and on this computer; Export keeps a copy.</p></div>';
     var $ = function (id) { return document.getElementById(id); };
     $('pkPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
+    $('pkMode').onclick = function () { V.simple = !V.simple; try { localStorage.setItem(LS + '-simple', V.simple ? '1' : '0'); } catch (e) {} T.teacherPages.set(); };
     $('pkNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
     $('pkSel').onchange = function () { stop(); cur = +this.value; draw(); };
     $('pkPlay').onclick = play;

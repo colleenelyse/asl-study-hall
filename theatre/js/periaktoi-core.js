@@ -15,7 +15,7 @@
     C1: 'Academic wall with the real cork bulletin board', C2: 'Black-box theatre, RIGHT half', C3: 'Red athletic lockers / corridor',
     D1: 'Gym wall: real 18″ rim, backboard printed', D2: 'Neutral wall, two tall frosted windows (printed)', D3: 'Academic corridor (design pending)'
   };
-  var SHORT = { A1: 'Lockers', A2: 'Bio/chem', A3: 'Trophy case', B1: 'Door', B2: 'Black box L', B3: 'Wildcat', C1: 'Corkboard', C2: 'Black box R', C3: 'Athletic lockers', D1: 'Hoop', D2: 'Windows', D3: 'Corridor' };
+  var SHORT = { A1: 'Lockers', A2: 'Science room', A3: 'Trophy case', B1: 'Classroom door', B2: 'Black box (left)', B3: 'Wildcat moss wall', C1: 'Wildcat News wall', C2: 'Black box (right)', C3: 'Athletic lockers', D1: 'Gym', D2: 'Windows', D3: 'Poster wall' };
   var FILES = { A1: 'A1-East-High-Lockers', A2: 'A2-Botanical-Classroom', A3: 'A3-Trophy-Case', B1: 'B1-Classroom-Door', B2: 'B2-Black-Box-Left', B3: 'B3-Wildcat-Fountain',
     C1: 'C1-Bulletin-Board', C2: 'C2-Black-Box-Right', C3: 'C3-Athletic-Lockers', D1: 'D1-Gym-Hoop', D2: 'D2-Frosted-Windows', D3: 'D3-Academic-Corridor' };
   /* the only physical pieces on the faces (Colleen's corrected inventory, 2026-10-25); everything else is printed. Sizes are stand-ins until measured:
@@ -23,7 +23,7 @@
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
     B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
-    'A2-clock': { name: 'Classroom analog clock (real, on the printed circle)', u: 0.65, w: 0.77, h: 0.77, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
+    'A2-clock': { name: '12″ classroom analog clock (real, on the printed circle)', u: 0.65, w: 1, h: 1, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
     'A2-plant': { name: 'Hanging plant on a wall hook (real)', u: 0.9, w: 1, h: 2.6, d: 1.3, z: 6.5, show: 'plant' },      // the bracket at the top right of her A2 art
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
     C3: { name: 'Hook rail with towel and jersey (real, added to the wall)', u: 0.075, w: 0.6, h: 2.5, d: 0.35, z: 4 },      // left edge of her locker-room art; the vinyl has no hooks (Colleen 2026-10-25)
@@ -373,7 +373,7 @@
     var cafe = { A: { want: 'A1+A3', x: -12.75 }, B: { want: 'B3', x: -4.25 }, C: { want: 'C3', x: 4.25 }, D: { want: 'D2+D3', x: 12.75 } };      // B and C apart: a center lane for the tables from upstage center (Colleen 2026-10-25); A and D out to match
     var box = { B: { want: 'B2', x: -seam }, C: { want: 'C2', x: seam } };
     var L = [
-      S(1, 'East High / New Year’s Eve', hall, { notes: 'Signature hallway, plus the karaoke vignette in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
+      S(1, 'East High (preset): the hallway', hall, { notes: 'The preset: the signature East High hallway, as the audience sees it before the show starts. The New Year’s Eve karaoke vignette plays in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
       S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }),
       S(3, 'Main hallway', hall),
       S(4, 'Gym', { B: 'B3', C: 'C3', D: 'D1' }),
@@ -385,7 +385,7 @@
       S(10, 'Horticulture HQ', { A: { want: 'A2', x: -st.prosc / 2 + 3, y: -2.6 } }, { notes: 'A2 at the stage-right proscenium, with plants.', zones: ['hort'], items: [{ id: 'pl', kind: 'prop', name: 'Plants', x: -st.prosc / 2 - 2, y: -3, w: 3, d: 2, rot: 0 }] }),
       S(11, 'Study hall', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }, { notes: 'Adjustable.' }),
       S(12, 'Gym', { B: 'B3', C: 'C3', D: 'D1' }),
-      S(13, 'Locker room / science (split)', { A: 'A2', C: 'C3' }),
+      S(13, 'Locker room / science (split)', { A: 'A2', C: 'C3' }, { notes: 'Locker room on C3 with the real hooks, gear and a mobile bench (her production notes).', items: [{ id: 'bench', kind: 'prop', name: 'Locker-room bench (mobile)', x: 2.5, y: -6, w: 6, d: 1.25, rot: 0 }] }),
       S(14, 'Theatre', box),
       S(15, 'Cafeteria', cafe, { notes: 'We’re All in This Together, opening: exactly the scene 9 picture (same towers, CF-SEPARATE).', needTables: true, spike: 'CF-SEPARATE', same: 's9' }),
       S(15, 'Cafeteria — united (at a cue you choose)', cafe, { alt: true, moment: true, cue: '', needTables: true, spike: 'CF-UNITED', same: 's9',
