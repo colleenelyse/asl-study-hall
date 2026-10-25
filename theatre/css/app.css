@@ -687,3 +687,10 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk.simple .pk-bottom .pk-facebtn img { width: 30px; height: 60px; } .pk.simple .pk-bottom .pk-facebtn.pt img { width: 22px; height: 60px; }
 .pk.simple .pk-bottom .pk-faces3 { display: contents; } .pk.simple .pk-bottom .pk-facebtn { padding: 4px; min-width: 0; } .pk.simple .pk-bottom .pk-facebtn span:not(.pk-pt) { display: none; }
 .pk.simple .pk-bottom .pk-simple-tower h3 { display: block; font-size: 16px; }
+.pk-pos { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--pk-dim); } .pk-pos input { width: 70px; }
+.pk:not(.simple) .pk-right .pk-tworow { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.pk:not(.simple) .pk-right .pk-faces3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pk:not(.simple) .pk-right .pk-facebtn { min-width: 0; padding: 4px; }
+.pk:not(.simple) .pk-right .pk-facebtn img { width: 34px; height: 68px; } .pk:not(.simple) .pk-right .pk-facebtn.pt img { width: 26px; height: 68px; }
+.pk:not(.simple) .pk-right .pk-facebtn span { font-size: 11px; }
+.pk:not(.simple) .pk-right .pk-pos input { width: 60px; }

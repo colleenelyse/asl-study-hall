@@ -378,6 +378,7 @@
   /* ---------- the page ---------- */
   function sceneSummary(sc) { return TW.map(function (t) { var f = PK.facing(P, t, sc.towers[t].rot); return (sc.towers[t].lit === 'dark' ? '<s>' : '') + f.label.replace('+', '|') + (sc.towers[t].lit === 'dark' ? '</s>' : ''); }).join(' · '); }
   function draw() {
+    V.cur = cur;      // the scene she was on comes back when she returns to this page
     if (!document.getElementById('pkCenter')) return;
     var sc = scene(), checks = PK.sceneChecks(P, sc), prev = prevScene();
     var ch = prev ? PK.change(P, prev, sc) : null;
@@ -386,7 +387,7 @@
       return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
     document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
-    if (!V.simple) document.getElementById('pkRight').innerHTML = scenePanel(sc) + (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower to select it. Click one of its faces (the colored edges) to turn that face to the audience. Drag a tower to move it; drag the round knob to turn it.</p>');
+    if (!V.simple) document.getElementById('pkRight').innerHTML = (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower (in any view) to change its face and where it stands. On the map from above you can also drag it.</p>') + scenePanel(sc);      // the picked piece first, so its controls are in view
     if (V.simple) { var pp = plainPanel(ch, checks); document.getElementById('pkBottom').innerHTML = pp.bottom; document.getElementById('pkRight').innerHTML = pp.side; }      // Simple: the step bar and the clicked tower beside the picture
     else document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
     document.getElementById('pkUndo').disabled = !undo.length; document.getElementById('pkRedo').disabled = !redo.length;
@@ -408,16 +409,13 @@
   }
   function towerPanel(t) {
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), w = winds(t);
-    var opts = [t + '1', t + '2', t + '3'].map(function (id) { return '<option value="' + id + '"' + (f.label === id ? ' selected' : '') + '>Flat: ' + id + ' ' + esc(PK.SHORT[id]) + '</option>'; });
-    [[1, 2], [2, 3], [1, 3]].forEach(function (p) { var want = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, want); opts.push('<option value="' + want + '"' + (f.kind === 'point' && f.faces.slice().sort().join('+') === want ? ' selected' : '') + '>Point: ' + r.left + ' (left) | ' + r.right + ' (right)</option>'); });
-    if (f.kind === 'angled') opts.unshift('<option selected>Angled ' + Math.round(s.rot) + '°: ' + esc(f.label) + '</option>');
     var seg = function (k, vals, names) { return '<div class="pk-seg">' + vals.map(function (v, i) { return '<button data-' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join('') + '</div>'; };
     return '<div class="pk-box" style="border-color:' + COL[t] + '"><h3 style="color:' + COL[t] + '">Tower ' + t + '</h3>' +
       '<p class="pk-help">The audience sees: <b>' + (f.kind === 'flat' ? f.faces[0] + ' (flat)' : f.kind === 'point' ? f.faces[0] + ' on the left, ' + f.faces[1] + ' on the right (point)' : esc(f.label)) + '</b></p>' +
-      '<label class="pk-f">Facing<select id="pkWant">' + opts.join('') + '</select></label>' +
+      '<p class="pk-help small">Click a picture to turn that face to the audience.</p>' + faceButtons(t) +
       '<div class="pk-row"><button data-turn="60" title="Q">⟲ 60°</button><button data-turn="-60" title="E">⟳ 60°</button><button data-turn="120" title="Shift+Q">⟲ 120°</button><button data-turn="-120" title="Shift+E">⟳ 120°</button></div>' +
       '<p class="pk-help small">⟲ ⟳ = counterclockwise / clockwise as seen from above. In your triangle diagram: <b>' + PK.diagramAngle(P, t, s.rot) + '°</b> (0° = ' + t + '2 flat to the audience, counting ' + (P.diagram && P.diagram.dir === 'ccw' ? 'counterclockwise' : 'clockwise') + ').</p>' +
-      '<div class="pk-row"><label class="pk-f half">Across (− = stage right)<input id="pkX" value="' + PK.ft(s.x) + '"></label><label class="pk-f half">Up/downstage of PL (− = downstage)<input id="pkY" value="' + PK.ft(s.y) + '"></label></div>' +
+      whereRows(t) +
       '<div class="pk-f">Light' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '</div>' +
       '<div class="pk-f">Part in the scene' + seg('role', ['featured', 'supporting', 'masking'], ['Featured', 'Supporting', 'Masking / dark']) + '</div>' +
       '<div class="pk-f">Wheels' + seg('lock', [true, false], ['Locked', 'Rolling']) + '</div>' +
@@ -446,16 +444,25 @@
   /* Simple mode: the change in a few plain sentences */
   function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return PK.SHORT[id].toLowerCase(); };
     return f.kind === 'flat' ? 'the ' + n(f.faces[0]) : f.kind === 'point' ? 'the ' + n(f.faces[0]) + ' and the ' + n(f.faces[1]) + ' (as a point)' : 'an angle'; }
-  function simpleTower(t) {      // Simple mode: the tower someone clicked, with big plain controls
+  function faceButtons(t) {      // the face pictures to click, in both modes
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+');
     var thumb = function (id) { return '<img src="' + artUrl(id) + '" alt="">'; };
     var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '" title="' + esc(PK.SHORT[id]) + '">' + thumb(id) + '<span>' + esc(PK.SHORT[id]) + '</span></button>'; }).join('');
     var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '" title="' + esc(PK.SHORT[r.left] + ' + ' + PK.SHORT[r.right]) + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
+    return '<div class="pk-tworow"><div class="pk-faces3">' + faces + '</div><span class="pk-help small" style="align-self:center">or as a point:</span><div class="pk-faces3">' + points + '</div></div>';
+  }
+  function whereRows(t, tail) {      // where the tower stands: typed or slid, in both modes
+    var s = scene().towers[t];
+    return '<div class="pk-row"><span>Where:</span><label class="pk-pos">Across <input id="pkSX" value="' + esc(PK.ft(Math.abs(s.x))) + '" size="7"> ' + (s.x < -0.01 ? 'stage right' : s.x > 0.01 ? 'stage left' : 'center') + '</label>' +
+      '<label class="pk-pos"><input id="pkSY" value="' + esc(PK.ft(Math.abs(s.y))) + '" size="7"> ' + (s.y < -0.01 ? 'downstage' : s.y > 0.01 ? 'upstage' : 'on') + ' of the plaster line</label></div>' +
+      '<div class="pk-row"><span>Slide:</span><select id="pkSStep"><option value="0.5">6″</option><option value="1"' + (V.step === 1 ? ' selected' : '') + '>1 ft</option></select><button data-snudge="-1,0" title="toward stage right">◀ SR</button><button data-snudge="1,0" title="toward stage left">SL ▶</button><button data-snudge="0,1" title="upstage">▲ up</button><button data-snudge="0,-1" title="downstage">▼ down</button>' +
+      (tail || '') + '</div>';
+  }
+  function simpleTower(t) {      // Simple mode: the tower someone clicked, with big plain controls
+    var s = scene().towers[t];
     var seg = function (k, vals, names) { return vals.map(function (v, i) { return '<button data-s' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join(''); };
     return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help small">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span><button id="pkSClose">Done</button></div>' +
-      '<div class="pk-tworow"><div class="pk-faces3">' + faces + '</div><span class="pk-help small" style="align-self:center">or as a point:</span><div class="pk-faces3">' + points + '</div></div>' +
-      '<div class="pk-row"><span>Slide 6″:</span><button data-snudge="-1,0" title="toward stage right">◀ SR</button><button data-snudge="1,0" title="toward stage left">SL ▶</button><button data-snudge="0,1" title="upstage">▲ up</button><button data-snudge="0,-1" title="downstage">▼ down</button>' +
-      '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button></div></div>';
+      faceButtons(t) + whereRows(t, '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button>') + '</div>';
   }
   function plainPanel(ch, checks) {
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
@@ -534,10 +541,7 @@
     if (V.simple) { /* Simple mode wires its own controls below */ }
     else if (sel && TW.indexOf(sel) >= 0) {
       var t = sel, s = sc.towers[t];
-      $('pkWant').onchange = function () { if (!/^[A-D]\d/.test(this.value)) return; snap(); setWant(t, this.value); changed(); };
       app.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { snap(); setRot(t, s.rot + +b.dataset.turn); changed(); }; });
-      var pos = function (id, k) { $(id).onchange = function () { var v = PK.parseFt(this.value); if (v == null) { T.toast('Type feet and inches, like 7\' 6"'); return draw(); } snap(); s[k] = v; changed(); }; };
-      pos('pkX', 'x'); pos('pkY', 'y');
       app.querySelectorAll('[data-art]').forEach(function (x) { x.onchange = function () { snap(); P.art = P.art || {}; P.art[x.dataset.art] = x.value; delete ART[x.dataset.art]; art(x.dataset.art); changed(); }; });
       ['lit', 'role', 'lock'].forEach(function (k) { app.querySelectorAll('[data-' + k + ']').forEach(function (b) { b.onclick = function () { snap(); var v = b.dataset[k]; s[k] = k === 'lock' ? v === 'true' : v; changed(); }; }); });
     } else if (sel && PK.TABLES.indexOf(sel) >= 0) {
@@ -569,17 +573,20 @@
     }
     app.querySelectorAll('[data-sview]').forEach(function (b) { b.onclick = function () { V.view = b.dataset.sview; rebuild(); }; });
     if ($('pkSTurns')) $('pkSTurns').onclick = smarterTurns;
-    if ($('pkSEdit')) $('pkSEdit').onclick = function () { V.simple = false; V.modeSet = true; T.teacherPages.set(); };
+    if ($('pkSEdit')) $('pkSEdit').onclick = function () { V.simple = false; V.modeSet = true; T.teacherPages.set(true); };
     if ($('pkSSel')) $('pkSSel').onchange = function () { stop(); cur = +this.value; draw(); };
     if ($('pkSPrev')) $('pkSPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
     if ($('pkSNext')) $('pkSNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
     if ($('pkSPlay')) $('pkSPlay').onclick = function () { stop(); play(); };
     if ($('pkSClose')) $('pkSClose').onclick = function () { sel = null; draw(); };
     if ($('pkSUndo')) $('pkSUndo').onclick = function () { stop(); step(true); };
-    if (V.simple && sel && TW.indexOf(sel) >= 0) {
+    if (sel && TW.indexOf(sel) >= 0) {      // face pictures and where it stands, in both modes
       var st0 = sc.towers[sel], tt = sel;
       app.querySelectorAll('[data-swant]').forEach(function (b) { b.onclick = function () { snap(); setWant(tt, b.dataset.swant); changed(); }; });
-      app.querySelectorAll('[data-snudge]').forEach(function (b) { b.onclick = function () { var d = b.dataset.snudge.split(',').map(Number), gr = st().grid || 0.5; snap(); st0.x += d[0] * gr; st0.y += d[1] * gr; changed(); }; });
+      app.querySelectorAll('[data-snudge]').forEach(function (b) { b.onclick = function () { var d = b.dataset.snudge.split(',').map(Number), gr = V.step || st().grid || 0.5; snap(); st0.x += d[0] * gr; st0.y += d[1] * gr; changed(); }; });
+      if ($('pkSStep')) $('pkSStep').onchange = function () { V.step = +this.value; };
+      var typed = function (id, k, neg) { var el = $(id); if (!el) return; el.onchange = function () { var v = PK.parseFt(this.value); if (v == null) { T.toast('Type feet and inches, like 7\' 6"'); return draw(); } snap(); st0[k] = Math.abs(v) * (neg() ? -1 : 1); changed(); }; };
+      typed('pkSX', 'x', function () { return st0.x < 0; }); typed('pkSY', 'y', function () { return st0.y < 0; });
       app.querySelectorAll('[data-slit]').forEach(function (b) { b.onclick = function () { snap(); st0.lit = b.dataset.slit; changed(); }; });
     }
     app.querySelectorAll('[data-status]').forEach(function (b) { b.onclick = function () { snap(); sc.status = b.dataset.status; changed(); }; });
@@ -811,9 +818,9 @@
     draw();
   }
   T.teacherPages = T.teacherPages || {};
-  T.teacherPages.set = function () {
+  T.teacherPages.set = function (keep) {      // keep: only the Edit / Done switch, so the scene and the picked tower stay put
     T.setBar('Set and scene changes', '#/teacher');
-    load(); stop(); sel = null; cur = 0;
+    stop(); if (keep !== true) { load(); sel = null; cur = V.cur != null && V.cur < P.scenes.length ? V.cur : 0; }
     if (!V.modeSet) V.simple = true;      // always opens in the simple stage view; ✎ Edit lasts only until she leaves the page
     if (V.simple) { V.labels = false; if (V.view === 'split' || V.view === 'ledger') V.view = 'aud'; } else V.labels = true;      // always opens on scene 1, the East High preset
     document.body.classList.add('pk-wide');
@@ -836,7 +843,7 @@
     var bar0 = document.querySelector('.bar'); app.querySelector('.pk').style.setProperty('--pkTop', (bar0 ? bar0.offsetHeight : 0) + 'px');      // the pinned controls sit just under the app's own top bar
     var $ = function (id) { return document.getElementById(id); };
     $('pkPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
-    $('pkMode').onclick = function () { V.simple = !V.simple; V.modeSet = true; T.teacherPages.set(); };
+    $('pkMode').onclick = function () { V.simple = !V.simple; V.modeSet = true; T.teacherPages.set(true); };
     $('pkNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
     $('pkSel').onchange = function () { stop(); cur = +this.value; draw(); };
     $('pkPlay').onclick = play;
