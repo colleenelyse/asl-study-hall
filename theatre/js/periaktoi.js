@@ -44,13 +44,18 @@
         P.scenes.forEach(function (sc) { PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via.length === 1) q.via[0] = { x: un[id].x + (id === 'T1' ? -2 : 4), y: un[id].y }; }); });
         PK.applySpikes(P); } }
     P.scenes.forEach(function (sc) { if (['s4', 's12', 's17'].indexOf(sc.id) >= 0 && sc.towers.B && sc.towers.B.want === 'B3') { sc.towers.B.want = 'B1'; sc.towers.B.rot = PK.rotFor(P, 'B', 'B1').rot; } });      // the gym shows the doorway on B (Colleen 2026-10-25)
+    if (P.scenes[0] && P.scenes[0].id === 's1' && !(P.scenes[1] && P.scenes[1].same === 's1')) {      // scene 1 splits in two for lighting (1a karaoke, 1b hallway); the set stays put
+      var b1 = PK.sub1(P), f0 = PK.fresh().scenes[0]; P.scenes[0].notes = f0.notes; if (/^East High \(preset\)/.test(P.scenes[0].name)) P.scenes[0].name = f0.name; b1.towers = JSON.parse(JSON.stringify(P.scenes[0].towers)); P.scenes.splice(1, 0, b1); queueSave(); }
+    if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
+      P.scenes.forEach(function (sc) { PK.TOWERS.forEach(function (t) { var q = sc.towers[t]; if (Math.abs(q.x - old[t]) < 1e-6 && Math.abs(q.y - P.home[t].y) < 1e-6) q.x = P.home[t].x; }); }); queueSave(); }
     PK.applySpikes(P);      // after any change above
     if (!P.presetAhead) { undo.push(JSON.stringify(P)); PK.presetAhead(P); P.presetAhead = 1; queueSave(); }      // dark towers set up ahead (her rule, 2026-10-25); Undo takes it back, every table on a spike stands exactly on it
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
     var n = 0; for (var k = 0; k <= i; k++) if (!P.scenes[k].moment) n++;
-    return P.scenes[i].moment ? n + 'b' : String(n);
+    var sc = P.scenes[i], nx = P.scenes[i + 1];
+    return sc.moment ? n + 'b' : nx && nx.moment ? n + 'a' : String(n);      // 1a / 1b, 15a / 15b
   }
   function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo = []; }
   function changed() {
@@ -387,7 +392,7 @@
       return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
     document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
-    if (!V.simple) document.getElementById('pkRight').innerHTML = (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower (in any view) to change its face and where it stands. On the map from above you can also drag it.</p>') + scenePanel(sc);      // the picked piece first, so its controls are in view
+    if (!V.simple) document.getElementById('pkRight').innerHTML = (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower (in any view) to change its face and where it stands. On the map from above you can also drag it.</p>' + lineUpRow()) + scenePanel(sc);      // the picked piece first, so its controls are in view
     if (V.simple) { var pp = plainPanel(ch, checks); document.getElementById('pkBottom').innerHTML = pp.bottom; document.getElementById('pkRight').innerHTML = pp.side; }      // Simple: the step bar and the clicked tower beside the picture
     else document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
     document.getElementById('pkUndo').disabled = !undo.length; document.getElementById('pkRedo').disabled = !redo.length;
@@ -398,8 +403,8 @@
   }
   function scenePanel(sc) {
     var src = sc.same && P.scenes.find(function (x) { return x.id === sc.same; });
-    return '<div class="pk-box"><label class="pk-f">' + (sc.moment ? 'Moment ' + label(cur) + ' (inside the scene, in full view)' : 'Scene ' + label(cur)) + '<input id="pkName" value="' + esc(sc.name) + '"></label>' +
-      (sc.moment ? '<label class="pk-f">At this musical or choreographic cue<input id="pkCue" value="' + esc(sc.cue || '') + '" placeholder="e.g. after the second chorus"></label>' : '') +
+    return '<div class="pk-box"><label class="pk-f">' + (sc.sub ? 'Part ' + label(cur) + ' (same set, its own lighting)' : sc.moment ? 'Moment ' + label(cur) + ' (inside the scene, in full view)' : 'Scene ' + label(cur)) + '<input id="pkName" value="' + esc(sc.name) + '"></label>' +
+      (sc.moment && !sc.sub ? '<label class="pk-f">At this musical or choreographic cue<input id="pkCue" value="' + esc(sc.cue || '') + '" placeholder="e.g. after the second chorus"></label>' : '') +
       (src ? '<p class="pk-help small">🔗 Towers are identical to scene ' + label(P.scenes.indexOf(src)) + ' (' + esc(src.name) + '): changing them here changes both. <button id="pkUnlink" class="pk-mini">Unlink</button></p>' : '') +
       (cur ? '<label class="pk-f">Tables in the change into this ' + (sc.moment ? 'moment' : 'scene') + '<select id="pkOrder"><option value="T1"' + ((sc.tableOrder || 'T1') === 'T1' ? ' selected' : '') + '>Table 1 first, then Table 2</option><option value="T2"' + (sc.tableOrder === 'T2' ? ' selected' : '') + '>Table 2 first, then Table 1</option><option value="together"' + (sc.tableOrder === 'together' ? ' selected' : '') + '>Both at once</option></select></label>' : '') +
       '<label class="pk-f">Notes<textarea id="pkNotes" rows="3">' + esc(sc.notes || '') + '</textarea></label>' +
@@ -451,9 +456,13 @@
     var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '" title="' + esc(PK.SHORT[r.left] + ' + ' + PK.SHORT[r.right]) + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
     return '<div class="pk-tworow"><div class="pk-faces3">' + faces + '</div><span class="pk-help small" style="align-self:center">or as a point:</span><div class="pk-faces3">' + points + '</div></div>';
   }
+  function lineUpRow() {      // her three standard arrangements (2026-10-25)
+    return '<div class="pk-row pk-lineup"><span>Line up:</span><button data-lineup="home" title="Every tower on its home base">All home</button><button data-lineup="aroundC" title="C stays home; B and D slide in until their points touch C">B and D close in on C</button><button data-lineup="unitBC" title="B and C touch points at center as one unit; A and D home">B + C together at center</button></div>';
+  }
   function whereRows(t, tail) {      // where the tower stands: typed or slid, in both modes
-    var s = scene().towers[t];
-    return '<div class="pk-row"><span>Where:</span><label class="pk-pos">Across <input id="pkSX" value="' + esc(PK.ft(Math.abs(s.x))) + '" size="7"> ' + (s.x < -0.01 ? 'stage right' : s.x > 0.01 ? 'stage left' : 'center') + '</label>' +
+    var s = scene().towers[t], i = TW.indexOf(t);
+    return lineUpRow() + '<div class="pk-row"><span>' + t + ':</span><button data-home="go" title="Back to ' + t + '’s home base">⌂ Home</button>' + (i > 0 ? '<button data-touch="-1" title="Slide until it touches ' + TW[i - 1] + '">◀ Touch ' + TW[i - 1] + '</button>' : '') + (i < 3 ? '<button data-touch="1" title="Slide until it touches ' + TW[i + 1] + '">Touch ' + TW[i + 1] + ' ▶</button>' : '') + '<button data-home="set" class="pk-mini" title="Make this spot ' + t + '’s home base in every scene from now on">Make this ' + t + '’s home</button></div>' +
+      '<div class="pk-row"><span>Where:</span><label class="pk-pos">Across <input id="pkSX" value="' + esc(PK.ft(Math.abs(s.x))) + '" size="7"> ' + (s.x < -0.01 ? 'stage right' : s.x > 0.01 ? 'stage left' : 'center') + '</label>' +
       '<label class="pk-pos"><input id="pkSY" value="' + esc(PK.ft(Math.abs(s.y))) + '" size="7"> ' + (s.y < -0.01 ? 'downstage' : s.y > 0.01 ? 'upstage' : 'on') + ' of the plaster line</label></div>' +
       '<div class="pk-row"><span>Slide:</span><select id="pkSStep"><option value="0.5">6″</option><option value="1"' + (V.step === 1 ? ' selected' : '') + '>1 ft</option></select><button data-snudge="-1,0" title="toward stage right">◀ SR</button><button data-snudge="1,0" title="toward stage left">SL ▶</button><button data-snudge="0,1" title="upstage">▲ up</button><button data-snudge="0,-1" title="downstage">▼ down</button>' +
       (tail || '') + '</div>';
@@ -471,6 +480,7 @@
       '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
     if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
+    if (!towerOpen) out.push(lineUpRow());
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
     var lines = [];
     if (!ch) lines.push('This is what the audience sees when the show starts.');
@@ -588,6 +598,12 @@
       var typed = function (id, k, neg) { var el = $(id); if (!el) return; el.onchange = function () { var v = PK.parseFt(this.value); if (v == null) { T.toast('Type feet and inches, like 7\' 6"'); return draw(); } snap(); st0[k] = Math.abs(v) * (neg() ? -1 : 1); changed(); }; };
       typed('pkSX', 'x', function () { return st0.x < 0; }); typed('pkSY', 'y', function () { return st0.y < 0; });
       app.querySelectorAll('[data-slit]').forEach(function (b) { b.onclick = function () { snap(); st0.lit = b.dataset.slit; changed(); }; });
+    }
+    app.querySelectorAll('[data-lineup]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.lineUp(P, sc, b.dataset.lineup); changed(); }; });
+    if (sel && TW.indexOf(sel) >= 0) {
+      app.querySelectorAll('[data-touch]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.touchNext(P, sc, sel, +b.dataset.touch); changed(); }; });
+      app.querySelectorAll('[data-home]').forEach(function (b) { b.onclick = function () { stop(); snap(); var q = sc.towers[sel], H = P.home || (P.home = PK.homeDefaults(P));
+        if (b.dataset.home === 'set') { H[sel] = { x: q.x, y: q.y }; T.toast(sel + '’s home base is here now'); } else { q.x = H[sel].x; q.y = H[sel].y; } changed(); }; });
     }
     app.querySelectorAll('[data-status]').forEach(function (b) { b.onclick = function () { snap(); sc.status = b.dataset.status; changed(); }; });
     app.querySelectorAll('[data-crew]').forEach(function (b) { b.onclick = function () { snap(); P.crew = +b.dataset.crew; changed(); }; });

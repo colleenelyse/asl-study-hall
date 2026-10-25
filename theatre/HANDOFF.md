@@ -671,3 +671,9 @@ Colleen: "an animated version of this run plot that shows movement around the st
 - Switching Simple ↔ Edit no longer reloads the plan or jumps to scene 1; the scene and the picked tower stay (T.teacherPages.set(true)). Coming back to the page returns to the last scene (V.cur).
 - Edit mode: clicking a tower (in any view) puts its panel FIRST in the right column, with the same face pictures and "Where" controls as Simple (faceButtons, whereRows): typed feet across / up-or-downstage, and slides of 6″ or 1 ft.
 - 3D: the lens line had been swallowed by a comment (every view used a 30° lens); restored. Backstage camera is behind the curtain with a work light, grand and border hidden, tower letters shown; the proscenium walls are brick only on the house side.
+
+## 2026-10-25: home bases, line-ups, scene 1a/1b
+- P.home (core homeDefaults): every tower has a home base, evenly spaced, 4 ft between the points when face on (P.home.gap), centered. New plans place towers there; saved plans move only towers still on the old default spots.
+- Line-ups (core lineUp): 'home' (all home), 'aroundC' (C home, B and D slide in until their points touch C; A home), 'unitBC' (B and C touch points, centered at 0; A and D home). touchNext slides one tower until it touches its neighbor. Buttons: "Line up:" row (Simple tray and Edit), and per tower ⌂ Home / Touch / "Make this X's home".
+- Scene 1 is 1a (NYE karaoke, East High set as the preset) and 1b (East High hallway): a `sub` scene linked by `same`. Linked scenes now share the set but keep their own lighting (applyLinks copies everything except lit/role). label() shows 1a/1b and 15a/15b.
+- Tests: 38.

@@ -378,7 +378,7 @@
   function library(P) {
     var st = P.stage, sw = Math.max.apply(null, TOWERS.map(function (t) { return geom(P, t, { x: 0, y: 0, rot: 0 }, st).sweep; }));
     var y = Math.round((st.curtain - st.clear - sw) * 4) / 4 - 0.25;      // along the drape, with room for the widest sweep (D's rim) to turn
-    var X = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 }, seam = st.face / 2;
+    var X = P.home ? { A: P.home.A.x, B: P.home.B.x, C: P.home.C.x, D: P.home.D.x } : { A: -8.5, B: -2.5, C: 2.5, D: 8.5 }, seam = st.face / 2;
     var S = function (num, name, spec, extra) {
       var towers = {};
       TOWERS.forEach(function (t) {
@@ -391,8 +391,11 @@
     var hall = { A: 'A1', B: 'B1+B3', C: 'C1', D: 'D2+D3' };
     var cafe = { A: { want: 'A1+A3', x: -12.75 }, B: { want: 'B3', x: -4.25 }, C: { want: 'C3', x: 4.25 }, D: { want: 'D2+D3', x: 12.75 } };      // B and C apart: a center lane for the tables from upstage center (Colleen 2026-10-25); A and D out to match
     var box = { B: { want: 'B2', x: -seam }, C: { want: 'C2', x: seam } };
+    var sub1 = function () {      // scene 1 has two places for lighting; the set does not change (Colleen 2026-10-25)
+      return S(1, 'East High: the hallway', hall, { alt: true, moment: true, sub: true, same: 's1', notes: 'Same set as 1a. Only the lighting changes: the karaoke area goes out and the hallway comes up.' }); };
     var L = [
-      S(1, 'East High (preset): the hallway', hall, { notes: 'The preset: the signature East High hallway, as the audience sees it before the show starts. The New Year’s Eve karaoke vignette plays in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
+      S(1, 'New Year’s Eve karaoke (East High set as the preset)', hall, { notes: 'The preset: the signature East High hallway, as the audience sees it before the show starts. The New Year’s Eve karaoke vignette plays first, in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
+      sub1(),
       S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }),
       S(3, 'Main hallway', hall),
       S(4, 'Gym', { B: 'B1', C: 'C3', D: 'D1' }),      // the gym shows the doorway on B, not the moss wall (Colleen 2026-10-25)
@@ -449,8 +452,10 @@
   function applySpikes(P) { P.scenes.forEach(function (sc) { TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id], sp = q && q.spike && P.spikes && P.spikes[q.spike]; if (sp && sp[id]) { q.x = sp[id].x; q.y = sp[id].y; q.rot = sp[id].rot; q.state = 'deployed'; } }); }); }
   function applyLinks(P, edited) {
     var byId = {}; P.scenes.forEach(function (sc) { byId[sc.id] = sc; });
-    if (edited && edited.same && byId[edited.same]) byId[edited.same].towers = JSON.parse(JSON.stringify(edited.towers));      // an edit to a linked scene changes the original too
-    P.scenes.forEach(function (sc) { if (sc.same && byId[sc.same] && sc !== byId[sc.same]) sc.towers = JSON.parse(JSON.stringify(byId[sc.same].towers)); });
+    var copy = function (from, to) { TOWERS.forEach(function (t) { var a = from.towers[t], b = to.towers[t] || {}, lit = b.lit, role = b.role;      // linked scenes share the set; each keeps its own lighting
+      to.towers[t] = JSON.parse(JSON.stringify(a)); if (lit) { to.towers[t].lit = lit; to.towers[t].role = role || to.towers[t].role; } }); };
+    if (edited && edited.same && byId[edited.same]) copy(edited, byId[edited.same]);      // an edit to a linked scene changes the original too
+    P.scenes.forEach(function (sc) { if (sc.same && byId[sc.same] && sc !== byId[sc.same]) copy(byId[sc.same], sc); });
   }
   /* a plan saved before the center lane (v2): only values still at the old defaults move to the new ones; her own edits stay */
   function migrate(P) {
@@ -529,14 +534,42 @@
     TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
     P.storage = storageDefaults(P.stage);
     P.spikes = spikeDefaults(P);
+    P.home = homeDefaults(P);
     P.scenes = library(P);
     presetAhead(P); P.presetAhead = 1;
     return P;
   }
+  /* Home bases (Colleen 2026-10-25): each tower has a home spot, evenly spaced, about 4 ft between the points when they are face on.
+     Line-ups: everyone home; C stays home and B and D slide in until their points touch C; B and C touch points at center as one unit. */
+  function homeDefaults(P) {
+    var st = P.stage, gap = P.home && P.home.gap != null ? P.home.gap : 4, step = st.face + gap;      // flat, a tower is one face wide
+    var sw = Math.max.apply(null, TOWERS.map(function (t) { return geom(P, t, { x: 0, y: 0, rot: 0 }, st).sweep; }));
+    var y = P.home && P.home.A ? P.home.A.y : Math.round((st.curtain - st.clear - sw) * 4) / 4 - 0.25;
+    var H = { gap: gap };
+    TOWERS.forEach(function (t, i) { H[t] = { x: (i - 1.5) * step, y: y }; });
+    return H;
+  }
+  function touchX(P, s, other, side) {      // where s (keeping its turn) just touches other, on side -1 (left of it) or +1
+    var st = P.stage, far = other.x + side * 4 * R(st), near = other.x, test = function (x) { return polysOverlap(geom(P, 'A', { x: x, y: s.y, rot: s.rot }, st).poly, geom(P, 'A', other, st).poly); };
+    for (var i = 0; i < 40; i++) { var m = (far + near) / 2; if (test(m)) near = m; else far = m; }
+    return Math.round(far * 1000) / 1000;
+  }
+  function lineUp(P, sc, kind) {
+    var H = P.home || homeDefaults(P), T = sc.towers, home = function (t) { T[t].x = H[t].x; T[t].y = H[t].y; };
+    if (kind === 'home') TOWERS.forEach(home);
+    else if (kind === 'aroundC') { home('A'); home('C'); T.B.y = T.D.y = T.C.y; T.B.x = touchX(P, T.B, T.C, -1); T.D.x = touchX(P, T.D, T.C, 1); }
+    else if (kind === 'unitBC') { home('A'); home('D'); T.C.y = T.B.y = H.C.y; T.C.x = 0; T.B.x = touchX(P, T.B, T.C, -1);
+      var pts = geom(P, 'B', T.B, P.stage).poly.concat(geom(P, 'C', T.C, P.stage).poly), lo = Math.min.apply(null, pts.map(function (p) { return p.x; })), hi = Math.max.apply(null, pts.map(function (p) { return p.x; })), mid = (lo + hi) / 2;
+      T.B.x -= mid; T.C.x -= mid; }
+  }
+  function touchNext(P, sc, t, side) {      // slide one tower sideways until it touches its neighbor
+    var i = TOWERS.indexOf(t) + side, o = TOWERS[i]; if (!o) return false;
+    var s = sc.towers[t]; s.y = sc.towers[o].y; s.x = touchX(P, s, sc.towers[o], -side); return true;
+  }
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

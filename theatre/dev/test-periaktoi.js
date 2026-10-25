@@ -30,7 +30,7 @@ ok(Math.abs(PK.frontY(P.stage, 0) + 23.7) < 1e-9 && Math.abs(PK.frontY(P.stage, 
 ok(PK.diagramAngle(P, 'A', S(9).towers.A.rot) === 180 && PK.diagramAngle(P, 'B', S(3).towers.B.rot) === 180 && PK.diagramAngle(P, 'D', S(9).towers.D.rot) === 300, 'her diagram (0° = face 2 flat, clockwise): A 180° = A1+A3, B 180° = B1+B3, D 300° = D2+D3');
 ok(JSON.stringify(S(9).towers) === JSON.stringify(S(15).towers) && S(15).same === 's9', 'scenes 9 and 15 have identical towers, linked');
 ok(['T1', 'T2'].every(id => S(9).tables[id].spike === 'CF-SEPARATE' && S(15).tables[id].spike === 'CF-SEPARATE' && S(9).tables[id].rot === 90), '9 and the start of 15 use the same CF-SEPARATE spikes, lengths up and downstage');
-const uni = P.scenes.find(s => s.moment), cu = PK.change(P, S(15), uni);
+const uni = P.scenes.find(s => s.moment && s.spike === 'CF-UNITED'), cu = PK.change(P, S(15), uni);
 ok(uni.tables.T1.rot === 0 && cu.tmoves.every(m => m.from.state === 'deployed' && m.to.state === 'deployed'), 'CF-UNITED: the open tables turn 90° to run parallel to the curtain, in view');
 ok(!cu.warn.some(w => w.lv === 'bad'), 'separate → united: no clashes with the stand-in sizes (one table at a time)');
 ok(PK.sceneChecks(P, uni).some(m => /joined end to end/.test(m.msg)), 'CF-UNITED reads as one long table');
@@ -47,4 +47,16 @@ const R = PK.fresh(); let ahead = true;
 R.scenes.forEach((sc, i) => { if (!i) return; PK.TOWERS.forEach(t => { const q = sc.towers[t]; if (q.lit === 'dark' && R.scenes[i - 1].towers[t].lit !== 'dark') { let k = i; while (k < R.scenes.length && R.scenes[k].towers[t].lit === 'dark') k++; if (k < R.scenes.length && Math.abs(PK.norm(q.rot - R.scenes[k].towers[t].rot)) > 0.5) ahead = false; } }); });
 ok(ahead, 'set up ahead: a tower that goes dark is already turned for its next lit scene');
 ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every(m => Math.abs(m.turn) <= 180)), 'every turn takes the short way');
+// home bases and line-ups (Colleen 2026-10-25)
+{ const Q = PK.fresh(), H = Q.home, near = (a, b) => Math.abs(a - b) < 0.02;
+  ok(near(H.B.x - H.A.x, 8) && near(H.C.x - H.B.x, 8) && near(H.D.x - H.C.x, 8) && near(H.B.x + H.C.x, 0), 'home bases: evenly spaced, 4 ft between the points when face on, centered');
+  const sc = JSON.parse(JSON.stringify(Q.scenes[0]));
+  PK.lineUp(Q, sc, 'aroundC'); const g = t => PK.geom(Q, t, sc.towers[t], Q.stage).poly;
+  ok(near(sc.towers.C.x, H.C.x) && !PK.polysOverlap(g('B'), g('C')) && PK.polyDist(g('B').reduce((a, p) => p.x > a.x ? p : a), g('C')) < 0.02 && PK.polyDist(g('D').reduce((a, p) => p.x < a.x ? p : a), g('C')) < 0.02, 'B and D close in on C: points touch, no overlap, C stays home');
+  PK.lineUp(Q, sc, 'unitBC'); const xs = g('B').concat(g('C')).map(p => p.x);
+  ok(near(Math.min(...xs) + Math.max(...xs), 0) && !PK.polysOverlap(g('B'), g('C')) && PK.polyDist(g('B').reduce((a, p) => p.x > a.x ? p : a), g('C')) < 0.02, 'B + C as one unit, centered, points touching');
+  PK.lineUp(Q, sc, 'home'); ok(['A', 'B', 'C', 'D'].every(t => near(sc.towers[t].x, H[t].x)), 'all home');
+  const a = Q.scenes[0], b = Q.scenes[1];
+  ok(b.same === 's1' && b.sub && JSON.stringify(a.towers) === JSON.stringify(b.towers), 'scene 1 is 1a and 1b: the same set');
+  b.towers.A.lit = 'low'; PK.applyLinks(Q, b); ok(a.towers.A.lit === 'full' && b.towers.A.lit === 'low', '1a and 1b keep their own lighting'); }
 process.exit(bad ? 1 : 0);
