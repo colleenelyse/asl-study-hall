@@ -49,7 +49,10 @@
   };
 
   /* ---------- Teacher: Casting ---------- */
-  var tab = 'signups';
+  /* no audition sign-ups (Colleen 2026-10-25: "we don't need audition sign up … this list will be a roster, not a sign up"): casting starts from
+     the class roster (Teacher mode › Cast › Paste a class list). The sign-up code stays for a later show; SIGNUPS turns it back on. */
+  var SIGNUPS = false;
+  var tab = 'notes';
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.casting = function (args) {
     if (args[0] === 'student') return notesPage(args[1]);
@@ -59,9 +62,10 @@
   };
   function overview() {
     T.setBar('Casting', '#/teacher');
-    var c = C(), tabs = [['signups', 'Sign-ups'], ['notes', 'Audition notes'], ['callbacks', 'Callbacks'], ['cast', 'Cast list'], ['double', 'Doubling'], ['start', 'First two weeks']];
+    var c = C(), tabs = (SIGNUPS ? [['signups', 'Sign-ups']] : []).concat([['notes', 'Audition notes'], ['callbacks', 'Callbacks'], ['cast', 'Cast list'], ['double', 'Doubling'], ['start', 'First two weeks']]);
+    if (!SIGNUPS && tab === 'signups') tab = 'notes';
     var h = '<div class="row noprint" style="margin-bottom:14px"><div class="seg">' + tabs.map(function (t) { return '<button data-v="' + t[0] + '" aria-pressed="' + (tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div></div>';
-    if (!students().length) h += '<p class="card">Paste your class list first (Teacher mode › Cast › Paste a class list).</p>';
+    if (!students().length) h += '<p class="card">' + sym('📋') + '<b>Casting starts from your class roster.</b> Paste it in Teacher mode › Casting and the cast › Cast › Paste a class list, and every tab here fills in with your Company members.</p>';
     h += { signups: signupsView, notes: notesView, callbacks: callbacksView, cast: castView, start: startView, double: function () { return T.doublingView(); } }[tab]();
     app.innerHTML = h;
     app.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { tab = b.dataset.v; overview(); }; });
@@ -120,7 +124,7 @@
     return '<div class="row" style="margin-bottom:10px"><button class="btn primary" id="qv">Quick notes during a group number</button></div><p class="muted">Or tap a Company member to write notes while they audition. Scores are 1 to 3 and are only for you.</p><div class="choose">' + students().map(function (a) {
       var n = c.notes[a.id], s = c.signups[a.id];
       return '<button class="person" data-stu="' + a.id + '" style="min-height:0">' + T.face(a, 56) + '<b>' + esc(a.name) + '</b><span>' +
-        (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') + (s ? '' : ' · not signed up') + (cfm(a) ? ' · ⚠️ show-week conflict' : '') + '</span></button>';
+        (n ? '🗣️' + (n.acting || '–') + ' 🎵' + (n.singing || '–') + ' 💃' + (n.dance || '–') : 'No notes yet') +  + (cfm(a) ? ' · ⚠️ show-week conflict' : '') + '</span></button>';
     }).join('') + '</div>';
   }
   /* one student: their sign-up (editable, for students who could not do it themselves) and the teacher's notes */
@@ -132,11 +136,11 @@
     function draw() {
       var stars = function (k, label) { return '<div class="switch"><span>' + label + '</span><div class="seg" data-score="' + k + '">' + [1, 2, 3].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (n[k] === v) + '">' + '★'.repeat(v) + '</button>'; }).join('') + '</div></div>'; };
       app.innerHTML = '<div class="card"><div class="row">' + T.face(a, 64) + '<div class="grow"><h2 style="margin:0">' + esc(a.name) + '</h2>' + (s.pronouns ? '<span class="muted">' + esc(s.pronouns) + '</span>' : '') + '<div>' + cf(a) + '</div></div></div>' +
-        '<p><b>Wants:</b> ' + (s.roles.length ? chips(s.roles) : '<span class="muted">no roles picked</span>') + (s.any ? ' <span class="tag">Any role is OK</span>' : '') + '</p>' +
+        (SIGNUPS || c.signups[id] ? '<p><b>Wants:</b> ' + (s.roles.length ? chips(s.roles) : '<span class="muted">no roles picked</span>') + (s.any ? ' <span class="tag">Any role is OK</span>' : '') + '</p>' : '') +      // only when something was noted
         (s.excited ? '<p>' + sym('✨') + 'Excited to: <b>' + esc(s.excited) + '</b></p>' : '') +
         (s.vocal && T.songById(s.vocal.song) ? '<p>' + sym('🎤') + 'Vocal selection: <b>' + esc(T.songById(s.vocal.song).title) + '</b>' + (s.vocal.part ? ', ' + esc(s.vocal.part) : '') + '</p>' : '') +
-        '<p class="muted small">' + comfortTxt(s) + '</p>' + (s.helps ? '<p>' + sym('💛') + esc(s.helps) + '</p>' : '') +
-        '<details><summary class="btn quiet small">Change their sign-up</summary>' + signupForm(s, 't') + '</details></div>' +
+        (SIGNUPS || c.signups[id] ? '<p class="muted small">' + comfortTxt(s) + '</p>' : '') + (s.helps ? '<p>' + sym('💛') + esc(s.helps) + '</p>' : '') +
+        '<details><summary class="btn quiet small">' + (SIGNUPS ? 'Change their sign-up' : 'Roles they would like and what helps them (optional)') + '</summary>' + signupForm(s, 't') + '</details></div>' +
         '<div class="card"><h3>Audition notes</h3>' + stars('acting', '🗣️ Acting') + stars('singing', '🎵 Singing') + stars('dance', '💃 Dance') +
         '<p class="muted small" style="margin-top:10px">Quick notes</p><div class="row">' + TAGS.map(function (t) { return '<button type="button" class="btn small" data-tag="' + esc(t) + '" aria-pressed="' + (n.tags.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
         '<label class="f">Notes<textarea id="tx" style="min-height:90px">' + esc(n.text) + '</textarea></label>' +
@@ -357,7 +361,7 @@
       var mineCb = Object.keys(c.callbacks).filter(function (ch) { return c.callbacks[ch].indexOf(me.id) >= 0; });
       h += '<div class="card"><h3>' + sym('📣') + 'Callbacks</h3>' + (mineCb.length ? '<p>You have a callback for: ' + chips(mineCb) + '</p>' + mineCb.map(sideCard).join('') : '<p>You do not have a callback, and that is OK! Everyone gets a role in this show.</p>') + '</div>';
     }
-    if (c.open) {
+    if (SIGNUPS && c.open) {
       var sent = T.ls('audition:' + me.id), s = sent || { roles: [], any: true, lines: 'maybe', solo: 'maybe', dance: 'maybe', how: 'class', helps: '', pronouns: '' };
       if (c.signups[me.id] && !sent) s = JSON.parse(JSON.stringify(c.signups[me.id]));
       h += '<div class="card"><h2>' + sym('🎭') + 'Sign up for auditions</h2><p class="muted">Every Company member gets a role. Tap a role to read about it; pick the ones you would love to play.</p>' + signupForm(s, 's') +
@@ -384,5 +388,5 @@
       (sd.scene && sd.lines ? '<a class="btn small" href="#/lines/' + sd.scene.id + '/run/' + charId + '">' + icon('mic') + 'Practice Scene ' + sd.scene.num + ' as ' + esc(ch.short) + '</a>' : '') +
       (sd.song ? '<a class="btn small" href="#/song/' + sd.song.id + '">' + icon('songs') + esc(sd.song.title) + '</a>' : '') + '</div></div>';
   }
-  T.auditionsTile = function () { var c = T.show.casting; return !!(c && (c.open || c.callbacksShown || (c.posted && Date.now() - new Date(c.posted) < 14 * 864e5))); };
+  T.auditionsTile = function () { var c = T.show.casting; return !!(c && ((SIGNUPS && c.open) || c.callbacksShown || (c.posted && Date.now() - new Date(c.posted) < 14 * 864e5))); };
 })();
