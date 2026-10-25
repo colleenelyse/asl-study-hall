@@ -577,7 +577,10 @@
       '<details><summary>Each character (' + Object.keys((T.show.captions || {}).prompt || {}).length + ' set)</summary><div class="cap-who">' + T.O().characters.filter(function (c) { return c.group !== 'helpers'; }).map(function (c) { var v = ((T.show.captions || {}).prompt || {})[c.id] || ''; return '<label class="f" style="margin:0">' + T.chip(c.id) + '<select data-pst="' + c.id + '"><option value="">Same as everyone</option><option value="full"' + (v === 'full' ? ' selected' : '') + '>Whole line</option><option value="cue"' + (v === 'cue' ? ' selected' : '') + '>First words</option></select></label>'; }).join('') + '</div></details>' +
       '<div class="cap-prev"><figure><figcaption>Audience strip</figcaption><canvas id="pa" width="' + W + '" height="' + H + '"></canvas></figure><figure><figcaption>Performer view</figcaption><canvas id="pp" width="' + PS + '" height="' + PS + '"></canvas></figure></div>' +
       '<div class="row"><button class="btn" id="pv">◀</button><span id="pn" class="grow center small"></span><button class="btn" id="nx">▶ Next cue</button></div>' +
-      (songs.length ? '<div class="row"><label class="f grow" style="margin:0">Try a song with its band track' + sel('psong', preview.song || songs[0].song.id, songs.map(function (c) { return [c.song.id, '#' + c.song.num + ' ' + esc(c.song.title)]; })) + '</label><button class="btn primary" id="pplay">▶ Play with captions</button></div>' : '') + '</div>' +
+      (songs.length ? '<div class="row"><label class="f grow" style="margin:0">Try a song with its band track' + sel('psong', preview.song || songs[0].song.id, songs.map(function (c) { return [c.song.id, '#' + c.song.num + ' ' + esc(c.song.title)]; })) + '</label><button class="btn primary" id="pplay">▶ Play with captions</button></div>' +
+        '<div id="pctl" class="cap-ctl" hidden><div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn" id="pback" title="Back 10 seconds">⏪ 10 s</button><button class="btn primary" id="ppause">⏸ Pause</button><button class="btn" id="pfwd" title="Ahead 10 seconds">10 s ⏩</button><button class="btn quiet" id="pstop">■ Stop</button>' +
+        '<label class="f grow" style="margin:0;min-width:220px">Start at line<select id="pline"></select></label></div>' +
+        '<div class="row" style="gap:10px;align-items:center"><input type="range" id="pseek" min="0" max="100" step="0.1" value="0" class="grow" aria-label="Where in the song"><span id="ptime" class="small" style="min-width:96px;text-align:right">0:00 / 0:00</span></div></div>' : '') + '</div>' +
       '<div class="card"><h3>Make the files</h3><p class="muted small">Chrome asks for a folder (make a new one, like “HSM captions”); other browsers download one zip file. Song videos take a little while each.</p>' +
       '<div class="row" style="flex-wrap:wrap"><button class="btn primary" id="xall">Make everything</button><button class="btn" id="xsong">Just the song videos</button><button class="btn" id="xone">Just the song above (to test in QLab)</button><button class="btn" id="xst">Just the stills</button><button class="btn quiet" id="xcsv">Just the cue sheet</button><button class="btn quiet" id="xql">Just the QLab script</button></div><p id="xmsg" class="small"></p><div class="pb" id="xbar" hidden style="height:12px;border-radius:6px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:0;background:var(--accent)"></i></div></div>' +
       '<div class="card"><h3>In QLab</h3><ol class="small" style="line-height:1.6">' +
@@ -620,24 +623,60 @@
     $('pv').onclick = function () { show(preview.i - 1); };
     $('nx').onclick = function () { show(preview.i + 1); };
     fontsReady().then(function () { show(preview.i); });
+    /* the song preview player (Colleen 2026-10-25: "playback controls on the caption checker so i don't always have to start at the beginning"):
+       play / pause, back or ahead 10 seconds, drag to any moment, or start at any line (2 seconds before it); captions follow the song time */
     if ($('pplay')) {
-      $('psong').onchange = function () { preview.song = this.value; };
+      var P = { id: null, ab: null, dur: 0, pos: 0, playing: false, src: null, t0: 0, raf: 0, k: null, off: 0 };
+      var fmt = function (t) { t = Math.max(0, t); return Math.floor(t / 60) + ':' + ('0' + Math.floor(t % 60)).slice(-2); };
+      var cur = function () { return songs.find(function (x) { return x.song.id === P.id; }); };
+      var now = function () { return P.playing ? P.pos + (T.audioCtx().currentTime - P.t0) : P.pos; };
+      function frame() {
+        var c = cur(); if (!c || !$('pn')) return;
+        var t = now(), sa = P.sa, sp = P.sp, s2 = at(sa, t);
+        drawAudience(s2 && s2.card, o); blit(pa); perfAt(sp, t, o).draw(); blit(pp);
+        $('pn').textContent = '♪ #' + c.song.num + ' · ' + fmt(t);
+        $('ptime').textContent = fmt(t) + ' / ' + fmt(P.dur);
+        if (!P.dragging) $('pseek').value = Math.min(P.dur, t);
+        if (P.playing && t >= P.dur) { pause(); P.pos = P.dur; }
+        if (P.playing) P.raf = requestAnimationFrame(frame);
+      }
+      function stopSrc() { if (P.src) { try { P.src.stop(); } catch (e) {} P.src.disconnect(); P.src = null; } cancelAnimationFrame(P.raf); }
+      function playFrom(t) {
+        stopSrc(); P.pos = Math.max(0, Math.min(P.dur, t)); P.playing = true; $('ppause').textContent = '⏸ Pause';
+        var ctx = T.audioCtx();
+        if (P.ab) { var aoff = P.pos + P.off; P.src = ctx.createBufferSource(); P.src.buffer = P.ab; P.src.connect(ctx.destination); P.t0 = ctx.currentTime + 0.05; if (aoff >= 0) P.src.start(P.t0, aoff); else P.src.start(P.t0 - aoff, 0); }
+        else P.t0 = ctx.currentTime;
+        frame();
+      }
+      function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; stopSrc(); $('ppause').textContent = '▶ Play'; frame(); }
+      function seek(t) { if (P.playing) playFrom(t); else { P.pos = Math.max(0, Math.min(P.dur, t)); frame(); } }
+      function stopAll() { stopSrc(); P.playing = false; P.id = null; stopPlay = null; if (!$('pctl')) return; $('pctl').hidden = true; $('pplay').textContent = '▶ Play with captions'; show(preview.i); }      // also when leaving the page
+      $('psong').onchange = function () { preview.song = this.value; if (P.id) stopAll(); };
       $('pplay').onclick = function () {
-        if (stopPlay) { stopPlay(); return; }
+        if (P.id) { stopAll(); return; }
         var id = $('psong').value, c = songs.find(function (x) { return x.song.id === id; }), tr = (T.show.tracks || {})[id] || {}, k = tr.performance ? 'performance' : tr.rehearsal ? 'rehearsal' : null, b = this;
-        var sa = songTimeline(c, o, false), sp = songTimeline(c, o, true), ctx = T.audioCtx(), t0 = null, src = null, raf = 0;
-        var tick = function () {
-          var t = t0 == null ? 0 : ctx.currentTime - t0 + (k === 'rehearsal' && T.show.trackOffset && T.show.trackOffset[id] ? -T.show.trackOffset[id] : 0);
-          var s = at(sa, t), p = at(sp, t); drawAudience(s && s.card, o); blit(pa); perfAt(sp, t, o).draw(); blit(pp);
-          $('pn').textContent = '♪ #' + c.song.num + ' · ' + Math.floor(t / 60) + ':' + ('0' + Math.floor(t % 60)).slice(-2); raf = requestAnimationFrame(tick);
-        };
-        stopPlay = function () { cancelAnimationFrame(raf); try { src && src.stop(); } catch (e) {} stopPlay = null; b.textContent = '▶ Play with captions'; };
-        T.cleanup.push(function () { if (stopPlay) stopPlay(); });
-        b.textContent = '■ Stop';
-        if (!k) { t0 = ctx.currentTime; T.toast('No track for this song: the captions run on their own.'); tick(); return; }
-        Store.getTrack(T.key, id, k, tr[k].ver).then(function (buf) { return ctx.decodeAudioData(buf.slice ? buf.slice(0) : buf); }).then(function (ab) { src = ctx.createBufferSource(); src.buffer = ab; src.connect(ctx.destination); t0 = ctx.currentTime + 0.1; src.start(t0); tick(); })
-          .catch(function (e) { T.toast(e.message || 'The track did not load.', 5000); if (stopPlay) stopPlay(); });
+        P.id = id; P.k = k; P.sa = songTimeline(c, o, false); P.sp = songTimeline(c, o, true);
+        P.off = k === 'rehearsal' && T.show.trackOffset && T.show.trackOffset[id] ? +T.show.trackOffset[id] : 0;      // the guide track runs behind the band track
+        var last = P.sa.reduce(function (m, x) { return Math.max(m, x.b); }, 0) + 3;
+        var lines = P.sa.filter(function (x, i) { return !i || x.card.full !== P.sa[i - 1].card.full; });
+        $('pline').innerHTML = '<option value="0">The beginning</option>' + lines.map(function (x) { return '<option value="' + Math.max(0, x.a - 2).toFixed(2) + '">' + fmt(x.a) + ' · ' + esc(String(x.card.full || x.card.text).replace(/^♪\s*|\s*♪$/g, '').slice(0, 50)) + '</option>'; }).join('');
+        stopPlay = stopAll; T.cleanup.push(function () { if (P.id) stopAll(); });
+        b.textContent = '■ Close the player'; $('pctl').hidden = false;
+        var go = function () { $('pseek').max = P.dur.toFixed(1); playFrom(0); };
+        if (!k) { P.ab = null; P.dur = last; T.toast('No track for this song: the captions run on their own.'); go(); return; }
+        b.disabled = true;
+        Store.getTrack(T.key, id, k, tr[k].ver).then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice ? buf.slice(0) : buf); })
+          .then(function (ab) { b.disabled = false; if (P.id !== id) return; P.ab = ab; P.dur = Math.max(1, ab.duration - Math.max(0, P.off)); go(); })
+          .catch(function (e) { b.disabled = false; T.toast(e.message || 'The track did not load.', 5000); stopAll(); });
       };
+      $('ppause').onclick = function () { if (P.playing) pause(); else playFrom(P.pos >= P.dur ? 0 : P.pos); };
+      $('pback').onclick = function () { seek(now() - 10); };
+      $('pfwd').onclick = function () { seek(now() + 10); };
+      $('pstop').onclick = stopAll;
+      $('pline').onchange = function () { seek(+this.value); };
+      var sk = $('pseek');
+      sk.oninput = function () { P.dragging = true; $('ptime').textContent = fmt(+sk.value) + ' / ' + fmt(P.dur); if (!P.playing) { P.pos = +sk.value; frame(); } };
+      sk.onchange = function () { P.dragging = false; seek(+sk.value); };
     }
     /* making the files */
     var msg = $('xmsg'), bar = $('xbar');
