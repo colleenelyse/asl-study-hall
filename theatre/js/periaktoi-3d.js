@@ -41,6 +41,8 @@
         g.fillStyle = 'rgb(' + Math.round(196 * tone) + ',' + Math.round(170 * tone) + ',' + Math.round(128 * tone) + ')'; g.fillRect(x + 3, r * bh + 3, bw - 6, bh - 6); }
     });
   }
+  var shadowT = null;
+  function shadowTex() { if (shadowT) return shadowT; shadowT = canvasTex(128, 128, function (g, w, h) { var gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(0.55, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }); return shadowT; }
   function shimmerTex() { return canvasTex(256, 512, function (g, w, h) { for (var x = 0; x < w; x += 2) { var v = 150 + Math.round(Math.random() * 105); g.fillStyle = 'rgb(' + v + ',' + v + ',' + (v + 10 > 255 ? 255 : v + 10) + ')'; g.fillRect(x, 0, 2, h); } }); }
 
   function build(ctx) {
@@ -54,7 +56,7 @@
     var wood = woodTex(); wood.wrapS = wood.wrapT = T3.RepeatWrapping; wood.repeat.set(0.08, 0.08);
     var deck = canvasTex(512, 512, function (g, w, h) { g.fillStyle = '#121212'; g.fillRect(0, 0, w, h); for (var i = 0; i < 2600; i++) { var v = 18 + Math.round(Math.random() * 14); g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.5)'; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1); } g.strokeStyle = 'rgba(0,0,0,.6)'; for (var j = 0; j <= 4; j++) { g.beginPath(); g.moveTo(0, j * h / 4); g.lineTo(w, j * h / 4); g.stroke(); } });      // the black stage deck (painted, a little scuffed; 4×8 sheet seams)
     deck.wrapS = deck.wrapT = T3.RepeatWrapping; deck.repeat.set(1 / 8, 1 / 8);
-    var floorMat = new T3.MeshStandardMaterial({ map: deck, roughness: 0.62, metalness: 0.02 });
+    var floorMat = new T3.MeshStandardMaterial({ map: deck, roughness: 0.38, metalness: 0.08 });
     var floorMat2 = floorMat.clone(); floorMat2.side = T3.DoubleSide; var floor = new T3.Mesh(new T3.ShapeGeometry(shape), floorMat2); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
     // the front edge: a wooden bullnose about 12″ thick all the way around the curve, then a dark fascia down to the house floor
     var edgePts = []; for (var e = 0; e <= 80; e++) { var ex = -c + 2 * c * e / 80; edgePts.push(new T3.Vector3(ex, -0.5, -ctx.PK.frontY(s, ex))); }
@@ -69,7 +71,9 @@
     });
     // the grand drape (seen only from the house) and the proscenium
     var vel = velvetTex(); vel.wrapS = T3.RepeatWrapping; vel.repeat.set(3, 1);
-    var ph = s.proscH || 24, drape = new T3.Mesh(new T3.PlaneGeometry(2 * c, ph), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9, side: T3.FrontSide })); drape.position.set(0, ph / 2, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
+    var ph = s.proscH || 24, dg = new T3.PlaneGeometry(2 * c, ph, 260, 1), dp = dg.attributes.position;      // real folds: the light falls across them
+    for (var di = 0; di < dp.count; di++) { var dx = dp.getX(di); dp.setZ(di, 0.32 * Math.sin(dx * 2.6) + 0.12 * Math.sin(dx * 7.1 + 1.3)); } dg.computeVertexNormals();
+    var drape = new T3.Mesh(dg, new T3.MeshStandardMaterial({ map: vel, roughness: 0.85, side: T3.FrontSide })); drape.position.set(0, ph / 2, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
     var brick = brickTex(), wt = s.wallT || 1;      // the proscenium wall, about 2 ft thick, tan brick on the house side
     var bricky = function (w, h, d) { var t = brick.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T3.RepeatWrapping; t.repeat.set(w / 2.67, h / 2.67); return new T3.MeshStandardMaterial({ map: t, roughness: 0.95 }); };
     var wallBox = function (w, h, x, y) { var m = new T3.Mesh(new T3.BoxGeometry(w, h, wt), bricky(w, h)); m.position.set(x, y, wt / 2); m.receiveShadow = true; scene.add(m); };
@@ -79,9 +83,10 @@
     W.nye = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ map: shimmerTex(), roughness: 0.25, metalness: 0.8 })); W.nye.position.set(c + s.sideDeck / 2, 5, wt + 0.05); scene.add(W.nye);
     W.hort = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ color: 0x3f7a45, roughness: 0.9 })); W.hort.position.set(-c - s.sideDeck / 2, 5, wt + 0.05); scene.add(W.hort);
     // light: two front-of-house spots from the box booms, a warm top fill, a little ambience
-    scene.add(new T3.HemisphereLight(0x8890b0, 0x201810, 0.35));
+    scene.add(new T3.HemisphereLight(0x8890b0, 0x201810, 0.22));
+    var back = new T3.DirectionalLight(0x6f86ff, 0.55); back.position.set(0, 22, -30); back.target.position.set(0, 3, 0); scene.add(back); scene.add(back.target);      // a cool backlight: edges catch it
     [-1, 1].forEach(function (k) {
-      var sp = new T3.SpotLight(0xfff1dc, 1.25, 0, 0.55, 0.6, 1.2); sp.position.set(k * 18, 26, 42); sp.target.position.set(0, 3, -2); sp.castShadow = true; sp.shadow.mapSize.set(2048, 2048); sp.shadow.bias = -0.0004; sp.shadow.camera.near = 20; sp.shadow.camera.far = 120;
+      var sp = new T3.SpotLight(0xffe7c4, 1.45, 0, 0.55, 0.55, 1.2); sp.position.set(k * 18, 26, 42); sp.target.position.set(0, 3, -2); sp.castShadow = true; sp.shadow.mapSize.set(2048, 2048); sp.shadow.bias = -0.0004; sp.shadow.camera.near = 20; sp.shadow.camera.far = 120;
       scene.add(sp); scene.add(sp.target);
     });
     var top = new T3.SpotLight(0xffe2b8, 0.5, 0, 0.9, 0.8, 1.5); top.position.set(0, 30, -6); top.target.position.set(0, 0, -2); scene.add(top); scene.add(top.target);
@@ -97,7 +102,10 @@
       tri.moveTo(0, r); tri.lineTo(-s.face / 2, -r / 2); tri.lineTo(s.face / 2, -r / 2); tri.lineTo(0, r);
       var cap = new T3.Mesh(new T3.ShapeGeometry(tri), capMat); cap.rotation.x = -Math.PI / 2; cap.position.y = s.height; cap.castShadow = true; grp.add(cap);
       var label = makeLabel(t, ctx.COL[t]); label.position.y = s.height + 0.9; grp.add(label);
-      scene.add(grp); W.towers[t] = { group: grp, faces: faces, cap: cap, label: label };
+      var trimMat = new T3.MeshStandardMaterial({ color: 0xb9bcc2, roughness: 0.3, metalness: 0.85 }), trims = [0, 1, 2].map(function () { var m = new T3.Mesh(new T3.CylinderGeometry(0.06, 0.06, s.height, 10), trimMat); m.castShadow = true; grp.add(m); return m; });      // aluminum corner trim
+      var skirt = new T3.Mesh(new T3.BufferGeometry(), new T3.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 0.7 })); grp.add(skirt);      // black base skirt over the casters
+      var blob = new T3.Mesh(new T3.CircleGeometry(r * 2.4, 40), new T3.MeshBasicMaterial({ map: shadowTex(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.01; grp.add(blob);      // soft contact shadow
+      scene.add(grp); W.towers[t] = { group: grp, faces: faces, cap: cap, label: label, trims: trims, skirt: skirt, blob: blob };
     });
     // the rim and net on D1 (a real 18″ hoop)
     var rimMat = new T3.MeshStandardMaterial({ color: 0xff5a00, roughness: 0.4, metalness: 0.3 });
@@ -171,6 +179,9 @@
       var q = sh.towers[t], gm = ctx.PK.geom(P, t, q, s), tw = W.towers[t], shp = new T3.Shape();
       gm.poly.forEach(function (p, i) { if (i) shp.lineTo(p.x, p.y); else shp.moveTo(p.x, p.y); });
       tw.cap.geometry.dispose(); tw.cap.geometry = new T3.ShapeGeometry(shp); tw.cap.position.set(0, s.height + 0.002, 0); tw.cap.rotation.set(-Math.PI / 2, 0, 0);
+      gm.poly.forEach(function (p, i) { if (tw.trims[i]) tw.trims[i].position.set(p.x, s.height / 2, -p.y); });
+      tw.skirt.geometry.dispose(); tw.skirt.geometry = new T3.ExtrudeGeometry(shp, { depth: 0.22, bevelEnabled: false }); tw.skirt.rotation.set(-Math.PI / 2, 0, 0); tw.skirt.position.set(0, 0, 0);
+      tw.blob.position.set(q.x, 0.012, -q.y);
     });
     // tables (and their benches), other pieces
     var seen = {};
@@ -228,17 +239,19 @@
     if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { try { build(ctx); } catch (e) { W = {}; ctx.fallback(); return false; } faceSrc = {}; overlays = null; }      // a half-built scene would fail on every frame
     loadOverlays(ctx); attachOverlays(ctx);
     var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick;
-    var Wd = host.clientWidth; if (!Wd) return true; var room = window.innerHeight - Math.max(0, host.getBoundingClientRect().top + window.scrollY) - 24, H = Math.round(Math.min(Wd * 0.5, Math.max(220, room)));      // fits the room left in the window under the controls
+    var Wd = host.clientWidth; if (!Wd) return true; var room = window.innerHeight - Math.max(0, host.getBoundingClientRect().top + window.scrollY) - 10, H = Math.round(ctx.full ? Math.max(260, room) : Math.min(Wd * 0.5, Math.max(220, room)));      // the simple stage view fills the window      // fits the room left in the window under the controls
     if (v.canvas.width !== Math.round(Wd * v.renderer.getPixelRatio()) || v.h !== H) { v.renderer.setSize(Wd, H, false); v.canvas.style.width = '100%'; v.canvas.style.height = 'auto'; v.h = H; }
     update(ctx);
     W.drape.visible = W.border.visible = !ctx.crew;      // backstage looks out through where the drape would be
     var line = ctx.PK.towerLine(ctx.scene), target = new three.Vector3(0, 3.6, -line), cam = v.camera, half = ctx.halfW;
     // a seat in the middle of the house (raked: eyes about 9 ft up), or a crew member's eye line just behind the drape
-    var eye = ctx.crew ? new three.Vector3(0, 6, s.curtain + s.crew) : new three.Vector3(0, 9, s.apron + s.house);
+    var eye = ctx.crew ? new three.Vector3(0, 6, s.curtain + s.crew) : new three.Vector3(0, 6.5, s.apron + s.house);      // a seat in the middle of the house, eyes about 6½ ft above the deck
     var off = eye.clone().sub(target), d0 = off.length();
     off.applyAxisAngle(new three.Vector3(0, 1, 0), v.yaw); var side = new three.Vector3().crossVectors(off, new three.Vector3(0, 1, 0)).normalize(); off.applyAxisAngle(side, v.pitch);
     cam.position.copy(target.clone().add(off.multiplyScalar(v.dist)));
-    cam.aspect = Wd / H; var hfov = 2 * Math.atan((half * 1.05) / d0);      // the lens stays fixed: scrolling moves the seat closer, so the whole stage grows cam.fov = 2 * Math.atan(Math.tan(hfov / 2) / cam.aspect) * 180 / Math.PI; cam.updateProjectionMatrix(); cam.lookAt(target);
+    var band = ctx.band ? ctx.band(v.canvas) : null, bh = band ? Math.max(120, band.bottom - band.top) : H;      // fit the stage into the open band between the panels
+    cam.aspect = Wd / H; var hfov = 2 * Math.atan((half * 1.05) / d0) * Math.min(1.8, Math.max(1, (H / bh) * 0.7));      // the lens stays fixed: scrolling moves the seat closer, so the whole stage grows cam.fov = 2 * Math.atan(Math.tan(hfov / 2) / cam.aspect) * 180 / Math.PI; if (band) { var shift = ((band.top + band.bottom) / 2 - H / 2); cam.setViewOffset(Wd, H, 0, -shift, Wd, H); } else cam.clearViewOffset();
+    cam.updateProjectionMatrix(); cam.lookAt(target);
     v.renderer.render(W.scene, cam);
     return true;
   }

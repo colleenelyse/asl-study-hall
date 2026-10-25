@@ -669,3 +669,21 @@ dialog input.stand { background: var(--warn-bg); }
 .pk.simple .pk-right .pk-facebtn span:not(.pk-pt) { display: none; }
 .pk.simple .pk-simple-tower .pk-row button { padding: 4px 9px; min-height: 28px; } .pk-sep { width: 1px; align-self: stretch; background: var(--pk-line); margin: 0 4px; }
 .pk.simple .pk-stepbar button { padding: 6px 12px; }
+/* Simple mode = a full-window stage view: the picture fills the window and the controls float over it, so nothing can be pushed off-screen */
+.pk.simple { padding: 0; background: #050407; border-radius: 0; }
+.pk.simple .pk-top, .pk.simple .pk-vt { display: none !important; }
+.pk.simple .pk-view { border: 0; border-radius: 0; }
+.pk.simple .pk-right { position: fixed; top: calc(var(--pkTop, 64px) + 10px); left: 50%; transform: translateX(-50%); width: min(1180px, calc(100vw - 24px));
+  background: rgba(16, 14, 24, .86); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; z-index: 20; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.pk.simple .pk-bottom { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: min(1180px, calc(100vw - 24px)); max-height: 24vh; overflow: auto; margin: 0;
+  background: rgba(16, 14, 24, .82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); z-index: 20; padding: 6px 12px; }
+.pk.simple .pk-bottom h3 { display: none; } .pk.simple .pk-plain { font-size: 14px; margin: 2px 0; } .pk.simple .pk-bottom .pk-help { margin: 2px 0; font-size: 12px; }
+.pk.simple .pk-stepbar { flex-wrap: wrap; row-gap: 6px; } .pk-sviews button { padding: 6px 10px; font-size: 13px; }
+body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
+.pk.simple .pk-right .pk-stepbar { flex-wrap: wrap; }
+@media (max-height: 700px) { .pk.simple .pk-bottom .pk-help, .pk.simple .pk-simple-tower .pk-help.small { display: none; } .pk.simple .pk-bottom { max-height: 18vh; } .pk.simple .pk-plain li:nth-child(n+3) { display: none; } }
+.pk.simple .pk-bottom .pk-simple-tower { margin: 0; border-width: 0; padding: 2px 0; background: none; }
+.pk.simple .pk-bottom { max-height: 40vh; }
+.pk.simple .pk-bottom .pk-facebtn img { width: 30px; height: 60px; } .pk.simple .pk-bottom .pk-facebtn.pt img { width: 22px; height: 60px; }
+.pk.simple .pk-bottom .pk-faces3 { display: contents; } .pk.simple .pk-bottom .pk-facebtn { padding: 4px; min-width: 0; } .pk.simple .pk-bottom .pk-facebtn span:not(.pk-pt) { display: none; }
+.pk.simple .pk-bottom .pk-simple-tower h3 { display: block; font-size: 16px; }

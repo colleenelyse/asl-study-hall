@@ -252,7 +252,9 @@
     host.querySelectorAll('.pk3d').forEach(function (x) { x.style.display = real ? '' : 'none'; }); cv.style.display = real ? 'none' : '';
     if (real) {      // the realistic 3D view (js/periaktoi-3d.js, three.js)
       var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
-      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.75 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
+      PK3D.draw(host, { full: !!V.simple, band: V.simple ? function (cv) {      // the open space between the floating panels, so the stage sits where she can see it
+          var r = cv.getBoundingClientRect(), tp = document.getElementById('pkRight'), bt = document.getElementById('pkBottom'), a = tp ? tp.getBoundingClientRect().bottom : r.top, b = bt ? bt.getBoundingClientRect().top : r.bottom;
+          return { top: Math.max(0, a - r.top), bottom: Math.min(r.height, b - r.top) }; } : null, P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.75 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
         artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, sel: sel,
         onPick: function (t) { if (anim) return; sel = t; draw(); }, fallback: function () { V.no3d = true; drawViews(); } });
       return;
@@ -456,8 +458,10 @@
   function plainPanel(ch, checks) {
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
     side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
-      '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button></div>');
-    side.push(sel && TW.indexOf(sel) >= 0 ? simpleTower(sel) : '<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
+      '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
+    var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
+    if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
     var lines = [];
     if (!ch) lines.push('This is what the audience sees when the show starts.');
@@ -476,7 +480,7 @@
     out.push('<ul class="pk-plain">' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
     out.push('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to check (open ✎ Edit to see them)' : '✓ No problems found') + '</p>');
     if (sc.notes) out.push('<p class="pk-help">' + esc(sc.notes) + '</p>');
-    return { side: side.join(''), bottom: out.join('') };
+    return { side: side.join(''), bottom: towerOpen ? simpleTower(sel) : out.join('') };
   }
   function changePanel(ch, checks) {
     var crewN = P.crew || 4, out = [];
@@ -561,6 +565,8 @@
         $('pkIDel').onclick = function () { snap(); sc.items = sc.items.filter(function (x) { return x !== it; }); sel = null; changed(); };
       }
     }
+    app.querySelectorAll('[data-sview]').forEach(function (b) { b.onclick = function () { V.view = b.dataset.sview; rebuild(); }; });
+    if ($('pkSEdit')) $('pkSEdit').onclick = function () { V.simple = false; V.modeSet = true; T.teacherPages.set(); };
     if ($('pkSSel')) $('pkSSel').onchange = function () { stop(); cur = +this.value; draw(); };
     if ($('pkSPrev')) $('pkSPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
     if ($('pkSNext')) $('pkSNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
@@ -791,7 +797,7 @@
   T.teacherPages.set = function () {
     T.setBar('Set and scene changes', '#/teacher');
     load(); stop(); sel = null; cur = 0;
-    try { V.simple = localStorage.getItem(LS + '-simple') !== '0'; } catch (e) { V.simple = true; }      // Simple (watch) mode unless she chose Edit last time
+    if (!V.modeSet) V.simple = true;      // always opens in the simple stage view; ✎ Edit lasts only until she leaves the page
     if (V.simple) { V.labels = false; if (V.view === 'split' || V.view === 'ledger') V.view = 'aud'; } else V.labels = true;      // always opens on scene 1, the East High preset
     document.body.classList.add('pk-wide');
     app.innerHTML = '<div class="pk' + (V.simple ? ' simple' : '') + '">' +
@@ -813,7 +819,7 @@
     var bar0 = document.querySelector('.bar'); app.querySelector('.pk').style.setProperty('--pkTop', (bar0 ? bar0.offsetHeight : 0) + 'px');      // the pinned controls sit just under the app's own top bar
     var $ = function (id) { return document.getElementById(id); };
     $('pkPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
-    $('pkMode').onclick = function () { V.simple = !V.simple; try { localStorage.setItem(LS + '-simple', V.simple ? '1' : '0'); } catch (e) {} T.teacherPages.set(); };
+    $('pkMode').onclick = function () { V.simple = !V.simple; V.modeSet = true; T.teacherPages.set(); };
     $('pkNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
     $('pkSel').onchange = function () { stop(); cur = +this.value; draw(); };
     $('pkPlay').onclick = play;
@@ -831,7 +837,7 @@
     $('pkSet').onclick = settings; $('pkEq').onclick = equipment; $('pkExp').onclick = exportJson; $('pkImp').onchange = function () { if (this.files[0]) importJson(this.files[0]); this.value = ''; };
     document.addEventListener('keydown', keys);
     var rs = function () { drawViews(); }; window.addEventListener('resize', rs);
-    T.cleanup.push(function () { document.removeEventListener('keydown', keys); window.removeEventListener('resize', rs); document.body.classList.remove('pk-wide'); anim = null; });
+    T.cleanup.push(function () { document.removeEventListener('keydown', keys); window.removeEventListener('resize', rs); document.body.classList.remove('pk-wide'); anim = null; V.modeSet = false; });
     rebuild();
   };
 })();
