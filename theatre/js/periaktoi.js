@@ -23,6 +23,7 @@
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
     if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';
     if (P.stage && P.stage.borderDrop == null) P.stage.borderDrop = 3.5;
+    if (P.stage && (P.stage.person == null || P.stage.person === 5.5)) P.stage.person = 5.75;      // the figure for scale is 5′ 9″
     if (P.stage && (P.stage.proscH == null || P.stage.proscH === 24)) { P.stage.proscH = 16.5; if (P.stage.placeholder) delete P.stage.placeholder.proscH; }      // about 16–17 ft (Colleen)
     if (P.stage && P.stage.prosc === 51 && P.stage.apron === 20 && !P.stage.edge) { var ns = PK.stageDefaults(); ['prosc', 'apron', 'edge', 'wallT', 'border'].forEach(function (k) { P.stage[k] = ns[k]; }); }      // to scale from the Reber plan (2026-10-25)
     PK.TABLES.forEach(function (id) { var t = P.tables && P.tables[id]; if (t && !t.model && t.open.l === 8) {      // the school's real tables: Sico 10 ft stool tables
@@ -209,7 +210,7 @@
       out.push('<g class="pk-table' + (x.k > 0.5 ? ' open' : '') + (sel === id ? ' sel' : '') + '" data-table="' + id + '"><polygon points="' + f.poly.map(pt).join(' ') + '"/><text x="' + x.x + '" y="' + (-x.y + 0.25) + '" class="pk-t" text-anchor="middle">' + (id === 'T1' ? 'T1' : 'T2') + '</text>' +
         (anim || sel === id ? '<text x="' + x.x + '" y="' + (-x.y - f.w / 2 - 0.3) + '" class="pk-t dim" text-anchor="middle">' + esc(spec.name + ': ' + x.label) + '</text>' : '') + '</g>');
     });
-    if (V.person) out.push('<g class="pk-person"><circle cx="0" cy="' + (-personY()) + '" r="0.75"/><text x="1.1" y="' + (-personY() + 0.25) + '" class="pk-t dim">a person (5′ 6″)</text></g>');
+    if (V.person) out.push('<g class="pk-person"><circle cx="0" cy="' + (-personY()) + '" r="0.75"/><text x="1.1" y="' + (-personY() + 0.25) + '" class="pk-t dim">a person (5′ 9″)</text></g>');
     (sh.items || []).forEach(function (it) {
       out.push('<g class="pk-item' + (sel === it.id ? ' sel' : '') + '" data-item="' + it.id + '" transform="translate(' + it.x + ',' + (-it.y) + ') rotate(' + (-(it.rot || 0)) + ')"><rect x="' + (-it.w / 2) + '" y="' + (-it.d / 2) + '" width="' + it.w + '" height="' + it.d + '" rx="0.15"/><text y="0.25" class="pk-t" text-anchor="middle">' + esc(it.name) + '</text></g>');
     });
@@ -251,7 +252,7 @@
     host.querySelectorAll('.pk3d').forEach(function (x) { x.style.display = real ? '' : 'none'; }); cv.style.display = real ? 'none' : '';
     if (real) {      // the realistic 3D view (js/periaktoi-3d.js, three.js)
       var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
-      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.5 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
+      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.75 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
         artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, sel: sel,
         onPick: function (t) { if (anim) return; sel = t; draw(); var b = document.getElementById('pkBottom'); if (t && b && V.simple) b.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, fallback: function () { V.no3d = true; drawViews(); } });
       return;
@@ -317,9 +318,17 @@
     });
     PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x || hidden(x.y)) return; var f = PK.tableFoot(P, id, x, x.k);
       draws.push({ d: far(x.x, x.y), f: function () { box(g, pr, f.poly, f.h, '#9a8a70'); if (V.labels) { var p = pr(x.x, x.y, f.h + 0.4); g.fillStyle = '#fff'; g.font = Math.round(W * 0.012) + 'px sans-serif'; g.textAlign = 'center'; g.fillText(id, p.x, p.y); } } }); });
-    if (V.person) { var py = personY(); draws.push({ d: far(0, py), f: function () {      // a 5′ 6″ person for scale
-      var hgt = s.person || 5.5, ft = pr(0, py, 0), hd = pr(0, py, hgt - 0.4), sh0 = pr(0.75, py, hgt - 1), w0 = Math.abs(sh0.x - hd.x); g.fillStyle = 'rgba(210,205,225,.9)';
-      g.beginPath(); g.arc(hd.x, hd.y, Math.max(2, w0 * 0.5), 0, 7); g.fill(); g.fillRect(ft.x - w0, sh0.y, w0 * 2, ft.y - sh0.y); } }); }
+    if (V.person) { var py = personY(); draws.push({ d: far(0, py), f: function () {      // a 5′ 9″ person for scale: plain gray, no color, no gender
+      var hgt = s.person || 5.75, k = hgt / 5.75, P2 = function (x, z) { return pr(x * k, py, z * k); }, poly2 = function (pts) { g.beginPath(); pts.forEach(function (q, i) { var p = P2(q[0], q[1]); if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fill(); };
+      g.fillStyle = '#9c9c9c';
+      var hc = P2(0, 5.37), hr = Math.abs(P2(0.34, 5.37).x - hc.x); g.beginPath(); g.ellipse(hc.x, hc.y, hr, hr * 1.12, 0, 0, 7); g.fill();
+      poly2([[-0.13, 5.14], [0.13, 5.14], [0.15, 4.85], [-0.15, 4.85]]);      // neck
+      poly2([[-0.7, 4.9], [0.7, 4.9], [0.5, 2.95], [-0.5, 2.95]]);      // torso
+      [-1, 1].forEach(function (sd) {
+        poly2([[sd * 0.62, 4.88], [sd * 0.86, 4.85], [sd * 0.86, 2.6], [sd * 0.7, 2.6]]);      // arm
+        poly2([[sd * 0.04, 3.0], [sd * 0.5, 3.0], [sd * 0.42, 0.12], [sd * 0.14, 0.12]]);      // leg
+        poly2([[sd * 0.12, 0.14], [sd * 0.46, 0.14], [sd * 0.46, 0], [sd * 0.12, 0]]);      // foot
+      }); } }); }
     draws.sort(function (a, b) { return b.d - a.d; }).forEach(function (x) { x.f(); });
     if (V.labels) {
       g.font = Math.round(W * 0.015) + 'px sans-serif'; g.fillStyle = '#cfc9e6';
@@ -795,7 +804,7 @@
       '<div class="pk-adv pk-advrow"><select id="pkProj" title="Audience and crew views"><option value="real">Front views: realistic 3D</option><option value="flat">Front views: true shape (exact widths)</option></select>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="stage">Front views: the whole stage (true proportions)</option><option value="towers">Front views: close on the towers</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
-      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['person', 'A 5′ 6″ person for scale'], ['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
+      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['person', 'A 5′ 9″ person for scale'], ['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
       '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div></div>' +
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +

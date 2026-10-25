@@ -37,7 +37,7 @@
       prosc: 50,          // proscenium opening, wall to wall (Colleen 2026-10-25: about 50 ft, the two walls on the Reber plan)
       wallT: 2,           // proscenium wall thickness, downstage of PL (Colleen: about 2 ft)
       proscH: 16.5,       // proscenium opening height (Colleen: about 16–17 ft)
-      person: 5.5,        // the person drawn for scale (5′ 6″)
+      person: 5.75,       // the person drawn for scale (5′ 9″, Colleen)
       border: 1 + 2 / 12, // the grand border (teaser) on lineset 1, 1′2″ upstage of PL
       borderDrop: 3.5,    // how far the grand border hangs below the top of the opening (Colleen: about 3½ ft)
       curtain: 1 + 10 / 12,      // main curtain (grand drape), upstage of PL: lineset 2, 1′10″

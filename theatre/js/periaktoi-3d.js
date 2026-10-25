@@ -106,10 +106,21 @@
     var net = new T3.Mesh(new T3.CylinderGeometry(0.72, 0.42, 1.25, 16, 4, true), new T3.MeshStandardMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 })); net.position.y = -0.63; W.rim.add(net);
     var arm = new T3.Mesh(new T3.BoxGeometry(0.25, 0.12, 0.6), new T3.MeshStandardMaterial({ color: 0x333333 })); arm.position.set(0, 0, -0.95); W.rim.add(arm);
     scene.add(W.rim);
-    // a 5′ 6″ person for scale
-    var pm = new T3.MeshStandardMaterial({ color: 0xc9c3d6, roughness: 0.8 }), hgt = s.person || 5.5; W.person = new T3.Group();
-    var body = new T3.Mesh(new T3.CylinderGeometry(0.55, 0.45, hgt - 1.1, 16), pm); body.position.y = (hgt - 1.1) / 2; var head = new T3.Mesh(new T3.SphereGeometry(0.4, 16, 12), pm); head.position.y = hgt - 0.45;
-    body.castShadow = head.castShadow = true; W.person.add(body); W.person.add(head); scene.add(W.person);
+    // a person for scale (5′ 9″): a plain gray figure, no color, no gender; built to ordinary adult proportions
+    var pm = new T3.MeshStandardMaterial({ color: 0x7c7c7c, roughness: 0.9 }), hgt = s.person || 5.75, k0 = hgt / 5.75; W.person = new T3.Group();
+    var part = function (geo, x, y, z, rz, sz) { var m = new T3.Mesh(geo, pm); m.position.set(x * k0, y * k0, z * k0); if (rz) m.rotation.z = rz; if (sz) m.scale.z = sz; m.castShadow = true; W.person.add(m); return m; };
+    part(new T3.SphereGeometry(0.34, 20, 16), 0, 5.37, 0, 0, 1.05);      // head
+    part(new T3.CylinderGeometry(0.13, 0.15, 0.32, 12), 0, 4.98, 0);     // neck
+    part(new T3.CylinderGeometry(0.66, 0.5, 1.95, 20), 0, 3.95, 0, 0, 0.5);      // torso, shoulders to waist
+    part(new T3.SphereGeometry(0.5, 18, 12), 0, 2.98, 0, 0, 0.55);       // hips
+    [-1, 1].forEach(function (sd) {
+      part(new T3.SphereGeometry(0.2, 14, 10), sd * 0.66, 4.82, 0);     // shoulder
+      part(new T3.CylinderGeometry(0.12, 0.09, 2.25, 12), sd * 0.74, 3.72, 0, sd * 0.05);      // arm
+      part(new T3.SphereGeometry(0.1, 12, 10), sd * 0.8, 2.56, 0);      // hand
+      part(new T3.CylinderGeometry(0.21, 0.13, 2.75, 14), sd * 0.27, 1.5, 0, -sd * 0.02);      // leg
+      part(new T3.BoxGeometry(0.3, 0.14, 0.75), sd * 0.29, 0.07, 0.15);      // foot
+    });
+    scene.add(W.person);
   }
   function makeLabel(text, col) {
     var t = canvasTex(128, 128, function (g, w, h) { g.font = 'bold 96px Lexend, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(text, w / 2, h / 2); });
@@ -208,7 +219,7 @@
       var hit = ray.intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; });
       v.onPick(hit ? hit.object.userData.tower : null, hit ? hit.object.userData.face : null);
     });
-    cv.addEventListener('wheel', function (e) { e.preventDefault(); v.dist = Math.max(0.35, Math.min(1.6, v.dist * Math.exp(e.deltaY * 0.001))); if (v.redraw) v.redraw(); }, { passive: false });
+    cv.addEventListener('wheel', function (e) { e.preventDefault(); v.dist = Math.max(0.55, Math.min(1.6, v.dist * Math.exp(e.deltaY * 0.001))); if (v.redraw) v.redraw(); }, { passive: false });
     cv.addEventListener('dblclick', function () { v.yaw = 0; v.pitch = 0; v.dist = 1; if (v.redraw) v.redraw(); });
     views.push(v); return v;
   }
