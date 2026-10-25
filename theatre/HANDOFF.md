@@ -694,3 +694,9 @@ Colleen: "an animated version of this run plot that shows movement around the st
 - 3D: face pools in P.lightColors.face (warm white), top pools a bit smaller in P.lightColors.top (lavender); colors set in Setup › Lighting areas.
 - 💡 Cue sheet and checklist (lightsDialog): per scene face / top areas / towers lit; Print opens a printable page. Checklist LIGHT_STEPS saved in P.lightCheck with the date: save house file, groups, palettes, check white on a student, program cues, record house focus, drop the near catwalk, shutter cuts, level session, restore after closing.
 - Tests: 42.
+
+## 2026-10-25: lighting areas re-read from her drawing (seen FROM THE AUDIENCE, not from above)
+- Her words: "the bottom edge of each facelight fixture will light from the front edge of the stage to just above the periaktoi". Areas are now beams across the stage: cx, rx (half width); cy/ry only place the top-light pool. Names match her list: Stage-right side area, All of left, Center, All of right, Stage-left side area (page 1), Left two-thirds, Right two-thirds (page 2). Same ids as before. Plans still on the first reading (all `drawn`, no `v`) are replaced on load.
+- A tower is in an area when its center is within cx ± rx (PK.inArea). P.lightTop = top of the beam at the towers (default tower height + 1′ 6″), set in Setup › Lighting areas.
+- Setup › Lighting areas shows a FRONT view (frontMap) like her drawing; fields are center across and half width.
+- 3D: real SpotLights per area (face from a stand-in far-catwalk spot, aimed so the beam runs from the front edge to just above the towers; top straight down from a stand-in near catwalk), plus a soft oval outline of each lit face beam as she drew it. All lights are made once and sit at zero when off.

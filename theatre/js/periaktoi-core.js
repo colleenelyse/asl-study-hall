@@ -581,19 +581,20 @@
   }
   /* Lighting areas (Colleen's drawing, 2026-10-25): ellipses on the deck, in stage feet. Sizes are read off her drawing, not measured.
      A scene lights some of them; a tower standing in a lit area is lit, the rest go dark (she can still change one by hand). */
-  function lightDefaults(P) {
-    var st = P.stage, c = st.prosc / 2, sx = c + st.sideDeck / 2, cy = Math.round((st.curtain - st.apron * 0.75) / 2 * 4) / 4;
-    var A = function (id, name, cx, y, rx, ry) { return { id: id, name: name, cx: cx, cy: y, rx: rx, ry: ry, drawn: true }; };
+  function lightDefaults(P) {      // her drawing, seen from the audience: each face-light beam runs from the front edge of the deck up to just above the towers
+    var st = P.stage, c = st.prosc / 2, sx = c + st.sideDeck / 2, yt = (P.home && P.home.A ? P.home.A.y : st.curtain - 3), yf = frontY(st, 0), cy = (yt + yf) / 2, ry = (yt - yf) / 2;
+    var A = function (id, name, cx, rx, side) { return { id: id, name: name, cx: cx, rx: rx, cy: side ? -3 : cy, ry: side ? 5 : ry, v: 2, drawn: true }; };      // cx, rx: across the stage; cy, ry: where the top light lands
     return [
-      A('sr', 'Stage-right side area', -sx, -3, 4.5, 5.5), A('left', 'Left', -11, cy, 10, 10), A('center', 'Center', 0, cy, 9, 10), A('right', 'Right', 11, cy, 10, 10), A('sl', 'Stage-left side area', sx, -3, 4.5, 5.5),
-      A('allL', 'All of left', -11.5, cy, 16, 11), A('allR', 'All of right', 11.5, cy, 16, 11)
+      A('sr', 'Stage-right side area', -sx, 5.5, true), A('left', 'All of left', -11.5, 10.3), A('center', 'Center', 0, 9.3), A('right', 'All of right', 11.5, 10.3), A('sl', 'Stage-left side area', sx, 5.5, true),
+      A('allL', 'Left two-thirds', -12, 15.5), A('allR', 'Right two-thirds', 12, 15.5)
     ];
   }
-  function inArea(a, x, y) { var dx = (x - a.cx) / a.rx, dy = (y - a.cy) / a.ry; return dx * dx + dy * dy <= 1; }
+  function lightTop(P) { return P.lightTop != null ? P.lightTop : P.stage.height + 1.5; }      // the top of each face-light beam, at the towers: just above them
+  function inArea(a, x) { return Math.abs(x - a.cx) <= a.rx; }      // the beams cover the whole depth, from the front edge to the towers
   function lightTowers(P, sc) {      // towers in a lit area (face light or top light) are lit; the others go dark
     var ids = (sc.areas || []).concat(sc.tops || []); if (!ids.length) return;
     var on = (P.lights || []).filter(function (a) { return ids.indexOf(a.id) >= 0; });
-    TOWERS.forEach(function (t) { var q = sc.towers[t], lit = on.some(function (a) { return inArea(a, q.x, q.y); }); q.lit = lit ? 'full' : 'dark'; q.role = lit ? (q.role === 'masking' ? 'featured' : q.role || 'featured') : 'masking'; });
+    TOWERS.forEach(function (t) { var q = sc.towers[t], lit = on.some(function (a) { return inArea(a, q.x); }); q.lit = lit ? 'full' : 'dark'; q.role = lit ? (q.role === 'masking' ? 'featured' : q.role || 'featured') : 'masking'; });
   }
   /* face names: each show can rename its faces in the setup session */
   function faceName(P, id) { return (P && P.names && P.names[id]) || SHORT[id] || id; }
@@ -604,7 +605,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

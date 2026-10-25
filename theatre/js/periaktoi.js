@@ -48,7 +48,7 @@
     if (P.scenes[0] && P.scenes[0].id === 's1' && !(P.scenes[1] && P.scenes[1].same === 's1')) {      // scene 1 splits in two for lighting (1a karaoke, 1b hallway); the set stays put
       var b1 = PK.sub1(P), f0 = PK.fresh().scenes[0]; P.scenes[0].notes = f0.notes; if (/^East High \(preset\)/.test(P.scenes[0].name)) P.scenes[0].name = f0.name; b1.towers = JSON.parse(JSON.stringify(P.scenes[0].towers)); P.scenes.splice(1, 0, b1); queueSave(); }
     if (!P.lineups) P.lineups = PK.lineupDefaults();
-    if (!P.lights) P.lights = PK.lightDefaults(P);      // her five lighting areas plus all of left / all of right (2026-10-25)
+    if (!P.lights || P.lights.every(function (a) { return a.drawn && !a.v; })) P.lights = PK.lightDefaults(P);      // read again from her drawing as seen from the audience (2026-10-25)      // her five lighting areas plus all of left / all of right (2026-10-25)
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
       P.scenes.forEach(function (sc) { PK.TOWERS.forEach(function (t) { var q = sc.towers[t]; if (Math.abs(q.x - old[t]) < 1e-6 && Math.abs(q.y - P.home[t].y) < 1e-6) q.x = P.home[t].x; }); }); queueSave(); }
     PK.applySpikes(P);      // after any change above
@@ -898,6 +898,20 @@
         w.document.close(); w.focus(); w.print(); };
     });
   }
+  function frontMap() {      // the lighting areas from the audience: deck, curtain, towers at home, and each beam from the front edge to just above the towers
+    var s = st(), half = s.prosc / 2 + s.sideDeck + 1, top = s.proscH + 1, lt = PK.lightTop(P), bot = -2.5, lc = lightColors();
+    var y = function (v) { return (top - v).toFixed(2); };
+    var out = ['<svg class="pk-front-map" viewBox="' + (-half) + ' 0 ' + 2 * half + ' ' + (top - bot + 1) + '">',
+      '<rect x="' + (-s.prosc / 2) + '" y="' + y(s.proscH) + '" width="' + s.prosc + '" height="' + s.proscH + '" fill="#1b2a7a"/>',
+      '<rect x="' + (-half) + '" y="' + y(0) + '" width="' + 2 * half + '" height="' + (-bot) + '" fill="#111"/><line x1="' + (-half) + '" x2="' + half + '" y1="' + y(bot) + '" y2="' + y(bot) + '" stroke="#a07a4a" stroke-width="0.5"/>',
+      '<text x="' + (half - 0.5) + '" y="' + (Number(y(bot)) - 0.5) + '" font-size="1.1" fill="#c9a46a" text-anchor="end">front edge of the stage</text>'];
+    TW.forEach(function (t) { var H = P.home[t]; out.push('<rect x="' + (H.x - s.face / 2) + '" y="' + y(s.height) + '" width="' + s.face + '" height="' + s.height + '" fill="#cfc6b0" stroke="' + COL[t] + '" stroke-width="0.2"/><text x="' + H.x + '" y="' + y(s.height + 0.6) + '" font-size="1.4" text-anchor="middle" fill="' + COL[t] + '">' + t + '</text>'); });
+    out.push('<line x1="' + (-half) + '" x2="' + half + '" y1="' + y(lt) + '" y2="' + y(lt) + '" stroke="#ffe08a" stroke-width="0.08" stroke-dasharray="0.5 0.5"/>');
+    (P.lights || []).forEach(function (a, i) { var cy = (lt + bot) / 2, ry = (lt - bot) / 2, two = /two|2\/3/i.test(a.name);
+      out.push('<ellipse cx="' + a.cx + '" cy="' + y(cy) + '" rx="' + a.rx + '" ry="' + ry + '" fill="' + lc.face + '" fill-opacity="' + (two ? 0.07 : 0.16) + '" stroke="' + (two ? '#9fb4ff' : '#ffe08a') + '" stroke-width="0.18"' + (two ? ' stroke-dasharray="0.8 0.5"' : '') + '/>' +
+        '<text x="' + a.cx + '" y="' + y(two ? bot + 0.9 : lt + 0.8 + (i % 2) * 1.4) + '" font-size="1.1" text-anchor="middle" fill="' + (two ? '#b9c8ff' : '#ffe08a') + '">' + esc(a.name) + '</text>'); });
+    out.push('</svg>'); return out.join('');
+  }
   function miniMap(towers, w, areas) {      // a small bird's-eye picture: the curtain line and the four towers
     var s = st(), wide = areas && areas.length ? s.sideDeck : 0, x0 = -s.prosc / 2 - 1 - wide, x1 = s.prosc / 2 + 1 + wide, y0 = areas && areas.length ? -(s.apron + 1) : -6, y1 = s.curtain + 1.5;
     var edge = ''; if (areas && areas.length) { var ep = []; for (var i = 0; i <= 40; i++) { var ex = -s.prosc / 2 + s.prosc * i / 40; ep.push(ex.toFixed(2) + ',' + (-PK.frontY(s, ex)).toFixed(2)); } edge = '<polyline points="' + ep.join(' ') + '" fill="none" stroke="#a07a4a" stroke-width="0.3"/>'; }
@@ -941,10 +955,11 @@
           '<button data-ldel="' + i + '" class="pk-mini">Remove</button></div></div>' + miniMap(flatAt(function (sc) { PK.lineUp(P, sc, L); }), 100) + '</div>'); });
       out.push('<p><button id="suLAdd">+ Line-up</button></p>');
     } else if (k === 4) {
-      out.push('<h2>Lighting areas</h2><p class="pk-help">The pools of light you can bring up, seen from above (audience at the bottom). In each scene you pick which areas are up; a tower standing in a lit area is lit and the others go dark. These start from your drawing, so the sizes are estimates: type over them.</p>' + miniMap(flatAt(), 100, P.lights));
+      out.push('<h2>Lighting areas</h2><p class="pk-help">As the audience sees them, like your drawing. Each face-light area (far catwalk) reaches from the front edge of the stage up to just above the towers; top light (near catwalk) drops straight down over the same width. In each scene you pick which areas are up; a tower standing in a lit area is lit and the others go dark. Widths are read off your drawing: type over them.</p>' + frontMap() +
+        '<div class="pk-setup-grid"><label class="pk-f">Top of the face light at the towers<input id="suLTop" value="' + PK.ft(PK.lightTop(P)) + '"></label></div>');
       (P.lights || []).forEach(function (a, i) {
         out.push('<div class="pk-setup-area"><input data-aname="' + i + '" value="' + esc(a.name) + '">' +
-          [['cx', 'Center across (− = stage right)'], ['cy', 'Center up/downstage of PL'], ['rx', 'Half its width'], ['ry', 'Half its depth']].map(function (f) { return '<label class="pk-f">' + f[1] + '<input data-anum="' + i + '|' + f[0] + '" value="' + PK.ft(a[f[0]]) + '"></label>'; }).join('') +
+          [['cx', 'Center across (− = stage right)'], ['rx', 'Half its width']].map(function (f) { return '<label class="pk-f">' + f[1] + '<input data-anum="' + i + '|' + f[0] + '" value="' + PK.ft(a[f[0]]) + '"></label>'; }).join('') + '<span class="pk-help small">' + PK.ft(a.cx - a.rx) + ' to ' + PK.ft(a.cx + a.rx) + '</span>' +
           '<button data-adel="' + i + '" class="pk-mini">Remove</button></div>'); });
       var lc = lightColors();
       out.push('<p><button id="suAAdd">+ Lighting area</button></p><h3>Colors in the 3D view</h3><div class="pk-row"><label class="pk-chk">Face light (far catwalk) <input type="color" data-lcol="face" value="' + lc.face + '"></label><label class="pk-chk">Top light (near catwalk) <input type="color" data-lcol="top" value="' + lc.top + '"></label><span class="pk-gap"></span><button id="suCues">💡 Cue sheet and checklist</button></div>');
@@ -995,6 +1010,7 @@
     app.querySelectorAll('[data-adel]').forEach(function (b) { b.onclick = function () { snap(); var gone = P.lights.splice(+b.dataset.adel, 1)[0]; P.scenes.forEach(function (sc) { if (sc.areas) { sc.areas = sc.areas.filter(function (x) { return x !== gone.id; }); PK.lightTowers(P, sc); } }); again(); }; });
     app.querySelectorAll('[data-lcol]').forEach(function (c) { c.onchange = function () { snap(); P.lightColors = P.lightColors || {}; P.lightColors[c.dataset.lcol] = c.value; again(); }; });
     if ($('suCues')) $('suCues').onclick = lightsDialog;
+    if ($('suLTop')) $('suLTop').onchange = function () { var v = PK.parseFt(this.value); if (v == null || v <= 0) return setupPage(); snap(); P.lightTop = v; again(); };
     if ($('suAAdd')) $('suAAdd').onclick = function () { snap(); P.lights.push({ id: 'a' + Date.now().toString(36), name: 'New area', cx: 0, cy: -8, rx: 6, ry: 6 }); again(); };
     if ($('suLAdd')) $('suLAdd').onclick = function () { snap(); P.lineups.push({ id: 'l' + Date.now().toString(36), name: 'New line-up', group: ['B', 'C'], at: 'center', rest: 'home' }); again(); };
     app.querySelectorAll('[data-scname]').forEach(function (i) { i.onchange = function () { snap(); P.scenes[+i.dataset.scname].name = i.value.trim() || P.scenes[+i.dataset.scname].name; again(); }; });

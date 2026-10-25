@@ -734,3 +734,5 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-areas.pk-ltop button.on { background: #3d3170; color: #ece6ff; border-color: #b7a4ff; }
 .pk-cues { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0 10px; } .pk-cues td, .pk-cues th { border-bottom: 1px solid #333; padding: 4px 6px; text-align: left; vertical-align: top; }
 .pk-check { list-style: none; padding: 0; } .pk-check li { margin: 6px 0; } .pk-check input { margin-right: 6px; }
+.pk-front-map { display: block; width: 100%; max-width: 980px; background: #0d0c12; border-radius: 8px; margin: 10px 0; }
+.pk-setup-area { grid-template-columns: 1.4fr 1fr 1fr auto auto; }

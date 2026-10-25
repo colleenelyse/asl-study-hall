@@ -161,6 +161,15 @@
     var img = ctx.artImg(id); if (faceSrc[id] === img) return;
     faceSrc[id] = img; var t = texFor(img); f.mat.map = t; f.mat.needsUpdate = true;
   }
+  var beamT = null;
+  function beamTex() {      // her drawing: a soft oval with a pale rim
+    if (beamT) return beamT;
+    var c = document.createElement('canvas'); c.width = c.height = 256; var g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 124);
+    gr.addColorStop(0, 'rgba(255,236,190,0.30)'); gr.addColorStop(0.92, 'rgba(255,226,170,0.22)'); gr.addColorStop(1, 'rgba(255,226,170,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 124, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(225,230,255,0.85)'; g.lineWidth = 6; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.stroke();
+    beamT = new three.CanvasTexture(c); beamT.encoding = three.sRGBEncoding; return beamT;
+  }
   var poolT = null;
   function poolTex() {      // a warm pool, bright in the middle and soft at the edge
     if (poolT) return poolT;
@@ -223,13 +232,26 @@
     var on = sh.areas && sh.areas.length ? sh.areas : null;      // lighting areas: the chosen pools glow, the general wash dims
     Object.keys(W.pools).forEach(function (k3) { W.pools[k3].visible = false; });
     var tops = sh.tops && sh.tops.length ? sh.tops : null, any = on || tops, lc = sh.lightColors || { face: '#fff1dc', top: '#b7a4ff' };
-    (W.foh || []).forEach(function (sp) { sp.intensity = any ? 0.55 : 1.45; });
+    (W.foh || []).forEach(function (sp) { sp.intensity = any ? 0.1 : 1.45; });      // the general wash goes out when areas are chosen
+    /* her lighting areas as real lights (all made once; the ones not up sit at zero, so the picture never stalls).
+       Face light from the far catwalk: each beam runs from the front edge of the deck up to just above the towers.
+       Top light from the near catwalk, straight down. The catwalk positions are stand-ins until measured. */
+    var V3 = T3.Vector3, lt = ctx.PK.lightTop(P), yt = P.home && P.home.A ? P.home.A.y : s.curtain - 3;
+    W.area = W.area || {};
+    var spot = function (key, col) { var L = W.area[key]; if (!L) { L = W.area[key] = new T3.SpotLight(0xffffff, 0, 0, 0.3, 0.35, 1); W.scene.add(L); W.scene.add(L.target); } L.color.set(col); return L; };
     (sh.lights || []).forEach(function (a) {
-      [['face', on, 1, 0.04], ['top', tops, 0.8, 0.05]].forEach(function (L) {
-        var key = L[0] + ':' + a.id, m = W.pools[key]; if (!m) { m = W.pools[key] = new T3.Mesh(new T3.CircleGeometry(1, 64), new T3.MeshBasicMaterial({ map: poolTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; W.scene.add(m); }
-        var lit = !!L[1] && L[1].indexOf(a.id) >= 0; m.visible = lit || (L[0] === 'face' && !!ctx.labels && !!any); m.material.opacity = lit ? 0.85 : 0.12; m.material.color.set(lc[L[0]]);
-        m.scale.set(a.rx * L[2], a.ry * L[2], 1); m.position.set(a.cx, L[3], -a.cy);
-      });
+      var F = spot('face:' + a.id, lc.face), up = !!on && on.indexOf(a.id) >= 0;
+      var S = new V3(a.cx * 0.5, 28, s.apron + 30), B = new V3(a.cx, 0, -ctx.PK.frontY(s, a.cx)), U = new V3(a.cx, lt, -yt);
+      var dB = B.clone().sub(S).normalize(), dU = U.clone().sub(S).normalize(), ax = dB.clone().add(dU).normalize(), D = S.distanceTo(U);
+      F.position.copy(S); F.target.position.copy(S.clone().add(ax.multiplyScalar(D))); F.target.updateMatrixWorld();
+      F.angle = Math.min(1.2, Math.max(dB.angleTo(dU) / 2, Math.atan(a.rx / D)) * 1.06); F.intensity = up ? 2.2 : 0;
+      var bm = W.pools['beam:' + a.id]; if (!bm) { bm = W.pools['beam:' + a.id] = new T3.Mesh(new T3.PlaneGeometry(1, 1), new T3.MeshBasicMaterial({ map: beamTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false, depthTest: false, side: T3.DoubleSide })); bm.renderOrder = 3; W.scene.add(bm); }
+      var mid = B.clone().add(U).multiplyScalar(0.5), len = B.distanceTo(U);      // the beam's face, as she drew it: from the front edge of the deck up to just above the towers
+      bm.visible = up; bm.material.color.set(lc.face); bm.scale.set(a.rx * 2, len, 1); bm.position.copy(mid); bm.rotation.set(-Math.atan2(B.z - U.z, U.y - B.y), 0, 0);
+      var Tp = spot('top:' + a.id, lc.top), upT = !!tops && tops.indexOf(a.id) >= 0, h = 24;
+      Tp.position.set(a.cx, h, -a.cy); Tp.target.position.set(a.cx, 0, -a.cy); Tp.target.updateMatrixWorld(); Tp.angle = Math.atan(Math.min(a.rx, a.ry * 1.3) / h); Tp.penumbra = 0.5; Tp.intensity = upT ? 1.3 : 0;
+      var m = W.pools['top:' + a.id]; if (!m) { m = W.pools['top:' + a.id] = new T3.Mesh(new T3.CircleGeometry(1, 64), new T3.MeshBasicMaterial({ map: poolTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; W.scene.add(m); }
+      m.visible = upT; m.material.opacity = 0.35; m.material.color.set(lc.top); m.scale.set(Math.min(a.rx, a.ry * 1.3), Math.min(a.rx, a.ry * 1.3), 1); m.position.set(a.cx, 0.05, -a.cy);      // a hint of the top light on the black deck
     });
     W.person.visible = !!ctx.person; if (ctx.person) W.person.position.set(ctx.person.x, 0, -ctx.person.y);
   }
