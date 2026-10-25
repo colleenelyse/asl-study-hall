@@ -80,7 +80,9 @@
      speaker's name above in Lexend capitals, the words in Atkinson Hyperlegible, here bold; the line now has a ring, as in Practice Lines;
      the next line is the card under it, dimmer. On black with pastel colors and a dark tint inside the card, so the back wall stays dim. */
   var mix = function (hex, to, k) { var n = parseInt(String(hex || '#ffd84d').slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255]; return 'rgb(' + c.map(function (v) { return Math.round(v + (to - v) * k); }).join(',') + ')'; };
-  var baseColor = function (who) { var ids = T.labelChars(who || ''), c = ids.length === 1 && T.charById(ids[0]); return c && c.color ? c.color : '#e0b100'; };
+  /* the same color the practice app gives the character (T.color: her picked colors, else the app's own set, one color for a doubled actor);
+     a line for several characters takes the first one's; ALL and the Music card are gold */
+  var baseColor = function (who) { var ids = T.labelChars(who || '').filter(function (c) { return c !== '*'; }); return ids.length && T.color ? T.color(ids[0]) : '#e0b100'; };
   var round = function (x, y, w, h, r) { cx.beginPath(); if (cx.roundRect) cx.roundRect(x, y, w, h, r); else cx.rect(x, y, w, h); };
   /* the performer view scrolls like Practice Lines (Colleen 2026-10-24: "is it possible for the actor view to look like it's scrolling so they
      can always see what's coming. i liked that layout"): the line just said at the top (dim, half off the edge), the line now big with its
@@ -90,7 +92,7 @@
   var SCROLL = 0.45, M0 = 36;
   var keyOf = function (card) { return card ? card.key || (card.who || '') + '|' + (card.full || card.text) : ''; };
   function measure(c, card, w, px) {
-    var name = String(card.name || '').replace(/:$/, ''), pad = Math.round(px * 0.35), stripe = Math.max(12, Math.round(px * 0.16)), namePx = Math.max(24, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
+    var name = String(card.name || '').replace(/:$/, ''), pad = Math.round(px * 0.35), stripe = Math.max(18, Math.round(px * 0.22)), namePx = Math.max(24, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
     c.font = '700 ' + px + 'px "Atkinson Hyperlegible", Arial, sans-serif';
     var rs = [], cur = '', room = w - stripe - pad * 2;
     String(card.text).split(' ').forEach(function (x) { var t = cur ? cur + ' ' + x : x; if (c.measureText(t).width > room && cur) { rs.push(cur); cur = x; } else cur = t; }); if (cur) rs.push(cur);
@@ -103,7 +105,7 @@
   }
   function drawCardAt(c, it) {
     var card = it.card, f = measure(c, card, it.w, it.px), x = it.x, y = it.y, w = it.w, h = f.h, r = Math.round(f.px * 0.3);
-    var col = baseColor(card.who), pastel = mix(col, 255, 0.55), tint = mix(col, 0, 0.84);
+    var col = baseColor(card.who), pastel = mix(col, 255, 0.5), tint = mix(col, 0, 0.72);      // a pastel stripe, name and ring; the card a dark shade of the same color, so it shows on the wall
     var rr = function (X, Y, Wd, Hd, R) { c.beginPath(); if (c.roundRect) c.roundRect(X, Y, Wd, Hd, R); else c.rect(X, Y, Wd, Hd); };
     c.save(); c.globalAlpha = Math.max(0, Math.min(1, it.alpha));
     rr(x, y, w, h, r); c.fillStyle = tint; c.fill();

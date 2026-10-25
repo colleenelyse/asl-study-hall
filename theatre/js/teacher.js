@@ -293,6 +293,7 @@
     r.scenes.forEach(function (s) { s.items.forEach(function (it) {
       if (!(it.type === 'song' && K[it.num] && oldSongs[it.num])) return;
       var kept = oldSongs[it.num].lyrics.slice(), keys = kept.map(function (l) { return (l.who || '') + '|' + l.text; });
+      kept.forEach(function (l) { if (!l.spoken && ScriptParser.fixLyricText) l.text = ScriptParser.fixLyricText(l.text); });      // words cut into syllables by the older reader, joined (2026-10-24.2)
       var so = O.songs.find(function (x) { return String(x.num) === String(it.num); }), lt = so && T.show.lyricTimes && T.show.lyricTimes[so.id];
       // spoken lines over the music the newer reader found and this edited song does not have yet: in, in page order
       var at = function (l) { return l.box ? l.box.n * 10000 + l.box.y : 1e9; };

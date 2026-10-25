@@ -15,10 +15,60 @@
 
   /* "Some - thing new __" printed under notes -> "Something new" */
   function cleanLyric(s) {
-    return s.replace(MUSIC_GLYPH_ALL, ' ').replace(/_+/g, ' ').replace(/\s+-\s*|\s*-\s+/g, '').replace(/[–—]\s*$/, '')
-      .replace(/\s+([,.!?;:])/g, '$1').replace(/(\w)\s+(n['’]t|['’](?:s|ll|re|ve|d|m))\b/g, '$1$2').replace(/\s+/g, ' ').trim()
-      .replace(/(\w)\s+(er|ly|ta|na|al|y|e|ty|ry|ny|ble|tion|ing)\b(?=[\s,.!?;:]|$)/gi, '$1$2')          // a word's last syllable
-      .replace(/\b(ev|un|re|pe|se|bi|hi|si|ri|de|ec|ti|be|pre|con|dis|ex)\s+(?=[a-z’']{2,})/g, '$1');      // a word's first syllable
+    var t = s.replace(MUSIC_GLYPH_ALL, ' ').replace(/_+/g, ' ').replace(/\s+-\s*|\s*-\s+/g, '').replace(/[–—]\s*$/, '')
+      .replace(/\s+([,.!?;:])/g, '$1').replace(/(\w)\s+(n['’]t|['’](?:s|ll|re|ve|d|m))\b/g, '$1$2').replace(/\s+/g, ' ').trim();
+    return api && api.rawLyrics ? t : joinSyllables(t);
+  }
+  /* sheet music prints words cut into syllables ("sta - tus", "to - geth - er"); where the dashes are lost the pieces come apart with spaces
+     (Colleen 2026-10-24: "many of the lyrics copied from the sheet music are cut up by syllables … remove the extra spaces to make real
+     words"). Pieces are joined only when together they make a word in WORDS and at least one piece is not a word on its own, or when the
+     word is one songs often split ("some thing", "to gether"); never "we're all" or "be here". Longest join first, up to 5 pieces. */
+  var SPLIT_OK = /^(some(thing|one|body|how|times?|day|where)|any(thing|one|body|more|way|time)|every(thing|one|body|day|time|where)|no(thing|body|where)|to(gether|night|day|morrow)|in(side|to)|out(side)|a(way|long|lone|bout|round|head|fraid|gain|bove|cross|live|sleep|wake|part)|be(cause|lieve|long|fore|hind|tween|yond|side|sides|come|came|gin|neath|low|ware)|un(til|less)|with(in|out)|up(on)|on(to)|wild(cats?)|sing(along)|for(ever|get|give|got))$/;
+  var LW = root.LYRIC_WORDS || (typeof module !== 'undefined' && module.exports ? require('./lyric-words.js') : { words: '', joins: '' });      // js/lyric-words.js
+  var WORDS = new Set(LW.words.split(' ')), JOINS = new Set(LW.joins.split(' '));
+  var SONG_SPELLINGS = new Set("ev'ry ev'rybody ev'ryone ev'rywhere ev'rything fin'lly diff'rent sep'rate get'cha c'mon gotcha gonna gotta wanna wildcats wildcat hooray runnin' cuttin' tryin' goin' climbin' party's feeling's together's".split(' '));
+  var NEG = /^(don|won|can|didn|couldn|wouldn|shouldn|isn|wasn|aren|weren|hasn|haven|ain)$/;
+  var bare = function (x) { return x.toLowerCase().replace(/[’‘]/g, "'").replace(/^[^a-z']+|[^a-z']+$/g, ''); };
+  function isWord(p) {      // a piece that is a word on its own (we're, don't and it's count; "in'" from runnin' does not)
+    if (/in'$/.test(p) && p.length <= 4) return false;
+    p = p.replace(/^'+|'+$/g, ''); if (!p) return false;
+    if (p.indexOf("'") >= 0) { var q = p.split("'"); return SONG_SPELLINGS.has(p) || (q.length === 2 && /^(s|re|ve|ll|d|m|t)$/.test(q[1]) && (isWord(q[0]) || NEG.test(q[0]))); }      // we're, don't, it's (not "we'reall")
+    return WORDS.has(p);
+  }
+  function joinAt(toks, i) {
+    for (var n = Math.min(5, toks.length - i); n >= 2; n--) {
+      var parts = toks.slice(i, i + n);
+      if (parts.slice(0, -1).some(function (p) { return /[^A-Za-z’'‘]$/.test(p); }) || parts.some(function (p) { return /\d/.test(p); })) continue;
+      var k = bare(parts.join(''));
+      if ((SONG_SPELLINGS.has(k) || JOINS.has(k)) && (parts.map(bare).some(function (p) { return !isWord(p); }) || SPLIT_OK.test(k.replace(/'s$/, '')))) return n;
+    }
+    return 0;
+  }
+  function joinSyllables(t) {
+    var toks = t.split(' '), out = [], i = 0;
+    while (i < toks.length) {
+      var n = joinAt(toks, i);
+      if (n && isWord(bare(toks[i])) && !SPLIT_OK.test(bare(toks.slice(i, i + n).join('')).replace(/'s$/, '')) && joinAt(toks, i + 1)) n = 0;      // "in hea ven": "in" stays, "heaven" joins
+      if (n) { out.push(toks.slice(i, i + n).join('')); i += n; } else { out.push(toks[i]); i++; }
+    }
+    return out.join(' ');
+  }
+  /* words saved by the older reader, which guessed by syllable and sometimes glued the wrong pieces ("we'reall", "behere", "wereal ways"):
+     pull those apart where the glued word is not a word, then join the real pieces (songs the teacher edited keep their saved words) */
+  function fixLyricText(t) {
+    var known = function (w) { var b = bare(w); return !b || isWord(b) || JOINS.has(b) || SONG_SPELLINGS.has(b); };
+    var all = String(t || '').split(' ');
+    var toks = all.map(function (w, i) {
+      if (known(w) || SPLIT_OK.test(bare(w))) return w;
+      var nx = all[i + 1] || '', b2 = w.match(/^(be)([a-z]{2,})$/i);
+      if (b2 && nx && JOINS.has(bare(b2[2] + nx))) return b2[1] + ' ' + b2[2];      // "benum ber" → "be num ber" → "be number"
+      var m = w.match(/^(.*?)((?:we|you|they)['’]re)([a-z]{2,}.*)$/i); if (m && !m[1]) return m[2] + ' ' + m[3];
+      m = w.match(/^(be)([a-z]{2,}.*)$/i); if (m && known(m[2])) return m[1] + ' ' + m[2];
+      m = w.match(/^([a-z’']{2,}?)(er|ly|ta|na|al|y|e|ty|ry|ny|ble|tion|ing)([^a-z]*)$/i); if (m && known(m[1])) return m[1] + ' ' + m[2] + m[3];
+      m = w.match(/^(ev|un|re|pe|se|bi|hi|si|ri|de|ec|ti|pre|con|dis|ex)([a-z’']{2,}.*)$/i); if (m && known(m[2]) && !JOINS.has(bare(w))) return m[1] + ' ' + m[2];
+      return w;
+    });
+    return joinSyllables(toks.join(' '));
   }
   var CUE = /#\s?(\d{1,3}[A-Z]?)\s*[–—-]\s*([A-Z0-9][A-Z0-9’'!?,&\/ ()–-]*)/g;
   var SCENE = /^SCENE\s+(\d{1,3})\s*[:.–-]\s*(.*)$/;
@@ -618,8 +668,8 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-24.1';      // (also re-applies singer fixes with the careful matching)
-  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, VERSION: VERSION, _toLines: toLines };
+  var VERSION = '2026-10-24.2';      // 2026-10-24.2: lyrics joined back into words (joinSyllables) instead of guessing by syllable      // (also re-applies singer fixes with the careful matching)
+  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, fixLyricText: fixLyricText, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;
 })(typeof window !== 'undefined' ? window : this);
