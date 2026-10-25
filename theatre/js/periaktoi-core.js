@@ -40,9 +40,11 @@
       face: 4, height: 8, // tower faces 4 ft × 8 ft
       grid: 0.5,          // snap: 6 in
       clear: 0.5,         // * gap to keep between towers, and from the drape
+      curtainGap: 8,      // * how wide the main curtain opens at center (Colleen: it opens at center for the tables)
+      aisle: 3,           // * the narrowest path actors need between a table's bench and anything else
       eye: 5, house: 30,  // audience view camera: eye height and distance in front of PL
       crew: 12,           // crew view camera: distance upstage of the drape
-      placeholder: { sideDeck: true, wing: true, clear: true }
+      placeholder: { sideDeck: true, wing: true, clear: true, curtainGap: true, aisle: true }
     };
   }
   function R(st) { return st.face / R3; }            // center to a corner
@@ -58,6 +60,11 @@
     var a = k[0], b = k[1];
     if ((((b - a) * w(P, t)) % 3 + 3) % 3 !== 1) { var x = a; a = b; b = x; }      // a is the face whose normal sits 120° clockwise of b's: it shows on the audience's left
     return { rot: norm(-60 - w(P, t) * a * 120), left: t + (a + 1), right: t + (b + 1) };
+  }
+  /* Colleen's triangle diagram: 0° = face 2 flat to the audience; P.diagram.dir = which way its angles count, seen from above (not confirmed) */
+  function diagramAngle(P, t, rot) {
+    var a = rot + w(P, t) * 120, s = P.diagram && P.diagram.dir === 'cw' ? -1 : 1;
+    return ((Math.round(s * a) % 360) + 360) % 360;
   }
   /* what the audience sees at a rotation: 'flat' A1, 'point' A1|A3 (left|right), or 'angled' */
   function facing(P, t, rot) {
@@ -102,6 +109,10 @@
     return c;
   }
   function polyDist(p, poly) { if (inPoly(p, poly)) return 0; var m = Infinity; for (var i = 0; i < poly.length; i++) m = Math.min(m, segDist(p, poly[i], poly[(i + 1) % poly.length])); return m; }
+  function touching(a, b) {      // two footprints that only meet edge to edge (tables joined end to end)
+    var shrink = function (P0) { var cx = 0, cy = 0; P0.forEach(function (p) { cx += p.x; cy += p.y; }); cx /= P0.length; cy /= P0.length; return P0.map(function (p) { var dx = p.x - cx, dy = p.y - cy, L = Math.hypot(dx, dy) || 1; return { x: p.x - dx / L * 0.05, y: p.y - dy / L * 0.05 }; }); };
+    return !polysOverlap(shrink(a), shrink(b));
+  }
   function polysOverlap(a, b) {      // separating axis test for two convex polygons
     var polys = [a, b];
     for (var n = 0; n < 2; n++) { var P0 = polys[n];
@@ -121,8 +132,8 @@
   var TSTATE = { stored: 'Stored (folded)', preset: 'Preset (folded, near its entrance)', parked: 'Parked (folded, temporary)', deployed: 'Deployed (open, secured)' };
   var ZKIND = { upstage: 'Upstage storage', wing: 'Side wing', preset: 'Concealed preset', parking: 'Temporary parking' };
   function tableDefaults() {      // every size is a stand-in until the school's tables are measured; `stand` lists what has not been measured
-    var t = function (name, gap) { return { name: name, model: '', open: { l: 8, w: 2.5, h: 2.5 }, folded: { l: 5, w: 2, h: 6 }, clear: 0.5, crew: 2, openSecs: 20, closeSecs: 20, gap: gap, stand: { model: true, open: true, folded: true, crew: true, secs: true } }; };
-    return { T1: t('Table 1', 'AB'), T2: t('Table 2', 'CD') };
+    var t = function (name, gap) { return { name: name, model: '', open: { l: 8, w: 2.5, h: 2.5 }, bench: 1.25, folded: { l: 5, w: 2.5, h: 6 }, clear: 0.5, crew: 2, openSecs: 20, closeSecs: 20, gap: gap, stand: { model: true, open: true, bench: true, folded: true, crew: true, secs: true } }; };
+    return { T1: t('Table 1', 'BC'), T2: t('Table 2', 'BC') };      // long tables with attached benches; open width = tabletop + a bench each side
   }
   function towerLine(sc) { return TOWERS.reduce(function (a, t) { return a + sc.towers[t].y; }, 0) / 4; }
   function rectPoly(x, y, l, w, rot) {
@@ -131,12 +142,12 @@
   }
   function tableFoot(P, id, ts, k) {      // k: 0 = folded, 1 = open (in between while unfolding)
     var spec = P.tables[id], open = k == null ? (ts.state === 'deployed' ? 1 : 0) : k;
-    var l = spec.folded.l + (spec.open.l - spec.folded.l) * open, w = spec.folded.w + (spec.open.w - spec.folded.w) * open;
+    var ow = spec.open.w + 2 * (spec.bench || 0), l = spec.folded.l + (spec.open.l - spec.folded.l) * open, w = spec.folded.w + (ow - spec.folded.w) * open;
     return { poly: rectPoly(ts.x, ts.y, l, w, ts.rot), pad: rectPoly(ts.x, ts.y, l + 2 * spec.clear, w + 2 * spec.clear, ts.rot), l: l, w: w, h: spec.folded.h + (spec.open.h - spec.folded.h) * open };
   }
   /* the opening a table goes through: between the two towers named by its gap, at the towers' line */
   function gapInfo(P, sc, id) {
-    var spec = P.tables[id], pair = spec.gap === 'CD' ? ['C', 'D'] : ['A', 'B'], st = P.stage;
+    var spec = P.tables[id], pair = spec.gap === 'CD' ? ['C', 'D'] : spec.gap === 'BC' ? ['B', 'C'] : ['A', 'B'], st = P.stage;
     var gl = geom(P, pair[0], sc.towers[pair[0]], st), gr = geom(P, pair[1], sc.towers[pair[1]], st);
     var all = function (g) { return g.poly.concat([].concat.apply([], g.prot.map(function (q) { return q.poly; }))); };
     var x0 = Math.max.apply(null, all(gl).map(function (p) { return p.x; })), x1 = Math.min.apply(null, all(gr).map(function (p) { return p.x; }));
@@ -146,23 +157,22 @@
   function tableRoute(P, id, a, b, sc) {
     if (b.via && b.via.length) return [{ x: a.x, y: a.y }].concat(b.via.map(function (p) { return { x: p.x, y: p.y }; }), [{ x: b.x, y: b.y }]);      // her own route
     if (Math.hypot(a.x - b.x, a.y - b.y) < 0.01) return [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
-    var st = P.stage, c = st.prosc / 2, line = towerLine(sc), pts = [{ x: a.x, y: a.y }];
-    if ((Math.abs(a.x) > c && a.y > 0) && (Math.abs(b.x) > c && b.y > 0) && a.x * b.x > 0) return [pts[0], { x: b.x, y: b.y }];      // within one wing
-    var slot = function (p) { return { x: (p.x < 0 ? -1 : 1) * (c - 1), y: st.curtain / 2 }; };      // a wing connects to the deck through the slot between the proscenium wall and the main curtain
-    var A = Math.abs(a.x) > c && a.y > 0 ? slot(a) : null, B = Math.abs(b.x) > c && b.y > 0 ? slot(b) : null;
-    if (A) pts.push({ x: (a.x < 0 ? -1 : 1) * (c + 1), y: st.curtain / 2 }, A);
-    var from = A || a, to = B || b;
-    if ((from.y > line) !== (to.y > line) && P.tables[id].gap) {
-      var g = gapInfo(P, sc, id), up = from.y > line, back = Math.max(g.y + 2.6, line + 2.6), front = g.y - 2.6;
-      pts.push({ x: g.x, y: up ? back : front }, { x: g.x, y: up ? front : back });
-    } else if (A && B === null && to.y < line && P.tables[id].gap) {      // from a wing to the deck in front of the towers: through its opening from behind
-      var g2 = gapInfo(P, sc, id); pts.push({ x: g2.x, y: A.y }, { x: g2.x, y: g2.y - 2.6 });
-    } else if (B && A === null && from.y < line && P.tables[id].gap) {
-      var g3 = gapInfo(P, sc, id); pts.push({ x: g3.x, y: g3.y - 2.6 }, { x: g3.x, y: B.y });
+    var st = P.stage, c = st.prosc / 2, line = towerLine(sc);
+    var where = function (p) { return Math.abs(p.x) > c && p.y > 0 ? 'wing' : p.y > st.curtain ? 'behind' : 'deck'; };
+    var wa = where(a), wb = where(b);
+    if (wa !== 'deck' && wa === wb && (wa === 'behind' || a.x * b.x > 0)) return [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];      // both offstage on the same side
+    var exit = function (p, w) {      // offstage → the deck just downstage of the main curtain
+      if (w === 'wing') { var k = p.x < 0 ? -1 : 1; return [{ x: k * (c + 1), y: st.curtain / 2 }, { x: k * (c - 1), y: st.curtain / 2 }]; }      // the slot between the proscenium wall and the curtain
+      if (w === 'behind') { var half = Math.max(0, st.curtainGap / 2 - P.tables[id].folded.w / 2 - P.tables[id].clear), gx = Math.max(-half, Math.min(half, p.x)); return [{ x: gx, y: st.curtain + 1.5 }, { x: gx, y: st.curtain - 0.6 }]; }      // through the curtain's center opening
+      return [];
+    };
+    var head = [{ x: a.x, y: a.y }].concat(exit(a, wa)), tail = exit(b, wb).reverse().concat([{ x: b.x, y: b.y }]);
+    var from = head[head.length - 1], to = tail[0], mid = [];
+    if ((from.y > line) !== (to.y > line) && P.tables[id].gap) {      // crossing the towers' line: through its opening
+      var g = gapInfo(P, sc, id), up = from.y > line, back = Math.min(st.curtain - 0.6, Math.max(g.y + 2.6, line + 2.6)), front = g.y - 2.6;
+      mid = up ? [{ x: g.x, y: back }, { x: g.x, y: front }] : [{ x: g.x, y: front }, { x: g.x, y: back }];
     }
-    if (B) pts.push(B, { x: (b.x < 0 ? -1 : 1) * (c + 1), y: st.curtain / 2 });
-    pts.push({ x: b.x, y: b.y });
-    return pts;
+    return head.concat(mid, tail);
   }
   function alongRoute(pts, u) {
     var L = [], tot = 0; for (var i = 1; i < pts.length; i++) { var d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); L.push(d); tot += d; }
@@ -174,7 +184,9 @@
     var out = [];
     TOWERS.forEach(function (t) { var g = geom(P, t, sc.towers[t], P.stage); out.push({ who: t, poly: g.poly }); g.prot.forEach(function (q) { out.push({ who: t, what: q.rim ? t + '’s rim' : t + '’s ' + (P.practicals[q.id].name || 'practical'), poly: q.poly }); }); });
     var c = P.stage.prosc / 2, y = P.stage.curtain;      // the closed main curtain, and the proscenium walls
-    out.push({ who: 'curtain', what: 'the closed main curtain', poly: [{ x: -c, y: y }, { x: c, y: y }, { x: c, y: y + 0.2 }, { x: -c, y: y + 0.2 }] });
+    var g = (P.stage.curtainGap || 0) / 2;      // the curtain opens at center for the tables
+    out.push({ who: 'curtain', what: 'the main curtain', poly: [{ x: -c, y: y }, { x: -g, y: y }, { x: -g, y: y + 0.2 }, { x: -c, y: y + 0.2 }] });
+    out.push({ who: 'curtain', what: 'the main curtain', poly: [{ x: g, y: y }, { x: c, y: y }, { x: c, y: y + 0.2 }, { x: g, y: y + 0.2 }] });
     [-1, 1].forEach(function (k) { out.push({ who: 'wall', what: 'the proscenium wall', poly: [{ x: k * c, y: -1 }, { x: k * (c + P.stage.wing), y: -1 }, { x: k * (c + P.stage.wing), y: 0 }, { x: k * c, y: 0 }] }); });
     return out;
   }
@@ -210,7 +222,27 @@
       if (sc.needTables && ts.state !== 'deployed') out.push({ lv: 'bad', t: [id], msg: 'Not ready: ' + spec.name + ' must be in place, unfolded and secured for this scene.' });
       if (ts.state === 'deployed' && f.poly.some(function (p) { return p.y < frontY(st, p.x) || p.y > st.curtain; })) out.push({ lv: 'bad', t: [id], msg: spec.name + ' is open off the deck.' });
     });
-    if (feet.T1 && feet.T2 && hit(feet.T1.poly, feet.T2.poly)) out.push({ lv: 'bad', t: ['T1', 'T2'], msg: 'Table 1 and Table 2 overlap.' });
+    if (feet.T1 && feet.T2 && hit(feet.T1.poly, feet.T2.poly) && !touching(feet.T1.poly, feet.T2.poly)) out.push({ lv: 'bad', t: ['T1', 'T2'], msg: 'Table 1 and Table 2 overlap.' });
+    formation(P, sc, feet, sol, out);
+    return out;
+  }
+  /* open tables: room for actors around the benches, and the open floor left for dancing (approximate) */
+  function formation(P, sc, feet, sol, out) {
+    var st = P.stage, open = TABLES.filter(function (id) { return feet[id] && sc.tables[id].state === 'deployed'; });
+    if (!open.length) return;
+    var gapTo = function (a, b) { var m = Infinity; a.forEach(function (p) { m = Math.min(m, polyDist(p, b)); }); b.forEach(function (p) { m = Math.min(m, polyDist(p, a)); }); return m; };
+    open.forEach(function (id) {
+      var f = feet[id].poly, name = P.tables[id].name;
+      sol.forEach(function (o) { if (o.who === 'curtain' || o.who === 'wall') return; var d = gapTo(f, o.poly); if (d > 0.01 && d < st.aisle) out.push({ lv: 'warn', t: [id, o.who], msg: 'Only ' + ft(d) + ' between ' + name + '’s bench and ' + (o.what || o.who) + '; actors need ' + ft(st.aisle) + (st.placeholder && st.placeholder.aisle ? ' (placeholder)' : '') + '.' }); });
+    });
+    if (open.length === 2) { var a = feet[open[0]].poly, b = feet[open[1]].poly, d = gapTo(a, b);
+      if (touching(a, b) && d < 0.05) out.push({ lv: 'info', t: open, msg: 'The tables are joined end to end: one long table.' });
+      else if (d < st.aisle) out.push({ lv: 'warn', t: open, msg: 'The aisle between the tables is ' + ft(d) + '; actors need ' + ft(st.aisle) + '.' });
+      else out.push({ lv: 'info', t: open, msg: 'Aisle between the tables: ' + ft(d) + '.' }); }
+    var front = Math.min.apply(null, TOWERS.map(function (t) { return Math.min.apply(null, geom(P, t, sc.towers[t], st).poly.map(function (p) { return p.y; })); })), cells = 0, free = 0, c = st.prosc / 2;
+    for (var x = -c + 0.25; x < c; x += 0.5) for (var y = front - 0.25; y > frontY(st, x); y -= 0.5) { cells++; var p = { x: x, y: y };
+      if (!open.some(function (id) { return inPoly(p, feet[id].pad); })) free++; }
+    out.push({ lv: 'info', t: open, msg: 'Open floor in front of the towers for dancing: about ' + Math.round(free * 0.25) + ' sq ft (of ' + Math.round(cells * 0.25) + '), outside the tables and their clearance.' });
     return out;
   }
   function ft(v) {      // 7.5 → 7′ 6″
@@ -235,7 +267,8 @@
       var a = from.tables && from.tables[id], b = to.tables && to.tables[id]; if (!a || !b) return;
       var open = a.state !== 'deployed' && b.state === 'deployed', fold = a.state === 'deployed' && b.state !== 'deployed';
       var route = tableRoute(P, id, a, b, open ? to : from), len = 0, own = !!(b.via && b.via.length); for (var i = 1; i < route.length; i++) len += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y);
-      tmoves.push({ id: id, from: a, to: b, route: route, dist: len < 0.01 ? 0 : len, open: open, fold: fold, own: own, via: !own && route.some(function (p) { return Math.abs(p.y - towerLine(open ? to : from)) < 3 && Math.abs(p.x - gapInfo(P, open ? to : from, id).x) < 0.01; }) ? P.tables[id].gap : '' });
+      var order = to.tableOrder || 'T1', span = order === 'together' ? [0, 1] : (order === id ? [0, 0.5] : [0.5, 1]);
+      tmoves.push({ id: id, span: span, from: a, to: b, route: route, dist: len < 0.01 ? 0 : len, open: open, fold: fold, own: own, via: !own && route.some(function (p) { return Math.abs(p.y - towerLine(open ? to : from)) < 3 && Math.abs(p.x - gapInfo(P, open ? to : from, id).x) < 0.01; }) ? P.tables[id].gap : '' });
     });
     var warn = [];
     moves.forEach(function (m) {
@@ -253,13 +286,16 @@
     });
     tmoves.forEach(function (tm) {
       if (!tm.dist) return;
-      var spec = P.tables[tm.id], sc = tm.open ? to : from, sol = solids(P, sc), bad = {};
-      for (var k = 0; k <= 60; k++) {      // slide the folded table (plus its clearance) along the route
-        var p = alongRoute(tm.route, k / 60), pad = rectPoly(p.x, p.y, spec.folded.l + 2 * spec.clear, spec.folded.w + 2 * spec.clear, p.a == null ? tm.from.rot : p.a);
-        if ((k === 0 && tm.from.state === 'deployed') || (k === 60 && tm.to.state === 'deployed')) continue;
+      var spec = P.tables[tm.id], sc = tm.open ? to : from, sol = solids(P, sc), bad = {}, inView = tm.from.state === 'deployed' && tm.to.state === 'deployed';
+      for (var k = 0; k <= 60; k++) {      // slide the table (folded, or open with its benches) plus its clearance along the route
+        var q = tableBetween(P, tm, k / 60); if ((k === 0 && tm.from.state === 'deployed' && !inView) || (k === 60 && tm.to.state === 'deployed' && !inView)) continue;
+        var pad = tableFoot(P, tm.id, q, q.k).pad;
         sol.forEach(function (o) { if (!bad[o.what || o.who] && polysOverlap(pad, o.poly)) bad[o.what || o.who] = 1; });
+        tmoves.forEach(function (o) { if (o.id <= tm.id || bad.both) return; var oq = tableBetween(P, o, k / 60), of = tableFoot(P, o.id, oq, oq.k), mine = tableFoot(P, tm.id, q, q.k);
+          var fa = tableFoot(P, tm.id, tm.to).poly, fb = tableFoot(P, o.id, o.to).poly, joins = polysOverlap(fa, fb) && touching(fa, fb);      // they end joined end to end: only a real overlap counts
+          if (polysOverlap(joins ? mine.poly : mine.pad, of.poly) && !touching(mine.poly, of.poly)) { bad.both = 1; warn.push({ lv: 'bad', t: [tm.id, o.id], msg: spec.name + ' and ' + P.tables[o.id].name + ' come within ' + ft(spec.clear) + ' of each other while moving (about ' + Math.round(k / 60 * 100) + '% of the way through). Change the order, a path or a spike.' }); } });
       }
-      Object.keys(bad).forEach(function (w) { warn.push({ lv: 'bad', t: [tm.id], msg: spec.name + '’s route (folded, with ' + ft(spec.clear) + ' clearance) runs into ' + w + (tm.open ? ' after the towers have moved' : ' before the towers move') + '.' }); });
+      Object.keys(bad).forEach(function (w) { if (w === 'both') return; warn.push({ lv: 'bad', t: [tm.id], msg: spec.name + '’s route (' + (inView ? 'open, benches included' : 'folded') + ', with ' + ft(spec.clear) + ' clearance) runs into ' + w + (inView ? '' : tm.open ? ' after the towers have moved' : ' before the towers move') + '.' }); });
       if (tm.via) { var g = gapInfo(P, sc, tm.id); warn.push({ lv: g.width + 1e-6 < g.need ? 'bad' : 'info', t: [tm.id], msg: 'The ' + g.pair.join('–') + ' opening is ' + ft(g.width) + ' wide; folded ' + spec.name + ' needs ' + ft(g.need) + ' (' + ft(spec.folded.w) + ' + ' + ft(spec.clear) + ' each side' + (spec.stand.folded ? ', stand-in size' : '') + ').' }); }
     });
     var seen = {}; warn = warn.filter(function (x) { return seen[x.msg] ? false : (seen[x.msg] = true); });
@@ -291,9 +327,18 @@
   }
   /* a table part-way through a change: folding first when it leaves, unfolding last when it arrives */
   function tableBetween(P, tm, u) {
+    if (tm.span) u = Math.max(0, Math.min(1, (u - tm.span[0]) / (tm.span[1] - tm.span[0])));      // its own part of the change
     var ease = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }, k = tm.from.state === 'deployed' ? 1 : 0, um = u, label;
     if (tm.fold) { k = 1 - ease(u / 0.25); um = (u - 0.25) / 0.75; label = u < 0.25 ? 'folding' : u < 1 ? 'returning' : TSTATE[tm.to.state]; }
     else if (tm.open) { um = u / 0.75; k = ease((u - 0.75) / 0.25); label = u < 0.6 ? 'in transit' : u < 0.75 ? 'positioning' : u < 1 ? 'unfolding' : 'deployed'; }
+    else if (tm.from.state === 'deployed' && tm.to.state === 'deployed') {      // an open table moved in view (CF-SEPARATE → CF-UNITED): clear, release, move and turn, secure
+      var turn = norm(tm.to.rot - tm.from.rot), R0 = tm.route, last = R0.length - 1, pp, ut, phase;
+      if (turn && last >= 2) {      // roll to its turning spot (the last bend), turn there, then slide onto the spike
+        var head = R0.slice(0, last), tail = R0.slice(last - 1);
+        if (u < 0.4) { pp = alongRoute(head, ease(u / 0.4)); ut = 0; phase = 'moving'; } else if (u < 0.7) { pp = R0[last - 1]; ut = ease((u - 0.4) / 0.3); phase = 'turning'; } else { pp = alongRoute(tail, ease((u - 0.7) / 0.3)); ut = 1; phase = 'moving'; }
+      } else { ut = turn ? ease(u * 2) : 1; pp = alongRoute(R0, turn ? ease(u * 2 - 1) : ease(u)); phase = turn && u < 0.5 ? 'turning' : 'moving'; }      // turn on its spot, then travel
+      return { x: pp.x, y: pp.y, rot: tm.from.rot + turn * ut, k: 1, label: u <= 0 ? 'clear performers, release' : u < 1 ? phase + ' (crew only)' : 'secured' };
+    }
     else label = tm.dist && u > 0 && u < 1 ? 'in transit' : TSTATE[tm.to.state];
     var p = alongRoute(tm.route, ease(um)), rot = tm.dist && um > 0 && um < 1 && p.a != null ? p.a : (um >= 1 ? tm.to.rot : tm.from.rot);
     return { x: p.x, y: p.y, rot: rot || 0, k: k, label: label };
@@ -325,13 +370,15 @@
       S(6, 'Theatre / detention', box, { notes: 'Painting furniture.', items: [{ id: 'pt', kind: 'prop', name: 'Painting furniture', x: 0, y: -5, w: 4, d: 2, rot: 0 }] }),
       S(7, 'Theatre / auditions', box),
       S(8, 'Hallway / callback list', hall, { notes: 'Darbus vignette: C turns C2 → C1 and locks; she posts and fusses with the callback list, then exits. Never send her through a turning tower.' }),
-      S(9, 'Cafeteria', cafe, { notes: 'A and D shift outward, leaving table passages between A–B and C–D. Table 1 enters through A–B, Table 2 through C–D, then they unfold.', needTables: true }),
+      S(9, 'Cafeteria', cafe, { notes: 'Stick to the Status Quo. A and D shift outward. Tables on CF-SEPARATE: side by side, lengths running up and downstage.', needTables: true, spike: 'CF-SEPARATE' }),
       S(10, 'Horticulture HQ', { A: { want: 'A2', x: -st.prosc / 2 + 3, y: -2.6 } }, { notes: 'A2 at the stage-right proscenium, with plants.', zones: ['hort'], items: [{ id: 'pl', kind: 'prop', name: 'Plants', x: -st.prosc / 2 - 2, y: -3, w: 3, d: 2, rot: 0 }] }),
       S(11, 'Study hall', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }, { notes: 'Adjustable.' }),
       S(12, 'Gym', { B: 'B3', C: 'C3', D: 'D1' }),
       S(13, 'Locker room / science (split)', { A: 'A2', C: 'C3' }),
       S(14, 'Theatre', box),
-      S(15, 'Cafeteria (wide)', cafe, { notes: 'Wide; two real tables. “We’re All in This Together”. The tables clear as soon as actors and light allow, before 16’s tower moves.', needTables: true }),
+      S(15, 'Cafeteria', cafe, { notes: 'We’re All in This Together, opening: exactly the scene 9 picture (same towers, CF-SEPARATE).', needTables: true, spike: 'CF-SEPARATE', same: 's9' }),
+      S(15, 'Cafeteria — united (at a cue you choose)', cafe, { alt: true, moment: true, cue: '', needTables: true, spike: 'CF-UNITED', same: 's9',
+        notes: 'Part of the choreography, in full view, not a hidden change. 1 Students clear the tables and their paths. 2 Trained table movers release the tables. 3 Each table turns 90° and travels its own path. 4 They arrive end to end (CF-UNITED). 5 Secured and checked stable. 6 Performers come back to the long sides and the ends, so it reads as one communal table (La Vie Bohème). Nobody sits, stands or rides on a moving table.' }),
       S(16, 'Science — theatre — gym (all at once)', { A: 'A2', B: box.B, C: box.C, D: 'D1' }, { notes: 'Non-negotiable: A2 science, B2+C2 theatre, D1 gym at the same time. Tables out; watch the hoop.' }),
       S(17, 'Gym / finale / bows', { B: 'B3', C: 'C3', D: 'D1' })
     ];
@@ -342,8 +389,8 @@
       TOWERS.forEach(function (t) { var s = sc.towers[t]; if (!s.want) s.want = t + '1'; s.rot = rotFor(P, t, s.want).rot; });
       sc.tables = {};      // both tables have a saved spot in every scene: in storage, or open on their spike marks for the cafeteria
       TABLES.forEach(function (id, n) {
-        var home = P.storage[n === 0 ? 0 : 1], spike = { x: n === 0 ? -6.5 : 6.5, y: -7.5 };
-        sc.tables[id] = sc.needTables ? { state: 'deployed', x: spike.x, y: spike.y, rot: 0, zone: '' } : { state: 'stored', x: home.x, y: home.y, rot: 90, zone: home.id };
+        var home = P.storage[0], sp = sc.spike && P.spikes[sc.spike][id];
+        sc.tables[id] = sp ? { state: 'deployed', x: sp.x, y: sp.y, rot: sp.rot, zone: '', spike: sc.spike, via: sc.spike === 'CF-UNITED' ? [{ x: sp.x + (n ? 4 : -2), y: sp.y }] : undefined } : { state: 'stored', x: home.x + (n ? 3 : -3), y: home.y, rot: 90, zone: home.id };
       });
       prev = sc;
     });
@@ -352,22 +399,39 @@
   function storageDefaults(st) {      // provisional homes: the two wings, and the strip between the towers and the main curtain (Colleen's first choice)
     var c = st.prosc / 2, back = st.curtain;
     return [
+      { id: 'upc', name: 'Upstage center, behind the main curtain', kind: 'upstage', x: 0, y: back + 4.5, w: 12, d: 7, masking: 'Hidden by the closed main curtain, which opens at center for the tables' },
       { id: 'srw', name: 'Stage-right wing', kind: 'wing', x: -c - 4, y: 4, w: 6, d: 6, masking: 'Offstage; hidden by the proscenium wall (assumed)' },
       { id: 'slw', name: 'Stage-left wing', kind: 'wing', x: c + 4, y: 4, w: 6, d: 6, masking: 'Offstage; hidden by the proscenium wall (assumed)' },
       { id: 'up', name: 'Behind the towers (upstage)', kind: 'upstage', x: 0, y: back - 0.6, w: 24, d: 1.2, masking: 'Hidden only while the towers stand in front of it (to test)' }
     ];
   }
-  function fresh() {
-    var P = { v: 1, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'during', tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
-    TOWERS.forEach(function (t) { P.towers[t] = { wind: 'ccw', confirmed: false }; });
+  /* table spike presets: a marked spot AND direction for each table (tape color, arrow and table number on the floor) */
+  function spikeDefaults(P) {
+    var t = P.tables.T1, L = t.open.l, y = -8.5;
+    return {
+      'CF-SEPARATE': { name: 'CF-SEPARATE', tape: 'blue', note: 'Scene 9, and scene 15 opening', T1: { x: -4.5, y: y, rot: 90 }, T2: { x: 4.5, y: y, rot: 90 } },
+      'CF-UNITED': { name: 'CF-UNITED', tape: 'green', note: 'Scene 15, the long banquet table', T1: { x: -L / 2, y: y - 4.5, rot: 0 }, T2: { x: L / 2, y: y - 4.5, rot: 0 } }
+    };
+  }
+  /* a table on a spike preset always stands exactly on it, and scenes linked with `same` keep identical towers */
+  function applySpikes(P) { P.scenes.forEach(function (sc) { TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id], sp = q && q.spike && P.spikes && P.spikes[q.spike]; if (sp && sp[id]) { q.x = sp[id].x; q.y = sp[id].y; q.rot = sp[id].rot; q.state = 'deployed'; } }); }); }
+  function applyLinks(P, edited) {
+    var byId = {}; P.scenes.forEach(function (sc) { byId[sc.id] = sc; });
+    if (edited && edited.same && byId[edited.same]) byId[edited.same].towers = JSON.parse(JSON.stringify(edited.towers));      // an edit to a linked scene changes the original too
+    P.scenes.forEach(function (sc) { if (sc.same && byId[sc.same] && sc !== byId[sc.same]) sc.towers = JSON.parse(JSON.stringify(byId[sc.same].towers)); });
+  }
+  function fresh() {      // diagram: Colleen 2026-10-25, her triangle diagram spins clockwise and 0° = face 2 flat to the audience
+    var P = { v: 2, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'during', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
+    TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
     P.storage = storageDefaults(P.stage);
+    P.spikes = spikeDefaults(P);
     P.scenes = library(P);
     return P;
   }
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

@@ -18,10 +18,18 @@
     var shown = T.show.periaktoi;
     P = shown && (!local || (shown.stamp || 0) >= (local.stamp || 0)) ? JSON.parse(JSON.stringify(shown)) : local || PK.fresh();
     if (local && shown && (local.stamp || 0) > (shown.stamp || 0)) queueSave();      // changes made here that never reached the server
+    if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
     if (cur >= P.scenes.length) cur = 0;
+  }
+  function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
+    var n = 0; for (var k = 0; k <= i; k++) if (!P.scenes[k].moment) n++;
+    return P.scenes[i].moment ? n + 'b' : String(n);
   }
   function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo = []; }
   function changed() {
+    var sc = scene();      // a table on a spike preset moves the preset (so 9 and the start of 15 stay identical); linked scenes keep identical towers
+    PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike && P.spikes[q.spike]) P.spikes[q.spike][id] = { x: q.x, y: q.y, rot: q.rot }; });
+    PK.applySpikes(P); PK.applyLinks(P, sc);
     P.stamp = Date.now();
     try { localStorage.setItem(LS, JSON.stringify(P)); } catch (e) {}
     queueSave(); draw();
@@ -133,6 +141,9 @@
   function overheadDyn() {
     var s = st(), sh = shown(), out = [], prev = !anim && prevScene(), Rr = PK.R(s);
     document.getElementById('pkZones').innerHTML = zonesSvg(sh.zones);
+    if (V.spikes) Object.keys(P.spikes || {}).forEach(function (k) { var sp = P.spikes[k], col = sp.tape === 'green' ? '#5fd38a' : '#5aa9ff';
+      PK.TABLES.forEach(function (id) { var q = sp[id]; if (!q) return; var a = q.rot * Math.PI / 180, L = P.tables[id].open.l / 2 - 0.6, x1 = q.x - Math.cos(a) * L, y1 = q.y - Math.sin(a) * L, x2 = q.x + Math.cos(a) * L, y2 = q.y + Math.sin(a) * L;
+        out.push('<g class="pk-tspike"><line x1="' + x1 + '" y1="' + (-y1) + '" x2="' + x2 + '" y2="' + (-y2) + '" stroke="' + col + '" marker-end="url(#pkArrow)"/><text x="' + q.x + '" y="' + (-q.y - 0.35) + '" class="pk-t" text-anchor="middle" fill="' + col + '" style="fill:' + col + '">' + id + ' · ' + esc(k) + '</text></g>'); }); });
     if (V.spikes) P.scenes.forEach(function (sc) { TW.forEach(function (t) { var q = sc.towers[t]; out.push('<g class="pk-spike"><path d="M' + (q.x - 0.25) + ',' + (-q.y) + 'h0.5M' + q.x + ',' + (-q.y - 0.25) + 'v0.5" stroke="' + COL[t] + '"/></g>'); }); });
     if (V.paths && prev) TW.forEach(function (t) {
       var a = prev.towers[t], b = sh.towers[t], g = PK.geom(P, t, a, s);
@@ -278,9 +289,9 @@
     var ch = prev ? PK.change(P, prev, sc) : null;
     document.getElementById('pkScenes').innerHTML = P.scenes.map(function (x, i) {
       var bad = PK.sceneChecks(P, x).some(function (m) { return m.lv === 'bad'; }) || (i && PK.change(P, P.scenes[i - 1], x).warn.length);
-      return '<button class="pk-sc' + (i === cur ? ' on' : '') + '" data-sc="' + i + '"><b>' + (i + 1) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
+      return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
-    document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + (i + 1) + '. ' + esc(x.name) + '</option>'; }).join('');
+    document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');
     document.getElementById('pkRight').innerHTML = scenePanel(sc) + (sel && TW.indexOf(sel) >= 0 ? towerPanel(sel) : sel && PK.TABLES.indexOf(sel) >= 0 ? tablePanel(sel) : sel ? itemPanel(sel) : '<p class="pk-help">Click a tower to select it. Click one of its faces (the colored edges) to turn that face to the audience. Drag a tower to move it; drag the round knob to turn it.</p>');
     document.getElementById('pkBottom').innerHTML = changePanel(ch, checks);
     document.getElementById('pkUndo').disabled = !undo.length; document.getElementById('pkRedo').disabled = !redo.length;
@@ -290,7 +301,11 @@
     drawViews();
   }
   function scenePanel(sc) {
-    return '<div class="pk-box"><label class="pk-f">Scene ' + (cur + 1) + '<input id="pkName" value="' + esc(sc.name) + '"></label>' +
+    var src = sc.same && P.scenes.find(function (x) { return x.id === sc.same; });
+    return '<div class="pk-box"><label class="pk-f">' + (sc.moment ? 'Moment ' + label(cur) + ' (inside the scene, in full view)' : 'Scene ' + label(cur)) + '<input id="pkName" value="' + esc(sc.name) + '"></label>' +
+      (sc.moment ? '<label class="pk-f">At this musical or choreographic cue<input id="pkCue" value="' + esc(sc.cue || '') + '" placeholder="e.g. after the second chorus"></label>' : '') +
+      (src ? '<p class="pk-help small">🔗 Towers are identical to scene ' + label(P.scenes.indexOf(src)) + ' (' + esc(src.name) + '): changing them here changes both. <button id="pkUnlink" class="pk-mini">Unlink</button></p>' : '') +
+      (cur ? '<label class="pk-f">Tables in the change into this ' + (sc.moment ? 'moment' : 'scene') + '<select id="pkOrder"><option value="T1"' + ((sc.tableOrder || 'T1') === 'T1' ? ' selected' : '') + '>Table 1 first, then Table 2</option><option value="T2"' + (sc.tableOrder === 'T2' ? ' selected' : '') + '>Table 2 first, then Table 1</option><option value="together"' + (sc.tableOrder === 'together' ? ' selected' : '') + '>Both at once</option></select></label>' : '') +
       '<label class="pk-f">Notes<textarea id="pkNotes" rows="3">' + esc(sc.notes || '') + '</textarea></label>' +
       '<div class="pk-row"><label><input type="checkbox" data-zone="hort"' + ((sc.zones || []).indexOf('hort') >= 0 ? ' checked' : '') + '> Horticulture HQ area</label><label><input type="checkbox" data-zone="nye"' + ((sc.zones || []).indexOf('nye') >= 0 ? ' checked' : '') + '> NYE karaoke area</label></div>' +
       '<div class="pk-row"><button data-add="table">+ Table</button><button data-add="plants">+ Plants</button><button data-add="prop">+ Other piece</button></div>' +
@@ -306,18 +321,20 @@
       '<p class="pk-help">The audience sees: <b>' + (f.kind === 'flat' ? f.faces[0] + ' (flat)' : f.kind === 'point' ? f.faces[0] + ' on the left, ' + f.faces[1] + ' on the right (point)' : esc(f.label)) + '</b></p>' +
       '<label class="pk-f">Facing<select id="pkWant">' + opts.join('') + '</select></label>' +
       '<div class="pk-row"><button data-turn="60" title="Q">⟲ 60°</button><button data-turn="-60" title="E">⟳ 60°</button><button data-turn="120" title="Shift+Q">⟲ 120°</button><button data-turn="-120" title="Shift+E">⟳ 120°</button></div>' +
-      '<p class="pk-help small">⟲ ⟳ = counterclockwise / clockwise as seen from above. Angle: ' + Math.round(((s.rot % 360) + 360) % 360) + '° (this planner: 0° = face ' + t + '1 straight to the audience, counting counterclockwise from above).</p>' +
+      '<p class="pk-help small">⟲ ⟳ = counterclockwise / clockwise as seen from above. In your triangle diagram: <b>' + PK.diagramAngle(P, t, s.rot) + '°</b> (0° = ' + t + '2 flat to the audience, counting ' + (P.diagram && P.diagram.dir === 'ccw' ? 'counterclockwise' : 'clockwise') + ').</p>' +
       '<div class="pk-row"><label class="pk-f half">Across (− = stage right)<input id="pkX" value="' + PK.ft(s.x) + '"></label><label class="pk-f half">Up/downstage of PL (− = downstage)<input id="pkY" value="' + PK.ft(s.y) + '"></label></div>' +
       '<div class="pk-f">Light' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '</div>' +
       '<div class="pk-f">Part in the scene' + seg('role', ['featured', 'supporting', 'masking'], ['Featured', 'Supporting', 'Masking / dark']) + '</div>' +
       '<div class="pk-f">Wheels' + seg('lock', [true, false], ['Locked', 'Rolling']) + '</div>' +
       '<details><summary>Faces on ' + t + '</summary><ul class="pk-faces">' + [1, 2, 3].map(function (k) { return '<li><b>' + t + k + '</b> ' + esc(PK.FACES[t + k]) + (art(t + k).real ? '' : ' <i>(placeholder art)</i>') + '</li>'; }).join('') + '</ul>' +
-      '<p class="pk-help small">Face order around ' + t + ': ' + (w ? '1 → 2 → 3 go <b>' + w + '</b> seen from above (confirmed).' : 'not confirmed yet. Set it in Stage & towers.') + '</p></details></div>';
+      '<p class="pk-help small">Face order around ' + t + ': ' + (w ? '1 → 2 → 3 go <b>' + w + '</b> seen from above (confirmed).' : 'taken from your triangle diagram (' + (P.towers[t].wind === 'cw' ? 'clockwise' : 'counterclockwise') + '); not checked on the real tower yet. Confirm it in Stage & towers.') + '</p></details></div>';
   }
   function tablePanel(id) {
     var ts = scene().tables[id], spec = P.tables[id], f = PK.tableFoot(P, id, ts);
     return '<div class="pk-box" style="border-color:#c9b48a"><h3 style="color:#e6d3a8">' + esc(spec.name) + '</h3>' +
       '<label class="pk-f">In this scene<select id="pkTState">' + Object.keys(PK.TSTATE).map(function (k) { return '<option value="' + k + '"' + (ts.state === k ? ' selected' : '') + '>' + PK.TSTATE[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="pk-f">Spike preset<select id="pkTSpike"><option value="">(none)</option>' + Object.keys(P.spikes || {}).map(function (k) { return '<option value="' + k + '"' + (ts.spike === k ? ' selected' : '') + '>' + esc(k) + ': ' + esc(P.spikes[k].note || '') + '</option>'; }).join('') + '</select></label>' +
+      (ts.spike ? '<p class="pk-help small">On ' + esc(ts.spike) + ' (' + esc(P.spikes[ts.spike].tape) + ' tape, arrow and table number). Moving it here moves that spike in every scene that uses it.</p>' : '') +
       '<label class="pk-f">Storage area<select id="pkTZone"><option value="">(not in a storage area)</option>' + (P.storage || []).map(function (z) { return '<option value="' + z.id + '"' + (ts.zone === z.id ? ' selected' : '') + '>' + esc(z.name) + '</option>'; }).join('') + '</select></label>' +
       '<div class="pk-row"><label class="pk-f half">Across (− = stage right)<input id="pkTX" value="' + PK.ft(ts.x) + '"></label><label class="pk-f half">Up/downstage of PL<input id="pkTY" value="' + PK.ft(ts.y) + '"></label></div>' +
       '<div class="pk-row"><button id="pkTRot" title="R">Turn 90°</button>' + (cur ? '<button id="pkTPrev">Same spot as the scene before</button>' : '') + '</div>' +
@@ -336,13 +353,15 @@
     if (!ch) out.push('<p class="pk-help">This is the first scene: what the audience sees when the show starts (the preset).</p>');
     else {
       var prev = prevScene(), moved = ch.moves.filter(function (m) { return m.dist || m.turn; });
-      out.push('<h3>Change into scene ' + (cur + 1) + ' (from ' + cur + '. ' + esc(prev.name) + ')</h3><div class="pk-row"><span>This change is</span><div class="pk-seg"><button data-status="proposed"' + (scene().status !== 'tested' ? ' class="on"' : '') + '>Proposed (on paper)</button><button data-status="tested"' + (scene().status === 'tested' ? ' class="on"' : '') + '>Tested on the real stage</button></div></div>');
+      out.push('<h3>Change into ' + (scene().moment ? 'moment ' : 'scene ') + label(cur) + ' (from ' + label(cur - 1) + '. ' + esc(prev.name) + ')</h3><div class="pk-row"><span>This change is</span><div class="pk-seg"><button data-status="proposed"' + (scene().status !== 'tested' ? ' class="on"' : '') + '>Proposed (on paper)</button><button data-status="tested"' + (scene().status === 'tested' ? ' class="on"' : '') + '>Tested on the real stage</button></div></div>');
       out.push('<table class="pk-tab"><tr><th>Tower</th><th>Was showing</th><th>Now showing</th><th>Travel</th><th>Turn</th></tr>' + ch.moves.map(function (m) {
         var w = winds(m.t), dirW = !m.turn ? '' : w ? (m.turn > 0 ? ' counterclockwise' : ' clockwise') + ' from above' : ' <span class="pk-dim">(direction waits for the face order)</span>';
         return '<tr' + (m.dist || m.turn ? '' : ' class="pk-dim"') + '><td style="color:' + COL[m.t] + '"><b>' + m.t + '</b></td><td>' + m.fromFace.replace('+', ' | ') + '</td><td>' + m.toFace.replace('+', ' | ') + '</td><td>' + (m.dist ? PK.ft(m.dist) : 'stays') + '</td><td>' + (m.turn ? Math.abs(Math.round(m.turn)) + '°' + dirW : 'no turn') + '</td></tr>';
       }).join('') + '</table>');
       if (ch.tmoves.length) out.push('<table class="pk-tab"><tr><th>Table</th><th>Was</th><th>Now</th><th>Route</th><th>Steps</th></tr>' + ch.tmoves.map(function (m) {
-        var spec = P.tables[m.id], steps = [m.fold ? 'clear performers, fold, secure' : '', m.dist ? 'roll ' + PK.ft(m.dist) + (m.via ? ' through the ' + m.via.split('').join('–') + ' opening' : '') : '', m.open ? 'unfold, lock, secure' : ''].filter(Boolean);
+        var spec = P.tables[m.id], inView = m.from.state === 'deployed' && m.to.state === 'deployed' && m.dist, tr = Math.abs(Math.round(PK.norm(m.to.rot - m.from.rot)));
+        var steps = inView ? ['students clear the table and its path', 'release', 'roll ' + PK.ft(m.dist), tr ? 'turn ' + tr + '°' : '', 'onto ' + (m.to.spike || 'its spike'), 'secure and check it is stable'].filter(Boolean)
+          : [m.fold ? 'clear performers, fold, secure' : '', m.dist ? 'roll ' + PK.ft(m.dist) + (m.via ? ' through the ' + m.via.split('').join('–') + ' opening' : '') : '', m.open ? 'unfold, lock, secure' : ''].filter(Boolean);
         return '<tr' + (steps.length ? '' : ' class="pk-dim"') + '><td><b>' + esc(spec.name) + '</b></td><td>' + PK.TSTATE[m.from.state] + '</td><td>' + PK.TSTATE[m.to.state] + '</td><td>' + (m.dist ? PK.ft(m.dist) : 'stays') + '</td><td>' + (steps.join(', then ') || '—') + (spec.crew > 1 && steps.length ? ' <span class="pk-dim">(' + spec.crew + ' people' + (spec.stand.crew ? ', stand-in' : '') + ')</span>' : '') + '</td></tr>';
       }).join('') + '</table>');
       out.push('<p class="pk-help">' + moved.length + ' of 4 towers change · ' + Math.round(ch.total) + '° of turning · ' + PK.ft(ch.travel) + ' of travel. Fewest moves is not automatically best: the picture matters more.</p>');
@@ -354,7 +373,7 @@
       }).join('') + '</ul>');
     }
     var bad = list.filter(function (m) { return m.lv === 'bad'; }).length;
-    out.unshift('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ Scene ' + (cur + 1) + ' is not ready: ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to fix below.' : '✓ Scene ' + (cur + 1) + ': no clashes found by the checks.') + '</p>');
+    out.unshift('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + label(cur) + ' is not ready: ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to fix below.' : '✓ ' + label(cur) + ': no clashes found by the checks.') + '</p>');
     if (list.length) out.push('<ul class="pk-warn">' + list.map(function (m) { return '<li class="' + m.lv + '">' + (m.lv === 'bad' ? '⚠ ' : 'ⓘ ') + esc(m.msg) + '</li>'; }).join('') + '</ul>');
     out.push('<p class="pk-help small">Checks are advice from simple geometry, not proof: test every change on the real stage.</p>');
     return out.join('');
@@ -363,6 +382,9 @@
     var $ = function (id) { return document.getElementById(id); }, sc = scene();
     app.querySelectorAll('[data-sc]').forEach(function (b) { b.onclick = function () { stop(); cur = +b.dataset.sc; draw(); }; });
     var nm = $('pkName'); if (nm) nm.onchange = function () { snap(); sc.name = nm.value.trim() || sc.name; changed(); };
+    if ($('pkCue')) $('pkCue').onchange = function () { snap(); sc.cue = this.value.trim(); changed(); };
+    if ($('pkUnlink')) $('pkUnlink').onclick = function () { snap(); delete sc.same; changed(); };
+    if ($('pkOrder')) $('pkOrder').onchange = function () { snap(); sc.tableOrder = this.value; stop(); changed(); };
     var nt = $('pkNotes'); if (nt) nt.onchange = function () { snap(); sc.notes = nt.value; changed(); };
     app.querySelectorAll('[data-zone]').forEach(function (cb) { cb.onchange = function () { snap(); var z = sc.zones = (sc.zones || []).filter(function (x) { return x !== cb.dataset.zone; }); if (cb.checked) z.push(cb.dataset.zone); changed(); }; });
     app.querySelectorAll('[data-add]').forEach(function (b) { b.onclick = function () {
@@ -381,8 +403,9 @@
       ['lit', 'role', 'lock'].forEach(function (k) { app.querySelectorAll('[data-' + k + ']').forEach(function (b) { b.onclick = function () { snap(); var v = b.dataset[k]; s[k] = k === 'lock' ? v === 'true' : v; changed(); }; }); });
     } else if (sel && PK.TABLES.indexOf(sel) >= 0) {
       var tb = sc.tables[sel], tid = sel;
-      $('pkTState').onchange = function () { snap(); tb.state = this.value; changed(); };
-      $('pkTZone').onchange = function () { snap(); tb.zone = this.value; var z = (P.storage || []).find(function (q) { return q.id === tb.zone; }); if (z) { tb.x = z.x; tb.y = z.y; if (tb.state === 'deployed') tb.state = 'stored'; } changed(); };
+      $('pkTState').onchange = function () { snap(); tb.state = this.value; if (tb.state !== 'deployed') delete tb.spike; changed(); };
+      $('pkTSpike').onchange = function () { snap(); if (this.value) { var sp = P.spikes[this.value][tid]; tb.spike = this.value; tb.state = 'deployed'; tb.x = sp.x; tb.y = sp.y; tb.rot = sp.rot; tb.zone = ''; } else delete tb.spike; changed(); };
+      $('pkTZone').onchange = function () { snap(); tb.zone = this.value; delete tb.spike; var z = (P.storage || []).find(function (q) { return q.id === tb.zone; }); if (z) { tb.x = z.x; tb.y = z.y; if (tb.state === 'deployed') tb.state = 'stored'; } changed(); };
       var tpos = function (id, k) { $(id).onchange = function () { var v = PK.parseFt(this.value); if (v == null) return draw(); snap(); tb[k] = v; changed(); }; };
       tpos('pkTX', 'x'); tpos('pkTY', 'y');
       $('pkTRot').onclick = function () { snap(); tb.rot = ((tb.rot || 0) + 90) % 360; changed(); };
@@ -507,14 +530,16 @@
       F.map(function (f) { return '<label class="f">' + f[1] + (s.placeholder && s.placeholder[f[0]] ? ' <i>(placeholder)</i>' : '') + '<input data-st="' + f[0] + '" value="' + PK.ft(s[f[0]]) + '"></label>'; }).join('') +
       '<h3>Face order on each tower</h3><p class="muted small">Look down on the tower from above: do faces 1 → 2 → 3 go clockwise or counterclockwise? This decides which face shows on the left in a point and which way each turn goes. Until you tick "confirmed", the planner never names a turning direction.</p>' +
       TW.map(function (t) { var w = P.towers[t]; return '<div class="row"><b style="min-width:2em">' + t + '</b><select data-wind="' + t + '"><option value="ccw"' + (w.wind !== 'cw' ? ' selected' : '') + '>counterclockwise</option><option value="cw"' + (w.wind === 'cw' ? ' selected' : '') + '>clockwise</option></select><label><input type="checkbox" data-conf="' + t + '"' + (w.confirmed ? ' checked' : '') + '> confirmed</label></div>'; }).join('') +
+      '<h3>Your triangle diagram</h3><p class="muted small">0° = face 2 flat to the audience. Its angles count: <select id="stDiag"><option value="cw"' + (P.diagram && P.diagram.dir === 'ccw' ? '' : ' selected') + '>clockwise</option><option value="ccw"' + (P.diagram && P.diagram.dir === 'ccw' ? ' selected' : '') + '>counterclockwise</option></select> (seen from above). Each tower shows its angle in these numbers.</p>' +
       '<div class="row" style="margin-top:14px"><button class="btn primary" id="stOk">Save</button><button class="btn" id="stNo">Cancel</button><button class="btn" id="stReset">Start over with the 17-scene library…</button></div>', function (d) {
       d.querySelector('#stNo').onclick = function () { d.close(); };
-      d.querySelector('#stReset').onclick = function () { if (!confirm('Replace every scene with the starting 17-scene library? (Undo brings yours back.)')) return; snap(); P.scenes = PK.library(P); cur = 0; sel = null; d.close(); rebuild(); changed(); };
+      d.querySelector('#stReset').onclick = function () { if (!confirm('Replace every scene with the starting 17-scene library? (Undo brings yours back.)')) return; snap(); P.spikes = PK.spikeDefaults(P); P.scenes = PK.library(P); cur = 0; sel = null; d.close(); rebuild(); changed(); };
       d.querySelector('#stOk').onclick = function () {
         snap();
         d.querySelectorAll('[data-st]').forEach(function (i) { var v = PK.parseFt(i.value), k = i.dataset.st; if (v != null && v >= 0 && Math.abs(v - s[k]) > 1e-6) { s[k] = v; if (s.placeholder) delete s.placeholder[k]; } });
         d.querySelectorAll('[data-wind]').forEach(function (x) { var t = x.dataset.wind; if (P.towers[t].wind !== x.value) { P.towers[t].wind = x.value; PK.rewind(P, t); } });
         d.querySelectorAll('[data-conf]').forEach(function (x) { P.towers[x.dataset.conf].confirmed = x.checked; });
+        P.diagram = { dir: d.querySelector('#stDiag').value, confirmed: true };
         d.close(); rebuild(); changed();
       };
     });
@@ -573,7 +598,7 @@
     return P.scenes.map(function (sc, i) {
       var ch = i ? PK.change(P, P.scenes[i - 1], sc) : null, bad = PK.sceneChecks(P, sc).concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length;
       var tw = TW.map(function (t) { var q = sc.towers[t]; return { t: t, face: PK.facing(P, t, q.rot).label.replace('+', ' | '), at: PK.ft(q.x) + ', ' + PK.ft(q.y), lit: q.lit, lock: q.lock ? 'locked' : 'rolling' }; });
-      var tb = PK.TABLES.map(function (id) { var q = sc.tables[id]; return { id: id, state: PK.TSTATE[q.state], at: PK.ft(q.x) + ', ' + PK.ft(q.y), zone: ((P.storage || []).find(function (z) { return z.id === q.zone; }) || {}).name || '', route: q.via && q.via.length ? 'own route' : 'automatic route' }; });
+      var tb = PK.TABLES.map(function (id) { var q = sc.tables[id]; return { id: id, state: PK.TSTATE[q.state], at: PK.ft(q.x) + ', ' + PK.ft(q.y), zone: ((P.storage || []).find(function (z) { return z.id === q.zone; }) || {}).name || '', route: q.via && q.via.length ? 'own route' : 'automatic route', spike: q.spike || '' }; });
       var score = ch ? PK.crewJobs(P, ch, P.crew || 4).filter(function (c) { return c.jobs.length || c.tjobs.length; }).map(function (c) {
         return c.name + ': ' + c.jobs.map(function (m) { return m.t + ' ' + [m.dist ? 'roll ' + PK.ft(m.dist) : '', m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''].filter(Boolean).join(', then '); })
           .concat(c.tjobs.map(function (m) { return P.tables[m.id].name + ' ' + (m.open ? 'in and unfold' : m.fold ? 'fold and out' : 'move'); })).join('; ');
@@ -586,9 +611,9 @@
     return '<div class="pk-view pk-ledger"><div class="pk-vt">Every scene: where every tower and table is (proposed until tested on the real stage; sizes marked stand-in are not measured)</div><div class="pk-row" style="padding:6px 10px"><button id="pkCsv">Download the ledger (spreadsheet)</button><span class="pk-help small">Crew of ' + (P.crew || 4) + ' (change it under any scene change).</span></div>' +
       '<table class="pk-tab"><tr><th>#</th><th>Scene</th>' + TW.map(function (t) { return '<th style="color:' + COL[t] + '">' + t + '</th>'; }).join('') + '<th>Table 1</th><th>Table 2</th><th>Change into it: preliminary movement score</th><th>Status</th></tr>' +
       rows.map(function (r) {
-        return '<tr><td>' + r.n + '</td><td><b>' + esc(r.sc.name) + '</b>' + (r.items.length ? '<br><span class="pk-dim">' + esc(r.items.join(', ')) + '</span>' : '') + '</td>' +
+        return '<tr' + (r.sc.moment ? ' class="pk-moment"' : '') + '><td>' + label(r.n - 1) + '</td><td><b>' + esc(r.sc.name) + '</b>' + (r.items.length ? '<br><span class="pk-dim">' + esc(r.items.join(', ')) + '</span>' : '') + '</td>' +
           r.tw.map(function (x) { return '<td>' + x.face + '<br><span class="pk-dim">' + x.at + ' · ' + x.lit + '</span></td>'; }).join('') +
-          r.tb.map(function (x) { return '<td>' + x.state + '<br><span class="pk-dim">' + (x.zone ? esc(x.zone) : x.at) + '</span></td>'; }).join('') +
+          r.tb.map(function (x) { return '<td>' + x.state + '<br><span class="pk-dim">' + (x.spike ? esc(x.spike) : x.zone ? esc(x.zone) : x.at) + '</span></td>'; }).join('') +
           '<td>' + (r.score.length ? r.score.map(esc).join('<br>') : r.n === 1 ? 'Preset' : '<span class="pk-dim">nothing moves</span>') + '</td><td>' + r.status + (r.bad ? '<br><span class="pk-bad">⚠ ' + r.bad + ' to fix</span>' : '') + '</td></tr>';
       }).join('') + '</table></div>';
   }
@@ -596,7 +621,7 @@
     var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }, lines = [];
     lines.push(['Scene', 'Name'].concat([].concat.apply([], TW.map(function (t) { return [t + ' showing', t + ' position (across, up/downstage)', t + ' light', t + ' wheels']; })), ['Table 1', 'Table 1 position', 'Table 1 storage', 'Table 1 route', 'Table 2', 'Table 2 position', 'Table 2 storage', 'Table 2 route', 'Other pieces', 'Movement score (change into this scene)', 'Status', 'Problems found', 'Notes']).map(q).join(','));
     ledgerRows().forEach(function (r) {
-      lines.push([r.n, r.sc.name].concat([].concat.apply([], r.tw.map(function (x) { return [x.face, x.at, x.lit, x.lock]; })), [].concat.apply([], r.tb.map(function (x) { return [x.state, x.at, x.zone, x.route]; })), [r.items.join('; '), r.score.join(' / '), r.status, r.bad, r.sc.notes || '']).map(q).join(','));
+      lines.push([label(r.n - 1), r.sc.name + (r.sc.cue ? ' (at: ' + r.sc.cue + ')' : '')].concat([].concat.apply([], r.tw.map(function (x) { return [x.face, x.at, x.lit, x.lock]; })), [].concat.apply([], r.tb.map(function (x) { return [x.state, x.at, x.zone, x.route]; })), [r.items.join('; '), r.score.join(' / '), r.status, r.bad, r.sc.notes || '']).map(q).join(','));
     });
     var b = new Blob([lines.join('\n')], { type: 'text/csv' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'periaktoi-ledger.csv'; document.body.appendChild(a); a.click(); a.remove();
   }

@@ -614,3 +614,4 @@ dialog input.stand { background: var(--warn-bg); }
 .pk-route.sel { stroke: #fff; stroke-width: 0.12; } .pk-wp { fill: #e6d3a8; stroke: #000; stroke-width: 0.06; cursor: grab; }
 .pk-ledger { overflow: auto; max-height: 82vh; } .pk-ledger .pk-tab td { vertical-align: top; font-size: 12px; }
 .pk .pk-mini { min-height: 0; padding: 1px 8px; font-size: 11px; margin-left: 6px; } .pk-t.store { fill: #b8a57f; font-size: 0.6px; }
+.pk-sc.moment { margin-left: 14px; width: calc(100% - 14px); border-style: dashed; } .pk-tspike line { stroke-width: 0.12; opacity: .85; } .pk-moment td { background: rgba(95,211,138,.06); }
