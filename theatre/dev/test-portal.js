@@ -54,4 +54,22 @@ ok(sh2.portal.conflict.a1.dates.join() === '2027-12-04' && JSON.stringify(sh2).i
 C.takeNote(V2, sh2, { type: 'portal', kind: 'conflicts', actor: 'a1', data: { answers: { '2027-12-04': 'ok', '2027-12-08': 'ok' } }, _at: '2027-08-19' }, ids);
 ok(sh2.portal.conflict.a1.dates.length === 0, 'sending again with no conflicts clears them');
 ok(C.WEEK.some(w => w.date === '2027-12-08' && /3:30/.test(w.what)) && !C.WEEK.some(w => w.date === '2027-12-07') && C.DEF_COMMIT.some(t => /Wednesday, December 8/.test(t)) && !C.DEF_COMMIT.some(t => /December 7\b/.test(t)), 'the full dress is Wed Dec 8 (3:30–8 PM), plus Sat Dec 4');
+// long absences (more than a week) on the conflicts form
+const tc = C.clean('conflicts', { answers: { '2027-12-04': 'ok' }, trips: [{ from: '2027-10-04', to: '2027-10-15', note: 'family trip' }, { from: '2027-11-10', to: '2027-11-01' }, { from: 'x', to: '2027-11-01' }] });
+ok(tc.trips.length === 1 && tc.trips[0].note === 'family trip', 'trips: only real date ranges (from before to)');
+const V3 = { extra: {} }, sh3 = {};
+C.takeNote(V3, sh3, { type: 'portal', kind: 'conflicts', actor: 'a1', data: tc, _at: '2027-08-17' }, ids);
+ok(sh3.portal.conflict.a1.trips[0].from === '2027-10-04' && !sh3.portal.conflict.a1.trips[0].note && V3.extra.portal.a1.conflicts.trips[0].note === 'family trip', 'the show keeps the trip dates for Casting; the words stay in the vault');
+// the final schedule replaces the old default wording once (saved shows)
+ok(C.WEEK.some(w => w.date === '2027-12-10' && /call time 5:00 PM/.test(w.what)) && C.DEF_COMMIT.some(t => /two school-day shows/.test(t) && /call time 5:00 PM/.test(t)), 'final schedule: two school shows, 5 PM call, 7 PM curtain');
+const old = { portal: { commitItems: [C.OLD_COMMIT[0], C.OLD_COMMIT[1], C.OLD_COMMIT[2], 'Our own extra line'], weekDates: [{ date: '2027-12-07', what: 'x' }, { date: '2027-12-10', what: C.OLD_WEEK[4] }] },
+  mail: { dates: [{ date: '2027-11-29', what: 'Final weeks' }, { date: '2027-12-07', what: 'The full dress rehearsal, after school (required)' }, { date: '2027-12-10', what: 'Evening show at 7:00 PM' }, { date: '2027-10-13', what: 'Field trip (all families)' }] },
+  production: { performances: [{ id: 'e1', date: '2027-12-10', time: '19:00', kind: 'evening', notes: '' }] } };
+ok(C.migrate(old) === true, 'an old saved show is updated');
+ok(old.portal.commitItems.length === 5 && old.portal.commitItems.indexOf('Our own extra line') >= 0 && !old.portal.commitItems.some(t => /December 7\b/.test(t)) && old.portal.commitItems.includes(C.DEF_COMMIT[2]), 'commitment: old default lines replaced, her own lines kept');
+ok(!old.portal.weekDates.some(w => w.date === '2027-12-07') && /call time/.test(old.portal.weekDates[0].what), 'conflict dates: Dec 7 gone, new wording');
+ok(!old.mail.dates.some(d => d.date === '2027-12-07') && ['2027-12-04', '2027-12-08', '2027-12-09', '2027-12-11'].every(k => old.mail.dates.some(d => d.date === k)) && old.mail.dates.find(d => d.date === '2027-12-10').what === 'Evening show: call time 5:00 PM, curtain 7:00 PM' && old.mail.dates.some(d => d.date === '2027-10-13'), 'reminder dates: the final schedule, her other dates kept');
+const pf = old.production.performances;
+ok(pf.filter(p => p.date === '2027-12-09').length === 2 && pf.filter(p => p.kind === 'evening').length === 2 && pf.find(p => p.id === 'e1').notes === 'Call time 5:00 PM', 'performances: two school-day shows, both evenings, call time noted (nothing removed)');
+ok(C.migrate(old) === false, 'running it again changes nothing');
 process.exit(bad ? 1 : 0);

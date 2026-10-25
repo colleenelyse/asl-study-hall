@@ -133,8 +133,9 @@
      up for, with what they're bringing), an email `days` days before. One email per address per date and lead time. Only the next `horizon` days are
      scheduled each time; Teacher mode sends the list to the school-account script, which sends them each morning. ---------- */
   var DEF_DATES = [{ date: '2027-11-29', what: 'The final rehearsal weeks begin: please make being at school every day a priority, through Friday, December 10' },
-    { date: '2027-12-04', what: 'The Saturday rehearsal, 12:00 to 5:00 PM (required)' }, { date: '2027-12-08', what: 'The full dress rehearsal, after school, 3:30 to 8:00 PM (required)' }, { date: '2027-12-09', what: 'The school-day shows (in school all day)' },
-    { date: '2027-12-10', what: 'Evening show at 7:00 PM' }, { date: '2027-12-11', what: 'Evening show at 7:00 PM' }];
+    { date: '2027-12-04', what: 'The long Saturday rehearsal, 12:00 to 5:00 PM (required)' }, { date: '2027-12-08', what: 'The final dress rehearsal, after school, 3:30 to 8:00 PM (required)' },
+    { date: '2027-12-09', what: 'The two school-day shows, morning and afternoon (in school all day)' },
+    { date: '2027-12-10', what: 'Evening show: call time 5:00 PM, curtain 7:00 PM' }, { date: '2027-12-11', what: 'Evening show: call time 5:00 PM, curtain 7:00 PM' }];
   var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
   var ymd = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
   var addDays = function (s, n) { var a = s.split('-'), d = new Date(+a[0], +a[1] - 1, +a[2]); d.setDate(d.getDate() + n); return ymd(d); };

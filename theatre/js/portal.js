@@ -21,11 +21,16 @@
   var KINDS = ['fit', 'sizes', 'sensory', 'commit', 'video', 'contact', 'conflicts'];
   /* show-week dates families check for conflicts during audition week, before the cast list (Colleen 2026-10-25: "you can't be troy if you're out of
      town for any of these dates"; casting decides case by case, but every conflict shows on the Casting pages). Teacher-editable: T.show.portal.weekDates */
-  var WEEK = [{ date: '2027-12-04', what: 'Saturday, December 4, 12:00–5:00 PM: rehearsal (the Saturday before the shows)' },
-    { date: '2027-12-06', what: 'Monday, December 6 to Friday, December 10: in school every day of show week' },
-    { date: '2027-12-08', what: 'Wednesday, December 8, 3:30–8:00 PM: the full dress rehearsal, after school' },
-    { date: '2027-12-09', what: 'Thursday, December 9: in school for the school-day shows (morning and afternoon)' },
-    { date: '2027-12-10', what: 'Friday, December 10, 7:00 PM: evening show' }, { date: '2027-12-11', what: 'Saturday, December 11, 7:00 PM: evening show' }];
+  var WEEK = [{ date: '2027-12-04', what: 'Saturday, December 4, 12:00–5:00 PM: long rehearsal (outside class)' },
+    { date: '2027-12-06', what: 'Monday, December 6 to Friday, December 10: in school every day of show week (show-week rehearsals happen in class)' },
+    { date: '2027-12-08', what: 'Wednesday, December 8, 3:30–8:00 PM: the final dress rehearsal, after school' },
+    { date: '2027-12-09', what: 'Thursday, December 9: two school-day shows, morning and afternoon (in school all day)' },
+    { date: '2027-12-10', what: 'Friday, December 10: evening show (call time 5:00 PM, curtain 7:00 PM)' },
+    { date: '2027-12-11', what: 'Saturday, December 11: evening show (call time 5:00 PM, curtain 7:00 PM)' }];
+  /* earlier default wording, changed once in a saved show (T.portalMigrate) */
+  var OLD_WEEK = ['Saturday, December 4, 12:00–5:00 PM: rehearsal (the Saturday before the shows)', 'Monday, December 6 to Friday, December 10: in school every day of show week',
+    'Wednesday, December 8, 3:30–8:00 PM: the full dress rehearsal, after school', 'Thursday, December 9: in school for the school-day shows (morning and afternoon)',
+    'Friday, December 10, 7:00 PM: evening show', 'Saturday, December 11, 7:00 PM: evening show'];
   var MAIL_OPTS = [['general', 'News and requests from the teacher (volunteer needs, show dates, reminders)'], ['mine', 'Changes for my Company member (a new role, song or solo, new dance videos, the week’s plan)'],
     ['copies', 'A copy of every email my Company member gets from the app']];
   var SIZE_FIELDS = [
@@ -56,11 +61,18 @@
   var VIDEO = { yes: 'Yes: film and share inside the class', class: 'Film for teaching only, not shared with the Company', no: 'No filming, please' };
   var DEF_VIDEO = 'To help everyone learn, we film rehearsals such as dance numbers and scene runs. The videos are for teaching only: the Company and the teachers watch them in the app (locked with the show’s password) or in the school’s Google Drive to practice. They are never posted publicly or on social media, and they are deleted after the show.';
   var DEF_COMMIT = [
+    'My Company member will make it a priority to be at school every day of the final rehearsal weeks, Monday, November 29 through Friday, December 10, 2027 (show-week rehearsals happen in class: Act 1 on Monday, Act 2 on Tuesday, clean-up on Wednesday).',
+    'My Company member will be at the long Saturday rehearsal on December 4, 2027, from 12:00 to 5:00 PM.',
+    'My Company member will be at the final dress rehearsal on Wednesday, December 8, 2027, after school from 3:30 to 8:00 PM.',
+    'My Company member will be at every performance: the two school-day shows on Thursday, December 9, 2027 (morning and afternoon), and the evening shows on Friday, December 10 and Saturday, December 11, 2027 (call time 5:00 PM, curtain 7:00 PM).',
+    'We will tell the teacher as early as we can if something makes one of these dates impossible.'];
+  var OLD_COMMIT = [
     'My Company member will make it a priority to be at school every day of the final rehearsal weeks, Monday, November 29 through Friday, December 10, 2027 (dress rehearsals happen in class).',
+    'My Company member will be at the one required after-school rehearsal: the full dress rehearsal on Tuesday, December 7, 2027, after school.',
+    'My Company member will be at every performance: the school-day show on Thursday, December 9, 2027, and the evening shows on Friday, December 10 and Saturday, December 11, 2027, at 7:00 PM.',
     'My Company member will be at the Saturday rehearsal on December 4, 2027, from 12:00 to 5:00 PM.',
     'My Company member will be at the full dress rehearsal on Wednesday, December 8, 2027, after school from 3:30 to 8:00 PM.',
-    'My Company member will be at every performance: the school-day shows on Thursday, December 9, 2027, and the evening shows on Friday, December 10 and Saturday, December 11, 2027, at 7:00 PM.',
-    'We will tell the teacher as early as we can if something makes one of these dates impossible.'];
+    'My Company member will be at every performance: the school-day shows on Thursday, December 9, 2027, and the evening shows on Friday, December 10 and Saturday, December 11, 2027, at 7:00 PM.'];
   var NOTE_MAX = 3600;      // the server takes a sealed note up to 5000 characters: about 3700 characters of form
   var str = function (v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n); };
   var isDate = function (s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); };
@@ -90,7 +102,9 @@
       var ans = {}, notes = {}, n = 0;
       Object.keys(d.answers || {}).slice(0, 12).forEach(function (k) { if (isDate(k) && (d.answers[k] === 'ok' || d.answers[k] === 'no')) { ans[k] = d.answers[k]; n++; if (d.answers[k] === 'no') { var t = str((d.notes || {})[k], 120); if (t) notes[k] = t; } } });
       if (!n) return null;
-      return { answers: ans, notes: notes, signer: str(d.signer, 80), note: str(d.note, 240) };
+      // long absences this semester (Colleen: "only looking for huge over a week problems"): { from, to, note }, at most 6
+      var trips = (Array.isArray(d.trips) ? d.trips : []).filter(function (t) { return t && isDate(t.from) && isDate(t.to) && t.from <= t.to; }).slice(0, 6).map(function (t) { return { from: t.from, to: t.to, note: str(t.note, 120) }; });
+      return { answers: ans, notes: notes, trips: trips, signer: str(d.signer, 80), note: str(d.note, 240) };
     }
     if (kind === 'contact') {      // email updates (mail.js): no box ticked = stop emails to this address
       var em = str(d.email, 120);
@@ -121,7 +135,7 @@
       r.contacts = r.contacts.slice(-6);
       r.contact = { at: at, stamp: data.stamp };
     } else r[n.kind] = data;
-    if (n.kind === 'conflicts') { var spc = show.portal = show.portal || {}, cfl = spc.conflict = spc.conflict || {}; cfl[n.actor] = { at: at, dates: Object.keys(data.answers).filter(function (k) { return data.answers[k] === 'no'; }).sort() }; }      // the dates only, for the Casting pages
+    if (n.kind === 'conflicts') { var spc = show.portal = show.portal || {}, cfl = spc.conflict = spc.conflict || {}; cfl[n.actor] = { at: at, dates: Object.keys(data.answers).filter(function (k) { return data.answers[k] === 'no'; }).sort(), trips: (data.trips || []).map(function (t) { return { from: t.from, to: t.to }; }) }; }      // the dates only, for the Casting pages
     var sp = show.portal = show.portal || {}, g = sp.got = sp.got || {}; (g[n.actor] = g[n.actor] || {})[n.kind] = at || 'yes';
     return true;
   }
@@ -147,7 +161,36 @@
     var out = []; keys.forEach(function (k) { if (!m[k[0]]) return; if (k[0] === 'shoeWidth') { if (out.length && /^shoes /.test(out[out.length - 1])) out[out.length - 1] += ' ' + m.shoeWidth; return; } out.push(k[1] + ' ' + m[k[0]]); });
     return out.join(', ').slice(0, 160);
   }
-  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, WEEK: WEEK, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
+  /* the final show-week schedule (Colleen 2026-10-25): change a saved show's old default wording, reminder dates and performances once */
+  var NEW_DATES = { '2027-12-04': 'The long Saturday rehearsal, 12:00 to 5:00 PM (required)', '2027-12-08': 'The final dress rehearsal, after school, 3:30 to 8:00 PM (required)',
+    '2027-12-09': 'The two school-day shows, morning and afternoon (in school all day)', '2027-12-10': 'Evening show: call time 5:00 PM, curtain 7:00 PM', '2027-12-11': 'Evening show: call time 5:00 PM, curtain 7:00 PM' };
+  function migrate(show) {
+    var sp = show.portal = show.portal || {}, m = show.mail, changed = false;
+    if (sp.commitItems) {
+      var ci = [], did = false;
+      sp.commitItems.forEach(function (t) { var k = OLD_COMMIT.indexOf(t); if (k < 0) { ci.push(t); return; } did = true; var nw = [DEF_COMMIT[0], DEF_COMMIT[1] + '\n' + DEF_COMMIT[2], DEF_COMMIT[3], DEF_COMMIT[1], DEF_COMMIT[2], DEF_COMMIT[3]][k]; nw.split('\n').forEach(function (x) { if (ci.indexOf(x) < 0) ci.push(x); }); });
+      if (did) { sp.commitItems = ci; changed = true; }
+    }
+    if (sp.weekDates) {
+      var wk = sp.weekDates.filter(function (w) { return w.date !== '2027-12-07'; }).map(function (w) { var k = OLD_WEEK.indexOf(w.what); return k >= 0 ? { date: w.date, what: WEEK[k].what } : w; });
+      if (JSON.stringify(wk) !== JSON.stringify(sp.weekDates)) { sp.weekDates = wk; changed = true; }
+    }
+    if (m && m.dates && m.dates.length) {
+      var md = m.dates.filter(function (d) { return d.date !== '2027-12-07'; }).map(function (d) { return NEW_DATES[d.date] && /rehearsal|show/i.test(d.what) && !/\(all families\)/.test(d.what) ? { date: d.date, what: NEW_DATES[d.date] } : d; });
+      Object.keys(NEW_DATES).forEach(function (k) { if (!md.some(function (d) { return d.date === k; })) md.push({ date: k, what: NEW_DATES[k] }); });
+      md.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      if (JSON.stringify(md) !== JSON.stringify(m.dates)) { m.dates = md; changed = true; }
+    }
+    var pr = show.production = show.production || {}, pf = pr.performances = pr.performances || [];
+    [['2027-12-09', '', 'school', 'Morning show'], ['2027-12-09', '', 'school', 'Afternoon show'], ['2027-12-10', '19:00', 'evening', 'Call time 5:00 PM'], ['2027-12-11', '19:00', 'evening', 'Call time 5:00 PM']].forEach(function (x, i) {
+      var same = pf.filter(function (p) { return p.date === x[0] && p.kind === x[2]; });
+      if (x[2] === 'school' ? same.length < (x[3] === 'Morning show' ? 1 : 2) : !same.length) { pf.push({ id: 'pf-' + x[0] + '-' + i, date: x[0], time: x[1], kind: x[2], relaxed: false, tickets: '', notes: x[3] }); changed = true; }
+      else if (x[2] === 'evening' && same[0] && !/call/i.test(same[0].notes || '')) { same[0].notes = (same[0].notes ? same[0].notes + ' · ' : '') + x[3]; changed = true; }
+    });
+    pf.sort(function (a, b) { return (a.date + (a.time || '')) < (b.date + (b.time || '')) ? -1 : 1; });
+    return changed;
+  }
+  var core = { KINDS: KINDS, SIZE_FIELDS: SIZE_FIELDS, SENSE_FIELDS: SENSE_FIELDS, MAKEUP: MAKEUP, MAIL_OPTS: MAIL_OPTS, WEEK: WEEK, OLD_WEEK: OLD_WEEK, OLD_COMMIT: OLD_COMMIT, migrate: migrate, FIT: FIT, DEF_FIT: DEF_FIT, VIDEO: VIDEO, DEF_VIDEO: DEF_VIDEO, DEF_COMMIT: DEF_COMMIT, NOTE_MAX: NOTE_MAX,
     clean: clean, takeNote: takeNote, addSchool: addSchool, checkAgain: checkAgain, summary: summary };
   root.PortalCore = core;
   if (typeof module === 'object' && module.exports) module.exports = core;
@@ -324,6 +367,7 @@
       '<label class="f">Anything we should know? (optional)<input id="vn" maxlength="300" value="' + esc(d.note || '') + '" placeholder="e.g. OK to film, but please keep their face out of shared videos"></label>');
     f.onsubmit = function (e) { e.preventDefault(); send('video', { answer: (f.querySelector('input[name=va]:checked') || {}).value, signer: v('vs'), date: v('vd'), note: v('vn') }).catch(fail); };
   }
+  var GENTLE = 'Thank you for telling us now. Every Company member has a part in the show. Because leads are needed at every rehearsal and performance, a conflict on this date may mean a smaller role, so we can plan around it.';
   var weekDates = function () { return SP().weekDates && SP().weekDates.length ? SP().weekDates : C.WEEK; };
   T.weekDates = weekDates;
   function conflictsForm() {
@@ -333,57 +377,70 @@
       weekDates().map(function (x) {
         return '<fieldset style="border:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0"><legend style="font-weight:700">' + esc(x.what) + '</legend><div class="seg" data-cd="' + esc(x.date) + '">' +
           [['ok', 'We can be there'], ['no', 'Conflict']].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (ans[x.date] === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-          '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>What is the conflict? (optional)<input maxlength="120" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label></fieldset>';
+          '<label class="f" data-cn="' + esc(x.date) + '"' + (ans[x.date] === 'no' ? '' : ' hidden') + '>What is the conflict? (optional)<input maxlength="120" value="' + esc(notes[x.date] || '') + '" placeholder="e.g. out of town for a wedding"></label>' +
+          '<p class="small card" data-cw="' + esc(x.date) + '" hidden style="margin:6px 0 0;background:var(--hi)">' + sym('💛') + esc(GENTLE) + '</p></fieldset>';
       }).join('') +
+      '<h3 style="margin-top:22px">' + sym('🧳') + 'Long trips or absences this semester</h3><p class="small">Is a family trip or anything else planned that will keep your Company member out of school for <b>more than a week</b> between August and December? Please list it so we can plan. Single days don’t need to be listed.</p>' +
+      '<div id="trips"></div><button type="button" class="btn small" id="addtrip">+ Add a trip or absence</button>' +
       '<label class="f">Your name<input id="cfs" maxlength="80" autocomplete="name" value="' + esc(d.signer || '') + '"></label>' +
       '<label class="f">Anything else? (optional)<input id="cfn" maxlength="240" value="' + esc(d.note || '') + '"></label><p class="muted small">If something changes later, send this again or tell the teacher right away.</p>');
+    // the gentle note (Colleen: "a little warning… or maybe this is taking things too seriously"): shown once, under the first date marked Conflict; the form sends as normal
+    var noteShown = Object.keys(ans).some(function (k) { return ans[k] === 'no'; }), firstNo = Object.keys(ans).filter(function (k) { return ans[k] === 'no'; }).sort()[0];
+    if (firstNo) { var w0 = f.querySelector('[data-cw="' + firstNo + '"]'); if (w0) w0.hidden = false; }
     f.querySelectorAll('[data-cd] button').forEach(function (b) { b.onclick = function () {
       var k = b.parentNode.dataset.cd; ans[k] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
       f.querySelector('[data-cn="' + k + '"]').hidden = b.dataset.v !== 'no';
+      if (b.dataset.v === 'no' && !noteShown) { noteShown = true; f.querySelector('[data-cw="' + k + '"]').hidden = false; }
     }; });
+    var trips = (d.trips || []).slice(), tripBox = f.querySelector('#trips');
+    var drawTrips = function () {
+      tripBox.innerHTML = trips.map(function (t, i) {
+        return '<div class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;border-bottom:1px solid var(--line);padding:6px 0" data-ti="' + i + '"><label class="f" style="margin:0">From<input type="date" data-k="from" value="' + esc(t.from || '') + '"></label>' +
+          '<label class="f" style="margin:0">To<input type="date" data-k="to" value="' + esc(t.to || '') + '"></label><label class="f grow" style="margin:0">What it is (optional)<input data-k="note" maxlength="120" value="' + esc(t.note || '') + '" placeholder="e.g. family trip to Mexico"></label>' +
+          '<button type="button" class="btn small quiet" data-trm="' + i + '" aria-label="Remove">✕</button></div>';
+      }).join('');
+      tripBox.querySelectorAll('input').forEach(function (inp) { inp.onchange = function () { trips[+inp.closest('[data-ti]').dataset.ti][inp.dataset.k] = inp.value; }; });
+      tripBox.querySelectorAll('[data-trm]').forEach(function (b) { b.onclick = function () { trips.splice(+b.dataset.trm, 1); drawTrips(); }; });
+    };
+    drawTrips();
+    f.querySelector('#addtrip').onclick = function () { if (trips.length < 6) { trips.push({ from: '', to: '', note: '' }); drawTrips(); } };
     f.onsubmit = function (e) {
       e.preventDefault();
       var miss = weekDates().filter(function (x) { return !ans[x.date]; });
       if (miss.length) { fail(new Error('Please answer every date (' + miss.length + ' left).')); return; }
       var nt = {}; f.querySelectorAll('[data-cn]').forEach(function (l) { var v = l.querySelector('input').value.trim(); if (v && ans[l.dataset.cn] === 'no') nt[l.dataset.cn] = v; });
       var keep = {}; weekDates().forEach(function (x) { keep[x.date] = ans[x.date]; });
-      send('conflicts', { answers: keep, notes: nt, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length || weekDates().some(function (x) { return keep[x.date] === 'no'; }) ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
+      var tr = trips.filter(function (t) { return t.from || t.to; });
+      if (tr.some(function (t) { return !t.from || !t.to || t.from > t.to; })) { fail(new Error('Each trip needs a From date and a To date (To on or after From).')); return; }
+      send('conflicts', { answers: keep, notes: nt, trips: tr, signer: v('cfs'), note: v('cfn') }, Object.keys(nt).length || weekDates().some(function (x) { return keep[x.date] === 'no'; }) ? 'Sent. Thank you for telling us now.' : 'Sent. Thank you!').catch(fail);
     };
   }
-  /* the full dress moved from Tue Dec 7 to Wed Dec 8, 3:30–8 PM, and a Saturday Dec 4 rehearsal (12–5 PM) was added (Colleen 2026-10-25): saved wording
-     and reminder dates that still say Dec 7 are changed once, when Teacher mode opens */
+  /* the final show-week schedule (Colleen 2026-10-25): Sat Dec 4 12–5 long rehearsal; Mon/Tue/Wed in class (Act 1, Act 2, clean-up); Wed Dec 8 3:30–8 final
+     dress; Thu Dec 9 two school shows; Fri/Sat Dec 10–11 call 5 PM, curtain 7 PM. A saved show's old default wording, dates and performances change once. */
   T.portalMigrate = function () {
-    if (!T.show || !T.proof || SP().mig1208) return;
-    var changed = false, sp = SP(), m = T.show.mail || {};
-    if (sp.commitItems && sp.commitItems.some(function (t) { return /December 7\b/.test(t); })) {
-      var out = []; sp.commitItems.forEach(function (t) { if (/December 7\b/.test(t)) out.push(C.DEF_COMMIT[1], C.DEF_COMMIT[2]); else out.push(t); });
-      sp.commitItems = out; changed = true;
-    }
-    if (m.dates && m.dates.some(function (d) { return d.date === '2027-12-07'; })) {
-      m.dates = m.dates.filter(function (d) { return d.date !== '2027-12-07'; }).concat([{ date: '2027-12-04', what: 'The Saturday rehearsal, 12:00 to 5:00 PM (required)' }, { date: '2027-12-08', what: 'The full dress rehearsal, after school, 3:30 to 8:00 PM (required)' }])
-        .filter(function (d, i, a) { return a.findIndex(function (x) { return x.date === d.date; }) === i; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-      changed = true;
-    }
-    if (changed) { sp.mig1208 = true; T.saveShow('Updated: the full dress is now Wed Dec 8, 3:30–8 PM, plus Sat Dec 4, 12–5 PM').catch(function () {}); }
+    if (!T.show || !T.proof || SP().migFinal) return;
+    var changed = C.migrate(T.show); SP().migFinal = true;
+    if (changed) T.saveShow('Updated to the final show-week schedule (Sat Dec 4, final dress Wed Dec 8 3:30–8, shows Dec 9–11)').catch(function () {});
   };
   /* ---------- show-week conflicts on the Casting pages (casting.js) ---------- */
   var shortDay = function (s) { var a = s.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
-  var cfNotes = {};      // the families' notes, from the vault, while Casting is open
-  T.loadConflictNotes = function () { return T.openVault ? T.openVault().then(function (V) { var P = V.extra.portal || {}; cfNotes = {}; Object.keys(P).forEach(function (id) { if (P[id].conflicts) cfNotes[id] = P[id].conflicts.notes || {}; }); }).catch(function () {}) : Promise.resolve(); };
+  var cfNotes = {}, cfTrips = {};      // the families' notes and trip notes, from the vault, while Casting is open
+  T.loadConflictNotes = function () { return T.openVault ? T.openVault().then(function (V) { var P = V.extra.portal || {}; cfNotes = {}; Object.keys(P).forEach(function (id) { if (P[id].conflicts) { cfNotes[id] = P[id].conflicts.notes || {}; cfTrips[id] = P[id].conflicts.trips || []; } }); }).catch(function () {}) : Promise.resolve(); };
+  var span = function (t) { return shortDay(t.from) + (t.to !== t.from ? '–' + shortDay(t.to) : ''); };
   T.conflictText = function (id) {
-    var c = (SP().conflict || {})[id]; if (!c || !c.dates.length) return '';
-    return c.dates.map(function (d) { var w = weekDates().find(function (x) { return x.date === d; }), n = (cfNotes[id] || {})[d]; return shortDay(d) + (n ? ' (' + n + ')' : ''); }).join(', ');
+    var c = (SP().conflict || {})[id]; if (!c || (!c.dates.length && !(c.trips || []).length)) return '';
+    return c.dates.map(function (d) { var w = weekDates().find(function (x) { return x.date === d; }), n = (cfNotes[id] || {})[d]; return shortDay(d) + (n ? ' (' + n + ')' : ''); }).concat((c.trips || []).map(function (t, i) { var tn = ((cfTrips[id] || [])[i] || {}).note; return '🧳 away ' + span(t) + (tn ? ' (' + tn + ')' : ''); })).join(', ');
   };
   T.conflictMark = function (id) { return T.conflictText(id) ? ' ⚠️' : ''; };
   T.conflictBadge = function (id) {
     var t = T.conflictText(id), c = (SP().conflict || {})[id];
-    if (t) return ' <span class="tag no-tag" title="Show-week conflict">⚠️ Show-week conflict: ' + esc(t) + '</span>';
+    if (t) return ' <span class="tag no-tag" title="Show-week conflicts and long absences">⚠️ ' + (c.dates.length ? 'Show-week conflict: ' : '') + esc(t) + '</span>';
     return c ? ' <span class="tag ok-tag" title="No show-week conflicts">✓ All show-week dates</span>' : ' <span class="tag" title="The family has not answered the show-week conflicts form">Show week: no answer yet</span>';
   };
   T.conflictSummary = function () {
     var cast = (T.show.cast || []).filter(function (a) { return a.name && !a.guest; }), cfl = SP().conflict || {};
-    var withC = cast.filter(function (a) { return cfl[a.id] && cfl[a.id].dates.length; }), none = cast.filter(function (a) { return !cfl[a.id]; });
-    return '<div class="card" style="border-left:6px solid ' + (withC.length ? 'var(--bad)' : 'var(--line)') + '"><h3 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts (from families)</h3>' +
+    var withC = cast.filter(function (a) { return T.conflictText(a.id); }), none = cast.filter(function (a) { return !cfl[a.id]; });
+    return '<div class="card" style="border-left:6px solid ' + (withC.length ? 'var(--bad)' : 'var(--line)') + '"><h3 style="margin-top:0">' + sym('🗓️') + 'Show-week conflicts and long absences (from families)</h3>' +
       (withC.length ? withC.map(function (a) { return '<p style="margin:4px 0"><b>' + esc(a.name) + '</b>: ' + esc(T.conflictText(a.id)) + '</p>'; }).join('') : '<p class="small">No conflicts reported.</p>') +
       (none.length ? '<p class="muted small">No answer yet (' + none.length + '): ' + none.map(function (a) { return esc(a.name); }).join(', ') + '</p>' : '') +
       '<p class="muted small">Big roles need someone at every date. Decide case by case; a ⚠️ marks these Company members everywhere in Casting.</p></div>';
@@ -527,7 +584,7 @@
       '<h3>' + sym('🧸') + 'Sensory and clothing needs</h3>' + (se ? '<table class="tbl">' + (mk ? '<tr><th style="width:40%">Stage makeup</th><td>' + esc(mk[1]) + '</td></tr>' : '') + rows(C.SENSE_FIELDS, se) + '</table><p class="muted small">Came in ' + esc(day(se.at)) + '</p>' : '<p class="muted">Not sent.</p>') +
       '<h3>' + sym('📅') + 'Show-week commitment</h3>' + (c ? '<ul>' + c.items.map(function (t) { return '<li>✓ ' + esc(t) + '</li>'; }).join('') + '</ul><p>Signed: ' + esc(c.signer) + (c.student ? ' and ' + esc(c.student) : '') + (c.date ? ', ' + esc(day(c.date)) : '') + '</p>' : '<p class="muted">Not signed yet.</p>') +
       '<h3>' + sym('🎥') + 'Rehearsal video permission</h3>' + (r.video ? '<p><b>' + esc(C.VIDEO[r.video.answer]) + '</b><br>Signed: ' + esc(r.video.signer) + (r.video.date ? ', ' + esc(day(r.video.date)) : '') + (r.video.note ? '<br>' + esc(r.video.note) : '') + '</p>' : '<p class="muted">Not answered.</p>') +
-      '<h3>' + sym('🗓️') + 'Show-week conflicts</h3>' + (r.conflicts ? '<ul>' + Object.keys(r.conflicts.answers).sort().map(function (k) { var w = weekDates().find(function (x) { return x.date === k; }); return '<li>' + (r.conflicts.answers[k] === 'no' ? '⚠️ <b>Conflict</b>' : '✓') + ' ' + esc(w ? w.what : k) + (r.conflicts.notes[k] ? ': ' + esc(r.conflicts.notes[k]) : '') + '</li>'; }).join('') + '</ul>' + (r.conflicts.note ? '<p>' + esc(r.conflicts.note) + '</p>' : '') + '<p class="muted small">From ' + esc(r.conflicts.signer || 'the family') + ', ' + esc(day(r.conflicts.at)) + '</p>' : '<p class="muted">Not answered.</p>') +
+      '<h3>' + sym('🗓️') + 'Show-week conflicts</h3>' + (r.conflicts ? '<ul>' + Object.keys(r.conflicts.answers).sort().map(function (k) { var w = weekDates().find(function (x) { return x.date === k; }); return '<li>' + (r.conflicts.answers[k] === 'no' ? '⚠️ <b>Conflict</b>' : '✓') + ' ' + esc(w ? w.what : k) + (r.conflicts.notes[k] ? ': ' + esc(r.conflicts.notes[k]) : '') + '</li>'; }).join('') + '</ul>' + ((r.conflicts.trips || []).length ? '<p><b>Long absences:</b> ' + r.conflicts.trips.map(function (t) { return esc(span(t)) + (t.note ? ' (' + esc(t.note) + ')' : ''); }).join('; ') + '</p>' : '') + (r.conflicts.note ? '<p>' + esc(r.conflicts.note) + '</p>' : '') + '<p class="muted small">From ' + esc(r.conflicts.signer || 'the family') + ', ' + esc(day(r.conflicts.at)) + '</p>' : '<p class="muted">Not answered.</p>') +
       '<h3>' + sym('🏫') + 'Sizes recorded at school</h3>' + ((r.school || []).length ? r.school.map(function (s) { return '<p><b>' + esc(day(s.at)) + '</b> ' + (s.ok ? '<span class="tag ok-tag">Enough</span>' : '<span class="tag no-tag">Not enough</span>') + (s.by ? ' · ' + esc(s.by) : '') + '</p><table class="tbl">' + rows(C.SIZE_FIELDS, s.sizes) + '</table>' + (s.note ? '<p class="small">' + esc(s.note) + '</p>' : ''); }).join('') : '<p class="muted">None yet.</p>') +
       '<div class="row end noprint"><button class="btn" onclick="print()">' + icon('print') + 'Print</button><button class="btn primary" id="dx">Close</button></div>', function (d) { d.querySelector('#dx').onclick = function () { d.close(); }; });
   }
