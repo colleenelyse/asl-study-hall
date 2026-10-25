@@ -524,3 +524,14 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .tone-left tr[data-pickc] { cursor: pointer; }
 .tone-left tr.on td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .tone-left tr.tot td { font-weight: 700; }
+/* Listen to the show (listenshow.js) */
+.ls-ctl { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+.ls-ctl .ls-play { min-width: 140px; }
+.ls-stage { display: grid; gap: 8px; margin: 12px 0; }
+.ls-line { border-radius: 14px; padding: 10px 14px; border: 2px solid var(--line); border-left: 8px solid var(--c, var(--line)); background: var(--card); }
+.ls-line.empty { visibility: hidden; min-height: 10px; }
+.ls-line.past, .ls-line.next { opacity: .55; }
+.ls-line.now { box-shadow: 0 0 0 3px var(--c, var(--accent)); }
+.ls-line.now .ls-text { font-size: 1.45em; font-weight: 700; line-height: 1.3; }
+.ls-line.song { text-align: center; font-weight: 700; border-left-color: var(--accent); }
+.ls-who { font: 700 .8em var(--font-head); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }

@@ -34,6 +34,7 @@
     /* say a line: real audio when there is some, else the device voice. volume: for lines over the music */
     say: function (it, charId, mine, opts) {
       opts = opts || {};
+      if (V.muted(V.id(it))) return new Promise(function (ok) { setTimeout(ok, 400); });      // Off in playback: already in the guide vocals
       return V.load().then(function () { return V.source(it, mine); }).then(function (s) {
         if (!s) return T.Speech.say(LineCheck.spoken(it.text), charId, opts);
         var bytes = s.own ? Promise.resolve(s.own) : Store.getVoice(T.key, s.h, s.src, s.ver);
@@ -157,6 +158,12 @@
      not a line ("> >.", a stray mark). Left out of the list, the progress, every run and Lines for AAC; Bring back undoes it. */
   var removed = function (h) { return !!(T.show.voiceSkip || {})[h]; };
   V.removed = removed;
+  /* Off in playback (Colleen 2026-10-25: "turn off lines one at a time from the playback so that i can turn off ones that are already in the guide
+     vocals easily without permanently deleting them"): still a line (captions, Lines for AAC, Practice Lines show it), but nothing speaks it,
+     and it is not counted as left to make or put in a run. T.show.voiceMute[line] = 1. */
+  var muted = function (h) { return !!(T.show.voiceMute || {})[h]; };
+  V.muted = muted;
+  V.setMuted = function (h, on) { var M = T.show.voiceMute = T.show.voiceMute || {}; if (on) M[h] = 1; else delete M[h]; return T.saveShow(on ? 'Off in playback' : 'On in playback'); };
   /* the voices for a line (Colleen 2026-10-24: group lines as "a small chorus"): one character, their voice; a group (JOCKS), ALL, or several
      names (TROY, GABRIELLA), up to three voices together: the named characters' or the group's own voice first, then the chorus voices */
   var CHORUS = ['__chorus1', '__chorus2', '__chorus3'];
@@ -169,6 +176,7 @@
     return out.filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(0, 3);
   }
   V.voicesFor = voicesFor;
+  V.makeLine = function (l) { return makeLine(l, T.show.eleven || {}); };      // Listen to the show: ↻ Make again
   /* match the ElevenLabs voices to the characters by the names they were saved under ("HSM Troy", "HSM Ms. Darbus", "HSM Chorus 2") */
   function matchByName(voices, map) {
     var norm = function (s) { return String(s || '').toLowerCase().replace(/^hsm\s*[-:·]?\s*/, '').replace(/^(ms|mr|mrs)\.?\s+/, '').replace(/[^a-z0-9 ]/g, '').trim(); };
@@ -337,6 +345,8 @@
       b.disabled = true;
       (rec ? Store.delVoice(T.proof, l.h, 'tts') : Promise.resolve()).then(function () { (T.show.voiceSkip = T.show.voiceSkip || {})[l.h] = 1; return T.saveShow('Line removed'); }).then(function () { again('Removed. Bring it back from Removed lines at the bottom.'); }).catch(function (e) { b.disabled = false; T.toast(e.message, 6000); });
     }; });
+    app.querySelectorAll('[data-mute]').forEach(function (b) { b.onclick = function () { V.setMuted(b.dataset.mute, !muted(b.dataset.mute)).then(function () { again(); }); }; });
+    app.querySelectorAll('[data-unflag]').forEach(function (b) { b.onclick = function () { delete (T.show.voiceFlag || {})[b.dataset.unflag]; T.saveShow('Flag cleared').then(function () { again(); }); }; });
     app.querySelectorAll('[data-okrec]').forEach(function (b) { b.onclick = function () { var h = b.dataset.okrec, e = index.lines[h], O = T.show.voiceOk = T.show.voiceOk || {}; if (O[h] === (e && e.tts)) delete O[h]; else O[h] = e && e.tts; T.saveShow(O[h] ? 'Approved' : 'Marked not checked').then(function () { again(); }); }; });
     var flt = $('tflt'); if (flt) flt.onchange = function () { toneFilter = flt.value; again(); };
     app.querySelectorAll('[data-pickc]').forEach(function (r) { r.onclick = function () { toneChar = r.dataset.pickc; again(); setTimeout(function () { var c = $('tch'); if (c) c.scrollIntoView({ block: 'center' }); }, 300); }; });
@@ -434,7 +444,7 @@
       .then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { return d && d.character_limit != null ? { left: d.character_limit - d.character_count, limit: d.character_limit } : null; }).catch(function () { return null; });
   }
   function preflight(lines, index, cfg, after) {
-    var todo = lines.filter(function (l) { return voicesFor(l.it, cfg.voices).length; });      // made ones join only with "make again" (a new voice, better quality)
+    var todo = lines.filter(function (l) { return voicesFor(l.it, cfg.voices).length && !muted(l.h); });      // lines off in playback are not made      // made ones join only with "make again" (a new voice, better quality)
     var chars = T.O().characters.filter(function (c) { return todo.some(function (l) { return T.labelChars(l.it.who).indexOf(c.id) >= 0; }); });
     var scenes = T.O().scenes.filter(function (sc) { return todo.some(function (l) { return l.scene === sc; }); });
     var noVoice = lines.filter(function (l) { return !made(l, index) && !voicesFor(l.it, cfg.voices).length; }).length;
@@ -533,18 +543,23 @@
      filter for the list; Listen and check, which plays the unchecked recordings one after another */
   var approved = function (l, index) { var e = index.lines[l.h]; return !!(e && e.tts && (T.show.voiceOk || {})[l.h] === e.tts); };
   var toneFilter = 'all';
-  var FILTERS = [['all', 'All lines'], ['todo', 'Not made yet'], ['tone', 'Tone not checked'], ['listen', 'Made, not listened to'], ['ok', 'Approved']];
+  var FILTERS = [['all', 'All lines'], ['todo', 'Not made yet'], ['tone', 'Tone not checked'], ['listen', 'Made, not listened to'], ['ok', 'Approved'], ['flag', 'Flagged to fix'], ['muted', 'Off in playback']];
+  var flagOf = function (h) { return (T.show.voiceFlag || {})[h]; };      // flagged while listening (Listen to the show): { note, at }
   function passes(l, index) {
     var m = made(l, index);
-    return toneFilter === 'todo' ? !m : toneFilter === 'tone' ? !checked(l) : toneFilter === 'listen' ? m && !approved(l, index) : toneFilter === 'ok' ? approved(l, index) : true;
+    if (toneFilter === 'muted') return muted(l.h);
+    if (toneFilter !== 'all' && muted(l.h)) return false;      // lines off in playback only show under All and Off in playback
+    return toneFilter === 'flag' ? !!flagOf(l.h) : toneFilter === 'todo' ? !m : toneFilter === 'tone' ? !checked(l) : toneFilter === 'listen' ? m && !approved(l, index) : toneFilter === 'ok' ? approved(l, index) : true;
   }
   function leftTable(lines, index, chars, linesOf) {
     var row = function (id, name, L) {
+      L = L.filter(function (l) { return !muted(l.h); });
       var k = L.filter(checked).length, m = L.filter(function (l) { return made(l, index); }).length, a = L.filter(function (l) { return approved(l, index); }).length, done = L.length && a === L.length;
       var cell = function (n) { return '<td class="' + (n === L.length ? 'ok' : '') + '">' + n + '</td>'; };
       return '<tr' + (id ? ' data-pickc="' + id + '" class="' + (id === toneChar ? 'on' : '') + '"' : ' class="tot"') + '><td>' + (done ? '✅ ' : '') + name + '</td><td>' + L.length + '</td>' + cell(k) + cell(m) + cell(a) + '<td>' + (L.length - m ? '<b>' + (L.length - m) + '</b>' : '–') + '</td></tr>';
     };
-    return '<details class="tone-left"' + (leftOpen ? ' open' : '') + '><summary><b>What’s left</b> · ' + (lines.length - lines.filter(function (l) { return made(l, index); }).length) + ' lines still to make, ' + lines.filter(function (l) { return made(l, index) && !approved(l, index); }).length + ' to listen to</summary>' +
+    var on = lines.filter(function (l) { return !muted(l.h); }), off = lines.length - on.length;
+    return '<details class="tone-left"' + (leftOpen ? ' open' : '') + '><summary><b>What’s left</b> · ' + (on.length - on.filter(function (l) { return made(l, index); }).length) + ' lines still to make, ' + on.filter(function (l) { return made(l, index) && !approved(l, index); }).length + ' to listen to' + (off ? ' · ' + off + ' off in playback' : '') + '</summary>' +
       '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Character</th><th>Lines</th><th>Tone checked</th><th>Made</th><th>Listened ✓</th><th>Left to make</th></tr></thead><tbody>' +
       row('', 'Whole show', lines) + chars.map(function (c) { return row(c.id, esc(c.name), linesOf(c.id)); }).join('') + '</tbody></table></div><p class="muted small">Tap a character to work on them.</p></details>';
   }
@@ -575,11 +590,12 @@
     if (!toneChar || !chars.some(function (c) { return c.id === toneChar; })) toneChar = chars[0] && chars[0].id;
     var linesOf = function (id) { return lines.filter(function (l) { return T.labelChars(l.it.who).indexOf(id) >= 0; }); };
     var mine = linesOf(toneChar), ch = T.charById(toneChar) || { name: '' }, fx = fixes();
+    var onL = lines.filter(function (l) { return !muted(l.h); }), onM = mine.filter(function (l) { return !muted(l.h); });      // counts leave out lines off in playback
     var open = mine.filter(function (l) { return !checked(l) && sugg(l.h); }).length, nSugg = Object.keys(T.show.toneSugg || {}).length;
     return '<div class="card" id="tonecard"><h3>' + sym('🎭') + 'The tone of each line</h3><p class="muted small">Each line is sent with a tone note in brackets, like [sarcastic] or [whispers] (only with “Most expressive”). A <span class="tag sugg">suggested</span> tone comes from a tone guide you imported; tap ✓ Looks right to keep it, or change it. Your own choices always win. Then ↻ Make again and ▶ listen.</p>' +
       (cfg.model !== 'eleven_v3' ? '<p class="err small">Pick “Most expressive” above so the tone notes are used.</p>' : '') +
-      '<div class="tone-prog">' + bar('Whole show: tones checked', lines.filter(checked).length, lines.length) + bar('Whole show: lines made', lines.filter(function (l) { return made(l, index); }).length, lines.length, 'made') +
-      bar(esc(ch.name) + ': tones checked', mine.filter(checked).length, mine.length) + bar(esc(ch.name) + ': lines made', mine.filter(function (l) { return made(l, index); }).length, mine.length, 'made') + bar(esc(ch.name) + ': listened to and approved', mine.filter(function (l) { return approved(l, index); }).length, mine.length, 'made') + '</div>' +
+      '<div class="tone-prog">' + bar('Whole show: tones checked', onL.filter(checked).length, onL.length) + bar('Whole show: lines made', onL.filter(function (l) { return made(l, index); }).length, onL.length, 'made') +
+      bar(esc(ch.name) + ': tones checked', onM.filter(checked).length, onM.length) + bar(esc(ch.name) + ': lines made', onM.filter(function (l) { return made(l, index); }).length, onM.length, 'made') + bar(esc(ch.name) + ': listened to and approved', onM.filter(function (l) { return approved(l, index); }).length, onM.length, 'made') + '</div>' +
       '<div class="row"><button class="btn" id="timp">' + sym('⬆️') + 'Import a tone guide (CSV)</button><button class="btn quiet" id="texp">' + sym('⬇️') + 'Save all tones as a CSV</button><input type="file" id="tfile" accept=".csv,.tsv,.txt,text/csv" hidden></div>' +
       '<p class="muted small">' + (nSugg ? nSugg + ' lines have a suggested tone. ' : '') + 'A tone guide is a spreadsheet saved as CSV with a column for the line’s words and one for the tone (and, if you like, the character and the strength, 1 to 5 or “a little”, “very”). The words stay on this computer.</p>' +
       leftTable(lines, index, chars, linesOf) +
@@ -599,6 +615,8 @@
           '<div class="row" style="gap:4px;flex-wrap:wrap"><button type="button" class="btn small" data-hear="' + l.h + '"' + (e && e.tts ? '' : ' disabled') + '>▶</button><button type="button" class="btn small" data-again="' + l.h + '">↻ Make again</button>' +
           (e && e.tts ? (approved(l, index) ? '<button type="button" class="btn small good" data-okrec="' + l.h + '" title="Tap to mark it not checked">👂 ✓ Approved</button>' : '<button type="button" class="btn small" data-okrec="' + l.h + '">👂 Sounds right</button>') : '<span class="tag">not made yet</span>') +
           (e && e.tts ? '<button type="button" class="btn small quiet" data-delrec="' + l.h + '" title="Throw away the ElevenLabs audio; the line stays">✖ Delete recording</button>' : '') +
+          (flagOf(l.h) ? '<span class="tag sugg" title="Flagged while listening">🚩 ' + esc(flagOf(l.h).note || 'flagged') + '</span><button type="button" class="btn small quiet" data-unflag="' + l.h + '">Clear flag</button>' : '') +
+          '<button type="button" class="btn small ' + (muted(l.h) ? 'good' : 'quiet') + '" data-mute="' + l.h + '" title="Already in the guide vocals? Turn it off in playback (it stays a line)">' + (muted(l.h) ? '🔇 Off in playback' : '🔈 On in playback') + '</button>' +
           '<button type="button" class="btn small quiet" data-remove="' + l.h + '" title="Not a real line: take it out of the list">🗑 Remove line</button></div></div>';
       }).join('') + removedList() + '</div>';
   }

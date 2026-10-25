@@ -196,6 +196,7 @@
       ['family', t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted')],
       ['music', t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks')],
       ['music', t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings')],
+      ['music', (T.show.script ? t('#/teacher/listenshow', 'play', 'Listen to the show', 'Every line in order, in its voice; fix as you listen') : '')],
       ['rehearse', t('#/teacher/progress', 'check', 'Progress', 'Who practiced what')],
       ['app', t('#/teacher/usage', 'check', 'App use', 'Which pages people use most')],
       ['people', t('#/teacher/casting', 'star', 'Casting', 'Sign-ups, callbacks, cast list')],

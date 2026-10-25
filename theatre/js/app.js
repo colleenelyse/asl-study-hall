@@ -749,15 +749,15 @@
       var sw = function (k, label) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-k="' + k + '"' + (opt[k] ? ' checked' : '') + '></label>'; };
       o.innerHTML = (T.Pages && T.Pages.ready() ? '<div class="row" style="margin-bottom:6px"><div class="seg" data-k="view"><button type="button" data-v="pages" aria-pressed="' + (opt.view === 'pages') + '">📄 Script pages</button><button type="button" data-v="lines" aria-pressed="' + (opt.view !== 'pages') + '">☰ Lines</button></div></div>' : '') +
         '<details' + (mode === 'run' ? '' : '') + '><summary class="btn quiet small" style="display:inline-flex">' + icon('gear') + 'Options</summary>' +
-        sw('names', 'Say names before each line') + sw('dirs', 'Read stage directions') +
+        sw('names', 'Say names before each line') + sw('dirs', 'Read stage directions') + (asChar ? '' : sw('cont', 'Keep going into the next scene')) +
         (mode === 'run' ? '<div class="switch"><span>My line on the screen</span><div class="seg" data-k="show">' + [['auto', 'Fade'], ['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (opt.show === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>' +
           sw('echo', 'Echo first (the app says it, then I say it)') + (T.canListen ? sw('didIt', 'Use an “I did it” button instead of the microphone') : '') : '') +
         '<div class="switch"><span>Speed</span><div class="seg" data-k="rate">' + [[0.7, 'Slow'], [1, 'Normal'], [1.25, 'Fast']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (+T.prefs.rate === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div></details>';
-      o.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { opt[inp.dataset.k] = inp.checked; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view }); var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true; }; });
+      o.querySelectorAll('input[data-k]').forEach(function (inp) { inp.onchange = function () { opt[inp.dataset.k] = inp.checked; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view, cont: opt.cont }); var keep = cur; pause(); render(); cur = keep; mark(); document.querySelector('#opts details').open = true; }; });
       o.querySelectorAll('.seg button').forEach(function (b) {
         b.onclick = function () {
           var k = b.parentNode.dataset.k;
-          if (k === 'rate') { T.prefs.rate = +b.dataset.v; T.savePrefs(); } else { opt[k] = b.dataset.v; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view }); }
+          if (k === 'rate') { T.prefs.rate = +b.dataset.v; T.savePrefs(); } else { opt[k] = b.dataset.v; ls('practice', { names: opt.names, dirs: opt.dirs, show: opt.show, echo: opt.echo, didIt: opt.didIt, view: opt.view, cont: opt.cont }); }
           var keep = cur; pause(); render(); cur = keep; mark(); var dt = document.querySelector('#opts details'); if (dt && k !== 'view') dt.open = true;
         };
       });
@@ -776,7 +776,17 @@
     if (T.Voices) T.Voices.load();      // which lines have real voices
     function play() { if (cur >= items.length) cur = 0; if (!visible(cur)) cur = nextIdx(cur); if (items[cur] && items[cur].it.type === 'song' && !trackOf(items[cur].song)) cur = nextIdx(cur); playing = true; setPP(); step(++gen); }
     function jump(i) { var was = playing; pause(); cur = Math.max(0, Math.min(i, items.length - 1)); if (!visible(cur)) cur = nextIdx(cur); mark(); if (was) play(); }
-    function advance(g) { if (g !== gen) return; cur = nextIdx(cur); mark(); if (cur >= items.length) { playing = false; setPP(); toast('That is the end of the scene!'); return; } step(g); }
+    function advance(g) {
+      if (g !== gen) return; cur = nextIdx(cur); mark();
+      if (cur >= items.length) {
+        playing = false; setPP();
+        /* Keep going into the next scene (Colleen 2026-10-25: students listen through the show, saying their own lines, with their own supports) */
+        var nx = !asChar && opt.cont && O().scenes.filter(function (s) { return s.num > scene.num && scriptScene(s); }).sort(function (a, b) { return a.num - b.num; })[0];
+        if (nx) { T._practiceGo = true; toast('Next: Scene ' + nx.num + ' · ' + nx.place, 2500); setTimeout(function () { if (g === gen) location.hash = '#/lines/' + nx.id + '/' + (mode === 'run' ? 'run' : 'listen'); }, 1500); return; }
+        toast(opt.cont && !asChar ? 'That is the end of the show!' : 'That is the end of the scene!'); return;
+      }
+      step(g);
+    }
     function step(g) {
       if (g !== gen) return;
       var x = items[cur]; if (!x) return;
@@ -900,6 +910,7 @@
     }
     render();
     T.cleanup.push(function () { pause(); });
+    if (T._practiceGo) { T._practiceGo = false; setTimeout(function () { if (!playing) play(); }, 700); }      // arrived from the scene before (Keep going)
     var press = function (a) { var b = turnEl && turnEl.querySelector('[data-a="' + a + '"]'); if (b && !b.disabled) b.click(); };
     keys({ Space: function () { if (!turnEl) document.getElementById('pp').click(); }, ArrowRight: function () { document.getElementById('nx').click(); }, ArrowLeft: function () { document.getElementById('pv').click(); },
       Enter: function () { press('did'); }, x: function () { press('miss'); }, n: function () { press('miss'); }, h: function () { press('hint'); }, m: function () { press('mic'); }, s: function () { press('for'); } });
