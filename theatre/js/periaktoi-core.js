@@ -22,7 +22,7 @@
      u = where along the face (0 = its left edge, 1 = its right edge, as you look at it), w = width, d = how far it sticks out, z = height of its middle */
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
-    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33, door: true, h: 80 / 12 },      // a walk-through door: in the scenes that use it, the back of B is opened and braced
+    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33, door: true, h: 80 / 12, swing: 'in' },      // opens into the tower so it can't tip (Colleen 2026-10-25)
     'A2-clock': { name: '12″ classroom analog clock (real, on the printed circle)', u: 0.65, w: 1, h: 1, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
     'A2-plant': { name: 'Hanging plant on a wall hook (real)', u: 0.9, w: 1, h: 2.6, d: 1.3, z: 6.5, show: 'plant' },      // the bracket at the top right of her A2 art
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)

@@ -710,3 +710,4 @@ Colleen: "an animated version of this run plot that shows movement around the st
 - doorChecks: B1 must face the audience; B locked; no tower right behind B; info line with the room from the back of B to the main curtain (proposed until tried on stage).
 - 3D: dark doorway + the door leaf standing open on B1 in scenes that use it (swing direction and hinge side are stand-ins). 🚪 marks those scenes in the scene lists and the cue sheet.
 - Tests: 49.
+- 2026-10-25: B1 opens INTO the tower so it can't tip (P.practicals.B1.swing = 'in'; saved plans get it on load). 3D draws the leaf inside, seen through the dark doorway. Hinge side still a stand-in.

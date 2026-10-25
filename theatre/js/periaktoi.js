@@ -52,7 +52,8 @@
       if (old) { c.towers = old.towers; ['areas', 'tops'].forEach(function (k) { if (old[k]) c[k] = old[k]; }); P.scenes.splice(1, 1, b, c); }      // the old second part was the hallway: it is part C now
       else P.scenes.splice(1, 0, b, c);
       queueSave(); }
-    if (P.practicals && P.practicals.B1 && P.practicals.B1.door == null) { P.practicals.B1.door = true; P.practicals.B1.h = PK.PRACTICALS.B1.h; }      // B1 is a walk-through door (2026-10-25)
+    if (P.practicals && P.practicals.B1 && P.practicals.B1.door == null) { P.practicals.B1.door = true; P.practicals.B1.h = PK.PRACTICALS.B1.h; }
+    if (P.practicals && P.practicals.B1 && P.practicals.B1.door && !P.practicals.B1.swing) P.practicals.B1.swing = 'in';      // opens into the tower so it can't tip (Colleen 2026-10-25)      // B1 is a walk-through door (2026-10-25)
     if (!P.lineups) P.lineups = PK.lineupDefaults();
     if (!P.lights || P.lights.every(function (a) { return a.drawn && !a.v; })) P.lights = PK.lightDefaults(P);      // read again from her drawing as seen from the audience (2026-10-25)      // her five lighting areas plus all of left / all of right (2026-10-25)
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
