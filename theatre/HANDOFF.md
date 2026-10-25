@@ -700,3 +700,6 @@ Colleen: "an animated version of this run plot that shows movement around the st
 - A tower is in an area when its center is within cx ± rx (PK.inArea). P.lightTop = top of the beam at the towers (default tower height + 1′ 6″), set in Setup › Lighting areas.
 - Setup › Lighting areas shows a FRONT view (frontMap) like her drawing; fields are center across and half width.
 - 3D: real SpotLights per area (face from a stand-in far-catwalk spot, aimed so the beam runs from the front edge to just above the towers; top straight down from a stand-in near catwalk), plus a soft oval outline of each lit face beam as she drew it. All lights are made once and sit at zero when off.
+
+## 2026-10-25: scene 1 in three parts (her structure)
+- 1a Wildcat cheer (id s1; East High preset), 1b New Year's Eve flashback (s1b; zone nye = stage-left side area), 1c Back to East High (s1c). Parts B and C are `sub` scenes linked to s1: same set, own lighting. Library uses part(); load() migrates saved plans (the old second part, the hallway, becomes 1c and keeps its lighting). label() letters any run of parts a, b, c… Tests: 43.

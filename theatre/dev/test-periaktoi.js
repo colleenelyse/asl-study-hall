@@ -67,4 +67,6 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   sc.areas = ['allR']; PK.lightTowers(Q, sc); ok(sc.towers.D.lit === 'full' && sc.towers.C.lit === 'full' && sc.towers.A.lit === 'dark', 'the right two-thirds lights C and D'); }
 { const Q = PK.fresh(), sc = Q.scenes[2]; PK.lineUp(Q, sc, 'home'); sc.tops = ['right']; PK.lightTowers(Q, sc);
   ok(sc.towers.D.lit === 'full' && sc.towers.A.lit === 'dark', 'top light alone also lights the towers in its area'); }
+{ const Q = PK.fresh(), [a, b, c] = Q.scenes;
+  ok(a.name === 'Wildcat cheer' && b.name === 'New Year’s Eve flashback' && c.name === 'Back to East High' && b.same === 's1' && c.same === 's1' && JSON.stringify(a.towers) === JSON.stringify(c.towers), 'scene 1 is three parts on one set: Wildcat cheer, New Year’s Eve flashback, back to East High'); }
 process.exit(bad ? 1 : 0);

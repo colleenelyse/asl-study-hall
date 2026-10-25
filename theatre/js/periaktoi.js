@@ -45,8 +45,13 @@
         P.scenes.forEach(function (sc) { PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via.length === 1) q.via[0] = { x: un[id].x + (id === 'T1' ? -2 : 4), y: un[id].y }; }); });
         PK.applySpikes(P); } }
     P.scenes.forEach(function (sc) { if (['s4', 's12', 's17'].indexOf(sc.id) >= 0 && sc.towers.B && sc.towers.B.want === 'B3') { sc.towers.B.want = 'B1'; sc.towers.B.rot = PK.rotFor(P, 'B', 'B1').rot; } });      // the gym shows the doorway on B (Colleen 2026-10-25)
-    if (P.scenes[0] && P.scenes[0].id === 's1' && !(P.scenes[1] && P.scenes[1].same === 's1')) {      // scene 1 splits in two for lighting (1a karaoke, 1b hallway); the set stays put
-      var b1 = PK.sub1(P), f0 = PK.fresh().scenes[0]; P.scenes[0].notes = f0.notes; if (/^East High \(preset\)/.test(P.scenes[0].name)) P.scenes[0].name = f0.name; b1.towers = JSON.parse(JSON.stringify(P.scenes[0].towers)); P.scenes.splice(1, 0, b1); queueSave(); }
+    if (P.scenes[0] && P.scenes[0].id === 's1' && !P.scenes.some(function (x) { return x.id === 's1c'; })) {      // scene 1 in three parts on one set: A Wildcat cheer, B New Year's Eve flashback, C back to East High (Colleen 2026-10-25)
+      var s0 = P.scenes[0], f0 = PK.part1(P, 's1'), keep = function (id) { var x = PK.part1(P, id); x.towers = JSON.parse(JSON.stringify(s0.towers)); return x; };
+      if (/^(East High \(preset\)|New Year’s Eve karaoke)/.test(s0.name)) s0.name = f0.name; s0.notes = f0.notes; s0.zones = (s0.zones || []).filter(function (z) { return z !== 'nye'; });
+      var old = P.scenes[1] && P.scenes[1].same === 's1' ? P.scenes[1] : null, b = keep('s1b'), c = keep('s1c');
+      if (old) { c.towers = old.towers; ['areas', 'tops'].forEach(function (k) { if (old[k]) c[k] = old[k]; }); P.scenes.splice(1, 1, b, c); }      // the old second part was the hallway: it is part C now
+      else P.scenes.splice(1, 0, b, c);
+      queueSave(); }
     if (!P.lineups) P.lineups = PK.lineupDefaults();
     if (!P.lights || P.lights.every(function (a) { return a.drawn && !a.v; })) P.lights = PK.lightDefaults(P);      // read again from her drawing as seen from the audience (2026-10-25)      // her five lighting areas plus all of left / all of right (2026-10-25)
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
@@ -57,8 +62,8 @@
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
     var n = 0; for (var k = 0; k <= i; k++) if (!P.scenes[k].moment) n++;
-    var sc = P.scenes[i], nx = P.scenes[i + 1];
-    return sc.moment ? n + 'b' : nx && nx.moment ? n + 'a' : String(n);      // 1a / 1b, 15a / 15b
+    var sc = P.scenes[i], nx = P.scenes[i + 1], k2 = i; while (k2 > 0 && P.scenes[k2].moment) k2--;
+    return sc.moment ? n + 'abcdefghij'.charAt(i - k2) : nx && nx.moment ? n + 'a' : String(n);      // 1a / 1b / 1c, 15a / 15b
   }
   function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo = []; }
   function changed() {

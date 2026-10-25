@@ -391,11 +391,12 @@
     var hall = { A: 'A1', B: 'B1+B3', C: 'C1', D: 'D2+D3' };
     var cafe = { A: { want: 'A1+A3', x: -12.75 }, B: { want: 'B3', x: -4.25 }, C: { want: 'C3', x: 4.25 }, D: { want: 'D2+D3', x: 12.75 } };      // B and C apart: a center lane for the tables from upstage center (Colleen 2026-10-25); A and D out to match
     var box = { B: { want: 'B2', x: -seam }, C: { want: 'C2', x: seam } };
-    var sub1 = function () {      // scene 1 has two places for lighting; the set does not change (Colleen 2026-10-25)
-      return S(1, 'East High: the hallway', hall, { alt: true, moment: true, sub: true, same: 's1', notes: 'Same set as 1a. Only the lighting changes: the karaoke area goes out and the hallway comes up.' }); };
+    var part = function (id, name, notes, extra) {      // scene 1 is three parts on one set; only the lighting changes (Colleen 2026-10-25)
+      return S(1, name, hall, Object.assign({ id: id, moment: true, sub: true, same: 's1', notes: notes }, extra || {})); };
     var L = [
-      S(1, 'New Year’s Eve karaoke (East High set as the preset)', hall, { notes: 'The preset: the signature East High hallway, as the audience sees it before the show starts. The New Year’s Eve karaoke vignette plays first, in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
-      sub1(),
+      S(1, 'Wildcat cheer', hall, { notes: 'Part A. The East High hallway is the preset, in place as the audience arrives; the show opens on the Wildcat cheer.' }),
+      part('s1b', 'New Year’s Eve flashback', 'Part B. Same set. The karaoke flashback plays in the stage-left side area (shimmer curtain).', { zones: ['nye'] }),
+      part('s1c', 'Back to East High', 'Part C. Same set, back in the East High hallway.'),
       S(2, 'Homeroom', { A: 'A3', B: 'B1', C: 'C1', D: 'D2' }),
       S(3, 'Main hallway', hall),
       S(4, 'Gym', { B: 'B1', C: 'C3', D: 'D1' }),      // the gym shows the doorway on B, not the moss wall (Colleen 2026-10-25)
@@ -605,7 +606,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, part1: function (P, id) { return library(P).find(function (x) { return x.id === id; }); }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;
