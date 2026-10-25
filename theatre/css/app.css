@@ -646,3 +646,26 @@ dialog input.stand { background: var(--warn-bg); }
 
 .pk-nose { fill: none; stroke: #b8895a; stroke-width: 0.9; stroke-linecap: round; opacity: .9; }
 .pk-g { stroke: #262626; } .pk-g5 { stroke: #333; }
+/* Simple mode, any window size: controls first (above the picture), the picture fills the room that is left, no scene list column */
+.pk.simple { overflow-x: hidden; }
+.pk.simple .pk-main { grid-template-columns: minmax(0, 1fr) !important; }
+.pk.simple .pk-left { display: none !important; }
+.pk.simple .pk-right { order: -1; max-height: none; padding: 6px 8px; }
+.pk.simple .pk-right .pk-stepbar { flex-wrap: nowrap; margin: 0; } .pk.simple .pk-right .pk-stepname { order: 0; flex: 1; font-size: 16px; }
+.pk.simple .pk-right .pk-tip { margin: 6px 2px 0; }
+.pk.simple .pk-simple-tower { margin: 6px 0 0; padding: 6px 10px; }
+.pk.simple .pk-simple-tower .pk-tworow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.pk.simple .pk-right .pk-faces3 { display: contents; }
+.pk.simple .pk-right .pk-facebtn { flex: 0 0 auto; min-width: 0; padding: 4px; }
+.pk.simple .pk-right .pk-facebtn img { width: 30px; height: 60px; } .pk.simple .pk-right .pk-facebtn.pt img { width: 22px; height: 60px; }
+.pk.simple .pk-right .pk-facebtn span { font-size: 10px; max-width: 86px; }
+.pk.simple .pk-simple-tower .pk-row { margin: 4px 0 0; }
+@media (max-width: 700px) { .pk.simple .pk-right .pk-stepbar { flex-wrap: wrap; } .pk.simple .pk-right .pk-stepname { flex-basis: 100%; order: -1; } }
+.pk-nav { display: contents; }
+.pk.simple .pk-right { position: sticky; top: var(--pkTop, 64px); z-index: 4; box-shadow: 0 6px 14px rgba(0,0,0,.45); }
+.pk-stepname select { font: inherit; font-size: 16px; font-weight: 700; max-width: 100%; background: #0e0c15; color: var(--pk-ink); border: 1px solid var(--pk-line); border-radius: 8px; padding: 4px 8px; }
+.pk.simple .pk-right { overflow: visible; max-height: none !important; }
+.pk.simple .pk-right .pk-facebtn img { width: 22px; height: 44px; } .pk.simple .pk-right .pk-facebtn.pt img { width: 17px; height: 44px; }
+.pk.simple .pk-right .pk-facebtn span:not(.pk-pt) { display: none; }
+.pk.simple .pk-simple-tower .pk-row button { padding: 4px 9px; min-height: 28px; } .pk-sep { width: 1px; align-self: stretch; background: var(--pk-line); margin: 0 4px; }
+.pk.simple .pk-stepbar button { padding: 6px 12px; }

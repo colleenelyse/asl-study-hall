@@ -254,7 +254,7 @@
       var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
       PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.75 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
         artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, sel: sel,
-        onPick: function (t) { if (anim) return; sel = t; draw(); var b = document.getElementById('pkBottom'); if (t && b && V.simple) b.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, fallback: function () { V.no3d = true; drawViews(); } });
+        onPick: function (t) { if (anim) return; sel = t; draw(); }, fallback: function () { V.no3d = true; drawViews(); } });
       return;
     }
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
@@ -445,17 +445,17 @@
   function simpleTower(t) {      // Simple mode: the tower someone clicked, with big plain controls
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+');
     var thumb = function (id) { return '<img src="' + artUrl(id) + '" alt="">'; };
-    var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '">' + thumb(id) + '<span>' + esc(PK.SHORT[id]) + '</span></button>'; }).join('');
-    var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
+    var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '" title="' + esc(PK.SHORT[id]) + '">' + thumb(id) + '<span>' + esc(PK.SHORT[id]) + '</span></button>'; }).join('');
+    var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '" title="' + esc(PK.SHORT[r.left] + ' + ' + PK.SHORT[r.right]) + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
     var seg = function (k, vals, names) { return vals.map(function (v, i) { return '<button data-s' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join(''); };
-    return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span><button id="pkSClose">Done</button></div>' +
-      '<div class="pk-faces3">' + faces + '</div><div class="pk-help small">Or show two faces as a point:</div><div class="pk-faces3">' + points + '</div>' +
-      '<div class="pk-row"><span>Slide 6″:</span><button data-snudge="-1,0">◀ toward stage right</button><button data-snudge="1,0">toward stage left ▶</button><button data-snudge="0,1">▲ upstage</button><button data-snudge="0,-1">▼ downstage</button></div>' +
-      '<div class="pk-row"><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button></div></div>';
+    return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help small">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span><button id="pkSClose">Done</button></div>' +
+      '<div class="pk-tworow"><div class="pk-faces3">' + faces + '</div><span class="pk-help small" style="align-self:center">or as a point:</span><div class="pk-faces3">' + points + '</div></div>' +
+      '<div class="pk-row"><span>Slide 6″:</span><button data-snudge="-1,0" title="toward stage right">◀ SR</button><button data-snudge="1,0" title="toward stage left">SL ▶</button><button data-snudge="0,1" title="upstage">▲ up</button><button data-snudge="0,-1" title="downstage">▼ down</button>' +
+      '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button></div></div>';
   }
   function plainPanel(ch, checks) {
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
-    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small> ' + esc(label(cur) + '. ' + sc.name) + '</div>' +
+    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
       '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button></div>');
     side.push(sel && TW.indexOf(sel) >= 0 ? simpleTower(sel) : '<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
@@ -561,6 +561,7 @@
         $('pkIDel').onclick = function () { snap(); sc.items = sc.items.filter(function (x) { return x !== it; }); sel = null; changed(); };
       }
     }
+    if ($('pkSSel')) $('pkSSel').onchange = function () { stop(); cur = +this.value; draw(); };
     if ($('pkSPrev')) $('pkSPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
     if ($('pkSNext')) $('pkSNext').onclick = function () { stop(); cur = Math.min(P.scenes.length - 1, cur + 1); draw(); };
     if ($('pkSPlay')) $('pkSPlay').onclick = function () { stop(); play(); };
@@ -597,7 +598,7 @@
     requestAnimationFrame(tick);
   }
   function stop() { if (!anim) return; anim = null; setPlayBtn(); draw(); }
-  function setPlayBtn() { var b = document.getElementById('pkPlay'); if (b) b.textContent = anim && anim.playing ? '❚❚ Pause' : anim ? '▶ Resume' : '▶ Play the change'; var s = document.getElementById('pkScrub'); if (s) s.value = anim ? Math.round(anim.u * 1000) : 1000; }
+  function setPlayBtn() { var sb = document.getElementById('pkSPlay'); if (sb) sb.textContent = anim && anim.playing ? '❚❚ Pause' : anim ? '▶ Resume' : '▶ Play the change'; var b = document.getElementById('pkPlay'); if (b) b.textContent = anim && anim.playing ? '❚❚ Pause' : anim ? '▶ Resume' : '▶ Play the change'; var s = document.getElementById('pkScrub'); if (s) s.value = anim ? Math.round(anim.u * 1000) : 1000; }
 
   /* ---------- pointer: select, drag, turn ---------- */
   function svgPt(e) { var p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; var q = p.matrixTransform(svg.getScreenCTM().inverse()); return { x: q.x, y: -q.y }; }
@@ -794,8 +795,8 @@
     if (V.simple) { V.labels = false; if (V.view === 'split' || V.view === 'ledger') V.view = 'aud'; } else V.labels = true;      // always opens on scene 1, the East High preset
     document.body.classList.add('pk-wide');
     app.innerHTML = '<div class="pk' + (V.simple ? ' simple' : '') + '">' +
-      '<div class="pk-top"><button id="pkPrev" title="[">‹</button><select id="pkSel"></select><button id="pkNext" title="]">›</button>' +
-      '<button id="pkPlay" class="pk-primary" title="Space">▶ Play the change</button><input type="range" id="pkScrub" min="0" max="1000" value="1000" title="Scrub through the change">' +
+      '<div class="pk-top"><span class="pk-adv pk-nav"><button id="pkPrev" title="[">‹</button><select id="pkSel"></select><button id="pkNext" title="]">›</button>' +
+      '<button id="pkPlay" class="pk-primary" title="Space">▶ Play the change</button><input type="range" id="pkScrub" min="0" max="1000" value="1000" title="Scrub through the change"></span>' +
       '<span class="pk-adv"><select id="pkSpeed" title="Speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select>' +
       '<select id="pkWhen" title="When towers turn"><option value="auto">Turn where there’s room</option><option value="during">Turn while rolling</option><option value="before">Turn, then roll</option><option value="after">Roll, then turn</option></select>' +
       '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label></span>' +
@@ -809,6 +810,7 @@
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +
       '<p class="pk-help small pk-adv">Keys: [ ] scenes · Space play · Tab next tower · arrows nudge (Shift ×4) · Q / E turn 60° (Shift 120°) · 1 2 3 show that face flat · L light · ⌘Z undo. Option while dragging: no snapping. Saved in the show and on this computer; Export keeps a copy.</p></div>';
+    var bar0 = document.querySelector('.bar'); app.querySelector('.pk').style.setProperty('--pkTop', (bar0 ? bar0.offsetHeight : 0) + 'px');      // the pinned controls sit just under the app's own top bar
     var $ = function (id) { return document.getElementById(id); };
     $('pkPrev').onclick = function () { stop(); cur = Math.max(0, cur - 1); draw(); };
     $('pkMode').onclick = function () { V.simple = !V.simple; try { localStorage.setItem(LS + '-simple', V.simple ? '1' : '0'); } catch (e) {} T.teacherPages.set(); };

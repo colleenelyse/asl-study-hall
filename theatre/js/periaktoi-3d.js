@@ -228,7 +228,7 @@
     if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { try { build(ctx); } catch (e) { W = {}; ctx.fallback(); return false; } faceSrc = {}; overlays = null; }      // a half-built scene would fail on every frame
     loadOverlays(ctx); attachOverlays(ctx);
     var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick;
-    var Wd = host.clientWidth; if (!Wd) return true; var H = Math.round(Math.min(Wd * 0.5, Math.max(260, window.innerHeight * 0.58)));      // never taller than the window allows, so the controls stay in view
+    var Wd = host.clientWidth; if (!Wd) return true; var room = window.innerHeight - Math.max(0, host.getBoundingClientRect().top + window.scrollY) - 24, H = Math.round(Math.min(Wd * 0.5, Math.max(220, room)));      // fits the room left in the window under the controls
     if (v.canvas.width !== Math.round(Wd * v.renderer.getPixelRatio()) || v.h !== H) { v.renderer.setSize(Wd, H, false); v.canvas.style.width = '100%'; v.canvas.style.height = 'auto'; v.h = H; }
     update(ctx);
     W.drape.visible = W.border.visible = !ctx.crew;      // backstage looks out through where the drape would be
@@ -238,7 +238,7 @@
     var off = eye.clone().sub(target), d0 = off.length();
     off.applyAxisAngle(new three.Vector3(0, 1, 0), v.yaw); var side = new three.Vector3().crossVectors(off, new three.Vector3(0, 1, 0)).normalize(); off.applyAxisAngle(side, v.pitch);
     cam.position.copy(target.clone().add(off.multiplyScalar(v.dist)));
-    cam.aspect = Wd / H; var hfov = 2 * Math.atan((half * 1.05) / (d0 * v.dist)); cam.fov = 2 * Math.atan(Math.tan(hfov / 2) / cam.aspect) * 180 / Math.PI; cam.updateProjectionMatrix(); cam.lookAt(target);
+    cam.aspect = Wd / H; var hfov = 2 * Math.atan((half * 1.05) / d0);      // the lens stays fixed: scrolling moves the seat closer, so the whole stage grows cam.fov = 2 * Math.atan(Math.tan(hfov / 2) / cam.aspect) * 180 / Math.PI; cam.updateProjectionMatrix(); cam.lookAt(target);
     v.renderer.render(W.scene, cam);
     return true;
   }
