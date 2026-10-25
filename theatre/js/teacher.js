@@ -179,6 +179,7 @@
       ['script', (sc ? t('#/teacher/read', 'book', 'Read the script', 'The real pages, with director’s notes') : '')],
       ['tech', (sc ? t('#/teacher/cues', 'bulb', 'Cue sheet', (T.cues ? T.cues().length : 0) + ' light, sound and music cues') : '')],
       ['tech', (sc ? t('#/teacher/smscript', 'print', 'Stage manager script', 'The real pages with every cue') : '')],
+      ['tech', t('#/teacher/set', 'stage', 'Set and scene changes', 'Periaktoi: 4 towers, 12 faces, 2 tables, every scene change')],
       ['tech', (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '')],
       ['people', t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors')],
       ['app', t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent')],
