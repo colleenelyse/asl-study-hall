@@ -594,7 +594,9 @@
     draw: function (state) { drawPerformer(state, opt()); },
     scroll: function (s0, s1, e) { drawScroll(s0, s1, e, opt()); },
     at: function (segs, t) { return perfAt(segs, t, opt()); },
-    timeline: function (cue) { return songTimeline(cue, opt(), true); },
+    /* a little less lead than the wall (Colleen 2026-10-25: the student view was "just a bit too far ahead, causing the line to disappear too
+       soon regularly. dial that back just a little"): half a second less, at least half a second */
+    timeline: function (cue) { var o = opt(); o.lead = Math.max(0.5, (+o.lead || 0) - 0.5); return songTimeline(cue, o, true); },
     keyOf: keyOf, ease: ease, SCROLL: SCROLL, fonts: fontsReady
   };
   T.Captions = { perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
