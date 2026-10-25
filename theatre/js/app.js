@@ -666,6 +666,7 @@
     var acc = T.me.access;
     var opt = Object.assign({ names: true, dirs: false, show: acc.show, echo: acc.echo, didIt: acc.didIt || !T.canListen, strict: acc.strict, view: 'pages' }, ls('practice') || {});
     var pagesOn = function () { return opt.view === 'pages' && T.Pages && T.Pages.ready(); };      // the real script pages, highlighted
+    var promptOn = function () { return opt.view === 'prompt' && T.Captions && T.Captions.perf; };      // the show's own teleprompter (captions.js)
     if (!T.canListen) opt.didIt = true;
     var items = src.items.map(function (it, i) {
       var chars = it.type === 'line' ? labelChars(it.who).filter(function (c) { return c !== '*'; }) : [];
@@ -717,6 +718,12 @@
       document.getElementById('nx').onclick = function () { jump(nextIdx(cur)); };
     }
     function render() {
+      tpLast = null;
+      if (promptOn()) {
+        app.innerHTML = '<div class="card noprint tpo" id="opts"></div><div class="tp"><canvas id="tpc" width="1080" height="1080" role="img" aria-label="Teleprompter: the line now at the top, the next lines below"></canvas></div><div id="songdock" class="songdock noprint"></div>' + dockHtml();
+        wireDock(); T.Captions.perf.fonts().then(function () { tpDraw(); });
+        return;
+      }
       if (pagesOn()) {
         app.innerHTML = '<div class="card noprint" id="opts"></div><div id="pages" class="pages"></div><div id="songdock" class="songdock noprint"></div>' + dockHtml();
         var host = document.getElementById('pages');
@@ -747,7 +754,8 @@
     function renderOpts() {
       var o = document.getElementById('opts');
       var sw = function (k, label) { return '<label class="switch"><span>' + label + '</span><input type="checkbox" data-k="' + k + '"' + (opt[k] ? ' checked' : '') + '></label>'; };
-      o.innerHTML = (T.Pages && T.Pages.ready() ? '<div class="row" style="margin-bottom:6px"><div class="seg" data-k="view"><button type="button" data-v="pages" aria-pressed="' + (opt.view === 'pages') + '">📄 Script pages</button><button type="button" data-v="lines" aria-pressed="' + (opt.view !== 'pages') + '">☰ Lines</button></div></div>' : '') +
+      var hasP = T.Pages && T.Pages.ready(), hasT = T.Captions && T.Captions.perf;
+      o.innerHTML = (hasP || hasT ? '<div class="row" style="margin-bottom:6px"><div class="seg" data-k="view">' + (hasP ? '<button type="button" data-v="pages" aria-pressed="' + pagesOn() + '">📄 Script pages</button>' : '') + '<button type="button" data-v="lines" aria-pressed="' + (!pagesOn() && !promptOn()) + '">☰ Lines</button>' + (hasT ? '<button type="button" data-v="prompt" aria-pressed="' + !!promptOn() + '">🖥️ Teleprompter</button>' : '') + '</div></div>' : '') +
         '<details' + (mode === 'run' ? '' : '') + '><summary class="btn quiet small" style="display:inline-flex">' + icon('gear') + 'Options</summary>' +
         sw('names', 'Say names before each line') + sw('dirs', 'Read stage directions') + (asChar ? '' : sw('cont', 'Keep going into the next scene')) +
         (mode === 'run' ? '<div class="switch"><span>My line on the screen</span><div class="seg" data-k="show">' + [['auto', 'Fade'], ['line', 'Show'], ['hint', 'Hint'], ['hidden', 'Hide']].map(function (v) { return '<button type="button" data-v="' + v[0] + '" aria-pressed="' + (opt.show === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div></div>' +
@@ -766,10 +774,58 @@
     function nextIdx(i) { for (var j = i + 1; j < items.length; j++) if (visible(j)) return j; return items.length; }
     function prevIdx(i) { for (var j = i - 1; j >= 0; j--) if (visible(j)) return j; return 0; }
     function mark() {
+      if (promptOn()) tpDraw();
       app.querySelectorAll('.item.now').forEach(function (e) { e.classList.remove('now'); });
       var els = app.querySelectorAll('.item[data-i="' + cur + '"]');
       els.forEach(function (e) { e.classList.add('now'); });
       if (els[0]) els[0].scrollIntoView({ block: 'center', behavior: T.prefs.motion ? 'smooth' : 'auto' });
+    }
+    /* ---- the Teleprompter (Colleen 2026-10-25: students rehearse with "that same teleprompter"; "it should look like what students saw in
+       the practice app; prioritize big, clear text"): the performer view from Open captions, drawn by captions.js on its 1080 square and
+       copied here. Dialogue steps with the run: the line now on top with its ring, the next two below, gliding up at each line. In a song
+       with Lyrics timing it follows the track exactly as the song video does (each line the same lead before it is sung, ♪ Music ♪ in the
+       intro and long breaks). My lines keep my supports: Fade/Hint/Hide cover them (a hint, or "Your line!") until I have said them. ---- */
+    var tpLast = null, tpRaf = 0, tpSong = null, turnX = null, songCues = null;
+    function tpBlit() { var c = document.getElementById('tpc'); if (c) c.getContext('2d').drawImage(T.Captions.cvP, 0, 0); }
+    function coverFor(x) {
+      if (mode !== 'run' || !x.mine || x.done) return null;
+      var sh = showFor(x), lvl = x === turnX ? hintLevel : sh === 'hint' ? 1 : 0;
+      if (sh === 'line' || lvl >= 3) return null;
+      return lvl === 0 ? '⭐ Your line!' : LineCheck.hint(x.it.text, lvl);
+    }
+    function tpCard(x) {
+      var c = T.Captions.perf.card(x.it.who, x.it.text, 'i' + x.i), cv = c && coverFor(x);
+      if (cv) { c.text = c.full = cv; }
+      return c;
+    }
+    function tpState() {
+      var cards = [];
+      for (var j = cur; j < items.length && cards.length < 3; j++) {
+        var x = items[j];
+        if (x.it.type === 'song') {
+          var title = x.song ? x.song.title : x.it.title, num = x.song ? x.song.num : x.it.num;
+          cards.push(cards.length ? { text: '', song: '#' + num + ' ' + title, key: 'song' + j } : { who: '', name: 'Song', text: '♪ ' + title + ' ♪', full: '♪ ' + title + ' ♪', key: 'song' + j });
+          if (cards.length > 1) break;
+          continue;
+        }
+        if (x.it.type !== 'line' || (x.cuedBy != null && j !== cur)) continue;      // lines over the music come inside their song
+        var c = tpCard(x); if (c) cards.push(c);
+      }
+      return { cur: cards[0] || null, nexts: cards.slice(1) };
+    }
+    function tpDraw() {
+      if (!promptOn() || tpSong || !document.getElementById('tpc')) return;
+      var P = T.Captions.perf, s = tpState(), from = tpLast;
+      cancelAnimationFrame(tpRaf); tpLast = s;
+      if (!from || !T.prefs.motion || P.keyOf(from.cur) === P.keyOf(s.cur)) { P.draw(s); tpBlit(); return; }
+      var t0 = performance.now();
+      (function f() { var e = Math.min(1, (performance.now() - t0) / 1000 / P.SCROLL); P.scroll(from, s, P.ease(e)); tpBlit(); if (e < 1) tpRaf = requestAnimationFrame(f); })();
+    }
+    /* a song's teleprompter timeline (band-track seconds), as in its performer video; null without Lyrics timing (then the song's card stays) */
+    function songSegs(id) {
+      if (!songCues) { try { songCues = T.Captions.build().filter(function (c) { return c.type === 'song'; }); } catch (e) { songCues = []; } }
+      var c = songCues.find(function (q) { return q.song && q.song.id === id; });
+      return c ? T.Captions.perf.timeline(c) : null;
     }
     function setPP() { var b = document.getElementById('pp'); if (b) { b.innerHTML = icon(playing ? 'pause' : 'play'); b.setAttribute('aria-label', playing ? 'Pause' : 'Play'); } }
     function pause() { playing = false; gen++; Speech.stop(); if (listen.stop) listen.stop(); if (songStop) songStop(); closeTurn(); setPP(); }
@@ -795,9 +851,11 @@
       if (it.type === 'dir') return Speech.say(LineCheck.spoken(it.text) || it.text.replace(/[()]/g, ''), null).then(function () { advance(g); });
       if (it.type === 'song') { if (trackOf(x.song)) return playSong(x, g); playing = false; setPP(); toast('Song time! Open it in My Songs, or tap Next.', 3500); return; }
       if (mode === 'run' && x.mine) return myTurn(x, g);
-      var text = LineCheck.spoken(it.text);
+      var text = LineCheck.spoken(it.text), t0 = Date.now();
       var name = opt.names ? whoName(it.who) + '. ' : '';
-      (name ? Speech.say(name, null) : Promise.resolve()).then(function () { return g === gen && (T.Voices ? T.Voices.say(it, x.chars[0], x.mine) : Speech.say(text, x.chars[0])); }).then(function () { advance(g); });
+      /* Off in playback says nothing (0.4 s); on the Teleprompter the line stays up long enough to read it */
+      var hold = function () { var ms = promptOn() && T.Voices && T.Voices.muted && T.Voices.muted(T.Voices.id(it)) ? Math.max(1500, text.split(/\s+/).length * 400 / (+T.prefs.rate || 1)) - (Date.now() - t0) : 0; return ms > 0 ? new Promise(function (ok) { setTimeout(ok, ms); }) : null; };
+      (name ? Speech.say(name, null) : Promise.resolve()).then(function () { return g === gen && (T.Voices ? T.Voices.say(it, x.chars[0], x.mine) : Speech.say(text, x.chars[0])); }).then(function () { return g === gen && hold(); }).then(function () { advance(g); });
     }
 
     /* ---- a song inside the run: the track plays here, and its lines over the music come on cue ---- */
@@ -810,7 +868,17 @@
       bar.innerHTML = '<span class="muted">Loading the track…</span>';
       var audio = new Audio(), url = null, timer = null, fired = 0, alive = true, lastCue = x.i;
       x.cues.forEach(function (c) { lastCue = Math.max(lastCue, c.y.i); });
-      songStop = function () { alive = false; clearInterval(timer); audio.pause(); if (url) URL.revokeObjectURL(url); songStop = null; bar.remove(); };
+      var segs = promptOn() && x.song && songSegs(x.song.id), shownK = null, raf = 0;
+      songStop = function () { alive = false; clearInterval(timer); cancelAnimationFrame(raf); audio.pause(); if (url) URL.revokeObjectURL(url); songStop = null; bar.remove(); if (tpSong) { tpSong = null; tpLast = null; } };
+      if (segs && segs.length) {      // the teleprompter follows the band-track clock, like the song's performer video
+        tpSong = x; cancelAnimationFrame(tpRaf);
+        (function loop() {
+          if (!alive) return;
+          var bt = audio.currentTime - (kind === 'performance' ? 0 : off), pf = T.Captions.perf.at(segs, Math.max(0, bt));
+          if (pf.key !== shownK) { shownK = pf.key; pf.draw(); tpBlit(); }
+          raf = requestAnimationFrame(loop);
+        })();
+      }
       var finish = function () { if (!alive) return; songStop(); if (g !== gen) return; closeTurn(); cur = lastCue; advance(g); };
       Store.getTrack(T.key, x.song.id, kind, t[kind].ver).then(function (b) {
         if (!alive || g !== gen) return;
@@ -841,13 +909,13 @@
 
     /* ---- my turn ---- */
     var turnEl = null;
-    function closeTurn() { if (turnEl) { turnEl.remove(); turnEl = null; } }
+    function closeTurn() { if (turnEl) { turnEl.remove(); turnEl = null; } turnX = null; }
     function myTurn(x, g, overMusic) {      // overMusic: during a song; the music keeps going and the run does not wait
       var sh = showFor(x), helped = false, recorded = false;
       var rec = function (ok) { if (recorded || asChar || !T.Progress) return; recorded = true; T.Progress.line(scene.id, x.it, ok); };      // like flashcards: the first try counts
       hintLevel = sh === 'hint' ? 1 : 0;
       var c = color(myChars.find(function (id) { return x.chars.indexOf(id) >= 0; }) || myChars[0]);
-      closeTurn();
+      closeTurn(); turnX = x;
       turnEl = document.createElement('div'); turnEl.className = 'turn'; turnEl.style.setProperty('--c', c);
       document.body.appendChild(turnEl);
       var spokenLine = LineCheck.spoken(x.it.text);
@@ -867,12 +935,13 @@
           (T.me.access.sayForMe !== false ? '<button class="btn" data-a="for">' + icon('speak') + 'Say it for me</button>' : '') +
           '<button class="btn quiet" data-a="skip">' + icon('skip') + 'Skip</button></div></div>';
         turnEl.querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
+        tpDraw();      // a hint shows on the teleprompter too
       }
       function done(msg) {
         x.done = true;
         var el = app.querySelector('.item[data-i="' + x.i + '"] .text'); if (el) el.innerHTML = esc(x.it.text);
         app.querySelectorAll('.hl.cover[data-i="' + x.i + '"]').forEach(function (c) { c.classList.remove('cover'); c.innerHTML = ''; });
-        closeTurn(); if (msg) toast(msg, 1400);
+        closeTurn(); tpDraw(); if (msg) toast(msg, 1400);
         if (overMusic) return;
         setTimeout(function () { advance(g); }, msg ? 700 : 0);
       }
@@ -909,7 +978,10 @@
       }
     }
     render();
-    T.cleanup.push(function () { pause(); });
+    var gone = false;
+    T.cleanup.push(function () { gone = true; pause(); });
+    /* opened before every file has loaded (a slow load, the show opened from this iPad): draw again when they have, so the Teleprompter and pages are there */
+    if (document.readyState !== 'complete') window.addEventListener('load', function () { if (gone || playing) return; var keep = cur; render(); cur = keep; mark(); }, { once: true });
     if (T._practiceGo) { T._practiceGo = false; setTimeout(function () { if (!playing) play(); }, 700); }      // arrived from the scene before (Keep going)
     var press = function (a) { var b = turnEl && turnEl.querySelector('[data-a="' + a + '"]'); if (b && !b.disabled) b.click(); };
     keys({ Space: function () { if (!turnEl) document.getElementById('pp').click(); }, ArrowRight: function () { document.getElementById('nx').click(); }, ArrowLeft: function () { document.getElementById('pv').click(); },

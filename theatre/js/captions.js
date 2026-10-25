@@ -586,5 +586,16 @@
     $('xql').onclick = function () { busy(true); sink((T.O().title || 'Show') + ' QLab script').then(function (out) { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()).then(function () { return out.done(); }); }).then(function (m) { busy(false); msg.textContent = m + ' Put these two files in the same folder as the pictures and videos.'; }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : e.message; }); };
     $('xcsv').onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(cueSheet(cues)); a.download = (T.O().title || 'Show') + ' caption cue sheet.csv'; document.body.appendChild(a); a.click(); a.remove(); };
   };
-  T.Captions = { docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  /* Practice Lines › Teleprompter (js/app.js): the performer view on the student's own screen, drawn by this same code, so Company Artists
+     rehearse with what they will see on the back wall (Colleen 2026-10-25). A line becomes the same card (who, colors, the whole line or
+     First words for that character); key keeps a card the same card while its words change (a hint, then the line). */
+  var perf = {
+    card: function (who, text, key) { var c = cardsFor(who, text, false, opt())[0]; if (c) c.key = key; return c || null; },
+    draw: function (state) { drawPerformer(state, opt()); },
+    scroll: function (s0, s1, e) { drawScroll(s0, s1, e, opt()); },
+    at: function (segs, t) { return perfAt(segs, t, opt()); },
+    timeline: function (cue) { return songTimeline(cue, opt(), true); },
+    keyOf: keyOf, ease: ease, SCROLL: SCROLL, fonts: fontsReady
+  };
+  T.Captions = { perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();

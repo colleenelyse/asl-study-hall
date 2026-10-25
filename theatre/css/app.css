@@ -197,6 +197,12 @@ label.f textarea { min-height: 120px; }
   box-shadow: 0 0 0 3px var(--fl, #ffd600); }
 @keyframes hop { 0% { transform: translateY(0); } 45% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .follow-line { transition: none; } }
+/* Practice Lines › Teleprompter: the performer view from Open captions, as big as the screen allows above the buttons */
+.tp { display: flex; justify-content: center; margin: 0 auto; }
+.tp canvas { display: block; background: #000; border-radius: 18px; width: min(100%, max(300px, calc(100vh - 290px))); width: min(100%, max(300px, calc(100dvh - 290px))); height: auto; aspect-ratio: 1; }
+.card.tpo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px; margin-bottom: 10px; }
+.card.tpo > .row { margin: 0 !important; }
+.card.tpo details[open] { flex-basis: 100%; }
 .songdock:empty { display: none; }
 .songdock { position: fixed; left: 0; right: 0; bottom: 100px; z-index: 6; display: flex; justify-content: center; }
 .songdock .songbar { background: var(--card); border: 2px solid var(--accent); border-radius: 14px; padding: 8px 14px; box-shadow: var(--shadow); max-width: 900px; }
