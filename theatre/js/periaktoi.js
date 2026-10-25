@@ -20,6 +20,7 @@
     if (local && shown && (local.stamp || 0) > (shown.stamp || 0)) queueSave();      // changes made here that never reached the server
     if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
+    if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;      // the rim lines up with the printed target square in her D1 art
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
@@ -58,11 +59,14 @@
     var a = ART[id] = { img: placeholder(id), real: false };
     if (!artList) artList = fetch('img/set/index.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; });
     artList.then(function (list) {
-      var f = (list || []).find(function (n) { return n.indexOf(PK.FILES[id]) === 0; }); if (!f) return;
+      var mine = versions(list, id), pick = P.art && P.art[id]; a.versions = mine;      // a face can have several versions (D3-Academic-Corridor.jpg, D3-Academic-Corridor-v2.jpg…): her pick, else the plain one
+      var f = mine.indexOf(pick) >= 0 ? pick : mine.find(function (n) { return n.indexOf(PK.FILES[id] + '.') === 0; }) || mine[0]; if (!f) return; a.file = f;
+      if (a.versions.length > 1 && sel && document.getElementById('pkRight')) draw();
       var im = new Image(); im.onload = function () { a.img = im; a.real = true; drawViews(); }; im.src = 'img/set/' + f;
     });
     return a;
   }
+  function versions(list, id) { return (list || []).filter(function (n) { return n.indexOf(PK.FILES[id]) === 0; }); }
   function placeholder(id) {
     var w = 240, h = 480, c = document.createElement('canvas'); c.width = w; c.height = h;
     var g = c.getContext('2d'), stripe = function () { g.fillStyle = '#9e1b2a'; g.fillRect(0, h * (1 - 40 / 96), w, h * 4 / 96); };      // crimson stripe, same height on every academic wall
@@ -278,7 +282,7 @@
     return lo.slice(0, -1).concat(up.slice(0, -1));
   }
   function drawViews() {
-    if (!document.getElementById('pkOver')) return;
+    if (!document.getElementById('pkCenter')) return;
     overheadDyn(); front(document.getElementById('pkAud'), false); front(document.getElementById('pkCrew'), true);
     var sc = document.getElementById('pkScrub'); if (sc && anim) sc.value = Math.round(anim.u * 1000);
   }
@@ -286,7 +290,7 @@
   /* ---------- the page ---------- */
   function sceneSummary(sc) { return TW.map(function (t) { var f = PK.facing(P, t, sc.towers[t].rot); return (sc.towers[t].lit === 'dark' ? '<s>' : '') + f.label.replace('+', '|') + (sc.towers[t].lit === 'dark' ? '</s>' : ''); }).join(' · '); }
   function draw() {
-    if (!document.getElementById('pkOver')) return;
+    if (!document.getElementById('pkCenter')) return;
     var sc = scene(), checks = PK.sceneChecks(P, sc), prev = prevScene();
     var ch = prev ? PK.change(P, prev, sc) : null;
     document.getElementById('pkScenes').innerHTML = P.scenes.map(function (x, i) {
@@ -328,7 +332,8 @@
       '<div class="pk-f">Light' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '</div>' +
       '<div class="pk-f">Part in the scene' + seg('role', ['featured', 'supporting', 'masking'], ['Featured', 'Supporting', 'Masking / dark']) + '</div>' +
       '<div class="pk-f">Wheels' + seg('lock', [true, false], ['Locked', 'Rolling']) + '</div>' +
-      '<details><summary>Faces on ' + t + '</summary><ul class="pk-faces">' + [1, 2, 3].map(function (k) { return '<li><b>' + t + k + '</b> ' + esc(PK.FACES[t + k]) + (art(t + k).real ? '' : ' <i>(placeholder art)</i>') + '</li>'; }).join('') + '</ul>' +
+      '<details' + ([1, 2, 3].some(function (k) { return (art(t + k).versions || []).length > 1; }) ? ' open' : '') + '><summary>Faces on ' + t + '</summary><ul class="pk-faces">' + [1, 2, 3].map(function (k) { var A = art(t + k), id = t + k;
+        return '<li><b>' + id + '</b> ' + esc(PK.FACES[id]) + (A.real ? '' : ' <i>(placeholder art)</i>') + ((A.versions || []).length > 1 ? '<br>Version <select data-art="' + id + '">' + A.versions.map(function (f, i) { return '<option value="' + esc(f) + '"' + (f === A.file ? ' selected' : '') + '>' + (i + 1) + ': ' + esc(f.replace(PK.FILES[id], '').replace(/^-/, '').replace(/\.\w+$/, '') || 'first') + '</option>'; }).join('') + '</select>' : '') + '</li>'; }).join('') + '</ul>' +
       '<p class="pk-help small">Face order around ' + t + ': ' + (w ? '1 → 2 → 3 go <b>' + w + '</b> seen from above (confirmed).' : 'taken from your triangle diagram (' + (P.towers[t].wind === 'cw' ? 'clockwise' : 'counterclockwise') + '); not checked on the real tower yet. Confirm it in Stage & towers.') + '</p></details></div>';
   }
   function tablePanel(id) {
@@ -402,6 +407,7 @@
       app.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { snap(); setRot(t, s.rot + +b.dataset.turn); changed(); }; });
       var pos = function (id, k) { $(id).onchange = function () { var v = PK.parseFt(this.value); if (v == null) { T.toast('Type feet and inches, like 7\' 6"'); return draw(); } snap(); s[k] = v; changed(); }; };
       pos('pkX', 'x'); pos('pkY', 'y');
+      app.querySelectorAll('[data-art]').forEach(function (x) { x.onchange = function () { snap(); P.art = P.art || {}; P.art[x.dataset.art] = x.value; delete ART[x.dataset.art]; art(x.dataset.art); changed(); }; });
       ['lit', 'role', 'lock'].forEach(function (k) { app.querySelectorAll('[data-' + k + ']').forEach(function (b) { b.onclick = function () { snap(); var v = b.dataset[k]; s[k] = k === 'lock' ? v === 'true' : v; changed(); }; }); });
     } else if (sel && PK.TABLES.indexOf(sel) >= 0) {
       var tb = sc.tables[sel], tid = sel;
@@ -505,7 +511,7 @@
     svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
   }
   function keys(e) {
-    if (!document.getElementById('pkOver')) return;
+    if (!document.getElementById('pkCenter')) return;
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName)) return;
     var k = e.key, sc = scene(), mod = e.metaKey || e.ctrlKey;
     if (mod && k.toLowerCase() === 'z') { e.preventDefault(); stop(); step(!e.shiftKey); return; }

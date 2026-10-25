@@ -24,7 +24,7 @@
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
     B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, d: 0.15, z: 5 },
-    D1: { name: 'Real 18″ basketball rim (backboard printed)', u: 0.5, w: 1.5, d: 2, z: 6.5, rim: true }
+    D1: { name: 'Real 18″ basketball rim (backboard printed)', u: 0.5, w: 1.5, d: 2, z: 5, rim: true }      // z: under the target square in her D1 art (about 5 ft)
   };
   var PROTRUDE = {}; Object.keys(PRACTICALS).forEach(function (k) { PROTRUDE[k] = PRACTICALS[k].name; });
   var R3 = Math.sqrt(3);
