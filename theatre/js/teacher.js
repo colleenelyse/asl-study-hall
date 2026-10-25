@@ -194,6 +194,7 @@
       ['family', t('#/teacher/family', 'hand', 'Family portal', '<span id="famwait">Consent, sizes, sensory needs, commitment, news</span>')],
       ['family', t('#/teacher/emails', 'speak', 'Emails', T.show.mail && T.show.mail.on ? 'Notification emails are on' : 'Set up notification emails')],
       ['costumes', t('#/teacher/sizes', 'shirt', 'Sizes', 'Recorded at school, with Enough / Not enough')],
+      ['costumes', t('#/teacher/profiles', 'shirt', 'Shopping profiles', 'Each Company member’s sizes, roles and sensory needs, for the shopping trip')],
       ['family', t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted')],
       ['music', t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks')],
       ['music', t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings')],

@@ -158,6 +158,7 @@
       '<label class="f" style="margin:0">Budget $<input id="bud" inputmode="decimal" value="' + esc(s.budget || '') + '" style="width:110px;display:inline-block"></label><button class="btn small" onclick="print()">' + icon('print') + 'Print</button></div>' +
       '<label class="switch"><span>Show sizes on the Company members’ list</span><input type="checkbox" id="ssz"' + (s.showSizes ? ' checked' : '') + '></label>' +
       '<div class="seg noprint"><button data-f="need" aria-pressed="' + (filter === 'need') + '">Still to find</button><button data-f="all" aria-pressed="' + (filter === 'all') + '">Everything</button></div>' +
+      '<p class="noprint"><a class="btn small" href="#/teacher/profiles">🛍️ Shopping profiles: sizes, roles and sensory needs</a></p>' +
       '<p class="muted small">Field trips: in a day’s plan, add a 🚌 Field trip group. “Two trips: half the class each” sends each half on a different day. Company members open this list from Today.</p></div>' +
       Object.keys(byWho).sort().map(function (k) {
         var l = byWho[k], g = k.split('|'), head, foot = '';
@@ -577,6 +578,149 @@
       box.querySelectorAll('[data-pok]').forEach(function (b) { b.onclick = function () { Store.photoOk(T.proof, b.dataset.pok).then(function () { T.toast('OK: everyone can see it'); PH.list = null; redraw(); }, function (e) { T.toast(e.message); }); }; });
       box.querySelectorAll('[data-pdel]').forEach(function (b) { b.onclick = function () { if (!confirm('Remove this photo?')) return; Store.photoDel(T.proof, b.dataset.pdel).then(function () { T.toast('Removed'); PH.list = null; redraw(); }, function (e) { T.toast(e.message); }); }; });
     });
+  }
+
+  /* ---------- Teacher: shopping profiles (Colleen 2026-10-25: "shopping profiles by actor that includes sizes, roles and sensory stuff like tags and
+     fabrics for quick access"; she chose: only the teacher, on her phone in Teacher mode, and printed pocket cards with first name and last initial).
+     Built from the vault (the families' sizes, sensory and try-on answers, and the sizes read at school) plus the show (roles, the shopping list).
+     Nothing here is saved in the show or sent anywhere; the teacher's own note per Company member is kept in the vault (portal[actor].shopNote). ---------- */
+  var PF = { open: false, q: '', need: '', sizeKey: 'shirt', sizeVal: '', sense: false, help: false, one: false, at: 0, allergies: false };
+  var PF_SIZES = [['shirt', 'Shirt'], ['pants', 'Pants'], ['waist', 'Waist'], ['inseam', 'Inseam'], ['dress', 'Dress'], ['skirt', 'Skirt'], ['shorts', 'Shorts'], ['shoe', 'Shoe'], ['jacket', 'Jacket'], ['hat', 'Hat']];
+  var PF_SENSE = [['tags', 'Tags and seams'], ['fabricsNo', 'Avoid'], ['fabricsYes', 'Likes'], ['fit', 'Fit'], ['textures', 'Textures, sounds, smells'], ['changing', 'Changing clothes']];
+  function profilesOf(P) {
+    var all = items();
+    return (T.show.cast || []).filter(function (a) { return (a.chars || []).length; }).map(function (a) {
+      var r = P[a.id] || {}, fam = r.sizes || {}, sch = (r.school && r.school[0]) || null, sense = r.sensory || {};
+      var need = all.filter(function (it) {
+        if (state(it).s) return false;
+        if (it.kind === 'costume') return it.actor && it.actor.id === a.id;
+        if (it.extra && it.extra.hw) return it.extra.hw.indexOf(a.id + '|') === 0;
+        return it.kind === 'prop' && !it.extra && a.chars.indexOf(it.who) >= 0;
+      });
+      var looks = {}; need.forEach(function (it) { var k = it.kind === 'costume' ? it.costume : it.extra ? 'From their homework list' : 'Props'; (looks[k] = looks[k] || []).push(it.name + (it.qty > 1 ? ' × ' + it.qty : '')); });
+      var sizes = [];
+      ((window.PortalCore && PortalCore.SIZE_FIELDS) || []).forEach(function (f) {
+        var k = f[0], s = sch && sch.sizes && sch.sizes[k], m = fam[k];
+        if (k === 'note' || k === 'brands' || (!s && !m)) return;
+        sizes.push({ k: k, label: f[1].replace(/ \(.*\)$/, '').replace(' / ', '/'), v: s || m, from: s ? 'school' : 'family', other: s && m && String(m).toLowerCase() !== String(s).toLowerCase() ? m : '' });
+      });
+      var tags = PF_SENSE.filter(function (x) { return sense[x[0]]; }).map(function (x) { return { label: x[1], v: sense[x[0]] }; });
+      var check = (T.show.sizeCheck || {})[a.id];
+      return { a: a, name: T.shortName(a.name), chars: a.chars, need: need, looks: looks, sizes: sizes, sizeOf: function (k) { var x = sizes.find(function (y) { return y.k === k; }); return x ? x.v : ''; },
+        tags: tags, allergies: sense.allergies || '', more: ['makeup', 'hair', 'helps', 'other'].filter(function (k) { return sense[k]; }).map(function (k) { return { label: { makeup: 'Makeup', hair: 'Hair', helps: 'What helps', other: 'Other' }[k], v: sense[k] }; }),
+        fit: r.fit ? (PortalCore.FIT[r.fit.answer] || '') : '', fitHelp: !!r.fitNeed || (r.fit && r.fit.answer === 'yes'), brands: fam.brands || '',
+        notes: [fam.note ? 'Family (fit): ' + fam.note : '', sch && sch.note ? 'School: ' + sch.note : '', r.fit && r.fit.note ? 'Family (try-on): ' + r.fit.note : ''].filter(Boolean),
+        mine: r.shopNote || '', notEnough: !!(check && check.ok === false), schoolAt: sch ? sch.at : '', famAt: fam.at || '' };
+    }).sort(function (x, y) { return x.name.localeCompare(y.name); });
+  }
+  function pfFilter(list) {
+    var q = PF.q.trim().toLowerCase();
+    return list.filter(function (p) {
+      if (q && p.name.toLowerCase().indexOf(q) < 0 && !p.chars.some(function (c) { var ch = T.charById(c); return ch && ch.short.toLowerCase().indexOf(q) >= 0; })) return false;
+      if (PF.need && !p.need.some(function (it) { return (it.kind === 'costume' ? it.costume : it.name) === PF.need; })) return false;
+      if (PF.sizeVal && p.sizeOf(PF.sizeKey).toLowerCase() !== PF.sizeVal.toLowerCase()) return false;
+      if (PF.sense && !p.tags.length && !p.allergies) return false;
+      if (PF.help && !p.fitHelp) return false;
+      return true;
+    });
+  }
+  function pfCard(p, print) {
+    var sz = p.sizes.filter(function (s) { return !print || s.k !== 'weight'; });
+    return '<div class="' + (print ? 'pfprint' : 'card pfcard') + '" data-pf="' + p.a.id + '">' +
+      '<div class="row" style="gap:10px;flex-wrap:nowrap">' + (print ? '' : T.face(p.a, 56)) + '<div class="grow"><div class="pfname">' + esc(p.name) + '</div><div>' + p.chars.map(function (c) { return T.chip(c); }).join(' ') + '</div></div></div>' +
+      (p.fit || p.fitHelp ? '<p class="pfline"><b>Try-on:</b> ' + esc(p.fit || 'not answered') + (p.fitHelp ? ' <span class="tag">needs help</span>' : '') + '</p>' : '') +
+      '<p class="pfh">Still to find</p>' + (Object.keys(p.looks).length ? Object.keys(p.looks).map(function (k) { return '<p class="pfline"><b>' + esc(k) + ':</b> ' + esc(p.looks[k].join(', ')) + '</p>'; }).join('') : '<p class="pfline muted">Nothing on the list</p>') +
+      (print ? '' : p.chars.map(function (c) { return T.photoSlot('research', c, 'Research pictures (tap one to see it big)'); }).join('')) +
+      '<p class="pfh">Sizes' + (p.notEnough ? ' <span class="tag">school check: not enough</span>' : '') + '</p>' +
+      (sz.length ? '<div class="pfsizes">' + sz.map(function (s) { return '<span><b>' + esc(s.label) + '</b> ' + esc(s.v) + ' <i>' + s.from + '</i>' + (s.other ? ' <i>(family: ' + esc(s.other) + ')</i>' : '') + '</span>'; }).join('') + '</div>' : '<p class="pfline muted">No sizes yet</p>') +
+      (p.brands ? '<p class="pfline"><b>Brands that fit:</b> ' + esc(p.brands) + '</p>' : '') +
+      (p.tags.length || (p.allergies && (!print || PF.allergies)) ? '<p class="pfh">Sensory</p><div class="pftags">' + p.tags.map(function (t) { return '<span><b>' + esc(t.label) + ':</b> ' + esc(print ? t.v.slice(0, 90) : t.v) + '</span>'; }).join('') +
+        (p.allergies && (!print || PF.allergies) ? '<span class="pfallergy"><b>Allergies:</b> ' + esc(p.allergies) + '</span>' : '') + '</div>' : '') +
+      (!print && p.more.length ? '<details><summary class="small">Makeup, hair, what helps</summary>' + p.more.map(function (t) { return '<p class="pfline"><b>' + esc(t.label) + ':</b> ' + esc(t.v) + '</p>'; }).join('') + '</details>' : '') +
+      (p.notes.length || p.mine ? '<p class="pfh">Notes</p>' + p.notes.map(function (n) { return '<p class="pfline">' + esc(print ? n.slice(0, 140) : n) + '</p>'; }).join('') + (p.mine ? '<p class="pfline"><b>Mine:</b> ' + esc(p.mine) + '</p>' : '') : '') +
+      (print ? '' : '<div class="row noprint" style="margin-top:8px"><input data-pfnote="' + p.a.id + '" maxlength="200" class="grow" placeholder="My note (only you see it)" value="' + esc(p.mine) + '" style="min-height:44px;border:2px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--card)"></div>') +
+      '</div>';
+  }
+  var PF_CSS = '<style>.pfcard{font-size:1.08em}.pfcard figure{width:72px!important}.pfcard figure>div{width:72px!important;height:72px!important}.pfcard figcaption,.pfcard figure .tag{display:none}.pfname{font-size:1.4em;font-weight:800}.pfh{margin:10px 0 2px;font-weight:800;text-transform:uppercase;font-size:.78em;letter-spacing:.06em;opacity:.75}' +
+    '.pfline{margin:2px 0}.pfsizes,.pftags{display:flex;flex-wrap:wrap;gap:6px}.pfsizes span,.pftags span{border:2px solid var(--line);border-radius:10px;padding:3px 8px}.pfsizes i{opacity:.7;font-size:.8em}' +
+    '.pfallergy{border-color:#c0392b!important}.pfgrid{display:grid;grid-template-columns:1fr 1fr;gap:.25in}.pfprint{position:relative;border:1.5px dashed #888;border-radius:8px;padding:.12in;height:4.85in;overflow:hidden;font-size:9.5pt;break-inside:avoid;color:#000;background:#fff}' +
+    '.pfprint .pfname{font-size:14pt}.pfprint .pfsizes span,.pfprint .pftags span{border:1px solid #999;padding:1px 5px;border-radius:6px}.pfprint .chip{font-size:8pt}' +
+    '.pfsizetable{width:100%;border-collapse:collapse}.pfsizetable td,.pfsizetable th{border:1px solid var(--line);padding:4px 6px;text-align:left}' +
+    '@media print{.pfgrid{gap:.2in}.pfgrid>div:nth-child(4n){break-after:page}@page{margin:.35in}}</style>';
+
+  T.teacherPages = T.teacherPages || {};
+  T.teacherPages.profiles = function (args) {
+    T.setBar('Shopping profiles', args && args[0] ? '#/teacher/profiles' : '#/teacher');
+    app.innerHTML = '<div class="card"><p class="muted">Opening the families’ sizes and sensory notes…</p></div>';
+    (T.portalPull ? T.portalPull().catch(function () { return 0; }) : Promise.resolve(0)).then(function () { return T.openVault(); }).then(function (V) {
+      var P = (V.extra && V.extra.portal) || {}, list = profilesOf(P);
+      if (args && args[0] === 'cards') return pfCards(pfFilter(list));
+      if (args && args[0] === 'sizes') return pfSizes(pfFilter(list));
+      pfPage(list, P);
+    }, function () { app.innerHTML = '<div class="card"><p>The families’ answers could not be opened. Open Teacher mode with your teacher password and try again.</p></div>'; });
+  };
+  function pfPage(list, P) {
+    var needs = {}; list.forEach(function (p) { p.need.forEach(function (it) { var k = it.kind === 'costume' ? it.costume : it.name; needs[k] = (needs[k] || 0) + 1; }); });
+    var vals = {}; list.forEach(function (p) { var v = p.sizeOf(PF.sizeKey); if (v) vals[v] = (vals[v] || 0) + 1; });
+    var shown = pfFilter(list), i = Math.min(PF.at, Math.max(0, shown.length - 1)), nOn = [PF.need, PF.sizeVal, PF.sense, PF.help].filter(Boolean).length;
+    app.innerHTML = PF_CSS + '<div class="card noprint"><h2 style="margin-top:0">' + sym('🛍️') + 'Shopping profiles</h2>' +
+      '<p class="muted small">Only you see these (Teacher mode). Sizes marked <i>school</i> were read from tags at school; <i>family</i> came from the Family portal.</p>' +
+      '<label class="f">Find a name or a role<input id="pfq" value="' + esc(PF.q) + '" placeholder="e.g. Jamie or Troy"></label>' +
+      '<details id="pfmore"' + (PF.open ? ' open' : '') + '><summary><b>Filters and printing</b>' + (nOn ? ' <span class="tag">' + nOn + ' on</span>' : '') + '</summary>' +
+      '<label class="f">Still needs<select id="pfn"><option value="">Anything</option>' + Object.keys(needs).sort().map(function (k) { return '<option' + (PF.need === k ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select></label>' +
+      '<div class="row" style="flex-wrap:wrap"><label class="f grow" style="margin:0">Size<select id="pfk">' + PF_SIZES.map(function (s) { return '<option value="' + s[0] + '"' + (PF.sizeKey === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="margin:0">is<select id="pfv"><option value="">any</option>' + Object.keys(vals).sort().map(function (v) { return '<option' + (PF.sizeVal === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select></label></div>' +
+      '<label class="switch"><span>Has sensory needs</span><input type="checkbox" id="pfs"' + (PF.sense ? ' checked' : '') + '></label>' +
+      '<label class="switch"><span>Needs try-on help</span><input type="checkbox" id="pfh"' + (PF.help ? ' checked' : '') + '></label>' +
+      '<label class="switch"><span>One at a time (swipe or use the arrows)</span><input type="checkbox" id="pfo"' + (PF.one ? ' checked' : '') + '></label>' +
+      '<div class="row" style="flex-wrap:wrap"><b class="grow">' + shown.length + ' of ' + list.length + ' Company members</b>' +
+      '<label class="switch" style="border:0;min-height:0"><span class="small">Include allergies on the printed cards</span><input type="checkbox" id="pfa"' + (PF.allergies ? ' checked' : '') + '></label>' +
+      '<a class="btn small" href="#/teacher/profiles/cards">' + icon('print') + 'Pocket cards</a><a class="btn small" href="#/teacher/profiles/sizes">' + icon('print') + 'Size list</a></div></details></div>' +
+      (!shown.length ? '<div class="card"><p class="muted">' + (list.length ? 'Nobody matches. Change the filters.' : 'Once the cast list is in, every Company member gets a profile here.') + '</p></div>' :
+        PF.one ? '<div class="row noprint" style="justify-content:space-between;margin-bottom:8px"><button class="btn" id="pfp"' + (i ? '' : ' disabled') + '>‹ Previous</button><b>' + (i + 1) + ' of ' + shown.length + '</b><button class="btn" id="pfx"' + (i < shown.length - 1 ? '' : ' disabled') + '>Next ›</button></div>' + pfCard(shown[i]) :
+        shown.map(function (p) { return pfCard(p); }).join(''));
+    T.fillPhotos(app, true);
+    var redraw = function () { pfPage(list, P); };
+    var on = function (id, ev, f) { var el = document.getElementById(id); if (el) el[ev] = f; };
+    on('pfq', 'oninput', function (e) { PF.q = e.target.value; PF.at = 0; var pos = e.target.selectionStart; redraw(); var q = document.getElementById('pfq'); q.focus(); q.setSelectionRange(pos, pos); });
+    on('pfn', 'onchange', function (e) { PF.need = e.target.value; PF.at = 0; redraw(); });
+    on('pfk', 'onchange', function (e) { PF.sizeKey = e.target.value; PF.sizeVal = ''; PF.at = 0; redraw(); });
+    on('pfv', 'onchange', function (e) { PF.sizeVal = e.target.value; PF.at = 0; redraw(); });
+    on('pfs', 'onchange', function (e) { PF.sense = e.target.checked; PF.at = 0; redraw(); });
+    on('pfh', 'onchange', function (e) { PF.help = e.target.checked; PF.at = 0; redraw(); });
+    on('pfo', 'onchange', function (e) { PF.one = e.target.checked; redraw(); });
+    on('pfa', 'onchange', function (e) { PF.allergies = e.target.checked; });
+    var more = document.getElementById('pfmore'); more.ontoggle = function () { PF.open = more.open; };
+    on('pfp', 'onclick', function () { PF.at = Math.max(0, i - 1); redraw(); });
+    on('pfx', 'onclick', function () { PF.at = Math.min(shown.length - 1, i + 1); redraw(); });
+    if (PF.one) {
+      var x0 = null, card = app.querySelector('.pfcard');
+      if (card) { card.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true }); card.addEventListener('touchend', function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) < 60) return; PF.at = Math.max(0, Math.min(shown.length - 1, i + (dx < 0 ? 1 : -1))); redraw(); }); }
+    }
+    app.querySelectorAll('[data-pfnote]').forEach(function (inp) {
+      inp.onchange = function () {
+        var id = inp.dataset.pfnote, v = clean(inp.value, 200);
+        T.withVault(function (V) { var Q = V.extra.portal = V.extra.portal || {}, r = Q[id] = Q[id] || {}; if (v) r.shopNote = v; else delete r.shopNote; P = Q; })
+          .then(function () { return T.saveShow('Note saved'); }).then(function () { list = profilesOf(P); }, function (e) { T.toast(e.message || e); });
+      };
+    });
+  }
+  function pfCards(shown) {
+    app.innerHTML = PF_CSS + '<div class="card noprint"><div class="row"><b class="grow">' + shown.length + ' pocket cards, 4 to a page' + (PF.allergies ? ' (with allergies)' : ' (allergies left off)') + '</b><button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div>' +
+      '<p class="muted small">First name and last initial only. Cut along the dashed lines. These are the cards your filters showed.</p></div>' +
+      '<div class="pfgrid">' + shown.map(function (p) { return pfCard(p, true); }).join('') + '</div>';
+    app.querySelectorAll('.pfprint').forEach(function (c) {      // a busy card: smaller print until it fits (not below 6.5 pt)
+      for (var pt = 9.5; c.scrollHeight > c.clientHeight + 1 && pt > 6.5; pt -= 0.5) c.style.fontSize = pt + 'pt';
+      if (c.scrollHeight > c.clientHeight + 1) c.insertAdjacentHTML('beforeend', '<p class="pfline" style="position:absolute;bottom:2px;right:6px;background:#fff">… more on your phone</p>');
+    });
+  }
+  function pfSizes(shown) {
+    var order = function (v) { var m = String(v || '').match(/\b(XXS|XS|S|M|L|XL|XXL|2XL|3XL)\b/i), k = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL']; return (/youth|kid|boy|girl/i.test(v) ? 0 : 10) + (m ? k.indexOf(m[1].toUpperCase()) : 9); };
+    var rows = shown.slice().sort(function (a, b) { return order(a.sizeOf('shirt')) - order(b.sizeOf('shirt')) || a.sizeOf('shirt').localeCompare(b.sizeOf('shirt')) || a.name.localeCompare(b.name); });
+    var cols = [['shirt', 'Shirt'], ['pants', 'Pants'], ['waist', 'Waist'], ['inseam', 'Inseam'], ['dress', 'Dress'], ['skirt', 'Skirt'], ['shoe', 'Shoe'], ['jacket', 'Jacket']];
+    app.innerHTML = PF_CSS + '<div class="card noprint"><div class="row"><b class="grow">Size list for the costume crew, by shirt size</b><button class="btn primary" onclick="print()">' + icon('print') + 'Print</button></div><p class="muted small">Sizes only: no sensory notes.</p></div>' +
+      '<table class="pfsizetable"><tr><th>Name</th><th>Roles</th>' + cols.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr>' +
+      rows.map(function (p) { return '<tr><td><b>' + esc(p.name) + '</b></td><td>' + p.chars.map(function (c) { return esc((T.charById(c) || {}).short || c); }).join(', ') + '</td>' + cols.map(function (c) { return '<td>' + esc(p.sizeOf(c[0])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
   }
 
   if (window.Store && T.key) Store.flushNotes();
