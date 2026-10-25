@@ -7,7 +7,7 @@
   'use strict';
   var T = window.T, PK = window.PK, esc = T.esc, app = document.getElementById('app');
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
-  var V = { proj: 'real', pics: true, zoom: 'towers', view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
+  var V = { proj: 'real', pics: true, zoom: 'stage', person: true, view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
@@ -34,6 +34,13 @@
     if (P.practicals) ['A2-clock', 'A2-plant'].forEach(function (k) { if (!P.practicals[k]) P.practicals[k] = JSON.parse(JSON.stringify(PK.PRACTICALS[k])); });      // the real clock and hanging plant on the science room
     if (P.practicals && !P.practicals.C3) P.practicals.C3 = JSON.parse(JSON.stringify(PK.PRACTICALS.C3));      // the real hook rail on the locker room (2026-10-25)
     if (P.practicals && P.practicals.C1 && !P.practicals.C1.show) { P.practicals.C1.h = 2; P.practicals.C1.show = 'cork'; if (P.practicals.C1.z === 5) P.practicals.C1.z = 47 / 12; }      // the real corkboard, drawn on her C1 wall      // the rim lines up with the printed target square in her D1 art
+    var un = P.spikes && P.spikes['CF-UNITED'];      // the united tables always meet exactly end to end (their length can change when the real tables are measured)
+    if (un && un.T1 && un.T2 && P.tables && Math.abs(un.T1.y - un.T2.y) < 0.01 && !(un.T1.rot % 180) && !(un.T2.rot % 180)) {
+      var L1 = P.tables.T1.open.l, L2 = P.tables.T2.open.l, mid = (un.T1.x * L2 + un.T2.x * L1) / (L1 + L2), gap = Math.abs(un.T2.x - un.T1.x) - (L1 + L2) / 2;
+      if (Math.abs(gap) > 0.01 && Math.abs(gap) < Math.max(L1, L2)) { un.T1.x = mid - L1 / 2; un.T2.x = mid + L2 / 2;
+        P.scenes.forEach(function (sc) { PK.TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.spike === 'CF-UNITED' && q.via && q.via.length === 1) q.via[0] = { x: un[id].x + (id === 'T1' ? -2 : 4), y: un[id].y }; }); });
+        PK.applySpikes(P); } }
+    PK.applySpikes(P);      // after any change above, every table on a spike stands exactly on it
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
@@ -161,6 +168,8 @@
     out.push('<text x="0" y="' + (s.apron + 2.6) + '" class="pk-t big" text-anchor="middle">▼ AUDIENCE (downstage edge) ▼</text>');
     out.push('<text x="' + (b.x0 + 0.8) + '" y="' + (s.apron + 2.6) + '" class="pk-t">STAGE RIGHT (A side) · house left</text><text x="' + (b.x1 - 0.8) + '" y="' + (s.apron + 2.6) + '" class="pk-t" text-anchor="end">STAGE LEFT (D side) · house right</text>');
     out.push('<text x="0" y="' + (b.y0 + 1.2) + '" class="pk-t dim" text-anchor="middle">▲ UPSTAGE ▲</text>');
+    var sbx = -c - s.sideDeck + 0.5, sby = s.apron + 1.2;      // a 10-ft scale bar; each grid square is 1 ft
+    out.push('<g class="pk-scale"><line x1="' + sbx + '" y1="' + sby + '" x2="' + (sbx + 10) + '" y2="' + sby + '"/>' + [0, 5, 10].map(function (k) { return '<line x1="' + (sbx + k) + '" y1="' + (sby - 0.3) + '" x2="' + (sbx + k) + '" y2="' + (sby + 0.3) + '"/>'; }).join('') + '<text x="' + (sbx + 5) + '" y="' + (sby - 0.5) + '" class="pk-t" text-anchor="middle">10 ft (each grid square = 1 ft)</text></g>');
     return out.join('');
   }
   function zonesSvg(zones) {
@@ -197,6 +206,7 @@
       out.push('<g class="pk-table' + (x.k > 0.5 ? ' open' : '') + (sel === id ? ' sel' : '') + '" data-table="' + id + '"><polygon points="' + f.poly.map(pt).join(' ') + '"/><text x="' + x.x + '" y="' + (-x.y + 0.25) + '" class="pk-t" text-anchor="middle">' + (id === 'T1' ? 'T1' : 'T2') + '</text>' +
         (anim || sel === id ? '<text x="' + x.x + '" y="' + (-x.y - f.w / 2 - 0.3) + '" class="pk-t dim" text-anchor="middle">' + esc(spec.name + ': ' + x.label) + '</text>' : '') + '</g>');
     });
+    if (V.person) out.push('<g class="pk-person"><circle cx="0" cy="' + (-personY()) + '" r="0.75"/><text x="1.1" y="' + (-personY() + 0.25) + '" class="pk-t dim">a person (5′ 6″)</text></g>');
     (sh.items || []).forEach(function (it) {
       out.push('<g class="pk-item' + (sel === it.id ? ' sel' : '') + '" data-item="' + it.id + '" transform="translate(' + it.x + ',' + (-it.y) + ') rotate(' + (-(it.rot || 0)) + ')"><rect x="' + (-it.w / 2) + '" y="' + (-it.d / 2) + '" width="' + it.w + '" height="' + it.d + '" rx="0.15"/><text y="0.25" class="pk-t" text-anchor="middle">' + esc(it.name) + '</text></g>');
     });
@@ -225,6 +235,7 @@
     });
     dyn.innerHTML = out.join('');
   }
+  function personY() { return PK.frontY(st(), 0) + 3; }      // downstage center, 3 ft from the edge
   function mix(hex, dark) {      // the tower's color, darker when its light is down
     var n = parseInt(hex.slice(1), 16), k = 0.55 * (1 - dark) + 0.12;
     return 'rgb(' + [n >> 16, (n >> 8) & 255, n & 255].map(function (v) { return Math.round(v * k); }).join(',') + ')';
@@ -237,7 +248,7 @@
     host.querySelectorAll('.pk3d').forEach(function (x) { x.style.display = real ? '' : 'none'; }); cv.style.display = real ? 'none' : '';
     if (real) {      // the realistic 3D view (js/periaktoi-3d.js, three.js)
       var c0 = st().prosc / 2, reach0 = Math.max.apply(null, [scene(), prevScene() || scene()].map(function (x) { return Math.max.apply(null, TW.map(function (t) { return Math.abs(x.towers[t].x) < c0 ? Math.abs(x.towers[t].x) : 0; })); }));
-      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
+      PK3D.draw(host, { P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.5 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
         artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, fallback: function () { V.no3d = true; drawViews(); } });
       return;
     }
@@ -302,6 +313,9 @@
     });
     PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x || hidden(x.y)) return; var f = PK.tableFoot(P, id, x, x.k);
       draws.push({ d: far(x.x, x.y), f: function () { box(g, pr, f.poly, f.h, '#9a8a70'); if (V.labels) { var p = pr(x.x, x.y, f.h + 0.4); g.fillStyle = '#fff'; g.font = Math.round(W * 0.012) + 'px sans-serif'; g.textAlign = 'center'; g.fillText(id, p.x, p.y); } } }); });
+    if (V.person) { var py = personY(); draws.push({ d: far(0, py), f: function () {      // a 5′ 6″ person for scale
+      var hgt = s.person || 5.5, ft = pr(0, py, 0), hd = pr(0, py, hgt - 0.4), sh0 = pr(0.75, py, hgt - 1), w0 = Math.abs(sh0.x - hd.x); g.fillStyle = 'rgba(210,205,225,.9)';
+      g.beginPath(); g.arc(hd.x, hd.y, Math.max(2, w0 * 0.5), 0, 7); g.fill(); g.fillRect(ft.x - w0, sh0.y, w0 * 2, ft.y - sh0.y); } }); }
     draws.sort(function (a, b) { return b.d - a.d; }).forEach(function (x) { x.f(); });
     if (V.labels) {
       g.font = Math.round(W * 0.015) + 'px sans-serif'; g.fillStyle = '#cfc9e6';
@@ -749,9 +763,9 @@
       '<span class="pk-gap"></span><div class="pk-seg pk-views"><button data-view="aud">From the audience</button><button data-view="crew">From backstage</button><button data-view="over">From above</button><button data-view="split" class="pk-adv">All three</button><button data-view="ledger" class="pk-adv">Ledger</button></div>' +
       '<button id="pkMode" class="pk-mode">' + (V.simple ? '✎ Edit' : '✓ Done editing') + '</button>' +
       '<div class="pk-adv pk-advrow"><select id="pkProj" title="Audience and crew views"><option value="real">Front views: realistic 3D</option><option value="flat">Front views: true shape (exact widths)</option></select>' +
-      '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
+      '<select id="pkZoom" title="Audience and crew views"><option value="stage">Front views: the whole stage (true proportions)</option><option value="towers">Front views: close on the towers</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
-      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
+      '<details class="pk-show"><summary>Show ▾</summary><div>' + [['person', 'A 5′ 6″ person for scale'], ['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
       '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div></div>' +
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +

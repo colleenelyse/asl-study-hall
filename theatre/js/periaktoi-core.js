@@ -36,6 +36,8 @@
     return {      // * = placeholder until the ground plan's numbers are typed in
       prosc: 50,          // proscenium opening, wall to wall (Colleen 2026-10-25: about 50 ft, the two walls on the Reber plan)
       wallT: 2,           // proscenium wall thickness, downstage of PL (Colleen: about 2 ft)
+      proscH: 24,         // * proscenium opening height (not on any drawing yet)
+      person: 5.5,        // the person drawn for scale (5′ 6″)
       border: 1 + 2 / 12, // the grand border (teaser) on lineset 1, 1′2″ upstage of PL
       curtain: 1 + 10 / 12,      // main curtain (grand drape), upstage of PL: lineset 2, 1′10″
       apron: 23.7,        // PL to the front edge on the center line, pit cover included (traced from the Reber seating plan, scaled to the 50-ft opening)
@@ -50,7 +52,7 @@
       aisle: 3,           // * the narrowest path actors need between a table's bench and anything else
       eye: 5, house: 30,  // audience view camera: eye height and distance in front of PL
       crew: 4,            // crew view camera: distance upstage of the drape (tables stored right in front of it are left out of the picture)
-      placeholder: { sideDeck: true, edgeSide: true, wing: true, clear: true, curtainGap: true, aisle: true }
+      placeholder: { proscH: true, sideDeck: true, edgeSide: true, wing: true, clear: true, curtainGap: true, aisle: true }
     };
   }
   function R(st) { return st.face / R3; }            // center to a corner

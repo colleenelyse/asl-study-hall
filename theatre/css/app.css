@@ -625,3 +625,4 @@ dialog input.stand { background: var(--warn-bg); }
 .pk-view canvas.pk3d { display: block; width: 100%; height: auto; cursor: grab; }
 .pk-wallr { fill: #3a3650; stroke: #8a86a0; stroke-width: 0.05; } .pk-border { stroke: #3b4f9c; stroke-width: 0.15; stroke-dasharray: 0.5 0.25; }
 .pk-drape { stroke: #2c3f8f !important; } .pk-t.red { fill: #8fa3e6 !important; }
+.pk-scale line { stroke: #cfc9e6; stroke-width: 0.08; } .pk-person circle { fill: #c9c3d6; stroke: #fff; stroke-width: 0.06; }

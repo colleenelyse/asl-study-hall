@@ -51,11 +51,11 @@
     });
     // the grand drape (seen only from the house) and the proscenium
     var vel = velvetTex(); vel.wrapS = T3.RepeatWrapping; vel.repeat.set(3, 1);
-    var drape = new T3.Mesh(new T3.PlaneGeometry(2 * c, 24), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9, side: T3.FrontSide })); drape.position.set(0, 12, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
+    var ph = s.proscH || 24, drape = new T3.Mesh(new T3.PlaneGeometry(2 * c, ph), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9, side: T3.FrontSide })); drape.position.set(0, ph / 2, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
     var wallMat = new T3.MeshStandardMaterial({ color: 0x1a1820, roughness: 1 }), wt = s.wallT || 1;      // the proscenium wall, about 2 ft thick
     [-1, 1].forEach(function (k) { var m = new T3.Mesh(new T3.BoxGeometry(14, 30, wt), wallMat); m.position.set(k * (c + s.sideDeck + 7), 15, wt / 2); scene.add(m); var m2 = new T3.Mesh(new T3.BoxGeometry(s.sideDeck, 30, wt), wallMat); m2.position.set(k * (c + s.sideDeck / 2), 15 + 10, wt / 2); scene.add(m2); });
-    var header = new T3.Mesh(new T3.BoxGeometry(2 * c + 4, 10, wt), wallMat); header.position.set(0, 24 + 5, wt / 2); scene.add(header);
-    var border = new T3.Mesh(new T3.PlaneGeometry(2 * c, 6), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, 21, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (teaser), lineset 1
+    var header = new T3.Mesh(new T3.BoxGeometry(2 * c + 4, 10, wt), wallMat); header.position.set(0, ph + 5, wt / 2); scene.add(header);
+    var border = new T3.Mesh(new T3.PlaneGeometry(2 * c, 5), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - 2.5, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (teaser), lineset 1
     W.nye = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ map: shimmerTex(), roughness: 0.25, metalness: 0.8 })); W.nye.position.set(c + s.sideDeck / 2, 5, wt + 0.05); scene.add(W.nye);
     W.hort = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ color: 0x3f7a45, roughness: 0.9 })); W.hort.position.set(-c - s.sideDeck / 2, 5, wt + 0.05); scene.add(W.hort);
     // light: two front-of-house spots from the box booms, a warm top fill, a little ambience
@@ -86,6 +86,10 @@
     var net = new T3.Mesh(new T3.CylinderGeometry(0.72, 0.42, 1.25, 16, 4, true), new T3.MeshStandardMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 })); net.position.y = -0.63; W.rim.add(net);
     var arm = new T3.Mesh(new T3.BoxGeometry(0.25, 0.12, 0.6), new T3.MeshStandardMaterial({ color: 0x333333 })); arm.position.set(0, 0, -0.95); W.rim.add(arm);
     scene.add(W.rim);
+    // a 5′ 6″ person for scale
+    var pm = new T3.MeshStandardMaterial({ color: 0xc9c3d6, roughness: 0.8 }), hgt = s.person || 5.5; W.person = new T3.Group();
+    var body = new T3.Mesh(new T3.CylinderGeometry(0.55, 0.45, hgt - 1.1, 16), pm); body.position.y = (hgt - 1.1) / 2; var head = new T3.Mesh(new T3.SphereGeometry(0.4, 16, 12), pm); head.position.y = hgt - 0.45;
+    body.castShadow = head.castShadow = true; W.person.add(body); W.person.add(head); scene.add(W.person);
   }
   function makeLabel(text, col) {
     var t = canvasTex(128, 128, function (g, w, h) { g.font = 'bold 96px Lexend, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(text, w / 2, h / 2); });
@@ -165,6 +169,7 @@
     });
     W.nye.material.emissive = new T3.Color(sh.zones.indexOf('nye') >= 0 ? 0x333344 : 0x000000); W.nye.visible = sh.zones.indexOf('nye') >= 0;
     W.hort.visible = sh.zones.indexOf('hort') >= 0;
+    W.person.visible = !!ctx.person; if (ctx.person) W.person.position.set(ctx.person.x, 0, -ctx.person.y);
   }
   function viewFor(host, crew) {
     var v = views.find(function (x) { return x.host === host; });
