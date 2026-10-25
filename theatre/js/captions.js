@@ -71,9 +71,20 @@
   /* a line several characters say or sing together (a duet): First words when every one of them has First words (Colleen 2026-10-25: "doesn't
      work on duet lines even if both characters singing have 4 words turned on"); if any of them reads the whole line, the whole line */
   function styleOf(who, o) {
+    if (o.helpAll) return 'full';      // the Help picture: everyone's whole line
     var ids = T.labelChars(String(who || '').replace(/\s*\/\s*/g, ', ')).filter(function (c) { return c !== '*'; }), p = (T.show.captions || {}).prompt || {};
     if (!ids.length) return o.style;
     return ids.every(function (id) { return (p[id] || o.style) === 'cue'; }) ? 'cue' : 'full';
+  }
+  /* Help (Colleen 2026-10-25: "a bail out option for students who are usually good with 4 words but blank and need the rest live while the show is
+     happening"): wherever a First words line is on the performer view, a second version with every line whole is made too. In QLab it sits on
+     top, invisible, and the HELP hotkey shows or hides it for whatever is on screen (songs: a Help video running in step with the performer one). */
+  var helpO = function (o) { var h = {}; Object.keys(o).forEach(function (k) { h[k] = o[k]; }); h.helpAll = true; return h; };
+  var firstWords = function (card, o) { return !!(card && !card.song && styleOf(card.who, o) === 'cue'); };
+  function needsHelp(cues, i, o) {
+    var c = cues[i];
+    if (c.type === 'song') return (c.lines || []).some(function (l) { return styleOf(l.who, o) === 'cue'; });
+    var st = stateFor(cues, i); return [st.cur].concat(st.nexts || []).some(function (x) { return firstWords(x, o); });
   }
   function forPrompt(card, o) {
     if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card && !card.song ? { key: card.key, who: card.who, name: card.pname != null ? card.pname : card.name, color: card.color, sung: card.sung, text: card.full || card.text } : card, big: 1 };
@@ -334,10 +345,11 @@
      Stages: the cues are named AUD … and PERF …; the script tries to set QLab 5 stages "Audience" and "Performer" and, if it cannot, says so
      (select the AUD cues, set the stage once in the inspector). It never deletes or changes her other cues. */
   function qlabData(cues) {
-    var clean = function (t) { return String(t || '').replace(/[\t\r\n]+/g, ' ').trim(); };
-    return ['kind\tnumber\tname\taudience\tperformer'].concat(cues.map(function (c) {
-      if (c.type === 'song') return ['song', 'C' + c.n, clean('♪ #' + c.song.num + ' ' + c.song.title + ' captions'), 'Song videos/' + fileOf(c, 'audience'), 'Song videos/' + fileOf(c, 'performer')].join('\t');
-      return ['still', 'C' + c.n, clean('S' + c.scene.num + ' ' + (c.card.name || whoName(c.card.who) + ':') + ' ' + c.card.text).slice(0, 70), 'Audience stills/' + fileOf(c, 'audience'), 'Performer stills/' + fileOf(c, 'performer')].join('\t');
+    var clean = function (t) { return String(t || '').replace(/[\t\r\n]+/g, ' ').trim(); }, o = opt();
+    var help = function (c, i) { return needsHelp(cues, i, o) ? (c.type === 'song' ? 'Song videos/' : 'Performer help/') + fileOf(c, c.type === 'song' ? 'performer help' : 'help') : ''; };
+    return ['kind\tnumber\tname\taudience\tperformer\thelp'].concat(cues.map(function (c, i) {
+      if (c.type === 'song') return ['song', 'C' + c.n, clean('♪ #' + c.song.num + ' ' + c.song.title + ' captions'), 'Song videos/' + fileOf(c, 'audience'), 'Song videos/' + fileOf(c, 'performer'), help(c, i)].join('\t');
+      return ['still', 'C' + c.n, clean('S' + c.scene.num + ' ' + (c.card.name || whoName(c.card.who) + ':') + ' ' + c.card.text).slice(0, 70), 'Audience stills/' + fileOf(c, 'audience'), 'Performer stills/' + fileOf(c, 'performer'), help(c, i)].join('\t');
     })).join('\n') + '\n';
   }
   var QLAB_SCRIPT = [
@@ -355,9 +367,14 @@
     '\treturn',
     'end try',
     'set rowsList to paragraphs of raw',
+    'set helpSrc to ""',
+    'try',
+    '\tset helpSrc to read (POSIX file (base & "QLab help cue.applescript")) as «class utf8»',
+    'end try',
     'set made to 0',
     'set missingFiles to 0',
     'set songCount to 0',
+    'set helpN to 0',
     'set prevG to missing value',
     'set AppleScript\'s text item delimiters to tab',
     'tell application id "com.figure53.QLab.5"',
@@ -408,22 +425,59 @@
     '\t\t\t\t\t\telse',
     '\t\t\t\t\t\t\tset q name of v to "PERF " & capName',
     '\t\t\t\t\t\t\tmy putOnStage(v, "Performer")',
+    '\t\t\t\t\t\t\ttry',
+    '\t\t\t\t\t\t\t\tset layer of v to 5',
+    '\t\t\t\t\t\t\tend try',
     '\t\t\t\t\t\tend if',
     '\t\t\t\t\t\tmove cue id (uniqueID of v) of parent of v to end of g',
     '\t\t\t\t\telse',
     '\t\t\t\t\t\tset missingFiles to missingFiles + 1',
     '\t\t\t\t\tend if',
     '\t\t\t\tend repeat',
+    '\t\t\t\t-- Help: every line whole, on top of the performer picture, invisible until the HELP hotkey shows it',
+    '\t\t\t\tif (count of cols) ≥ 6 and (item 6 of cols) is not "" then',
+    '\t\t\t\t\tset p to base & (item 6 of cols)',
+    '\t\t\t\t\tif my fileExists(p) then',
+    '\t\t\t\t\t\tmake type "Video"',
+    '\t\t\t\t\t\tset v to last item of (selected as list)',
+    '\t\t\t\t\t\tset file target of v to (POSIX file p)',
+    '\t\t\t\t\t\tset q name of v to "HELP " & capName',
+    '\t\t\t\t\t\tmy putOnStage(v, "Performer")',
+    '\t\t\t\t\t\ttry',
+    '\t\t\t\t\t\t\tset layer of v to 10',
+    '\t\t\t\t\t\tend try',
+    '\t\t\t\t\t\tset opacity of v to 0',
+    '\t\t\t\t\t\tmove cue id (uniqueID of v) of parent of v to end of g',
+    '\t\t\t\t\t\tset helpN to helpN + 1',
+    '\t\t\t\t\telse',
+    '\t\t\t\t\t\tset missingFiles to missingFiles + 1',
+    '\t\t\t\t\tend if',
+    '\t\t\t\tend if',
     '\t\t\t\tif rowKind is "still" then set prevG to g',
     '\t\t\t\tset made to made + 1',
     '\t\t\tend if',
     '\t\tend repeat',
+    '\t\tif helpN > 0 then',
+    '\t\t\tset helpList to my listNamed("Help")',
+    '\t\t\tset current cue list to helpList',
+    '\t\t\tif (count of cues of helpList) is 0 then',
+    '\t\t\t\tif helpSrc is not "" then',
+    '\t\t\t\t\tmake type "Script"',
+    '\t\t\t\t\tset hc to last item of (selected as list)',
+    '\t\t\t\t\tset q name of hc to "HELP: show or hide the whole line (give me a Hotkey)"',
+    '\t\t\t\t\tset q number of hc to "HELP"',
+    '\t\t\t\t\tset script source of hc to helpSrc',
+    '\t\t\t\t\tset hotkey trigger of hc to enabled',
+    '\t\t\t\tend if',
+    '\t\t\tend if',
+    '\t\tend if',
     '\t\tset current cue list to capList',
     '\tend tell',
     'end tell',
     'set msg to "Made " & made & " caption cues (" & songCount & " songs in the Song captions list)."',
     'if missingFiles > 0 then set msg to msg & return & return & missingFiles & " files were not in the folder, so those cues have no picture or video yet (make them in the app, then run this again on a new copy of the show)."',
     'if stageTrouble then set msg to msg & return & return & "The stages could not be set by the script. In QLab: search for AUD, select those cues, and set their stage to Audience in the inspector; then the same for PERF and Performer."',
+    'if helpN > 0 then set msg to msg & return & return & helpN & " Help pictures and videos were added (invisible until needed). In the Help list, select the HELP cue, open Triggers in the inspector, turn on Hotkey and press the key you want (for example H). Pressing it during the show shows the whole line on the performer screen; pressing it again hides it."',
     'set msg to msg & return & return & "Next: drag each group in Song captions into that song\'s audio group in your sound list, so the captions start with the music."',
     'display dialog msg buttons {"OK"} default button 1',
     '',
@@ -464,7 +518,30 @@
     '\tend try',
     'end fileExists',
     ''].join('\n');
-  var qlabFiles = function (cues) { return [['QLab cue list.txt', new Blob([qlabData(cues)], { type: 'text/plain' })], ['Build QLab cues.applescript', new Blob([QLAB_SCRIPT], { type: 'text/plain' })]]; };
+  /* the HELP cue's own script: shows the Help picture or video of whatever is on the performer screen now, or hides it again */
+  var HELP_CUE = [
+    '-- HELP: show or hide every line whole on the performer screen (asl.cool/theatre › Open captions). Give this cue a Hotkey.',
+    'tell application id "com.figure53.QLab.5"',
+    '\ttell front workspace',
+    '\t\tset hs to {}',
+    '\t\trepeat with c in (every cue whose q name starts with "HELP " and running is true)',
+    '\t\t\tset end of hs to contents of c',
+    '\t\tend repeat',
+    '\t\tif hs is {} then return',
+    '\t\tset showIt to true',
+    '\t\trepeat with c in hs',
+    '\t\t\tif opacity of c > 0.5 then set showIt to false',
+    '\t\tend repeat',
+    '\t\trepeat with c in hs',
+    '\t\t\tif showIt then',
+    '\t\t\t\tset opacity of c to 1',
+    '\t\t\telse',
+    '\t\t\t\tset opacity of c to 0',
+    '\t\t\tend if',
+    '\t\tend repeat',
+    '\tend tell',
+    'end tell', ''].join('\n');
+  var qlabFiles = function (cues) { return [['QLab help cue.applescript', new Blob([HELP_CUE], { type: 'text/plain' })], ['QLab cue list.txt', new Blob([qlabData(cues)], { type: 'text/plain' })], ['Build QLab cues.applescript', new Blob([QLAB_SCRIPT], { type: 'text/plain' })]]; };
   function cueSheet(cues) {
     var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     var rowsOut = [['Cue', 'Scene', 'Type', 'Who', 'Caption', 'Audience file', 'Performer file', 'How it runs']];
@@ -510,7 +587,8 @@
       '<li><b>Let the script build it:</b> with your show open in QLab 5, open <b>Build QLab cues.applescript</b> (in the captions folder) in Script Editor, press Run ▶, and pick the captions folder. It adds a <b>Captions</b> list (a group for every line: GO as the line starts) and a <b>Song captions</b> list. Then drag each song’s group into that song’s audio group in your sound list. The first time, your Mac asks to let Script Editor control QLab: say OK. A whole show takes several minutes.</li>' +
       '<li>The cue sheet (CSV) lists every cue in order with its files, if you would rather build by hand.</li>' +
       '<li>The caption operator can run the Captions list from a second QLab window or QLab Remote on an iPad, with their own GO.</li>' +
-      '<li>Check your QLab license: using two video outputs at once may need a QLab video license (they can be rented for just the show days).</li></ol></div>';
+      '<li><b>Help for First words performers:</b> wherever a First words line is on the performer screen, a hidden Help version with every line whole is made too and sits on top of it. The script adds a <b>HELP</b> cue in a Help list: select it, open Triggers in the inspector, turn on Hotkey and press a key (for example H). In the show, the operator presses that key when a performer blanks: the whole line appears at once (in songs too); press it again to hide it. The next line starts hidden again.</li>' +
+      '<li><b>QLab license:</b> two video outputs at once (audience and performer screens) need a QLab video license, and the HELP cue needs a license of any kind. Licenses can be rented for just the show days. Without one, the HELP cue shows as broken.</li></ol></div>';
     var $ = function (id) { return document.getElementById(id); };
     var set = function (k, v) { var c = T.show.captions = T.show.captions || {}; c[k] = v; T.saveShow('Saved').then(T.teacherPages.captions); };
     $('cpos').onchange = function () { set('pos', this.value); };
@@ -575,13 +653,17 @@
               var base = done;
               msg.textContent = 'Making the videos for #' + c.song.num + ' ' + c.song.title + '…';
               return makeVideo(c, o, false, function (f) { bar.firstChild.style.width = Math.round((base + f * 10) / steps * 100) + '%'; }).then(function (v) { return out.put('Song videos/' + fileOf(c, 'audience'), v); })
-                .then(function () { return makeVideo(c, o, true, function (f) { bar.firstChild.style.width = Math.round((base + 10 + f * 10) / steps * 100) + '%'; }); }).then(function (v) { return out.put('Song videos/' + fileOf(c, 'performer'), v); }).then(function () { step(20); });
+                .then(function () { return makeVideo(c, o, true, function (f) { bar.firstChild.style.width = Math.round((base + 10 + f * 10) / steps * 100) + '%'; }); }).then(function (v) { return out.put('Song videos/' + fileOf(c, 'performer'), v); })
+                .then(function () { if (!needsHelp(cues, cues.indexOf(c), o)) return; msg.textContent = 'Making the Help video for #' + c.song.num + '…'; return makeVideo(c, helpO(o), true).then(function (v) { return out.put('Song videos/' + fileOf(c, 'performer help'), v); }); }).then(function () { step(20); });
             }
             drawAudience(c.card, o);
             return png().then(function (b) { return out.put('Audience stills/' + fileOf(c, 'audience'), b); }).then(function () {
               drawPerformer(stateFor(cues, cues.indexOf(c)), o);
               return png(cvP);
-            }).then(function (b) { return out.put('Performer stills/' + fileOf(c, 'performer'), b); }).then(function () { step(1); if (done % 20 === 0) msg.textContent = 'Stills: ' + done + ' of ' + steps + '…'; });
+            }).then(function (b) { return out.put('Performer stills/' + fileOf(c, 'performer'), b); }).then(function () {
+              var i = cues.indexOf(c); if (!needsHelp(cues, i, o)) return;
+              drawPerformer(stateFor(cues, i), helpO(o)); return png(cvP).then(function (b) { return out.put('Performer help/' + fileOf(c, 'help'), b); });
+            }).then(function () { step(1); if (done % 20 === 0) msg.textContent = 'Stills: ' + done + ' of ' + steps + '…'; });
           });
         }, Promise.resolve()).then(function () { return withCsv ? out.put('Cue sheet.csv', cueSheet(cues)).then(function () { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()); }) : null; }).then(function () { return out.done(); });
       }).then(function (m) { busy(false); msg.textContent = m + ' ' + list.length + ' cues.'; show(preview.i); }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : (e.message || 'Something went wrong.'); show(preview.i); });
@@ -606,5 +688,5 @@
     timeline: function (cue) { var o = opt(); o.lead = Math.max(0.5, (+o.lead || 0) - 0.5); return songTimeline(cue, o, true); },
     keyOf: keyOf, ease: ease, SCROLL: SCROLL, fonts: fontsReady
   };
-  T.Captions = { perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  T.Captions = { perf: perf, docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, needsHelp: needsHelp, helpO: helpO, HELP_CUE: HELP_CUE, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();
