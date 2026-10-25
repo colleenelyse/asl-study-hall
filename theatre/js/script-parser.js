@@ -40,7 +40,7 @@
       var parts = toks.slice(i, i + n);
       if (parts.slice(0, -1).some(function (p) { return /[^A-Za-z’'‘]$/.test(p); }) || parts.some(function (p) { return /\d/.test(p); })) continue;
       var k = bare(parts.join(''));
-      if ((SONG_SPELLINGS.has(k) || JOINS.has(k)) && (parts.map(bare).some(function (p) { return !isWord(p); }) || SPLIT_OK.test(k.replace(/'s$/, '')))) return n;
+      if ((SONG_SPELLINGS.has(k) || JOINS.has(k) || SPLIT_OK.test(k.replace(/'s$/, ''))) && (parts.map(bare).some(function (p) { return !isWord(p); }) || SPLIT_OK.test(k.replace(/'s$/, '')))) return n;
     }
     return 0;
   }
@@ -668,7 +668,7 @@
 
   /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
      have to keep reimporting the pdf?") */
-  var VERSION = '2026-10-24.2';      // 2026-10-24.2: lyrics joined back into words (joinSyllables) instead of guessing by syllable      // (also re-applies singer fixes with the careful matching)
+  var VERSION = '2026-10-24.3';      // .3: always-split words (beside, become, until) join too      // 2026-10-24.2: lyrics joined back into words (joinSyllables) instead of guessing by syllable      // (also re-applies singer fixes with the careful matching)
   var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, fixLyricText: fixLyricText, VERSION: VERSION, _toLines: toLines };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ScriptParser = api;

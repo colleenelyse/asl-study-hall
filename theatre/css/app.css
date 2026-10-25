@@ -505,3 +505,17 @@ body:has(.viewas-bar) #app { padding-bottom: 110px; }
 .cap-prev canvas#pp { max-width: 360px; }
 /* Teacher mode groups (teacher.js MENUS) */
 .tile.menu .menu-n { margin-top: auto; color: var(--accent); font-weight: 700; font-size: .9em; }
+/* Edit the captions (captedit.js) */
+.ce-scene { margin: 18px 0; }
+.ce-scene h3 { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: 64px; background: var(--bg); padding: 6px 0; z-index: 2; }
+.ce-song { border-left: 6px solid var(--accent); padding-left: 10px; margin: 10px 0; }
+.ce-song h4 { margin: 6px 0; }
+.ce-row { display: grid; grid-template-columns: minmax(130px, 190px) 1fr; gap: 6px 10px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; margin: 6px 0; background: var(--card); }
+.ce-row.sfx { background: color-mix(in srgb, var(--warn-bg) 60%, var(--card)); }
+.ce-row.sung textarea { font-style: italic; }
+.ce-row textarea { width: 100%; min-height: 2.4em; resize: vertical; font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.ce-row select { min-height: 40px; }
+.ce-acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ce-time { display: inline-flex; align-items: center; gap: 2px; }
+.ce-time input { width: 78px; text-align: center; min-height: 36px; }
+@media (max-width: 600px) { .ce-row { grid-template-columns: 1fr; } }

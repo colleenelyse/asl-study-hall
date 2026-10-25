@@ -230,7 +230,7 @@
      fullCal }]. Practice: never recorded for parents; a helper's is the student's, marked (progress.js). The password that opened this iPad is remembered (ls passId); T.pass is its checklist, or null for the cast password. */
   T.pass = null;
   T.STUDENT_PAGES = [['today', 'Today (my job in class)'], ['schedule', 'My Schedule'], ['calendar', 'My calendar'], ['lines', 'Practice Lines'], ['songs', 'My Songs'],
-    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list'], ['react', 'React to That! (reaction practice)'], ['help', 'Volunteer and donate (for families)'], ['photos', 'Costume and prop photos'], ['bow', 'My bow (curtain call)']];
+    ['costumes', 'My Costumes'], ['story', 'The Story'], ['script', 'The Script'], ['print', 'Print my script'], ['auditions', 'Auditions'], ['shop', 'Shopping list'], ['react', 'React to That! (reaction practice)'], ['help', 'Volunteer and donate (for families)'], ['photos', 'Costume and prop photos'], ['bow', 'My bow (curtain call)'], ['aac', 'My AAC lines (sound files)']];
   T.TEACH_PAGES = [['callboard', 'Call board (who is where, each day)'], ['read', 'The script (teacher view)'], ['cues', 'Cue sheet'], ['smscript', 'Stage manager script'], ['mics', 'Mic plot']];
   /* in the Company (Colleen 2026-10-23): a.company is 'artist' (Company Artist) or 'mentor' (Company Mentor), or not set yet */
   T.COMPANY = { artist: 'Artist', mentor: 'Mentor' };
@@ -249,7 +249,7 @@
   var PAGE_OF = { song: 'songs', listen: 'songs' };
   T.passAllows = function (page) {
     if (page === 'family') return !!(T.pass && T.pass.who === 'parent');      // the Family portal forms (portal.js): every parent password, nobody else
-    if (!T.pass || !page || ['home', 'who', 'settings', 'unlock', 'notifications'].indexOf(page) >= 0) return true;
+    if (!T.pass || !page || ['home', 'who', 'settings', 'unlock', 'notifications', 'aac'].indexOf(page) >= 0) return true;      // aac: shown only to those the teacher marked (T.show.aacUsers)
     return (T.pass.pages || []).indexOf(PAGE_OF[page] || page) >= 0;
   };
   T.passTeach = function (page, args) {      // a teacher page this password may look at (never change)
@@ -615,6 +615,7 @@
       (T.photosTile && T.photosTile() ? tile('#/photos', 'camera', 'Costume photos', T.photosTile()) : '') +
       tile('#/react', 'star', 'React to That!', 'Practice reacting') +
       (T.studentPages && T.studentPages.bow ? tile('#/bow', 'star', 'My bow', 'The curtain call') : '') +
+      (T.aacTile && T.aacTile() ? tile('#/aac', 'speak', 'My AAC lines', 'Sound files for my device') : '') +
       (pw === 'parent' ? tile('#/help', 'hand', 'Volunteer and donate', 'What the show needs') : '') +
       tile('#/story', 'book', 'The Story', 'What happens') +
       (T.Pages && T.Pages.ready() ? tile('#/script', 'book', 'The Script', 'The real pages, with my notes') : '') +

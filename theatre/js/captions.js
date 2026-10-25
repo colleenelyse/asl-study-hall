@@ -166,26 +166,55 @@
     for (var i = 0; i < rs.length; i += 2) out.push({ who: who, name: i ? '' : name, pname: o.names && who ? whoName(who) : '', full: t, color: base.color, sung: sung, text: rs.slice(i, i + 2).join(' '), rows: rs.slice(i, i + 2), share: rs.slice(i, i + 2).join(' ').length });      // full, pname: the performer view always shows the whole line and who says it
     return out;
   }
-  function build() {
-    var o = opt(), cues = [], n = 0;
+  /* ---------- the caption script ----------
+     Captions come from an editable copy (Colleen 2026-10-24: "a place where i can edit this captioning document and add back missing lines and
+     combine lines and reassign lines to characters … delete things that were incorrectly picked up as text"): T.show.captionDoc, made from the
+     script the first time it is edited (js/captedit.js). Until then the script itself is used. The copy is
+     { scenes: [{ id, num, place, rows: [row] }] }; a row is { id, k: 'line', who, text } (spoken, cued by GO), { id, k: 'sfx', text } (a sound,
+     like [door slams]), or { id, k: 'song', songId, num, title, lines: [{ id, who, text, spoken, li: [lyric line numbers], t?, e? }] }.
+     A song line keeps li, its line(s) in Lyrics timing, so retiming the song moves its captions; t/e (seconds, band track) when she set them. */
+  var rid = function () { return 'r' + Math.random().toString(36).slice(2, 9); };
+  function docFromScript() {
+    var doc = { v: 1, made: new Date().toISOString(), scenes: [] };
     T.O().scenes.forEach(function (sc) {
       var src = T.scriptScene(sc); if (!src) return;
-      var songHash = {};
+      var songHash = {}, rows = [];
       src.items.forEach(function (it) { if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken && l.who) songHash[T.Voices ? T.Voices.id(l) : l.text] = 1; }); });
       src.items.forEach(function (it) {
         if (it.type === 'line') {
-          if (T.Voices && songHash[T.Voices.id(it)]) return;      // the same line read inside the song: it is in the song's video
+          if (T.Voices && songHash[T.Voices.id(it)]) return;      // the same line read inside the song: it is in the song
           var words = LineCheck.spoken(it.text); if (!words.replace(/[^A-Za-z0-9]/g, '')) return;
-          cardsFor(it.who, words, false, o).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c }); });
+          rows.push({ id: rid(), k: 'line', who: it.who || '', text: words });
         }
         if (it.type === 'song') {
           var so = T.O().songs.find(function (x) { return x.scene === sc.id && String(x.num) === String(it.num); });
-          var lt = so && T.show.lyricTimes && T.show.lyricTimes[so.id];
-          if (lt && lt.lines && lt.lines.length) cues.push({ n: ++n, type: 'song', scene: sc, song: so, it: it, lt: lt });
-          else {      // no Lyrics timing yet: the song's lines as stills, cued by hand
-            var prev = null;
-            (it.lyrics || []).forEach(function (l) { cardsFor(l.who, l.text, !l.spoken, o, prev).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c, untimed: so && so.title }); }); prev = l.who; });
-          }
+          rows.push({ id: rid(), k: 'song', songId: so && so.id, num: it.num, title: (so && so.title) || it.title || '', lines: (it.lyrics || []).map(function (l, k) { return { id: rid(), who: l.who || '', text: LineCheck.spoken(String(l.text || '')).trim() || String(l.text || ''), spoken: !!l.spoken, li: [k] }; }) });
+        }
+      });
+      doc.scenes.push({ id: sc.id, num: sc.num, place: sc.place, rows: rows });
+    });
+    return doc;
+  }
+  var theDoc = function () { return T.show.captionDoc || docFromScript(); };
+  /* a song line's time: her own, else from Lyrics timing (the first of its lines to the end of the last) */
+  function lineTime(songId, l) {
+    if (l.t != null) return { t: l.t, end: l.e != null ? l.e : l.t + 2 };
+    var lt = songId && T.show.lyricTimes && T.show.lyricTimes[songId], L = lt && lt.lines; if (!L || !l.li || !l.li.length) return null;
+    var x0 = L[l.li[0]], xN = L[l.li[l.li.length - 1]]; if (!x0 || x0.t == null) return null;
+    return { t: x0.t, end: xN && xN.t != null ? T.lineEnd(xN) : T.lineEnd(x0) };
+  }
+  function build() {
+    var o = opt(), cues = [], n = 0, doc = theDoc();
+    doc.scenes.forEach(function (ds) {
+      var sc = T.O().scenes.find(function (x) { return x.id === ds.id; }) || { id: ds.id, num: ds.num, place: ds.place };
+      ds.rows.forEach(function (r) {
+        if (r.k === 'line') cardsFor(r.who, r.text, false, o).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c }); });
+        if (r.k === 'sfx' && r.text) cardsFor('', r.text, false, o).forEach(function (c) { c.sfx = true; cues.push({ n: ++n, type: 'still', scene: sc, card: c }); });
+        if (r.k === 'song') {
+          var so = T.O().songs.find(function (x) { return x.id === r.songId; }) || { id: r.songId, num: r.num, title: r.title };
+          var timed = r.lines.some(function (l) { return lineTime(r.songId, l); });
+          if (timed) cues.push({ n: ++n, type: 'song', scene: sc, song: so, lines: r.lines });
+          else { var prev = null; r.lines.forEach(function (l) { cardsFor(l.who, l.text, !l.spoken, o, prev).forEach(function (c) { cues.push({ n: ++n, type: 'still', scene: sc, card: c, untimed: so.title }); }); prev = l.who; }); }      // no Lyrics timing yet: stills, cued by hand
         }
       });
     });
@@ -193,12 +222,12 @@
   }
   /* a song's caption timeline: [{ a, b, card }] in band-track seconds; the performer's starts `lead` seconds earlier and runs to the next */
   function songTimeline(cue, o, performer) {
-    var L = cue.it.lyrics || [], tl = cue.lt.lines, segs = [], prev = null;
+    var L = cue.lines || [], tl = L.map(function (l) { return lineTime(cue.song.id, l); }), segs = [], prev = null;
     L.forEach(function (l, k) {
-      var x = tl[k]; if (!x || x.t == null) return;
+      var x = tl[k]; if (!x) return;
       var cards = cardsFor(l.who, l.text, !l.spoken, o, prev); prev = l.who;
-      var nxt = null; for (var j = k + 1; j < tl.length; j++) if (tl[j] && tl[j].t != null) { nxt = tl[j].t; break; }
-      var a = x.t, end = T.lineEnd(x), b = Math.min(nxt != null ? nxt : end + 2, end + 1.2);
+      var nxt = null; for (var j = k + 1; j < tl.length; j++) if (tl[j]) { nxt = tl[j].t; break; }
+      var a = x.t, end = x.end, b = Math.min(nxt != null ? nxt : end + 2, end + 1.2);
       if (nxt != null && b > nxt) b = nxt;
       var tot = cards.reduce(function (s, c) { return s + c.share; }, 0) || 1, at = a;
       cards.forEach(function (c) { var d = (b - a) * c.share / tot; segs.push({ a: at, b: at + d, card: c, nextStart: nxt }); at += d; });
@@ -449,7 +478,7 @@
     var untimed = T.O().songs.filter(function (so) { return !(T.show.lyricTimes && T.show.lyricTimes[so.id]); });
     var sel = function (id, v, list) { return '<select id="' + id + '">' + list.map(function (x) { return '<option value="' + x[0] + '"' + (String(v) === String(x[0]) ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>'; };
     app.innerHTML = '<div class="card"><h2>' + sym('💬') + 'Open captions</h2><p class="muted">Captions for QLab: a video for each song (timed from Lyrics timing) and a picture for each spoken line (your caption operator GOes on each one). Two versions of everything: the <b>audience strip</b> for the screen above the stage, and the <b>performer view</b> for the back wall, which shows each line early with the next one below it.</p>' +
-      '<p><b>' + cues.length + ' cues</b>: ' + songs.length + ' song videos and ' + stills.length + ' stills.' + (untimed.length ? ' <span class="err">' + untimed.length + ' songs have no Lyrics timing yet, so their lines are stills you cue by hand' + '</span> (' + untimed.slice(0, 4).map(function (s) { return '#' + s.num; }).join(', ') + (untimed.length > 4 ? '…' : '') + ').' : '') + '</p></div>' +
+      '<p><a class="btn small" href="#/teacher/captedit">✏️ Edit the captions</a> <span class="muted small">' + (T.show.captionDoc ? 'Using your edited caption script.' : 'Made straight from the script (nothing edited yet).') + '</span></p><p><b>' + cues.length + ' cues</b>: ' + songs.length + ' song videos and ' + stills.length + ' stills.' + (untimed.length ? ' <span class="err">' + untimed.length + ' songs have no Lyrics timing yet, so their lines are stills you cue by hand' + '</span> (' + untimed.slice(0, 4).map(function (s) { return '#' + s.num; }).join(', ') + (untimed.length > 4 ? '…' : '') + ').' : '') + '</p></div>' +
       '<div class="card"><h3>How they look</h3><div class="row" style="flex-wrap:wrap">' +
       '<label class="f">Audience strip' + sel('cpos', o.pos, [['top', 'At the top of the picture'], ['bottom', 'At the bottom'], ['middle', 'In the middle']]) + '</label>' +
       '<label class="f">Letter size <span class="muted small">(1080p pixels)</span><input id="csize" type="number" min="24" max="140" step="2" value="' + o.size + '" style="width:90px"></label>' +
@@ -557,5 +586,5 @@
     $('xql').onclick = function () { busy(true); sink((T.O().title || 'Show') + ' QLab script').then(function (out) { return qlabFiles(cues).reduce(function (p, f) { return p.then(function () { return out.put(f[0], f[1]); }); }, Promise.resolve()).then(function () { return out.done(); }); }).then(function (m) { busy(false); msg.textContent = m + ' Put these two files in the same folder as the pictures and videos.'; }, function (e) { busy(false); msg.textContent = e.name === 'AbortError' ? 'Stopped: no folder was picked.' : e.message; }); };
     $('xcsv').onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(cueSheet(cues)); a.download = (T.O().title || 'Show') + ' caption cue sheet.csv'; document.body.appendChild(a); a.click(); a.remove(); };
   };
-  T.Captions = { perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
+  T.Captions = { docFromScript: docFromScript, lineTime: lineTime, rid: rid, perfAt: perfAt, stateFor: stateFor, cvP: cvP, qlabData: qlabData, QLAB_SCRIPT: QLAB_SCRIPT, build: build, songTimeline: songTimeline, nice: nice, makeVideo: makeVideo, opt: opt };
 })();
