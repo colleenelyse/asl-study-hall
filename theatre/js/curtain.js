@@ -44,6 +44,7 @@
       return cs.length ? g((O.groups.find(function (x) { return x.id === gid; }) || {}).name || gid, cs, ROWS[Math.min(i, 3)]) : null;
     }).filter(Boolean);
     groups.forEach(function (x, i) { x.from = sideFor(i); });
+    if (O.id === 'hsm-jr') { groups[2].from = groups[3].from = 'Both sides'; groups[2].sides = { 'c:sharpay': 'Stage right', 'c:ryan': 'Stage left' }; groups[3].sides = { 'c:troy': 'Stage right', 'c:gabriella': 'Stage left' }; }      // the pairs meet in the middle
     /* HSM JR: the bows go over the band track of #32 (We're All in This Together), Colleen's choice: a repeat of it in the full show, and its
        only use in the abridged school-day show */
     var m32 = O.id === 'hsm-jr' && O.songs.find(function (s) { return String(s.num) === '32'; });
@@ -77,6 +78,12 @@
       .filter(function (a) { return gi == null || groupOf(a.chars, a.id) === gi; });
     return people.length ? people.map(function (a) { return { name: a.name, a: a }; }) : g.chars.map(function (c) { var x = T.charById(c); return { name: x ? x.short : c, c: c }; });
   }
+  /* each person's entrance side (Colleen 2026-10-25: "the ability for 2 people to bow at the same time but enter from opposite sides"):
+     g.sides['a:<actor>'] or g.sides['c:<character>'], else the group's side */
+  var keyOf = function (m) { return m.a ? 'a:' + m.a.id : 'c:' + m.c; };
+  function sideOfMember(g, m) { var S = g.sides || {}; if (m.a) { if (S['a:' + m.a.id]) return S['a:' + m.a.id]; var c = (m.a.chars || []).find(function (x) { return S['c:' + x] && g.chars.indexOf(x) >= 0; }); if (c) return S['c:' + c]; } return S[keyOf(m)] || g.from; }
+  function mySide(g, me) { var S = g.sides || {}; if (me.id && S['a:' + me.id]) return S['a:' + me.id]; var c = (me.chars || []).find(function (x) { return S['c:' + x]; }); return c ? S['c:' + c] : g.from; }
+  function groupSides(g, gi) { var out = []; membersOf(g, gi).forEach(function (m) { var x = sideOfMember(g, m); if (out.indexOf(x) < 0) out.push(x); }); return out.length ? out.join(' and ') : g.from; }
   var listenFor = function (P, i) {
     var g = P.groups[i];
     if (eightSec(P) && g && g.eights != null && g.eights !== '') return 'after ' + g.eights + ' eight-count' + (+g.eights === 1 ? '' : 's') + ' (about ' + T.clock(timeOf(g, P)) + ' into the song)';
@@ -120,7 +127,7 @@
   function player(host, opts) {
     var P = plan(), mu = music(P);
     if (!mu) { host.innerHTML = '<p class="card">' + (T.me ? 'Your teacher has not picked the bow music yet.' : 'Pick the bow music first (Teacher › Curtain call).') + '</p>'; return; }
-    var cues = P.groups.map(function (g, i) { return { i: i, g: g, t: timeOf(g, P), color: COLORS[i % COLORS.length], label: 'Group ' + (i + 1) + ': ' + g.name, from: g.from }; })
+    var cues = P.groups.map(function (g, i) { return { i: i, g: g, t: timeOf(g, P), color: COLORS[i % COLORS.length], label: 'Group ' + (i + 1) + ': ' + g.name, from: groupSides(g, i) }; })
       .filter(function (c) { return c.t != null && (!opts.only || opts.only.indexOf(c.i) >= 0); });
     if (!cues.length) { host.innerHTML = '<p class="card">' + (T.me ? 'Your teacher has not set the bow times yet.' : 'Set when each group goes first: “Set the times while it plays” (Teacher › Curtain call).') + '</p>'; return; }
     var A = loadAudio(mu, P), audio = A.audio, raf = 0, fired = {}, readied = {};
@@ -193,6 +200,8 @@
             '<p class="muted small" style="margin:4px 0">Goes ' + (eightSec(P) && g.eights != null ? '' : 'when ') + esc(listenFor(P, i)) + '. (Times count from where the bow music starts.)</p>' +
             '<details><summary class="small">Who: ' + esc(membersOf(g).map(function (m) { return m.name; }).join(', ') || 'nobody yet') + '</summary><div class="row" style="flex-wrap:wrap;margin-top:6px">' +
             O.characters.filter(function (c) { return c.group !== 'helpers'; }).map(function (c) { return '<label class="chipbox"><input type="checkbox" data-ch="' + c.id + '"' + (g.chars.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + T.chip(c.id) + '</label>'; }).join('') + '</div>' +
+            '<p class="muted small" style="margin:8px 0 4px">Who enters from where (two people can come from opposite sides on the same count):</p><div class="row" style="flex-wrap:wrap;gap:6px">' +
+              membersOf(g, i).map(function (m) { var k = keyOf(m), v = sideOfMember(g, m); if (v === g.from && !(g.sides || {})[k]) v = ''; return '<label class="chipbox">' + (m.a ? esc(m.name) : T.chip(m.c)) + ' <select data-side="' + i + '|' + esc(k) + '"><option value="">Same as the group (' + esc(g.from) + ')</option>' + FROM.filter(function (x) { return x !== 'Both sides'; }).map(function (x) { return '<option' + (x === v ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>'; }).join('') + '</div>' +
             ((T.show.cast || []).length ? '<p class="muted small" style="margin:8px 0 4px">Also these Company members (whatever their role):</p><div class="row" style="flex-wrap:wrap">' + (T.show.cast || []).filter(function (a) { return a.name; }).map(function (a) { return '<label class="chipbox"><input type="checkbox" data-am="' + a.id + '"' + ((g.cast || []).indexOf(a.id) >= 0 ? ' checked' : '') + '> ' + esc(a.name) + '</label>'; }).join('') + '</div>' : '') + '</details></div>';
         }).join('') +
         '<div class="row"><button class="btn" id="addg">+ Add a group</button></div>' +
@@ -210,6 +219,7 @@
           if (q('eights')) { var ev = q('eights').value.trim(); g.eights = ev === '' || isNaN(+ev) ? null : Math.max(0, Math.round(+ev)); }
           g.chars = Array.from(el.querySelectorAll('[data-ch]:checked')).map(function (x) { return x.dataset.ch; });
           g.cast = Array.from(el.querySelectorAll('[data-am]:checked')).map(function (x) { return x.dataset.am; });
+          var sd = {}; el.querySelectorAll('[data-side]').forEach(function (x) { if (x.value) sd[x.dataset.side.split('|').slice(1).join('|')] = x.value; }); g.sides = sd;
         });
         var ms = +document.getElementById('mstart').value; P.music = Object.assign({}, P.music, { start: isNaN(ms) ? 0 : Math.max(0, ms), loop: document.getElementById('mloop').checked });
         var bpm = +document.getElementById('cbpm').value; P.counts = { bpm: bpm > 20 && bpm < 300 ? +bpm.toFixed(2) : null, first: parse(document.getElementById('cfirst').value) || 0 };
@@ -241,6 +251,7 @@
         f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver, start: 0, loop: true }; draw(); T.toast('Bow music uploaded. Save to keep it.'); }); }); })
           .catch(function (e) { m.textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; });
       };
+      app.querySelectorAll('[data-side]').forEach(function (x) { x.onchange = function () { keep(); draw(); }; });
       app.querySelectorAll('[data-ch],[data-am]').forEach(function (s) { s.onchange = function () { keep(); draw(); }; });
       app.querySelectorAll('[data-k="at"]').forEach(function (s) { s.onchange = function () { keep(); draw(); }; });
       app.querySelectorAll('[data-nudge]').forEach(function (b) { b.onclick = function () { keep(); var q = b.dataset.nudge.split('|'), g = P.groups[+q[0]]; g.at = Math.max(0, +((g.at || 0) + +q[1]).toFixed(1)); draw(); }; });
@@ -296,12 +307,12 @@
     app.innerHTML = '<div class="card bow-mine" style="border-left:10px solid ' + col + '"><div class="muted">Your bow</div><h2 style="color:' + col + ';margin:2px 0 10px">Group ' + (gi + 1) + ' of ' + P.groups.length + ': ' + esc(g.name) + '</h2>' +
       '<div class="bow-steps">' +
       '<div><span class="bow-n">1</span><b>Go</b><br>' + (eightSec(P) && g.eights != null ? '' : 'when ') + esc(listenFor(P, gi)) + '</div>' +
-      '<div><span class="bow-n">2</span><b>Run on from</b><br>' + esc(g.from) + '</div>' +
+      '<div><span class="bow-n">2</span><b>Run on from</b><br>' + esc(mySide(g, me)) + '</div>' +
       '<div><span class="bow-n">3</span><b>Bow, then stand in the</b><br>' + esc(g.row) + '</div>' +
       (fin ? '<div><span class="bow-n">4</span><b>Then everyone performs</b><br>' + esc(fin.title) + '</div>' : '') +
       '<div><span class="bow-n">' + (fin ? 5 : 4) + '</span><b>Company bow</b><br>' + esc(P.company.note || 'everyone bows together') + '</div></div>' +
       (g.note ? '<p class="card" style="background:var(--hi);margin-top:10px">' + sym('📌') + esc(g.note) + '</p>' : '') +
-      '<h3 style="margin-top:14px">You bow with</h3><div class="row" style="flex-wrap:wrap">' + (others.length ? others.map(function (m) { return m.a ? '<span class="chip">' + T.face(m.a, 28) + ' ' + esc(m.name) + '</span>' : T.chip(m.c); }).join('') : '<span class="muted">just you</span>') + '</div>' +
+      '<h3 style="margin-top:14px">You bow with</h3><div class="row" style="flex-wrap:wrap">' + (others.length ? others.map(function (m) { var sd = sideOfMember(g, m), diff = sd !== mySide(g, me) ? ' <span class="muted small">from ' + esc(sd.toLowerCase()) + '</span>' : ''; return (m.a ? '<span class="chip">' + T.face(m.a, 28) + ' ' + esc(m.name) + '</span>' : T.chip(m.c)) + diff; }).join(' ') : '<span class="muted">just you</span>') + '</div>' +
       '<p class="muted small" style="margin-top:10px">Before you: ' + (gi ? P.groups.slice(0, gi).map(function (x) { return esc(x.name); }).join(' · ') : 'nobody, your group goes first!') + '</p></div>' +
       '<div class="card"><h3>' + sym('🔔') + 'Practice my bow</h3><p class="muted small">Listen to the song. A red X means not yet; GET READY counts you in; GO means run on now.</p><div id="bhost"></div>' +
 '</div>';
@@ -313,7 +324,7 @@
     var P = plan(), mu = music(P), g = P.groups[gi], t0 = timeOf(g, P), e8 = eightSec(P), beat = e8 ? e8 / 8 : null;
     if (!mu) { host.innerHTML = '<p class="card">Your teacher has not picked the bow music yet.</p>'; return; }
     if (t0 == null) { host.innerHTML = '<p class="card">Your teacher has not set when your group goes yet.</p>'; return; }
-    var ready = e8 || 4, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {};
+    var ready = e8 || 4, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {}, side = T.me ? mySide(g, T.me) : g.from;
     host.innerHTML = '<div class="bowcd wait" id="bcd" aria-live="polite"><div class="bowcd-x" aria-hidden="true">✕</div><div class="bowcd-big" id="bcdbig"></div><div class="bowcd-small" id="bcdsmall"></div></div>' +
       '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="round big" id="bcpl" aria-label="Play">' + icon('play') + '</button><button class="btn" id="bctop">From the top of the song</button><button class="btn" id="bcnear">Just before my turn</button><b id="bctm" class="lt-time">0:00</b>' +
       '<label class="switch" style="border:0"><span>🔔 Sounds</span><input type="checkbox" id="bcsnd" checked></label></div>';
@@ -332,7 +343,7 @@
         big.textContent = 'GET READY'; small.textContent = beat ? 'count ' + Math.min(8, Math.max(1, Math.floor((ready - left) / beat) + 1)) + ' of 8' : Math.ceil(left) + '…';
       } else if (left > -3) {
         box.className = 'bowcd go'; if (!said.g) { said.g = 1; if (snd()) GO(); }
-        big.textContent = 'GO!'; small.textContent = 'Run on from ' + g.from;
+        big.textContent = 'GO!'; small.textContent = 'Run on from ' + side;
       } else {
         box.className = 'bowcd done'; big.textContent = '🙇 Bow!'; small.textContent = 'Then stand in the ' + g.row.toLowerCase();
       }
