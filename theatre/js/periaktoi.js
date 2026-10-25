@@ -20,7 +20,8 @@
     if (local && shown && (local.stamp || 0) > (shown.stamp || 0)) queueSave();      // changes made here that never reached the server
     if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
-    if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;      // the rim lines up with the printed target square in her D1 art
+    if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
+    if (P.practicals && P.practicals.C1 && !P.practicals.C1.show) { P.practicals.C1.h = 2; P.practicals.C1.show = 'cork'; if (P.practicals.C1.z === 5) P.practicals.C1.z = 47 / 12; }      // the real corkboard, drawn on her C1 wall      // the rim lines up with the printed target square in her D1 art
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
@@ -243,6 +244,12 @@
         if (f.n.x * (cam.x - f.c.x) + f.n.y * (cam.y - f.c.y) <= 0.01 || (f.c.y - camY) * sign < 1) return;      // facing away from this camera, or behind it
         draws.push({ d: Math.hypot(f.c.x - cam.x, f.c.y - cam.y), f: function () { face(g, pr, f, s, lit, t); } });
       });
+      gm.prot.forEach(function (pq) { if (pq.show !== 'cork') return;      // the real corkboard, mounted over the printed wall
+        if (pq.n.x * (cam.x - pq.mid.x) + pq.n.y * (cam.y - pq.mid.y) <= 0.01) return;
+        var hw = pq.w / 2, at = function (k, z) { return pr(pq.mid.x + pq.ax.x * hw * k + pq.n.x * pq.d, pq.mid.y + pq.ax.y * hw * k + pq.n.y * pq.d, z); };
+        draws.push({ d: Math.hypot(pq.mid.x - cam.x, pq.mid.y - cam.y) - 0.05, f: function () { var lo = pq.z - pq.h / 2, hi = pq.z + pq.h / 2, q = [at(-1, hi), at(1, hi), at(1, lo), at(-1, lo)];
+          g.beginPath(); q.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fillStyle = '#b98b5a'; g.fill(); g.lineWidth = Math.max(2, W * 0.003); g.strokeStyle = '#6b4425'; g.stroke();
+          if (lit > 0.01) { g.fillStyle = 'rgba(0,0,0,' + lit + ')'; g.fill(); } } }); });
       gm.prot.forEach(function (pq) { if (!pq.rim) return; var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) };
         draws.push({ d: Math.hypot(rc.x - cam.x, rc.y - cam.y), f: function () { var ring = []; for (var a = 0; a < 24; a++) { var q2 = a / 24 * Math.PI * 2; ring.push(pr(rc.x + 0.75 * Math.cos(q2), rc.y + 0.75 * Math.sin(q2), pq.z)); }
           g.beginPath(); ring.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.strokeStyle = 'rgba(255,106,0,' + (1 - lit * 0.8) + ')'; g.lineWidth = Math.max(2, W * 0.003); g.stroke(); } }); });

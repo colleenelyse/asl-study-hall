@@ -23,7 +23,7 @@
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
     B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
-    C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, d: 0.15, z: 5 },
+    C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
     D1: { name: 'Real 18″ basketball rim (backboard printed)', u: 0.5, w: 1.5, d: 2, z: 5, rim: true }      // z: under the target square in her D1 art (about 5 ft)
   };
   var PROTRUDE = {}; Object.keys(PRACTICALS).forEach(function (k) { PROTRUDE[k] = PRACTICALS[k].name; });
@@ -92,7 +92,7 @@
       var ax = { x: f.r.x - f.l.x, y: f.r.y - f.l.y }, L = Math.hypot(ax.x, ax.y); ax.x /= L; ax.y /= L;
       var m = { x: f.l.x + ax.x * L * pr.u, y: f.l.y + ax.y * L * pr.u }, hw = pr.w / 2;
       var a = { x: m.x - ax.x * hw, y: m.y - ax.y * hw }, b = { x: m.x + ax.x * hw, y: m.y + ax.y * hw };
-      prot.push({ id: f.id, rim: pr.rim, mid: m, d: pr.d, z: pr.z, w: pr.w, n: f.n, poly: [a, b, { x: b.x + f.n.x * pr.d, y: b.y + f.n.y * pr.d }, { x: a.x + f.n.x * pr.d, y: a.y + f.n.y * pr.d }] });
+      prot.push({ id: f.id, rim: pr.rim, show: pr.show, h: pr.h, ax: ax, mid: m, d: pr.d, z: pr.z, w: pr.w, n: f.n, poly: [a, b, { x: b.x + f.n.x * pr.d, y: b.y + f.n.y * pr.d }, { x: a.x + f.n.x * pr.d, y: a.y + f.n.y * pr.d }] });
     });
     var sweep = R(st); prot.forEach(function (q) { q.poly.forEach(function (p) { sweep = Math.max(sweep, Math.hypot(p.x - s.x, p.y - s.y)); }); });
     return { faces: faces, poly: pts, prot: prot, sweep: sweep };
