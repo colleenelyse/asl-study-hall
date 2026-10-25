@@ -9,6 +9,7 @@
   var TW = PK.TOWERS, P = null, cur = 0, sel = null, undo = [], redo = [], saveTimer = 0, LS = 'theatre-periaktoi';
   var V = { proj: 'real', pics: true, zoom: 'stage', person: true, view: 'aud', labels: true, spikes: false, paths: true, sweep: false, rim: true, routes: true, clear: false, speed: 1, loop: false };
   var anim = null;      // { from, to, ch, u, playing, dur, last }
+  var fname = function (id) { return PK.faceName(P, id); };      // her face names (setup session) or the built-in ones
   var COL = { A: '#ff8a5c', B: '#ffd25c', C: '#6fd3ff', D: '#c79bff' };
   var LIT = { full: 0, low: 0.5, dark: 0.85 };
 
@@ -46,6 +47,7 @@
     P.scenes.forEach(function (sc) { if (['s4', 's12', 's17'].indexOf(sc.id) >= 0 && sc.towers.B && sc.towers.B.want === 'B3') { sc.towers.B.want = 'B1'; sc.towers.B.rot = PK.rotFor(P, 'B', 'B1').rot; } });      // the gym shows the doorway on B (Colleen 2026-10-25)
     if (P.scenes[0] && P.scenes[0].id === 's1' && !(P.scenes[1] && P.scenes[1].same === 's1')) {      // scene 1 splits in two for lighting (1a karaoke, 1b hallway); the set stays put
       var b1 = PK.sub1(P), f0 = PK.fresh().scenes[0]; P.scenes[0].notes = f0.notes; if (/^East High \(preset\)/.test(P.scenes[0].name)) P.scenes[0].name = f0.name; b1.towers = JSON.parse(JSON.stringify(P.scenes[0].towers)); P.scenes.splice(1, 0, b1); queueSave(); }
+    if (!P.lineups) P.lineups = PK.lineupDefaults();
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
       P.scenes.forEach(function (sc) { PK.TOWERS.forEach(function (t) { var q = sc.towers[t]; if (Math.abs(q.x - old[t]) < 1e-6 && Math.abs(q.y - P.home[t].y) < 1e-6) q.x = P.home[t].x; }); }); queueSave(); }
     PK.applySpikes(P);      // after any change above
@@ -131,7 +133,7 @@
     else if (id === 'D2') { wall('#cfcac2'); stripe(); g.fillStyle = '#e9f0f4'; g.fillRect(w * 0.12, h * 0.1, w * 0.3, h * 0.55); g.fillRect(w * 0.58, h * 0.1, w * 0.3, h * 0.55); }
     else { wall('#e4dccb'); stripe(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.setLineDash([8, 8]); g.strokeRect(20, 20, w - 40, h * 0.5); }
     g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, w, 64); g.fillStyle = '#fff'; g.font = 'bold 34px Lexend, sans-serif'; g.textAlign = 'center'; g.fillText(id, w / 2, 38);
-    g.font = '15px sans-serif'; g.fillText(PK.SHORT[id] + ' (placeholder)', w / 2, 58);
+    g.font = '15px sans-serif'; g.fillText(fname(id) + ' (placeholder)', w / 2, 58);
     return c;
   }
 
@@ -447,17 +449,17 @@
       '<div class="pk-row"><button id="pkIRot">Turn 90°</button><button id="pkIDel">Remove</button></div></div>';
   }
   /* Simple mode: the change in a few plain sentences */
-  function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return PK.SHORT[id].toLowerCase(); };
+  function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return fname(id).toLowerCase(); };
     return f.kind === 'flat' ? 'the ' + n(f.faces[0]) : f.kind === 'point' ? 'the ' + n(f.faces[0]) + ' and the ' + n(f.faces[1]) + ' (as a point)' : 'an angle'; }
   function faceButtons(t) {      // the face pictures to click, in both modes
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+');
     var thumb = function (id) { return '<img src="' + artUrl(id) + '" alt="">'; };
-    var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '" title="' + esc(PK.SHORT[id]) + '">' + thumb(id) + '<span>' + esc(PK.SHORT[id]) + '</span></button>'; }).join('');
-    var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '" title="' + esc(PK.SHORT[r.left] + ' + ' + PK.SHORT[r.right]) + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(PK.SHORT[r.left]) + ' + ' + esc(PK.SHORT[r.right]) + '</span></button>'; }).join('');
+    var faces = [1, 2, 3].map(function (k) { var id = t + k; return '<button class="pk-facebtn' + (now === id ? ' on' : '') + '" data-swant="' + id + '" title="' + esc(fname(id)) + '">' + thumb(id) + '<span>' + esc(fname(id)) + '</span></button>'; }).join('');
+    var points = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return '<button class="pk-facebtn pt' + (now === w ? ' on' : '') + '" data-swant="' + w + '" title="' + esc(fname(r.left) + ' + ' + fname(r.right)) + '"><span class="pk-pt">' + thumb(r.left) + thumb(r.right) + '</span><span>' + esc(fname(r.left)) + ' + ' + esc(fname(r.right)) + '</span></button>'; }).join('');
     return '<div class="pk-tworow"><div class="pk-faces3">' + faces + '</div><span class="pk-help small" style="align-self:center">or as a point:</span><div class="pk-faces3">' + points + '</div></div>';
   }
   function lineUpRow() {      // her three standard arrangements (2026-10-25)
-    return '<div class="pk-row pk-lineup"><span>Line up:</span><button data-lineup="home" title="Every tower on its home base">All home</button><button data-lineup="aroundC" title="C stays home; B and D slide in until their points touch C">B and D close in on C</button><button data-lineup="unitBC" title="B and C touch points at center as one unit; A and D home">B + C together at center</button></div>';
+    return '<div class="pk-row pk-lineup"><span>Line up:</span><button data-lineup="home" title="Every tower on its home base">All home</button>' + (P.lineups || []).map(function (L) { return '<button data-lineup="' + esc(L.id) + '">' + esc(L.name) + '</button>'; }).join('') + '</div>';
   }
   function whereRows(t, tail) {      // where the tower stands: typed or slid, in both modes
     var s = scene().towers[t], i = TW.indexOf(t);
@@ -474,10 +476,11 @@
       faceButtons(t) + whereRows(t, '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button>') + '</div>';
   }
   function plainPanel(ch, checks) {
+    if (V.walk) return walkPanel(ch, checks);
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
     side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
       '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
-      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSSetup" title="Set up the show: faces, home bases, line-ups, scenes; then plan scene by scene">🧭 Setup</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
     if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
     if (!towerOpen) out.push(lineUpRow());
@@ -605,6 +608,18 @@
       app.querySelectorAll('[data-home]').forEach(function (b) { b.onclick = function () { stop(); snap(); var q = sc.towers[sel], H = P.home || (P.home = PK.homeDefaults(P));
         if (b.dataset.home === 'set') { H[sel] = { x: q.x, y: q.y }; T.toast(sel + '’s home base is here now'); } else { q.x = H[sel].x; q.y = H[sel].y; } changed(); }; });
     }
+    var toSetup = function () { V.setup = true; V.setupStep = V.setupStep || 0; T.teacherPages.set(true); };
+    if ($('pkSSetup')) $('pkSSetup').onclick = toSetup; if ($('pkSetup2')) $('pkSetup2').onclick = toSetup;
+    if ($('pkWPrev')) $('pkWPrev').onclick = function () { walkGo(cur - 1); };
+    if ($('pkWNext')) $('pkWNext').onclick = function () { walkGo(cur + 1); };
+    if ($('pkWSel')) $('pkWSel').onchange = function () { walkGo(+this.value); };
+    if ($('pkWDone')) $('pkWDone').onclick = walkDone;
+    if ($('pkWExit')) $('pkWExit').onclick = function () { V.walk = false; draw(); T.toast('Stopped. 🧭 Setup › Plan the show picks it up again.'); };
+    if ($('pkWSame')) $('pkWSame').onclick = function () { snap(); var pv = P.scenes[cur - 1]; TW.forEach(function (t) { sc.towers[t] = JSON.parse(JSON.stringify(pv.towers[t])); }); changed(); };
+    app.querySelectorAll('[data-wwant]').forEach(function (b) { b.onclick = function () { var q = b.dataset.wwant.split('|'); snap(); setWant(q[0], q[1]); if (sc.towers[q[0]].lit === 'dark') { sc.towers[q[0]].lit = 'full'; sc.towers[q[0]].role = 'featured'; } changed(); }; });
+    app.querySelectorAll('[data-wlit]').forEach(function (b) { b.onclick = function () { snap(); var q = sc.towers[b.dataset.wlit]; if (q.lit === 'dark') { q.lit = 'full'; q.role = 'featured'; } else { q.lit = 'dark'; q.role = 'masking'; } changed(); }; });
+    app.querySelectorAll('[data-whome]').forEach(function (b) { b.onclick = function () { snap(); var t = b.dataset.whome; sc.towers[t].x = P.home[t].x; sc.towers[t].y = P.home[t].y; changed(); }; });
+    app.querySelectorAll('[data-wadj]').forEach(function (b) { b.onclick = function () { sel = b.dataset.wadj; draw(); }; });
     app.querySelectorAll('[data-status]').forEach(function (b) { b.onclick = function () { snap(); sc.status = b.dataset.status; changed(); }; });
     app.querySelectorAll('[data-crew]').forEach(function (b) { b.onclick = function () { snap(); P.crew = +b.dataset.crew; changed(); }; });
   }
@@ -819,6 +834,7 @@
 
   /* ---------- the page frame ---------- */
   function rebuild() {
+    if (V.setup) return setupPage();      // the setup session has no stage views
     var b = bounds(); if (V.box && V.boxFor !== JSON.stringify(st())) V.box = null; V.boxFor = JSON.stringify(st());
     var views = { over: '<div class="pk-view" id="pkOverWrap"><div class="pk-vt">Bird’s-eye (from above, audience at the bottom) · scroll to zoom, drag the floor to pan <button id="pkFit" class="pk-mini">Fit</button></div><svg id="pkOver" viewBox="' + b.x0 + ' ' + b.y0 + ' ' + (b.x1 - b.x0) + ' ' + (b.y1 - b.y0) + '"><defs><pattern id="pkHatch" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1" stroke="#2a2633" stroke-width="0.3"/></pattern><marker id="pkArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ddd"/></marker></defs>' + overheadStatic() + '<g id="pkDyn"></g></svg></div>',
       aud: '<div class="pk-view"><div class="pk-vt">Audience view (from the house: A on the left)</div><canvas id="pkAud"></canvas></div>',
@@ -833,10 +849,168 @@
     if (document.getElementById('pkCsv')) document.getElementById('pkCsv').onclick = ledgerCsv;
     draw();
   }
+  /* ---------- the setup session (Colleen 2026-10-25): ground the show once (stage, faces, home bases, line-ups, scenes),
+     then plan every scene from scratch, then let the planner work out the moves ---------- */
+  var SETUP = ['The stage', 'The faces', 'Home bases', 'Line-ups', 'Scenes', 'Plan the show'];
+  function miniMap(towers, w) {      // a small bird's-eye picture: the curtain line and the four towers
+    var s = st(), x0 = -s.prosc / 2 - 1, x1 = s.prosc / 2 + 1, y0 = -6, y1 = s.curtain + 1.5;
+    var tri = TW.map(function (t) { var g = PK.geom(P, t, towers[t], s);
+      return '<polygon points="' + g.poly.map(function (p) { return p.x.toFixed(2) + ',' + (-p.y).toFixed(2); }).join(' ') + '" fill="' + COL[t] + '" fill-opacity="0.35" stroke="' + COL[t] + '" stroke-width="0.15"/>' +
+        '<text x="' + towers[t].x.toFixed(2) + '" y="' + (-towers[t].y + 0.6).toFixed(2) + '" font-size="1.6" text-anchor="middle" fill="#fff">' + t + '</text>'; }).join('');
+    return '<svg class="pk-mini-map" viewBox="' + x0 + ' ' + (-y1) + ' ' + (x1 - x0) + ' ' + (y1 - y0) + '" style="width:' + (w || 100) + '%">' +
+      '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + (-s.curtain) + '" y2="' + (-s.curtain) + '" stroke="#4a5cff" stroke-width="0.35"/><line x1="' + x0 + '" x2="' + x1 + '" y1="0" y2="0" stroke="#555" stroke-width="0.08" stroke-dasharray="0.4 0.4"/>' +
+      '<text x="' + (x0 + 0.3) + '" y="' + (-s.curtain - 0.4) + '" font-size="1" fill="#9aa4ff">main curtain</text><text x="' + (x1 - 0.3) + '" y="' + (y1 - y0 - s.curtain - 2.2) + '" font-size="1" fill="#888" text-anchor="end">audience ↓</text>' + tri + '</svg>';
+  }
+  function flatAt(fn) {      // every tower face 1 flat, placed by fn (for the pictures in setup)
+    var T0 = {}; TW.forEach(function (t) { var H = P.home[t]; T0[t] = { x: H.x, y: H.y, want: t + '1', rot: PK.rotFor(P, t, t + '1').rot }; });
+    if (fn) fn({ towers: T0 }); return T0;
+  }
+  function setupBody(k) {
+    var s = st(), out = [];
+    if (k === 0) {
+      out.push('<h2>The stage</h2><p class="pk-help">Measured once for the whole show. Feet and inches, like 25\' 6". Everything else (the wings, the border, the house) is under <b>More stage numbers</b>.</p><div class="pk-setup-grid">');
+      [['prosc', 'Proscenium opening (wall to wall)'], ['apron', 'Deck depth in front of the curtain, at center'], ['curtain', 'Main curtain: upstage of the plaster line'], ['face', 'Width of one tower face'], ['height', 'Tower height'], ['clear', 'Gap to keep around turning towers']].forEach(function (f) {
+        out.push('<label class="pk-f">' + f[1] + (s.placeholder && s.placeholder[f[0]] ? ' <i>(placeholder)</i>' : '') + '<input data-sust="' + f[0] + '" value="' + PK.ft(s[f[0]]) + '"></label>'); });
+      out.push('</div><p><button id="suMore">More stage numbers and the face order…</button> <button id="suEq">Tables and real pieces…</button></p>');
+    } else if (k === 1) {
+      out.push('<h2>The faces</h2><p class="pk-help">Name each face the way you and the crew say it. The names show up everywhere in the planner (“B turns to show the classroom door”). Real pieces on a face (a door, a rim, hooks) are under <b>Tables and real pieces</b>.</p>');
+      TW.forEach(function (t) {
+        out.push('<div class="pk-setup-tower"><h3 style="color:' + COL[t] + '">Tower ' + t + '</h3><div class="pk-setup-faces">' + [1, 2, 3].map(function (n) { var id = t + n, pr = Object.keys(P.practicals || {}).filter(function (q) { return q.slice(0, 2) === id; }).map(function (q) { return P.practicals[q].name; });
+          return '<div class="pk-setup-face"><img src="' + artUrl(id) + '" alt=""><div><b>' + id + '</b><input data-fname="' + id + '" value="' + esc(fname(id)) + '">' + (pr.length ? '<small>Real: ' + esc(pr.join(', ')) + '</small>' : '') + '</div></div>'; }).join('') + '</div></div>'); });
+    } else if (k === 2) {
+      var H = P.home;
+      out.push('<h2>Home bases</h2><p class="pk-help">Every tower has a home spot. They are evenly spaced, the same gap between the points when the towers are face on, and centered on the stage.</p>' +
+        '<div class="pk-setup-grid"><label class="pk-f">Gap between the points (face on)<input id="suGap" value="' + PK.ft(H.gap != null ? H.gap : 4) + '"></label>' +
+        '<label class="pk-f">Home line: the towers’ centers, upstage of the plaster line<input id="suHomeY" value="' + PK.ft(H.A.y) + '"></label></div>' + miniMap(flatAt()) +
+        '<p class="pk-help small">Change one tower’s home on its own: click it in the planner, place it, then press “Make this its home”. Towers in your scenes that stand on a home base move with it.</p>');
+    } else if (k === 3) {
+      out.push('<h2>Line-ups</h2><p class="pk-help">Arrangements you use again and again. The towers in a line-up slide together until their points touch. They join either on one tower’s home base, or centered on the stage. In every scene they are one click.</p>');
+      (P.lineups || []).forEach(function (L, i) {
+        out.push('<div class="pk-setup-lineup"><div><label class="pk-f">Name<input data-lname="' + i + '" value="' + esc(L.name) + '"></label>' +
+          '<div class="pk-row"><span>Towers that touch:</span>' + TW.map(function (t) { return '<label class="pk-chk"><input type="checkbox" data-lgroup="' + i + '" value="' + t + '"' + (L.group.indexOf(t) >= 0 ? ' checked' : '') + '> ' + t + '</label>'; }).join('') + '</div>' +
+          '<div class="pk-row"><span>They meet:</span><select data-lat="' + i + '"><option value="center"' + (L.at === 'center' ? ' selected' : '') + '>centered on the stage</option>' + L.group.map(function (t) { return '<option value="' + t + '"' + (L.at === t ? ' selected' : '') + '>on ' + t + '’s home base</option>'; }).join('') + '</select>' +
+          '<span>The others:</span><select data-lrest="' + i + '"><option value="home"' + (L.rest !== 'stay' ? ' selected' : '') + '>go home</option><option value="stay"' + (L.rest === 'stay' ? ' selected' : '') + '>stay where they are</option></select>' +
+          '<button data-ldel="' + i + '" class="pk-mini">Remove</button></div></div>' + miniMap(flatAt(function (sc) { PK.lineUp(P, sc, L); }), 100) + '</div>'); });
+      out.push('<p><button id="suLAdd">+ Line-up</button></p>');
+    } else if (k === 4) {
+      out.push('<h2>Scenes</h2><p class="pk-help">In show order. A <b>part</b> uses the same set as the scene before it, with its own lighting (like 1a and 1b).</p><table class="pk-setup-scenes">');
+      P.scenes.forEach(function (sc, i) {
+        var part = !!(sc.moment && sc.same);
+        out.push('<tr><td><b>' + label(i) + '</b></td><td><input data-scname="' + i + '" value="' + esc(sc.name) + '"></td>' +
+          '<td>' + (i ? '<label class="pk-chk"><input type="checkbox" data-scpart="' + i + '"' + (part ? ' checked' : '') + '> part of the scene before</label>' : '') + '</td>' +
+          '<td><button data-scup="' + i + '"' + (i ? '' : ' disabled') + ' class="pk-mini">↑</button><button data-scdown="' + i + '"' + (i < P.scenes.length - 1 ? '' : ' disabled') + ' class="pk-mini">↓</button><button data-scdel="' + i + '" class="pk-mini">Remove</button></td></tr>'); });
+      out.push('</table><p><button id="suScAdd">+ Scene at the end</button></p>');
+    } else {
+      out.push('<h2>Plan the show</h2><p class="pk-help">Go through the scenes one at a time. For each one, pick what every tower shows, pick a line-up (or place a tower yourself), and mark the towers that are not used. When you finish, the planner works out the moves: towers that are not used turn and slide ahead of time to what they need next, and every turn takes the short way.</p>' +
+        '<div class="pk-setup-big"><button id="suBlank" class="pk-primary">Start from a blank stage<small>Every scene starts like the scene before it; your current plan is kept as a copy.</small></button>' +
+        '<button id="suWalk">Walk through my current plan<small>Same steps, starting from what is already there.</small></button></div>' +
+        (P.before ? '<p><button id="suRestore" class="pk-mini">Bring back the plan from before I started over (' + esc(P.before.when) + ')</button></p>' : ''));
+    }
+    return out.join('');
+  }
+  function setupPage() {
+    var k = V.setupStep || 0;
+    document.body.classList.add('pk-wide');
+    app.innerHTML = '<div class="pk pk-setup"><div class="pk-steps">' + SETUP.map(function (n, i) { return '<button data-sustep="' + i + '"' + (i === k ? ' class="on"' : '') + '>' + (i + 1) + '. ' + n + '</button>'; }).join('') + '</div>' +
+      '<div class="pk-setup-body">' + setupBody(k) + '</div>' +
+      '<div class="pk-row pk-setup-nav"><button id="suBack">‹ Back to the planner</button><span class="pk-gap"></span>' + (k ? '<button id="suPrev">‹ Previous step</button>' : '') + (k < SETUP.length - 1 ? '<button id="suNext" class="pk-primary">Next step ›</button>' : '') + '</div></div>';
+    var $ = function (id) { return document.getElementById(id); }, again = function () { P.stamp = Date.now(); try { localStorage.setItem(LS, JSON.stringify(P)); } catch (e) {} queueSave(); setupPage(); };
+    var go = function (n) { V.setupStep = n; setupPage(); window.scrollTo(0, 0); };
+    app.querySelectorAll('[data-sustep]').forEach(function (b) { b.onclick = function () { go(+b.dataset.sustep); }; });
+    if ($('suPrev')) $('suPrev').onclick = function () { go(k - 1); }; if ($('suNext')) $('suNext').onclick = function () { go(k + 1); };
+    $('suBack').onclick = function () { V.setup = false; T.teacherPages.set(true); };
+    app.querySelectorAll('[data-sust]').forEach(function (i) { i.onchange = function () { var v = PK.parseFt(i.value), key = i.dataset.sust; if (v == null || v <= 0) { T.toast('Type feet and inches, like 25\' 6"'); return setupPage(); } snap(); st()[key] = v; if (st().placeholder) delete st().placeholder[key]; again(); }; });
+    if ($('suMore')) $('suMore').onclick = settings; if ($('suEq')) $('suEq').onclick = equipment;
+    app.querySelectorAll('[data-fname]').forEach(function (i) { i.onchange = function () { snap(); P.names = P.names || {}; var v = i.value.trim(); if (v && v !== PK.SHORT[i.dataset.fname]) P.names[i.dataset.fname] = v; else delete P.names[i.dataset.fname]; again(); }; });
+    var rehome = function (gap, y) {      // towers standing on the old home bases move with them
+      var old = JSON.parse(JSON.stringify(P.home)); snap(); P.home.gap = gap; P.home.A.y = y; var nh = PK.homeDefaults(P); nh.gap = gap;
+      P.scenes.forEach(function (sc) { TW.forEach(function (t) { var q = sc.towers[t]; if (Math.abs(q.x - old[t].x) < 1e-6 && Math.abs(q.y - old[t].y) < 1e-6) { q.x = nh[t].x; q.y = nh[t].y; } }); });
+      P.home = nh; PK.applyLinks(P); again(); };
+    if ($('suGap')) $('suGap').onchange = function () { var v = PK.parseFt(this.value); if (v == null || v < 0) return setupPage(); rehome(v, P.home.A.y); };
+    if ($('suHomeY')) $('suHomeY').onchange = function () { var v = PK.parseFt(this.value); if (v == null) return setupPage(); rehome(P.home.gap != null ? P.home.gap : 4, v); };
+    var L = function (el, k2) { return P.lineups[+el.dataset[k2]]; };
+    app.querySelectorAll('[data-lname]').forEach(function (i) { i.onchange = function () { snap(); L(i, 'lname').name = i.value.trim() || 'Line-up'; again(); }; });
+    app.querySelectorAll('[data-lgroup]').forEach(function (c) { c.onchange = function () { snap(); var q = L(c, 'lgroup'); q.group = q.group.filter(function (t) { return t !== c.value; }); if (c.checked) q.group.push(c.value); q.group.sort(); if (q.at !== 'center' && q.group.indexOf(q.at) < 0) q.at = 'center'; again(); }; });
+    app.querySelectorAll('[data-lat]').forEach(function (c) { c.onchange = function () { snap(); L(c, 'lat').at = c.value; again(); }; });
+    app.querySelectorAll('[data-lrest]').forEach(function (c) { c.onchange = function () { snap(); L(c, 'lrest').rest = c.value; again(); }; });
+    app.querySelectorAll('[data-ldel]').forEach(function (b) { b.onclick = function () { snap(); P.lineups.splice(+b.dataset.ldel, 1); again(); }; });
+    if ($('suLAdd')) $('suLAdd').onclick = function () { snap(); P.lineups.push({ id: 'l' + Date.now().toString(36), name: 'New line-up', group: ['B', 'C'], at: 'center', rest: 'home' }); again(); };
+    app.querySelectorAll('[data-scname]').forEach(function (i) { i.onchange = function () { snap(); P.scenes[+i.dataset.scname].name = i.value.trim() || P.scenes[+i.dataset.scname].name; again(); }; });
+    app.querySelectorAll('[data-scpart]').forEach(function (c) { c.onchange = function () { snap(); var i = +c.dataset.scpart, sc = P.scenes[i];
+      if (c.checked) { var j = i - 1; while (j > 0 && P.scenes[j].moment) j--; sc.moment = true; sc.sub = true; sc.same = P.scenes[j].id; PK.applyLinks(P); }
+      else { delete sc.moment; delete sc.sub; delete sc.same; }
+      again(); }; });
+    var move = function (i, d) { snap(); P.scenes.splice(i + d, 0, P.scenes.splice(i, 1)[0]); again(); };
+    app.querySelectorAll('[data-scup]').forEach(function (b) { b.onclick = function () { move(+b.dataset.scup, -1); }; });
+    app.querySelectorAll('[data-scdown]').forEach(function (b) { b.onclick = function () { move(+b.dataset.scdown, 1); }; });
+    app.querySelectorAll('[data-scdel]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.scdel; if (P.scenes.length < 2 || !confirm('Remove ' + label(i) + '. ' + P.scenes[i].name + '? (Undo in the planner brings it back.)')) return; snap(); var gone = P.scenes.splice(i, 1)[0];
+      P.scenes.forEach(function (x) { if (x.same === gone.id) { delete x.same; delete x.sub; delete x.moment; } }); cur = Math.min(cur, P.scenes.length - 1); again(); }; });
+    if ($('suScAdd')) $('suScAdd').onclick = function () { snap(); var last = P.scenes[P.scenes.length - 1], c = JSON.parse(JSON.stringify(last)); c.id = 's' + Date.now().toString(36); c.name = 'New scene'; c.notes = ''; delete c.same; delete c.sub; delete c.moment; delete c.spike; delete c.needTables; c.items = []; P.scenes.push(c); again(); };
+    var startWalk = function (blank) {
+      snap();
+      if (blank) {
+        P.before = { when: new Date().toLocaleString(), scenes: JSON.parse(JSON.stringify(P.scenes)) };
+        P.scenes.forEach(function (sc, i) { sc.planned = false; if (i) return; TW.forEach(function (t) { var q = sc.towers[t]; q.x = P.home[t].x; q.y = P.home[t].y; q.want = t + '1'; q.rot = PK.rotFor(P, t, t + '1').rot; q.lit = 'full'; q.role = 'featured'; }); });
+        PK.applyLinks(P);
+      } else P.scenes.forEach(function (sc) { sc.planned = false; });
+      V.walk = true; V.walkBlank = !!blank; V.setup = false; V.simple = true; V.modeSet = true; sel = null; cur = 0; P.scenes[0].planned = true;
+      P.stamp = Date.now(); try { localStorage.setItem(LS, JSON.stringify(P)); } catch (e) {} queueSave();
+      T.teacherPages.set(true);
+    };
+    if ($('suBlank')) $('suBlank').onclick = function () { if (!confirm('Start every scene from a blank stage? Your current plan is kept as a copy (step 6 can bring it back).')) return; startWalk(true); };
+    if ($('suWalk')) $('suWalk').onclick = function () { startWalk(false); };
+    if ($('suRestore')) $('suRestore').onclick = function () { if (!confirm('Bring back the plan from ' + P.before.when + '? Your newer scene plans are replaced (Undo brings them back).')) return; snap(); P.scenes = P.before.scenes; delete P.before; cur = 0; again(); T.toast('Your earlier plan is back'); };
+  }
+  /* the walkthrough: one scene at a time, every tower at once */
+  function walkGo(i) {
+    stop(); cur = Math.max(0, Math.min(P.scenes.length - 1, i)); sel = null;
+    var sc = scene();
+    if (V.walkBlank && !sc.planned && cur && !sc.same) {      // a new scene starts exactly like the scene before it
+      var pv = P.scenes[cur - 1]; TW.forEach(function (t) { sc.towers[t] = JSON.parse(JSON.stringify(pv.towers[t])); }); }
+    if (!sc.planned) { sc.planned = true; P.stamp = Date.now(); try { localStorage.setItem(LS, JSON.stringify(P)); } catch (e) {} queueSave(); }
+    draw();
+  }
+  function walkPanel(ch, checks) {
+    var sc = scene(), total = P.scenes.length, last = cur === total - 1, src = sc.same && P.scenes.find(function (x) { return x.id === sc.same; });
+    var side = '<div class="pk-stepbar pk-walkbar"><button id="pkWPrev"' + (cur ? '' : ' disabled') + '>‹ Back</button><div class="pk-stepname"><small>Planning scene by scene · ' + (cur + 1) + ' of ' + total + '</small><select id="pkWSel" aria-label="Scene">' +
+      P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + (x.planned ? '✓ ' : '') + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
+      (last ? '<button id="pkWDone" class="pk-primary">Finish: work out the moves ›</button>' : '<button id="pkWNext" class="pk-primary">Next scene ›</button>') +
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkWExit">Stop for now</button></div>';
+    if (sel && TW.indexOf(sel) >= 0) return { side: side, bottom: simpleTower(sel) };
+    var bad = checks.filter(function (m) { return m.lv === 'bad'; });
+    var cols = TW.map(function (t) {
+      var s = sc.towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+'), used = s.lit !== 'dark';
+      var opt = function (w, imgs, nm) { return '<button class="pk-wface' + (now === w ? ' on' : '') + '" data-wwant="' + t + '|' + w + '" title="' + esc(nm) + '">' + imgs + '</button>'; };
+      var flats = [1, 2, 3].map(function (k) { var id = t + k; return opt(id, '<img src="' + artUrl(id) + '" alt="">', fname(id)); }).join('');
+      var pts = [[1, 2], [2, 3], [1, 3]].map(function (p) { var w = t + p[0] + '+' + t + p[1], r = PK.rotFor(P, t, w); return opt(w, '<img src="' + artUrl(r.left) + '" alt=""><img src="' + artUrl(r.right) + '" alt="">', fname(r.left) + ' + ' + fname(r.right) + ' (point)'); }).join('');
+      return '<div class="pk-wcol' + (used ? '' : ' off') + '" style="border-color:' + COL[t] + '"><div class="pk-row"><b style="color:' + COL[t] + '">' + t + '</b><span class="pk-wnow">' + esc(f.kind === 'angled' ? 'angled' : f.faces.map(fname).join(' + ')) + '</span><span class="pk-gap"></span>' +
+        '<button data-wlit="' + t + '" class="pk-mini' + (used ? ' on' : '') + '">' + (used ? 'Used' : 'Not used') + '</button></div>' +
+        '<div class="pk-wfaces">' + flats + '</div><div class="pk-wfaces pt">' + pts + '</div>' +
+        '<div class="pk-row"><button data-whome="' + t + '" class="pk-mini">⌂ Home</button><button data-wadj="' + t + '" class="pk-mini">Place it myself ›</button></div></div>';
+    }).join('');
+    var bottom = (src ? '<p class="pk-help small">🔗 Same set as ' + esc(label(P.scenes.indexOf(src)) + '. ' + src.name) + ': changing the towers here changes both. Each keeps its own lighting.</p>' : '') +
+      '<div class="pk-row pk-lineup"><span>Line up:</span><button data-lineup="home">All home</button>' + (P.lineups || []).map(function (L) { return '<button data-lineup="' + esc(L.id) + '">' + esc(L.name) + '</button>'; }).join('') + (cur && !src ? '<button id="pkWSame">Same as the scene before</button>' : '') + '</div>' +
+      '<div class="pk-wgrid">' + cols + '</div>' +
+      (bad.length ? '<p class="pk-ready no">⚠ ' + bad.map(function (m) { return esc(m.msg); }).join(' · ') + '</p>' : '<p class="pk-ready yes">✓ Nothing in the way</p>') + (sc.notes ? '<p class="pk-help small">' + esc(sc.notes) + '</p>' : '');
+    return { side: side, bottom: bottom };
+  }
+  function walkDone() {
+    snap(); var n = PK.presetAhead(P); V.walk = false; P.walked = new Date().toLocaleString();
+    var probs = P.scenes.map(function (sc, i) { var b = PK.sceneChecks(P, sc).concat(i ? PK.change(P, P.scenes[i - 1], sc).warn : []).filter(function (m) { return m.lv === 'bad'; }); return { i: i, b: b }; }).filter(function (r) { return r.b.length; });
+    var ts = PK.turnStats(P, function (i, t) { return P.scenes[i].towers[t].rot; });
+    cur = 0; changed(); T.teacherPages.set(true);
+    T.dialog('<h2>The moves are worked out</h2><p>' + (n ? n + ' time' + (n === 1 ? '' : 's') + ' a tower that is not used turns and slides ahead, right away, to what it needs next.' : 'Nothing needed setting up ahead.') + ' Every turn takes the short way. In all: ' + ts.turns + ' turns, ' + ts.busiest + ' towers at most in one change.</p>' +
+      (probs.length ? '<p><b>Things to check:</b></p><ul>' + probs.map(function (r) { return '<li><button class="pk-mini" data-goto="' + r.i + '">' + esc(label(r.i) + '. ' + P.scenes[r.i].name) + '</button> ' + r.b.map(function (m) { return esc(m.msg); }).join(' ') + '</li>'; }).join('') + '</ul>' : '<p>✓ No clashes found in any scene or change.</p>') +
+      '<p class="muted small">These are proposed moves until they are tested on stage. Press ▶ Play the change on each scene to watch them.</p><div class="row"><button class="btn primary" id="wdOk">Show me</button></div>', function (d) {
+      d.querySelector('#wdOk').onclick = function () { d.close(); };
+      d.querySelectorAll('[data-goto]').forEach(function (b) { b.onclick = function () { d.close(); cur = +b.dataset.goto; draw(); }; });
+    });
+  }
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.set = function (keep) {      // keep: only the Edit / Done switch, so the scene and the picked tower stay put
     T.setBar('Set and scene changes', '#/teacher');
-    stop(); if (keep !== true) { load(); sel = null; cur = V.cur != null && V.cur < P.scenes.length ? V.cur : 0; }
+    stop(); if (keep !== true) { load(); sel = null; cur = V.cur != null && V.cur < P.scenes.length ? V.cur : 0; V.setup = false; }
+    if (V.setup) return setupPage();
     if (!V.modeSet) V.simple = true;      // always opens in the simple stage view; ✎ Edit lasts only until she leaves the page
     if (V.simple) { V.labels = false; if (V.view === 'split' || V.view === 'ledger') V.view = 'aud'; } else V.labels = true;      // always opens on scene 1, the East High preset
     document.body.classList.add('pk-wide');
@@ -852,7 +1026,7 @@
       '<select id="pkZoom" title="Audience and crew views"><option value="stage">Front views: the whole stage (true proportions)</option><option value="towers">Front views: close on the towers</option></select>' +
       '<div class="pk-seg"><button id="pkLabels">Technical</button><button id="pkPreview">Show preview</button></div>' +
       '<details class="pk-show"><summary>Show ▾</summary><div>' + [['person', 'A 5′ 9″ person for scale'], ['pics', 'Panel pictures on the map'], ['spikes', 'Spike marks'], ['paths', 'Tower paths'], ['sweep', 'Turning circles'], ['rim', 'Rim and practicals'], ['routes', 'Table routes'], ['clear', 'Table clearance']].map(function (o) { return '<label class="pk-chk"><input type="checkbox" data-show="' + o[0] + '"' + (V[o[0]] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div></details>' +
-      '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div></div>' +
+      '<button id="pkUndo" title="⌘Z">↶</button><button id="pkRedo" title="⇧⌘Z">↷</button><button id="pkSetup2">🧭 Setup</button><button id="pkSet">⚙ Stage & towers</button><button id="pkEq">⚙ Equipment</button><button id="pkExp">Export</button><label class="pk-btn">Import<input type="file" id="pkImp" accept=".json,application/json" hidden></label></div></div>' +
       '<div class="pk-main"><aside class="pk-left" id="pkScenes"></aside><section class="pk-center" id="pkCenter"></section><aside class="pk-right" id="pkRight"></aside></div>' +
       '<div class="pk-bottom" id="pkBottom"></div>' +
       '<p class="pk-help small pk-adv">Keys: [ ] scenes · Space play · Tab next tower · arrows nudge (Shift ×4) · Q / E turn 60° (Shift 120°) · 1 2 3 show that face flat · L light · ⌘Z undo. Option while dragging: no snapping. Saved in the show and on this computer; Export keeps a copy.</p></div>';

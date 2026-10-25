@@ -534,7 +534,7 @@
     TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
     P.storage = storageDefaults(P.stage);
     P.spikes = spikeDefaults(P);
-    P.home = homeDefaults(P);
+    P.home = homeDefaults(P); P.lineups = lineupDefaults();
     P.scenes = library(P);
     presetAhead(P); P.presetAhead = 1;
     return P;
@@ -554,14 +554,33 @@
     for (var i = 0; i < 40; i++) { var m = (far + near) / 2; if (test(m)) near = m; else far = m; }
     return Math.round(far * 1000) / 1000;
   }
+  /* a line-up is data, so any show can name its own (the setup session): `group` towers touch point to point, in stage order, either with
+     the `at` tower on its home base or with the whole group centered; the towers outside the group go home or stay where they are */
+  function lineupDefaults() {
+    return [
+      { id: 'aroundC', name: 'B and D close in on C', group: ['B', 'C', 'D'], at: 'C', rest: 'home' },
+      { id: 'unitBC', name: 'B + C together at center', group: ['B', 'C'], at: 'center', rest: 'home' }
+    ];
+  }
   function lineUp(P, sc, kind) {
     var H = P.home || homeDefaults(P), T = sc.towers, home = function (t) { T[t].x = H[t].x; T[t].y = H[t].y; };
-    if (kind === 'home') TOWERS.forEach(home);
-    else if (kind === 'aroundC') { home('A'); home('C'); T.B.y = T.D.y = T.C.y; T.B.x = touchX(P, T.B, T.C, -1); T.D.x = touchX(P, T.D, T.C, 1); }
-    else if (kind === 'unitBC') { home('A'); home('D'); T.C.y = T.B.y = H.C.y; T.C.x = 0; T.B.x = touchX(P, T.B, T.C, -1);
-      var pts = geom(P, 'B', T.B, P.stage).poly.concat(geom(P, 'C', T.C, P.stage).poly), lo = Math.min.apply(null, pts.map(function (p) { return p.x; })), hi = Math.max.apply(null, pts.map(function (p) { return p.x; })), mid = (lo + hi) / 2;
-      T.B.x -= mid; T.C.x -= mid; }
+    if (kind === 'home') { TOWERS.forEach(home); return true; }
+    var L = typeof kind === 'object' ? kind : (P.lineups || lineupDefaults()).find(function (q) { return q.id === kind; });
+    if (!L || !L.group || !L.group.length) return false;
+    var g = TOWERS.filter(function (t) { return L.group.indexOf(t) >= 0; }), center = L.at === 'center' || g.indexOf(L.at) < 0, a = center ? 0 : g.indexOf(L.at);
+    TOWERS.forEach(function (t) { if (g.indexOf(t) < 0 && L.rest !== 'stay') home(t); });
+    var anchor = g[a]; T[anchor].y = H[anchor].y; T[anchor].x = center ? 0 : H[anchor].x;
+    for (var i = a + 1; i < g.length; i++) { T[g[i]].y = T[anchor].y; T[g[i]].x = touchX(P, T[g[i]], T[g[i - 1]], 1); }
+    for (i = a - 1; i >= 0; i--) { T[g[i]].y = T[anchor].y; T[g[i]].x = touchX(P, T[g[i]], T[g[i + 1]], -1); }
+    if (center) {
+      var pts = []; g.forEach(function (t) { pts = pts.concat(geom(P, t, T[t], P.stage).poly); });
+      var mid = (Math.min.apply(null, pts.map(function (p) { return p.x; })) + Math.max.apply(null, pts.map(function (p) { return p.x; }))) / 2;
+      g.forEach(function (t) { T[t].x = Math.round((T[t].x - mid) * 1000) / 1000; });
+    }
+    return true;
   }
+  /* face names: each show can rename its faces in the setup session */
+  function faceName(P, id) { return (P && P.names && P.names[id]) || SHORT[id] || id; }
   function touchNext(P, sc, t, side) {      // slide one tower sideways until it touches its neighbor
     var i = TOWERS.indexOf(t) + side, o = TOWERS[i]; if (!o) return false;
     var s = sc.towers[t]; s.y = sc.towers[o].y; s.x = touchX(P, s, sc.towers[o], -side); return true;
@@ -569,7 +588,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { lineupDefaults: lineupDefaults, faceName: faceName, sub1: function (P) { var L = library(P); return L[L.findIndex(function (x) { return x.id === 's1'; }) + 1]; }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;
