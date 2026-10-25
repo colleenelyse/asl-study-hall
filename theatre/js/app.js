@@ -1027,11 +1027,14 @@
     var s = scriptScene(scene), item = s && s.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
     var st = Object.assign({ guide: true, melody: false, vol: 0.9, follow: true }, ls('songOpts') || {});
     if (T.RedX && T.RedX.forMe() && st.redx === undefined) st.redx = true;      // the teacher turned the red X on for this student
+    /* help on my lines, step by step (ladder.js): a level per song, starting at the one the teacher set for this student */
+    var meChars = T.me && T.me.chars && T.me.chars.length ? T.me.chars : null, LD = meChars && T.Ladder;
+    var lvl = function () { return LD ? LD.level((st.lvl && st.lvl[song.id]) || LD.forMe()) : null; };
     var canFollow = T.Follow && T.Follow.ready(song.id);      // the sung line lit up (needs the lyrics timing)
     var canSheet = T.Follow && T.Follow.canShow(song.id);      // the song's real sheet music pages (need only the script PDF)
     var lyr = item && item.lyrics.length ? item.lyrics.map(function (l) {
       var mine = l.who && isMine(l.who, scene, null, songMoment(song));
-      return '<div class="lyric' + (mine ? ' mine' : '') + (l.spoken ? ' spoken' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + (l.spoken ? ' 🗣' : '') + '</span>' : '') + esc(l.text) + '</div>';
+      return '<div class="lyric' + (mine ? ' mine' : '') + (l.spoken ? ' spoken' : '') + '">' + (l.who ? '<span class="who">' + esc(l.who) + (l.spoken ? ' 🗣' : '') + '</span>' : '') + '<span class="txt">' + esc(l.text) + '</span></div>';
     }).join('') : '<p class="muted">' + (T.show.script ? 'No lyrics for this song in the script.' : 'Lyrics appear after your teacher adds the script.') + '</p>';
     var piano = T.show.sheetMelody && T.show.sheetMelody[song.id];      // the singer's notes read from the sheet music, played as a piano
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
@@ -1042,15 +1045,18 @@
         '<div id="follow" class="pages" style="margin-bottom:14px"' + (st.follow ? '' : ' hidden') + '></div>' +
         (canFollow ? '' : '<p class="muted small">' + sym('⚪') + 'The sung line lights up once your teacher finds this song’s lyrics timing.</p>') :
         item && item.lyrics.length ? '<p class="muted small">' + sym('🎼') + 'The real sheet music shows here once your teacher imports the script PDF.</p>' : '') +
-      '<div class="card"><h3>Lyrics</h3><div class="lyrics">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
+      '<div class="card"><h3>Lyrics</h3><div class="lyrics" id="lyrbox" data-hide="' + (lvl() && !lvl().see ? 1 : 0) + '">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     // the sheet music shows right away, with or without a track
     var fh0 = document.getElementById('follow'), ss = document.getElementById('showsheet'), mo1 = document.getElementById('mineonly');
     if (fh0) fh0.dataset.mine = st.mineOnly ? '1' : '0';
     if (mo1) mo1.onchange = function () { st.mineOnly = mo1.checked; ls('songOpts', st); fh0.dataset.mine = st.mineOnly ? '1' : '0'; fh0._at = null; };
-    if (fh0 && st.follow) T.Follow.mount(fh0, song.id);
-    if (ss) ss.onchange = function () { st.follow = ss.checked; ls('songOpts', st); fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id); };
+    var cover = function () { if (fh0 && LD) LD.cover(fh0, song.id, meChars, !lvl().see); };      // levels 3 and 4: my words covered on the music
+    if (fh0 && st.follow) T.Follow.mount(fh0, song.id).then(cover); cover();      // the page boxes are there at once; again once drawn
+    if (ss) ss.onchange = function () { st.follow = ss.checked; ls('songOpts', st); fh0.hidden = !st.follow; if (st.follow) T.Follow.mount(fh0, song.id).then(cover); };
     if (!(has.perf || has.guide)) return;
-    var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: (mel && mel.offset) || 0 };
+    var TO = T.show.trackOffset && T.show.trackOffset[song.id];      // how far the guide track runs ahead of the band track (Lyrics timing works it out)
+    var P = { buf: {}, playing: false, pos: 0, t0: 0, nodes: [], loopA: null, loopB: null, offset: TO != null ? TO : (mel && mel.offset) || 0 };
+    P.spans = LD ? LD.mineSpans(song.id, meChars) : [];      // when my own lines are sung (band track clock)
     var ctx = audioCtx();
     var load = function (kind) {
       return trk[kind] ? Store.getTrack(T.key, song.id, kind, trk[kind].ver).then(function (b) { return b && ctx.decodeAudioData(b.slice ? b.slice(0) : b); }).catch(function (e) { console.warn(e); return null; }) : Promise.resolve(null);
@@ -1084,12 +1090,22 @@
       P.pos = at; P.t0 = ctx.currentTime + 0.05; P.playing = true; if (T.Progress) T.Progress.playing = true;
       P.gp = ctx.createGain(); P.gg = ctx.createGain(); P.master = ctx.createGain(); P.master.gain.value = st.vol;
       P.gp.connect(P.master); P.gg.connect(P.master); P.master.connect(ctx.destination);
-      P.gp.gain.value = st.guide && P.buf.guide ? 0 : 1; P.gg.gain.value = st.guide ? 1 : 0;
+      mix(at, P.t0);
       if (P.buf.perf) { var a = ctx.createBufferSource(); a.buffer = P.buf.perf; a.connect(P.gp); a.start(P.t0, at); P.nodes.push(a); }
       if (P.buf.guide) { var g = ctx.createBufferSource(); g.buffer = P.buf.guide; g.connect(P.gg); var gat = P.buf.perf ? at + P.offset : at; if (gat >= 0) g.start(P.t0, gat); else g.start(P.t0 - gat, 0); P.nodes.push(g); }
       if (st.melody && has.mel) P.mel = piano && piano.notes.length ? pianoPlay(at) : Melody.schedule(ctx, P.master, mel.notes, P.t0, at, { volume: 0.22 });
       tick(); drawBtns();
     }
+    /* which track is heard: the guide vocals (st.guide), except on my own lines at levels 2 and 4, where only the band plays (ladder.js) */
+    function mix(at, t0, glide) {
+      var lv = lvl(), swap = !!(LD && lv && !lv.hear && st.guide && P.buf.guide && P.buf.perf && P.spans.length);
+      if (swap) { LD.schedule(P.gg, P.gp, P.spans, at, t0, 1); return; }
+      var t = ctx.currentTime, gp = st.guide && P.buf.guide ? 0 : 1, gg = st.guide ? 1 : 0;
+      [P.gg, P.gp].forEach(function (g) { g.gain.cancelScheduledValues(0); });
+      if (glide) { P.gp.gain.setTargetAtTime(gp, t, 0.015); P.gg.gain.setTargetAtTime(gg, t, 0.015); }
+      else { P.gp.gain.setValueAtTime(gp, t); P.gg.gain.setValueAtTime(gg, t); }
+    }
+    function remix() { if (P.playing) mix(now(), ctx.currentTime, true); }
     function pause() { if (!P.playing) return; P.pos = now(); P.playing = false; if (T.Progress) T.Progress.playing = false; stopNodes(); drawBtns(); if (T.RedX) T.RedX.hide(); }
     function tick() {
       cancelAnimationFrame(P.raf);
@@ -1106,6 +1122,17 @@
       };
       f();
     }
+    /* the steps of help on my lines: big buttons, and a plain note when a part of it cannot work yet */
+    function ladderUI() {
+      if (!LD) return '';
+      var cur = lvl(), why = [];
+      if (!LD.ready(song.id)) why.push('The singers can only stop on your lines once your teacher finds this song’s lyrics timing (Songs & tracks). Until then the song plays as usual.');
+      else if (!P.spans.length) why.push('You have no lines of your own in this song, so the singers never stop.');
+      if (LD.ready(song.id) && !(P.buf.guide && P.buf.perf)) why.push(P.buf.guide ? 'Only the guide track is here, so the singers cannot stop on your lines yet.' : 'There is no guide-vocal track yet, so you hear only the band.');
+      return '<div style="margin:10px 0"><b>' + sym('🪜') + 'Help on my lines</b>' +
+        '<div class="ladder" role="group" aria-label="Help on my lines">' + LD.LEVELS.map(function (L) { return '<button type="button" data-lvl="' + L.n + '" aria-pressed="' + (L.n === cur.n) + '"><span class="n">' + L.n + '.</span>' + L.icon + ' ' + esc(L.name) + '</button>'; }).join('') + '</div>' +
+        '<p class="muted small" id="lvlsay" style="margin:4px 0">' + esc(cur.say) + '</p>' + why.map(function (w) { return '<p class="muted small" style="margin:2px 0">' + sym('⚪') + esc(w) + '</p>'; }).join('') + '</div>';
+    }
     function drawBtns() { var b = document.getElementById('spp'); if (b) { b.innerHTML = icon(P.playing ? 'pause' : 'play'); b.setAttribute('aria-label', P.playing ? 'Pause' : 'Play'); } }
     function ui() {
       var sw = function (k, label, ok, note) { return '<label class="switch"><span>' + label + (ok ? '' : ' <span class="muted small">(' + note + ')</span>') + '</span><input type="checkbox" data-k="' + k + '"' + (st[k] && ok ? ' checked' : '') + (ok ? '' : ' disabled') + '></label>'; };
@@ -1115,12 +1142,23 @@
       dk.innerHTML = '<div class="in"><button class="round" id="sb" aria-label="Back 10 seconds">' + icon('back10') + '</button><button class="round big" id="spp" aria-label="Play">' + icon('play') + '</button>' +
         '<input type="range" id="pos" min="0" max="' + dur().toFixed(2) + '" step="0.1" value="0" aria-label="Where in the song"><span class="time" id="tm"></span></div>';
       document.getElementById('pl').innerHTML = keyHint('Space: play or pause · ←: back 10 seconds') +
-        sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') +
+        sw('guide', 'Guide vocals (hear the singers)', !!(P.buf.guide && P.buf.perf), P.buf.guide ? 'only the guide track is here' : 'no guide track yet') + ladderUI() +
         (T.RedX && T.me && T.me.chars && T.me.chars.length ? sw('redx', '❌ Red X when it is not my turn to sing', T.RedX.ready(song.id), 'needs the lyrics timing') : '') +
         sw('melody', piano && piano.notes.length ? 'Piano melody (the singer’s notes from the sheet music)' : 'Melody line (a soft tone with the tune)', has.mel, 'not made yet') +
         (piano && piano.notes.length && (pianoParts > 1 || piano.notes.some(function (n) { return n.w; })) ? '<div class="switch"><span>Piano plays</span><div class="seg" id="pianoseg">' + [['mine', 'My part'], ['all', 'All parts'], ['top', 'Melody only']].map(function (o) { return '<button type="button" data-pm="' + o[0] + '" aria-pressed="' + ((st.piano || 'mine') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>' : '') +
         '<label class="switch"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05" value="' + st.vol + '" style="max-width:240px"></label>' +
         '<div class="row" style="margin-top:10px">' + icon('loop') + '<button class="btn small" id="la">Loop from here</button><button class="btn small" id="lb">to here</button><button class="btn small quiet" id="lc">No loop</button><span class="muted small" id="lt"></span></div>';
+      app.querySelectorAll('[data-lvl]').forEach(function (b) {
+        b.onclick = function () {
+          st.lvl = st.lvl || {}; st.lvl[song.id] = +b.dataset.lvl;
+          if (P.buf.guide && P.buf.perf && !st.guide) { st.guide = true; var g = app.querySelector('#pl input[data-k="guide"]'); if (g) g.checked = true; }      // every step uses the singers
+          ls('songOpts', st);
+          app.querySelectorAll('[data-lvl]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+          var say = document.getElementById('lvlsay'); if (say) say.textContent = lvl().say;
+          var lb = document.getElementById('lyrbox'); if (lb) lb.dataset.hide = lvl().see ? 0 : 1;
+          cover(); remix(); tick();
+        };
+      });
       document.getElementById('spp').onclick = function () { P.playing ? pause() : start(P.pos); };
       document.getElementById('sb').onclick = function () { var t = Math.max(0, now() - 10); if (P.playing) start(t); else { P.pos = t; tick(); } };
       var pos = document.getElementById('pos');
@@ -1131,7 +1169,7 @@
       app.querySelectorAll('#pl input[data-k]').forEach(function (inp) {
         inp.onchange = function () {
           st[inp.dataset.k] = inp.checked; ls('songOpts', st);
-          if (inp.dataset.k === 'guide' && P.playing) { var t = ctx.currentTime; P.gp.gain.setTargetAtTime(st.guide ? 0 : 1, t, 0.05); P.gg.gain.setTargetAtTime(st.guide ? 1 : 0, t, 0.05); }
+          if (inp.dataset.k === 'guide') remix();
           if (inp.dataset.k === 'melody' && P.playing) start(now());
           if (inp.dataset.k === 'redx' && !st.redx && T.RedX) T.RedX.hide();
           if (inp.dataset.k === 'follow') { var fh = document.getElementById('follow'); if (fh) { fh.hidden = !st.follow; if (st.follow) T.Follow.mount(fh, song.id); } }

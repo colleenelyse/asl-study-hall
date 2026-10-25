@@ -3,7 +3,8 @@
    For every Company member: the singing and the dance of each song they are in, and the lines and blocking of each scene they speak in.
    Taught = a past class day put them in a group working on it (vocals, dance, acting, a run or a dress rehearsal). A teacher checks it off when the
    student shows it (sung, signed or with AAC; seated dance versions count). "Needs attention" lists what was taught and not yet shown, most-taught first.
-   T.show.mastery = { actor id: { 'm21:V': 'date', 'm21:D': 'date', 's5:A': 'date' } }; T.show.redx = { actor id: true } (the red X starts on, redx.js) */
+   T.show.mastery = { actor id: { 'm21:V': 'date', 'm21:D': 'date', 's5:A': 'date' } }; T.show.redx = { actor id: true } (the red X starts on, redx.js);
+   T.show.ladder = { actor id: 2..4 } (the starting step of help on their own lines, ladder.js) */
 (function () {
   'use strict';
   var T = window.T, esc = T.esc;
@@ -72,7 +73,9 @@
         return '<div class="switch"><span class="grow">' + (T.face ? T.face(r.a, 36) + ' ' : '') + '<b>' + esc(r.a.name) + '</b> ' + st + '</span><button class="btn small' + (r.done ? ' quiet' : ' primary') + '" data-m="' + r.a.id + '" data-k="' + esc(r.key) + '">' + (r.done ? 'Undo' : '✓ Shown it') + '</button></div>';
       }).join('') + '</div>' +
       '<div class="card"><h3>' + sym('❌') + 'Red X when it is not their turn</h3><p class="muted small">On the song page, a red X covers the screen while other people’s lines are sung, and a green frame says “Sing!” on their own lines (it needs the song’s lyrics timing). Turn it on for the students who sing every line; they can still switch it off.</p>' +
-      cast().map(function (a) { return '<label class="switch"><span>' + esc(a.name) + '</span><input type="checkbox" data-rx="' + a.id + '"' + (T.show.redx && T.show.redx[a.id] ? ' checked' : '') + '></label>'; }).join('') + '</div>';
+      cast().map(function (a) { return '<label class="switch"><span>' + esc(a.name) + '</span><input type="checkbox" data-rx="' + a.id + '"' + (T.show.redx && T.show.redx[a.id] ? ' checked' : '') + '></label>'; }).join('') + '</div>' +
+      (T.Ladder ? '<div class="card"><h3>' + sym('🪜') + 'Help on their own lines</h3><p class="muted small">Where each Company member starts on the song page: ' + T.Ladder.LEVELS.map(function (L) { return L.n + '. ' + esc(L.name) + ' (' + esc(L.teach) + ')'; }).join('; ') + '. Hearing or not hearing the singers needs a song’s lyrics timing and both tracks. They can still change it on each song.</p>' +
+        cast().map(function (a) { var v = (T.show.ladder && T.show.ladder[a.id]) || 1; return '<label class="switch"><span>' + esc(a.name) + '</span><select data-ld="' + a.id + '">' + T.Ladder.LEVELS.map(function (L) { return '<option value="' + L.n + '"' + (L.n === v ? ' selected' : '') + '>' + L.n + '. ' + esc(L.name) + '</option>'; }).join('') + '</select></label>'; }).join('') + '</div>' : '');
   };
   T.wireMastery = function (redraw) {
     var app = document.getElementById('app');
@@ -85,6 +88,7 @@
         T.saveShow(m[k] ? 'Checked off' : 'Undone').then(redraw);
       };
     });
+    app.querySelectorAll('[data-ld]').forEach(function (c) { c.onchange = function () { var r = T.show.ladder = T.show.ladder || {}; if (+c.value > 1) r[c.dataset.ld] = +c.value; else delete r[c.dataset.ld]; T.saveShow('Saved'); }; });
     app.querySelectorAll('[data-rx]').forEach(function (c) { c.onchange = function () { var r = T.show.redx = T.show.redx || {}; if (c.checked) r[c.dataset.rx] = true; else delete r[c.dataset.rx]; T.saveShow('Saved'); }; });
   };
 })();

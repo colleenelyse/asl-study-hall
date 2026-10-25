@@ -277,14 +277,16 @@
       // every line being sung is lit: from LEAD before its first word until its singing is done (Colleen: a line stays lit until it is sung,
       // even when the next one lights up; off during music with no words)
       // "Only my lines" (Colleen 2026-10-23): the student's own lines only; ALL counts when they are on stage for the song, a group only for its members
-      var mine = null;
-      if (host.dataset.mine === '1' && T.me && T.me.chars && T.me.chars.length) {
+      // levels 3 and 4 of the help on my lines (ladder.js, host.dataset.hidemine): the student's own lines are covered and never light up
+      var mine = null, hide = host.dataset.hidemine === '1', me = T.me && T.me.chars && T.me.chars.length;
+      if ((host.dataset.mine === '1' || hide) && me) {
         var so = T.songById(songId), sc = so && T.sceneById(so.scene), mo = sc && T.songMomentFor(sc, it.num);
         mine = function (l) { return !!(l.who && sc && T.isMine(l.who, sc, T.me.chars, mo)); };
       }
+      var only = host.dataset.mine === '1' && me, show = function (l) { return !mine || ((!only || mine(l)) && (!hide || !mine(l))); };
       var on = [];
-      lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x) && (!mine || mine(it.lyrics[k]))) on.push(k); });
-      keepInView(host, it, lt, on, t, mine);
+      lt.lines.forEach(function (x, k) { if (x && it.lyrics[k] && x.t - LEAD <= t && t <= lineEnd(x) && show(it.lyrics[k])) on.push(k); });
+      keepInView(host, it, lt, on, t, only ? mine : null);
       var key = on.join(','); if (host._at === key) return;
       host.querySelectorAll('.follow-line').forEach(function (e) { e.remove(); });
       if (!on.length) { host._at = null; return; }

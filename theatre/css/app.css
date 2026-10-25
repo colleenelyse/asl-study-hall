@@ -352,6 +352,14 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .line-shape.follow-line { z-index: 1; mix-blend-mode: multiply; opacity: 1; transition: none; box-shadow: none; background: none; border-radius: 0; }
 .line-shape.follow-line path { stroke-width: 2; }      /* pastel fill, a clear outline (multiply: the black print shows through, white becomes the pastel) */
 .line-shape.follow-line.spoken path, .line-shape.sec-box.spoken path { stroke: #1d1a2e; stroke-dasharray: 3 3; }
+.line-shape.follow-hide { z-index: 2; mix-blend-mode: normal; }      /* my words covered (ladder.js levels 3 and 4); the notes still show */
+.line-shape.follow-hide path { fill: #ebe8f3; stroke: #8f88ad; stroke-dasharray: 4 3; stroke-width: 1.5; }
+.lyrics[data-hide="1"] .lyric.mine .txt { color: transparent; background: repeating-linear-gradient(90deg, #ebe8f3 0 10px, transparent 10px 14px); border-radius: 4px; user-select: none; }
+.ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 4px; }
+.ladder button { min-height: 64px; padding: 8px 10px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: inherit; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.ladder button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 2px var(--accent); }
+.ladder button .n { display: inline-block; min-width: 1.6em; }
+.ladder button:disabled { opacity: .5; cursor: default; }
 .line-shape.sec-box { z-index: 2; mix-blend-mode: multiply; opacity: 1; outline: none; background: none; border-radius: 0; }
 .line-shape.sec-box path { cursor: pointer; }
 .line-shape.sec-box.untimed { opacity: .45; }
