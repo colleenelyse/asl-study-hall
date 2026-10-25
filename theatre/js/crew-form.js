@@ -7,7 +7,7 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var ls = function (k, v) { try { if (v === undefined) { var s = localStorage.getItem('theatre:' + k); return s ? JSON.parse(s) : null; } if (v === null) localStorage.removeItem('theatre:' + k); else localStorage.setItem('theatre:' + k, JSON.stringify(v)); } catch (e) { return null; } };
   var a = ls('crewDraft') || { ans: {}, why: {}, jobs: [] };
-  a.ans = a.ans || {}; a.why = a.why || {}; a.jobs = a.jobs || [];
+  a.ans = a.ans || {}; a.why = a.why || {}; a.jobs = a.jobs || []; if (!Array.isArray(a.src)) a.src = [];      // a draft from the first version had one choice
   var longDay = function (d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); };
 
   fetch(API + 'crew/form', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (f) {
@@ -32,9 +32,10 @@
       '<label class="f">Your first and last name <span class="need">*</span><input id="nm" maxlength="80" autocomplete="name" value="' + esc(a.name || '') + '"></label>' +
       '<label class="f">Grade<select id="gr">' + ['', '9', '10', '11', '12', 'Other'].map(function (g) { return '<option' + (a.grade === g ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select></label>' +
       '<label class="f">Your school email <span class="need">*</span><input id="em" type="email" maxlength="120" autocomplete="email" value="' + esc(a.email || '') + '"></label>' +
-      '<div class="q" data-q="src"><p style="margin:0"><b>How did you hear about the crew?</b> <span class="need">*</span></p><div class="src">' +
-      C.SOURCES.map(function (s) { return '<label><input type="radio" name="src" value="' + s[0] + '"' + (a.src === s[0] ? ' checked' : '') + '>' + esc(s[1]) + '</label>'; }).join('') + '</div>' +
-      '<label class="f" id="srcT"' + (a.src === 'rec' || a.src === 'other' ? '' : ' hidden') + '><span id="srcL">' + (a.src === 'rec' ? 'Which teacher?' : 'Tell us more') + '</span> <span class="need">(required)</span><input maxlength="120" value="' + esc(a.srcText || '') + '"></label></div></div>' +
+      '<div class="q" data-q="src"><p style="margin:0"><b>How did you hear about us?</b> <span class="need">*</span><br><span class="small">Tick everything that fits.</span></p><div class="src">' +
+      F.groups.concat([{ id: 'rec', name: 'Recommended by:' }, { id: 'other', name: 'Other:' }]).map(function (g) { return '<label><input type="checkbox" name="src" value="' + esc(g.id) + '"' + (a.src.indexOf(g.id) >= 0 ? ' checked' : '') + '>' + esc(g.name) + '</label>' +
+        (g.id === 'rec' ? '<label class="f" id="srcRec" style="margin:0 0 8px 36px"' + (a.src.indexOf('rec') >= 0 ? '' : ' hidden') + '>Who recommended you? <span class="need">(required)</span><input maxlength="80" value="' + esc(a.recBy || '') + '"></label>' : '') +
+        (g.id === 'other' ? '<label class="f" id="srcOther" style="margin:0 0 8px 36px"' + (a.src.indexOf('other') >= 0 ? '' : ' hidden') + '>Tell us how <span class="need">(required)</span><input maxlength="120" value="' + esc(a.other || '') + '"></label>' : ''); }).join('') + '</div></div></div>' +
       (f.rehearsals.length ? '<div class="card"><h3>Rehearsals</h3><p class="small">Please answer every date.</p>' + f.rehearsals.map(function (d) { return dateQ(d); }).join('') + '</div>' : '') +
       (f.thu.length ? '<div class="card"><h3>The school-day shows</h3><p class="small">Crew members are excused from their classes for this one day. Can you miss the whole school day?</p>' + f.thu.map(function (d) { return dateQ(d, true); }).join('') + '</div>' : '') +
       (f.shows.length ? '<div class="card"><h3>Evening performances</h3>' + f.shows.map(function (d) { return dateQ(d); }).join('') + '</div>' : '') +
@@ -58,8 +59,8 @@
       q.querySelector('[data-why] input').oninput = function () { a.why[id] = this.value; keep(); };
     });
     app.querySelectorAll('input[name=src]').forEach(function (r) { r.onchange = function () {
-      a.src = r.value; var t = document.getElementById('srcT'); t.hidden = !(a.src === 'rec' || a.src === 'other');
-      document.getElementById('srcL').textContent = a.src === 'rec' ? 'Which teacher?' : 'Tell us more'; if (!t.hidden) t.querySelector('input').focus(); keep();
+      var box = r.value === 'rec' ? document.getElementById('srcRec') : r.value === 'other' ? document.getElementById('srcOther') : null;
+      keep(); if (box) { box.hidden = !r.checked; if (r.checked) box.querySelector('input').focus(); }
     }; });
     app.oninput = function () { keep(); };
     document.getElementById('send').onclick = send;
@@ -68,7 +69,8 @@
   function read() {
     var v = function (id) { return document.getElementById(id).value; };
     a.name = v('nm'); a.grade = v('gr'); a.email = v('em'); a.story = v('st'); a.notFor = v('nf'); a.food = v('fo'); a.comments = v('cm');
-    a.srcText = document.querySelector('#srcT input').value;
+    a.src = [].map.call(app.querySelectorAll('input[name=src]:checked'), function (x) { return x.value; });
+    a.recBy = document.querySelector('#srcRec input').value; a.other = document.querySelector('#srcOther input').value;
     a.jobs = [].map.call(app.querySelectorAll('.jobs input:checked'), function (x) { return x.value; });
   }
   function keep() { read(); ls('crewDraft', a); }
@@ -79,13 +81,14 @@
     if (miss.length) {
       var first = null, say = [];
       miss.forEach(function (m) {
-        var el = m === 'name' ? document.getElementById('nm') : m === 'email' ? document.getElementById('em') : m === 'src' || m === 'srcText' ? app.querySelector('[data-q=src]') : m === 'story' ? app.querySelector('[data-q=story]') : app.querySelector('[data-q="' + m.split(':')[1] + '"]');
+        var el = m === 'name' ? document.getElementById('nm') : m === 'email' ? document.getElementById('em') : m === 'src' || m === 'recBy' || m === 'other' ? app.querySelector('[data-q=src]') : m === 'story' ? app.querySelector('[data-q=story]') : app.querySelector('[data-q="' + m.split(':')[1] + '"]');
         if (el) { (el.classList.contains('q') ? el : el.closest('label')).classList.add('miss'); if (!first) first = el; }
       });
       if (miss.indexOf('name') >= 0) say.push('your first and last name');
       if (miss.indexOf('email') >= 0) say.push('your school email');
-      if (miss.indexOf('src') >= 0) say.push('how you heard about the crew');
-      if (miss.indexOf('srcText') >= 0) say.push(a.src === 'rec' ? 'which teacher recommended you' : 'a few words for “Other”');
+      if (miss.indexOf('src') >= 0) say.push('how you heard about us');
+      if (miss.indexOf('recBy') >= 0) say.push('who recommended you');
+      if (miss.indexOf('other') >= 0) say.push('a few words for “Other”');
       var nd = miss.filter(function (m) { return /^date:/.test(m); }).length, nw = miss.filter(function (m) { return /^why:/.test(m); }).length;
       if (nd) say.push('an answer for every date (' + nd + ' left)');
       if (nw) say.push('a reason for each Maybe or I can’t (' + nw + ' left)');

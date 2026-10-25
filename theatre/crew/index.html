@@ -14,8 +14,9 @@
   .q { border-top: 1px solid var(--line); padding: 12px 0; }
   .miss { outline: 3px solid var(--bad); outline-offset: 4px; border-radius: 8px; }
   .jobs label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-weight: 400; cursor: pointer; }
-  .jobs input, .src input { width: 26px; height: 26px; flex: none; }
-  .src label { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-weight: 400; cursor: pointer; }
+  .jobs input, .src > label:not(.f) > input { width: 26px; height: 26px; flex: none; }
+  .src > label:not(.f) { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-weight: 400; cursor: pointer; }
+  .src > label.f[hidden] { display: none; }
   .need { color: var(--bad); font-weight: 700; }
   .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 </style>
