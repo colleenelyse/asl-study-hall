@@ -52,6 +52,7 @@
       if (old) { c.towers = old.towers; ['areas', 'tops'].forEach(function (k) { if (old[k]) c[k] = old[k]; }); P.scenes.splice(1, 1, b, c); }      // the old second part was the hallway: it is part C now
       else P.scenes.splice(1, 0, b, c);
       queueSave(); }
+    if (P.practicals && P.practicals.B1 && P.practicals.B1.door == null) { P.practicals.B1.door = true; P.practicals.B1.h = PK.PRACTICALS.B1.h; }      // B1 is a walk-through door (2026-10-25)
     if (!P.lineups) P.lineups = PK.lineupDefaults();
     if (!P.lights || P.lights.every(function (a) { return a.drawn && !a.v; })) P.lights = PK.lightDefaults(P);      // read again from her drawing as seen from the audience (2026-10-25)      // her five lighting areas plus all of left / all of right (2026-10-25)
     if (!P.home) { P.home = PK.homeDefaults(P); var old = { A: -8.5, B: -2.5, C: 2.5, D: 8.5 };      // home bases (Colleen 2026-10-25): towers still on the old default spots go home; her own placements stay
@@ -148,12 +149,12 @@
     var sc = scene();
     if (!anim) {
       var tb = {}; PK.TABLES.forEach(function (id) { var x = sc.tables && sc.tables[id]; if (x) tb[id] = { x: x.x, y: x.y, rot: x.rot, k: x.state === 'deployed' ? 1 : 0, label: PK.TSTATE[x.state] }; });
-      return { towers: sc.towers, tables: tb, items: sc.items || [], zones: sc.zones || [], areas: sc.areas || null, tops: sc.tops || null, lights: P.lights || [], lightColors: lightColors(), lit: function (t) { return LIT[sc.towers[t].lit] || 0; } };
+      return { towers: sc.towers, tables: tb, items: sc.items || [], zones: sc.zones || [], doors: sc.doorOpen || [], areas: sc.areas || null, tops: sc.tops || null, lights: P.lights || [], lightColors: lightColors(), lit: function (t) { return LIT[sc.towers[t].lit] || 0; } };
     }
     var a = P.scenes[anim.from], b = P.scenes[anim.to], u = anim.u, towers = {};
     anim.ch.moves.forEach(function (m) { var s = PK.between(P, m, u); towers[m.t] = s; });
     var tables = {}; anim.ch.tmoves.forEach(function (tm) { tables[tm.id] = PK.tableBetween(P, tm, u); });
-    return { towers: towers, tables: tables, items: u < 0.5 ? a.items || [] : b.items || [], zones: u < 0.5 ? a.zones || [] : b.zones || [], areas: (u < 0.5 ? a.areas : b.areas) || null, tops: (u < 0.5 ? a.tops : b.tops) || null, lights: P.lights || [], lightColors: lightColors(),
+    return { towers: towers, tables: tables, items: u < 0.5 ? a.items || [] : b.items || [], zones: u < 0.5 ? a.zones || [] : b.zones || [], doors: (u < 0.5 ? a.doorOpen : b.doorOpen) || [], areas: (u < 0.5 ? a.areas : b.areas) || null, tops: (u < 0.5 ? a.tops : b.tops) || null, lights: P.lights || [], lightColors: lightColors(),
       lit: function (t) { var x = LIT[a.towers[t].lit] || 0, y = LIT[b.towers[t].lit] || 0; return x + (y - x) * u; } };
   }
 
@@ -389,7 +390,7 @@
   }
 
   /* ---------- the page ---------- */
-  function sceneSummary(sc) { return TW.map(function (t) { var f = PK.facing(P, t, sc.towers[t].rot); return (sc.towers[t].lit === 'dark' ? '<s>' : '') + f.label.replace('+', '|') + (sc.towers[t].lit === 'dark' ? '</s>' : ''); }).join(' · '); }
+  function sceneSummary(sc) { return TW.map(function (t) { var f = PK.facing(P, t, sc.towers[t].rot); return (sc.towers[t].lit === 'dark' ? '<s>' : '') + f.label.replace('+', '|') + (sc.towers[t].lit === 'dark' ? '</s>' : ''); }).join(' · ') + ((sc.doorOpen || []).length ? ' · 🚪' : ''); }
   function draw() {
     V.cur = cur;      // the scene she was on comes back when she returns to this page
     if (!document.getElementById('pkCenter')) return;
@@ -423,7 +424,7 @@
   function towerPanel(t) {
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), w = winds(t);
     var seg = function (k, vals, names) { return '<div class="pk-seg">' + vals.map(function (v, i) { return '<button data-' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join('') + '</div>'; };
-    return '<div class="pk-box" style="border-color:' + COL[t] + '"><h3 style="color:' + COL[t] + '">Tower ' + t + '</h3>' +
+    return '<div class="pk-box" style="border-color:' + COL[t] + '"><h3 style="color:' + COL[t] + '">Tower ' + t + ' ' + doorButton(t) + '</h3>' +
       '<p class="pk-help">The audience sees: <b>' + (f.kind === 'flat' ? f.faces[0] + ' (flat)' : f.kind === 'point' ? f.faces[0] + ' on the left, ' + f.faces[1] + ' on the right (point)' : esc(f.label)) + '</b></p>' +
       '<p class="pk-help small">Click a picture to turn that face to the audience.</p>' + faceButtons(t) +
       '<div class="pk-row"><button data-turn="60" title="Q">⟲ 60°</button><button data-turn="-60" title="E">⟳ 60°</button><button data-turn="120" title="Shift+Q">⟲ 120°</button><button data-turn="-120" title="Shift+E">⟳ 120°</button></div>' +
@@ -457,6 +458,11 @@
   /* Simple mode: the change in a few plain sentences */
   function faceWords(t, rot) { var f = PK.facing(P, t, rot), n = function (id) { return fname(id).toLowerCase(); };
     return f.kind === 'flat' ? 'the ' + n(f.faces[0]) : f.kind === 'point' ? 'the ' + n(f.faces[0]) + ' and the ' + n(f.faces[1]) + ' (as a point)' : 'an angle'; }
+  function doorButton(t) {      // a walk-through door on this tower (B1): switch it on for the scenes that use it
+    var ids = Object.keys(P.practicals || {}).filter(function (k) { return k.charAt(0) === t && P.practicals[k].door; }); if (!ids.length) return '';
+    var on = scene().doorOpen || [];
+    return ids.map(function (id) { var u = on.indexOf(id) >= 0; return '<button data-door="' + id + '" class="pk-door' + (u ? ' on' : '') + '" title="The back of ' + t + ' is opened and braced for this scene; the crew opens it in the change before and closes it in the change after">🚪 ' + (u ? 'Door in use' : 'Use the door') + '</button>'; }).join('');
+  }
   function faceButtons(t) {      // the face pictures to click, in both modes
     var s = scene().towers[t], f = PK.facing(P, t, s.rot), now = f.kind === 'angled' ? '' : f.faces.slice().sort().join('+');
     var thumb = function (id) { return '<img src="' + artUrl(id) + '" alt="">'; };
@@ -478,13 +484,13 @@
   function simpleTower(t) {      // Simple mode: the tower someone clicked, with big plain controls
     var s = scene().towers[t];
     var seg = function (k, vals, names) { return vals.map(function (v, i) { return '<button data-s' + k + '="' + v + '"' + (s[k] === v ? ' class="on"' : '') + '>' + names[i] + '</button>'; }).join(''); };
-    return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help small">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span><button id="pkSClose">Done</button></div>' +
+    return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help small">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span>' + doorButton(t) + '<button id="pkSClose">Done</button></div>' +
       faceButtons(t) + whereRows(t, '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button>') + '</div>';
   }
   function plainPanel(ch, checks) {
     if (V.walk) return walkPanel(ch, checks);
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
-    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
+    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + ((x.doorOpen || []).length ? ' 🚪' : '') + '</option>'; }).join('') + '</select></div>' +
       '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
       '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSSetup" title="Set up the show: faces, home bases, line-ups, scenes; then plan scene by scene">🧭 Setup</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
@@ -504,6 +510,7 @@
       if (m.open) lines.push(nm + ' rolls in folded and unfolds' + (m.to.spike ? ' on ' + m.to.spike : '') + '.');
       else if (m.fold) lines.push(nm + ' folds and goes back to storage.');
       else if (m.dist && m.from.state === 'deployed') lines.push(nm + ' turns and moves' + (m.to.spike ? ' to ' + m.to.spike : '') + ' (crew only; nobody on it).'); });
+    if (ch) (ch.doors || []).forEach(function (d) { lines.push('🚪 <b style="color:' + COL[d.t] + '">Crew:</b> ' + esc(PK.doorWords(d)) + '.'); });
     if (ch && !lines.length) lines.push('Nothing moves.');
     out.push('<ul class="pk-plain">' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
     out.push('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to check (open ✎ Edit to see them)' : '✓ No problems found') + '</p>');
@@ -531,7 +538,8 @@
       out.push('<div class="pk-row"><span>Crew of</span><div class="pk-seg">' + [2, 3, 4].map(function (n) { return '<button data-crew="' + n + '"' + (crewN === n ? ' class="on"' : '') + '>' + n + '</button>'; }).join('') + '</div></div>');
       out.push('<ul class="pk-crew">' + PK.crewJobs(P, ch, crewN).map(function (c) {
         var jobs = c.jobs.map(function (m) { var r = m.dist ? 'roll ' + PK.ft(m.dist) : '', tn = m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''; return m.t + ': ' + (m.when === 'before' ? [tn, r] : m.when === 'during' && r && tn ? [r + ' while turning ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ')] : [r, tn]).filter(Boolean).join(', then '); })
-          .concat(c.tjobs.map(function (m) { return P.tables[m.id].name + ': ' + (m.open ? 'bring in and unfold' : m.fold ? 'fold and take out' : 'move'); }));
+          .concat(c.tjobs.map(function (m) { return P.tables[m.id].name + ': ' + (m.open ? 'bring in and unfold' : m.fold ? 'fold and take out' : 'move'); }))
+          .concat((c.djobs || []).map(function (d) { return '🚪 ' + PK.doorWords(d); }));
         return '<li><b>' + c.name + '</b> (' + c.towers.map(function (x) { return P.tables[x] ? P.tables[x].name : x; }).join(' + ') + '): ' + (jobs.join('; ') || 'nothing this change') + '</li>';
       }).join('') + '</ul>');
     }
@@ -614,6 +622,9 @@
       PK.lightTowers(P, sc); changed(); }; });
     app.querySelectorAll('[data-ltopsame]').forEach(function (b) { b.onclick = function () { stop(); snap(); sc.tops = (sc.areas || []).slice(); PK.lightTowers(P, sc); changed(); }; });
     if ($('pkLights')) $('pkLights').onclick = lightsDialog;
+    app.querySelectorAll('[data-door]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); stop(); snap(); var id = b.dataset.door, t = id.charAt(0), on = (sc.doorOpen || []).filter(function (x) { return x !== id; });
+      if (on.length === (sc.doorOpen || []).length) { on.push(id); sc.towers[t].lock = true; if (sc.towers[t].lit === 'dark') { sc.towers[t].lit = 'full'; sc.towers[t].role = 'featured'; } }
+      if (on.length) sc.doorOpen = on; else delete sc.doorOpen; changed(); }; });
     app.querySelectorAll('[data-lineup]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.lineUp(P, sc, b.dataset.lineup); PK.lightTowers(P, sc); changed(); }; });
     if (sel && TW.indexOf(sel) >= 0) {
       app.querySelectorAll('[data-touch]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.touchNext(P, sc, sel, +b.dataset.touch); changed(); }; });
@@ -886,7 +897,7 @@
   function cueRows() {
     var nm = function (ids) { return (P.lights || []).filter(function (a) { return (ids || []).indexOf(a.id) >= 0; }).map(function (a) { return a.name; }).join(', '); };
     return P.scenes.map(function (sc, i) { var g = !(sc.areas || []).length && !(sc.tops || []).length;
-      return { n: label(i), name: sc.name, face: g ? 'General (everything)' : nm(sc.areas) || '—', top: g ? 'General' : nm(sc.tops) || '—', lit: TW.filter(function (t) { return sc.towers[t].lit !== 'dark'; }).join(' ') || 'none', cue: sc.cue || '', notes: sc.notes || '' }; });
+      return { n: label(i), name: sc.name, face: g ? 'General (everything)' : nm(sc.areas) || '—', top: g ? 'General' : nm(sc.tops) || '—', lit: (TW.filter(function (t) { return sc.towers[t].lit !== 'dark'; }).join(' ') || 'none') + ((sc.doorOpen || []).length ? ' · 🚪 ' + sc.doorOpen.join(', ') + ' door in use' : ''), cue: sc.cue || '', notes: sc.notes || '' }; });
   }
   function lightsDialog() {
     var rows = cueRows(), chk = P.lightCheck || {};
@@ -1056,7 +1067,7 @@
   function walkPanel(ch, checks) {
     var sc = scene(), total = P.scenes.length, last = cur === total - 1, src = sc.same && P.scenes.find(function (x) { return x.id === sc.same; });
     var side = '<div class="pk-stepbar pk-walkbar"><button id="pkWPrev"' + (cur ? '' : ' disabled') + '>‹ Back</button><div class="pk-stepname"><small>Planning scene by scene · ' + (cur + 1) + ' of ' + total + '</small><select id="pkWSel" aria-label="Scene">' +
-      P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + (x.planned ? '✓ ' : '') + esc(label(i) + '. ' + x.name) + '</option>'; }).join('') + '</select></div>' +
+      P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + (x.planned ? '✓ ' : '') + esc(label(i) + '. ' + x.name) + ((x.doorOpen || []).length ? ' 🚪' : '') + '</option>'; }).join('') + '</select></div>' +
       (last ? '<button id="pkWDone" class="pk-primary">Finish: work out the moves ›</button>' : '<button id="pkWNext" class="pk-primary">Next scene ›</button>') +
       '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkWExit">Stop for now</button></div>';
     if (sel && TW.indexOf(sel) >= 0) return { side: side, bottom: simpleTower(sel) };
@@ -1069,7 +1080,7 @@
       return '<div class="pk-wcol' + (used ? '' : ' off') + '" style="border-color:' + COL[t] + '"><div class="pk-row"><b style="color:' + COL[t] + '">' + t + '</b><span class="pk-wnow">' + esc(f.kind === 'angled' ? 'angled' : f.faces.map(fname).join(' + ')) + '</span><span class="pk-gap"></span>' +
         '<button data-wlit="' + t + '" class="pk-mini' + (used ? ' on' : '') + '">' + (used ? 'Used' : 'Not used') + '</button></div>' +
         '<div class="pk-wfaces">' + flats + '</div><div class="pk-wfaces pt">' + pts + '</div>' +
-        '<div class="pk-row"><button data-whome="' + t + '" class="pk-mini">⌂ Home</button><button data-wadj="' + t + '" class="pk-mini">Place it myself ›</button></div></div>';
+        '<div class="pk-row"><button data-whome="' + t + '" class="pk-mini">⌂ Home</button><button data-wadj="' + t + '" class="pk-mini">Place it myself ›</button>' + doorButton(t) + '</div></div>';
     }).join('');
     var bottom = (src ? '<p class="pk-help small">🔗 Same set as ' + esc(label(P.scenes.indexOf(src)) + '. ' + src.name) + ': changing the towers here changes both. Each keeps its own lighting.</p>' : '') +
       areaRow(sc) + '<div class="pk-row pk-lineup"><span>Line up:</span><button data-lineup="home">All home</button>' + (P.lineups || []).map(function (L) { return '<button data-lineup="' + esc(L.id) + '">' + esc(L.name) + '</button>'; }).join('') + (cur && !src ? '<button id="pkWSame">Same as the scene before</button>' : '') + '</div>' +

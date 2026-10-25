@@ -736,3 +736,4 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-check { list-style: none; padding: 0; } .pk-check li { margin: 6px 0; } .pk-check input { margin-right: 6px; }
 .pk-front-map { display: block; width: 100%; max-width: 980px; background: #0d0c12; border-radius: 8px; margin: 10px 0; }
 .pk-setup-area { grid-template-columns: 1.4fr 1fr 1fr auto auto; }
+.pk .pk-door { font-size: 13px; padding: 4px 10px; } .pk .pk-door.on { background: #6b3f16; color: #ffe6c4; border-color: #e0a060; }

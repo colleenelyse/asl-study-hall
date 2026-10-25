@@ -185,6 +185,14 @@
         var F = tw.faces[f.id]; setFace(ctx, f.id, F);
         F.group.position.set(f.c.x, s.height / 2, -f.c.y); F.group.rotation.set(0, Math.atan2(f.n.x, -f.n.y), 0);
         F.mat.color.setScalar(shade); F.mat.emissive = new T3.Color(ctx.sel === t ? 0x1c1636 : 0x000000); F.extras.forEach(function (e) { e.mesh.material.color.setScalar(shade); e.mesh.visible = ctx.overlaysOn; });
+        var pr = P.practicals && P.practicals[f.id];
+        if (pr && pr.door) {      // a walk-through door in use: the doorway goes dark and the door stands open toward the audience (swing and hinge side are stand-ins)
+          var dd = F.door; if (!dd) { var dh = pr.h || 6.67, piv = new T3.Group(), leaf = new T3.Mesh(new T3.BoxGeometry(pr.w, dh, 0.12), new T3.MeshStandardMaterial({ color: 0x9a7650, roughness: 0.6 })), hole = new T3.Mesh(new T3.PlaneGeometry(pr.w, dh), new T3.MeshBasicMaterial({ color: 0x050505 }));
+            leaf.position.set(pr.w / 2, 0, 0); piv.add(leaf); var x0 = (pr.u - 0.5) * s.face, yc = dh / 2 - s.height / 2;
+            hole.position.set(x0, yc, 0.16); hole.renderOrder = 4; piv.position.set(x0 - pr.w / 2, yc, 0.18); piv.rotation.set(0, -1.2, 0); leaf.castShadow = true;
+            F.group.add(hole); F.group.add(piv); dd = F.door = { hole: hole, piv: piv }; }
+          var used = (sh.doors || []).indexOf(f.id) >= 0; dd.hole.visible = dd.piv.visible = used; dd.piv.children[0].material.color.setHex(0x9a7650).multiplyScalar(shade);
+        }
       });
       tw.label.position.set(q.x, s.height + 1, -q.y); tw.label.visible = !!ctx.labels || !!ctx.crew;      // backstage always shows the tower letters
       if (t === 'D') {      // the rim follows D1

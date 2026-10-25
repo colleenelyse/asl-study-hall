@@ -22,7 +22,7 @@
      u = where along the face (0 = its left edge, 1 = its right edge, as you look at it), w = width, d = how far it sticks out, z = height of its middle */
   var PRACTICALS = {
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
-    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
+    B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33, door: true, h: 80 / 12 },      // a walk-through door: in the scenes that use it, the back of B is opened and braced
     'A2-clock': { name: '12″ classroom analog clock (real, on the printed circle)', u: 0.65, w: 1, h: 1, d: 0.15, z: 7.25, show: 'clock' },      // where her A2 art leaves a blank circle (Colleen 2026-10-25)
     'A2-plant': { name: 'Hanging plant on a wall hook (real)', u: 0.9, w: 1, h: 2.6, d: 1.3, z: 6.5, show: 'plant' },      // the bracket at the top right of her A2 art
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
@@ -237,7 +237,23 @@
     });
     if (feet.T1 && feet.T2 && hit(feet.T1.poly, feet.T2.poly) && !touching(feet.T1.poly, feet.T2.poly)) out.push({ lv: 'bad', t: ['T1', 'T2'], msg: 'Table 1 and Table 2 overlap.' });
     formation(P, sc, feet, sol, out);
+    (sc.doorOpen || []).forEach(function (id) { doorChecks(P, sc, id, G, out); });
     return out;
+  }
+  function doorWords(d) {      // the crew note for one door step
+    return d.act === 'open' ? 'Open and brace the back of ' + d.t + ' (the ' + d.id + ' door is used in this scene)' + (d.moving ? ', after ' + d.t + ' is in place and locked' : '')      // her words: open and brace, unbrace and close
+      : 'Unbrace and close the back of ' + d.t + ' (the ' + d.id + ' door is done)' + (d.moving ? ', before ' + d.t + ' moves' : '');
+  }
+  /* a walk-through door in use (B1): its face must show, the wheels locked, and room behind the tower for actors to come and go */
+  function doorChecks(P, sc, id, G, out) {
+    var t = id.charAt(0), q = sc.towers[t], st = P.stage, f = facing(P, t, q.rot), g = G[t], face = g.faces.find(function (x) { return x.id === id; });
+    if (f.faces.indexOf(id) < 0) out.push({ lv: 'bad', t: [t], msg: 'The ' + (SHORT[id] || id).toLowerCase() + ' is in use, but ' + id + ' isn’t facing the audience.' });
+    if (!q.lock) out.push({ lv: 'bad', t: [t], msg: t + ' must have its wheels locked while the door is in use.' });
+    if (!face) return;
+    var back = { x: q.x - face.n.x * (R(st) + 2.5), y: q.y - face.n.y * (R(st) + 2.5) };      // 2′ 6″ past the back of the tower: room to step out
+    TOWERS.forEach(function (o) { if (o !== t && polyDist(back, G[o].poly) < 0.5) out.push({ lv: 'bad', t: [t, o], msg: o + ' is right behind ' + t + ': no room to come out the back while the door is in use.' }); });
+    var gap = st.curtain - (q.y - face.n.y * R(st));
+    out.push({ lv: 'info', t: [t], msg: id + ' door in use: the back of ' + t + ' is opened and braced. ' + (gap > 0.05 ? ft(gap) + ' from the back of ' + t + ' to the main curtain.' : 'The back of ' + t + ' is at the main curtain: actors go through the curtain.') + ' (Proposed until tried on stage.)' });
   }
   /* open tables: room for actors around the benches, and the open floor left for dancing (approximate) */
   function formation(P, sc, feet, sol, out) {
@@ -328,7 +344,11 @@
       if (tm.via) { var g = gapInfo(P, sc, tm.id); warn.push({ lv: g.width + 1e-6 < g.need ? 'bad' : 'info', t: [tm.id], msg: 'The ' + g.pair.join('–') + ' opening is ' + ft(g.width) + ' wide; folded ' + spec.name + ' needs ' + ft(g.need) + ' (' + ft(spec.folded.w) + ' + ' + ft(spec.clear) + ' each side' + (spec.stand.folded ? ', stand-in size' : '') + ').' }); }
     });
     var seen = {}; warn = warn.filter(function (x) { return seen[x.msg] ? false : (seen[x.msg] = true); });
-    return { moves: moves, tmoves: tmoves, warn: warn, total: moves.reduce(function (s, m) { return s + Math.abs(m.turn); }, 0), travel: moves.reduce(function (s, m) { return s + m.dist; }, 0) };
+    var doors = [];      // a walk-through door: the crew opens and braces the back in the change INTO the scene that uses it, and closes it in the change after
+    var dIn = to.doorOpen || [], dOut = from.doorOpen || [];
+    dIn.forEach(function (id) { if (dOut.indexOf(id) < 0) doors.push({ id: id, t: id.charAt(0), act: 'open', moving: moves.some(function (m) { return m.t === id.charAt(0) && (m.dist || m.turn); }) }); });
+    dOut.forEach(function (id) { if (dIn.indexOf(id) < 0) doors.push({ id: id, t: id.charAt(0), act: 'close', moving: moves.some(function (m) { return m.t === id.charAt(0) && (m.dist || m.turn); }) }); });
+    return { moves: moves, tmoves: tmoves, doors: doors, warn: warn, total: moves.reduce(function (s, m) { return s + Math.abs(m.turn); }, 0), travel: moves.reduce(function (s, m) { return s + m.dist; }, 0) };
   }
   /* crews of 2, 3 or 4: who moves which tower and table (B and C stay with one person or a pair, because of the black-box seam) */
   var CREWS = {
@@ -340,7 +360,8 @@
     return (CREWS[n] || CREWS[4]).map(function (c) {
       var jobs = ch.moves.filter(function (m) { return c.t.indexOf(m.t) >= 0 && (m.dist || m.turn); });
       var tj = (ch.tmoves || []).filter(function (m) { return c.t.indexOf(m.id) >= 0 && (m.dist || m.open || m.fold); });
-      return { name: c.name, towers: c.t, jobs: jobs, tjobs: tj, steps: jobs.reduce(function (s, m) { return s + (m.dist ? 1 : 0) + (m.turn ? 1 : 0); }, 0) + tj.length };
+      var dj = (ch.doors || []).filter(function (d) { return c.t.indexOf(d.t) >= 0; });
+      return { name: c.name, towers: c.t, jobs: jobs, tjobs: tj, djobs: dj, steps: jobs.reduce(function (s, m) { return s + (m.dist ? 1 : 0) + (m.turn ? 1 : 0); }, 0) + tj.length + dj.length };
     });
   }
   /* the state of one tower part-way through a change (u from 0 to 1) */
@@ -606,7 +627,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, part1: function (P, id) { return library(P).find(function (x) { return x.id === id; }); }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { doorWords: doorWords, doorChecks: doorChecks, lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, part1: function (P, id) { return library(P).find(function (x) { return x.id === id; }); }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

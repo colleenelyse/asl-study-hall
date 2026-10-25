@@ -69,4 +69,14 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   ok(sc.towers.D.lit === 'full' && sc.towers.A.lit === 'dark', 'top light alone also lights the towers in its area'); }
 { const Q = PK.fresh(), [a, b, c] = Q.scenes;
   ok(a.name === 'Wildcat cheer' && b.name === 'New Year’s Eve flashback' && c.name === 'Back to East High' && b.same === 's1' && c.same === 's1' && JSON.stringify(a.towers) === JSON.stringify(c.towers), 'scene 1 is three parts on one set: Wildcat cheer, New Year’s Eve flashback, back to East High'); }
+// the B1 walk-through door (2026-10-25): open and brace in the change before, unbrace and close in the change after
+{ const Q = PK.fresh(), i = Q.scenes.findIndex(x => x.name === 'Homeroom'), sc = Q.scenes[i];
+  sc.doorOpen = ['B1']; sc.towers.B.lock = true;
+  const into = PK.change(Q, Q.scenes[i - 1], sc), out = PK.change(Q, sc, Q.scenes[i + 1]);
+  ok(into.doors.length === 1 && into.doors[0].act === 'open' && /Open and brace/.test(PK.doorWords(into.doors[0])), 'change into the door scene: open and brace the back of B');
+  ok(out.doors.length === 1 && out.doors[0].act === 'close' && /Unbrace and close/.test(PK.doorWords(out.doors[0])), 'change after: unbrace and close');
+  ok(PK.crewJobs(Q, into, 4).some(c => c.djobs.length), 'the door step is in a crew member’s jobs');
+  ok(PK.sceneChecks(Q, sc).some(m => /door in use/.test(m.msg)), 'the scene says the door is in use');
+  sc.towers.B.lock = false; ok(PK.sceneChecks(Q, sc).some(m => m.lv === 'bad' && /wheels locked/.test(m.msg)), 'door in use needs B locked');
+  sc.towers.B.lock = true; sc.towers.B.want = 'B2'; sc.towers.B.rot = PK.rotFor(Q, 'B', 'B2').rot; ok(PK.sceneChecks(Q, sc).some(m => m.lv === 'bad' && /isn’t facing the audience/.test(m.msg)), 'door in use needs B1 facing the audience'); }
 process.exit(bad ? 1 : 0);

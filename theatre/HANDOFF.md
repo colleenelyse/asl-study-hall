@@ -703,3 +703,10 @@ Colleen: "an animated version of this run plot that shows movement around the st
 
 ## 2026-10-25: scene 1 in three parts (her structure)
 - 1a Wildcat cheer (id s1; East High preset), 1b New Year's Eve flashback (s1b; zone nye = stage-left side area), 1c Back to East High (s1c). Parts B and C are `sub` scenes linked to s1: same set, own lighting. Library uses part(); load() migrates saved plans (the old second part, the hallway, becomes 1c and keeps its lighting). label() letters any run of parts a, b, c… Tests: 43.
+
+## 2026-10-25: B1 door in use (her request: show on the planner that the door is open and in use; crew notes to open it in the change before and close it after)
+- P.practicals.B1.door = true (walk-through door, h 80″). Each scene: sc.doorOpen = ['B1'] when the door is used. "🚪 Use the door / Door in use" button on the tower panel (Simple and Edit) and the walkthrough column; switching it on locks B's wheels and lights B.
+- core change(): ch.doors = [{id, t, act: 'open' | 'close', moving}]: open in the change INTO the scene, close in the change after. doorWords (her words): "Open and brace the back of B … (after B is in place and locked)" / "Unbrace and close the back of B … (before B moves)". In the plain sentences, the Edit crew list (crewJobs djobs) and counted as crew steps.
+- doorChecks: B1 must face the audience; B locked; no tower right behind B; info line with the room from the back of B to the main curtain (proposed until tried on stage).
+- 3D: dark doorway + the door leaf standing open on B1 in scenes that use it (swing direction and hinge side are stand-ins). 🚪 marks those scenes in the scene lists and the cue sheet.
+- Tests: 49.
