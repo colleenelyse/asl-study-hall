@@ -35,4 +35,8 @@ ok(uni.tables.T1.rot === 0 && cu.tmoves.every(m => m.from.state === 'deployed' &
 ok(!cu.warn.some(w => w.lv === 'bad'), 'separate → united: no clashes with the stand-in sizes (one table at a time)');
 ok(PK.sceneChecks(P, uni).some(m => /joined end to end/.test(m.msg)), 'CF-UNITED reads as one long table');
 const wide = PK.tableFoot(P, 'T1', { x: 0, y: 0, rot: 0, state: 'deployed' }).w; ok(Math.abs(wide - (P.tables.T1.open.w + 2 * P.tables.T1.bench)) < 1e-9, 'the open footprint includes both benches');
+const lane = PK.gapInfo(P, S(9), 'T1'); ok(lane.pair.join('') === 'BC' && lane.width >= lane.need, 'cafeteria: B and C stand apart, a center lane wide enough for a folded table');
+ok(P.scenes.every((sc, i) => !i || !PK.change(P, P.scenes[i - 1], sc).warn.some(w => w.lv === 'bad')), 'no clashes in any change with the stand-in sizes');
+const old = JSON.parse(JSON.stringify(PK.fresh())); old.v = 2; old.scenes.forEach(sc => { if (sc.spike) { sc.towers.A.x = -11; sc.towers.B.x = -2.5; sc.towers.C.x = 2.5; sc.towers.D.x = 11; } });
+PK.migrate(old); ok(old.v === 3 && old.scenes.find(x => x.id === 's9').towers.B.x === -4.25, 'a saved plan from before the lane gets the lane');
 process.exit(bad ? 1 : 0);

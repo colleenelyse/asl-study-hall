@@ -19,6 +19,7 @@
     P = shown && (!local || (shown.stamp || 0) >= (local.stamp || 0)) ? JSON.parse(JSON.stringify(shown)) : local || PK.fresh();
     if (local && shown && (local.stamp || 0) > (shown.stamp || 0)) queueSave();      // changes made here that never reached the server
     if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
+    if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (cur >= P.scenes.length) cur = 0;
   }
   function label(i) {      // scene numbers; a moment inside a scene (the united tables) is "15b"
@@ -203,7 +204,7 @@
     var depth = function (y) { return Math.max(0.5, (y - camY) * sign); };
     var refD = depth(line), F = (W * 0.48) * refD / halfW, m = W * 0.035;
     var hz = m + (s.height + 1.6 - s.eye) * F / refD;      // the tops of the towers sit just under the top edge
-    var nearY = crew ? Math.min(s.curtain, line + 4) : (whole ? -s.apron : line - 10);
+    var nearY = crew ? line + 1.5 : (whole ? -s.apron : line - 10);
     var H = Math.round(hz + s.eye * F / depth(nearY) + m);
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     var g = cv.getContext('2d'), pr = function (x, y, z) { var d = depth(y); return { x: W / 2 + sign * x * F / d, y: hz - (z - s.eye) * F / d }; };
@@ -226,7 +227,7 @@
     TW.forEach(function (t) {
       var q = sh.towers[t], gm = PK.geom(P, t, q, s), lit = sh.lit(t);
       gm.faces.forEach(function (f) {
-        if (f.n.x * (cam.x - f.c.x) + f.n.y * (cam.y - f.c.y) <= 0.01) return;      // facing away from this camera
+        if (f.n.x * (cam.x - f.c.x) + f.n.y * (cam.y - f.c.y) <= 0.01 || (f.c.y - camY) * sign < 1) return;      // facing away from this camera, or behind it
         draws.push({ d: Math.hypot(f.c.x - cam.x, f.c.y - cam.y), f: function () { face(g, pr, f, s, lit, t); } });
       });
       gm.prot.forEach(function (pq) { if (!pq.rim) return; var rc = { x: pq.mid.x + pq.n.x * (pq.d - 0.75), y: pq.mid.y + pq.n.y * (pq.d - 0.75) };
@@ -235,9 +236,10 @@
       draws.push({ d: Math.hypot(q.x - cam.x, q.y - cam.y) - 0.01, f: function () { if (!V.labels) return; var p = pr(q.x, q.y, s.height + 0.6); g.fillStyle = COL[t]; g.font = 'bold ' + Math.round(W * 0.022) + 'px Lexend, sans-serif'; g.textAlign = 'center'; g.fillText(t, p.x, p.y); } });
     });
     (sh.items || []).forEach(function (it) {
+      if ((it.y - camY) * sign < 2) return;
       draws.push({ d: Math.hypot(it.x - cam.x, it.y - cam.y), f: function () { box(g, pr, PK.rectPoly(it.x, it.y, it.w, it.d, it.rot), it.kind === 'plants' ? 2.5 : 1.5, it.kind === 'plants' ? '#3d7a3a' : '#6c6480'); } });
     });
-    PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x) return; var f = PK.tableFoot(P, id, x, x.k);
+    PK.TABLES.forEach(function (id) { var x = sh.tables[id]; if (!x || (x.y - camY) * sign < 2) return; var f = PK.tableFoot(P, id, x, x.k);
       draws.push({ d: Math.hypot(x.x - cam.x, x.y - cam.y), f: function () { box(g, pr, f.poly, f.h, '#9a8a70'); if (V.labels) { var p = pr(x.x, x.y, f.h + 0.4); g.fillStyle = '#fff'; g.font = Math.round(W * 0.012) + 'px sans-serif'; g.textAlign = 'center'; g.fillText(id, p.x, p.y); } } }); });
     draws.sort(function (a, b) { return b.d - a.d; }).forEach(function (x) { x.f(); });
     if (V.labels) {
@@ -288,7 +290,7 @@
     var sc = scene(), checks = PK.sceneChecks(P, sc), prev = prevScene();
     var ch = prev ? PK.change(P, prev, sc) : null;
     document.getElementById('pkScenes').innerHTML = P.scenes.map(function (x, i) {
-      var bad = PK.sceneChecks(P, x).some(function (m) { return m.lv === 'bad'; }) || (i && PK.change(P, P.scenes[i - 1], x).warn.length);
+      var bad = PK.sceneChecks(P, x).some(function (m) { return m.lv === 'bad'; }) || (i && PK.change(P, P.scenes[i - 1], x).warn.some(function (m) { return m.lv === 'bad'; }));
       return '<button class="pk-sc' + (i === cur ? ' on' : '') + (x.moment ? ' moment' : '') + '" data-sc="' + i + '"><b>' + label(i) + '</b> ' + esc(x.name) + (bad ? ' <span class="pk-bad" title="Something to check">⚠</span>' : '') + '<small>' + sceneSummary(x) + '</small></button>';
     }).join('');
     document.getElementById('pkSel').innerHTML = P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + label(i) + '. ' + esc(x.name) + '</option>'; }).join('');

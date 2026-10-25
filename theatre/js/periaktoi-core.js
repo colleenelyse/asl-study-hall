@@ -43,7 +43,7 @@
       curtainGap: 8,      // * how wide the main curtain opens at center (Colleen: it opens at center for the tables)
       aisle: 3,           // * the narrowest path actors need between a table's bench and anything else
       eye: 5, house: 30,  // audience view camera: eye height and distance in front of PL
-      crew: 12,           // crew view camera: distance upstage of the drape
+      crew: 4,            // crew view camera: distance upstage of the drape (tables stored right in front of it are left out of the picture)
       placeholder: { sideDeck: true, wing: true, clear: true, curtainGap: true, aisle: true }
     };
   }
@@ -169,7 +169,7 @@
     var head = [{ x: a.x, y: a.y }].concat(exit(a, wa)), tail = exit(b, wb).reverse().concat([{ x: b.x, y: b.y }]);
     var from = head[head.length - 1], to = tail[0], mid = [];
     if ((from.y > line) !== (to.y > line) && P.tables[id].gap) {      // crossing the towers' line: through its opening
-      var g = gapInfo(P, sc, id), up = from.y > line, back = Math.min(st.curtain - 0.6, Math.max(g.y + 2.6, line + 2.6)), front = g.y - 2.6;
+      var g = gapInfo(P, sc, id), up = from.y > line, back = Math.min(st.curtain - 0.6, Math.max(g.y + 2.6, line + 2.6)), front = g.y - r(st) - P.tables[id].folded.l / 2 - P.tables[id].clear - 0.5;      // straightened out before it enters the opening
       mid = up ? [{ x: g.x, y: back }, { x: g.x, y: front }] : [{ x: g.x, y: front }, { x: g.x, y: back }];
     }
     return head.concat(mid, tail);
@@ -359,7 +359,7 @@
       return Object.assign({ id: 's' + num + (extra && extra.alt ? 'b' : ''), num: num, name: name, towers: towers, items: [], notes: '' }, extra || {});
     };
     var hall = { A: 'A1', B: 'B1+B3', C: 'C1', D: 'D2+D3' };
-    var cafe = { A: { want: 'A1+A3', x: -11 }, B: 'B3', C: 'C3', D: { want: 'D2+D3', x: 11 } };
+    var cafe = { A: { want: 'A1+A3', x: -12.75 }, B: { want: 'B3', x: -4.25 }, C: { want: 'C3', x: 4.25 }, D: { want: 'D2+D3', x: 12.75 } };      // B and C apart: a center lane for the tables from upstage center (Colleen 2026-10-25); A and D out to match
     var box = { B: { want: 'B2', x: -seam }, C: { want: 'C2', x: seam } };
     var L = [
       S(1, 'East High / New Year’s Eve', hall, { notes: 'Signature hallway, plus the karaoke vignette in the stage-left side area (shimmer curtain).', zones: ['nye'] }),
@@ -389,9 +389,11 @@
       TOWERS.forEach(function (t) { var s = sc.towers[t]; if (!s.want) s.want = t + '1'; s.rot = rotFor(P, t, s.want).rot; });
       sc.tables = {};      // both tables have a saved spot in every scene: in storage, or open on their spike marks for the cafeteria
       TABLES.forEach(function (id, n) {
-        var home = P.storage[0], sp = sc.spike && P.spikes[sc.spike][id];
-        sc.tables[id] = sp ? { state: 'deployed', x: sp.x, y: sp.y, rot: sp.rot, zone: '', spike: sc.spike, via: sc.spike === 'CF-UNITED' ? [{ x: sp.x + (n ? 4 : -2), y: sp.y }] : undefined } : { state: 'stored', x: home.x + (n ? 3 : -3), y: home.y, rot: 90, zone: home.id };
+        var home = P.storage[0], sp = sc.spike && P.spikes[sc.spike][id], f = P.tables[id].folded;      // stored one behind the other, straight up the center lane: Table 1 in front (first in), Table 2 behind
+        var hy = st.curtain + st.clear + f.l / 2 + (n ? f.l + 1 : 0);
+        sc.tables[id] = sp ? { state: 'deployed', x: sp.x, y: sp.y, rot: sp.rot, zone: '', spike: sc.spike, via: sc.spike === 'CF-UNITED' ? [{ x: sp.x + (n ? 4 : -2), y: sp.y }] : undefined } : { state: 'stored', x: home.x, y: hy, rot: 90, zone: home.id };
       });
+      if (prev && prev.needTables && !sc.needTables) sc.tableOrder = 'T2';      // going back to storage: Table 2 to the far spot first, then Table 1 in front of it
       prev = sc;
     });
     return L;
@@ -399,7 +401,7 @@
   function storageDefaults(st) {      // provisional homes: the two wings, and the strip between the towers and the main curtain (Colleen's first choice)
     var c = st.prosc / 2, back = st.curtain;
     return [
-      { id: 'upc', name: 'Upstage center, behind the main curtain', kind: 'upstage', x: 0, y: back + 4.5, w: 12, d: 7, masking: 'Hidden by the closed main curtain, which opens at center for the tables' },
+      { id: 'upc', name: 'Upstage center, behind the main curtain', kind: 'upstage', x: 0, y: back + 6, w: 8, d: 11.5, masking: 'Hidden by the closed main curtain, which opens at center for the tables' },
       { id: 'srw', name: 'Stage-right wing', kind: 'wing', x: -c - 4, y: 4, w: 6, d: 6, masking: 'Offstage; hidden by the proscenium wall (assumed)' },
       { id: 'slw', name: 'Stage-left wing', kind: 'wing', x: c + 4, y: 4, w: 6, d: 6, masking: 'Offstage; hidden by the proscenium wall (assumed)' },
       { id: 'up', name: 'Behind the towers (upstage)', kind: 'upstage', x: 0, y: back - 0.6, w: 24, d: 1.2, masking: 'Hidden only while the towers stand in front of it (to test)' }
@@ -407,10 +409,10 @@
   }
   /* table spike presets: a marked spot AND direction for each table (tape color, arrow and table number on the floor) */
   function spikeDefaults(P) {
-    var t = P.tables.T1, L = t.open.l, y = -8.5;
+    var t = P.tables.T1, L = t.open.l, y = -10.5;
     return {
       'CF-SEPARATE': { name: 'CF-SEPARATE', tape: 'blue', note: 'Scene 9, and scene 15 opening', T1: { x: -4.5, y: y, rot: 90 }, T2: { x: 4.5, y: y, rot: 90 } },
-      'CF-UNITED': { name: 'CF-UNITED', tape: 'green', note: 'Scene 15, the long banquet table', T1: { x: -L / 2, y: y - 4.5, rot: 0 }, T2: { x: L / 2, y: y - 4.5, rot: 0 } }
+      'CF-UNITED': { name: 'CF-UNITED', tape: 'green', note: 'Scene 15, the long banquet table', T1: { x: -L / 2, y: y - 3.5, rot: 0 }, T2: { x: L / 2, y: y - 3.5, rot: 0 } }
     };
   }
   /* a table on a spike preset always stands exactly on it, and scenes linked with `same` keep identical towers */
@@ -420,8 +422,27 @@
     if (edited && edited.same && byId[edited.same]) byId[edited.same].towers = JSON.parse(JSON.stringify(edited.towers));      // an edit to a linked scene changes the original too
     P.scenes.forEach(function (sc) { if (sc.same && byId[sc.same] && sc !== byId[sc.same]) sc.towers = JSON.parse(JSON.stringify(byId[sc.same].towers)); });
   }
+  /* a plan saved before the center lane (v2): only values still at the old defaults move to the new ones; her own edits stay */
+  function migrate(P) {
+    if (P.v !== 2) return P;
+    var F = fresh(), near = function (a, b) { return Math.abs(a - b) < 1e-6; };
+    var oldX = { A: -11, B: -2.5, C: 2.5, D: 11 };
+    P.scenes.forEach(function (sc) {
+      var nf = F.scenes.find(function (x) { return x.id === sc.id; }); if (!nf) return;
+      if (sc.spike === 'CF-SEPARATE' || sc.spike === 'CF-UNITED') TOWERS.forEach(function (t) { if (near(sc.towers[t].x, oldX[t])) sc.towers[t].x = nf.towers[t].x; });
+      TABLES.forEach(function (id) { var q = sc.tables && sc.tables[id]; if (q && q.zone === 'upc' && near(Math.abs(q.x), 3)) { q.x = nf.tables[id].x; q.y = nf.tables[id].y; } });
+      if (!sc.tableOrder && nf.tableOrder) sc.tableOrder = nf.tableOrder;
+    });
+    ['CF-SEPARATE', 'CF-UNITED'].forEach(function (k) { var o = P.spikes && P.spikes[k], n = F.spikes[k]; if (!o) return;
+      TABLES.forEach(function (id) { var old = k === 'CF-SEPARATE' ? -8.5 : -13; if (o[id] && near(o[id].y, old)) o[id].y = n[id].y; }); });
+    var up = (P.storage || []).find(function (z) { return z.id === 'upc'; }), nu = F.storage.find(function (z) { return z.id === 'upc'; });
+    if (up && near(up.w, 12) && near(up.d, 7)) { up.y = nu.y; up.w = nu.w; up.d = nu.d; }
+    if (P.stage && P.stage.crew === 12) P.stage.crew = 4;
+    P.v = 3; applySpikes(P); applyLinks(P);
+    return P;
+  }
   function fresh() {      // diagram: Colleen 2026-10-25, her triangle diagram spins clockwise and 0° = face 2 flat to the audience
-    var P = { v: 2, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'during', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
+    var P = { v: 3, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'during', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
     TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
     P.storage = storageDefaults(P.stage);
     P.spikes = spikeDefaults(P);
@@ -431,7 +452,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;
