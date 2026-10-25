@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Adaptive Theatre Tour</title>
+<meta name="description" content="A tour of the Adaptive Theatre app: how students with and without disabilities learn a musical together. Try the student supports with made-up sample content.">
+<link rel="icon" href="../img/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Comic+Neue:wght@400;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Lexend:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tour.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><svg class="star" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#6b3fd4"/><path d="M16 6l2.9 6.2 6.8.8-5 4.6 1.3 6.7L16 21l-6 3.3 1.3-6.7-5-4.6 6.8-.8z" fill="#ffc93c"/></svg><span>Adaptive Theatre · Tour</span></div>
+  <button class="btn small" id="fitBtn" aria-expanded="false" aria-controls="fitPanel">Aa&nbsp;Make it fit</button>
+  <div class="progress" id="prog"></div>
+</header>
+
+<div class="card fit" id="fitPanel" hidden role="dialog" aria-label="Make it fit">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">Make it fit</h3><button class="btn small" id="fitClose">Close</button></div>
+  <p class="small muted">Students set these for themselves in the app. Try them here: they change this whole tour.</p>
+  <div class="opt"><b>Text size</b><div class="seg" data-opt="scale"><button data-v="0.9">Small</button><button data-v="1" aria-pressed="true">Medium</button><button data-v="1.2">Large</button><button data-v="1.45">Huge</button></div></div>
+  <div class="opt"><b>Reading font</b><div class="seg" data-opt="font" style="flex-wrap:wrap"><button data-v="atk" aria-pressed="true">Atkinson</button><button data-v="lex">Lexend</button><button data-v="and">Andika</button><button data-v="comic">Comic Neue</button></div></div>
+  <div class="opt"><b>Letter spacing</b><div class="seg" data-opt="ls"><button data-v="normal" aria-pressed="true">Normal</button><button data-v="0.04em">Wider</button><button data-v="0.09em">Widest</button></div></div>
+  <div class="opt"><b>Light or dark</b><div class="seg" data-opt="theme"><button data-v="" aria-pressed="true">Device</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  <div class="opt"><b>High contrast</b><div class="seg" data-opt="contrast"><button data-v="0" aria-pressed="true">Off</button><button data-v="1">On</button></div></div>
+  <div class="opt"><b>Motion</b><div class="seg" data-opt="motion"><button data-v="1" aria-pressed="true">On</button><button data-v="0">Less</button></div></div>
+  <p class="small muted">The app also has a main color, a page tint, line spacing, symbols beside words, and each student's own read-aloud voice.</p>
+</div>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="h-hero">
+  <div>
+    <span class="tag">For principals, special-education directors and district staff</span>
+    <h1 id="h-hero">A musical where <em>every</em> student has a part, and can learn it.</h1>
+    <p class="lede">The Adaptive Theatre app runs a full Broadway Junior musical for a class of students with and without disabilities. It turns the licensed script into practice each student can do on their own, in the way that works for them.</p>
+    <div class="outcomes">
+      <div class="outcome"><span class="big" aria-hidden="true">📖</span><div>A student who <b>doesn't read</b> can still learn their lines from the real script.</div></div>
+      <div class="outcome"><span class="big" aria-hidden="true">🎵</span><div>A student who <b>sings every line</b> can learn when to wait.</div></div>
+      <div class="outcome"><span class="big" aria-hidden="true">🌟</span><div>A student who <b>needs an adult beside them</b> can rehearse at home and walk on for their bow on their own.</div></div>
+    </div>
+    <div class="row"><a class="btn primary" href="#today">Start the tour</a><a class="btn" href="#research">Jump to the research</a></div>
+    <p class="small muted" style="margin-top:14px">About 10 minutes. Everything you tap here is made up: sample students, a sample show and sample lines. Nothing is saved or sent.</p>
+  </div>
+  <div class="stage" aria-hidden="true">
+    <svg viewBox="0 0 400 400">
+      <defs><radialGradient id="beam" cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#fffbe0" stop-opacity=".9"/><stop offset="1" stop-color="#fffbe0" stop-opacity="0"/></radialGradient></defs>
+      <path d="M150 0 L250 0 L330 330 L70 330 Z" fill="url(#beam)" opacity=".55"/>
+      <rect x="0" y="0" width="58" height="400" fill="#8e1420"/><rect x="342" y="0" width="58" height="400" fill="#8e1420"/>
+      <path d="M0 0 H400 V34 Q300 60 200 40 Q100 60 0 34Z" fill="#a8172a"/>
+      <ellipse cx="200" cy="335" rx="150" ry="20" fill="#000" opacity=".25"/>
+      <rect x="0" y="330" width="400" height="70" fill="#3a2410"/>
+      <g fill="#241a4a"><circle cx="140" cy="236" r="16"/><path d="M122 330 q18-90 36 0z"/><circle cx="200" cy="222" r="17"/><path d="M181 330 q19-104 38 0z"/><circle cx="262" cy="240" r="15"/><path d="M245 330 q17-84 34 0z"/></g>
+      <g font-size="30"><text x="76" y="120">✨</text><text x="300" y="150">⭐</text><text x="290" y="90">✨</text></g>
+    </svg>
+  </div>
+</section>
+
+<section aria-labelledby="h-toc" style="padding-bottom:20px">
+  <h2 id="h-toc" class="sr">Tour stops</h2>
+  <ul class="toc">
+    <li><a href="#why"><span class="e">🎭</span>Why this app</a></li>
+    <li><a href="#today"><span class="e">📅</span>A student's day</a></li>
+    <li><a href="#lines"><span class="e">🗣️</span>Practice Lines (try it)</a></li>
+    <li><a href="#script"><span class="e">📄</span>The real script, made readable</a></li>
+    <li><a href="#songs"><span class="e">✋</span>When to sing, when to wait (try it)</a></li>
+    <li><a href="#react"><span class="e">😲</span>React to That! (try it)</a></li>
+    <li><a href="#fit"><span class="e">Aa</span>Make it fit each student</a></li>
+    <li><a href="#bows"><span class="e">🌟</span>Bows without an adult (try it)</a></li>
+    <li><a href="#planner"><span class="e">🗓️</span>The teacher's planner</a></li>
+    <li><a href="#progress"><span class="e">📈</span>Progress and Mastery</a></li>
+    <li><a href="#tools"><span class="e">🎚️</span>Running a real production</a></li>
+    <li><a href="#families"><span class="e">🏠</span>Families</a></li>
+    <li><a href="#privacy"><span class="e">🔒</span>Privacy and safety</a></li>
+    <li><a href="#research"><span class="e">📚</span>The research behind it</a></li>
+    <li><a href="#next"><span class="e">🚀</span>Where it stands</a></li>
+  </ul>
+</section>
+
+<!-- 1 WHY -->
+<section class="stop" id="why" aria-labelledby="h-why">
+  <div class="kicker"><span class="n">1</span>Why this app</div>
+  <h2 id="h-why">Theatre tools assume every actor can read and practice alone.</h2>
+  <div class="two">
+    <div>
+      <p class="lede">Rehearsal apps expect actors to read a script, follow a printed schedule and practice by themselves. Accessibility tools know nothing about the show. So students with disabilities end up depending on an adult for every line, every cue and every entrance.</p>
+      <p>This app is built around <b>the actual show</b> and <b>the actual student</b>. The teacher imports the licensed script on her own device, and the app builds everything from it: every scene, every line by speaker, every song, who sings each part, and the stage directions.</p>
+      <button class="btn small say" data-say="why">🔊 Read this to me</button>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3><span class="em">🧑‍🎤</span>Who it serves</h3><p class="small">Emerging readers, nonverbal students and AAC users, students who sign, autistic students, students with sensory needs, and students with vision or hearing needs, side by side with their peers.</p></div>
+      <div class="card"><h3><span class="em">📱</span>Where it runs</h3><p class="small">School iPads and Chromebooks, the teacher's laptop and the projector. It installs like an app and opens without Wi-Fi once it's on the device.</p></div>
+      <div class="card"><h3><span class="em">🤝</span>The Company</h3><p class="small"><b>Company Artists</b> (students with disabilities) and <b>Company Mentors</b> (peer leaders) rehearse, perform and run crews together.</p></div>
+      <div class="card"><h3><span class="em">🔁</span>Repeats every semester</h3><p class="small">Built for any licensed Broadway Junior or KIDS script. The first show is in fall 2027.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 TODAY -->
+<section class="stop" id="today" aria-labelledby="h-today">
+  <div class="kicker"><span class="n">2</span>Student view · A student's day</div>
+  <h2 id="h-today">Every student knows where to go and what "done" looks like.</h2>
+  <div class="two wide-right">
+    <div>
+      <p>When a student opens the app, <b>Today</b> shows their job for each half of class in large type, with a Start button that goes straight to the activity.</p>
+      <ul class="ticks">
+        <li>Two blocks a day. Each block is a teacher's room or a <b>task card</b>.</li>
+        <li>Every task card says what "done" looks like, so a student can finish without asking.</li>
+        <li>Weeks are shown one at a time, and every week follows the same pattern: Character Monday, Music Tuesday, Scene Wednesday, Dance Thursday, Full-Out Friday.</li>
+        <li>Every student has something to do every day, including a weekly crew job.</li>
+      </ul>
+      <div class="why"><b>Why it matters:</b> a visual schedule and predictable routines are evidence-based supports for autistic learners. They also make transitions easier for everyone. <a href="#research">See the research</a>.</div>
+    </div>
+    <div class="device" aria-label="Sample Today screen">
+      <div class="scr">
+        <div class="top"><span aria-hidden="true">🎭</span> Today · Tuesday <span class="sample" style="margin-left:auto">Sample</span></div>
+        <div class="body">
+          <div class="row"><div class="avatar" style="background:var(--theo)">MR</div><div><b class="head">Hi, Maya!</b><div class="small muted">You play <b style="color:var(--theo)">Theo</b> · Music Tuesday</div></div></div>
+          <div class="job room">
+            <div class="when">Block 1 · Room A</div>
+            <div class="what">🎵 Vocals: "Open the Door"</div>
+            <div class="small muted">With Ms. Lee. Bring your water bottle.</div>
+            <div class="row" style="margin-top:8px"><a class="btn small primary" href="#songs">▶ Start</a></div>
+          </div>
+          <div class="job card-c">
+            <div class="when">Block 2 · Group C · Task card</div>
+            <div class="what">🎨 Paint crew: the bakery sign</div>
+            <div class="taskcard">1. Put on a smock. 2. Paint the letters yellow. 3. Wash your brush.<div class="done">✓ Done when: every letter is yellow and the brushes are clean.</div></div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><span class="e">🗣️</span>My Lines</div><div class="tile"><span class="e">🎵</span>My Songs</div><div class="tile"><span class="e">👕</span>Costumes</div>
+            <div class="tile"><span class="e">📖</span>The Story</div><div class="tile"><span class="e">😲</span>React!</div><div class="tile"><span class="e">🔔</span>2 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 PRACTICE LINES -->
+<section class="stop" id="lines" aria-labelledby="h-lines">
+  <div class="kicker"><span class="n">3</span>Student view · Try it</div>
+  <h2 id="h-lines">Practice Lines: the app reads the other parts and listens for yours.</h2>
+  <div class="two">
+    <div>
+      <p>You are <b style="color:var(--theo)">Theo</b> in our made-up sample show, <i>The Bake Sale</i>. The app reads Rosa's lines aloud. When it's your turn, say your line, type it, or tap <b>I did it</b>.</p>
+      <ul class="ticks">
+        <li><b>Paraphrase is OK.</b> It checks the words that carry the meaning, not every word in order, and it catches a dropped "not".</li>
+        <li><b>Loose, medium or exact</b> checking, set for each student.</li>
+        <li><b>Hints that fade:</b> first the line, then first letters, then hidden, and it steps back after help.</li>
+        <li><b>Many ways to answer:</b> speak, sign, use AAC (the "I did it" button), or point and tap.</li>
+        <li>Each try is counted, so the teacher sees what needs work.</li>
+      </ul>
+      <div class="why"><b>Why it matters:</b> prompting with fading is an evidence-based practice. Trying to recall a line beats rereading it (retrieval practice). AAC is a recognized support, not an afterthought.</div>
+    </div>
+    <div class="card" id="practice">
+      <div class="row" style="justify-content:space-between">
+        <b class="head">Scene 2 · The kitchen</b>
+        <div class="seg" role="group" aria-label="Help level"><button data-help="0" aria-pressed="true">Show line</button><button data-help="1">Hint</button><button data-help="2">Hidden</button></div>
+      </div>
+      <div class="row small muted" style="margin:8px 0">Checking: <div class="seg" role="group" aria-label="Checking strictness"><button data-strict="loose">Loose</button><button data-strict="medium" aria-pressed="true">Medium</button><button data-strict="exact">Exact</button></div></div>
+      <div class="script-lines" id="plLines"></div>
+      <div id="plTurn"></div>
+      <div id="plVerdict" aria-live="polite"></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="plStart">▶ Run my role</button><button class="btn small" id="plReset">Start over</button></div>
+      <p class="small muted" style="margin-top:8px" id="plNote">Your device's voice reads here. In the app, lines can be a classmate's recording or a recorded character voice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 SCRIPT -->
+<section class="stop" id="script" aria-labelledby="h-script">
+  <div class="kicker"><span class="n">4</span>Student view · The real script</div>
+  <h2 id="h-script">The licensed pages, with each student's part lit up in their color.</h2>
+  <div class="two wide-right">
+    <div>
+      <p>Students see the real script pages, not a retyped copy. Their own lines and sung lines are highlighted in their character's color, and other characters' lines can be shown too.</p>
+      <ul class="ticks">
+        <li><b>Feeling pictures</b> beside the lines, labeled with who they are for, so a student knows how a line should feel.</li>
+        <li><b>Director's notes</b> (purple) everyone sees, and private notes only the student sees.</li>
+        <li><b>A printable highlighted script</b> in the colors the student picks.</li>
+        <li>A plain-language <b>story of every scene</b>, with sensory warnings (loud music, flashing lights).</li>
+      </ul>
+      <p>Tap a name to see that student's track:</p>
+      <div class="seg" role="group" aria-label="Highlight a character" id="hlPick"><button data-c="theo" aria-pressed="true">Theo</button><button data-c="rosa">Rosa</button><button data-c="june">June</button></div>
+      <p class="small muted" style="margin-top:12px">Sample page made up for this tour. In the app these are the show's real pages, which stay encrypted and are never shown publicly.</p>
+    </div>
+    <div class="paper" id="paper" aria-label="Sample script page">
+      <div class="strip"></div>
+      <div class="scene">SCENE 2: THE KITCHEN – MORNING</div>
+      <div class="dir">(ROSA bursts in carrying an empty tray. THEO follows, out of breath.)</div>
+      <div class="spk">ROSA</div><div data-feel="34_terrified_panic|Rosa"><span class="dl" data-c="rosa">The bake sale starts in ten minutes, and the oven just stopped working!</span></div>
+      <div class="spk">THEO</div><div data-feel="32_calm_open_arms|Theo"><span class="dl" data-c="theo">Don't panic. My grandma has an oven, and she lives across the street.</span></div>
+      <div class="spk">JUNE</div><div data-feel="41_eager_hop|June" data-note="Director's note: pause in the doorway first, then the big question."><i>(from the doorway)</i> <span class="dl" data-c="june">Did somebody say grandma? Is she making her lemon bars?</span></div>
+      <div class="spk">ROSA</div><div><span class="dl" data-c="rosa">Then what are we waiting for? Grab the trays!</span></div>
+      <div class="dir">(THEO stacks the trays. He drops one. Everyone freezes.)</div>
+      <div class="spk">THEO</div><div data-feel="10_shy_blushing|Theo"><span class="dl" data-c="theo">I'll carry the cupcakes. You bring the frosting.</span></div>
+      <div class="pg">12</div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 SONGS + RED X -->
+<section class="stop" id="songs" aria-labelledby="h-songs">
+  <div class="kicker"><span class="n">5</span>Student view · Try it</div>
+  <h2 id="h-songs">My Songs: when to sing, and when to wait.</h2>
+  <div class="two">
+    <div>
+      <p>Each student's song page plays the show's rehearsal tracks (with or without the guide singers) and lights up the line being sung <b>on the real sheet music</b>, in the singer's color.</p>
+      <ul class="ticks">
+        <li><b>Red X mode:</b> a red X covers the screen while other people sing, and a green "Sing!" frame shows on the student's own lines. It's for a student who sings every line and needs to learn when to wait.</li>
+        <li><b>A piano plays their own part</b> in a harmony, read from the sheet music.</li>
+        <li>Loop a hard section, slow it down, play the whole show with the screen off, and watch the class's own dance videos.</li>
+        <li>After a song, students rate how well they know the words and the dance.</li>
+      </ul>
+      <p>Pick who you are, then press play. This sample song has made-up words.</p>
+      <div class="seg" role="group" aria-label="Who are you in this song" id="songMe"><button data-me="theo" aria-pressed="true">Theo</button><button data-me="rosa">Rosa</button></div>
+      <label class="row small" style="margin-top:10px"><input type="checkbox" id="redxOn" checked style="width:22px;height:22px"> Red X mode on</label>
+      <div class="why"><b>Why it matters:</b> music-mediated intervention and visual supports are both on the national list of evidence-based practices for autistic learners. The red X is a visual cue that can fade as the student learns their part.</div>
+    </div>
+    <div>
+      <div class="song" id="song">
+        <div class="lyrics" id="lyrics"></div>
+        <div class="redx" id="redx" hidden><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M18 18 L82 82 M82 18 L18 82" stroke="#d62a33" stroke-width="14" stroke-linecap="round"/></svg><div class="lbl">Wait. It's not your turn.</div></div>
+        <div class="singframe" id="sing" hidden><span class="lbl">Sing!</span></div>
+        <div class="songbar"><button class="btn small primary" id="songPlay">▶ Play</button><div class="pos" aria-hidden="true"><i id="songPos"></i></div><span class="small" id="songTime">0:00</span></div>
+      </div>
+      <p class="small muted" style="margin-top:8px">A soft tune stands in for the show's band track here.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 REACT -->
+<section class="stop" id="react" aria-labelledby="h-react">
+  <div class="kicker"><span class="n">6</span>Student view · Try it</div>
+  <h2 id="h-react">React to That! Practice showing a feeling on cue.</h2>
+  <div class="two">
+    <div>
+      <p>An ensemble actor's biggest job is to react. React to That! reads an announcement aloud, says "React!", and then shows the feeling that fits, with a picture and how to show it with your face and body.</p>
+      <ul class="ticks">
+        <li>About 150 announcements in three levels: big feelings, quieter feelings, then reacting <i>as your character</i>.</li>
+        <li><b>Show it</b> (react, then see) and <b>Name it</b> (pick the feeling from pictures).</li>
+        <li><b>Show Me</b> shows the picture first, so practice never feels like a test.</li>
+        <li>An optional <b>camera mirror</b> plays the student's own face back beside the picture. It's never saved or sent.</li>
+        <li>The app never grades a face. The student decides "Yes / Some / Not yet."</li>
+      </ul>
+      <div class="why"><b>Why it matters:</b> modeling, visual supports and video self-modeling are evidence-based practices. Drama-based programs with peer actors have been shown to improve social skills for autistic youth.</div>
+    </div>
+    <div class="card react" id="reactBox">
+      <div class="row" style="justify-content:center"><div class="seg" role="group" aria-label="Practice kind"><button data-kind="show" aria-pressed="true">Show it</button><button data-kind="name">Name it</button></div>
+        <label class="row small"><input type="checkbox" id="showMe" style="width:22px;height:22px"> Show Me</label></div>
+      <div class="ann" id="rAnn" aria-live="polite">Press Start. Listen, then react with your face and body.</div>
+      <div id="rBody"></div>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" id="rNext">▶ Start</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 FIT -->
+<section class="stop" id="fit" aria-labelledby="h-fit">
+  <div class="kicker"><span class="n">7</span>Student view · Make it fit</div>
+  <h2 id="h-fit">Each student sets the app up their way.</h2>
+  <div class="two">
+    <div>
+      <p>Text size, fonts made for readability (Atkinson Hyperlegible, Lexend, Andika, Comic Neue), letter and line spacing, light or dark, high contrast, a main color and page tint, less motion, symbols beside words, and their own read-aloud voice. Touch targets are big, and each screen does one thing.</p>
+      <p><b>Try it now:</b> the controls change this whole tour.</p>
+      <button class="btn primary" data-open-fit>Aa Open "Make it fit"</button>
+      <div class="why"><b>Why it matters:</b> this is Universal Design for Learning: the same content, more than one way to see it, hear it and respond. Fixing the screen for one student doesn't change it for anyone else.</div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>🔊 Read aloud</h3><p class="small">Every line, announcement and story can be read aloud. Each student picks the voice for their own lines, and names are pronounced the teacher's way.</p></div>
+      <div class="card"><h3>⌨️ Keyboard</h3><p class="small">On Chromebooks: Space plays, arrows move, H gives a hint, M turns on the microphone.</p></div>
+      <div class="card"><h3>🖨️ Print</h3><p class="small">A highlighted script, a calendar for each role, and a call board, for students who work best on paper.</p></div>
+      <div class="card"><h3>📴 Offline</h3><p class="small">A class iPad keeps the show, so practice keeps going when the Wi-Fi doesn't.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 BOWS -->
+<section class="stop" id="bows" aria-labelledby="h-bows">
+  <div class="kicker"><span class="n">8</span>Student view · Try it</div>
+  <h2 id="h-bows">The curtain call: a chime, then a big GO.</h2>
+  <div class="two">
+    <div>
+      <p><b>My bow</b> tells each student their bow group, which side they walk on from, where they stand and who they bow with, and lets them practice with the bow music.</p>
+      <p>In rehearsal, the projector plays the music. Four seconds before each group, a soft chime sounds. Then a full-screen <b>GO</b> appears in the group's color. Students learn to walk on by themselves, without an adult's hand on their shoulder.</p>
+      <div class="why"><b>Why it matters:</b> the chime is a warning before the change, and GO is a clear visual cue. Both are supports that fade: by the performance, students know the music.</div>
+    </div>
+    <div>
+      <div class="gobox" id="goBox" aria-live="polite"><div><div class="head" style="font-size:1.2em">Rehearse the bows</div><p class="small" style="opacity:.8">Sample groups: Ensemble, Friends, Rosa and June, Theo</p></div></div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="goStart">▶ Rehearse the bows</button><button class="btn small" id="goStop" hidden>Stop</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 PLANNER -->
+<section class="stop" id="planner" aria-labelledby="h-planner">
+  <div class="kicker"><span class="n">9</span>Teacher view · Planning</div>
+  <h2 id="h-planner">A full semester planned before the cast list exists.</h2>
+  <p class="lede">The class list arrives about a week before school starts. The planner fills every class day from the school calendar, for every role, and rebuilds when casting is posted.</p>
+  <div class="two wide-right">
+    <div>
+      <ul class="ticks">
+        <li>Two blocks a day, two teacher rooms plus <b>Group C</b> (task cards).</li>
+        <li>Checked every block: nobody in two places, <b>nobody with nothing to do</b>.</li>
+        <li>No student does the same kind of work three days in a row.</li>
+        <li>Hardest scenes first, with review days. Music before dance.</li>
+        <li>A weekly crew day for all but the leads. Big numbers include the whole ensemble.</li>
+        <li>School holidays, short days, theatre bookings and field trips are built in.</li>
+        <li>Two versions of every task card: with trained Mentors, or two teachers only.</li>
+      </ul>
+      <div class="why"><b>Why it matters:</b> every student is in the plan every day, with variety, so nobody sits and waits and nobody is forgotten for weeks.</div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b class="head">Week 6 · Music and Scenes</b><span class="sample">Sample</span></div>
+      <div class="scroll" style="margin-top:10px">
+      <table class="tbl" style="min-width:560px">
+        <thead><tr><th></th><th>Mon · Character</th><th>Tue · Music</th><th>Wed · Scenes</th><th>Thu · Dance</th><th>Fri · Full-Out</th></tr></thead>
+        <tbody>
+          <tr><th>Block 1</th>
+            <td><div class="blk a"><b>Room A</b>Scene 2 acting</div></td><td><div class="blk a"><b>Room A</b>"Open the Door" leads</div></td><td><div class="blk a"><b>Room A</b>Review: Scene 5</div></td><td><div class="blk b"><b>Both rooms</b>Big number dance</div></td><td rowspan="2"><div class="blk a" style="height:100%"><b>Everyone</b>Run Scenes 1–4, then show and tell</div></td></tr>
+          <tr><th>Block 2</th>
+            <td><div class="blk b"><b>Room B</b>Character interviews</div></td><td><div class="blk b"><b>Room B</b>Chorus learns the dance</div></td><td><div class="blk c"><b>Group C</b>Paint crew, Practice Lines</div></td><td><div class="blk c"><b>Group C</b>Props crew task card</div></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">The teacher can change any day by hand. Weeks go to students only when she presses "Show this week".</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 PROGRESS -->
+<section class="stop" id="progress" aria-labelledby="h-progress">
+  <div class="kicker"><span class="n">10</span>Teacher view · Progress</div>
+  <h2 id="h-progress">See who has practiced, who is stuck, and what's been taught but not shown.</h2>
+  <div class="two">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b class="head">Progress</b><span class="sample">Sample students</span></div>
+      <table class="tbl" style="margin-top:8px">
+        <thead><tr><th>Company member</th><th>Practiced</th><th>Needs help</th></tr></thead>
+        <tbody id="progRows"></tbody>
+      </table>
+      <p class="small muted" style="margin-bottom:0">Practice done with a Mentor is marked "with a Mentor". Days away are matched to what was missed, until the student catches up.</p>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b class="head">Mastery · Theo (Maya R.)</b><span class="small muted">Tap to check off</span></div>
+      <table class="tbl" style="margin-top:8px">
+        <thead><tr><th></th><th>Lines / Singing</th><th>Blocking / Dance</th></tr></thead>
+        <tbody>
+          <tr><td>Scene 2 · The kitchen</td><td><button class="chk on" aria-pressed="true" aria-label="Scene 2 lines">✓</button></td><td><button class="chk" aria-pressed="false" aria-label="Scene 2 blocking"></button></td></tr>
+          <tr><td>Scene 4 · The bake sale</td><td><button class="chk" aria-pressed="false" aria-label="Scene 4 lines"></button></td><td><button class="chk" aria-pressed="false" aria-label="Scene 4 blocking"></button></td></tr>
+          <tr><td>🎵 "Open the Door"</td><td><button class="chk on" aria-pressed="true" aria-label="Open the Door singing">✓</button></td><td><button class="chk on" aria-pressed="true" aria-label="Open the Door dance">✓</button></td></tr>
+          <tr><td>🎵 "Sugar Rush" (whole cast)</td><td><button class="chk" aria-pressed="false" aria-label="Sugar Rush singing"></button></td><td><button class="chk" aria-pressed="false" aria-label="Sugar Rush dance"></button></td></tr>
+        </tbody>
+      </table>
+      <p class="small" style="margin-bottom:0"><b>Taught, not shown yet:</b> "Sugar Rush" dance (taught on 4 days), Scene 4 blocking (2 days).</p>
+    </div>
+  </div>
+  <div class="why"><b>Why it matters:</b> practice data and Mastery check-offs give the teacher (and IEP teams) a clear record of what each student has learned and what still needs teaching. "Study next" points each student to their three most useful things to practice.</div>
+</section>
+
+<!-- 11 TOOLS -->
+<section class="stop" id="tools" aria-labelledby="h-tools">
+  <div class="kicker"><span class="n">11</span>Teacher view · Running a real production</div>
+  <h2 id="h-tools">Everything a director and stage manager need, in one place.</h2>
+  <div class="two wide-right" style="margin-bottom:22px">
+    <div>
+      <p>The <b>stage manager's script</b> is the real script with every light, sound and music cue in the margin, prompt-book style, and the props, set pieces and costume notes the app found in the stage directions.</p>
+      <p class="small muted">Colors: light cues yellow, sound blue, music pink, scene changes green, props orange, set teal, costume red.</p>
+      <div class="viewas" style="margin-top:16px"><b>👁 View as</b><select aria-label="View as"><option>Maya R. (Theo)</option><option>Jordan T. (Rosa)</option><option>Maya R.'s parent</option><option>Track: June (before casting)</option></select><span class="small" style="opacity:.8">See the app exactly as a student or parent does. Nothing is saved while previewing.</span></div>
+    </div>
+    <div class="sm" aria-label="Sample stage manager script">
+      <div class="col">
+        <div class="call"><span class="standby">Standby LX 12 · SX 3</span></div>
+        <div class="call"><span class="chip lx">LX 12</span><b>GO</b><br><span class="small">[kitchen, warm morning]</span></div>
+        <div class="call" style="margin-top:34px"><span class="chip sx">SX 3</span><b>GO</b><br><span class="small">[tray crash]</span></div>
+        <div class="call" style="margin-top:30px"><span class="chip mx">MX 4</span><b>GO</b><br><span class="small">[band track 0:00]</span></div>
+      </div>
+      <div class="mid">
+        <b><u>SCENE 2: THE KITCHEN</u></b>
+        <p><i><span class="w-lx">(Lights up.)</span> ROSA bursts in carrying an empty <span class="w-prop">tray</span>.</i></p>
+        <p style="text-align:center;margin:6px 0 0"><b>ROSA</b></p><p>The oven just stopped working!</p>
+        <p><i>(THEO <span class="w-prop">drops a tray</span>. Everyone freezes.)</i></p>
+        <p style="text-align:center;margin:6px 0 0"><b>THEO</b></p><p>I'll carry the cupcakes.</p>
+        <p><i><span class="w-mx">(Music begins.)</span></i></p>
+      </div>
+      <div class="col">
+        <div class="call" style="margin-top:28px"><span class="chip prop">PROP</span><br><span class="small">Tray · Rosa, Theo (3 in all)</span></div>
+        <div class="call"><span class="chip set">SET</span><br><span class="small">Kitchen counter</span></div>
+        <div class="call"><span class="chip cos">COSTUME</span><br><span class="small">Aprons for the bakers</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="tools">
+    <div class="card"><h3>🎙️ Mic plot</h3><p>Works out which performer wears which body mic, scene by scene, with every swap written onto that student's schedule: when, where and who helps.</p></div>
+    <div class="card"><h3>📋 Cue sheet</h3><p>Suggested light, sound and music cues from the script, numbered the way the teacher works. Accept, edit, print.</p></div>
+    <div class="card"><h3>🎤 Auditions and casting</h3><p>Students sign up on the iPad: roles they want, comfort with lines, singing and dancing, and how they want to audition (in class, on video, with a buddy, with their talker or sign). Notes, callbacks and a cast list. Gender is never asked.</p></div>
+    <div class="card"><h3>💬 Lines for AAC</h3><p>Every spoken line for a character in show order, each with its cue, ready to copy into a student's AAC device, print, or save with the recorded voices.</p></div>
+    <div class="card"><h3>🎧 Voices with feeling</h3><p>Recorded character voices with a tone for each line (nervous, sarcastic, whispering), a little clearer than usual, for students who find tone of voice hard to read. Checks run before anything is made.</p></div>
+    <div class="card"><h3>⏱️ School-day show</h3><p>Plans a 45-minute version for in-school performances from the teacher's own ranked cuts, alongside the full evening show.</p></div>
+    <div class="card"><h3>👕 Costumes and shopping</h3><p>Costume plots, student costume research with tap-to-pick reasons, a shopping field trip with a "Found it!" list, photos of every finished look, and sizes with follow-ups.</p></div>
+    <div class="card"><h3>🛠️ Crews and the call board</h3><p>Home crews, crew days, attendance, days away, and a printable call board grouped by job.</p></div>
+    <div class="card"><h3>🌟 Curtain call</h3><p>Bow groups in order, timed to the bow music, with a projector mode for rehearsal and My bow for each student.</p></div>
+  </div>
+</section>
+
+<!-- 12 FAMILIES -->
+<section class="stop" id="families" aria-labelledby="h-families">
+  <div class="kicker"><span class="n">12</span>Family view</div>
+  <h2 id="h-families">A family portal for news, forms and practice at home.</h2>
+  <div class="two wide-right">
+    <div>
+      <ul class="ticks">
+        <li><b>Needs your answer:</b> clothing and shoe sizes, sensory and clothing needs (fabrics, tags, makeup), the show-week commitment with the dates, permission to help with trying on clothes, and video permission.</li>
+        <li><b>Announcements</b> pop up once, in large text that can be read aloud. A Notifications page keeps them all.</li>
+        <li><b>Email updates</b> from the school account, with reminders before show dates. The teacher approves every reminder before it goes.</li>
+        <li><b>Practice at home:</b> songs, the story, costumes and the calendar, only the pages the teacher opens to families.</li>
+        <li><b>Volunteer and donate</b>, including a Company dinner where each family brings part of the meal.</li>
+        <li>Families with more than one Company member see a card for each child.</li>
+      </ul>
+      <button class="btn primary" id="annDemo">🔔 Show a sample announcement</button>
+    </div>
+    <div class="device" aria-label="Sample family portal">
+      <div class="scr">
+        <div class="top purple"><span aria-hidden="true">🏠</span> Family portal <span class="sample" style="margin-left:auto">Sample</span></div>
+        <div class="body">
+          <b class="head">Needs your answer · Maya</b>
+          <div class="form-row"><span>👕 Sizes</span><span class="status sent">✓ Sent Sep 3</span></div>
+          <div class="form-row"><span>🌿 Sensory and clothing needs</span><span class="status todo">To do</span></div>
+          <div class="form-row"><span>📅 Show-week commitment</span><span class="status todo">To do</span></div>
+          <div class="form-row"><span>🎥 Rehearsal video permission</span><span class="status sent">✓ Sent Aug 30</span></div>
+          <b class="head" style="display:block;margin-top:14px">Announcements</b>
+          <div class="job" style="margin-top:6px"><b>Costume shopping trip is Wednesday</b><div class="small muted">Wear comfortable shoes. Lunch is provided.</div></div>
+          <div class="row" style="margin-top:12px"><span class="btn small">📅 Calendar</span><span class="btn small">🎵 Songs</span><span class="btn small">🙋 Volunteer</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 PRIVACY -->
+<section class="stop" id="privacy" aria-labelledby="h-privacy">
+  <div class="kicker"><span class="n">13</span>Privacy and safety</div>
+  <h2 id="h-privacy">Student information is locked before it leaves the device.</h2>
+  <div class="grid3">
+    <div class="card"><h3>🔐 Encrypted</h3><p class="small">Names, photos, notes, the script text and the tracks are encrypted on the device. The server only stores scrambled data.</p></div>
+    <div class="card"><h3>🔑 Separate passwords</h3><p class="small">One password opens the show for the cast; a separate teacher password is needed to change anything. Wrong guesses are limited.</p></div>
+    <div class="card"><h3>🎟️ Each password opens only what's chosen</h3><p class="small">Students, Mentors and parents each see only the pages the teacher picks.</p></div>
+    <div class="card"><h3>📧 No student email addresses kept</h3><p class="small">Students sign in with their school Google account. The app keeps a scrambled code to match the class list, never the address.</p></div>
+    <div class="card"><h3>👪 Parents checked by Google</h3><p class="small">The server checks a parent's Google sign-in before family pages open. Contact details sit in the teacher's locked records.</p></div>
+    <div class="card"><h3>🚫 No ads, no tracking</h3><p class="small">The only data collected is anonymous counts of which pages are used. Students and parents can't message each other.</p></div>
+    <div class="card"><h3>📸 Photos and video</h3><p class="small">Photos wait for the teacher's OK. Dance videos are school Google Drive links shown after approval. The camera mirror never saves or sends video.</p></div>
+    <div class="card"><h3>©️ Copyright respected</h3><p class="small">The licensed script, lyrics and tracks enter the app only from the teacher's own copy and stay encrypted for this cast.</p></div>
+    <div class="card"><h3>🏫 District steps</h3><p class="small">Technology approval for the app and the Google sign-in setup are being confirmed with the district.</p></div>
+  </div>
+</section>
+
+<!-- 14 RESEARCH -->
+<section class="stop" id="research" aria-labelledby="h-research">
+  <div class="kicker"><span class="n">14</span>The research behind it</div>
+  <h2 id="h-research">Each support comes from practices with research behind them.</h2>
+  <p class="lede">The app doesn't replace teaching. It puts well-studied supports into the student's hands, every day, for their own part in the show.</p>
+  <div class="ev">
+    <div class="h">In the app</div><div class="h">The practice behind it</div>
+    <div>Today screen, weekly calendar, task cards with "done when"</div><div>Visual supports, task analysis, predictable routines<span class="src">NCAEP evidence-based practices (Steinbrenner et al., 2020)</span></div>
+    <div>Hints that fade in Practice Lines</div><div>Prompting, with prompts faded as the student succeeds<span class="src">NCAEP (2020)</span></div>
+    <div>Trying to say a line before seeing it; "Study next"; spaced review days</div><div>Retrieval practice and spaced practice<span class="src">Roediger &amp; Karpicke (2006); Cepeda et al. (2006)</span></div>
+    <div>"I did it" button, Lines for AAC, sign as an answer</div><div>Augmentative and alternative communication<span class="src">NCAEP (2020)</span></div>
+    <div>My Songs, the lit-up lines, the red X</div><div>Music-mediated intervention; visual supports<span class="src">NCAEP (2020)</span></div>
+    <div>Class dance videos, Show Me, the camera mirror</div><div>Video modeling, modeling<span class="src">NCAEP (2020)</span></div>
+    <div>Company Mentors working beside Company Artists</div><div>Peer-based instruction and intervention; theatre with peer actors<span class="src">NCAEP (2020); Corbett et al. (2016)</span></div>
+    <div>Sensory warnings in the story, sensory forms, the chime before GO, relaxed performances</div><div>Antecedent-based supports (preparing before a change)<span class="src">NCAEP (2020)</span></div>
+    <div>Practice Lines, React to That!, the app as a whole</div><div>Technology-aided instruction<span class="src">NCAEP (2020)</span></div>
+    <div>Make it fit, read aloud, many ways to answer</div><div>Universal Design for Learning<span class="src">CAST UDL Guidelines</span></div>
+    <div>Atkinson Hyperlegible and Lexend</div><div>Fonts designed for readers with low vision and for reading ease<span class="src">Braille Institute; Lexend project</span></div>
+    <div>Students perform, design, build and respond to a full production</div><div>Theatre standards: creating, performing, responding, connecting<span class="src">National Core Arts Standards</span></div>
+  </div>
+  <h3 style="margin-top:22px">Sources</h3>
+  <ol class="refs">
+    <li>Steinbrenner, J. R., Hume, K., Odom, S. L., et al. (2020). <i>Evidence-based practices for children, youth, and young adults with autism.</i> FPG Child Development Institute, University of North Carolina, National Clearinghouse on Autism Evidence and Practice (NCAEP) Review Team.</li>
+    <li>Corbett, B. A., Key, A. P., Qualls, L., et al. (2016). Improvement in social competence using a randomized trial of a theatre intervention for children with autism spectrum disorder. <i>Journal of Autism and Developmental Disorders, 46</i>(2), 658–672.</li>
+    <li>Roediger, H. L., &amp; Karpicke, J. D. (2006). Test-enhanced learning: Taking memory tests improves long-term retention. <i>Psychological Science, 17</i>(3), 249–255.</li>
+    <li>Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., &amp; Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. <i>Psychological Bulletin, 132</i>(3), 354–380.</li>
+    <li>CAST. <i>Universal Design for Learning Guidelines.</i> udlguidelines.cast.org</li>
+    <li>National Coalition for Core Arts Standards. <i>National Core Arts Standards: Theatre.</i> nationalartsstandards.org</li>
+    <li>Braille Institute of America. <i>Atkinson Hyperlegible</i> typeface. Lexend: lexend.com</li>
+  </ol>
+</section>
+
+<!-- 15 NEXT -->
+<section class="stop" id="next" aria-labelledby="h-next">
+  <div class="kicker"><span class="n">15</span>Where it stands</div>
+  <h2 id="h-next">Built, tested with the real show, and ready for the first day of school.</h2>
+  <div class="two">
+    <div class="card">
+      <h3>✅ Working now</h3>
+      <p class="small">Everything on this tour: schedules and the semester planner, the real script with highlights, Practice Lines, My Songs with lit-up sheet music and the red X, React to That!, auditions and casting, the stage manager's script, mic plot, Mastery and Progress, the family portal, emails and announcements, and the curtain call. It has been tested with test students and with the real script and tracks.</p>
+      <p class="small"><b>First class day:</b> August 16, 2027. <b>First show:</b> December 2027.</p>
+    </div>
+    <div class="card">
+      <h3>🔜 Still to finish</h3>
+      <ul class="small" style="padding-left:1.2em;margin:.3em 0">
+        <li>Timing the lyrics for every song (in progress).</li>
+        <li>Training materials for Company Mentors.</li>
+        <li>A projector mode with lines and lyrics in large type for performances.</li>
+        <li>Trying it on the students' own devices (microphone, voices).</li>
+        <li>A quick way to set up next semester's musical.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px"><a class="btn primary" href="#top">↑ Back to the top</a><a class="btn" href="#lines">Try Practice Lines again</a></div>
+</section>
+</main>
+
+<footer>
+  <p><b>Adaptive Theatre</b> · asl.cool/theatre</p>
+  <p>Every student, line and song on this tour is made up for the tour. No real student information is shown. The licensed show's script, lyrics, music and pages are not shown here: in the app they come only from the teacher's own licensed copy.</p>
+</footer>
+
+<div class="popup-wrap" id="popup" hidden role="dialog" aria-modal="true" aria-labelledby="popH">
+  <div class="popup">
+    <span class="tag">New announcement</span>
+    <h3 id="popH">Picture day is Friday!</h3>
+    <p>Wear your Company T-shirt. We will take cast photos on the stage during class. Smiles optional, jazz hands encouraged.</p>
+    <div class="row" style="margin-top:16px"><button class="btn" id="popSay">🔊 Read it to me</button><button class="btn primary" id="popOk">Got it</button></div>
+  </div>
+</div>
+
+<script src="../js/line-check.js"></script>
+<script src="tour.js"></script>
+</body>
+</html>
