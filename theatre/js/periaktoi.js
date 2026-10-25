@@ -21,6 +21,8 @@
     if (!P.v || P.v < 2) { P = PK.fresh(); queueSave(); }      // plans from before the cafeteria update (test data only) start over
     if (P.v === 2) { PK.migrate(P); queueSave(); }      // the center lane between B and C (2026-10-25)
     if (P.practicals && P.practicals.D1 && P.practicals.D1.z === 6.5) P.practicals.D1.z = 5;
+    if (!P.turnWhenSet && P.turnWhen === 'during') P.turnWhen = 'auto';      // the new default: turn where there's room
+    if (P.practicals && !P.practicals.C3) P.practicals.C3 = JSON.parse(JSON.stringify(PK.PRACTICALS.C3));      // the real hook rail on the locker room (2026-10-25)
     if (P.practicals && P.practicals.C1 && !P.practicals.C1.show) { P.practicals.C1.h = 2; P.practicals.C1.show = 'cork'; if (P.practicals.C1.z === 5) P.practicals.C1.z = 47 / 12; }      // the real corkboard, drawn on her C1 wall      // the rim lines up with the printed target square in her D1 art
     if (cur >= P.scenes.length) cur = 0;
   }
@@ -397,7 +399,7 @@
       out.push('<p class="pk-help">' + moved.length + ' of 4 towers change · ' + Math.round(ch.total) + '° of turning · ' + PK.ft(ch.travel) + ' of travel. Fewest moves is not automatically best: the picture matters more.</p>');
       out.push('<div class="pk-row"><span>Crew of</span><div class="pk-seg">' + [2, 3, 4].map(function (n) { return '<button data-crew="' + n + '"' + (crewN === n ? ' class="on"' : '') + '>' + n + '</button>'; }).join('') + '</div></div>');
       out.push('<ul class="pk-crew">' + PK.crewJobs(P, ch, crewN).map(function (c) {
-        var jobs = c.jobs.map(function (m) { return m.t + ': ' + [m.dist ? 'roll ' + PK.ft(m.dist) : '', m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''].filter(Boolean).join(', then '); })
+        var jobs = c.jobs.map(function (m) { var r = m.dist ? 'roll ' + PK.ft(m.dist) : '', tn = m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''; return m.t + ': ' + (m.when === 'before' ? [tn, r] : m.when === 'during' && r && tn ? [r + ' while turning ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ')] : [r, tn]).filter(Boolean).join(', then '); })
           .concat(c.tjobs.map(function (m) { return P.tables[m.id].name + ': ' + (m.open ? 'bring in and unfold' : m.fold ? 'fold and take out' : 'move'); }));
         return '<li><b>' + c.name + '</b> (' + c.towers.map(function (x) { return P.tables[x] ? P.tables[x].name : x; }).join(' + ') + '): ' + (jobs.join('; ') || 'nothing this change') + '</li>';
       }).join('') + '</ul>');
@@ -631,7 +633,7 @@
       var tw = TW.map(function (t) { var q = sc.towers[t]; return { t: t, face: PK.facing(P, t, q.rot).label.replace('+', ' | '), at: PK.ft(q.x) + ', ' + PK.ft(q.y), lit: q.lit, lock: q.lock ? 'locked' : 'rolling' }; });
       var tb = PK.TABLES.map(function (id) { var q = sc.tables[id]; return { id: id, state: PK.TSTATE[q.state], at: PK.ft(q.x) + ', ' + PK.ft(q.y), zone: ((P.storage || []).find(function (z) { return z.id === q.zone; }) || {}).name || '', route: q.via && q.via.length ? 'own route' : 'automatic route', spike: q.spike || '' }; });
       var score = ch ? PK.crewJobs(P, ch, P.crew || 4).filter(function (c) { return c.jobs.length || c.tjobs.length; }).map(function (c) {
-        return c.name + ': ' + c.jobs.map(function (m) { return m.t + ' ' + [m.dist ? 'roll ' + PK.ft(m.dist) : '', m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''].filter(Boolean).join(', then '); })
+        return c.name + ': ' + c.jobs.map(function (m) { var r = m.dist ? 'roll ' + PK.ft(m.dist) : '', tn = m.turn ? 'turn ' + Math.abs(Math.round(m.turn)) + '° to ' + m.toFace.replace('+', ' | ') : ''; return m.t + ' ' + (m.when === 'before' ? [tn, r] : [r, tn]).filter(Boolean).join(', then '); })
           .concat(c.tjobs.map(function (m) { return P.tables[m.id].name + ' ' + (m.open ? 'in and unfold' : m.fold ? 'fold and out' : 'move'); })).join('; ');
       }) : [];
       return { n: i + 1, sc: sc, tw: tw, tb: tb, items: (sc.items || []).map(function (x) { return x.name; }), bad: bad, score: score, status: sc.status === 'tested' ? 'tested on stage' : 'proposed' };
@@ -682,7 +684,7 @@
       '<div class="pk-top"><button id="pkPrev" title="[">‹</button><select id="pkSel"></select><button id="pkNext" title="]">›</button>' +
       '<button id="pkPlay" class="pk-primary" title="Space">▶ Play the change</button><input type="range" id="pkScrub" min="0" max="1000" value="1000" title="Scrub through the change">' +
       '<select id="pkSpeed" title="Speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select>' +
-      '<select id="pkWhen" title="When towers turn"><option value="during">Turn while rolling</option><option value="before">Turn, then roll</option><option value="after">Roll, then turn</option></select>' +
+      '<select id="pkWhen" title="When towers turn"><option value="auto">Turn where there’s room</option><option value="during">Turn while rolling</option><option value="before">Turn, then roll</option><option value="after">Roll, then turn</option></select>' +
       '<label class="pk-chk"><input type="checkbox" id="pkLoop"> Loop</label>' +
       '<span class="pk-gap"></span><div class="pk-seg"><button data-view="over">Bird’s-eye</button><button data-view="aud">Audience</button><button data-view="crew">Crew</button><button data-view="split">All three</button><button data-view="ledger">Ledger</button></div>' +
       '<select id="pkZoom" title="Audience and crew views"><option value="towers">Front views: the towers</option><option value="stage">Front views: the whole stage</option></select>' +
@@ -699,7 +701,7 @@
     $('pkPlay').onclick = play;
     $('pkScrub').oninput = function () { if (!cur) return; if (!anim) { var ch = PK.change(P, P.scenes[cur - 1], scene()); anim = { from: cur - 1, to: cur, ch: ch, u: 0, playing: false, dur: duration(ch), last: 0 }; } anim.playing = false; anim.u = this.value / 1000; setPlayBtn(); drawViews(); };
     $('pkSpeed').onchange = function () { V.speed = +this.value; };
-    $('pkWhen').value = P.turnWhen || 'during'; $('pkWhen').onchange = function () { snap(); P.turnWhen = this.value; stop(); changed(); };
+    $('pkWhen').value = P.turnWhen || 'auto'; $('pkWhen').onchange = function () { snap(); P.turnWhen = this.value; P.turnWhenSet = true; stop(); changed(); };
     $('pkZoom').value = V.zoom; $('pkZoom').onchange = function () { V.zoom = this.value; drawViews(); };
     $('pkLoop').onchange = function () { V.loop = this.checked; };
     app.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { V.view = b.dataset.view; rebuild(); }; });

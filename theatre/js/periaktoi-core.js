@@ -24,6 +24,7 @@
     A1: { name: 'Sharpay’s working locker door', u: 0.5, w: 1, d: 0.1, z: 4 },
     B1: { name: 'Working classroom door (36″ × 80″)', u: 0.5, w: 3, d: 0.1, z: 3.33 },
     C1: { name: 'Framed corkboard 36″ × 24″', u: 0.5, w: 3, h: 2, d: 0.15, z: 47 / 12, show: 'cork' },      // under the WILDCAT NEWS sign in her C1 art (board 35″–59″ off the floor; adjust after blocking)
+    C3: { name: 'Hook rail with towel and jersey (real, added to the wall)', u: 0.075, w: 0.6, h: 2.5, d: 0.35, z: 4 },      // left edge of her locker-room art; the vinyl has no hooks (Colleen 2026-10-25)
     D1: { name: 'Real 18″ basketball rim (backboard printed)', u: 0.5, w: 1.5, d: 2, z: 5, rim: true }      // z: under the target square in her D1 art (about 5 ft)
   };
   var PROTRUDE = {}; Object.keys(PRACTICALS).forEach(function (k) { PROTRUDE[k] = PRACTICALS[k].name; });
@@ -270,12 +271,19 @@
       var order = to.tableOrder || 'T1', span = order === 'together' ? [0, 1] : (order === id ? [0, 0.5] : [0.5, 1]);
       tmoves.push({ id: id, span: span, from: a, to: b, route: route, dist: len < 0.01 ? 0 : len, open: open, fold: fold, own: own, via: !own && route.some(function (p) { return Math.abs(p.y - towerLine(open ? to : from)) < 3 && Math.abs(p.x - gapInfo(P, open ? to : from, id).x) < 0.01; }) ? P.tables[id].gap : '' });
     });
-    var warn = [];
+    var warn = [], roomAt = function (m, when) {      // nothing inside its turning circle at that end of its trip
+      var at = m[when], sw = geom(P, m.t, at, st).sweep;
+      return at.y + sw <= st.curtain && moves.every(function (o) { return o.t === m.t || polyDist(at, geom(P, o.t, o[when], st).poly) >= sw - 1e-6; });
+    };
+    moves.forEach(function (m) {      // 'auto' (the default): turn at whichever end of the trip has room, before rolling if both do
+      var tw = P.turnWhen || 'auto';
+      m.when = !m.turn || !m.dist ? 'during' : tw !== 'auto' ? tw : roomAt(m, 'from') ? 'before' : roomAt(m, 'to') ? 'after' : 'during';
+    });
     moves.forEach(function (m) {
       if (!m.turn) return;
       ['from', 'to'].forEach(function (when) {      // where it turns: before travel (at the start) or after (at the end); 'during' is checked at both
-        if (P.turnWhen === 'before' && when === 'to' && m.dist) return;
-        if (P.turnWhen === 'after' && when === 'from' && m.dist) return;
+        if (m.when === 'before' && when === 'to' && m.dist) return;
+        if (m.when === 'after' && when === 'from' && m.dist) return;
         var at = m[when], sw = geom(P, m.t, at, st).sweep, rim = geom(P, m.t, at, st).prot.some(function (q) { return q.rim; }) ? ' (rim included)' : '';
         moves.forEach(function (o) { if (o.t === m.t) return;
           var g = geom(P, o.t, o[when], st);
@@ -318,9 +326,10 @@
   function between(P, m, u) {
     var ease = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
     var um = u, ur = u;
+    var when = m.when || P.turnWhen;
     if (m.dist && m.turn) {
-      if (P.turnWhen === 'before') { ur = u * 2; um = u * 2 - 1; }
-      else if (P.turnWhen === 'after') { um = u * 2; ur = u * 2 - 1; }
+      if (when === 'before') { ur = u * 2; um = u * 2 - 1; }
+      else if (when === 'after') { um = u * 2; ur = u * 2 - 1; }
     }
     um = ease(um); ur = ease(ur);
     return { x: m.from.x + (m.to.x - m.from.x) * um, y: m.from.y + (m.to.y - m.from.y) * um, rot: m.from.rot + m.turn * ur };
@@ -442,7 +451,7 @@
     return P;
   }
   function fresh() {      // diagram: Colleen 2026-10-25, her triangle diagram spins clockwise and 0° = face 2 flat to the audience
-    var P = { v: 3, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'during', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
+    var P = { v: 3, stage: stageDefaults(), towers: {}, crew: 4, turnWhen: 'auto', diagram: { dir: 'cw', confirmed: true }, tables: tableDefaults(), practicals: JSON.parse(JSON.stringify(PRACTICALS)) };
     TOWERS.forEach(function (t) { P.towers[t] = { wind: 'cw', confirmed: false, from: 'diagram' }; });      // her diagram (D 300° = D2+D3) implies clockwise; the real towers are not checked yet
     P.storage = storageDefaults(P.stage);
     P.spikes = spikeDefaults(P);
