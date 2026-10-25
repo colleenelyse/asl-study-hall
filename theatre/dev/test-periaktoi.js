@@ -65,4 +65,6 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   PK.lineUp(Q, sc, 'home'); sc.areas = ['left']; PK.lightTowers(Q, sc);
   ok(sc.towers.A.lit === 'full' && sc.towers.D.lit === 'dark', 'only the left area up: A is lit, D goes dark');
   sc.areas = ['allR']; PK.lightTowers(Q, sc); ok(sc.towers.D.lit === 'full' && sc.towers.C.lit === 'full' && sc.towers.A.lit === 'dark', 'all of right lights C and D'); }
+{ const Q = PK.fresh(), sc = Q.scenes[2]; PK.lineUp(Q, sc, 'home'); sc.tops = ['right']; PK.lightTowers(Q, sc);
+  ok(sc.towers.D.lit === 'full' && sc.towers.A.lit === 'dark', 'top light alone also lights the towers in its area'); }
 process.exit(bad ? 1 : 0);

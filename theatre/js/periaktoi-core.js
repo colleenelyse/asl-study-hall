@@ -590,9 +590,9 @@
     ];
   }
   function inArea(a, x, y) { var dx = (x - a.cx) / a.rx, dy = (y - a.cy) / a.ry; return dx * dx + dy * dy <= 1; }
-  function lightTowers(P, sc) {      // towers in a lit area are lit; the others go dark
-    if (!sc.areas || !sc.areas.length) return;
-    var on = (P.lights || []).filter(function (a) { return sc.areas.indexOf(a.id) >= 0; });
+  function lightTowers(P, sc) {      // towers in a lit area (face light or top light) are lit; the others go dark
+    var ids = (sc.areas || []).concat(sc.tops || []); if (!ids.length) return;
+    var on = (P.lights || []).filter(function (a) { return ids.indexOf(a.id) >= 0; });
     TOWERS.forEach(function (t) { var q = sc.towers[t], lit = on.some(function (a) { return inArea(a, q.x, q.y); }); q.lit = lit ? 'full' : 'dark'; q.role = lit ? (q.role === 'masking' ? 'featured' : q.role || 'featured') : 'masking'; });
   }
   /* face names: each show can rename its faces in the setup session */

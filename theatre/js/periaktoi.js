@@ -143,12 +143,12 @@
     var sc = scene();
     if (!anim) {
       var tb = {}; PK.TABLES.forEach(function (id) { var x = sc.tables && sc.tables[id]; if (x) tb[id] = { x: x.x, y: x.y, rot: x.rot, k: x.state === 'deployed' ? 1 : 0, label: PK.TSTATE[x.state] }; });
-      return { towers: sc.towers, tables: tb, items: sc.items || [], zones: sc.zones || [], areas: sc.areas || null, lights: P.lights || [], lit: function (t) { return LIT[sc.towers[t].lit] || 0; } };
+      return { towers: sc.towers, tables: tb, items: sc.items || [], zones: sc.zones || [], areas: sc.areas || null, tops: sc.tops || null, lights: P.lights || [], lightColors: lightColors(), lit: function (t) { return LIT[sc.towers[t].lit] || 0; } };
     }
     var a = P.scenes[anim.from], b = P.scenes[anim.to], u = anim.u, towers = {};
     anim.ch.moves.forEach(function (m) { var s = PK.between(P, m, u); towers[m.t] = s; });
     var tables = {}; anim.ch.tmoves.forEach(function (tm) { tables[tm.id] = PK.tableBetween(P, tm, u); });
-    return { towers: towers, tables: tables, items: u < 0.5 ? a.items || [] : b.items || [], zones: u < 0.5 ? a.zones || [] : b.zones || [], areas: (u < 0.5 ? a.areas : b.areas) || null, lights: P.lights || [],
+    return { towers: towers, tables: tables, items: u < 0.5 ? a.items || [] : b.items || [], zones: u < 0.5 ? a.zones || [] : b.zones || [], areas: (u < 0.5 ? a.areas : b.areas) || null, tops: (u < 0.5 ? a.tops : b.tops) || null, lights: P.lights || [], lightColors: lightColors(),
       lit: function (t) { var x = LIT[a.towers[t].lit] || 0, y = LIT[b.towers[t].lit] || 0; return x + (y - x) * u; } };
   }
 
@@ -603,9 +603,12 @@
       typed('pkSX', 'x', function () { return st0.x < 0; }); typed('pkSY', 'y', function () { return st0.y < 0; });
       app.querySelectorAll('[data-slit]').forEach(function (b) { b.onclick = function () { snap(); st0.lit = b.dataset.slit; changed(); }; });
     }
-    app.querySelectorAll('[data-larea]').forEach(function (b) { b.onclick = function () { stop(); snap(); var id = b.dataset.larea;
-      if (!id) delete sc.areas; else { var a = (sc.areas || []).filter(function (x) { return x !== id; }); if (a.length === (sc.areas || []).length) a.push(id); if (a.length) sc.areas = a; else delete sc.areas; }
+    app.querySelectorAll('[data-larea]').forEach(function (b) { b.onclick = function () { stop(); snap(); var v = b.dataset.larea;
+      if (!v) { delete sc.areas; delete sc.tops; }
+      else { var q = v.split('|'), key = q[0] === 'top' ? 'tops' : 'areas', id = q[1], a = (sc[key] || []).filter(function (x) { return x !== id; }); if (a.length === (sc[key] || []).length) a.push(id); if (a.length) sc[key] = a; else delete sc[key]; }
       PK.lightTowers(P, sc); changed(); }; });
+    app.querySelectorAll('[data-ltopsame]').forEach(function (b) { b.onclick = function () { stop(); snap(); sc.tops = (sc.areas || []).slice(); PK.lightTowers(P, sc); changed(); }; });
+    if ($('pkLights')) $('pkLights').onclick = lightsDialog;
     app.querySelectorAll('[data-lineup]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.lineUp(P, sc, b.dataset.lineup); PK.lightTowers(P, sc); changed(); }; });
     if (sel && TW.indexOf(sel) >= 0) {
       app.querySelectorAll('[data-touch]').forEach(function (b) { b.onclick = function () { stop(); snap(); PK.touchNext(P, sc, sel, +b.dataset.touch); changed(); }; });
@@ -856,10 +859,44 @@
   /* ---------- the setup session (Colleen 2026-10-25): ground the show once (stage, faces, home bases, line-ups, scenes),
      then plan every scene from scratch, then let the planner work out the moves ---------- */
   var SETUP = ['The stage', 'The faces', 'Home bases', 'Line-ups', 'Lighting areas', 'Scenes', 'Plan the show'];
-  function areaRow(sc) {      // which lighting areas are up in this scene
-    var on = sc.areas || [];
-    return '<div class="pk-row pk-areas"><span>Lights:</span><button data-larea=""' + (on.length ? '' : ' class="on"') + ' title="No areas chosen: everything is lit">General</button>' +
-      (P.lights || []).map(function (a) { return '<button data-larea="' + esc(a.id) + '"' + (on.indexOf(a.id) >= 0 ? ' class="on"' : '') + '>' + esc(a.name) + '</button>'; }).join('') + '</div>';
+  function areaRow(sc) {      // which lighting areas are up in this scene: face light (far catwalk) and top light (near catwalk)
+    var face = sc.areas || [], top = sc.tops || [], none = !face.length && !top.length;
+    var row = function (k, on, lab) { return '<div class="pk-row pk-areas pk-l' + k + '"><span>' + lab + '</span>' + (P.lights || []).map(function (a) { return '<button data-larea="' + k + '|' + esc(a.id) + '"' + (on.indexOf(a.id) >= 0 ? ' class="on"' : '') + '>' + esc(a.name) + '</button>'; }).join('') + '</div>'; };
+    return '<div class="pk-lightrows"><div class="pk-row"><b>Lights</b><button data-larea=""' + (none ? ' class="on"' : '') + ' title="No areas chosen: everything is lit">General</button>' + (face.length ? '<button data-ltopsame="1" title="Top light in the same areas as the face light">Top = same as face</button>' : '') + '<span class="pk-gap"></span><button id="pkLights" class="pk-mini">💡 Cue sheet and checklist</button></div>' +
+      row('face', face, 'Face:') + row('top', top, 'Top:') + '</div>';
+  }
+  function lightColors() { return Object.assign({ face: '#fff1dc', top: '#b7a4ff' }, P.lightColors || {}); }
+  var LIGHT_STEPS = [      // her plan (2026-10-25): change the house plot as little as possible, program ahead, drop the near catwalk only right before performances
+    ['save', 'Save the house board file as a backup, then start a separate show file (never overwrite the house file).'],
+    ['groups', 'Build groups: Face Left, Center, Right, SR side, SL side (far catwalk); Top Left, Center, Right, SR side, SL side (near catwalk); then All of left, All of right and Full.'],
+    ['palettes', 'Build color palettes (Face white, Top colors) and point every cue at a palette, not raw color numbers.'],
+    ['white', 'Check the face white on a student standing on the apron (not on the wall). Fix the palette if skin looks off.'],
+    ['cues', 'Program the cues from the cue sheet, at the house focus.'],
+    ['record', 'Before the drop: record the house focus of the near-catwalk fixtures (a photo of each pool from the deck, tape marks on the yokes).'],
+    ['drop', 'Right before performances: drop the near-catwalk fixtures straight down over the areas.'],
+    ['shutter', 'Check the far-catwalk pools on the apron; cut them off the grand above about 8 ft so the towers don’t throw shadows on the blue.'],
+    ['levels', 'Level-setting session: adjust levels in every cue (top light is much brighter straight down). Cues stay; only levels change.'],
+    ['restore', 'After closing: put the near-catwalk focus back from the photos and tape marks, and reload the house board file.']
+  ];
+  function cueRows() {
+    var nm = function (ids) { return (P.lights || []).filter(function (a) { return (ids || []).indexOf(a.id) >= 0; }).map(function (a) { return a.name; }).join(', '); };
+    return P.scenes.map(function (sc, i) { var g = !(sc.areas || []).length && !(sc.tops || []).length;
+      return { n: label(i), name: sc.name, face: g ? 'General (everything)' : nm(sc.areas) || '—', top: g ? 'General' : nm(sc.tops) || '—', lit: TW.filter(function (t) { return sc.towers[t].lit !== 'dark'; }).join(' ') || 'none', cue: sc.cue || '', notes: sc.notes || '' }; });
+  }
+  function lightsDialog() {
+    var rows = cueRows(), chk = P.lightCheck || {};
+    var table = '<table class="pk-cues"><tr><th>Scene</th><th>Face light (far catwalk)</th><th>Top light (near catwalk)</th><th>Towers lit</th></tr>' + rows.map(function (r) { return '<tr><td><b>' + esc(r.n) + '</b> ' + esc(r.name) + (r.cue ? '<br><small>At: ' + esc(r.cue) + '</small>' : '') + '</td><td>' + esc(r.face) + '</td><td>' + esc(r.top) + '</td><td>' + esc(r.lit) + '</td></tr>'; }).join('') + '</table>';
+    var list = '<ul class="pk-check">' + LIGHT_STEPS.map(function (q) { return '<li><label><input type="checkbox" data-lchk="' + q[0] + '"' + (chk[q[0]] ? ' checked' : '') + '> ' + esc(q[1]) + (chk[q[0]] ? ' <small class="muted">(done ' + esc(chk[q[0]]) + ')</small>' : '') + '</label></li>'; }).join('') + '</ul>';
+    T.dialog('<h2>Light cue sheet</h2><p class="muted small">For each scene: the areas in face light and in top light. Build your cues from these groups; they still work after the near catwalk drops (only levels change).</p>' + table +
+      '<div class="row"><button class="btn" id="lcPrint">Print the cue sheet</button></div><h2>Before the first audience</h2>' + list +
+      '<div class="row" style="margin-top:12px"><button class="btn primary" id="lcOk">Done</button></div>', function (d) {
+      d.querySelector('#lcOk').onclick = function () { d.close(); };
+      d.querySelectorAll('[data-lchk]').forEach(function (c) { c.onchange = function () { P.lightCheck = P.lightCheck || {}; if (c.checked) P.lightCheck[c.dataset.lchk] = new Date().toLocaleDateString(); else delete P.lightCheck[c.dataset.lchk]; P.stamp = Date.now(); try { localStorage.setItem(LS, JSON.stringify(P)); } catch (e) {} queueSave(); }; });
+      d.querySelector('#lcPrint').onclick = function () {
+        var w = window.open('', '_blank'); if (!w) { T.toast('Allow pop-ups to print'); return; }
+        w.document.write('<!doctype html><meta charset="utf-8"><title>Light cue sheet</title><style>body{font:13px sans-serif;margin:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top}th{background:#eee}small{color:#555}</style><h1>Light cue sheet</h1>' + table + '<h2>Before the first audience</h2><ol>' + LIGHT_STEPS.map(function (q) { return '<li>' + esc(q[1]) + '</li>'; }).join('') + '</ol>');
+        w.document.close(); w.focus(); w.print(); };
+    });
   }
   function miniMap(towers, w, areas) {      // a small bird's-eye picture: the curtain line and the four towers
     var s = st(), wide = areas && areas.length ? s.sideDeck : 0, x0 = -s.prosc / 2 - 1 - wide, x1 = s.prosc / 2 + 1 + wide, y0 = areas && areas.length ? -(s.apron + 1) : -6, y1 = s.curtain + 1.5;
@@ -909,7 +946,8 @@
         out.push('<div class="pk-setup-area"><input data-aname="' + i + '" value="' + esc(a.name) + '">' +
           [['cx', 'Center across (− = stage right)'], ['cy', 'Center up/downstage of PL'], ['rx', 'Half its width'], ['ry', 'Half its depth']].map(function (f) { return '<label class="pk-f">' + f[1] + '<input data-anum="' + i + '|' + f[0] + '" value="' + PK.ft(a[f[0]]) + '"></label>'; }).join('') +
           '<button data-adel="' + i + '" class="pk-mini">Remove</button></div>'); });
-      out.push('<p><button id="suAAdd">+ Lighting area</button></p>');
+      var lc = lightColors();
+      out.push('<p><button id="suAAdd">+ Lighting area</button></p><h3>Colors in the 3D view</h3><div class="pk-row"><label class="pk-chk">Face light (far catwalk) <input type="color" data-lcol="face" value="' + lc.face + '"></label><label class="pk-chk">Top light (near catwalk) <input type="color" data-lcol="top" value="' + lc.top + '"></label><span class="pk-gap"></span><button id="suCues">💡 Cue sheet and checklist</button></div>');
     } else if (k === 5) {
       out.push('<h2>Scenes</h2><p class="pk-help">In show order. A <b>part</b> uses the same set as the scene before it, with its own lighting (like 1a and 1b).</p><table class="pk-setup-scenes">');
       P.scenes.forEach(function (sc, i) {
@@ -955,6 +993,8 @@
     app.querySelectorAll('[data-aname]').forEach(function (i) { i.onchange = function () { snap(); P.lights[+i.dataset.aname].name = i.value.trim() || 'Area'; again(); }; });
     app.querySelectorAll('[data-anum]').forEach(function (i) { i.onchange = function () { var q = i.dataset.anum.split('|'), v = PK.parseFt(i.value); if (v == null || (q[1].charAt(0) === 'r' && v <= 0)) return setupPage(); snap(); var a = P.lights[+q[0]]; a[q[1]] = v; delete a.drawn; P.scenes.forEach(function (sc) { PK.lightTowers(P, sc); }); again(); }; });
     app.querySelectorAll('[data-adel]').forEach(function (b) { b.onclick = function () { snap(); var gone = P.lights.splice(+b.dataset.adel, 1)[0]; P.scenes.forEach(function (sc) { if (sc.areas) { sc.areas = sc.areas.filter(function (x) { return x !== gone.id; }); PK.lightTowers(P, sc); } }); again(); }; });
+    app.querySelectorAll('[data-lcol]').forEach(function (c) { c.onchange = function () { snap(); P.lightColors = P.lightColors || {}; P.lightColors[c.dataset.lcol] = c.value; again(); }; });
+    if ($('suCues')) $('suCues').onclick = lightsDialog;
     if ($('suAAdd')) $('suAAdd').onclick = function () { snap(); P.lights.push({ id: 'a' + Date.now().toString(36), name: 'New area', cx: 0, cy: -8, rx: 6, ry: 6 }); again(); };
     if ($('suLAdd')) $('suLAdd').onclick = function () { snap(); P.lineups.push({ id: 'l' + Date.now().toString(36), name: 'New line-up', group: ['B', 'C'], at: 'center', rest: 'home' }); again(); };
     app.querySelectorAll('[data-scname]').forEach(function (i) { i.onchange = function () { snap(); P.scenes[+i.dataset.scname].name = i.value.trim() || P.scenes[+i.dataset.scname].name; again(); }; });

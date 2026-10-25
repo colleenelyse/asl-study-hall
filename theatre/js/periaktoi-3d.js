@@ -221,12 +221,15 @@
     W.nye.material.emissive = new T3.Color(sh.zones.indexOf('nye') >= 0 ? 0x333344 : 0x000000); W.nye.visible = sh.zones.indexOf('nye') >= 0;
     W.hort.visible = sh.zones.indexOf('hort') >= 0;
     var on = sh.areas && sh.areas.length ? sh.areas : null;      // lighting areas: the chosen pools glow, the general wash dims
-    (W.foh || []).forEach(function (sp) { sp.intensity = on ? 0.55 : 1.45; });
     Object.keys(W.pools).forEach(function (k3) { W.pools[k3].visible = false; });
+    var tops = sh.tops && sh.tops.length ? sh.tops : null, any = on || tops, lc = sh.lightColors || { face: '#fff1dc', top: '#b7a4ff' };
+    (W.foh || []).forEach(function (sp) { sp.intensity = any ? 0.55 : 1.45; });
     (sh.lights || []).forEach(function (a) {
-      var m = W.pools[a.id]; if (!m) { m = W.pools[a.id] = new T3.Mesh(new T3.CircleGeometry(1, 64), new T3.MeshBasicMaterial({ map: poolTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; W.scene.add(m); }
-      var lit = !!on && on.indexOf(a.id) >= 0; m.visible = lit || !!ctx.labels && !!on; m.material.opacity = lit ? 0.85 : 0.12;
-      m.scale.set(a.rx, a.ry, 1); m.position.set(a.cx, 0.04, -a.cy);
+      [['face', on, 1, 0.04], ['top', tops, 0.8, 0.05]].forEach(function (L) {
+        var key = L[0] + ':' + a.id, m = W.pools[key]; if (!m) { m = W.pools[key] = new T3.Mesh(new T3.CircleGeometry(1, 64), new T3.MeshBasicMaterial({ map: poolTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; W.scene.add(m); }
+        var lit = !!L[1] && L[1].indexOf(a.id) >= 0; m.visible = lit || (L[0] === 'face' && !!ctx.labels && !!any); m.material.opacity = lit ? 0.85 : 0.12; m.material.color.set(lc[L[0]]);
+        m.scale.set(a.rx * L[2], a.ry * L[2], 1); m.position.set(a.cx, L[3], -a.cy);
+      });
     });
     W.person.visible = !!ctx.person; if (ctx.person) W.person.position.set(ctx.person.x, 0, -ctx.person.y);
   }

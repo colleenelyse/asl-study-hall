@@ -728,3 +728,9 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-setup-area .pk-f { font-size: 12px; margin: 0; } .pk-setup-area input { width: 100%; }
 .pk-areas button.on { background: #6b5a1c; color: #fff3cf; border-color: #ffd25c; }
 @media (max-width: 760px) { .pk-setup-area { grid-template-columns: 1fr 1fr; } }
+.pk-lightrows { display: flex; flex-direction: column; gap: 3px; margin: 2px 0 6px; }
+.pk-lightrows .pk-row { gap: 4px; flex-wrap: wrap; } .pk-areas > span { min-width: 3.2em; color: #cfc8e6; font-size: 13px; }
+.pk-areas button { padding: 3px 8px; font-size: 12px; }
+.pk-areas.pk-ltop button.on { background: #3d3170; color: #ece6ff; border-color: #b7a4ff; }
+.pk-cues { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0 10px; } .pk-cues td, .pk-cues th { border-bottom: 1px solid #333; padding: 4px 6px; text-align: left; vertical-align: top; }
+.pk-check { list-style: none; padding: 0; } .pk-check li { margin: 6px 0; } .pk-check input { margin-right: 6px; }

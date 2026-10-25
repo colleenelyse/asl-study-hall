@@ -688,3 +688,9 @@ Colleen: "an animated version of this run plot that shows movement around the st
 - Each scene: sc.areas (none = General, everything lit). "Lights:" row in the Simple tray, the walkthrough and the Edit scene panel. PK.lightTowers: a tower whose center is in a lit area is lit, the rest go dark (line-ups re-light too); she can still change one tower by hand.
 - 3D: lit areas are warm pools on the deck (additive textured ellipses); the front-of-house wash dims when areas are chosen.
 - Tests: 41.
+
+## 2026-10-25: face and top light, light cue sheet, before-the-first-audience checklist (her plan: house is color-changing LED; far catwalk = face light in white, near catwalk = top light in color, dropped straight down only right before performances)
+- Each scene: sc.areas = face light areas (far catwalk), sc.tops = top light areas (near catwalk). "Lights" rows: General, Top = same as face, Face:, Top:. lightTowers counts both.
+- 3D: face pools in P.lightColors.face (warm white), top pools a bit smaller in P.lightColors.top (lavender); colors set in Setup › Lighting areas.
+- 💡 Cue sheet and checklist (lightsDialog): per scene face / top areas / towers lit; Print opens a printable page. Checklist LIGHT_STEPS saved in P.lightCheck with the date: save house file, groups, palettes, check white on a student, program cues, record house focus, drop the near catwalk, shutter cuts, level session, restore after closing.
+- Tests: 42.
