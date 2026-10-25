@@ -13,7 +13,7 @@
   var sym = function (s) { return '<span class="sym" aria-hidden="true">' + s + '</span> '; };
   var W = 1920, H = 1080, FPS = 30;
   var MUXER = 'https:' + '//cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js', JSZIP = 'https:' + '//cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-  var DEF = { pos: 'bottom', size: 56, dist: 50, picW: 16, style: 'full', cueN: 4, color: '#ffffff', lead: 2, nudge: 0, names: true };
+  var DEF = { pos: 'top', size: 56, dist: 50, picW: 16, style: 'full', cueN: 4, color: '#ffffff', lead: 2, nudge: 0, names: true };
   var opt = function () { var o = T.show.captions || {}, out = {}; Object.keys(DEF).forEach(function (k) { out[k] = o[k] != null ? o[k] : DEF[k]; }); return out; };
   function load(src, name) { return window[name] ? Promise.resolve(window[name]) : new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = function () { ok(window[name]); }; s.onerror = function () { no(new Error('A helper could not load. Check the Wi-Fi.')); }; document.head.appendChild(s); }); }
 
@@ -70,9 +70,9 @@
      to deal with slightly smaller text"): 'full' = the whole line; 'cue' = only its first few words, much bigger. T.show.captions.prompt[char]. */
   function styleOf(who, o) { var ids = T.labelChars(who || '').filter(function (c) { return c !== '*'; }), p = (T.show.captions || {}).prompt || {}; return ids.length === 1 && p[ids[0]] ? p[ids[0]] : o.style; }
   function forPrompt(card, o) {
-    if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card && !card.song ? { who: card.who, name: card.pname != null ? card.pname : card.name, color: card.color, sung: card.sung, text: card.full || card.text } : card, big: 1 };
+    if (!card || card.song || styleOf(card.who, o) !== 'cue') return { card: card && !card.song ? { key: card.key, who: card.who, name: card.pname != null ? card.pname : card.name, color: card.color, sung: card.sung, text: card.full || card.text } : card, big: 1 };
     var w = (card.full || card.text).replace(/^♪\s*|\s*♪$/g, '').split(' '), short = w.slice(0, o.cueN).join(' ') + (w.length > o.cueN ? ' …' : '');
-    return { card: { who: card.who, name: card.pname || card.name, color: card.color, text: (card.sung ? '♪ ' : '') + short }, big: 1.55 };
+    return { card: { key: card.key, who: card.who, name: card.pname || card.name, color: card.color, text: (card.sung ? '♪ ' : '') + short }, big: 1.55 };
   }
   /* the performer view looks like the practice app (Colleen 2026-10-24: "the interface that the students use as their teleprompter should look
      like what they were used to seeing in the practice app … borrowing colors of characters in pastels"; "match color and font but prioritize
@@ -88,7 +88,7 @@
      glide up (SCROLL seconds) as each new line comes. A state is { cur, nexts: [..] } of cards. The line just said does not stay:
      "the just said spot should be off the top of the screen very quickly", so it leaves upward in the first half of the scroll. */
   var SCROLL = 0.45, M0 = 36;
-  var keyOf = function (card) { return card ? (card.who || '') + '|' + (card.full || card.text) : ''; };
+  var keyOf = function (card) { return card ? card.key || (card.who || '') + '|' + (card.full || card.text) : ''; };
   function measure(c, card, w, px) {
     var name = String(card.name || '').replace(/:$/, ''), pad = Math.round(px * 0.35), stripe = Math.max(12, Math.round(px * 0.16)), namePx = Math.max(24, Math.round(px * 0.42)), hName = name ? namePx * 1.45 : 0, lh = px * 1.18;
     c.font = '700 ' + px + 'px "Atkinson Hyperlegible", Arial, sans-serif';
@@ -140,7 +140,7 @@
       out.push({ key: b.key, card: b.card, x: b.x, w: b.w, color: b.color, y: lerp(a.y, b.y), px: Math.round(lerp(a.px, b.px)), alpha: lerp(a.alpha, b.alpha), ring: lerp(a.ring, b.ring) });
     });
     var fast = Math.min(1, e * 2);      // the line just said is gone in the first half
-    A.forEach(function (a) { if (!B.some(function (b) { return b.key === a.key; })) { var h = measure(cxP, a.card, a.w, a.px).h; out.push({ key: a.key, card: a.card, x: a.x, w: a.w, color: a.color, y: a.y - (a.y + h + 20) * fast, px: a.px, alpha: a.alpha * (1 - fast * 0.5), ring: a.ring * (1 - fast) }); } });
+    A.forEach(function (a) { if (!B.some(function (b) { return b.key === a.key; })) { var h = measure(cxP, a.card, a.w, a.px).h; out.unshift({ key: a.key, card: a.card, x: a.x, w: a.w, color: a.color, y: a.y - (a.y + h + 20) * fast, px: a.px, alpha: a.alpha * (1 - fast * 0.5), ring: a.ring * (1 - fast) }); } });
     drawItems(out);
   }
   var ease = function (x) { return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
@@ -148,8 +148,8 @@
   function perfAt(segs, t, o) {
     var j = -1; for (var i = 0; i < segs.length; i++) if (segs[i].a <= t && t < segs[i].b) { j = i; break; }
     if (j < 0) return { key: 'none', draw: function () { drawPerformer(null, o); } };
-    var into = t - segs[j].a;
-    if (j > 0 && into < SCROLL) { var e = ease(into / SCROLL); return { key: j + ':' + Math.round(e * 60), draw: function () { drawScroll(segs[j - 1].state, segs[j].state, e, o); } }; }
+    var into = t - segs[j].a, dur = Math.min(SCROLL, (segs[j].b - segs[j].a) * 0.8);      // fast lines: a quicker scroll
+    if (j > 0 && into < dur) { var e = ease(into / dur); return { key: j + ':' + Math.round(e * 60), draw: function () { drawScroll(segs[j - 1].state, segs[j].state, e, o); } }; }
     return { key: String(j), draw: function () { drawPerformer(segs[j].state, o); } };
   }
   /* the fonts must be loaded before the canvas can draw with them */
@@ -205,13 +205,24 @@
     segs.forEach(function (s) { s.a += nud; s.b += nud; });
     if (!performer) return segs;
     /* the performer's view: one step per line (not per audience caption), `lead` seconds early, held until the next line comes */
-    var lead = +o.lead || 0, D = [];
+    /* every line moves into the lit-up spot the same `lead` seconds before it is sung (Colleen 2026-10-24: "a line should scroll up on the
+       student screen a uniform moment before it's sung"); before the first line, and in a long break, the lit-up card is "♪ Music ♪", so no
+       line is lit up through the intro ("the first number just has the first line highlighted for the whole intro") */
+    var lead = +o.lead || 0, D = [], out = [], nMusic = 0;
     segs.forEach(function (s) { var d = D[D.length - 1]; if (d && keyOf(d.card) === keyOf(s.card)) d.end = s.b; else D.push({ card: s.card, a: s.a, end: s.b }); });
-    var lastA = -1;
-    return D.map(function (d, j) {
-      var a = j ? Math.max(lastA + SCROLL + 0.1, d.a - lead) : 0; lastA = a;
-      return { a: a, card: d.card, state: { cur: d.card, nexts: [D[j + 1] && D[j + 1].card, D[j + 2] && D[j + 2].card] }, end: d.end };
-    }).map(function (x, j, arr) { x.b = arr[j + 1] ? arr[j + 1].a : x.end + 2; return x; });
+    var music = function () { var k = ++nMusic; return { who: '', name: '', text: '♪ Music ♪', full: '♪ Music ♪', key: 'music ' + k }; };
+    var up = function (j) { return [D[j] && D[j].card, D[j + 1] && D[j + 1].card].filter(Boolean); };
+    var startOf = function (j) { return Math.max(0, D[j].a - lead); };
+    if (D.length && startOf(0) > 0.3) out.push({ a: 0, card: null, state: { cur: music(), nexts: up(0) } });
+    D.forEach(function (d, j) {
+      var a = startOf(j), prevA = out.length ? out[out.length - 1].a : -1;
+      if (a <= prevA) a = prevA + 0.05;      // two lines at the same moment: one after the other
+      out.push({ a: a, card: d.card, state: { cur: d.card, nexts: up(j + 1) } });
+      var nextA = D[j + 1] ? startOf(j + 1) : null;
+      if (nextA != null && nextA - (d.end + 0.6) > 4) out.push({ a: d.end + 0.6, card: null, state: { cur: music(), nexts: up(j + 1) } });      // a long break in the singing
+    });
+    out.forEach(function (x, j) { x.b = out[j + 1] ? out[j + 1].a : (D.length ? D[D.length - 1].end + 2 : 3); });
+    return out;
   }
   var at = function (segs, t) { for (var i = 0; i < segs.length; i++) if (segs[i].a <= t && t < segs[i].b) return segs[i]; return null; };
 
@@ -438,7 +449,7 @@
     app.innerHTML = '<div class="card"><h2>' + sym('💬') + 'Open captions</h2><p class="muted">Captions for QLab: a video for each song (timed from Lyrics timing) and a picture for each spoken line (your caption operator GOes on each one). Two versions of everything: the <b>audience strip</b> for the screen above the stage, and the <b>performer view</b> for the back wall, which shows each line early with the next one below it.</p>' +
       '<p><b>' + cues.length + ' cues</b>: ' + songs.length + ' song videos and ' + stills.length + ' stills.' + (untimed.length ? ' <span class="err">' + untimed.length + ' songs have no Lyrics timing yet, so their lines are stills you cue by hand' + '</span> (' + untimed.slice(0, 4).map(function (s) { return '#' + s.num; }).join(', ') + (untimed.length > 4 ? '…' : '') + ').' : '') + '</p></div>' +
       '<div class="card"><h3>How they look</h3><div class="row" style="flex-wrap:wrap">' +
-      '<label class="f">Audience strip' + sel('cpos', o.pos, [['bottom', 'At the bottom of the picture'], ['top', 'At the top'], ['middle', 'In the middle']]) + '</label>' +
+      '<label class="f">Audience strip' + sel('cpos', o.pos, [['top', 'At the top of the picture'], ['bottom', 'At the bottom'], ['middle', 'In the middle']]) + '</label>' +
       '<label class="f">Letter size <span class="muted small">(1080p pixels)</span><input id="csize" type="number" min="24" max="140" step="2" value="' + o.size + '" style="width:90px"></label>' +
       '<label class="f">Color' + sel('ccol', o.color, [['#ffffff', 'White'], ['#fff3a8', 'Pale yellow']]) + '</label>' +
       '<label class="f">Performer view, early by' + sel('clead', o.lead, [[1, '1 second'], [2, '2 seconds'], [3, '3 seconds'], [4, '4 seconds']]) + '</label>' +
