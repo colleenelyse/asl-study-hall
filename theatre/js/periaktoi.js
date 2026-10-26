@@ -270,6 +270,24 @@
   }
 
   /* ---------- audience and crew views (canvas, simple perspective from the same data) ---------- */
+  /* drag a tower on the 3D stage: it snaps to its home base, and tips-together onto a neighbor (Colleen 2026-10-25) */
+  var dragSnap = false;
+  function towerDrag(t, p) {
+    if (anim) return null;
+    var sc = scene(), q = sc.towers[t];
+    if (p === null) return { x: q.x, y: q.y };      // the grab: where the tower stands
+    if (p === 'end') { dragSnap = false; PK.lightTowers(P, sc); changed(); return null; }
+    if (!dragSnap) { snap(); dragSnap = true; sel = t; }
+    var H = P.home && P.home[t], i = TW.indexOf(t), x = Math.round(p.x * 12) / 12, y = Math.round(p.y * 12) / 12;      // to the inch, unless it snaps
+    if (H && Math.hypot(x - H.x, y - H.y) < 0.9) { x = H.x; y = H.y; }      // home
+    else [-1, 1].forEach(function (d) {      // the neighbor on each side: close, or pushed past it → points touching, never overlapping
+      var o = TW[i + d]; if (!o) return; var n = sc.towers[o], level = Math.abs(y - n.y) < 0.9, yy = level ? n.y : y, tx = PK.touchX(P, { x: x, y: yy, rot: q.rot }, n, -d);
+      var past = d > 0 ? x > tx - (level ? 0.75 : 0) : x < tx + (level ? 0.75 : 0);
+      if (past && (level || PK.polysOverlap(PK.geom(P, t, { x: x, y: yy, rot: q.rot }, st()).poly, PK.geom(P, o, n, st()).poly))) { x = tx; y = yy; } });
+    q.x = x; q.y = y;
+    PK.lightTowers(P, sc); drawViews();
+    return null;
+  }
   function front(cv, crew) {
     if (!cv) return;
     var host = cv.parentNode, real = V.proj === 'real' && window.PK3D && !V.no3d;
@@ -280,7 +298,7 @@
           var r = cv.getBoundingClientRect(), tp = document.getElementById('pkRight'), bt = document.getElementById('pkBottom'), a = tp ? tp.getBoundingClientRect().bottom : r.top, b = bt ? bt.getBoundingClientRect().top : r.bottom;
           return { top: Math.max(0, a - r.top), bottom: Math.min(r.height, b - r.top) }; } : null, P: P, PK: PK, sh: shown(), crew: crew, labels: V.labels, COL: COL, scene: scene(), overlaysOn: true, person: V.person ? { x: 0, y: personY(), h: st().person || 5.75 } : null, halfW: V.zoom === 'stage' ? c0 + st().sideDeck + 1 : Math.max(14, reach0 + PK.R(st()) + 1),
         artImg: function (id) { return art(id).img; }, redraw: function () { drawViews(); }, sel: sel,
-        onPick: function (t) { if (anim) return; sel = t; draw(); }, fallback: function () { V.no3d = true; drawViews(); } });
+        onPick: function (t) { if (anim) return; sel = t; draw(); }, onTowerDrag: crew ? null : towerDrag, fallback: function () { V.no3d = true; drawViews(); } });
       return;
     }
     var s = st(), sh = shown(), W = cv.clientWidth * (window.devicePixelRatio || 1); if (!W) return;
@@ -502,14 +520,40 @@
     return '<div class="pk-simple-tower" style="border-color:' + COL[t] + '"><div class="pk-row"><h3 style="color:' + COL[t] + ';margin:0">Tower ' + t + '</h3><span class="pk-help small">Click a picture to turn that face to the audience.</span><span class="pk-gap"></span>' + doorButton(t) + '<button id="pkSClose">Done</button></div>' +
       faceButtons(t) + whereRows(t, '<span class="pk-sep"></span><span>Light:</span>' + seg('lit', ['full', 'low', 'dark'], ['Full', 'Low', 'Dark']) + '<span class="pk-gap"></span><button id="pkSUndo"' + (undo.length ? '' : ' disabled') + '>↶ Undo</button>') + '</div>';
   }
+  function cueState(sc) { return JSON.stringify({ towers: sc.towers, areas: sc.areas || [], tops: sc.tops || [], doorOpen: sc.doorOpen || [] }); }
+  function cueBase() {      // what this cue looked like when she came to it (or last recorded it)
+    var sc = scene(), key = sc.id + '#' + cur;
+    if (V.baseKey !== key) { V.baseKey = key; V.base = JSON.parse(cueState(sc)); }
+    return V.base;
+  }
+  function cueDirty() { return cueState(scene()) !== JSON.stringify(cueBase()); }
+  function recordCue() {
+    stop(); var before = cueBase(); snap();
+    var r = PK.recordCue(P, cur, before); V.base = JSON.parse(cueState(scene()));
+    changed();
+    T.toast('Recorded cue ' + label(cur) + (r.reach ? '. Carried into the next ' + r.reach + ' cue' + (r.reach === 1 ? '' : 's') : '') + '. Moves worked out.');
+  }
+  function newCue() {
+    stop(); snap(); var sc = scene(), c = JSON.parse(JSON.stringify(sc));
+    c.id = 's' + Date.now().toString(36); c.name = 'New cue'; c.notes = ''; delete c.same; delete c.sub; delete c.moment; delete c.cue; delete c.planned;
+    if (V.base) { var b = V.base; sc.towers = JSON.parse(JSON.stringify(b.towers)); ['areas', 'tops', 'doorOpen'].forEach(function (k) { if (b[k] && b[k].length) sc[k] = b[k].slice(); else delete sc[k]; }); }      // this cue stays as it was; what's on stage now becomes the new cue
+    P.scenes.splice(cur + 1, 0, c); cur++; sel = null; V.baseKey = null; changed();
+    T.dialog('<h2>Name the new cue</h2><label class="f">Name<input id="ncName" value="New cue"></label><div class="row" style="margin-top:12px"><button class="btn primary" id="ncOk">OK</button></div>', function (d) {
+      var i = d.querySelector('#ncName'); i.select();
+      var ok = function () { c.name = i.value.trim() || 'New cue'; d.close(); changed(); };
+      d.querySelector('#ncOk').onclick = ok; i.onkeydown = function (e) { if (e.key === 'Enter') ok(); };
+    });
+  }
   function plainPanel(ch, checks) {
     if (V.walk) return walkPanel(ch, checks);
     var sc = scene(), out = [], side = [], bad = checks.concat(ch ? ch.warn : []).filter(function (m) { return m.lv === 'bad'; }).length, total = P.scenes.length;
-    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>' + (cur + 1) + ' of ' + total + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + ((x.doorOpen || []).length ? ' 🚪' : '') + '</option>'; }).join('') + '</select></div>' +
-      '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + '>▶ Play the change</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
-      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSTurns" title="Dark towers turn and slide right away to what they need next">⟲ Set up ahead</button><button id="pkSSetup" title="Set up the show: faces, home bases, line-ups, scenes; then plan scene by scene">🧭 Setup</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
+    var dirty = cueDirty();
+    side.push('<div class="pk-stepbar"><button id="pkSPrev"' + (cur ? '' : ' disabled') + '>‹ Previous</button><div class="pk-stepname"><small>Cue ' + (cur + 1) + ' of ' + total + (dirty ? ' · <b class="pk-dirty">changed, not recorded</b>' : '') + '</small><select id="pkSSel" aria-label="Scene">' + P.scenes.map(function (x, i) { return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(label(i) + '. ' + x.name) + ((x.doorOpen || []).length ? ' 🚪' : '') + '</option>'; }).join('') + '</select></div>' +
+      '<button id="pkSRec" class="pk-rec' + (dirty ? ' hot' : '') + '" title="Keep this cue and carry the changes into the following cues, until a cue that sets them differently; then the planner works out the moves">● Record</button><button id="pkSNew" title="A new cue right after this one, starting from what is on stage now">+ New cue</button>' +
+      '<button id="pkSPlay" class="pk-primary"' + (cur ? '' : ' disabled') + ' title="Watch the change into this cue">▶ Go</button><button id="pkSNext"' + (cur < total - 1 ? '' : ' disabled') + '>Next ›</button>' +
+      '<span class="pk-seg pk-sviews">' + [['aud', 'Audience'], ['crew', 'Backstage'], ['over', 'Above']].map(function (v) { return '<button data-sview="' + v[0] + '"' + (V.view === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>'; }).join('') + '</span><button id="pkSSetup" title="Set up the show: faces, home bases, line-ups, scenes; then plan scene by scene">🧭 Setup</button><button id="pkSEdit" class="pk-mode">✎ Edit</button></div>');
     var towerOpen = sel && TW.indexOf(sel) >= 0;      // the clicked tower's controls come up from the bottom; the top stays one slim bar
-    if (!towerOpen) side.push('<p class="pk-tip">Tip: click a tower in the picture to turn it, slide it or change its light.</p>');
+    if (!towerOpen) side.push('<p class="pk-tip">Drag a tower on the stage to place it (it snaps to home and to its neighbors). Click it to change its face. Pick the lights below. Then ● Record.</p>');
     if (!towerOpen) out.push(areaRow(sc) + lineUpRow());
     if (sc.moment && sc.cue) out.push('<p class="pk-help">At: ' + esc(sc.cue) + '</p>');
     var lines = [];
@@ -527,6 +571,7 @@
       else if (m.dist && m.from.state === 'deployed') lines.push(nm + ' turns and moves' + (m.to.spike ? ' to ' + m.to.spike : '') + ' (crew only; nobody on it).'); });
     if (ch) (ch.doors || []).forEach(function (d) { lines.push('🚪 <b style="color:' + COL[d.t] + '">Crew:</b> ' + esc(PK.doorWords(d)) + '.'); });
     if (ch && !lines.length) lines.push('Nothing moves.');
+    else if (ch) { var busy = PK.crewJobs(P, ch, P.crew || 4).filter(function (c) { return c.steps; }).length; lines.push('<span class="pk-help">The change: about ' + Math.round(duration(ch)) + ' seconds, ' + busy + ' of ' + (P.crew || 4) + ' crew busy. ▶ Go to watch it.</span>'); }
     out.push('<ul class="pk-plain">' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
     out.push('<p class="pk-ready ' + (bad ? 'no' : 'yes') + '">' + (bad ? '⚠ ' + bad + ' thing' + (bad === 1 ? '' : 's') + ' to check (open ✎ Edit to see them)' : '✓ No problems found') + '</p>');
     if (sc.notes) out.push('<p class="pk-help">' + esc(sc.notes) + '</p>');
@@ -647,7 +692,8 @@
         if (b.dataset.home === 'set') { H[sel] = { x: q.x, y: q.y }; T.toast(sel + '’s home base is here now'); } else { q.x = H[sel].x; q.y = H[sel].y; } changed(); }; });
     }
     var toSetup = function () { V.setup = true; V.setupStep = V.setupStep || 0; T.teacherPages.set(true); };
-    if ($('pkSSetup')) $('pkSSetup').onclick = toSetup; if ($('pkSetup2')) $('pkSetup2').onclick = toSetup;
+    if ($('pkSSetup')) $('pkSSetup').onclick = toSetup;
+    if ($('pkSRec')) $('pkSRec').onclick = recordCue; if ($('pkSNew')) $('pkSNew').onclick = newCue; if ($('pkSetup2')) $('pkSetup2').onclick = toSetup;
     if ($('pkWPrev')) $('pkWPrev').onclick = function () { walkGo(cur - 1); };
     if ($('pkWNext')) $('pkWNext').onclick = function () { walkGo(cur + 1); };
     if ($('pkWSel')) $('pkWSel').onchange = function () { walkGo(+this.value); };
@@ -742,6 +788,7 @@
     if (k === ' ') { e.preventDefault(); play(); return; }
     if (k === 'Tab') { e.preventDefault(); sel = TW[(TW.indexOf(sel) + (e.shiftKey ? 3 : 1)) % 4] || 'A'; draw(); return; }
     if (k === 'Escape') { sel = null; draw(); return; }
+    if (k === 'R' || k === 'r' && !(sel && PK.TABLES.indexOf(sel) >= 0)) { recordCue(); return; }      // R records, like a console
     if (sel && PK.TABLES.indexOf(sel) >= 0 && k.toLowerCase() === 'r') { snap(); sc.tables[sel].rot = ((sc.tables[sel].rot || 0) + 90) % 360; changed(); return; }
     if (!sel || TW.indexOf(sel) < 0) return;
     var s = sc.towers[sel], g = st().grid * (e.shiftKey ? 4 : 1);

@@ -244,6 +244,34 @@
     return d.act === 'open' ? 'Open and brace the back of ' + d.t + ' (the ' + d.id + ' door is used in this scene)' + (d.moving ? ', after ' + d.t + ' is in place and locked' : '')      // her words: open and brace, unbrace and close
       : 'Unbrace and close the back of ' + d.t + ' (the ' + d.id + ' door is done)' + (d.moving ? ', before ' + d.t + ' moves' : '');
   }
+  /* Record (like a lighting console, Colleen 2026-10-25): what changed in cue i carries forward ("tracks") into the following cues,
+     cue by cue, until a cue that sets that thing differently. Position, facing, light and wheels track separately; so do the lit areas. */
+  var TRACK = [['x', 'y'], ['rot', 'want'], ['lit', 'role'], ['lock']];
+  function trackForward(P, i, before) {
+    var sc = P.scenes[i], same = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); }, reach = 0;
+    TOWERS.forEach(function (t) {
+      var o = before.towers[t], nw = sc.towers[t];
+      TRACK.forEach(function (keys) {
+        var pick = function (q) { return keys.map(function (k) { return q[k]; }); };
+        if (same(pick(o), pick(nw))) return;
+        for (var j = i + 1; j < P.scenes.length; j++) {
+          var q = P.scenes[j]; if (q.same && (q.same === sc.id || q.same === sc.same)) continue;      // parts on one set follow their set anyway
+          var qt = q.towers[t]; if (!same(pick(qt), pick(o))) break;      // this cue sets it differently: tracking stops here
+          keys.forEach(function (k) { qt[k] = JSON.parse(JSON.stringify(nw[k] === undefined ? null : nw[k])); }); reach = Math.max(reach, j - i);
+        }
+      });
+    });
+    ['areas', 'tops'].forEach(function (k) {
+      if (same(before[k] || [], sc[k] || [])) return;
+      for (var j = i + 1; j < P.scenes.length; j++) { var q = P.scenes[j]; if (!same(q[k] || [], before[k] || [])) break; if (sc[k] && sc[k].length) q[k] = sc[k].slice(); else delete q[k]; lightTowers(P, q); reach = Math.max(reach, j - i); }
+    });
+    applyLinks(P, sc);
+    return reach;
+  }
+  function recordCue(P, i, before) {      // track forward, then the planner's part: unused towers wait where they're needed next
+    var reach = trackForward(P, i, before), ahead = presetAhead(P);
+    return { reach: reach, ahead: ahead };
+  }
   /* a walk-through door in use (B1): its face must show, the wheels locked, and room behind the tower for actors to come and go */
   function doorChecks(P, sc, id, G, out) {
     var t = id.charAt(0), q = sc.towers[t], st = P.stage, f = facing(P, t, q.rot), g = G[t], face = g.faces.find(function (x) { return x.id === id; });
@@ -627,7 +655,7 @@
   /* the winding changed: towers that were set to show particular faces keep showing them */
   function rewind(P, t) { P.scenes.forEach(function (sc) { var s = sc.towers[t]; if (s.want) s.rot = rotFor(P, t, s.want).rot; }); }
 
-  var PK = { doorWords: doorWords, doorChecks: doorChecks, lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, part1: function (P, id) { return library(P).find(function (x) { return x.id === id; }); }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
+  var PK = { trackForward: trackForward, recordCue: recordCue, doorWords: doorWords, doorChecks: doorChecks, lightTop: lightTop, lightDefaults: lightDefaults, inArea: inArea, lightTowers: lightTowers, lineupDefaults: lineupDefaults, faceName: faceName, part1: function (P, id) { return library(P).find(function (x) { return x.id === id; }); }, homeDefaults: homeDefaults, lineUp: lineUp, touchNext: touchNext, touchX: touchX, presetAhead: presetAhead, fewerTurns: fewerTurns, applyTurns: applyTurns, turnStats: turnStats, migrate: migrate, diagramAngle: diagramAngle, applySpikes: applySpikes, applyLinks: applyLinks, spikeDefaults: spikeDefaults, ZKIND: ZKIND, TABLES: TABLES, TSTATE: TSTATE, PRACTICALS: PRACTICALS, tableFoot: tableFoot, tableRoute: tableRoute, tableBetween: tableBetween, gapInfo: gapInfo, rectPoly: rectPoly, towerLine: towerLine, TOWERS: TOWERS, FACES: FACES, SHORT: SHORT, FILES: FILES, PROTRUDE: PROTRUDE, CREWS: CREWS, stageDefaults: stageDefaults, R: R, r: r, norm: norm, dir: dir,
     faceAngle: faceAngle, rotFor: rotFor, facing: facing, geom: geom, sceneChecks: sceneChecks, change: change, crewJobs: crewJobs, between: between,
     library: library, fresh: fresh, rewind: rewind, ft: ft, parseFt: parseFt, frontY: frontY, polysOverlap: polysOverlap, polyDist: polyDist };
   if (typeof module !== 'undefined' && module.exports) module.exports = PK; else window.PK = PK;

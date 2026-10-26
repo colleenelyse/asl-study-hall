@@ -828,3 +828,5 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .gr-row.done .gr-body b { opacity: .75; }
 .gr-ok { color: #24935d; font-weight: 800; }
 .gr-no { opacity: .45; }
+.pk .pk-rec { background: #3a1418; border-color: #a33a45; color: #ffd6da; font-weight: 700; } .pk .pk-rec.hot { background: #c2283a; color: #fff; box-shadow: 0 0 0 3px rgba(255,90,110,.35); }
+.pk-dirty { color: #ff8a96; }

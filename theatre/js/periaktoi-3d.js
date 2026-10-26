@@ -274,10 +274,22 @@
     r.shadowMap.enabled = true; r.shadowMap.type = three.PCFSoftShadowMap; r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     v = { host: host, canvas: cv, renderer: r, camera: new three.PerspectiveCamera(30, 2, 0.5, 400), crew: crew, yaw: 0, pitch: 0, dist: 1 };
     var drag = null;      // drag to look around (from the same seat); double-click to look straight at the stage again
-    cv.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY, yaw: v.yaw, pitch: v.pitch }; cv.setPointerCapture(e.pointerId); });
-    cv.addEventListener('pointermove', function (e) { if (!drag) return; v.yaw = Math.max(-0.6, Math.min(0.6, drag.yaw - (e.clientX - drag.x) * 0.004)); v.pitch = Math.max(-0.25, Math.min(0.35, drag.pitch + (e.clientY - drag.y) * 0.003)); if (v.redraw) v.redraw(); });
+    var ray0 = function (e) { var r = cv.getBoundingClientRect(), m = new three.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), ray = new three.Raycaster(); ray.setFromCamera(m, v.camera); return ray; };
+    var floor = function (e, h) { var p = new three.Vector3(); return ray0(e).ray.intersectPlane(new three.Plane(new three.Vector3(0, 1, 0), -(h || 0)), p) ? { x: p.x, y: -p.z } : null; };      // the point under the pointer at height h (where she grabbed the tower), in stage feet
+    cv.addEventListener('pointerdown', function (e) {
+      drag = { x: e.clientX, y: e.clientY, yaw: v.yaw, pitch: v.pitch }; cv.setPointerCapture(e.pointerId);
+      if (v.onTowerDrag) {      // grab a tower and slide it on the deck (Colleen 2026-10-25: place towers right on the stage)
+        var hit = ray0(e).intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; }), gh = hit ? hit.point.y : 0, f = hit && floor(e, gh);
+        if (hit && f) { var c = v.onTowerDrag(hit.object.userData.tower, null); if (c) drag.tower = { t: hit.object.userData.tower, h: gh, dx: c.x - f.x, dy: c.y - f.y, moved: false }; }
+      }
+    });
+    cv.addEventListener('pointermove', function (e) { if (!drag) return;
+      if (drag.tower) { if (!drag.tower.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return; var f = floor(e, drag.tower.h); if (!f) return; drag.tower.moved = true; cv.style.cursor = 'grabbing'; v.onTowerDrag(drag.tower.t, { x: f.x + drag.tower.dx, y: f.y + drag.tower.dy }); return; }
+      v.yaw = Math.max(-0.6, Math.min(0.6, drag.yaw - (e.clientX - drag.x) * 0.004)); v.pitch = Math.max(-0.25, Math.min(0.35, drag.pitch + (e.clientY - drag.y) * 0.003)); if (v.redraw) v.redraw(); });
     cv.addEventListener('pointerup', function (e) {      // a click (not a drag) picks the tower under the pointer
-      var d0 = drag; drag = null; if (!d0 || Math.hypot(e.clientX - d0.x, e.clientY - d0.y) > 4 || !v.onPick) return;
+      var d0 = drag; drag = null; cv.style.cursor = '';
+      if (d0 && d0.tower && d0.tower.moved) { v.onTowerDrag(d0.tower.t, 'end'); return; }
+      if (!d0 || Math.hypot(e.clientX - d0.x, e.clientY - d0.y) > 4 || !v.onPick) return;
       var r = cv.getBoundingClientRect(), m = new three.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), ray = new three.Raycaster(); ray.setFromCamera(m, v.camera);
       var hit = ray.intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; });
       v.onPick(hit ? hit.object.userData.tower : null, hit ? hit.object.userData.face : null);
@@ -290,7 +302,7 @@
     if (!ready) { load().then(function () { ctx.redraw(); }).catch(function () { ctx.fallback(); }); return false; }
     if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { try { build(ctx); } catch (e) { W = {}; ctx.fallback(); return false; } faceSrc = {}; overlays = null; }      // a half-built scene would fail on every frame
     loadOverlays(ctx); attachOverlays(ctx);
-    var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick;
+    var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick; v.onTowerDrag = ctx.onTowerDrag || null;
     var Wd = host.clientWidth; if (!Wd) return true; var room = window.innerHeight - Math.max(0, host.getBoundingClientRect().top + window.scrollY) - 10, H = Math.round(ctx.full ? Math.max(260, room) : Math.min(Wd * 0.5, Math.max(220, room)));      // the simple stage view fills the window      // fits the room left in the window under the controls
     if (v.canvas.width !== Math.round(Wd * v.renderer.getPixelRatio()) || v.h !== H) { v.renderer.setSize(Wd, H, false); v.canvas.style.width = '100%'; v.canvas.style.height = 'auto'; v.h = H; }
     update(ctx);

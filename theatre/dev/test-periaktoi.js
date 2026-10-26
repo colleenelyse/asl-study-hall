@@ -81,4 +81,12 @@ ok(R.scenes.every((sc, i) => !i || PK.change(R, R.scenes[i - 1], sc).moves.every
   sc.towers.B.lock = true; sc.towers.B.want = 'B2'; sc.towers.B.rot = PK.rotFor(Q, 'B', 'B2').rot; ok(PK.sceneChecks(Q, sc).some(m => m.lv === 'bad' && /isn’t facing the audience/.test(m.msg)), 'door in use needs B1 facing the audience'); }
 { const Q = PK.fresh(), i = Q.scenes.findIndex(x => x.id === 's2'), ch = PK.change(Q, Q.scenes[i - 1], Q.scenes[i]), ch2 = PK.change(Q, Q.scenes[i], Q.scenes[i + 1]);
   ok((Q.scenes[i].doorOpen || [])[0] === 'B1' && ch.doors.some(d => d.act === 'open') && ch2.doors.some(d => d.act === 'close') && Q.practicals.B1.hinge === 'right' && Q.practicals.B1.swing === 'in', 'Homeroom uses the B1 door (hinged inside on the right, opening in): opened before, closed after'); }
+// Record: changes track forward until a cue that sets them differently (2026-10-25)
+{ const Q = PK.fresh(), ix = id => Q.scenes.findIndex(x => x.id === id), i = ix('s3');
+  const before = JSON.parse(JSON.stringify(Q.scenes[i])), oldX = before.towers.C.x;
+  Q.scenes[i].towers.C.x = oldX + 1;
+  const later = Q.scenes.slice(i + 1).map(x => x.towers.C.x), stop = later.findIndex(x => Math.abs(x - oldX) > 1e-6);
+  PK.trackForward(Q, i, before);
+  const after = Q.scenes.slice(i + 1).map(x => x.towers.C.x);
+  ok(after.slice(0, stop < 0 ? after.length : stop).every(x => Math.abs(x - oldX - 1) < 1e-6) && (stop < 0 || Math.abs(after[stop] - later[stop]) < 1e-6), 'Record: a move carries into the following cues and stops at the first cue that places that tower differently'); }
 process.exit(bad ? 1 : 0);
