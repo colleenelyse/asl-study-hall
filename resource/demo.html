@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.22'
+var VERSION = '2.23'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -3728,11 +3728,11 @@ function api_saveIepPaste(email, p) {
       (g.benchmarks || []).slice(0, 12).forEach(function (b) { b = clean_(b, 500); if (!b || old.indexOf(low_(b)) >= 0) return; sheet_('IEP benchmarks').appendRow([Utilities.getUuid().slice(0, 8), email, b, '', '', 'Working on it', today_(), stamp_(), gid]); nb++; });
       if (ROWS_MEMO) delete ROWS_MEMO['IEP benchmarks'];
     });
-    var add = (p.accoms || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(String).slice(0, 25);
+    var add = (p.accoms || []).map(function (x) { return clean_(x, 160).replace(/;/g, ','); }).filter(String).slice(0, 30);
     if (add.length) {
       var f2 = stuFind_(email), cur = p.accMode === 'replace' ? [] : String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
       add.forEach(function (x) { if (cur.map(low_).indexOf(low_(x)) < 0) { cur.push(x); na++; } });
-      stuSet_(f2.i, 'accoms', cur.slice(0, 25).join('; '));
+      stuSet_(f2.i, 'accoms', cur.slice(0, 30).join('; '));
     }
     var ns = Array.isArray(p.services) && p.services.length ? saveServices_(email, p.services) : 0;
     logChange_('Pasted from an IEP', email, '', '', '', n + ' goals, ' + nb + ' benchmarks, ' + na + ' accommodations, ' + ns + ' services', '');
@@ -3751,7 +3751,7 @@ function saveServices_(email, list) {
 function api_saveServices(email, list) { teacherOnly_(); email = low_(email); locked_(function () { saveServices_(email, list); logChange_('Related services changed', email, '', '', '', (list || []).length + ' services', ''); }); return services_(email); }
 // 2.22: the accommodation bank: which of their accommodations a student uses in each class, and on each test
 function accomPlan_(email) { var o = {}; rows_('Accommodation plan').forEach(function (r) { if (low_(r[0]) === email) o[String(r[1])] = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String); }); return o; }
-function bankList_(list, email) { var bank = accomsFor_(email); return (list || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 12); }
+function bankList_(list, email) { var bank = accomsFor_(email); return (list || []).map(function (x) { return clean_(x, 160).replace(/;/g, ','); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 12); }
 function api_saveClassAccoms(cls, list) {
   var email = need_(); cls = clean_(cls, 60); if (!cls) throw new Error('Pick the class.');
   var l = bankList_(list, email);
@@ -8835,7 +8835,12 @@ function ipOpen(email) {
 function ipScrub(text, first, ini) {
   var lines = 0, names = 0;
   var PII = /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\b|\bpage\s+\d+\s+of\s+\d+\b|\bstudent\s*(name|id|number|#)\s*:|\b(student\s+)?id\s*(#|no\.?|number)?\s*:?\s*\d{5,}\b|^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/i;
-  var out = String(text || '').split(/\r?\n/).filter(function (l) { if (PII.test(l)) { lines++; return false; } return true; }).join('\n');
+  var FRAG = [/\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\s*[:#-]?\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/gi, /\bIEP Summary\s*Page\s+\d+\s+of\s+\d+(\s*IEP Summary)?/gi, /\bpage\s+\d+\s+of\s+\d+\b/gi,
+    /\b(student\s+)?id\s*(#|no\.?|number)?\s*[:#]?\s*\d{5,}\b/gi, /\bstudent\s*name\s*:\s*[A-Z][\w'’-]+(\s+[A-Z][\w'’-]+){0,2}/g];
+  var out = String(text || '').split(/\r?\n/).filter(function (l) {
+    if (l.length > 200) return true;          // long run-together text (copied from a PDF): only the private piece goes (below)
+    if (PII.test(l)) { lines++; return false; } return true;
+  }).map(function (l) { if (l.length <= 200) return l; FRAG.forEach(function (re) { l = l.replace(re, function () { lines++; return ' '; }); }); return l; }).join('\n');
   out = out.replace(/\b\d{1,2}[\/.-]\d{1,2}[\/.-](19|20)\d{2}\b(?=[^\n]*\b(born|dob|birth)\b)/gi, function () { names++; return '[date removed]'; });
   first = String(first || '').replace(/[^A-Za-z'-]/g, '');
   if (first) {
@@ -8863,7 +8868,47 @@ var IP_AREAS = [[/executive|organi[sz]|planner|planning/i, 'Organization'], [/se
   [/read|fluency|comprehen|decod/i, 'Reading'], [/writ|essay|paragraph|spelling/i, 'Writing'], [/math|calculat|equation|computation/i, 'Math'], [/cop(e|ing)|conflict|frustrat|regulat|behavior/i, 'Coping and behavior'], [/social|peer|interaction|perspective/i, 'Social skills'], [/college|career|transition|post.?secondary|employment/i, 'Transition']];
 function ipArea(t) { for (var i = 0; i < IP_AREAS.length; i++) if (IP_AREAS[i][0].test(t)) return IP_AREAS[i][1]; return 'Goal'; }
 function ipKid(t, name) { var e = easyGoal(t, name); return /^I will /.test(e) ? 'I need to ' + e.slice(7) : /^I (can|am)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
+function ipParseSummary(text) {
+  var t = ' ' + String(text || '').replace(/\s+/g, ' ').replace(/IEP Summary\s*Page\s+\d+\s+of\s+\d+\s*(IEP Summary)?/gi, ' ').replace(/\s+IEP Summary\s+/g, ' ') + ' ';
+  var H = /\b(RELATED SERVICES|GOALS AND OBJECTIVES|EDUCATIONAL ACCOMMODATIONS AND SUPPORTS|ASSESSMENT ACCOMMODATIONS|ASSESSMENT|SPECIAL EDUCATION SERVICES|TRANSITION|PRESENT LEVELS[A-Z ]*|SUPPLEMENTARY AIDS[A-Z ,]*)\b/g, cuts = [], m;
+  while ((m = H.exec(t))) cuts.push({ name: m[1], at: m.index, end: m.index + m[1].length });
+  var sec = {}; cuts.forEach(function (c, i) { sec[c.name] = (sec[c.name] || '') + ' ' + t.slice(c.end, i + 1 < cuts.length ? cuts[i + 1].at : t.length); });
+  // related services: the date range that covers today (or the latest), then "Service - type 90 - Quarterly"
+  var services = [], rs = sec['RELATED SERVICES'] || '';
+  if (rs) {
+    var blocks = rs.split(/(\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*\d{1,2}\/\d{1,2}\/\d{4})/), pick = null, iso = function (d) { var p = d.split('/'); return p[2] + '-' + ('0' + p[0]).slice(-2) + '-' + ('0' + p[1]).slice(-2); };
+    for (var i = 1; i < blocks.length; i += 2) { var dr = blocks[i].split(/\s*-\s*/), from = iso(dr[0]), to = iso(dr[1]); var b = { from: from, to: to, body: blocks[i + 1] || '' }; if (!pick || (from <= B.today && to >= B.today) || (!(pick.from <= B.today && pick.to >= B.today) && to > pick.to)) pick = b; }
+    var body = (pick ? pick.body : rs).replace(/\bMinutes\s+Provider\b/gi, ' '), re = /([A-Z][A-Za-z\/&' ]{2,40}?(?:\s*-\s*[A-Za-z][A-Za-z() ]{2,40}?)?)\s+(\d{1,4})\s*(?:min(?:ute)?s?)?\s*-?\s*(daily|weekly|monthly|quarterly|annually|yearly|per day|per week|per month|per quarter|per year)/gi, x;
+    var per = function (p) { p = p.toLowerCase(); return /day|dai/.test(p) ? 'day' : /week/.test(p) ? 'week' : /month/.test(p) ? 'month' : /quarter/.test(p) ? 'quarter' : 'year'; };
+    while ((x = re.exec(body))) services.push({ service: x[1].trim(), minutes: +x[2], per: per(x[3]), notes: pick ? 'through ' + pick.to : '' });
+  }
+  // goals: "Goal #1 - Title Goal Statement: By …" or "Goal Goal Statement: #2 - Title By …"; benchmarks A) B) C)
+  var goals = [], gs = (sec['GOALS AND OBJECTIVES'] || '').replace(/Goal\s+Goal Statement:\s*#/gi, 'Goal #');
+  gs.split(/\bGoal\s*#\s*(?=\d)/i).slice(1).forEach(function (chunk) {
+    var mm = /^(\d+)\s*-\s*(.+?)\s+(?:Goal Statement:\s*)?((?:By|Given|When|During|In|Upon|After|With)\b.*)$/i.exec(chunk.trim()); if (!mm) return;
+    var parts = mm[3].split(/Benchmark\(s\)\s*or\s*Short[- ]Term\s*Objective\(s\)|Short[- ]Term Objectives?|Benchmarks?:/i);
+    var bens = (parts[1] || '').split(/(?:^|\s)[A-H]\)\s*/).map(function (b) { return b.trim(); }).filter(function (b) { return b.length > 10; });
+    goals.push({ text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
+  });
+  // accommodations: a run-together list; "Accommodation -" and a new capital word after a lowercase one start an item; "- -" adds a detail
+  var splitItems = function (txt) {
+    return txt.replace(/\bAccommodation\s*-\s*/g, '\n').replace(/\s+-\s*-\s*/g, ' -- ').split(/\n|(?<=(?:^|\s)[a-z][\w\/'’-]*[a-z0-9)%])\s+(?=[A-Z][a-z])(?!Accommodation)/).map(function (a) {
+      a = a.replace(/\s+-\s*$/, '').trim(); var d = a.split(' -- '); return d[1] ? d[0].trim() + ' (' + d.slice(1).join(', ').trim() + ')' : a;
+    }).filter(function (a) { return a.length > 3 && !/^(Accommodations?|Other|Student will participate.*)$/i.test(a); });
+  };
+  var accs = splitItems(sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || '');
+  var aa = sec['ASSESSMENT ACCOMMODATIONS'] || '', testAccs = [];
+  if (aa) {
+    var cls = /Classroom-Based Assessments(.*?)(District-Based Assessments|Other Assessment|$)/i.exec(aa), tim = /Timing\/Scheduling\s*-\s*(.*?)(?=Setting\s*-|$)/i.exec(aa), set = /Setting\s*-\s*(.*)$/i.exec(aa);
+    if (cls) testAccs = testAccs.concat(splitItems(cls[1]));
+    if (tim) testAccs.push('Tests: ' + tim[1].replace(/\s*-\s*/g, ' ').trim());
+    if (set) testAccs.push('Tests: ' + set[1].trim());
+    testAccs = testAccs.map(function (a) { return /^Tests:|\b(tests?|exams?|quiz(zes)?)\b/i.test(a) ? a : a + ' (tests)'; });
+  }
+  return { goals: goals, accoms: accs.concat(testAccs).filter(function (x, i, a) { return a.indexOf(x) === i; }), services: services, summary: true };
+}
 function ipParse(text) {
+  if (/GOALS AND OBJECTIVES|Goal Statement:/.test(text)) return ipParseSummary(text);          // the IEP Summary layout
   var raw = String(text || '').replace(/\r/g, '').split('\n'), lines = raw.map(function (l) { return l.replace(/\s+/g, ' ').trim(); });
   var goals = [], accs = [], mode = '', g = null, area = '';
   var ACC = /^(testing |classroom |instructional |presentation |response |setting |timing )?(accommodations?|supplementary aids|supports? for (the )?(student|school personnel)|modifications)\b/i;
