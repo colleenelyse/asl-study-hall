@@ -816,3 +816,13 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .cnt-item.sel { outline: 3px solid #ffd84d; }
 .cnt-note { width: 100%; margin: 6px 0 0; color: #e39a4c; }
 .cnt-fix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 2px solid #ffd84d; }
+/* Getting ready and the steps pages (js/getready.js) */
+.gr-list summary { cursor: pointer; padding: 2px 0; }
+.gr-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.gr-row:last-child { border-bottom: 0; }
+.gr-mark { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; border: 2px solid var(--line); }
+.gr-row.done .gr-mark { background: #24935d; border-color: #24935d; color: #fff; }
+.gr-row.some .gr-mark { background: #d9822b; border-color: #d9822b; color: #fff; }
+.gr-body { flex: 1 1 260px; min-width: 0; }
+.gr-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.gr-row.done .gr-body b { opacity: .75; }

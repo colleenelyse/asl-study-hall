@@ -309,7 +309,7 @@
   T.teacherPages.curtain = function (args) {
     if (args && args[0] === 'run') return runPage();
     if (args && args[0] === 'count') return countPage(args[1] === 'watch');
-    T.setBar('Curtain call', '#/teacher');
+    T.setBar('Curtain call', '#/teacher/bows');
     var P = JSON.parse(JSON.stringify(plan())), O = T.O(), fin = finaleSong();
     var withTracks = O.songs.filter(function (s) { var t = (T.show.tracks || {})[s.id]; return t && (t.performance || t.rehearsal); });
     var sel = function (attr, list, v) { return '<select ' + attr + '>' + list.map(function (x) { return '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>'; };

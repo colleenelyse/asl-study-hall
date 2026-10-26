@@ -183,8 +183,7 @@
       ['tech', (T.show.script ? t('#/teacher/mics', 'speak', 'Mic plot', (T.micSettings ? T.micSettings().n : 8) + ' body mics') : '')],
       ['people', t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors')],
       ['app', t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent')],
-      ['rehearse', t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups in 8-counts, the countdown, rehearse')],
-      ['rehearse', t('#/teacher/megamix', 'songs', 'Megamix groups', 'Who does which section: groups change between songs; the leads rest at first')],
+      ['rehearse', t('#/teacher/bows', 'star', 'Curtain call & Megamix', 'The bows, then the Megamix: five steps')],
       ['rehearse', t('#/teacher/partners', 'sched', 'Partner classes', esc(T.partnersSummary ? T.partnersSummary() : 'Sessions with other classes, and calendar invitations'))],
       ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines as ElevenLabs sound files for an AAC device')],
       ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],
@@ -210,7 +209,7 @@
       ['app', t('#/teacher/passwords', 'lock', 'Passwords & backup', 'Change, download, restore')],
     ].filter(function (x) { return x[1]; });
     lastAll = all;
-    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + '<div class="tiles">' + MENUS.map(function (m) { return menuTile(m, all); }).join('') +
+    app.innerHTML = T.showBanner() + '<p class="card small" id="reread"' + (T.show.script && T.Pages && T.Pages.ready() && T.show.script.reader !== ScriptParser.VERSION ? '' : ' hidden') + '>' + sym('🔄') + 'Updating how the script is read…</p><p class="muted">Last saved ' + (T.saved.updated ? new Date(T.saved.updated).toLocaleString() : 'never') + '</p>' + (T.sizeReminder ? T.sizeReminder('home') : '') + (T.readyList ? T.readyList() : '') + '<div class="tiles">' + MENUS.map(function (m) { return menuTile(m, all); }).join('') +
       '</div><p class="center" style="margin-top:20px"><a class="btn" href="#/who">See it as a Company member</a></p>';
     if (T.portalMigrate) T.portalMigrate();      // portal.js: the full dress moved to Wed Dec 8 (once)
     if (T.syncReminders) setTimeout(function () { T.syncReminders().catch(function () {}); if (T.reminderPrompt) T.reminderPrompt(); }, 1500);      // mail.js: reminder emails (asks for the teacher's OK first), to the school-account script

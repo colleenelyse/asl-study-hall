@@ -183,6 +183,7 @@
   V.songLinesCount = function () { return Object.keys(songLines()).length; };
   var muted = function (h) { var M = T.show.voiceMute || {}; if (M[h] === 1) return true; if (M[h] === 0) return false; return !!(T.show.songLinesOff && songLines()[h]); };
   V.muted = muted;
+  V.allLines = function () { return allLines(); };      // the Getting ready checklist counts them (getready.js)
   V.setMuted = function (h, on) { var M = T.show.voiceMute = T.show.voiceMute || {}; if (on) M[h] = 1; else if (T.show.songLinesOff && songLines()[h]) M[h] = 0; else delete M[h]; return T.saveShow(on ? 'Off in playback' : 'On in playback'); };
   V.setSongLinesOff = function (on) { T.show.songLinesOff = !!on; var M = T.show.voiceMute || {}; Object.keys(songLines()).forEach(function (h) { if (M[h] === 0 || M[h] === 1) delete M[h]; }); return T.saveShow(on ? 'Lines during songs: off in playback' : 'Lines during songs: on in playback'); };
   /* the switch, for the Voices page and Listen to the show */

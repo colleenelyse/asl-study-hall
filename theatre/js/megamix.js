@@ -225,6 +225,11 @@
     });
   }
   T.Megamix.practice = practice;
+  /* for the Curtain call & Megamix steps page (getready.js) */
+  T.Megamix.status = function () {
+    var s = S(), secs = MC.sectionsOf(s), M = T.show.megamix || {}, A = assignNow(), mu = musicOf();
+    return { sections: secs.length, saved: !!M.assign, problems: MC.problems(s, A).length + MC.studentClashes(s, A, T.show.cast).length, music: mu ? mu.name : '', times: (M.times || []).filter(function (x) { return x != null; }).length, staging: M.staging || 'stay' };
+  };
 
   /* ---------- Mark the sections (Colleen 2026-10-25: "let me tap and mark the megamix for sections for group transitions") ----------
      Like Count the music for the bows, but the Megamix changes tempo from song to song, so each section starts exactly where she taps (no
@@ -316,7 +321,7 @@
   T.teacherPages.megamix = function (args) {
     if (args && args[0] === 'run') return runPage();
     if (args && args[0] === 'mark') return markPage(args[1] === 'watch');
-    T.setBar('Megamix groups', '#/teacher');
+    T.setBar('Megamix groups', '#/teacher/bows');
     var s = S(), secs = MC.sectionsOf(s);
     if (!secs.length) { app.innerHTML = '<div class="card"><p>This show’s file has no Megamix sections.</p></div>'; return; }
     var saved = JSON.parse(JSON.stringify(T.show.megamix || { assign: {} })); saved.assign = saved.assign || {};
