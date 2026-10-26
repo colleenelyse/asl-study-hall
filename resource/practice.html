@@ -445,7 +445,8 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.18';
+var VERSION = '2.20'
+var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -1556,6 +1557,7 @@ function fullHtml_(f, td) {
   var tg = function (t, v) { return (t.better === 'Lower' ? 'no more than ' : 'at least ') + tf(t, v); };
   f.goals.forEach(function (g, k) {
   var gl = many ? ' (goal ' + (k + 1) + ')' : '';
+  if (!SHOW_BENCH_) g = { id: g.id, tools: [], bench: [] };          // 2.20: benchmarks hidden for now (kept in the sheet)
   if (g.tools.length) h += '<div style="font-weight:bold;margin:16px 0 4px">How the goal is measured' + gl + '</div>' + g.tools.map(function (t) {
     var pts = t.data.filter(function (x) { return x.value !== null; }).slice(-8);
     return '<div style="' + box + '"><b>' + esc_(t.name) + '</b> <span style="font-size:11px;color:#5b6476">(' + (t.better === 'Lower' ? 'lower is better' : 'higher is better') + ')</span><br>Now: <b>' + tf(t, t.now) + '</b>' + (t.mine && t.data.length ? ', average of the last ' + Math.min(3, t.data.length) + ' scores' : '') +
@@ -6479,7 +6481,7 @@ function myGoalCard() {
   if (D.madeUp && D.madeUp.ever) bits.push('missing work you made up later: <b>' + D.madeUp.fixed + ' of ' + D.madeUp.ever + '</b>');
   bits.push('turned in late this semester: <b>' + (e.lateSem || 0) + '</b>' + (e.lateMax > 1 ? ' (most in one class: ' + e.lateMax + ')' : ''));
   bits.push('you reached out to a teacher <b>' + ((e.app || 0) + (e.told || 0)) + '</b> time' + ((e.app || 0) + (e.told || 0) === 1 ? '' : 's') + ' this semester');
-  var bl = D.bench || [];
+  var bl = SHOW_BENCH ? D.bench || [] : [];
   var gl = D.profile.goals || [];
   if (gl.length > 1) return '<div class="card"><h2>🎯 My goals</h2>' + gl.map(function (x, k) { return '<p style="margin:6px 0 8px"><b>Goal ' + (k + 1) + (x.name ? ': ' + esc(x.name) : '') + '.</b> ' + esc(x.text) + '</p>'; }).join('') +
     myGoalRest(bits, bl);
@@ -7704,7 +7706,7 @@ function drawEF() {
   var e = EF.ef;
   var h = '<div class="row"><h2 class="grow">🎯 Goals and executive functioning</h2><button class="btn small" onclick="printGoal()">📄 Print goal data</button><button class="btn small" onclick="prOpen()">📈 Progress report…</button></div>' +
     '<p class="hint" style="margin:2px 0 10px">Tracked for every student. Counts from Infinite Campus are only as complete as how often the student pastes (this semester began ' + fmtDay(e.sem) + ').</p>' +
-    goalTabs() + phrasesHtml() + (GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
+    goalTabs() + phrasesHtml() + (!SHOW_BENCH ? '' : GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
     '<table style="margin-top:12px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   // this student's own checklist (or the class one)
   var own = EF.checklistOwn && EF.checklistOwn.length, items = CKE || (own ? EF.checklistOwn : EF.checklistClass).slice();
@@ -7833,8 +7835,10 @@ function nextTarget(t) {
   var b = GT().bench.filter(function (b) { return b.status === 'Working on it' && b.parts.some(function (p) { return p.tool === t.id; }); })[0];
   return b ? b.parts.filter(function (p) { return p.tool === t.id; })[0].target : null;
 }
+// 2.20: benchmarks (and the measures under them) are hidden for now, not deleted: Colleen is focusing on the goals. Flip to true to bring them back.
+var SHOW_BENCH = false;
 function benchHtml() {
-  if (!F('bench')) return '';
+  if (!F('bench') || !SHOW_BENCH) return '';
   var g = GT();
   var h = '<div class="row" style="margin-top:16px"><h3 class="grow" style="margin:0">📏 How this goal is measured</h3>' + (GTE ? '' : '<button class="btn small" onclick="gtOpen()">' + (g.tools.length ? 'Change' : 'Choose') + ' how it’s measured</button>') + '</div>';
   if (GTE) h += toolsForm();
@@ -7961,6 +7965,7 @@ function goalsPrint(l, refl) {
   }).join('');
 }
 function benchPrint(g) {
+  if (!SHOW_BENCH) return '';
   if (!g || (!g.tools.length && !g.bench.length)) return '';
   var box = 'border:1px solid #e2e6ef;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;page-break-inside:avoid';
   return (g.tools.length ? '<div style="font-weight:bold;margin:14px 0 4px">How the goal is measured</div>' + g.tools.map(function (t) {
