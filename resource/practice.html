@@ -437,7 +437,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.10';
+var VERSION = '2.12';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -468,6 +468,7 @@ var TABS = {
   'Free time links': ['Section', 'Section description', 'Site', 'Web address', 'Why it earns a spot', 'Star'],
   'Project steps': ['ID', 'Email', 'Project', 'Step', 'Due', 'Done', 'Reminder sent'],
   'Exit tickets': ['Date', 'Email', 'Finished today', 'What is next', 'Saved'],
+  'Skipped steps': ['When', 'Email', 'Step', 'Reason', 'Note'],
   'Seating Charts': ['Class', 'Chart', 'Updated'],
   'Seating Layouts': ['Layout', 'Chart', 'With students', 'Updated'],
   // IEP benchmarks (short-term objectives), each measured by the app's own data or by data the teacher enters
@@ -506,7 +507,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26 };   // Students columns
-var TEXT_COLS = { Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Skipped steps': [1], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -712,7 +713,7 @@ function setup_() {
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
-  ['#b7791f', ['Checklist', 'Exit tickets', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
+  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
 ];
@@ -1219,7 +1220,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
 }
 
 function api_teacherStudentRead_(email) {
@@ -1844,7 +1845,7 @@ function api_tcRead_() {
   var req = rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).map(function (r) { return { id: String(r[0]), when: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), kind: String(r[4]), what: String(r[5]) }; });
   var rec = rows_('Tests received').map(function (r) { return { id: String(r[0]), received: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), what: String(r[4]), how: String(r[5]), code: String(r[6]), released: String(r[7]), done: String(r[8]), note: String(r[9]), logged: String(r[11] || r[1] || ''), returnTo: String(r[12] || ''), returned: String(r[13] || '') }; });
   var open = rec.filter(function (x) { return !x.done; });
-  return { requests: req, expected: open.filter(function (x) { return x.how === 'Expected'; }), waiting: open.filter(function (x) { return x.how !== 'Expected'; }), done: rec.filter(function (x) { return x.done; }).slice(-20).reverse(), returns: tcReturns_(nm) };
+  return { requests: req, expected: open.filter(function (x) { return x.how === 'Expected'; }), waiting: open.filter(function (x) { return x.how !== 'Expected'; }), done: rec.filter(function (x) { return x.done; }).slice(-20).reverse(), returns: tcReturns_(nm), teachers: classTeachers_() };
 }
 // t: {email, cls, what, how: 'paper' | 'code', code, note}. Stamped now; a matching open request (same student and class) is marked Done.
 function api_tcLog(t) {
@@ -1892,6 +1893,10 @@ function classTeacher_(email, cls) {
   var r = rows_('Classes').filter(function (x) { return low_(x[0]) === email && String(x[2]) === cls; })[0], t = r ? String(r[3] || '') : '';
   var first = t.split(' / ')[0].trim(), titles = titles_();
   return first ? (titles[first] ? titles[first] + ' ' + first.split(/\s+/).pop() : first) : '';
+}
+function classTeachers_() {
+  var out = {}; rows_('Classes').forEach(function (r) { var e = low_(r[0]), c = String(r[2]); if (e && c) { out[e] = out[e] || {}; if (!out[e][c]) out[e][c] = classTeacher_(e, c); } });
+  return out;
 }
 function api_tcReturned(id) { return tcSet_(id, 14, stamp_()); }
 // the Overview: paper tests taken but not back in the teacher's mailbox yet
@@ -3473,6 +3478,27 @@ function api_saveExit(finished, next) {
   });
 }
 // Student: what they'll do in resource today. Saved again any time they change it.
+// 2.12: a student can skip a required step for today with a reason (Infinite Campus is down, no Chromebook…). The teacher sees it.
+var SKIP_STEPS = { grades: 'My grades', plan: 'My plan', profile: 'My profile', schedule: 'Schedule check' };
+function api_skipStep(step, reason, note) {
+  var email = need_(); step = String(step || ''); reason = clean_(reason, 120); note = clean_(note, 300);
+  if (!SKIP_STEPS[step]) throw new Error('That step can’t be skipped.');
+  if (!reason) throw new Error('Pick a reason.');
+  if (/^other$/i.test(reason) && !note) throw new Error('Type why you can’t do it today.');
+  locked_(function () { sheet_('Skipped steps').appendRow([stamp_(), email, SKIP_STEPS[step], reason, note]); });
+  return skipsToday_(email);
+}
+function skipsToday_(email) {
+  var today = today_(), out = {}, keys = {};
+  Object.keys(SKIP_STEPS).forEach(function (k) { keys[SKIP_STEPS[k]] = k; });
+  rows_('Skipped steps').forEach(function (r) { if (low_(r[1]) === email && String(r[0]).slice(0, 10) === today && keys[String(r[2])]) out[keys[String(r[2])]] = { reason: String(r[3]), note: String(r[4] || '') }; });
+  return out;
+}
+// the Overview: this week's skipped steps
+function skipsWeek_(week, names) {
+  return rows_('Skipped steps').filter(function (r) { var d = String(r[0]).slice(0, 10); return d >= week && d <= addDays_(week, 6); })
+    .map(function (r) { return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), day: String(r[0]).slice(0, 10), step: String(r[2]), reason: String(r[3]), note: String(r[4] || '') }; }).reverse();
+}
 function api_saveDayPlan(text) {
   var email = need_(); text = clean_(text, 500);
   if (!text) throw new Error('Write what you will work on today.');
@@ -3736,7 +3762,7 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = fr.i >= 0 ? String(fr.rows[fr.i][SC.goal] || '') : '';
-  var out = { anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? (function () { var g = goal_(email, ef); return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })() : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -4103,6 +4129,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/demo=1/.test(location.search)) { g.setUser('smi513421@d204.lths.net'); api_saveFinal('Chemistry', '', '', ['Extended time', 'Reader'], { when: 'Friday, Dec 18 · 11:30am–1:00pm · Make-up', style: 'Chromebook' }); api_saveFinal('Geometry Prep', '', '', ['Alternate setting'], { where: 'Resource room', style: 'Paper' }); }
   if (/demo=1/.test(location.search)) {          // tests with the resource teacher: a request, a released access code, a paper test
     g.setUser('wil501777@d204.lths.net'); var dc = api_myData().classes.filter(function (c) { return !c.resource; })[0]; if (dc) api_testRequest('folder', dc.name, 'Chapter 5 quiz');
+    api_skipStep('grades', 'Infinite Campus won’t load or is down', 'It said “Service unavailable”');
     g.setUser('ray@d204.lths.net');
     var tl = api_tcLog({ email: 'ort123456@d204.lths.net', cls: 'Biology', what: 'Cell unit test', how: 'code', code: 'CELL-2291' }); api_tcRelease(tl.waiting[0].id, true);
     api_tcLog({ email: 'smi513421@d204.lths.net', cls: 'Chemistry', what: 'Unit 2 test', how: 'paper', note: 'Extended time' });
@@ -4288,11 +4315,33 @@ call('api_boot').then(function (b) {
 
 // a teacher's own student data, until Student view loads it
 function emptyD() { return { email: B.email, profile: { name: '', periods: [], checked: '' }, checklist: null, exit: null, dayPlan: null, gradeGoals: {}, goalHist: [], finals: {}, steps: [], focus: {}, accom: {}, ef: { missingNow: {}, lateList: {} }, bench: [], classes: [], grades: {}, dates: {}, cplans: {}, gradeBy: {}, lows: {}, missing: {}, retakes: [], analyses: {}, plans: [], tests: [], reminders: [], stub: true }; }
+// 2.12: every required step can be skipped for today with a reason; the teacher sees the reason on the Overview
+var SKIP_WHY = {
+  grades: ['Infinite Campus won’t load or is down', 'A class has no grades in Infinite Campus yet', 'I don’t have my Chromebook today', 'My teacher told me to skip it today'],
+  plan: ['I’m taking a test with my teacher today', 'I’m going somewhere else this period (pass, appointment)', 'My teacher told me to skip it today'],
+  profile: ['I don’t know my counselor or case manager', 'I’ll ask my teacher first'],
+  schedule: ['I don’t have my schedule with me', 'I’m not sure what changed']
+};
+function skipped(k) { return D && D.skips && D.skips[k]; }
+function skipBox(k) {
+  var s = skipped(k);
+  if (s) return '<div class="card" style="background:var(--bg)"><b>⏭️ Skipped for today</b><div class="small">' + esc(s.reason) + (s.note ? ': ' + esc(s.note) : '') + '. Your teacher can see this. You can still finish it if you’re able to.</div></div>';
+  return '<div style="margin:6px 0 14px"><a href="#" class="small" onclick="$(\'skw_' + k + '\').style.display=\'\';this.style.display=\'none\';return false">Can’t do this step right now?</a>' +
+    '<div class="card" id="skw_' + k + '" style="display:none"><b>Skip this step for today</b><p class="hint" style="margin:2px 0 8px">Pick the reason. Your teacher will see it.</p>' +
+    SKIP_WHY[k].concat(['Other']).map(function (r, i) { return '<label style="display:block;margin:4px 0"><input type="radio" name="skr_' + k + '" value="' + esc(r) + '"> ' + esc(r) + '</label>'; }).join('') +
+    '<input type="text" id="skn_' + k + '" maxlength="300" placeholder="Anything to add? (needed for Other)" style="margin-top:6px"><div class="row" style="margin-top:8px"><button class="btn" onclick="skipSave(\'' + k + '\')">Skip for today</button></div></div></div>';
+}
+function skipSave(k) {
+  var r = document.querySelector('input[name="skr_' + k + '"]:checked'), n = $('skn_' + k).value.trim();
+  if (!r) return alert('Pick a reason.');
+  if (r.value === 'Other' && !n) { $('skn_' + k).focus(); return alert('Type why you can’t do it today.'); }
+  call('api_skipStep', k, r.value, n).then(function (d) { D.skips = d; STEP = null; toast('Skipped for today'); go('checkin'); }).catch(oops);
+}
 function gate() {
   if (MODE !== 'student' || (PREV && PREV.skip)) return null;          // a teacher's preview can skip the first-visit steps
   if (!D.profile.name || !D.classes.length || (B.bday && B.askBday && !D.profile.birthday)) return 'welcome';          // first visit: name and schedule on one page
-  if (!D.classes.length || !D.profile.checked || (B.recheck && D.profile.checked < B.recheck)) return 'schedule';
-  if (F('team') && !D.profile.profileOk && !D.stub) return 'profile';          // first login: confirm grade, counselor, case manager
+  if (!D.classes.length || ((!D.profile.checked || (B.recheck && D.profile.checked < B.recheck)) && !skipped('schedule'))) return 'schedule';
+  if (F('team') && !D.profile.profileOk && !D.stub && !skipped('profile')) return 'profile';          // first login: confirm grade, counselor, case manager
   if (needPoll() || needGrades() || needDayPlan()) return 'checkin';          // the question of the day comes first of all          // grade check day, then today's plan for class time, come first
   return null;
 }
@@ -4356,7 +4405,7 @@ function drawProfile() {
       '<input type="hidden" id="pfC" value="' + esc(p.counselor || '') + '"><input type="hidden" id="pfCE" value="' + esc(p.counselorEmail || '') + '">' +
       '<div class="row" id="pfCm" style="gap:10px;margin-top:6px;display:none">' + nameBoxes('pfCF', 'pfCL', 'pfCEm', 'pfCType()') + '</div></div>' +
     (F('team') ? '<div style="margin-top:14px"><b>My case manager</b>' + teamForm(myTeachers(), p.caseMgr, p.caseMgrEmail, 'pfSave()', '').replace(/<div class="row" style="margin-top:8px"><button class="btn primary small" onclick="pfSave\(\)">Save<\/button><\/div>$/, '') + '</div>' : '') +
-    '<div class="row" style="margin-top:16px"><button class="btn primary" onclick="pfSave()">Everything is right: save</button></div></div>';
+    '<div class="row" style="margin-top:16px"><button class="btn primary" onclick="pfSave()">Everything is right: save</button></div></div>' + (gate() === 'profile' ? skipBox('profile') : '');
   $('main').innerHTML = h; pfAp();
 }
 // the assistant principal and the counselor follow from the grade (graduating class) and last initial; students never pick the AP
@@ -4665,7 +4714,7 @@ function drawSchedule() {
     '<div class="card"><div id="schWrap">' + schedTable() + '</div></div>' +
     (!forced && B.bday && B.askBday ? '<div class="card"><h2>My birthday</h2><p class="hint">We celebrate with you on your birthday.</p>' + bdayFields(D.profile.birthday) +
       '<button class="btn small" style="margin-top:10px" onclick="saveBday(this)">Save birthday</button></div>' : '') +
-    '<div class="savebar"><span class="status" id="status"></span><button class="btn primary" id="schSave">' + (forced ? 'My schedule is right' : 'Save my schedule') + '</button></div>';
+    '<div class="savebar"><span class="status" id="status"></span><button class="btn primary" id="schSave">' + (forced ? 'My schedule is right' : 'Save my schedule') + '</button></div>' + (forced && D.classes.length ? skipBox('schedule') : '');
   $('schSave').onclick = function () {
     var list; try { list = schClean(); } catch (e) { return alert(e.message); }
     var btn = this; btn.disabled = true;
@@ -4972,9 +5021,17 @@ var DP_EDIT = false, DP_NONE = null, DP_DRAFT = null;
 function withCheck(b) { if (b && b.check) Object.keys(b.check).forEach(function (k) { b[k] = b.check[k]; }); return b; }
 // every class has this week's grade (after the teacher's override, entered on or after B.checkSince)
 function gradesDone() { return graded().every(function (c) { var g = (D.grades[c.name] || {})[B.week]; return g !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince) && (!pasteOnly() || !F('lowWhy') || !isLow(g) || ((D.lows[c.name] || {})[B.week] || {}).why); }); }
-function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0 && !gradesDone(); }
+function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !skipped('grades') && ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0 && !gradesDone(); }
 // 2.03: the first time (until every class has been pasted once, or the teacher entered it), grades come first, not only on grade check day
-function firstGrades() { return pasteOnly() && graded().some(function (c) { return !(D.analyses || {})[c.name] && !((D.gradeBy || {})[c.name] || {})[B.week]; }); }
+// 2.11: only a brand-new student (no grades in any class from an earlier week, typed or pasted, and nothing pasted before), and
+// "Some classes have no grades yet" lets them go on once at least one class is in
+var FIRST_OK = false;
+function firstGrades() {
+  if (!pasteOnly() || FIRST_OK) return false;
+  var cls = graded(); if (!cls.length) return false;
+  var before = cls.some(function (c) { return (D.analyses || {})[c.name] || Object.keys(D.grades[c.name] || {}).some(function (w) { return w < B.week; }); });
+  return !before;
+}
 // 1.87: the question of the day (just for fun), answered or skipped before anything else
 function needPoll() { return MODE === 'student' && !(PREV && PREV.skip) && F('poll') && !!(B.poll && B.poll.q) && !B.poll.answer; }
 function pollCard() {
@@ -4989,7 +5046,7 @@ function pollAns(k) {
   if (k === -1 && !a) return alert('Type your answer, or skip today’s question.');
   call('api_answerPoll', a).then(function (r) { B.poll.answer = r.answer; if (r.answer !== '(skipped)') toast('Thanks!'); go('checkin'); }).catch(oops);
 }
-function needDayPlan() { return MODE === 'student' && !(PREV && PREV.skip) && F('dayPlan') && isSchoolDay() && !(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan); }
+function needDayPlan() { return MODE === 'student' && !(PREV && PREV.skip) && !skipped('plan') && F('dayPlan') && isSchoolDay() && !(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan); }
 function dayPlanCard() {
   if (!F('dayPlan') || !isSchoolDay()) return '';
   var t = D.dayPlan && D.dayPlan.today, editing = DP_EDIT || !(t && t.plan);
@@ -5469,8 +5526,8 @@ function stepList() {
   return s;
 }
 function stepDone(k) {
-  if (k === 'grades') return gradesDone() && GSUB !== 1;
-  if (k === 'plan') return !!(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan);
+  if (k === 'grades') return (gradesDone() || !!skipped('grades')) && GSUB !== 1;
+  if (k === 'plan') return !!(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan) || !!skipped('plan');
   if (k === 'check') { var c = D.checklist || {}, dn = c.done || [], nt = c.noTime || []; return dn.length > 0 && B.checkItems.every(function (t) { return dn.indexOf(t) >= 0 || nt.indexOf(t) >= 0; }); }
   if (k === 'exit') return !!D.exit;
   return false;
@@ -5506,10 +5563,10 @@ function drawCheckin() {
   if (cur === 'grades') {
     if (GSUB === 1) { h += weeklyCards() + ckSaveBtn('Save my plan for the week', function () { GSUB = 0; STEP = null; }); after = 'week'; }
     else {
-      h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : '');
+      h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : skipBox('grades') + (skipped('grades') ? nx() : ''));
       after = 'grades';
     }
-  } else if (cur === 'plan') h += dayPlanCard() + nx();
+  } else if (cur === 'plan') h += dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')) + nx();
   else if (cur === 'check') h += checklistCard() + nx();
   else if (cur === 'exit') h += exitCard() + nx();
   else h += list.length ? '<div class="card alldone"><h2>🎉 All done for today</h2><p style="margin:6px 0 0">Nice work. Your things are below' + (F('focus') ? ', or start the <a href="#" onclick="go(\'focus\');return false">⏱️ focus timer</a>' : '') + '.</p></div>'
@@ -5589,7 +5646,8 @@ function gradesCardPaste(sec) {
   var CP = F('cplan'), all = gpOrder(), done = all.filter(gpDone).length, pct = all.length ? Math.round(100 * done / all.length) : 0;
   var h = '<div class="card" id="gcard"><div class="row"><h2 class="grow">' + sec() + 'My grades and missing work</h2><span class="small"><b>' + done + ' of ' + all.length + '</b> classes done</span></div>' +
     '<div class="gpbar"><span style="width:' + pct + '%"></span></div>' +
-    '<p class="hint" style="margin:8px 0 10px">In Infinite Campus, open <b>Grades</b>. For each class: click it, copy its page <b>starting at the class title</b>, and paste it in its box below. The classes are A to Z, the same order as Infinite Campus. The app reads your grade, missing work and late work as soon as you paste.' + (firstGrades() ? ' <b>This is your first time, so every class is needed before you go on.</b> A class has no grades in Infinite Campus yet? Ask your teacher.' : '') + '</p>';
+    '<p class="hint" style="margin:8px 0 10px">In Infinite Campus, open <b>Grades</b>. For each class: click it, copy its page <b>starting at the class title</b>, and paste it in its box below. The classes are A to Z, the same order as Infinite Campus. The app reads your grade, missing work and late work as soon as you paste.' + (firstGrades() ? ' <b>This is your first time, so every class is needed before you go on.</b>' : '') + '</p>' +
+      (firstGrades() && !B.checkDay && graded().some(function (c) { return (D.grades[c.name] || {})[B.week] !== undefined; }) ? '<p class="small" style="margin:0 0 10px">A class has no grades in Infinite Campus yet? <button class="btn small" onclick="FIRST_OK=true;go(\'checkin\')">Some classes have no grades yet: go on</button></p>' : '');
   if (!all.length) return h + '<div class="empty">No classes yet. Add them under <a href="#" onclick="go(\'schedule\');return false">My schedule</a>.</div></div>';
   h += all.map(function (c) {
     var i = graded().indexOf(c), ok = gpDone(c), v = CK.grades[c.name], m = CK.missing[c.name] || { n: '', list: '' }, prev = before(D.grades[c.name], B.week);
@@ -6331,7 +6389,7 @@ function drawOverview() {
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
     '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + skipNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -7555,6 +7613,12 @@ function stuckNotice() {
     (l.length ? l.map(function (x) { return '<div class="small" style="display:block;margin:4px 0"><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · opened ' + esc(x.seen) + ' · hasn’t finished: ' + esc(x.why.join(' and ')) + '</div>'; }).join('')
       : '<p class="small" style="margin:4px 0 0">Nobody right now: everyone who opened the app today has finished their plan.</p>') + '</div>';
 }
+function skipNotice() {
+  var l = (TD && TD.skips) || []; if (!l.length) return '';
+  return '<details class="card" style="margin-bottom:14px"><summary><b>⏭️ Steps students skipped this week (' + l.length + ')</b></summary>' + l.map(function (x) {
+    return '<div class="small" style="display:block;margin:4px 0"><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · ' + esc(shortDay(x.day)) + ' · ' + esc(x.step) + ' · ' + esc(x.reason) + (x.note ? ': ' + esc(x.note) : '') + '</div>';
+  }).join('') + '</details>';
+}
 function tcNotice() { var n = TD && TD.tcOpen; return n ? '<div class="card" style="margin-bottom:14px;border-color:var(--warn);background:var(--warn-soft)">📬 <b>' + n + ' test request' + (n === 1 ? '' : 's') + '</b> from students. <a href="#" onclick="navTo(\'tc\');return false">Open Tests & codes</a></div>' : ''; }
 function drawTc() {
   if (!TCD) { $('main').innerHTML = '<h1>📬 Tests & access codes</h1><p class="sub">Loading…</p>'; call('api_tc').then(function (d) { TCD = d; if (VIEW === 'tc') drawTc(); }).catch(oops); return; }
@@ -7565,7 +7629,7 @@ function drawTc() {
   }).join('') : '<p class="small" style="margin:4px 0 0">No open requests.</p>') + '</div>';
   h += '<div class="card" id="tcLog"><h2>📥 I checked my mailbox / I have a new access code</h2><p class="hint" style="margin:2px 0 10px">Saved with today’s date and time, so you know when it arrived.</p>' +
     '<div class="row" style="gap:8px"><select id="tfStu" style="max-width:220px" onchange="TCF.email=this.value;drawTc()"><option value="">Student</option>' + studs.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === TCF.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
-    '<select id="tfCls" style="max-width:200px"><option value="">Class</option>' + (me ? me.grades.map(function (g) { return '<option' + (g.cls === TCF.cls ? ' selected' : '') + '>' + esc(g.cls) + '</option>'; }).join('') : '') + '</select>' +
+    '<select id="tfCls" style="max-width:200px" onchange="tcTeach(\'tfRet\',$(\'tfStu\').value,this.value)"><option value="">Class</option>' + (me ? me.grades.map(function (g) { return '<option' + (g.cls === TCF.cls ? ' selected' : '') + '>' + esc(g.cls) + '</option>'; }).join('') : '') + '</select>' +
     '<input type="text" id="tfWhat" class="grow" maxlength="150" placeholder="What is it? (Unit 3 test)"></div>' +
     '<div class="row" style="margin-top:8px;gap:8px"><div class="seg">' + [['paper', '📄 Paper test from my mailbox'], ['code', '🔑 Access code'], ['expected', '⏳ Expected: I don’t have it yet']].map(function (o) { return '<button class="' + (TCF.how === o[0] ? 'on' : '') + '" onclick="TCF.how=\'' + o[0] + '\';TCF.cls=$(\'tfCls\').value;drawTc()">' + o[1] + '</button>'; }).join('') + '</div>' +
     (TCF.how === 'code' ? '<input type="text" id="tfCode" style="max-width:220px" maxlength="120" placeholder="Access code">' : '<input type="text" id="tfRet" style="max-width:240px" maxlength="80" placeholder="Return to (teacher’s mailbox)" title="Leave blank to use the teacher on the student’s schedule">') +
@@ -7584,15 +7648,22 @@ function drawTc() {
   }).join('') : '<p class="small" style="margin:4px 0 0">Nothing waiting.</p>') + '</div>';
   if (TCD.done.length) h += '<details class="card"><summary><b>Done recently</b> (' + TCD.done.length + ')</summary>' + TCD.done.map(function (x) { return '<div class="small" style="display:block;margin:3px 0">' + esc(x.name) + ' · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + ' · ' + esc(x.how) + ' · received ' + esc(String(x.received).slice(0, 10)) + ' · taken ' + esc(String(x.done).slice(0, 10)) + ' <button class="btn link small" style="padding:0 4px" onclick="tcDone(\'' + x.id + '\',false)">Undo</button></div>'; }).join('') + '</details>';
   $('main').innerHTML = h;
+  TC_AUTO = {}; if (TCF.email && $('tfCls') && $('tfCls').value) tcTeach('tfRet', TCF.email, $('tfCls').value);
 }
 // 2.09: edit a logged test in place (class, what, paper / code / expected, the code, the note)
 var TCE = null;
+// 2.12: picking the class fills in that class's teacher (the mailbox the paper test goes back to); a typed name is kept
+var TC_AUTO = {};
+function tcTeach(id, email, cls, edit) {
+  var el = $(id), t = ((TCD && TCD.teachers) || {})[email] || {}; if (!el) return;
+  if (!el.value.trim() || TC_AUTO[id] === el.value) { el.value = t[cls] || ''; TC_AUTO[id] = el.value; }
+}
 function tcEditForm(x) {
   var st = ((TD && TD.students) || []).filter(function (s) { return s.email === x.email; })[0], cl = st ? st.grades.map(function (g) { return g.cls; }) : [];
   if (cl.indexOf(x.cls) < 0) cl.unshift(x.cls);
   var hv = x.how === 'Access code' ? 'code' : x.how === 'Expected' ? 'expected' : 'paper';
   return '<div class="tcrow" style="background:var(--bg);border-radius:10px;padding:10px"><b>' + esc(x.name) + '</b><div class="row" style="gap:8px;margin-top:6px">' +
-    '<select id="teC" style="max-width:200px">' + cl.map(function (c) { return '<option' + (c === x.cls ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+    '<select id="teC" style="max-width:200px" onchange="tcTeach(\'teR\',\'' + esc(x.email) + '\',this.value,true)">' + cl.map(function (c) { return '<option' + (c === x.cls ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
     '<input type="text" id="teW" class="grow" maxlength="150" value="' + esc(x.what) + '" placeholder="What is it?">' +
     '<select id="teH" style="max-width:220px" onchange="$(\'teK\').style.display=this.value===\'code\'?\'\':\'none\'">' + [['paper', '📄 Paper test'], ['code', '🔑 Access code'], ['expected', '⏳ Expected (not here yet)']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === hv ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
     '<input type="text" id="teK" style="max-width:180px' + (hv === 'code' ? '' : ';display:none') + '" maxlength="120" value="' + esc(x.code) + '" placeholder="Access code"></div>' +
