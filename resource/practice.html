@@ -432,7 +432,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.00';
+var VERSION = '2.01';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -1283,6 +1283,11 @@ function pastedGrade_(email, cls, summary) {
   if (i >= 0) { gs.getRange(i + 2, 4, 1, 2).setValues([[g, now]]); gs.getRange(i + 2, 9, 1, 2).setValues([[miss.length, miss.join(', ').slice(0, 500)]]); gs.getRange(i + 2, 12).setValue(''); }
   else gs.appendRow([week, email, cls, g, now, '', '', '', miss.length, miss.join(', ').slice(0, 500), '', '']);
   if (ROWS_MEMO) delete ROWS_MEMO['Grades'];
+}
+// 2.01: the assignment names each class's pasted pages have had (so a page pasted into the wrong class can be recognized)
+function anames_(email) {
+  var o = {}; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) !== email) return; var c = String(r[1]), l = o[c] = o[c] || []; if (l.length < 80) l.push(String(r[2])); });
+  return o;
 }
 function pastedThisWeek_(email, week) {
   var o = {}; rows_('Class analysis').forEach(function (r) { if (low_(r[0]) === email && day_(r[2]) >= week) o[String(r[1])] = { grade: grade_(r[3]), missing: String(r[4] || '').split('; ').filter(String) }; });
@@ -3664,7 +3669,7 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = fr.i >= 0 ? String(fr.rows[fr.i][SC.goal] || '') : '';
-  var out = { tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? (function () { var g = goal_(email, ef); return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })() : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -4037,7 +4042,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   g.clearCache && g.clearCache();
   var goTo = (location.search.match(/go=([\w@.]+)/) || [])[1];
   if (goTo) setTimeout(function () { if (goTo.indexOf('@') > 0) openStudent(goTo); else navTo(goTo); }, 700);
-  if (/paste=1/.test(location.search)) setTimeout(function () { document.querySelector('#icBox details').open = true; $('icText').value = "GPA\nWL7816-1 American Sign Language I LIII\n|Gibbons, Colleen E\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB+\n(89.42%)\nSemester Grade\nB+\n(89.42%)\nHas Assignments\nSN5626-1 Chemistry Prep ML LIII\n|Orrico, Annette C/Cocco, Patrice J\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(92.93%)\nSemester Grade\nA\n(92.87%)\nHas Assignments\nDR9116-3 Driver Education LIII\n|Danner, Michael W\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.87%)\nSemester Grade\nB\n(83.87%)\nHas Assignments\nMA5136-106 Geometry Prep LIII\n|Paluch, Nicole/Quick, Brennan R\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nC\n(75.73%)\nSemester Grade\nC\n(75.73%)\nHas Assignments\nLA7256-6 IPC Eng II Acc LIV\n|Morris, Madeline K\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.04%)\nSemester Grade\nB\n(83.04%)\nHas Assignments\nLA9026-1 ML Tutorial LIII\n|Gamboa, Francisco\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(96.08%)\nSemester Grade\nA\n(96.08%)\nHas Assignments\nPE8716-4 Soph Strength Training LIII\n|Bergman, Bryan\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA+\n(97.01%)\nSemester Grade\nA\n(96.13%)\nHas Assignments\n"; icRead(); }, 900);
+  if (/paste=1/.test(location.search)) setTimeout(function () { $('icText').value = "GPA\nWL7816-1 American Sign Language I LIII\n|Gibbons, Colleen E\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB+\n(89.42%)\nSemester Grade\nB+\n(89.42%)\nHas Assignments\nSN5626-1 Chemistry Prep ML LIII\n|Orrico, Annette C/Cocco, Patrice J\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(92.93%)\nSemester Grade\nA\n(92.87%)\nHas Assignments\nDR9116-3 Driver Education LIII\n|Danner, Michael W\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.87%)\nSemester Grade\nB\n(83.87%)\nHas Assignments\nMA5136-106 Geometry Prep LIII\n|Paluch, Nicole/Quick, Brennan R\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nC\n(75.73%)\nSemester Grade\nC\n(75.73%)\nHas Assignments\nLA7256-6 IPC Eng II Acc LIV\n|Morris, Madeline K\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.04%)\nSemester Grade\nB\n(83.04%)\nHas Assignments\nLA9026-1 ML Tutorial LIII\n|Gamboa, Francisco\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(96.08%)\nSemester Grade\nA\n(96.08%)\nHas Assignments\nPE8716-4 Soph Strength Training LIII\n|Bergman, Bryan\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA+\n(97.01%)\nSemester Grade\nA\n(96.13%)\nHas Assignments\n"; icRead(); }, 900);
   if (/paste=2/.test(location.search)) setTimeout(function () { $('icText').value = "GPA\nWL7816-1 American Sign Language I LIII\n|Gibbons, Colleen E\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB+\n(89.42%)\nSemester Grade\nB+\n(89.42%)\nHas Assignments\nSN5626-1 Chemistry Prep ML LIII\n|Orrico, Annette C/Cocco, Patrice J\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(92.93%)\nSemester Grade\nA\n(92.87%)\nHas Assignments\nDR9116-3 Driver Education LIII\n|Danner, Michael W\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.87%)\nSemester Grade\nB\n(83.87%)\nHas Assignments\nMA5136-106 Geometry Prep LIII\n|Paluch, Nicole/Quick, Brennan R\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nC\n(75.73%)\nSemester Grade\nC\n(75.73%)\nHas Assignments\nLA7256-6 IPC Eng II Acc LIV\n|Morris, Madeline K\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nB\n(83.04%)\nSemester Grade\nB\n(83.04%)\nHas Assignments\nLA9026-1 ML Tutorial LIII\n|Gamboa, Francisco\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA\n(96.08%)\nSemester Grade\nA\n(96.08%)\nHas Assignments\nPE8716-4 Soph Strength Training LIII\n|Bergman, Bryan\nSEM1\nMid-semester1 Grade\nGrade Contributes to Term GPA\nA+\n(97.01%)\nSemester Grade\nA\n(96.13%)\nHas Assignments\n"; icRead(); icUse(); }, 900);
   if (/roster=1/.test(location.search)) setTimeout(function () { $('rosterBox').open = true; $('rText').value = 'Smith, Jane 513421\nLund, Kai Robert\t600001\nAmara Okafor 600002\nTorres, Luis\n'; rosterRead(); }, 1500);
   if (/sched=1/.test(location.search)) setTimeout(function () { openStudent('ngu555012@d204.lths.net'); setTimeout(function () { tSchEdit(); $('icSched').value = "SEM1 - Thu 10/22 - Regular\n7:00 AM\n8:00 AM\n9:00 AM\n10:00 AM\n11:00 AM\n12:00 PM\n1:00 PM\n2:00 PM\n3:00 PM\n4:00 PM\nAmerican Sign Language I LIII Gibbons, Colleen E S-B204\n\nPeriod 01\n\nML Tutorial LIII Gamboa, Francisco S-B103\n\nPeriod 02\n\nChemistry Prep ML LIII Orrico, Annette C/Cocco, Patrice J S-J210\n\nPeriod 03\n\nIPC Eng II Acc LIV Morris, Madeline K S-B115\n\nPeriod 04\n\nSO Study A/Lunch B SC Gibbons, Colleen E S-B204\n\nPeriod 05\n\nDriver Education LIII Danner, Michael W S-H122\n\nPeriod 06\n\nGeometry Prep LIII Paluch, Nicole/Quick, Brennan R S-B207\n\nPeriod 07\n\nSoph Strength Training LIII Bergman, Bryan S-GYM\n\nPeriod 08\n"; schPaste(); }, 900); }, 1200);
@@ -4659,10 +4664,10 @@ function icMatch(list, classes) {
 
 var ICM = null;
 function icPanel() {
-  return '<div id="icBox" style="margin:0 0 14px"><details' + (ICM ? ' open' : '') + '><summary><b>📋 Paste from Infinite Campus</b> <span class="small" style="display:inline">(fills in your grades for you)</span></summary>' +
+  return '<div id="icBox" style="margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><div><b>📋 Paste from Infinite Campus</b> <span class="small" style="display:inline">(fills in the grades for you)</span></div>' +
     '<p class="hint" style="margin:8px 0 6px">Open <b>Grades</b> in Infinite Campus, select all (Ctrl + A), copy (Ctrl + C), and paste it here (Ctrl + V).' + (B.analyze ? ' For a class’s detailed page, use 🔍 for that class instead: copy it starting at the class title.' : '') + '</p>' +
     '<textarea id="icText" placeholder="Paste your Grades page here"></textarea><button class="btn small" style="margin-top:6px" onclick="icRead()">Read my grades</button>' +
-    '<div id="icOut">' + icTable() + '</div></details></div>';
+    '<div id="icOut">' + icTable() + '</div></div>';          // 2.01: always open (no drop-down arrow to find)
 }
 function icRead() {
   var list = parseICAll($('icText').value);
@@ -4869,7 +4874,7 @@ function anOpen(i) {
   AN = { i: i, cls: graded()[i], res: null, parsed: null };
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'anModal';
   el.onclick = function (e) { if (e.target === el) anClose(); };
-  el.innerHTML = '<div class="card"><div class="row"><h2 class="grow">🔍 ' + esc(AN.cls.name) + '</h2><button class="btn link" onclick="anClose()">✕ Close</button></div>' +
+  el.innerHTML = '<div class="card"><div class="row"><h2 class="grow" id="anTitle">🔍 ' + esc(AN.cls.name) + '</h2><button class="btn link" onclick="anClose()">✕ Close</button></div>' +
     (((D.analyses || {})[AN.cls.name] || {}).date >= B.week ? '<p class="small" style="margin:4px 0;color:var(--brand)">You already pasted this class on ' + shortDay(D.analyses[AN.cls.name].date) + '. Pasting again replaces it.</p>' : '') +
     '<ol class="hint" style="margin:6px 0;padding-left:20px"><li>In Infinite Campus, open <b>Grades</b> and click <b>' + esc(AN.cls.name) + '</b> so its assignments show.</li>' +
       '<li><b>Start your copy at the very top, at the class title</b> (the line with the course number, like “WL7816-1 American Sign Language I”). Click just before it, scroll to the bottom, hold <b>Shift</b> and click after the last assignment. <b>Don’t use Ctrl + A</b> here: the rest of the page confuses the app.</li>' +
@@ -5178,7 +5183,15 @@ function anRun() {
   var p = parseClassGrades($('anText').value);
   if (!p.items.length) return alert('No assignments found. That looks like the summary page (one grade for each class). In Infinite Campus, click ' + AN.cls.name + ' so its assignments show, copy that page starting at the class title, and paste it again.');
   if (pasteOnly() && (p.grade === null || p.grade === undefined)) return alert('We couldn’t find the class grade on that page. Start your copy at the very top, at the class title, and paste it again.');
-  if (p.course && !anSameClass(p.course, AN.cls.name) && !confirm('This page is for “' + p.course + '”. Is that your ' + AN.cls.name + ' class?\n\nOK = yes, it is. Cancel = paste the right page.')) return;
+  // 2.01: a page pasted into the wrong class goes to the class it belongs to (from its title or its assignment names), and the class
+  // they clicked stays not done; when we can't tell, a big change from last week or all-new assignment names asks them to check
+  var to = anRoute(p, AN.cls), moved = '';
+  if (to && to !== AN.cls) { moved = AN.cls.name; AN.cls = to; AN.i = graded().indexOf(to); if ($('anTitle')) $('anTitle').textContent = '🔍 ' + to.name; }
+  else if (!to || !AN_SURE) {
+    var why = anOdd(p, AN.cls);
+    if (why && !confirm('Double-check: is this your ' + AN.cls.name + ' page? ' + why + '\n\nOK = yes, it’s ' + AN.cls.name + '. Cancel = I’ll paste the right page.')) return;
+  }
+  AN.moved = moved;
   AN.parsed = p;
   AN.res = analyzeClass(p, { today: B.today, onTime: B.retakeOnTime, below: B.retakeBelow, target: 85 });
   $('anOut').innerHTML = anHtml(AN.res, p);
@@ -5190,9 +5203,42 @@ function anRun() {
     var cn = AN.cls.name, ms = AN.res.missing.map(function (x) { return x.name; }), g = Math.round(Number(AN.res.grade) * 100) / 100;
     CK.grades[cn] = String(g); CK.missing[cn] = { n: String(ms.length), list: ms.join(', ') };
     D.grades[cn] = D.grades[cn] || {}; D.grades[cn][B.week] = g; D.dates = D.dates || {}; D.dates[cn] = D.dates[cn] || {}; D.dates[cn][B.week] = B.today;
-    if ($('anOut')) $('anOut').insertAdjacentHTML('afterbegin', '<p class="badge up" style="display:inline-block;margin:8px 0">✓ Saved: ' + esc(cn) + ' ' + g + '% ' + letter(g) + (ms.length ? ', ' + ms.length + ' missing' : ', nothing missing') + '. Close this to do your next class.</p>');
+    if ($('anOut')) $('anOut').insertAdjacentHTML('afterbegin', '<p class="badge up" style="display:inline-block;margin:8px 0">✓ Saved: ' + esc(cn) + ' ' + g + '% ' + letter(g) + (ms.length ? ', ' + ms.length + ' missing' : ', nothing missing') + '. Close this to do your next class.</p>' +
+      (AN.moved ? '<p class="small" style="margin:0 0 8px">This was your <b>' + esc(cn) + '</b> page, so it’s saved there. <b>' + esc(AN.moved) + '</b> still needs its own page.</p>' : ''));
+    D.anames = D.anames || {}; D.anames[cn] = AN.parsed.items.map(function (x) { return x.name; }).slice(0, 80);
   }
   call('api_saveRetakes', AN.cls.name, list, anSummary(AN.res)).then(function (r) { D.retakes = r; if (AN && !pasteOnly()) $('anOut').innerHTML = anHtml(AN.res, p); }).catch(oops);
+}
+// which class a pasted page belongs to: by its course title, else by assignment names seen before. null = can't tell; the
+// clicked class itself when it fits (or nothing points elsewhere)
+function anWords(x) { return String(x).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (t) { return t.length > 2 && ['the', 'and', 'prep', 'honors', 'acc', 'accelerated', 'semester', 'sem'].indexOf(t) < 0; }); }
+function anTitleScore(course, name) {
+  var A = anWords(course), N = anWords(name), hit = A.filter(function (t) { return N.indexOf(t) >= 0; }).length;
+  var ini = function (x) { return String(x).split(/\s+/).filter(String).map(function (t) { return t.charAt(0); }).join('').toLowerCase(); }, first = String(name).toLowerCase().split(/\s+/)[0];
+  return hit * 2 + (first.length >= 2 && ini(course).indexOf(first) === 0 ? 2 : 0);
+}
+function anNameOverlap(p, cls) { var known = ((D.anames || {})[cls.name] || []).map(function (x) { return x.toLowerCase(); }); if (!known.length) return -1; return p.items.filter(function (it) { return known.indexOf(String(it.name).toLowerCase()) >= 0; }).length; }
+var AN_SURE = false;          // the last anRoute matched by title or assignment names
+function anRoute(p, cls) {
+  var all = graded(); AN_SURE = true;
+  if (p.course) {
+    var sc = all.map(function (c) { return { c: c, s: anTitleScore(p.course, c.name) }; }).sort(function (a, b) { return b.s - a.s; });
+    var mine = anTitleScore(p.course, cls.name);
+    if (mine > 0 && mine >= sc[0].s) return cls;          // it's this class
+    if (sc[0].s > 0 && (sc.length < 2 || sc[0].s > sc[1].s)) return sc[0].c;          // clearly another class
+  }
+  var ov = all.map(function (c) { return { c: c, n: anNameOverlap(p, c) }; }).sort(function (a, b) { return b.n - a.n; }), me = anNameOverlap(p, cls);
+  if (me > 0) return cls;
+  if (ov[0].n >= 3 && (ov.length < 2 || ov[0].n > ov[1].n)) return ov[0].c;          // its assignments are another class's
+  AN_SURE = false; return p.course ? null : cls;
+}
+// why a paste we couldn't place might be the wrong class (or '' when it looks fine)
+function anOdd(p, cls) {
+  var me = anNameOverlap(p, cls), prev = before(D.grades[cls.name], B.week), g = p.grade;
+  if (me === 0 && p.items.length >= 3) return 'None of its assignments match what ' + cls.name + ' had before' + (p.course ? ', and the page says “' + p.course + '”.' : '.');
+  if (prev && g !== null && g !== undefined && Math.abs(Number(g) - prev.grade) >= 15) return 'Your grade would go from ' + prev.grade + '% to ' + Math.round(Number(g) * 10) / 10 + '%.';
+  if (p.course) return 'The page says “' + p.course + '”.';
+  return '';
 }
 // "American Sign Language I" vs "ASL 1": the same class if they share a real word, or one's initials spell the other
 function anSameClass(a, b) {
@@ -5226,7 +5272,7 @@ function anHtml(r, p) {
   var h = '<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">';
   h += '<div class="row"><div class="grow"><span class="small">Class grade now</span><div style="font-size:28px;font-weight:700">' + f2(r.grade) + ' <span class="letter">' + letter(r.grade) + '</span></div></div>' +
     '<div><span class="small">Missing</span><div style="font-size:28px;font-weight:700;color:' + (r.missing.length ? 'var(--down)' : 'var(--up)') + '">' + r.missing.length + '</div></div></div>' +
-    '<button class="btn small" style="margin:8px 0" onclick="anFill()">Use ' + f2(r.grade) + ' and ' + r.missing.length + ' missing for this week</button>';
+    (pasteOnly() ? '' : '<button class="btn small" style="margin:8px 0" onclick="anFill()">Use ' + f2(r.grade) + ' and ' + r.missing.length + ' missing for this week</button>');
   h += '<p class="hint" style="margin:10px 0 4px">' + esc(r.testCat || 'Tests') + ' count for ' + r.testWeight + '% of your grade. You can retake a test if you turned in at least ' + B.retakeOnTime + '% of that unit’s coursework on time.</p>';
   h += '<h3 style="margin:12px 0 0;font-size:15px">Tests</h3>' + r.tests.slice().reverse().map(function (t, k) {
     // a test at or above "Suggest retakes for tests under" (80) never gets a retake message, even when the on-time rule would allow one
@@ -5369,7 +5415,6 @@ function drawCheckin() {
     : '<div class="card"><h2>No school today</h2><p class="small" style="margin:4px 0 0">Your things are below.</p></div>';
   if (!gate()) h += myStuff(list);
   $('main').innerHTML = h;
-  if (after === 'grades') { var ic = document.querySelector('#icBox details'); if (ic && !gradesDone()) ic.open = true; }
   if (TILE === 'grades' || TILE === 'week' || after) drawSugg();
   if ($('ckSave')) $('ckSave').onclick = saveCheckin;
   if (cur === 'plan' && !stepDone('plan')) { var ta = $('dpText'); if (ta) ta.focus(); }
