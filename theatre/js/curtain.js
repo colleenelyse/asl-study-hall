@@ -92,27 +92,52 @@
      First the 1s give a rough tempo; each tap is matched to the nearest beat of it (so an extra or missing tap does not shift the rest); taps more
      than a quarter of a beat off are left out as mistakes, and the line is fitted again. Returns { bpm, first, used, off, badOnes } or null. */
   function fitCounts(taps) {
+    /* (and Colleen 2026-10-25: "if i missed one count can't it figure out where it is. there's also one instance of a 4 count transition"):
+       the beat is steady, but the phrases come from her 1s, so a 4-count transition keeps every later 8-count in place, and a missed count or a
+       missed 1 is filled in. ones = the beat number (0 = her first 1) where each 8-count starts. */
     taps = (taps || []).slice().sort(function (a, b) { return a[0] - b[0]; });
-    var ones = taps.filter(function (x) { return x[1]; }).map(function (x) { return x[0]; });
-    if (ones.length < 2) return null;
+    if (taps.filter(function (x) { return x[1]; }).length < 2 || taps.length < 6) return null;
     var line = function (pts) { var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0; pts.forEach(function (p) { sx += p[0]; sy += p[1]; sxx += p[0] * p[0]; sxy += p[0] * p[1]; }); var d = n * sxx - sx * sx; if (!d) return null; var m = (n * sxy - sx * sy) / d; return { m: m, b: (sy - m * sx) / n }; };
-    var fit = line(ones.map(function (t, i) { return [i * 8, t]; }));      // beat number -> seconds, from the 1s alone
-    if (!fit || fit.m <= 0) return null;
+    /* a first guess at the beat: the usual gap between taps */
+    var gaps = []; for (var i = 1; i < taps.length; i++) { var g = taps[i][0] - taps[i - 1][0]; if (g > 0.2 && g < 2) gaps.push(g); }
+    if (!gaps.length) return null;
+    gaps.sort(function (a, b) { return a - b; });
+    var m = gaps[Math.floor(gaps.length / 2)], k = 0, pts = [[0, taps[0][0]]];
+    for (i = 1; i < taps.length; i++) { var step = Math.round((taps[i][0] - taps[i - 1][0]) / m); if (step < 1) continue; k += step; pts.push([k, taps[i][0]]); }      // a skipped count moves on two beats
+    var fit = line(pts); if (!fit || fit.m <= 0) return null;
     var used = [], off = 0;
     for (var round = 0; round < 3; round++) {
-      used = []; off = 0;
-      taps.forEach(function (x) { var k = Math.round((x[0] - fit.b) / fit.m), r = x[0] - (fit.b + k * fit.m); if (Math.abs(r) <= fit.m * 0.25 && k >= 0) used.push([k, x[0]]); else off++; });
+      used = []; off = 0; var seen = {};
+      taps.forEach(function (x) { var kk = Math.round((x[0] - fit.b) / fit.m), r = x[0] - (fit.b + kk * fit.m); if (Math.abs(r) <= fit.m * 0.25 && !seen[kk]) { seen[kk] = 1; used.push([kk, x[0]]); } else off++; });
       var f2 = used.length >= 4 ? line(used) : null; if (!f2 || f2.m <= 0) break; fit = f2;
     }
-    var badOnes = taps.filter(function (x) { if (!x[1]) return false; var k = Math.round((x[0] - fit.b) / fit.m); return k % 8 !== 0; }).length;      // a 1 tapped on another count
-    return { bpm: +(60 / fit.m).toFixed(2), first: +Math.max(0, fit.b).toFixed(3), used: used.length, off: off, badOnes: badOnes, taps: taps.length };
+    var beatOf = function (t) { return Math.round((t - fit.b) / fit.m); };
+    var ones = [], hit = {};
+    taps.forEach(function (x) { if (!x[1]) return; var kk = beatOf(x[0]); if (Math.abs(x[0] - (fit.b + kk * fit.m)) <= fit.m * 0.35 && !hit[kk]) { hit[kk] = 1; ones.push(kk); } });
+    ones.sort(function (a, b) { return a - b; });
+    var k0 = ones[0], filled = 0, notes = [];
+    ones = ones.map(function (x) { return x - k0; });
+    /* a phrase of 16 or 24 counts: a 1 was missed; put it back every 8 */
+    var out = [ones[0]];
+    for (i = 1; i < ones.length; i++) { var L = ones[i] - out[out.length - 1]; while (L > 8 && L % 8 === 0) { out.push(out[out.length - 1] + 8); filled++; L -= 8; } out.push(ones[i]); }
+    var last = taps[taps.length - 1][0], lastBeat = beatOf(last) - k0;
+    while (lastBeat - out[out.length - 1] >= 8) { out.push(out[out.length - 1] + 8); filled++; }      // she stopped tapping 1s but kept going
+    var lens = out.map(function (x, j) { return out[j + 1] != null ? out[j + 1] - x : null; });
+    lens.forEach(function (L, j) { if (L == null || L === 8) return; notes.push({ n: j + 1, len: L, kind: L === 4 ? 'four' : (L === 7 || L === 9) ? 'odd' : 'other' }); });
+    var beat = fit.m, first = fit.b + k0 * fit.m;
+    return { bpm: +(60 / beat).toFixed(2), first: +Math.max(0, first).toFixed(3), ones: out, used: used.length, off: off, filled: filled, notes: notes, taps: taps.length };
   }
+  /* 8-count n (from 1) starts on beat ones[n-1]; past her last 1, every 8 beats */
+  var beatSec = function (P) { return P.counts && +P.counts.bpm > 0 ? 60 / +P.counts.bpm : null; };
+  var onesOf = function (P) { var o = P.counts && P.counts.ones; return o && o.length ? o : null; };
   var eightSec = function (P) { var m = mapOf(P); if (m) return m.len; return P.counts && +P.counts.bpm > 0 ? 8 * 60 / +P.counts.bpm : null; };
   var firstOne = function (P) { var m = mapOf(P); return m ? m.ones[0] : +(P.counts && P.counts.first) || 0; };
   /* when 8-count n (from 1) starts */
   function startOf(P, n) {
     var m = mapOf(P), e = eightSec(P); if (!e) return null;
     if (m) return +(n <= m.ones.length ? m.ones[n - 1] : m.ones[m.ones.length - 1] + (n - m.ones.length) * m.len).toFixed(2);
+    var O = onesOf(P), bs = beatSec(P);
+    if (O && bs) { var kb = n <= O.length ? O[n - 1] : O[O.length - 1] + (n - O.length) * 8; return +((+P.counts.first || 0) + kb * bs).toFixed(2); }
     return +((+P.counts.first || 0) + (n - 1) * e).toFixed(2);
   }
   function timeOf(g, P) { var e = eightSec(P); return e && g.eights != null && g.eights !== '' ? startOf(P, +g.eights + 1) : g.at; }
@@ -129,7 +154,14 @@
       var b = m.beats.filter(function (x) { return x >= m.ones[i] - 0.01 && x <= t + 0.05; }).length;
       return { n: i + 1, beat: Math.max(1, Math.min(8, b)) };
     }
-    var s = t - (+P.counts.first || 0); if (s < 0) return null; var n = Math.floor(s / e); return { n: n + 1, beat: Math.min(8, Math.floor((s - n * e) / (e / 8)) + 1) };
+    var s = t - (+P.counts.first || 0); if (s < 0) return null;
+    var O = onesOf(P), bs = beatSec(P);
+    if (O && bs) {      // her phrases: a 4-count transition is 4 counts
+      var kb = Math.floor(s / bs + 0.02), i = 0; while (i + 1 < O.length && O[i + 1] <= kb) i++;
+      if (i === O.length - 1 && kb - O[i] >= 8) { var extra = Math.floor((kb - O[i]) / 8); return { n: O.length + extra, beat: (kb - O[i]) % 8 + 1 }; }
+      return { n: i + 1, beat: Math.min(8, kb - O[i] + 1) };
+    }
+    var n = Math.floor(s / e); return { n: n + 1, beat: Math.min(8, Math.floor((s - n * e) / (e / 8)) + 1) };
   }
   var startN = function (g) { return g.eights != null && g.eights !== '' ? +g.eights + 1 : null; };
   /* her table: every group and every other part, by the 8-count it starts on; each runs to the one before the next row */
@@ -296,7 +328,7 @@
         '<div class="row"><label class="f" style="margin:0">Start this far into the track (seconds)<input id="mstart" inputmode="decimal" value="' + ((P.music && P.music.start) || 0) + '" style="width:90px"></label><span class="muted small">It fades in from there (0 = from the very start).</span>' +
         '<label class="switch" style="border:0"><span>Loop it if the bows run longer</span><input type="checkbox" id="mloop"' + (!P.music || P.music.loop !== false ? ' checked' : '') + '></label></div>' +
         '<div class="bow-counts"><h3 style="margin:10px 0 4px">' + sym('🔢') + 'Counting in 8s</h3>' +
-        (P.counts && P.counts.fit ? '<p style="margin:4px 0">' + sym('✅') + '<b>Counted from your taps:</b> a steady ' + P.counts.bpm + ' beats a minute, count 1 at ' + fmt(P.counts.first) + ' (the average of ' + P.counts.fit.used + ' taps' + (P.counts.fit.off ? '; ' + P.counts.fit.off + ' that were clearly off were left out' : '') + ').</p>' : '') +
+        (P.counts && P.counts.fit ? '<p style="margin:4px 0">' + sym('✅') + '<b>Counted from your taps:</b> a steady ' + P.counts.bpm + ' beats a minute, count 1 at ' + fmt(P.counts.first) + ' (the average of ' + P.counts.fit.used + ' taps' + (P.counts.fit.off ? '; ' + P.counts.fit.off + ' that were clearly off were left out' : '') + (P.counts.fit.filled ? '; ' + P.counts.fit.filled + ' missed 1' + (P.counts.fit.filled === 1 ? '' : 's') + ' filled in' : '') + ').' + ((P.counts.fit.fours || []).length ? ' 8-count ' + P.counts.fit.fours.join(', ') + ' ' + (P.counts.fit.fours.length === 1 ? 'is a 4-count transition' : 'are 4-count transitions') + '.' : '') + '</p>' : '') +
         '<div class="row" style="flex-wrap:wrap;align-items:center">' + (mu ? '<button class="btn primary" id="cnt">' + sym('👆') + (P.counts && P.counts.fit ? 'Count the music again' : 'Count the music: tap the 1s and the 2–8s') + '</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count ≈ ' + e8.toFixed(2) + ' seconds.' : '') + '</span></div>' +
         (mapOf(P) ? '' : '<details style="margin-top:6px"><summary class="small">' + (P.counts && P.counts.fit ? 'Or change the tempo by hand' : 'Or type a steady tempo') + '</summary><div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f" style="margin:0">Tempo (beats a minute)<input id="cbpm" inputmode="decimal" value="' + (P.counts && P.counts.bpm || '') + '" placeholder="e.g. 120" style="width:90px"></label>' +
         '<label class="f" style="margin:0">Count 1 of the first 8 is at<input id="cfirst" value="' + fmt(P.counts && P.counts.first != null ? P.counts.first : 0) + '" style="width:90px"></label>' +
@@ -344,7 +376,8 @@
         var ms = +document.getElementById('mstart').value; P.music = Object.assign({}, P.music, { start: isNaN(ms) ? 0 : Math.max(0, ms), loop: document.getElementById('mloop').checked });
         var c0 = P.counts || {}, bE = document.getElementById('cbpm'), fE = document.getElementById('cfirst'), bpm = bE ? +bE.value : +c0.bpm;
         P.counts = { bpm: bpm > 20 && bpm < 300 ? +bpm.toFixed(2) : null, first: fE ? parse(fE.value) || 0 : +c0.first || 0, show: document.getElementById('cshow').checked, taps: c0.taps, fit: c0.fit };
-        if (c0.fit && (P.counts.bpm !== +c0.bpm || Math.abs(P.counts.first - (+c0.first || 0)) > 0.05)) delete P.counts.fit;      // changed by hand
+        if (c0.ones && !(c0.fit && (P.counts.bpm !== +c0.bpm || Math.abs(P.counts.first - (+c0.first || 0)) > 0.05))) P.counts.ones = c0.ones;
+        if (c0.fit && (P.counts.bpm !== +c0.bpm || Math.abs(P.counts.first - (+c0.first || 0)) > 0.05)) delete P.counts.fit;      // changed by hand: a plain steady 8
         P.parts = Array.from(app.querySelectorAll('[data-part]')).map(function (el) { var v = function (k) { return el.querySelector('[data-pk="' + k + '"]').value.trim(); }; var n = Math.round(+v('eight')); return { eight: n > 0 ? n : null, music: v('music').slice(0, 60), what: v('what').slice(0, 120) }; }).filter(function (x) { return x.eight || x.what; });
         P.finale = document.getElementById('fin').value; P.company.note = document.getElementById('cnote').value.trim(); P.crew = document.getElementById('ccrew').checked;
       };
@@ -427,7 +460,9 @@
           var g = P.groups[k], t = A.time(), e = eightSec(P);
           var mp = mapOf(P);
           if (mp) { var near = mp.beats.reduce(function (a, x) { return Math.abs(x - t) < Math.abs(a - t) ? x : a; }, mp.beats[0]), oi = mp.ones.indexOf(near); if (Math.abs(near - t) < mp.len / 8 && oi >= 0) { g.eights = oi; g.at = null; } else { g.eights = null; g.at = +(Math.abs(near - t) < mp.len / 8 ? near : t).toFixed(2); } }
-          else if (e) { var beat = e / 8, first = +P.counts.first || 0, b = Math.round((t - first) / beat); if (b >= 0 && b % 8 === 0) { g.eights = b / 8; g.at = null; } else { g.eights = null; g.at = +(first + b * beat).toFixed(2); } }
+          else if (e) { var beat = e / 8, first = +P.counts.first || 0, b = Math.round((t - first) / beat), O = onesOf(P), oi = O ? O.indexOf(b) : (b >= 0 && b % 8 === 0 ? b / 8 : -1);
+            if (oi < 0 && O && b > O[O.length - 1] && (b - O[O.length - 1]) % 8 === 0) oi = O.length - 1 + (b - O[O.length - 1]) / 8;
+            if (oi >= 0) { g.eights = oi; g.at = null; } else { g.eights = null; g.at = +(first + b * beat).toFixed(2); } }
           else { g.eights = null; g.at = +t.toFixed(1); }
           k++; show(); if (k >= P.groups.length) setTimeout(end, 800);
         };
@@ -442,62 +477,118 @@
   };
   /* ---------- Count the music: tap 1 on every count 1 and 2–8 on the other counts, all the way through ----------
      (Colleen 2026-10-25: "stack the buttons with 1 on top and tap 2-8 on the bottom one"). Keys: 1 (or J) for a one, Space (or F) for 2–8.
-     "Start here" re-taps from any 8-count: the taps before it are kept. */
+     "Start at" re-taps from any 8-count: the taps before it are kept. Then ("i want to be able to watch back the counts you think are right and mark
+     errors"): Watch back plays the music with the app's counting, big, and a click on every beat (the 1 louder); Mark wrong (or X) marks the
+     8-count playing; tap any 8-count in the list to fix it: its 1 a count earlier or later, watch from there, or tap again from there. */
   function countPage() {
     T.setBar('Count the music', '#/teacher/curtain');
     var P = JSON.parse(JSON.stringify(plan())), mu = music(P);
     if (!mu) { app.innerHTML = '<p class="card">Pick or upload the bow music first (Teacher › Curtain call).</p>'; return; }
-    var old = (P.counts && P.counts.taps) || [], taps = old.slice(), from = '', A = loadAudio(Object.assign({}, mu), Object.assign({}, P, { music: Object.assign({}, P.music, { loop: false }) })), raf = 0, flash = 0;
-    var ones = function (list) { return list.filter(function (x) { return x[1]; }).map(function (x) { return x[0]; }); };
-    app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('👆') + 'Count the music</h2><p>Press <b>Start</b>, then tap along all the way through: <b>1</b> on every count of 1, and <b>2–8</b> on every other count. The app averages all your taps into one steady beat, so a tap that is a little early or late, or a slip, does not throw the counting off.</p>' +
-      '<p class="small muted">Keys: <b>1</b> for a one, <b>Space</b> for 2–8. Made a mistake? Stop, pick the 8-count to fix in <b>Start at</b>, and tap again from there: everything before it is kept.</p>' +
-      '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><button class="btn primary" id="cgo">' + icon('play') + 'Start</button><label class="f" style="margin:0">Start at<select id="cfrom"></select></label><b id="ctm" class="lt-time">0:00</b><span id="cnow" class="grow" style="font-weight:700"></span></div></div>' +
-      '<div class="cnt-pads"><button class="cnt-one" id="pone" disabled>1</button><button class="cnt-beat" id="pbeat" disabled>2 – 8</button></div>' +
-      '<div class="card"><div class="row" style="flex-wrap:wrap"><b class="grow" id="csum"></b><button class="btn quiet" id="cclr">Clear all</button><button class="btn primary" id="csave" data-save>Save my counting</button></div><div id="clist" class="small" style="margin-top:6px;line-height:1.7"></div></div>';
+    var taps = ((P.counts && P.counts.taps) || []).slice(), edits = P.counts && P.counts.fit && P.counts.ones ? { ones: P.counts.ones.slice() } : null, marks = {}, sel = -1;
+    var from = '', mode = '', A = loadAudio(Object.assign({}, mu), Object.assign({}, P, { music: Object.assign({}, P.music, { loop: false }) })), raf = 0, flash = 0, lastBeat = null;
+    var onesT = function (list) { return list.filter(function (x) { return x[1]; }).map(function (x) { return x[0]; }); };
+    /* the counting as it stands: her taps averaged, with her fixes */
+    var cur = function () { var f = fitCounts(taps); if (!f) return null; if (edits && edits.ones) f.ones = edits.ones.slice(); return f; };
+    var Q = function (f) { return Object.assign({}, P, { counts: { bpm: f.bpm, first: f.first, ones: f.ones } }); };
+    var startT = function (f, n) { return startOf(Q(f), n); };
+    var lenOf = function (f, i) { return f.ones[i + 1] != null ? f.ones[i + 1] - f.ones[i] : null; };
+    app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('👆') + 'Count the music</h2><p><b>1. Tap:</b> press <b>Start</b> and tap along all the way through: <b>1</b> on every count of 1, <b>2–8</b> on every other count. The app averages your taps into one steady beat; a missed count is filled in, and a short phrase (a 4-count transition) stays short.</p>' +
+      '<p><b>2. Check:</b> press <b>Watch back</b>: the music plays with the app’s counting and a click on every beat. When it’s wrong, press <b>Mark wrong</b> (or X), then fix that 8-count in the list.</p>' +
+      '<p class="small muted">Keys: <b>1</b> for a one, <b>Space</b> for 2–8, <b>X</b> to mark. Tapping again from an 8-count keeps everything before it.</p>' +
+      '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><button class="btn primary" id="cgo">' + icon('play') + 'Start tapping</button><label class="f" style="margin:0">from<select id="cfrom"></select></label><button class="btn" id="cwatch">' + icon('play') + 'Watch back</button><b id="ctm" class="lt-time">0:00</b></div></div>' +
+      '<div class="cnt-show" id="cshowbox" hidden><div class="cnt-show-n" id="cbig"></div><div class="bow-8-beats" id="cdots">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<span>' + n + '</span>'; }).join('') + '</div><button class="btn cnt-mark" id="cmark">✗ Mark wrong</button></div>' +
+      '<div class="cnt-pads" id="cpads"><button class="cnt-one" id="pone" disabled>1</button><button class="cnt-beat" id="pbeat" disabled>2 – 8</button></div>' +
+      '<div class="card"><div class="row" style="flex-wrap:wrap"><b class="grow" id="csum"></b><button class="btn quiet" id="cclr">Clear all</button><button class="btn primary" id="csave" data-save>Save my counting</button></div><div id="cfix"></div><div id="clist" class="small cnt-list"></div></div>';
     var $ = function (id) { return document.getElementById(id); };
     function list() {
-      var o = ones(taps), m = taps.length;
-      var f = fitCounts(taps);
-      $('csum').innerHTML = !o.length ? 'Nothing tapped yet' : f ? 'Steady beat from the average of your taps: <span style="font-size:1.2em">' + f.bpm + ' beats a minute</span>, count 1 at ' + T.clock(f.first) + ' · ' + f.used + ' of ' + f.taps + ' taps used' + (f.off ? ', ' + f.off + ' clearly off (left out)' : '') + (f.badOnes ? ', ' + f.badOnes + ' “1” tapped on another count' : '') : o.length + ' 1s tapped: keep going';
-      $('clist').innerHTML = o.map(function (t, i) {
-        var nxt = o[i + 1], n = taps.filter(function (x) { return x[0] >= t - 0.01 && (nxt == null || x[0] < nxt - 0.01); }).length, odd = nxt != null && n !== 8;
-        return '<span style="display:inline-block;min-width:150px' + (odd ? ';color:#c8323c;font-weight:700' : '') + '">8-count ' + (i + 1) + ': ' + T.clock(t) + (odd ? ' (' + n + ' counts)' : '') + '</span>';
-      }).join('') + (o.some(function (t, i) { var nxt = o[i + 1]; return nxt != null && taps.filter(function (x) { return x[0] >= t - 0.01 && x[0] < nxt - 0.01; }).length !== 8; }) ? '<p style="color:#c8323c">Red: that 8-count got more or fewer than 8 taps. Fix it with Start at, or leave it if the music really has an extra or missing beat there.</p>' : '');
-      $('cfrom').innerHTML = '<option value="">The beginning</option>' + o.map(function (t, i) { return '<option value="' + i + '"' + (from === String(i) ? ' selected' : '') + '>8-count ' + (i + 1) + ' (' + T.clock(t) + ')</option>'; }).join('');
+      var f = cur(), o = onesT(taps);
+      $('csum').innerHTML = !o.length ? 'Nothing tapped yet' : !f ? o.length + ' 1s tapped: keep going' : 'Steady beat: <span style="font-size:1.2em">' + f.bpm + ' beats a minute</span>, count 1 at ' + T.clock(f.first) + ' · ' + f.used + ' of ' + f.taps + ' taps used' + (f.off ? ', ' + f.off + ' left out' : '') + (f.filled ? ', ' + f.filled + ' missed 1' + (f.filled === 1 ? '' : 's') + ' filled in' : '') + (edits ? ' · with your fixes' : '');
+      $('clist').innerHTML = f ? f.ones.map(function (k, i) {
+        var L = lenOf(f, i), cls = marks[i + 1] ? 'mark' : L == null || L === 8 ? '' : L === 4 ? 'four' : 'odd';
+        return '<button type="button" class="cnt-item ' + cls + (sel === i ? ' sel' : '') + '" data-n="' + i + '">' + (marks[i + 1] ? '✗ ' : '') + '8-count ' + (i + 1) + ' · ' + T.clock(startT(f, i + 1)) + (L != null && L !== 8 ? ' · ' + L + ' counts' : '') + '</button>';
+      }).join('') + (f.ones.some(function (k, i) { var L = lenOf(f, i); return L != null && L !== 8 && L !== 4; }) ? '<p class="cnt-note">Orange: not 8 counts (and not a 4-count transition). Watch it back: a 1 may be a count early or late.</p>' : '') : '';
+      $('cfrom').innerHTML = '<option value="">the beginning</option>' + (f ? f.ones.map(function (k, i) { return '<option value="' + i + '"' + (from === String(i) ? ' selected' : '') + '>8-count ' + (i + 1) + '</option>'; }).join('') : '');
+      app.querySelectorAll('.cnt-item').forEach(function (b) { b.onclick = function () { sel = +b.dataset.n; from = String(sel); list(); fixBar(); }; });
+      fixBar();
     }
+    /* fixing one 8-count: move its 1, watch it, tap it again, unmark */
+    function fixBar() {
+      var f = cur(), box = $('cfix'); if (!f || sel < 0 || sel >= f.ones.length) { box.innerHTML = ''; return; }
+      var n = sel + 1;
+      box.innerHTML = '<div class="cnt-fix"><b>8-count ' + n + '</b> starts at ' + T.clock(startT(f, n)) + (lenOf(f, sel) != null ? ', ' + lenOf(f, sel) + ' counts' : '') + '<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">' +
+        '<button class="btn small" id="fe"' + (sel === 0 ? ' disabled' : '') + '>◀ Its 1 a count earlier</button><button class="btn small" id="fl">Its 1 a count later ▶</button>' +
+        '<button class="btn small" id="fw">' + icon('play') + 'Watch from here</button><button class="btn small" id="ft">Tap again from here</button>' + (marks[n] ? '<button class="btn small quiet" id="fu">Unmark</button>' : '') + '</div></div>';
+      var move = function (d) {
+        var g = cur(), O = g.ones.slice(), v = O[sel] + d;
+        if ((sel > 0 && v <= O[sel - 1]) || (O[sel + 1] != null && v >= O[sel + 1])) { T.toast('That would run into the next 8-count.'); return; }
+        if (sel === 0) { T.toast('The first 1 is where the counting starts: tap again from the beginning to move it.'); return; }
+        O[sel] = v; edits = { ones: O }; delete marks[n]; list();
+      };
+      $('fe').onclick = function () { move(-1); }; $('fl').onclick = function () { move(1); };
+      $('fw').onclick = function () { watch(startT(cur(), n) - 3); };
+      $('ft').onclick = function () { from = String(sel); startTap(); };
+      if ($('fu')) $('fu').onclick = function () { delete marks[n]; list(); };
+    }
+    /* a soft click on every beat while watching back, louder on 1 */
+    var click = function (one) { var ctx = T.audioCtx(), t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = one ? 1568 : 1046; g.gain.setValueAtTime(one ? 0.35 : 0.18, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06); o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 0.07); };
     function tick() {
       var t = A.time(); $('ctm').textContent = T.clock(t);
-      var f = fitCounts(taps), Q = f ? Object.assign({}, P, { counts: { bpm: f.bpm, first: f.first } }) : null, at = Q ? eightAt(Q, t) : null;
-      $('cnow').textContent = at ? '8-count ' + at.n + ', count ' + at.beat : '';
+      var f = cur(), at = f ? eightAt(Q(f), t) : null;
+      if (mode === 'watch') {
+        $('cbig').textContent = at ? '8-count ' + at.n : 'Count 1 is coming';
+        $('cdots').querySelectorAll('span').forEach(function (x, i) { x.className = at && i < at.beat ? (i === at.beat - 1 ? 'now' : 'past') : ''; });
+        var key = at ? at.n + ':' + at.beat : null;
+        if (key && key !== lastBeat) { lastBeat = key; click(at.beat === 1); }
+      }
       if (!A.audio.paused) raf = requestAnimationFrame(tick);
     }
+    function stop() { A.pause(); mode = ''; $('cgo').innerHTML = icon('play') + 'Start tapping'; $('cwatch').innerHTML = icon('play') + 'Watch back'; $('pone').disabled = $('pbeat').disabled = true; $('cshowbox').hidden = true; $('cpads').hidden = false; list(); }
+    function startTap() {
+      A.ready.then(function () {
+        if (mode) stop();
+        var f = cur(), cut = from !== '' && f && f.ones[+from] != null ? startT(f, +from + 1) : 0;
+        taps = taps.filter(function (x) { return x[0] < cut - 0.12; });      // keep what comes before; tap again from there
+        edits = null; Object.keys(marks).forEach(function (k) { if (+k > +from) delete marks[k]; });
+        mode = 'tap'; $('cpads').hidden = false; $('cshowbox').hidden = true;
+        A.seek(Math.max(0, cut - 4)); A.play(); $('cgo').innerHTML = icon('pause') + 'Stop';
+        $('pone').disabled = $('pbeat').disabled = false; $('pone').focus(); raf = requestAnimationFrame(tick); list();
+      }, function (e) { T.toast(e.message, 5000); });
+    }
+    function watch(at) {
+      if (!cur()) { T.toast('Tap the music first.'); return; }
+      A.ready.then(function () {
+        if (mode) stop();
+        mode = 'watch'; lastBeat = null; $('cpads').hidden = true; $('cshowbox').hidden = false;
+        A.seek(Math.max(0, at || 0)); A.play(); $('cwatch').innerHTML = icon('pause') + 'Stop'; raf = requestAnimationFrame(tick);
+      });
+    }
     var tap = function (one) {
-      if (A.audio.paused) return;
+      if (mode !== 'tap' || A.audio.paused) return;
       var t = +A.time().toFixed(3); taps.push([t, one ? 1 : 0]);
       var b = $(one ? 'pone' : 'pbeat'); b.classList.add('hit'); clearTimeout(flash); flash = setTimeout(function () { b.classList.remove('hit'); }, 90);
       if (one) list();
     };
-    $('pone').onclick = function () { tap(true); }; $('pbeat').onclick = function () { tap(false); };
-    var key = function (e) { if (/input|select|textarea/i.test(e.target.tagName)) return; if (e.key === '1' || e.key === 'j' || e.key === 'J') { e.preventDefault(); tap(true); } else if (e.key === ' ' || e.key === 'f' || e.key === 'F') { e.preventDefault(); tap(false); } };
+    var mark = function () { if (mode !== 'watch') return; var f = cur(), at = f ? eightAt(Q(f), A.time()) : null; if (!at) return; marks[at.n] = 1; sel = at.n - 1; T.toast('8-count ' + at.n + ' marked', 1500); list(); };
+    $('pone').onclick = function () { tap(true); }; $('pbeat').onclick = function () { tap(false); }; $('cmark').onclick = mark;
+    var key = function (e) {
+      if (/input|select|textarea/i.test(e.target.tagName)) return;
+      if (e.key === '1' || e.key === 'j' || e.key === 'J') { e.preventDefault(); tap(true); }
+      else if (e.key === ' ' || e.key === 'f' || e.key === 'F') { e.preventDefault(); tap(false); }
+      else if (e.key === 'x' || e.key === 'X') { e.preventDefault(); mark(); }
+    };
     document.addEventListener('keydown', key);
     T.cleanup.push(function () { document.removeEventListener('keydown', key); cancelAnimationFrame(raf); });
-    $('cgo').onclick = function () {
-      var b = this;
-      A.ready.then(function () {
-        if (!A.audio.paused) { A.pause(); b.innerHTML = icon('play') + 'Start'; $('pone').disabled = $('pbeat').disabled = true; list(); return; }
-        from = $('cfrom').value; var o = ones(taps), cut = from !== '' && o[+from] != null ? o[+from] : 0;
-        taps = taps.filter(function (x) { return x[0] < cut - 0.01; });      // keep what comes before; tap again from there
-        A.seek(Math.max(0, cut - 4)); A.play(); b.innerHTML = icon('pause') + 'Stop';
-        $('pone').disabled = $('pbeat').disabled = false; $('pone').focus(); raf = requestAnimationFrame(tick); list();
-      }, function (e) { T.toast(e.message, 5000); });
-    };
-    A.audio.addEventListener('ended', function () { $('cgo').innerHTML = icon('play') + 'Start'; $('pone').disabled = $('pbeat').disabled = true; list(); });
-    $('cclr').onclick = function () { if (taps.length && !confirm('Clear all your taps?')) return; taps = []; list(); };
+    $('cgo').onclick = function () { if (mode === 'tap') stop(); else { from = $('cfrom').value; startTap(); } };
+    $('cwatch').onclick = function () { if (mode === 'watch') stop(); else { var f = cur(), v = $('cfrom').value; watch(v !== '' && f ? startT(f, +v + 1) - 3 : 0); } };
+    $('cfrom').onchange = function () { from = this.value; };
+    A.audio.addEventListener('ended', stop);
+    $('cclr').onclick = function () { if (taps.length && !confirm('Clear all your taps?')) return; taps = []; edits = null; marks = {}; sel = -1; list(); };
     $('csave').onclick = function () {
-      if (ones(taps).length < 2) { T.toast('Tap at least two 1s first.'); return; }
-      A.pause();
-      var f = fitCounts(taps); if (!f) { T.toast('Tap at least two 1s first.'); return; }
-      var Pn = plan(); Pn = JSON.parse(JSON.stringify(Pn)); Pn.counts = Object.assign({}, Pn.counts, { taps: taps.slice().sort(function (a, b) { return a[0] - b[0]; }), bpm: f.bpm, first: f.first, fit: { used: f.used, off: f.off, at: new Date().toISOString().slice(0, 10) } });
+      var f = cur(); if (!f) { T.toast('Tap at least two 1s first.'); return; }
+      if (mode) stop();
+      var Pn = JSON.parse(JSON.stringify(plan()));
+      Pn.counts = Object.assign({}, Pn.counts, { taps: taps.slice().sort(function (a, b) { return a[0] - b[0]; }), bpm: f.bpm, first: f.first, ones: f.ones,
+        fit: { used: f.used, off: f.off, filled: f.filled, fixed: !!edits, fours: f.ones.map(function (k, i) { return lenOf(f, i) === 4 ? i + 1 : 0; }).filter(Boolean), at: new Date().toISOString().slice(0, 10) } });
       delete Pn.counts.raw;
       T.show.curtain = Pn; T.saveShow('Your counting is saved').then(function () { location.hash = '#/teacher/curtain'; });
     };

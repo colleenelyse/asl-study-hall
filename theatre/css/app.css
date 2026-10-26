@@ -803,3 +803,16 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .cnt-pads .cnt-beat { background: #2f6fd1; min-height: 26vh; }
 .cnt-pads button:disabled { opacity: .35; cursor: default; }
 .cnt-pads button.hit { transform: scale(.97); filter: brightness(1.35); }
+/* Count the music: watching back and fixing */
+.cnt-show { text-align: center; padding: 18px 10px; margin: 12px 0; border-radius: 22px; background: #10172a; color: #fff; }
+.cnt-show-n { font: 800 clamp(48px, 11vw, 104px)/1.05 var(--font-head, sans-serif); }
+.cnt-show .bow-8-beats span { width: clamp(36px, 7vw, 60px); height: clamp(36px, 7vw, 60px); }
+.cnt-mark { margin-top: 14px; min-height: 64px; font-size: 1.3rem; background: #c8323c; color: #fff; border-color: #c8323c; padding: 0 28px; }
+.cnt-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.cnt-item { border: 1px solid var(--line); background: transparent; color: inherit; border-radius: 10px; padding: 6px 10px; cursor: pointer; font: inherit; }
+.cnt-item.four { border-color: #2f6fd1; color: #6fa0ef; font-weight: 700; }
+.cnt-item.odd { border-color: #d9822b; color: #e39a4c; font-weight: 700; }
+.cnt-item.mark { border-color: #c8323c; background: #c8323c; color: #fff; font-weight: 700; }
+.cnt-item.sel { outline: 3px solid #ffd84d; }
+.cnt-note { width: 100%; margin: 6px 0 0; color: #e39a4c; }
+.cnt-fix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 2px solid #ffd84d; }
