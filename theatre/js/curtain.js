@@ -303,7 +303,8 @@
         }
         if (!fired[c.i] && t >= c.t && t < c.t + 3) {
           fired[c.i] = 1; if (chimes()) GO();
-          var go = $('bgo'); go.hidden = false; go.style.background = c.color; go.style.color = '#fff'; go.innerHTML = '<div>GO!</div><div class="bow-go-who">' + esc(c.label) + '</div><div class="bow-go-from">from ' + esc(c.from) + '</div>';
+          var go = $('bgo'); go.hidden = false; go.style.background = '#1b8a3c';      // GO is always green (Colleen 2026-10-26), like My bow
+          go.style.color = '#fff'; go.innerHTML = '<div>GO!</div><div class="bow-go-who">' + esc(c.label) + '</div><div class="bow-go-from">from ' + esc(c.from) + '</div>';
           setTimeout(function () { if ($('bgo')) $('bgo').hidden = true; }, 3000);
         }
       });
