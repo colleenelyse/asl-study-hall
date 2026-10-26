@@ -129,6 +129,7 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .ck.num { background: var(--card); font-size: 18px; } .ck.fn2 { color: var(--brand); } .ck.eq { background: var(--brand); color: var(--onbrand, #fff); border-color: var(--brand); font-size: 20px; }
 .ck:active { transform: scale(.96); } .calch { display: block; text-align: left; padding: 2px 0; }
 .pqrow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--line); } .pqrow.off { opacity: .5; }
+.gchip.old { border-style: dashed; opacity: .82; }
 .gpbar { height: 10px; background: var(--chip); border-radius: 6px; overflow: hidden; margin: 6px 0 2px; } .gpbar span { display: block; height: 100%; background: var(--up); border-radius: 6px; transition: width .3s; }
 .gprow { padding: 10px 0; border-bottom: 1px solid var(--line); } .gprow.done b.grow { color: var(--up); }
 .gpbox { margin-top: 6px; min-height: 44px; font-size: 14px; } .gpres { font-size: 14px; }
@@ -435,7 +436,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.05';
+var VERSION = '2.07';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -1166,6 +1167,8 @@ function teacherData_(week) {
     if (!p.lastGrades || upd > p.lastGrades) p.lastGrades = upd;
     if (w === week && (!p.gradesOn || upd > p.gradesOn)) p.gradesOn = upd;
     if (w === week && Number(r[8]) > 0) p.missing[cls] = { n: Number(r[8]), list: String(r[9] || '') };
+    p.missAt = p.missAt || {}; p.gdate = p.gdate || {};          // 2.07: each week's missing work and entry day, to show the latest grades
+    (p.missAt[cls] = p.missAt[cls] || {})[w] = { n: Number(r[8]) || 0, list: String(r[9] || '') }; (p.gdate[cls] = p.gdate[cls] || {})[w] = upd;
     if (r[8] !== '' && r[8] !== null) { p.missW = p.missW || {}; p.missW[w] = (p.missW[w] || 0) + (Number(r[8]) || 0); }
   });
   // semester grade goals (newest per class), for the good-news list
@@ -1183,19 +1186,22 @@ function teacherData_(week) {
     var dt = detailOn ? { of: p.classes.length, need: p.classes.filter(function (c) { return !(detail[email] || {})[c]; }) } : null;
     Object.keys(p.grades).forEach(function (c) { if (classes.indexOf(c) < 0 && p.grades[c][week] !== undefined) classes.push(c); });
     var rows = classes.map(function (c) {
-      var h = p.grades[c] || {}, now = h[week], prev = before_(h, week), change = (now !== undefined && prev) ? round_(now - prev.grade) : null;
+      // 2.07: the latest grade this student entered (this week, or the last week they did), shown until newer grades come in
+      var h = p.grades[c] || {}, lw = h[week] !== undefined ? week : Object.keys(h).filter(function (w) { return w < week; }).sort().pop(), stale = !!lw && lw < week;
+      var now = lw ? h[lw] : undefined, prev = lw ? before_(h, lw) : null, change = (now !== undefined && prev) ? round_(now - prev.grade) : null;
+      var mAt = lw && p.missAt && p.missAt[c] ? p.missAt[c][lw] : null;
       var hist = Object.keys(h).filter(function (w) { return w >= semS && w <= week; }).sort().slice(-12).map(function (w) { return h[w]; });
-      return { cls: c, now: now === undefined ? null : now, prev: prev ? prev.grade : null, hist: hist,
+      return { cls: c, now: now === undefined ? null : now, prev: prev ? prev.grade : null, hist: hist, stale: stale, on: lw ? ((p.gdate && p.gdate[c] && p.gdate[c][lw]) || lw) : '',
         change: change, low: now !== undefined && now < st.low, drop: change !== null && change <= -st.drop,
-        missing: p.missing[c] ? p.missing[c].n : 0, missingList: p.missing[c] ? p.missing[c].list : '', grad: now !== undefined && now < st.cutoffs[2] && gradFor_(c, gl) ? gradFor_(c, gl).area : '' };
+        missing: mAt ? mAt.n : 0, missingList: mAt ? mAt.list : '', grad: now !== undefined && now < st.cutoffs[2] && gradFor_(c, gl) ? gradFor_(c, gl).area : '' };
     });
     var pl = plans[email] || null, wins = [], mw = p.missW || {}, prevW = Object.keys(mw).filter(function (w) { return w < week; }).sort().pop();
-    rows.forEach(function (g) { if (g.change !== null && g.change >= st.drop) wins.push(g.cls + ' up ' + g.change + ' (to ' + g.now + '%)'); });
+    rows.forEach(function (g) { if (!g.stale && g.change !== null && g.change >= st.drop) wins.push(g.cls + ' up ' + g.change + ' (to ' + g.now + '%)'); });
     if (mw[week] === 0 && prevW && mw[prevW] > 0) wins.push('no missing work (was ' + mw[prevW] + ')');
-    rows.forEach(function (g) { var gl2 = (goals[email] || {})[g.cls]; if (gl2 !== undefined && g.now !== null && g.now >= gl2 && (g.prev === null || g.prev < gl2)) wins.push('reached their ' + g.cls + ' goal'); });
+    rows.forEach(function (g) { var gl2 = (goals[email] || {})[g.cls]; if (gl2 !== undefined && !g.stale && g.now !== null && g.now >= gl2 && (g.prev === null || g.prev < gl2)) wins.push('reached their ' + g.cls + ' goal'); });
     return { email: email, name: p.name, wins: wins, periods: p.periods, last: p.last, bday: p.bday || '', grades: rows,
       lastGrades: p.lastGrades || '', sinceGrades: p.lastGrades ? daysBetween_(p.lastGrades, today) : null, gradesOn: p.gradesOn || '',
-      checkedIn: rows.some(function (g) { return g.now !== null; }) || !!pl, plan: pl, detail: dt, dayPlan: dayp[email] || null,
+      checkedIn: rows.some(function (g) { return g.now !== null && !g.stale; }) || !!pl, plan: pl, detail: dt, dayPlan: dayp[email] || null,
       flags: rows.filter(function (g) { return g.low || g.drop; }).length,
       missing: rows.reduce(function (t, g) { return t + g.missing; }, 0) };
   }).sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -1404,7 +1410,7 @@ function api_saveSettings(changes) {
       if (ui[1] === 'choice' && ui[2].indexOf(v) < 0) throw new Error('"' + k + '": pick one of the choices.');
       if (ui[1] === 'number' && v !== '' && isNaN(Number(v))) throw new Error('"' + k + '" needs a number.');
       if (ui[1] === 'dates' && v && !list_(v).every(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); })) throw new Error('Type dates like 2027-01-05, separated with commas.');
-      if (k === 'Teacher emails' && v && !list_(v).every(function (e) { return /^[^@\s]+@[^@\s]+$/.test(e); })) throw new Error('Teacher emails: type full emails separated with commas.');
+      if (k === 'Teacher emails' && v && !String(v).split(/[,;\s]+/).filter(String).every(function (e) { return /^[^@\s]+@[^@\s]+$/.test(e); })) throw new Error('Teacher emails: type full emails (like jsmith@lths.net), separated with commas.');
       var d = DEFAULTS.filter(function (x) { return x[0] === k; })[0];
       if (at[k]) st.getRange(at[k], 2).setValue(v);
       else { st.appendRow([k, v, d ? d[2] : '']); at[k] = st.getLastRow(); }
@@ -1543,7 +1549,7 @@ function stuck_(students, today, st) {
   students.forEach(function (s) {
     var seen = String(pr['seen:' + s.email] || ''); if (seen.slice(0, 10) !== today) return;
     var why = [];
-    if (ci.day && s.grades.length && (s.grades.some(function (g) { return g.now === null; }) || (ci.since && String(s.lastGrades || '') < ci.since))) why.push('grades (grade check day)');
+    if (ci.day && s.grades.length && (s.grades.some(function (g) { return g.now === null || g.stale; }) || (ci.since && String(s.lastGrades || '') < ci.since))) why.push('grades (grade check day)');
     if (st.f.dayPlan && !(s.dayPlan && s.dayPlan.plan)) why.push('today’s plan');
     if (why.length) out.push({ email: s.email, name: s.name, seen: seen.slice(11, 16), why: why });
   });
@@ -1890,7 +1896,7 @@ function api_unexplainMissing(cls, name, email) {
 // a list of names, then each student's full progress report (everything the teacher's report has).
 function caseload_(email) {
   if (!email) return [];
-  return rows_('Students').filter(function (r) { return low_(r[SC.caseMgrEmail]) === email && low_(r[SC.email]); })
+  return rows_('Students').filter(function (r) { return sameStaff_(r[SC.caseMgrEmail], email) && low_(r[SC.email]); })
     .map(function (r) { return { email: low_(r[SC.email]), name: stuName_(r), grade: String(r[SC.grade] || ''), period: String(r[SC.period] || '') }; })
     .sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
 }
@@ -3742,7 +3748,7 @@ function settings_() {
   var cut = String(v['Letter cutoffs']).split(',').map(Number).filter(function (n) { return !isNaN(n); });
   var out = {
     app: String(v['App name'] || 'Resource Check-In'),
-    teachers: list_(v['Teacher emails']).map(low_),
+    teachers: String(v['Teacher emails'] || '').split(/[,;\s]+/).map(low_).filter(function (e) { return /@/.test(e); }),          // commas, semicolons, spaces or one per line
     aps: String(v['Assistant principals'] || '').split(';').map(function (x) { var m = /^\s*(\d{4})\s*=\s*(.+)$/.exec(x); if (!m) return null; var p = m[2].split('|').map(function (y) { return y.trim(); }); return { year: m[1], name: p[0] || '', campus: p[1] || '', phone: p[2] || '' }; }).filter(function (x) { return x && x.name; }),
     iepDays: list_(v['IEP date reminders (days before)']).map(Number).filter(function (n) { return n >= 0 && n < 400; }), progressDates: list_(v['Progress report dates']).map(function (d) { return day_(d); }).filter(String).sort(),
     weekly: /^y/i.test(String(v['Weekly summary email (Fridays)'] || 'Yes')), weeklyTo: list_(v['Weekly summary goes to']).map(low_).filter(function (e) { return /@/.test(e); }),
@@ -3798,7 +3804,7 @@ function weeklySummary_(to) {
   var notIn = stu.filter(function (s) { return !s.checkedIn; });
   if (notIn.length) sec.push(['Didn’t check in this week (' + notIn.length + ')', [names(notIn)]]);
   var drops = [];
-  stu.forEach(function (s) { s.grades.forEach(function (g) { if (g.drop) drops.push(s.name + ': ' + g.cls + ' ' + g.now + '% (down ' + Math.abs(g.change) + ' from ' + g.prev + ')'); }); });
+  stu.forEach(function (s) { s.grades.forEach(function (g) { if (g.drop && !g.stale) drops.push(s.name + ': ' + g.cls + ' ' + g.now + '% (down ' + Math.abs(g.change) + ' from ' + g.prev + ')'); }); });
   if (drops.length) sec.push(['Big grade drops (' + st.drop + '+ points)', drops]);
   var lows = [];
   stu.forEach(function (s) { var l = s.grades.filter(function (g) { return g.low; }); if (l.length) lows.push(s.name + ': ' + l.map(function (g) { return g.cls + ' ' + g.now + '%' + (g.grad ? ' (needed to graduate)' : ''); }).join(', ')); });
@@ -3844,7 +3850,14 @@ function weeklySummaryNow() {
 function isTeacher_(email) {
   var owner = '';
   try { owner = low_(Session.getEffectiveUser().getEmail()); } catch (e) {}
-  return !!email && (email === owner || settings_().teachers.indexOf(email) >= 0);
+  return !!email && (email === owner || settings_().teachers.some(function (t) { return sameStaff_(t, email); }));
+}
+// 2.06: the same staff member under either school domain: staff emails are written @lths.net (lists, the website) but staff sign in
+// to Google as @d204.lths.net. Same name before the @, and one domain ends with the other.
+function sameStaff_(a, b) {
+  a = low_(a); b = low_(b); if (!a || !b) return false; if (a === b) return true;
+  var x = a.split('@'), y = b.split('@'); if (x.length !== 2 || y.length !== 2 || x[0] !== y[0]) return false;
+  return x[1] === y[1] || x[1].slice(-(y[1].length + 1)) === '.' + y[1] || y[1].slice(-(x[1].length + 1)) === '.' + x[1];
 }
 
 function teacherOnly_() { if (!isTeacher_(myEmail_())) throw new Error('Only teachers can see this page.'); }
@@ -6255,14 +6268,14 @@ function drawOverview() {
     (Object.keys(periods).length ? '<select style="max-width:170px" onchange="FILTER.period=this.value;drawOverview()"><option value="">All periods</option>' + Object.keys(periods).sort(function (a, b) { return (parseFloat(a) || 99) - (parseFloat(b) || 99); }).map(function (p) { return '<option value="' + esc(p) + '"' + (FILTER.period === p ? ' selected' : '') + '>Period ' + esc(p) + '</option>'; }).join('') + '</select>' : '') +
     '<select style="max-width:220px" onchange="FILTER.show=this.value;drawOverview()">' + [['all', 'Everyone'], ['flag', 'Needs attention'], ['drop', 'Grades that dropped'], ['good', '🎉 Good news'], ['stale', 'Grades not updated in a week'], ['miss', 'Missing work'], ['missing', 'Not checked in'], ['help', 'Asked for help']].concat(TD.detailOn ? [['detail', 'Detailed grades not done this week']] : []).map(function (o) { return '<option value="' + o[0] + '"' + (FILTER.show === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
     '<input class="grow" type="text" id="tq" placeholder="Search names or emails" value="' + esc(FILTER.q) + '"></div>';
-  h += list.length ? '<table><thead><tr><th>Student</th><th class="hide-sm">Checked in</th><th>Grades this week</th><th class="hide-sm">Plan</th></tr></thead><tbody>' + list.map(function (s) {
+  h += list.length ? '<table><thead><tr><th>Student</th><th class="hide-sm">Checked in</th><th>Latest grades</th><th class="hide-sm">Plan</th></tr></thead><tbody>' + list.map(function (s) {
     return '<tr class="click" onclick="openStudent(\'' + esc(s.email) + '\')"><td><div class="person">' + avatar(s.email, s.name) + '<div><b>' + esc(s.name) + '</b>' + (s.wins && s.wins.length ? ' <span class="badge up" title="' + esc(s.wins.join('; ')) + '">🎉 ' + s.wins.length + '</span>' : '') + (s.bday ? ' <span title="Birthday ' + fmtDay(s.bday) + '">🎂 ' + DAYS[utc(s.bday).getUTCDay()] + '</span>' : '') + '<a href="mailto:' + esc(s.email) + '" onclick="event.stopPropagation()">' + esc(s.email) + '</a>' +
       (s.periods.length ? '<span class="small">Resource period ' + esc(s.periods.join(', ')) + '</span>' : '') + '</div></div></td>' +
-      '<td class="hide-sm">' + (s.checkedIn ? '<span class="badge up">✓' + (s.gradesOn ? ' ' + shortDay(s.gradesOn) : '') + '</span>' : '<span class="badge">Not yet</span>') + (s.detail && s.detail.of ? '<small style="color:' + (s.detail.need.length ? 'var(--warn)' : 'var(--up)') + '" title="' + esc(s.detail.need.length ? 'Still needed: ' + s.detail.need.join(', ') : 'Every class this week') + '">detailed grades ' + (s.detail.of - s.detail.need.length) + ' of ' + s.detail.of + '</small>' : '') + (s.sinceGrades != null && s.sinceGrades > 7 ? '<small style="color:var(--warn)">grades ' + s.sinceGrades + ' days old</small>' : s.sinceGrades == null ? '<small>no grades yet</small>' : '') + '</td>' +
+      '<td class="hide-sm">' + (s.checkedIn ? '<span class="badge up">✓' + (s.gradesOn ? ' ' + shortDay(s.gradesOn) : '') + '</span>' : '<span class="badge">Not yet</span>' + (s.lastGrades ? '<small>grades from ' + shortDay(s.lastGrades) + '</small>' : '')) + (s.detail && s.detail.of ? '<small style="color:' + (s.detail.need.length ? 'var(--warn)' : 'var(--up)') + '" title="' + esc(s.detail.need.length ? 'Still needed: ' + s.detail.need.join(', ') : 'Every class this week') + '">detailed grades ' + (s.detail.of - s.detail.need.length) + ' of ' + s.detail.of + '</small>' : '') + (s.sinceGrades != null && s.sinceGrades > 7 ? '<small style="color:var(--warn)">grades ' + s.sinceGrades + ' days old</small>' : s.sinceGrades == null ? '<small>no grades yet</small>' : '') + '</td>' +
       '<td><div class="gchips">' + (s.grades.length ? s.grades.map(function (g) {
         // color = how low the grade is; a red outline and 📉 = it dropped since their last check-in (by the Drop alert or more)
-        var cls = (g.now == null ? 'miss' : g.grad || g.now < B.cutoffs[3] ? 'gradc' : g.low ? 'low' : '') + (g.drop ? ' dropb' : '');
-        return '<span class="gchip ' + cls + '" title="' + esc(g.cls) + (g.prev != null ? ', last time ' + g.prev + (g.change ? ' (' + (g.change > 0 ? 'up ' : 'down ') + Math.abs(g.change) + ')' : '') : '') + (g.missing ? ', missing: ' + (g.missingList || g.missing) : '') + '">' + (g.drop ? '📉 ' : '') + spark(g.hist) + esc(g.cls) + ' ' + (g.now == null ? '—' : g.now + (g.change ? ' <span class="chg ' + (g.change > 0 ? 'up">▲' : 'dn">▼') + Math.abs(g.change) + '</span>' : '')) + (g.missing ? ' <span class="mw">· ' + g.missing + ' missing</span>' : '') + (g.grad ? ' 🎓' : '') + '</span>';
+        var cls = (g.now == null ? 'miss' : g.grad || g.now < B.cutoffs[3] ? 'gradc' : g.low ? 'low' : '') + (g.drop ? ' dropb' : '') + (g.stale ? ' old' : '');
+        return '<span class="gchip ' + cls + '" title="' + esc(g.cls) + (g.stale && g.on ? ' (from ' + shortDay(g.on) + ': not updated yet this week)' : '') + (g.prev != null ? ', last time ' + g.prev + (g.change ? ' (' + (g.change > 0 ? 'up ' : 'down ') + Math.abs(g.change) + ')' : '') : '') + (g.missing ? ', missing: ' + (g.missingList || g.missing) : '') + '">' + (g.drop ? '📉 ' : '') + spark(g.hist) + esc(g.cls) + ' ' + (g.now == null ? '—' : g.now + (g.change ? ' <span class="chg ' + (g.change > 0 ? 'up">▲' : 'dn">▼') + Math.abs(g.change) + '</span>' : '')) + (g.missing ? ' <span class="mw">· ' + g.missing + ' missing</span>' : '') + (g.grad ? ' 🎓' : '') + '</span>';
       }).join('') : '<span class="small">No schedule yet</span>') + '</div></td>' +
       '<td class="hide-sm">' + (TD.dayPlanOn && isSchoolDay() ? (s.dayPlan && s.dayPlan.plan ? '<small title="' + esc(s.dayPlan.plan) + '" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block' + (s.dayPlan.flag ? ';color:var(--down)' : '') + '">' + (s.dayPlan.flag ? '🚫 ' : 'Today: ') + esc(s.dayPlan.plan) + '</small>' : '<small style="color:var(--warn)">' + (s.dayPlan && s.dayPlan.flag ? '🚫 did nothing' : 'no plan today') + '</small>') : '') +
         (s.plan ? plural(s.plan.steps.length, 'step') + (s.plan.help ? ' <span class="badge warn" title="' + esc(s.plan.help) + '">✋ Help</span>' : '') : '<span class="small">—</span>') + '</td></tr>';
