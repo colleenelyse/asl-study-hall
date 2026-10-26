@@ -282,6 +282,7 @@ h2.prompt .say, h1 .say { font-size: 1rem; margin-left: 6px }
 .q { display: flex; flex-direction: column; gap: 14px }
 .ask { text-align: center; color: var(--muted); font-weight: 800 }
 .artnoun { font-size: clamp(2rem, 6vw, 3.2rem); text-align: center } .artopts .opt { font: 700 1.4rem var(--display) }
+.fdgames { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px } .fdgames .btn { justify-content: center }      /* 4.178 the end of a flashcard deck */
 .prompt { text-align: center; font-size: 1.7rem }
 .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
 .opts.signs { gap: 10px; width: 100%; max-width: max(300px, calc(((100vh - 240px) / 2 - 16px) * 8 / 3 + 10px)); margin-inline: auto }      /* 4.175 (Colleen: on a Chromebook "you can only see two of the options at a time"): the four sign videos are sized so both rows fit the screen's height */
@@ -1361,7 +1362,7 @@ div.sts { cursor: default }
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.177';
+var VERSION = '4.178';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -13235,7 +13236,7 @@ function startGame(g, forced, learnN) {
   if (g === 'vasolo') return go('vasolo');      /* 4.150 The Vault solo */      /* 4.74 the vocab escape room */
   if (g === 'escape') return go('escape');      /* 4.57 the escape room */      /* 4.31: Lucky Claw is a game (Colleen), not a Prize Counter purchase */
   if (g === 'fspell') return fsOpen('#/games');      /* 3.74: the fingerspelling games are their own site; they need no signs picked. 3.78: played inside the app */
-  const all = forced || selected(), pool = all.filter(c => c.ok), label = forced ? 'Missed signs' : selLabel();
+  const all = forced || selected(), pool = all.filter(c => c.ok), label = forced ? (S.view === 'flashdone' ? 'Still learning' : 'Missed signs') : selLabel();
   if (g === 'flashcards') { if (!all.length) return toast('Pick some signs to study first.'); return startFlash(all, label); }
   if (pool.length < 2) return toast(all.length ? 'These signs do not have GIFs yet. Pick another set.' : 'Pick some signs to study first.');
   const again = () => startGame(g, forced, learnN);
@@ -13414,7 +13415,28 @@ ACT.flip = el => { R.flip = !R.flip; el.classList.toggle('flip', R.flip); };
 ACT.fside = el => { R.signFirst = el.checked; R.flip = false; try { localStorage.setItem('flash-def-first', el.checked ? '1' : '0'); } catch (e) {} paintFlash(); };
 ACT.fknow = el => { R.know = R.know || []; R.know.push([R.cards[R.i].id, el.dataset.k === '1' ? 1 : 0]); ACT.fnext(); };
 ACT.fprev = () => { if (R.i) { R.i--; R.flip = false; paintFlash(); } };
-ACT.fnext = () => { if (R.i < R.cards.length - 1) { R.i++; R.flip = false; return paintFlash(); } ACT.quitnow(); toast('Deck finished. Try a game to earn ' + S.set.tok + '.'); };
+ACT.fnext = () => { if (R.i < R.cards.length - 1) { R.i++; R.flip = false; return paintFlash(); } flashDone(); };
+/* 4.178 (Colleen: students asked that "after they do a deck of flashcards by marking if they knew or didn't know something, they are then able to re-view just the
+   ones that they reported not knowing and/or play games with just the challenging ones"): the end of a deck shows what they knew, the signs they marked
+   Don't know it (their last answer for each), and buttons to flip through just those again or play a game with just those */
+const FD_GAMES = ['learn', 'word', 'sign', 'type', 'yesno', 'match', 'memory', 'speed', 'sayit'];
+function flashDone() { const r = R, secs = (Date.now() - r.t0) / 1000, know = r.know || [];
+  if (know.length || secs >= 20) quitSave({ game: r.game, label: r.label, seconds: Math.round(secs), answers: [], know });      /* saved the same way as before */
+  const last = {}; know.forEach(([id, k]) => { last[id] = k; });
+  S.flashDone = { label: r.label, all: r.cards, miss: r.cards.filter(c => last[c.id] === 0), knew: r.cards.filter(c => last[c.id] === 1).length };
+  R = null; go('flashdone'); }
+VIEW.flashdone = () => { const d = S.flashDone; if (!d) return VIEW.home();
+  const n = d.miss.length, withGif = d.miss.filter(c => c.ok).length, games = GAMES.filter(g => FD_GAMES.indexOf(g[0]) >= 0 && partOn(g[0]));
+  return `<div class="stack" style="max-width:680px;margin:0 auto"><div class="results stack" style="text-align:center;align-items:center"><div class="trophy">🃏</div><h1>Deck done!</h1>
+    <p class="score">You knew <b>${d.knew}</b> of <b>${d.all.length}</b>.${n ? ` <b>${n}</b> still learning.` : ''}</p></div>
+    ${n ? `<section class="card stack"><h3 style="margin:0">🧠 Still learning (${n})</h3><div class="row" style="flex-wrap:wrap;gap:6px">${d.miss.map(c => `<span class="pill">${esc(c.en)}</span>`).join('')}</div>
+      <button class="btn wide" data-a="fdagain">🔁 Flip through just these ${n === 1 ? 'one' : n} again</button>
+      ${withGif >= 2 ? `<p class="small muted" style="margin:0">Or play a game with just these signs:</p><div class="fdgames">${games.map(g => `<button class="btn alt" data-a="fdplay" data-g="${g[0]}"><span aria-hidden="true">${g[3]}</span> ${esc(g[1])}</button>`).join('')}</div>` : `<p class="small muted" style="margin:0">Games need at least 2 signs: flip through ${n === 1 ? 'this one' : 'these'} again, or mark more cards as Don’t know it.</p>`}</section>`
+      : `<p class="card" style="margin:0;text-align:center">🎉 You knew every sign in this deck! Try a game to earn ${esc(S.set.tok)}.</p>`}
+    <div class="row"><button class="btn alt grow" data-a="fdsame">🃏 The whole deck again</button><button class="btn alt grow" data-a="tab" data-t="home">Home</button></div></div>`; };
+ACT.fdagain = () => { const d = S.flashDone; if (d && d.miss.length) startFlash(d.miss, 'Still learning'); };
+ACT.fdsame = () => { const d = S.flashDone; if (d) startFlash(d.all, d.label); };
+ACT.fdplay = el => { const d = S.flashDone; if (d && d.miss.length) startGame(el.dataset.g, d.miss); };
 
 /* ───────── matching ───────── */
 function startMatch(cards, label, again) {
