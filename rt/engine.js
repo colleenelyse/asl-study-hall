@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.176';
+var VERSION = '4.177';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8595,6 +8595,9 @@ function vaultLock_(type, r, o) { o = o || {};
     vaultShuf_(r, bills).slice(0, 1 + Math.floor(r() * 2)).forEach(function (b) { items.push('bill-' + b); cents += b * 100; });
     var coins = [['quarter', 25], ['dime', 10], ['nickel', 5], ['penny', 1]]; coins.forEach(function (c) { var k = Math.floor(r() * 3); for (var i = 0; i < k; i++) { items.push(c[0]); cents += c[1]; } });
     return { type: type, items: items, cents: cents }; }
+  if (type === 'change') { var paid = vaultPick_(r, o.guided ? [100, 500, 500, 1000] : [500, 1000, 1000, 2000]), ch = 0;      /* 4.177 (Colleen: "making change would be a great thing to add!"; "no supportive mode for counting money. they're 16 years old"): one partner signs the TOTAL and what was PAID, the other hands back the change */
+    for (var t3 = 0; t3 < 20; t3++) { ch = paid === 100 ? 1 + Math.floor(r() * 99) : 6 + Math.floor(r() * (paid - 106)); if (ch % 5 || r() < .3) break; }      /* mostly not a round amount */
+    return { type: type, paid: paid, total: paid - ch, cents: ch, ans: String(ch) }; }
   if (type === 'clock' || type === 'door') { var cols = vaultShuf_(r, VAULT_COLORS.slice(0, 6)).slice(0, 3), lines = [];      /* lights: no BLACK or WHITE (they don't glow) */
     cols.forEach(function (c) { vaultShuf_(r, VAULT_PLACES).slice(0, 2).forEach(function (p) { lines.push({ color: c, place: p, v: type === 'clock' ? (1 + Math.floor(r() * 12)) + ':' + ('0' + 5 * Math.floor(r() * 12)).slice(-2) : r() < 0.5 ? String(100 + Math.floor(r() * 900)) : String(1000 + Math.floor(r() * 9000)) }); }); });      /* 3 or 4 digits: signed as whole numbers (Colleen) */
     lines = vaultShuf_(r, lines); var ans = lines[Math.floor(r() * lines.length)];
@@ -8628,7 +8631,7 @@ function vaultLock_(type, r, o) { o = o || {};
     (solo, Race a friend) each lock keeps its answer and gets what the player outside sees: a café price board and a receipt (money), the guards and their key rings
     (keys), the bank ledger (boxes), a wiring chart from colors to switch symbols (lasers), a wall of people's clocks (clock), and the door's digits in listing order. */
 var VAULT_DRINKS = ['COFFEE', 'SODA-POP', 'WATER', 'TEA', 'MILK', 'ORANGE JUICE', 'HOT CHOCOLATE'], VAULT_WEAR = [['m', 'SHIRT'], ['m', 'JACKET'], ['w', 'SHIRT'], ['w', 'JACKET'], ['w', 'DRESS']], VAULT_SYMS = ['★', '●', '▲', '■'];
-var VAULT_SOLO = ['money', 'keys', 'boxes', 'lasers', 'clock'];      /* the radio games' locks (each once), then the door */
+var VAULT_SOLO = ['money', 'change', 'keys', 'boxes', 'lasers', 'clock'];      /* 4.177 + making change */      /* the radio games' locks (each once), then the door */
 function vaultPeople_(r, n) { var out = [], seen = {}, t = 0; while (out.length < n && t++ < 500) { var w = vaultPick_(r, VAULT_WEAR), c = vaultPick_(r, VAULT_COLORS.slice(0, 6)), k = w[0] + w[1] + c; if (seen[k]) continue; seen[k] = 1; var gl = r() < 0.3, ht = r() < 0.2; out.push({ sex: w[0], top: w[1], color: c, glasses: gl, hat: w[0] === 'm' && ht }); }      /* a hat only on a man: long hair always shows who is a woman */ return out; }      /* nobody shares MAN/WOMAN + what they wear + its color */
 function vaultV2_(L, r) { L.v2 = true;
   if (L.type === 'money') { var dr = vaultShuf_(r, VAULT_DRINKS).slice(0, 6), board = dr.map(function (d) { return [d, 25 * (4 + Math.floor(r() * 12))]; }), two = vaultShuf_(r, board).slice(0, 2);
@@ -8641,9 +8644,14 @@ function vaultV2_(L, r) { L.v2 = true;
     var w = Math.floor(r() * 4); L.who = L.people[w][0]; L.ans = L.people[w][1]; }
   if (L.type === 'door') { L.ans = String(1000 + Math.floor(r() * 9000)); L.order = vaultShuf_(r, [0, 1, 2, 3]); }
   return L; }
+/** 4.177 the change tray: "10,5,1,q,d,n,p" -> cents and how many pieces; the fewest pieces for an amount (US money: the biggest first is always fewest) */
+var VAULT_CASH = { '20': 2000, '10': 1000, '5': 500, '1': 100, q: 25, d: 10, n: 5, p: 1 };
+function vaultTray_(x) { var t = 0, n = 0; String(x || '').split(',').forEach(function (k) { k = k.trim(); if (VAULT_CASH[k]) { t += VAULT_CASH[k]; n++; } }); return { cents: t, n: n }; }
+function vaultFewest_(c) { var n = 0; [1000, 500, 100, 25, 10, 5, 1].forEach(function (v) { n += Math.floor(c / v); c %= v; }); return n; }
 function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() * 1e9) + 1, r = vaultRnd_(seed), first = r() < 0.5 ? 'in' : 'out', len = opt.vLen === 'short' ? 'short' : 'full', list = [];
-  vaultShuf_(r, vaultShuf_(r, ['money', 'clock', 'keys']).slice(0, 2).concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
-  if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count']).forEach(function (t) { list.push({ type: t, area: 'b' }); });
+  var cash = vaultShuf_(r, ['money', 'change']);      /* 4.177 counting money or making change in the deposit room; the full bank has the other one too */
+  vaultShuf_(r, [cash[0], vaultPick_(r, ['clock', 'keys'])].concat(['boxes', vaultPick_(r, ['nameplate', 'bars'])])).forEach(function (t) { list.push({ type: t, area: 'a' }); });      /* stage 1: the deposit room always has the wall of boxes */
+  if (len !== 'short') vaultShuf_(r, ['lasers', 'grid', 'feelings', 'count', cash[1]]).forEach(function (t) { list.push({ type: t, area: 'b' }); });
   list.push({ type: 'door', area: 'c' });
   if (opt.vPrac) list.unshift({ type: 'money', area: 'a', practice: 1 });      /* 4.171 (Colleen: "maybe everyone plays a sample round with a step by step typed out instruction"): a practice lock first */
   var cnt = { 'in': 0, out: 0 }, prev = first === 'in' ? 'out' : 'in';      /* fixed doers first; everything else goes to whoever has had the facts less, then switches */
@@ -8660,7 +8668,7 @@ function vaultPairOf_(g, e) { var V = g.vault, i = V && V.byE[e]; return i == nu
    felt, never counted. Open the vault door first: GOT AWAY with the loot. The guards first: CAUGHT, the loot is lost. Containers come by stage:
    [key, name, picture, locks, value, loot picture, stage]. */
 var VAULT_LOOT = [['cash', 'the cash drawer', 'cash-drawer', 1, 5000, 'loot-cash', 'a'], ['jewel', 'the jewel box', 'jewel-box', 1, 12000, 'loot-necklace', 'a'], ['display', 'the display case', 'display-case', 2, 40000, 'loot-crown', 'b'], ['crate', 'the painting crate', 'painting-crate', 2, 75000, 'loot-painting', 'b'], ['cart', 'the gold cart', 'gold-cart', 3, 150000, 'loot-gold', 'c']];
-var VAULT_XTYPES = ['money', 'clock', 'keys', 'nameplate', 'bars', 'grid', 'lasers', 'feelings', 'count'];
+var VAULT_XTYPES = ['money', 'change', 'clock', 'keys', 'nameplate', 'bars', 'grid', 'lasers', 'feelings', 'count'];
 /** The lock a pair is on now: one of its loot locks while it cracks a container, otherwise the next lock of the game. */
 function vaultCur_(V, P) { var k = Math.min(P.k, V.scenario.length - 1), main = V.scenario[k];
   if (P.x) return { sc: { type: P.x.types[P.x.done], area: main.area, knower: P.x.knowers[P.x.done] }, L: P.x.locks[P.x.done], extra: true };
@@ -8692,6 +8700,7 @@ function vaultViewCore_(V, e) {
   if (sc.practice) v.prac = true;
   if (cur.extra) { v.extra = true; v.xk = P.x.done; v.xn = P.x.need; }
   if (sc.type === 'money') { if (knower) v.items = L.items; }
+  if (sc.type === 'change') { if (knower) v.receipt = { total: L.total, paid: L.paid }; else v.drawer = true; }      /* 4.177 */
   if (sc.type === 'clock' || sc.type === 'door') { if (knower) v.lines = L.lines; else { v.color = L.color; v.place = L.place; v.digits = sc.type === 'door' ? L.ans.length : 0; } }
   if (sc.type === 'keys') { if (knower) v.lines = L.keys.map(function (c, i) { return [c, 'KEY', (L.uses || [])[i] || '']; }); else v.keys = L.keys; v.picked = !!L.picked; v.turned = !!P.turn[e]; }
   if (sc.type === 'nameplate') { if (knower) v.lines = L.lines; else { v.name = L.name; v.digits = 3; } }
@@ -8737,7 +8746,9 @@ function vaultActCore_(V, e, act, a, now) {
       if (P.m.every(function (x) { return P.turn[x]; })) solved(); else out.wait = true; }
     else if (act === 'skip' || act === 'tskip') { if (act === 'skip' && !vaultStuck_(P, now)) return { none: true };      /* tskip: the teacher skips it from the projector (only the asl.cool room accepts it, and only from the projector) */ P.pen += VAULT_SKIP_S; P.skips = (P.skips || 0) + 1; out.skipped = true; solved(); }      /* 4.140 a pair is never stuck for good: after 3 minutes on one lock, skip it for +60 s */
     else if (act === 'try') { if (knower) return { none: true }; var x = str_(a).replace(/\s/g, '');
-      var right = sc.type === 'money' ? Math.round(num_(x.replace(/[^0-9.]/g, '')) * 100) === L.cents : sc.type === 'grid' ? x.split(';').filter(String).sort().join(';') === L.ans : L.ans != null ? x === String(L.ans) : false;
+      var tray = sc.type === 'change' ? vaultTray_(x) : null;
+      var right = sc.type === 'change' ? tray.cents === L.cents : sc.type === 'money' ? Math.round(num_(x.replace(/[^0-9.]/g, '')) * 100) === L.cents : sc.type === 'grid' ? x.split(';').filter(String).sort().join(';') === L.ans : L.ans != null ? x === String(L.ans) : false;
+      if (right && tray) out.fewest = tray.n === vaultFewest_(L.cents);      /* 4.177 like a real cashier */
       if (right) solved(); else strike(); }
     else return { none: true };
     out.changed = true; return out;

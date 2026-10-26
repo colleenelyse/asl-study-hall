@@ -116,6 +116,7 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
 .basehint { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--brand-soft); color: var(--ink); font-size: 13px; }
+.welrow { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); } .welicon { font-size: 24px; line-height: 1.2; }
 .codebanner { border: 2px solid var(--up); background: var(--up-soft); font-size: 17px; }
 .acode { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 1.1em; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; letter-spacing: .04em; }
 .tcrow { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; align-items: center; }
@@ -430,7 +431,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.96';
+var VERSION = '1.98';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -569,7 +570,7 @@ var DEFAULTS = [
   ['Students: missing assignments', 'Yes', 'Students enter how many assignments are missing in each class (and which ones).'],
   ['Students: question of the day', 'Yes', 'A just-for-fun question students see first each school day (before the grade check or their plan), from the Daily questions tab (Use = No: never asked; Time of year: asked in that season first). They can skip it. You see the answers on the Overview, and 📚 Browse questions there to turn questions on or off or ask one today.'],
   ['Testing Center appointment link', 'https:' + '/' + '/lths.net/testingcenter', 'The web address where students make a Testing Center appointment. It shows as a link under a low grade’s plan choices. Empty: the LTHS Testing Center page; None: no link.'],
-  ['Drop-In Center locations', '', 'Where the Drop-In Center is at each campus: Campus = place, separated with semicolons (North Campus = Room 140; South Campus = Library). Students see their own campus (from their assistant principal’s campus). Empty: nothing shown.'],
+  ['Drop-In Center locations', DROPIN_DEFAULT, 'Where the Drop-In Centers are: Campus - Subject = place (or Campus = place for one center), separated with semicolons. A student with a low grade sees the one for that class’s subject at their own campus. Empty: the LTHS list; None: nothing shown.'],
   ['Students: explain low grades', 'Yes', 'A grade under the Low grade line needs a short reason and a plan before the check-in saves.'],
   ['Students: what to focus on', 'Yes', 'The "What to focus on this week" box with suggestions students can add to their plan.'],
   ['Students: look back at last week', 'Yes', 'Students check off last week\'s steps and say whether they followed their plan.'],
@@ -941,6 +942,7 @@ function api_previewAsRead_(email) {
   return b;
 }
 function boot_(email) {
+  if (!isTeacher_(email) && email === myEmail_()) seen_(email);          // 1.98: opened today (for Who's stuck; not when a teacher previews)
   var st = settings_(), today = today_(), cm = st.f.cm && !isTeacher_(email) && stuFind_(email).i < 0 ? caseload_(email) : [];
   return {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
@@ -949,6 +951,7 @@ function boot_(email) {
     caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
+    welcome: isTeacher_(email) && !PropertiesService.getDocumentProperties().getProperty('welcome:' + email),          // 1.98: the one-time welcome box
     check: checkBoot_(today, st),
     poll: st.f.poll && !isTeacher_(email) && !cm.length ? pollFor_(email, today) : null,          // 1.87: the question of the day          // grade check day (1.83: with the teacher's override)
     data: isTeacher_(email) || cm.length ? null : studentView_(studentData_(email), st), td: isTeacher_(email) ? teacherData_('') : null
@@ -1194,7 +1197,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
 }
 
 function api_teacherStudentRead_(email) {
@@ -1495,6 +1498,33 @@ function fullHtml_(f, td) {
 
 // Teacher: a student's report, for printing or saving as a PDF (the full progress report: grades, goals and benchmarks).
 function api_reportHtmlRead_(email) { teacherOnly_(); return reportHtml_(reportData_(low_(email), true), { full: true }); }
+// 1.98: Who's stuck: students who opened the app today but haven't finished what's required yet (today's plan; their grades on a
+// grade check day). "Opened today" is one small mark per student per day (document property seen:<email> = the first time today).
+function seen_(email) { try { var P = PropertiesService.getDocumentProperties(), k = 'seen:' + email; if (String(P.getProperty(k) || '').slice(0, 10) !== today_()) P.setProperty(k, stamp_()); } catch (e) {} }
+function stuck_(students, today, st) {
+  var w = new Date(today + 'T12:00:00Z').getUTCDay(); if (!w || w === 6 || noSchool_(today)) return [];
+  var pr = PropertiesService.getDocumentProperties().getProperties(), ci = checkInfo_(today, st.checkDay), out = [];
+  students.forEach(function (s) {
+    var seen = String(pr['seen:' + s.email] || ''); if (seen.slice(0, 10) !== today) return;
+    var why = [];
+    if (ci.day && s.grades.length && (s.grades.some(function (g) { return g.now === null; }) || (ci.since && String(s.lastGrades || '') < ci.since))) why.push('grades (grade check day)');
+    if (st.f.dayPlan && !(s.dayPlan && s.dayPlan.plan)) why.push('today’s plan');
+    if (why.length) out.push({ email: s.email, name: s.name, seen: seen.slice(11, 16), why: why });
+  });
+  return out;
+}
+// 1.98: a teacher closed the welcome box; it doesn't come back for them (on any computer)
+function api_welcomeDone() { var e = need_(); teacherOnly_(); PropertiesService.getDocumentProperties().setProperty('welcome:' + e, today_()); return true; }
+// 1.97: LTHS Drop-In Centers (Colleen, 2026-10-25). North Campus has one per subject; South Campus has one for everything.
+var DROPIN_DEFAULT = 'North Campus - Language Arts = Room 225; North Campus - Math and Science = Lower Level Library; North Campus - Social Studies = Room 233; North Campus - Multilingual = Room 224; North Campus - World Language (5A only) = Room 318; South Campus = Top of the commons';
+function dropIn_(t) {
+  t = String(t || '').trim(); if (/^none$/i.test(t)) return []; if (!t) t = DROPIN_DEFAULT;
+  return t.split(';').map(function (x) {
+    var m = /^\s*(.*?)\s*=\s*(.+?)\s*$/.exec(x); if (!m) return x.trim() ? { campus: '', subject: '', where: x.trim() } : null;
+    var left = m[1].split(/\s+-\s+/);
+    return { campus: left[0] || '', subject: left.slice(1).join(' - '), where: m[2] };
+  }).filter(Boolean);
+}
 // 1.87: the question of the day. Colleen: "just for fun and to build relationships". The Daily questions tab holds the list; on
 // a school day the question dated today is used, or else the first undated one gets today's date (so each is asked once, in order).
 var POLL_DEFAULT = [          // Colleen's 150 questions (dev/questions.txt): Use, Question, Answer 1-4, Time of year, Category, Date asked
@@ -3697,7 +3727,7 @@ function settings_() {
     retakeBelow: Number(v['Suggest retakes for tests under']) || 80,
     testGap: Number(v['Test may be coming after (school days)']) || 10,
     testingLink: (function (t) { t = String(t || '').trim(); if (/^none$/i.test(t)) return ''; if (!t) return 'https:' + '/' + '/lths.net/testingcenter'; if (!/^https?:/i.test(t)) t = 'https:' + '/' + '/' + t.replace(/^\/+/, ''); return t; })(v['Testing Center appointment link']),
-    dropIn: String(v['Drop-In Center locations'] || '').split(';').map(function (x) { var m = /^\s*(.*?)\s*=\s*(.+?)\s*$/.exec(x); return m ? { campus: m[1], where: m[2] } : (x.trim() ? { campus: '', where: x.trim() } : null); }).filter(Boolean),
+    dropIn: dropIn_(v['Drop-In Center locations']),
     checkDay: String(v['Grade check day'] === undefined ? 'Friday' : v['Grade check day']).trim(), dayClass: String(v['What students call this class'] || 'BASE/ARC').trim(),
     nothingItems: String(v['Nothing-to-do checklist'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
     checkItems: String(v['Daily checklist items'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
@@ -3975,6 +4005,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/demo=1/.test(location.search) && !/poll=1/.test(location.search)) [['smi513421@d204.lths.net', 0], ['ort123456@d204.lths.net', 1], ['wil501777@d204.lths.net', 0]].forEach(function (x) {          // the sample students already answered today's question
     g.setUser(x[0]); var p = pollToday_(today_()); if (p) api_answerPoll(p.choices[x[1]] || 'Chips and salsa');
   });
+  if (/nowel/.test(location.search)) { g.setUser('ray@d204.lths.net'); api_welcomeDone(); }          // screenshots: no welcome box
   g.setUser({ teacher: 'ray@d204.lths.net', jane: 'smi513421@d204.lths.net', ort: 'ort123456@d204.lths.net', dev: 'wil501777@d204.lths.net', new: 'new500100@d204.lths.net', cm: 'rbergman@lths.net' }[as] || 'ray@d204.lths.net');
   g.clearCache && g.clearCache();
   var goTo = (location.search.match(/go=([\w@.]+)/) || [])[1];
@@ -4143,6 +4174,7 @@ call('api_boot').then(function (b) {
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
   else if (b.cm) { MODE = 'cm'; VIEW = 'cm'; }          // a case manager: their students' reports
   go(VIEW);
+  if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
   bdayMaybe();
 }).catch(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message || e) + '</div>'; });
@@ -5624,17 +5656,28 @@ function lowBox(i) {
       var on = x.actions.indexOf(a) >= 0;
       return '<label class="' + (on ? 'on' : '') + '"><input type="checkbox"' + (on ? ' checked' : '') + ' onchange="lowAct(' + i + ',' + k + ',this)">' + a + '</label>';
     }).join('') + '</div>' +
-    lowHelp() +
+    lowHelp(c.name) +
     '<input type="text" maxlength="500" placeholder="Details: what, when and with whom (Retake the Unit 3 quiz Thursday after school)" value="' + esc(x.details) + '" oninput="lowSet(' + i + ',\'details\',this.value)">' +
     (co ? '<div style="margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line)">💛 <b>' + esc(co.name) + '</b> is a co-teacher in your ' + esc(c.name) + ' class and is there to help you too.' +
       (co.email ? ' <a href="mailto:' + esc(co.email) + '?subject=' + encodeURIComponent('Help with ' + c.name) + '" data-cls="' + esc(c.name) + '">✉️ Email ' + esc(co.name) + '</a>' : '') + '</div>' : '') +
     (c.temail ? '<p class="small" style="margin:8px 0 0">' + teacherMail(c, c.name) + '</p>' : '') + '</div>';
 }
 // under the plan choices: the Testing Center appointment link and this student's campus Drop-In Center (Settings rows, 1.86)
-function lowHelp() {
-  var bits = [], camp = D.profile.ap && D.profile.ap.campus, di = B.dropIn || [], mine = di.filter(function (d) { return camp && d.campus.toLowerCase() === String(camp).toLowerCase(); });
+// 1.97: the Drop-In Center for this class's subject (North Campus has one per subject), at the student's campus (both when unknown)
+var DI_SUBJ = [[/language arts|english/i, /english|language arts|literature|writing|reading|composition|journalism|speech/i], [/multilingual/i, /\bell\b|esl|multilingual|english learner/i],
+  [/world language/i, /spanish|french|german|latin|chinese|mandarin|japanese|italian|arabic|polish|sign language|\basl\b|world language/i],
+  [/social studies/i, /history|government|civics|economics|psychology|sociology|geography|social|law|world studies/i],
+  [/math|science/i, /math|algebra|geometry|calculus|statistics|trig|precalc|science|biology|chemistry|physics|earth|anatomy|environmental|astronomy|forensic/i]];
+function dropFor(cls) {
+  var camp = String((D.profile.ap && D.profile.ap.campus) || '').toLowerCase(), di = B.dropIn || [];
+  var at = di.filter(function (d) { return !camp || !d.campus || d.campus.toLowerCase() === camp; });
+  var subj = DI_SUBJ.filter(function (x) { return x[1].test(cls); }).map(function (x) { return x[0]; })[0];
+  return at.filter(function (d) { return !d.subject || (subj && subj.test(d.subject)); });
+}
+function lowHelp(cls) {
+  var bits = [];
   if (B.testingLink) bits.push('📅 <a href="' + esc(B.testingLink) + '" target="_blank" rel="noopener">Make a Testing Center appointment</a>');
-  (mine.length ? mine : di).forEach(function (d) { bits.push('📍 Drop-In Center' + (d.campus ? ' (' + esc(d.campus) + ')' : '') + ': ' + esc(d.where)); });
+  dropFor(cls || '').forEach(function (d) { bits.push('📍 Drop-In Center' + (d.campus ? ' (' + esc(d.campus) + (d.subject ? ', ' + esc(d.subject) : '') + ')' : '') + ': ' + esc(d.where)); });
   return bits.length ? '<p class="small" style="margin:2px 0 8px">' + bits.join(' &nbsp;·&nbsp; ') + '</p>' : '';
 }
 function lowSet(i, k, v) { CK.lows[graded()[i].name][k] = v; setDirty(true); }
@@ -5996,8 +6039,8 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -7137,6 +7180,23 @@ function calcKey(i) {
 }
 function calcLive() { var v = $('calcIn').value.trim(), o = $('calcOut'); if (!v) { o.innerHTML = '&nbsp;'; return; } try { o.innerHTML = '<span class="small">= ' + esc(String(calcEval(v, CALC.deg, CALC.ans))) + '</span>'; } catch (e) { o.innerHTML = '&nbsp;'; } }
 function calcHist() { var h = $('calcHist'); if (!h) return; h.innerHTML = CALC.hist.length ? '<div class="small" style="margin-top:10px"><b>Recent</b> (tap to use again)</div>' + CALC.hist.map(function (x, k) { return '<button class="btn link small calch" onclick="$(\'calcIn\').value=CALC.hist[' + k + '][0];calcLive()">' + esc(x[0]) + ' = <b>' + esc(String(x[1])) + '</b></button>'; }).join('') : ''; }
+/* ---------- 👋 the one-time welcome for teachers (1.98) ---------- */
+function welcomeOpen() {
+  if ($('welModal')) return;
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'welModal';
+  var item = function (icon, title, text) { return '<div class="welrow"><span class="welicon">' + icon + '</span><div><b>' + title + '</b><div class="small">' + text + '</div></div></div>'; };
+  var dc = esc(B.dayClass || 'resource');
+  el.innerHTML = '<div class="card" style="max-width:600px"><h2 style="font-size:22px">👋 Welcome to ' + esc(B.app || 'Resource Check-In') + '</h2><p class="small" style="margin:2px 0 12px">Six things to know. You can open this again any time with 👋 Welcome tips on the Overview.</p>' +
+    item('📱', 'Your students open the same link every day', 'They answer the question of the day, write their plan for ' + dc + ', do the checklist and an exit ticket. On grade check day they enter their grades first.') +
+    item('🏠', 'This page is the Overview', 'Everyone at a glance: today’s plans, grades and drops, missing work, IEP dates. Click a name to open that student’s page.') +
+    item('📽️', 'Practice page', 'Show students how it works on the projector before they start. Nothing in it is saved.') +
+    item('📬', 'Tests & codes', 'Log tests from your mailbox and access codes teachers email you. Release a code when the student is ready to begin.') +
+    item('📊', 'Make today a grade check day', 'Any day you want everyone to enter their grades (on the Overview).') +
+    item('⚙️', 'Settings', 'Turn each part on or off, and pick your grade check day.') +
+    '<div class="row" style="margin-top:14px"><a class="btn" target="_blank" href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Open the practice page</a><span class="grow"></span><button class="btn primary big" onclick="welcomeDone()">Got it</button></div></div>';
+  document.body.appendChild(el);
+}
+function welcomeDone() { var m = $('welModal'); if (m) m.remove(); if (B.welcome) { B.welcome = false; call('api_welcomeDone').catch(function () {}); } }
 /* ---------- 🧪 tests with the resource teacher (1.91) ---------- */
 // Students: "I'm waiting for a test" (class) or "I have a test in the folder" (class + what); they see tests the teacher logged and
 // access codes the teacher released. Teachers: 📬 Tests & codes (requests, log a test from the mailbox or an emailed code, release it).
@@ -7171,6 +7231,13 @@ function tcSend() {
 function tcCancel(id) { call('api_cancelTestRequest', id).then(function (r) { D.tc = r; tcRedraw(); }).catch(oops); }
 // teacher
 var TCD = null, TCF = { email: '', how: 'paper' };
+// 1.98: Who's stuck: opened the app today but haven't finished their plan (or their grades on a grade check day)
+function stuckNotice() {
+  var l = (TD && TD.stuck) || []; if (!TD || TD.week !== TD.thisWeek) return '';
+  return '<div class="card" style="margin-bottom:14px;' + (l.length ? 'border-color:var(--warn);background:var(--warn-soft)' : '') + '"><div class="row"><b class="grow">🧭 Who’s stuck' + (l.length ? ' (' + l.length + ')' : '') + '</b><button class="btn small" onclick="TD=null;drawOverview()">↻ Refresh</button></div>' +
+    (l.length ? l.map(function (x) { return '<div class="small" style="display:block;margin:4px 0"><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · opened ' + esc(x.seen) + ' · hasn’t finished: ' + esc(x.why.join(' and ')) + '</div>'; }).join('')
+      : '<p class="small" style="margin:4px 0 0">Nobody right now: everyone who opened the app today has finished their plan.</p>') + '</div>';
+}
 function tcNotice() { var n = TD && TD.tcOpen; return n ? '<div class="card" style="margin-bottom:14px;border-color:var(--warn);background:var(--warn-soft)">📬 <b>' + n + ' test request' + (n === 1 ? '' : 's') + '</b> from students. <a href="#" onclick="navTo(\'tc\');return false">Open Tests & codes</a></div>' : ''; }
 function drawTc() {
   if (!TCD) { $('main').innerHTML = '<h1>📬 Tests & access codes</h1><p class="sub">Loading…</p>'; call('api_tc').then(function (d) { TCD = d; if (VIEW === 'tc') drawTc(); }).catch(oops); return; }
