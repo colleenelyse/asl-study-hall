@@ -826,3 +826,5 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .gr-body { flex: 1 1 260px; min-width: 0; }
 .gr-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .gr-row.done .gr-body b { opacity: .75; }
+.gr-ok { color: #24935d; font-weight: 800; }
+.gr-no { opacity: .45; }

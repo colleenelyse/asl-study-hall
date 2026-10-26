@@ -556,7 +556,7 @@
   var preview = { i: 0, song: '' }, stopPlay = null;
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.captions = function () {
-    T.setBar('Open captions', '#/teacher');
+    T.setBar('Open captions', '#/teacher/caphub');
     if (!T.show.script) { app.innerHTML = '<p class="card">Import the script first (Teacher mode › Script).</p>'; return; }
     var o = opt(), cues = build(), songs = cues.filter(function (c) { return c.type === 'song'; }), stills = cues.filter(function (c) { return c.type === 'still'; });
     var untimed = T.O().songs.filter(function (so) { return !(T.show.lyricTimes && T.show.lyricTimes[so.id]); });

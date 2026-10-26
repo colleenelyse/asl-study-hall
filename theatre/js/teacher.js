@@ -186,9 +186,7 @@
       ['rehearse', t('#/teacher/bows', 'star', 'Curtain call & Megamix', 'The bows, then the Megamix: five steps')],
       ['rehearse', t('#/teacher/partners', 'sched', 'Partner classes', esc(T.partnersSummary ? T.partnersSummary() : 'Sessions with other classes, and calendar invitations'))],
       ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines as ElevenLabs sound files for an AAC device')],
-      ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],
-      ['tech', (T.show.script ? t('#/teacher/caprun', 'bulb', 'Run the captions', T.ls('capRun') === '1' ? 'This laptop is ready: open the runner' : 'One laptop, one operator, no QLab: get it ready') : '')],
-      ['tech', (T.show.script ? t('#/teacher/captedit', 'book', 'Edit the captions', T.show.captionDoc ? 'Your edited caption script' : 'Fix words, who says it, missing lines') : '')],
+      ['tech', (T.show.script ? t('#/teacher/caphub', 'speak', 'Captions', (T.show.captionDoc ? 'Edited' : 'From the script') + ' · audience strip, teleprompter, the show laptop') : '')],
       ['script', t('#/teacher/stage', 'sched', 'On stage', 'Who is on stage when')],
       ['costumes', t('#/teacher/costumes', 'shirt', 'Costumes', (O.costumes || []).length + ' costumes')],
       ['rehearse', t('#/teacher/react', 'star', 'React to That!', '149 announcements for warmups')],
@@ -199,7 +197,7 @@
       ['family', t('#/teacher/crew', 'hand', 'Tech Week Crew', (function (n) { return n ? n + ' application' + (n === 1 ? '' : 's') : 'Applications to help in tech and show week'; })(((T.show.crew || {}).people || []).length))],
       ['costumes', t('#/teacher/profiles', 'shirt', 'Shopping profiles', 'Each Company member’s sizes, roles and sensory needs, for the shopping trip')],
       ['family', t('#/teacher/volunteers', 'hand', 'Volunteers and donations', ((T.show.helpBoard || {}).posts || []).filter(function (p) { return !p.closed; }).length + ' needs posted')],
-      ['music', t('#/teacher/songs', 'songs', 'Songs & tracks', nTr + ' of ' + O.songs.length + ' tracks')],
+      ['music', t('#/teacher/songhub', 'songs', 'Songs', nTr + ' of ' + O.songs.length + ' tracks · ' + Object.keys(T.show.lyricTimes || {}).length + ' timed')],
       ['music', t('#/teacher/voices', 'speak', 'Voices & recordings', 'ElevenLabs and Company members’ recordings')],
       ['music', (T.show.script ? t('#/teacher/listenshow', 'play', 'Listen to the show', 'Every line in order, in its voice; fix as you listen') : '')],
       ['rehearse', t('#/teacher/progress', 'check', 'Progress', 'Who practiced what')],
@@ -708,7 +706,7 @@
   function songsPage(args) {
     if (args && args[0] === 'cues' && T.songById(args[1])) return cuesPage(args[1]);
     if (args && args[0] === 'lyrics' && T.songById(args[1])) return lyricsPage(args[1]);
-    T.setBar('Songs & tracks', '#/teacher');
+    T.setBar('Songs & tracks', '#/teacher/songhub');
     var O = T.O(), tr = T.show.tracks = T.show.tracks || {}, mel = T.show.melody = T.show.melody || {};
     var links = O.links || {};
     app.innerHTML = '<div class="card"><p>Upload each song’s <b>rehearsal track</b> (with the guide vocals) and <b>performance track</b> (band only). They are saved encrypted, for this cast. MP3 works best (24 MB at most).</p>' +
@@ -875,7 +873,7 @@
      performance track's clock. */
   function cuesPage(songId) {
     var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
-    T.setBar('Lines over the music', '#/teacher/songs');
+    T.setBar('Lines over the music', '#/teacher/songhub');
     if (!src) { app.innerHTML = '<p class="card">Import the script first.</p>'; return; }
     if (!tr.performance && !tr.rehearsal) { app.innerHTML = '<p class="card">Upload this song’s tracks first.</p>'; return; }
     var U = T.show.underscore = T.show.underscore || {}, saved = U[songId] || { kind: 'performance', cues: [] };
@@ -1003,7 +1001,7 @@
   function lyricsPage(songId) {
     var song = T.songById(songId), scene = T.sceneById(song.scene), src = T.scriptScene(scene), tr = (T.show.tracks || {})[songId] || {};
     var item = src && src.items.find(function (it) { return it.type === 'song' && it.num === song.num; });
-    T.setBar('Lyrics timing', '#/teacher/songs');
+    T.setBar('Lyrics timing', '#/teacher/songhub');
     if (!item || !item.lyrics.length) { app.innerHTML = '<p class="card">This song has no lyrics in the script. Import the script first.</p>'; return; }
     if (!tr.performance && !tr.rehearsal) { app.innerHTML = '<p class="card">Upload this song’s tracks first.</p>'; return; }
     /* Colleen: "play the guide vocal version so i can hear it". The page plays the guide vocals when they are here; the times are shown and tapped

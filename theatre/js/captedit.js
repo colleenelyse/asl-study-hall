@@ -95,7 +95,7 @@
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.captedit = function () { if (!T.show.captionDoc) draft = null; draw(true); };
   function draw(first) {
-    T.setBar('Edit the captions', '#/teacher/captions');
+    T.setBar('Edit the captions', '#/teacher/caphub');
     if (!T.show.script) { app.innerHTML = '<p class="card">Import the script first (Teacher mode › The script).</p>'; return; }
     var d = shown(), q = view.q.toLowerCase(), y = window.scrollY;
     if (view.scene == null) view.scene = d.scenes[0] ? d.scenes[0].id : '';      // one scene at a time: the whole show is over a thousand lines

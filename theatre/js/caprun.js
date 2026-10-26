@@ -55,7 +55,7 @@
   /* ---------- Teacher › Run the captions: get this laptop ready ---------- */
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.caprun = function () {
-    T.setBar('Run the captions', '#/teacher');
+    T.setBar('Run the captions', '#/teacher/caphub');
     if (!T.show.script) { app.innerHTML = '<p class="card">Import the script first (Teacher mode › Script).</p>'; return; }
     var cues = C().build(), songs = cues.filter(function (c) { return c.type === 'song'; });
     var untimed = T.O().songs.filter(function (so) { return !songs.some(function (c) { return c.song.id === so.id; }); });
