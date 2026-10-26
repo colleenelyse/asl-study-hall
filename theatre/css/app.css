@@ -775,3 +775,11 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .cr-prev canvas { background: #000; border-radius: 6px; display: block; max-width: 100%; }
 .cr-side { display: flex; flex-direction: column; gap: 8px; min-width: 220px; flex: 1; }
 @media (max-width: 760px) { .cr-main { grid-template-columns: 1fr; } .cr-btns { grid-template-columns: 1fr 1fr; } .cr-btns .cr-go { grid-column: 1 / -1; order: -1; } }
+/* the curtain call's 8-count counter (js/curtain.js): which 8-count, big; its 1 to 8 lighting up */
+.bow-8 { text-align: center; padding: 10px 8px 12px; margin-bottom: 10px; border-radius: 16px; background: #10172a; color: #fff; }
+.bow-8-sec { font-size: 1rem; font-weight: 700; opacity: .85; min-height: 1.2em; }
+.bow-8-n { font-family: Lexend, var(--font, sans-serif); font-weight: 700; font-size: clamp(2.6rem, 9vw, 5.5rem); line-height: 1.05; letter-spacing: .02em; }
+.bow-8-beats { display: flex; justify-content: center; gap: clamp(6px, 1.6vw, 14px); margin-top: 6px; }
+.bow-8-beats span { width: clamp(30px, 6vw, 52px); height: clamp(30px, 6vw, 52px); border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: clamp(1rem, 2.6vw, 1.5rem); background: #26304a; color: #8d97b0; transition: background .08s, transform .08s; }
+.bow-8-beats span.past { background: #3c5a9a; color: #fff; }
+.bow-8-beats span.now { background: #ffd84d; color: #10172a; transform: scale(1.18); }
