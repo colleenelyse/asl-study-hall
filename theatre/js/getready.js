@@ -48,24 +48,40 @@
 
   /* ---------- Songs (#/teacher/songhub) and Captions (#/teacher/caphub), the same way (Colleen 2026-10-25: "build the step-by-step pages for
      Captions and Songs, like the Curtain call & Megamix page") ---------- */
+  /* started is not finished (Colleen 2026-10-26: "i want partial notations for progress … i get green checks if i just start an activity but i want it
+     to show an indication that it's started but not completed before the green check which is reserved for actual completion"): each song's
+     timing is ✓ only when every lyric line has a time (◐ 12 of 40 before that); its counting only when the tapped 8-counts reach (nearly) the
+     end of the track; its piano only when it was made from finished timing. st: 'done' | 'some' | 'todo', with how far in `how`. */
   function songFacts() {
     var O = T.O(), songs = O.songs || [], tr = T.show.tracks || {}, lt = T.show.lyricTimes || {}, pi = T.show.sheetMelody || {}, U = T.show.underscore || {};
-    return songs.map(function (so) { var t = tr[so.id] || {}; return { so: so, guide: !!t.rehearsal, band: !!t.performance, timed: !!lt[so.id], piano: !!(pi[so.id] && pi[so.id].notes && pi[so.id].notes.length), over: !!(U[so.id] && (U[so.id].cues || []).length), counted: !!(T.songCounts && T.songCounts(so.id)) }; });
+    return songs.map(function (so) {
+      var t = tr[so.id] || {}, L = (lt[so.id] && lt[so.id].lines) || [], n = L.length, k = L.filter(Boolean).length;
+      var timing = !lt[so.id] || !k ? { st: 'todo' } : k >= n ? { st: 'done', how: 'all ' + n + ' lines' } : { st: 'some', how: k + ' of ' + n + ' lines' };
+      var c = T.songCounts && T.songCounts(so.id), dur = (t.performance || t.rehearsal || {}).dur || 0, count = { st: 'todo' };
+      if (c) {
+        var ones = c.ones || [], end = ones.length ? +c.first + (ones[ones.length - 1] + 8) * 60 / +c.bpm : 0, frac = dur > +c.first ? (end - c.first) / (dur - c.first) : 1;
+        count = frac >= 0.85 ? { st: 'done', how: ones.length + ' 8-counts' + (c.double ? ', double time' : '') } : { st: 'some', how: Math.max(1, Math.round(frac * 100)) + '% of the song' };
+      }
+      var made = !!(pi[so.id] && pi[so.id].notes && pi[so.id].notes.length), piano = !made ? { st: 'todo' } : timing.st === 'done' ? { st: 'done' } : { st: 'some', how: 'made before the timing was finished' };
+      return { so: so, guide: !!t.rehearsal, band: !!t.performance, timing: timing, timed: timing.st === 'done', started: timing.st === 'some', piano: piano.st === 'done', pianoX: piano, over: !!(U[so.id] && (U[so.id].cues || []).length), count: count, counted: count.st === 'done' };
+    });
   }
   function songSteps() {
     var F = songFacts(), n = F.length, cnt = function (f) { return F.filter(f).length; };
-    var tracks = cnt(function (x) { return x.guide && x.band; }), any = cnt(function (x) { return x.guide || x.band; }), timed = cnt(function (x) { return x.timed; }), piano = cnt(function (x) { return x.piano; }), over = cnt(function (x) { return x.over; });
-    var nextTime = F.filter(function (x) { return (x.guide || x.band) && !x.timed; })[0];
+    var tracks = cnt(function (x) { return x.guide && x.band; }), any = cnt(function (x) { return x.guide || x.band; }), timed = cnt(function (x) { return x.timed; }), part = cnt(function (x) { return x.started; }), piano = cnt(function (x) { return x.piano; }), over = cnt(function (x) { return x.over; });
+    var counted = cnt(function (x) { return x.counted; }), cpart = cnt(function (x) { return x.count.st === 'some'; });
+    var nextTime = F.filter(function (x) { return (x.guide || x.band) && x.started; })[0] || F.filter(function (x) { return (x.guide || x.band) && !x.timed; })[0];
+    var some = function (done, partly, of) { return done >= of && of ? 'done' : done || partly ? 'some' : 'todo'; };
     return [
       { st: level(tracks, n), title: 'Both tracks for every song', what: tracks + ' of ' + n + ' songs have the guide vocals and the band track' + (any > tracks ? ' (' + (any - tracks) + ' more have one of the two)' : '') + '. Drop a whole folder in at once.',
         buttons: btn('#/teacher/songs', 'Songs & tracks', tracks < n) },
-      { st: level(timed, n), title: 'Lyrics timing', what: timed + ' of ' + n + ' songs timed. Captions, the follow-along lyrics, the teleprompter and the piano melody follow it. A song badly off? Its page clears the sung or the spoken lines in one go.',
-        buttons: (nextTime ? btn('#/teacher/songs/lyrics/' + nextTime.so.id, 'Time the next one: #' + esc(nextTime.so.num) + ' ' + esc(nextTime.so.title), true) : '') + btn('#songtable', 'Every song below') },
+      { st: some(timed, part, n), title: 'Lyrics timing', what: timed + ' of ' + n + ' songs fully timed' + (part ? ', ' + part + ' started' : '') + '. Captions, the follow-along lyrics, the teleprompter and the piano melody follow it. A song badly off? Its page clears the sung or the spoken lines in one go.',
+        buttons: (nextTime ? btn('#/teacher/songs/lyrics/' + nextTime.so.id, (nextTime.started ? 'Finish: #' : 'Time the next one: #') + esc(nextTime.so.num) + ' ' + esc(nextTime.so.title), true) : '') + btn('#songtable', 'Every song below') },
       { st: over ? 'done' : 'todo', title: 'Lines over the music', what: over + ' song' + (over === 1 ? '' : 's') + ' with lines spoken over the music set. Only for songs where someone talks while the band plays.',
         buttons: btn('#songtable', 'Pick a song below') },
-      { st: level(piano, timed || n), title: 'Piano melody', what: piano + ' of the ' + timed + ' timed songs have the singer’s notes as a soft piano (it needs the lyrics timing first). Company members can turn it on to learn the tune.',
+      { st: some(piano, cnt(function (x) { return x.pianoX.st === 'some'; }), timed || n), title: 'Piano melody', what: piano + ' of the ' + timed + ' fully timed songs have the singer’s notes as a soft piano (it needs the lyrics timing first). Company members can turn it on to learn the tune.',
         buttons: btn('#/teacher/songs', 'Make them on Songs & tracks') },
-      { st: cnt(function (x) { return x.counted; }) ? 'some' : 'todo', title: 'Count the dance numbers', what: cnt(function (x) { return x.counted; }) + ' song' + (cnt(function (x) { return x.counted; }) === 1 ? '' : 's') + ' counted. Tap the 1s and the 2–8s through a song (at the easy speed, then switch to double time if you like); Company members can then see the 8-counts while they practice it.',
+      { st: counted || cpart ? 'some' : 'todo', title: 'Count the dance numbers', what: counted + ' song' + (counted === 1 ? '' : 's') + ' counted all the way through' + (cpart ? ', ' + cpart + ' only partway' : '') + '. Tap the 1s and the 2–8s through a song (at the easy speed, then switch to double time if you like); Company members can then see the 8-counts while they practice it.',
         buttons: btn('#songtable', 'Pick a song below') },
       { st: any ? 'some' : 'todo', title: 'Listen through', what: 'The songs in order for the Company, and the whole show with the lines for you. In Listen to the show, turn off the lines spoken during songs if the tracks already have them.',
         buttons: btn('#/listen', icon('play') + 'Play the whole show') + btn('#/teacher/listenshow', icon('play') + 'Listen to the show') }
@@ -75,19 +91,20 @@
     T.setBar('Songs', '#/teacher');
     var steps = songSteps(), done = steps.filter(function (x) { return x.st === 'done'; }).length, F = songFacts();
     var tick = function (on, label) { return on ? '<span class="gr-ok" title="' + label + '">✓</span>' : '<span class="gr-no" title="' + label + ': not yet">–</span>'; };
+    var tri = function (x, label) { return x.st === 'done' ? '<span class="gr-ok" title="' + label + ': finished' + (x.how ? ', ' + esc(x.how) : '') + '">✓</span>' : x.st === 'some' ? '<span class="gr-part" title="' + label + ': started, not finished">◐ <span class="small">' + esc(x.how || '') + '</span></span>' : '<span class="gr-no" title="' + label + ': not yet">–</span>'; };
     app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('🎵') + 'Songs</h2><p>Everything the songs need, in order. <b>' + done + ' of ' + steps.length + '</b> done.</p></div>' +
       '<div class="card gr-list">' + steps.map(function (x, i) { return row(x.st, (i + 1) + '. ' + x.title, x.what, x.buttons); }).join('') + '</div>' +
       '<div class="card" id="songtable" style="overflow-x:auto"><h3 style="margin-top:0">Every song</h3><table class="tbl small"><thead><tr><th style="text-align:left">Song</th><th>Guide</th><th>Band</th><th>Timing</th><th>Piano</th><th>Lines over music</th><th>8-counts</th><th></th></tr></thead><tbody>' +
-      F.map(function (x) { return '<tr><td><b>#' + esc(x.so.num) + '</b> ' + esc(x.so.title) + '</td><td class="center">' + tick(x.guide, 'Guide vocals') + '</td><td class="center">' + tick(x.band, 'Band track') + '</td><td class="center">' + tick(x.timed, 'Lyrics timing') + '</td><td class="center">' + tick(x.piano, 'Piano') + '</td><td class="center">' + tick(x.over, 'Lines over the music') + '</td><td class="center">' + tick(x.counted, '8-counts') + '</td>' +
-        '<td>' + (x.guide || x.band ? btn('#/teacher/songs/lyrics/' + x.so.id, x.timed ? 'Timing' : 'Time it', !x.timed) + btn('#/teacher/songs/cues/' + x.so.id, 'Lines over') + btn('#/teacher/songcount/' + x.so.id, x.counted ? 'Counts' : 'Count it') : btn('#/teacher/songs', 'Upload')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      F.map(function (x) { return '<tr><td><b>#' + esc(x.so.num) + '</b> ' + esc(x.so.title) + '</td><td class="center">' + tick(x.guide, 'Guide vocals') + '</td><td class="center">' + tick(x.band, 'Band track') + '</td><td class="center">' + tri(x.timing, 'Lyrics timing') + '</td><td class="center">' + tri(x.pianoX, 'Piano') + '</td><td class="center">' + tick(x.over, 'Lines over the music') + '</td><td class="center">' + tri(x.count, '8-counts') + '</td>' +
+        '<td>' + (x.guide || x.band ? btn('#/teacher/songs/lyrics/' + x.so.id, x.timed ? 'Timing' : x.started ? 'Finish timing' : 'Time it', !x.timed) + btn('#/teacher/songs/cues/' + x.so.id, 'Lines over') + btn('#/teacher/songcount/' + x.so.id, x.counted ? 'Counts' : x.count.st === 'some' ? 'Finish counting' : 'Count it') : btn('#/teacher/songs', 'Upload')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
     app.querySelectorAll('a[href="#songtable"]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); document.getElementById('songtable').scrollIntoView({ behavior: 'smooth' }); }; });
   };
   function capSteps() {
-    var F = songFacts(), n = F.length, timed = F.filter(function (x) { return x.timed; }).length, C = T.show.captions || {}, styles = Object.keys(C.prompt || {}).length, run = T.ls('capRun') === '1';
+    var F = songFacts(), n = F.length, timed = F.filter(function (x) { return x.timed; }).length, tpart = F.filter(function (x) { return x.started; }).length, C = T.show.captions || {}, styles = Object.keys(C.prompt || {}).length, run = T.ls('capRun') === '1';
     return [
       { st: T.show.captionDoc ? 'done' : T.show.script ? 'some' : 'todo', title: 'Read through the captions and fix them', what: T.show.captionDoc ? 'Your edited caption script is in use.' : 'Made straight from the script. Fix words, who says it, missing lines, and lines split by syllables.',
         buttons: btn('#/teacher/captedit', 'Edit the captions', !T.show.captionDoc) },
-      { st: level(timed, n), title: 'Lyrics timing (the songs’ captions follow it)', what: timed + ' of ' + n + ' songs timed. An untimed song’s words are cued by hand, one line at a time, and its music does not play from the runner.',
+      { st: timed >= n ? 'done' : timed || tpart ? 'some' : 'todo', title: 'Lyrics timing (the songs’ captions follow it)', what: timed + ' of ' + n + ' songs fully timed' + (tpart ? ', ' + tpart + ' started' : '') + '. An untimed song’s words are cued by hand, one line at a time, and its music does not play from the runner.',
         buttons: btn('#/teacher/songhub', 'Songs', timed < n) },
       { st: C.size ? 'done' : 'todo', title: 'How they look, and each performer’s prompts', what: 'The audience strip at the top, the letter size for the back row, and Whole line or First words for each character (' + styles + ' set).',
         buttons: btn('#/teacher/captions', 'Looks and prompts', !C.size) },
@@ -110,7 +127,7 @@
     var O = T.O(), songs = O.songs || [], tr = T.show.tracks || {}, lt = T.show.lyricTimes || {};
     var chars = O.characters.filter(function (c) { return c.group !== 'helpers'; }), cast = (T.show.cast || []).filter(function (a) { return a.name && (a.chars || []).length; });
     var covered = chars.filter(function (c) { return cast.some(function (a) { return a.chars.indexOf(c.id) >= 0; }); }).length;
-    var nTr = songs.filter(function (s) { return tr[s.id] && (tr[s.id].performance || tr[s.id].rehearsal); }).length, nLt = songs.filter(function (s) { return lt[s.id]; }).length;
+    var nTr = songs.filter(function (s) { return tr[s.id] && (tr[s.id].performance || tr[s.id].rehearsal); }).length, SF = songFacts(), nLt = SF.filter(function (x) { return x.timed; }).length, nLs = SF.filter(function (x) { return x.started; }).length;
     var prod = T.show.production, planned = prod && prod.days ? Object.keys(prod.days).length : 0;
     var bows = bowSteps(), bDone = bows.filter(function (x) { return x.st === 'done'; }).length;
     var cap = T.show.captionDoc ? 'done' : T.show.script ? 'some' : 'todo', run = T.ls('capRun') === '1';
@@ -119,7 +136,7 @@
       [level(covered, chars.length), 'Cast the show', covered + ' of ' + chars.length + ' roles cast.', btn('#/teacher/casting', 'Casting', covered < chars.length) + btn('#/teacher/cast', 'Cast list')],
       [planned ? 'done' : 'todo', 'Plan the semester', planned ? planned + ' class days planned.' : 'The calendar and the day-by-day plan.', btn('#/teacher/production', 'Production', !planned)],
       [level(nTr, songs.length), 'A track for every song', nTr + ' of ' + songs.length + ' songs have a track.', btn('#/teacher/songhub', 'Songs', nTr < songs.length)],
-      [level(nLt, songs.length), 'Lyrics timing for every song', nLt + ' of ' + songs.length + ' songs timed. Captions, follow-along lyrics and the piano melody need it.', btn('#/teacher/songhub', 'Lyrics timing', nTr >= songs.length && nLt < songs.length)],
+      [nLt >= songs.length ? 'done' : nLt || nLs ? 'some' : 'todo', 'Lyrics timing for every song', nLt + ' of ' + songs.length + ' songs fully timed' + (nLs ? ', ' + nLs + ' started' : '') + '. Captions, follow-along lyrics and the piano melody need it.', btn('#/teacher/songhub', 'Lyrics timing', nTr >= songs.length && nLt < songs.length)],
       ['todo', 'Voices for the lines', '<span data-gr-voices>Counting…</span>', btn('#/teacher/voices', 'Voices & recordings') + btn('#/teacher/listenshow', 'Listen to the show')],
       [cap, 'Captions checked', T.show.captionDoc ? 'Your edited caption script.' : 'Made straight from the script: read through them once.', btn('#/teacher/caphub', 'Captions', cap !== 'done')],
       [level(bDone, bows.length), 'Curtain call & Megamix', bDone + ' of ' + bows.length + ' steps done.', btn('#/teacher/bows', 'Curtain call & Megamix', bDone < bows.length)],

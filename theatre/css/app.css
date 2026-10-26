@@ -832,3 +832,5 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .pk-dirty { color: #ff8a96; }
 /* Lyrics timing: each section's start on the music */
 .sec-num.timed { white-space: nowrap; padding: 0 6px; width: auto; min-width: 22px; border-radius: 11px; }
+.gr-part { color: #d9822b; font-weight: 800; white-space: nowrap; }
+.gr-part .small { font-weight: 600; }
