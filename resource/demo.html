@@ -435,7 +435,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.03';
+var VERSION = '2.04';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -1156,7 +1156,7 @@ function teacherData_(week) {
   rows_('Classes').sort(function (a, b) { return a[5] - b[5]; }).forEach(function (r) {
     var p = person(r[0]); if (!p) return;
     if (r[4] === true) { if (String(r[1]) && p.periods.indexOf(String(r[1])) < 0) p.periods.push(String(r[1])); }   // resource periods: no grade
-    else if (r[8] !== true) p.classes.push(String(r[2]));          // lunch / study hall: no grade
+    else if (r[8] !== true && !noGradeName_(r[2])) p.classes.push(String(r[2]));          // lunch / study hall / counselor…: no grade
   });
   rows_('Grades').forEach(function (r) {
     var p = person(r[1]), w = day_(r[0]), cls = String(r[2]);
@@ -1288,6 +1288,10 @@ function pastedGrade_(email, cls, summary) {
   if (ROWS_MEMO) delete ROWS_MEMO['Grades'];
 }
 // 2.01: the assignment names each class's pasted pages have had (so a page pasted into the wrong class can be recognized)
+// 2.04: schedule rows that aren't graded classes: lunch, study hall, and (Colleen) counselor, social worker, case manager, athletics,
+// activities, and anything with "support" or "academy" in the name. They never ask for grades, wherever they were saved.
+var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy/i;
+function noGradeName_(name) { return NOGRADE_RE.test(String(name || '')); }
 function anames_(email) {
   var o = {}; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) !== email) return; var c = String(r[1]), l = o[c] = o[c] || []; if (l.length < 80) l.push(String(r[2])); });
   return o;
@@ -2557,7 +2561,7 @@ function api_whoIndex() {
   teacherOnly_();
   var names = {};
   rows_('Students').forEach(function (r) { var e = low_(r[SC.email]); if (e) names[e] = stuName_(r); });
-  return rows_('Classes').filter(function (r) { return low_(r[0]) && String(r[2]) && r[4] !== true && r[8] !== true; }).map(function (r) {
+  return rows_('Classes').filter(function (r) { return low_(r[0]) && String(r[2]) && r[4] !== true && r[8] !== true && !noGradeName_(r[2]); }).map(function (r) {
     var e = low_(r[0]);
     return { email: e, name: names[e] || e.split('@')[0], period: String(r[1] || ''), cls: String(r[2]), teacher: String(r[3] || ''), level: String(r[7] || '') };
   });
@@ -3649,7 +3653,7 @@ function studentData_(email) {
   });
   var classes = rows_('Classes').filter(function (r) { return low_(r[0]) === email; })
     .sort(function (a, b) { return a[5] - b[5]; })
-    .map(function (r) { return { period: String(r[1]), name: String(r[2]), teacher: String(r[3] || ''), resource: r[4] === true, temail: String(r[6] || ''), level: String(r[7] || ''), nograde: r[8] === true, by: String(r[9] || '') }; });
+    .map(function (r) { return { period: String(r[1]), name: String(r[2]), teacher: String(r[3] || ''), resource: r[4] === true, temail: String(r[6] || ''), level: String(r[7] || ''), nograde: r[8] === true || (r[4] !== true && noGradeName_(r[2])), by: String(r[9] || '') }; });
   var grades = {}, lows = {}, missing = {}, dates = {}, cplans = {}, gradeBy = {};
   rows_('Grades').forEach(function (r) {
     if (low_(r[1]) !== email || r[3] === '' || r[3] === null) return;
@@ -4180,7 +4184,7 @@ function changeBadge(now, prev) {
   return '<span class="badge">Same</span>';
 }
 function F(k) { return !B.f || B.f[k] !== false; }          // a student feature the teacher left on
-function graded(data) { return (data || D).classes.filter(function (c) { return !c.resource && !c.nograde; }); }
+function graded(data) { return (data || D).classes.filter(function (c) { return !c.resource && !c.nograde && !NOGRADE_RE.test(c.name); }); }
 function resPeriods(data) { return (data || D).classes.filter(function (c) { return c.resource; }).map(function (c) { return c.period; }).filter(String); }
 function classOptions(sel, data) {
   return '<option value="">Any class</option>' + graded(data).map(function (c) { return '<option' + (c.name === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
@@ -4365,7 +4369,7 @@ function drawWelcome() {
       '<label style="flex:0 1 280px"><span class="small" style="font-weight:600;color:var(--ink);margin-bottom:4px">First name</span><input type="text" id="nm" placeholder="Jane" maxlength="30" value="' + esc(D.profile.name.split(' ')[0]) + '"></label>' +
       '<label style="flex:0 0 auto"><span class="small" style="font-weight:600;color:var(--ink);margin-bottom:4px">Last initial</span><input type="text" id="nmi" placeholder="S" maxlength="1" style="width:64px;text-align:center;text-transform:uppercase" value="' + esc((D.profile.name.split(' ')[1] || '').charAt(0)) + '"></label></div>' +
     (B.bday && B.askBday ? '<h2 style="margin-top:18px">When is your birthday?</h2><p class="hint">We celebrate with you on your birthday!</p>' + bdayFields(D.profile.birthday) : '') + '</div>' +
-    '<div class="card"><h2>2. My schedule</h2><p class="hint">Every period, one time. Set resource (CR), lunch and study hall to “No grade.” If 4th or 5th is split, use 5A and 5B.</p>' +
+    '<div class="card"><h2>2. My schedule</h2><p class="hint">Every period, one time. Set resource (CR), lunch, study hall, counselor, athletics and other non-classes to “No grade.” If 4th or 5th is split, use 5A and 5B.</p>' +
     (F('schedPaste') ? schedPasteBox(!D.classes.length).replace('<div class="card">', '<div style="margin:0 0 12px">') : '') +
     '<div id="schWrap">' + schedTable() + '</div></div>' +
     '<div class="savebar"><span class="status" id="status"></span><button class="btn primary" id="nmGo">Save and continue</button></div>';
@@ -4459,11 +4463,13 @@ function schedRows(data) {
 }
 function blankRow(p) { return { period: p || '', name: '', teacher: '', temail: '', level: '', resource: false, nograde: false, was: '' }; }
 /* IC-SCHED */
-// What kind of class a name looks like: the Settings "Resource course names" are resource; lunch and study halls get no grade.
+// What kind of class a name looks like: the Settings "Resource course names" are resource; lunch, study hall, counselor, social worker,
+// case manager, athletics, activities, and anything with "support" or "academy" get no grade (2.04; same list as Code.gs NOGRADE_RE).
+var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy/i;
 function guessType(name, level) {
   var n = String(name).toLowerCase();
   if ((B.resNames || ['Resource']).some(function (x) { return x && n.indexOf(String(x).toLowerCase()) >= 0; })) return 'resource';
-  if (/lunch|study/.test(n) || level === 'SC') return 'nograde';
+  if (NOGRADE_RE.test(n) || level === 'SC') return 'nograde';
   return 'graded';
 }
 function rowType(r) { return r.resource || r.nograde ? 'nograde' : 'graded'; }
