@@ -68,6 +68,7 @@
   /* the 8-count counter for any song's player (app.js): counts = T.songCounts(id), t = the band track's clock */
   T.BeatCount = {
     at: function (counts, t) { return counts ? eightAt({ counts: counts }, t) : null; },
+    grid: function (counts) { var e = speedUp(counts) || {}; return { first: +e.first || 0, beat: 60 / +e.bpm }; },      // Snap to the beat on Lyrics timing
     html: '<div class="bow-8" data-b8box><div class="bow-8-n" data-b8n></div><div class="bow-8-beats">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<span>' + n + '</span>'; }).join('') + '</div></div>',
     draw: function (host, counts, t) {
       var box = host && host.querySelector('[data-b8box]'); if (!box) return;

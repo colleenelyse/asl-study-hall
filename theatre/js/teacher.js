@@ -1098,6 +1098,49 @@
       T.toast('Undone. Press Save to keep it.');
       if (view === 'sections') { overlay(); secBar(); } else draw();
     };
+    /* fixing lines on the music (Colleen 2026-10-26: "a better way to clean up rhythm when i set timing … edit on the sheet music as it aligns with the
+       lyrics"; she picked "fix lines on the music" and "snap to the beat"): each section's start is printed on the music; with 🎯 Tap the music on, a
+       tap on a section while the song plays starts it right then (keeping its own word timing); Snap to the beat moves every start to the nearest
+       beat (or half beat) of the song's counting (Count the music), so small tapping errors disappear. */
+    var tapMusic = T.ls('ltTapMusic') === true;
+    var tmark = function (x) { return x ? Math.floor(x.t / 60) + ':' + ('0' + (x.t % 60).toFixed(1)).slice(-4) : ''; };
+    function moveTo(i, t) {
+      snapshot();
+      var old = times[i], next = times.slice(i + 1).find(Boolean);
+      if (old) { var d = t - old.t; times[i] = { t: t, e: +Math.min(old.e + d, next ? next.t : old.e + d).toFixed(2), s: (old.s || []).map(function (v) { return +(v + d).toFixed(2); }) }; if (times[i].e <= t) { times[i].e = +(t + 0.5).toFixed(2); spread(i); } }
+      else { times[i] = { t: t }; spread(i); }
+      var prev = times.slice(0, i).reverse().find(Boolean);
+      if (prev && prev.e > t) { prev.e = t; prev.s = (prev.s || []).map(function (v) { return Math.min(v, t - 0.05); }); }
+      applySync(); edited = true;
+    }
+    var tapSwitch = function () { return '<label class="switch lt-tapmusic" style="border:0;margin:0 0 4px"><span>🎯 <b>Tap the music</b> while it plays to start a line right then</span><input type="checkbox" id="tapmusic"' + (tapMusic ? ' checked' : '') + '></label>'; };
+    var wireTap = function () { var c = document.getElementById('tapmusic'); if (c) c.onchange = function () { tapMusic = c.checked; T.ls('ltTapMusic', tapMusic); T.toast(tapMusic ? 'Play the song and tap each line on the music as it starts.' : 'Tapping the music picks a line again.', 3500); }; };
+    var musicTap = function (i) {      // a tap on section i of the music
+      if (tapMusic && !audio.paused) { moveTo(i, +audio.currentTime.toFixed(2)); selSec = i; overlay(); secBar(); var r = pickRow(); if (r) { var tb = r.querySelector('[data-tin]'); if (tb) tb.value = tmark(times[i]); } T.toast('Section ' + (i + 1) + ' starts at ' + tmark(times[i]), 1200); return true; }
+      return false;
+    };
+    function snapDialog() {
+      var counts = T.songCounts && T.songCounts(songId);
+      if (!counts) { if (confirm('Snap to the beat needs this song’s counting first: tap the 1s and the 2–8s through it once. Count it now?')) location.hash = '#/teacher/songcount/' + songId; return; }
+      T.dialog('<h2 style="margin-top:0">🥁 Snap to the beat</h2><p>Moves the start of every timed ' + (timeKind === 'all' ? '' : 'shown ') + 'line to the nearest beat of this song’s counting. Each line keeps its own word timing. Undo brings it back.</p>' +
+        '<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary" data-snap="1">The nearest beat</button><button class="btn" data-snap="2">The nearest half beat <span class="muted small">(for lines that start on “and”)</span></button><button class="btn quiet" data-snap="0">Cancel</button></div>', function (dl) {
+        dl.querySelectorAll('[data-snap]').forEach(function (b) { b.onclick = function () { dl.close(); if (+b.dataset.snap) snap(counts, +b.dataset.snap); }; });
+      });
+    }
+    function snap(counts, div) {
+      var g = T.BeatCount.grid(counts), step = g.beat / div, first = g.first + (kind === 'rehearsal' && off ? off : 0), moved = 0, most = 0;      // the counts are on the band track; this page plays the guide
+      snapshot();
+      times.forEach(function (x, i) {
+        if (!x || !kindOk(i) || lines[i].sync) return;
+        var k = Math.round((x.t - first) / step), d = +(first + k * step - x.t).toFixed(3);
+        if (Math.abs(d) < 0.005) return;
+        times[i] = shiftX(x, d); moved++; most = Math.max(most, Math.abs(d));
+      });
+      for (var i = 1; i < times.length; i++) { var a = times[i - 1], b = times[i]; if (a && b && a.e > b.t) { a.e = b.t; a.s = (a.s || []).map(function (v) { return Math.min(v, b.t - 0.05); }); } }
+      applySync(); edited = true;
+      if (view === 'sections' && !isSplit()) { overlay(); secBar(); } else draw();
+      T.toast(moved ? moved + ' line' + (moved === 1 ? '' : 's') + ' moved onto the ' + (div === 1 ? 'beat' : 'half beat') + ' (the biggest move ' + most.toFixed(2) + ' s). Play it, then Save, or Undo.' : 'Everything was already on the ' + (div === 1 ? 'beat.' : 'half beat.'), 6000);
+    }
     var slider = function () { return '<input type="range" class="lt-pos" id="ltpos" min="0" max="' + (audio.duration > 0 ? audio.duration.toFixed(1) : (tr[kind].dur || 0)) + '" step="0.1" value="' + audio.currentTime.toFixed(1) + '" aria-label="Where in the song">'; };
     var wireSlider = function () {
       var r = document.getElementById('ltpos'); if (!r) return;
@@ -1140,7 +1183,7 @@
           (stopsOn ? '<div class="lt-stops" id="stops"><span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span></div>' : '') +
           '<div class="lt-next-words" id="ltnext"' + (stopsOn ? ' hidden' : '') + '>' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixRun ? '⏩ Retiming · line ' + (nxt + 1) + ' (each Now sets the next line, to the end; Done fixing when you are finished)' : fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
-          (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button>' + (lines.some(function (l) { return l.spoken; }) ? '<button class="btn small quiet" id="clrsung">Clear the sung lines</button><button class="btn small quiet" id="clrspk">Clear the spoken lines</button>' : '') + '<button class="btn primary" id="sv" data-save>Save</button></div>' +
+          (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button>' + (lines.some(function (l) { return l.spoken; }) ? '<button class="btn small quiet" id="clrsung">Clear the sung lines</button><button class="btn small quiet" id="clrspk">Clear the spoken lines</button>' : '') + '<button class="btn small" id="snapb">🥁 Snap to the beat</button>' + '<button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var split = wide() && splitOn && T.Follow && T.Follow.canShow(songId);
       if (!split) app.innerHTML = H;
@@ -1154,7 +1197,7 @@
           app.innerHTML = '<div class="lt-split"><div class="lt-left" id="ltleft">' + left + '</div><div class="lt-right" id="ltright"><div id="secbar" class="lt-secbar"></div><div id="secpages" class="pages"></div></div></div>' + dock;
           var host = document.getElementById('secpages');
           T.Follow.mount(host, songId);
-          host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (!b) return; selSec = +b.dataset.sec; overlay(); secBar(); var r = pickRow(); if (r) r.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
+          host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (!b) return; if (musicTap(+b.dataset.sec)) return; selSec = +b.dataset.sec; overlay(); secBar(); var r = pickRow(); if (r) r.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
         }
         litKey = ''; overlay(); secBar(); pickRow();
       }
@@ -1176,6 +1219,7 @@
         snapshot(); fixAt = null; fixOld = null; times = times.map(function (x, i) { return !!lines[i].spoken === spoken ? null : x; }); draw(); T.toast('Cleared. Tap them again with Now, then Save.', 5000);
       };
       if ($('clrsung')) $('clrsung').onclick = function () { clearKind(false); };
+      if ($('snapb')) $('snapb').onclick = snapDialog;
       if ($('clrspk')) $('clrspk').onclick = function () { clearKind(true); };
       $('sv').onclick = function () {
         if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
@@ -1248,7 +1292,7 @@
       if (!T.Follow || !T.Follow.canShow(songId)) { host.innerHTML = '<p class="card muted">The script pages are not saved yet: import the script PDF first.</p>'; return secBar(); }
       T.Follow.mount(host, songId); overlay(); secBar();
       if (selSec != null) setTimeout(function () { var n = host.querySelector('.sec-num[data-sec="' + selSec + '"]'); if (n) { n.scrollIntoView({ block: 'center' }); n.classList.add('sec-find'); } }, 120);      // 📍 from the Timing list (the pages keep their size while they draw)
-      host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (b) { selSec = +b.dataset.sec; overlay(); secBar(); } });
+      host.addEventListener('click', function (e) { var b = e.target.closest('.sec-box, .sec-num'); if (b) { if (musicTap(+b.dataset.sec)) return; selSec = +b.dataset.sec; overlay(); secBar(); } });
     }
     function overlay(dragging) {
       var host = document.getElementById('secpages'); if (!host) return;
@@ -1259,7 +1303,7 @@
         var cs = T.lyricColors(l.who), fill = cs.length > 1 ? 'linear-gradient(180deg,' + cs.map(function (c, k) { return c + ' ' + (k * 100 / cs.length) + '% ' + ((k + 1) * 100 / cs.length) + '%'; }).join(',') + ')' : cs[0];
         T.Pages.shapes(host, T.Pages.lyricBoxes(l), { cls: 'sec-box' + (i === selSec ? ' sel' : '') + (times[i] ? '' : ' untimed') + (l.spoken ? ' spoken' : ''), colors: cs, data: { sec: i }, title: (i + 1) + ' · ' + (l.who || '') + ' · ' + l.text }).forEach(function (sh, si) {
           if (si) return;      // the section's number, at the start of its first part
-          var num = document.createElement('span'); num.className = 'sec-num'; num.textContent = i + 1; num.dataset.sec = i;
+          var num = document.createElement('span'); num.className = 'sec-num' + (times[i] ? ' timed' : ''); num.textContent = (i + 1) + (times[i] ? ' · ' + tmark(times[i]) : ''); num.dataset.sec = i;
           num.style.cssText = 'left:' + pc(sh.left, sh.sz.w) + ';top:' + pc(sh.top + 6, sh.sz.h);
           sh.page.appendChild(num);
         });
@@ -1304,13 +1348,14 @@
     function secBar() {
       var bar = document.getElementById('secbar'); if (!bar) return;
       var i = selSec, l = i != null ? lines[i] : null, x = i != null ? times[i] : null, toks = l ? (l.syl || []).map(function (y) { return y.t; }) : [];
-      if (isSplit() && !l) { bar.innerHTML = '<p class="muted small" style="margin:4px 0">Tap a section on the music to change it: who sings it, where it starts and ends, join or split it.</p>'; return; }
+      if (isSplit() && !l) { bar.innerHTML = '<p class="muted small" style="margin:4px 0">Tap a section on the music to change it: who sings it, where it starts and ends, join or split it.</p>'; bar.insertAdjacentHTML('afterbegin', tapSwitch()); wireTap(); return; }
       bar.innerHTML = (isSplit() ? '' : slider()) + (!l ? '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b><span class="grow muted">Tap a section on the music to edit it.</span>' + undoBtn('undo2') + '<button class="btn primary" id="sv2" data-save>Save</button></div>' :
         '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Section ' + (i + 1) + '</b><button type="button" class="lt-who" id="swho">' + esc(l.who || 'Who sings this?') + ' ✎</button>' +
           '<span class="grow"></span><button class="btn small" id="snm">−</button>' + timeBox('id="stin"', x) + '<button class="btn small" id="snp">+</button><button class="btn small" id="stest"' + (x ? '' : ' disabled') + '>Test</button><button class="btn small" id="sfix">🎯 Fix</button><button class="btn small quiet" id="sclr"' + (x ? '' : ' disabled') + '>✕ Clear time</button></div>' +
         '<div class="sec-words">' + (toks.length && toks.every(function (t) { return t != null; }) ? toks.map(function (t, k) { return k ? '<button type="button" class="sec-word" data-split="' + k + '" title="Start a new section here">' + esc(t) + '</button>' : '<span class="sec-word first">' + esc(t) + '</span>'; }).join('') + ' <span class="muted small">(tap a word to start a new section there)</span>' : esc(l.text)) + '</div>' +
         '<p class="muted small" style="margin:4px 0">Drag the round handles at the ends of the highlight to shorten or stretch it' + (T.Pages.lyricBoxes(l).length > 1 ? '; ✕ takes a piece away' : '') + '.' + (l.cut ? ' <button class="btn small quiet" id="sfit">Fit to the words again</button>' : '') + '</p>' +
         '<div class="row lt-controls"><button class="btn small" id="swords">✎ Edit the words</button><button class="btn small" id="sdel">🗑 Delete</button><button class="btn small" id="sjp"' + (i > 0 ? '' : ' disabled') + '>⤒ Join with ' + (i) + '</button><button class="btn small" id="sjn"' + (i < lines.length - 1 ? '' : ' disabled') + '>Join with ' + (i + 2) + ' ⤓</button>' + joinMenu(i) + '<span class="grow"></span>' + undoBtn('undo2') + '<button class="btn small quiet" id="sdone">Done</button><button class="btn primary" id="sv2" data-save>Save</button></div>');
+      bar.insertAdjacentHTML('afterbegin', tapSwitch()); wireTap();
       var $ = function (id) { return document.getElementById(id); };
       $('sv2').onclick = function () { var b = $('sv'); if (b) b.click(); else saveSections(); };
       $('undo2').onclick = function () { undo(); if (selSec != null && selSec >= lines.length) selSec = null; refresh(); };
