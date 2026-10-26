@@ -226,9 +226,96 @@
   }
   T.Megamix.practice = practice;
 
+  /* ---------- Mark the sections (Colleen 2026-10-25: "let me tap and mark the megamix for sections for group transitions") ----------
+     Like Count the music for the bows, but the Megamix changes tempo from song to song, so each section starts exactly where she taps (no
+     steady beat). Tap: the big pad names the next section; each tap starts it (Space or Enter). Watch back: the section dancing now, big, with
+     the yellow GET READY 3 seconds before each change; Mark wrong (X) marks the change just made. Tap a section in the list to fix it:
+     ± a tenth or half a second, watch from there, tap again from there. #/teacher/megamix/mark */
+  function markPage(autoWatch) {
+    T.setBar('Mark the Megamix sections', '#/teacher/megamix');
+    var s = S(), secs = MC.sectionsOf(s), saved = JSON.parse(JSON.stringify(T.show.megamix || {})), mu = musicOf(saved.music), A0 = assignNow();
+    if (!mu) { app.innerHTML = '<div class="card"><p>Pick or upload the Megamix music first (Teacher › Megamix groups › Timing).</p></div>'; return; }
+    var times = (saved.times || []).slice(), marks = {}, sel = -1, mode = '', next = 0, P = audioFor(mu), a = P.audio, raf = 0, flash = 0, said = {};
+    while (times.length < secs.length) times.push(null);
+    app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('🎶') + 'Mark the Megamix sections</h2><p><b>1. Tap:</b> press <b>Start tapping</b> and tap the big button the moment each section’s group should start (their count 1). The button tells you which section is next.</p>' +
+      '<p><b>2. Check:</b> press <b>Watch back</b>: the section dancing now shows big, with the yellow GET READY 3 seconds before each change. When a change is wrong, press <b>Mark wrong</b> (or X), then fix it in the list.</p>' +
+      '<p class="small muted">Keys: <b>Space</b> or <b>Enter</b> to mark a section start, <b>X</b> to mark wrong. The Megamix changes tempo from song to song, so each start is exactly where you tap.</p>' +
+      '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><button class="btn primary" id="mgo">' + icon('play') + 'Start tapping</button><label class="f" style="margin:0">from<select id="mfrom"></select></label><button class="btn" id="mwatch">' + icon('play') + 'Watch back</button><b id="mtm" class="lt-time">0:00</b></div></div>' +
+      '<div class="cnt-pads" id="mpads"><button class="cnt-one" id="mpad" disabled style="font-size:clamp(28px,6vw,60px);line-height:1.15;padding:10px"></button></div>' +
+      '<div class="cnt-show" id="mshow" hidden><div class="small" id="mnowlab"></div><div class="cnt-show-n" id="mbig" style="font-size:clamp(34px,7vw,72px)"></div><div id="mwho" style="margin-top:6px"></div><button class="btn cnt-mark" id="mmark">✗ Mark wrong</button></div>' +
+      '<div class="card"><div class="row" style="flex-wrap:wrap"><b class="grow" id="msum"></b><button class="btn primary" id="msave" data-save>Save the section starts</button></div><div id="mfix"></div><div id="mlist" class="small cnt-list"></div></div>';
+    var $ = function (id) { return document.getElementById(id); };
+    var fmt = function (t) { return t == null ? '–' : Math.floor(t / 60) + ':' + ('0' + (t % 60).toFixed(1)).slice(-4); };
+    function list() {
+      var n = times.filter(function (x) { return x != null; }).length;
+      $('msum').textContent = n + ' of ' + secs.length + ' section starts set';
+      $('mlist').innerHTML = secs.map(function (x, k) { return '<button type="button" class="cnt-item' + (marks[k] ? ' mark' : '') + (sel === k ? ' sel' : '') + '" data-k="' + k + '" style="border-left:6px solid ' + COL[k % COL.length] + '">' + (marks[k] ? '✗ ' : '') + (k + 1) + '. ' + esc(x.name) + ' · ' + fmt(times[k]) + '</button>'; }).join('');
+      $('mfrom').innerHTML = secs.map(function (x, k) { return '<option value="' + k + '"' + (k === next && mode !== 'tap' ? '' : '') + '>' + (k + 1) + '. ' + esc(x.name) + '</option>'; }).join('');
+      app.querySelectorAll('#mlist .cnt-item').forEach(function (b) { b.onclick = function () { sel = +b.dataset.k; $('mfrom').value = String(sel); list(); fix(); }; });
+      if (sel >= 0) $('mfrom').value = String(sel);
+      fix();
+    }
+    function fix() {
+      var box = $('mfix'); if (sel < 0) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div class="cnt-fix"><b>' + (sel + 1) + '. ' + esc(secs[sel].name) + '</b> starts at ' + fmt(times[sel]) + '<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">' +
+        [-0.5, -0.1, 0.1, 0.5].map(function (d) { return '<button class="btn small" data-d="' + d + '"' + (times[sel] == null ? ' disabled' : '') + '>' + (d < 0 ? '◀ ' + (-d) + ' s earlier' : d + ' s later ▶') + '</button>'; }).join('') +
+        '<button class="btn small" id="fw"' + (times[sel] == null ? ' disabled' : '') + '>' + icon('play') + 'Watch from here</button><button class="btn small" id="ft">Tap again from here</button>' + (marks[sel] ? '<button class="btn small quiet" id="fu">Unmark</button>' : '') + '</div></div>';
+      box.querySelectorAll('[data-d]').forEach(function (b) { b.onclick = function () { var v = +(times[sel] + +b.dataset.d).toFixed(2), lo = sel > 0 && times[sel - 1] != null ? times[sel - 1] + 0.5 : 0, hi = times[sel + 1] != null ? times[sel + 1] - 0.5 : 1e9; times[sel] = Math.min(hi, Math.max(lo, v)); delete marks[sel]; list(); }; });
+      $('fw').onclick = function () { watch(times[sel] - 4); };
+      $('ft').onclick = function () { startTap(sel); };
+      if ($('fu')) $('fu').onclick = function () { delete marks[sel]; list(); };
+    }
+    var pad = function () { $('mpad').textContent = next < secs.length ? '▶ ' + (next + 1) + '. ' + secs[next].name + ' starts NOW' : 'All set'; };
+    function tick() {
+      var t = a.currentTime; $('mtm').textContent = T.clock(t);
+      if (mode === 'watch') {
+        var m = moment(times, t), w = $('mshow');
+        if (m.next >= 0 && m.toNext <= GET_READY) { w.style.background = '#f2c200'; w.style.color = '#1d1a2e'; $('mnowlab').textContent = 'GET READY · ' + Math.ceil(m.toNext); $('mbig').textContent = (m.next + 1) + '. ' + secs[m.next].name; $('mwho').textContent = namesOf(m.next, A0, secs); if (!said['r' + m.next]) { said['r' + m.next] = 1; READY_TONE(); } }
+        else if (m.k >= 0) { w.style.background = COL[m.k % COL.length]; w.style.color = '#fff'; $('mnowlab').textContent = m.since < GO_FOR ? 'GO!' : 'Dancing now'; $('mbig').textContent = (m.k + 1) + '. ' + secs[m.k].name; $('mwho').textContent = namesOf(m.k, A0, secs); if (m.since < GO_FOR && !said['g' + m.k]) { said['g' + m.k] = 1; GO_TONE(); } }
+        else { w.style.background = '#10172a'; w.style.color = '#fff'; $('mnowlab').textContent = ''; $('mbig').textContent = 'Before the Megamix'; $('mwho').textContent = ''; }
+      }
+      if (!a.paused) raf = requestAnimationFrame(tick);
+    }
+    function stop() { a.pause(); mode = ''; $('mgo').innerHTML = icon('play') + 'Start tapping'; $('mwatch').innerHTML = icon('play') + 'Watch back'; $('mpad').disabled = true; $('mshow').hidden = true; $('mpads').hidden = false; list(); }
+    function startTap(k) {
+      P.ready.then(function () {
+        if (mode) stop();
+        next = k || 0; for (var j = next; j < times.length; j++) { times[j] = null; delete marks[j]; }      // tap again from here: the later starts too
+        var from = next > 0 && times[next - 1] != null ? times[next - 1] + 1 : 0;
+        mode = 'tap'; pad(); $('mpad').disabled = false; $('mpads').hidden = false; $('mshow').hidden = true;
+        a.currentTime = Math.max(0, from); a.play(); $('mgo').innerHTML = icon('pause') + 'Stop'; $('mpad').focus(); raf = requestAnimationFrame(tick); list();
+      }, function (e) { T.toast(e.message, 5000); });
+    }
+    function watch(at) {
+      P.ready.then(function () {
+        if (mode) stop();
+        mode = 'watch'; said = {}; $('mpads').hidden = true; $('mshow').hidden = false;
+        a.currentTime = Math.max(0, at || 0); a.play(); $('mwatch').innerHTML = icon('pause') + 'Stop'; raf = requestAnimationFrame(tick);
+      });
+    }
+    var tap = function () {
+      if (mode !== 'tap' || a.paused || next >= secs.length) return;
+      times[next] = +a.currentTime.toFixed(2); next++;
+      var b = $('mpad'); b.classList.add('hit'); clearTimeout(flash); flash = setTimeout(function () { b.classList.remove('hit'); }, 120);
+      pad(); list(); if (next >= secs.length) setTimeout(stop, 1500);
+    };
+    var mark = function () { if (mode !== 'watch') return; var m = moment(times, a.currentTime), k = m.k >= 0 ? m.k : 0; if (m.next >= 0 && m.toNext <= GET_READY) k = m.next; marks[k] = 1; sel = k; T.toast('Section ' + (k + 1) + ' marked', 1500); list(); };
+    $('mpad').onclick = tap; $('mmark').onclick = mark;
+    var key = function (e) { if (/input|select|textarea/i.test(e.target.tagName)) return; if (e.key === ' ' || e.key === 'Enter') { if (mode === 'tap') { e.preventDefault(); tap(); } } else if (e.key === 'x' || e.key === 'X') { e.preventDefault(); mark(); } };
+    document.addEventListener('keydown', key);
+    T.cleanup.push(function () { document.removeEventListener('keydown', key); cancelAnimationFrame(raf); });
+    $('mgo').onclick = function () { if (mode === 'tap') stop(); else startTap(+$('mfrom').value || 0); };
+    $('mwatch').onclick = function () { if (mode === 'watch') stop(); else { var k = +$('mfrom').value || 0; watch(times[k] != null ? times[k] - 4 : 0); } };
+    a.addEventListener('ended', function () { if (mode) stop(); });
+    $('msave').onclick = function () { if (mode) stop(); saved.times = times; T.show.megamix = saved; T.saveShow('Section starts saved').then(function () { location.hash = '#/teacher/megamix'; }); };
+    pad(); list();
+    if (autoWatch && times.some(function (x) { return x != null; })) setTimeout(function () { watch(0); }, 60);
+  }
+
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.megamix = function (args) {
     if (args && args[0] === 'run') return runPage();
+    if (args && args[0] === 'mark') return markPage(args[1] === 'watch');
     T.setBar('Megamix groups', '#/teacher');
     var s = S(), secs = MC.sectionsOf(s);
     if (!secs.length) { app.innerHTML = '<div class="card"><p>This show’s file has no Megamix sections.</p></div>'; return; }
@@ -285,7 +372,7 @@
         '<div class="row" style="flex-wrap:wrap"><label class="f grow" style="margin:0">Megamix music<select id="mxmu">' + opt('', 'Pick…', !mu) +
         (tr.rehearsal ? opt('rehearsal', 'With vocals (guide track)', !m.own && mu && mu.kind === 'rehearsal') : '') + (tr.performance ? opt('performance', 'Band track (no singers)', !m.own && mu && mu.kind === 'performance') : '') +
         (m.own ? opt('own', 'Your own recording (uploaded)', true) : '') + '</select></label><label class="btn" style="margin:0">' + sym('⬆️') + 'Upload a recording<input type="file" id="mxup" accept="audio/*" hidden></label></div>' +
-        (mu ? '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn primary" id="mxtap">' + sym('⏱') + 'Tap the section starts while it plays</button>' + ((saved.times || []).some(function (x) { return x != null; }) ? '<button class="btn" id="mxreh">' + icon('play') + 'Rehearse the Megamix</button>' : '') + '</div>' : '<p class="err small">Pick or upload the Megamix music.</p>') +
+        (mu ? '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn primary" id="mxmark">' + sym('👆') + 'Mark the sections: tap and check</button>' + ((saved.times || []).some(function (x) { return x != null; }) ? '<button class="btn" id="mxprev">' + icon('play') + 'Preview the sections</button>' : '') + ((saved.times || []).some(function (x) { return x != null; }) ? '<button class="btn" id="mxreh">' + icon('play') + 'Rehearse the Megamix</button>' : '') + '</div>' : '<p class="err small">Pick or upload the Megamix music.</p>') +
         '<div style="margin-top:8px">' + secs.map(function (x, k) { return '<div class="row" style="gap:6px;align-items:center;margin:4px 0"><b style="color:' + COL[k % COL.length] + ';min-width:16em">' + (k + 1) + '. ' + esc(x.name) + '</b><button type="button" class="btn small" data-tn="' + k + '|-0.5" aria-label="Half a second earlier">−</button><input data-tt="' + k + '" value="' + fmt(times[k]) + '" placeholder="0:00" style="width:80px" aria-label="When ' + esc(x.name) + ' starts"><button type="button" class="btn small" data-tn="' + k + '|0.5" aria-label="Half a second later">+</button></div>'; }).join('') + '</div>' +
         '<p class="small muted" id="mxmsg">Changing the music? Tap the times again: each recording has its own timing. Save to keep them.</p></div>';
     }
@@ -301,21 +388,10 @@
       };
       app.querySelectorAll('[data-tt]').forEach(function (x) { x.onchange = function () { (saved.times = saved.times || [])[+x.dataset.tt] = parse(x.value); draw(); }; });
       app.querySelectorAll('[data-tn]').forEach(function (b) { b.onclick = function () { var q = b.dataset.tn.split('|'), k = +q[0], T0 = saved.times = saved.times || []; T0[k] = Math.max(0, +((T0[k] || 0) + +q[1]).toFixed(2)); draw(); }; });
+      var go2 = function (h) { T.show.megamix = saved; T.saveShow('Megamix groups saved').then(function () { location.hash = h; }); };
+      if ($('mxmark')) $('mxmark').onclick = function () { go2('#/teacher/megamix/mark'); };
+      if ($('mxprev')) $('mxprev').onclick = function () { go2('#/teacher/megamix/mark/watch'); };
       if ($('mxreh')) $('mxreh').onclick = function () { T.show.megamix = saved; T.saveShow('Megamix groups saved').then(function () { location.hash = '#/teacher/megamix/run'; }); };      // Rehearse plays what is saved: save first
-      var tb = $('mxtap'); if (!tb) return;
-      tb.onclick = function () {
-        var mu = musicOf(saved.music), P = audioFor(mu), k = 0, times = (saved.times = (saved.times || []).slice());
-        var bar = document.createElement('div'); bar.className = 'dock'; bar.innerHTML = '<div class="in"><b id="mxwho" class="grow"></b><b id="mxclk" class="lt-time"></b><button class="btn primary lt-now" id="mxnow">Now</button><button class="btn quiet" id="mxstop">Done</button></div>';
-        document.body.appendChild(bar);
-        var show = function () { var w = document.getElementById('mxwho'); if (w) w.textContent = k < secs.length ? 'Tap Now (or Space) when ' + (k + 1) + '. ' + secs[k].name + ' starts' : 'All set.'; };
-        var raf = 0, clk = function () { var c = document.getElementById('mxclk'); if (c) c.textContent = T.clock(P.audio.currentTime); raf = requestAnimationFrame(clk); };
-        var key = function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); now(); } };
-        var end = function () { P.audio.pause(); cancelAnimationFrame(raf); document.removeEventListener('keydown', key); bar.remove(); draw(); T.toast('Section times set. Rehearse to check them, then Save.'); };
-        var now = function () { if (k >= secs.length) return end(); times[k] = +P.audio.currentTime.toFixed(2); saved.times = times; k++; show(); if (k >= secs.length) setTimeout(end, 800); };
-        document.getElementById('mxnow').onclick = now; document.getElementById('mxstop').onclick = end; document.addEventListener('keydown', key);
-        T.cleanup.push(function () { cancelAnimationFrame(raf); document.removeEventListener('keydown', key); bar.remove(); });
-        show(); P.ready.then(function () { P.audio.currentTime = 0; P.audio.play(); clk(); }, function (e) { T.toast(e.message, 5000); end(); });
-      };
     }
     draw();
   };

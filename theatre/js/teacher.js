@@ -732,7 +732,14 @@
           ' <button class="btn small" data-piano="' + s.id + '"' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? '' : ' disabled title="Find the lyrics timing first"') + '>' + (T.show.sheetMelody && T.show.sheetMelody[s.id] ? '🎹 Piano ✓ ' + T.show.sheetMelody[s.id].notes.length + ' notes' : '🎹 Piano from the sheet music') + '</button>' +
           ' <a class="btn small" href="#/teacher/songs/lyrics/' + s.id + '">' + (T.show.lyricTimes && T.show.lyricTimes[s.id] ? 'Lyrics timing ✓' : 'Lyrics timing') + '</a>' +
           ' <a class="btn small" href="#/teacher/songs/cues/' + s.id + '">' + (T.show.underscore && T.show.underscore[s.id] ? 'Lines over the music ✓' : 'Lines over the music') + '</a></td></tr>';
-      }).join('') + '</tbody></table>' + changeMusic() + '<p id="st" class="muted" role="status"></p>';
+      }).join('') + bowRow() + '</tbody></table>' + changeMusic() + '<p id="st" class="muted" role="status"></p>';
+    /* the bow track (Colleen 2026-10-25: "we need to add the bow track to the song list"): the curtain call's own recording, uploaded here or on the
+       Curtain call page (track '__bows'); uploading here makes it the bow music */
+    function bowRow() {
+      var t = tr.__bows || {}, P = T.curtainPlan ? T.curtainPlan() : null, own = P && P.music && P.music.own;
+      return '<tr><td><b>' + sym('🌟') + ' Bows</b> (curtain call)<br><a class="small" href="#/teacher/curtain">Curtain call</a></td><td class="muted small">–</td><td>' + (t.performance ? '<span class="tag">' + T.clock(t.performance.dur) + '</span> ' : own ? '<span class="tag">uploaded</span> ' : '<span class="muted small">none</span> ') +
+        '<label class="btn small">' + (t.performance || own ? 'Replace' : 'Upload') + '<input type="file" accept="audio/*,.mp3,.m4a,.wav" data-s="__bows" data-k="performance" hidden></label></td><td class="muted small">' + (own ? 'This is the bow music.' : '') + '</td></tr>';
+    }
     function changeMusic() {
       if (!T.Cues) return '';
       var nums = T.Cues.musicNumbers(), songNums = O.songs.map(function (s) { return String(s.num); });
@@ -755,6 +762,7 @@
             st.textContent = 'Uploading ' + f.name + ' (' + (f.size / 1e6).toFixed(1) + ' MB)…';
             return Store.putTrack(T.key, T.proof, id, kind, buf, ver).then(function () {
               tr[id] = tr[id] || {}; tr[id][kind] = { ver: ver, dur: Math.round(ab.duration * 10) / 10, size: f.size, name: f.name };
+              if (id === '__bows' && T.curtainPlan) { var CP = JSON.parse(JSON.stringify(T.curtainPlan())); CP.music = { own: ver, start: 0, loop: false }; T.show.curtain = CP; }      // the bow music now
               if (mel[id]) delete mel[id];      // the old melody line was for the old track
               return save('Track saved');
             });

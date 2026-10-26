@@ -1101,7 +1101,10 @@
       return '<a class="tile" style="min-height:110px;align-items:flex-start;text-align:left" href="#/song/' + x.song.id + '"><b>' + sym('🎵') + esc(x.song.title) + '</b>' +
         '<span>Scene ' + x.scene.num + ' · ' + (x.sing ? '<span class="tag">You sing</span>' : x.on ? 'You are on stage' : 'Not in this one') + (t && (t.performance || t.rehearsal) ? '' : ' · no track yet') + '</span></a>';
     };
-    app.innerHTML = '<div class="row" style="margin-bottom:12px"><h2 class="grow" style="margin:0">My songs</h2><a class="btn primary" href="#/listen">' + icon('play') + 'Play the whole show</a></div><div class="grid">' + (mine.map(row).join('') || '<p>No songs for you. Enjoy the show!</p>') + '</div>' +
+    /* the bow track (Colleen 2026-10-25: "we need to add the bow track to the song list"): everyone bows, so it is with my songs; it opens My bow,
+       where the bow music plays with my own countdown */
+    var bm = T.curtainMusic && T.curtainMusic(), bowTile = bm && T.passAllows('bow') ? '<a class="tile" style="min-height:110px;align-items:flex-start;text-align:left" href="#/bow"><b>' + sym('🌟') + 'The bows (curtain call)</b><span>Everyone · ' + esc(bm.name) + ' · practice your bow with the music</span></a>' : '';
+    app.innerHTML = '<div class="row" style="margin-bottom:12px"><h2 class="grow" style="margin:0">My songs</h2><a class="btn primary" href="#/listen">' + icon('play') + 'Play the whole show</a></div><div class="grid">' + ((mine.map(row).join('') + bowTile) || '<p>No songs for you. Enjoy the show!</p>') + '</div>' +
       (rest.length ? '<details style="margin-top:20px"><summary class="btn quiet">The other songs</summary><div class="grid" style="margin-top:12px">' + rest.map(row).join('') + '</div></details>' : '');
   }
   function songPage(args) {

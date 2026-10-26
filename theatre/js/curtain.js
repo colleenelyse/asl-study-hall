@@ -65,6 +65,7 @@
       company: { note: 'Everyone in one line: one bow together, then point to the band and the crew.' } };
   }
   T.curtainPlan = plan;
+  T.curtainMusic = function () { var P = plan(); return P && P.music ? music(P) : null; };      // the song list shows the bow track (app.js)
   /* the bow music: which track, and how to load it */
   function music(P) {
     var m = P.music || {};
@@ -307,7 +308,7 @@
   T.teacherPages = T.teacherPages || {};
   T.teacherPages.curtain = function (args) {
     if (args && args[0] === 'run') return runPage();
-    if (args && args[0] === 'count') return countPage();
+    if (args && args[0] === 'count') return countPage(args[1] === 'watch');
     T.setBar('Curtain call', '#/teacher');
     var P = JSON.parse(JSON.stringify(plan())), O = T.O(), fin = finaleSong();
     var withTracks = O.songs.filter(function (s) { var t = (T.show.tracks || {})[s.id]; return t && (t.performance || t.rehearsal); });
@@ -329,7 +330,7 @@
         '<label class="switch" style="border:0"><span>Loop it if the bows run longer</span><input type="checkbox" id="mloop"' + (!P.music || P.music.loop !== false ? ' checked' : '') + '></label></div>' +
         '<div class="bow-counts"><h3 style="margin:10px 0 4px">' + sym('🔢') + 'Counting in 8s</h3>' +
         (P.counts && P.counts.fit ? '<p style="margin:4px 0">' + sym('✅') + '<b>Counted from your taps:</b> a steady ' + P.counts.bpm + ' beats a minute, count 1 at ' + fmt(P.counts.first) + ' (the average of ' + P.counts.fit.used + ' taps' + (P.counts.fit.off ? '; ' + P.counts.fit.off + ' that were clearly off were left out' : '') + (P.counts.fit.filled ? '; ' + P.counts.fit.filled + ' missed 1' + (P.counts.fit.filled === 1 ? '' : 's') + ' filled in' : '') + ').' + ((P.counts.fit.fours || []).length ? ' 8-count ' + P.counts.fit.fours.join(', ') + ' ' + (P.counts.fit.fours.length === 1 ? 'is a 4-count transition' : 'are 4-count transitions') + '.' : '') + '</p>' : '') +
-        '<div class="row" style="flex-wrap:wrap;align-items:center">' + (mu ? '<button class="btn primary" id="cnt">' + sym('👆') + (P.counts && P.counts.fit ? 'Count the music again' : 'Count the music: tap the 1s and the 2–8s') + '</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count ≈ ' + e8.toFixed(2) + ' seconds.' : '') + '</span></div>' +
+        '<div class="row" style="flex-wrap:wrap;align-items:center">' + (mu && P.counts && P.counts.fit ? '<button class="btn primary" id="cprev">' + icon('play') + 'Preview the counting</button>' : '') + (mu ? '<button class="btn' + (P.counts && P.counts.fit ? '' : ' primary') + '" id="cnt">' + sym('👆') + (P.counts && P.counts.fit ? 'Count the music again' : 'Count the music: tap the 1s and the 2–8s') + '</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count ≈ ' + e8.toFixed(2) + ' seconds.' : '') + '</span></div>' +
         (mapOf(P) ? '' : '<details style="margin-top:6px"><summary class="small">' + (P.counts && P.counts.fit ? 'Or change the tempo by hand' : 'Or type a steady tempo') + '</summary><div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f" style="margin:0">Tempo (beats a minute)<input id="cbpm" inputmode="decimal" value="' + (P.counts && P.counts.bpm || '') + '" placeholder="e.g. 120" style="width:90px"></label>' +
         '<label class="f" style="margin:0">Count 1 of the first 8 is at<input id="cfirst" value="' + fmt(P.counts && P.counts.first != null ? P.counts.first : 0) + '" style="width:90px"></label>' +
         (mu ? '<button class="btn" id="tapbeat">' + sym('👏') + 'Tap the beat while it plays</button>' : '') + '</div></details>') +
@@ -393,6 +394,9 @@
       })();
       $('mus').onchange = function () { keep(); var v = this.value, k = v.split(':')[0]; if (k === 'rehearsal' || k === 'performance') P.music = { song: v.slice(k.length + 1), kind: k, start: P.music && P.music.start, loop: !P.music || P.music.loop !== false }; draw(); };
       if ($('cbpm')) $('cbpm').onchange = $('cfirst').onchange = function () { keep(); draw(); };
+      /* where she sees her counting (Colleen 2026-10-25: "where can i see the counted bow now that i tapped it. there should be a button on the
+         programming page to preview it"): the music with the counting big and a click on every beat */
+      if ($('cprev')) $('cprev').onclick = function () { keep(); T.show.curtain = P; T.saveShow('Curtain call saved').then(function () { location.hash = '#/teacher/curtain/count/watch'; }); };
       if ($('cnt')) $('cnt').onclick = function () { keep(); T.show.curtain = P; T.saveShow('Curtain call saved').then(function () { location.hash = '#/teacher/curtain/count'; }); };
       app.querySelectorAll('[data-e8]').forEach(function (b) { b.onclick = function () { keep(); var q = b.dataset.e8.split('|'), g = P.groups[+q[0]]; g.eights = Math.max(0, (g.eights || 0) + +q[1]); draw(); }; });
       app.querySelectorAll('[data-k="eights"]').forEach(function (s2) { s2.onchange = function () { keep(); draw(); }; });
@@ -414,7 +418,7 @@
       };
       $('upl').onchange = function () {
         var f = this.files[0]; if (!f) return; keep(); var m = $('tapmsg'); m.textContent = 'Uploading ' + f.name + '…'; T.toast('Uploading ' + f.name + '…', 4000);
-        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver, start: 0, loop: false }; T.show.curtain = P; return T.saveShow('Bow music uploaded').then(function () { draw(); T.toast('Your recording is the bow music now (saved). Loop is off, since it fades out.'); }); }); }); })
+        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function (ab) { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { var trs = T.show.tracks = T.show.tracks || {}; trs.__bows = { performance: { ver: ver, dur: Math.round(ab.duration * 10) / 10, size: f.size, name: f.name } }; P.music = { own: ver, start: 0, loop: false }; T.show.curtain = P; return T.saveShow('Bow music uploaded').then(function () { draw(); T.toast('Your recording is the bow music now (saved). Loop is off, since it fades out.'); }); }); }); })
           .catch(function (e) { m.textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; T.toast('The recording did not upload: ' + (e.message || 'not an audio file') + '. The bow music has not changed.', 8000); });
       };
       app.querySelectorAll('[data-side]').forEach(function (x) { x.onchange = function () { keep(); draw(); }; });
@@ -480,7 +484,7 @@
      "Start at" re-taps from any 8-count: the taps before it are kept. Then ("i want to be able to watch back the counts you think are right and mark
      errors"): Watch back plays the music with the app's counting, big, and a click on every beat (the 1 louder); Mark wrong (or X) marks the
      8-count playing; tap any 8-count in the list to fix it: its 1 a count earlier or later, watch from there, or tap again from there. */
-  function countPage() {
+  function countPage(autoWatch) {
     T.setBar('Count the music', '#/teacher/curtain');
     var P = JSON.parse(JSON.stringify(plan())), mu = music(P);
     if (!mu) { app.innerHTML = '<p class="card">Pick or upload the bow music first (Teacher › Curtain call).</p>'; return; }
@@ -583,6 +587,7 @@
     $('cfrom').onchange = function () { from = this.value; };
     A.audio.addEventListener('ended', stop);
     $('cclr').onclick = function () { if (taps.length && !confirm('Clear all your taps?')) return; taps = []; edits = null; marks = {}; sel = -1; list(); };
+    if (autoWatch && cur()) setTimeout(function () { watch(0); }, 60);      // Preview the counting (Curtain call page)
     $('csave').onclick = function () {
       var f = cur(); if (!f) { T.toast('Tap at least two 1s first.'); return; }
       if (mode) stop();
