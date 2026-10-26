@@ -903,6 +903,7 @@
       function cue(y) {
         cur = y.i; mark();
         if (mode === 'run' && y.mine) return myTurn(y, g, true);
+        if (T.Voices && T.Voices.muted(T.Voices.id(y.it))) return;      // off in playback (a line the track already has): the music keeps going
         audio.volume = 0.35;      // the music dips while the line is read
         (T.Voices ? T.Voices.say(y.it, y.chars[0], y.mine) : Speech.say(LineCheck.spoken(y.it.text), y.chars[0])).then(function () { audio.volume = 1; });
       }

@@ -94,6 +94,7 @@
     app.innerHTML = '<div class="card ls-top"><div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f grow" style="margin:0">Scene<select id="lssc">' + scenes.map(function (s) { return '<option value="' + s.i + '"' + (s.sc === st.scene ? ' selected' : '') + '>Scene ' + s.sc.num + ' · ' + esc(s.sc.place) + '</option>'; }).join('') + '</select></label>' +
       '<span class="muted small">Step ' + (at + 1) + ' of ' + list.length + ' · ' + nMade + ' of ' + nLines + ' lines made</span></div>' +
       '<div class="ls-ctl"><button class="btn" id="lsps" title="Last scene">⏮ Scene</button><button class="btn" id="lsb" title="Back a line">◀ Back</button><button class="btn primary ls-play" id="lsp">' + (playing ? '⏸ Pause' : '▶ Play') + '</button><button class="btn" id="lsn" title="Skip this line">Skip ▶</button><button class="btn" id="lsns" title="Next scene">Scene ⏭</button></div></div>' +
+      '<div class="ls-songoff">' + T.Voices.songSwitch() + '</div>' +
       '<div class="ls-stage">' + card(list[at - 2], 'past') + card(list[at - 1], 'past') + card(st, 'now') + card(list[at + 1], 'next') + card(list[at + 2], 'next') + '</div>' +
       (st.kind === 'line' ? '<div class="card ls-fix"><div class="row" style="flex-wrap:wrap">' +
         (e && e.tts ? (ok ? '<button class="btn good" id="lsok">👂 ✓ Approved</button>' : '<button class="btn" id="lsok">👂 Sounds right</button>') : '') +
@@ -106,6 +107,7 @@
       '<label class="f">Speed<select id="lsrt">' + [[0.9, 'A little slower'], [1, 'Normal'], [1.15, 'A little faster']].map(function (g) { return '<option value="' + g[0] + '"' + (+o.rate === g[0] ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select></label></div></details>';
     var $ = function (id) { return document.getElementById(id); };
     $('lsp').onclick = function () { playing = !playing; if (playing) go(at); else { stopSound(); draw(); } };
+    T.Voices.wireSongSwitch(app, draw);
     $('lsb').onclick = function () { go(at - 1); };
     $('lsn').onclick = function () { go(at + 1); };
     $('lsps').onclick = function () { sceneStart(-1); };

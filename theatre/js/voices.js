@@ -161,9 +161,33 @@
   /* Off in playback (Colleen 2026-10-25: "turn off lines one at a time from the playback so that i can turn off ones that are already in the guide
      vocals easily without permanently deleting them"): still a line (captions, Lines for AAC, Practice Lines show it), but nothing speaks it,
      and it is not counted as left to make or put in a run. T.show.voiceMute[line] = 1. */
-  var muted = function (h) { return !!(T.show.voiceMute || {})[h]; };
+  /* every line spoken while a song's track plays (Colleen 2026-10-25: "i want the ability to turn off all spoken lines said during audio tracks in a
+     song"): the spoken lines inside songs and the lines cued over a song's music (Lines over the music). T.show.songLinesOff turns all of them off
+     in playback at once; a single one can still be turned back on (voiceMute[h] = 0). */
+  var songSet = null, songFor = null;
+  function songLines() {
+    var key = [T.show.script, T.show.underscore];
+    if (songSet && songFor && songFor[0] === key[0] && songFor[1] === key[1]) return songSet;
+    var set = {}, U = T.show.underscore || {}, cued = {};
+    Object.keys(U).forEach(function (sid) { ((U[sid] || {}).cues || []).forEach(function (c) { cued[c.key] = 1; }); });
+    if (T.show.script) T.O().scenes.forEach(function (sc) {
+      var src = T.scriptScene(sc); if (!src) return;
+      src.items.forEach(function (it) {
+        if (it.type === 'song') (it.lyrics || []).forEach(function (l) { if (l.spoken && l.who) set[V.id(l)] = 1; });
+        if (it.type === 'line' && T.lineKey && cued[T.lineKey(it)]) set[V.id(it)] = 1;
+      });
+    });
+    songSet = set; songFor = key; return set;
+  }
+  V.songLine = function (h) { return !!songLines()[h]; };
+  V.songLinesCount = function () { return Object.keys(songLines()).length; };
+  var muted = function (h) { var M = T.show.voiceMute || {}; if (M[h] === 1) return true; if (M[h] === 0) return false; return !!(T.show.songLinesOff && songLines()[h]); };
   V.muted = muted;
-  V.setMuted = function (h, on) { var M = T.show.voiceMute = T.show.voiceMute || {}; if (on) M[h] = 1; else delete M[h]; return T.saveShow(on ? 'Off in playback' : 'On in playback'); };
+  V.setMuted = function (h, on) { var M = T.show.voiceMute = T.show.voiceMute || {}; if (on) M[h] = 1; else if (T.show.songLinesOff && songLines()[h]) M[h] = 0; else delete M[h]; return T.saveShow(on ? 'Off in playback' : 'On in playback'); };
+  V.setSongLinesOff = function (on) { T.show.songLinesOff = !!on; var M = T.show.voiceMute || {}; Object.keys(songLines()).forEach(function (h) { if (M[h] === 0 || M[h] === 1) delete M[h]; }); return T.saveShow(on ? 'Lines during songs: off in playback' : 'Lines during songs: on in playback'); };
+  /* the switch, for the Voices page and Listen to the show */
+  V.songSwitch = function () { var n = V.songLinesCount(); return n ? '<label class="switch"><span><b>Turn off the lines spoken during songs</b> (' + n + ')<br><span class="muted small">Lines inside songs and lines over a song’s music stay silent in every playback (the tracks already have them). They still show in captions, Practice Lines and Lines for AAC.</span></span><input type="checkbox" data-songoff' + (T.show.songLinesOff ? ' checked' : '') + '></label>' : ''; };
+  V.wireSongSwitch = function (root, then) { var c = root.querySelector('[data-songoff]'); if (c) c.onchange = function () { V.setSongLinesOff(c.checked).then(then); }; };
   /* the voices for a line (Colleen 2026-10-24: group lines as "a small chorus"): one character, their voice; a group (JOCKS), ALL, or several
      names (TROY, GABRIELLA), up to three voices together: the named characters' or the group's own voice first, then the chorus voices */
   var CHORUS = ['__chorus1', '__chorus2', '__chorus3'];
@@ -224,6 +248,7 @@
     app.innerHTML = (msg ? '<p class="card">' + esc(msg) + '</p>' : '') +
       '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by Company members · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
       '<p class="muted small">Company members rehearse with a castmate’s recording first, then ElevenLabs, then the device voice. Company members record in Practice Lines › a scene › Record my lines.</p></div>' +
+      '<div class="card">' + V.songSwitch() + '</div>' +
       '<div class="card"><h3>Company members’ recordings</h3><label class="switch"><span><b>Check recordings before others hear them</b><br><span class="muted small">Off: a recording is in everyone’s rehearsals right away, and you can take any one down here.</span></span><input type="checkbox" id="chk"' + (index.check ? ' checked' : '') + '></label>' +
       (pending.length ? pending.slice().reverse().slice(0, 80).map(function (p) {
         var l = byH[p.h];
@@ -242,6 +267,7 @@
       '<p class="muted small">Names are said the way “How words are said” spells them (Teacher mode › Script). Only the script’s words are sent to ElevenLabs, never Company members’ names.</p></div>' + toneCard(lines, index, cfg);
     var $ = function (id) { return document.getElementById(id); };
     $('chk').onchange = function (e) { Store.setVoiceCheck(T.proof, e.target.checked).then(function () { T.toast(e.target.checked ? 'New recordings wait for your OK' : 'New recordings go live at once'); }); };
+    V.wireSongSwitch(app, function () { page(index, pending); });
     app.querySelectorAll('[data-play]').forEach(function (b) { b.onclick = function () { var x = b.dataset.play.split('|'); Store.getPending(T.key, T.proof, x[0], x[1]).then(function (buf) { new Audio(URL.createObjectURL(new Blob([buf]))).play(); }).catch(function (e) { T.toast(e.message); }); }; });
     app.querySelectorAll('[data-ok]').forEach(function (b) { b.onclick = function () { var x = b.dataset.ok.split('|'); Store.approve(T.proof, x[0], x[1]).then(T.teacherPages.voices); }; });
     app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm('Take this recording down?')) return; var x = b.dataset.rm.split('|'); Store.reject(T.proof, x[0], x[1]).then(T.teacherPages.voices); }; });
