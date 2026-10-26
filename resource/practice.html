@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.21'
+var VERSION = '2.22'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -477,7 +477,9 @@ var TABS = {
   Classes: ['Email', 'Period', 'Class', 'Teacher', 'Resource (no grade)', 'Order', 'Teacher email', 'Level', 'No grade (lunch, study)', 'Entered by'],
   Grades: ['Week of', 'Email', 'Class', 'Grade', 'Updated', 'Why it is low', 'Plan to improve', 'Plan details', 'Missing (how many)', 'Missing assignments', 'My plan', 'Entered by'],
   Plans: ['Week of', 'Email', 'Focus classes', 'Steps', 'Need help with', "Followed last week's plan?", 'Looking back', 'Updated', 'Teacher check', 'Talked to a teacher'],
-  Tests: ['ID', 'Email', 'Class', 'Date', 'What', 'Type', 'Done', 'Added', 'Reminder sent'],
+  Tests: ['ID', 'Email', 'Class', 'Date', 'What', 'Type', 'Done', 'Added', 'Reminder sent', 'Accommodations'],
+  'Accommodation plan': ['Email', 'Class', 'Accommodations', 'Updated'],
+  'Related services': ['Email', 'Service', 'Minutes', 'Per', 'Notes', 'Updated'],
   Reminders: ['ID', 'Email', 'Date', 'Message', 'Set by', 'Sent'],
   Photos: ['Email', 'Photo', 'Updated'],
   Retakes: ['Email', 'Class', 'Test', 'Score', 'Test date', 'Coursework on time', 'Eligible', 'Status', 'Retake date', 'Updated'],
@@ -544,7 +546,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28 };   // Students columns
-var TEXT_COLS = { 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -754,7 +756,7 @@ function setup_() {
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
-  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
+  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
@@ -1257,7 +1259,7 @@ function teacherData_(week) {
   var names = {}; students.forEach(function (s) { names[s.email] = s.name; });
   var until = addDays_(today, 14);
   var tests = rows_('Tests').filter(function (r) { var d = day_(r[3]); return r[6] !== true && d >= today && d <= until; })
-    .map(function (r) { return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]) }; })
+    .map(function (r) { return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]), accoms: String(r[9] || '') }; })
     .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.name.localeCompare(b.name); });
 
   var retakes = retakes_('').map(function (r) { r.name = names[r.email] || r.email; return r; });
@@ -3051,7 +3053,7 @@ function api_efDataRead_(email) {
   var ownA = f.i >= 0 ? String(f.rows[f.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
   var ef = efData_(email);
   migrateBench_();
-  return { checkins: checkinsOf_(email), phrases: f.i >= 0 ? String(f.rows[f.i][SC.phrases] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], ef: ef, reflections: reflections_(email), goals: goals_(email, ef), goalT: goal_(email, ef), goal: f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', checklistOwn: own, checklistClass: settings_().checkItems, nothingOwn: f.i >= 0 ? String(f.rows[f.i][SC.nothing] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], nothingClass: settings_().nothingItems, accomsOwn: ownA, accomsCommon: settings_().accoms };
+  return { services: services_(email), checkins: checkinsOf_(email), phrases: f.i >= 0 ? String(f.rows[f.i][SC.phrases] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], ef: ef, reflections: reflections_(email), goals: goals_(email, ef), goalT: goal_(email, ef), goal: f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', checklistOwn: own, checklistClass: settings_().checkItems, nothingOwn: f.i >= 0 ? String(f.rows[f.i][SC.nothing] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], nothingClass: settings_().nothingItems, accomsOwn: ownA, accomsCommon: settings_().accoms };
 }
 
 // The Goal data tab: one row per student with every measure (each morning, after Set up or repair, and from the teacher view).
@@ -3708,6 +3710,58 @@ function accomsFor_(email) {
   var f = stuFind_(email), own = f.i >= 0 ? String(f.rows[f.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
   return own.length ? own.slice(0, 20) : settings_().accoms;
 }
+// 2.22 Teacher: save what the "Paste from an IEP" page sorted out. p: { goals: [{ text, title, kid, here, benchmarks: [text] }], accoms: [text], accMode: 'add' | 'replace' }
+// A goal with the same IEP wording is updated, not doubled. Benchmarks are kept on IEP benchmarks (hidden in the app for now).
+function api_saveIepPaste(email, p) {
+  teacherOnly_(); email = low_(email); p = p || {};
+  if (stuFind_(email).i < 0) throw new Error('Pick a student who is on the Students tab.');
+  var n = 0, nb = 0, na = 0;
+  locked_(function () {
+    (p.goals || []).slice(0, 20).forEach(function (g) {
+      var text = clean_(g.text, 3000); if (!text) return;
+      var have = goals_(email), same = have.filter(function (x) { return low_(x.text) === low_(text); })[0], gid;
+      if (same) gid = same.id; else if (!have[0].text && !have[0].kid && !have[0].code) gid = '';
+      else { gid = Utilities.getUuid().slice(0, 8); sheet_('IEP goals').appendRow([gid, email, '', '', stamp_(), stamp_(), '', '']); if (ROWS_MEMO) delete ROWS_MEMO['IEP goals']; }
+      var f = { text: text, name: clean_(g.title, 80), here: g.here !== false }; if (clean_(g.kid, 600)) f.kid = clean_(g.kid, 600);
+      saveGoalCore_(email, gid, f); n++;
+      var old = rows_('IEP benchmarks').filter(function (r) { return low_(r[1]) === email && String(r[8] || '') === gid; }).map(function (r) { return low_(r[2]); });
+      (g.benchmarks || []).slice(0, 12).forEach(function (b) { b = clean_(b, 500); if (!b || old.indexOf(low_(b)) >= 0) return; sheet_('IEP benchmarks').appendRow([Utilities.getUuid().slice(0, 8), email, b, '', '', 'Working on it', today_(), stamp_(), gid]); nb++; });
+      if (ROWS_MEMO) delete ROWS_MEMO['IEP benchmarks'];
+    });
+    var add = (p.accoms || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(String).slice(0, 25);
+    if (add.length) {
+      var f2 = stuFind_(email), cur = p.accMode === 'replace' ? [] : String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
+      add.forEach(function (x) { if (cur.map(low_).indexOf(low_(x)) < 0) { cur.push(x); na++; } });
+      stuSet_(f2.i, 'accoms', cur.slice(0, 25).join('; '));
+    }
+    var ns = Array.isArray(p.services) && p.services.length ? saveServices_(email, p.services) : 0;
+    logChange_('Pasted from an IEP', email, '', '', '', n + ' goals, ' + nb + ' benchmarks, ' + na + ' accommodations, ' + ns + ' services', '');
+  });
+  try { memo_(allGoals_); } catch (e) {}
+  return { goals: n, benchmarks: nb, accoms: na, services: Array.isArray(p.services) ? p.services.length : 0 };
+}
+// 2.22: related service minutes (from the IEP): students see them on their page; teachers edit them. list: [{ service, minutes, per, notes }]
+var SVC_PER = ['day', 'week', 'month', 'quarter', 'semester', 'year'];
+function services_(email) { return rows_('Related services').filter(function (r) { return low_(r[0]) === email && String(r[1]); }).map(function (r) { return { service: String(r[1]), minutes: Number(r[2]) || 0, per: String(r[3] || ''), notes: String(r[4] || '') }; }); }
+function saveServices_(email, list) {
+  var rows = (list || []).slice(0, 20).map(function (x) { var per = String(x.per || '').toLowerCase(); return [email, clean_(x.service, 80), Math.max(0, Math.round(Number(x.minutes) || 0)), SVC_PER.indexOf(per) >= 0 ? per : 'week', clean_(x.notes, 200), stamp_()]; }).filter(function (r) { return r[1]; });
+  rewrite_('Related services', function (r) { return low_(r[0]) !== email; }, rows);
+  return rows.length;
+}
+function api_saveServices(email, list) { teacherOnly_(); email = low_(email); locked_(function () { saveServices_(email, list); logChange_('Related services changed', email, '', '', '', (list || []).length + ' services', ''); }); return services_(email); }
+// 2.22: the accommodation bank: which of their accommodations a student uses in each class, and on each test
+function accomPlan_(email) { var o = {}; rows_('Accommodation plan').forEach(function (r) { if (low_(r[0]) === email) o[String(r[1])] = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String); }); return o; }
+function bankList_(list, email) { var bank = accomsFor_(email); return (list || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 12); }
+function api_saveClassAccoms(cls, list) {
+  var email = need_(); cls = clean_(cls, 60); if (!cls) throw new Error('Pick the class.');
+  var l = bankList_(list, email);
+  locked_(function () { rewrite_('Accommodation plan', function (r) { return !(low_(r[0]) === email && String(r[1]) === cls); }, l.length ? [[email, cls, l.join('; '), stamp_()]] : []); });
+  return accomPlan_(email);
+}
+function api_saveTestAccoms(id, list) {
+  var email = need_(), l = bankList_(list, email);
+  return locked_(function () { var rows = rows_('Tests'), i = find_(rows, function (r) { return String(r[0]) === String(id) && low_(r[1]) === email; }); if (i < 0) throw new Error('That test isn’t on your list any more.'); sheet_('Tests').getRange(i + 2, 10).setValue(l.join('; ')); return fresh_(email); });
+}
 function api_saveStudentAccoms(email, items) {
   teacherOnly_(); email = low_(email);
   var list = (items || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(String).slice(0, 20);
@@ -4311,7 +4365,7 @@ function studentData_(email) {
   var plans = rows_('Plans').filter(function (r) { return low_(r[1]) === email; }).map(plan_)
     .sort(function (a, b) { return a.week < b.week ? 1 : -1; });
   var tests = rows_('Tests').filter(function (r) { return low_(r[1]) === email; })
-    .map(function (r) { return { id: String(r[0]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]), done: r[6] === true }; })
+    .map(function (r) { return { id: String(r[0]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]), done: r[6] === true, accoms: String(r[9] || '').split(';').map(function (x) { return x.trim(); }).filter(String) }; })
     .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   var analyses = {};
   rows_('Class analysis').forEach(function (r) {
@@ -4327,7 +4381,7 @@ function studentData_(email) {
   prof.goal = prof.goals.length ? prof.goals[0].kid : '';
   prof.goalCheck = st.f.goalCheck ? checkinFor_(email) : null;
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
-  var out = { madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? [].concat.apply([], allGoals.map(function (g) { return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })) : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -6246,6 +6300,7 @@ function stuffTiles(list, all) {
     t.push(['tc', '🧪 Tests with my teacher', rel.length ? '🔑 Your code is ready' : tcr.filter(function (x) { return x.ready; }).length ? 'Your test is here' : tcr.length ? 'Coming soon' : op.length ? op.length + ' waiting' : 'Waiting for a test?', rel.length + tcr.filter(function (x) { return x.ready; }).length > 0, tcCard]); }
   t.push(['cal', '📆 My calendar', 'What I did each day', false, function () { return '<div class="card"><h2>📆 My calendar</h2><p class="hint" style="margin:2px 0 10px">A wall calendar with what you did each day: your plan, exit ticket, checklist, focus time and more. Print it or save it as a PDF.</p><div class="row">' + calPick('calS') + '<button class="btn primary" onclick="calOpen(\'\',$(\'calS\').value,D.profile.name)">Make my calendar</button></div></div>'; }]);
   if (myGoalCard()) t.push(['mygoal', '⭐ My goal', 'How I’m doing', false, myGoalCard]);
+  if ((D.services || []).length) t.push(['services', '🧩 My services', D.services.length + ' service' + (D.services.length === 1 ? '' : 's'), false, function () { return '<div class="card"><h2>🧩 My services</h2><p class="hint" style="margin:2px 0 8px">The support time in your IEP.</p>' + D.services.map(function (x) { return '<div style="margin:4px 0"><b>' + esc(x.service) + '</b>: ' + x.minutes + ' minutes a ' + esc(x.per || 'week') + (x.notes ? ' <span class="small" style="display:inline">(' + esc(x.notes) + ')</span>' : '') + '</div>'; }).join('') + '</div>'; }]);
   return t;
 }
 function stuffHtml(t) {
@@ -6479,7 +6534,37 @@ function accomCard() {
     (ACC_PICK !== null ? '<div class="row" style="margin-top:10px">' + (ACC_PICK === -1 ? '<input type="text" id="accOther" maxlength="80" placeholder="Which accommodation?" style="max-width:220px">' : '<b>I used “' + esc(B.accoms[ACC_PICK]) + '”</b>') + '<select id="accCls" style="max-width:200px">' + classOptions('').replace('Any class', 'In which class?') + '</select>' +
       '<select id="accFor" style="max-width:150px"><option>Test</option><option>Quiz</option><option>Assignment</option><option>Class work</option><option>Other</option></select>' +
       '<button class="btn primary small" onclick="accSave()">Save</button><button class="btn link" onclick="ACC_PICK=null;$(\'accCard\').outerHTML=accomCard()">Cancel</button></div>' : '') +
-    (D.accom && D.accom.n ? '<p class="small" style="margin:8px 0 0">This semester you used accommodations ' + D.accom.n + ' time' + (D.accom.n === 1 ? '' : 's') + '.</p>' : '') + '</div>';
+    (D.accom && D.accom.n ? '<p class="small" style="margin:8px 0 0">This semester you used accommodations ' + D.accom.n + ' time' + (D.accom.n === 1 ? '' : 's') + '.</p>' : '') + accBankHtml() + '</div>';
+}
+// 2.22: the accommodation bank: tap which accommodations you use in each class (tests start from these)
+function accBankHtml() {
+  var pl = D.accomPlan || {}, cls = graded();
+  if (!cls.length) return '';
+  return '<h3 style="margin:16px 0 4px">📚 Where I use them</h3><p class="hint" style="margin:0 0 6px">Tap the accommodations you use in each class. Your tests in that class start with these.</p>' +
+    cls.map(function (c) { var on = pl[c.name] || [];
+      return '<div style="margin:6px 0"><b class="small">' + esc(c.name) + '</b><div class="chips" style="margin-top:3px">' + B.accoms.map(function (a) { var y = on.indexOf(a) >= 0;
+        return '<button class="chip' + (y ? ' on' : '') + '" onclick="accClass(\'' + esc(c.name).replace(/'/g, '’') + '\',\'' + esc(a).replace(/'/g, '’') + '\')">' + (y ? '✓ ' : '') + esc(a) + '</button>'; }).join('') + '</div></div>'; }).join('');
+}
+function accClass(cls, a) {
+  cls = graded().map(function (c) { return c.name; }).filter(function (n) { return esc(n).replace(/'/g, '’') === cls; })[0] || cls;
+  a = B.accoms.filter(function (x) { return esc(x).replace(/'/g, '’') === a; })[0] || a;
+  var pl = D.accomPlan = D.accomPlan || {}, l = (pl[cls] || []).slice(), i = l.indexOf(a); if (i >= 0) l.splice(i, 1); else l.push(a); pl[cls] = l;
+  if ($('accCard')) $('accCard').outerHTML = accomCard();
+  call('api_saveClassAccoms', cls, l).then(function (r) { D.accomPlan = r; }).catch(oops);
+}
+// on a test: tap the ones you'll use (starting from that class's list)
+function testAccHtml(t) {
+  if (!F('accoms') || !(B.accoms || []).length) return '';
+  var saved = t.accoms || [], cp = (D.accomPlan || {})[t.cls] || [], use = saved.length ? saved : cp;
+  return '<div class="small" style="display:block;margin-top:4px">🧰 <b>Accommodations for this ' + esc(String(t.type || 'test').toLowerCase()) + ':</b> ' + (!saved.length && cp.length ? '<span style="opacity:.75">(from your ' + esc(t.cls) + ' list; tap to change)</span>' : '') + '<div class="chips" style="margin-top:3px">' +
+    B.accoms.map(function (a) { var y = use.indexOf(a) >= 0; return '<button class="chip' + (y ? ' on' : '') + '" style="font-size:12px" onclick="accTest(\'' + t.id + '\',\'' + esc(a).replace(/'/g, '’') + '\')">' + (y ? '✓ ' : '') + esc(a) + '</button>'; }).join('') + '</div></div>';
+}
+function accTest(id, a) {
+  var t = D.tests.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+  a = B.accoms.filter(function (x) { return esc(x).replace(/'/g, '’') === a; })[0] || a;
+  var l = (t.accoms && t.accoms.length ? t.accoms : ((D.accomPlan || {})[t.cls] || [])).slice(), i = l.indexOf(a); if (i >= 0) l.splice(i, 1); else l.push(a);
+  t.accoms = l.length ? l : ['']; if (!l.length) t.accoms = []; drawTests();
+  call('api_saveTestAccoms', id, l).then(function (d) { D.tests = d.tests; }).catch(oops);
 }
 function accPick(k) { ACC_PICK = ACC_PICK === k ? null : k; $('accCard').outerHTML = accomCard(); if (k === -1 && $('accOther')) $('accOther').focus(); }
 function accSave() {
@@ -7017,7 +7102,7 @@ function drawTests() {
     '<button class="btn primary" id="tAdd">Add</button></div></div>';
   h += '<div class="card"><h2>Coming up</h2>' + (up.length ? '<table><tbody>' + up.map(function (t) {
     var past = daysUntil(t.date) < 0;
-    return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + (past ? ' · did you take it?' : '') + '</small></td>' +
+    return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + (past ? ' · did you take it?' : '') + '</small>' + testAccHtml(t) + '</td>' +
       '<td style="text-align:right;white-space:nowrap"><button class="btn small" onclick="testDone(\'' + t.id + '\',true)">✓ Done</button> <button class="btn link danger" onclick="testDel(\'' + t.id + '\')">Delete</button></td></tr>' +
       (F('projects') && !/^(Test|Quiz)$/.test(t.type) ? '<tr><td></td><td colspan="2" style="padding-top:0">' + stepsBox(t) + '</td></tr>' : '');
   }).join('') + '</tbody></table>' : '<div class="empty">Nothing listed yet.</div>') +
@@ -7195,7 +7280,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
@@ -7363,7 +7448,7 @@ function drawUpcoming() {
   if (!TD) { $('main').innerHTML = '<div class="loading">Loading…</div>'; Promise.all([loadTeacher(), loadPhotos()]).then(drawUpcoming).catch(oops); return; }
   var h = '<h1>Upcoming tests</h1><p class="sub">Everything your students listed for the next two weeks.</p><div class="card">';
   h += TD.tests.length ? '<table><thead><tr><th>When</th><th>Student</th><th>Class</th><th class="hide-sm">What</th></tr></thead><tbody>' + TD.tests.map(function (t) {
-    return '<tr class="click" onclick="openStudent(\'' + esc(t.email) + '\')"><td>' + countdown(t.date) + '<small>' + fmtDay(t.date) + '</small></td><td><div class="person">' + avatar(t.email, t.name) + '<b>' + esc(t.name) + '</b></div></td><td>' + esc(t.cls) + '</td><td class="hide-sm">' + esc(t.what) + '<small>' + esc(t.type) + '</small></td></tr>';
+    return '<tr class="click" onclick="openStudent(\'' + esc(t.email) + '\')"><td>' + countdown(t.date) + '<small>' + fmtDay(t.date) + '</small></td><td><div class="person">' + avatar(t.email, t.name) + '<b>' + esc(t.name) + '</b></div></td><td>' + esc(t.cls) + '</td><td class="hide-sm">' + esc(t.what) + '<small>' + esc(t.type) + (t.accoms ? ' · 🧰 ' + esc(t.accoms) : '') + '</small></td></tr>';
   }).join('') + '</tbody></table>' : '<div class="empty">No tests listed for the next two weeks.</div>';
   h += '</div>';
   var fa = TD.finalsAccoms || [];
@@ -7940,7 +8025,7 @@ function drawEF() {
   var e = EF.ef;
   var h = '<div class="row"><h2 class="grow">🎯 Goals and executive functioning</h2><button class="btn small" onclick="printGoal()">📄 Print goal data</button><button class="btn small" onclick="prOpen()">📈 Progress report…</button></div>' +
     '<p class="hint" style="margin:2px 0 10px">Tracked for every student. Counts from Infinite Campus are only as complete as how often the student pastes (this semester began ' + fmtDay(e.sem) + ').</p>' +
-    goalTabs() + phrasesHtml() + (!SHOW_BENCH ? '' : GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
+    goalTabs() + svcHtml() + phrasesHtml() + (!SHOW_BENCH ? '' : GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
     '<table style="margin-top:12px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   // this student's own checklist (or the class one)
   var own = EF.checklistOwn && EF.checklistOwn.length, items = CKE || (own ? EF.checklistOwn : EF.checklistClass).slice();
@@ -8238,6 +8323,13 @@ function goalTabs() {
     '<div class="row" style="margin-top:8px"><button class="btn primary small" onclick="saveGoalDetails()">Save goal</button>' + (g.text || g.tools.length ? '<button class="btn small" onclick="stmtOpen()">📝 Write a progress statement</button>' : '') +
     ((l.length > 1 || g.text || g.kid) ? '<button class="btn link danger small" onclick="delGoal()">Delete this goal</button>' : '') + '</div>' + ckHistHtml(g) + reflHtml(g);
 }
+function svcHtml() {
+  var l = EF.services || [];
+  return '<details style="margin-top:12px"><summary><b>🧩 Related services</b> <span class="small" style="display:inline">(' + (l.length ? svcText(l).map(esc).join(' · ') : 'none yet') + '; the student sees these)</span></summary>' +
+    '<p class="hint" style="margin:6px 0">One per line: service | minutes | day, week or month | notes (optional).</p><textarea id="svcT" style="min-height:70px" placeholder="Social work | 30 | week | group&#10;Special education | 225 | week">' + esc(l.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
+    '<button class="btn primary small" style="margin-top:6px" onclick="svcSave()">Save services</button></details>';
+}
+function svcSave() { call('api_saveServices', TS_EMAIL, svcParse($('svcT').value)).then(function (r) { EF.services = r; toast('Services saved'); drawEF(); }).catch(oops); }
 function saveGoalDetails() {
   var v = function (id) { return $(id).value.trim(); };
   var x = { name: v('gdName'), here: $('gdHere').checked, kid: v('gdKid'), text: v('gdText'), criterion: v('gdCrit'), success: v('gdSucc'), track: v('gdTrack'), how: v('gdHow'), look: v('gdLook'), mnotes: v('gdNotes'), mstatus: v('gdStat'), from: v('gdFrom'), until: v('gdUntil'),
@@ -8723,6 +8815,118 @@ function evCountForm(i) {
     '<button class="btn small primary" onclick="evAct(' + i + ',\'count\',{ tool: $(\'evT\').value, score: $(\'evS\').value, of: $(\'evO\').value })">Save score</button><button class="btn link small" onclick="EVC=null;drawOverview()">Cancel</button></div>';
 }
 // 2.15: import every student's IEP goals from a spreadsheet: student, area, goal, measured in BASE/ARC (yes/no)
+// 2.22: Paste from an IEP: pick a student, paste the goals, benchmarks and accommodations, and the page sorts them out (rules, no AI).
+// The teacher fixes anything, then saves: goals (IEP wording, a title, a first try at "I need to…"), benchmarks, accommodations.
+var IP = null;
+function ipOpen(email) {
+  var st = ((TD && TD.students) || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+  IP = { email: email || TS_EMAIL || '', res: null };
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'ipModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
+  el.innerHTML = '<div class="card" style="max-width:900px"><div class="row"><h2 class="grow">📋 Paste from an IEP</h2><button class="btn link" onclick="$(\'ipModal\').remove()">✕ Close</button></div>' +
+    '<p class="hint" style="margin:2px 0 8px">Open the student’s IEP, copy the goals (with their benchmarks or objectives) and the accommodations, and paste them here. The app sorts them out on this page; nothing is sent anywhere. You check everything before it’s saved.</p>' +
+    '<div style="border:3px solid #c0392b;background:#fdecea;color:#7b1d14;border-radius:12px;padding:12px 14px;margin:6px 0 10px;font-size:16px"><b style="font-size:18px">⚠️ Teachers: if you are copying from an IEP PDF, student information is printed on the bottom of every page.</b><br>Remove last names and dates of birth before you save. The app also cleans what you paste right here on this page: it deletes lines with a date of birth, page footers and ID numbers, and changes the student’s name to initials. Always look it over.</div>' +
+    '<select id="ipStu" style="max-width:260px" onchange="ipClean()"><option value="">Pick the student…</option>' + st.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === IP.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
+    '<textarea id="ipT" onpaste="setTimeout(ipClean,0)" style="min-height:180px;margin-top:8px" placeholder="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
+    '<div id="ipClean" class="small" style="display:block;margin-top:4px"></div><div class="row" style="margin-top:8px"><button class="btn primary" onclick="ipSort()">Sort it</button></div><div id="ipOut"></div></div>';
+  document.body.appendChild(el);
+}
+// 2.22: clean pasted IEP text on the page, before anything is saved: lines with a date of birth, page footers, ID numbers and
+// "Student name:" lines go; the student's name becomes initials ("Jane Smith" → "J.S.", "Jane" → "J."). Returns { text, lines, names }.
+function ipScrub(text, first, ini) {
+  var lines = 0, names = 0;
+  var PII = /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\b|\bpage\s+\d+\s+of\s+\d+\b|\bstudent\s*(name|id|number|#)\s*:|\b(student\s+)?id\s*(#|no\.?|number)?\s*:?\s*\d{5,}\b|^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/i;
+  var out = String(text || '').split(/\r?\n/).filter(function (l) { if (PII.test(l)) { lines++; return false; } return true; }).join('\n');
+  out = out.replace(/\b\d{1,2}[\/.-]\d{1,2}[\/.-](19|20)\d{2}\b(?=[^\n]*\b(born|dob|birth)\b)/gi, function () { names++; return '[date removed]'; });
+  first = String(first || '').replace(/[^A-Za-z'-]/g, '');
+  if (first) {
+    var F = first.charAt(0).toUpperCase(), I = String(ini || '').replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase(), lasts = {};
+    var cap = new RegExp('\\b' + first + '\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z\'’-]{1,})', 'g'), m;
+    while ((m = cap.exec(out))) if ((!I || m[1].charAt(0).toUpperCase() === I) && !/^(Will|Is|Was|Has|And|The|To|In|Needs|Can|Did|Does|Should|May)$/.test(m[1])) lasts[m[1]] = true;
+    var rev = new RegExp('\\b([A-Z][A-Za-z\'’-]{1,}),\\s*' + first + '\\b', 'g'); while ((m = rev.exec(out))) if (!I || m[1].charAt(0).toUpperCase() === I) lasts[m[1]] = true;
+    Object.keys(lasts).forEach(function (L) {
+      out = out.replace(new RegExp('\\b' + first + '\\s+(?:[A-Z]\\.\\s+)?' + L + '\\b', 'g'), function () { names++; return F + '.' + L.charAt(0) + '.'; })
+        .replace(new RegExp('\\b' + L + ',\\s*' + first + '\\b', 'g'), function () { names++; return F + '.' + L.charAt(0) + '.'; })
+        .replace(new RegExp('\\b' + L + '\\b', 'g'), function () { names++; return L.charAt(0) + '.'; });
+    });
+    out = out.replace(new RegExp('\\b' + first + '(\'s|’s)?\\b', 'g'), function (x, sfx) { names++; return F + '.' + (sfx || ''); });
+  }
+  return { text: out, lines: lines, names: names };
+}
+function ipClean() {
+  var t = $('ipT'); if (!t || !t.value.trim()) return;
+  var st = ((TD && TD.students) || []).filter(function (x) { return x.email === $('ipStu').value; })[0], nm = st ? String(st.name).split(' ') : [];
+  var r = ipScrub(t.value, nm[0] || '', (nm[1] || '').charAt(0));
+  t.value = r.text;
+  $('ipClean').innerHTML = r.lines || r.names ? '🧹 Cleaned: removed ' + r.lines + ' line' + (r.lines === 1 ? '' : 's') + ' with a date of birth, page footer or ID, and changed ' + r.names + ' name' + (r.names === 1 ? '' : 's') + ' to initials.' + (st ? '' : ' Pick the student so their name can be changed to initials too.') : (st ? '🧹 Checked: nothing to remove.' : 'Pick the student so their name can be changed to initials.');
+}
+var IP_AREAS = [[/executive|organi[sz]|planner|planning/i, 'Organization'], [/self.?advoca|ask(s|ing)? for help|request/i, 'Self-advocacy'], [/initiat|start(s|ing)? (the |a )?task|on.task|attention|focus/i, 'Starting and focus'], [/missing|turn(s|ed)? in|complet|assignments? on time/i, 'Work completion'],
+  [/read|fluency|comprehen|decod/i, 'Reading'], [/writ|essay|paragraph|spelling/i, 'Writing'], [/math|calculat|equation|computation/i, 'Math'], [/cop(e|ing)|conflict|frustrat|regulat|behavior/i, 'Coping and behavior'], [/social|peer|interaction|perspective/i, 'Social skills'], [/college|career|transition|post.?secondary|employment/i, 'Transition']];
+function ipArea(t) { for (var i = 0; i < IP_AREAS.length; i++) if (IP_AREAS[i][0].test(t)) return IP_AREAS[i][1]; return 'Goal'; }
+function ipKid(t, name) { var e = easyGoal(t, name); return /^I will /.test(e) ? 'I need to ' + e.slice(7) : /^I (can|am)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
+function ipParse(text) {
+  var raw = String(text || '').replace(/\r/g, '').split('\n'), lines = raw.map(function (l) { return l.replace(/\s+/g, ' ').trim(); });
+  var goals = [], accs = [], mode = '', g = null, area = '';
+  var ACC = /^(testing |classroom |instructional |presentation |response |setting |timing )?(accommodations?|supplementary aids|supports? for (the )?(student|school personnel)|modifications)\b/i;
+  var GOAL = /^((measurable )?(annual )?goal\b|goal\s*#?\s*\d+|goal area|area of need)/i, BEN = /^((short[- ]term )?objectives?|benchmarks?|sto\b|\(?\d+[.)]\s|[a-h][.)]\s|[-•●▪◦*]\s)/i, OTHER = /^(present levels?|plaafp|transition (plan|services)|least restrictive|progress (report|monitoring)|baseline)\b/i, SVC = /^((related |special education |educational )?services?( and minutes)?|service minutes|minutes)\b/i;
+  var svcs = [], MIN = /(\d{1,4})\s*(?:min(?:ute)?s?|mins?)\b\s*(?:per|\/|a|an|each|every|x)?\s*(day|daily|week|weekly|wk|month|monthly|mo|quarter|semester|year|yearly|annually)?/i;
+  var perOf = function (p) { p = String(p || '').toLowerCase(); return /^d/.test(p) ? 'day' : /^w/.test(p) ? 'week' : /^mo/.test(p) ? 'month' : /^q/.test(p) ? 'quarter' : /^s/.test(p) ? 'semester' : /^(y|a)/.test(p) ? 'year' : 'week'; };
+  var svcLine = function (rawl, l) {
+    var cells = rawl.split(/\t|\s\|\s|\s{3,}/).map(function (c) { return c.trim(); }).filter(String), m = MIN.exec(l); if (!m) return false;
+    var name = (cells.length > 1 && !MIN.test(cells[0]) ? cells[0] : l.slice(0, m.index)).replace(/[:\-–,]+\s*$/, '').replace(/^([-•●▪◦*]|\(?\d+[.)])\s*/, '').trim();
+    if (!name || name.length > 80) return false;
+    var per = m[2] || ((cells.join(' ').match(/\b(day|daily|week|weekly|month|monthly|quarter|semester|year|annually)\b/i) || [])[1]);
+    svcs.push({ service: name, minutes: +m[1], per: perOf(per), notes: cells.slice(1).filter(function (c) { return !MIN.test(c) && !/^(per |a |each |every )?(day|daily|week|weekly|month|monthly|quarter|semester|year|yearly|annually)$/i.test(c); }).join(', ').slice(0, 120) }); return true;
+  };
+  var start = function (t) { g = { text: t || '', benchmarks: [], area: area }; goals.push(g); mode = 'goal'; };
+  lines.forEach(function (l, li) {
+    if (!l) { if (mode === 'goal' && g && g.text) mode = 'goalgap'; return; }
+    var cell = raw[li].split(/\t|\s\|\s|\s{3,}/).map(function (c) { return c.trim(); }).filter(String)[0] || l;          // a table row: the first column
+    if (ACC.test(l) && l.length < 80) { mode = 'acc'; return; }
+    if (SVC.test(l) && l.length < 60 && !MIN.test(l)) { mode = 'svc'; return; }
+    if (mode === 'svc') { svcLine(raw[li], l); return; }
+    if (/social work|speech|language therapy|occupational|\bOT\b|physical therapy|\bPT\b|counsel|psycholog|special education|resource|nurs|vision|hearing|orientation|transition services/i.test(l) && MIN.test(l) && !/\bwill\b/i.test(l)) { svcLine(raw[li], l); return; }
+    if (OTHER.test(l) && l.length < 80) { mode = 'other'; return; }
+    var ga = /^(goal area|area of need|area)\s*[:\-]\s*(.+)$/i.exec(l); if (ga) { area = ga[2]; if (g && !g.text) g.area = area; return; }
+    if (GOAL.test(l)) { var rest = l.replace(/^((measurable )?(annual )?goal(\s*#?\s*\d+)?|goal area|area of need)\s*[:.\-]?\s*/i, ''); var ar = /^([A-Za-z /&-]{3,40})$/.test(rest) && !/ will /i.test(rest) ? rest : ''; if (ar) area = ar; start(ar ? '' : rest); if (ar) g.area = ar; return; }
+    if (mode === 'acc') { var a = cell.replace(/^([-•●▪◦*]|\(?\d+[.)]|[a-h][.)])\s*/i, '').replace(/\s*[-–:]\s*(daily|as needed|all classes|all settings|ongoing).*$/i, '').trim(); if (a && a.length < 80 && !/^(accommodation|frequency|location|duration|description)s?$/i.test(a)) accs.push(a); return; }
+    if (mode === 'other') return;
+    if (/^((short[- ]term )?objectives?|benchmarks?)\s*:?\s*$/i.test(l)) { mode = 'ben'; return; }
+    if ((mode === 'ben' || (g && BEN.test(l) && g.text)) && g) { var b = l.replace(/^((short[- ]term )?objectives?|benchmarks?|sto)\s*#?\s*\d*\s*[:.\-]?\s*/i, '').replace(/^(\(?\d+[.)]|[a-h][.)]|[-•●▪◦*])\s*/i, ''); if (b) g.benchmarks.push(b); mode = 'ben'; return; }
+    if (/\bwill\b/i.test(l) && (!g || mode === 'goalgap' || mode === 'ben' || mode === '')) { start(l); return; }
+    if (g && mode === 'goal') { g.text = (g.text ? g.text + ' ' : '') + l; return; }
+    if (!g && /\bwill\b/i.test(l)) start(l);
+  });
+  return { goals: goals.filter(function (x) { return x.text; }), accoms: accs.filter(function (x, i, a) { return a.indexOf(x) === i; }), services: svcs };
+}
+function svcParse(t) { return String(t || '').split('\n').map(function (l) { var c = l.split('|').map(function (x) { return x.trim(); }); return c[0] ? { service: c[0], minutes: parseInt(c[1], 10) || 0, per: (c[2] || 'week').toLowerCase(), notes: c[3] || '' } : null; }).filter(Boolean); }
+function svcText(l) { return (l || []).map(function (x) { return x.service + ': ' + x.minutes + ' minutes a' + (x.per === 'hour' ? 'n ' : ' ') + (x.per || 'week'); }); }
+function ipSort() {
+  IP.email = $('ipStu').value; if (!IP.email) return alert('Pick the student first.');
+  ipClean();
+  var r = ipParse($('ipT').value); if (!r.goals.length && !r.accoms.length && !r.services.length) return alert('No goals or accommodations found. Paste the goal text (with “will”) and an “Accommodations” heading above the accommodations.');
+  var nm = (((TD && TD.students) || []).filter(function (x) { return x.email === IP.email; })[0] || {}).name || '';
+  var F0 = String(nm).charAt(0);
+  r.goals.forEach(function (g) { g.title = g.area && g.area !== 'Goal' ? g.area : ipArea(g.text); g.kid = ipKid(g.text.replace(new RegExp('\\b' + F0 + '\\.([A-Z]\\.)?(?=\\s)', 'g'), String(nm).split(' ')[0]), nm); g.keep = true; g.here = !/^(Reading|Writing|Math)$/.test(g.title); });
+  IP.res = r; IP.accKeep = r.accoms.map(function () { return true; }); IP.accMode = 'add'; ipDraw();
+}
+function ipDraw() {
+  var r = IP.res;
+  setHtml('ipOut', '<h3 style="margin:14px 0 4px">Goals (' + r.goals.length + ')</h3>' + (r.goals.length ? '' : '<p class="small">None found.</p>') +
+    r.goals.map(function (g, i) { return '<div class="card" style="padding:10px 12px;margin:6px 0' + (g.keep ? ';border-color:var(--brand)' : ';opacity:.6') + '"><label class="check" style="margin:0"><input type="checkbox"' + (g.keep ? ' checked' : '') + ' onchange="IP.res.goals[' + i + '].keep=this.checked;ipDraw()"><span><b>Goal ' + (i + 1) + '</b></span></label>' +
+      '<div class="row" style="gap:10px;align-items:flex-end;margin-top:4px"><label class="grow"><span class="small"><b>Title</b></span><input type="text" value="' + esc(g.title) + '" oninput="IP.res.goals[' + i + '].title=this.value"></label><label class="check" style="margin:0 0 6px"><input type="checkbox"' + (g.here ? ' checked' : '') + ' onchange="IP.res.goals[' + i + '].here=this.checked"><span>Measured in ' + esc(B.dayClass || 'resource') + '</span></label></div>' +
+      '<label style="display:block;margin-top:6px"><span class="small"><b>IEP goal (as written)</b></span><textarea style="min-height:60px" oninput="IP.res.goals[' + i + '].text=this.value">' + esc(g.text) + '</textarea></label>' +
+      '<label style="display:block;margin-top:6px"><span class="small"><b>I need to… (first try: fix it)</b></span><textarea style="min-height:40px" oninput="IP.res.goals[' + i + '].kid=this.value">' + esc(g.kid) + '</textarea></label>' +
+      '<label style="display:block;margin-top:6px"><span class="small"><b>Benchmarks / objectives</b> (one per line; kept for later, hidden in the app for now)</span><textarea style="min-height:50px" oninput="IP.res.goals[' + i + '].benchmarks=this.value.split(\'\\n\').map(function(x){return x.trim();}).filter(String)">' + esc(g.benchmarks.join('\n')) + '</textarea></label></div>'; }).join('') +
+    '<h3 style="margin:14px 0 4px">Accommodations (' + r.accoms.length + ')</h3>' + (r.accoms.length ? r.accoms.map(function (a, i) { return '<label class="check" style="margin:2px 0"><input type="checkbox"' + (IP.accKeep[i] ? ' checked' : '') + ' onchange="IP.accKeep[' + i + ']=this.checked"><span>' + esc(a) + '</span></label>'; }).join('') +
+      '<div class="seg" style="margin-top:6px"><button class="' + (IP.accMode === 'add' ? 'on' : '') + '" onclick="IP.accMode=\'add\';ipDraw()">Add to their list</button><button class="' + (IP.accMode === 'replace' ? 'on' : '') + '" onclick="IP.accMode=\'replace\';ipDraw()">Replace their list</button></div>' : '<p class="small">None found.</p>') +
+    '<h3 style="margin:14px 0 4px">Related services (' + r.services.length + ')</h3><p class="hint" style="margin:0 0 4px">One per line: service | minutes | day, week or month | notes. The student sees these on their page. Saving replaces their list' + (r.services.length ? '' : ' (leave it empty to keep their list as it is)') + '.</p><textarea id="ipSvc" style="min-height:60px">' + esc(r.services.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
+    '<p class="small" style="margin:12px 0 4px">Rating descriptions aren’t written here (they must fit each goal): add them on the student’s goal card, or with ⚙️ Settings › 🤖 IEP goal helper.</p>' +
+    '<button class="btn primary" onclick="ipSave()">💾 Save to the student</button>');
+}
+function ipSave() {
+  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : '') };
+  call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
+}
 var GI_ROWS = null, GI_STU = [];
 function giOpen() {
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'giModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
