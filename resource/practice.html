@@ -467,13 +467,13 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.23'
+var VERSION = '2.24'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
   // The first seven columns match a class list from Infinite Campus, so the teacher can paste one in (Set up or repair tidies it).
-  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list', 'Their own checklist items', 'Goal check-in phrases'],
+  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list', 'Their own checklist items', 'Goal check-in phrases', 'Testing arrangement'],
   Classes: ['Email', 'Period', 'Class', 'Teacher', 'Resource (no grade)', 'Order', 'Teacher email', 'Level', 'No grade (lunch, study)', 'Entered by'],
   Grades: ['Week of', 'Email', 'Class', 'Grade', 'Updated', 'Why it is low', 'Plan to improve', 'Plan details', 'Missing (how many)', 'Missing assignments', 'My plan', 'Entered by'],
   Plans: ['Week of', 'Email', 'Focus classes', 'Steps', 'Need help with', "Followed last week's plan?", 'Looking back', 'Updated', 'Teacher check', 'Talked to a teacher'],
@@ -545,8 +545,8 @@ var TABS = {
     'Email teacher (app)', 'Talked to a teacher (told the app)', 'Retakes scheduled', 'Followed plan %', 'Plan steps done %', 'Task initiation met %', 'Observations', 'Self-report accurate %', 'Updated',
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
-var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28 };   // Students columns
-var TEXT_COLS = { 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29 };   // Students columns
+var TEXT_COLS = { 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -3053,7 +3053,7 @@ function api_efDataRead_(email) {
   var ownA = f.i >= 0 ? String(f.rows[f.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
   var ef = efData_(email);
   migrateBench_();
-  return { services: services_(email), checkins: checkinsOf_(email), phrases: f.i >= 0 ? String(f.rows[f.i][SC.phrases] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], ef: ef, reflections: reflections_(email), goals: goals_(email, ef), goalT: goal_(email, ef), goal: f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', checklistOwn: own, checklistClass: settings_().checkItems, nothingOwn: f.i >= 0 ? String(f.rows[f.i][SC.nothing] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], nothingClass: settings_().nothingItems, accomsOwn: ownA, accomsCommon: settings_().accoms };
+  return { testing: f.i >= 0 ? String(f.rows[f.i][SC.testing] || '') : '', services: services_(email), checkins: checkinsOf_(email), phrases: f.i >= 0 ? String(f.rows[f.i][SC.phrases] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], ef: ef, reflections: reflections_(email), goals: goals_(email, ef), goalT: goal_(email, ef), goal: f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', checklistOwn: own, checklistClass: settings_().checkItems, nothingOwn: f.i >= 0 ? String(f.rows[f.i][SC.nothing] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [], nothingClass: settings_().nothingItems, accomsOwn: ownA, accomsCommon: settings_().accoms };
 }
 
 // The Goal data tab: one row per student with every measure (each morning, after Set up or repair, and from the teacher view).
@@ -3322,7 +3322,7 @@ function api_reviewEvidence(email, date, gid, act, p) {
 function nameMap_() { var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); }); return nm; }
 // 2.15 Teacher: import IEP goals for many students at once. rows: [{ who (email, student number or name), area, text, here ('yes'/'no'/'')}].
 // dry = true: just say who each row matches. Goals already on file (same text) are skipped. Goal 1 is filled first.
-var HERE_AREAS = /executive|organiz|self.?advoc|study|work (completion|habits)|task|time|planning|attention|focus|transition|behavior|self.?regulat|advocacy/i;
+var HERE_AREAS = /executive|organiz|self.?advoc|advocacy|study skills|work (completion|habits)|task initiation|initiat|time management|planning|planner|on.task|missing (work|assignments)/i;          // 2.24: self-advocacy and executive functioning
 function api_importGoals(rows, dry) {
   teacherOnly_();
   var stu = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
@@ -3735,6 +3735,7 @@ function api_saveIepPaste(email, p) {
       stuSet_(f2.i, 'accoms', cur.slice(0, 30).join('; '));
     }
     var ns = Array.isArray(p.services) && p.services.length ? saveServices_(email, p.services) : 0;
+    if (clean_(p.testing, 200)) { var f3 = stuFind_(email); stuSet_(f3.i, 'testing', clean_(p.testing, 200)); }
     logChange_('Pasted from an IEP', email, '', '', '', n + ' goals, ' + nb + ' benchmarks, ' + na + ' accommodations, ' + ns + ' services', '');
   });
   try { memo_(allGoals_); } catch (e) {}
@@ -3748,6 +3749,8 @@ function saveServices_(email, list) {
   rewrite_('Related services', function (r) { return low_(r[0]) !== email; }, rows);
   return rows.length;
 }
+// 2.24: the testing room: time (standard, 1.5x, double, triple) and setting / reader / breaks, as one line the student sees
+function api_saveTesting(email, text) { teacherOnly_(); email = low_(email); var t = clean_(text, 200); locked_(function () { var f = stuFind_(email); if (f.i < 0) throw new Error('That student is not on the Students tab yet.'); logChange_('Testing arrangement changed', email, '', 'Testing arrangement', f.rows[f.i][SC.testing], t, ''); stuSet_(f.i, 'testing', t); }); return t; }
 function api_saveServices(email, list) { teacherOnly_(); email = low_(email); locked_(function () { saveServices_(email, list); logChange_('Related services changed', email, '', '', '', (list || []).length + ' services', ''); }); return services_(email); }
 // 2.22: the accommodation bank: which of their accommodations a student uses in each class, and on each test
 function accomPlan_(email) { var o = {}; rows_('Accommodation plan').forEach(function (r) { if (low_(r[0]) === email) o[String(r[1])] = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String); }); return o; }
@@ -4373,6 +4376,7 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = '';          // 2.21: a student never gets the original IEP wording; their goals come in their student words below
+  prof.testing = fr.i >= 0 ? String(fr.rows[fr.i][SC.testing] || '') : '';          // 2.24: the kind of testing room (from the IEP)
   prof.phrases = fr.i >= 0 ? String(fr.rows[fr.i][SC.phrases] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
   prof.classPhrases = settings_().goalPhrases;
   prof.lastSaid = (reflections_(email).filter(function (x) { return x.date < today_() && x.said && x.did !== 'Not today'; })[0] || {}).said || '';
@@ -6528,7 +6532,7 @@ var ACC_PICK = null;
 function accomCard() {
   if (!F('accoms') || !(B.accoms || []).length) return '';
   var used = (D.accom && D.accom.by) || {};
-  return '<div class="card" id="accCard"><h2>🧰 My accommodations</h2><p class="hint" style="margin:2px 0 8px">Used one? Tap it, so you and your teacher can see what helps you.</p><div class="chips">' +
+  return '<div class="card" id="accCard"><h2>🧰 My accommodations</h2>' + (D.profile.testing ? '<div style="background:var(--brand-soft, var(--bg));border-radius:10px;padding:8px 12px;margin:4px 0 8px">🏫 <b>When you test:</b> ' + esc(D.profile.testing) + '</div>' : '') + '<p class="hint" style="margin:2px 0 8px">Used one? Tap it, so you and your teacher can see what helps you.</p><div class="chips">' +
     B.accoms.map(function (a, k) { return '<button class="chip' + (ACC_PICK === k ? ' on' : '') + '" onclick="accPick(' + k + ')">' + esc(a) + (used[a] ? ' <span class="why" style="background:var(--brand-soft);color:var(--brand)">' + used[a] + '</span>' : '') + '</button>'; }).join('') +
     '<button class="chip' + (ACC_PICK === -1 ? ' on' : '') + '" onclick="accPick(-1)">Other…</button></div>' +
     (ACC_PICK !== null ? '<div class="row" style="margin-top:10px">' + (ACC_PICK === -1 ? '<input type="text" id="accOther" maxlength="80" placeholder="Which accommodation?" style="max-width:220px">' : '<b>I used “' + esc(B.accoms[ACC_PICK]) + '”</b>') + '<select id="accCls" style="max-width:200px">' + classOptions('').replace('Any class', 'In which class?') + '</select>' +
@@ -8325,7 +8329,8 @@ function goalTabs() {
 }
 function svcHtml() {
   var l = EF.services || [];
-  return '<details style="margin-top:12px"><summary><b>🧩 Related services</b> <span class="small" style="display:inline">(' + (l.length ? svcText(l).map(esc).join(' · ') : 'none yet') + '; the student sees these)</span></summary>' +
+  return '<div class="row" style="gap:8px;margin-top:12px;align-items:flex-end"><label class="grow"><span class="small"><b>🏫 Testing room</b> (the student sees this)</span><input type="text" id="tstT" value="' + esc(EF.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group"></label><button class="btn small" onclick="call(\'api_saveTesting\', TS_EMAIL, $(\'tstT\').value).then(function (t) { EF.testing = t; toast(\'Saved\'); }).catch(oops)">Save</button></div>' +
+    '<details style="margin-top:12px"><summary><b>🧩 Related services</b> <span class="small" style="display:inline">(' + (l.length ? svcText(l).map(esc).join(' · ') : 'none yet') + '; the student sees these)</span></summary>' +
     '<p class="hint" style="margin:6px 0">One per line: service | minutes | day, week or month | notes (optional).</p><textarea id="svcT" style="min-height:70px" placeholder="Social work | 30 | week | group&#10;Special education | 225 | week">' + esc(l.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
     '<button class="btn primary small" style="margin-top:6px" onclick="svcSave()">Save services</button></details>';
 }
@@ -8341,7 +8346,8 @@ function ckHistHtml(g) {
   var l = (EF.checkins || []).filter(function (c) { return c.items.some(function (it) { return it.goal === g.id; }); }); if (!l.length) return '';
   var its = l.map(function (c) { return c.items.filter(function (it) { return it.goal === g.id; })[0]; }), nums = its.filter(function (it) { return it.rating; }).map(function (it) { return it.rating; });
   var none = its.filter(function (it) { return it.none; }).length, avg = nums.length ? Math.round(nums.reduce(function (a, b) { return a + b; }, 0) / nums.length * 10) / 10 : null;
-  return '<details style="margin-top:12px" open><summary><b>🌱 Daily check-ins for this goal</b> <span class="badge">self-report, not verified</span> <span class="small" style="display:inline">(' + l.length + ' day' + (l.length === 1 ? '' : 's') + (avg !== null ? ', average ' + avg + ' of 6' : '') + (none ? ', ' + none + '× didn’t have a chance' : '') + ')</span></summary>' +
+  var selfGoal = /self[- ]reported/i.test((g.text || '') + ' ' + (g.criterion || ''));
+  return '<details style="margin-top:12px" open><summary><b>🌱 Daily check-ins for this goal</b> ' + (selfGoal ? '<span class="badge up">counts toward this goal: the IEP criterion is self-reported</span>' : '<span class="badge">self-report, not verified</span>') + ' <span class="small" style="display:inline">(' + l.length + ' day' + (l.length === 1 ? '' : 's') + (avg !== null ? ', average ' + avg + ' of 6' : '') + (none ? ', ' + none + '× didn’t have a chance' : '') + ')</span></summary>' +
     '<div class="row" style="gap:3px;align-items:flex-end;margin:6px 0">' + l.slice(0, 20).reverse().map(function (c, k) { var it = c.items.filter(function (x) { return x.goal === g.id; })[0]; return '<span title="' + esc(fmtDay(c.date)) + '" style="display:inline-block;width:14px;height:' + (it.rating ? 6 + it.rating * 7 : 6) + 'px;background:' + (it.none ? 'var(--warn)' : 'var(--brand)') + ';opacity:' + (it.none ? .5 : .85) + ';border-radius:3px"></span>'; }).join('') + '</div>' +
     l.slice(0, 12).map(function (c) { var it = c.items.filter(function (x) { return x.goal === g.id; })[0];
       return '<div class="small" style="display:block;margin:4px 0;border-top:1px solid var(--line, #e2e6ef);padding-top:4px"><b>' + esc(fmtDay(c.date)) + '</b>' + (c.status === 'Corrected' ? ' <span class="badge">date corrected</span>' : '') + ' · ' + (it.none ? '⏳ Didn’t have a chance: “' + esc(it.why) + '”' : '<b>' + it.rating + '</b> of 6') +
@@ -8373,7 +8379,7 @@ function statement(g, k) {
   });
   var ck = ((EF && EF.checkins) || []).map(function (c) { return c.items.filter(function (it) { return it.goal === g.id; })[0]; }).filter(Boolean);
   if (ck.length) { var nm = ck.filter(function (it) { return it.rating; }).map(function (it) { return it.rating; }), nn = ck.length - nm.length;
-    out.push('Student self-report (daily check-ins; not verified against the IEP criterion): ' + ck.length + ' check-in' + (ck.length === 1 ? '' : 's') + (nm.length ? ', average self-rating ' + (Math.round(nm.reduce(function (a, b) { return a + b; }, 0) / nm.length * 10) / 10) + ' of 6' : '') + (nn ? '; “didn’t have a chance” ' + nn + ' time' + (nn === 1 ? '' : 's') : '') + '.'); }
+    out.push((/self[- ]reported/i.test((g.text || '') + ' ' + (g.criterion || '')) ? 'Student self-report (daily check-ins; this goal’s IEP criterion is self-reported, so these count toward it): ' : 'Student self-report (daily check-ins; not verified against the IEP criterion): ') + ck.length + ' check-in' + (ck.length === 1 ? '' : 's') + (nm.length ? ', average self-rating ' + (Math.round(nm.reduce(function (a, b) { return a + b; }, 0) / nm.length * 10) / 10) + ' of 6' : '') + (nn ? '; “didn’t have a chance” ' + nn + ' time' + (nn === 1 ? '' : 's') : '') + '.'); }
   if (g.criterion) out.push('Official criterion (from the IEP): ' + g.criterion);
   var rl = ((EF && EF.reflections) || []).filter(function (r) { return r.goal === g.id; });
   if (rl.length) {
@@ -8897,6 +8903,7 @@ function ipParseSummary(text) {
     }).filter(function (a) { return a.length > 3 && !/^(Accommodations?|Other|Student will participate.*)$/i.test(a); });
   };
   var accs = splitItems(sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || '');
+  var testing = ipTesting((sec['ASSESSMENT ACCOMMODATIONS'] || '') + ' ' + (sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || ''));
   var aa = sec['ASSESSMENT ACCOMMODATIONS'] || '', testAccs = [];
   if (aa) {
     var cls = /Classroom-Based Assessments(.*?)(District-Based Assessments|Other Assessment|$)/i.exec(aa), tim = /Timing\/Scheduling\s*-\s*(.*?)(?=Setting\s*-|$)/i.exec(aa), set = /Setting\s*-\s*(.*)$/i.exec(aa);
@@ -8905,7 +8912,24 @@ function ipParseSummary(text) {
     if (set) testAccs.push('Tests: ' + set[1].trim());
     testAccs = testAccs.map(function (a) { return /^Tests:|\b(tests?|exams?|quiz(zes)?)\b/i.test(a) ? a : a + ' (tests)'; });
   }
-  return { goals: goals, accoms: accs.concat(testAccs).filter(function (x, i, a) { return a.indexOf(x) === i; }), services: services, summary: true };
+  return { goals: goals, accoms: ipOneTime(accs.concat(testAccs)), services: services, testing: testing, summary: true };
+}
+// 2.24: extended time written several ways ("time and a half", "50%", "1.5") becomes one line; double and triple time kept
+function ipTimeOf(t) { t = String(t || '').toLowerCase(); return /triple|\b3x\b|200\s*%|three times/.test(t) ? 'Triple time (3x)' : /double|\b2x\b|100\s*%|twice/.test(t) ? 'Double time (2x)' : /time and a half|1\.5|50\s*%|extended time|extra time/.test(t) ? 'Extended time (1.5x)' : ''; }
+function ipOneTime(list) {
+  var time = '', out = [];
+  list.forEach(function (a) { var x = /extended time|extra time|time and a half|double time|triple time/i.test(a) ? ipTimeOf(a) : ''; if (x) { if (!time || x !== 'Extended time (1.5x)') time = x; } else out.push(a); });
+  if (time) out.unshift(time);
+  return out.filter(function (x, i, a) { return a.indexOf(x) === i; });
+}
+// the testing room students need to know: time, plus reader, breaks, small group / alternate setting, scribe
+function ipTesting(t) {
+  t = String(t || ''); var bits = [ipTimeOf(t) || 'Standard time'];
+  if (/read aloud|reader|text.to.speech/i.test(t)) bits.push('Reader');
+  if (/breaks?\s*(as needed|when needed|allowed)|frequent breaks/i.test(t)) bits.push('Breaks as needed');
+  if (/small group/i.test(t)) bits.push('Small group'); else if (/alternate setting|separate setting|distraction.?(free|reduced)|quiet (room|setting)/i.test(t)) bits.push('Alternate setting');
+  if (/scribe/i.test(t)) bits.push('Scribe');
+  return bits.join(' · ');
 }
 function ipParse(text) {
   if (/GOALS AND OBJECTIVES|Goal Statement:/.test(text)) return ipParseSummary(text);          // the IEP Summary layout
@@ -8941,7 +8965,7 @@ function ipParse(text) {
     if (g && mode === 'goal') { g.text = (g.text ? g.text + ' ' : '') + l; return; }
     if (!g && /\bwill\b/i.test(l)) start(l);
   });
-  return { goals: goals.filter(function (x) { return x.text; }), accoms: accs.filter(function (x, i, a) { return a.indexOf(x) === i; }), services: svcs };
+  return { goals: goals.filter(function (x) { return x.text; }), accoms: ipOneTime(accs), services: svcs, testing: accs.length ? ipTesting(accs.join(' ')) : '' };
 }
 function svcParse(t) { return String(t || '').split('\n').map(function (l) { var c = l.split('|').map(function (x) { return x.trim(); }); return c[0] ? { service: c[0], minutes: parseInt(c[1], 10) || 0, per: (c[2] || 'week').toLowerCase(), notes: c[3] || '' } : null; }).filter(Boolean); }
 function svcText(l) { return (l || []).map(function (x) { return x.service + ': ' + x.minutes + ' minutes a' + (x.per === 'hour' ? 'n ' : ' ') + (x.per || 'week'); }); }
@@ -8951,7 +8975,9 @@ function ipSort() {
   var r = ipParse($('ipT').value); if (!r.goals.length && !r.accoms.length && !r.services.length) return alert('No goals or accommodations found. Paste the goal text (with “will”) and an “Accommodations” heading above the accommodations.');
   var nm = (((TD && TD.students) || []).filter(function (x) { return x.email === IP.email; })[0] || {}).name || '';
   var F0 = String(nm).charAt(0);
-  r.goals.forEach(function (g) { g.title = g.area && g.area !== 'Goal' ? g.area : ipArea(g.text); g.kid = ipKid(g.text.replace(new RegExp('\\b' + F0 + '\\.([A-Z]\\.)?(?=\\s)', 'g'), String(nm).split(' ')[0]), nm); g.keep = true; g.here = !/^(Reading|Writing|Math)$/.test(g.title); });
+  r.goals.forEach(function (g) { g.title = g.area && g.area !== 'Goal' ? g.area : ipArea(g.text);
+    if (/self.?advoca/i.test(g.text) && !/advoca/i.test(g.title)) g.title += ' - Self-advocacy';          // the IEP title, plus what the goal is really about
+    else if (/executive function|organi[sz]|planner|task initiation|initiat(e|ing) (the |a )?task/i.test(g.text) && !/executive|organi/i.test(g.title) && g.title !== 'Organization') g.title += ' - Executive functioning'; g.kid = ipKid(g.text.replace(new RegExp('\\b' + F0 + '\\.([A-Z]\\.)?(?=\\s)', 'g'), String(nm).split(' ')[0]), nm); g.keep = true; g.here = /self.?advoca|executive|organi[sz]|planner|initiat|on.task|time manag|work completion|missing (work|assignments)/i.test(g.title + ' ' + g.text); });
   IP.res = r; IP.accKeep = r.accoms.map(function () { return true; }); IP.accMode = 'add'; ipDraw();
 }
 function ipDraw() {
@@ -8964,12 +8990,13 @@ function ipDraw() {
       '<label style="display:block;margin-top:6px"><span class="small"><b>Benchmarks / objectives</b> (one per line; kept for later, hidden in the app for now)</span><textarea style="min-height:50px" oninput="IP.res.goals[' + i + '].benchmarks=this.value.split(\'\\n\').map(function(x){return x.trim();}).filter(String)">' + esc(g.benchmarks.join('\n')) + '</textarea></label></div>'; }).join('') +
     '<h3 style="margin:14px 0 4px">Accommodations (' + r.accoms.length + ')</h3>' + (r.accoms.length ? r.accoms.map(function (a, i) { return '<label class="check" style="margin:2px 0"><input type="checkbox"' + (IP.accKeep[i] ? ' checked' : '') + ' onchange="IP.accKeep[' + i + ']=this.checked"><span>' + esc(a) + '</span></label>'; }).join('') +
       '<div class="seg" style="margin-top:6px"><button class="' + (IP.accMode === 'add' ? 'on' : '') + '" onclick="IP.accMode=\'add\';ipDraw()">Add to their list</button><button class="' + (IP.accMode === 'replace' ? 'on' : '') + '" onclick="IP.accMode=\'replace\';ipDraw()">Replace their list</button></div>' : '<p class="small">None found.</p>') +
+    '<h3 style="margin:14px 0 4px">🏫 Testing room</h3><p class="hint" style="margin:0 0 4px">What the student needs to know about where and how long they test. Fix anything.</p><input type="text" id="ipTest" value="' + esc(r.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group">' +
     '<h3 style="margin:14px 0 4px">Related services (' + r.services.length + ')</h3><p class="hint" style="margin:0 0 4px">One per line: service | minutes | day, week or month | notes. The student sees these on their page. Saving replaces their list' + (r.services.length ? '' : ' (leave it empty to keep their list as it is)') + '.</p><textarea id="ipSvc" style="min-height:60px">' + esc(r.services.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
     '<p class="small" style="margin:12px 0 4px">Rating descriptions aren’t written here (they must fit each goal): add them on the student’s goal card, or with ⚙️ Settings › 🤖 IEP goal helper.</p>' +
     '<button class="btn primary" onclick="ipSave()">💾 Save to the student</button>');
 }
 function ipSave() {
-  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : '') };
+  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
   call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
 }
 var GI_ROWS = null, GI_STU = [];
