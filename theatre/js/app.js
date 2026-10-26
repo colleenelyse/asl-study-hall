@@ -1127,7 +1127,10 @@
     }).join('') : '<p class="muted">' + (T.show.script ? 'No lyrics for this song in the script.' : 'Lyrics appear after your teacher adds the script.') + '</p>';
     var piano = T.show.sheetMelody && T.show.sheetMelody[song.id];      // the singer's notes read from the sheet music, played as a piano
     var has = { perf: !!trk.performance, guide: !!trk.rehearsal, mel: !!((piano && piano.notes.length) || (mel && mel.notes && mel.notes.length)) };
+    /* the 8-counts while it plays (Colleen 2026-10-25: the counter "might be useful for all songs"), once the teacher has counted this song */
+    var counts = T.songCounts && T.songCounts(song.id);
     app.innerHTML = '<h2>' + sym('🎵') + esc(song.title) + '</h2><p class="muted">Scene ' + scene.num + ' · ' + esc(scene.place) + '</p>' +
+      (counts ? '<label class="switch noprint"><span>' + sym('🔢') + 'Show the 8-counts</span><input type="checkbox" id="showcnt"' + (st.counts ? ' checked' : '') + '></label><div id="sc8host"' + (st.counts ? '' : ' hidden') + '>' + T.BeatCount.html + '</div>' : '') +
       '<div class="card player" id="pl">' + (has.perf || has.guide ? '<p id="ld">Loading the track…</p>' : '<p>Your teacher has not added the track for this song yet.</p>') + '</div>' +
       (canSheet ? '<div class="row noprint" style="margin:0 0 8px;flex-wrap:wrap"><label class="switch" style="flex:1"><span>' + sym('🎼') + 'Sheet music' + (canFollow ? ', the sung line lit up' : '') + '</span><input type="checkbox" id="showsheet"' + (st.follow ? ' checked' : '') + '></label>' +
         (canFollow && T.me && T.me.chars && T.me.chars.length ? '<label class="switch" style="flex:1"><span>' + sym('⭐') + 'Only my lines light up</span><input type="checkbox" id="mineonly"' + (st.mineOnly ? ' checked' : '') + '></label>' : '') + '</div>' +
@@ -1137,6 +1140,8 @@
       '<div class="card"><h3>Lyrics</h3><div class="lyrics" id="lyrbox" data-hide="' + (lvl() && !lvl().see ? 1 : 0) + '">' + lyr + '</div><p class="muted small">' + esc(O().licenseNote || '') + '</p></div>' + (T.videoCard ? T.videoCard(song.id) : '');
     // the sheet music shows right away, with or without a track
     var fh0 = document.getElementById('follow'), ss = document.getElementById('showsheet'), mo1 = document.getElementById('mineonly');
+    var sc8 = document.getElementById('sc8host'), scb = document.getElementById('showcnt');
+    if (scb) scb.onchange = function () { st.counts = scb.checked; ls('songOpts', st); sc8.hidden = !st.counts; };
     if (fh0) fh0.dataset.mine = st.mineOnly ? '1' : '0';
     if (mo1) mo1.onchange = function () { st.mineOnly = mo1.checked; ls('songOpts', st); fh0.dataset.mine = st.mineOnly ? '1' : '0'; fh0._at = null; };
     var cover = function () { if (fh0 && LD) LD.cover(fh0, song.id, meChars, !lvl().see); };      // levels 3 and 4: my words covered on the music
@@ -1207,6 +1212,7 @@
         var fh = document.getElementById('follow'); if (fh && st.follow) T.Follow.update(fh, song.id, t);
         if (T.RedX && T.me && T.me.chars) T.RedX.show(st.redx && P.playing ? T.RedX.state(song.id, t, T.me.chars) : '');
         var tm = document.getElementById('tm'); if (tm) tm.textContent = clock(t) + ' / ' + clock(dur());
+        if (counts && st.counts) T.BeatCount.draw(document.getElementById('sc8host'), counts, t);      // t is the band track's clock, like the counts
         if (P.playing) P.raf = requestAnimationFrame(f);
       };
       f();

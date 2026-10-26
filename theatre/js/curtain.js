@@ -65,6 +65,17 @@
       company: { note: 'Everyone in one line: one bow together, then point to the band and the crew.' } };
   }
   T.curtainPlan = plan;
+  /* the 8-count counter for any song's player (app.js): counts = T.songCounts(id), t = the band track's clock */
+  T.BeatCount = {
+    at: function (counts, t) { return counts ? eightAt({ counts: counts }, t) : null; },
+    html: '<div class="bow-8" data-b8box><div class="bow-8-n" data-b8n></div><div class="bow-8-beats">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<span>' + n + '</span>'; }).join('') + '</div></div>',
+    draw: function (host, counts, t) {
+      var box = host && host.querySelector('[data-b8box]'); if (!box) return;
+      var at = counts ? eightAt({ counts: counts }, t) : null;
+      box.querySelector('[data-b8n]').textContent = at ? '8-count ' + at.n : 'Count 1 is coming';
+      box.querySelectorAll('.bow-8-beats span').forEach(function (x, i) { x.className = at && i < at.beat ? (i === at.beat - 1 ? 'now' : 'past') : ''; });
+    }
+  };
   T.curtainMusic = function () { var P = plan(); return P && P.music ? music(P) : null; };      // the song list shows the bow track (app.js)
   /* the bow music: which track, and how to load it */
   function music(P) {
@@ -129,17 +140,27 @@
     return { bpm: +(60 / beat).toFixed(2), first: +Math.max(0, first).toFixed(3), ones: out, used: used.length, off: off, filled: filled, notes: notes, taps: taps.length };
   }
   /* 8-count n (from 1) starts on beat ones[n-1]; past her last 1, every 8 beats */
-  var beatSec = function (P) { return P.counts && +P.counts.bpm > 0 ? 60 / +P.counts.bpm : null; };
-  var onesOf = function (P) { var o = P.counts && P.counts.ones; return o && o.length ? o : null; };
-  var eightSec = function (P) { var m = mapOf(P); if (m) return m.len; return P.counts && +P.counts.bpm > 0 ? 8 * 60 / +P.counts.bpm : null; };
-  var firstOne = function (P) { var m = mapOf(P); return m ? m.ones[0] : +(P.counts && P.counts.first) || 0; };
+  /* the two speeds (Colleen 2026-10-25: "i also want to have 2 speed options. the speed i used for bows was the slower speed. it could be sped up
+     double time and be the counts used. i want to be able to toggle between both"): counts.double = each tapped count is two counts, so the
+     8-counts come twice as often (a tapped 4-count transition is one 8-count). Everything reads the counts through E(P). */
+  function speedUp(c) {
+    if (!c || !c.double || !(+c.bpm > 0)) return c;
+    var o = c.ones, o2 = null;
+    if (o && o.length) { o2 = []; o.forEach(function (k, i) { var a = 2 * k, b = o[i + 1] != null ? 2 * o[i + 1] : a + 16; for (var x = a; x < b; x += 8) o2.push(x); }); }
+    return Object.assign({}, c, { bpm: +c.bpm * 2, ones: o2 });
+  }
+  var E = function (P) { return speedUp((P && P.counts) || {}) || {}; };
+  var beatSec = function (P) { var c = E(P); return +c.bpm > 0 ? 60 / +c.bpm : null; };
+  var onesOf = function (P) { var o = E(P).ones; return o && o.length ? o : null; };
+  var eightSec = function (P) { var m = mapOf(P); if (m) return m.len; var c = E(P); return +c.bpm > 0 ? 8 * 60 / +c.bpm : null; };
+  var firstOne = function (P) { var m = mapOf(P); return m ? m.ones[0] : +E(P).first || 0; };
   /* when 8-count n (from 1) starts */
   function startOf(P, n) {
     var m = mapOf(P), e = eightSec(P); if (!e) return null;
     if (m) return +(n <= m.ones.length ? m.ones[n - 1] : m.ones[m.ones.length - 1] + (n - m.ones.length) * m.len).toFixed(2);
     var O = onesOf(P), bs = beatSec(P);
-    if (O && bs) { var kb = n <= O.length ? O[n - 1] : O[O.length - 1] + (n - O.length) * 8; return +((+P.counts.first || 0) + kb * bs).toFixed(2); }
-    return +((+P.counts.first || 0) + (n - 1) * e).toFixed(2);
+    if (O && bs) { var kb = n <= O.length ? O[n - 1] : O[O.length - 1] + (n - O.length) * 8; return +((+E(P).first || 0) + kb * bs).toFixed(2); }
+    return +((+E(P).first || 0) + (n - 1) * e).toFixed(2);
   }
   function timeOf(g, P) { var e = eightSec(P); return e && g.eights != null && g.eights !== '' ? startOf(P, +g.eights + 1) : g.at; }
   T.bowTimeOf = function (g) { return timeOf(g, plan()); };
@@ -155,7 +176,7 @@
       var b = m.beats.filter(function (x) { return x >= m.ones[i] - 0.01 && x <= t + 0.05; }).length;
       return { n: i + 1, beat: Math.max(1, Math.min(8, b)) };
     }
-    var s = t - (+P.counts.first || 0); if (s < 0) return null;
+    var s = t - (+E(P).first || 0); if (s < 0) return null;
     var O = onesOf(P), bs = beatSec(P);
     if (O && bs) {      // her phrases: a 4-count transition is 4 counts
       var kb = Math.floor(s / bs + 0.02), i = 0; while (i + 1 < O.length && O[i + 1] <= kb) i++;
@@ -329,7 +350,7 @@
         '<div class="row"><label class="f" style="margin:0">Start this far into the track (seconds)<input id="mstart" inputmode="decimal" value="' + ((P.music && P.music.start) || 0) + '" style="width:90px"></label><span class="muted small">It fades in from there (0 = from the very start).</span>' +
         '<label class="switch" style="border:0"><span>Loop it if the bows run longer</span><input type="checkbox" id="mloop"' + (!P.music || P.music.loop !== false ? ' checked' : '') + '></label></div>' +
         '<div class="bow-counts"><h3 style="margin:10px 0 4px">' + sym('🔢') + 'Counting in 8s</h3>' +
-        (P.counts && P.counts.fit ? '<p style="margin:4px 0">' + sym('✅') + '<b>Counted from your taps:</b> a steady ' + P.counts.bpm + ' beats a minute, count 1 at ' + fmt(P.counts.first) + ' (the average of ' + P.counts.fit.used + ' taps' + (P.counts.fit.off ? '; ' + P.counts.fit.off + ' that were clearly off were left out' : '') + (P.counts.fit.filled ? '; ' + P.counts.fit.filled + ' missed 1' + (P.counts.fit.filled === 1 ? '' : 's') + ' filled in' : '') + ').' + ((P.counts.fit.fours || []).length ? ' 8-count ' + P.counts.fit.fours.join(', ') + ' ' + (P.counts.fit.fours.length === 1 ? 'is a 4-count transition' : 'are 4-count transitions') + '.' : '') + '</p>' : '') +
+        (P.counts && P.counts.fit ? '<p style="margin:4px 0">' + sym('✅') + '<b>Counted from your taps:</b> a steady ' + P.counts.bpm + ' beats a minute' + (P.counts.double ? ' (counted in double time: ' + Math.round(P.counts.bpm * 2) + ')' : '') + ', count 1 at ' + fmt(P.counts.first) + ' (the average of ' + P.counts.fit.used + ' taps' + (P.counts.fit.off ? '; ' + P.counts.fit.off + ' that were clearly off were left out' : '') + (P.counts.fit.filled ? '; ' + P.counts.fit.filled + ' missed 1' + (P.counts.fit.filled === 1 ? '' : 's') + ' filled in' : '') + ').' + ((P.counts.fit.fours || []).length ? ' 8-count ' + P.counts.fit.fours.join(', ') + ' ' + (P.counts.fit.fours.length === 1 ? 'is a 4-count transition' : 'are 4-count transitions') + '.' : '') + '</p>' : '') +
         '<div class="row" style="flex-wrap:wrap;align-items:center">' + (mu && P.counts && P.counts.fit ? '<button class="btn primary" id="cprev">' + icon('play') + 'Preview the counting</button>' : '') + (mu ? '<button class="btn' + (P.counts && P.counts.fit ? '' : ' primary') + '" id="cnt">' + sym('👆') + (P.counts && P.counts.fit ? 'Count the music again' : 'Count the music: tap the 1s and the 2–8s') + '</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count ≈ ' + e8.toFixed(2) + ' seconds.' : '') + '</span></div>' +
         (mapOf(P) ? '' : '<details style="margin-top:6px"><summary class="small">' + (P.counts && P.counts.fit ? 'Or change the tempo by hand' : 'Or type a steady tempo') + '</summary><div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f" style="margin:0">Tempo (beats a minute)<input id="cbpm" inputmode="decimal" value="' + (P.counts && P.counts.bpm || '') + '" placeholder="e.g. 120" style="width:90px"></label>' +
         '<label class="f" style="margin:0">Count 1 of the first 8 is at<input id="cfirst" value="' + fmt(P.counts && P.counts.first != null ? P.counts.first : 0) + '" style="width:90px"></label>' +
@@ -484,21 +505,43 @@
      "Start at" re-taps from any 8-count: the taps before it are kept. Then ("i want to be able to watch back the counts you think are right and mark
      errors"): Watch back plays the music with the app's counting, big, and a click on every beat (the 1 louder); Mark wrong (or X) marks the
      8-count playing; tap any 8-count in the list to fix it: its 1 a count earlier or later, watch from there, or tap again from there. */
+  /* the bows (the Curtain call page) */
   function countPage(autoWatch) {
-    T.setBar('Count the music', '#/teacher/curtain');
     var P = JSON.parse(JSON.stringify(plan())), mu = music(P);
-    if (!mu) { app.innerHTML = '<p class="card">Pick or upload the bow music first (Teacher › Curtain call).</p>'; return; }
-    var taps = ((P.counts && P.counts.taps) || []).slice(), edits = P.counts && P.counts.fit && P.counts.ones ? { ones: P.counts.ones.slice() } : null, marks = {}, sel = -1;
-    var from = '', mode = '', A = loadAudio(Object.assign({}, mu), Object.assign({}, P, { music: Object.assign({}, P.music, { loop: false }) })), raf = 0, flash = 0, lastBeat = null;
+    if (!mu) { T.setBar('Count the music', '#/teacher/curtain'); app.innerHTML = '<p class="card">Pick or upload the bow music first (Teacher › Curtain call).</p>'; return; }
+    countPageFor({ title: 'Count the music', back: '#/teacher/curtain', heading: 'Count the bow music', mu: mu, loadP: Object.assign({}, P, { music: Object.assign({}, P.music, { loop: false }) }), off: 0, counts: P.counts || {},
+      save: function (c) { var Pn = JSON.parse(JSON.stringify(plan())); Pn.counts = Object.assign({}, Pn.counts, c); T.show.curtain = Pn; return T.saveShow('Your counting is saved'); } }, autoWatch);
+  }
+  /* any song (Colleen 2026-10-25: "i feel like the music counter where i tap out the rhythm might be useful for all songs"): T.show.songCounts[songId],
+     on the band track's clock (what the song player plays), so a count tapped to the guide vocals is moved by the gap between the two tracks */
+  T.songCounts = function (songId) { var c = (T.show.songCounts || {})[songId]; return c && +c.bpm > 0 ? c : null; };
+  T.teacherPages = T.teacherPages || {};
+  T.teacherPages.songcount = function (args) {
+    var id = args && args[0], so = T.songById(id), tr = (T.show.tracks || {})[id] || {}, TO = (T.show.trackOffset || {})[id];
+    if (!so || !(tr.rehearsal || tr.performance)) { T.setBar('Count the music', '#/teacher/songhub'); app.innerHTML = '<p class="card">Upload this song’s tracks first (Teacher › Songs).</p>'; return; }
+    var kind = tr.rehearsal && (TO != null || !tr.performance) ? 'rehearsal' : 'performance';
+    countPageFor({ title: 'Count: ' + so.title, back: '#/teacher/songhub', heading: 'Count “' + so.title + '”', mu: { id: id, kind: kind, ver: tr[kind].ver, name: kind === 'rehearsal' ? 'the guide vocals' : 'the band track' },
+      loadP: { music: { start: 0, loop: false } }, off: kind === 'rehearsal' && tr.performance ? +TO || 0 : 0, counts: (T.show.songCounts || {})[id] || {},
+      save: function (c) { var all = T.show.songCounts = T.show.songCounts || {}; all[id] = Object.assign({}, all[id], c); return T.saveShow('Counting saved for ' + so.title); } }, args[1] === 'watch');
+  };
+  function countPageFor(opt, autoWatch) {
+    T.setBar(opt.title, opt.back);
+    var C0 = opt.counts || {}, P = { counts: C0 }, mu = opt.mu, off = +opt.off || 0, dbl = !!C0.double;
+    var taps = (C0.taps || []).slice(), edits = C0.fit && C0.ones ? { ones: C0.ones.slice() } : null, marks = {}, sel = -1;
+    var from = '', mode = '', A0 = loadAudio(Object.assign({}, mu), opt.loadP), raf = 0, flash = 0, lastBeat = null;
+    /* the counts' clock: the band track (a guide track runs `off` seconds ahead of it) */
+    var A = { audio: A0.audio, ready: A0.ready, play: A0.play, pause: A0.pause, time: function () { return A0.time() - off; }, seek: function (t) { A0.seek(Math.max(0, t + off)); } };
     var onesT = function (list) { return list.filter(function (x) { return x[1]; }).map(function (x) { return x[0]; }); };
     /* the counting as it stands: her taps averaged, with her fixes */
     var cur = function () { var f = fitCounts(taps); if (!f) return null; if (edits && edits.ones) f.ones = edits.ones.slice(); return f; };
-    var Q = function (f) { return Object.assign({}, P, { counts: { bpm: f.bpm, first: f.first, ones: f.ones } }); };
+    var Q = function (f) { return Object.assign({}, P, { counts: { bpm: f.bpm, first: f.first, ones: f.ones } }); };      // as tapped (the list and the fixes)
+    var QW = function (f) { return { counts: { bpm: f.bpm, first: f.first, ones: f.ones, double: dbl } }; };      // as watched: the speed she picked
     var startT = function (f, n) { return startOf(Q(f), n); };
     var lenOf = function (f, i) { return f.ones[i + 1] != null ? f.ones[i + 1] - f.ones[i] : null; };
-    app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('👆') + 'Count the music</h2><p><b>1. Tap:</b> press <b>Start</b> and tap along all the way through: <b>1</b> on every count of 1, <b>2–8</b> on every other count. The app averages your taps into one steady beat; a missed count is filled in, and a short phrase (a 4-count transition) stays short.</p>' +
+    app.innerHTML = '<div class="card"><h2 style="margin-top:0">' + sym('👆') + esc(opt.heading || 'Count the music') + '</h2><p class="small muted">Playing ' + esc(mu.name) + '.</p><p><b>1. Tap:</b> press <b>Start</b> and tap along all the way through: <b>1</b> on every count of 1, <b>2–8</b> on every other count. The app averages your taps into one steady beat; a missed count is filled in, and a short phrase (a 4-count transition) stays short.</p>' +
       '<p><b>2. Check:</b> press <b>Watch back</b>: the music plays with the app’s counting and a click on every beat. When it’s wrong, press <b>Mark wrong</b> (or X), then fix that 8-count in the list.</p>' +
       '<p class="small muted">Keys: <b>1</b> for a one, <b>Space</b> for 2–8, <b>X</b> to mark. Tapping again from an 8-count keeps everything before it.</p>' +
+      '<div class="switch"><span><b>Speed of the counts</b><br><span class="muted small">Tap at whichever speed is easy. Double time makes each of your counts two counts, so the 8-counts come twice as fast.</span></span><div class="seg" id="cspd"><button type="button" data-spd="0" aria-pressed="' + !dbl + '">As I tapped</button><button type="button" data-spd="1" aria-pressed="' + dbl + '">Double time</button></div></div>' +
       '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><button class="btn primary" id="cgo">' + icon('play') + 'Start tapping</button><label class="f" style="margin:0">from<select id="cfrom"></select></label><button class="btn" id="cwatch">' + icon('play') + 'Watch back</button><b id="ctm" class="lt-time">0:00</b></div></div>' +
       '<div class="cnt-show" id="cshowbox" hidden><div class="cnt-show-n" id="cbig"></div><div class="bow-8-beats" id="cdots">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<span>' + n + '</span>'; }).join('') + '</div><button class="btn cnt-mark" id="cmark">✗ Mark wrong</button></div>' +
       '<div class="cnt-pads" id="cpads"><button class="cnt-one" id="pone" disabled>1</button><button class="cnt-beat" id="pbeat" disabled>2 – 8</button></div>' +
@@ -506,7 +549,7 @@
     var $ = function (id) { return document.getElementById(id); };
     function list() {
       var f = cur(), o = onesT(taps);
-      $('csum').innerHTML = !o.length ? 'Nothing tapped yet' : !f ? o.length + ' 1s tapped: keep going' : 'Steady beat: <span style="font-size:1.2em">' + f.bpm + ' beats a minute</span>, count 1 at ' + T.clock(f.first) + ' · ' + f.used + ' of ' + f.taps + ' taps used' + (f.off ? ', ' + f.off + ' left out' : '') + (f.filled ? ', ' + f.filled + ' missed 1' + (f.filled === 1 ? '' : 's') + ' filled in' : '') + (edits ? ' · with your fixes' : '');
+      $('csum').innerHTML = !o.length ? 'Nothing tapped yet' : !f ? o.length + ' 1s tapped: keep going' : 'Steady beat: <span style="font-size:1.2em">' + f.bpm + ' beats a minute</span>' + (dbl ? ' tapped, <b>' + Math.round(f.bpm * 2) + ' in double time</b>' : '') + ', count 1 at ' + T.clock(f.first) + ' · ' + f.used + ' of ' + f.taps + ' taps used' + (f.off ? ', ' + f.off + ' left out' : '') + (f.filled ? ', ' + f.filled + ' missed 1' + (f.filled === 1 ? '' : 's') + ' filled in' : '') + (edits ? ' · with your fixes' : '') + (dbl ? '<br><span class="small muted">The list below is your 8-counts as you tapped them; Watch back counts in double time.</span>' : '');
       $('clist').innerHTML = f ? f.ones.map(function (k, i) {
         var L = lenOf(f, i), cls = marks[i + 1] ? 'mark' : L == null || L === 8 ? '' : L === 4 ? 'four' : 'odd';
         return '<button type="button" class="cnt-item ' + cls + (sel === i ? ' sel' : '') + '" data-n="' + i + '">' + (marks[i + 1] ? '✗ ' : '') + '8-count ' + (i + 1) + ' · ' + T.clock(startT(f, i + 1)) + (L != null && L !== 8 ? ' · ' + L + ' counts' : '') + '</button>';
@@ -537,7 +580,7 @@
     var click = function (one) { var ctx = T.audioCtx(), t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = one ? 1568 : 1046; g.gain.setValueAtTime(one ? 0.35 : 0.18, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06); o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 0.07); };
     function tick() {
       var t = A.time(); $('ctm').textContent = T.clock(t);
-      var f = cur(), at = f ? eightAt(Q(f), t) : null;
+      var f = cur(), at = f ? eightAt(QW(f), t) : null;
       if (mode === 'watch') {
         $('cbig').textContent = at ? '8-count ' + at.n : 'Count 1 is coming';
         $('cdots').querySelectorAll('span').forEach(function (x, i) { x.className = at && i < at.beat ? (i === at.beat - 1 ? 'now' : 'past') : ''; });
@@ -572,7 +615,8 @@
       var b = $(one ? 'pone' : 'pbeat'); b.classList.add('hit'); clearTimeout(flash); flash = setTimeout(function () { b.classList.remove('hit'); }, 90);
       if (one) list();
     };
-    var mark = function () { if (mode !== 'watch') return; var f = cur(), at = f ? eightAt(Q(f), A.time()) : null; if (!at) return; marks[at.n] = 1; sel = at.n - 1; T.toast('8-count ' + at.n + ' marked', 1500); list(); };
+    var mark = function () { if (mode !== 'watch') return; var f = cur(), at = f ? eightAt(Q(f), A.time()) : null; if (!at) return; marks[at.n] = 1; sel = at.n - 1; T.toast('8-count ' + at.n + (dbl ? ' (as tapped)' : '') + ' marked', 1500); list(); };
+    app.querySelectorAll('[data-spd]').forEach(function (b) { b.onclick = function () { dbl = b.dataset.spd === '1'; app.querySelectorAll('[data-spd]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); lastBeat = null; list(); }; });
     $('pone').onclick = function () { tap(true); }; $('pbeat').onclick = function () { tap(false); }; $('cmark').onclick = mark;
     var key = function (e) {
       if (/input|select|textarea/i.test(e.target.tagName)) return;
@@ -591,11 +635,9 @@
     $('csave').onclick = function () {
       var f = cur(); if (!f) { T.toast('Tap at least two 1s first.'); return; }
       if (mode) stop();
-      var Pn = JSON.parse(JSON.stringify(plan()));
-      Pn.counts = Object.assign({}, Pn.counts, { taps: taps.slice().sort(function (a, b) { return a[0] - b[0]; }), bpm: f.bpm, first: f.first, ones: f.ones,
-        fit: { used: f.used, off: f.off, filled: f.filled, fixed: !!edits, fours: f.ones.map(function (k, i) { return lenOf(f, i) === 4 ? i + 1 : 0; }).filter(Boolean), at: new Date().toISOString().slice(0, 10) } });
-      delete Pn.counts.raw;
-      T.show.curtain = Pn; T.saveShow('Your counting is saved').then(function () { location.hash = '#/teacher/curtain'; });
+      opt.save({ taps: taps.slice().sort(function (a, b) { return a[0] - b[0]; }), bpm: f.bpm, first: f.first, ones: f.ones, double: dbl, raw: undefined,
+        fit: { used: f.used, off: f.off, filled: f.filled, fixed: !!edits, fours: f.ones.map(function (k, i) { return lenOf(f, i) === 4 ? i + 1 : 0; }).filter(Boolean), at: new Date().toISOString().slice(0, 10) } })
+        .then(function () { location.hash = opt.back; });
     };
     list();
   }

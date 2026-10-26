@@ -25,4 +25,11 @@ const early = jit(song).map((x, i) => i === 48 ? [x[0] - beat, 1] : x);
 f = fitCounts(early);
 ok(f.notes.some(n => n.kind === 'odd'), 'a 1 tapped a count early shows up as a 7 or 9 to check');
 ok(fitCounts([[1, 1], [2, 1]]) === null, 'needs enough taps');
+// the two speeds: double time makes each tapped count two counts
+const sp = src.slice(src.indexOf('  function speedUp(c)'), src.indexOf('  var E = function (P)'));
+const speedUp = new Function(sp + '; return speedUp;')();
+const tapped = { bpm: 58, first: 0.04, ones: [0, 8, 16, 20, 28] };
+const d = speedUp(Object.assign({ double: true }, tapped));
+ok(d.bpm === 116 && JSON.stringify(d.ones) === JSON.stringify([0, 8, 16, 24, 32, 40, 48, 56, 64]), 'double time: twice the tempo, each tapped 8-count becomes two, the 4-count transition one (' + d.ones.join(',') + ')');
+ok(speedUp(tapped) === tapped, 'as tapped: unchanged');
 process.exit(bad ? 1 : 0);
