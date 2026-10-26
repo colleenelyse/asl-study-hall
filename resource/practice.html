@@ -503,7 +503,7 @@ var TABS = {
   'Goal tools': ['ID', 'Email', 'Tool', 'Measured by', 'Better when', 'Added', 'Goal ID'],
   'IEP benchmarks': ['ID', 'Email', 'Benchmark', 'Targets (tool ID: target)', 'By', 'Status', 'Added', 'Updated', 'Goal ID'],
   'IEP goals': ['ID', 'Email', 'Goal name', 'Goal', 'Added', 'Updated', 'In student words', 'Measured in BASE/ARC', 'Student', 'Check-in sentences', 'What counts as evidence', 'How to measure (idea)'],
-  'All goals and benchmarks': ['Student', 'Resource period', 'Goal #', 'Area', 'Measured in BASE/ARC', 'IEP goal', 'In student words', 'Benchmarks', 'How it’s measured (now)', 'Daily goal check-ins', 'Email'],
+  'All goals and benchmarks': ['Student', 'Resource period', 'Goal #', 'Area', 'Measured in BASE/ARC', 'IEP goal (initial only)', 'In student words', 'Benchmarks', 'How it’s measured (now)', 'Daily goal check-ins', 'Email'],
   'Goal reflections': ['Date', 'Email', 'Goal ID', 'Goal', 'Did it', 'What they said', 'Saved', 'Skills (found by the app)', 'Review', 'Teacher note', 'What they did'],
   'Benchmark data': ['Date', 'Email', 'Tool ID', 'Tool', 'Score', 'Out of', 'Note', 'Entered by', 'Entry ID'],
   // each graduating class's counselors by last name (edit each year); students' counselors fill in from this
@@ -3329,12 +3329,11 @@ function allGoals_() {
     if (!main && !withGoals[email]) return;
     var mi = -1; keep.forEach(function (x, i) { if (low_(x[1]) === email && String(x[0]) === 'main') mi = i; });
     if (main && mi < 0) { keep.push(['main', email, '', main, stamp_(), stamp_(), '', '', name]); fix = true; }
-    if (mi < 0 && main && typed[email + '|' + main.trim()]) mi = keep.length - 1;
     keep.forEach(function (x) {
       if (low_(x[1]) !== email) return;
       if (String(x[0]) === 'main' && String(x[3]) !== main) { x[3] = main; fix = true; }
       if (String(x[8] || '') !== name) { x[8] = name; fix = true; }
-      var tk = typed[email + '|' + String(String(x[0]) === 'main' ? main : x[3]).trim()];
+      var gt = String(String(x[0]) === 'main' ? main : x[3]), tk = typed[email + '|' + gt.trim()] || typed[email + '|' + initialize_(gt, r[SC.first]).trim()];
       if (tk && tk !== String(x[6] || '')) { x[6] = tk; fix = true; }
     });
     if (fix) { rewrite_('IEP goals', function () { return false; }, keep); keep = rows_('IEP goals').map(function (x) { return x.slice(); }); fix = false; }
@@ -3344,7 +3343,7 @@ function allGoals_() {
       var bench = g.bench.map(function (b) { return '• ' + b.text + (b.by ? ' (by ' + b.by + ')' : '') + ' · ' + (b.status === 'Met' ? 'Met' : b.status === 'Stopped' ? 'Stopped' : b.met === true ? 'at target' : b.met === false ? 'not at target yet' : 'no data yet'); }).join('\n');
       var tools = g.tools.map(function (t) { return t.name + ': ' + (t.now === null ? '—' : t.now + (t.unit === '%' ? '%' : t.word ? ' ' + t.word : '')); }).join('\n');
       var did = days.filter(function (d) { return refl.some(function (x) { return x.date === d && x.goal === g.id && x.did !== 'Not today'; }); }).length;
-      out.push([name, String(r[SC.period] || ''), k + 1, g.name, g.here === false ? 'No' : 'Yes', g.text, g.kid || '', bench, tools, days.length ? 'said they did it ' + did + ' of the last ' + days.length + ' check-in days' : '', email]);
+      out.push([name, String(r[SC.period] || ''), k + 1, g.name, g.here === false ? 'No' : 'Yes', initialize_(g.text, r[SC.first]), g.kid || '', bench, tools, days.length ? 'said they did it ' + did + ' of the last ' + days.length + ' check-in days' : '', email]);
     });
   });
   if (fix) rewrite_('IEP goals', function () { return false; }, keep);
@@ -3363,8 +3362,29 @@ function api_goalList() {
       var email = low_(r[SC.email]), name = stuName_(r);
       goals_(email).forEach(function (g, k) { if (g.text) out.push({ email: email, student: name, id: g.id, n: k + 1, area: g.name, text: g.text, kid: g.kid, here: g.here, phrases: g.phrases, look: g.look, how: g.how }); });
     });
-    return { dayClass: settings_().dayClass, goals: out.sort(function (a, b) { return a.student < b.student ? -1 : a.student > b.student ? 1 : a.n - b.n; }) };
+    return { prompt: goalPrompt_(), dayClass: settings_().dayClass, goals: out.sort(function (a, b) { return a.student < b.student ? -1 : a.student > b.student ? 1 : a.n - b.n; }) };
   });
+}
+// 2.18: the teacher's prompt for ChatGPT (the page copies it with the goals, initials only; nothing is sent from the app)
+function goalPrompt_() {
+  var t = PropertiesService.getDocumentProperties().getProperty('goalPrompt');
+  if (t) return t;
+  var dc = settings_().dayClass || 'resource';
+  return 'I teach a high school support class called ' + dc + ', where students work on executive functioning, organization, self-advocacy, starting and finishing work, and using accommodations. ' +
+    'Below are IEP goals. Students are shown only by an initial.\n\nFor each goal, write:\n' +
+    '1. Student words: the goal for the teenager, first person ("I will…"), at most 25 words, about a 6th-grade reading level, friendly and never babyish. Keep the skill; leave out measurement wording.\n' +
+    '2. Area: a short goal area (Executive functioning, Self-advocacy, Organization, Reading, Math…).\n' +
+    '3. Measured in ' + dc + ': yes if it can be practiced and observed in a study-skills support period, no if it is usually measured in a content class or by a specialist.\n' +
+    '4. Three check-in sentences a student could tap to say they practiced it today, first person, at most 12 words each. Use ___ for a blank (a teacher, a class, an accommodation).\n' +
+    '5. What counts as evidence: one sentence.\n6. A way to take data: one sentence.\n\n' +
+    'Answer with one line per goal and nothing else, in exactly this format (use | between parts and ; between the sentences):\n' +
+    '#number | student words | area | yes or no | sentence 1; sentence 2; sentence 3 | evidence | way to take data';
+}
+function api_saveGoalPrompt(t) { teacherOnly_(); t = String(t || '').slice(0, 5000).trim(); var p = PropertiesService.getDocumentProperties(); if (t) p.setProperty('goalPrompt', t); else p.deleteProperty('goalPrompt'); return goalPrompt_(); }
+// first name → first initial ("Jane" → "J."), for any goal text that is copied out of the app or the sheet
+function initialize_(text, first) {
+  var t = String(text || ''), f = String(first || '').replace(/[^A-Za-z'-]/g, ''); if (!f) return t;
+  return t.replace(new RegExp('\\b' + f + '(\'s|’s)?\\b', 'g'), function (m, s) { return f.charAt(0).toUpperCase() + '.' + (s || ''); });
 }
 // Save what the teacher kept. items: [{ email, id, kid, area, here, phrases: [..], look, how }] (a field left out isn't changed)
 function api_saveGoalAI(items) {
@@ -7195,7 +7215,7 @@ var GH = null;
 function ghKey(g) { return g.email + '|' + g.id; }
 function ghOpen() {
   $('main').innerHTML = '<div class="loading">Getting every goal on your sheet…</div>'; window.scrollTo(0, 0);
-  call('api_goalList').then(function (r) { GH = { goals: r.goals, sel: {}, res: {}, keep: {}, only: false, busy: '' }; r.goals.forEach(function (g) { if (!g.kid) GH.sel[ghKey(g)] = true; }); drawGH(); }).catch(oops);
+  call('api_goalList').then(function (r) { GH = { prompt: r.prompt, chat: false, codes: [], goals: r.goals, sel: {}, res: {}, keep: {}, only: false, busy: '' }; r.goals.forEach(function (g) { if (!g.kid) GH.sel[ghKey(g)] = true; }); drawGH(); }).catch(oops);
 }
 function drawGH() {
   var list = GH.goals.filter(function (g) { return !GH.only || !g.kid; }), nSel = list.filter(function (g) { return GH.sel[ghKey(g)]; }).length, nRes = Object.keys(GH.res).length, nKeep = Object.keys(GH.res).filter(function (k) { return GH.keep[k]; }).length;
@@ -7205,6 +7225,7 @@ function drawGH() {
   h += '<div class="card"><div class="row" style="gap:10px;flex-wrap:wrap"><label class="check" style="margin:0"><input type="checkbox"' + (GH.only ? ' checked' : '') + ' onchange="GH.only=this.checked;drawGH()"><span>Only goals without student words yet</span></label>' +
     '<button class="btn small" onclick="ghAll(true)">Check all</button><button class="btn small" onclick="ghAll(false)">Uncheck all</button><span class="grow"></span>' +
     '<button class="btn primary" onclick="ghRun()"' + (nSel ? '' : ' disabled') + '>✨ Write a first try for ' + nSel + ' goal' + (nSel === 1 ? '' : 's') + '</button></div>' +
+    ghChatHtml(nSel) +
     (nRes ? '<div class="row" style="margin-top:10px"><span class="grow small">' + nRes + ' written. Change anything, uncheck “Keep” for any you don’t want, then save.</span><button class="btn primary" onclick="ghSave()"' + (nKeep ? '' : ' disabled') + '>💾 Save ' + nKeep + ' goal' + (nKeep === 1 ? '' : 's') + '</button></div>' : '') + '</div>';
   var last = '';
   h += list.map(function (g) {
@@ -7221,6 +7242,49 @@ function drawGH() {
       '<label class="check" style="margin-top:6px"><input type="checkbox"' + (GH.keep[k] ? ' checked' : '') + ' onchange="GH.keep[\'' + k + '\']=this.checked;drawGH()"><span><b>Keep</b></span></label></div></div>';
   }).join('');
   $('main').innerHTML = h;
+}
+// 2.18: ChatGPT, the teacher's way: copy the prompt and the checked goals (initials only, numbered), open ChatGPT, paste the answer back.
+// The app itself sends nothing anywhere.
+function initialOnly(text, student) {
+  var f = String(student || '').split(' ')[0].replace(/[^A-Za-z'-]/g, ''); if (!f) return String(text || '');
+  return String(text || '').replace(new RegExp('\\b' + f + '(\'s|’s)?\\b', 'g'), function (m, x) { return f.charAt(0).toUpperCase() + '.' + (x || ''); });
+}
+function ghChatHtml(nSel) {
+  return '<details style="margin-top:12px"' + (GH.chat ? ' open' : '') + ' ontoggle="GH.chat=this.open"><summary><b>🤖 Use ChatGPT</b> <span class="small" style="display:inline">(you copy and paste; the app sends nothing, and students show only as an initial)</span></summary>' +
+    '<p class="small" style="margin:8px 0 4px"><b>1. Your prompt</b> (saved for next time)</p><textarea id="ghPr" style="min-height:150px;font-size:13px">' + esc(GH.prompt || '') + '</textarea>' +
+    '<div class="row" style="gap:6px;margin-top:4px"><button class="btn small" onclick="ghPromptSave()">Save my prompt</button><button class="btn link small" onclick="ghPromptSave(true)">Use the app’s prompt</button></div>' +
+    '<p class="small" style="margin:12px 0 4px"><b>2. Copy the checked goals and open ChatGPT</b>, then paste (Ctrl + V) and send.</p>' +
+    '<button class="btn primary" onclick="ghCopyChat()"' + (nSel ? '' : ' disabled') + '>📋 Copy ' + nSel + ' goal' + (nSel === 1 ? '' : 's') + ' and open ChatGPT</button>' +
+    '<p class="small" style="margin:12px 0 4px"><b>3. Paste ChatGPT’s answer here</b>, then fill in.</p><textarea id="ghAns" style="min-height:90px;font-size:13px" placeholder="#1 | I will … | Organization | yes | I wrote … ; … | … | …"></textarea>' +
+    '<button class="btn" style="margin-top:6px" onclick="ghFromAnswer()">Fill in from the answer</button></details>';
+}
+function ghPromptSave(reset) { call('api_saveGoalPrompt', reset ? '' : $('ghPr').value).then(function (t) { GH.prompt = t; GH.chat = true; drawGH(); toast(reset ? 'Back to the app’s prompt' : 'Prompt saved'); }).catch(oops); }
+function ghCopyChat() {
+  GH.prompt = $('ghPr').value;
+  var todo = GH.goals.filter(function (g) { return GH.sel[ghKey(g)] && (!GH.only || !g.kid); });
+  GH.codes = todo.map(ghKey);
+  var text = GH.prompt + '\n\nGoals:\n' + todo.map(function (g, i) { return '#' + (i + 1) + (g.area ? ' [' + g.area + ']' : '') + ' ' + initialOnly(g.text, g.student).replace(/\s+/g, ' '); }).join('\n');
+  var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+  var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  if (!ok && navigator.clipboard) navigator.clipboard.writeText(text).catch(function () {});
+  try { window.open('https:' + '/' + '/chatgpt.com/', '_blank'); } catch (e) {}
+  GH.chat = true; drawGH(); toast('Copied ' + todo.length + ' goals (initials only). In ChatGPT: paste with Ctrl + V and send.');
+}
+function ghFromAnswer() {
+  var lines = $('ghAns').value.split(/\r?\n/), n = 0;
+  if (!GH.codes.length) return alert('Copy the goals for ChatGPT first (step 2), so the numbers match.');
+  lines.forEach(function (l) {
+    var c = l.replace(/\*\*/g, '').split('|').map(function (x) { return x.trim(); });
+    if (c[0] === '') c.shift(); if (c[c.length - 1] === '') c.pop();
+    var m = /^#?\s*(\d+)\.?$/.exec(c[0] || ''); if (!m || c.length < 2) return;
+    var k = GH.codes[+m[1] - 1]; if (!k) return;
+    var g = GH.goals.filter(function (x) { return ghKey(x) === k; })[0], first = String(g.student || '').split(' ')[0], back = function (t) { return String(t || '').replace(new RegExp('(^|\\s)' + first.charAt(0) + '\\.(?=[\\s,’\']|$)', 'g'), '$1' + first); };
+    GH.res[k] = { kid: c[1] || '', area: c[2] || g.area, here: /^y/i.test(c[3] || ''), why: '', phrases: String(c[4] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 6), look: back(c[5]), how: back(c[6]) };
+    GH.keep[k] = true; GH.sel[k] = false; n++;
+  });
+  if (!n) return alert('No answer lines found. Each line should start with the goal number, like: #1 | I will … | …');
+  drawGH(); toast(n + ' goals filled in: look them over, then save');
 }
 function ghAll(on) { GH.goals.forEach(function (g) { if (!GH.only || !g.kid) GH.sel[ghKey(g)] = on; }); drawGH(); }
 function ghEdit(k) {
