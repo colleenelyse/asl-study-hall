@@ -306,8 +306,8 @@
        starting with the finale, plus a short vocal selection each student chooses. */
     var both = function (n, where) { return [g('vocals', [SONG(n)], where), g('dance', [SONG(n)])]; };
     var plan = [
-      ['Welcome! Learn the finale: “Megamix (Bows)” (vocals)', [g('vocals', [SONG('41')])], 'Welcome to the company! We start with the finale, because everyone is in it. This week’s songs are your audition: just learn with us and have fun.'],
-      ['Finale dance: “Megamix (Bows)”', [g('dance', [SONG('41')])], 'Wear shoes you can move in. Watching your teacher, or a buddy, is a great way to learn the moves.'],
+      ['Welcome! Learn the big finish: the end of the Megamix, everyone’s part (vocals)', [g('vocals', [SONG('41')])], 'Welcome to the company! We start with the finale, because everyone is in it. This week’s songs are your audition: just learn with us and have fun.'],
+      ['Finale dance: the Megamix’s big finish (Breaking Free), everyone’s part', [g('dance', [SONG('41')])], 'Wear shoes you can move in. Watching your teacher, or a buddy, is a great way to learn the moves.'],
       ['“We’re All in This Together” (vocals)', [g('vocals', [SONG('40')])], 'Another song the whole cast sings.'],
       ['“Wildcat Cheer” (dance and cheer)', [g('dance', [SONG('1')])], 'The opening number! Loud, proud, and together.'],
       ['Run all three songs, then crew tours', [g('run', [SONG('41'), SONG('40'), SONG('1')])], 'We run the songs we learned, then visit each crew (set, costumes, props).'],

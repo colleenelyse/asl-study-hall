@@ -184,6 +184,7 @@
       ['people', t('#/teacher/cast', 'star', 'Cast', (T.show.cast || []).length + ' actors')],
       ['app', t('#/teacher/viewas', 'stage', 'View as', 'See the app as a student, a track or a parent')],
       ['rehearse', t('#/teacher/curtain', 'star', 'Curtain call', 'Bow groups in 8-counts, the countdown, rehearse')],
+      ['rehearse', t('#/teacher/megamix', 'songs', 'Megamix groups', 'Who does which section: groups change between songs; the leads rest at first')],
       ['rehearse', t('#/teacher/partners', 'sched', 'Partner classes', esc(T.partnersSummary ? T.partnersSummary() : 'Sessions with other classes, and calendar invitations'))],
       ['music', t('#/teacher/aac', 'speak', 'Lines for AAC', 'Each character’s lines as ElevenLabs sound files for an AAC device')],
       ['tech', (T.show.script ? t('#/teacher/captions', 'speak', 'Open captions', 'Song videos and line pictures for QLab: audience strip and performer view') : '')],

@@ -31,9 +31,9 @@
   var COLORS = ['#2f6fd1', '#24935d', '#c03aa8', '#d9822b', '#7a4fd6', '#c8323c'];
   var uid = function () { return 'b' + Math.random().toString(36).slice(2, 8); };
 
-  function finaleSong() {      // optional now: a song everyone performs after the bows ('' = none); the Megamix is no longer part of the bows
+  function finaleSong() {      // a song everyone performs after the bows ('' = none): for HSM JR the Megamix, in sections (js/megamix.js)
     var c = T.show.curtain, so = c && c.finale ? T.songById(c.finale) : null;
-    return so && !/megamix/i.test(so.title) ? so : null;
+    return so || null;      // the Megamix is back after the bows (Colleen 2026-10-25: "the full mega mix after we use the short track i just sent you for bows first")
   }
   /* the plan: saved, or the defaults */
   function plan() {
@@ -41,21 +41,27 @@
     var O = T.O(), has = function (id) { return !!T.charById(id); }, fin = finaleSong();
     var g = function (name, chars, row) { return { id: uid(), name: name, chars: chars.filter(has), cast: [], at: null, row: row, note: '' }; };
     var groups;
+    /* HSM JR, Colleen's bow order (2026-10-25): "1 — Chorus & Minor Featured Roles … 3–6; 2 — Supporting Characters … 7–10; 3 — Four Leads … 11–14;
+       Entire Cast: Everyone performs the chorus choreography 15–end" */
     if (O.id === 'hsm-jr') groups = [
-      g('The Company groups', ['students', 'partykids', 'cheer', 'rebels', 'thespians', 'drummajor', 'cathy', 'cyndra', 'james', 'susan', 'jocks', 'brainiacs'], 'Back row'),
-      g('The grown-ups and the friends', ['darbus', 'coach', 'tenny', 'moderator', 'jack', 'kratnoff', 'chad', 'zeke', 'taylor', 'martha', 'kelsi'], 'Middle row'),
-      g('Sharpay and Ryan', ['sharpay', 'ryan'], 'Front, center'),
-      g('Troy and Gabriella', ['troy', 'gabriella'], 'Front, center')];
+      g('Chorus and minor featured roles', ['jocks', 'cheer', 'brainiacs', 'thespians', 'partykids', 'rebels', 'students', 'kratnoff', 'drummajor', 'cathy', 'cyndra', 'james', 'susan'], 'Back row'),
+      g('Supporting characters', ['chad', 'taylor', 'kelsi', 'zeke', 'martha', 'darbus', 'coach', 'tenny', 'moderator', 'jack'], 'Middle row'),
+      g('The four leads', ['troy', 'gabriella', 'sharpay', 'ryan'], 'Front, center')];
     else groups = ['ensemble', 'featured', 'adults', 'friends', 'leads'].map(function (gid, i) {
       var cs = O.characters.filter(function (c) { return c.group === gid; }).map(function (c) { return c.id; });
       return cs.length ? g((O.groups.find(function (x) { return x.id === gid; }) || {}).name || gid, cs, ROWS[Math.min(i, 3)]) : null;
     }).filter(Boolean);
     groups.forEach(function (x, i) { x.from = sideFor(i); });
-    if (O.id === 'hsm-jr') { groups[2].from = groups[3].from = 'Both sides'; groups[2].sides = { 'c:sharpay': 'Stage right', 'c:ryan': 'Stage left' }; groups[3].sides = { 'c:troy': 'Stage right', 'c:gabriella': 'Stage left' }; }      // the pairs meet in the middle
+    if (O.id === 'hsm-jr') {
+      groups[2].from = 'Both sides'; groups[2].sides = { 'c:sharpay': 'Stage right', 'c:ryan': 'Stage left', 'c:troy': 'Stage right', 'c:gabriella': 'Stage left' };      // the pairs meet in the middle
+      [[2, 'Intro'], [6, 'Troy verse'], [10, 'Gabriella verse']].forEach(function (x, i) { groups[i].eights = x[0]; groups[i].music = x[1]; });
+    }
     /* HSM JR: the bows go over the band track of #32 (We're All in This Together), Colleen's choice: a repeat of it in the full show, and its
        only use in the abridged school-day show */
     var m32 = O.id === 'hsm-jr' && O.songs.find(function (s) { return String(s.num) === '32'; });
-    return { music: { song: (c && c.music && c.music.song) || (m32 && m32.id) || (O.songs[O.songs.length - 1] || {}).id, kind: 'rehearsal', start: 0, loop: true }, finale: '', crew: true, trench: 'stage', groups: groups, counts: { bpm: null, first: 0, show: false }, parts: [],
+    var mmx = O.id === 'hsm-jr' && O.songs.find(function (s) { return String(s.num) === '41'; });
+    return { music: { song: (c && c.music && c.music.song) || (m32 && m32.id) || (O.songs[O.songs.length - 1] || {}).id, kind: 'rehearsal', start: 0, loop: true }, finale: mmx ? mmx.id : '', crew: true, trench: 'stage', groups: groups, counts: O.id === 'hsm-jr' ? { bpm: 116, first: 0, show: false } : { bpm: null, first: 0, show: false },      // 116: her bow recording's tempo
+      parts: O.id === 'hsm-jr' ? [{ eight: 1, music: 'Intro', what: 'Hold' }, { eight: 15, music: 'Chorus', what: 'Everyone performs the chorus choreography' }, { eight: 21, music: 'Fade-out', what: 'Boogie!' }] : [],
       company: { note: 'Everyone in one line: one bow together, then point to the band and the crew.' } };
   }
   T.curtainPlan = plan;
@@ -361,10 +367,18 @@
       (g.note ? '<p class="card" style="background:var(--hi);margin-top:10px">' + sym('📌') + esc(g.note) + '</p>' : '') +
       '<h3 style="margin-top:14px">You bow with</h3><div class="row" style="flex-wrap:wrap">' + (others.length ? others.map(function (m) { var sd = sideOfMember(g, m), diff = sd !== mySide(g, me) ? ' <span class="muted small">from ' + esc(sd.toLowerCase()) + '</span>' : ''; return (m.a ? '<span class="chip">' + T.face(m.a, 28) + ' ' + esc(m.name) + '</span>' : T.chip(m.c)) + diff; }).join(' ') : '<span class="muted">just you</span>') + '</div>' +
       '<p class="muted small" style="margin-top:10px">Before you: ' + (gi ? P.groups.slice(0, gi).map(function (x) { return esc(x.name); }).join(' · ') : 'nobody, your group goes first!') + '</p></div>' +
+      megamixCard(me) +
       '<div class="card"><h3>' + sym('🔔') + 'Practice my bow</h3><p class="muted small">Listen to the song. A red X means not yet; GET READY counts you in; GO means run on now.</p><div id="bhost"></div>' +
 '</div>';
     countdown(document.getElementById('bhost'), gi);
   };
+  /* the Megamix after the bows (js/megamix.js): which sections are mine, in order; the last one is everyone */
+  function megamixCard(me) {
+    if (!T.Megamix || !me) return '';
+    var m = T.Megamix.mine(me); if (!m.sections.length) return '';
+    return '<div class="card"><h3>' + sym('🎶') + 'My Megamix</h3><p class="muted small">After the bows, the Company performs the Megamix in sections. Be on stage for yours; rest offstage for the others.</p><ol class="mx-mine">' +
+      m.sections.map(function (x, k) { var on = x.all || m.ks.indexOf(k) >= 0; return '<li class="' + (on ? 'on' : 'off') + '">' + (on ? '<b>' + esc(x.name) + '</b>' + (x.all ? ' <span class="muted small">(everyone)</span>' : '') : '<span class="muted">' + esc(x.name) + ': offstage</span>') + '</li>'; }).join('') + '</ol></div>';
+  }
   /* Practice my bow: the song plays with a countdown to my moment; a big red X until it is close, GET READY for the last 8 counts (counting
      5 6 7 8 when the tempo is set), then a big green GO with a bell, then where to stand */
   function countdown(host, gi) {

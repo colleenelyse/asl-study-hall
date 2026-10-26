@@ -169,7 +169,7 @@
     var windows = { sizes: [work[Math.min(n - 1, 15)], work[Math.min(n - 1, 19)]] };
     if (trip) { windows.research = [plus(trip, -23), plus(trip, -12)]; windows.list = [plus(trip, -9), plus(trip, -5)]; windows.photos = [plus(trip, 1), plus(trip, 7)]; }
     var credit = withAuditions ? ['1', '40', '41'].map(function (num) { var so = O.songs.find(function (x) { return x.num === num; }); return so ? [{ id: so.id + 'V', done: 'learn' }, { id: so.id + 'D', done: 'learn' }] : []; }).reduce(function (a, b) { return a.concat(b); }, []) : [];
-    var R = RP.plan(O, { days: work.map(function (d) { return { date: d, min: minutesOf(d) }; }), fixed: fixed, credit: credit, windows: windows, actSplit: act2[0], bits: T.Moves ? T.Moves.forPlan() : [],
+    var R = RP.plan(O, { days: work.map(function (d) { return { date: d, min: minutesOf(d) }; }), fixed: fixed, credit: credit, windows: windows, actSplit: act2[0], bits: T.Moves ? T.Moves.forPlan() : [], megamix: T.Megamix ? T.Megamix.forPlan() : null,
       deadlines: { scene: at(0.6), vocals: at(0.45), dance: at(0.8) } });
     var KF = { A: 'acting', V: 'vocals', D: 'dance', R: 'run', C: 'consent' }, all = O.characters.map(function (c) { return c.id; });
     R.days.forEach(function (D) {

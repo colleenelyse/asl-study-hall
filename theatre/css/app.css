@@ -783,3 +783,15 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .bow-8-beats span { width: clamp(30px, 6vw, 52px); height: clamp(30px, 6vw, 52px); border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: clamp(1rem, 2.6vw, 1.5rem); background: #26304a; color: #8d97b0; transition: background .08s, transform .08s; }
 .bow-8-beats span.past { background: #3c5a9a; color: #fff; }
 .bow-8-beats span.now { background: #ffd84d; color: #10172a; transform: scale(1.18); }
+/* Megamix groups (js/megamix.js) */
+.mx-t { border-collapse: collapse; width: 100%; }
+.mx-t th { font-size: .8rem; padding: 4px; vertical-align: bottom; min-width: 74px; }
+.mx-t td { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.mx-t .mx-g { font-weight: 700; padding-top: 10px; border-bottom: 2px solid var(--line); }
+.mx-c { text-align: center; }
+.mx-all { color: var(--muted, #888); }
+.mx-b { width: 40px; height: 34px; border-radius: 8px; border: 2px solid var(--line); background: transparent; color: inherit; font-weight: 700; font-size: 1.05rem; cursor: pointer; }
+.mx-b.kn { border-style: dashed; }
+.mx-b.on { color: #fff; border-style: solid; }
+.mx-mine { margin: 6px 0 0; padding-left: 1.4em; line-height: 1.8; }
+.mx-mine li.on { font-size: 1.1rem; }

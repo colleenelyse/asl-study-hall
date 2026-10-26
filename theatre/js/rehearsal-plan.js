@@ -51,6 +51,26 @@
         p.short = '“' + so.title + '”' + (part === 'p' ? ' (featured)' : part === 'c' ? ' (ensemble)' : '');
         pieces.push(p); return p;
       };
+      /* the Megamix in sections (cfg.megamix from js/megamix.js; Colleen 2026-10-25: "be smart about working on sections of the megamix that can
+         overlap the original song learning … in groups until the last section"): each section is a dance for its own group, ready once the original
+         song's dance is half learned and worth most right after that song was worked (see value); the last section is everyone, as a whole number
+         (ids songId + V / D, so the audition week's credit still counts), and the whole Megamix runs once every section is half learned */
+      var MX = cfg.megamix;
+      if (MX && so.id === MX.song && (MX.sections || []).length) {
+        var secMin = Math.max(0.6, min / MX.sections.length), name2 = function (q, sec) { q.label = q.short = '“Megamix: ' + sec.name + '”'; return q; };
+        MX.sections.forEach(function (sec) {
+          if (sec.all) {
+            var va2 = name2(mk('V', '', ALL.slice(), secMin * 9, secMin * 3, { whole: true }), sec);
+            name2(mk('D', '', ALL.slice(), secMin * 12, secMin * 4, { after: va2, whole: true }), sec);
+            return;
+          }
+          var ppl2 = (sec.people || []).filter(function (c) { return ALL.indexOf(c) >= 0; }); if (!ppl2.length) return;
+          var src = pieces.filter(function (q) { return q.type === 'song' && q.kind === 'D' && sec.from.indexOf(q.song.id) >= 0; });
+          var aft = src.slice().sort(function (a, b) { return b.learn - a.learn; })[0];
+          name2(mk('D', ':' + sec.id, ppl2, secMin * 10, secMin * 4, { after: aft, mxFrom: src }), sec).short += ' section';
+        });
+        return;
+      }
       if (big && !whole) {
         var prin = ppl.filter(function (c) { return !smallRole(charById(c)); }), cho = ppl.filter(function (c) { return smallRole(charById(c)); });
         var vp = mk('V', 'p', prin, min * 5, 0), vc = mk('V', 'c', cho, min * 6, 0);
@@ -80,7 +100,8 @@
     var ready = function (p) {      // music before dance; both halves before putting a number together
       if (p.hold && days[i0].date < p.hold) return false;
       if (p.type === 'bit' && p.parent && !(p.parent.done > 0)) return false;      // a moment comes after its scene (or dance) is first staged
-      if (p.after && p.after.done < p.after.learn * 0.5 && !(p.after.together && p.after.n)) return false;
+      if (p.mxFrom && p.mxFrom.some(function (q) { return q.learn > 0 && !(q.n > 0); })) return false;      // every part of the original dance started first
+      if (p.after && p.after.done < p.after.learn * (p.mxFrom ? 0.25 : 0.5) && !(p.after.together && p.after.n)) return false;      // a Megamix section: once its song's dance is a quarter learned
       if (p.needs && p.needs.some(function (q) { return q.done < q.learn * 0.6; })) return false;
       return true;
     };
@@ -109,6 +130,7 @@
       if (rem > 0 && p.done === 0 && p.type !== 'bit') { var dl = deadline(p); v += 60 * Math.pow(Math.min(1, i / dl), 3); }      // never started, and its deadline is coming
       if (p.type === 'bit' && rem > 0) v += 30 + (p.parent ? Math.min(i - p.parent.last, 10) * 2 : 0);      // its scene or dance has been staged: now the moment
       if (p.big && rem === 0) v += Math.min(i - p.last, 10) * 0.6;      // the hardest numbers keep coming back
+      if (p.mxFrom && rem > 0 && p.mxFrom.some(function (q) { return q.n > 0 && i - q.last <= 3; })) v += 22;      // a Megamix section right after its original song
       if (rem === 0 && pol === 0) v -= 8;      // done: only as a review
       v -= varietyCost(people, p.kind, i) * 3;
       v -= people.filter(function (c) { return needsCrew(c, i); }).length * [0, 0, 0, 0.3, 0.9, 2][days[i].wd] * 0.4;

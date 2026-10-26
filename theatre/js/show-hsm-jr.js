@@ -134,6 +134,22 @@ window.DEFAULT_SHOW = {
     { id: 'm40', num: '40', title: 'We’re All in This Together (Reprise)', scene: 's17', page: 81, minutes: 1.5 },
     { id: 'm41', num: '41', title: 'High School Musical Megamix (Bows)', scene: 's17', page: 85, minutes: 5 }
   ],
+  /* the Megamix (#41) in sections, in order (Colleen 2026-10-25). Before the last section, each section is done by a group that already knows it from
+     the show, and the groups change completely between sections (nobody in two sections in a row); the last one is everyone. stars: whose big song
+     it is, so they do that section ("status quo is zeke and taylors big song so they should do that section. apply this logic too"). Solo lines need
+     not be sung by the right actor: the track has the vocals ("we'll use the version with embedded lyrics so everyone can just have fun and dance"). */
+  megamix: { song: 'm41', sections: [
+    { id: 'mx1', name: 'Start of Something New', from: ['m2'], stars: ['partykids'] },
+    { id: 'mx2', name: 'What I’ve Been Looking For', from: ['m17', 'm19'], stars: ['kelsi'] },
+    { id: 'mx3', name: 'Stick to the Status Quo', from: ['m21'], stars: ['zeke', 'taylor', 'martha', 'jocks', 'brainiacs', 'rebels'] },
+    { id: 'mx4', name: 'Bop to the Top', from: ['m33'], stars: ['sharpay', 'ryan', 'coach', 'moderator', 'jack', 'cheer', 'thespians'] },
+    { id: 'mx5', name: 'We’re All in This Together', from: ['m32', 'm40'], stars: ['troy', 'gabriella', 'chad', 'kelsi', 'students'] },
+    { id: 'mx6', name: 'Breaking Free and the big finish', from: ['m38'], all: true, note: 'the a cappella bass drum section, then straight into the big finish' }],
+    /* "maybe the 4 leads can sit out a few sections of this at the beginning to get a break and let the ensemble have a moment": not before section 4 */
+    leads: ['troy', 'gabriella', 'sharpay', 'ryan'], leadsFrom: 3,
+    /* "a good mix of group 1 and group 2 students in each group since group 2 students are more capable": her bow Group 2, the supporting characters,
+       spread over the sections first */
+    strong: ['chad', 'taylor', 'kelsi', 'zeke', 'martha', 'darbus', 'coach', 'tenny', 'moderator', 'jack'] },
 
   /* the show in order, in moments a performer can picture: a stretch of talking, or one song.
      on: who is on stage. '*' means the whole cast. where: { character: where they are, if not on the stage itself }. big: a big group number: everyone in the ensemble and every small role joins
