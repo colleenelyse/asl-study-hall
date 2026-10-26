@@ -142,7 +142,7 @@
      next group to take a turn. i'd love to do exits and entrances but that feels complicated to teach"): 'stay' (the default) or 'exits' */
   var stay = function () { return ((T.show.megamix || {}).staging || 'stay') !== 'exits'; };
   var WORD = function () { return stay() ? { go: 'Move downstage!', off: 'BACK UPSTAGE', offLong: 'Walk back upstage in your lane; the next group comes down', away: 'Upstage', waiting: 'upstage: background moves', clears: 'goes back upstage', on: 'Dancing downstage', done: 'Upstage for the rest, then everyone dances the finish' } :
-    { go: 'GO on!', off: 'CLEAR OFF', offLong: 'Walk off now, quickly and quietly', away: 'Offstage', waiting: 'offstage', clears: 'clears off', on: 'On stage', done: 'You are done until the Company bow' }; };
+    { go: 'GO on!', off: 'CLEAR OFF', offLong: 'Walk off now, quickly and quietly', away: 'Offstage', waiting: 'offstage', clears: 'clears off', on: 'On stage', done: 'You are done until the end of the show' }; };
   /* what happens at time t: the section on now, and the change coming (or just made) */
   function moment(times, t) {
     var k = -1; times.forEach(function (x, i) { if (x != null && x <= t) k = i; });

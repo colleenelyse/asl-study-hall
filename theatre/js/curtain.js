@@ -310,7 +310,7 @@
       var next = cues.find(function (c) { return c.t > t; }), nx = $('bnext');
       if (next) { var s = Math.ceil(next.t - t); nx.style.borderColor = next.color; nx.innerHTML = '<div class="muted small">Next</div><div class="bow-next-who" style="color:' + next.color + '">' + esc(next.label) + '</div><div>From ' + esc(next.from) + ' · ' + (eightSec(P) && startN(next.g) ? 'goes ' : 'when ') + esc(listenFor(P, next.i)) + '</div><div class="bow-count">' + (s <= 10 ? s : '') + '</div>'; }
       else if (t > last + 3 && rowAt(P, t) && rowAt(P, t).part) { var rp = rowAt(P, t); nx.style.borderColor = '#18233a'; nx.innerHTML = '<div class="muted small">' + esc(rp.music || 'Now') + '</div><div class="bow-next-who">' + sym('🌟') + esc(rp.what) + '</div>'; }
-      else if (t > last + 3) { var fs = finaleSong(); nx.innerHTML = '<div class="bow-next-who">' + sym('🌟') + 'Everyone is on stage.' + (fs ? ' Now ' + esc(fs.title) + '!' : '') + '</div><div class="muted">Then the Company bow: ' + esc(P.company.note || '') + '</div>'; }
+      else if (t > last + 3) { var fs = finaleSong(); nx.innerHTML = '<div class="bow-next-who">' + sym('🌟') + (fs ? 'Everyone is on stage. Roll right into ' + esc(fs.title) + '!' : 'Everyone is on stage.') + '</div>' + (P.endBow ? '<div class="muted">At the very end, the Company bow: ' + esc(P.company.note || '') + '</div>' : ''); }
       if (opts.stopAfter != null && t > opts.stopAfter) { audio.pause(); }
       if (!audio.paused) raf = requestAnimationFrame(frame);
     }
@@ -340,9 +340,10 @@
     var tap = null;      // setting the times while the music plays: { audio, k }
     function draw() {
       var mu = music(P);
+      fin = P.finale ? T.songById(P.finale) || null : null;      // the song picked on this page, saved or not
       var e8 = eightSec(P), cur = P.music || {};
       var opt = function (sId, kind, label) { var on = !cur.own && cur.song === sId && (cur.kind || 'performance') === kind; return '<option value="' + kind + ':' + sId + '"' + (on ? ' selected' : '') + '>' + label + '</option>'; };
-      app.innerHTML = '<div class="card"><h2>' + sym('🌟') + 'Curtain call</h2><p class="muted">Each group runs on and bows to the bow music at its own moment, set in 8-counts' + (fin ? '; once everyone is on stage, the Company performs “' + esc(fin.title) + '”' : '') + '; then the Company bow. Each performer sees their bow under <b>My bow</b>, with a countdown, a red X until their turn, Get ready, and GO.</p>' +
+      app.innerHTML = '<div class="card"><h2>' + sym('🌟') + 'Curtain call</h2><p class="muted">Each group runs on and bows to the bow music at its own moment, set in 8-counts' + (fin ? '; when the bow music ends, everyone rolls straight into “' + esc(fin.title) + '”' : '') + (P.endBow ? '; at the very end, the Company bow' : '') + '. Each performer sees their bow under <b>My bow</b>, with a countdown, a red X until their turn, Get ready, and GO.</p>' +
         '<div class="row"><label class="f grow" style="margin:0">Bow music<select id="mus"><option value="">Pick…</option>' + withTracks.map(function (s) { var t = (T.show.tracks || {})[s.id]; return (t.rehearsal ? opt(s.id, 'rehearsal', 'Guide vocals (with singers): ' + esc(s.title)) : '') + (t.performance ? opt(s.id, 'performance', 'Band track (no singers): ' + esc(s.title)) : ''); }).join('') + (cur.own ? '<option value="own" selected>Your own recording (uploaded)</option>' : '') + '</select></label>' +
         '<label class="btn" style="margin:0">' + sym('⬆️') + 'Upload a recording<input type="file" id="upl" accept="audio/*" hidden></label></div>' +
         (mu ? '<div class="row bow-listen" style="align-items:center;flex-wrap:wrap;margin-top:6px"><button class="round" id="lpl" aria-label="Play">' + icon('play') + '</button><button class="btn small" id="lbk">Back 10 s</button>' + seekHTML + '<b id="ltm" class="lt-time">0:00</b><span id="l8" class="small muted"></span></div>' : '') +
@@ -379,11 +380,15 @@
         (e8 ? '<div class="card"><h3 style="margin-top:0">' + sym('📋') + 'The bows, 8-count by 8-count</h3>' + (rowsOf(P).length ? '<table class="small" style="width:100%"><thead><tr><th style="text-align:left">Music</th><th style="text-align:left">8-counts</th><th style="text-align:left">What happens</th><th style="text-align:right">Starts at</th></tr></thead><tbody>' +
           (rowsOf(P)[0].n > 1 ? '<tr><td></td><td>1–' + (rowsOf(P)[0].n - 1) + '</td><td class="muted">(nothing set: hold)</td><td style="text-align:right">' + T.clock(firstOne(P)) + '</td></tr>' : '') +
           rowsOf(P).map(function (x) { return '<tr><td>' + esc(x.music) + '</td><td>' + x.n + (x.to == null ? '–end' : x.to > x.n ? '–' + x.to : '') + '</td><td>' + (x.color ? '<span style="color:' + x.color + ';font-weight:700">' + esc(x.what) + '</span>' : esc(x.what)) + '</td><td style="text-align:right">' + T.clock(startOf(P, x.n)) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="muted">Give the groups and parts their 8-counts.</p>') + '</div>' : '') +
-        '<div class="card bow-card" style="border-left:8px solid #18233a"><b>Then: the Company bow</b>' +
-        '<div class="row"><label class="f grow" style="margin:0">A song everyone performs once they are on stage (optional)<select id="fin"><option value="">None: straight to the Company bow</option>' + O.songs.map(function (s) { return '<option value="' + s.id + '"' + (fin && s.id === fin.id ? ' selected' : '') + '>' + esc(s.title) + '</option>'; }).join('') + '</select></label></div>' +
-        '<label class="f">The Company bow, after it<input id="cnote" value="' + esc(P.company.note || '') + '"></label>' +
+        /* what comes after the bows (Colleen 2026-10-26: "this does not exactly reflect how i want this to run. the bows happen and then we roll into
+           the megamix"): the song right after the bow music, then an optional Company bow at the very end (P.endBow, off unless she turns it on) */
+        '<div class="card bow-card" style="border-left:8px solid #18233a"><b>Then: roll straight into ' + (fin ? esc(fin.title) : 'the next song') + '</b>' +
+        '<p class="muted small" style="margin:4px 0 8px">When the bow music ends, everyone is on stage and this starts right away.' + (fin && T.Megamix ? ' Its groups and sections: <a href="#/teacher/bows">Curtain call &amp; Megamix</a>.' : '') + '</p>' +
+        '<div class="row"><label class="f grow" style="margin:0">Right after the bows<select id="fin"><option value="">Nothing: the show ends with the bows</option>' + O.songs.map(function (s) { return '<option value="' + s.id + '"' + (fin && s.id === fin.id ? ' selected' : '') + '>' + esc(s.title) + '</option>'; }).join('') + '</select></label></div>' +
+        '<label class="switch"><span>A Company bow at the very end' + (fin ? ', after ' + esc(fin.title) : '') + '</span><input type="checkbox" id="cend"' + (P.endBow ? ' checked' : '') + '></label>' +
+        (!P.endBow ? '' : '<label class="f">The Company bow<input id="cnote" value="' + esc(P.company.note || '') + '"></label>' +
         '<label class="switch"><span>The crew (in blacks) joins the line for the Company bow</span><input type="checkbox" id="ccrew"' + (P.crew !== false ? ' checked' : '') + '></label>' +
-        (T.charById('trench') ? '<div class="switch"><span>The Trench Crew</span><div class="seg" id="ctr"><button type="button" data-tr="stage" aria-pressed="' + (P.trench !== 'pit') + '">Comes up for the Company bow</button><button type="button" data-tr="pit" aria-pressed="' + (P.trench === 'pit') + '">Bows from the pit</button></div></div>' : '') + '</div>' +
+        (T.charById('trench') ? '<div class="switch"><span>The Trench Crew</span><div class="seg" id="ctr"><button type="button" data-tr="stage" aria-pressed="' + (P.trench !== 'pit') + '">Comes up for the Company bow</button><button type="button" data-tr="pit" aria-pressed="' + (P.trench === 'pit') + '">Bows from the pit</button></div></div>' : '')) + '</div>' +
         '<div class="dock"><div class="in"><button class="btn quiet" id="reset">Back to the suggested groups</button><button class="btn primary" id="sv" data-save>Save</button></div></div>';
       var keep = function () {
         app.querySelectorAll('.bow-card[data-g]').forEach(function (el) {
@@ -402,7 +407,8 @@
         if (c0.ones && !(c0.fit && (P.counts.bpm !== +c0.bpm || Math.abs(P.counts.first - (+c0.first || 0)) > 0.05))) P.counts.ones = c0.ones;
         if (c0.fit && (P.counts.bpm !== +c0.bpm || Math.abs(P.counts.first - (+c0.first || 0)) > 0.05)) delete P.counts.fit;      // changed by hand: a plain steady 8
         P.parts = Array.from(app.querySelectorAll('[data-part]')).map(function (el) { var v = function (k) { return el.querySelector('[data-pk="' + k + '"]').value.trim(); }; var n = Math.round(+v('eight')); return { eight: n > 0 ? n : null, music: v('music').slice(0, 60), what: v('what').slice(0, 120) }; }).filter(function (x) { return x.eight || x.what; });
-        P.finale = document.getElementById('fin').value; P.company.note = document.getElementById('cnote').value.trim(); P.crew = document.getElementById('ccrew').checked;
+        P.finale = document.getElementById('fin').value; P.endBow = document.getElementById('cend').checked;
+        if (document.getElementById('cnote')) { P.company.note = document.getElementById('cnote').value.trim(); P.crew = document.getElementById('ccrew').checked; }
       };
       var $ = function (id) { return document.getElementById(id); };
       /* listen to the bow music here: play / pause, back 10 s, drag to any moment; shows the 8-count while it plays */
@@ -454,6 +460,7 @@
       $('addp').onclick = function () { keep(); var last = rowsOf(P).slice(-1)[0]; (P.parts = P.parts || []).push({ eight: last ? (last.n + 4) : 1, music: '', what: '' }); draw(); };
       app.querySelectorAll('[data-pdel]').forEach(function (b) { b.onclick = function () { keep(); P.parts.splice(+b.dataset.pdel, 1); draw(); }; });
       app.querySelectorAll('[data-pk="eight"]').forEach(function (x) { x.onchange = function () { keep(); draw(); }; });
+      $('fin').onchange = $('cend').onchange = function () { keep(); draw(); };      // the card's title and its Company bow fields follow
       $('addg').onclick = function () { keep(); P.groups.push({ id: uid(), name: 'New group', chars: [], cast: [], at: null, from: sideFor(P.groups.length), row: ROWS[0], note: '' }); draw(); };
       $('sv').onclick = function () { keep(); T.show.curtain = P; T.saveShow('Curtain call saved'); };
       /* Rehearse plays the saved plan: save what is on the page first, so it is what plays */
@@ -644,8 +651,8 @@
   }
   function runPage() {
     T.setBar('Rehearse the bows', '#/teacher/curtain');
-    var fin = finaleSong();
-    app.innerHTML = '<div class="card noprint"><h2>' + sym('🌟') + 'Rehearse the bows</h2><p class="muted">Put this on the projector. The bow music plays; four seconds before each group goes, a soft chime, and when it is their turn a bell and a big GO in the group’s color. ' + (fin ? 'Once everyone is on stage: ' + esc(fin.title) + ', then the Company bow.' : 'Once everyone is on stage: the Company bow.') + '</p></div><div id="bhost"></div>' +
+    var fin = finaleSong(), P0 = plan();
+    app.innerHTML = '<div class="card noprint"><h2>' + sym('🌟') + 'Rehearse the bows</h2><p class="muted">Put this on the projector. The bow music plays; four seconds before each group goes, a soft chime, and when it is their turn a bell and a big GO in the group’s color. ' + (fin ? 'When the bow music ends, roll straight into ' + esc(fin.title) + '.' : '') + (P0.endBow ? ' At the very end, the Company bow.' : '') + '</p></div><div id="bhost"></div>' +
       (fin ? '<p class="center" style="margin-top:12px"><a class="btn" href="#/song/' + fin.id + '">' + sym('🎵') + 'Then: ' + esc(fin.title) + '</a></p>' : '');
     player(document.getElementById('bhost'), { starts: true });
   }
@@ -664,8 +671,8 @@
       '<div><span class="bow-n">2</span><b>Run on from</b><br>' + esc(mySide(g, me)) + '</div>' +
       '<div><span class="bow-n">3</span><b>Bow, then stand in the</b><br>' + esc(g.row) + '</div>' +
       after.map(function (x, k) { return '<div><span class="bow-n">' + (4 + k) + '</span><b>8-count ' + x.n + (x.music ? ': ' + esc(x.music) : '') + '</b><br>' + esc(x.what) + '</div>'; }).join('') +
-      (fin ? '<div><span class="bow-n">' + (4 + after.length) + '</span><b>Then everyone performs</b><br>' + esc(fin.title) + '</div>' : '') +
-      '<div><span class="bow-n">' + (4 + after.length + (fin ? 1 : 0)) + '</span><b>Company bow</b><br>' + esc(P.company.note || 'everyone bows together') + '</div></div>' +
+      (fin ? '<div><span class="bow-n">' + (4 + after.length) + '</span><b>Roll straight into</b><br>' + esc(fin.title) + (T.Megamix ? ' (your sections are below)' : '') + '</div>' : '') +
+      (P.endBow ? '<div><span class="bow-n">' + (4 + after.length + (fin ? 1 : 0)) + '</span><b>Company bow</b><br>' + esc(P.company.note || 'everyone bows together') + '</div>' : '') + '</div>' +
       (g.note ? '<p class="card" style="background:var(--hi);margin-top:10px">' + sym('📌') + esc(g.note) + '</p>' : '') +
       '<h3 style="margin-top:14px">You bow with</h3><div class="row" style="flex-wrap:wrap">' + (others.length ? others.map(function (m) { var sd = sideOfMember(g, m), diff = sd !== mySide(g, me) ? ' <span class="muted small">from ' + esc(sd.toLowerCase()) + '</span>' : ''; return (m.a ? '<span class="chip">' + T.face(m.a, 28) + ' ' + esc(m.name) + '</span>' : T.chip(m.c)) + diff; }).join(' ') : '<span class="muted">just you</span>') + '</div>' +
       '<p class="muted small" style="margin-top:10px">Before you: ' + (gi ? P.groups.slice(0, gi).map(function (x) { return esc(x.name); }).join(' · ') : 'nobody, your group goes first!') + '</p></div>' +
