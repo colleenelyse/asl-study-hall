@@ -116,6 +116,7 @@ td small, .small { display: block; color: var(--soft); font-size: 12px; }
 .tilepanel { margin-top: 12px; }
 @media (max-width: 560px) { .stepb .l { font-size: 12px; } .stepb .n { width: 36px; height: 36px; font-size: 17px; } .steps { gap: 6px; } .stiles { grid-template-columns: 1fr 1fr; } .ckrow { flex-wrap: wrap; } }
 .basehint { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--brand-soft); color: var(--ink); font-size: 13px; }
+.signsteps { margin: 0; padding-left: 24px; font-size: 17px; } .signsteps li { margin: 0 0 8px; }
 .welrow { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); } .welicon { font-size: 24px; line-height: 1.2; }
 .codebanner { border: 2px solid var(--up); background: var(--up-soft); font-size: 17px; }
 .acode { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 1.1em; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; letter-spacing: .04em; }
@@ -431,7 +432,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.98';
+var VERSION = '1.99';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -4166,7 +4167,7 @@ window.addEventListener('beforeunload', function (e) { if (DIRTY) { e.preventDef
 
 /* ---------- start ---------- */
 call('api_boot').then(function (b) {
-  if (b.error === 'signin') { $('main').innerHTML = '<div class="card empty">Please open this link while signed in to your school Google account.</div>'; return; }
+  if (b.error === 'signin') { $('main').innerHTML = signinHelp(); return; }
   B = withCheck(b); D = b.data || emptyD(); if (b.td) TD = b.td;
   var wk = 'Work with my ' + (b.dayClass || 'resource') + ' teacher on it'; if (ACTIONS.indexOf(wk) < 0) ACTIONS.splice(3, 0, wk);          // a low grade's plan
   $('brand').textContent = b.app; document.title = b.app;
@@ -6039,7 +6040,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
@@ -7180,16 +7181,30 @@ function calcKey(i) {
 }
 function calcLive() { var v = $('calcIn').value.trim(), o = $('calcOut'); if (!v) { o.innerHTML = '&nbsp;'; return; } try { o.innerHTML = '<span class="small">= ' + esc(String(calcEval(v, CALC.deg, CALC.ans))) + '</span>'; } catch (e) { o.innerHTML = '&nbsp;'; } }
 function calcHist() { var h = $('calcHist'); if (!h) return; h.innerHTML = CALC.hist.length ? '<div class="small" style="margin-top:10px"><b>Recent</b> (tap to use again)</div>' + CALC.hist.map(function (x, k) { return '<button class="btn link small calch" onclick="$(\'calcIn\').value=CALC.hist[' + k + '][0];calcLive()">' + esc(x[0]) + ' = <b>' + esc(String(x[1])) + '</b></button>'; }).join('') : ''; }
+/* ---------- 🔑 sign-in help (1.99) ---------- */
+// The app can't tell who you are (usually more than one Google account is signed in). A personal account never reaches this:
+// Google blocks it first with its own page, which is why the steps also live at asl.cool/resource/signin.html (teacher: 🔑 Sign-in help).
+var SIGNIN_URL = 'https:' + '/' + '/asl.cool/resource/signin.html';
+function signinHelp() {
+  return '<div class="card" style="max-width:640px;margin:20px auto;border:2px solid var(--brand)"><h1 style="margin:0 0 6px">🔑 Use your school account</h1>' +
+    '<p style="margin:0 0 12px">This app only works with your <b>school</b> Google account (your <b>@d204.lths.net</b> email).</p>' +
+    '<ol class="signsteps"><li>Look at the <b>top right corner</b> of Chrome and click your <b>picture or letter</b>.</li>' +
+    '<li>Click your <b>school email</b> in the list. Not there? Click <b>Add</b> and sign in with your school email and password.</li>' +
+    '<li>In that window, open the link again from <b>Google Classroom</b>.</li></ol>' +
+    '<p class="small" style="margin:10px 0 0">💡 Quick fix: press <b>Ctrl + Shift + N</b> for a private window, paste the link there, and sign in with only your school account.</p>' +
+    '<div class="row" style="margin-top:14px"><a class="btn primary" target="_blank" href="' + SIGNIN_URL + '">More help (Chromebook, phone)</a><span class="small" style="display:inline">Still stuck? Raise your hand and show your teacher this screen.</span></div></div>';
+}
 /* ---------- 👋 the one-time welcome for teachers (1.98) ---------- */
 function welcomeOpen() {
   if ($('welModal')) return;
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'welModal';
   var item = function (icon, title, text) { return '<div class="welrow"><span class="welicon">' + icon + '</span><div><b>' + title + '</b><div class="small">' + text + '</div></div></div>'; };
   var dc = esc(B.dayClass || 'resource');
-  el.innerHTML = '<div class="card" style="max-width:600px"><h2 style="font-size:22px">👋 Welcome to ' + esc(B.app || 'Resource Check-In') + '</h2><p class="small" style="margin:2px 0 12px">Six things to know. You can open this again any time with 👋 Welcome tips on the Overview.</p>' +
+  el.innerHTML = '<div class="card" style="max-width:600px"><h2 style="font-size:22px">👋 Welcome to ' + esc(B.app || 'Resource Check-In') + '</h2><p class="small" style="margin:2px 0 12px">Seven things to know. You can open this again any time with 👋 Welcome tips on the Overview.</p>' +
     item('📱', 'Your students open the same link every day', 'They answer the question of the day, write their plan for ' + dc + ', do the checklist and an exit ticket. On grade check day they enter their grades first.') +
     item('🏠', 'This page is the Overview', 'Everyone at a glance: today’s plans, grades and drops, missing work, IEP dates. Click a name to open that student’s page.') +
     item('📽️', 'Practice page', 'Show students how it works on the projector before they start. Nothing in it is saved.') +
+    item('🔑', 'Sign-in help', 'A student sees “You need access” or can’t get in? They’re using a personal Google account. Project 🔑 Sign-in help (on the Overview) for the steps to switch.') +
     item('📬', 'Tests & codes', 'Log tests from your mailbox and access codes teachers email you. Release a code when the student is ready to begin.') +
     item('📊', 'Make today a grade check day', 'Any day you want everyone to enter their grades (on the Overview).') +
     item('⚙️', 'Settings', 'Turn each part on or off, and pick your grade check day.') +
