@@ -125,6 +125,7 @@
   var listenFor = function (P, i) {
     var g = P.groups[i];
     if (eightSec(P) && g && g.eights != null && g.eights !== '') return 'on 8-count ' + startN(g) + ' (about ' + T.clock(timeOf(g, P)) + ' into the song)';
+    if (g && g.at != null) { var ea = eightAt(P, g.at); return 'at ' + T.clock(g.at) + ' into the song' + (ea ? ' (8-count ' + ea.n + ', count ' + ea.beat + ')' : ''); }      // a tapped time
     return i === 0 ? 'the bow music starts' : P.groups[i - 1].name + ' bow and step back';
   };
 
@@ -179,10 +180,14 @@
       var t = A.time();
       $('btm').textContent = T.clock(t); counterDraw(host, P, t);
       cues.forEach(function (c) {
-        if (!readied[c.i] && t >= c.t - 4 && t < c.t) { readied[c.i] = 1; if (chimes()) READY(); }
+        /* a yellow GET READY 3 seconds before (Colleen 2026-10-25: "put up a 'get ready' yellow screen 3 seconds before that") */
+        if (t >= c.t - 3 && t < c.t) {
+          if (!readied[c.i]) { readied[c.i] = 1; if (chimes()) READY(); }
+          var gr = $('bgo'); gr.hidden = false; gr.style.background = '#f2c200'; gr.style.color = '#1d1a2e'; gr.innerHTML = '<div>GET READY</div><div class="bow-go-who">' + esc(c.label) + ' · ' + Math.ceil(c.t - t) + '</div><div class="bow-go-from">from ' + esc(c.from) + '</div>';
+        }
         if (!fired[c.i] && t >= c.t && t < c.t + 3) {
           fired[c.i] = 1; if (chimes()) GO();
-          var go = $('bgo'); go.hidden = false; go.style.background = c.color; go.innerHTML = '<div>GO!</div><div class="bow-go-who">' + esc(c.label) + '</div><div class="bow-go-from">from ' + esc(c.from) + '</div>';
+          var go = $('bgo'); go.hidden = false; go.style.background = c.color; go.style.color = '#fff'; go.innerHTML = '<div>GO!</div><div class="bow-go-who">' + esc(c.label) + '</div><div class="bow-go-from">from ' + esc(c.from) + '</div>';
           setTimeout(function () { if ($('bgo')) $('bgo').hidden = true; }, 3000);
         }
       });
@@ -230,11 +235,11 @@
         '<label class="f" style="margin:0">Count 1 of the first 8 is at<input id="cfirst" value="' + fmt(P.counts && P.counts.first != null ? P.counts.first : 0) + '" style="width:90px"></label>' +
         (mu ? '<button class="btn" id="tapbeat">' + sym('👏') + 'Tap the beat while it plays</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count = ' + e8.toFixed(2) + ' seconds.' : 'Set the tempo to give each group a number of 8-counts.') + '</span></div>' +
         '<label class="switch" style="border:0;margin-top:6px"><span>Show the 8-counts on the screen when they practice: a big “8-count 7” and 1 to 8 lighting up <span class="muted small">(each device can also switch it)</span></span><input type="checkbox" id="cshow"' + (P.counts && P.counts.show ? ' checked' : '') + '></label></div>' +
-        '<div class="row" style="margin-top:8px">' + (mu ? (e8 ? '' : '<button class="btn primary" id="taps">' + sym('⏱') + 'Set the times while it plays</button>') + '<button class="btn" id="even">Spread them evenly</button>' : '') + '<a class="btn" href="#/teacher/curtain/run">' + icon('play') + 'Rehearse the bows</a><button class="btn quiet" onclick="print()">' + icon('print') + 'Print the bow plan</button></div><p class="muted small" id="tapmsg"></p></div>' +
+        '<div class="row" style="margin-top:8px">' + (mu ? '<button class="btn primary" id="taps">' + sym('⏱') + 'Tap the run-on times while it plays</button><button class="btn" id="even">Spread them evenly</button>' : '') + '<a class="btn" href="#/teacher/curtain/run">' + icon('play') + 'Rehearse the bows</a><button class="btn quiet" onclick="print()">' + icon('print') + 'Print the bow plan</button></div><p class="muted small" id="tapmsg"></p></div>' +
         P.groups.map(function (g, i) {
           return '<div class="card bow-card" data-g="' + i + '" style="border-left:8px solid ' + COLORS[i % COLORS.length] + '"><div class="row"><b>Group ' + (i + 1) + '</b><input data-k="name" value="' + esc(g.name) + '" class="grow" aria-label="Group name">' +
             '<button class="btn small quiet" data-up="' + i + '"' + (i ? '' : ' disabled') + ' aria-label="Earlier">↑</button><button class="btn small quiet" data-down="' + i + '"' + (i < P.groups.length - 1 ? '' : ' disabled') + ' aria-label="Later">↓</button><button class="btn small quiet" data-del="' + i + '">Remove</button></div>' +
-            '<div class="row">' + (e8 ? '<label class="f" style="margin:0">Starts on 8-count<span class="row" style="gap:4px"><button type="button" class="btn small" data-e8="' + i + '|-1" aria-label="One 8-count earlier">−</button><input data-k="eights" inputmode="numeric" value="' + (startN(g) != null ? startN(g) : '') + '" style="width:64px"><button type="button" class="btn small" data-e8="' + i + '|1" aria-label="One 8-count later">+</button><span class="muted small">= ' + (timeOf(g, P) != null ? T.clock(timeOf(g, P)) : '–') + '</span></span></label>' :
+            '<div class="row">' + (e8 ? '<label class="f" style="margin:0">Starts on 8-count<span class="row" style="gap:4px"><button type="button" class="btn small" data-e8="' + i + '|-1" aria-label="One 8-count earlier">−</button><input data-k="eights" inputmode="numeric" value="' + (startN(g) != null ? startN(g) : '') + '" style="width:64px"><button type="button" class="btn small" data-e8="' + i + '|1" aria-label="One 8-count later">+</button><span class="muted small">= ' + (timeOf(g, P) != null ? T.clock(timeOf(g, P)) : '–') + '</span></span>' + (g.eights == null && g.at != null ? '<span class="small">Tapped: ' + fmt(g.at) + (eightAt(P, g.at) ? ' (8-count ' + eightAt(P, g.at).n + ', count ' + eightAt(P, g.at).beat + ')' : '') + '. Type an 8-count to use that instead.</span>' : '') + '</label>' :
               '<label class="f" style="margin:0">Goes at (in the bow music)<span class="row" style="gap:4px"><button type="button" class="btn small" data-nudge="' + i + '|-0.5" aria-label="Earlier">−</button><input data-k="at" value="' + fmt(g.at) + '" placeholder="0:00" style="width:80px"><button type="button" class="btn small" data-nudge="' + i + '|0.5" aria-label="Later">+</button></span></label>') +
             '<label class="f" style="margin:0">Music<input data-k="music" value="' + esc(g.music || '') + '" placeholder="e.g. Troy verse" style="width:140px"></label><label class="f" style="margin:0">Enters from' + sel('data-k="from"', FROM, g.from) + '</label><label class="f" style="margin:0">Stands' + sel('data-k="row"', ROWS, g.row) + '</label>' +
             '<label class="f grow" style="margin:0">Note for them<input data-k="note" value="' + esc(g.note || '') + '" placeholder="e.g. hands joined, bow on 3"></label></div>' +
@@ -329,11 +334,22 @@
         keep(); var A = loadAudio(mu, P), k = 0, m = $('tapmsg');
         var bar = document.createElement('div'); bar.className = 'dock'; bar.innerHTML = '<div class="in"><b id="tapwho"></b><span class="grow"></span><button class="btn primary lt-now" id="tapnow">Now</button><button class="btn" id="tapstop">Stop</button></div>';
         document.body.appendChild(bar);
-        var show = function () { var w = document.getElementById('tapwho'); if (w) w.textContent = k < P.groups.length ? 'Tap Now when Group ' + (k + 1) + ' (' + P.groups[k].name + ') should walk on' : 'All set.'; };
-        var end = function () { A.audio.pause(); bar.remove(); draw(); T.toast('Times set. Rehearse to check them, then Save.'); };
+        var show = function () { var w = document.getElementById('tapwho'); if (w) w.textContent = k < P.groups.length ? 'Tap Now (or Space) on the count when Group ' + (k + 1) + ' (' + P.groups[k].name + ') runs on' : 'All set.'; };
+        var end = function () { A.audio.pause(); bar.remove(); document.removeEventListener('keydown', key); draw(); T.toast('Times set. Rehearse to check them, then Save.'); };
         show(); m.textContent = 'Loading the music…';
         A.ready.then(function () { m.textContent = ''; A.seek(0); A.play(); });
-        document.getElementById('tapnow').onclick = function () { if (k >= P.groups.length) return end(); P.groups[k].at = +A.time().toFixed(1); k++; show(); if (k >= P.groups.length) setTimeout(end, 800); };
+        /* the moment she taps is count 1 of their run (Colleen 2026-10-25: "the time i select for the bow track will be the 1 count of the time they
+           should be running"); with a tempo it snaps to the nearest beat, and to the 8-count when it lands on a 1 */
+        var tapNow = function () {
+          if (k >= P.groups.length) return end();
+          var g = P.groups[k], t = A.time(), e = eightSec(P);
+          if (e) { var beat = e / 8, first = +P.counts.first || 0, b = Math.round((t - first) / beat); if (b >= 0 && b % 8 === 0) { g.eights = b / 8; g.at = null; } else { g.eights = null; g.at = +(first + b * beat).toFixed(2); } }
+          else { g.eights = null; g.at = +t.toFixed(1); }
+          k++; show(); if (k >= P.groups.length) setTimeout(end, 800);
+        };
+        document.getElementById('tapnow').onclick = tapNow;
+        var key = function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tapNow(); } };
+        document.addEventListener('keydown', key); T.cleanup.push(function () { document.removeEventListener('keydown', key); });
         document.getElementById('tapstop').onclick = end;
         T.cleanup.push(function () { bar.remove(); });
       };
@@ -371,21 +387,22 @@
       '<div class="card"><h3>' + sym('🔔') + 'Practice my bow</h3><p class="muted small">Listen to the song. A red X means not yet; GET READY counts you in; GO means run on now.</p><div id="bhost"></div>' +
 '</div>';
     countdown(document.getElementById('bhost'), gi);
+    if (T.Megamix && T.Megamix.practice && document.getElementById('mxhost')) T.Megamix.practice(document.getElementById('mxhost'), me);
   };
   /* the Megamix after the bows (js/megamix.js): which sections are mine, in order; the last one is everyone */
   function megamixCard(me) {
     if (!T.Megamix || !me) return '';
     var m = T.Megamix.mine(me); if (!m.sections.length) return '';
-    return '<div class="card"><h3>' + sym('🎶') + 'My Megamix</h3><p class="muted small">After the bows, the Company performs the Megamix in sections. Be on stage for yours; rest offstage for the others.</p><ol class="mx-mine">' +
-      m.sections.map(function (x, k) { var on = x.all || m.ks.indexOf(k) >= 0; return '<li class="' + (on ? 'on' : 'off') + '">' + (on ? '<b>' + esc(x.name) + '</b>' + (x.all ? ' <span class="muted small">(everyone)</span>' : '') : '<span class="muted">' + esc(x.name) + ': offstage</span>') + '</li>'; }).join('') + '</ol></div>';
+    return '<div class="card"><h3>' + sym('🎶') + 'My Megamix</h3><p class="muted small">' + (T.Megamix.words().away === 'Upstage' ? 'After the bows, the whole Company stays on stage for the Megamix. In your sections, come downstage and dance; in the others, stay upstage, clap on 2 and 4 and cheer them on.' : 'After the bows, the Company performs the Megamix in sections. Be on stage for yours; rest offstage for the others.') + '</p><ol class="mx-mine">' +
+      m.sections.map(function (x, k) { var on = x.all || m.ks.indexOf(k) >= 0; return '<li class="' + (on ? 'on' : 'off') + '">' + (on ? '<b>' + esc(x.name) + '</b>' + (x.all ? ' <span class="muted small">(everyone)</span>' : '') : '<span class="muted">' + esc(x.name) + ': ' + (T.Megamix.words().away === 'Upstage' ? 'upstage' : 'offstage') + '</span>') + '</li>'; }).join('') + '</ol><h4 style="margin:12px 0 6px">Practice my Megamix</h4><div id="mxhost"></div></div>';
   }
-  /* Practice my bow: the song plays with a countdown to my moment; a big red X until it is close, GET READY for the last 8 counts (counting
-     5 6 7 8 when the tempo is set), then a big green GO with a bell, then where to stand */
+  /* Practice my bow: the song plays with a countdown to my moment; a big red X until it is close, a yellow GET READY for the last 3 seconds
+     (3… 2… 1…), then a big green GO with a bell on count 1, then where to stand */
   function countdown(host, gi) {
     var P = plan(), mu = music(P), g = P.groups[gi], t0 = timeOf(g, P), e8 = eightSec(P), beat = e8 ? e8 / 8 : null;
     if (!mu) { host.innerHTML = '<p class="card">Your teacher has not picked the bow music yet.</p>'; return; }
     if (t0 == null) { host.innerHTML = '<p class="card">Your teacher has not set when your group goes yet.</p>'; return; }
-    var ready = e8 || 4, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {}, side = T.me ? mySide(g, T.me) : g.from;
+    var ready = 3, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {}, side = T.me ? mySide(g, T.me) : g.from;
     host.innerHTML = counterHTML + '<div class="bowcd wait" id="bcd" aria-live="polite"><div class="bowcd-x" aria-hidden="true">✕</div><div class="bowcd-big" id="bcdbig"></div><div class="bowcd-small" id="bcdsmall"></div></div>' +
       '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="round big" id="bcpl" aria-label="Play">' + icon('play') + '</button><button class="btn" id="bctop">From the top of the song</button><button class="btn" id="bcnear">Just before my turn</button><b id="bctm" class="lt-time">0:00</b>' +
       '<label class="switch" style="border:0"><span>🔔 Sounds</span><input type="checkbox" id="bcsnd" checked></label>' + counterSwitch(P) + '</div>';
@@ -401,7 +418,7 @@
         small.textContent = e8 && startN(g) ? 'You go on 8-count ' + startN(g) + ' · ' + n8 + ' to go' : e8 ? n8 + ' eight-counts to go' : 'until you run on';
       } else if (left > 0) {
         box.className = 'bowcd ready'; if (!said.r) { said.r = 1; if (snd()) READY(); }
-        big.textContent = 'GET READY'; small.textContent = beat ? 'count ' + Math.min(8, Math.max(1, Math.floor((ready - left) / beat) + 1)) + ' of 8' : Math.ceil(left) + '…';
+        big.textContent = 'GET READY'; small.textContent = Math.ceil(left) + '…';
       } else if (left > -3) {
         box.className = 'bowcd go'; if (!said.g) { said.g = 1; if (snd()) GO(); }
         big.textContent = 'GO!'; small.textContent = 'Run on from ' + side;

@@ -795,3 +795,4 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .mx-b.on { color: #fff; border-style: solid; }
 .mx-mine { margin: 6px 0 0; padding-left: 1.4em; line-height: 1.8; }
 .mx-mine li.on { font-size: 1.1rem; }
+.bowcd.clear { background: #d9822b; }
