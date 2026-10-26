@@ -1142,7 +1142,7 @@
           (stopsOn ? '<div class="lt-stops" id="stops"><span class="muted small">Play, and tap a line the moment its singing stops. Lines you skip keep the automatic end.</span></div>' : '') +
           '<div class="lt-next-words" id="ltnext"' + (stopsOn ? ' hidden' : '') + '>' + (nxt < 0 ? sym('✅') + 'Every line has a time. Use 🎯 Fix on a line to change it.' : '<span class="muted small">' + (fixAt != null ? (fixRun ? '⏩ Retiming · line ' + (nxt + 1) + ' (each Now sets the next line, to the end; Done fixing when you are finished)' : fixOld || !times[nxt] ? '🎯 Fixing · line ' + (nxt + 1) : '🎯 Line ' + (nxt + 1) + ' keeps its time. Tap Now only to redo it too, or press Done fixing') : 'Next to tap · line ' + (nxt + 1)) + '</span><br>' + esc(lines[nxt].text)) + '</div>' +
           slider() + '<div class="row lt-controls"><button class="round" id="pl" aria-label="Play">' + icon(audio.paused ? 'play' : 'pause') + '</button><button class="btn small" id="bk">Back 3 s</button><b id="tm" class="lt-time">' + T.clock(audio.currentTime) + '</b>' +
-          (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button><button class="btn primary" id="sv" data-save>Save</button></div>' +
+          (stopsOn ? '' : '<button class="btn primary lt-now" id="now"' + (nxt < 0 ? ' disabled' : '') + '>Now</button>') + '<button class="btn small' + (stopsOn ? ' primary' : '') + '" id="stopsb" title="Play the song and tap each line when its singing stops">✋ ' + (stopsOn ? 'Done setting stops' : 'Set the stops') + '</button>' + (fixAt != null ? '<button class="btn small" id="fixdone">Done fixing</button>' : '') + '<span class="grow"></span>' + undoBtn('undo1') + '<button class="btn small quiet" id="clr">Clear all timing</button>' + (lines.some(function (l) { return l.spoken; }) ? '<button class="btn small quiet" id="clrsung">Clear the sung lines</button><button class="btn small quiet" id="clrspk">Clear the spoken lines</button>' : '') + '<button class="btn primary" id="sv" data-save>Save</button></div>' +
         '</div></div>';
       var split = wide() && splitOn && T.Follow && T.Follow.canShow(songId);
       if (!split) app.innerHTML = H;
@@ -1169,6 +1169,16 @@
       if ($('now')) $('now').onclick = tap; $('find').onclick = find; $('addmiss').onclick = addMissing;
       $('stopsb').onclick = function () { stopsOn = !stopsOn; if (stopsOn) fixAt = null; draw(); };
       $('clr').onclick = function () { if (!confirm('Clear the timing of every line in this song? (↶ Undo brings it back.)')) return; snapshot(); fixAt = null; fixOld = null; times = lines.map(function () { return null; }); draw(); };
+      /* clear just one kind in one sweep (Colleen 2026-10-25: "a button to clear the timing from either all the lyrics or spoken lines all in one
+         swoop per song. i seem to have a few sets of song lines that are terribly misaligned"); then tap them again with Now */
+      var clearKind = function (spoken) {
+        var n = lines.filter(function (l, i) { return !!l.spoken === spoken && times[i]; }).length;
+        if (!n) { T.toast('No ' + (spoken ? 'spoken' : 'sung') + ' lines are timed in this song.'); return; }
+        if (!confirm('Clear the timing of the ' + n + ' ' + (spoken ? 'spoken' : 'sung') + ' line' + (n === 1 ? '' : 's') + ' in this song? The ' + (spoken ? 'sung' : 'spoken') + ' lines keep theirs. (↶ Undo brings it back.)')) return;
+        snapshot(); fixAt = null; fixOld = null; times = times.map(function (x, i) { return !!lines[i].spoken === spoken ? null : x; }); draw(); T.toast('Cleared. Tap them again with Now, then Save.', 5000);
+      };
+      if ($('clrsung')) $('clrsung').onclick = function () { clearKind(false); };
+      if ($('clrspk')) $('clrspk').onclick = function () { clearKind(true); };
       $('sv').onclick = function () {
         if (off == null) { T.toast('One moment: lining up the two tracks.'); return; }
         if (fixAt != null) endFix();
