@@ -250,6 +250,7 @@
       '<div class="card"><h2>' + sym('🔊') + 'Every line, ' + lines.length + ' in all</h2><p><b>' + rec + '</b> recorded by Company members · <b>' + tts + '</b> made with ElevenLabs · <b>' + none + '</b> use the device voice.</p>' +
       '<p class="muted small">Company members rehearse with a castmate’s recording first, then ElevenLabs, then the device voice. Company members record in Practice Lines › a scene › Record my lines.</p></div>' +
       '<div class="card">' + V.songSwitch() + '</div>' +
+      '<div class="card" id="coach"></div>' +
       '<div class="card"><h3>Company members’ recordings</h3><label class="switch"><span><b>Check recordings before others hear them</b><br><span class="muted small">Off: a recording is in everyone’s rehearsals right away, and you can take any one down here.</span></span><input type="checkbox" id="chk"' + (index.check ? ' checked' : '') + '></label>' +
       (pending.length ? pending.slice().reverse().slice(0, 80).map(function (p) {
         var l = byH[p.h];
@@ -269,6 +270,7 @@
     var $ = function (id) { return document.getElementById(id); };
     $('chk').onchange = function (e) { Store.setVoiceCheck(T.proof, e.target.checked).then(function () { T.toast(e.target.checked ? 'New recordings wait for your OK' : 'New recordings go live at once'); }); };
     V.wireSongSwitch(app, function () { page(index, pending); });
+    coach(document.getElementById('coach'), lines, cfg, function () { page(index, pending); });
     app.querySelectorAll('[data-play]').forEach(function (b) { b.onclick = function () { var x = b.dataset.play.split('|'); Store.getPending(T.key, T.proof, x[0], x[1]).then(function (buf) { new Audio(URL.createObjectURL(new Blob([buf]))).play(); }).catch(function (e) { T.toast(e.message); }); }; });
     app.querySelectorAll('[data-ok]').forEach(function (b) { b.onclick = function () { var x = b.dataset.ok.split('|'); Store.approve(T.proof, x[0], x[1]).then(T.teacherPages.voices); }; });
     app.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { if (!confirm('Take this recording down?')) return; var x = b.dataset.rm.split('|'); Store.reject(T.proof, x[0], x[1]).then(T.teacherPages.voices); }; });
@@ -385,6 +387,80 @@
   /* one line: its voice(s), its tone note (v3 only: other models would read the brackets out loud), a chorus mixed for group lines, saved sealed */
   /* exactly what is sent for a line, and what it costs (one credit a character, for each voice) */
   function sentText(l, cfg) { var tone = cfg.model === 'eleven_v3' ? withLevel(toneOf(l), bump(levelOf(l.h))) : ''; return (tone ? tone + ' ' : '') + T.pronounce(wordsOf(l)); }
+  /* ---------- Coach a name (Colleen 2026-10-25: "i still need to be able to coach voices to correctly pronounce 2 names in the show. i tried in the
+     built in phonetic filler but i can't get that to work") ----------
+     On Voices & recordings: type the name; the app finds a real line with it, suggests ways to spell it (each syllable stressed in turn, and
+     any she types, even sounds between slashes, which v3 can read), and says each in that line, in the speaker's own ElevenLabs voice. Use this
+     one saves the spelling (T.show.say, the same list T.pronounce uses for every line); then Remake every line with the name, in one go. */
+  function syllables(w) { var m = String(w).toLowerCase().match(/[^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy]))?/g); if (!m || m.join('') !== String(w).toLowerCase()) return [String(w).toLowerCase()]; if (m.length > 1 && /^[^aeiouy]+e$/.test(m[m.length - 1])) m[m.length - 2] += m.pop();      // a silent e (Zeke)
+    return m; }
+  function suggest(w) {
+    var syl = syllables(w), out = [];
+    if (syl.length > 1) syl.forEach(function (x, i) { out.push(syl.map(function (y, j) { return j === i ? y.toUpperCase() : y; }).join('-')); });
+    out.push(String(w));
+    return out.slice(0, 5);
+  }
+  var hasWord = function (text, w) { return new RegExp('(^|[^A-Za-z’\'])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[^A-Za-z])', 'i').test(String(text || '')); };
+  function coach(box, lines, cfg, redraw) {
+    if (!box) return;
+    var say = T.show.say = T.show.say || {}, base = T.O().say || {}, tries = [], busy = false;
+    var voiced = T.O().characters.filter(function (c) { return (cfg.voices || {})[c.id]; });
+    var known = Object.keys(base).concat(Object.keys(say)).filter(function (k, i, a) { return a.indexOf(k) === i && (say[k] != null ? say[k] : base[k]); });
+    var linesWith = function (w) { return w ? lines.filter(function (l) { return hasWord(wordsOf(l), w); }) : []; };
+    function draw(word) {
+      word = word || '';
+      var L = linesWith(word), ex = L[0], spk = ex ? T.labelChars(ex.it.who).filter(function (c) { return (cfg.voices || {})[c]; })[0] : null;
+      box.innerHTML = '<h3 style="margin-top:0">' + sym('🗣') + 'Coach a name</h3><p class="muted small">Type a name the voices say wrong. The app finds a line with it and says it a few ways in the real ElevenLabs voice. Pick the one that sounds right, then remake every line with it.</p>' +
+        (T.ls('xiKey') && voiced.length ? '' : '<p class="err small">Add your ElevenLabs key and tap Load my voices (below) on this computer first.</p>') +
+        '<div class="row" style="flex-wrap:wrap;align-items:flex-end"><label class="f grow" style="margin:0">Name<input id="cw" list="cwl" value="' + esc(word) + '" placeholder="e.g. Kratnoff"><datalist id="cwl">' + T.O().characters.map(function (c) { return '<option value="' + esc(c.short || c.name) + '">'; }).join('') + '</datalist></label><button class="btn" id="cfind">Find it</button></div>' +
+        (word ? (L.length ? '<p class="small">' + L.length + ' line' + (L.length === 1 ? '' : 's') + ' with “' + esc(word) + '”. Trying it in: <i>“' + esc(wordsOf(ex).slice(0, 140)) + '”</i></p>' : '<p class="small">No line says “' + esc(word) + '”. It will be tried in a short sentence.</p>') +
+          '<div class="row" style="flex-wrap:wrap"><label class="f" style="margin:0">Voice<select id="cv">' + voiced.map(function (c) { return '<option value="' + c.id + '"' + (c.id === spk ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select></label></div>' +
+          '<label class="f">Ways to say it <span class="muted small">(one per line: CAPITALS for the loud part, dashes between parts; or the sounds between slashes, like /ˈkrætnɔf/)</span><textarea id="csp" rows="4">' + esc((say[word] || base[word] ? [say[word] || base[word]] : []).concat(suggest(word)).filter(function (x, i, a) { return a.indexOf(x) === i; }).join('\n')) + '</textarea></label>' +
+          '<div class="row"><button class="btn primary" id="cgo">Hear each one</button><span class="muted small" id="cmsg">About ' + Math.max(30, (ex ? wordsOf(ex).length : 40)) + ' credits each.</span></div><div id="ctries"></div>' +
+          ((say[word] || base[word]) && L.length ? '<div class="row" style="margin-top:8px"><button class="btn" id="cremake">↻ Remake the ' + L.length + ' line' + (L.length === 1 ? '' : 's') + ' with “' + esc(word) + '”</button><span class="muted small">About ' + L.reduce(function (a, l) { return a + cost(l, cfg); }, 0).toLocaleString() + ' credits.</span></div>' : '') : '') +
+        (known.length ? '<p class="small" style="margin-top:10px"><b>Names already coached:</b> ' + known.map(function (k) { return '<button class="btn small quiet" data-cw="' + esc(k) + '">' + esc(k) + ' → ' + esc(say[k] != null ? say[k] : base[k]) + '</button>'; }).join(' ') + '</p>' : '');
+      var $b = function (sel) { return box.querySelector(sel); };
+      $b('#cfind').onclick = function () { tries = []; draw($b('#cw').value.trim()); };
+      $b('#cw').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); tries = []; draw($b('#cw').value.trim()); } };
+      box.querySelectorAll('[data-cw]').forEach(function (b) { b.onclick = function () { tries = []; draw(b.dataset.cw); }; });
+      if (!word) return;
+      showTries(word);
+      $b('#cgo').onclick = function () {
+        if (busy) return;
+        var sps = $b('#csp').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean), who = $b('#cv') && $b('#cv').value;
+        if (!sps.length) { $b('#cmsg').textContent = 'Type at least one way to say it.'; return; }
+        busy = true; tries = [];
+        var had = Object.prototype.hasOwnProperty.call(say, word), old = say[word];
+        sps.reduce(function (p, sp, i) {
+          return p.then(function () {
+            $b('#cmsg').textContent = 'Saying ' + (i + 1) + ' of ' + sps.length + '…';
+            say[word] = sp; var sent = T.pronounce(ex ? wordsOf(ex) : 'This is ' + word + '. I am so glad ' + word + ' is here.');      // exactly what a real line sends
+            if (had) say[word] = old; else delete say[word];
+            tries.push({ sp: sp, sent: sent, who: who }); showTries(word);
+            return V.tryWords(sent, who);
+          });
+        }, Promise.resolve()).then(function () { busy = false; $b('#cmsg').textContent = 'Tap ▶ to hear one again, then Use this one.'; }, function (e) { busy = false; if (had) say[word] = old; $b('#cmsg').textContent = e.message; });
+      };
+      var rm = $b('#cremake'); if (rm) rm.onclick = function () {
+        var todo = L.filter(function (l) { return voicesFor(l.it, cfg.voices).length; }), i = 0;
+        if (!todo.length) { T.toast('None of these lines has an ElevenLabs voice yet.'); return; }
+        if (!confirm('Make the ' + todo.length + ' line' + (todo.length === 1 ? '' : 's') + ' with “' + word + '” again, with the new way to say it? About ' + todo.reduce(function (a, l) { return a + cost(l, cfg); }, 0).toLocaleString() + ' credits.')) return;
+        rm.disabled = true;
+        (function next() {
+          if (i >= todo.length) { V.refresh().then(function () { T.toast('Remade ' + todo.length + ' line' + (todo.length === 1 ? '' : 's') + '. Listen to them below (filter: Made, not listened to).', 7000); redraw(); }); return; }
+          rm.textContent = 'Making ' + (i + 1) + ' of ' + todo.length + '…';
+          makeLine(todo[i], cfg).then(function () { i++; next(); }, function (e) { rm.disabled = false; rm.textContent = '↻ Try again'; T.toast(e.message, 7000); });
+        })();
+      };
+    }
+    function showTries(word) {
+      var out = box.querySelector('#ctries'); if (!out) return;
+      out.innerHTML = tries.map(function (t, i) { return '<div class="switch" style="flex-wrap:wrap"><span class="grow"><b>' + esc(t.sp) + '</b></span><button class="btn small" data-ag="' + i + '">▶ Again</button><button class="btn small primary" data-use="' + i + '">Use this one</button></div>'; }).join('');
+      out.querySelectorAll('[data-ag]').forEach(function (b) { b.onclick = function () { var t = tries[+b.dataset.ag]; b.disabled = true; V.tryWords(t.sent, t.who).then(function () { b.disabled = false; }, function (e) { b.disabled = false; T.toast(e.message, 6000); }); }; });
+      out.querySelectorAll('[data-use]').forEach(function (b) { b.onclick = function () { var t = tries[+b.dataset.use]; say[word] = t.sp; T.saveShow('“' + word + '” will be said as “' + t.sp + '”').then(function () { tries = []; draw(word); T.toast('Saved. Now remake its lines.', 5000); }); }; });
+    }
+    draw('');
+  }
   function cost(l, cfg) { var n = sentText(l, cfg).length * Math.max(1, voicesFor(l.it, cfg.voices).length); return cfg.model === 'eleven_flash_v2_5' ? Math.ceil(n / 2) : n; }
   function makeLine(l, cfg) {
     var lvl = levelOf(l.h), vids = voicesFor(l.it, cfg.voices), text = sentText(l, cfg);
