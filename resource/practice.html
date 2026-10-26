@@ -432,7 +432,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '1.99';
+var VERSION = '2.00';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -581,6 +581,7 @@ var DEFAULTS = [
   ['Students: paste schedule from Infinite Campus', 'Yes', 'Students can fill in their schedule by pasting the Infinite Campus Schedule page.'],
   ['Students: can change their schedule', 'Yes', 'The My schedule page. No: after their first visit, only the teacher changes schedules (the January check still happens).'],
   ['Students: tests with my teacher', 'Yes', 'Students can tell you “I’m waiting for a test” or “I have a test in the folder”, and see tests you logged and access codes you released (📬 Tests & codes page).'],
+  ['Students: grades only from pasted pages', 'Yes', 'Students enter grades only by pasting each class’s detailed Grades page from Infinite Campus (it carries the missing and late work). Typing a grade, and pasting the summary page with one grade per class, are turned off. Teachers can still enter grades for a student.'],
   ['Students: calculator', 'Yes', 'A 🧮 Calculator in the students’ menu (parentheses, exponents, square roots, sin/cos/tan, log, π and more). It opens over any page.'],
   ['Students: tests and reminders page', 'Yes', 'Students list upcoming tests and projects (and see their retakes).'],
   ['Students: their own email reminders', 'Yes', 'Students can set email reminders for themselves.'],
@@ -602,7 +603,7 @@ var SETTING_UI = {
   'Students: tips to spot patterns': ['Each week, students…', 'yesno'], 'Common accommodations': ['Goals and daily checklist', 'text'], 'Students: see My goal': ['Goals and daily checklist', 'yesno'], 'IEP benchmarks': ['Goals and daily checklist', 'yesno'], 'Case managers: see their students': ['Class setup', 'yesno'], 'Weekly summary email (Fridays)': ['Class setup', 'yesno'], 'Weekly summary goes to': ['Class setup', 'list'], 'Students: daily plan for class time': ['Goals and daily checklist', 'yesno'], 'What students call this class': ['Goals and daily checklist', 'text'], 'Nothing-to-do checklist': ['Goals and daily checklist', 'text'], 'Grade check day': ['Each week, students…', 'choice', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'None']], 'Students: semester grade goals': ['Each week, students…', 'yesno'], 'Students: my support team': ['Each week, students…', 'yesno'], 'Assistant principals': ['Class setup', 'text'], 'Students: My week page': ['Each week, students…', 'yesno'], 'Students: wins': ['Each week, students…', 'yesno'], 'Students: see their IEP meeting': ['Goals and daily checklist', 'yesno'], 'IEP date reminders (days before)': ['Goals and daily checklist', 'text'], 'Progress report dates': ['Class setup', 'dates'], 'Students: project planner': ['Each week, students…', 'yesno'], 'Students: final exam notes': ['Each week, students…', 'yesno'], 'Students: see their benchmarks': ['Goals and daily checklist', 'yesno'], 'Test may be coming after (school days)': ['Each week, students…', 'number'], 'Students: what I need help with': ['Each week, students…', 'yesno'],
   'Paste grades from Infinite Campus': ['Infinite Campus', 'yesno'], 'Students: paste schedule from Infinite Campus': ['Infinite Campus', 'yesno'],
   'Class grade analysis': ['Infinite Campus', 'yesno'], 'Students: detailed grades every week': ['Infinite Campus', 'yesno'], 'Retake: coursework turned in on time': ['Infinite Campus', 'number'], 'Suggest retakes for tests under': ['Infinite Campus', 'number'],
-  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: calculator': ['Pages and tools', 'yesno'], 'Students: tests with my teacher': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
+  'Students: tests and reminders page': ['Pages and tools', 'yesno'], 'Students: calculator': ['Pages and tools', 'yesno'], 'Students: grades only from pasted pages': ['Infinite Campus', 'yesno'], 'Students: tests with my teacher': ['Pages and tools', 'yesno'], 'Students: their own email reminders': ['Pages and tools', 'yesno'],
   'Test reminder emails': ['Pages and tools', 'text'], 'Students: my progress page': ['Pages and tools', 'yesno'], 'Students: can change their schedule': ['Pages and tools', 'yesno'],
   'Students: choose fonts and colors': ['Look', 'yesno'],
   'Default colors': ['Look', 'choice', ['auto', 'classic', 'calm', 'night', 'contrast', 'neon', 'pastelnight', 'ocean', 'sunset', 'candy']],
@@ -1048,8 +1049,16 @@ function api_saveCheckin(c) {
     if (c.grades) {
       var gs = sheet_('Grades'), rows = rows_('Grades'), at = {}, low = settings_().low, lows = c.lows || {}, miss = c.missing || {}, cps = c.cplans || null;
       rows.forEach(function (r, i) { if (day_(r[0]) === week && low_(r[1]) === email) at[String(r[2])] = i + 2; });
+      var only = settings_().f.pasteOnly, pasted = only ? pastedThisWeek_(email, week) : {};
       Object.keys(c.grades).forEach(function (cls) {
         var g = grade_(c.grades[cls]), x = lows[cls] || {}, why = '', acts = '', more = '';
+        if (only) {          // 2.00: the grade and missing work come from the class's pasted page, never from typing
+          var pg = pasted[cls], was = at[cls] ? rows[at[cls] - 2] : null;
+          if (pg) { g = pg.grade; miss[cls] = { n: String(pg.missing.length), list: pg.missing.join(', ') }; }
+          else if (was && g === grade_(was[3])) { if (!miss[cls]) miss[cls] = null; }          // unchanged (the teacher entered it, or an earlier paste)
+          else if (g !== '') throw new Error('Paste ' + cls + '’s detailed Grades page from Infinite Campus to update its grade.');
+          if (miss[cls] === null) delete miss[cls];
+        }
         if (g !== '' && g < low && settings_().f.lowWhy) {          // a D or F: a short reason and a plan are required
           why = clean_(x.why, 500); acts = (x.actions || []).map(function (a) { return clean_(a, 80); }).filter(String).join(', '); more = clean_(x.details, 500);
           if (!why) throw new Error('Your ' + cls + ' grade is under ' + low + '%. Please explain why it is low.');
@@ -1263,7 +1272,21 @@ function api_savePhoto(email, data) {
 // summary (optional): { grade, missing: 'a; b', onTime, total } from the same analysis, kept so the next visit can still use it.
 function api_saveRetakes(cls, list, summary) {
   var email = need_();
-  return locked_(function () { return saveRetakes_(email, cls, list, summary); });
+  return locked_(function () { var r = saveRetakes_(email, cls, list, summary); if (settings_().f.pasteOnly) pastedGrade_(email, clean_(cls, 60), summary); return r; });
+}
+// 2.00: grades only from each class's detailed page. Pasting it saves this week's grade and missing work right away (the student
+// still explains a low grade and saves); api_saveCheckin takes grades only from a page pasted this week. Call inside locked_.
+function pastedGrade_(email, cls, summary) {
+  var g = summary ? grade_(summary.grade) : ''; if (g === '' || !cls) return;
+  var week = weekOf_(today_()), now = stamp_(), miss = String(summary.missing || '').split('; ').filter(String), gs = sheet_('Grades'), rows = rows_('Grades');
+  var i = find_(rows, function (r) { return day_(r[0]) === week && low_(r[1]) === email && String(r[2]) === cls; });
+  if (i >= 0) { gs.getRange(i + 2, 4, 1, 2).setValues([[g, now]]); gs.getRange(i + 2, 9, 1, 2).setValues([[miss.length, miss.join(', ').slice(0, 500)]]); gs.getRange(i + 2, 12).setValue(''); }
+  else gs.appendRow([week, email, cls, g, now, '', '', '', miss.length, miss.join(', ').slice(0, 500), '', '']);
+  if (ROWS_MEMO) delete ROWS_MEMO['Grades'];
+}
+function pastedThisWeek_(email, week) {
+  var o = {}; rows_('Class analysis').forEach(function (r) { if (low_(r[0]) === email && day_(r[2]) >= week) o[String(r[1])] = { grade: grade_(r[3]), missing: String(r[4] || '').split('; ').filter(String) }; });
+  return o;
 }
 // Saves one class's analysis (Class analysis tab, Assignment history) and its retake list. Call inside locked_.
 function saveRetakes_(email, cls, list, summary) {
@@ -3741,7 +3764,7 @@ function settings_() {
     f: { missing: on('Students: missing assignments'), lowWhy: on('Students: explain low grades'), focus: on('Students: what to focus on'),
       lookBack: on('Students: look back at last week'), plan: on('Students: plan for resource time'), help: on('Students: what I need help with'),
       schedPaste: on('Students: paste schedule from Infinite Campus'), editSchedule: on('Students: can change their schedule'),
-      tests: on('Students: tests and reminders page'), calc: on('Students: calculator'), tc: on('Students: tests with my teacher'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
+      tests: on('Students: tests and reminders page'), calc: on('Students: calculator'), pasteOnly: on('Students: grades only from pasted pages'), tc: on('Students: tests with my teacher'), testSoon: on('Students: test may be coming'), look: on('Students: choose fonts and colors'), cplan: on('Students: plan for each class'), checklist: on('Students: daily checklist'), myGoal: on('Students: see My goal'), bench: on('IEP benchmarks'), poll: on('Students: question of the day'), cm: on('Case managers: see their students'), dayPlan: on('Students: daily plan for class time'), gradeGoals: on('Students: semester grade goals'), planner: on('Students: break up projects') && on('Students: project planner'), myWeek: on('Students: My week page'), team: on('Students: my support team'), wins: on('Students: wins'), iepStu: on('Students: see their IEP meeting'), finals: on('Students: final exam notes'), weeklyDetail: on('Students: detailed grades every week'), benchStu: on('IEP benchmarks') && on('Students: see their benchmarks'), focus: on('Students: focus timer'), accoms: on('Students: log accommodations'),
       missList: on('Students: missing assignments list'), talk: on('Students: talking with teachers question'), grad: on('Students: graduation warnings'),
       coteach: on('Students: co-teacher reminder'), tips: on('Students: tips to spot patterns'),
       freeTime: on('Students: free time page'), projects: on('Students: break up projects'), exit: on('Students: exit ticket'), reminders: on('Students: their own email reminders'), progress: on('Students: my progress page') }
@@ -3924,6 +3947,8 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   var g = installGas({ owner: 'ray@d204.lths.net', active: 'ray@d204.lths.net', tz: 'America/Chicago' });
   window.__g = g;
   setupSheet();
+  var PASTE = function (v) { g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Students: grades only from pasted pages') r[1] = v; }); };
+  PASTE('No');          // the sample data types its grades; the rule is turned on below
   if (/offs=1/.test(location.search)) g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (/^Students: (missing assignments|look back|plan for resource)/.test(r[0])) r[1] = 'No'; });
   g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Class grade analysis') r[1] = 'Yes'; });
   if (/nobday/.test(location.search)) g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Birthday celebration') r[1] = 'No'; });
@@ -4006,6 +4031,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/demo=1/.test(location.search) && !/poll=1/.test(location.search)) [['smi513421@d204.lths.net', 0], ['ort123456@d204.lths.net', 1], ['wil501777@d204.lths.net', 0]].forEach(function (x) {          // the sample students already answered today's question
     g.setUser(x[0]); var p = pollToday_(today_()); if (p) api_answerPoll(p.choices[x[1]] || 'Chips and salsa');
   });
+  PASTE(/typing=1/.test(location.search) ? 'No' : 'Yes');
   if (/nowel/.test(location.search)) { g.setUser('ray@d204.lths.net'); api_welcomeDone(); }          // screenshots: no welcome box
   g.setUser({ teacher: 'ray@d204.lths.net', jane: 'smi513421@d204.lths.net', ort: 'ort123456@d204.lths.net', dev: 'wil501777@d204.lths.net', new: 'new500100@d204.lths.net', cm: 'rbergman@lths.net' }[as] || 'ray@d204.lths.net');
   g.clearCache && g.clearCache();
@@ -4247,8 +4273,8 @@ function drawProfile() {
     '<label style="display:block"><span class="small"><b>My grade</b></span><select id="pfG" style="max-width:200px" onchange="pfAp()"><option value="">Pick your grade</option>' + [9, 10, 11, 12].map(function (g) { return '<option value="' + g + '"' + (g === gr ? ' selected' : '') + '>' + g + 'th grade</option>'; }).join('') + '</select></label>' +
     '<p class="small" id="pfAp" style="margin:4px 0 0"></p>' +
     '<div style="margin-top:14px"><b>My counselor</b> <span class="small" style="display:inline">(helps you choose classes for next year, and helps with problems with a teacher)</span><div id="pfCo"></div>' +
-      '<div class="row" id="pfCm" style="gap:10px;margin-top:6px;display:none"><label class="grow"><span class="small">Their name</span><input type="text" id="pfC" maxlength="80" value="' + esc(p.counselor || '') + '" placeholder="First and last name" oninput="$(\'pfCE\').value=guessEmail(this.value)"></label>' +
-      '<label class="grow"><span class="small">Their email</span><input type="text" id="pfCE" maxlength="120" value="' + esc(p.counselorEmail || '') + '"></label></div></div>' +
+      '<input type="hidden" id="pfC" value="' + esc(p.counselor || '') + '"><input type="hidden" id="pfCE" value="' + esc(p.counselorEmail || '') + '">' +
+      '<div class="row" id="pfCm" style="gap:10px;margin-top:6px;display:none">' + nameBoxes('pfCF', 'pfCL', 'pfCEm', 'pfCType()') + '</div></div>' +
     (F('team') ? '<div style="margin-top:14px"><b>My case manager</b>' + teamForm(myTeachers(), p.caseMgr, p.caseMgrEmail, 'pfSave()', '').replace(/<div class="row" style="margin-top:8px"><button class="btn primary small" onclick="pfSave\(\)">Save<\/button><\/div>$/, '') + '</div>' : '') +
     '<div class="row" style="margin-top:16px"><button class="btn primary" onclick="pfSave()">Everything is right: save</button></div></div>';
   $('main').innerHTML = h; pfAp();
@@ -4264,11 +4290,35 @@ function pfAp() {
 function myInitial() { var w = String(D.profile.name || '').trim().split(/\s+/); return w.length > 1 ? w[w.length - 1].replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase() : ''; }
 // the first 3 letters of the school email = the first 3 letters of the last name (enough to find the counselor)
 function myStart() { return String(D.email || B.email || '').split('@')[0].replace(/[^a-z]/gi, '').slice(0, 3).toLowerCase() || myInitial().toLowerCase(); }
+// 1.100: first name + last name boxes (never "Ms. Gibbons" → mgibbons); staff emails use the case manager list's domain (lths.net)
+function staffDomain() { var n = {}, best = 'lths.net', top = 0; (B.caseMgrs || []).concat(B.counselors || []).forEach(function (c) { var d = String(c.email || '').split('@')[1]; if (d) { n[d] = (n[d] || 0) + 1; if (n[d] > top) { top = n[d]; best = d; } } }); return best; }
+var TITLE_RE = /^(mr|mrs|ms|miss|mx|dr|coach)\.?$/i;
+function nameBoxes(fid, lid, eid, onin) {
+  return '<label class="grow"><span class="small">First name</span><input type="text" id="' + fid + '" maxlength="40" placeholder="Colleen" oninput="' + onin + '"></label>' +
+    '<label class="grow"><span class="small">Last name</span><input type="text" id="' + lid + '" maxlength="40" placeholder="Gibbons" oninput="' + onin + '"></label>' +
+    '<p class="small" id="' + eid + '" style="flex-basis:100%;margin:0"></p>';
+}
+function staffFrom(fid, lid) {
+  var f = $(fid).value.trim(), l = $(lid).value.trim();
+  if (!f || !l) throw new Error('Type their first name and their last name.');
+  if (TITLE_RE.test(f)) throw new Error('Type their first name (like Colleen), not “' + f + '”.');
+  var e = (f.charAt(0) + l.replace(/\s+/g, '')).toLowerCase().replace(/[^a-z-]/g, '') + '@' + staffDomain();
+  return { name: f.charAt(0).toUpperCase() + f.slice(1) + ' ' + l.charAt(0).toUpperCase() + l.slice(1), email: e };
+}
+function pfCType() { var el = $('pfCEm'); try { var c = staffFrom('pfCF', 'pfCL'); $('pfC').value = c.name; $('pfCE').value = c.email; el.textContent = 'Their email: ' + c.email; } catch (e) { $('pfC').value = ''; el.textContent = ''; } }
+// "Ziroli, Mike" (a class list) → "Mike Ziroli"
+function firstLast(n) { n = String(n || '').trim(); var m = /^([^,]+),\s*(.+)$/.exec(n); return m ? m[2] + ' ' + m[1] : n; }
 function pfCounselor(y) {
   var box = $('pfCo'), ini = myInitial(), list = PF_MANUAL ? [] : counselorFor(y, myStart());
   var show = function (c) { $('pfC').value = c.name; $('pfCE').value = c.email; };
+  var rec = firstLast(D.profile.counselor);          // the Students tab (your class list) knows it: use it first (1.100)
+  if (rec && !PF_MANUAL) {
+    var em = D.profile.counselorEmail || (list[0] && list[0].name === rec ? list[0].email : '') || (rec.split(' ').length > 1 ? (rec.charAt(0) + rec.split(' ').pop()).toLowerCase().replace(/[^a-z-]/g, '') + '@' + staffDomain() : '');
+    $('pfCm').style.display = 'none'; show({ name: rec, email: em });
+    box.innerHTML = '<p style="margin:4px 0">✓ ' + esc(rec) + ' <span class="small" style="display:inline">' + esc(em) + ' · from your school records</span> <button class="btn link small" onclick="PF_MANUAL=true;pfAp()">Not right?</button></p>'; return;
+  }
   $('pfCm').style.display = list.length ? 'none' : '';
-  if (!list.length) { box.innerHTML = PF_MANUAL || !y ? '' : '<p class="small" style="margin:4px 0">Type your counselor’s name.</p>'; return; }
+  if (!list.length) { $('pfC').value = ''; $('pfCE').value = ''; box.innerHTML = '<p class="small" style="margin:4px 0">Type your counselor’s first and last name.</p>'; return; }
   if (list.length === 1) { show(list[0]); box.innerHTML = '<p style="margin:4px 0">' + esc(list[0].name) + ' <span class="small" style="display:inline">' + esc(list[0].email) + (list[0].ext ? ' · ext ' + esc(list[0].ext) : '') + '</span> <button class="btn link small" onclick="PF_MANUAL=true;pfAp()">Not right?</button></p>'; return; }
   var pick = list.filter(function (c) { return c.name === $('pfC').value; })[0];
   box.innerHTML = '<p class="small" style="margin:4px 0">Your last name starts with ' + esc(ini) + '. Which part of the alphabet is it in?</p><div class="row" style="gap:6px">' + list.map(function (c, k) {
@@ -4296,7 +4346,7 @@ function pfSave() {
   if (F('team')) { try { cm = tmRead(); } catch (e) { return alert(e.message); } }
   var p = { grade: $('pfG').value, counselor: $('pfC').value.trim(), counselorEmail: $('pfCE').value.trim(), caseMgr: cm.name, caseMgrEmail: cm.email };
   if (!p.grade) return alert('Pick your grade.');
-  if (!p.counselor) return alert(PF_LIST.length > 1 && $('pfCm').style.display === 'none' ? 'Pick which part of the alphabet your last name is in.' : 'Type your counselor’s name.');
+  if (!p.counselor) { if ($('pfCm').style.display !== 'none') { try { staffFrom('pfCF', 'pfCL'); } catch (e) { return alert(e.message); } } return alert(PF_LIST.length > 1 ? 'Pick which part of the alphabet your last name is in.' : 'Type your counselor’s first and last name.'); }
   call('api_confirmProfile', p).then(function (d) { D = d; toast('Profile saved'); go('checkin'); }).catch(oops);
 }
 function drawWelcome() {
@@ -4824,7 +4874,7 @@ function anOpen(i) {
     '<ol class="hint" style="margin:6px 0;padding-left:20px"><li>In Infinite Campus, open <b>Grades</b> and click <b>' + esc(AN.cls.name) + '</b> so its assignments show.</li>' +
       '<li><b>Start your copy at the very top, at the class title</b> (the line with the course number, like “WL7816-1 American Sign Language I”). Click just before it, scroll to the bottom, hold <b>Shift</b> and click after the last assignment. <b>Don’t use Ctrl + A</b> here: the rest of the page confuses the app.</li>' +
       '<li>Copy (Ctrl + C) and paste it here (Ctrl + V).</li></ol>' +
-    '<textarea id="anText" style="min-height:90px" placeholder="Paste this class\'s Grades page here"></textarea><button class="btn primary small" style="margin-top:6px" onclick="anRun()">Analyze</button><div id="anOut"></div></div>';
+    '<textarea id="anText" style="min-height:90px" placeholder="Paste this class\'s Grades page here"></textarea><button class="btn primary small" style="margin-top:6px" onclick="anRun()">' + (pasteOnly() ? 'Read my page' : 'Analyze') + '</button><div id="anOut"></div></div>';
   document.body.appendChild(el); $('anText').focus();
 }
 // Every class's detailed Grades page, once a week (any day; one at a time is fine).
@@ -4835,7 +4885,7 @@ var DP_EDIT = false, DP_NONE = null, DP_DRAFT = null;
 // the boot's grade check fields (checkDay, checkSince, checkOv, checkNext) sit on B like the rest
 function withCheck(b) { if (b && b.check) Object.keys(b.check).forEach(function (k) { b[k] = b.check[k]; }); return b; }
 // every class has this week's grade (after the teacher's override, entered on or after B.checkSince)
-function gradesDone() { return graded().every(function (c) { return (D.grades[c.name] || {})[B.week] !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince); }); }
+function gradesDone() { return graded().every(function (c) { var g = (D.grades[c.name] || {})[B.week]; return g !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince) && (!pasteOnly() || !F('lowWhy') || !isLow(g) || ((D.lows[c.name] || {})[B.week] || {}).why); }); }
 function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !!B.checkDay && B.today >= B.checkDay && graded().length > 0 && !gradesDone(); }
 // 1.87: the question of the day (just for fun), answered or skipped before anything else
 function needPoll() { return MODE === 'student' && !(PREV && PREV.skip) && F('poll') && !!(B.poll && B.poll.q) && !B.poll.answer; }
@@ -5049,15 +5099,18 @@ function teamForm(list, name, email, save, cancel) {
   return '<p class="hint" style="margin:4px 0 8px">Who is your case manager? Your case manager helps with your IEP: your accommodations and the support you need. Pick them from the list (type their first name to jump to it).</p>' +
     '<select id="tmPick" onchange="tmPick(this.value)"><option value="">Pick your case manager</option>' +
       (mine.length ? '<optgroup label="Your teachers">' + mine.map(opt).join('') + '</optgroup>' : '') +
-      '<optgroup label="All case managers">' + all.map(opt).join('') + '</optgroup></select>' +
+      '<optgroup label="All case managers">' + all.map(opt).join('') + '</optgroup><option value="other"' + (name && !picked ? ' selected' : '') + '>My case manager isn’t on this list</option></select>' +
     '<p class="small" id="tmMailShow" style="margin:6px 0 0">' + (picked ? esc(picked.email) : '') + '</p>' +
-    (name && !picked ? '<p class="small" style="margin:4px 0 0;color:var(--warn)">Saved before: ' + esc(name) + ' (not on the list). Pick from the list.</p>' : '') +
+    '<div class="row" id="tmOther" style="gap:10px;margin-top:6px;' + (name && !picked ? '' : 'display:none') + '">' + nameBoxes('tmF', 'tmL', 'tmOE', 'tmType()') + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn primary small" onclick="' + save + '">Save</button>' + (cancel ? '<button class="btn link small" onclick="' + cancel + '">Cancel</button>' : '') + '</div>';
 }
 var TM_LIST = [];
-function tmPick(v) { var c = v === '' ? null : TM_LIST[+v]; if ($('tmMailShow')) $('tmMailShow').textContent = c ? c.email : ''; }
+function tmPick(v) { var c = v === '' || v === 'other' ? null : TM_LIST[+v]; if ($('tmMailShow')) $('tmMailShow').textContent = c ? c.email : ''; var o = $('tmOther'); if (o) { o.style.display = v === 'other' ? '' : 'none'; if (v === 'other') $('tmF').focus(); } }
+function tmType() { var el = $('tmOE'); try { el.textContent = 'Their email: ' + staffFrom('tmF', 'tmL').email; } catch (e) { el.textContent = ''; } }
 function tmRead() {
-  var v = $('tmPick').value, c = v === '' ? null : TM_LIST[+v];
+  var v = $('tmPick').value;
+  if (v === 'other') return staffFrom('tmF', 'tmL');
+  var c = v === '' ? null : TM_LIST[+v];
   if (!c) throw new Error('Pick your case manager from the list.');
   return { name: c.name, email: c.email };
 }
@@ -5120,10 +5173,12 @@ function detailCard() {
     }).join('') + '</div>';
 }
 function detailRefresh() { var el = $('detailCard'); if (el) el.outerHTML = detailCard(); }
-function anClose() { var el = $('anModal'); if (el) el.remove(); AN = null; }
+function anClose() { var el = $('anModal'); if (el) el.remove(); AN = null; if (pasteOnly() && VIEW === 'checkin') drawCheckin(); }
 function anRun() {
   var p = parseClassGrades($('anText').value);
-  if (!p.items.length) return alert('No assignments found. Open this class on the Grades page in Infinite Campus, copy the whole page and paste it again.');
+  if (!p.items.length) return alert('No assignments found. That looks like the summary page (one grade for each class). In Infinite Campus, click ' + AN.cls.name + ' so its assignments show, copy that page starting at the class title, and paste it again.');
+  if (pasteOnly() && (p.grade === null || p.grade === undefined)) return alert('We couldn’t find the class grade on that page. Start your copy at the very top, at the class title, and paste it again.');
+  if (p.course && !anSameClass(p.course, AN.cls.name) && !confirm('This page is for “' + p.course + '”. Is that your ' + AN.cls.name + ' class?\n\nOK = yes, it is. Cancel = paste the right page.')) return;
   AN.parsed = p;
   AN.res = analyzeClass(p, { today: B.today, onTime: B.retakeOnTime, below: B.retakeBelow, target: 85 });
   $('anOut').innerHTML = anHtml(AN.res, p);
@@ -5131,7 +5186,19 @@ function anRun() {
   // tests at a C or below go on the Retakes list (the teacher sees it too)
   var list = retakeList(AN.res);
   CK.an[AN.cls.name] = AN.res; D.analyses = D.analyses || {}; D.analyses[AN.cls.name] = { date: B.today, grade: AN.res.grade, missing: [], onTime: AN.res.next.onTime, total: AN.res.next.total, lastTest: AN.res.nextFrom || '' }; drawSugg();
-  call('api_saveRetakes', AN.cls.name, list, anSummary(AN.res)).then(function (r) { D.retakes = r; if (AN) $('anOut').innerHTML = anHtml(AN.res, p); }).catch(function () {});
+  if (pasteOnly() && AN.res.grade !== null && AN.res.grade !== undefined) {          // the page's grade and missing work are this week's (saved with the paste)
+    var cn = AN.cls.name, ms = AN.res.missing.map(function (x) { return x.name; }), g = Math.round(Number(AN.res.grade) * 100) / 100;
+    CK.grades[cn] = String(g); CK.missing[cn] = { n: String(ms.length), list: ms.join(', ') };
+    D.grades[cn] = D.grades[cn] || {}; D.grades[cn][B.week] = g; D.dates = D.dates || {}; D.dates[cn] = D.dates[cn] || {}; D.dates[cn][B.week] = B.today;
+    if ($('anOut')) $('anOut').insertAdjacentHTML('afterbegin', '<p class="badge up" style="display:inline-block;margin:8px 0">✓ Saved: ' + esc(cn) + ' ' + g + '% ' + letter(g) + (ms.length ? ', ' + ms.length + ' missing' : ', nothing missing') + '. Close this to do your next class.</p>');
+  }
+  call('api_saveRetakes', AN.cls.name, list, anSummary(AN.res)).then(function (r) { D.retakes = r; if (AN && !pasteOnly()) $('anOut').innerHTML = anHtml(AN.res, p); }).catch(oops);
+}
+// "American Sign Language I" vs "ASL 1": the same class if they share a real word, or one's initials spell the other
+function anSameClass(a, b) {
+  var w = function (x) { return String(x).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (t) { return t.length > 2 && ['the', 'and', 'prep', 'honors', 'acc', 'accelerated'].indexOf(t) < 0; }); };
+  var A = w(a), Bw = w(b), ini = function (x) { return String(x).split(/\s+/).map(function (t) { return t.charAt(0); }).join('').toLowerCase(); };
+  return A.some(function (t) { return Bw.indexOf(t) >= 0; }) || ini(a).indexOf(String(b).toLowerCase().split(/\s+/)[0]) === 0 || ini(b).indexOf(String(a).toLowerCase().split(/\s+/)[0]) === 0 || !A.length || !Bw.length;
 }
 function retakeRow(cls, test) { return (D.retakes || []).filter(function (r) { return r.cls === cls && r.test === test; })[0]; }
 function retakeButtons(cls, test, teacherEmail) {
@@ -5312,7 +5379,7 @@ function myStuff(list) {
   var e = D.ef || {}, t = [], inSteps = list.some(function (s) { return s.k === 'grades'; });
   var w = F('wins') ? myWins() : []; if (w.length) t.push(['wins', '🎉 My wins', w.length + ' new', true, winsCard]);
   var iep = D.profile.iep; if (iep && iep.meet && iep.meet >= B.today) t.push(['iep', '📌 IEP meeting', shortDay(iep.meet), daysUntil(iep.meet) <= 7, iepCard]);
-  if (detailCard()) { var need = detailNeed().length, all = graded().length; t.push(['detail', '🔍 Detailed grades', need ? (all - need) + ' of ' + all + ' this week' : 'All done ✓', need > 0, detailCard]); }
+  if (!pasteOnly() && detailCard()) { var need = detailNeed().length, all = graded().length; t.push(['detail', '🔍 Detailed grades', need ? (all - need) + ' of ' + all + ' this week' : 'All done ✓', need > 0, detailCard]); }
   if (!inSteps && graded().length) t.push(['grades', '📊 My grades', gradesDone() ? 'Checked this week ✓' : 'Check them any time', false, function () { return gradesCard(function () { return ''; }) + ckSaveBtn('Save my grades'); }]);
   if (graded().length && weeklyOn()) t.push(['week', '🗓️ Plan for the week', thisPlan() ? 'Saved ✓' : 'Not made yet', false, function () { return weeklyCards() + ckSaveBtn('Save my plan for the week'); }]);
   var mNow = 0; Object.keys(e.missingNow || {}).forEach(function (c) { mNow += e.missingNow[c].length; });
@@ -5364,7 +5431,30 @@ function weeklyCards() {
   return h;
 }
 // the grades card (the Infinite Campus paste, then a row per class)
+// 2.00: students enter grades only by pasting each class's detailed page (grade, missing and late work come from it)
+function pasteOnly() { return MODE === 'student' && F('pasteOnly'); }
+function pastedWeek(c) { var a = (D.analyses || {})[c.name]; return a && a.date >= B.week ? a.date : ''; }
+function gradesCardPaste(sec) {
+  var CP = F('cplan'), COLS = 4 + (CP ? 1 : 0), all = graded(), done = all.filter(pastedWeek).length;
+  var h = '<div class="card"><div class="row"><h2 class="grow">' + sec() + 'My grades and missing work</h2><span class="badge ' + (done === all.length && all.length ? 'up' : 'warn') + '">' + done + ' of ' + all.length + ' pasted this week</span></div>' +
+    '<ol class="hint" style="margin:4px 0 10px;padding-left:20px"><li>In Infinite Campus, open <b>Grades</b> and click one class so its assignments show.</li><li>Copy the page <b>starting at the class title</b> to the last assignment, and paste it with that class’s <b>📋 Paste</b> button.</li><li>The app reads your grade, missing work and late work. Do every class.</li></ol>';
+  if (!all.length) return h + '<div class="empty">No classes yet. Add them under <a href="#" onclick="go(\'schedule\');return false">My schedule</a>.</div></div>';
+  h += '<table><thead><tr><th>Class</th><th>Last time</th><th>This week</th><th>Missing</th>' + (CP ? '<th>My plan</th>' : '') + '</tr></thead><tbody>' + all.map(function (c, i) {
+    var prev = before(D.grades[c.name], B.week), v = CK.grades[c.name], pd = pastedWeek(c), m = CK.missing[c.name] || { n: '', list: '' }, by = ((D.gradeBy || {})[c.name] || {})[B.week];
+    var cell = pd && v !== '' ? '<b>' + esc(v) + '</b><span class="letter">' + letter(Number(v)) + '</span>' + changeBadge(Number(v), prev) + '<small>✓ pasted ' + shortDay(pd) + ' · <a href="#" onclick="anOpen(' + i + ');return false">Paste again</a></small>'
+      : (by && v !== '' ? '<b>' + esc(v) + '</b><span class="letter">' + letter(Number(v)) + '</span><small>✏️ Entered by your teacher · <a href="#" onclick="anOpen(' + i + ');return false">Paste to update</a></small>'
+      : '<button class="btn primary small" onclick="anOpen(' + i + ')">📋 Paste ' + esc(c.name) + '’s page</button>');
+    return '<tr><td><b>' + esc(c.name) + '</b><small>' + esc([c.period ? 'Period ' + c.period : '', c.level].filter(String).join(' · ')) + (c.teacher ? (c.period || c.level ? ' · ' : '') + teacherLinks(c) : '') + '</small>' +
+      '<div id="gw' + i + '"' + (gradRisk(c.name, v) ? '' : ' hidden') + '><span class="gradpill">🎓 Needed to graduate</span></div></td>' +
+      '<td>' + (prev ? '<b>' + prev.grade + '</b><span class="letter">' + letter(prev.grade) + '</span><small>' + shortDay(gDay(D, c.name, prev.week)) + '</small>' : '<span class="small">First week</span>') + '</td>' +
+      '<td>' + cell + '</td><td>' + (pd ? (Number(m.n) ? '<b style="color:var(--down)">' + esc(m.n) + '</b>' + (m.list ? '<small>' + esc(m.list) + '</small>' : '') : '0') : '<span class="small">—</span>') + '</td>' +
+      (CP ? '<td>' + cpSelect(i, CK.cplan[c.name]) + '</td>' : '') + '</tr>' +
+      (F('lowWhy') ? '<tr class="lowrow" id="lr' + i + '"' + (isLow(v) ? '' : ' hidden') + '><td colspan="' + COLS + '">' + lowBox(i) + '</td></tr>' : '');
+  }).join('') + '</tbody></table>';
+  return h + '</div>';
+}
 function gradesCard(sec) {
+  if (pasteOnly()) return gradesCardPaste(sec);
   var MS = F('missing'), h = '<div class="card"><h2>' + sec() + (MS ? 'My grades and missing work' : 'My grades') + '</h2><p class="hint">Look up each class in Infinite Campus' + (MS ? ': type the percent, and how many assignments are missing (0 if none).' : ' and type the percent.') + '</p>' + (B.paste && graded().length ? icPanel() : '');
   if (!graded().length) h += '<div class="empty">No classes yet. Add them under <a href="#" onclick="go(\'schedule\');return false">My schedule</a>.</div>';
   var CP = F('cplan'), COLS = 4 + (MS ? 1 : 0) + (CP ? 1 : 0);
