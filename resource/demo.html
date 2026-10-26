@@ -435,7 +435,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.02';
+var VERSION = '2.03';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -4894,7 +4894,9 @@ var DP_EDIT = false, DP_NONE = null, DP_DRAFT = null;
 function withCheck(b) { if (b && b.check) Object.keys(b.check).forEach(function (k) { b[k] = b.check[k]; }); return b; }
 // every class has this week's grade (after the teacher's override, entered on or after B.checkSince)
 function gradesDone() { return graded().every(function (c) { var g = (D.grades[c.name] || {})[B.week]; return g !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince) && (!pasteOnly() || !F('lowWhy') || !isLow(g) || ((D.lows[c.name] || {})[B.week] || {}).why); }); }
-function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !!B.checkDay && B.today >= B.checkDay && graded().length > 0 && !gradesDone(); }
+function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0 && !gradesDone(); }
+// 2.03: the first time (until every class has been pasted once, or the teacher entered it), grades come first, not only on grade check day
+function firstGrades() { return pasteOnly() && graded().some(function (c) { return !(D.analyses || {})[c.name] && !((D.gradeBy || {})[c.name] || {})[B.week]; }); }
 // 1.87: the question of the day (just for fun), answered or skipped before anything else
 function needPoll() { return MODE === 'student' && !(PREV && PREV.skip) && F('poll') && !!(B.poll && B.poll.q) && !B.poll.answer; }
 function pollCard() {
@@ -5361,7 +5363,7 @@ function soonTests() { return D.tests.filter(function (t) { var n = daysUntil(t.
 // The check-in, one big step at a time: (grades on grade check day,) today's plan, the checklist, the exit ticket.
 // Everything else waits in small "My stuff" tiles below, each opening its card when tapped.
 var STEP = null, GSUB = 0, TILE = null, CK_AFTER = null;          // STEP = { k, wasDone } when the student picked a step
-function checkMode() { return !!B.checkDay && B.today >= B.checkDay && graded().length > 0; }          // grade check day (or later that week)
+function checkMode() { return ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0; }          // grade check day (or later that week)
 function stepList() {
   var s = [], sd = isSchoolDay();
   if (checkMode()) s.push({ k: 'grades', label: 'My grades', req: true });
@@ -5392,7 +5394,7 @@ function drawCheckin() {
   if (STEP && (keys.indexOf(STEP.k) < 0 || (!STEP.wasDone && stepDone(STEP.k)))) STEP = null;          // a step just finished: on to the next one
   var cur = STEP ? STEP.k : (list.filter(function (s, i) { return !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;
   var soon = soonTests(), name = String(D.profile.name || '').split(' ')[0];
-  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? ' · <b>Grade check day</b>' : '') + '</p>';
+  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? (B.checkDay && B.today >= B.checkDay ? ' · <b>Grade check day</b>' : ' · <b>First, paste your grades</b>') : '') + '</p>';
   if (soon.length) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
   h += codeBanner();
@@ -5491,7 +5493,7 @@ function gradesCardPaste(sec) {
   var CP = F('cplan'), all = gpOrder(), done = all.filter(gpDone).length, pct = all.length ? Math.round(100 * done / all.length) : 0;
   var h = '<div class="card" id="gcard"><div class="row"><h2 class="grow">' + sec() + 'My grades and missing work</h2><span class="small"><b>' + done + ' of ' + all.length + '</b> classes done</span></div>' +
     '<div class="gpbar"><span style="width:' + pct + '%"></span></div>' +
-    '<p class="hint" style="margin:8px 0 10px">In Infinite Campus, open <b>Grades</b>. For each class: click it, copy its page <b>starting at the class title</b>, and paste it in its box below. The classes are A to Z, the same order as Infinite Campus. The app reads your grade, missing work and late work as soon as you paste.</p>';
+    '<p class="hint" style="margin:8px 0 10px">In Infinite Campus, open <b>Grades</b>. For each class: click it, copy its page <b>starting at the class title</b>, and paste it in its box below. The classes are A to Z, the same order as Infinite Campus. The app reads your grade, missing work and late work as soon as you paste.' + (firstGrades() ? ' <b>This is your first time, so every class is needed before you go on.</b> A class has no grades in Infinite Campus yet? Ask your teacher.' : '') + '</p>';
   if (!all.length) return h + '<div class="empty">No classes yet. Add them under <a href="#" onclick="go(\'schedule\');return false">My schedule</a>.</div></div>';
   h += all.map(function (c) {
     var i = graded().indexOf(c), ok = gpDone(c), v = CK.grades[c.name], m = CK.missing[c.name] || { n: '', list: '' }, prev = before(D.grades[c.name], B.week);
