@@ -257,6 +257,14 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .site { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--ink); background: var(--card); }
 .site:hover { border-color: var(--brand); }
 .site span { font-size: 13px; color: var(--soft); }
+.gpick { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; padding: 10px 12px; margin: 0 0 6px; border: 2px solid var(--line, #d9deea); border-radius: 12px; background: var(--card); color: inherit; font: inherit; font-size: 16px; cursor: pointer; }
+.gpick small { display: block; font-size: 12px; opacity: .7; margin-top: 2px; }
+.gpick .gbox { flex: 0 0 26px; height: 26px; border: 2px solid var(--brand); border-radius: 7px; display: grid; place-items: center; font-weight: 700; color: #fff; }
+.gpick.on { border-color: var(--brand); }
+.gpick.on .gbox { background: var(--brand); }
+.side2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.side2 > div > .card:first-child { margin-top: 0; }
+@media (max-width: 900px) { .side2 { grid-template-columns: 1fr; } }
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(15, 20, 35, .45); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; }
 .modal .card { width: 100%; max-width: 760px; margin: 0; }
 .an-test { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
@@ -437,12 +445,12 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.14';
+var VERSION = '2.15';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
   // The first seven columns match a class list from Infinite Campus, so the teacher can paste one in (Set up or repair tidies it).
-  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list'],
+  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list', 'Their own checklist items'],
   Classes: ['Email', 'Period', 'Class', 'Teacher', 'Resource (no grade)', 'Order', 'Teacher email', 'Level', 'No grade (lunch, study)', 'Entered by'],
   Grades: ['Week of', 'Email', 'Class', 'Grade', 'Updated', 'Why it is low', 'Plan to improve', 'Plan details', 'Missing (how many)', 'Missing assignments', 'My plan', 'Entered by'],
   Plans: ['Week of', 'Email', 'Focus classes', 'Steps', 'Need help with', "Followed last week's plan?", 'Looking back', 'Updated', 'Teacher check', 'Talked to a teacher'],
@@ -494,8 +502,9 @@ var TABS = {
   'School calendar': ['Date', 'What', 'Kind (No school, Finals, First day, Last day, Note)'],
   'Goal tools': ['ID', 'Email', 'Tool', 'Measured by', 'Better when', 'Added', 'Goal ID'],
   'IEP benchmarks': ['ID', 'Email', 'Benchmark', 'Targets (tool ID: target)', 'By', 'Status', 'Added', 'Updated', 'Goal ID'],
-  'IEP goals': ['ID', 'Email', 'Goal name', 'Goal', 'Added', 'Updated', 'In student words'],
-  'Goal reflections': ['Date', 'Email', 'Goal ID', 'Goal', 'Did it', 'What they said', 'Saved'],
+  'IEP goals': ['ID', 'Email', 'Goal name', 'Goal', 'Added', 'Updated', 'In student words', 'Measured in BASE/ARC', 'Student'],
+  'All goals and benchmarks': ['Student', 'Resource period', 'Goal #', 'Area', 'Measured in BASE/ARC', 'IEP goal', 'In student words', 'Benchmarks', 'How it’s measured (now)', 'Daily goal check-ins', 'Email'],
+  'Goal reflections': ['Date', 'Email', 'Goal ID', 'Goal', 'Did it', 'What they said', 'Saved', 'Skills (found by the app)', 'Review', 'Teacher note', 'What they did'],
   'Benchmark data': ['Date', 'Email', 'Tool ID', 'Tool', 'Score', 'Out of', 'Note', 'Entered by', 'Entry ID'],
   // each graduating class's counselors by last name (edit each year); students' counselors fill in from this
   Counselors: ['Class of', 'Last names from', 'Last names to', 'Counselor', 'Email', 'Phone ext'],
@@ -508,8 +517,8 @@ var TABS = {
     'Email teacher (app)', 'Talked to a teacher (told the app)', 'Retakes scheduled', 'Followed plan %', 'Plan steps done %', 'Task initiation met %', 'Observations', 'Self-report accurate %', 'Updated',
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
-var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26 };   // Students columns
-var TEXT_COLS = { 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27 };   // Students columns
+var TEXT_COLS = { 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -630,6 +639,7 @@ function onOpen() {
     .addItem('Set up or repair this sheet', 'setupSheet')
     .addItem('Show the app link', 'showLink')
     .addItem('Update the Goal data tab', 'updateGoalData')
+    .addItem('Update the All goals and benchmarks tab', 'updateAllGoals')
     .addItem('Email me this week’s summary now', 'weeklySummaryNow')
     .addItem('Set up the AI project planner…', 'aiSetup')
     .addSeparator()
@@ -643,6 +653,7 @@ function onOpen() {
 
 function setupSheet() {
   var fixed = setup_();
+  try { allGoals_(); } catch (e) {}
   // Reminder emails go out every morning around 6 AM.
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendReminders'; });
   if (!has) ScriptApp.newTrigger('sendReminders').timeBased().everyDays(1).atHour(6).create();
@@ -715,7 +726,7 @@ function setup_() {
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
-  ['#2e7d5b', ['IEP goals', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
+  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
@@ -1225,7 +1236,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
 }
 
 function api_teacherStudentRead_(email) {
@@ -1385,8 +1396,15 @@ function look_(email) {
 }
 function api_saveLook(look) {
   var email = need_(), out = {};
-  if (!settings_().f.look && !isTeacher_(email)) throw new Error('Your teacher sets the colors and font.');
-  Object.keys(LOOK_OK).forEach(function (k) { var v = String(look && look[k] || ''); if (LOOK_OK[k].indexOf(v) >= 0) out[k] = v; });
+  var old = look_(email) || {}, colors = settings_().f.look || isTeacher_(email);
+  Object.keys(LOOK_OK).forEach(function (k) { var v = String(colors ? (look && look[k] || '') : (old[k] || '')); if (LOOK_OK[k].indexOf(v) >= 0) out[k] = v; });
+  // 2.15: My page settings (⚙️): the order of the My stuff tiles, the hidden ones, and on/off switches
+  var pg = look && look.page;
+  if (pg && typeof pg === 'object') {
+    var keys = function (a) { return (Array.isArray(a) ? a : []).map(function (x) { return String(x).replace(/[^a-z0-9]/gi, '').slice(0, 20); }).filter(String).slice(0, 30); };
+    out.page = { order: keys(pg.order), hide: keys(pg.hide) };
+    ['confetti', 'countdown', 'bell', 'quotes', 'compact'].forEach(function (k) { if (pg[k] !== undefined) out.page[k] = !!pg[k]; });
+  } else if (old.page) out.page = old.page;
   PropertiesService.getDocumentProperties().setProperty('look:' + email, JSON.stringify(out));
   return out;
 }
@@ -1450,7 +1468,7 @@ function reportData_(email, full) {
   });
   var plan = d.plans.filter(function (p) { return p.week <= week; })[0] || null;
   var fullData = null;
-  if (full) { var ef = efData_(email); fullData = { rows: efRows_(ef), goals: settings_().f.bench ? goals_(email, ef) : goals_(email, ef).map(function (g) { g.tools = []; g.bench = []; return g; }), sem: ef.sem }; }
+  if (full) { var ef = efData_(email); fullData = { refl: reflections_(email), rows: efRows_(ef), goals: settings_().f.bench ? goals_(email, ef) : goals_(email, ef).map(function (g) { g.tools = []; g.bench = []; return g; }), sem: ef.sem }; }
   return { full: fullData, email: email, name: d.profile.name, grade: d.profile.grade, counselor: d.profile.counselor, counselorEmail: String(r[SC.cemail] || '') || staffEmail_(d.profile.counselor),
     parentEmail: String(r[SC.parent] || ''), periods: d.profile.periods, today: today, rows: rows, plan: plan,
     tests: d.tests.filter(function (t) { return !t.done && t.date >= today; }), retakes: d.retakes.filter(function (x) { return x.status !== 'Done'; }), low: st.low, app: st.app };
@@ -1528,7 +1546,7 @@ function efRows_(e) {
 function fullHtml_(f, td) {
   var h = '<div style="font-weight:bold;margin:16px 0 4px">Goals and executive functioning <span style="font-weight:normal;color:#5b6476;font-size:11px">(this semester, since ' + esc_(niceDay_(f.sem)) + ')</span></div>';
   var many = f.goals.filter(function (g) { return g.text || g.tools.length || g.bench.length; }).length > 1;
-  f.goals.forEach(function (g, k) { if (g.text) h += '<div style="border:1px solid #e2e6ef;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px"><b>' + (many ? 'Goal ' + (k + 1) + (g.name ? ' (' + esc_(g.name) + ')' : '') : 'IEP goal') + ':</b> ' + esc_(g.text) + '</div>'; });
+  f.goals.forEach(function (g, k) { if (g.text) h += '<div style="border:1px solid #e2e6ef;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px"><b>' + (many ? 'Goal ' + (k + 1) + (g.name ? ' (' + esc_(g.name) + ')' : '') : 'IEP goal') + ':</b> ' + esc_(g.text) + (g.here === false ? ' <span style="color:#5b6476">(not measured in ' + esc_(settings_().dayClass || 'resource') + ')</span>' : '') + '</div>'; });
   h += '<table style="border-collapse:collapse;width:100%">' + f.rows.map(function (r) {
     return '<tr><td style="' + td + ';width:40%"><b>' + esc_(r[0]) + '</b></td><td style="' + td + '">' + esc_(String(r[1])) + (r[2] ? '<br><span style="color:#5b6476;font-size:11px">' + esc_(r[2]) + '</span>' : '') + '</td></tr>';
   }).join('') + '</table>';
@@ -1548,6 +1566,14 @@ function fullHtml_(f, td) {
     return '<div style="' + box + '"><b>' + esc_(b.text) + '</b> (' + st + ')' + (b.by ? '<br><span style="font-size:11px;color:#5b6476">By ' + esc_(niceDay_(b.by)) + '</span>' : '') +
       b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return '<br>' + (p.met === true ? '✓ ' : '') + esc_(p.name) + ': goal ' + tg(t, p.target) + ', now ' + tf(t, p.now); }).join('') + '</div>';
   }).join('');
+  var rl = (f.refl || []).filter(function (r) { return r.goal === g.id; });
+  if (rl.length) {
+    var y = rl.filter(function (r) { return r.did === 'Yes'; }).length, a = rl.filter(function (r) { return r.did === 'A little'; }).length, sk = {};
+    rl.forEach(function (r) { r.skills.forEach(function (x) { sk[x] = (sk[x] || 0) + 1; }); });
+    h += '<div style="font-weight:bold;margin:16px 0 4px">The student’s daily goal check-ins' + gl + '</div><div style="font-size:13px">' + rl.length + ' days: did it ' + y + ', a little ' + a + ', not today ' + (rl.length - y - a) +
+      (Object.keys(sk).length ? '<br>Skills they described: ' + Object.keys(sk).map(function (x) { return esc_(x) + ' (' + sk[x] + ')'; }).join(', ') : '') + '</div>' +
+      rl.slice(0, 5).map(function (r) { return '<div style="font-size:12px;color:#5b6476">' + esc_(niceDay_(r.date)) + ': ' + esc_(r.did) + (r.acts ? ', ' + esc_(r.acts) : '') + (r.said ? ', “' + esc_(r.said) + '”' : '') + '</div>'; }).join('');
+  }
   });
   return h;
 }
@@ -1949,7 +1975,8 @@ function api_unexplainMissing(cls, name, email) {
 // a list of names, then each student's full progress report (everything the teacher's report has).
 function caseload_(email) {
   if (!email) return [];
-  return rows_('Students').filter(function (r) { return sameStaff_(r[SC.caseMgrEmail], email) && low_(r[SC.email]); })
+  var names = caseMgrs_().filter(function (c) { return c.email && sameStaff_(c.email, email); }).map(function (c) { return low_(c.name); });          // 2.15: or by the name on the Case managers tab
+  return rows_('Students').filter(function (r) { return low_(r[SC.email]) && (sameStaff_(r[SC.caseMgrEmail], email) || (!String(r[SC.caseMgrEmail] || '').trim() && names.indexOf(low_(r[SC.caseMgr])) >= 0)); })
     .map(function (r) { return { email: low_(r[SC.email]), name: stuName_(r), grade: String(r[SC.grade] || ''), period: String(r[SC.period] || '') }; })
     .sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
 }
@@ -2792,7 +2819,7 @@ function api_saveChecklist(items) {
   var email = need_();
   return locked_(function () {
     // each item: done this period, or "no time" (on the list, but they spent the time on something else)
-    var today = today_(), list = (items || []).slice(0, 12).map(function (x) { return { text: clean_(x.text, 120), done: !!x.done, noTime: !x.done && !!x.noTime }; }).filter(function (x) { return x.text; });
+    var today = today_(), list = (items || []).slice(0, 25).map(function (x) { return { text: clean_(x.text, 120), done: !!x.done, noTime: !x.done && !!x.noTime }; }).filter(function (x) { return x.text; });
     var done = list.filter(function (x) { return x.done; }), skip = list.filter(function (x) { return x.noTime; }), rows = rows_('Checklist'), i = find_(rows, function (r) { return day_(r[0]) === today && low_(r[1]) === email; });
     var row = [today, email, done.length, list.length, done.map(function (x) { return x.text; }).join('; '), i >= 0 ? String(rows[i][5] || 'Yes') : 'Yes', stamp_(), skip.map(function (x) { return x.text; }).join('; ')];
     if (i >= 0) sheet_('Checklist').getRange(i + 2, 1, 1, row.length).setValues([row]); else sheet_('Checklist').appendRow(row);
@@ -2802,7 +2829,18 @@ function api_saveChecklist(items) {
 // A student's own checklist (Students tab "Checklist items", semicolons), or the class checklist from Settings.
 function checkItemsFor_(email) {
   var f = stuFind_(email), own = f.i >= 0 ? String(f.rows[f.i][SC.checklist] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
-  return own.length ? own.slice(0, 12) : settings_().checkItems;
+  var mine = f.i >= 0 ? String(f.rows[f.i][SC.myCheck] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
+  var all = (own.length ? own.slice(0, 20) : settings_().checkItems).concat(mine.slice(0, 5));
+  return all.filter(function (x, i) { return all.indexOf(x) === i; });
+}
+// 2.15 Student: up to 5 checklist items of their own, added after the teacher's list (⚙️ Settings)
+function api_saveMyChecklist(items) {
+  var email = need_(), list = (items || []).map(function (x) { return clean_(x, 120).replace(/;/g, ','); }).filter(String).slice(0, 5);
+  return locked_(function () {
+    var f = stuFind_(email); if (f.i < 0) throw new Error('Finish setting up your profile first.');
+    stuSet_(f.i, 'myCheck', list.join('; '));
+    return { mine: list, items: checkItemsFor_(email) };
+  });
 }
 // 2.08 Teacher: one student's own "nothing to work on" checklist (items: [text]); an empty list goes back to the class list on Settings.
 function api_saveNothingList(email, items) {
@@ -2817,7 +2855,7 @@ function api_saveNothingList(email, items) {
 // Teacher: give one student their own checklist (items: [text]); an empty list goes back to the class checklist.
 function api_saveStudentChecklist(email, items) {
   teacherOnly_(); email = low_(email);
-  var list = (items || []).map(function (x) { return clean_(x, 120).replace(/;/g, ','); }).filter(String).slice(0, 12);
+  var list = (items || []).map(function (x) { return clean_(x, 120).replace(/;/g, ','); }).filter(String).slice(0, 20);
   return locked_(function () {
     var f = stuFind_(email);
     if (f.i < 0) throw new Error('That student is not on the Students tab yet.');
@@ -2867,14 +2905,15 @@ function api_verifyWeek(email, week, ok) {
 }
 
 // Teacher: the optional IEP goal text for a student (the Students tab's IEP goal column).
-function api_saveGoalText(email, text, gid, name, kid) {
+function api_saveGoalText(email, text, gid, name, kid, here) {
   teacherOnly_(); email = low_(email); gid = String(gid || '');
   return locked_(function () {
     var rows = rows_('IEP goals'), id = gid || 'main', i = find_(rows, function (r) { return low_(r[1]) === email && String(r[0]) === id; });
     if (!gid) { var f = stuFind_(email); if (f.i >= 0) stuSet_(f.i, 'goal', clean_(text, 2000)); }
     if (gid && i < 0) throw new Error('That goal is gone. Reload the page.');
-    if (i >= 0) sheet_('IEP goals').getRange(i + 2, 3, 1, 5).setValues([[clean_(name, 80), gid ? clean_(text, 2000) : '', String(rows[i][4]), stamp_(), kid === undefined ? String(rows[i][6] || '') : clean_(kid, 500)]]);
-    else if (clean_(name, 80) || clean_(kid, 500)) sheet_('IEP goals').appendRow(['main', email, clean_(name, 80), '', stamp_(), stamp_(), clean_(kid, 500)]);
+    var hv = here === undefined ? (i >= 0 ? String(rows[i][7] || '') : '') : here ? '' : 'No';
+    if (i >= 0) sheet_('IEP goals').getRange(i + 2, 3, 1, 6).setValues([[clean_(name, 80), clean_(text, 2000), String(rows[i][4]), stamp_(), kid === undefined ? String(rows[i][6] || '') : clean_(kid, 500), hv]]);
+    else if (clean_(name, 80) || clean_(kid, 500) || hv || clean_(text, 2000)) sheet_('IEP goals').appendRow(['main', email, clean_(name, 80), clean_(text, 2000), stamp_(), stamp_(), clean_(kid, 500), hv]);
     return goals_(email);
   });
 }
@@ -3010,7 +3049,7 @@ function refreshGoalData_() {
   return rows.length;
 }
 function updateGoalData() { setup_(); var n = refreshGoalData_(); ss_().toast('Goal data updated for ' + n + ' students.', 'Resource Check-In', 6); }
-function api_refreshGoalData() { teacherOnly_(); return refreshGoalData_(); }
+function api_refreshGoalData() { teacherOnly_(); var n = refreshGoalData_(); try { memo_(allGoals_); } catch (e) {} return n; }
 
 /* ---------- IEP benchmarks ---------- */
 
@@ -3019,6 +3058,7 @@ function api_refreshGoalData() { teacherOnly_(); return refreshGoalData_(); }
 var BENCH_MEASURES = [
   { key: 'turnedIn', label: 'Coursework turned in', unit: '%', better: 'Higher', get: function (d) { return d.turnedIn; } },
   { key: 'missing', label: 'Missing assignments right now', unit: '', word: 'missing assignments', better: 'Lower', get: function (d) { var n = 0; Object.keys(d.missingNow).forEach(function (c) { n += d.missingNow[c].length; }); return n; } },
+  { key: 'selfReport', label: 'Said they did it in their daily goal check-in (last 20)', unit: '%', better: 'Higher', get: function () { return null; } },
   { key: 'madeUp', label: 'Missing assignments made up later (of all ever missing)', unit: '%', better: 'Higher', get: function (d) { return d.madeUp ? d.madeUp.pct : null; } },
   { key: 'late', label: 'Assignments turned in late (this semester)', unit: '', word: 'late assignments', better: 'Lower', get: function (d) { return d.lateSem; } },
   { key: 'checklist', label: 'Daily checklist done on their own (last 20 school days)', unit: '%', better: 'Higher', get: function (d) { return d.checklist.last20; } },
@@ -3085,7 +3125,8 @@ function goal_(email, ef, gid) {
     var data = (pts[id] || []).filter(function (x) { return !isNaN(x.score); }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     data.forEach(function (x) { x.value = m.trials ? (x.of ? Math.round(x.score / x.of * 100) : null) : x.score; });
     var now = null;
-    if (m.get) { if (!ef) ef = efData_(email); now = m.get(ef); if (now === undefined) now = null; }
+    if (m.key === 'selfReport') now = selfPct_(email, gid);
+    else if (m.get) { if (!ef) ef = efData_(email); now = m.get(ef); if (now === undefined) now = null; }
     else { var last = data.filter(function (x) { return x.value !== null; }).slice(-3); if (last.length) now = Math.round(last.reduce(function (a, x) { return a + x.value; }, 0) / last.length * 10) / 10; }
     return { id: id, name: String(r[2]) || m.label, measure: m.key, label: m.label, unit: m.unit, word: m.word || '', mine: !!m.mine, trials: !!m.trials,
       better: String(r[4]) === 'Lower' ? 'Lower' : 'Higher', data: data, now: now };
@@ -3108,12 +3149,12 @@ function goals_(email, ef) {
   email = low_(email);
   var f = stuFind_(email), main = f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', rows = rows_('IEP goals').filter(function (r) { return low_(r[1]) === email && String(r[0]); });
   var mr = rows.filter(function (r) { return String(r[0]) === 'main'; })[0];
-  var list = [{ id: '', name: mr ? String(mr[2]) : '', text: main, kid: mr ? String(mr[6] || '') : '' }].concat(rows.filter(function (r) { return String(r[0]) !== 'main'; }).map(function (r) { return { id: String(r[0]), name: String(r[2]), text: String(r[3]), kid: String(r[6] || '') }; }));
-  return list.map(function (x) { var g = goal_(email, ef, x.id); g.id = x.id; g.name = x.name; g.text = x.text; g.kid = x.kid; return g; });
+  var list = [{ id: '', name: mr ? String(mr[2]) : '', text: main, kid: mr ? String(mr[6] || '') : '', here: !mr || String(mr[7]) !== 'No' }].concat(rows.filter(function (r) { return String(r[0]) !== 'main'; }).map(function (r) { return { id: String(r[0]), name: String(r[2]), text: String(r[3]), kid: String(r[6] || ''), here: String(r[7]) !== 'No' }; }));
+  return list.map(function (x) { var g = goal_(email, ef, x.id); g.id = x.id; g.name = x.name; g.text = x.text; g.kid = x.kid; g.here = x.here; return g; });
 }
 function api_addGoal(email, name) {
   teacherOnly_(); email = low_(email);
-  return locked_(function () { sheet_('IEP goals').appendRow([Utilities.getUuid().slice(0, 8), email, clean_(name, 80), '', stamp_(), stamp_(), '']); return goals_(email); });
+  return locked_(function () { sheet_('IEP goals').appendRow([Utilities.getUuid().slice(0, 8), email, clean_(name, 80), '', stamp_(), stamp_(), '', '']); return goals_(email); });
 }
 // Delete a goal with its tools, benchmarks and scores. Deleting goal 1 moves goal 2 up into its place.
 function api_deleteGoal(email, gid) {
@@ -3135,27 +3176,173 @@ function api_deleteGoal(email, gid) {
         var b = rows_('IEP benchmarks').map(function (r) { r = r.slice(); if (mine(r) && String(r[8]) === nid) r[8] = ''; return r; });
         rewrite_('IEP benchmarks', function () { return false; }, b);
       }
-      rewrite_('IEP goals', function (r) { return !(mine(r) && (String(r[0]) === 'main' || (next && String(r[0]) === String(next[0])))); }, next ? [['main', email, String(next[2]), '', stamp_(), stamp_(), String(next[6] || '')]] : []);
+      rewrite_('IEP goals', function (r) { return !(mine(r) && (String(r[0]) === 'main' || (next && String(r[0]) === String(next[0])))); }, next ? [['main', email, String(next[2]), '', stamp_(), stamp_(), String(next[6] || ''), String(next[7] || '')]] : []);
     }
     return goals_(email);
   });
 }
 // 2.14: the student's goal check-in: "Did you do this today?" Yes / A little / Not today, and what they did
 var REFL_DID = ['Yes', 'A little', 'Not today'];
-function api_saveReflection(gid, did, said) {
+// acts: what they did, picked from buttons: [{ key, label, cls, who, acc }]. Reaching out to a teacher also goes on Contacts, and asking
+// for an accommodation on Accommodations used (both replaced when the check-in is changed the same day).
+var ACT_CONTACT = { email: 1, talk: 1, retake: 1 };
+function api_saveReflection(gid, did, said, acts) {
   var email = need_(); gid = String(gid || ''); said = clean_(said, 600);
+  acts = (Array.isArray(acts) ? acts : []).slice(0, 10).map(function (a) { return { key: String(a.key || '').replace(/[^a-z]/gi, '').slice(0, 20), label: clean_(a.label, 80), cls: clean_(a.cls, 60), who: clean_(a.who, 60), acc: clean_(a.acc, 80) }; }).filter(function (a) { return a.label; });
+  if (acts.length && did !== 'Not today') did = 'Yes';
   if (REFL_DID.indexOf(did) < 0) throw new Error('Pick Yes, A little or Not today.');
   var g = goals_(email).filter(function (x) { return x.id === gid; })[0]; if (!g) throw new Error('That goal is gone. Reload the page.');
   locked_(function () {
     var today = today_(), rows = rows_('Goal reflections'), i = find_(rows, function (r) { return day_(r[0]) === today && low_(r[1]) === email && String(r[2]) === gid; });
-    var row = [today, email, gid, g.name || ('Goal ' + (goals_(email).indexOf(g) + 1)), did, said, stamp_()];
-    if (i >= 0) sheet_('Goal reflections').getRange(i + 2, 1, 1, 7).setValues([row]); else sheet_('Goal reflections').appendRow(row);
+    var actText = acts.map(function (a) { var d = [a.who ? (a.key === 'email' ? 'to ' : 'with ') + a.who : '', a.cls ? (a.key === 'study' ? 'for ' : 'in ') + a.cls : '', a.acc].filter(String); return a.label + (d.length ? ' (' + d.join(', ') + ')' : ''); }).join('; ');
+    var sk = skillsIn_(actText + ' ' + said), row = [today, email, gid, g.name || ('Goal ' + (goals_(email).indexOf(g) + 1)), did, said, stamp_(), sk.join('; '), !said && !acts.length || sk.length ? 'Cataloged by the app' : 'To review', '', actText];
+    if (i >= 0) sheet_('Goal reflections').getRange(i + 2, 1, 1, 11).setValues([row]); else sheet_('Goal reflections').appendRow(row);
+    var tag = 'goal check-in ' + gid;
+    rewrite_('Contacts', function (r) { return !(low_(r[1]) === email && whenDay_(r[0]) === today && String(r[4]) === tag); }, acts.filter(function (a) { return ACT_CONTACT[a.key]; }).map(function (a) { return [stamp_(), email, a.cls, 'Goal check-in: ' + a.label.toLowerCase() + (a.who ? ' (' + a.who + ')' : ''), tag]; }));
+    rewrite_('Accommodations used', function (r) { return !(low_(r[1]) === email && day_(r[0]) === today && String(r[6]) === tag); }, acts.filter(function (a) { return a.key === 'accom'; }).map(function (a) { return [today, email, a.cls, a.acc || 'Asked for my accommodations', '', 'From the goal check-in', tag]; }));
+  });
+  return reflections_(email).filter(function (x) { return x.date === today_(); });
+}
+// 2.15: one goal check-in a day for all of a student's goals: the goals they tapped (proved today), what they wrote, and what the app
+// read from it. One row per goal tapped; none tapped → one row with Goal ID '*' (the teacher sorts it out). Replaces today's check-in.
+function api_saveGoalCheck(gids, said, acts, notToday) {
+  var email = need_(); said = clean_(said, 600);
+  var goals = goals_(email), ok = {}; goals.forEach(function (g) { ok[g.id] = g; });
+  gids = (Array.isArray(gids) ? gids : []).map(String).filter(function (id, i, a) { return ok[id] && a.indexOf(id) === i; });
+  acts = (Array.isArray(acts) ? acts : []).slice(0, 10).map(function (a) { return { key: String(a.key || '').replace(/[^a-z]/gi, '').slice(0, 20), label: clean_(a.label, 80), cls: clean_(a.cls, 60), who: clean_(a.who, 60), acc: clean_(a.acc, 80) }; }).filter(function (a) { return a.label; });
+  if (!gids.length && !said && !notToday) throw new Error('Tap a goal you worked on, or write about it.');
+  locked_(function () {
+    var today = today_(), tag = 'goal check-in';
+    var actText = acts.map(function (a) { var d = [a.who ? (a.key === 'email' ? 'to ' : 'with ') + a.who : '', a.cls ? (a.key === 'study' ? 'for ' : 'in ') + a.cls : '', a.acc].filter(String); return a.label + (d.length ? ' (' + d.join(', ') + ')' : ''); }).join('; ');
+    var sk = skillsIn_(actText + ' ' + said), name = function (id) { var g = ok[id]; return g.name || ('Goal ' + (goals.indexOf(g) + 1)); };
+    var rows = notToday ? [[today, email, '*', 'All goals', 'Not today', said, stamp_(), '', 'Cataloged by the app', '', '']]
+      : gids.length ? gids.map(function (id) { return [today, email, id, name(id), 'Yes', said, stamp_(), sk.join('; '), 'Cataloged by the app', '', actText]; })
+      : [[today, email, '*', 'No goal picked', 'Yes', said, stamp_(), sk.join('; '), sk.length ? 'Cataloged by the app' : 'To review', '', actText]];
+    rewrite_('Goal reflections', function (r) { return !(low_(r[1]) === email && day_(r[0]) === today); }, rows);
+    rewrite_('Contacts', function (r) { return !(low_(r[1]) === email && whenDay_(r[0]) === today && /^goal check-in/.test(String(r[4]))); }, notToday ? [] : acts.filter(function (a) { return ACT_CONTACT[a.key]; }).map(function (a) { return [stamp_(), email, a.cls, 'Goal check-in: ' + a.label.toLowerCase() + (a.who ? ' (' + a.who + ')' : ''), tag]; }));
+    rewrite_('Accommodations used', function (r) { return !(low_(r[1]) === email && day_(r[0]) === today && /^goal check-in/.test(String(r[6]))); }, notToday ? [] : acts.filter(function (a) { return a.key === 'accom'; }).map(function (a) { return [today, email, a.cls, a.acc || 'Asked for my accommodations', '', 'From the goal check-in', tag]; }));
   });
   return reflections_(email).filter(function (x) { return x.date === today_(); });
 }
 function reflections_(email) {
   return rows_('Goal reflections').filter(function (r) { return low_(r[1]) === email; })
-    .map(function (r) { return { date: day_(r[0]), goal: String(r[2]), did: String(r[4]), said: String(r[5] || '') }; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    .map(function (r) { return { date: day_(r[0]), goal: String(r[2]), did: String(r[4]), said: String(r[5] || ''), skills: String(r[7] || '').split('; ').filter(String), review: String(r[8] || ''), note: String(r[9] || ''), acts: String(r[10] || '') }; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+}
+// 2.15: the skills a check-in shows, found from the student's words (so most check-ins file themselves; the rest go to the teacher)
+var SKILLS = [
+  ['Starting work', /start|began|begin|right away|got going|initiat/i],
+  ['Asking for help (self-advocacy)', /ask|help|email|talk(ed)? to|told my|question|advoca|spoke up|speak up/i],
+  ['Organization and planning', /plan|planner|organiz|folder|binder|list|calendar|canvas|wrote (it|down)|agenda|backpack|drive/i],
+  ['Finishing and turning in work', /turn(ed)? in|finish|complet|submit|done with|missing work|caught up/i],
+  ['Focus', /focus|timer|on task|distract|break and came back|stayed with|concentrat/i],
+  ['Using accommodations', /accommodat|extra time|extended time|reader|notes|quiet room|calculator/i]
+];
+function skillsIn_(t) { t = String(t || ''); return SKILLS.filter(function (k) { return k[1].test(t); }).map(function (k) { return k[0]; }); }
+// share of check-ins that said they did it (Yes = 1, A little = ½), last 20 for one goal
+function selfPct_(email, gid) {
+  var all = reflections_(email), days = [], hit = {};
+  all.forEach(function (r) { if (days.indexOf(r.date) < 0) days.push(r.date); if (r.goal === gid) hit[r.date] = Math.max(hit[r.date] || 0, r.did === 'Yes' ? 1 : r.did === 'A little' ? 0.5 : 0); });
+  days = days.slice(0, 20);
+  return days.length ? Math.round(days.reduce(function (a, d) { return a + (hit[d] || 0); }, 0) / days.length * 100) : null;
+}
+// Teacher: check-ins to look at (To review first, then what the app filed this week)
+function evidence_(names, week) {
+  return rows_('Goal reflections').map(function (r, i) { return { row: i, r: r }; })
+    .filter(function (x) { var v = String(x.r[8] || ''); return v === 'To review' || (v === 'Cataloged by the app' && day_(x.r[0]) >= week); })
+    .map(function (x) { var r = x.r; return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), date: day_(r[0]), goal: String(r[2]), goalName: String(r[3]), did: String(r[4]), said: String(r[5] || ''), acts: String(r[10] || ''), skills: String(r[7] || '').split('; ').filter(String), review: String(r[8]) }; })
+    .sort(function (a, b) { return (a.review === 'To review' ? 0 : 1) - (b.review === 'To review' ? 0 : 1) || (a.date < b.date ? 1 : -1); }).slice(0, 40);
+}
+// Teacher: what to do with one check-in. act: 'count' (add it as a score on one of the goal's own-data measures), 'note', 'skip', 'file'
+function api_reviewEvidence(email, date, gid, act, p) {
+  teacherOnly_(); email = low_(email); gid = String(gid || ''); p = p || {};
+  var rows = rows_('Goal reflections'), i = find_(rows, function (r) { return low_(r[1]) === email && day_(r[0]) === date && String(r[2]) === gid; });
+  if (i < 0) throw new Error('That check-in is gone. Reload the page.');
+  var said = String(rows[i][5] || '');
+  if (act === 'count') api_addBenchmarkData(email, p.tool, { date: date, score: p.score, of: p.of, note: 'Student check-in: ' + said.slice(0, 200) });
+  var label = { count: 'Counted as data', note: 'Reviewed', skip: 'Not evidence', file: 'Cataloged by the app' }[act] || 'Reviewed';
+  var sk = p.skills ? (p.skills || []).map(function (x) { return clean_(x, 60); }).filter(String).join('; ') : String(rows[i][7] || '');
+  locked_(function () { sheet_('Goal reflections').getRange(i + 2, 8, 1, 3).setValues([[sk, label, clean_(p.note, 300) || String(rows[i][9] || '')]]); });
+  return evidence_(nameMap_(), weekOf_(today_()));
+}
+function nameMap_() { var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); }); return nm; }
+// 2.15 Teacher: import IEP goals for many students at once. rows: [{ who (email, student number or name), area, text, here ('yes'/'no'/'')}].
+// dry = true: just say who each row matches. Goals already on file (same text) are skipped. Goal 1 is filled first.
+var HERE_AREAS = /executive|organiz|self.?advoc|study|work (completion|habits)|task|time|planning|attention|focus|transition|behavior|self.?regulat|advocacy/i;
+function api_importGoals(rows, dry) {
+  teacherOnly_();
+  var stu = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
+  var find = function (who) {
+    var w = String(who || '').trim(), lw = w.toLowerCase(); if (!w) return null;
+    var hit = stu.filter(function (r) { return low_(r[SC.email]) === lw || (String(r[SC.number]).trim() && String(r[SC.number]).trim() === w); })[0];
+    if (hit) return hit;
+    var parts = lw.replace(/[^a-z ,'-]/g, ' ').split(/[\s,]+/).filter(String); if (!parts.length) return null;
+    var tries = w.indexOf(',') >= 0 ? [[parts[1], parts[0]]] : [[parts[0], parts[parts.length - 1]]];          // "Smith, Jane" or "Jane Smith"
+    var m = stu.filter(function (r) { var f = String(r[SC.first] || '').toLowerCase().trim(), ini = String(r[SC.initial] || '').toLowerCase().replace(/[^a-z]/g, ''); return tries.some(function (t) { return t[0] === f && t[1] && t[1].charAt(0) === ini.charAt(0); }); });
+    return m.length === 1 ? m[0] : null;
+  };
+  var out = (rows || []).slice(0, 600).map(function (x) {
+    var r = find(x.who), text = clean_(x.text, 2000), area = clean_(x.area, 80), h = String(x.here || '').trim().toLowerCase();
+    return { who: String(x.who || ''), email: r ? low_(r[SC.email]) : '', name: r ? stuName_(r) : '', area: area, text: text, here: h ? /^(y|yes|true|x|1|✓)/.test(h) : HERE_AREAS.test(area + ' ' + text), why: !r ? 'No student matches' : !text ? 'No goal text' : '' };
+  });
+  if (dry) return out;
+  var added = 0, skipped = 0;
+  locked_(function () {
+    out.forEach(function (x) {
+      if (x.why) { skipped++; return; }
+      var have = goals_(x.email);
+      if (have.some(function (g) { return low_(g.text) === low_(x.text); })) { skipped++; x.why = 'Already there'; return; }
+      if (!have[0].text) {
+        var f = stuFind_(x.email); if (f.i >= 0) stuSet_(f.i, 'goal', x.text);
+        var gr = rows_('IEP goals'), mi = find_(gr, function (r) { return low_(r[1]) === x.email && String(r[0]) === 'main'; });
+        if (mi >= 0) sheet_('IEP goals').getRange(mi + 2, 3, 1, 6).setValues([[x.area, '', String(gr[mi][4]), stamp_(), String(gr[mi][6] || ''), x.here ? '' : 'No']]);
+        else sheet_('IEP goals').appendRow(['main', x.email, x.area, '', stamp_(), stamp_(), '', x.here ? '' : 'No']);
+      } else sheet_('IEP goals').appendRow([Utilities.getUuid().slice(0, 8), x.email, x.area, x.text, stamp_(), stamp_(), '', x.here ? '' : 'No']);
+      if (ROWS_MEMO) { delete ROWS_MEMO['IEP goals']; delete ROWS_MEMO.Students; }
+      added++;
+    });
+  });
+  try { allGoals_(); } catch (e) {}
+  return { added: added, skipped: skipped, rows: out };
+}
+// 2.15: every goal of every student on one tab, sorted by student and goal number, with its benchmarks in words: the tab to read and
+// copy from. Goal 1's text is also written on the IEP goals tab (with the student's name), so that tab has every goal too.
+function updateAllGoals() { var n = memo_(allGoals_); ss_().toast(n + ' goals on the All goals and benchmarks tab.', 'Resource Check-In', 6); }
+function api_allGoals() { teacherOnly_(); return memo_(allGoals_); }
+function allGoals_() {
+  var out = [], gl = rows_('IEP goals'), fix = false;
+  var stus = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
+  var withGoals = {}; gl.forEach(function (r) { withGoals[low_(r[1])] = true; }); rows_('Goal tools').forEach(function (r) { withGoals[low_(r[1])] = true; });
+  var keep = gl.map(function (r) { return r.slice(); });
+  // student words pasted into the All goals tab (say, reworded by AI) are saved to the goal first, matched by email and goal text
+  var typed = {}; rows_('All goals and benchmarks').forEach(function (r) { var k = low_(r[10]) + '|' + String(r[5]).trim(); if (low_(r[10]) && String(r[6]).trim()) typed[k] = clean_(r[6], 500); });
+  stus.forEach(function (r) {
+    var email = low_(r[SC.email]), name = stuName_(r), main = String(r[SC.goal] || '');
+    if (!main && !withGoals[email]) return;
+    var mi = -1; keep.forEach(function (x, i) { if (low_(x[1]) === email && String(x[0]) === 'main') mi = i; });
+    if (main && mi < 0) { keep.push(['main', email, '', main, stamp_(), stamp_(), '', '', name]); fix = true; }
+    if (mi < 0 && main && typed[email + '|' + main.trim()]) mi = keep.length - 1;
+    keep.forEach(function (x) {
+      if (low_(x[1]) !== email) return;
+      if (String(x[0]) === 'main' && String(x[3]) !== main) { x[3] = main; fix = true; }
+      if (String(x[8] || '') !== name) { x[8] = name; fix = true; }
+      var tk = typed[email + '|' + String(String(x[0]) === 'main' ? main : x[3]).trim()];
+      if (tk && tk !== String(x[6] || '')) { x[6] = tk; fix = true; }
+    });
+    if (fix) { rewrite_('IEP goals', function () { return false; }, keep); keep = rows_('IEP goals').map(function (x) { return x.slice(); }); fix = false; }
+    var refl = reflections_(email), days = []; refl.forEach(function (x) { if (days.indexOf(x.date) < 0) days.push(x.date); }); days = days.slice(0, 20);
+    goals_(email).forEach(function (g, k) {
+      if (!g.text && !g.tools.length && !g.bench.length) return;
+      var bench = g.bench.map(function (b) { return '• ' + b.text + (b.by ? ' (by ' + b.by + ')' : '') + ' · ' + (b.status === 'Met' ? 'Met' : b.status === 'Stopped' ? 'Stopped' : b.met === true ? 'at target' : b.met === false ? 'not at target yet' : 'no data yet'); }).join('\n');
+      var tools = g.tools.map(function (t) { return t.name + ': ' + (t.now === null ? '—' : t.now + (t.unit === '%' ? '%' : t.word ? ' ' + t.word : '')); }).join('\n');
+      var did = days.filter(function (d) { return refl.some(function (x) { return x.date === d && x.goal === g.id && x.did !== 'Not today'; }); }).length;
+      out.push([name, String(r[SC.period] || ''), k + 1, g.name, g.here === false ? 'No' : 'Yes', g.text, g.kid || '', bench, tools, days.length ? 'said they did it ' + did + ' of the last ' + days.length + ' check-in days' : '', email]);
+    });
+  });
+  if (fix) rewrite_('IEP goals', function () { return false; }, keep);
+  out.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[2] - b[2]; });
+  rewrite_('All goals and benchmarks', function () { return false; }, out);
+  try { var sh = sheet_('All goals and benchmarks'); sh.getRange(2, 1, Math.max(1, out.length), TABS['All goals and benchmarks'].length).setWrap(true).setVerticalAlignment('top'); sh.setColumnWidth(6, 360); sh.setColumnWidth(8, 360); } catch (e) {}
+  return out.length;
 }
 function api_benchMeasures() { teacherOnly_(); return BENCH_MEASURES.map(function (m) { return { key: m.key, label: m.label, unit: m.unit, word: m.word || '', better: m.better || '', mine: !!m.mine, trials: !!m.trials }; }); }
 
@@ -3864,7 +4051,8 @@ function studentData_(email) {
   });
   var fr = stuFind_(email), ef = efData_(email);
   prof.goal = fr.i >= 0 ? String(fr.rows[fr.i][SC.goal] || '') : '';
-  var allGoals = goals_(email, ef); prof.goals = allGoals.filter(function (g) { return g.text; }).map(function (g) { return { id: g.id, name: g.name, text: g.text, kid: g.kid }; });
+  prof.myCheck = fr.i >= 0 ? String(fr.rows[fr.i][SC.myCheck] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
+  var allGoals = goals_(email, ef); prof.goals = allGoals.filter(function (g) { return g.text; }).map(function (g) { return { id: g.id, name: g.name, text: g.text, kid: g.kid, here: g.here }; });
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
   var out = { madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? [].concat.apply([], allGoals.map(function (g) { return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })) : [],
@@ -3956,7 +4144,7 @@ function settings_() {
     dropIn: dropIn_(v['Drop-In Center locations']),
     checkDay: String(v['Grade check day'] === undefined ? 'Friday' : v['Grade check day']).trim(), dayClass: String(v['What students call this class'] || 'BASE/ARC').trim(),
     nothingItems: String(v['Nothing-to-do checklist'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
-    checkItems: String(v['Daily checklist items'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
+    checkItems: String(v['Daily checklist items'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 20),
     core: list_(v['Core classes (for missing counts)']).map(low_),
     links: String(v['Free time links'] || '').split(';').map(function (x) { var m = /^(.*?)\s*=\s*(https?:\S+)$/.exec(x.trim()); return m ? { name: m[1].trim(), url: m[2] } : null; }).filter(Boolean).slice(0, 20),
     accoms: String(v['Common accommodations'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 20),
@@ -4090,7 +4278,7 @@ function rows_(name) {
 
 // Keep the rows keep(row) says yes to, add the new rows, write the tab back.
 function rewrite_(name, keep, add) {
-  var sh = sheet_(name), w = TABS[name].length, rows = rows_(name).filter(keep).concat(add || []);
+  var sh = sheet_(name), w = TABS[name].length, rows = rows_(name).filter(keep).concat(add || []).map(function (r) { return r.length === w ? r : r.concat(new Array(Math.max(0, w - r.length)).fill('')).slice(0, w); });
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, w).clearContent();
   if (rows.length) sh.getRange(2, 1, rows.length, w).setValues(rows);
   if (ROWS_MEMO) delete ROWS_MEMO[name];
@@ -4225,7 +4413,8 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     api_saveGradeGoals({ 'Geometry Prep': 80, Chemistry: 90, 'English II': 85 });
     g.setUser('ray@d204.lths.net');
     api_saveGoalText('ort123456@d204.lths.net', 'Marcus will use resource time to plan and complete assignments, turning in 80% of coursework on time, as measured by teacher data and grade reports.', '', 'Executive functioning');
-    g.setUser('ort123456@d204.lths.net'); [[-3, 'Yes', 'I made a plan and finished the Ch. 6 worksheet.'], [-2, 'A little', 'I started my Biology lab but ran out of time.'], [-1, 'Yes', 'I turned in the Lab 2 report.']].forEach(function (x) { sheet_('Goal reflections').appendRow([addDays_(today, x[0]), 'ort123456@d204.lths.net', '', 'Executive functioning', x[1], x[2], stamp_()]); }); g.setUser('ray@d204.lths.net');
+    g.setUser('ort123456@d204.lths.net'); [[-3, 'Yes', 'I made a plan and finished the Ch. 6 worksheet.'], [-2, 'A little', 'I started my Biology lab but ran out of time.'], [-1, 'Yes', 'I turned in the Lab 2 report.']].forEach(function (x) { var sk = skillsIn_(x[2]); sheet_('Goal reflections').appendRow([addDays_(today, x[0]), 'ort123456@d204.lths.net', '', 'Executive functioning', x[1], x[2], stamp_(), sk.join('; '), sk.length ? 'Cataloged by the app' : 'To review', '']); });
+    sheet_('Goal reflections').appendRow([addDays_(today, -1), 'ort123456@d204.lths.net', '', 'Executive functioning', 'A little', 'Kind of, the sub was there so it was loud.', stamp_(), '', 'To review', '']); g.setUser('ray@d204.lths.net'); api_saveGoalText('wil501777@d204.lths.net', 'Dev will independently write his assignments in his planner before leaving each class, as measured by planner checks.', '', 'Organization'); var dg = api_addGoal('wil501777@d204.lths.net', 'Reading')[1]; api_saveGoalText('wil501777@d204.lths.net', 'Given a grade-level text, Dev will identify the main idea and two supporting details with 80% accuracy across 3 consecutive probes.', dg.id, 'Reading', undefined, false);
     var gt = api_saveGoalTools('ort123456@d204.lths.net', { app: ['turnedIn', 'missing'], mine: [{ name: 'Starts work within 1 minute', kind: 'trials', better: 'Higher' }] })[0];
     var tr = gt.tools.filter(function (t) { return t.mine; })[0], tm = gt.tools.filter(function (t) { return t.measure === 'missing'; })[0], tt = gt.tools.filter(function (t) { return t.measure === 'turnedIn'; })[0];
     [[-21, 2], [-14, 3], [-7, 3], [-2, 4]].forEach(function (d) { api_addBenchmarkData('ort123456@d204.lths.net', tr.id, { date: addDays_(today, d[0]), score: d[1], of: 5 }); });
@@ -4295,7 +4484,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
 </script>
 </head>
 <body>
-<header class="top"><div class="brand" id="brand">Resource Check-In</div><nav id="nav"></nav><button class="btn small" id="lookBtn" title="Colors, font and text size" onclick="lookOpen()" hidden>🎨</button><div class="who" id="who"></div></header>
+<header class="top"><div class="brand" id="brand">Resource Check-In</div><nav id="nav"></nav><button class="btn" id="lookBtn" title="My settings: my page, colors, font and text size" onclick="lookOpen()" style="font-size:17px;padding:8px 16px" hidden>⚙️ Settings</button><div class="who" id="who"></div></header>
 <div id="prevBar" class="prevbar" hidden></div>
 <main id="main"><div class="loading">Loading…</div></main>
 <div id="toast"></div>
@@ -4310,7 +4499,7 @@ var FONTS = [['lexend', 'Lexend', 'Lexend'], ['dyslexic', 'OpenDyslexic', 'OpenD
 var SIZES = [['normal', 'A', 'Regular'], ['large', 'A+', 'Large'], ['xl', 'A++', 'Extra large']];
 var LOOK = { theme: 'classic', font: 'lexend', size: 'normal' };
 function applyLook(l) {
-  LOOK = { theme: l.theme || 'classic', font: l.font || 'lexend', size: l.size || 'normal' };
+  LOOK = { theme: l.theme || 'classic', font: l.font || 'lexend', size: l.size || 'normal', page: l.page || (LOOK && LOOK.page) || {} };
   var r = document.documentElement;
   if (LOOK.theme === 'classic') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', LOOK.theme);
   if (LOOK.font === 'lexend') r.removeAttribute('data-font'); else r.setAttribute('data-font', LOOK.font);
@@ -4321,14 +4510,15 @@ try { var saved = JSON.parse(localStorage.getItem('rci-look') || 'null'); if (sa
 function canLook() { return B && (B.teacher || F('look')); }
 function lookAfterBoot() {
   var d = B.lookDefault || {};
-  applyLook(canLook() && B.look ? B.look : { theme: d.theme, font: d.font, size: (B.look && B.look.size) || 'normal' });
-  $('lookBtn').hidden = !canLook();
+  applyLook(canLook() && B.look ? B.look : { theme: d.theme, font: d.font, size: (B.look && B.look.size) || 'normal', page: (B.look && B.look.page) || {} });
+  $('lookBtn').hidden = !(canLook() || MODE === 'student');
 }
 function lookOpen() {
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'lookModal';
   el.onclick = function (e) { if (e.target === el) el.remove(); };
   var draw = function () {
-    el.innerHTML = '<div class="card" style="max-width:640px"><div class="row"><h2 class="grow">🎨 Colors and font</h2><button class="btn link" onclick="$(\'lookModal\').remove()">✕ Done</button></div>' +
+    el.innerHTML = '<div class="card" style="max-width:680px"><div class="row"><h2 class="grow">⚙️ Settings</h2><button class="btn link" onclick="$(\'lookModal\').remove()">✕ Done</button></div>' +
+      (MODE === 'student' && D ? myPageSettings() : '') + (!canLook() ? '</div>' : '<h3 style="margin:16px 0 0">🎨 Colors and font</h3>' +
       '<p style="margin:12px 0 6px"><b>Colors</b></p><div class="looks">' + THEMES.map(function (t) {
         return '<button class="lookpick' + (LOOK.theme === t[0] ? ' on' : '') + '" onclick="lookSet(\'theme\',\'' + t[0] + '\')"><span class="sw3"><i style="background:' + t[2] + '"></i><i style="background:' + t[3] + '"></i><i style="background:' + t[4] + '"></i></span>' + t[1] + '</button>';
       }).join('') + '</div>' +
@@ -4337,11 +4527,32 @@ function lookOpen() {
       }).join('') + '</div>' +
       '<p style="margin:16px 0 6px"><b>Text size</b></p><div class="seg">' + SIZES.map(function (z) {
         return '<button class="' + (LOOK.size === z[0] ? 'on' : '') + '" onclick="lookSet(\'size\',\'' + z[0] + '\')" title="' + z[2] + '">' + z[1] + '</button>';
-      }).join('') + '</div><p class="hint" style="margin:14px 0 0">Saved for you on any computer you sign in on.</p></div>';
+      }).join('') + '</div><p class="hint" style="margin:14px 0 0">Saved for you on any computer you sign in on.</p></div>');
   };
   LOOK_DRAW = draw; draw(); document.body.appendChild(el);
 }
 var LOOK_DRAW = null, LOOK_T = null;
+// 2.15: My page (students): the order of the My stuff tiles, which ones show, a few switches, and their own checklist items
+function pagePref(k) { var p = (LOOK && LOOK.page) || {}; return p[k]; }
+function pageSet(k, v) { var l = JSON.parse(JSON.stringify(LOOK)); l.page = l.page || {}; l.page[k] = v; applyLook(l); if (LOOK_DRAW) LOOK_DRAW(); if (k === 'bell' && !v && $('bellBox')) $('bellBox').remove(); if (k === 'bell' && v) bellBox();
+  clearTimeout(LOOK_T); LOOK_T = setTimeout(function () { call('api_saveLook', LOOK).catch(function () {}); }, 600); if (VIEW === 'checkin') drawCheckin(); }
+function pageTiles() { var all = stuffTiles(stepList(), true), ord = pagePref('order') || []; return all.sort(function (a, b) { var i = ord.indexOf(a[0]), j = ord.indexOf(b[0]); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); }); }
+function pageMove(k, d) { var keys = pageTiles().map(function (x) { return x[0]; }), i = keys.indexOf(k), j = i + d; if (j < 0 || j >= keys.length) return; keys.splice(j, 0, keys.splice(i, 1)[0]); pageSet('order', keys); }
+function pageHide(k, on) { var h = (pagePref('hide') || []).filter(function (x) { return x !== k; }); if (!on) h.push(k); pageSet('hide', h); }
+var MYCK = null;
+function myPageSettings() {
+  var hid = pagePref('hide') || [], tiles = pageTiles(), sw = function (k, label, def) { var on = pagePref(k) === undefined ? def : !!pagePref(k); return '<label class="check" style="margin:4px 0"><input type="checkbox"' + (on ? ' checked' : '') + ' onchange="pageSet(\'' + k + '\',this.checked)"><span>' + label + '</span></label>'; };
+  var mine = MYCK || (D.profile.myCheck || []).slice(); while (mine.length < 5) mine.push('');
+  return '<h3 style="margin:14px 0 4px">📱 My page</h3><p class="hint" style="margin:0 0 6px">Put your “My stuff” boxes in the order you like (▲ ▼), and hide the ones you don’t use.</p>' +
+    tiles.map(function (t, k) { return '<div class="row" style="gap:6px;margin:3px 0"><label class="check grow" style="margin:0"><input type="checkbox"' + (hid.indexOf(t[0]) < 0 ? ' checked' : '') + ' onchange="pageHide(\'' + t[0] + '\',this.checked)"><span>' + t[1] + '</span></label>' +
+      '<button class="btn link small" onclick="pageMove(\'' + t[0] + '\',-1)"' + (k ? '' : ' disabled') + '>▲</button><button class="btn link small" onclick="pageMove(\'' + t[0] + '\',1)"' + (k < tiles.length - 1 ? '' : ' disabled') + '>▼</button></div>'; }).join('') +
+    '<h3 style="margin:14px 0 4px">🔧 On my Today page</h3>' + sw('countdown', '⏳ Show my next tests at the top', true) + sw('confetti', '🎉 Confetti when I do something great', true) + (B.bell ? sw('bell', '🔔 Bell schedule box', true) : '') +
+    (F('checklist') ? '<h3 style="margin:14px 0 4px">✅ My own checklist items</h3><p class="hint" style="margin:0 0 6px">Up to 5 things you want to remember to do, added after your teacher’s checklist.</p>' +
+      mine.map(function (t, k) { return '<input type="text" maxlength="120" style="margin:3px 0" value="' + esc(t) + '" placeholder="' + ['Charge my Chromebook', 'Check Canvas for new grades', 'Fill my water bottle', 'Pack my gym clothes', 'Text my mom about practice'][k] + '" oninput="MYCK=MYCK||' + 'myckRead();MYCK[' + k + ']=this.value">'; }).join('') +
+      '<button class="btn small primary" style="margin-top:6px" onclick="myckSave()">Save my items</button>' : '');
+}
+function myckRead() { var l = (D.profile.myCheck || []).slice(); while (l.length < 5) l.push(''); return l; }
+function myckSave() { var l = (MYCK || myckRead()).map(function (x) { return String(x).trim(); }).filter(String); call('api_saveMyChecklist', l).then(function (r) { D.profile.myCheck = r.mine; B.checkItems = r.items; MYCK = null; toast('Saved: they’re on your checklist now'); if (LOOK_DRAW) LOOK_DRAW(); if (VIEW === 'checkin') drawCheckin(); }).catch(oops); }
 function lookSet(k, v) {
   var l = JSON.parse(JSON.stringify(LOOK)); l[k] = v; applyLook(l); if (LOOK_DRAW) LOOK_DRAW();
   clearTimeout(LOOK_T); LOOK_T = setTimeout(function () { call('api_saveLook', LOOK).catch(function () {}); }, 600);
@@ -4634,7 +4845,7 @@ function ordinal(n) { return n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th',
 // Once per birthday (the sheet remembers it was shown): on the day, on Friday for a weekend birthday, or at the next visit if missed.
 // The bell countdown (Settings: Bell schedule link) in a small box, bottom right; it can be folded down to a 🔔 button.
 function bellBox() {
-  if (!B.bell || $('bellBox')) return;
+  if (!B.bell || $('bellBox') || pagePref('bell') === false) return;
   var small = false; try { small = localStorage.getItem('rci-bell') === 'small'; } catch (e) {}
   var el = document.createElement('div'); el.id = 'bellBox'; if (small) el.className = 'small';
   el.innerHTML = '<button class="bellbtn" title="Show or hide the bell schedule" onclick="bellFold()">🔔</button><iframe src="' + esc(B.bell) + '" title="Bell schedule" loading="lazy"></iframe>';
@@ -4690,7 +4901,7 @@ function madeUpMaybe() {
     '<p style="margin:0 0 8px">' + l.slice(0, 5).map(function (x) { return '✅ <b>' + esc(x.cls) + '</b>: ' + esc(x.name); }).join('<br>') + (n > 5 ? '<br>and ' + (n - 5) + ' more' : '') + '</p>' +
     (m.ever ? '<p class="sub" style="margin:0 0 14px">You’ve made up <b>' + m.fixed + ' of the ' + m.ever + '</b> assignments that were ever missing.</p>' : '') +
     '<button class="btn" onclick="bdayClose()">Close</button></div>';
-  document.body.appendChild(el); confetti(el);
+  document.body.appendChild(el); if (pagePref('confetti') !== false) confetti(el);
   setTimeout(bdayClose, 12000);
 }
 // plain falling confetti (no birthday balloons), drawn by the page
@@ -5251,7 +5462,7 @@ function dpSave() {
   dpSend(v);
 }
 function dpSend(v) {
-  call('api_saveDayPlan', v).then(function (r) {
+  gcSaveAll().then(function () { return call('api_saveDayPlan', v); }).then(function (r) {
     var was = !!gate(); D.dayPlan = r; DP_EDIT = false; DP_NONE = null; DP_DRAFT = null; DP_WHY = ''; toast('Plan saved');
     if (was && !gate()) go('checkin'); else drawCheckin();          // still on grade check day: keep the grades typed so far
   }).catch(oops);
@@ -5687,9 +5898,10 @@ function drawCheckin() {
   var cur = STEP ? STEP.k : (list.filter(function (s, i) { return !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;
   var soon = soonTests(), name = String(D.profile.name || '').split(' ')[0];
   var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? (B.checkDay && B.today >= B.checkDay ? ' · <b>Grade check day</b>' : ' · <b>First, paste your grades</b>') : '') + '</p>';
-  if (soon.length) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
+  if (soon.length && pagePref('countdown') !== false) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
-  h += codeBanner() + goalCheckCard();
+  var planHere = F('dayPlan') && isSchoolDay() && keys.indexOf('plan') >= 0;
+  h += codeBanner() + (!planHere || (cur !== 'plan' && stepDone('plan')) ? goalCheckCard() : '');          // 2.15: next to today's plan
   if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
     var dn = stepDone(s.k), lk = stepLock(list, i);
     return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
@@ -5705,7 +5917,7 @@ function drawCheckin() {
       h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : skipBox('grades') + (skipped('grades') ? nx() : ''));
       after = 'grades';
     }
-  } else if (cur === 'plan') h += dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')) + nx();
+  } else if (cur === 'plan') { var gcc = goalCheckCard(), pc = dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')); h += (gcc ? '<div class="side2"><div>' + pc + '</div><div>' + gcc + '</div></div>' : pc) + nx(); }
   else if (cur === 'check') h += checklistCard() + nx();
   else if (cur === 'exit') h += exitCard() + nx();
   else h += list.length ? '<div class="card alldone"><h2>🎉 All done for today</h2><p style="margin:6px 0 0">Nice work. Your things are below' + (F('focus') ? ', or start the <a href="#" onclick="go(\'focus\');return false">⏱️ focus timer</a>' : '') + '.</p></div>'
@@ -5718,6 +5930,12 @@ function drawCheckin() {
 }
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
+  var t = stuffTiles(list), hid = pagePref('hide') || [], ord = pagePref('order') || [];
+  t = t.filter(function (x) { return hid.indexOf(x[0]) < 0; });
+  if (ord.length) t = t.map(function (x, i) { return [x, i]; }).sort(function (a, b) { var i = ord.indexOf(a[0][0]), j = ord.indexOf(b[0][0]); return (i < 0 ? 99 + a[1] : i) - (j < 0 ? 99 + b[1] : j); }).map(function (x) { return x[0]; });
+  return stuffHtml(t);
+}
+function stuffTiles(list, all) {
   var e = D.ef || {}, t = [], inSteps = list.some(function (s) { return s.k === 'grades'; });
   var w = F('wins') ? myWins() : []; if (w.length) t.push(['wins', '🎉 My wins', w.length + ' new', true, winsCard]);
   var iep = D.profile.iep; if (iep && iep.meet && iep.meet >= B.today) t.push(['iep', '📌 IEP meeting', shortDay(iep.meet), daysUntil(iep.meet) <= 7, iepCard]);
@@ -5734,6 +5952,9 @@ function myStuff(list) {
     t.push(['tc', '🧪 Tests with my teacher', rel.length ? '🔑 Your code is ready' : tcr.filter(function (x) { return x.ready; }).length ? 'Your test is here' : tcr.length ? 'Coming soon' : op.length ? op.length + ' waiting' : 'Waiting for a test?', rel.length + tcr.filter(function (x) { return x.ready; }).length > 0, tcCard]); }
   t.push(['cal', '📆 My calendar', 'What I did each day', false, function () { return '<div class="card"><h2>📆 My calendar</h2><p class="hint" style="margin:2px 0 10px">A wall calendar with what you did each day: your plan, exit ticket, checklist, focus time and more. Print it or save it as a PDF.</p><div class="row">' + calPick('calS') + '<button class="btn primary" onclick="calOpen(\'\',$(\'calS\').value,D.profile.name)">Make my calendar</button></div></div>'; }]);
   if (myGoalCard()) t.push(['mygoal', '⭐ My goal', 'How I’m doing', false, myGoalCard]);
+  return t;
+}
+function stuffHtml(t) {
   if (!t.length) return '';
   var open = t.filter(function (x) { return x[0] === TILE; })[0];
   return '<h2 class="stuffh">My stuff</h2><div class="stiles">' + t.map(function (x) {
@@ -6055,47 +6276,110 @@ function easyGoal(t, name) {
   if (s && !/[.!?]$/.test(s)) s += '.';
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-// words to tap, picked from what the goal is about
-function goalChips(t) {
-  var x = String(t || '').toLowerCase(), c = [];
-  if (/start|initiat|begin/.test(x)) c.push('I started right away.', 'I started after a reminder.', 'I broke it into small steps.');
-  if (/email|ask|help|advoca|teacher|talk|confus/.test(x)) c.push('I asked for help.', 'I emailed my teacher.', 'I talked to my teacher.', 'I asked a question in class.');
-  if (/organiz|plan|binder|materials|calendar|agenda|track/.test(x)) c.push('I wrote it in my planner.', 'I checked Canvas.', 'I organized my folders.', 'I made a to-do list.');
-  if (/turn|complet|assignment|coursework|homework|missing|submit/.test(x)) c.push('I turned in an assignment.', 'I worked on missing work.', 'I finished my work.');
-  if (/focus|attention|on.task|distract|minutes/.test(x)) c.push('I stayed focused.', 'I used the focus timer.', 'I took a break and came back.');
-  if (/accommodat/.test(x)) c.push('I used my accommodations.');
-  c.push('It was hard because ', 'It went well because ', 'Next time I will ');
-  return c.filter(function (v, i) { return c.indexOf(v) === i; });
+// 2.15: one box, like the plan: the student types, or taps a sentence that fits their goal ("I emailed ___ about ___."), then taps a
+// name or a class to fill each ___. The app reads what they did from the sentences (for the teacher's data). Saved with the plan.
+// Each: [key, sentence, what the goal is about]. Picked from Colleen's students' IEP goals (self-advocacy, starting work,
+// organization, turning work in, focus, accommodations).
+var GOAL_ACTS = [
+  ['email', 'I emailed ___ about ___.', /email|advoca|teacher|communicat|clarif|reach out|ask|help/i, 'Emailed a teacher'],
+  ['help', 'I asked ___ for help in ___.', /help|ask|advoca|clarif|confus|question|support/i, 'Asked for help'],
+  ['talk', 'I talked to ___ about ___.', /talk|advoca|teacher|communicat|conference|clarif/i, 'Talked to a teacher'],
+  ['accom', 'I asked for my ___ in ___.', /accommodat|advoca|extended|extra time|test/i, 'Asked for my accommodations'],
+  ['missing', 'I turned in a missing assignment in ___.', /missing|turn|submit|coursework|late|assignment/i, 'Turned in a missing assignment'],
+  ['finish', 'I finished an assignment in ___.', /complet|finish|assignment|coursework|homework|task/i, 'Finished an assignment'],
+  ['start', 'I started my work right away in ___.', /start|initiat|begin|task/i, 'Started work right away'],
+  ['planner', 'I wrote my assignments in my planner.', /planner|agenda|record|write|organiz|calendar|track/i, 'Wrote assignments in a planner'],
+  ['canvas', 'I checked Canvas and my grades.', /canvas|grade|monitor|track|missing|check/i, 'Checked Canvas and grades'],
+  ['plan', 'I broke my work into small steps.', /plan|steps|chunk|prioritiz|time manag|schedule|break.{0,10}down|long.term|project/i, 'Broke work into small steps'],
+  ['organize', 'I organized my folders and backpack.', /organiz|binder|folder|materials|backpack|drive|locker/i, 'Organized folders and backpack'],
+  ['materials', 'I brought what I needed to ___.', /materials|prepared|bring|supplies/i, 'Brought what was needed'],
+  ['focus', 'I stayed focused in ___.', /focus|attention|on.task|distract|engag/i, 'Stayed focused'],
+  ['break', 'I took a break and came back ready to work.', /break|regulat|cop(e|ing)|calm|frustrat|anxi|stress/i, 'Took a break and came back'],
+  ['study', 'I studied for my ___ test.', /study|test|quiz|prepar|exam/i, 'Studied for a test'],
+  ['retake', 'I asked ___ about a retake in ___.', /retake|grade|advoca|missing|improv/i, 'Asked about a retake']
+];
+var GOAL_ALWAYS = ['I worked on it a little: ___.', 'Not today, because ___.'];
+function goalActs(t) {
+  var m = GOAL_ACTS.filter(function (a) { return a[2].test(t || ''); });
+  ['help', 'email', 'missing', 'planner'].forEach(function (k) { if (m.length < 4 && !m.some(function (a) { return a[0] === k; })) m.push(GOAL_ACTS.filter(function (a) { return a[0] === k; })[0]); });
+  return m.slice(0, 7);
 }
-var GC_DID = {};
+function myAdults() {
+  var out = [];
+  (D.classes || []).forEach(function (c) { if (c.teacher && !c.resource) String(c.teacher).split(' / ').forEach(function (n) { n = tName(n.trim()); if (n && out.indexOf(n) < 0) out.push(n); }); });
+  [D.profile.caseMgr, D.profile.counselor].forEach(function (n) { if (n && out.indexOf(n) < 0) out.push(n); });
+  return out;
+}
+// what goes in the next ___: people after "emailed / asked / talked to", accommodations after "my", classes after "in / about / for my … test"
+function blankKind(t) {
+  var at = t.indexOf('___'); if (at < 0) return '';
+  var before = t.slice(Math.max(0, at - 24), at).toLowerCase();
+  if (/because\s*$|a little:\s*$/.test(before)) return 'type';
+  if (/(emailed|asked|talked to)\s*$/.test(before)) return 'who';
+  if (/asked for my\s*$/.test(before)) return 'acc';
+  return 'cls';
+}
+var GC_T = { text: undefined, pick: null, edit: false };          // the goal check-in while it's being filled in
+// 2.15: one card for all of a student's goals (every area): tap the ones you proved today, and (optional) tell about it
 function goalCheckCard() {
   var gl = (F('goalCheck') && isSchoolDay() && D.profile.goals) || []; if (!gl.length) return '';
-  var done = {}; (D.profile.reflToday || []).forEach(function (r) { done[r.goal] = r; });
-  var open = gl.filter(function (g) { return !done[g.id] || GC_DID.edit === g.id; });
-  if (!open.length) return '<div class="card" style="padding:10px 16px"><span class="small">🌱 You told us about your goal' + (gl.length > 1 ? 's' : '') + ' today. Nice work showing your growth! <a href="#" onclick="GC_DID.edit=\'' + gl[0].id + '\';drawCheckin();return false">Change</a></span></div>';
-  return open.map(function (g) {
-    var k = gl.indexOf(g), r = done[g.id] || {}, did = GC_DID[g.id] || r.did || '';
-    return '<div class="card" style="border:2px solid var(--brand);background:var(--brand-soft, var(--bg))"><h2 style="margin:0 0 6px">🌱 My goal' + (gl.length > 1 ? ' ' + (k + 1) : '') + (g.name ? ': ' + esc(g.name) : '') + '</h2>' +
-      '<p style="font-size:18px;margin:0 0 10px">' + esc(g.kid || easyGoal(g.text, D.profile.name)) + '</p>' +
-      '<p style="margin:0 0 8px"><b>Did you do this today? Tell me about it to show your growth!</b></p>' +
-      '<div class="seg" style="margin-bottom:8px">' + ['Yes', 'A little', 'Not today'].map(function (v) { return '<button class="' + (did === v ? 'on' : '') + '" onclick="GC_DID[\'' + g.id + '\']=\'' + v + '\';gcKeep(\'' + g.id + '\');drawCheckin()">' + (v === 'Yes' ? '✅ ' : v === 'A little' ? '🌗 ' : '⏳ ') + v + '</button>'; }).join('') + '</div>' +
-      '<textarea id="gcT_' + g.id + '" maxlength="600" style="min-height:70px" placeholder="What did you do? Tap words below to add them.">' + esc(GC_DID['t' + g.id] !== undefined ? GC_DID['t' + g.id] : (r.said || '')) + '</textarea>' +
-      '<div class="row" style="gap:6px;margin:6px 0 10px;flex-wrap:wrap">' + goalChips(g.kid || easyGoal(g.text, D.profile.name)).map(function (c) { return '<button class="btn small" style="border-radius:999px" onclick="gcAdd(\'' + g.id + '\',\'' + c.replace(/'/g, '’') + '\')">' + esc(c.trim()) + '</button>'; }).join('') + '</div>' +
-      '<button class="btn primary" onclick="gcSave(\'' + g.id + '\')">Save</button></div>';
-  }).join('');
+  if ((D.profile.reflToday || []).length && !GC_T.edit) return '<div class="card" style="padding:10px 16px"><span class="small">🌱 You told us about your goals today. Nice work showing your growth! <a href="#" onclick="GC_T.edit=true;drawCheckin();return false">Change</a></span></div>';
+  return '<div class="card" id="gcC" style="border:2px solid var(--brand);background:var(--brand-soft, var(--bg))">' + gcInner() + '</div>';
 }
-function gcKeep(id) { var t = $('gcT_' + id); if (t) GC_DID['t' + id] = t.value; }
-function gcAdd(id, c) {
-  var t = $('gcT_' + id); if (!t) return;
-  var v = t.value.replace(/\s+$/, '');
-  t.value = (v ? v + (/[.!?]$/.test(v) ? ' ' : ' ') : '') + c; GC_DID['t' + id] = t.value; t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+function gcPicks() {
+  if (!GC_T.pick) { GC_T.pick = {}; (D.profile.reflToday || []).forEach(function (r) { if (r.goal !== '*' && r.did !== 'Not today') GC_T.pick[r.goal] = true; }); }
+  return GC_T.pick;
 }
-function gcSave(id) {
-  var did = GC_DID[id] || ((D.profile.reflToday || []).filter(function (r) { return r.goal === id; })[0] || {}).did, said = $('gcT_' + id).value.trim();
-  if (!did) return alert('Pick Yes, A little or Not today.');
-  if (!said) { $('gcT_' + id).focus(); return alert('Tell us about it: what did you do' + (did === 'Not today' ? ', or what got in the way?' : '?')); }
-  call('api_saveReflection', id, did, said).then(function (r) { D.profile.reflToday = r; delete GC_DID[id]; delete GC_DID['t' + id]; GC_DID.edit = null; toast(did === 'Not today' ? 'Saved. Tomorrow is a new day!' : 'Saved. That’s growth! 🌱'); drawCheckin(); }).catch(oops);
+function gcInner() {
+  var gl = D.profile.goals || [], pk = gcPicks(), r0 = (D.profile.reflToday || [])[0];
+  var t = GC_T.text !== undefined ? GC_T.text : (r0 && r0.said) || '';
+  var kind = blankKind(t), withPlan = VIEW === 'checkin' && !stepDone('plan');
+  var fill = kind === 'who' ? myAdults() : kind === 'acc' ? (B.accoms || []) : kind === 'cls' ? graded().map(function (c) { return c.name; }) : [];
+  var acts = []; gl.forEach(function (g) { goalActs(g.text + ' ' + (g.kid || '')).forEach(function (a) { if (acts.indexOf(a) < 0) acts.push(a); }); });
+  return '<h2 style="margin:0 0 4px">🌱 My goals</h2><p style="margin:0 0 8px"><b>Did you prove you can do one or more of these today?</b> Tap the ones you did.</p>' +
+    gl.map(function (g) { var on = !!pk[g.id];
+      return '<button class="gpick' + (on ? ' on' : '') + '" onclick="gcPick(\'' + g.id + '\')"><span class="gbox">' + (on ? '✓' : '') + '</span><span>' + esc(g.kid || easyGoal(g.text, D.profile.name)) + (g.name ? '<small>' + esc(g.name) + '</small>' : '') + '</span></button>'; }).join('') +
+    '<p style="margin:10px 0 4px"><b>Tell me about it to show your growth!</b> <span class="small" style="display:inline">(optional)</span></p>' +
+    '<textarea id="gcT" maxlength="600" style="min-height:60px" placeholder="Type, or tap a sentence below." oninput="GC_T.text=this.value">' + esc(t) + '</textarea>' +
+    (fill.length ? '<div class="small" style="margin:6px 0 2px"><b>Fill in the ___:</b></div><div class="row" style="gap:4px;flex-wrap:wrap">' + fill.map(function (v) { return '<button class="btn small primary" style="border-radius:999px;padding:3px 10px" onclick="gcFill(\'' + esc(v).replace(/'/g, '’') + '\')">' + esc(v) + '</button>'; }).join('') + '</div>' : '') +
+    '<div class="row" style="gap:5px;flex-wrap:wrap;margin:8px 0 0">' + acts.slice(0, 8).map(function (a) { return a[1]; }).concat(['Not today, because ___.']).map(function (c) {
+      return '<button class="btn small" style="border-radius:999px" onclick="gcAdd(\'' + c.replace(/'/g, '’') + '\')">' + esc(c) + '</button>'; }).join('') + '</div>' +
+    (withPlan ? '<p class="small" style="margin:8px 0 0">Saved with your plan.</p>' : '<button class="btn primary" style="margin-top:10px" onclick="gcSave()">Save</button>');
 }
+function gcRedraw() {
+  var el = $('gcC'); if (!el) return; el.innerHTML = gcInner();
+  var t = $('gcT'); if (t && GC_T.focus) { t.focus(); var at = t.value.indexOf('___'); if (at >= 0) t.setSelectionRange(at, at + 3); else t.setSelectionRange(t.value.length, t.value.length); }
+  GC_T.focus = false;
+}
+function gcPick(id) { var p = gcPicks(); if (p[id]) delete p[id]; else p[id] = true; if ($('gcT')) GC_T.text = $('gcT').value; gcRedraw(); }
+function gcAdd(c) { var t = $('gcT'); if (!t) return; var v = t.value.replace(/\s+$/, ''); GC_T.text = (v ? v + ' ' : '') + c; GC_T.focus = true; gcRedraw(); }
+function gcFill(v) { var t = $('gcT'); if (!t) return; GC_T.text = t.value.replace('___', v); GC_T.focus = true; gcRedraw(); }
+// what they did, read from the sentences (tapped or typed the same way)
+function gcActs(text) {
+  var out = [];
+  GOAL_ACTS.forEach(function (a) {
+    var re = new RegExp(a[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/___/g, '((?:(?:Mr|Mrs|Ms|Mx|Dr)\\.\\s*|[^.!?])+?)').replace(/\\\.$/, '(?:[.!]|$)'), 'i'), m = text.match(re);
+    if (!m) return;
+    var parts = a[1].split('___'), vals = m.slice(1), kinds = vals.map(function (x, i) { return blankKind(parts.slice(0, i + 1).join('X') + '___'); });
+    var x = { key: a[0], label: a[3], cls: '', who: '', acc: '' };
+    kinds.forEach(function (k, i) { var v = (vals[i] || '').trim(); if (k === 'who') x.who = v; else if (k === 'acc') x.acc = v; else if (k === 'cls') x.cls = v; });
+    out.push(x);
+  });
+  return out;
+}
+function gcData() {
+  var t = $('gcT'), said = (t ? t.value : String(GC_T.text || '')).trim(), picks = Object.keys(gcPicks());
+  if (said.indexOf('___') >= 0 && said.replace(/___/g, '').trim().length < 3) said = '';
+  if (!said && !picks.length) return null;
+  var acts = gcActs(said), not = /^not today/i.test(said) && !picks.length;
+  if (!picks.length && acts.length) (D.profile.goals || []).forEach(function (g) { if (acts.some(function (a) { var d = GOAL_ACTS.filter(function (x) { return x[0] === a.key; })[0]; return d && d[2].test(g.text + ' ' + (g.kid || '')); })) picks.push(g.id); });          // what they wrote fits a goal
+  return { picks: picks, said: said.replace(/\s*___\s*\.?/g, ' ').replace(/\s+/g, ' ').trim(), acts: acts, not: not };
+}
+function gcSave(quiet) {
+  var x = gcData(); if (!x) { if (!quiet) alert('Tap a goal you worked on, or write about it.'); return Promise.resolve(); }
+  return call('api_saveGoalCheck', x.picks, x.said, x.acts, x.not).then(function (r) { D.profile.reflToday = r; GC_T = { text: undefined, pick: null, edit: false }; if (!quiet) { toast(x.not ? 'Saved. Tomorrow is a new day!' : 'Saved. That’s growth! 🌱'); drawCheckin(); } }).catch(oops);
+}
+function gcSaveAll() { return $('gcC') ? gcSave(true) : Promise.resolve(); }
 function myGoalRest(bits, bl) {
   return '<ul style="margin:0;padding-left:20px">' + bits.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul>' +
     (bl.length ? '<h3 style="margin:14px 0 6px">📌 My benchmarks</h3>' + bl.map(function (b) {
@@ -6599,8 +6883,8 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + skipNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + skipNotice() + evNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -7244,7 +7528,7 @@ function drawEF() {
   var e = EF.ef;
   var h = '<div class="row"><h2 class="grow">🎯 Goals and executive functioning</h2><button class="btn small" onclick="printGoal()">📄 Print goal data</button><button class="btn small" onclick="prOpen()">📈 Progress report…</button></div>' +
     '<p class="hint" style="margin:2px 0 10px">Tracked for every student. Counts from Infinite Campus are only as complete as how often the student pastes (this semester began ' + fmtDay(e.sem) + ').</p>' +
-    goalTabs() + benchHtml() +
+    goalTabs() + (GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
     '<table style="margin-top:12px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   // this student's own checklist (or the class one)
   var own = EF.checklistOwn && EF.checklistOwn.length, items = CKE || (own ? EF.checklistOwn : EF.checklistClass).slice();
@@ -7255,6 +7539,8 @@ function drawEF() {
         '<button class="btn link small" title="Move up" onclick="ckeMove(' + k + ',-1)"' + (k ? '' : ' disabled') + '>▲</button><button class="btn link small" title="Move down" onclick="ckeMove(' + k + ',1)"' + (k < items.length - 1 ? '' : ' disabled') + '>▼</button>' +
         '<button class="btn link danger small" onclick="ckeDel(' + k + ')">✕</button></div>';
     }).join('') +
+    '<details style="margin:8px 0"><summary class="small" style="display:list-item"><b>📋 Paste a list</b> (from a Google Doc, a sheet or an email: one task per line)</summary><textarea id="ckeP" style="min-height:90px;margin-top:6px" placeholder="Check Canvas for new assignments&#10;Write homework in my planner&#10;Pack my folder for tomorrow"></textarea>' +
+      '<div class="row" style="margin-top:6px"><button class="btn small" onclick="ckePaste(false)">Use this list instead</button><button class="btn small" onclick="ckePaste(true)">Add to the list</button><span class="small">Then check it and press Save. Up to 20 items.</span></div></details>' +
     '<div class="row" style="margin-top:6px"><button class="btn small" onclick="ckeAdd()">+ Add an item</button><button class="btn primary small" onclick="ckeSave()">Save for this student</button>' +
     (own ? '<button class="btn link small" onclick="ckeReset()">Use the class checklist</button>' : '') + '</div></details>';
   // 2.08: this student's own "nothing to work on" checklist (or the class one)
@@ -7304,6 +7590,21 @@ function ckeStart() { if (!CKE) CKE = ((EF.checklistOwn && EF.checklistOwn.lengt
 function ckeEdit(k, v) { ckeStart(); CKE[k] = v; }
 function ckeMove(k, d) { ckeStart(); var x = CKE.splice(k, 1)[0]; CKE.splice(k + d, 0, x); drawEF(); }
 function ckeDel(k) { ckeStart(); CKE.splice(k, 1); drawEF(); }
+// 2.15: a pasted list: bullets, numbers and check boxes come off; from a sheet, the first cell of each row
+function pasteList(t) {
+  var out = [];
+  String(t || '').split(/\r?\n|;/).forEach(function (line) {
+    var cell = line.split('\t').map(function (c) { return c.trim(); }).filter(String)[0] || '';
+    cell = cell.replace(/^\s*([-*•●▪◦○■□☐☑✓✔➢>]+|\(?\d{1,2}[.):]|\(?[a-z][.)])\s*/i, '').replace(/\s+/g, ' ').trim();
+    if (cell && out.indexOf(cell) < 0) out.push(cell.slice(0, 120));
+  });
+  return out;
+}
+function ckePaste(add) {
+  var l = pasteList($('ckeP').value); if (!l.length) return alert('Paste a list first: one task on each line.');
+  ckeStart(); CKE = (add ? CKE.filter(String).concat(l.filter(function (x) { return CKE.indexOf(x) < 0; })) : l).slice(0, 20);
+  drawEF(); toast(CKE.length + ' items: check them, then press Save for this student');
+}
 function ckeAdd() { ckeStart(); CKE.push(''); drawEF(); var ins = $('efCard').querySelectorAll('details input[type=text]'); }
 function ckeSave() {
   ckeStart();
@@ -7473,7 +7774,7 @@ function reflPrint(g, refl) {
   var l = (refl || []).filter(function (r) { return r.goal === g.id; }); if (!l.length) return '';
   var yes = l.filter(function (r) { return r.did === 'Yes'; }).length, some = l.filter(function (r) { return r.did === 'A little'; }).length;
   return '<div style="font-weight:bold;margin:14px 0 4px">The student’s own words (daily goal check-in)</div><div style="font-size:13px;margin-bottom:4px">' + l.length + ' days: did it ' + yes + ', a little ' + some + ', not today ' + (l.length - yes - some) + '</div>' +
-    l.slice(0, 8).map(function (r) { return '<div style="font-size:12px;margin:2px 0">' + fmtDay(r.date) + ': ' + esc(r.did) + (r.said ? ', “' + esc(r.said) + '”' : '') + '</div>'; }).join('');
+    l.slice(0, 8).map(function (r) { return '<div style="font-size:12px;margin:2px 0">' + fmtDay(r.date) + ': ' + esc(r.did) + (r.acts ? ', ' + esc(r.acts) : '') + (r.said ? ', “' + esc(r.said) + '”' : '') + '</div>'; }).join('');
 }
 function goalsPrint(l, refl) {
   l = (l || []).filter(function (g) { return g.text || g.tools.length || g.bench.length; });
@@ -7498,24 +7799,76 @@ function benchPrint(g) {
 function goalTabs() {
   var l = EF.goals || [GT()], g = GT();
   return '<div class="seg" style="margin:4px 0 10px;flex-wrap:wrap">' + l.map(function (x, k) {
-      return '<button class="' + (k === GI ? 'on' : '') + '" onclick="GI=' + k + ';GTE=null;BE=null;BD=null;drawEF()">Goal ' + (k + 1) + (x.name ? ': ' + esc(x.name) : '') + '</button>';
+      return '<button class="' + (k === GI ? 'on' : '') + '" onclick="GI=' + k + ';GTE=null;BE=null;BD=null;drawEF()">Goal ' + (k + 1) + (x.name ? ': ' + esc(x.name) : '') + (x.here === false ? ' <span style="opacity:.6">(not measured here)</span>' : '') + '</button>';
     }).join('') + '<button onclick="addGoal()">+ Add a goal</button></div>' +
-    '<label><span class="small"><b>Goal name</b> (optional, like “Executive functioning” or “Self-advocacy”)</span><input type="text" id="efGoalN" maxlength="80" style="max-width:340px" value="' + esc(g.name || '') + '"></label>' +
+    '<div class="row" style="gap:14px;align-items:flex-end"><label><span class="small"><b>Goal name or area</b> (like “Executive functioning”, “Reading”)</span><input type="text" id="efGoalN" maxlength="80" style="max-width:340px" value="' + esc(g.name || '') + '"></label>' +
+    '<label class="check" style="margin:0 0 6px"><input type="checkbox" id="efGoalH"' + (g.here !== false ? ' checked' : '') + '><span><b>Measured in ' + esc(B.dayClass || 'resource') + '</b> <span class="small" style="display:inline">(track data on it here)</span></span></label></div>' +
     '<label style="display:block;margin-top:6px"><span class="small"><b>IEP goal</b>' + (GI === 0 ? ' (also on the Students tab)' : '') + '</span><textarea id="efGoal" style="min-height:60px" placeholder="Paste the goal here. It goes on reports and the student’s My goal card.">' + esc(g.text || '') + '</textarea></label>' +
     (F('goalCheck') ? '<label style="display:block;margin-top:6px"><span class="small"><b>In student words</b> (what the student sees on their Today page with “Did you do this today?”)</span><textarea id="efGoalK" style="min-height:44px" placeholder="' + esc(easyGoal(g.text, TS && TS.profile.name)) + '">' + esc(g.kid || '') + '</textarea></label>' +
       (g.text && !g.kid ? '<button class="btn link small" onclick="$(\'efGoalK\').value=easyGoal($(\'efGoal\').value, TS && TS.profile.name)">Use the suggestion (shown in gray), then fix anything</button>' : '') : '') +
-    '<div class="row" style="margin-top:6px"><button class="btn small" onclick="saveGoalText()">Save goal</button>' +
+    '<div class="row" style="margin-top:6px"><button class="btn small" onclick="saveGoalText()">Save goal</button>' + (g.text || g.tools.length ? '<button class="btn small" onclick="stmtOpen()">📝 Write a progress statement</button>' : '') +
     ((l.length > 1 || g.text || g.tools.length || g.bench.length) ? '<button class="btn link danger small" onclick="delGoal()">Delete this goal</button>' : '') + '</div>' + reflHtml(g);
 }
+// 2.15: a progress statement written the same way every time, from this goal's data and the student's check-ins
+function trendOf(vals) {
+  if (vals.length < 4) return '';
+  var a = vals.slice(-3), b = vals.slice(-6, -3), av = function (x) { return x.reduce(function (s, v) { return s + v; }, 0) / x.length; }, d = av(a) - av(b);
+  return Math.abs(d) < 3 ? 'holding steady' : d > 0 ? 'going up' : 'going down';
+}
+function statement(g, k) {
+  var first = String((TS && TS.profile.name) || 'The student').split(' ')[0], out = [], today = fmtDay(B.today);
+  out.push('Goal ' + (k + 1) + (g.name ? ' (' + g.name + ')' : '') + ': progress as of ' + today + '.');
+  if (g.text) out.push('Goal: ' + g.text);
+  var active = g.bench.filter(function (b) { return b.status === 'Working on it'; });
+  if (g.here === false) out.push('This goal is not measured in ' + (B.dayClass || 'resource') + '.');
+  (g.here === false ? [] : g.tools).forEach(function (t) {
+    var pts = (t.data || []).filter(function (x) { return x.value !== null && x.value !== undefined; }), base = pts[0], tr = trendOf(pts.map(function (x) { return x.value; }));
+    var tg = null, by = ''; active.forEach(function (b) { b.parts.forEach(function (p) { if (p.tool === t.id && tg === null) { tg = p.target; by = b.by; } }); });
+    var s = t.name + ': ' + first + ' is at ' + tFmt(t, t.now) + (t.mine ? ' (average of the last ' + Math.min(3, pts.length) + ' data point' + (Math.min(3, pts.length) === 1 ? '' : 's') + ')' : ' (from the app’s records)') + '.';
+    if (base) s += ' Baseline: ' + tFmt(t, base.value) + ' on ' + fmtDay(base.date) + '.';
+    if (tg !== null) { var met = t.now !== null && (t.better === 'Lower' ? t.now <= tg : t.now >= tg); s += ' Target: ' + tGoal(t, tg) + (by ? ' by ' + fmtDay(by) : '') + ', ' + (t.now === null ? 'no data yet' : met ? 'met' : 'not met yet') + '.'; }
+    if (tr) s += ' Trend: ' + tr + ' over ' + pts.length + ' data points.';
+    out.push(s);
+  });
+  var rl = ((EF && EF.reflections) || []).filter(function (r) { return r.goal === g.id; });
+  if (rl.length) {
+    var y = rl.filter(function (r) { return r.did === 'Yes'; }).length, a = rl.filter(function (r) { return r.did === 'A little'; }).length, sk = {};
+    rl.forEach(function (r) { (r.skills || []).forEach(function (x) { sk[x] = (sk[x] || 0) + 1; }); });
+    var top = Object.keys(sk).sort(function (p, q) { return sk[q] - sk[p]; }).slice(0, 3);
+    var said = rl.filter(function (r) { return r.said; })[0], ac = {};
+    rl.forEach(function (r) { String(r.acts || '').split('; ').filter(String).forEach(function (a) { var k = a.replace(/\s*\(.*$/, '').toLowerCase(); ac[k] = (ac[k] || 0) + 1; }); });
+    var acTop = Object.keys(ac).sort(function (p, q) { return ac[q] - ac[p]; }).slice(0, 4);
+    out.push('Student self-report: in ' + rl.length + ' daily goal check-in' + (rl.length === 1 ? '' : 's') + ', ' + first + ' said they worked on this goal on ' + y + ' day' + (y === 1 ? '' : 's') + (a ? ' and partly on ' + a + ' more' : '') + '.' +
+      (acTop.length ? ' What ' + first + ' reported doing: ' + acTop.map(function (x) { return x + ' (' + ac[x] + ')'; }).join(', ') + '.' : '') +
+      (top.length ? ' Skills ' + first + ' described most: ' + top.map(function (x) { return x.toLowerCase() + ' (' + sk[x] + ')'; }).join(', ') + '.' : '') + (said ? ' In ' + first + '’s words (' + shortDay(said.date) + '): “' + said.said + '”' : ''));
+  }
+  return out.join('\n');
+}
+function stmtOpen() {
+  var all = EF.goals || [GT()];
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'stmtModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
+  el.innerHTML = '<div class="card" style="max-width:760px"><div class="row"><h2 class="grow">📝 Progress statement</h2><button class="btn link" onclick="$(\'stmtModal\').remove()">✕ Close</button></div>' +
+    '<p class="hint" style="margin:2px 0 8px">Written the same way every time from the data: where they are now, the baseline, the target, the trend, and what the student said. Change anything, then copy it into the IEP progress report.</p>' +
+    '<div class="seg" style="margin-bottom:8px"><button class="on" id="stOne" onclick="stmtFill(false)">This goal</button>' + (all.length > 1 ? '<button id="stAll" onclick="stmtFill(true)">All goals</button>' : '') + '</div>' +
+    '<textarea id="stmtT" style="min-height:260px;font-size:14px"></textarea><div class="row" style="margin-top:8px"><button class="btn primary" onclick="stmtCopy()">📋 Copy</button></div></div>';
+  document.body.appendChild(el); stmtFill(false);
+}
+function stmtFill(all) {
+  var gl = EF.goals || [GT()];
+  $('stmtT').value = all ? gl.filter(function (g) { return g.text || g.tools.length; }).map(function (g) { return statement(g, gl.indexOf(g)); }).join('\n\n') : statement(GT(), GI);
+  if ($('stOne')) $('stOne').className = all ? '' : 'on'; if ($('stAll')) $('stAll').className = all ? 'on' : '';
+}
+function stmtCopy() { var t = $('stmtT'); t.select(); try { navigator.clipboard.writeText(t.value).then(function () { toast('Copied'); }, function () { document.execCommand('copy'); toast('Copied'); }); } catch (e) { document.execCommand('copy'); toast('Copied'); } }
 function reflHtml(g) {
   var l = ((EF && EF.reflections) || []).filter(function (r) { return r.goal === g.id; }); if (!l.length) return '';
   var yes = l.filter(function (r) { return r.did === 'Yes'; }).length, some = l.filter(function (r) { return r.did === 'A little'; }).length;
   return '<details style="margin-top:10px" open><summary><b>🌱 What they said about this goal</b> <span class="small" style="display:inline">(' + l.length + ' day' + (l.length === 1 ? '' : 's') + ': yes ' + yes + ', a little ' + some + ', not today ' + (l.length - yes - some) + ')</span></summary>' +
-    l.slice(0, 10).map(function (r) { return '<div class="small" style="display:block;margin:4px 0"><b>' + shortDay(r.date) + '</b> · ' + (r.did === 'Yes' ? '✅' : r.did === 'A little' ? '🌗' : '⏳') + ' ' + esc(r.did) + (r.said ? ': “' + esc(r.said) + '”' : '') + '</div>'; }).join('') + '</details>';
+    l.slice(0, 10).map(function (r) { return '<div class="small" style="display:block;margin:4px 0"><b>' + shortDay(r.date) + '</b> · ' + (r.did === 'Yes' ? '✅' : r.did === 'A little' ? '🌗' : '⏳') + ' ' + esc(r.did) + (r.acts ? ': <b>' + esc(r.acts) + '</b>' : '') + (r.said ? (r.acts ? ' · ' : ': ') + '“' + esc(r.said) + '”' : '') +
+      (r.skills && r.skills.length ? ' ' + r.skills.map(function (k) { return '<span class="badge brand">' + esc(k) + '</span>'; }).join(' ') : '') + (r.review && r.review !== 'Cataloged by the app' ? ' <span class="badge">' + esc(r.review) + '</span>' : '') + (r.note ? '<div>Your note: ' + esc(r.note) + '</div>' : '') + '</div>'; }).join('') + '</details>';
 }
 function saveGoalText() {
-  var t = $('efGoal').value, n = $('efGoalN').value, k = $('efGoalK') ? $('efGoalK').value : undefined;
-  call('api_saveGoalText', TS_EMAIL, t, GT().id, n, k).then(function (r) { setGoals(r); if (GI === 0) EF.goal = t; toast('Goal saved'); drawEF(); }).catch(oops);
+  var t = $('efGoal').value, n = $('efGoalN').value, k = $('efGoalK') ? $('efGoalK').value : undefined, hr = $('efGoalH') ? $('efGoalH').checked : undefined;
+  call('api_saveGoalText', TS_EMAIL, t, GT().id, n, k, hr).then(function (r) { setGoals(r); if (GI === 0) EF.goal = t; toast('Goal saved'); drawEF(); }).catch(oops);
 }
 function addGoal() {
   var n = prompt('Name the new goal (optional), like “Self-advocacy”:', ''); if (n === null) return;
@@ -7871,6 +8224,84 @@ function stuckNotice() {
     (l.length ? l.map(function (x) { return '<div class="small" style="display:block;margin:4px 0"><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · opened ' + esc(x.seen) + ' · hasn’t finished: ' + esc(x.why.join(' and ')) + '</div>'; }).join('')
       : '<p class="small" style="margin:4px 0 0">Nobody right now: everyone who opened the app today has finished their plan.</p>') + '</div>';
 }
+// 2.15: students' goal check-ins. The app files the ones whose words show a skill; the rest wait here for the teacher.
+var SKILL_NAMES = ['Starting work', 'Asking for help (self-advocacy)', 'Organization and planning', 'Finishing and turning in work', 'Focus', 'Using accommodations'];
+var EVC = null;          // the check-in being counted as data: { i, tools }
+function evNotice() {
+  var l = (TD && TD.evidence) || []; if (!l.length) return '';
+  var rev = l.filter(function (x) { return x.review === 'To review'; }), filed = l.filter(function (x) { return x.review !== 'To review'; });
+  var row = function (x, i) {
+    var id = l.indexOf(x);
+    return '<div class="tcrow" style="padding:8px 0;border-top:1px solid var(--line, #e2e6ef)"><div><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · ' + shortDay(x.date) + ' · ' + esc(x.goalName) + ' · ' + (x.did === 'Yes' ? '✅' : x.did === 'A little' ? '🌗' : '⏳') + ' ' + esc(x.did) + '</div>' +
+      (x.acts ? '<div style="margin:3px 0"><b>' + esc(x.acts) + '</b></div>' : '') + (x.said ? '<div style="margin:3px 0">“' + esc(x.said) + '”</div>' : '') +
+      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:4px">' + SKILL_NAMES.map(function (k) { return '<label class="small" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" class="evsk' + id + '" value="' + esc(k) + '"' + (x.skills.indexOf(k) >= 0 ? ' checked' : '') + '>' + esc(k) + '</label>'; }).join('') + '</div>' +
+      (EVC && EVC.i === id ? evCountForm(id) :
+      '<div class="row" style="gap:6px;margin-top:6px"><button class="btn small primary" onclick="evAct(' + id + ',\'file\')">✓ File with these skills</button><button class="btn small" onclick="evCount(' + id + ')">📊 Count as data</button><button class="btn small" onclick="evAct(' + id + ',\'note\')">📝 Add a note</button><button class="btn link small" onclick="evAct(' + id + ',\'skip\')">Not evidence</button></div>') + '</div>';
+  };
+  return '<div class="card" style="margin-bottom:14px' + (rev.length ? ';border-color:var(--brand)' : '') + '"><b>🌱 Goal check-ins' + (rev.length ? ': ' + rev.length + ' to look at' : '') + '</b><p class="hint" style="margin:2px 0 4px">What students said about their IEP goals. The app files a check-in by itself when the words show a skill (like “I emailed my teacher”); the others wait here for you.</p>' +
+    rev.map(row).join('') + (filed.length ? '<details style="margin-top:6px"><summary class="small" style="display:list-item">Filed by the app this week (' + filed.length + ')</summary>' + filed.map(row).join('') + '</details>' : '') + '</div>';
+}
+function evSkills(i) { return Array.prototype.slice.call(document.querySelectorAll('.evsk' + i)).filter(function (c) { return c.checked; }).map(function (c) { return c.value; }); }
+function evAct(i, act, p) {
+  var x = TD.evidence[i]; p = p || {}; p.skills = evSkills(i);
+  if (act === 'note') { var n = prompt('Your note about this check-in (it goes on their goal page):', ''); if (n === null) return; p.note = n; }
+  call('api_reviewEvidence', x.email, x.date, x.goal, act, p).then(function (l) { TD.evidence = l; EVC = null; toast({ file: 'Filed', note: 'Note saved', skip: 'Marked: not evidence', count: 'Added as a score' }[act]); drawOverview(); }).catch(oops);
+}
+function evCount(i) {
+  var x = TD.evidence[i];
+  call('api_efData', x.email).then(function (r) {
+    var g = (r.goals || []).filter(function (gg) { return gg.id === x.goal; })[0], tools = g ? g.tools.filter(function (t) { return t.mine; }) : [];
+    if (!tools.length) return alert('This goal has no data of your own to add a score to yet. On ' + x.name + '’s page, open the goal, choose how it’s measured and add your own data (like “Asks for help”).');
+    EVC = { i: i, tools: tools }; drawOverview();
+  }).catch(oops);
+}
+function evCountForm(i) {
+  return '<div class="row" style="gap:6px;margin-top:6px;align-items:flex-end"><label><span class="small">Add a score to</span><select id="evT" onchange="$(\'evOfW\').style.display=EVC.tools[this.selectedIndex].trials?\'\':\'none\'">' + EVC.tools.map(function (t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join('') + '</select></label>' +
+    '<label><span class="small">Score</span><input type="number" id="evS" min="0" style="width:80px" value="1"></label><label id="evOfW"' + (EVC.tools[0].trials ? '' : ' style="display:none"') + '><span class="small">Out of</span><input type="number" id="evO" min="1" style="width:80px" value="1"></label>' +
+    '<button class="btn small primary" onclick="evAct(' + i + ',\'count\',{ tool: $(\'evT\').value, score: $(\'evS\').value, of: $(\'evO\').value })">Save score</button><button class="btn link small" onclick="EVC=null;drawOverview()">Cancel</button></div>';
+}
+// 2.15: import every student's IEP goals from a spreadsheet: student, area, goal, measured in BASE/ARC (yes/no)
+var GI_ROWS = null;
+function giOpen() {
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'giModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
+  el.innerHTML = '<div class="card" style="max-width:880px"><div class="row"><h2 class="grow">📥 Import IEP goals</h2><button class="btn link" onclick="$(\'giModal\').remove()">✕ Close</button></div>' +
+    '<p class="hint" style="margin:2px 0 8px">In your spreadsheet, select the rows and copy (Ctrl + C), then paste here. One goal per row, in columns: <b>Student</b> (school email, student number, or first and last name) · <b>Area</b> (Reading, Executive functioning…) · <b>Goal</b> · <b>Measured in ' + esc(B.dayClass || 'resource') + '</b> (yes or no; leave it out and the app guesses from the area). A heading row is fine.</p>' +
+    '<textarea id="giT" style="min-height:140px" placeholder="Jane Smith&#9;Executive functioning&#9;Jane will start tasks within 1 minute…&#9;yes"></textarea>' +
+    '<div class="row" style="margin-top:8px"><button class="btn primary" onclick="giCheck()">Check the list</button></div><div id="giOut"></div></div>';
+  document.body.appendChild(el);
+}
+function allGoalsTab() { toast('Updating the All goals tab…'); call('api_allGoals').then(function (n) { toast(n + ' goals are on the All goals and benchmarks tab in the sheet'); }).catch(oops); }
+function giParse(t) {
+  var lines = String(t || '').split(/\r?\n/).filter(function (l) { return l.trim(); }).map(function (l) { return l.indexOf('\t') >= 0 ? l.split('\t') : l.split(/\s*\|\s*/); });
+  if (!lines.length) return [];
+  var h = lines[0].map(function (c) { return String(c).toLowerCase(); }), col = { who: 0, area: 1, text: 2, here: 3 };
+  var isHead = h.some(function (c) { return /goal/.test(c); }) && h.some(function (c) { return /student|name|email|id/.test(c); });
+  if (isHead) {
+    col = { who: -1, area: -1, text: -1, here: -1 };
+    h.forEach(function (c, i) {
+      if (col.here < 0 && /measur|base|arc|resource|here/.test(c)) col.here = i;
+      else if (col.who < 0 && /student|name|email|^id|number/.test(c)) col.who = i;
+      else if (col.area < 0 && /area|domain|skill|type|categor/.test(c)) col.area = i;
+      else if (col.text < 0 && /goal|objective/.test(c)) col.text = i;
+    });
+    lines = lines.slice(1);
+  } else if (lines[0].length === 2) col = { who: 0, area: -1, text: 1, here: -1 };
+  return lines.map(function (r) { var g = function (k) { return col[k] >= 0 ? String(r[col[k]] || '').trim() : ''; }; return { who: g('who'), area: g('area'), text: g('text'), here: g('here') }; }).filter(function (x) { return x.who || x.text; });
+}
+function giCheck() {
+  var rows = giParse($('giT').value); if (!rows.length) return alert('Paste the rows from your spreadsheet first.');
+  setHtml('giOut', '<p class="small">Checking…</p>');
+  call('api_importGoals', rows, true).then(function (r) {
+    GI_ROWS = r; var ok = r.filter(function (x) { return !x.why; }).length;
+    setHtml('giOut', '<p style="margin:12px 0 6px"><b>' + ok + ' of ' + r.length + ' goals are ready.</b> Uncheck “Measured” for goals worked on somewhere else (the student still sees them).</p><div style="max-height:360px;overflow:auto"><table><thead><tr><th>Student</th><th>Area</th><th>Goal</th><th>Measured in ' + esc(B.dayClass || 'resource') + '</th></tr></thead><tbody>' +
+      r.map(function (x, i) { return '<tr' + (x.why ? ' style="opacity:.55"' : '') + '><td>' + (x.name ? '<b>' + esc(x.name) + '</b>' : esc(x.who)) + (x.why ? '<div class="small" style="color:var(--down, #c0392b)">' + esc(x.why) + '</div>' : '') + '</td><td>' + esc(x.area) + '</td><td class="small">' + esc(x.text.slice(0, 160)) + (x.text.length > 160 ? '…' : '') + '</td><td style="text-align:center"><input type="checkbox"' + (x.here ? ' checked' : '') + ' onchange="GI_ROWS[' + i + '].here=this.checked"' + (x.why ? ' disabled' : '') + '></td></tr>'; }).join('') +
+      '</tbody></table></div><div class="row" style="margin-top:10px"><button class="btn primary" onclick="giImport()"' + (ok ? '' : ' disabled') + '>Import ' + ok + ' goal' + (ok === 1 ? '' : 's') + '</button><span class="small">A student that doesn’t match: check the spelling, or use their school email.</span></div>');
+  }).catch(oops);
+}
+function giImport() {
+  var rows = GI_ROWS.map(function (x) { return { who: x.email || x.who, area: x.area, text: x.text, here: x.here ? 'yes' : 'no' }; });
+  call('api_importGoals', rows).then(function (r) { $('giModal').remove(); toast(r.added + ' goal' + (r.added === 1 ? '' : 's') + ' imported' + (r.skipped ? ', ' + r.skipped + ' skipped' : '')); EF = null; }).catch(oops);
+}
 function skipNotice() {
   var l = (TD && TD.skips) || []; if (!l.length) return '';
   return '<details class="card" style="margin-bottom:14px"><summary><b>⏭️ Steps students skipped this week (' + l.length + ')</b></summary>' + l.map(function (x) {
@@ -7978,14 +8409,14 @@ var CM_SEL = null, CM_HTML = '';
 function drawCm() {
   if (!CM_SEL) {
     $('main').innerHTML = '<h1>Your students</h1><p class="sub">Students who chose you as their case manager. Tap a name to see their full progress report.</p><div class="cmlist">' +
-      B.cm.map(function (s) { return '<button class="cmrow" onclick="cmOpen(\'' + esc(s.email) + '\')"><b>' + esc(s.name) + '</b><span>' + esc([s.grade ? 'Grade ' + s.grade : '', s.period ? 'Period ' + s.period : ''].filter(String).join(' · ')) + '</span><span class="go">Open →</span></button>'; }).join('') + '</div>';
+      B.cm.map(function (s) { return '<button class="cmrow" onclick="cmStu(\'' + esc(s.email) + '\')"><b>' + esc(s.name) + '</b><span>' + esc([s.grade ? 'Grade ' + s.grade : '', s.period ? 'Period ' + s.period : ''].filter(String).join(' · ')) + '</span><span class="go">Open →</span></button>'; }).join('') + '</div>';
     return;
   }
   var s = B.cm.filter(function (x) { return x.email === CM_SEL; })[0] || { name: '' };
   $('main').innerHTML = '<div class="row" style="margin-bottom:12px"><button class="btn" onclick="CM_SEL=null;drawCm();window.scrollTo(0,0)">◀ All my students</button><button class="btn primary" onclick="cmPrint()">🖨️ Print / save PDF</button><span style="display:inline-flex;gap:4px">' + calPick('calC') + '<button class="btn" onclick="calOpen(CM_SEL,$(\'calC\').value,\'' + esc(s.name).replace(/'/g, '') + '\')">📆 Calendar</button></span></div>' +
     '<h1>' + esc(s.name) + '</h1><div class="card" id="cmRep">' + (CM_HTML || '<p class="small">Loading the report…</p>') + '</div>';
 }
-function cmOpen(email) {
+function cmStu(email) {          // 2.15: was a second cmOpen, which broke 📧 Email counselors
   CM_SEL = email; CM_HTML = ''; drawCm(); window.scrollTo(0, 0);
   call('api_cmReport', email).then(function (h) { if (CM_SEL !== email) return; CM_HTML = h; setHtml('cmRep', h); }).catch(oops);
 }
