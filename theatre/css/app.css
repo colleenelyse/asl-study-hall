@@ -796,3 +796,10 @@ body.pk-wide main:has(.pk.simple) { padding: 0 0 0; }
 .mx-mine { margin: 6px 0 0; padding-left: 1.4em; line-height: 1.8; }
 .mx-mine li.on { font-size: 1.1rem; }
 .bowcd.clear { background: #d9822b; }
+/* Count the music (js/curtain.js): two big stacked pads, 1 on top, 2–8 below */
+.cnt-pads { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
+.cnt-pads button { border: 0; border-radius: 22px; font: 800 clamp(48px, 10vw, 96px)/1 var(--font-head, sans-serif); color: #fff; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: transform .05s, filter .05s; }
+.cnt-pads .cnt-one { background: #c8323c; min-height: 34vh; }
+.cnt-pads .cnt-beat { background: #2f6fd1; min-height: 26vh; }
+.cnt-pads button:disabled { opacity: .35; cursor: default; }
+.cnt-pads button.hit { transform: scale(.97); filter: brightness(1.35); }
