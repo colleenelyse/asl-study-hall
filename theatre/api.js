@@ -371,7 +371,7 @@ export async function theatreApi(req, env, url, p) {
     return json({ error: 'Not allowed' }, 405);
   }
   const vm = rest.match(/^voice\/([a-z0-9]{6,20})\/(tts|rec)$/);
-  const m = vm ? ['voice'] : rest === 'pdf' ? ['pdf'] : rest.match(/^track\/([a-z0-9-]{1,24})\/(rehearsal|performance)$/);
+  const m = vm ? ['voice'] : rest === 'pdf' ? ['pdf'] : rest.match(/^track\/([a-z0-9_-]{1,24})\/(rehearsal|performance)$/);
   if (m) {
     const key = vm ? 'theatre:voice:' + vm[1] + ':' + vm[2] : rest === 'pdf' ? 'theatre:pdf' : 'theatre:track:' + m[1] + ':' + m[2];
     if (req.method === 'GET') {

@@ -285,7 +285,7 @@
         '<div class="row" style="flex-wrap:wrap"><label class="f grow" style="margin:0">Megamix music<select id="mxmu">' + opt('', 'Pick…', !mu) +
         (tr.rehearsal ? opt('rehearsal', 'With vocals (guide track)', !m.own && mu && mu.kind === 'rehearsal') : '') + (tr.performance ? opt('performance', 'Band track (no singers)', !m.own && mu && mu.kind === 'performance') : '') +
         (m.own ? opt('own', 'Your own recording (uploaded)', true) : '') + '</select></label><label class="btn" style="margin:0">' + sym('⬆️') + 'Upload a recording<input type="file" id="mxup" accept="audio/*" hidden></label></div>' +
-        (mu ? '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn primary" id="mxtap">' + sym('⏱') + 'Tap the section starts while it plays</button>' + ((saved.times || []).some(function (x) { return x != null; }) ? '<a class="btn" href="#/teacher/megamix/run">' + icon('play') + 'Rehearse the Megamix</a>' : '') + '</div>' : '<p class="err small">Pick or upload the Megamix music.</p>') +
+        (mu ? '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn primary" id="mxtap">' + sym('⏱') + 'Tap the section starts while it plays</button>' + ((saved.times || []).some(function (x) { return x != null; }) ? '<button class="btn" id="mxreh">' + icon('play') + 'Rehearse the Megamix</button>' : '') + '</div>' : '<p class="err small">Pick or upload the Megamix music.</p>') +
         '<div style="margin-top:8px">' + secs.map(function (x, k) { return '<div class="row" style="gap:6px;align-items:center;margin:4px 0"><b style="color:' + COL[k % COL.length] + ';min-width:16em">' + (k + 1) + '. ' + esc(x.name) + '</b><button type="button" class="btn small" data-tn="' + k + '|-0.5" aria-label="Half a second earlier">−</button><input data-tt="' + k + '" value="' + fmt(times[k]) + '" placeholder="0:00" style="width:80px" aria-label="When ' + esc(x.name) + ' starts"><button type="button" class="btn small" data-tn="' + k + '|0.5" aria-label="Half a second later">+</button></div>'; }).join('') + '</div>' +
         '<p class="small muted" id="mxmsg">Changing the music? Tap the times again: each recording has its own timing. Save to keep them.</p></div>';
     }
@@ -296,11 +296,12 @@
       $('mxmu').onchange = function () { if (this.value === 'own') return; saved.music = this.value ? { kind: this.value } : {}; draw(); };
       $('mxup').onchange = function () {
         var f = this.files[0]; if (!f) return; $('mxmsg').textContent = 'Uploading ' + f.name + '…';
-        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__megamix', 'performance', buf, ver).then(function () { saved.music = { own: ver }; draw(); T.toast('Megamix music uploaded. Save to keep it.'); }); }); })
-          .catch(function (e) { $('mxmsg').textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; });
+        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__megamix', 'performance', buf, ver).then(function () { saved.music = { own: ver }; T.show.megamix = saved; return T.saveShow('Megamix music uploaded').then(function () { draw(); T.toast('Your recording is the Megamix music now (saved). Tap the section starts for it.'); }); }); }); })
+          .catch(function (e) { $('mxmsg').textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; T.toast('The recording did not upload: ' + (e.message || 'not an audio file') + '.', 8000); });
       };
       app.querySelectorAll('[data-tt]').forEach(function (x) { x.onchange = function () { (saved.times = saved.times || [])[+x.dataset.tt] = parse(x.value); draw(); }; });
       app.querySelectorAll('[data-tn]').forEach(function (b) { b.onclick = function () { var q = b.dataset.tn.split('|'), k = +q[0], T0 = saved.times = saved.times || []; T0[k] = Math.max(0, +((T0[k] || 0) + +q[1]).toFixed(2)); draw(); }; });
+      if ($('mxreh')) $('mxreh').onclick = function () { T.show.megamix = saved; T.saveShow('Megamix groups saved').then(function () { location.hash = '#/teacher/megamix/run'; }); };      // Rehearse plays what is saved: save first
       var tb = $('mxtap'); if (!tb) return;
       tb.onclick = function () {
         var mu = musicOf(saved.music), P = audioFor(mu), k = 0, times = (saved.times = (saved.times || []).slice());

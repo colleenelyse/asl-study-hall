@@ -32,6 +32,7 @@ ok((await call('POST', 'show', JSON.stringify({ proof, enc: Object.assign({}, en
 ok((await call('POST', 'track/m2/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200, 'track upload with the proof');
 ok((await call('GET', 'track/m2/performance')).status === 200, 'track download');
 ok((await call('GET', 'track/m2/rehearsal')).status === 404, 'missing track is 404');
+ok((await call('POST', 'track/__bows/performance', new Uint8Array(500), { 'x-proof': proof })).status === 200 && (await call('GET', 'track/__bows/performance')).status === 200, 'an uploaded bow recording (__bows) and Megamix (__megamix) can be saved');
 ok((await call('POST', 'usage', JSON.stringify({ k: 'parent', pages: { calendar: [2, 90], 'Bad Page': [1, 1] } }))).status === 200, 'usage counts come in with no password');
 await call('POST', 'usage', JSON.stringify({ k: 'parent', pages: { calendar: [1, 30] } }));
 ok((await call('POST', 'usage', JSON.stringify({ k: 'spy', pages: {} }))).status === 400, 'only the known kinds are counted');

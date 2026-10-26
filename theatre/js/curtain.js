@@ -162,6 +162,16 @@
     return api;
   }
 
+  /* the navigation bar (Colleen 2026-10-25: "i also want a play pause and navigation bar on this page"): drag to any moment in the bow music */
+  function seekBar(host, A, onSeek) {
+    var r = host.querySelector('[data-seek]'); if (!r) return function () {};
+    var dragging = false;
+    A.ready.then(function () { r.max = Math.max(1, (A.audio.duration || 60) - A.start).toFixed(1); });
+    r.oninput = function () { dragging = true; onSeek(+r.value, true); };
+    r.onchange = function () { dragging = false; onSeek(+r.value, false); };
+    return function (t) { if (!dragging) r.value = Math.min(+r.max || t, t); };
+  }
+  var seekHTML = '<input type="range" data-seek min="0" max="100" step="0.1" value="0" class="grow" style="min-width:160px" aria-label="Where in the bow music">';
   /* ---------- the player: the bow music with cues (the teacher's Rehearse, a student's Practice my bow) ---------- */
   function player(host, opts) {
     var P = plan(), mu = music(P);
@@ -171,14 +181,14 @@
     if (!cues.length) { host.innerHTML = '<p class="card">' + (T.me ? 'Your teacher has not set the bow times yet.' : 'Set when each group goes first: “Set the times while it plays” (Teacher › Curtain call).') + '</p>'; return; }
     var A = loadAudio(mu, P), audio = A.audio, raf = 0, fired = {}, readied = {};
     host.innerHTML = '<div class="bow-stage">' + counterHTML + '<div class="bow-next" id="bnext"></div><div class="bow-go" id="bgo" hidden></div><div class="bow-lyric muted" id="bmus">' + sym('🎵') + esc(mu.name) + '</div></div>' +
-      '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="round big" id="bpl" aria-label="Play">' + icon('play') + '</button><button class="btn small" id="bbk">Back 10 s</button><b id="btm" class="lt-time">0:00</b>' +
+      '<div class="row" style="margin-top:10px;flex-wrap:wrap;align-items:center"><button class="round big" id="bpl" aria-label="Play">' + icon('play') + '</button><button class="btn small" id="bbk">Back 10 s</button>' + seekHTML + '<b id="btm" class="lt-time">0:00</b></div><div class="row" style="flex-wrap:wrap">' +
       (opts.starts ? cues.map(function (c) { return '<button class="btn small" data-bfrom="' + c.t + '">From group ' + (c.i + 1) + '</button>'; }).join('') : '') +
       '<label class="switch" style="border:0"><span>🔔 Chimes</span><input type="checkbox" id="bch" checked></label>' + counterSwitch(P) + '</div>';
     var $ = function (id) { return host.querySelector('#' + id); }, chimes = function () { return $('bch') && $('bch').checked; };
-    var last = cues[cues.length - 1].t;
+    var last = cues[cues.length - 1].t, bar = function () {};
     function frame() {
       var t = A.time();
-      $('btm').textContent = T.clock(t); counterDraw(host, P, t);
+      $('btm').textContent = T.clock(t); counterDraw(host, P, t); bar(t);
       cues.forEach(function (c) {
         /* a yellow GET READY 3 seconds before (Colleen 2026-10-25: "put up a 'get ready' yellow screen 3 seconds before that") */
         if (t >= c.t - 3 && t < c.t) {
@@ -205,6 +215,7 @@
     host.querySelectorAll('[data-bfrom]').forEach(function (b) { b.onclick = function () { A.ready.then(function () { seek(+b.dataset.bfrom - 8); A.play(); setPP(); raf = requestAnimationFrame(frame); }); }; });
     audio.addEventListener('pause', function () { setPP(); frame(); }); audio.addEventListener('ended', function () { setPP(); frame(); });
     counterWire(host, P, frame);
+    bar = seekBar(host, A, function (t, drag) { A.ready.then(function () { seek(t); if (audio.paused) frame(); }); });
     T.cleanup.push(function () { cancelAnimationFrame(raf); });
     frame();
   }
@@ -227,6 +238,7 @@
       app.innerHTML = '<div class="card"><h2>' + sym('🌟') + 'Curtain call</h2><p class="muted">Each group runs on and bows to the bow music at its own moment, set in 8-counts' + (fin ? '; once everyone is on stage, the Company performs “' + esc(fin.title) + '”' : '') + '; then the Company bow. Each performer sees their bow under <b>My bow</b>, with a countdown, a red X until their turn, Get ready, and GO.</p>' +
         '<div class="row"><label class="f grow" style="margin:0">Bow music<select id="mus"><option value="">Pick…</option>' + withTracks.map(function (s) { var t = (T.show.tracks || {})[s.id]; return (t.rehearsal ? opt(s.id, 'rehearsal', 'Guide vocals (with singers): ' + esc(s.title)) : '') + (t.performance ? opt(s.id, 'performance', 'Band track (no singers): ' + esc(s.title)) : ''); }).join('') + (cur.own ? '<option value="own" selected>Your own recording (uploaded)</option>' : '') + '</select></label>' +
         '<label class="btn" style="margin:0">' + sym('⬆️') + 'Upload a recording<input type="file" id="upl" accept="audio/*" hidden></label></div>' +
+        (mu ? '<div class="row bow-listen" style="align-items:center;flex-wrap:wrap;margin-top:6px"><button class="round" id="lpl" aria-label="Play">' + icon('play') + '</button><button class="btn small" id="lbk">Back 10 s</button>' + seekHTML + '<b id="ltm" class="lt-time">0:00</b><span id="l8" class="small muted"></span></div>' : '') +
         '<p class="muted small">Try each and decide later: switching does not lose the 8-counts (check the tempo and count 1 again for a different recording). Before using a cast recording or the movie soundtrack in a performance, check that your license allows it.</p>' +
         (mu ? '' : '<p class="err">' + sym('⚠️') + 'Pick or upload the bow music.</p>') +
         '<div class="row"><label class="f" style="margin:0">Start this far into the track (seconds)<input id="mstart" inputmode="decimal" value="' + ((P.music && P.music.start) || 0) + '" style="width:90px"></label><span class="muted small">It fades in from there (0 = from the very start).</span>' +
@@ -235,7 +247,7 @@
         '<label class="f" style="margin:0">Count 1 of the first 8 is at<input id="cfirst" value="' + fmt(P.counts && P.counts.first != null ? P.counts.first : 0) + '" style="width:90px"></label>' +
         (mu ? '<button class="btn" id="tapbeat">' + sym('👏') + 'Tap the beat while it plays</button>' : '') + '<span class="muted small grow">' + (e8 ? 'One 8-count = ' + e8.toFixed(2) + ' seconds.' : 'Set the tempo to give each group a number of 8-counts.') + '</span></div>' +
         '<label class="switch" style="border:0;margin-top:6px"><span>Show the 8-counts on the screen when they practice: a big “8-count 7” and 1 to 8 lighting up <span class="muted small">(each device can also switch it)</span></span><input type="checkbox" id="cshow"' + (P.counts && P.counts.show ? ' checked' : '') + '></label></div>' +
-        '<div class="row" style="margin-top:8px">' + (mu ? '<button class="btn primary" id="taps">' + sym('⏱') + 'Tap the run-on times while it plays</button><button class="btn" id="even">Spread them evenly</button>' : '') + '<a class="btn" href="#/teacher/curtain/run">' + icon('play') + 'Rehearse the bows</a><button class="btn quiet" onclick="print()">' + icon('print') + 'Print the bow plan</button></div><p class="muted small" id="tapmsg"></p></div>' +
+        '<div class="row" style="margin-top:8px">' + (mu ? '<button class="btn primary" id="taps">' + sym('⏱') + 'Tap the run-on times while it plays</button><button class="btn" id="even">Spread them evenly</button>' : '') + '<button class="btn" id="rehb">' + icon('play') + 'Rehearse the bows</button><button class="btn quiet" onclick="print()">' + icon('print') + 'Print the bow plan</button></div><p class="muted small" id="tapmsg"></p></div>' +
         P.groups.map(function (g, i) {
           return '<div class="card bow-card" data-g="' + i + '" style="border-left:8px solid ' + COLORS[i % COLORS.length] + '"><div class="row"><b>Group ' + (i + 1) + '</b><input data-k="name" value="' + esc(g.name) + '" class="grow" aria-label="Group name">' +
             '<button class="btn small quiet" data-up="' + i + '"' + (i ? '' : ' disabled') + ' aria-label="Earlier">↑</button><button class="btn small quiet" data-down="' + i + '"' + (i < P.groups.length - 1 ? '' : ' disabled') + ' aria-label="Later">↓</button><button class="btn small quiet" data-del="' + i + '">Remove</button></div>' +
@@ -280,6 +292,15 @@
         P.finale = document.getElementById('fin').value; P.company.note = document.getElementById('cnote').value.trim(); P.crew = document.getElementById('ccrew').checked;
       };
       var $ = function (id) { return document.getElementById(id); };
+      /* listen to the bow music here: play / pause, back 10 s, drag to any moment; shows the 8-count while it plays */
+      if ($('lpl')) (function () {
+        var A = null, raf = 0, host = $('lpl').parentNode, bar = function () {};
+        var tick = function () { if (!A || !$('ltm')) return; var t = A.time(), e = eightAt(P, t); $('ltm').textContent = T.clock(t); $('l8').textContent = e ? '8-count ' + e.n + ', count ' + e.beat : ''; bar(t); if (!A.audio.paused) raf = requestAnimationFrame(tick); };
+        var get = function () { if (!A) { keep(); A = loadAudio(mu, P); A.audio.addEventListener('pause', function () { var b = $('lpl'); if (b) b.innerHTML = icon('play'); tick(); }); bar = seekBar(host, A, function (t) { A.ready.then(function () { A.seek(t); tick(); }); }); T.cleanup.push(function () { cancelAnimationFrame(raf); }); } return A; };
+        $('lpl').onclick = function () { var a = get(), b = this; a.ready.then(function () { if (a.audio.paused) { a.play(); b.innerHTML = icon('pause'); raf = requestAnimationFrame(tick); } else a.pause(); }, function (e) { T.toast(e.message, 5000); }); };
+        $('lbk').onclick = function () { var a = get(); a.ready.then(function () { a.seek(Math.max(0, a.time() - 10)); tick(); }); };
+        host.querySelector('[data-seek]').addEventListener('pointerdown', get, { once: true });      // dragging first also loads the music
+      })();
       $('mus').onchange = function () { keep(); var v = this.value, k = v.split(':')[0]; if (k === 'rehearsal' || k === 'performance') P.music = { song: v.slice(k.length + 1), kind: k, start: P.music && P.music.start, loop: !P.music || P.music.loop !== false }; draw(); };
       $('cbpm').onchange = $('cfirst').onchange = function () { keep(); draw(); };
       app.querySelectorAll('[data-e8]').forEach(function (b) { b.onclick = function () { keep(); var q = b.dataset.e8.split('|'), g = P.groups[+q[0]]; g.eights = Math.max(0, (g.eights || 0) + +q[1]); draw(); }; });
@@ -301,9 +322,9 @@
         T.cleanup.push(function () { bar.remove(); A.audio.pause(); });
       };
       $('upl').onchange = function () {
-        var f = this.files[0]; if (!f) return; keep(); var m = $('tapmsg'); m.textContent = 'Uploading ' + f.name + '…';
-        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver, start: 0, loop: true }; draw(); T.toast('Bow music uploaded. Save to keep it.'); }); }); })
-          .catch(function (e) { m.textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; });
+        var f = this.files[0]; if (!f) return; keep(); var m = $('tapmsg'); m.textContent = 'Uploading ' + f.name + '…'; T.toast('Uploading ' + f.name + '…', 4000);
+        f.arrayBuffer().then(function (buf) { return T.audioCtx().decodeAudioData(buf.slice(0)).then(function () { var ver = Date.now().toString(36); return Store.putTrack(T.key, T.proof, '__bows', 'performance', buf, ver).then(function () { P.music = { own: ver, start: 0, loop: false }; T.show.curtain = P; return T.saveShow('Bow music uploaded').then(function () { draw(); T.toast('Your recording is the bow music now (saved). Loop is off, since it fades out.'); }); }); }); })
+          .catch(function (e) { m.textContent = 'That file could not be used: ' + (e.message || 'not an audio file') + '.'; T.toast('The recording did not upload: ' + (e.message || 'not an audio file') + '. The bow music has not changed.', 8000); });
       };
       app.querySelectorAll('[data-side]').forEach(function (x) { x.onchange = function () { keep(); draw(); }; });
       app.querySelectorAll('[data-ch],[data-am]').forEach(function (s) { s.onchange = function () { keep(); draw(); }; });
@@ -318,7 +339,10 @@
       app.querySelectorAll('[data-pk="eight"]').forEach(function (x) { x.onchange = function () { keep(); draw(); }; });
       $('addg').onclick = function () { keep(); P.groups.push({ id: uid(), name: 'New group', chars: [], cast: [], at: null, from: sideFor(P.groups.length), row: ROWS[0], note: '' }); draw(); };
       $('sv').onclick = function () { keep(); T.show.curtain = P; T.saveShow('Curtain call saved'); };
-      $('reset').onclick = function () { if (!confirm('Go back to the suggested bow groups? Your changes here are replaced (Save to keep it).')) return; var keepC = T.show.curtain; delete T.show.curtain; P = JSON.parse(JSON.stringify(plan())); if (keepC) T.show.curtain = keepC; draw(); };
+      /* Rehearse plays the saved plan: save what is on the page first, so it is what plays */
+      $('rehb').onclick = function () { keep(); T.show.curtain = P; T.saveShow('Curtain call saved').then(function () { location.hash = '#/teacher/curtain/run'; }); };
+      /* back to the suggested groups keeps the music (an uploaded recording stays the bow music), its start and loop */
+      $('reset').onclick = function () { if (!confirm('Go back to the suggested bow groups? The groups and their timing are replaced; your bow music stays. (Save to keep it.)')) return; keep(); var mus = P.music, keepC = T.show.curtain; delete T.show.curtain; P = JSON.parse(JSON.stringify(plan())); if (mus && (mus.own || mus.song)) P.music = mus; if (keepC) T.show.curtain = keepC; draw(); };
       /* spread evenly: the groups share the bow music, a little in from the start, leaving room at the end for the last bow */
       if ($('even')) $('even').onclick = function () {
         keep(); var A = loadAudio(mu, P), m = $('tapmsg'); m.textContent = 'Reading the length of the music…';
@@ -402,16 +426,16 @@
     var P = plan(), mu = music(P), g = P.groups[gi], t0 = timeOf(g, P), e8 = eightSec(P), beat = e8 ? e8 / 8 : null;
     if (!mu) { host.innerHTML = '<p class="card">Your teacher has not picked the bow music yet.</p>'; return; }
     if (t0 == null) { host.innerHTML = '<p class="card">Your teacher has not set when your group goes yet.</p>'; return; }
-    var ready = 3, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {}, side = T.me ? mySide(g, T.me) : g.from;
+    var cbar = function () {}, ready = 3, A = loadAudio(mu, P), audio = A.audio, raf = 0, said = {}, side = T.me ? mySide(g, T.me) : g.from;
     host.innerHTML = counterHTML + '<div class="bowcd wait" id="bcd" aria-live="polite"><div class="bowcd-x" aria-hidden="true">✕</div><div class="bowcd-big" id="bcdbig"></div><div class="bowcd-small" id="bcdsmall"></div></div>' +
-      '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="round big" id="bcpl" aria-label="Play">' + icon('play') + '</button><button class="btn" id="bctop">From the top of the song</button><button class="btn" id="bcnear">Just before my turn</button><b id="bctm" class="lt-time">0:00</b>' +
+      '<div class="row" style="margin-top:10px;flex-wrap:wrap;align-items:center"><button class="round big" id="bcpl" aria-label="Play">' + icon('play') + '</button>' + seekHTML + '<b id="bctm" class="lt-time">0:00</b></div><div class="row" style="flex-wrap:wrap"><button class="btn" id="bctop">From the top of the song</button><button class="btn" id="bcnear">Just before my turn</button>' +
       '<label class="switch" style="border:0"><span>🔔 Sounds</span><input type="checkbox" id="bcsnd" checked></label>' + counterSwitch(P) + '</div>';
     var $ = function (id) { return host.querySelector('#' + id); }, snd = function () { return $('bcsnd') && $('bcsnd').checked; };
     var mmss = function (x) { x = Math.max(0, Math.ceil(x)); return Math.floor(x / 60) + ':' + ('0' + x % 60).slice(-2); };
     function frame() {
       if (!$('bcd')) return;
       var t = A.time(), left = t0 - t, box = $('bcd'), big = $('bcdbig'), small = $('bcdsmall');
-      $('bctm').textContent = T.clock(t); counterDraw(host, P, t);
+      $('bctm').textContent = T.clock(t); counterDraw(host, P, t); cbar(t);
       if (left > ready) {
         box.className = 'bowcd wait'; big.textContent = mmss(left);
         var n8 = e8 ? Math.ceil((t0 - Math.max(t, +P.counts.first || 0)) / e8 - 0.001) : 0;      // counted from count 1 of the first 8
@@ -435,6 +459,7 @@
     $('bctop').onclick = function () { from(0); };
     $('bcnear').onclick = function () { from(t0 - ready - 12); };
     audio.addEventListener('pause', function () { setPP(); frame(); });
+    cbar = seekBar(host, A, function (t) { A.ready.then(function () { said = {}; A.seek(t); if (audio.paused) frame(); }); });
     counterWire(host, P, frame);
     T.cleanup.push(function () { cancelAnimationFrame(raf); });
     frame();
