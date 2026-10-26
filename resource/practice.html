@@ -435,7 +435,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.04';
+var VERSION = '2.05';
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
@@ -1290,7 +1290,7 @@ function pastedGrade_(email, cls, summary) {
 // 2.01: the assignment names each class's pasted pages have had (so a page pasted into the wrong class can be recognized)
 // 2.04: schedule rows that aren't graded classes: lunch, study hall, and (Colleen) counselor, social worker, case manager, athletics,
 // activities, and anything with "support" or "academy" in the name. They never ask for grades, wherever they were saved.
-var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy/i;
+var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;
 function noGradeName_(name) { return NOGRADE_RE.test(String(name || '')); }
 function anames_(email) {
   var o = {}; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) !== email) return; var c = String(r[1]), l = o[c] = o[c] || []; if (l.length < 80) l.push(String(r[2])); });
@@ -4465,11 +4465,15 @@ function blankRow(p) { return { period: p || '', name: '', teacher: '', temail: 
 /* IC-SCHED */
 // What kind of class a name looks like: the Settings "Resource course names" are resource; lunch, study hall, counselor, social worker,
 // case manager, athletics, activities, and anything with "support" or "academy" get no grade (2.04; same list as Code.gs NOGRADE_RE).
-var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy/i;
+var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;
+// 2.05: LTHS clubs (lths.net/activities/clubs, Colleen 2026-10-26). A pasted schedule row with one of these names starts as No grade;
+// a student can switch it to graded (some, like Chamber Orchestra or Madrigals, can also be real classes).
+var CLUBS = ['A cappella Club', 'Adaptive Intramural Soccer', 'Arabic Culture Club', 'Archery Club', 'Art Club', 'Asian Culture Club', 'ASL Club', 'Athlete Leadership Program', 'Auto Club', 'Aviation Club', 'Baccalaureate: A Senior Celebration', 'Bailando Con Todos', 'Battle of the Books', 'Best Buddies', 'Billiards Club', 'BIZ Concessions', 'Black Student Union', 'Board Games Club', 'Bowling Club', 'Breakfast with Barbells', 'Business Networking Club', 'Business Professionals of America', 'BPA', 'Careers in Psychology', 'Catering Club', 'Chamber Orchestra', 'Chess Team', 'Class Board', 'Color Guard', 'Winter Guard', 'Congressional Debate', 'The Corral', 'Creative Writing Group', 'Cyber Defense Club', 'D & D Club', 'Distributive Education Clubs of America', 'DECA', 'Engineering Club', 'eSports Team', 'Eurythmic Dance Company', 'Fashion Club', 'FCCLA', 'FFA Club', 'Fishing Club', 'Foosball Club', 'French Club', 'Future Healthcare Professionals', 'Future Legal Professionals', 'German Club', 'Girls in Engineering, Math and Science', 'GEMS', 'Greek Club', 'GSA', 'Health Occupations Students of America', 'HOSA', 'Hispanic Leadership Council', 'Improvisation Society of Geniuses', 'Indigenous Culture Club', 'Interact Club', 'Investment Club', 'Irish Club', 'Italian Club', 'Jazz Band', 'Jazz Lab Band', 'Latin Club', 'Latinos Juntos', 'Lifeguard Club', 'THE LION Newspaper', 'Lions Den Student Section', 'Lithuanian Club', 'LTTV', 'Lyons Latin Dancers', 'Madrigals', 'Marching Band', 'Math Team', 'MENAGERIE Literary & Art Magazine', 'Model United Nations', 'Mock Trial', 'Music Improv', 'National Honor Society', 'NHS', 'Peaceable Schools Initiative', 'PSI', 'Older Adult Connections', 'Peer Leadership', 'Pep Band', 'Philosophy Club', 'Photography Club', 'Pickleball Club', 'Pinball Club', 'Ping Pong Club', 'Polish Club', 'Political Science Club', 'Pollinator Garden', 'Poms', 'Programming and Technology Club', 'Promotion Club', 'Recycling Club', 'Robotics Team', 'Rock Climbing Club', 'Roundnet Club', 'SAVE Promise Club', 'Sailing Club', 'Sending Love Club', 'Scholastic Bowl', 'Science Olympiad', 'Serbian Club', 'Sideline Cheer', 'Snowball', 'Sobremesa', 'Social Action Project', 'South Asian Culture Club', 'Spanish Club', 'Speech Team', 'Steppers', 'Student Athletic Training', 'Student Council', 'Sustainability Club', 'TABULAE Yearbook', 'Theatre Board', 'Ukrainian Club', 'Ultimate Frisbee', 'WLTL', 'Women in Sports Empowerment', 'WISE', 'Vet Club', 'Yoga & Wellness Club'];
+function isClub(name) { var n = String(name || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9& ]/g, ' ').replace(/\s+/g, ' ').trim(); return CLUBS.some(function (c) { return c.toLowerCase().replace(/[^a-z0-9& ]/g, ' ').replace(/\s+/g, ' ').trim() === n; }); }
 function guessType(name, level) {
   var n = String(name).toLowerCase();
   if ((B.resNames || ['Resource']).some(function (x) { return x && n.indexOf(String(x).toLowerCase()) >= 0; })) return 'resource';
-  if (NOGRADE_RE.test(n) || level === 'SC') return 'nograde';
+  if (NOGRADE_RE.test(n) || isClub(name) || level === 'SC') return 'nograde';
   return 'graded';
 }
 function rowType(r) { return r.resource || r.nograde ? 'nograde' : 'graded'; }
