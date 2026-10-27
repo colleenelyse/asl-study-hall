@@ -475,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.44'
+var VERSION = '2.45'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -2670,6 +2670,30 @@ function api_passInfo() { return passCall_('passInfo'); }
 function api_passOut(o) { o = o || {}; return passCall_('passOut', { dest: String(o.dest || '').slice(0, 60), teacher: String(o.teacher || '').slice(0, 30), pass: o.pass === 'none' ? 'none' : Number(o.pass) || 0, delivered: !!o.delivered, permission: !!o.permission, pin: String(o.pin || '').slice(0, 8) }); }
 function api_passBack(returned) { return passCall_('passBack', { returned: Number(returned) || 0 }); }
 function api_passLine(join) { return passCall_('passLine', { join: !!join }); }
+// The teacher's side: 🚻 Out now on the Overview and Hall passes on a student's page. Only student IDs go to the kiosk; the names are
+// put back on here from the Students tab.
+function passStudents_() {
+  var by = {};
+  rows_('Students').forEach(function (r) { var e = low_(r[SC.email]), m = e.match(/(\d{4,})@/); if (m) by[m[1]] = { email: e, name: (String(r[SC.first] || '') + ' ' + String(r[SC.initial] || '').replace(/\.?$/, '.')).trim() }; });
+  return by;
+}
+function passTeacher_(act, extra) {
+  teacherOnly_(); if (!kioskConf_()) throw new Error('Not connected to a Hall Pass Kiosk.');
+  var by = passStudents_(), body = { act: act, sids: Object.keys(by) }; for (var x in (extra || {})) body[x] = extra[x];
+  var r = passFetch_(body); if (!r || r.error) throw new Error('Hall Pass Kiosk: ' + ((r && r.error) || 'no answer'));
+  var nm = function (sid) { return sid && by[sid] ? by[sid] : null; };
+  (r.out || []).forEach(function (o) { var w = nm(o.sid); o.email = w ? w.email : ''; o.name = w ? w.name : ''; delete o.sid; });
+  (r.passes || []).forEach(function (p) { var w = nm(p.sid); p.who = w ? w.name : p.out ? 'another class' : ''; delete p.sid; });
+  r.line = (r.line || []).map(function (l) { var w = nm(l.sid); return w ? w.name : 'another class'; });
+  return r;
+}
+function api_passBoard() { return passTeacher_('passBoard'); }
+function api_passBackFor(email) { var m = low_(email).match(/(\d{4,})@/); if (!m) throw new Error('No student ID in that email.'); return passTeacher_('passBackFor', { sid: m[1] }); }
+function api_passHistory(email) {
+  teacherOnly_(); if (!kioskConf_()) return null;
+  var m = low_(email).match(/(\d{4,})@/); if (!m) return null;
+  var r = passFetch_({ act: 'passHistory', sid: m[1] }); return r && r.ok ? r : r && /Unknown request/.test(r.error || '') ? { off: true } : null;
+}
 // The kiosk classes for the chosen periods ("7 Period — …" → 7).
 function kioskClasses_() {
   var k = kioskConf_(), list = (kioskCall_('classes') || {}).classes || [];
@@ -5130,7 +5154,8 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/teopen=1/.test(location.search)) setTimeout(function () { teOpen(); window.scrollTo(0, 300); }, 5000);
   if (/hp=1/.test(location.search)) {          // 🚻 Hall pass with a pretend Hall Pass Kiosk (&hpfull=1: both passes out, &hpout=1: this student is out, &hprem=1: the weekly reminder)
     var HPK = { out: [], line: [], t0: Date.now() };
-    if (/hpfull=1/.test(location.search)) HPK.out = [{ sid: '501777', name: 'Dev W.', dest: 'Bathroom', n: 1, at: Date.now() - 240000 }, { sid: '555012', name: 'Linh N.', dest: 'Water', n: 2, at: Date.now() - 60000 }];
+    if (/hpfull=1/.test(location.search)) HPK.out = [{ sid: '501777', name: 'Dev W.', dest: 'Bathroom', n: 1, at: Date.now() - 740000 }, { sid: '555012', name: 'Linh N.', dest: 'Water', n: 2, at: Date.now() - 60000 }];
+    if (/hpline=1/.test(location.search)) HPK.line = [{ sid: '123456', name: 'Marcus O.' }];
     if (/hpout=1/.test(location.search)) HPK.out = [{ sid: '123456', name: 'Marcus O.', dest: 'Bathroom', n: 1, at: Date.now() - 185000 }];
     var HPD = [['Bathroom', '🚻', 0, 0, 1], ['Water', '💧', 0, 1, 1], ['Locker', '🔒', 0, 1, 1], ['Counselor', '🧑‍💼', 1, 0, 0], ['Library', '📚', 0, 1, 0], ['Nurse', '🩺', 0, 0, 0], ['Main Office', '🏫', 0, 0, 0], ['Back to my last class', '🚪', 0, 0, 0]];
     window.kioskConf_ = function () { return { url: 'https://kiosk', key: 'k', periods: [] }; };
@@ -5145,6 +5170,11 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
           reminder: /hprem=1/.test(location.search) ? { red: false, title: 'Hi Marcus — quick check-in 💙', text: 'You’ve left class 3 times this week (about 14 minutes). Every minute here counts: explanations, practice, and time with your classmates add up fast. If it can wait, please stay. If you really need to go, that’s okay.' } : null,
           dests: HPD.map(function (d) { return { name: d[0], label: /last class/.test(d[0]) ? 'Another teacher’s classroom' : d[0], icon: d[1], askPass: !!d[2], optional: !!d[3], needsPass: !!d[4], teacherRoom: /last class/.test(d[0]) }; }) };
       };
+      if (b.act === 'passBackFor') HPK.out = HPK.out.filter(function (o) { return o.sid !== b.sid; });
+      if (b.act === 'passBoard' || b.act === 'passBackFor') { var hd = {}; HPK.out.forEach(function (o) { if (o.n) hd[o.n] = o.sid; });
+        return { ok: true, passCount: 2, passes: [1, 2].map(function (n) { return { number: n, out: n in hd, sid: hd[n] || '' }; }), out: HPK.out.map(function (o) { return { sid: o.sid, destination: o.dest, since: o.at, passNumber: o.n || 0, noPass: !o.n }; }), line: HPK.line.map(function (o) { return { sid: o.sid }; }), limits: { minutes: 6, trips: 3 } }; }
+      if (b.act === 'passHistory') { var D0 = Date.now(); return { ok: true, week: { trips: 3, minutes: 14.5 }, lastWeek: { trips: 1, minutes: 4 }, limits: { minutes: 6, trips: 3 },
+        recent: [{ at: D0 - 240000, back: 0, destination: 'Bathroom', passNumber: 1 }, { at: D0 - 86400000, back: D0 - 86400000 + 420000, destination: 'Water', passNumber: 2 }, { at: D0 - 2 * 86400000, back: D0 - 2 * 86400000 + 900000, destination: 'Counselor', passNumber: 0, note: 'Called by pass' }, { at: D0 - 6 * 86400000, back: D0 - 6 * 86400000 + 240000, destination: 'Bathroom', passNumber: 1 }] }; }
       if (b.act === 'passLine') { HPK.line = HPK.line.filter(function (o) { return !me(o); }); if (b.join) HPK.line.push({ sid: b.sid, name: 'Marcus O.' }); }
       if (b.act === 'passBack') HPK.out = HPK.out.filter(function (o) { return !me(o); });
       if (b.act === 'passOut') { var s0 = st(); if (s0.full && !b.permission && /Bath|Water|Locker/.test(b.dest)) return { error: 'All the passes are out.', line: true };
@@ -5412,6 +5442,49 @@ function hpGo(n) {
 }
 function hpBack() { if (!HP || !HP.mine) return; call('api_passBack', HP.mine.passNumber || 0).then(function (r) { HPX = {}; hpGot(r); if (r && r.ok) { toast('Welcome back!'); hpClose(); } }).catch(oops); }
 function hpLine(join) { call('api_passLine', join).then(hpGot).catch(oops); }
+
+/* ---------- 🚻 the teacher's side (own copy with the kiosk): Out now on the Overview, Hall passes on a student's page ----------
+   HPB = the kiosk's board for this teacher's students (api_passBoard: names put back on by the server). Refreshed every 30 s while the
+   Overview is showing; the minutes tick every second. */
+var HPB = null, HPB_POLL = null, HPB_T = null, HPB_LATE = 10;
+function hpBoardStart() {
+  if (!B || !B.kiosk) return;
+  if (!HPB_POLL) { hpBoardLoad(); HPB_POLL = setInterval(function () { if (VIEW !== 'overview' || document.hidden) return; hpBoardLoad(); }, 30000); }
+  clearInterval(HPB_T); HPB_T = setInterval(function () { if (VIEW !== 'overview') return; Array.prototype.forEach.call(document.querySelectorAll('.hpb-min'), function (el) { var ms = Number(el.getAttribute('data-since')), m = Math.floor((Date.now() - ms) / 60000); el.textContent = hpMin(ms); el.parentNode.style.color = m >= HPB_LATE ? 'var(--warn)' : ''; }); }, 1000);
+}
+function hpBoardLoad() { call('api_passBoard').then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); }).catch(function (e) { HPB = { error: e.message || String(e) }; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); }); }
+function hpBoardHtml() {
+  var box = function (inner) { return '<div class="card" style="margin:8px 0 12px;padding:12px 16px">' + inner + '</div>'; };
+  if (!HPB) return box('<span class="small">🚻 Asking the Hall Pass Kiosk who is out…</span>');
+  if (HPB.error && /Unknown request/.test(HPB.error)) return '';          // a kiosk from before version 166: nothing to show
+  if (HPB.error) return box('<span class="small">🚻 Hall passes: ' + esc(HPB.error) + ' <a href="#" onclick="hpBoardLoad();return false">Try again</a></span>');
+  var free = (HPB.passes || []).map(function (p) { return '<span class="hp-pass' + (p.out ? '' : ' free') + '" style="padding:3px 10px"><b>#' + p.number + '</b> <span class="small" style="display:inline">' + (p.out ? esc(p.who) : 'free') + '</span></span>'; }).join('');
+  var h = '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><h3 class="grow" style="margin:0">🚻 Out now' + (HPB.out.length ? ' <span class="badge warn">' + HPB.out.length + '</span>' : '') + '</h3>' + free + '</div>';
+  h += HPB.out.length ? '<table style="margin-top:6px"><tbody>' + HPB.out.map(function (o) {
+      var m = Math.floor((Date.now() - o.since) / 60000);
+      return '<tr><td><b>' + esc(o.name || 'A student') + '</b></td><td>' + esc(o.destination) + '<small>' + (o.passNumber ? 'Pass #' + o.passNumber : o.delivered ? 'A pass was sent for them' : o.noPass ? 'No hall pass' : '') + ' · left ' + hpClock(o.since) + '</small></td>' +
+        '<td style="white-space:nowrap' + (m >= HPB_LATE ? ';color:var(--warn)' : '') + '">⏱ <b class="hpb-min" data-since="' + o.since + '">' + hpMin(o.since) + '</b></td>' +
+        '<td style="text-align:right"><button class="btn small" onclick="hpBackFor(\'' + esc(o.email) + '\')">✓ I’m back</button></td></tr>';
+    }).join('') + '</tbody></table>' : '<p class="small" style="margin:6px 0 0">Nobody is out.</p>';
+  if (HPB.line.length) h += '<p class="small" style="margin:6px 0 0">🙋 Next in line: ' + HPB.line.map(esc).join(', ') + '</p>';
+  return box(h);
+}
+function hpBackFor(email) { call('api_passBackFor', email).then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); toast('Marked back'); }).catch(oops); }
+function hpHistLoad() {
+  var email = TS_EMAIL;
+  call('api_passHistory', email).then(function (r) {
+    var el = $('hpHist'); if (!el || email !== TS_EMAIL) return;
+    if (r && r.off) { el.remove(); return; }
+    if (!r) { el.innerHTML = '<h2>🚻 Hall passes</h2><p class="small">This student isn’t on the Hall Pass Kiosk’s lists (or the kiosk didn’t answer).</p>'; return; }
+    var over = function (w) { return w.minutes > r.limits.minutes || w.trips >= r.limits.trips; };
+    var row = function (lab, w) { return '<tr><td style="width:42%"><b>' + lab + '</b></td><td>' + w.trips + ' trip' + (w.trips === 1 ? '' : 's') + ', about ' + Math.round(w.minutes) + ' minutes' + (over(w) ? ' <span class="badge warn">over the weekly limit</span>' : '') + '<small>Limit: ' + r.limits.trips + ' trips or ' + r.limits.minutes + ' minutes (passes sent for them don’t count)</small></td></tr>'; };
+    el.innerHTML = '<h2>🚻 Hall passes</h2><table><tbody>' + row('This week', r.week) + row('Last week', r.lastWeek) + '</tbody></table>' +
+      (r.recent.length ? '<details style="margin-top:8px" open><summary><b>Last ' + r.recent.length + ' trips</b></summary><table style="margin-top:4px"><tbody>' + r.recent.map(function (t) {
+        var mins = t.back ? Math.round((t.back - t.at) / 60000) : null;
+        return '<tr><td style="width:150px">' + esc(new Date(t.at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + hpClock(t.at) + '</td><td>' + esc(t.destination) + '<small>' + [t.passNumber ? 'Pass #' + t.passNumber : t.noPass ? 'No hall pass' : '', t.note].filter(Boolean).map(esc).join(' · ') + '</small></td><td style="white-space:nowrap">' + (mins == null ? '<span class="badge warn">out now</span>' : mins + ' min') + '</td></tr>';
+      }).join('') + '</tbody></table></details>' : '<p class="small">No trips yet.</p>');
+  }).catch(function () { var el = $('hpHist'); if (el) el.innerHTML = '<h2>🚻 Hall passes</h2><p class="small">The Hall Pass Kiosk didn’t answer.</p>'; });
+}
 
 // a teacher's own student data, until Student view loads it
 function emptyD() { return { email: B.email, profile: { name: '', periods: [], checked: '' }, checklist: null, exit: null, dayPlan: null, gradeGoals: {}, goalHist: [], finals: {}, steps: [], focus: {}, accom: {}, ef: { missingNow: {}, lateList: {} }, bench: [], classes: [], grades: {}, dates: {}, cplans: {}, gradeBy: {}, lows: {}, missing: {}, retakes: [], analyses: {}, plans: [], tests: [], reminders: [], stub: true }; }
@@ -7849,7 +7922,7 @@ function drawOverview() {
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
     '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.kiosk ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -7872,6 +7945,7 @@ function drawOverview() {
         (s.plan ? plural(s.plan.steps.length, 'step') + (s.plan.help ? ' <span class="badge warn" title="' + esc(s.plan.help) + '">✋ Help</span>' : '') : '<span class="small">—</span>') + '</td></tr>';
   }).join('') + '</tbody></table>' : '<div class="empty">' + (all.length ? 'No students match.' : 'No students yet. They show up here after they open the student link, or add them under Students & photos.') + '</div>';
   $('main').innerHTML = h + '</div>';
+  hpBoardStart();
   $('tq').oninput = function () { FILTER.q = this.value; var pos = this.selectionStart; drawOverview(); $('tq').focus(); $('tq').setSelectionRange(pos, pos); };
 }
 // A notice when students haven't updated their grades in more than a week (or never have).
@@ -8401,6 +8475,7 @@ function drawTStudent() {
 
   h += tDayPlanCard() + tIepCard() + tTeamCard() + tGoalsFinalsCard() + teGradesCard();
   h += '<div class="card" id="efCard"><h2>🎯 Goals and executive functioning</h2><p class="small">Loading…</p></div>';
+  if (B.kiosk) { h += '<div class="card" id="hpHist"><h2>🚻 Hall passes</h2><p class="small">Asking the Hall Pass Kiosk…</p></div>'; setTimeout(hpHistLoad, 0); }
 
   // grades: the last 6 weeks with grades
   var weeks = {};
