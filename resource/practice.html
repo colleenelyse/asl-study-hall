@@ -289,8 +289,13 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 @media (max-width: 900px) { .side2 { grid-template-columns: 1fr; } }
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(15, 20, 35, .45); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; }
 .modal .card { width: 100%; max-width: 760px; margin: 0; }
-#hpBtn { position: fixed; right: 16px; bottom: 16px; z-index: 40; border-radius: 999px; padding: 12px 18px; font-size: 1.05em; box-shadow: 0 4px 14px rgba(15, 20, 35, .25); }
-#hpBtn.out { background: var(--warn); color: #1d2433; border-color: var(--warn); }
+#hpDock { position: fixed; right: 14px; bottom: 14px; z-index: 40; }
+.hp-dock { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 4px; box-shadow: 0 4px 14px rgba(15, 20, 35, .22); }
+.hp-dock.out { background: var(--warn-soft); border-color: var(--warn); }
+.hp-dock-main { border: 0; background: transparent; color: var(--ink); font: inherit; font-weight: 600; padding: 6px 10px; cursor: pointer; border-radius: 999px; }
+.hp-dock-main b { font-variant-numeric: tabular-nums; margin-left: 4px; }
+.hp-tag { font-size: 1.6em; margin-right: 2px; }
+.hp-tag.gone { opacity: .2; filter: grayscale(1); }
 .hp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
 .hp-grid .btn { min-height: 56px; white-space: normal; text-align: left; }
 .hp-pass { display: inline-block; border: 2px solid var(--line); border-radius: 12px; padding: 6px 12px; margin: 4px 6px 4px 0; }
@@ -476,13 +481,13 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.51'
+var VERSION = '2.52'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
 var TABS = {
   // The first seven columns match a class list from Infinite Campus, so the teacher can paste one in (Set up or repair tidies it).
-  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list', 'Their own checklist items', 'Goal check-in phrases', 'Testing arrangement'],
+  Students: ['Resource period', 'Last initial', 'First name', 'Grade', 'Student number', 'Birthday', 'Counselor', 'Enrollments', 'Email', 'First visit', 'Last check-in', 'Schedule checked', 'Birthday seen', 'Parent email', 'Counselor email', 'IEP goal', 'Checklist items', 'Accommodations', 'Parent language', 'IEP meeting', 'IEP meeting note (time, room)', 'IEP annual review due', 'Re-evaluation due', 'Case manager', 'Case manager email', 'Profile confirmed', 'Nothing-to-do list', 'Their own checklist items', 'Goal check-in phrases', 'Testing arrangement', 'Hall pass: escort only'],
   Classes: ['Email', 'Period', 'Class', 'Teacher', 'Resource (no grade)', 'Order', 'Teacher email', 'Level', 'No grade (lunch, study)', 'Entered by'],
   Grades: ['Week of', 'Email', 'Class', 'Grade', 'Updated', 'Why it is low', 'Plan to improve', 'Plan details', 'Missing (how many)', 'Missing assignments', 'My plan', 'Entered by'],
   Plans: ['Week of', 'Email', 'Focus classes', 'Steps', 'Need help with', "Followed last week's plan?", 'Looking back', 'Updated', 'Teacher check', 'Talked to a teacher'],
@@ -542,6 +547,7 @@ var TABS = {
   'IEP goals': ['ID', 'Email', 'Goal name', 'Goal', 'Added', 'Updated', 'In student words', 'Measured in BASE/ARC', 'Student', 'Check-in sentences', 'What counts as evidence', 'How to measure (idea)',
     'Goal code', 'Rating 6', 'Rating 5', 'Rating 4', 'Rating 3', 'Rating 2', 'Rating 1', 'No-chance ideas', 'What success looks like', 'Tracking tools (provisional)', 'Measurement status', 'Measurement notes', 'Official criterion (from the IEP)', 'Active from', 'Active until', 'Skill check'],
   'Skill checks': ['Date', 'Email', 'Goal ID', 'Skill', 'Score', 'Out of', 'Percent', 'Answers', 'Saved', 'Start level', 'End level'],
+  'Hall passes': ['Date', 'Email', 'Student', 'Place', 'Out', 'Back', 'Minutes', 'How', 'Shared pass', 'Note', 'ID'],
   'Goal check-ins': ['Check-in ID', 'Submitted', 'Reflection date', 'Email', 'Goal ID', 'Goal title', 'Rating (1-6)', 'Did not have a chance', 'Explanation', 'Status', 'Changed by', 'Change note'],
   'Goal change log': ['When', 'Who', 'What', 'Email', 'Goal or check-in', 'Field', 'Before', 'After', 'Note'],
   'All goals and benchmarks': ['Student', 'Resource period', 'Goal #', 'Area', 'Measured in BASE/ARC', 'IEP goal (initial only)', 'In student words', 'Benchmarks', 'How it’s measured (now)', 'Daily goal check-ins', 'Email'],
@@ -558,8 +564,8 @@ var TABS = {
     'Email teacher (app)', 'Talked to a teacher (told the app)', 'Retakes scheduled', 'Followed plan %', 'Plan steps done %', 'Task initiation met %', 'Observations', 'Self-report accurate %', 'Updated',
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
-var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29 };   // Students columns
-var TEXT_COLS = { 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29, escort: 30 };   // Students columns
+var TEXT_COLS = { 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -641,6 +647,14 @@ var DEFAULTS = [
   ['Students: plan for each class', 'Yes', 'A "My plan" menu on each class: No plan needed, Get Help / Email Teacher, Work on missing assignments, Schedule a Retake, Go to Support.'],
   ['Students: plan for resource time', 'Yes', 'Students pick focus classes and write the steps they\'ll do during resource time.'],
   ['Students: what I need help with', 'Yes', 'Students tell the resource teacher what they need help with.'],
+  ['Hall passes on Chromebooks', 'Yes', 'Students take a hall pass from their Chromebook (🚻 bottom right). Only in Colleen’s own copy.'],
+  ['Hall passes in the room', 2, 'How many hall passes hang on the hook.'],
+  ['Hall pass places', 'Bathroom; Water; Locker; Library; Counselor; AP Office; Nurse; Main Office; Another teacher’s classroom', 'Where students can go, separated with semicolons. The bathroom, water and locker need a pass from the hook.'],
+  ['Hall pass: places that send a pass', 'Counselor; AP Office', 'For these, students are asked “Did you get a pass?” A pass sent for them doesn’t use one from the hook or count toward their limit.'],
+  ['Hall pass weekly limit (trips)', 3, 'After this many trips in a week, students see a reminder before they leave (it never stops them).'],
+  ['Hall pass weekly limit (minutes)', 6, 'After this many minutes out in a week, students see the same reminder.'],
+  ['Hall pass: late after (minutes)', 10, 'When a pass has been out this long and someone is waiting in line, you get a pop-up with a sound.'],
+  ['Hall pass: paper pass after waiting (minutes)', 5, 'After waiting this long in line, behind a pass that is late, a student may go on a paper pass.'],
   ['Students: paste schedule from Infinite Campus', 'Yes', 'Students can fill in their schedule by pasting the Infinite Campus Schedule page.'],
   ['Students: can change their schedule', 'Yes', 'The My schedule page. No: after their first visit, only the teacher changes schedules (the January check still happens).'],
   ['Students: tests with my teacher', 'Yes', 'Students can tell you “I’m waiting for a test” or “I have a test in the folder”, and see tests you logged and access codes you released (📬 Tests & codes page).'],
@@ -673,6 +687,8 @@ var SETTING_UI = {
   'Default font': ['Look', 'choice', ['lexend', 'dyslexic', 'atkinson', 'andika', 'comic', 'system']],
   'Birthday celebration': ['Fun', 'yesno'], 'Ask students for their birthday': ['Fun', 'yesno'], 'Birthday video link': ['Fun', 'link'], 'Bell schedule link': ['Class setup', 'link'], 'Birthday sound link': ['Fun', 'link'],
   'Low grade': ['Grades and flags', 'number'], 'Drop alert': ['Grades and flags', 'number'], 'Letter cutoffs': ['Grades and flags', 'text'], 'Test warning days': ['Grades and flags', 'number'],
+  'Hall passes on Chromebooks': ['Hall passes', 'yesno'], 'Hall passes in the room': ['Hall passes', 'number'], 'Hall pass places': ['Hall passes', 'text'], 'Hall pass: places that send a pass': ['Hall passes', 'text'],
+  'Hall pass weekly limit (trips)': ['Hall passes', 'number'], 'Hall pass weekly limit (minutes)': ['Hall passes', 'number'], 'Hall pass: late after (minutes)': ['Hall passes', 'number'], 'Hall pass: paper pass after waiting (minutes)': ['Hall passes', 'number'],
   'App name': ['Class setup', 'text'], 'Teacher emails': ['Class setup', 'list'], 'Resource course names': ['Class setup', 'list'], 'Periods per day': ['Class setup', 'number'],
   'Schedule check dates': ['Class setup', 'dates'], 'Student email domain': ['Class setup', 'text'], 'Student link': ['Class setup', 'link']
 };
@@ -773,7 +789,7 @@ function setup_() {
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
-  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
+  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Hall passes', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
@@ -1019,7 +1035,7 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
     welcome: isTeacher_(email) && !PropertiesService.getDocumentProperties().getProperty('welcome:' + email),          // 1.98: the one-time welcome box
@@ -1462,7 +1478,8 @@ function api_settings() {
   teacherOnly_();
   var st = ss_().getSheetByName('Settings'), cur = {};
   if (st && st.getLastRow() > 1) st.getRange(2, 1, st.getLastRow() - 1, 2).getValues().forEach(function (r) { cur[String(r[0]).trim()] = r[1]; });
-  return DEFAULTS.filter(function (d) { return SETTING_UI[d[0]]; }).map(function (d) {
+  var mine = KIOSK_COPIES.indexOf(ScriptApp.getScriptId()) >= 0;          // the hall pass rows only show in Colleen's own copy
+  return DEFAULTS.filter(function (d) { return SETTING_UI[d[0]] && (mine || !/^Hall pass/.test(d[0])); }).map(function (d) {
     var v = d[0] in cur ? cur[d[0]] : d[1];
     if (Object.prototype.toString.call(v) === '[object Date]') v = day_(v);
     return { key: d[0], value: String(v === null || v === undefined ? '' : v), desc: d[2], group: SETTING_UI[d[0]][0], kind: SETTING_UI[d[0]][1], options: SETTING_UI[d[0]][2] || null };
@@ -2666,50 +2683,138 @@ function kioskCall_(act, extra) {
   if (out && out.error) throw new Error('Hall Pass Kiosk: ' + out.error);
   return out;
 }
-/* ---------- Chromebook hall passes (Colleen's own copy only: needs the kiosk connection) ----------
-   Students take the kiosk's numbered hall passes from their Chromebooks: 🚻 Hall pass. Everything is kept in the kiosk (its Hall Pass Log,
-   Currently Out, line, escort-only, weekly reminders, reports); the kiosk's kioskCbPass_ checks the same rules as its own screen. Only the
-   student ID (from the school email) goes to the kiosk; first names + last initials come back. */
-function passFetch_(body) {
-  var k = kioskConf_(); body.seatApi = 1; body.key = k.key;
-  var res = UrlFetchApp.fetch(k.url, { method: 'post', contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true, followRedirects: true });
-  try { return JSON.parse(res.getContentText()); } catch (e) { return { error: 'The Hall Pass Kiosk did not answer. Tell your teacher.' }; }
+/* ---------- 🚻 Hall passes on Chromebooks (2.52; Colleen's own copy only, KIOSK_COPIES) ----------
+   For her building with no kiosk: everything lives HERE (the Hall Pass Kiosk at her other campus is not used or changed). The room has
+   "Hall passes in the room" passes on a hook (2), no numbers. A student picks a place; Counselor / AP Office ask "Did you get a pass?"
+   (sent for them: no hook pass, not counted); going where someone already is asks "Are you sharing their pass?"; the bathroom, water and
+   locker need a pass from the hook, or a place in line ("I have permission" lets them go anyway); anywhere else can go without one. The
+   weekly reminder (trips or minutes) reminds, never blocks; escort-only students can't start a pass. While out, a small timer stays in a
+   corner and the Chromebook keeps working. A pass is back on the hook when everyone on it is back. When someone in line has waited
+   HP_WAIT minutes and the pass that should be back next has been out HP_LATE minutes, the student may go on a paper pass, and the teacher
+   gets a pop-up with a sound. Tab "Hall passes" (one row a trip), the line in a document property (today only). */
+function hallPassOn_() {
+  if (KIOSK_COPIES.indexOf(ScriptApp.getScriptId()) < 0) return false;
+  var st = settings_(); return st.hp && st.hp.on;
 }
-function passCall_(act, extra) {
-  if (!kioskConf_()) throw new Error('Hall passes are not turned on here.');
-  var email = need_(), m = String(email).match(/(\d{4,})@/);
-  if (!m) return { error: 'Hall passes need a school email with a student ID.' };
-  var body = { act: act, sid: m[1] }; for (var x in (extra || {})) body[x] = extra[x];
-  return passFetch_(body);
+var HP_NEEDS = /bath|rest ?room|toilet|water|locker/i, HP_TEACHER = /another teacher|last class/i;
+function hpSet_() { return settings_().hp; }
+function hpMs_(v) { return v instanceof Date ? v.getTime() : typeof v === 'number' ? v : Date.parse(String(v || '')) || 0; }
+function hpName_(email) { var f = stuFind_(email); if (f.i < 0) return email.split('@')[0]; var r = f.rows[f.i]; return (String(r[SC.first] || '') + ' ' + String(r[SC.initial] || '').replace(/\.?$/, '.')).trim(); }
+function hpRows_() {          // today's trips; anything still open from an earlier day counts as never returned (not out now)
+  var t = today_();
+  return rows_('Hall passes').map(function (r, i) { return { i: i, date: day_(r[0]), email: low_(r[1]), name: String(r[2] || ''), place: String(r[3] || ''), out: hpMs_(r[4]), back: hpMs_(r[5]), how: String(r[7] || ''), shared: String(r[8] || ''), note: String(r[9] || ''), id: String(r[10] || '') }; })
+    .map(function (x) { x.open = !x.back && x.date === t && x.out > 0; return x; });
 }
-function api_passInfo() { return passCall_('passInfo'); }
-function api_passOut(o) { o = o || {}; return passCall_('passOut', { dest: String(o.dest || '').slice(0, 60), teacher: String(o.teacher || '').slice(0, 30), pass: o.pass === 'none' ? 'none' : Number(o.pass) || 0, delivered: !!o.delivered, permission: !!o.permission, pin: String(o.pin || '').slice(0, 8) }); }
-function api_passBack(returned) { return passCall_('passBack', { returned: Number(returned) || 0 }); }
-function api_passLine(join) { return passCall_('passLine', { join: !!join }); }
-// The teacher's side: 🚻 Out now on the Overview and Hall passes on a student's page. Only student IDs go to the kiosk; the names are
-// put back on here from the Students tab.
-function passStudents_() {
-  var by = {};
-  rows_('Students').forEach(function (r) { var e = low_(r[SC.email]), m = e.match(/(\d{4,})@/); if (m) by[m[1]] = { email: e, name: (String(r[SC.first] || '') + ' ' + String(r[SC.initial] || '').replace(/\.?$/, '.')).trim() }; });
-  return by;
+function hpLine_() {
+  var l = []; try { l = JSON.parse(PropertiesService.getDocumentProperties().getProperty('hpLine') || '[]'); } catch (e) {}
+  return l.filter(function (x) { return x.day === today_(); });
 }
-function passTeacher_(act, extra) {
-  teacherOnly_(); if (!kioskConf_()) throw new Error('Not connected to a Hall Pass Kiosk.');
-  var by = passStudents_(), body = { act: act, sids: Object.keys(by) }; for (var x in (extra || {})) body[x] = extra[x];
-  var r = passFetch_(body); if (!r || r.error) throw new Error('Hall Pass Kiosk: ' + ((r && r.error) || 'no answer'));
-  var nm = function (sid) { return sid && by[sid] ? by[sid] : null; };
-  (r.out || []).forEach(function (o) { var w = nm(o.sid); o.email = w ? w.email : ''; o.name = w ? w.name : ''; delete o.sid; });
-  (r.passes || []).forEach(function (p) { var w = nm(p.sid); p.who = w ? w.name : p.out ? 'another class' : ''; delete p.sid; });
-  r.line = (r.line || []).map(function (l) { var w = nm(l.sid); return w ? w.name : 'another class'; });
-  return r;
+function hpLineSave_(l) { PropertiesService.getDocumentProperties().setProperty('hpLine', JSON.stringify(l)); }
+// who is out now, the passes on the hook, the line, and whether the pass that should be back next is late
+function hpBoard_() {
+  var set = hpSet_(), now = Date.now(), rows = hpRows_(), open = rows.filter(function (x) { return x.open; });
+  var groups = {};          // a hook pass is in use while its taker or anyone sharing it is still out
+  rows.forEach(function (x) { if (x.how === 'Pass' && x.date === today_()) groups[x.id] = { id: x.id, since: x.out, who: x.name, open: x.open }; });
+  open.forEach(function (x) { if (x.how === 'Shared' && groups[x.shared]) groups[x.shared].open = true; });
+  var inUse = Object.keys(groups).map(function (k) { return groups[k]; }).filter(function (g) { return g.open; }).sort(function (a, b) { return a.since - b.since; });
+  var line = hpLine_(), late = inUse[0] && (now - inUse[0].since) / 60000 >= set.late ? inUse[0] : null;
+  return { count: set.count, free: Math.max(0, set.count - inUse.length), inUse: inUse.length, late: set.late, wait: set.wait,
+    out: open.map(function (x) { var g = x.how === 'Shared' ? groups[x.shared] : null; return { email: x.email, name: x.name, place: x.place, since: x.out, how: x.how, id: x.id, with: g ? g.who : '' }; }),
+    line: line.map(function (x) { return { email: x.email, name: x.name, place: x.place, teacher: x.teacher || '', since: x.at }; }),
+    overdue: late && line.length ? { name: late.who, since: late.since, id: late.id, next: line[0].name, nextEmail: line[0].email, waited: Math.floor((now - line[0].at) / 60000) } : null };
 }
-function api_passBoard() { return passTeacher_('passBoard'); }
-function api_passBackFor(email) { var m = low_(email).match(/(\d{4,})@/); if (!m) throw new Error('No student ID in that email.'); return passTeacher_('passBackFor', { sid: m[1] }); }
+function hpWeek_(email) {
+  var wk = weekOf_(today_()), last = addDays_(wk, -7), now = Date.now(), w = { trips: 0, minutes: 0 }, lw = { trips: 0, minutes: 0 };
+  rows_('Hall passes').forEach(function (r) {
+    if (low_(r[1]) !== email || String(r[7]) === 'Sent for them') return;
+    var d = day_(r[0]), out = hpMs_(r[4]), back = hpMs_(r[5]) || (d === today_() ? now : out), m = Math.max(0, (back - out) / 60000), o = d >= wk ? w : d >= last ? lw : null;
+    if (o) { o.trips++; o.minutes += m; }
+  });
+  w.minutes = Math.round(w.minutes); lw.minutes = Math.round(lw.minutes); return { week: w, lastWeek: lw };
+}
+function hpState_(email) {
+  var set = hpSet_(), b = hpBoard_(), f = stuFind_(email), wk = hpWeek_(email);
+  var over = function (x) { return x.minutes > set.minutes || x.trips >= set.trips; }, first = String((f.i >= 0 && f.rows[f.i][SC.first]) || '');
+  var mine = b.out.filter(function (x) { return x.email === email; })[0] || null, place = 0;
+  b.line.forEach(function (x, k) { if (x.email === email) place = k + 1; });
+  var reminder = null;
+  if (over(wk.week)) {
+    var red = over(wk.lastWeek), fill = { name: first, trips: wk.week.trips, minutes: wk.week.minutes, trips2weeks: wk.week.trips + wk.lastWeek.trips };
+    var word = function (t) { return t.replace(/\{(\w+)\}/g, function (x, k) { return fill[k] != null ? fill[k] : x; }).replace(/1 times/g, '1 time'); };
+    reminder = red ? { red: true, title: word('⚠️ {name}, this is becoming a pattern'), text: word('You’ve left class {trips2weeks} times in the last 2 weeks. That’s a lot of missed time. If you need time for personal business, please spread it out across different classes instead of always taking it from this one.\n\nIf something is going on and causing this, let’s talk about it please!') }
+      : { red: false, title: word('Hi {name} — quick check-in 💙'), text: word('You’ve left class {trips} times this week (about {minutes} minutes). Every minute here counts: explanations, practice, and time with your classmates add up fast. If it can wait, please stay. If you really need to go, that’s okay.') };
+  }
+  var offer = place === 1 && b.overdue && b.overdue.waited >= set.wait ? b.overdue : null;          // waited long enough, and the pass that should be back is late
+  return { ok: true, name: first, restricted: f.i >= 0 && /^y/i.test(String(f.rows[f.i][SC.escort] || '')), count: b.count, free: b.free,
+    out: b.out.map(function (x) { return { name: x.name, place: x.place, since: x.since, with: x.with, id: x.how === 'Pass' ? x.id : '', me: x.email === email }; }),
+    line: b.line.map(function (x) { return { name: x.name, since: x.since, me: x.email === email }; }), place: place, myLine: place ? b.line[place - 1] : null,
+    mine: mine ? { place: mine.place, since: mine.since, how: mine.how, with: mine.with } : null, reminder: reminder, offer: offer ? { name: offer.name, since: offer.since } : null,
+    places: set.places.map(function (p) { return { name: p, needsPass: HP_NEEDS.test(p), askPass: set.sent.some(function (x) { return x.toLowerCase() === p.toLowerCase(); }), teacherRoom: HP_TEACHER.test(p) }; }) };
+}
+function hpNeed_() { if (!hallPassOn_()) throw new Error('Hall passes are not turned on here.'); }
+function api_passInfo() { hpNeed_(); return hpState_(need_()); }
+function hpAdd_(email, place, how, shared, note) {
+  var id = Utilities.getUuid().slice(0, 8);
+  sheet_('Hall passes').appendRow([today_(), email, hpName_(email), place, new Date(), '', '', how, shared || '', note || '', id]);
+  hpLineSave_(hpLine_().filter(function (x) { return x.email !== email; }));
+  return id;
+}
+// o: { place, teacher, mode: 'pass' | 'share' | 'sent' | 'nopass' | 'paper', share (the pass id), permission }
+function api_passOut(o) {
+  hpNeed_(); o = o || {}; var email = need_();
+  locked_(function () {
+    var st = hpState_(email), place = st.places.filter(function (p) { return p.name === String(o.place || ''); })[0], mode = String(o.mode || '');
+    if (st.restricted) throw new Error('You need an adult to walk with you. Ask your teacher.');
+    if (st.mine) throw new Error('You’re already out. Tap “I’m back” first.');
+    if (!place) throw new Error('Pick where you’re going.');
+    var name = place.name + (place.teacherRoom && String(o.teacher || '').trim() ? ' (' + clean_(o.teacher, 30).replace(/[^A-Za-z' .-]/g, '') + ')' : '');
+    var myTurn = !st.line.length || st.place === 1;
+    if (mode === 'sent') { if (!place.askPass) throw new Error('Pick where you’re going.'); hpAdd_(email, name, 'Sent for them'); return; }
+    if (mode === 'share') { var g = st.out.filter(function (x) { return x.id && x.id === String(o.share || ''); })[0]; if (!g) throw new Error('That pass just came back. Take one from the hook.'); hpAdd_(email, name, 'Shared', g.id); return; }
+    if (mode === 'paper') { if (!(st.offer || o.permission)) throw new Error('Wait for a pass, or ask your teacher.'); hpAdd_(email, name, 'Paper pass', '', st.offer ? 'The pass out was late' : 'Permission'); return; }
+    if (mode === 'nopass') { if (place.needsPass && !o.permission) throw new Error('Take a pass from the hook.'); hpAdd_(email, name, 'No pass', '', place.needsPass ? 'Permission' : ''); return; }
+    if (!st.free || (!myTurn && !o.permission)) { var e = new Error(st.free ? 'Someone is ahead of you in line.' : 'Both passes are out.'); e.line = true; throw e; }
+    hpAdd_(email, name, 'Pass');
+  });
+  return hpState_(email);
+}
+function hpBack_(email) {
+  locked_(function () {
+    var r = hpRows_().filter(function (x) { return x.open && x.email === email; })[0]; if (!r) return;
+    var sh = sheet_('Hall passes'), now = new Date();
+    sh.getRange(r.i + 2, 6, 1, 2).setValues([[now, Math.round((now.getTime() - r.out) / 60000)]]);
+  });
+}
+function api_passBack() { hpNeed_(); var email = need_(); hpBack_(email); return hpState_(email); }
+function api_passLine(join, place, teacher) {
+  hpNeed_(); var email = need_();
+  locked_(function () {
+    var l = hpLine_().filter(function (x) { return x.email !== email; });
+    if (join) l.push({ email: email, name: hpName_(email), place: clean_(place, 60), teacher: clean_(teacher || '', 30), at: Date.now(), day: today_() });
+    hpLineSave_(l);
+  });
+  return hpState_(email);
+}
+// the teacher's side: 🚻 Out now (Overview), the 10-minute pop-up, Hall passes on a student's page
+function api_passBoard() { teacherOnly_(); if (!hallPassOn_()) return null; return hpBoard_(); }
+function api_passBackFor(email) { teacherOnly_(); hpBack_(low_(email)); return hpBoard_(); }
+function api_passPaperFor(email) {          // the teacher lets the student waiting in line go on a paper pass
+  teacherOnly_(); email = low_(email);
+  locked_(function () { var w = hpLine_().filter(function (x) { return x.email === email; })[0]; if (w && !hpRows_().some(function (x) { return x.open && x.email === email; })) hpAdd_(email, (w.place || 'Bathroom') + (w.teacher ? ' (' + w.teacher + ')' : ''), 'Paper pass', '', 'Teacher let them go'); });
+  return hpBoard_();
+}
 function api_passHistory(email) {
-  teacherOnly_(); if (!kioskConf_()) return null;
-  var m = low_(email).match(/(\d{4,})@/); if (!m) return null;
-  var r = passFetch_({ act: 'passHistory', sid: m[1] }); return r && r.ok ? r : r && /Unknown request/.test(r.error || '') ? { off: true } : null;
+  teacherOnly_(); if (!hallPassOn_()) return null; email = low_(email);
+  var set = hpSet_(), f = stuFind_(email), wk = hpWeek_(email);
+  var recent = rows_('Hall passes').filter(function (r) { return low_(r[1]) === email; }).slice(-10).reverse().map(function (r) { return { at: hpMs_(r[4]), back: hpMs_(r[5]), place: String(r[3] || ''), how: String(r[7] || ''), note: String(r[9] || '') }; });
+  return { ok: true, week: wk.week, lastWeek: wk.lastWeek, limits: { trips: set.trips, minutes: set.minutes }, recent: recent, escort: f.i >= 0 && /^y/i.test(String(f.rows[f.i][SC.escort] || '')) };
 }
+function api_passEscort(email, on) {
+  teacherOnly_(); email = low_(email);
+  locked_(function () { var f = stuFind_(email); if (f.i < 0) throw new Error('Student not found.'); stuSet_(f.i, 'escort', on ? 'Yes' : ''); });
+  return api_passHistory(email);
+}
+
 // The kiosk classes for the chosen periods ("7 Period — …" → 7).
 function kioskClasses_() {
   var k = kioskConf_(), list = (kioskCall_('classes') || {}).classes || [];
@@ -4964,6 +5069,9 @@ function settings_() {
     links: String(v['Free time links'] || '').split(';').map(function (x) { var m = /^(.*?)\s*=\s*(https?:\S+)$/.exec(x.trim()); return m ? { name: m[1].trim(), url: m[2] } : null; }).filter(Boolean).slice(0, 20),
     reflectRule: String(v['Goal check-in: day students rate'] || 'Today').trim(),
     quarters: String(v['Quarter end dates'] || '').split(/[;,\n]+/).map(function (x) { var m = /(?:q(?:uarter)?\s*([1-4])\s*[:=-]?\s*)?(\d{4}-\d\d-\d\d)/i.exec(x); return m ? { n: m[1] ? +m[1] : 0, end: m[2] } : null; }).filter(Boolean).sort(function (a, b) { return a.end < b.end ? -1 : 1; }),
+    hp: { on: on('Hall passes on Chromebooks'), count: Math.max(1, Math.min(6, Number(v['Hall passes in the room']) || 2)), places: String(v['Hall pass places'] || '').split(';').map(function (x) { return x.trim(); }).filter(String),
+      sent: String(v['Hall pass: places that send a pass'] || '').split(';').map(function (x) { return x.trim(); }).filter(String), trips: Number(v['Hall pass weekly limit (trips)']) || 3, minutes: Number(v['Hall pass weekly limit (minutes)']) || 6,
+      late: Number(v['Hall pass: late after (minutes)']) || 10, wait: Number(v['Hall pass: paper pass after waiting (minutes)']) || 5 },
     futureSite: String(v['College and career site'] || 'app.schoolinks.com').trim().replace(/^https?:\/\//, '').replace(/\?.*$/, ''),          // never a link with someone's login in it
     goalPhrases: String(v['Goal check-in phrases'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 20),
     accoms: String(v['Common accommodations'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 20),
@@ -5307,35 +5415,19 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/nothing=1/.test(location.search)) setTimeout(function () { DP_EDIT = true; DP_NONE = { 0: true, 2: true, 3: true }; drawCheckin(); $('dpNone').scrollIntoView(); window.scrollBy(0, -200); }, 2500);
   var tq = (location.search.match(/tile=(\w+)/) || [])[1]; if (tq) setTimeout(function () { tileOpen(tq); }, 2200);
   if (/teopen=1/.test(location.search)) setTimeout(function () { teOpen(); window.scrollTo(0, 300); }, 5000);
-  if (/hp=1/.test(location.search)) {          // 🚻 Hall pass with a pretend Hall Pass Kiosk (&hpfull=1: both passes out, &hpout=1: this student is out, &hprem=1: the weekly reminder)
-    var HPK = { out: [], line: [], t0: Date.now() };
-    if (/hpfull=1/.test(location.search)) HPK.out = [{ sid: '501777', name: 'Dev W.', dest: 'Bathroom', n: 1, at: Date.now() - 740000 }, { sid: '555012', name: 'Linh N.', dest: 'Water', n: 2, at: Date.now() - 60000 }];
-    if (/hpline=1/.test(location.search)) HPK.line = [{ sid: '123456', name: 'Marcus O.' }];
-    if (/hpout=1/.test(location.search)) HPK.out = [{ sid: '123456', name: 'Marcus O.', dest: 'Bathroom', n: 1, at: Date.now() - 185000 }];
-    var HPD = [['Bathroom', '🚻', 0, 0, 1], ['Water', '💧', 0, 1, 1], ['Locker', '🔒', 0, 1, 1], ['Counselor', '🧑‍💼', 1, 0, 0], ['Library', '📚', 0, 1, 0], ['Nurse', '🩺', 0, 0, 0], ['Main Office', '🏫', 0, 0, 0], ['Back to my last class', '🚪', 0, 0, 0]];
-    window.kioskConf_ = function () { return { url: 'https://kiosk', key: 'k', periods: [] }; };
-    window.passFetch_ = function (b) {
-      var me = function (o) { return o.sid === b.sid; };
-      var st = function () {
-        var mine = HPK.out.filter(me)[0];
-        var held = {}; HPK.out.forEach(function (o) { if (o.n) held[o.n] = o.name; });
-        return { ok: true, name: 'Marcus', restricted: false, passCount: 2, passes: [1, 2].map(function (n) { return { number: n, out: !!held[n], who: held[n] || '' }; }), free: 2 - HPK.out.filter(function (o) { return o.n; }).length,
-          full: HPK.out.filter(function (o) { return o.n; }).length >= 2, out: [], line: HPK.line.map(function (o) { return o.name; }), place: HPK.line.map(function (o) { return o.sid; }).indexOf(b.sid) + 1,
-          mine: mine ? { row: 9, destination: mine.dest, since: mine.at, passNumber: mine.n || 0, noPass: !mine.n } : null, pinSet: false, inClass: true,
-          reminder: /hprem=1/.test(location.search) ? { red: false, title: 'Hi Marcus — quick check-in 💙', text: 'You’ve left class 3 times this week (about 14 minutes). Every minute here counts: explanations, practice, and time with your classmates add up fast. If it can wait, please stay. If you really need to go, that’s okay.' } : null,
-          dests: HPD.map(function (d) { return { name: d[0], label: /last class/.test(d[0]) ? 'Another teacher’s classroom' : d[0], icon: d[1], askPass: !!d[2], optional: !!d[3], needsPass: !!d[4], teacherRoom: /last class/.test(d[0]) }; }) };
-      };
-      if (b.act === 'passBackFor') HPK.out = HPK.out.filter(function (o) { return o.sid !== b.sid; });
-      if (b.act === 'passBoard' || b.act === 'passBackFor') { var hd = {}; HPK.out.forEach(function (o) { if (o.n) hd[o.n] = o.sid; });
-        return { ok: true, passCount: 2, passes: [1, 2].map(function (n) { return { number: n, out: n in hd, sid: hd[n] || '' }; }), out: HPK.out.map(function (o) { return { sid: o.sid, destination: o.dest, since: o.at, passNumber: o.n || 0, noPass: !o.n }; }), line: HPK.line.map(function (o) { return { sid: o.sid }; }), limits: { minutes: 6, trips: 3 } }; }
-      if (b.act === 'passHistory') { var D0 = Date.now(); return { ok: true, week: { trips: 3, minutes: 14.5 }, lastWeek: { trips: 1, minutes: 4 }, limits: { minutes: 6, trips: 3 },
-        recent: [{ at: D0 - 240000, back: 0, destination: 'Bathroom', passNumber: 1 }, { at: D0 - 86400000, back: D0 - 86400000 + 420000, destination: 'Water', passNumber: 2 }, { at: D0 - 2 * 86400000, back: D0 - 2 * 86400000 + 900000, destination: 'Counselor', passNumber: 0, note: 'Called by pass' }, { at: D0 - 6 * 86400000, back: D0 - 6 * 86400000 + 240000, destination: 'Bathroom', passNumber: 1 }] }; }
-      if (b.act === 'passLine') { HPK.line = HPK.line.filter(function (o) { return !me(o); }); if (b.join) HPK.line.push({ sid: b.sid, name: 'Marcus O.' }); }
-      if (b.act === 'passBack') HPK.out = HPK.out.filter(function (o) { return !me(o); });
-      if (b.act === 'passOut') { var s0 = st(); if (s0.full && !b.permission && /Bath|Water|Locker/.test(b.dest)) return { error: 'All the passes are out.', line: true };
-        HPK.out.push({ sid: b.sid, name: 'Marcus O.', dest: b.dest, n: b.pass === 'none' ? 0 : b.pass, at: Date.now() }); HPK.line = HPK.line.filter(function (o) { return !me(o); }); }
-      return st();
-    };
+  if (/hp=1/.test(location.search)) {          // 🚻 hall passes (Colleen's own copy only in the real app): &hpfull=1 both passes out (one late), &hpline=1 Jane waiting 6 minutes, &hpout=1 Marcus out, &hprem=1 Marcus over the weekly limit, &hpopen=1 the card
+    window.hallPassOn_ = function () { return true; };
+    var hpAs = function (em, f) { g.setUser(em); try { f(); } catch (e) { console.error(e); } };
+    var hpTab = function () { return g.ss.getSheetByName('Hall passes')._data; };
+    if (/hprem=1/.test(location.search)) hpAs('ort123456@d204.lths.net', function () { ['Water', 'Library', 'Nurse'].forEach(function (pl) { api_passOut({ place: pl, mode: 'nopass', permission: true }); api_passBack(); }); });
+    if (/hpfull=1/.test(location.search)) {
+      hpAs('wil501777@d204.lths.net', function () { api_passOut({ place: 'Bathroom', mode: 'pass' }); });
+      hpAs('ngu555012@d204.lths.net', function () { api_passOut({ place: 'Library', mode: 'pass' }); });
+      hpTab().forEach(function (r) { if (r[1] === 'wil501777@d204.lths.net' && !r[5]) r[4] = new Date(Date.now() - 11 * 60000); if (r[1] === 'ngu555012@d204.lths.net' && !r[5]) r[4] = new Date(Date.now() - 3 * 60000); });
+    }
+    if (/hpline=1/.test(location.search)) { hpAs('smi513421@d204.lths.net', function () { api_passLine(true, 'Bathroom'); }); var L0 = JSON.parse(PropertiesService.getDocumentProperties().getProperty('hpLine')); L0[0].at = Date.now() - 6 * 60000; PropertiesService.getDocumentProperties().setProperty('hpLine', JSON.stringify(L0)); }
+    if (/hpout=1/.test(location.search)) { hpAs('ort123456@d204.lths.net', function () { api_passOut({ place: 'Library', mode: 'nopass' }); }); hpTab().forEach(function (r) { if (r[1] === 'ort123456@d204.lths.net' && !r[5]) r[4] = new Date(Date.now() - 185000); }); }
+    g.setUser({ teacher: 'ray@d204.lths.net', jane: 'smi513421@d204.lths.net', ort: 'ort123456@d204.lths.net', dev: 'wil501777@d204.lths.net', new: 'new500100@d204.lths.net', cm: 'rbergman@lths.net' }[as] || 'ray@d204.lths.net');
     if (/hpopen=1/.test(location.search)) setTimeout(function () { hpOpen(); }, 2500);
   }
   window.google = { script: { run: (function mk(ok, no) {
@@ -5502,143 +5594,160 @@ call('api_boot').then(function (b) {
   go(VIEW);
   if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
-  bdayMaybe(); madeUpMaybe(); hpButton();
+  bdayMaybe(); madeUpMaybe(); hpButton(); hpBoardStart();
 }).catch(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message || e) + '</div>'; });
 
-/* ---------- 🚻 Hall pass (Colleen's own copy only, when it is connected to her Hall Pass Kiosk) ----------
-   The kiosk's passes from the student's Chromebook: pick where you're going, take a free pass, come back. The kiosk keeps the log, the
-   line and the rules (escort only, "Did you get a pass?", the weekly reminder); its answer is HP. HPX is this trip's choices so far. */
-var HP = null, HPX = {}, HP_T = null, HP_POLL = null;
+/* ---------- 🚻 Hall pass (2.52, Colleen's own copy only): the room's passes from the Chromebook, kept in this app ----------
+   A small corner dock (#hpDock) is always there: "🚻 Hall pass", "🙋 #1 in line", or while out a live timer with "I'm back" (the
+   Chromebook keeps working, for printing in the library). The card (#hpModal) has the passes on the hook, who is out and how long, the
+   line, and the places. HP = the server's state, HPX = this trip's choices. Polls every 30 s while in line or out; a late pass ahead
+   of them (HP.offer) opens the card by itself with "Go now on a paper pass".
+   The trip, in order: which teacher (another teacher's room) → "Did you get a pass?" (Counselor, AP Office) → "Are you sharing
+   their pass?" (someone is out at the same place) → a pass from the hook, or the line (bathroom, water, locker) → the weekly reminder. */
+var HP = null, HPX = {}, HP_T = null, HP_POLL = null, HP_WAITOK = {};
 function hpButton() {
-  if (!B || !B.hallPass || B.teacher || MODE !== 'student' || $('hpBtn')) return;
-  call('api_passInfo').then(function (r) {          // shown only when the kiosk answers (a kiosk without Chromebook passes, or a student not on its lists: no button)
-    if (!r || !r.ok || $('hpBtn')) return;
-    var b = document.createElement('button'); b.id = 'hpBtn'; b.className = 'btn primary'; b.onclick = hpOpen; document.body.appendChild(b); HP = r; hpGot(r);
-  }).catch(function () {});
+  if (!B || !B.hallPass || B.teacher || MODE !== 'student' || $('hpDock')) return;
+  var d = document.createElement('div'); d.id = 'hpDock'; document.body.appendChild(d);
+  hpLoad(); clearInterval(HP_T); HP_T = setInterval(hpTick, 1000);
 }
-function hpOpen() {
-  if (PREV) return toast('This is only a preview.');
-  HPX = {}; var el = $('hpModal');
-  if (!el) { el = document.createElement('div'); el.className = 'modal'; el.id = 'hpModal'; el.onclick = function (e) { if (e.target === el) hpClose(); }; document.body.appendChild(el); }
-  el.innerHTML = '<div class="card" style="max-width:640px"><p class="small">Checking the passes…</p></div>';
-  hpLoad(); clearInterval(HP_POLL); HP_POLL = setInterval(hpLoad, 30000);
-}
-function hpClose() { clearInterval(HP_POLL); clearInterval(HP_T); var el = $('hpModal'); if (el) el.remove(); }
-function hpLoad() { call('api_passInfo').then(hpGot).catch(function (e) { hpGot({ error: e.message || String(e) }); }); }
+function hpLoad() { call('api_passInfo').then(hpGot).catch(function (e) { HPX.err = e.message || String(e); hpDraw(); }); }
 function hpGot(r) {
-  if (r && r.error && !r.ok) {          // a refused trip keeps this trip's choices and shows why, with the passes as they are now
-    var why = r.error; if (HP) { call('api_passInfo').then(function (x) { if (x && x.ok) HP = x; HPX.err = why; hpDraw(); }).catch(function () { HPX.err = why; hpDraw(); }); return; }
-    HP = null; HPX.err = why; hpDraw(); return;
-  }
-  HP = r; HPX.err = ''; var b = $('hpBtn'); if (b) { b.classList.toggle('out', !!r.mine); b.textContent = r.mine ? '🚻 I’m out · tap when back' : '🚻 Hall pass'; }
-  hpDraw();
+  if (!r || !r.ok) return;
+  HP = r; HPX.err = '';
+  clearInterval(HP_POLL); if (r.mine || r.place) HP_POLL = setInterval(hpLoad, 30000);
+  if (r.offer && !HP_WAITOK[r.offer.since] && !r.mine) { if (!$('hpModal')) hpOpen(true); HPX = { offer: true }; }
+  hpDockDraw(); hpDraw();
 }
 function hpMin(ms) { var s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
-function hpClock(ms) { var d = new Date(ms); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-function hpDest() { return HP && HP.dests.filter(function (d) { return d.name === HPX.dest; })[0]; }
+function hpMins(ms) { var m = Math.floor((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m + ' min'; }
+function hpClock(ms) { return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+function hpTick() { var t = $('hpDockTime'); if (t && HP && HP.mine) t.textContent = hpMin(HP.mine.since); var t2 = $('hpTime'); if (t2 && HP && HP.mine) t2.textContent = hpMin(HP.mine.since); }
+function hpDockDraw() {
+  var d = $('hpDock'); if (!d || !HP) return;
+  if (HP.mine) d.innerHTML = '<div class="hp-dock out"><button class="hp-dock-main" onclick="hpOpen()" title="Open the hall pass">🚻 ' + esc(HP.mine.place) + ' <b id="hpDockTime">' + hpMin(HP.mine.since) + '</b></button><button class="btn primary small" onclick="hpBack()">✅ I’m back</button></div>';
+  else if (HP.place) d.innerHTML = '<div class="hp-dock"><button class="hp-dock-main" onclick="hpOpen()">🙋 #' + HP.place + ' in line</button></div>';
+  else d.innerHTML = '<div class="hp-dock"><button class="hp-dock-main" onclick="hpOpen()">🚻 Hall pass</button></div>';
+}
+function hpOpen(keep) {
+  if (PREV) return toast('This is only a preview.');
+  if (!keep) HPX = {}; var el = $('hpModal');
+  if (!el) { el = document.createElement('div'); el.className = 'modal'; el.id = 'hpModal'; el.onclick = function (e) { if (e.target === el) hpClose(); }; document.body.appendChild(el); }
+  hpDraw(); if (!keep) hpLoad();
+}
+function hpClose() { var el = $('hpModal'); if (el) el.remove(); }
+function hpPlace() { return HP && HP.places.filter(function (p) { return p.name === HPX.place; })[0]; }
 function hpDraw() {
-  var el = $('hpModal'); if (!el) return; clearInterval(HP_T);
+  var el = $('hpModal'); if (!el) return;
   var top = '<div class="row"><h2 class="grow">🚻 Hall pass</h2><button class="btn link" onclick="hpClose()">✕ Close</button></div>';
   var err = HPX.err ? '<div class="small" style="display:block;background:var(--warn-soft);border-radius:10px;padding:8px 12px;margin:6px 0">' + esc(HPX.err) + '</div>' : '';
-  if (!HP) { el.innerHTML = '<div class="card" style="max-width:640px">' + top + err + '<button class="btn" onclick="hpLoad()">Try again</button></div>'; return; }
-  el.innerHTML = '<div class="card" style="max-width:640px">' + top + err + hpBody() + '</div>';
-  if (HP.mine) HP_T = setInterval(function () { var t = $('hpTime'); if (t) t.textContent = hpMin(HP.mine.since); }, 1000);
+  el.innerHTML = '<div class="card" style="max-width:640px">' + top + err + (HP ? hpBody() : '<p class="small">Checking the passes…</p>') + '</div>';
 }
-function hpPasses() {
-  if (!HP.passCount) return '';
-  return '<div style="margin:4px 0 8px">' + HP.passes.map(function (p) { return '<span class="hp-pass' + (p.out ? '' : ' free') + '"><b>Pass #' + p.number + '</b> <span class="small" style="display:inline">' + (p.out ? 'out with ' + esc(p.who) : 'free') + '</span></span>'; }).join('') + '</div>' +
-    (HP.line.length ? '<div class="small" style="display:block">🙋 Next in line: ' + HP.line.map(esc).join(', ') + '</div>' : '');
+function hpHook() {          // the passes on the hook, who is out (and how long), the line
+  var h = '<div class="row" style="gap:10px;align-items:center;margin:2px 0 8px"><span class="hp-hook">' + Array.apply(null, Array(HP.count)).map(function (x, k) { return '<span class="hp-tag' + (k < HP.free ? '' : ' gone') + '">🎫</span>'; }).join('') + '</span><b>' + (HP.free ? HP.free + ' of ' + HP.count + ' passes on the hook' : 'No passes on the hook') + '</b></div>';
+  if (HP.out.length) h += '<div class="small" style="display:block;margin:0 0 6px"><b>Out now:</b> ' + HP.out.map(function (x) { return esc(x.me ? 'You' : x.name) + ' · ' + esc(x.place) + ' · <b>' + hpMins(x.since) + '</b>' + (x.with ? ' (sharing ' + esc(x.with) + '’s pass)' : ''); }).join('<br>') + '</div>';
+  if (HP.line.length) h += '<div class="small" style="display:block;margin:0 0 6px"><b>In line:</b> ' + HP.line.map(function (x, k) { return (k + 1) + '. ' + esc(x.me ? 'You' : x.name) + ' (waiting ' + hpMins(x.since) + ')'; }).join(' · ') + '</div>';
+  return h;
 }
 function hpBody() {
-  var h = '', d;
+  var h = '', p;
   if (HP.mine) {          // out of the room now
     var m = HP.mine;
-    return '<p style="margin:4px 0">You’re at <b>' + esc(m.destination) + '</b>' + (m.passNumber ? ' with <b>pass #' + m.passNumber + '</b>' : m.delivered ? ' (a pass was sent for you)' : m.noPass ? ' (no hall pass)' : '') + '. You left at ' + hpClock(m.since) + '.</p>' +
-      '<div class="hp-time" id="hpTime">' + hpMin(m.since) + '</div>' +
-      '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary big" onclick="hpBack()">✅ I’m back' + (m.passNumber ? ' with pass #' + m.passNumber : '') + '</button>' +
-      (m.passNumber ? '<button class="btn" onclick="toast(\'OK. Your pass stays open and the timer keeps going. Tap I’m back when you return with it.\')">I forgot it. Going back to get it</button>' : '') + '</div>';
+    return '<p style="margin:4px 0">You’re at <b>' + esc(m.place) + '</b>' + (m.how === 'Shared' ? ', sharing ' + esc(m.with) + '’s pass' : m.how === 'Sent for them' ? ' (a pass was sent for you)' : m.how === 'Paper pass' ? ' on a paper pass' : m.how === 'No pass' ? ' (no hall pass)' : ' with a pass from the hook') + '. You left at ' + hpClock(m.since) + '.</p>' +
+      '<div class="hp-time" id="hpTime">' + hpMin(m.since) + '</div><p class="small">Your Chromebook keeps working. The timer stays in the corner. Tap <b>I’m back</b> there when you return.</p>' +
+      '<button class="btn primary big" onclick="hpBack()">✅ I’m back</button>';
   }
   if (HP.restricted) return '<div class="hp-red"><b>🚫 You need an adult to walk with you.</b><p style="margin:4px 0 0">Ask your teacher.</p></div>';
-  if (!HPX.dest) {          // where are you going?
-    h += hpPasses();
-    if (HP.place) h += '<div class="row" style="gap:8px;margin:6px 0"><b class="grow">You’re #' + HP.place + ' in line.</b><button class="btn small" onclick="hpLine(false)">Leave the line</button></div>' +
-      '<p class="small" style="margin:0 0 6px">When a pass comes back, the person returning hands it to you. Then come back here and leave as usual.</p>';
-    return h + '<h3 style="margin:10px 0 0">Where are you going' + (HP.name ? ', ' + esc(HP.name) : '') + '?</h3><div class="hp-grid">' + HP.dests.map(function (x, k) { return '<button class="btn" onclick="hpPick(' + k + ')">' + hpIcon(x.name) + ' ' + esc(x.label) + '</button>'; }).join('') + '</div>';
+  if (HPX.offer && HP.offer && HP.myLine) {          // waited long enough behind a pass that is late
+    return hpHook() + '<div class="hp-red"><h3 style="margin:0 0 6px">⏰ ' + esc(HP.offer.name) + ' has been gone ' + hpMins(HP.offer.since) + '</h3><p style="margin:0">You’ve waited ' + hpMins(HP.myLine.since) + '. That’s not on you. You can go now on a paper pass, or keep waiting.</p></div>' +
+      '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" onclick="hpGo(\'paper\', HP.myLine.place, HP.myLine.teacher)">🧾 Go now on a paper pass</button><button class="btn" onclick="HP_WAITOK[HP.offer.since]=1;HPX={};hpDraw()">I’ll wait</button></div>';
   }
-  d = hpDest(); if (!d) { HPX = {}; return hpBody(); }
-  var back = '<button class="btn link" onclick="HPX={};hpDraw()">← Somewhere else</button>';
-  h = '<p style="margin:4px 0"><b>Going to: ' + esc(d.label) + (HPX.teacher ? ' (' + esc(HPX.teacher) + ')' : '') + '</b> ' + back + '</p>';
-  if (d.teacherRoom && !HPX.teacherOk) return h + '<label><span class="small"><b>Which teacher? (last name)</b></span><input type="text" id="hpTeach" maxlength="30" placeholder="Smith" value="' + esc(HPX.teacher || '') + '"></label><button class="btn primary" style="margin-top:8px" onclick="HPX.teacher=$(\'hpTeach\').value.trim();HPX.teacherOk=true;hpDraw()">Next</button>';
-  if (d.askPass && HPX.delivered === undefined) return h + '<h3 style="margin:8px 0">Did you get a pass?</h3><p class="small">Was a pass delivered to you to go to ' + esc(d.label) + '?</p><div class="row" style="gap:8px"><button class="btn primary" onclick="HPX.delivered=true;hpGo(0)">🎟️ Yes, I got a pass</button><button class="btn" onclick="HPX.delivered=false;hpDraw()">No</button></div>';
-  var ahead = HP.line.length && HP.place !== 1;
-  if (d.needsPass && (HP.full || ahead) && !HPX.permission) {          // the line (just shown: no alert when a pass comes back)
-    return h + hpPasses() + '<h3 style="margin:8px 0">' + (HP.full ? (HP.passCount === 2 ? 'Both passes are out' : 'All ' + HP.passCount + ' passes are out') : esc(HP.line[0]) + ' is next in line') + '</h3>' +
-      (HP.place ? '<p>You’re <b>#' + HP.place + '</b> in line 🙋 When a pass comes back, the person returning will hand it to you. Then come back here and leave as usual.</p>' : '<p>Get in line, and when a pass comes back the person returning will hand it to you.</p>') +
+  if (!HPX.place) {          // where are you going?
+    h += hpHook();
+    if (HP.place) h += '<div class="row" style="gap:8px;margin:6px 0"><b class="grow">You’re #' + HP.place + ' in line' + (HP.myLine ? ' for the ' + esc(HP.myLine.place) : '') + '.</b><button class="btn small" onclick="hpLine(false)">Leave the line</button></div>' +
+      (HP.place === 1 && HP.free ? '<button class="btn primary" onclick="HPX={ place: HP.myLine.place, teacher: HP.myLine.teacher, teacherOk: true };hpDraw()">🎫 A pass is back: go now</button>' : '<p class="small" style="margin:0 0 6px">When a pass is back on the hook and you’re first, this card says so.</p>');
+    return h + '<h3 style="margin:10px 0 0">Where are you going' + (HP.name ? ', ' + esc(HP.name) : '') + '?</h3><div class="hp-grid">' + HP.places.map(function (x, k) { return '<button class="btn" onclick="hpPick(' + k + ')">' + hpIcon(x.name) + ' ' + esc(x.name) + '</button>'; }).join('') + '</div>';
+  }
+  p = hpPlace(); if (!p) { HPX = {}; return hpBody(); }
+  h = '<p style="margin:4px 0"><b>Going to: ' + esc(p.name) + (HPX.teacher ? ' (' + esc(HPX.teacher) + ')' : '') + '</b> <button class="btn link" onclick="HPX={};hpDraw()">← Somewhere else</button></p>';
+  if (p.teacherRoom && !HPX.teacherOk) return h + '<label><span class="small"><b>Which teacher? (last name)</b></span><input type="text" id="hpTeach" maxlength="30" placeholder="Smith" value="' + esc(HPX.teacher || '') + '"></label><button class="btn primary" style="margin-top:8px" onclick="HPX.teacher=$(\'hpTeach\').value.trim();HPX.teacherOk=true;hpDraw()">Next</button>';
+  if (p.askPass && HPX.sent === undefined) return h + '<h3 style="margin:8px 0">Did you get a pass?</h3><p class="small">Was a pass sent to you to go to ' + esc(p.name) + '?</p><div class="row" style="gap:8px"><button class="btn primary" onclick="hpGo(\'sent\')">🎟️ Yes, I got a pass</button><button class="btn" onclick="HPX.sent=false;hpDraw()">No</button></div>';
+  var same = HP.out.filter(function (x) { return x.id && !x.me && x.place.indexOf(p.name) === 0; });
+  if (same.length && HPX.share === undefined) return h + '<h3 style="margin:8px 0">' + same.map(function (x) { return esc(x.name); }).join(' and ') + (same.length > 1 ? ' are' : ' is') + ' already at the ' + esc(p.name) + '.</h3><p>Are you going together and sharing their pass?</p><div class="row" style="gap:8px;flex-wrap:wrap">' +
+    same.map(function (x) { return '<button class="btn primary" onclick="HPX.share=\'' + esc(x.id) + '\';hpDraw()">🤝 Yes, sharing ' + esc(x.name) + '’s pass</button>'; }).join('') + '<button class="btn" onclick="HPX.share=\'\';hpDraw()">No</button></div>';
+  var myTurn = !HP.line.length || HP.place === 1;
+  if (!HPX.share && p.needsPass && (!HP.free || !myTurn) && !HPX.permission)          // the line
+    return h + hpHook() + '<h3 style="margin:8px 0">' + (!HP.free ? 'Both passes are out' : esc(HP.line[0].name) + ' is next in line') + '</h3>' +
+      (HP.place ? '<p>You’re <b>#' + HP.place + '</b> in line 🙋 When a pass is back on the hook and you’re first, this card says so.</p>' : '<p>Get in line, and you’ll go when a pass is back on the hook.</p>') +
       '<div class="row" style="gap:8px;flex-wrap:wrap">' + (HP.place ? '<button class="btn" onclick="hpLine(false)">Leave the line</button>' : '<button class="btn primary" onclick="hpLine(true)">🙋 Get in line</button>') +
       '<button class="btn" onclick="HPX.permission=true;hpDraw()">✅ I have permission to leave anyway</button></div>';
-  }
-  if (HP.reminder && !HPX.remOk && !HPX.delivered) {          // reminds, never blocks (an optional trip with a teacher PIN needs the teacher)
-    var pin = d.optional && HP.pinSet;
-    return h + '<div class="' + (HP.reminder.red ? 'hp-red' : '') + '" style="' + (HP.reminder.red ? '' : 'background:var(--brand-soft);border-radius:12px;padding:10px 14px') + '"><h3 style="margin:0 0 6px">' + esc(HP.reminder.title) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(HP.reminder.text) + (pin ? '\n\nTo leave for ' + esc(d.label) + ' now, ask your teacher.' : '') + '</p></div>' +
-      '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" onclick="hpClose()">👍 I’ll stay in class</button>' +
-      (pin ? '<input type="password" id="hpPin" inputmode="numeric" maxlength="8" placeholder="Teacher PIN" style="max-width:140px"><button class="btn" onclick="HPX.pin=$(\'hpPin\').value;HPX.remOk=true;hpDraw()">🔒 My teacher said yes</button>' : '<button class="btn" onclick="HPX.remOk=true;hpDraw()">I still need to go</button>') + '</div>';
-  }
-  if (!HP.passCount) return h + '<button class="btn primary big" onclick="hpGo(0)">🚶 I’m leaving now</button>';
-  var free = HP.passes.filter(function (p) { return !p.out; });
-  return h + '<h3 style="margin:8px 0">🎟️ Which pass are you taking?</h3><div class="hp-grid">' + free.map(function (p) { return '<button class="btn primary" onclick="hpGo(' + p.number + ')">I’m taking pass #' + p.number + '</button>'; }).join('') +
-    (!d.needsPass ? '<button class="btn" onclick="hpGo(\'none\')">🙅 I’m not taking a pass<br><span class="small">Going somewhere longer</span></button>' : !free.length ? '<button class="btn" onclick="hpGo(\'none\')">🙋 No pass (I have permission)</button>' : '') + '</div>';
+  if (HP.reminder && !HPX.remOk) return h + '<div class="' + (HP.reminder.red ? 'hp-red' : '') + '" style="' + (HP.reminder.red ? '' : 'background:var(--brand-soft);border-radius:12px;padding:10px 14px') + '"><h3 style="margin:0 0 6px">' + esc(HP.reminder.title) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(HP.reminder.text) + '</p></div>' +
+    '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" onclick="hpClose()">👍 I’ll stay in class</button><button class="btn" onclick="HPX.remOk=true;hpDraw()">I still need to go</button></div>';
+  if (HPX.share) return h + '<button class="btn primary big" onclick="hpGo(\'share\')">🤝 Go now (sharing the pass)</button>';
+  if (p.needsPass) return h + (HP.free ? '<button class="btn primary big" onclick="hpGo(\'pass\')">🎫 Take a pass from the hook and go</button>' : '<button class="btn primary big" onclick="hpGo(\'nopass\')">🙋 Go without a pass (I have permission)</button>');
+  return h + '<div class="row" style="gap:8px;flex-wrap:wrap">' + (HP.free && myTurn ? '<button class="btn primary big" onclick="hpGo(\'pass\')">🎫 Take a pass from the hook</button>' : '') + '<button class="btn' + (HP.free && myTurn ? '' : ' primary big') + '" onclick="hpGo(\'nopass\')">🙅 Going without a hall pass</button></div>';
 }
 var HP_ICONS = [[/bath|rest ?room/i, '🚻'], [/water/i, '💧'], [/locker/i, '🔒'], [/counsel/i, '💬'], [/library/i, '📚'], [/nurse|health/i, '🩺'], [/help desk|chromebook/i, '💻'], [/book ?store/i, '📖'], [/print/i, '🖨️'], [/cafeteria|lunch/i, '🍎'], [/lost/i, '🔎'], [/last class|teacher/i, '🚪'], [/office|dean/i, '🏫']];
 function hpIcon(name) { var m = HP_ICONS.filter(function (x) { return x[0].test(name); })[0]; return m ? m[1] : '📍'; }
-function hpPick(k) { HPX = { dest: HP.dests[k].name }; hpDraw(); }
-function hpGo(n) {
-  call('api_passOut', { dest: HPX.dest, teacher: HPX.teacher || '', pass: n, delivered: !!HPX.delivered, permission: !!HPX.permission, pin: HPX.pin || '' })
-    .then(function (r) { if (r && r.ok) { HPX = {}; toast('Have a good trip. Tap 🚻 when you’re back.'); } else if (r && r.needPin) HPX.remOk = false; hpGot(r); }).catch(oops);
+function hpPick(k) { HPX = { place: HP.places[k].name }; hpDraw(); }
+function hpGo(mode, place, teacher) {
+  call('api_passOut', { place: place || HPX.place, teacher: teacher !== undefined ? teacher : HPX.teacher || '', mode: mode, share: HPX.share || '', permission: !!HPX.permission })
+    .then(function (r) { HPX = {}; hpGot(r); hpClose(); toast('Have a good trip. Your timer is in the corner.'); })
+    .catch(function (e) { HPX.err = e.message || String(e); hpLoad(); });
 }
-function hpBack() { if (!HP || !HP.mine) return; call('api_passBack', HP.mine.passNumber || 0).then(function (r) { HPX = {}; hpGot(r); if (r && r.ok) { toast('Welcome back!'); hpClose(); } }).catch(oops); }
-function hpLine(join) { call('api_passLine', join).then(hpGot).catch(oops); }
+function hpBack() { call('api_passBack').then(function (r) { HPX = {}; hpGot(r); hpClose(); toast('Welcome back!'); }).catch(oops); }
+function hpLine(join) { var p = hpPlace(); call('api_passLine', join, p ? p.name : (HP.myLine || {}).place || '', HPX.teacher || '').then(function (r) { if (!join) HPX = {}; hpGot(r); }).catch(oops); }
 
-/* ---------- 🚻 the teacher's side (own copy with the kiosk): Out now on the Overview, Hall passes on a student's page ----------
-   HPB = the kiosk's board for this teacher's students (api_passBoard: names put back on by the server). Refreshed every 30 s while the
-   Overview is showing; the minutes tick every second. */
-var HPB = null, HPB_POLL = null, HPB_T = null, HPB_LATE = 10;
+/* ---------- 🚻 the teacher's side (2.52): Out now on the Overview, the late-pass pop-up, Hall passes on a student's page ----------
+   HPB = api_passBoard. Checked every 30 s on every teacher page; the Out now box redraws, minutes tick each second. When a pass is out
+   past the "late" minutes and someone is waiting in line, a pop-up interrupts with a chime: the waiting student shouldn't be held up. */
+var HPB = null, HPB_POLL = null, HPB_T = null, HPB_SEEN = {};
 function hpBoardStart() {
-  if (!B || !B.kiosk) return;
-  if (!HPB_POLL) { hpBoardLoad(); HPB_POLL = setInterval(function () { if (VIEW !== 'overview' || document.hidden) return; hpBoardLoad(); }, 30000); }
-  clearInterval(HPB_T); HPB_T = setInterval(function () { if (VIEW !== 'overview') return; Array.prototype.forEach.call(document.querySelectorAll('.hpb-min'), function (el) { var ms = Number(el.getAttribute('data-since')), m = Math.floor((Date.now() - ms) / 60000); el.textContent = hpMin(ms); el.parentNode.style.color = m >= HPB_LATE ? 'var(--warn)' : ''; }); }, 1000);
+  if (!B || !B.hallPass || !B.teacher) return;
+  if (!HPB_POLL) { hpBoardLoad(); HPB_POLL = setInterval(function () { if (!document.hidden) hpBoardLoad(); }, 30000); }
+  if (!HPB_T) HPB_T = setInterval(function () { Array.prototype.forEach.call(document.querySelectorAll('.hpb-min'), function (el) { var ms = Number(el.getAttribute('data-since')), m = Math.floor((Date.now() - ms) / 60000); el.textContent = hpMin(ms); el.parentNode.style.color = HPB && m >= HPB.late ? 'var(--down)' : ''; }); }, 1000);
 }
-function hpBoardLoad() { call('api_passBoard').then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); }).catch(function (e) { HPB = { error: e.message || String(e) }; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); }); }
+function hpBoardLoad() { call('api_passBoard').then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); hpLateAlert(); }).catch(function () {}); }
 function hpBoardHtml() {
   var box = function (inner) { return '<div class="card" style="margin:8px 0 12px;padding:12px 16px">' + inner + '</div>'; };
-  if (!HPB) return box('<span class="small">🚻 Asking the Hall Pass Kiosk who is out…</span>');
-  if (HPB.error && /Unknown request/.test(HPB.error)) return '';          // a kiosk from before version 166: nothing to show
-  if (HPB.error) return box('<span class="small">🚻 Hall passes: ' + esc(HPB.error) + ' <a href="#" onclick="hpBoardLoad();return false">Try again</a></span>');
-  var free = (HPB.passes || []).map(function (p) { return '<span class="hp-pass' + (p.out ? '' : ' free') + '" style="padding:3px 10px"><b>#' + p.number + '</b> <span class="small" style="display:inline">' + (p.out ? esc(p.who) : 'free') + '</span></span>'; }).join('');
-  var h = '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><h3 class="grow" style="margin:0">🚻 Out now' + (HPB.out.length ? ' <span class="badge warn">' + HPB.out.length + '</span>' : '') + '</h3>' + free + '</div>';
+  if (!HPB) return box('<span class="small">🚻 Checking who is out…</span>');
+  var hook = '<span class="hp-hook">' + Array.apply(null, Array(HPB.count)).map(function (x, k) { return '<span class="hp-tag' + (k < HPB.free ? '' : ' gone') + '">🎫</span>'; }).join('') + '</span> <span class="small" style="display:inline">' + HPB.free + ' of ' + HPB.count + ' on the hook</span>';
+  var h = '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><h3 class="grow" style="margin:0">🚻 Out now' + (HPB.out.length ? ' <span class="badge warn">' + HPB.out.length + '</span>' : '') + '</h3>' + hook + '</div>';
   h += HPB.out.length ? '<table style="margin-top:6px"><tbody>' + HPB.out.map(function (o) {
       var m = Math.floor((Date.now() - o.since) / 60000);
-      return '<tr><td><b>' + esc(o.name || 'A student') + '</b></td><td>' + esc(o.destination) + '<small>' + (o.passNumber ? 'Pass #' + o.passNumber : o.delivered ? 'A pass was sent for them' : o.noPass ? 'No hall pass' : '') + ' · left ' + hpClock(o.since) + '</small></td>' +
-        '<td style="white-space:nowrap' + (m >= HPB_LATE ? ';color:var(--warn)' : '') + '">⏱ <b class="hpb-min" data-since="' + o.since + '">' + hpMin(o.since) + '</b></td>' +
+      return '<tr><td><b>' + esc(o.name) + '</b></td><td>' + esc(o.place) + '<small>' + esc(o.how === 'Shared' ? 'Sharing ' + o.with + '’s pass' : o.how === 'Pass' ? 'Pass from the hook' : o.how) + ' · left ' + hpClock(o.since) + '</small></td>' +
+        '<td style="white-space:nowrap' + (m >= HPB.late ? ';color:var(--down)' : '') + '">⏱ <b class="hpb-min" data-since="' + o.since + '">' + hpMin(o.since) + '</b></td>' +
         '<td style="text-align:right"><button class="btn small" onclick="hpBackFor(\'' + esc(o.email) + '\')">✓ I’m back</button></td></tr>';
     }).join('') + '</tbody></table>' : '<p class="small" style="margin:6px 0 0">Nobody is out.</p>';
-  if (HPB.line.length) h += '<p class="small" style="margin:6px 0 0">🙋 Next in line: ' + HPB.line.map(esc).join(', ') + '</p>';
+  if (HPB.line.length) h += '<div style="margin-top:8px"><b class="small" style="display:block">🙋 In line</b>' + HPB.line.map(function (x, k) { return '<div class="row" style="gap:8px;margin:3px 0"><span class="grow small" style="display:inline">' + (k + 1) + '. <b>' + esc(x.name) + '</b> for the ' + esc(x.place) + ', waiting ' + hpMins(x.since) + '</span><button class="btn small" onclick="hpPaperFor(\'' + esc(x.email) + '\')">🧾 Let them go on a paper pass</button></div>'; }).join('') + '</div>';
   return box(h);
 }
-function hpBackFor(email) { call('api_passBackFor', email).then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); toast('Marked back'); }).catch(oops); }
+function hpBoardSet(r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); }
+function hpBackFor(email) { call('api_passBackFor', email).then(function (r) { hpBoardSet(r); toast('Marked back'); }).catch(oops); }
+function hpPaperFor(email) { call('api_passPaperFor', email).then(function (r) { hpBoardSet(r); var m = $('hpAlert'); if (m) m.remove(); toast('They can go on a paper pass'); }).catch(oops); }
+function hpChime() {          // two soft notes; no sound file needed
+  try { var A = window.AudioContext || window.webkitAudioContext, ctx = new A(); [[880, 0], [660, 0.25]].forEach(function (n) { var o = ctx.createOscillator(), gn = ctx.createGain(); o.frequency.value = n[0]; o.connect(gn); gn.connect(ctx.destination); gn.gain.setValueAtTime(0.0001, ctx.currentTime + n[1]); gn.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + n[1] + 0.02); gn.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + n[1] + 0.6); o.start(ctx.currentTime + n[1]); o.stop(ctx.currentTime + n[1] + 0.65); }); } catch (e) {}
+}
+function hpLateAlert() {
+  var o = HPB && HPB.overdue; if (!o) return; var key = o.id + ':' + o.nextEmail; if (HPB_SEEN[key] || $('hpAlert')) return; HPB_SEEN[key] = 1;
+  var el = document.createElement('div'); el.className = 'modal'; el.id = 'hpAlert'; el.style.zIndex = 60;
+  el.innerHTML = '<div class="card" style="max-width:520px;border:3px solid var(--down)"><h2 style="margin:0 0 6px">⏰ ' + esc(o.name) + ' has been out ' + hpMins(o.since) + '</h2>' +
+    '<p><b>' + esc(o.next) + '</b> is waiting in line (' + (o.waited < 1 ? 'just now' : o.waited + ' min') + ') and shouldn’t be held up. They can go on a paper pass.</p>' +
+    '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="hpPaperFor(\'' + esc(o.nextEmail) + '\')">🧾 Let ' + esc(o.next) + ' go on a paper pass</button><button class="btn" onclick="$(\'hpAlert\').remove()">OK</button></div></div>';
+  document.body.appendChild(el); hpChime();
+}
 function hpHistLoad() {
   var email = TS_EMAIL;
   call('api_passHistory', email).then(function (r) {
-    var el = $('hpHist'); if (!el || email !== TS_EMAIL) return;
-    if (r && r.off) { el.remove(); return; }
-    if (!r) { el.innerHTML = '<h2>🚻 Hall passes</h2><p class="small">This student isn’t on the Hall Pass Kiosk’s lists (or the kiosk didn’t answer).</p>'; return; }
+    var el = $('hpHist'); if (!el || email !== TS_EMAIL) return; if (!r) { el.remove(); return; }
     var over = function (w) { return w.minutes > r.limits.minutes || w.trips >= r.limits.trips; };
-    var row = function (lab, w) { return '<tr><td style="width:42%"><b>' + lab + '</b></td><td>' + w.trips + ' trip' + (w.trips === 1 ? '' : 's') + ', about ' + Math.round(w.minutes) + ' minutes' + (over(w) ? ' <span class="badge warn">over the weekly limit</span>' : '') + '<small>Limit: ' + r.limits.trips + ' trips or ' + r.limits.minutes + ' minutes (passes sent for them don’t count)</small></td></tr>'; };
-    el.innerHTML = '<h2>🚻 Hall passes</h2><table><tbody>' + row('This week', r.week) + row('Last week', r.lastWeek) + '</tbody></table>' +
+    var row = function (lab, w) { return '<tr><td style="width:42%"><b>' + lab + '</b></td><td>' + w.trips + ' trip' + (w.trips === 1 ? '' : 's') + ', about ' + w.minutes + ' minutes' + (over(w) ? ' <span class="badge warn">over the weekly limit</span>' : '') + '<small>Limit: ' + r.limits.trips + ' trips or ' + r.limits.minutes + ' minutes (passes sent for them don’t count)</small></td></tr>'; };
+    el.innerHTML = '<div class="row"><h2 class="grow">🚻 Hall passes</h2><label class="check" style="margin:0"><input type="checkbox"' + (r.escort ? ' checked' : '') + ' onchange="call(\'api_passEscort\', TS_EMAIL, this.checked).then(function () { toast(\'Saved\'); }).catch(oops)"><span>Escort only (can’t take a pass alone)</span></label></div>' +
+      '<table><tbody>' + row('This week', r.week) + row('Last week', r.lastWeek) + '</tbody></table>' +
       (r.recent.length ? '<details style="margin-top:8px" open><summary><b>Last ' + r.recent.length + ' trips</b></summary><table style="margin-top:4px"><tbody>' + r.recent.map(function (t) {
-        var mins = t.back ? Math.round((t.back - t.at) / 60000) : null;
-        return '<tr><td style="width:150px">' + esc(new Date(t.at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + hpClock(t.at) + '</td><td>' + esc(t.destination) + '<small>' + [t.passNumber ? 'Pass #' + t.passNumber : t.noPass ? 'No hall pass' : '', t.note].filter(Boolean).map(esc).join(' · ') + '</small></td><td style="white-space:nowrap">' + (mins == null ? '<span class="badge warn">out now</span>' : mins + ' min') + '</td></tr>';
+        var mins = t.back ? Math.round((t.back - t.at) / 60000) : null, d = new Date(t.at);
+        return '<tr><td style="width:160px">' + esc(d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + hpClock(t.at) + '</td><td>' + esc(t.place) + '<small>' + [t.how === 'Pass' ? 'Pass from the hook' : t.how, t.note].filter(Boolean).map(esc).join(' · ') + '</small></td><td style="white-space:nowrap">' + (mins == null ? (d.toDateString() === new Date().toDateString() ? '<span class="badge warn">out now</span>' : '<span class="badge">never checked back in</span>') : mins + ' min') + '</td></tr>';
       }).join('') + '</tbody></table></details>' : '<p class="small">No trips yet.</p>');
-  }).catch(function () { var el = $('hpHist'); if (el) el.innerHTML = '<h2>🚻 Hall passes</h2><p class="small">The Hall Pass Kiosk didn’t answer.</p>'; });
+  }).catch(function () { var el = $('hpHist'); if (el) el.remove(); });
 }
 
 // a teacher's own student data, until Student view loads it
@@ -8160,7 +8269,7 @@ function drawOverview() {
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
     '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.kiosk ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -8713,7 +8822,7 @@ function drawTStudent() {
 
   h += tDayPlanCard() + tIepCard() + tTeamCard() + tGoalsFinalsCard() + teGradesCard();
   h += '<div class="card" id="efCard"><h2>🎯 Goals and executive functioning</h2><p class="small">Loading…</p></div>';
-  if (B.kiosk) { h += '<div class="card" id="hpHist"><h2>🚻 Hall passes</h2><p class="small">Asking the Hall Pass Kiosk…</p></div>'; setTimeout(hpHistLoad, 0); }
+  if (B.hallPass) { h += '<div class="card" id="hpHist"><h2>🚻 Hall passes</h2><p class="small">Asking the Hall Pass Kiosk…</p></div>'; setTimeout(hpHistLoad, 0); }
 
   // grades: the last 6 weeks with grades
   var weeks = {};
