@@ -475,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.43'
+var VERSION = '2.44'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -4285,7 +4285,7 @@ function api_dataCheck() {
     var st = settings_(), out = [], stu = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
     var name = {}, onTab = {}; stu.forEach(function (r) { var e = low_(r[SC.email]); name[e] = stuName_(r) || e; onTab[e] = true; });
     var cls = {}; rows_('Classes').forEach(function (r) { var e = low_(r[0]); (cls[e] = cls[e] || []).push(r); });
-    var add = function (title, why, list, fix) { list = list.filter(Boolean); if (list.length) out.push({ title: title, why: why, fix: fix, list: list }); };
+    var add = function (title, why, list, fix, act) { list = list.filter(Boolean); if (list.length) out.push({ title: title, why: why, fix: fix, list: list, act: act || '' }); };
     var who = function (e, more) { return { email: e, name: name[e] || e, more: more || '' }; };
     add('Never opened the app', 'On the Students tab, but no visit yet.', stu.filter(function (r) { return !day_(r[SC.firstVisit]); }).map(function (r) { return who(low_(r[SC.email])); }), 'Check their email on the Students tab, and share the link with them again.');
     add('Signed in but not on the Students tab', 'Someone opened the app with an email that isn’t on your list (a typo in the class list, or a student who isn’t yours).',
@@ -4300,7 +4300,7 @@ function api_dataCheck() {
       return n.length ? who(e, n.join(', ')) : null; }), 'Use Edit schedule on their page, or Students & photos > Edit next to the teacher to fix it for everyone.');
     if (st.f.team) {
       add('Profile not confirmed', 'They haven’t finished the one-time My profile page yet (they’ll see it next time).', stu.filter(function (r) { return day_(r[SC.firstVisit]) && !day_(r[SC.profileOk]); }).map(function (r) { return who(low_(r[SC.email])); }), '');
-      add('No grade level', 'Their assistant principal and counselor can’t be found without it.', stu.filter(function (r) { return !classOf_(r[SC.grade]); }).map(function (r) { return who(low_(r[SC.email])); }), 'Type 9–12 in the Grade column on the Students tab.');
+      add('No grade level', 'Their assistant principal and counselor can’t be found without it.', stu.filter(function (r) { return !classOf_(r[SC.grade]); }).map(function (r) { return who(low_(r[SC.email])); }), 'Pick their grade with the 9–12 buttons next to each name, or in the Support team box on their page.', 'grade');
       add('No case manager', '', stu.filter(function (r) { return day_(r[SC.profileOk]) && !String(r[SC.caseMgr] || '').trim(); }).map(function (r) { return who(low_(r[SC.email])); }), 'Pick one on their page (Support team > Change).');
       var cmList = caseMgrs_().map(function (c) { return c.email; });
       add('Case manager not on the Case managers list', 'Picked before the list existed, or typed by hand.', stu.filter(function (r) { var e = String(r[SC.caseMgrEmail] || '').toLowerCase(); return String(r[SC.caseMgr] || '').trim() && cmList.indexOf(e) < 0; }).map(function (r) { return who(low_(r[SC.email]), String(r[SC.caseMgr])); }), 'Pick one from the list on their page (Support team > Change), or add the person to the Case managers tab.');
@@ -4318,6 +4318,13 @@ function api_dataCheck() {
 
 /* ---------- IEP dates ---------- */
 // Teacher: a student's IEP meeting (date + a note like the time and room), annual review due date and re-evaluation due date.
+// 2.44: the teacher sets a student's grade level (9–12) from the app (their page or 🩺 Check the data), so the counselor and AP can be found
+function api_saveGradeLevel(email, grade) {
+  teacherOnly_(); email = low_(email); var n = parseInt(String(grade || ''), 10);
+  if (!(n >= 9 && n <= 12)) throw new Error('Pick a grade from 9 to 12.');
+  locked_(function () { var f = stuFind_(email); if (f.i < 0) throw new Error('That student is not on the Students tab.'); logChange_('Grade level changed', email, '', 'Grade', f.rows[f.i][SC.grade], n, ''); stuSet_(f.i, 'grade', n); });
+  return String(n);
+}
 function api_saveIepDates(email, d) {
   teacherOnly_(); email = low_(email); d = d || {};
   var dt = function (v) { return /^\d{4}-\d\d-\d\d$/.test(String(v)) ? v : ''; };
@@ -8477,7 +8484,19 @@ function tTeamCard() {
   return '<div class="card"><div class="row"><h2 class="grow">🤝 Support team</h2><button class="btn small" onclick="TTM=true;drawTStudent()">' + (p.caseMgr ? 'Change' : '+ Case manager') + '</button></div>' +
     '<div style="margin:3px 0"><b>Case manager:</b> ' + (p.caseMgr ? esc(tName(p.caseMgr)) + ' <span class="small" style="display:inline">' + esc(p.caseMgrEmail) + '</span>' : '<span class="small" style="display:inline">not picked yet</span>') + '</div>' +
     '<div style="margin:3px 0"><b>Counselor:</b> ' + (p.counselor ? esc(p.counselor) + ' <span class="small" style="display:inline">' + esc(p.counselorEmail || '') + '</span>' : '<span class="small" style="display:inline">—</span>') + '</div>' +
-    '<div style="margin:3px 0"><b>Assistant principal:</b> ' + (p.ap ? esc(p.ap.name) + ' <span class="small" style="display:inline">' + esc(p.ap.email) + (p.ap.phone ? ' · ' + esc(p.ap.phone) : '') + ' · Class of ' + esc(p.ap.year) + '</span>' : '<span class="small" style="display:inline">— (needs a Grade on the Students tab)</span>') + '</div></div>';
+    '<div style="margin:3px 0"><b>Assistant principal:</b> ' + (p.ap ? esc(p.ap.name) + ' <span class="small" style="display:inline">' + esc(p.ap.email) + (p.ap.phone ? ' · ' + esc(p.ap.phone) : '') + ' · Class of ' + esc(p.ap.year) + '</span>' : '<span class="small" style="display:inline">— (pick their grade below)</span>') + '</div>' +
+    '<div class="row" style="margin:6px 0 0;gap:8px;align-items:center"><b>Grade:</b> ' + gradeBtns(TS_EMAIL, p.grade, 'tGrade') + (p.grade ? '' : ' <span class="badge warn">not set</span>') + '</div></div>';
+}
+// 2.44: grade level 9–12, set by the teacher (Support team box and 🩺 Check the data)
+function gradeBtns(email, cur, fn) {
+  return '<span class="seg" style="display:inline-flex;vertical-align:middle">' + [9, 10, 11, 12].map(function (n) { return '<button class="' + (String(cur) === String(n) ? 'on' : '') + '" style="padding:2px 10px" onclick="' + fn + '(\'' + esc(email) + '\',' + n + ',this)">' + n + '</button>'; }).join('') + '</span>';
+}
+function dcGrade(email, n, btn) {
+  var seg = btn.parentNode; Array.prototype.forEach.call(seg.children, function (b) { b.disabled = true; });
+  call('api_saveGradeLevel', email, n).then(function () { seg.outerHTML = '<span class="badge up">✓ Grade ' + n + '</span>'; }).catch(function (e) { Array.prototype.forEach.call(seg.children, function (b) { b.disabled = false; }); oops(e); });
+}
+function tGrade(email, n) {
+  call('api_saveGradeLevel', email, n).then(function () { toast('Grade ' + n + ' saved'); openStudent(email); }).catch(oops);
 }
 function ttmSave() {
   var t; try { t = tmRead(); } catch (e) { return alert(e.message.replace('your case manager', 'their case manager')); }
@@ -10029,7 +10048,7 @@ function dcOpen() {
       return '<details style="margin:8px 0;border-top:1px solid var(--line);padding-top:8px"' + (p.list.length <= 6 ? ' open' : '') + '><summary><b>' + esc(p.title) + '</b> <span class="badge warn">' + p.list.length + '</span></summary>' +
         (p.why ? '<p class="small" style="margin:4px 0">' + esc(p.why) + '</p>' : '') + (p.fix ? '<p class="small" style="margin:4px 0"><b>Fix:</b> ' + esc(p.fix) + '</p>' : '') +
         '<ul style="margin:4px 0 0;padding-left:20px">' + p.list.map(function (x) {
-          return '<li>' + (x.email ? '<a href="#" onclick="$(\'dcModal\').remove();openStudent(\'' + esc(x.email) + '\');return false">' + esc(x.name) + '</a>' : esc(x.name)) + (x.more ? ' <span class="small" style="display:inline">· ' + esc(x.more) + '</span>' : '') + '</li>'; }).join('') + '</ul></details>';
+          return '<li>' + (x.email ? '<a href="#" onclick="$(\'dcModal\').remove();openStudent(\'' + esc(x.email) + '\');return false">' + esc(x.name) + '</a>' : esc(x.name)) + (x.more ? ' <span class="small" style="display:inline">· ' + esc(x.more) + '</span>' : '') + (p.act === 'grade' && x.email ? ' ' + gradeBtns(x.email, '', 'dcGrade') : '') + '</li>'; }).join('') + '</ul></details>';
     }).join('') : '<p>✅ Everything looks right.</p>');
   }).catch(function (e) { $('dcOut').textContent = 'That didn’t work: ' + ((e && e.message) || e); });
 }
