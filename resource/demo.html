@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.75'
+var VERSION = '2.76'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1383,7 +1383,8 @@ function teacherData_(week) {
   var retakes = retakes_('').map(function (r) { r.name = names[r.email] || r.email; return r; });
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
-  return { tripLimit: hallPassOn_() ? (st.hp || {}).trips || 0 : 0, week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
+  var tcWaiting = st.f.tc ? rows_('Tests received').filter(function (r) { return !String(r[8]); }).map(function (r) { var e = low_(r[2]); return { email: e, name: names[e] || e, cls: String(r[3]), what: String(r[4]), how: String(r[5]), released: !!String(r[7]), received: String(r[1]) }; }) : [];          // 2.76: tests and codes from 📬 Tests & codes count as upcoming
+  return { tcWaiting: tcWaiting, tripLimit: hallPassOn_() ? (st.hp || {}).trips || 0 : 0, week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
     finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null, ckTime: ckTime_(nm, week, today) };
 }
 
@@ -5943,6 +5944,15 @@ function gDay(data, cls, w) { var d = ((data || D).dates || {})[cls]; return (d 
 function weekDay(data, w) { var best = ''; Object.keys((data || D).dates || {}).forEach(function (c) { var x = data.dates[c][w]; if (x && x > best) best = x; }); return best || w; }
 function addDays(s, n) { var d = utc(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function daysUntil(s) { return Math.round((utc(s) - utc(B.today)) / 864e5); }
+// 2.76 (Colleen): a test the teacher has (a code waiting, a paper test here, or one on its way) is an upcoming test too
+function tcLabel(x) { return x.how === 'Expected' ? '<span class="badge">⏳ on its way</span>' : x.how === 'Access code' ? (x.released ? '<span class="badge up">🔑 code released</span>' : '<span class="badge warn">🔑 code waiting</span>') : '<span class="badge warn">📄 here</span>'; }
+function tcRows(list, who, me) {
+  return (list || []).map(function (x) {
+    var note = me ? (x.how === 'Expected' ? 'Your teacher is waiting for it to arrive' : x.released ? 'Your code is at the top of Today' : 'When you’re ready, ask the teacher to ' + (x.how === 'Access code' ? 'release the code' : 'give it to you')) : 'With the teacher' + (x.how === 'Expected' ? ': waiting for it to arrive' : ': ready when they are');
+    if (who) return '<tr class="click" onclick="openStudent(\'' + esc(x.email) + '\')"><td>' + tcLabel(x) + '</td><td><div class="person">' + avatar(x.email, x.name) + '<b>' + esc(x.name) + '</b></div></td><td>' + esc(x.cls) + '</td><td class="hide-sm">' + esc(x.what || '') + '<small>' + note + '</small></td></tr>';
+    return '<tr><td style="width:140px">' + tcLabel(x) + '</td><td><b>' + esc(x.cls) + '</b> ' + esc(x.what || '') + '<small>' + note + '</small></td></tr>';
+  }).join('');
+}
 function countdown(s) {
   var n = daysUntil(s);
   if (n < 0) return '<span class="badge">' + (-n) + ' day' + (n === -1 ? '' : 's') + ' ago</span>';
@@ -9451,7 +9461,8 @@ function drawTests() {
     '<input class="grow" type="text" id="tWhat" maxlength="120" placeholder="What is it? (Unit 4 test)">' +
     '<input type="date" id="tDate" style="max-width:170px" min="' + B.today + '">' +
     '<button class="btn primary" id="tAdd">Add</button></div></div>';
-  h += '<div class="card"><h2>Coming up</h2>' + (up.length ? '<table><tbody>' + up.map(function (t) {
+  var tw3 = ((D.tc && D.tc.received) || []);
+  h += '<div class="card"><h2>Coming up</h2>' + (up.length || tw3.length ? '<table><tbody>' + tcRows(tw3, false, true) + up.map(function (t) {
     var past = daysUntil(t.date) < 0;
     return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + (past ? ' · did you take it?' : '') + '</small>' + testAccHtml(t) + '</td>' +
       '<td style="text-align:right;white-space:nowrap"><button class="btn small" onclick="testDone(\'' + t.id + '\',true)">✓ Done</button> <button class="btn link danger" onclick="testDel(\'' + t.id + '\')">Delete</button></td></tr>' +
@@ -9845,7 +9856,8 @@ function tWeek(n) { $('main').innerHTML = '<div class="loading">Loading…</div>
 function drawUpcoming() {
   if (!TD) { $('main').innerHTML = '<div class="loading">Loading…</div>'; Promise.all([loadTeacher(), loadPhotos()]).then(drawUpcoming).catch(oops); return; }
   var h = '<h1>Upcoming tests</h1><p class="sub">Everything your students listed for the next two weeks.</p><div class="card">';
-  h += TD.tests.length ? '<table><thead><tr><th>When</th><th>Student</th><th>Class</th><th class="hide-sm">What</th></tr></thead><tbody>' + TD.tests.map(function (t) {
+  var tw = TD.tcWaiting || [];
+  h += TD.tests.length || tw.length ? '<table><thead><tr><th>When</th><th>Student</th><th>Class</th><th class="hide-sm">What</th></tr></thead><tbody>' + tcRows(tw, true) + TD.tests.map(function (t) {
     return '<tr class="click" onclick="openStudent(\'' + esc(t.email) + '\')"><td>' + countdown(t.date) + '<small>' + fmtDay(t.date) + '</small></td><td><div class="person">' + avatar(t.email, t.name) + '<b>' + esc(t.name) + '</b></div></td><td>' + esc(t.cls) + '</td><td class="hide-sm">' + esc(t.what) + '<small>' + esc(t.type) + (t.accoms ? ' · 🧰 ' + esc(t.accoms) : '') + '</small></td></tr>';
   }).join('') + '</tbody></table>' : '<div class="empty">No tests listed for the next two weeks.</div>';
   h += '</div>';
@@ -10270,7 +10282,8 @@ function drawTStudent() {
       (r.eligible === 'No' && !r.status ? '<span class="badge">Not eligible</span>' : retakeButtons(r.cls, r.test, TS_EMAIL)) + '</td></tr>';
   }).join('') + '</tbody></table></div>';
   var up = TS.tests.filter(function (t) { return !t.done && daysUntil(t.date) >= -3; });
-  h += '<div class="card"><h2>Upcoming tests</h2>' + (up.length ? '<table><tbody>' + up.map(function (t) { return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls) + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + '</small></td></tr>'; }).join('') + '</tbody></table>' : '<p class="small">None listed.</p>') + '</div>';
+  var tw2 = ((TS.tc && TS.tc.received) || []);
+  h += '<div class="card"><h2>Upcoming tests</h2>' + (up.length || tw2.length ? '<table><tbody>' + tcRows(tw2, false) + up.map(function (t) { return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls) + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + '</small></td></tr>'; }).join('') + '</tbody></table>' : '<p class="small">None listed.</p>') + '</div>';
   h += remindersCard(TS, true);
 
   // schedule: the teacher can fix it (dropped or added course)
