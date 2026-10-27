@@ -475,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.45'
+var VERSION = '2.47'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -697,6 +697,7 @@ function onOpen() {
 
 function setupSheet() {
   var fixed = setup_();
+  try { var fv = firstVisitFix_(); if (fv) fixed += ' Filled in First visit for ' + fv + ' student' + (fv === 1 ? '' : 's') + ' who had used the app.'; } catch (e) {}
   try { var nb = scrubSavedBdays_(); if (nb) fixed += ' Cleaned ' + nb + ' saved item' + (nb === 1 ? '' : 's') + ' (dates of birth or names changed to initials).'; } catch (e) {}
   try { allGoals_(); } catch (e) {}
   // Reminder emails go out every morning around 6 AM.
@@ -1628,7 +1629,21 @@ function fullHtml_(f, td) {
 function api_reportHtmlRead_(email) { teacherOnly_(); return reportHtml_(reportData_(low_(email), true), { full: true }); }
 // 1.98: Who's stuck: students who opened the app today but haven't finished what's required yet (today's plan; their grades on a
 // grade check day). "Opened today" is one small mark per student per day (document property seen:<email> = the first time today).
-function seen_(email) { try { var P = PropertiesService.getDocumentProperties(), k = 'seen:' + email; if (String(P.getProperty(k) || '').slice(0, 10) !== today_()) P.setProperty(k, stamp_()); } catch (e) {} }
+function seen_(email) { try { var P = PropertiesService.getDocumentProperties(), k = 'seen:' + email; if (String(P.getProperty(k) || '').slice(0, 10) !== today_()) { P.setProperty(k, stamp_()); var f = stuFind_(email); if (f.i >= 0 && !day_(f.rows[f.i][SC.firstVisit])) stuSet_(f.i, 'firstVisit', today_()); } } catch (e) {} }          // 2.46: First visit too (it was only set by the welcome name page, so students already on the list stayed "never opened")
+// 2.46: fills in a blank First visit from what the student has already done (the earliest daily plan, grades, plan, checklist, exit ticket,
+// goal check-in, or the "opened today" mark). Run by 🩺 Check the data and Set up or repair. Returns how many were filled in.
+function firstVisitFix_() {
+  var stu = rows_('Students'), need = {}, n = 0;
+  stu.forEach(function (r) { var e = low_(r[SC.email]); if (e && !day_(r[SC.firstVisit])) need[e] = ''; });
+  if (!Object.keys(need).length) return 0;
+  var seeIt = function (e, d) { e = low_(e); d = day_(d); if (d && need[e] !== undefined && (!need[e] || d < need[e])) need[e] = d; };
+  [['Daily plans', 0, 1], ['Grades', 0, 1], ['Plans', 0, 1], ['Checklist', 0, 1], ['Exit tickets', 0, 1], ['Goal check-ins', 1, 3]].forEach(function (t) {
+    if (!ss_().getSheetByName(t[0])) return; rows_(t[0]).forEach(function (r) { seeIt(r[t[2]], r[t[1]]); });
+  });
+  var pr = PropertiesService.getDocumentProperties().getProperties(); Object.keys(need).forEach(function (e) { seeIt(e, String(pr['seen:' + e] || '').slice(0, 10)); });
+  locked_(function () { var f = rows_('Students'); f.forEach(function (r, i) { var e = low_(r[SC.email]); if (need[e] && !day_(r[SC.firstVisit])) { stuSet_(i, 'firstVisit', need[e]); n++; } }); });
+  return n;
+}
 function stuck_(students, today, st) {
   var w = new Date(today + 'T12:00:00Z').getUTCDay(); if (!w || w === 6 || noSchool_(today)) return [];
   var pr = PropertiesService.getDocumentProperties().getProperties(), ci = checkInfo_(today, st.checkDay), out = [];
@@ -3791,7 +3806,7 @@ function focusStats_(email) {
 // A student's own accommodations (Students tab "Accommodations"), or the common list from Settings.
 function accomsFor_(email) {
   var f = stuFind_(email), own = f.i >= 0 ? String(f.rows[f.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
-  return own.length ? own.slice(0, 20) : settings_().accoms;
+  return own.length ? own.slice(0, 60) : settings_().accoms;          // 2.47: was 20 (a whole IEP can list 30+)
 }
 // 2.22 Teacher: save what the "Paste from an IEP" page sorted out. p: { goals: [{ text, title, kid, here, benchmarks: [text] }], accoms: [text], accMode: 'add' | 'replace' }
 // A goal with the same IEP wording is updated, not doubled. Benchmarks are kept on IEP benchmarks (hidden in the app for now).
@@ -3876,11 +3891,11 @@ function api_saveIepPaste(email, p) {
       }
     });
     if (n) goals_(email).forEach(function (x) { if (/^IEP-/.test(x.code) && !used[x.id || 'main'] && x.active) { saveGoalCore_(email, x.id, { until: addDays_(today_(), -1) }); off++; } });
-    var add = (p.accoms || []).map(function (x) { return clean_(x, 400).replace(/;/g, ','); }).filter(String).slice(0, 30);
+    var add = (p.accoms || []).map(function (x) { return clean_(x, 400).replace(/;/g, ','); }).filter(String).slice(0, 60);
     if (add.length) {
       var f2 = stuFind_(email), cur = p.accMode === 'add' ? String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
       add.forEach(function (x) { if (cur.map(low_).indexOf(low_(x)) < 0) { cur.push(x); na++; } });
-      stuSet_(f2.i, 'accoms', cur.slice(0, 30).join('; '));
+      stuSet_(f2.i, 'accoms', cur.slice(0, 60).join('; '));
     }
     var ns = Array.isArray(p.services) && p.services.length ? saveServices_(email, p.services) : 0;
     if (clean_(p.testing, 200)) { var f3 = stuFind_(email); stuSet_(f3.i, 'testing', clean_(p.testing, 200)); }
@@ -3943,6 +3958,8 @@ function api_saveResearch(looked, learned) {
 }
 // 2.26: after a low test score or a low grade: "Would any of your accommodations help next time?" yes (picked ones join that class's
 // accommodations) or no (with an optional reason). Asked once per test / low grade (key).
+// One extra question a day at most (a skill check, 🎓 exploring, or "would an accommodation help?"): did they already answer one today?
+function extraDone_(email) { var t = today_(); return ['Skill checks', 'Future research', 'Accommodation reflections'].some(function (n) { return rows_(n).some(function (r) { return day_(r[0]) === t && low_(r[1]) === email; }); }); }
 function accAsked_(email) { return rows_('Accommodation reflections').filter(function (r) { return low_(r[1]) === email; }).map(function (r) { return String(r[7]); }); }
 function accReflections_(email) { return rows_('Accommodation reflections').filter(function (r) { return low_(r[1]) === email; }).map(function (r) { return { date: day_(r[0]), cls: String(r[2]), about: String(r[3]), picked: String(r[4] || ''), answer: String(r[5]), why: String(r[6] || '') }; }).reverse(); }
 function api_saveAccomReflect(key, cls, about, picked, yes, why) {
@@ -4025,8 +4042,12 @@ function skillChecks_(email) {
   });
 }
 // the questions for one check: 4 of that kind, not seen lately; reading questions come with their passage. Never the answers.
-function api_skillCheckStart(gid) {
-  var email = need_(), c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || ''); })[0];
+function api_skillCheckStart(gid) { return skillStart_(need_(), gid); }
+// A teacher previewing a student (👁 Preview as): the same questions that student would get. Nothing is saved.
+function api_skillCheckPreview(email, gid) { teacherOnly_(); return skillStart_(low_(email), gid); }
+function api_skillCheckTry(email, gid, answers) { teacherOnly_(); var r = skillScore_(low_(email), gid, answers); r.checks = skillChecks_(low_(email)); r.preview = true; return r; }
+function skillStart_(email, gid) {
+  var c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || ''); })[0];
   if (!c) throw new Error('This goal doesn’t have a skill check.');
   var seen = {}; rows_('Skill checks').filter(function (r) { return low_(r[1]) === email && String(r[3]) === c.skill; }).slice(-3).forEach(function (r) { String(r[7]).split(';').forEach(function (x) { seen[x.split(':')[0]] = true; }); });
   var pool = SKILL_BANK.filter(function (q) { return q.skill === c.skill; }), fresh = pool.filter(function (q) { return !seen[q.id]; });
@@ -4041,19 +4062,23 @@ function api_skillCheckStart(gid) {
 function shuffle_(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 // answers: { questionId: choice index }. Scored here (the page never has the answers); saved; each one comes back with the answer and why.
 function api_skillCheckSubmit(gid, answers) {
-  var email = need_(), c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || ''); })[0];
+  var email = need_(), r = skillScore_(email, gid, answers), res = r.results, c = r.c; delete r.c;
+  locked_(function () { sheet_('Skill checks').appendRow([today_(), email, c.goal, c.skill, r.score, res.length, r.pct, res.map(function (x) { return x.id + ':' + x.picked + ':' + (x.right ? 1 : 0); }).join(';'), stamp_()]); });
+  r.checks = skillChecks_(email); return r;
+}
+function skillScore_(email, gid, answers) {
+  var c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || ''); })[0];
   if (!c) throw new Error('This goal doesn’t have a skill check.');
   var ids = Object.keys(answers || {}).filter(function (id) { return SKILL_BANK.some(function (q) { return q.id === id && q.skill === c.skill; }); }).slice(0, 8);
   if (ids.length < 3) throw new Error('Answer every question first.');
   var res = ids.map(function (id) { var q = SKILL_BANK.filter(function (x) { return x.id === id; })[0], pickd = Number(answers[id]); return { id: id, q: q.q, picked: pickd, a: q.a, right: pickd === q.a, answer: q.c[q.a], why: q.why }; });
   var score = res.filter(function (x) { return x.right; }).length, pct = Math.round(score / res.length * 100);
-  locked_(function () { sheet_('Skill checks').appendRow([today_(), email, c.goal, c.skill, score, res.length, pct, res.map(function (x) { return x.id + ':' + x.picked + ':' + (x.right ? 1 : 0); }).join(';'), stamp_()]); });
-  return { score: score, of: res.length, pct: pct, results: res, checks: skillChecks_(email) };
+  return { score: score, of: res.length, pct: pct, results: res, c: c };
 }
 function api_saveServices(email, list) { teacherOnly_(); email = low_(email); locked_(function () { saveServices_(email, list); logChange_('Related services changed', email, '', '', '', (list || []).length + ' services', ''); }); return services_(email); }
 // 2.22: the accommodation bank: which of their accommodations a student uses in each class, and on each test
 function accomPlan_(email) { var o = {}; rows_('Accommodation plan').forEach(function (r) { if (low_(r[0]) === email) o[String(r[1])] = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String); }); return o; }
-function bankList_(list, email) { var bank = accomsFor_(email); return (list || []).map(function (x) { return clean_(x, 160).replace(/;/g, ','); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 12); }
+function bankList_(list, email) { var bank = accomsFor_(email); return (list || []).map(function (x) { return clean_(x, 400).replace(/;/g, ','); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 12); }
 function api_saveClassAccoms(cls, list) {
   var email = need_(); cls = clean_(cls, 60); if (!cls) throw new Error('Pick the class.');
   var l = bankList_(list, email);
@@ -4066,7 +4091,7 @@ function api_saveTestAccoms(id, list) {
 }
 function api_saveStudentAccoms(email, items) {
   teacherOnly_(); email = low_(email);
-  var list = (items || []).map(function (x) { return clean_(x, 80).replace(/;/g, ','); }).filter(String).slice(0, 20);
+  var list = (items || []).map(function (x) { return clean_(x, 400).replace(/;/g, ','); }).filter(String).slice(0, 60);          // 2.47: was 80 characters and 20 items (an IEP paste is longer)
   return locked_(function () {
     var f = stuFind_(email); if (f.i < 0) throw new Error('That student is not on the Students tab yet.');
     stuSet_(f.i, 'accoms', list.join('; '));
@@ -4305,6 +4330,7 @@ function apFor_(grade, st) {
 // Teacher: a list of problems to fix, each with the students it affects. Read only.
 function api_dataCheck() {
   teacherOnly_();
+  try { firstVisitFix_(); } catch (e) {}          // 2.46: before the read-only check below
   return memo_(function () {
     var st = settings_(), out = [], stu = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
     var name = {}, onTab = {}; stu.forEach(function (r) { var e = low_(r[SC.email]); name[e] = stuName_(r) || e; onTab[e] = true; });
@@ -4714,7 +4740,7 @@ function studentData_(email) {
   prof.goal = prof.goals.length ? prof.goals[0].kid || '' : '';
   prof.goalCheck = st.f.goalCheck ? checkinFor_(email) : null;
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
-  var out = { skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { extraDone: extraDone_(email), skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? [].concat.apply([], allGoals.map(function (g) { return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })) : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -5278,7 +5304,7 @@ var CK = null, SCH = null, TD = null, TS = null, TS_EMAIL = '', PHOTOS = {}, FIL
 function call(fn) {
   var args = [].slice.call(arguments, 1);
   // previewing a student: only read the teacher's own data, never save anything as (or for) the student
-  if (PREV && !/^api_(previewAs|teacher|teacherStudent|photos|efData)$/.test(fn)) return Promise.reject(new Error('This is only a preview of what ' + (D.profile.name || 'this student') + ' sees, so nothing was saved.'));
+  if (PREV && !/^api_(previewAs|teacher|teacherStudent|photos|efData|skillCheckPreview|skillCheckTry)$/.test(fn)) return Promise.reject(new Error('This is only a preview of what ' + (D.profile.name || 'this student') + ' sees, so nothing was saved.'));
   return new Promise(function (ok, no) {
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(no);
     r[fn].apply(r, args);
@@ -6768,9 +6794,10 @@ function drawCheckin() {
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
   var planHere = F('dayPlan') && isSchoolDay() && keys.indexOf('plan') >= 0;
   h += codeBanner() + (!planHere || (cur !== 'plan' && stepDone('plan')) ? goalCheckCard() : '');          // 2.15: next to today's plan
-  h += accHelpCard();          // 2.26: after a low score, would an accommodation help next time?
-  (D.skillChecks || []).filter(function (c) { return c.due || (SKC && SKC.goal === c.goal); }).slice(0, 1).forEach(function (c) { h += skillCard(c, true); });          // 2.33: every two weeks
-  if (D.future && D.future.featured) h += futureCard(true);          // 2.25: featured once a week until done (or until the day they picked)
+  var xq = extraPick();          // one extra question a day at most (Colleen: too many on one day)
+  if (xq === 'acc') h += accHelpCard();          // 2.26: after a low score, would an accommodation help next time?
+  if (xq === 'skill') (D.skillChecks || []).filter(function (c) { return c.due || (SKC && SKC.goal === c.goal); }).slice(0, 1).forEach(function (c) { h += skillCard(c, true); });          // 2.33: every two weeks
+  if (xq === 'future') h += futureCard(true);          // 2.25: featured once a week until done (or until the day they picked)
   if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
     var dn = stepDone(s.k), lk = stepLock(list, i);
     return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
@@ -7306,6 +7333,21 @@ function gcSaveAll() { return Promise.resolve(); }          // 2.21: the goal ch
 // 2.25: explore colleges, programs and careers (any site; the Settings site is linked), then 1–2 sentences about what you learned
 // 2.26: the first low test score (retake list, last 3 weeks) or low class grade not asked about yet
 var ACH = { picked: [] };
+// The extra questions take turns: at most ONE a day, none on grade check day. Order: the last two weeks of the quarter's 🎓 (urgent), a low
+// TEST score's accommodation question, a skill check that's due, a low GRADE's accommodation question, then the weekly 🎓 exploring.
+// A skill check already started or just scored stays until they leave the page. The others wait for another day (they stay due).
+function extraPick() {
+  if (SKC && SKC.goal) return 'skill';
+  if (D.extraDone) return '';
+  var fut = D.future && D.future.featured, urgent = fut && D.future.urgent;
+  if (urgent) return 'future';
+  if (B.checkDay && B.today === B.checkDay) return '';
+  var acc = accHelpTrigger(), sk = (D.skillChecks || []).some(function (c) { return c.due; });
+  if (acc && /^test:/.test(acc.key)) return 'acc';
+  if (sk) return 'skill';
+  if (acc) return 'acc';
+  return fut ? 'future' : '';
+}
 function accHelpTrigger() {
   if (!F('accoms') || !(B.accoms || []).length) return null;
   var asked = D.accAsked || [];
@@ -7392,11 +7434,11 @@ function skillCard(c, featured) {
   return h + '<p style="margin:0 0 8px">' + (c.due ? '4 quick questions, about 5 minutes. Every two weeks, so you and your teacher can see your progress.' : 'Your next one is ready ' + esc(fmtDay(addDays(c.last.date, 14))) + '.') + (c.last ? ' <span class="small" style="display:inline">Last time: ' + c.last.score + ' of ' + c.last.of + ' (' + esc(fmtDay(c.last.date)) + ').</span>' : '') + '</p>' +
     (c.due ? '<button class="btn primary" onclick="skillStart(\'' + esc(c.goal) + '\')">Start</button>' : '') + links + '</div>';
 }
-function skillStart(gid) { call('api_skillCheckStart', gid).then(function (r) { SKC = { goal: r.goal, items: r.items, ans: {} }; drawCheckin(); var e = $('skc_' + (r.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(oops); }
+function skillStart(gid) { (PREV ? call('api_skillCheckPreview', PREV.email, gid) : call('api_skillCheckStart', gid)).then(function (r) { SKC = { goal: r.goal, items: r.items, ans: {} }; drawCheckin(); var e = $('skc_' + (r.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(oops); }
 function skillSubmit() {
   if (SKC.items.some(function (q) { return SKC.ans[q.id] === undefined; })) return alert('Answer every question first.');
   $('skcGo').disabled = true;
-  call('api_skillCheckSubmit', SKC.goal, SKC.ans).then(function (r) { SKC.result = r; D.skillChecks = r.checks; drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(function (e) { $('skcGo').disabled = false; oops(e); });
+  (PREV ? call('api_skillCheckTry', PREV.email, SKC.goal, SKC.ans) : call('api_skillCheckSubmit', SKC.goal, SKC.ans)).then(function (r) { SKC.result = r; if (r.preview) toast('Preview: this was scored but not saved'); else D.skillChecks = r.checks; drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(function (e) { $('skcGo').disabled = false; oops(e); });
 }
 function futSnooze(w) { call('api_futureSnooze', w).then(function (f) { D.future = f; toast(w === 'later' ? 'OK, we’ll ask again in a week' : 'OK, we’ll ask you on ' + w); drawCheckin(); }).catch(oops); }
 function futureCard(featured) {
@@ -9725,7 +9767,8 @@ function accRun(s) {
     var plain = /[a-z0-9)%]$/.test(w) && (/^[(a-z0-9]/.test(w) || /\)$/.test(w)) &&          // 2.42: "Extended Time" stays together (a capitalized word before)
  !ACC_NOSPLIT_AFTER.test(w.replace(/[(),:;]/g, '')) && !ACC_NOT_START.test(next);
     var comma = /[a-z)],$/.test(w) && /^(Allow|Provide|Use|Give|Offer|Reduce|Seat|Keep|Check|Repeat|Rephrase|Maintain|Create|Modify|Decrease|Extended|Preferential)$/.test(next);          // "…environment, Allow earbuds…"
-    if (sentence || plain || comma) { out.push(cur); cur = ''; }
+    var verb = /^(Allow|Provide|Use|Give|Offer|Reduce|Seat|Keep|Check|Repeat|Rephrase|Maintain|Create|Modify|Decrease|Preferential|Extended|Frequent|Preteach|Pre|Chunk|Shorten|Read|Break|Access|Small|Teacher|Teachers|Visual|Graphic|Guided|Copy|Copies|Clear|Reminders|Schedule|Expose|Advance|Regular|Opportunity|Assist|Tasks|Explicit|Encourage|Prompt|Model|Post|Highlight|Limit|Permit|Present|Pair|Review|Monitor)$/.test(next) && /[A-Za-z0-9)%]$/.test(w) && !ACC_NOSPLIT_AFTER.test(w.replace(/[(),:;]/g, ''));          // 2.47: "Audiobooks Allow fact…" (a new item starting with its verb, even after a capitalized word)
+    if (sentence || plain || comma || verb) { out.push(cur); cur = ''; }
   }
   out.push(cur);
   return out;
@@ -9751,6 +9794,10 @@ function accSplit(txt) {
       piece = piece.replace(/\s+/g, ' ').replace(/[\s.,;]+$/, '').trim(); if (!piece) return;
       var parts = accParts(piece), main = parts[0], det = parts.slice(1).filter(Boolean);
       if (!main) { det.forEach(function (d) { items.push(d); }); return; }          // "- one- two- three": each is its own accommodation
+      if (/^[a-z]/.test(main) && items.length) {          // 2.47: a piece starting in lowercase ("math assessments") belongs to the one before it
+        var prev = items.pop(), add = det.length ? main + '; ' + det.join('; ') : main;
+        items.push(/\)$/.test(prev) ? prev.replace(/\)$/, '; ' + add + ')') : prev + ' (' + add + ')'); return;
+      }
       items.push(det.length ? main + ' (' + det.join('; ') + ')' : main);
     });
   });
