@@ -82,6 +82,10 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
+/* the category clue, on or off (2026-10-27, Colleen: "show a category as an option that you can turn on or off... wherever appropriate"): every game whose words come from the category lists */
+const CLUE_GAMES = ['type', 'pick', 'fill', 'ladder'];
+const clueOn = (g, it) => CLUE_GAMES.indexOf(g) >= 0 && S.mode === 'clue' && !!(it && it.c) && !/^LEVEL/.test(it.c);
+const clueHtml = c => { const gif = (window.CAT_GIFS || {})[c]; return gif ? '<img src="' + esc(gif) + '" alt="' + esc(niceCat(c)) + ' (sign)">' : esc(niceCat(c)); };
 const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick' || g === 'aread' || g === 'apick';
 const isYear = g => g === 'yread' || g === 'ypick';
 const isAge = g => g === 'aread' || g === 'apick';      // Read the Age and Pick the Age (signed with hand.signAge, the face behind the hand)      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
@@ -562,12 +566,9 @@ function drawWord() {
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
   drawBlanks(it);
-  const clue = g === 'type' && S.mode === 'clue';
+  const clue = clueOn(g, it);
   $('#p-clue').hidden = !clue;
-  if (clue) {      // the category's sign: its GIF once Colleen sends it (CAT_GIFS in words.js), its name until then
-    const gif = (window.CAT_GIFS || {})[it.c];
-    $('#p-clue-box').innerHTML = gif ? '<img src="' + esc(gif) + '" alt="' + esc(niceCat(it.c)) + ' (sign)">' : esc(niceCat(it.c));
-  }
+  if (clue) $('#p-clue-box').innerHTML = clueHtml(it.c);      // the category's sign: its GIF once Colleen sends it (CAT_GIFS in words.js), its name until then
 }
 async function nextWord() {
   R.i++;
@@ -577,7 +578,7 @@ async function nextWord() {
   R.cur = { replays: 0, shownAt: Date.now(), blur: R.game === 'fill' ? blurSet(it.w) : null };
   drawWord();
   if (!isChoice(R.game)) setTimeout(answerFocus, 50);
-  if (R.game === 'type' && S.mode === 'clue') await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
+  if (clueOn(R.game, it)) await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
   if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
 }
 function letterDiff(right, chosen) {      // { mix: [right letter + letter chosen, ...], swaps: how many pairs of letters were exchanged }
@@ -899,7 +900,7 @@ function reportLines(r) {
   if (g !== 'ladder') out.push('Speed: ' + r.speedName);
   if (isNumGame(g)) out.push((g === 'nquiz' ? 'Range: ' : 'Numbers: ') + r.cats);
   if (g === 'type' || g === 'fill' || g === 'pick') out.push('Letter limit: ' + (r.limit ? r.limit + ' or fewer' : 'No limit'));
-  if (g === 'type') out.push('Mode: ' + (r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only'));
+  if (CLUE_GAMES.indexOf(g) >= 0) out.push('Category clue: ' + (r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only'));
   out.push('Used paper: ' + (r.paper === 'yes' ? 'Yes' : 'No'));
   if (r.supports) out.push('Supports: ' + r.supports);
   if (orderList(r.items || []).length) out.push(orderLine(r.items, false));      // 3.90
@@ -1016,7 +1017,7 @@ function reportSheet(r, name, cmp) {
   const sets = [];
   if (kind) sets.push(['Word type', kind]);
   if (g === 'type' || g === 'fill' || g === 'pick' || g === 'ladder') sets.push(['Letter limit', r.limit ? r.limit + ' or fewer' : 'No limit']);
-  if (g === 'type') sets.push(['Mode', r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only']);
+  if (CLUE_GAMES.indexOf(g) >= 0) sets.push(['Category clue', r.mode === 'clue' ? 'Category clue first' : 'Fingerspelling only']);
   if (g === 'pairs') sets.push(['Letters', r.cats]);
   if (g === 'sound') sets.push(['Levels', String(r.cats).replace(/^Levels /, '')]);
   if (g === 'tricky') sets.push(['Levels', String(r.cats)]);
@@ -2302,8 +2303,10 @@ function classInit() {
   clWords = wordList($('[data-list=class]'), 'class');
   const src = () => { $('#cl-cats-box').hidden = S.clsrc === 'list'; $('#cl-list-box').hidden = S.clsrc !== 'list'; };      // cats = names and fingerspelled words; everyday; list
   S.clsrc = S.clsrc || 'everyday'; segInit('cl-src', 'clsrc', src); src();
+  S.clclue = S.clclue || 'off'; segInit('cl-cluesw', 'clclue');
   $('#cl-start').onclick = () => {
     const words = S.clsrc === 'list' ? clWords.get() : S.clsrc === 'everyday' ? everydayWords(2).map(x => x.w) : poolWords().map(x => x.w);
+    CL.cat = {}; if (S.clsrc !== 'list') (S.clsrc === 'everyday' ? everydayWords(2) : poolWords()).forEach(x => { CL.cat[x.w] = x.c; });      // each word's category, for the clue
     if (!words.length) { alert(S.clsrc === 'list' ? 'Type or paste some words first.' : 'No words match the game setup. Choose categories there first.'); return; }
     CL.list = shuffle(words); CL.i = -1; CL.shown = false;
     $('#cl-setup').hidden = true; $('#cl-run').hidden = false; $('#cl-done').innerHTML = ''; clNext();
@@ -2316,12 +2319,14 @@ function classInit() {
 function clDraw() {
   $('#cl-count').textContent = 'Word ' + (CL.i + 1) + ' of ' + CL.list.length;
   $('#cl-reveal').textContent = CL.shown ? CL.list[CL.i] : '';
+  const c = S.clclue === 'on' && CL.cat && CL.cat[CL.list[CL.i]]; $('#cl-clue').hidden = !c; if (c) $('#cl-clue-box').innerHTML = clueHtml(c);
   $('#cl-show').textContent = CL.shown ? 'Hide answer' : 'Show answer';
   $('#cl-done').innerHTML = CL.list.slice(0, CL.i).map(w => '<li>' + esc(w) + '</li>').join('') + (CL.i >= 0 ? '<li class="hid">(this word)</li>' : '');
 }
 function clNext() {
   if (CL.i + 1 >= CL.list.length) { CL.list = CL.list.concat(shuffle(CL.list)); }
-  CL.i++; CL.shown = false; clDraw(); spellWord(CL.list[CL.i]);
+  CL.i++; CL.shown = false; clDraw(); const w = CL.list[CL.i];
+  if ($('#cl-clue').hidden) spellWord(w); else setTimeout(() => { if (CL.list[CL.i] === w && location.hash === '#/class') spellWord(w); }, 1400);      // the category first, then the word
 }
 function classShow() { putStage('class-slot'); assist.className = 'assist'; speedNow = () => S.speed; $('#cl-speed').value = Math.round(S.speed * 100); }
 

@@ -434,8 +434,8 @@
         <label class="field"><span class="lab">Letter Limit</span><select id="s-limit"></select></label>
         <label class="field" data-for="type pick fill"><span class="lab">Words in a Round</span><select id="s-count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></label>
       </div>
-      <div class="field" data-for="type"><span class="lab">Game</span>
-        <div class="seg" id="s-mode"><button data-v="plain">Fingerspelling only</button><button data-v="clue">Category clue first</button></div>
+      <div class="field" data-for="type pick fill ladder"><span class="lab">Category Clue</span>
+        <div class="seg" id="s-mode"><button data-v="plain">Off: fingerspelling only</button><button data-v="clue">On: category clue first</button></div>
       </div>
       <div class="field" data-for="sound"><span class="lab">Levels</span>
         <div class="row"><button class="link" data-allnone="levels" data-v="all">Choose all</button><button class="link" data-allnone="levels" data-v="none">Choose none</button></div>
@@ -660,12 +660,14 @@
         <div id="cl-setup">
           <div class="field"><span class="lab">Words</span>
             <div class="seg" id="cl-src"><button data-v="cats">Names &amp; fingerspelled</button><button data-v="everyday">Everyday words</button><button data-v="list">My list</button></div></div>
-          <div id="cl-cats-box"><p class="hint">Uses the categories (or word lists) and letter limit from the game setup. <a href="#/setup/type">Change them</a></p></div>
+          <div id="cl-cats-box"><p class="hint">Uses the categories (or word lists) and letter limit from the game setup. <a href="#/setup/type">Change them</a></p>
+            <div class="field"><span class="lab">Category Clue</span><div class="seg" id="cl-cluesw"><button data-v="off">Off</button><button data-v="on">On: show the category first</button></div></div></div>
           <div id="cl-list-box" class="wordlist" data-list="class"></div>
           <button class="btn big" id="cl-start">Start</button>
         </div>
         <div id="cl-run" hidden>
           <div class="count" id="cl-count"></div>
+          <div class="clue" id="cl-clue" hidden><div class="clue-box" id="cl-clue-box"></div><span class="clue-lab">Category</span></div>
           <div class="reveal" id="cl-reveal"></div>
           <div class="row">
             <button class="btn big" id="cl-next">Next word</button>
