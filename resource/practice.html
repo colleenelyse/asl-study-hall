@@ -333,6 +333,12 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .paste-how{margin:6px 0 8px;padding-left:22px;font-size:14px}.paste-how li{margin:2px 0}kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--card);font:600 12px/1.4 inherit;text-align:center}
 .nd-head{margin:6px 0 4px;padding:10px 12px;border-radius:10px;background:var(--brand-soft);border:1px solid var(--brand);font-size:15px;line-height:1.45}
 .qs-quick{border:2px solid var(--brand);margin:0 0 12px}.qs-cls{margin:6px 0 2px}.qs-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}.qs-check{width:30px;height:30px;border-radius:50%;border:2px solid var(--up);background:var(--card);color:var(--up);font-weight:800;cursor:pointer;flex:none}.qs-check:hover{background:var(--up);color:#fff}
+body.quickmode header.top nav,body.quickmode #lookBtn,body.quickmode #bellBox,body.quickmode #hpDock{display:none!important}body.quickmode main,body.quickmode #main{max-width:520px;margin:0 auto;padding:10px 12px}
+.qk-top{display:flex;align-items:baseline;justify-content:space-between;margin:6px 2px 10px}.qk-hi{font-size:26px;font-weight:800}.qk-date{font-size:14px;opacity:.7}.qk-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:0 0 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}.qk-home{border:2px solid var(--brand);background:var(--brand-soft)}
+.qk-h{font-size:19px;font-weight:800;margin:0 0 8px}.qk-sub{font-size:13px;opacity:.75}.qk-in{display:block;width:100%;font-size:17px;padding:12px;border-radius:12px;margin:6px 0;box-sizing:border-box}.qk-btn{display:block;width:100%;font-size:18px;font-weight:700;padding:13px;border-radius:14px;border:0;background:var(--brand);color:var(--onbrand,#fff);margin-top:8px;cursor:pointer}.qk-btn.ghost{background:transparent;color:var(--brand);border:2px solid var(--brand)}
+.qk-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}.qk-chip{font-size:15px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer}.qk-chip.on{background:var(--brand);color:var(--onbrand,#fff);border-color:var(--brand)}
+.qk-item{display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.qk-item:first-of-type{border-top:0}.qk-when{min-width:82px;font-weight:800;font-size:14px;color:var(--brand)}.qk-when.hot{color:var(--down)}.qk-link{color:var(--brand);font-weight:700}.qk-steps{font-size:16px;line-height:1.5;padding-left:22px;margin:8px 0}.qk-key{display:inline-block;padding:0 6px;border-radius:6px;background:var(--card);border:1px solid var(--line)}.qk-more summary{font-size:14px;margin:6px 0;cursor:pointer}
+body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:transparent}body.quickmode #toolBox>.card>h2:first-child,body.quickmode #toolBox>.card>.row:first-child>h2{font-size:15px}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -495,7 +501,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.65'
+var VERSION = '2.66'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1037,6 +1043,8 @@ function doGet(e) {
   rememberUrl_();
   var view = String(e && e.parameter && e.parameter.view || '').toLowerCase();
   if (view === 'seating' && isTeacher_(myEmail_())) return seatingPage_();
+  if (view === 'quick') return HtmlService.createHtmlOutput(HtmlService.createHtmlOutputFromFile('Index').getContent().replace('var QUICK_PAGE = false;', 'var QUICK_PAGE = true;'))          // 2.66: 📱 the phone page
+    .setTitle('My Check-In').addMetaTag('viewport', 'width=device-width, initial-scale=1').addMetaTag('apple-mobile-web-app-title', 'My Check-In');
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(settings_().app)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -1065,7 +1073,7 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, toolLinks: st.toolLinks, bellTimes: st.bellTimes, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), tapIn: !!st.tapIn, bellName: (function () { try { var tb = todayBells_(); return tb ? tb.name : ''; } catch (e) { return ''; } })(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), checkOwn: checkOwn_(email), ixlOn: !!ixlPlan_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, appUrl: appUrl_(), toolLinks: st.toolLinks, bellTimes: st.bellTimes, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), tapIn: !!st.tapIn, bellName: (function () { try { var tb = todayBells_(); return tb ? tb.name : ''; } catch (e) { return ''; } })(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), checkOwn: checkOwn_(email), ixlOn: !!ixlPlan_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
     welcome: isTeacher_(email) && !PropertiesService.getDocumentProperties().getProperty('welcome:' + email),          // 1.98: the one-time welcome box
@@ -5945,9 +5953,11 @@ call('api_boot').then(function (b) {
   lookAfterBoot();
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
   else if (b.cm) { MODE = 'cm'; VIEW = 'cm'; }          // a case manager: their students' reports
+  if (QUICK_PAGE && MODE === 'student') { document.body.classList.add('quickmode'); if (!gate()) VIEW = 'quick'; }          // 2.66: 📱 the phone page
   go(VIEW);
   if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
+  if (VIEW === 'quick') return;          // the phone page: no hall pass, celebrations or boards
   bdayMaybe(); madeUpMaybe(); hpButton(); hpBoardStart(); tapBoardStart();
 }).catch(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message || e) + '</div>'; });
 
@@ -6223,7 +6233,7 @@ function navTo(v) {
 
 function draw() {
   var f = {
-    welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tools: drawTools, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
+    welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tools: drawTools, quick: drawQuick, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
     myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent
   }[VIEW];
   f();
@@ -8192,16 +8202,17 @@ function qsQuick() {
     '<select id="qqW" style="max-width:190px" title="When should the app remind you?"><option value="start">🔔 Start of class</option><option value="end">🔔 End of class</option><option value="open">No reminder</option></select><button class="btn primary" onclick="qsQuickAdd()">Add</button></div>' +
     (open.length ? '<div style="margin-top:8px">' + qsGroups(open, 'qsCheck') + '</div>' : '') + '</div>';
 }
+function toolsRedraw() { if (VIEW === 'quick') drawQuick(); else if (VIEW === 'tools') drawTools(); }
 function qsQuickAdd() {
   var q = { cls: $('qqC') ? $('qqC').value : QF.cls, q: ($('qqQ') ? $('qqQ').value : '').trim(), when: $('qqW') ? $('qqW').value : 'start', test: '' };
   if (!q.q) { if ($('qqQ')) $('qqQ').focus(); return; }
-  call('api_saveQuestion', q).then(function (l) { QS = l; QF.cls = q.cls; toast(q.when === 'open' ? 'Saved to your list' : 'Saved. Reminder at the ' + q.when + ' of ' + q.cls + '.'); if (q.when !== 'open') qsNotifyAsk(); drawTools(); if ($('qqQ')) $('qqQ').focus(); }).catch(oops);
+  call('api_saveQuestion', q).then(function (l) { QS = l; QF.cls = q.cls; toast(q.when === 'open' ? 'Saved to your list' : 'Saved. Reminder at the ' + q.when + ' of ' + q.cls + '.'); if (q.when !== 'open') qsNotifyAsk(); toolsRedraw(); if ($('qqQ')) $('qqQ').focus(); }).catch(oops);
 }
 // ✓ = asked: it leaves the list (the answer can still be added under Asked); a question about a test's points opens its answer box instead
 function qsCheck(id) {
   var q = (QS || []).filter(function (x) { return x.id === id; })[0]; if (!q) return;
-  if (q.test) { QA = id; return toolGo('ask'); }
-  QS = QS.map(function (x) { return x.id === id ? Object.assign({}, x, { asked: B.today }) : x; }); if (VIEW === 'tools') drawTools();
+  if (q.test && VIEW !== 'quick') { QA = id; return toolGo('ask'); }
+  QS = QS.map(function (x) { return x.id === id ? Object.assign({}, x, { asked: B.today }) : x; }); toolsRedraw();
   call('api_answerQuestion', id, '', '', '').then(function (r) { QS = r.questions; toast('Checked off ✓'); }).catch(oops);
 }
 function qsIdea(i) { var x = qsIdeas(QF.cls)[i]; QF.q = x.q; QF.test = x.test; toolDraw(); var el = $('qQ'); if (el) { el.focus(); var k = el.value.indexOf('___'); if (k >= 0) el.setSelectionRange(k, k + 3); } }
@@ -8237,6 +8248,86 @@ function bellAsk() {
   try { if (window.Notification && Notification.permission === 'granted') new Notification('❓ Ask ' + who, { body: due.map(function (q) { return q.q; }).join(' · ') }); } catch (e) {}
 }
 setInterval(function () { try { if (MODE === 'student' && QS === null && B && !B.preview) qsLoad(); bellAsk(); } catch (e) {} }, 20000);
+
+/* ---------- 2.66: 📱 the phone page (the app's link + ?view=quick): just what a student wants during the day or at home ---------- */
+var QUICK_PAGE = false; try { if (/[?&]quick=1/.test(location.search)) QUICK_PAGE = true; } catch (e) {}
+var QK = { cls: '', type: 'Test', what: '', date: '', pts: '', cat: '', acls: '', awhat: '', adue: '' };
+function qkDay(n) { return addDays(B.today, n); }
+function qkNext(dow) { var d = utc(B.today).getUTCDay(), add = (dow - d + 7) % 7 || 7; return addDays(B.today, add); }
+function qkDates(cur, set) { return [[qkDay(1), 'Tomorrow'], [qkNext(5), 'Friday'], [qkNext(1), 'Next Monday']].map(function (x) { return '<button class="qk-chip' + (cur === x[0] ? ' on' : '') + '" onclick="' + set + '=\'' + x[0] + '\';drawQuick()">' + x[1] + '</button>'; }).join(''); }
+function qkHome() {
+  try { if (localStorage.getItem('rci-home-' + (B.email || ''))) return ''; } catch (e) {}
+  var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/i.test(ua), andr = /Android/i.test(ua);
+  var steps = ios ? ['Tap the <b>Share</b> button <span class="qk-key">⬆️</span> at the bottom of Safari (in Chrome: top right).', 'Scroll down and tap <b>Add to Home Screen</b> <span class="qk-key">➕</span>.', 'Tap <b>Add</b>. Now it’s an app on your phone! 🎉']
+    : andr ? ['Tap the <b>⋮</b> menu at the top right of Chrome.', 'Tap <b>Add to Home screen</b> (or <b>Install app</b>).', 'Tap <b>Add</b>. Now it’s an app on your phone! 🎉']
+    : ['On your phone, open this page in Safari (iPhone) or Chrome (Android).', 'Use Share ⬆️ › Add to Home Screen (iPhone) or ⋮ › Add to Home screen (Android).', 'Tap Add. 🎉'];
+  return '<div class="qk-card qk-home"><div class="qk-h">📲 Put me on your home screen</div><p class="qk-sub">Then you can add a question or a test in 2 seconds, anywhere.</p><ol class="qk-steps">' + steps.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>' +
+    '<div class="qk-row"><button class="qk-btn" onclick="qkHomeDone()">Done! ✅</button><button class="qk-btn ghost" onclick="qkHomeDone()">Not now</button></div></div>';
+}
+function qkHomeDone() { try { localStorage.setItem('rci-home-' + (B.email || ''), '1'); } catch (e) {} drawQuick(); }
+function drawQuick() {
+  if (AS === null && !AS_BUSY) { AS_BUSY = true; call('api_assignments').then(function (r) { AS = r; AS_BUSY = false; if (VIEW === 'quick') drawQuick(); }).catch(function () { AS = { list: [], said: [] }; AS_BUSY = false; }); }
+  if (QS === null) qsLoad(); if (B.ixlOn && IXL === null) { IXL = false; call('api_ixl').then(function (r) { IXL = r; if (VIEW === 'quick') drawQuick(); }).catch(function () {}); }
+  var first = String(D.profile.name || '').split(' ')[0], cls = (D.classes || []).filter(function (c) { return !c.resource && !c.nograde; });
+  if (!QK.cls && cls[0]) QK.cls = cls[0].name; if (!QK.acls && cls[0]) QK.acls = cls[0].name;
+  var opts = function (sel) { return cls.map(function (c) { var t = qsTeacher(c.name); return '<option value="' + esc(c.name) + '"' + (c.name === sel ? ' selected' : '') + '>' + esc(c.name) + (t !== 'your teacher' ? ' · ' + esc(t) : '') + '</option>'; }).join(''); };
+  var tm = qkDay(1), up = (D.tests || []).filter(function (t) { return !t.done && t.date >= B.today && daysUntil(t.date) <= 14; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(0, 5);
+  var due = AS ? AS.list.filter(function (a) { return !a.done && (!a.due || daysUntil(a.due) <= 7); }).slice(0, 8) : [];
+  var openQ = (QS || []).filter(function (q) { return !q.asked; });
+  var h = '<div class="qk"><div class="qk-top"><div class="qk-hi">Hi' + (first ? ' ' + esc(first) : '') + ' 👋</div><div class="qk-date">' + esc(fmtDay(B.today)) + '</div></div>' + qkHome() +
+    // ⭐ coming up
+    '<div class="qk-card"><div class="qk-h">⭐ Coming up</div>' + (up.length || due.filter(function (a) { return a.due && a.due <= tm; }).length ? up.map(function (t) { return '<div class="qk-item"><span class="qk-when' + (daysUntil(t.date) <= 1 ? ' hot' : '') + '">' + esc(countdownText(t.date)) + '</span><span><b>' + esc(t.what) + '</b><br><span class="qk-sub">' + esc(t.cls || '') + (t.points ? ' · ' + t.points + ' pts' : '') + '</span></span></div>'; }).join('') +
+      due.filter(function (a) { return a.due && a.due <= tm; }).map(function (a) { return '<div class="qk-item"><span class="qk-when' + (a.due < B.today ? ' hot' : '') + '">' + (a.due < B.today ? 'late' : a.due === B.today ? 'today' : 'tomorrow') + '</span><span><b>' + esc(a.what) + '</b><br><span class="qk-sub">' + esc(a.cls || '') + '</span></span></div>'; }).join('') : '<p class="qk-sub">Nothing in the next two weeks. 🎉</p>') + '</div>' +
+    // ❓ ask my teacher
+    '<div class="qk-card"><div class="qk-h">❓ Ask my teacher</div><select id="qqC" class="qk-in">' + opts(QF.cls || QK.cls) + '</select><textarea id="qqQ" class="qk-in" rows="2" maxlength="300" placeholder="What do you want to ask?"></textarea>' +
+      '<select id="qqW" class="qk-in"><option value="start">🔔 Remind me at the start of class</option><option value="end">🔔 Remind me at the end of class</option><option value="open">No reminder</option></select><button class="qk-btn" onclick="qsQuickAdd()">Save my question</button>' +
+      (openQ.length ? '<div style="margin-top:10px">' + qsGroups(openQ, 'qsCheck') + '</div>' : '') + '</div>' +
+    // 📅 add a test
+    '<div class="qk-card"><div class="qk-h">📅 Add a test or project</div><select class="qk-in" onchange="QK.cls=this.value">' + opts(QK.cls) + '</select>' +
+      '<div class="qk-row">' + ['Test', 'Quiz', 'Project', 'Essay'].map(function (t) { return '<button class="qk-chip' + (QK.type === t ? ' on' : '') + '" onclick="QK.type=\'' + t + '\';drawQuick()">' + t + '</button>'; }).join('') + '</div>' +
+      '<input class="qk-in" id="qkW" maxlength="120" placeholder="What is it? (Unit 4 test)" value="' + esc(QK.what) + '" oninput="QK.what=this.value">' +
+      '<div class="qk-row">' + qkDates(QK.date, 'QK.date') + '</div><input type="date" class="qk-in" min="' + B.today + '" value="' + esc(QK.date) + '" onchange="QK.date=this.value">' +
+      '<details class="qk-more"><summary>Know the points? (optional)</summary><div class="qk-row"><input type="number" class="qk-in" style="max-width:110px" placeholder="points" value="' + esc(QK.pts) + '" oninput="QK.pts=this.value"><button class="qk-chip' + (QK.cat === 's' ? ' on' : '') + '" onclick="QK.cat=\'s\';drawQuick()">Summative</button><button class="qk-chip' + (QK.cat === 'f' ? ' on' : '') + '" onclick="QK.cat=\'f\';drawQuick()">Formative</button></div></details>' +
+      '<button class="qk-btn" onclick="qkTest()">Add it</button></div>' +
+    // 📝 add an assignment
+    '<div class="qk-card"><div class="qk-h">📝 Add an assignment</div><select class="qk-in" onchange="QK.acls=this.value">' + opts(QK.acls) + '</select><input class="qk-in" id="qkA" maxlength="150" placeholder="What is it? (page 214, #1–15)" value="' + esc(QK.awhat) + '" oninput="QK.awhat=this.value">' +
+      '<div class="qk-row">' + [[B.today, 'Today'], [tm, 'Tomorrow']].map(function (x) { return '<button class="qk-chip' + (QK.adue === x[0] ? ' on' : '') + '" onclick="QK.adue=\'' + x[0] + '\';drawQuick()">' + x[1] + '</button>'; }).join('') + '<input type="date" class="qk-in" style="flex:1;margin:0" value="' + esc(QK.adue) + '" onchange="QK.adue=this.value"></div><button class="qk-btn" onclick="qkAssign()">Add it</button>' +
+      (due.length ? '<div style="margin-top:10px">' + due.map(function (a) { return '<div class="qs-row"><button class="qs-check" title="Done" onclick="qkDone(\'' + a.id + '\')">✓</button><span class="grow"><b>' + esc(a.what) + '</b> <span class="qk-sub">' + esc(a.cls || '') + (a.due ? ' · ' + (a.due === B.today ? 'today' : fmtDay(a.due)) : '') + '</span></span></div>'; }).join('') + '</div>' : '') + '</div>';
+  // 📈 IXL
+  if (B.ixlOn && IXL) h += '<div class="qk-card"><div class="qk-h">📈 My IXL this week</div><div class="ixl-bar"><i style="width:' + Math.min(100, Math.round(IXL.total / IXL.target * 100)) + '%"></i></div><p class="qk-sub" style="margin:6px 0">' + IXL.total + ' of ' + IXL.target + ' ' + IXL.unit + (IXL.met ? ' · goal met! 🎉' : ' · ' + (IXL.target - IXL.total) + ' left') + '</p>' +
+    '<div class="qk-row"><input type="number" id="qkI" class="qk-in" style="max-width:110px;margin:0" placeholder="' + IXL.unit + '"><button class="qk-btn" style="flex:1;margin:0" onclick="qkIxl()">Log it</button></div><a class="qk-link" target="_blank" href="' + 'https:' + '/' + '/www.ixl.com/signin/lths">Open IXL ↗</a></div>';
+  // 🃏 flashcards (the same engine as My tools)
+  h += '<div class="qk-card"><div class="qk-h">🃏 Flashcards</div><div id="toolBox"></div></div>' +
+    (B.appUrl ? '<a class="qk-link" style="display:block;text-align:center;margin:18px 0 30px" target="_top" href="' + esc(B.appUrl) + '">Open the full app</a>' : '') + '</div>';
+  TOOL = 'cards'; $('main').innerHTML = h; toolDraw();
+}
+function qkTest() {
+  var t = { cls: QK.cls, type: QK.type, what: ($('qkW') ? $('qkW').value : QK.what).trim(), date: QK.date };
+  if (!t.date) return alert('Pick the date.'); if (!t.what) t.what = t.type;
+  var before = (D.tests || []).map(function (x) { return x.id; });
+  call('api_saveTest', t).then(function (d) { D = d; var nt = D.tests.filter(function (x) { return before.indexOf(x.id) < 0; })[0]; toolLog('Add a date', 'Phone: ' + (t.cls ? t.cls + ' ' : '') + t.what);
+    var fin = function () { QK.what = ''; QK.date = ''; QK.pts = ''; QK.cat = ''; toast('Added ✅ It’s on your countdown'); drawQuick(); };
+    if (nt && (QK.pts || QK.cat)) call('api_saveTestInfo', nt.id, QK.pts, QK.cat).then(function (d2) { D = d2; fin(); }).catch(fin); else fin(); }).catch(oops);
+}
+function qkAssign() {
+  var a = { cls: QK.acls, what: ($('qkA') ? $('qkA').value : QK.awhat).trim(), due: QK.adue }; if (!a.what) return alert('Type the assignment.');
+  call('api_saveAssignment', a).then(function (r) { AS = r; QK.awhat = ''; toast('Added ✅'); drawQuick(); }).catch(oops);
+}
+function qkDone(id) { call('api_assignmentDone', id, true).then(function (r) { AS = r; toast('Nice! ✅'); drawQuick(); }).catch(oops); }
+function qkIxl() { var n = +($('qkI') ? $('qkI').value : 0); if (!(n > 0)) return alert('Type how many ' + IXL.unit + ' you did.'); call('api_ixlLog', n).then(function (r) { IXL = r; toast(r.met ? '🎉 Weekly goal met!' : 'Logged'); drawQuick(); }).catch(oops); }
+
+// Teacher: the phone page's link and a QR code to project, with the steps for students
+function phoneOpen() {
+  var url = B.appUrl ? B.appUrl + '?view=quick' : '', el = document.createElement('div'); el.className = 'modal'; el.id = 'phModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
+  el.innerHTML = '<div class="card" style="max-width:560px;text-align:center"><div class="row"><h2 class="grow" style="text-align:left">📱 The phone page</h2><button class="btn link" onclick="$(\'phModal\').remove()">✕ Close</button></div>' +
+    (url ? '<p class="hint">Students scan this with their phone’s camera. They add questions, tests and assignments, see what’s coming up, log IXL and study flashcards. Everything shows up on their Chromebook too.</p><div id="phQR" style="display:inline-block;padding:14px;background:#fff;border-radius:12px;margin:8px 0"></div>' +
+      '<p class="small" style="word-break:break-all">' + esc(url) + ' <button class="btn link small" onclick="try{navigator.clipboard.writeText(\'' + esc(url) + '\');toast(\'Copied\')}catch(e){}">Copy</button></p>' +
+      '<ol class="paste-how" style="text-align:left"><li>Point your phone’s camera at the code and tap the link.</li><li>Sign in with your <b>school</b> Google account if it asks (the one that ends in @' + esc(B.domain || 'd204.lths.net') + ').</li><li>Follow “📲 Put me on your home screen” to make it an app.</li></ol>'
+      : '<p>Publish the app first (Deploy › Manage deployments), or paste its link into Settings › Student link.</p>') + '</div>';
+  document.body.appendChild(el); if (!url) return;
+  var draw = function () { try { new window.QRCode($('phQR'), { text: url, width: 260, height: 260 }); } catch (e) { $('phQR').textContent = 'Use the link below.'; } };
+  if (window.QRCode) draw(); else { var sc = document.createElement('script'); sc.src = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = draw; sc.onerror = function () { $('phQR').textContent = 'Use the link below.'; }; document.head.appendChild(sc); }
+}
 
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
@@ -8493,7 +8584,7 @@ var ACC_PICK = null;
 function accomCard() {
   if (!F('accoms') || !(B.accoms || []).length) return '';
   var used = (D.accom && D.accom.by) || {};
-  return '<div class="card" id="accCard"><h2>🧰 My accommodations</h2>' + (D.profile.testing ? '<div style="background:var(--brand-soft, var(--bg));border-radius:10px;padding:8px 12px;margin:4px 0 8px">🏫 <b>When you test:</b> ' + esc(D.profile.testing) + '</div>' : '') + '<p class="hint" style="margin:2px 0 8px">Used one? Tap it, so you and your teacher can see what helps you. <b>One time = one entry:</b> one test, one quiz or one assignment. Used it on two tests? Save two.</p><div class="chips">' +
+  return '<div class="card" id="accCard"><h2>🧰 My accommodations</h2>' + (D.profile.testing ? '<div style="background:var(--brand-soft, var(--bg));border-radius:10px;padding:8px 12px;margin:4px 0 8px">🏫 <b>When you test:</b> ' + esc(D.profile.testing) + '</div>' : '') + '<p class="hint" style="margin:2px 0 8px">Used one? Tap it, so you and your teacher can see what helps you. <b>One time = one entry:</b> one test, one quiz or one assignment. Used it on two tests? Save two. <b>Only count it when you used it and the rest of the class didn’t.</b> If everyone used a calculator, it wasn’t an accommodation.</p><div class="chips">' +
     B.accoms.map(function (a, k) { return '<button class="chip' + (ACC_PICK === k ? ' on' : '') + '" onclick="accPick(' + k + ')">' + esc(a) + (used[a] ? ' <span class="why" style="background:var(--brand-soft);color:var(--brand)">' + used[a] + '</span>' : '') + '</button>'; }).join('') +
     '<button class="chip' + (ACC_PICK === -1 ? ' on' : '') + '" onclick="accPick(-1)">Other…</button></div>' +
     (ACC_PICK !== null ? '<div class="row" style="margin-top:10px">' + (ACC_PICK === -1 ? '<input type="text" id="accOther" maxlength="80" placeholder="Which accommodation?" style="max-width:220px">' : '<b>I used “' + esc(B.accoms[ACC_PICK]) + '” one time</b>') + '<select id="accCls" style="max-width:200px">' + classOptions('').replace('Any class', 'In which class?') + '</select>' +
@@ -8784,9 +8875,9 @@ function accWeekCard() {          // 2.62 (Colleen: "don't make this too lengthy
   var ready = AWK.picked.length && AWK.cls && AWK.what;
   var h = '<div class="card" id="awkCard" style="border:2px solid var(--brand)"><h2 style="margin:0 0 4px">🧰 Accommodations this week</h2>';
   if (w.logged.length) h += '<p class="small" style="margin:0 0 6px">Already logged: ' + w.logged.map(function (x) { return esc(x.acc) + (x.cls ? ' (' + esc(x.cls) + ')' : ''); }).join(' · ') + '</p>';
-  if (!AWK.yes) return h + '<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b class="grow">' + (w.logged.length ? 'Use any others this week?' : 'Did you use any of your accommodations this week?') + '</b>' +
+  if (!AWK.yes) return h + '<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b class="grow">' + (w.logged.length ? 'Use any others this week, when the rest of the class didn’t?' : 'Did you use any of your accommodations this week (something the rest of the class didn’t get)?') + '</b>' +
     '<button class="btn primary" onclick="AWK.open=true;AWK.yes=true;drawCheckin()">Yes</button><button class="btn" onclick="awkSave(true)">No</button></div></div>';
-  h += '<p class="small" style="margin:0 0 6px"><b>One time = one entry:</b> one test, one quiz or one assignment. Used extended time on two tests? That’s two: save one, then tap + Add another time.</p>';
+  h += '<p class="small" style="margin:0 0 6px"><b>One time = one entry:</b> one test, one quiz or one assignment. Used extended time on two tests? That’s two: save one, then tap + Add another time. <b>Only count it when you used it and the rest of the class didn’t</b> (if everyone used a calculator, it wasn’t an accommodation).</p>';
   h += '<div class="chips">' + (B.accoms || []).map(function (a, k) { return chip(AWK.picked.indexOf(a) >= 0, a, 'awkPick(' + k + ')'); }).join('') + '</div>' +
     '<div class="chips" style="margin-top:6px">' + cls.map(function (c, k) { return chip(AWK.cls === c, c, 'AWK.cls=graded()[' + k + '].name;drawCheckin()'); }).join('') + '</div>' +
     '<div class="chips" style="margin-top:6px">' + fors.map(function (f) { return chip(AWK.what === f, f, 'AWK.what=\'' + f + '\';drawCheckin()'); }).join('') + '</div>';
@@ -9444,7 +9535,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
