@@ -332,6 +332,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .rd-show{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);line-height:1.7;max-height:340px;overflow:auto}.rd-show:empty{display:none}.rd-show.big{font-size:22px;line-height:1.8}.rd-show span{cursor:pointer;border-radius:4px}.rd-now{background:#fde68a;color:#111}
 .paste-how{margin:6px 0 8px;padding-left:22px;font-size:14px}.paste-how li{margin:2px 0}kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--card);font:600 12px/1.4 inherit;text-align:center}
 .nd-head{margin:6px 0 4px;padding:10px 12px;border-radius:10px;background:var(--brand-soft);border:1px solid var(--brand);font-size:15px;line-height:1.45}
+.qs-quick{border:2px solid var(--brand);margin:0 0 12px}.qs-cls{margin:6px 0 2px}.qs-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}.qs-check{width:30px;height:30px;border-radius:50%;border:2px solid var(--up);background:var(--card);color:var(--up);font-weight:800;cursor:pointer;flex:none}.qs-check:hover{background:var(--up);color:#fff}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -494,7 +495,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.64'
+var VERSION = '2.65'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -7530,7 +7531,7 @@ function drawTools() {
   if (QS === null) qsLoad();
   var t = toolList(), tile = function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b><span class="small">' + x[3] + '</span></button>'; };
   var hp = B.hallPass && typeof HP !== 'undefined' && HP && HP.mine ? '<div class="card" style="margin:0 0 12px;border-color:var(--warn);background:var(--warn-soft)"><div class="row"><b class="grow">🚻 You’re out on a pass (' + esc(HP.mine.place || '') + ')</b><button class="btn primary" onclick="hpOpen()">I’m back</button></div></div>' : '';
-  var h = '<h1>🧰 My tools</h1><p class="sub">' + (stepDone('plan') ? 'You’re checked in for today ✓ Let’s get something done.' : 'Finish <a href="#" onclick="go(\'checkin\');return false">Today</a> first, then come back here.') + '</p>' + hp + toolsTop() +
+  var h = '<h1>🧰 My tools</h1><p class="sub">' + (stepDone('plan') ? 'You’re checked in for today ✓ Let’s get something done.' : 'Finish <a href="#" onclick="go(\'checkin\');return false">Today</a> first, then come back here.') + '</p>' + hp + qsQuick() + toolsTop() +
     '<h3 class="tools-h">My work and plans</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'work'; }).map(tile).join('') + '</div>' +
     '<h3 class="tools-h">Quick tools</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'quick'; }).map(tile).join('') + '</div>' +
     '<div id="toolBox"></div>';
@@ -8173,8 +8174,35 @@ function qsHtml() {
     (!bell && QF.when !== 'open' ? '<p class="small" style="margin:4px 0 0">Class-time reminders start once your teacher adds the bell times. Until then you’ll see it here and on My tools.</p>' : '') +
     '<div class="row" style="gap:8px;margin-top:8px"><input type="text" id="qQ" class="grow" maxlength="300" placeholder="My question" value="' + esc(QF.q) + '" oninput="QF.q=this.value;QF.test=\'\'" onkeydown="if(event.key===\'Enter\')qsAdd()"><button class="btn primary" onclick="qsAdd()">Add</button></div>' +
     '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="small">Ideas:</span>' + qsIdeas(QF.cls).map(function (x, i) { return '<button class="btn small" onclick="qsIdea(' + i + ')">' + esc(x.q) + '</button>'; }).join('') + '</div>' +
-    (open.length ? '<p class="small" style="margin:14px 0 2px"><b>To ask (' + open.length + ')</b></p>' + open.map(row).join('') : '<p class="small" style="margin:12px 0 0">No questions waiting.</p>') +
+    (open.length ? '<p class="small" style="margin:14px 0 2px"><b>To ask (' + open.length + ')</b> <span style="opacity:.75">✓ checks one off</span></p>' + (QA && open.some(function (q) { return q.id === QA; }) ? open.filter(function (q) { return q.id === QA; }).map(row).join('') : '') + qsGroups(open.filter(function (q) { return q.id !== QA; }), 'qsCheck') : '<p class="small" style="margin:12px 0 0">No questions waiting.</p>') +
     (done.length ? '<details style="margin-top:10px"><summary class="small" style="display:list-item"><b>Asked</b> (' + done.length + ')</summary>' + done.map(function (q) { return '<div class="tr-row" style="display:block"><b>' + esc(q.q) + '</b> <span class="small" style="display:inline">' + esc(q.cls) + ' · ' + esc(fmtDay(q.asked)) + '</span>' + (q.answer ? '<div class="small" style="display:block">→ ' + esc(q.answer) + '</div>' : '') + '</div>'; }).join('') + '</details>' : '');
+}
+// 2.65: ❓ always open on My tools: type a question for a class any time (even at home doing homework); the list is by class; ✓ checks it off
+function qsClassOpts(sel) { return (D.classes || []).filter(function (c) { return !c.resource && !c.nograde; }).map(function (c) { var t = qsTeacher(c.name); return '<option value="' + esc(c.name) + '"' + (c.name === sel ? ' selected' : '') + '>' + esc(c.name) + (t && t !== 'your teacher' ? ' · ' + esc(t) : '') + '</option>'; }).join(''); }
+function qsGroups(list, check) {
+  var by = {}; list.forEach(function (q) { (by[q.cls || 'Any class'] = by[q.cls || 'Any class'] || []).push(q); });
+  return Object.keys(by).map(function (c) { return '<div class="qs-cls"><b class="small">' + esc(c) + (qsTeacher(c) !== 'your teacher' ? ' · ' + esc(qsTeacher(c)) : '') + '</b>' + by[c].map(function (q) {
+    return '<div class="qs-row"><button class="qs-check" title="I asked it: check it off" onclick="' + check + '(\'' + q.id + '\')">✓</button><span class="grow">' + esc(q.q) + (q.when !== 'open' ? ' <span class="small" style="display:inline">· 🔔 ' + (q.when === 'start' ? 'start' : 'end') + ' of class</span>' : '') + '</span></div>'; }).join('') + '</div>'; }).join('');
+}
+function qsQuick() {
+  var open = (QS || []).filter(function (q) { return !q.asked; }); if (!QF.cls) { var g0 = (D.classes || []).filter(function (c) { return !c.resource && !c.nograde; })[0]; if (g0) QF.cls = g0.name; }
+  return '<div class="card qs-quick"><div class="row" style="gap:8px"><b class="grow">❓ Questions for my teacher' + (open.length ? ' (' + open.length + ')' : '') + '</b><a href="#" class="small" onclick="toolGo(\'ask\');return false">More: ideas, answers</a></div>' +
+    '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><select id="qqC" style="max-width:240px" onchange="QF.cls=this.value">' + qsClassOpts(QF.cls) + '</select>' +
+    '<input type="text" id="qqQ" class="grow" style="min-width:200px" maxlength="300" placeholder="Type a question to ask…" onkeydown="if(event.key===\'Enter\')qsQuickAdd()">' +
+    '<select id="qqW" style="max-width:190px" title="When should the app remind you?"><option value="start">🔔 Start of class</option><option value="end">🔔 End of class</option><option value="open">No reminder</option></select><button class="btn primary" onclick="qsQuickAdd()">Add</button></div>' +
+    (open.length ? '<div style="margin-top:8px">' + qsGroups(open, 'qsCheck') + '</div>' : '') + '</div>';
+}
+function qsQuickAdd() {
+  var q = { cls: $('qqC') ? $('qqC').value : QF.cls, q: ($('qqQ') ? $('qqQ').value : '').trim(), when: $('qqW') ? $('qqW').value : 'start', test: '' };
+  if (!q.q) { if ($('qqQ')) $('qqQ').focus(); return; }
+  call('api_saveQuestion', q).then(function (l) { QS = l; QF.cls = q.cls; toast(q.when === 'open' ? 'Saved to your list' : 'Saved. Reminder at the ' + q.when + ' of ' + q.cls + '.'); if (q.when !== 'open') qsNotifyAsk(); drawTools(); if ($('qqQ')) $('qqQ').focus(); }).catch(oops);
+}
+// ✓ = asked: it leaves the list (the answer can still be added under Asked); a question about a test's points opens its answer box instead
+function qsCheck(id) {
+  var q = (QS || []).filter(function (x) { return x.id === id; })[0]; if (!q) return;
+  if (q.test) { QA = id; return toolGo('ask'); }
+  QS = QS.map(function (x) { return x.id === id ? Object.assign({}, x, { asked: B.today }) : x; }); if (VIEW === 'tools') drawTools();
+  call('api_answerQuestion', id, '', '', '').then(function (r) { QS = r.questions; toast('Checked off ✓'); }).catch(oops);
 }
 function qsIdea(i) { var x = qsIdeas(QF.cls)[i]; QF.q = x.q; QF.test = x.test; toolDraw(); var el = $('qQ'); if (el) { el.focus(); var k = el.value.indexOf('___'); if (k >= 0) el.setSelectionRange(k, k + 3); } }
 function qsAdd() {
