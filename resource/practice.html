@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.73'
+var VERSION = '2.74'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -8050,7 +8050,7 @@ function comingItems() {
 }
 function startList() {
   var out = [], tm = addDays(B.today, 1);
-  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: 'Your ' + esc(x.cls) + ' test is here. Ask your teacher for it and take it today.', go: '' }); });
+  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: x.how === 'Access code' && x.released ? 'Your ' + esc(x.cls) + ' access code is at the top of Today. Take your test now.' : x.how === 'Access code' ? 'Your ' + esc(x.cls) + ' test is ready. Ask your teacher out loud to release your access code, and take it today.' : 'Your ' + esc(x.cls) + ' test is here. Ask your teacher out loud for it and take it today.', go: '' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due && a.due < B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || 'past due') + '). It was due ' + esc(fmtDay(a.due)) + '.', go: 'tracker' }); });
   stepsDue(B.today).slice(0, 1).forEach(function (x) { out.push({ t: 'Do today’s step for <b>' + esc(x.t.what) + '</b>: ' + esc(x.s.step), go: 'tests' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due === B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || '') + '). It’s due today.', go: 'tracker' }); });
@@ -11215,13 +11215,17 @@ function welcomeDone() { var m = $('welModal'); if (m) m.remove(); if (B.welcome
 var TCK = null;
 function codeBanner() {
   var rel = ((D.tc && D.tc.received) || []).filter(function (x) { return x.released && x.code; });
-  return rel.map(function (x) { return '<div class="card codebanner">🔑 <b>Your access code for ' + esc(x.cls) + (x.what ? ' (' + esc(x.what) + ')' : '') + ':</b> <span class="acode">' + esc(x.code) + '</span></div>'; }).join('');
+  // 2.74 (Colleen): a test or code that's waiting tells the student, at the top of Today, to ask out loud (not through the app)
+  var wait = ((D.tc && D.tc.received) || []).filter(function (x) { return x.ready && !x.released && x.how !== 'Expected'; });
+  return rel.map(function (x) { return '<div class="card codebanner">🔑 <b>Your access code for ' + esc(x.cls) + (x.what ? ' (' + esc(x.what) + ')' : '') + ':</b> <span class="acode">' + esc(x.code) + '</span></div>'; }).join('') +
+    wait.map(function (x) { var code = x.how === 'Access code', t = esc(x.cls) + (code ? ' test' : ' paper test') + (x.what ? ' (' + esc(x.what) + ')' : '');
+      return '<div class="card" style="border:2px solid var(--warn);background:var(--warn-soft)">🙋 <b>Your ' + t + (code ? ' is ready to start.' : ' is here.') + '</b> When you’re ready, raise your hand and ask your teacher out loud to ' + (code ? 'release your access code' : 'give it to you') + '.</div>'; }).join('');
 }
 function tcCard() {
   var tc = D.tc || { requests: [], received: [] }, h = '<div class="card" id="tcCard"><h2>🧪 Tests with my teacher</h2>';
   if (tc.received.length) h += tc.received.map(function (x) {
     if (x.how === 'Expected') return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">⏳ Your teacher is waiting for this test to arrive.</div></div>';
-    return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">' + (x.how === 'Access code' ? (x.released ? '🔑 Access code: <span class="acode">' + esc(x.code) + '</span>' : '🔒 Your teacher has your access code. Ask when you’re ready to start.') : '📄 Your paper test is here (since ' + shortDay(String(x.received).slice(0, 10)) + '). Ask your teacher when you’re ready.') + '</div></div>';
+    return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">' + (x.how === 'Access code' ? (x.released ? '🔑 Access code: <span class="acode">' + esc(x.code) + '</span>' : '🔒 Your teacher has your access code. When you’re ready to start, ask your teacher out loud to release it.') : '📄 Your paper test is here (since ' + shortDay(String(x.received).slice(0, 10)) + '). Ask your teacher out loud when you’re ready.') + '</div></div>';
   }).join('');
   h += '<p style="margin:10px 0 6px"><b>Tell your teacher:</b></p><div class="row" style="gap:8px">' +
     '<button class="btn' + (TCK === 'waiting' ? ' primary' : '') + '" onclick="TCK=TCK===\'waiting\'?null:\'waiting\';tcRedraw()">⏳ I’m waiting for a test</button>' +
