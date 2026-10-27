@@ -475,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.47'
+var VERSION = '2.48'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -7371,7 +7371,7 @@ function achSave(yes) {
   var t = accHelpTrigger(); if (!t) return;
   if (yes && !ACH.picked.length) return alert('Tap the accommodations you think would help.');
   call('api_saveAccomReflect', t.key, t.cls, t.about, yes ? ACH.picked : [], yes, yes ? '' : ($('achWhy') ? $('achWhy').value : '')).then(function (r) {
-    D.accAsked = r.asked; D.accomPlan = r.plan; ACH = { picked: [] }; toast(yes ? 'Saved: they’ll be ready for your next ' + t.cls + ' test' : 'Thanks for thinking about it'); drawCheckin();
+    D.accAsked = r.asked; D.accomPlan = r.plan; D.extraDone = true; ACH = { picked: [] }; toast(yes ? 'Saved: they’ll be ready for your next ' + t.cls + ' test' : 'Thanks for thinking about it'); drawCheckin();
   }).catch(oops);
 }
 // 2.37: 📘 My IEP: everything in the student's IEP that's theirs to know, in IEP words with a plain "translation", plus what it all
@@ -7438,7 +7438,7 @@ function skillStart(gid) { (PREV ? call('api_skillCheckPreview', PREV.email, gid
 function skillSubmit() {
   if (SKC.items.some(function (q) { return SKC.ans[q.id] === undefined; })) return alert('Answer every question first.');
   $('skcGo').disabled = true;
-  (PREV ? call('api_skillCheckTry', PREV.email, SKC.goal, SKC.ans) : call('api_skillCheckSubmit', SKC.goal, SKC.ans)).then(function (r) { SKC.result = r; if (r.preview) toast('Preview: this was scored but not saved'); else D.skillChecks = r.checks; drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(function (e) { $('skcGo').disabled = false; oops(e); });
+  (PREV ? call('api_skillCheckTry', PREV.email, SKC.goal, SKC.ans) : call('api_skillCheckSubmit', SKC.goal, SKC.ans)).then(function (r) { SKC.result = r; if (r.preview) toast('Preview: this was scored but not saved'); else { D.skillChecks = r.checks; D.extraDone = true; } drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(function (e) { $('skcGo').disabled = false; oops(e); });
 }
 function futSnooze(w) { call('api_futureSnooze', w).then(function (f) { D.future = f; toast(w === 'later' ? 'OK, we’ll ask again in a week' : 'OK, we’ll ask you on ' + w); drawCheckin(); }).catch(oops); }
 function futureCard(featured) {
@@ -7458,7 +7458,7 @@ function futureCard(featured) {
 function futSave() {
   var w = $('futW').value.trim();
   if (w.split(/\s+/).filter(function (x) { return /[a-z]/i.test(x); }).length < 6) { $('futW').focus(); return alert('Write 1–2 sentences about what you learned.'); }
-  call('api_saveResearch', $('futL').value.trim(), w).then(function (f) { D.future = f; toast('Saved. Keep exploring! 🎓'); drawCheckin(); }).catch(oops);
+  call('api_saveResearch', $('futL').value.trim(), w).then(function (f) { D.future = f; D.extraDone = true; toast('Saved. Keep exploring! 🎓'); drawCheckin(); }).catch(oops);
 }
 function myGoalRest(bits, bl) {
   return '<ul style="margin:0;padding-left:20px">' + bits.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul>' +
