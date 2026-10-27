@@ -315,6 +315,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
   .step input[type=text] { grid-column: 2 / 3; }
   .hide-sm { display: none; }
 }
+.today-sec{display:flex;align-items:center;gap:8px;margin:16px 0 6px;padding-top:12px;border-top:1px solid var(--line)}.today-sec:first-of-type{border-top:0}.today-n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--onbrand,#fff);font-weight:700;font-size:13px}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -475,7 +476,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.49'
+var VERSION = '2.50'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -516,7 +517,7 @@ var TABS = {
   'Seating Layouts': ['Layout', 'Chart', 'With students', 'Updated'],
   // IEP benchmarks (short-term objectives), each measured by the app's own data or by data the teacher enters
   // what the student will do in resource today (required each school day); the teacher can mark that they didn't follow it
-  'Daily plans': ['Date', 'Email', 'Plan', 'Updated', 'Did not follow it', 'Marked by', 'Teacher note', 'Needs help', 'Help with'],
+  'Daily plans': ['Date', 'Email', 'Plan', 'Updated', 'Did not follow it', 'Marked by', 'Teacher note', 'Needs help', 'Help with', 'Check-in minutes'],
   'Attention alerts': ['ID', 'When', 'Email', 'Type', 'Detail', 'Status', 'Updated', 'By', 'Key'],
   // a student's typed missing count, checked against the detailed page they pasted that week (filled in by the app)
   // missing work a student says can't be turned in any more (it leaves their missing list; the teacher sees it with the reason)
@@ -1282,7 +1283,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null, ckTime: ckTime_(nm, week, today) };
 }
 
 function api_teacherStudentRead_(email) {
@@ -3077,7 +3078,7 @@ function efData_(email) {
   var ex20 = exDays.slice(-20), freeN = rows_('Free time').filter(function (r) { return low_(r[1]) === email && whenDay_(r[0]) >= sem; }).length;
   var dp = dayPlans_(email), sc = selfChecks_(email);
   return {
-    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed },
+    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed, minutes: dp.minutes },
     exit: { last20: pct(ex20.filter(function (d) { return exits[d]; }).length, ex20.length), recent: Object.keys(exits).sort().slice(-6).reverse().map(function (d) { return { date: d, finished: exits[d].finished, next: exits[d].next }; }) },
     checklist: { last5: last5.filter(trial).length, of5: last5.length, last20: pct(last20.filter(trial).length, last20.length), noTime20: last20.reduce(function (n, d) { return n + (ck[d] ? ck[d].noTime : 0); }, 0), days: days.slice(-15).reverse().map(function (d) { return { date: d, done: ck[d] ? ck[d].done : 0, noTime: ck[d] ? ck[d].noTime : 0, total: ck[d] ? ck[d].total : 0, own: ck[d] ? ck[d].own : null, met: trial(d) }; }) },
     checkins: { weeks: checkedIn, of: 8 },
@@ -4566,15 +4567,23 @@ function skipsWeek_(week, names) {
     .map(function (r) { return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), day: String(r[0]).slice(0, 10), step: String(r[2]), reason: String(r[3]), note: String(r[4] || '') }; }).reverse();
 }
 // help: { need: true | false, what } (2.34: "Is there anything you need help with?" is answered with the plan; Yes → an alert for the teacher)
-function api_saveDayPlan(text, help) {
+// 2.50: the middle value (half took less, half took more), so one student who left the page open doesn't skew it
+function median_(l) { l = (l || []).filter(function (x) { return typeof x === 'number' && isFinite(x); }).sort(function (a, b) { return a - b; }); if (!l.length) return null; var m = Math.floor(l.length / 2); return Math.round((l.length % 2 ? l[m] : (l[m - 1] + l[m]) / 2) * 10) / 10; }
+// 2.50: how long the daily check-in takes (opening the app to Done), for the teacher's students: today, and this week
+function ckTime_(nm, week, today) {
+  var t = [], w = [], over = 0; rows_('Daily plans').forEach(function (r) { var e = low_(r[1]), d = day_(r[0]), m = r[9]; if (!nm[e] || m === '' || m == null || isNaN(+m)) return; if (d >= week && d <= today) { w.push(+m); if (+m > 10) over++; } if (d === today) t.push(+m); });
+  return { today: median_(t), todayN: t.length, week: median_(w), weekN: w.length, over10: over };
+}
+function api_saveDayPlan(text, help, secs) {          // 2.50: secs = seconds from opening the app today to Done (kept the first time only)
   var email = need_(); text = clean_(text, 500);
   if (!text) throw new Error('Write what you will work on today.');
   var hv = help && typeof help === 'object' ? (help.need ? 'Yes' : 'No') : '', hw = help && help.need ? clean_(help.what, 500) : '';
   if (hv === 'Yes' && !hw) throw new Error('Tell your teacher what you need help with.');
   return locked_(function () {
     var today = today_(), rows = rows_('Daily plans'), i = find_(rows, function (r) { return day_(r[0]) === today && low_(r[1]) === email; });
-    if (i >= 0) { sheet_('Daily plans').getRange(i + 2, 3, 1, 2).setValues([[text, stamp_()]]); if (hv) sheet_('Daily plans').getRange(i + 2, 8, 1, 2).setValues([[hv, hw]]); }
-    else sheet_('Daily plans').appendRow([today, email, text, stamp_(), '', '', '', hv, hw]);
+    var mins = +secs > 0 && +secs < 4 * 3600 ? Math.round(+secs / 6) / 10 : '';
+    if (i >= 0) { sheet_('Daily plans').getRange(i + 2, 3, 1, 2).setValues([[text, stamp_()]]); if (hv) sheet_('Daily plans').getRange(i + 2, 8, 1, 2).setValues([[hv, hw]]); if (mins !== '' && !(+rows[i][9] > 0)) sheet_('Daily plans').getRange(i + 2, 10).setValue(mins); }
+    else sheet_('Daily plans').appendRow([today, email, text, stamp_(), '', '', '', hv, hw, mins]);
     if (hv === 'Yes') raiseAlert_(email, 'help', hw, 'help:' + email + ':' + today, true);
     return dayPlans_(email);
   });
@@ -4613,10 +4622,10 @@ function api_flagDayPlan(email, date, flag, note) {
 // today's plan and the recent ones (newest first), with how often the plan was followed this semester
 function dayPlans_(email) {
   var t = today_(), sem = semStart_(), mine = rows_('Daily plans').filter(function (r) { return low_(r[1]) === email && day_(r[0]) >= sem; })
-    .map(function (r) { return { date: day_(r[0]), plan: String(r[2] || ''), updated: String(r[3] || ''), flag: String(r[4]) === 'Yes', by: String(r[5] || ''), note: String(r[6] || ''), help: String(r[7] || ''), helpWhat: String(r[8] || '') }; })
+    .map(function (r) { return { date: day_(r[0]), plan: String(r[2] || ''), updated: String(r[3] || ''), flag: String(r[4]) === 'Yes', by: String(r[5] || ''), note: String(r[6] || ''), help: String(r[7] || ''), helpWhat: String(r[8] || ''), minutes: r[9] === '' || r[9] == null ? null : +r[9] }; })
     .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
   var today = mine.filter(function (x) { return x.date === t; })[0] || null, flagged = mine.filter(function (x) { return x.flag; }).length;
-  return { today: today, recent: mine.slice(0, 10), days: mine.filter(function (x) { return x.plan; }).length, flagged: flagged,
+  return { today: today, recent: mine.slice(0, 10), days: mine.filter(function (x) { return x.plan; }).length, flagged: flagged, minutes: median_(mine.slice(0, 10).map(function (x) { return x.minutes; })),
     followed: mine.length ? Math.round((mine.length - flagged) / mine.length * 100) : null };
 }
 // Student: the grade they want to finish the semester with, per class. goals: { class: percent, or '' to clear }.
@@ -5214,12 +5223,12 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
       g.setUser('ray@d204.lths.net'); api_saveIepDates(x[0], { meet: addDays_(today, x[4]) });
     });
     g.setUser('ort123456@d204.lths.net');
-    api_saveDayPlan('Finish the Ch. 6 worksheet for US History, then make flashcards for Thursday’s test');
+    api_saveDayPlan('Finish the Ch. 6 worksheet for US History, then make flashcards for Thursday’s test', { need: false }, 170);
     api_saveGradeGoals({ 'US History': 70, 'Algebra 2': 80, Biology: 80, 'Spanish 2': 90 });
     api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting'], { when: 'Thursday, Dec 17 · 11:25am–1:05pm · Period 5', where: 'Testing Center', style: 'Paper' });
     api_saveFinal('Algebra 2', '', '', ['Formula card'], { style: 'Chromebook' });
     g.setUser('smi513421@d204.lths.net');
-    api_saveDayPlan('Study for the Geometry Unit 3 test', { need: true, what: 'I don’t get how to find the area of a trapezoid for the Geometry test.' });
+    api_saveDayPlan('Study for the Geometry Unit 3 test', { need: true, what: 'I don’t get how to find the area of a trapezoid for the Geometry test.' }, 230);
     api_saveGradeGoals({ 'Geometry Prep': 80, Chemistry: 90, 'English II': 85 });
     g.setUser('ray@d204.lths.net');
     api_saveGoalText('ort123456@d204.lths.net', 'Marcus will use resource time to plan and complete assignments, turning in 80% of coursework on time, as measured by teacher data and grade reports.', '', 'Executive functioning');
@@ -6405,13 +6414,14 @@ function dayPlanCard() {
   var title = '📝 What’s my plan for ' + esc(B.dayClass || 'resource') + ' today?', draft = DP_DRAFT !== null ? DP_DRAFT : t && t.plan ? t.plan : (ready.length ? testIdea(ready[0]) : '');
   if (!editing) return '<div class="card" id="dpCard"><div class="row"><h2 class="grow">' + title + '</h2><button class="btn small" onclick="DP_EDIT=true;drawCheckin()">Change it</button></div>' +
     '<p style="margin:6px 0 0;white-space:pre-wrap">' + esc(t.plan) + '</p>' + (t.flag ? '<p class="small" style="color:var(--down);margin:6px 0 0">Your teacher marked that today you didn’t do what this plan says.' + (t.note ? ' “' + esc(t.note) + '”' : '') + '</p>' : '') + '</div>';
-  return '<div class="card" id="dpCard" style="border-color:var(--brand)"><h2>' + title + '</h2><p class="hint" style="margin:4px 0 8px">What will you spend your time doing in ' + esc(B.dayClass || 'resource') + ' today? Be specific: which class, which assignment. You can change it any time.</p>' +
+  var one = TODAY_ONE;
+  return (one ? '<div id="dpCard"><p class="hint" style="margin:0 0 8px">Be specific: which class, which assignment. Tap an idea to fill it in.</p>' : '<div class="card" id="dpCard" style="border-color:var(--brand)"><h2>' + title + '</h2><p class="hint" style="margin:4px 0 8px">What will you spend your time doing in ' + esc(B.dayClass || 'resource') + ' today? Be specific: which class, which assignment. You can change it any time.</p>') +
     (ideas.length ? '<p class="small" style="margin:0 0 4px"><b>Ideas for you</b> (tap to add)</p><div class="row" style="gap:6px;margin-bottom:8px">' + ideas.map(function (x) { return '<button class="btn small" onclick="dpAdd(this.textContent)">' + esc(x) + '</button>'; }).join('') + '</div>' : '') +
     (graded().length ? '<p class="small" style="margin:0 0 4px"><b>Work on…</b> tap a class, then type what you’ll do</p><div class="row" style="gap:6px;margin-bottom:8px">' + graded().map(function (c, k) { return '<button class="btn small" onclick="dpWork(' + k + ')">📚 ' + esc(c.name) + '</button>'; }).join('') + '</div>' : '') +
     '<textarea id="dpText" maxlength="500" style="min-height:70px" placeholder="Finish the Chapter 6 worksheet for US History, then study vocabulary for Friday’s Spanish quiz." oninput="DP_DRAFT=this.value">' + esc(draft) + '</textarea>' +
-    dpHelpHtml() +
-    '<div class="row" style="margin-top:8px"><button class="btn primary" onclick="dpSave()">Save my plan</button>' + (DP_NONE === null ? '<button class="btn" onclick="DP_NONE={};this.hidden=true;setHtml(\'dpNone\',dpNoneHtml())">🤷 I have nothing to work on</button>' : '') +
-    (t && t.plan ? '<button class="btn link" onclick="DP_EDIT=false;DP_DRAFT=null;drawCheckin()">Cancel</button>' : needGrades() ? '' : '<span class="small" style="display:inline">Write your plan to see the rest of your check-in.</span>') + '</div>' +
+    (one ? '' : dpHelpHtml()) +
+    '<div class="row" style="margin-top:8px">' + (one ? '' : '<button class="btn primary" onclick="dpSave()">Save my plan</button>') + (DP_NONE === null ? '<button class="btn' + (one ? ' small' : '') + '" onclick="DP_NONE={};this.hidden=true;setHtml(\'dpNone\',dpNoneHtml())">🤷 I have nothing to work on</button>' : '') +
+    (one ? '' : t && t.plan ? '<button class="btn link" onclick="DP_EDIT=false;DP_DRAFT=null;drawCheckin()">Cancel</button>' : needGrades() ? '' : '<span class="small" style="display:inline">Write your plan to see the rest of your check-in.</span>') + '</div>' +
     (ready.length ? '<div class="testwait" id="dpWhyBox"><b>📝 ' + (ready.length > 1 ? 'Tests are' : 'A test is') + ' ready for you: ' + esc(ready.map(function (x) { return x.cls + (x.what ? ' (' + x.what + ')' : ''); }).join(', ')) + '.</b> Plan to take it today. Doing something else? Say why:' +
       '<input type="text" id="dpWhy" maxlength="300" placeholder="Why not today? (for example: I need to finish studying first)" value="' + esc(DP_WHY) + '" oninput="DP_WHY=this.value"></div>' : '') +
     '<div id="dpNone">' + dpNoneHtml() + '</div></div>';
@@ -6447,6 +6457,7 @@ function dpHelpHtml() {
 function dpNoneSave() {
   var ta = $('dpText');
   if (testsReady().length) return alert('You have a test ready for you, so you do have something to work on. Plan to take it, or say why not.');
+  if (!todayGoalsOk()) return;          // 2.50: on the Today card the goals go too
   if (ta && ta.value.trim()) return dpSave();          // they wrote something after all
   dpSend('Nothing to work on today (went through the nothing-to-do checklist)');
 }
@@ -6472,12 +6483,13 @@ function dpSend(v) {
   if (DP_HELP.need === null) return alert('Answer “Is there anything you need help with?” (Yes or No).');
   if (DP_HELP.need && String(DP_HELP.what).trim().split(/\s+/).filter(function (w) { return /[a-z]/i.test(w); }).length < 2) { if ($('dpHelpW')) $('dpHelpW').focus(); return alert('Tell your teacher what you need help with.'); }
   var help = { need: DP_HELP.need, what: DP_HELP.what };
-  gcSaveAll().then(function () { return call('api_saveDayPlan', v, help); }).then(function (r) {
+  var tb = $('todayBtn'); if (tb) { tb.disabled = true; tb.textContent = 'Saving…'; }
+  gcSaveAll().then(function () { return call('api_saveDayPlan', v, help, ckSeconds()); }).then(function (r) {
     if (help.need) toast('Your teacher will see your help request');
     DP_HELP = { need: null, what: '' };
     var was = !!gate(); D.dayPlan = r; DP_EDIT = false; DP_NONE = null; DP_DRAFT = null; DP_WHY = ''; toast('Plan saved');
     if (was && !gate()) go('checkin'); else drawCheckin();          // still on grade check day: keep the grades typed so far
-  }).catch(oops);
+  }).catch(function (e) { TODAY_SEND = false; var b = $('todayBtn'); if (b) { b.disabled = false; b.textContent = '✅ Done'; } oops(e); });
 }
 
 // The grade I want to finish the semester with, per class (set once a semester, changed any time).
@@ -6905,19 +6917,21 @@ function weeklyOn() { return F('focus') || (CK.last && F('lookBack')) || F('talk
 function ckSaveBtn(label, after) { CK_AFTER = after || null; return '<div class="row" style="margin-top:4px"><button class="btn primary big" id="ckSave">' + label + '</button><span class="status" id="status"></span></div>'; }
 function drawCheckin() {
   if (!CK) initCK();
+  TODAY_ONE = false; ckStart();
   var list = stepList(), keys = list.map(function (s) { return s.k; });
   if (STEP && (keys.indexOf(STEP.k) < 0 || (!STEP.wasDone && stepDone(STEP.k)))) STEP = null;          // a step just finished: on to the next one
-  var cur = STEP ? STEP.k : (list.filter(function (s, i) { return !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;
+  var cur = STEP ? STEP.k : (list.filter(function (s, i) { return s.req && !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;          // 2.50: only the required steps open by themselves (the checklist and exit ticket are offered when done)
   var soon = soonTests(), name = String(D.profile.name || '').split(' ')[0];
   var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? (B.checkDay && B.today >= B.checkDay ? ' · <b>Grade check day</b>' : ' · <b>First, paste your grades</b>') : '') + '</p>';
   if (soon.length && pagePref('countdown') !== false) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
   var planHere = F('dayPlan') && isSchoolDay() && keys.indexOf('plan') >= 0;
-  h += codeBanner() + (!planHere || (cur !== 'plan' && stepDone('plan')) ? goalCheckCard() : '');          // 2.15: next to today's plan
-  var xq = extraPick();          // one extra question a day at most (Colleen: too many on one day)
+  h += codeBanner() + (!planHere || (cur !== 'plan' && stepDone('plan')) ? goalCheckCard() : '');          // 2.15: next to today's plan (2.50: inside the Today card)
+  var xq = extraPick(), h0 = h, oneNow = cur === 'plan' && !stepDone('plan') && !DP_EDIT;          // one extra question a day at most (Colleen: too many on one day)
   if (xq === 'acc') h += accHelpCard();          // 2.26: after a low score, would an accommodation help next time?
   if (xq === 'skill') (D.skillChecks || []).filter(function (c) { return c.due || (SKC && SKC.goal === c.goal); }).slice(0, 1).forEach(function (c) { h += skillCard(c, true); });          // 2.33: every two weeks
   if (xq === 'future') h += futureCard(true);          // 2.25: featured once a week until done (or until the day they picked)
+  var xtra = ''; if (oneNow) { xtra = h.slice(h0.length); h = h0; }          // 2.50: the extra goes under the Today card, so Today comes first
   if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
     var dn = stepDone(s.k), lk = stepLock(list, i);
     return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
@@ -6933,10 +6947,12 @@ function drawCheckin() {
       h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : skipBox('grades') + (skipped('grades') ? nx() : ''));
       after = 'grades';
     }
-  } else if (cur === 'plan') { var gcc = goalCheckCard(), pc = dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')); h += (gcc ? '<div class="side2"><div>' + pc + '</div><div>' + gcc + '</div></div>' : pc) + nx(); }
+  } else if (oneNow) h += todayCard() + skipBox('plan') + xtra;          // 2.50: goals, plan and help on one card, one Done
+  else if (cur === 'plan') { var gcc = goalCheckCard(), pc = dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')); h += (gcc ? '<div class="side2"><div>' + pc + '</div><div>' + gcc + '</div></div>' : pc) + nx(); }
   else if (cur === 'check') h += checklistCard() + nx();
   else if (cur === 'exit') h += exitCard() + nx();
-  else h += list.length ? '<div class="card alldone"><h2>🎉 All done for today</h2><p style="margin:6px 0 0">Nice work. Your things are below' + (F('focus') ? ', or start the <a href="#" onclick="go(\'focus\');return false">⏱️ focus timer</a>' : '') + '.</p></div>'
+  else h += list.length ? '<div class="card alldone"><h2>🎉 All done for today</h2><p style="margin:6px 0 0">Nice work. Your things are below' + (F('focus') ? ', or start the <a href="#" onclick="go(\'focus\');return false">⏱️ focus timer</a>' : '') + '.</p>' +
+      (function () { var opt = list.filter(function (s) { return !s.req && !stepDone(s.k); }); return opt.length ? '<p class="small" style="margin:10px 0 4px"><b>If you have a minute</b> (optional):</p><div class="row" style="gap:8px">' + opt.map(function (s) { return '<button class="btn" onclick="stepGo(\'' + s.k + '\')">' + (s.k === 'check' ? '✅ ' : s.k === 'exit' ? '🚪 ' : '') + esc(s.label) + '</button>'; }).join('') + '</div>' : ''; })() + '</div>'
     : '<div class="card"><h2>No school today</h2><p class="small" style="margin:4px 0 0">Your things are below.</p></div>';
   if (!gate()) h += myStuff(list);
   $('main').innerHTML = h;
@@ -6944,6 +6960,26 @@ function drawCheckin() {
   if ($('ckSave')) $('ckSave').onclick = saveCheckin;
   if (cur === 'plan' && !stepDone('plan')) { var ta = $('dpText'); if (ta) ta.focus(); }
 }
+// 2.50: Today: the goal check-in, today's plan and "need help?" on ONE card with ONE Done button (Colleen: 3 minutes a day at most).
+// gckInner and dayPlanCard leave out their own buttons while TODAY_ONE is on; gcSaveAll sends the goals right before the plan.
+var TODAY_ONE = false, TODAY_SEND = false;
+function todayCard() {
+  TODAY_ONE = true;
+  var g = goalCheckCard(), p = dayPlanCard(), n = 0, sec = function (t) { n++; return '<div class="today-sec"><span class="today-n">' + n + '</span><b>' + t + '</b></div>'; };
+  return '<div class="card" id="todayC" style="border:2px solid var(--brand)"><div class="row"><h2 class="grow" style="margin:0">📋 Today</h2><span class="small">about 3 minutes</span></div>' +
+    (g ? sec('🌱 My goals') + g : '') + sec('📝 My plan for ' + esc(B.dayClass || 'resource') + ' today') + p + sec('🙋 Do I need help?') + dpHelpHtml() +
+    '<div class="row" style="margin-top:14px;gap:12px"><button class="btn primary big" id="todayBtn" onclick="todayDone()">✅ Done</button><span class="small">Then you’re all set to get to work.</span></div></div>';
+}
+function todayGoalsOk() {          // the goals on the Today card are all answered (or there are none to send); they go with the plan
+  var c = F('goalCheck') && D.profile.goalCheck, pend = !!(TODAY_ONE && c && c.date && c.goals.length && (!c.id || GCK_EDIT) && GCK);
+  if (pend) { GCK.tried = true; if (c.goals.some(gckErr)) { gckRedraw(); var e = document.querySelector('#gckC .gck.err'); if (e) e.scrollIntoView({ block: 'center' }); return false; } }
+  TODAY_SEND = pend; return true;
+}
+function todayDone() { if (todayGoalsOk()) dpSave(); }
+function ckStartKey() { return 'rci-start-' + (B.email || '') + '-' + B.today; }
+var CK_T0 = Date.now();
+function ckStart() { if (MODE !== 'student') return; try { if (!localStorage.getItem(ckStartKey())) localStorage.setItem(ckStartKey(), String(CK_T0)); } catch (e) {} }
+function ckSeconds() { var t0 = CK_T0; try { t0 = +localStorage.getItem(ckStartKey()) || CK_T0; } catch (e) {} return Math.max(0, Math.round((Date.now() - t0) / 1000)); }
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
   var t = stuffTiles(list), hid = pagePref('hide') || [], ord = pagePref('order') || [];
@@ -7390,6 +7426,7 @@ function goalCheckCard() {
   var c = F('goalCheck') && D.profile.goalCheck; if (!c || !c.date || !c.goals.length) return '';
   if (c.id && !GCK_EDIT) return '<div class="card" style="padding:10px 16px"><span class="small">🌱 Goal check-in sent for <b>' + esc(c.longDate) + '</b>. Thanks! <a href="#" onclick="GCK_EDIT=true;GCK=null;drawCheckin();return false">Change my answers</a></span></div>';
   gckInit();
+  if (TODAY_ONE) return '<div id="gckC">' + gckInner() + '</div>';
   return '<div class="card" id="gckC" style="border:2px solid var(--brand)">' + gckInner() + '</div>';
 }
 function gckErr(g) {
@@ -7400,7 +7437,7 @@ function gckErr(g) {
 }
 function gckInner() {
   var c = D.profile.goalCheck, n = c.goals.filter(function (g) { var a = GCK.ans[g.id] || {}; return a.rating || a.none; }).length;
-  return '<h2 style="margin:0 0 2px">🌱 My goals</h2><p style="font-size:18px;font-weight:700;margin:0">Thinking about ' + esc(c.phrase) + ', how did you do?</p>' +
+  return (TODAY_ONE ? '' : '<h2 style="margin:0 0 2px">🌱 My goals</h2>') + '<p style="font-size:18px;font-weight:700;margin:0">Thinking about ' + esc(c.phrase) + ', how did you do?</p>' +
     '<p class="small" style="margin:2px 0 8px">You’re rating <b>' + esc(c.longDate) + '</b>. Think about your whole day, in every class.</p>' +
     c.goals.map(function (g) {
       var a = GCK.ans[g.id] || {}, err = GCK.tried ? gckErr(g) : '', has6 = (g.ratings || []).filter(String).length === 6;
@@ -7413,12 +7450,14 @@ function gckInner() {
           '<div class="row" style="gap:5px;flex-wrap:wrap;margin-top:5px">' + (g.noIdeas || []).concat((g.noIdeas || []).some(function (x) { return /absent/i.test(x); }) ? [] : ['I was absent.']).map(function (x) { return '<button type="button" class="btn small" style="border-radius:999px" onclick="gckWhy(\'' + g.id + '\',\'' + esc(x).replace(/'/g, '’') + '\')">' + esc(x) + '</button>'; }).join('') + '</div></div>' : '') +
         (err ? '<div class="small" style="display:block;color:var(--down, #c0392b);margin-top:4px">' + err + '</div>' : '') + '</fieldset>';
     }).join('') +
+    (TODAY_ONE ? '<details style="margin-top:8px"' + (GCK.comment ? ' open' : '') + '><summary class="small" style="display:list-item"><b>Anything you want your teacher to know?</b> (optional)</summary><textarea id="gckCm" maxlength="1500" style="min-height:50px;margin-top:6px" oninput="GCK.comment=this.value;gckKeep()">' + esc(GCK.comment) + '</textarea></details>' :
     '<label for="gckCm" style="display:block;margin-top:10px"><b>Anything you want your teacher to know?</b> <span class="small" style="display:inline">(optional)</span></label>' +
     '<p class="small" style="margin:2px 0 6px">You can share something that went well, something you struggled with, help you need, or anything else about your school day. Give details where you can.</p>' +
-    '<textarea id="gckCm" maxlength="1500" style="min-height:60px" oninput="GCK.comment=this.value;gckKeep()">' + esc(GCK.comment) + '</textarea>' +
+    '<textarea id="gckCm" maxlength="1500" style="min-height:60px" oninput="GCK.comment=this.value;gckKeep()">' + esc(GCK.comment) + '</textarea>') +
     (GCK.error ? '<div class="card" style="margin:10px 0 0;background:var(--warn-soft);border-color:var(--warn)">' + esc(GCK.error) + ' Your answers are still here. <button class="btn small" onclick="gckSend()">Try again</button></div>' : '') +
+    (TODAY_ONE ? '<div class="small" style="display:block;margin-top:6px">' + n + ' of ' + c.goals.length + ' goals answered</div>' :
     '<div class="row" style="margin-top:10px;gap:12px"><button class="btn primary" id="gckSend" onclick="gckSend()"' + (GCK.sending ? ' disabled' : '') + '>' + (GCK.sending ? 'Sending…' : 'Send my check-in') + '</button><span class="small">' + n + ' of ' + c.goals.length + ' goals answered</span>' +
-    (GCK_EDIT ? '<a href="#" class="small" onclick="GCK_EDIT=false;GCK=null;drawCheckin();return false">Cancel</a>' : '') + '</div>';
+    (GCK_EDIT ? '<a href="#" class="small" onclick="GCK_EDIT=false;GCK=null;drawCheckin();return false">Cancel</a>' : '') + '</div>');
 }
 function gckRedraw(focus) { var el = $('gckC'); if (!el) return; el.innerHTML = gckInner(); if (focus && $(focus)) $(focus).focus(); }
 function gckPick(id, k) { var a = GCK.ans[id] = GCK.ans[id] || {}; a.rating = k; a.none = false; a.why = ''; gckKeep(); gckRedraw(); }
@@ -7449,7 +7488,15 @@ function gcActs(text) {
   });
   return out;
 }
-function gcSaveAll() { return Promise.resolve(); }          // 2.21: the goal check-in has its own Send
+function gcSaveAll() {          // 2.21: the goal check-in has its own Send; 2.50: on the Today card, Done sends it first
+  if (!TODAY_SEND || !GCK) return Promise.resolve();
+  var c = D.profile.goalCheck; if (!GCK.id) GCK.id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); gckKeep();
+  var items = c.goals.map(function (g) { var a = GCK.ans[g.id]; return { goal: g.id, rating: a.none ? 0 : a.rating, none: !!a.none, why: a.none ? a.why : '' }; });
+  return call('api_saveGoalCheckin', { id: GCK.id, date: c.date, items: items, comment: GCK.comment }).then(function (r) {
+    try { localStorage.removeItem(gckKey()); } catch (e) {}
+    D.profile.goalCheck = r; GCK = null; GCK_EDIT = false; TODAY_SEND = false;
+  });
+}
 // 2.25: explore colleges, programs and careers (any site; the Settings site is linked), then 1–2 sentences about what you learned
 // 2.26: the first low test score (retake list, last 3 weeks) or low class grade not asked about yet
 var ACH = { picked: [] };
@@ -8854,6 +8901,7 @@ function efRows(e) {
     ['Late this semester', e.lateSem || 0, e.lateMax ? 'Most in one class: ' + e.lateMax + ' in ' + e.lateMaxCls + (Object.keys(e.latePer).length > 1 ? ' · ' + Object.keys(e.latePer).map(function (c) { return c + ' ' + e.latePer[c]; }).join(' · ') : '') : ''],
     ['Used “Email my teacher” in the app', e.contacts.app + ' this semester', ''],
     ['Said they emailed or talked to a teacher', e.contacts.told + ' this semester', 'Retakes scheduled: ' + e.contacts.retakes],
+    ['Daily check-in time (opening the app to Done)', e.dayPlan && e.dayPlan.minutes != null ? 'typically ' + (e.dayPlan.minutes < 1 ? 'under 1' : e.dayPlan.minutes) + ' minutes' : 'not measured yet', 'The middle of their last 10 school days'],
     ['Daily plan for class time', (e.dayPlan ? e.dayPlan.days : 0) + ' days written', e.dayPlan && e.dayPlan.flagged ? e.dayPlan.flagged + ' marked: did nothing or didn’t follow it (' + p(e.dayPlan.followed) + ' followed)' : ''],
     ['Missing work they reported vs. their pasted pages', e.selfCheck && e.selfCheck.n ? p(e.selfCheck.pct) + ' matched (' + e.selfCheck.n + ' class-weeks)' : 'not checked yet', e.selfCheck && e.selfCheck.misses.length ? e.selfCheck.misses.map(function (m) { return shortDay(m.week) + ' ' + m.cls + ': said ' + m.said + ', page showed ' + m.found; }).join(' · ') : 'Checked by the app when they type missing work and paste the detailed page the same week'],
     ['Followed their weekly plan', p(e.followed), 'Partly counts as half'],
@@ -9668,12 +9716,18 @@ function tcSend() {
 function tcCancel(id) { call('api_cancelTestRequest', id).then(function (r) { D.tc = r; tcRedraw(); }).catch(oops); }
 // teacher
 var TCD = null, TCF = { email: '', how: 'paper' };
+// 2.50: how many minutes the daily check-in takes (opening the app to Done); the typical (middle) time, so one long one doesn't skew it
+function ckTimeLine() {
+  var c = TD && TD.ckTime; if (!c || (!c.todayN && !c.weekN)) return '';
+  var m = function (x) { return x == null ? '—' : (x < 1 ? 'under 1' : String(x)) + ' min'; };
+  return '<div class="small" style="display:block;margin-top:8px;padding-top:6px;border-top:1px solid var(--line)">⏱️ <b>Daily check-in time</b> (opening the app to Done): today typically <b>' + m(c.today) + '</b> (' + c.todayN + ' student' + (c.todayN === 1 ? '' : 's') + ') · this week <b>' + m(c.week) + '</b>' + (c.over10 ? ' · ' + c.over10 + ' took over 10 minutes' : '') + '</div>';
+}
 // 1.98: Who's stuck: opened the app today but haven't finished their plan (or their grades on a grade check day)
 function stuckNotice() {
   var l = (TD && TD.stuck) || []; if (!TD || TD.week !== TD.thisWeek) return '';
   return '<div class="card" style="margin-bottom:14px;' + (l.length ? 'border-color:var(--warn);background:var(--warn-soft)' : '') + '"><div class="row"><b class="grow">🧭 Who’s stuck' + (l.length ? ' (' + l.length + ')' : '') + '</b><button class="btn small" onclick="TD=null;drawOverview()">↻ Refresh</button></div>' +
     (l.length ? l.map(function (x) { return '<div class="small" style="display:block;margin:4px 0"><a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a> · opened ' + esc(x.seen) + ' · hasn’t finished: ' + esc(x.why.join(' and ')) + '</div>'; }).join('')
-      : '<p class="small" style="margin:4px 0 0">Nobody right now: everyone who opened the app today has finished their plan.</p>') + '</div>';
+      : '<p class="small" style="margin:4px 0 0">Nobody right now: everyone who opened the app today has finished their plan.</p>') + ckTimeLine() + '</div>';
 }
 // 2.15: students' goal check-ins. The app files the ones whose words show a skill; the rest wait here for the teacher.
 var SKILL_NAMES = ['Starting work', 'Asking for help (self-advocacy)', 'Organization and planning', 'Finishing and turning in work', 'Focus', 'Using accommodations'];
