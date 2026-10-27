@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.38'
+var VERSION = '2.39'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -3779,6 +3779,8 @@ function nameDeep_(x, first) {
 function api_saveIepPaste(email, p) {
   teacherOnly_(); email = low_(email); p = bdayDeep_(p || {});
   var fs0 = stuFind_(email); if (fs0.i >= 0) p = nameDeep_(p, String(fs0.rows[fs0.i][SC.first] || ''));
+  if (fs0.rows) fs0.rows.forEach(function (r) { var f = String(r[SC.first] || '').replace(/[^A-Za-z'-]/g, ''); if (f.length >= 3 && !/^(will|may|june|april|grace|hope|faith|joy|mark|bill|read|art|sky|rain|summer|autumn|chase|hunter|reed|page)$/i.test(f)) p = nameDeep_(p, f); });          // 2.39: any student on the sheet, not just this one
+  if (Array.isArray(p.accoms)) p.accoms = p.accoms.filter(function (a) { a = String(a || '').trim(); return a && !/^(?:[A-Z]\.,?\s*){1,3}$/.test(a) && !/^[A-Z][a-z'’-]+,\s*[A-Z][a-z'’.-]*(?:\s+[A-Z]\.?)?$/.test(a) && !/^[A-Z][a-z'’-]+\s+[A-Z]\.?\s*(?:[A-Z][a-z'’-]+)?$/.test(a) && !/^(?:student|name|conference|meeting|page|dob)\b/i.test(a); });          // 2.39: bare names or initials are never an accommodation
   if (stuFind_(email).i < 0) throw new Error('Pick a student who is on the Students tab.');
   var n = 0, nu = 0, nb = 0, na = 0, off = 0;
   // 2.27: a newer IEP replaces the older one: same IEP goal number, same wording, or very similar wording → that goal is updated;
@@ -5038,6 +5040,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     var mg0 = api_efData('ort123456@d204.lths.net').goals;
     api_saveGoalDetails('ort123456@d204.lths.net', mg0[0].id, { kid: 'I need to plan my resource time and turn in my work on time.', ratings: R3, criterion: 'Turn in 80% of coursework on time, per grade reports', mstatus: 'Confirmed', track: 'Assignment & Deadline Audit' });
     api_saveGoalDetails('ort123456@d204.lths.net', mg0[1].id, { kid: 'I need to email or talk to my teacher when I’m confused.', ratings: R4, noIdeas: ['I wasn’t confused about anything.'], mstatus: 'Proposed — needs review', track: 'Self-Advocacy Tracker' });
+    api_saveTesting('ort123456@d204.lths.net', 'Extended time (1.5x) · Small group · Breaks as needed'); api_saveServices('ort123456@d204.lths.net', [{ service: 'Special education', minutes: 225, per: 'week' }, { service: 'Social work', minutes: 30, per: 'week' }]); api_saveStudentAccoms('ort123456@d204.lths.net', ['Extended time (1.5x) on tests and quizzes', 'Preferential seating', 'Copy of class notes', 'Calculator', 'Frequent checks for understanding', 'Breaks as needed']);          // 2.39: the IEP box has something to show
     g.setUser('ort123456@d204.lths.net'); var mc = api_myData().profile.goalCheck;
     if (mc && mc.date && !/gck=1/.test(location.search)) api_saveGoalCheckin({ id: 'demo1', date: mc.date, items: mc.goals.map(function (x, k) { return k ? { goal: x.id, none: true, why: 'I wasn’t confused about anything.' } : { goal: x.id, rating: 4 }; }), comment: 'I finished my Biology lab but forgot the cell diagram.' });
     g.setUser('ray@d204.lths.net');
@@ -8216,7 +8219,7 @@ function previewEnd() {
   openStudent(p.email);
 }
 function openStudent(email) {
-  TS_EMAIL = email; TS = null; EF = null; OBS = null; CKE = null; ACE = null; TE = null; BE = null; BD = null; GTE = null; IEPE = false; TTM = false; go('tstudent');
+  TS_EMAIL = email; TS = null; EF = null; OBS = null; CKE = null; ACE = null; TE = null; BE = null; BD = null; GTE = null; IEPE = false; IEPX = ''; TTM = false; go('tstudent');
   call('api_teacherStudent', email).then(function (d) { TS = d; if (VIEW === 'tstudent') drawTStudent(); }).catch(oops);
 }
 function drawTStudent() {
@@ -8425,8 +8428,8 @@ function drawEF() {
   var e = EF.ef;
   var h = '<div class="row"><h2 class="grow">🎯 Goals and executive functioning</h2><button class="btn small" onclick="printGoal()">📄 Print goal data</button><button class="btn small" onclick="prOpen()">📈 Progress report…</button></div>' +
     '<p class="hint" style="margin:2px 0 10px">Tracked for every student. Counts from Infinite Campus are only as complete as how often the student pastes (this semester began ' + fmtDay(e.sem) + ').</p>' +
-    goalTabs() + svcHtml() + phrasesHtml() + (!SHOW_BENCH ? '' : GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
-    '<table style="margin-top:12px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
+    iepCard() + goalTabs() + phrasesHtml() + (!SHOW_BENCH ? '' : GT().here !== false ? benchHtml() : '<p class="hint" style="margin:12px 0 0">Not measured in ' + esc(B.dayClass || 'resource') + ': the student sees this goal in their daily goal check-in, and what they say shows here and on reports. Check “Measured in ' + esc(B.dayClass || 'resource') + '” to track data on it.</p>') +
+    '<h3 style="margin:22px 0 4px;padding-top:14px;border-top:1px solid var(--line)">📊 Executive functioning data</h3><table style="margin-top:4px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   // this student's own checklist (or the class one)
   var own = EF.checklistOwn && EF.checklistOwn.length, items = CKE || (own ? EF.checklistOwn : EF.checklistClass).slice();
   h += '<details style="margin-top:12px"' + (CKE ? ' open' : '') + '><summary><b>Daily checklist items</b> ' + (own ? '<span class="badge brand">Just for this student</span>' : '<span class="small" style="display:inline">(the class checklist)</span>') + '</summary>' +
@@ -8468,9 +8471,7 @@ function drawEF() {
   }).join('') + '</tbody></table>' : '<p class="small">No sessions yet.</p>') + '</details>';
   // accommodations: this student's list and what they used
   var acL = ACE || ((EF.accomsOwn && EF.accomsOwn.length) ? EF.accomsOwn : EF.accomsCommon).join('\n');
-  h += '<details style="margin-top:8px"' + (ACE !== null ? ' open' : '') + '><summary><b>Accommodations</b> ' + (EF.accomsOwn && EF.accomsOwn.length ? '<span class="badge brand">This student’s list</span>' : '<span class="small" style="display:inline">(the common list)</span>') + '</summary>' +
-    '<p class="hint" style="margin:6px 0">One per line: what this student sees on their check-in.</p><textarea id="aceT" style="min-height:110px" oninput="ACE=this.value">' + esc(acL) + '</textarea>' +
-    '<div class="row" style="margin-top:6px"><button class="btn primary small" onclick="aceSave()">Save for this student</button>' + (EF.accomsOwn && EF.accomsOwn.length ? '<button class="btn link small" onclick="aceSave(true)">Use the common list</button>' : '') + '</div>' +
+  h += '<details style="margin-top:8px"><summary><b>Accommodations used</b> <span class="small" style="display:inline">(' + (e.accom.n || 0) + ' this semester; the list itself is in the 📘 IEP box)</span></summary>' +
     (e.accom.recent.length ? '<table style="margin-top:8px"><tbody>' + e.accom.recent.map(function (r) { return '<tr><td style="width:110px">' + shortDay(r.date) + '</td><td><b>' + esc(r.acc) + '</b><small>' + esc([r.cls, r.forWhat, r.by === TS_EMAIL ? 'student' : 'teacher'].filter(String).join(' · ')) + '</small></td></tr>'; }).join('') + '</tbody></table>' : '') +
     '<div class="row" style="margin-top:8px"><select id="acA" style="max-width:220px" onchange="$(\'acO\').style.display=this.value===\'__other\'?\'\':\'none\'">' + ((EF.accomsOwn && EF.accomsOwn.length) ? EF.accomsOwn : EF.accomsCommon).map(function (a) { return '<option>' + esc(a) + '</option>'; }).join('') + '<option value="__other">Other…</option></select>' +
     '<input type="text" id="acO" placeholder="Which accommodation?" style="max-width:200px;display:none">' +
@@ -8516,7 +8517,7 @@ function noeSave(reset) {
 var ACE = null;
 function aceSave(reset) {
   var list = reset ? [] : String(ACE !== null ? ACE : $('aceT').value).split('\n').map(function (x) { return x.trim(); }).filter(String);
-  call('api_saveStudentAccoms', TS_EMAIL, list).then(function (r) { EF.accomsOwn = r.own; ACE = null; drawEF(); toast(r.own.length ? 'Accommodations saved for this student' : 'Back to the common list'); }).catch(oops);
+  call('api_saveStudentAccoms', TS_EMAIL, list).then(function (r) { EF.accomsOwn = r.own; ACE = null; IEPX = ''; drawEF(); toast(r.own.length ? 'Accommodations saved for this student' : 'Back to the common list'); }).catch(oops);
 }
 function aceLog() {
   var acc = $('acA').value === '__other' ? $('acO').value.trim() : $('acA').value;
@@ -8698,28 +8699,61 @@ function benchPrint(g) {
 }
 // 2.21: one goal's details, all editable (each change goes on the Goal change log). The original IEP goal is the source of truth;
 // the spreadsheet's tracking ideas are provisional. Only the title, "I need to…", ratings and no-chance ideas ever reach the student.
+// 2.39: what still needs a look on one goal
+function goalFlags(g) {
+  var f = []; if (!g.text) f.push('Original IEP wording needed'); if (!g.criterion) f.push('Official criterion not confirmed'); if ((g.ratings || []).filter(String).length < 6) f.push('Rating descriptions needed'); if (!g.kid) f.push('“I need to…” needed (the student can’t see this goal yet)'); if (/needs review|proposed/i.test(g.mstatus || '')) f.push('Measurement: needs review');
+  return f;
+}
+// 2.39: the IEP box: the paste first, then one look at everything it filled in
+var IEPX = '';
+function iepCard() {
+  var l = (EF.goals || []).filter(function (x) { return x.text || x.kid || x.name; }), act = l.filter(function (x) { return x.active !== false; }), sv = EF.services || [], ar = EF.accRefl || [];
+  var own = EF.accomsOwn && EF.accomsOwn.length, acc = own ? EF.accomsOwn : [], acL = ACE !== null && ACE !== undefined && ACE !== false ? ACE : (own ? EF.accomsOwn : EF.accomsCommon).join('\n');
+  var empty = !l.length && !own && !EF.testing && !sv.length;
+  var tile = function (icon, title, n, body, key) { return '<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0"><div class="row" style="gap:6px;margin-bottom:4px"><b class="grow">' + icon + ' ' + title + (n !== '' ? ' <span class="badge">' + n + '</span>' : '') + '</b>' + (key ? '<button class="btn link small" onclick="IEPX=IEPX===\'' + key + '\'?\'\':\'' + key + '\';drawEF()">' + (IEPX === key ? 'Close' : 'Edit') + '</button>' : '') + '</div>' + body + '</div>'; };
+  var none = function (t) { return '<div class="small" style="display:block;opacity:.65">' + t + '</div>'; };
+  var todo = []; (EF.goals || []).forEach(function (g, k) { if (g.active === false || !(g.text || g.kid || g.name)) return; goalFlags(g).forEach(function (f) { todo.push({ k: k, t: (g.name || 'Goal ' + (k + 1)) + ': ' + f }); }); });
+  var h = '<div style="background:var(--brand-soft);border-radius:14px;padding:14px 16px;margin:4px 0 16px">' +
+    '<div class="row" style="gap:10px;flex-wrap:wrap"><h3 class="grow" style="margin:0">📘 IEP</h3><button class="btn primary" style="font-size:1.05em;padding:10px 18px" onclick="ipOpen(TS_EMAIL)">📋 ' + (empty ? 'Paste this student’s IEP' : 'Paste a new or updated IEP') + '</button></div>' +
+    '<p class="small" style="display:block;margin:6px 0 0">Open the IEP PDF, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it in one box. It fills in the goals, benchmarks, accommodations, testing room and related services. Pasting again replaces them. Names become initials and birthdays are removed before anything is saved.</p>';
+  if (empty) return h + '</div>';
+  if (todo.length) h += '<div style="background:var(--warn-soft);border-radius:10px;padding:8px 12px;margin-top:12px"><b class="small" style="display:block">⚠️ To check (' + todo.length + ')</b>' + todo.slice(0, 8).map(function (x) { return '<div class="small" style="display:block;margin:2px 0"><a href="#" onclick="GI=' + x.k + ';GTE=null;BE=null;BD=null;drawEF();return false">' + esc(x.t) + '</a></div>'; }).join('') + (todo.length > 8 ? '<div class="small" style="display:block">…and ' + (todo.length - 8) + ' more</div>' : '') + '</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px">' +
+    tile('🎯', 'Goals', act.length, act.length ? act.map(function (g) { var k = EF.goals.indexOf(g), f = goalFlags(g).length; return '<div class="small" style="display:block;margin:2px 0"><a href="#" onclick="GI=' + k + ';GTE=null;BE=null;BD=null;drawEF();return false"' + (k === GI ? ' style="font-weight:700"' : '') + '>' + esc(g.name || 'Untitled') + '</a> ' + (f ? '⚠️' : '✅') + (g.here === false ? ' <span style="opacity:.6">(not daily)</span>' : '') + '</div>'; }).join('') : none('No goals yet.'), '') +
+    tile('🧰', 'Accommodations', own ? acc.length : '', own ? acc.slice(0, 5).map(function (a) { return '<div class="small" style="display:block;margin:2px 0">• ' + esc(a) + '</div>'; }).join('') + (acc.length > 5 ? none('…and ' + (acc.length - 5) + ' more') : '') : none('Not from the IEP yet (the student sees the common list).'), 'acc') +
+    tile('🏫', 'Testing room', '', EF.testing ? '<div class="small" style="display:block">' + esc(EF.testing) + '</div>' : none('Not set.'), 'test') +
+    tile('🧩', 'Related services', sv.length || '', sv.length ? svcText(sv).map(function (t) { return '<div class="small" style="display:block;margin:2px 0">• ' + esc(t) + '</div>'; }).join('') : none('None.'), 'svc') + '</div>';
+  if (IEPX === 'acc') h += '<div style="background:var(--card);border-radius:12px;padding:10px 12px;margin-top:10px"><b class="small" style="display:block">🧰 Accommodations, one per line (the student sees these)</b><textarea id="aceT" style="min-height:110px;margin-top:6px" oninput="ACE=this.value">' + esc(acL) + '</textarea>' +
+    '<div class="row" style="margin-top:6px"><button class="btn primary small" onclick="aceSave()">Save</button>' + (own ? '<button class="btn link small" onclick="aceSave(true)">Use the common list instead</button>' : '') + '</div></div>';
+  if (IEPX === 'test') h += '<div class="row" style="gap:8px;margin-top:10px;align-items:flex-end;background:var(--card);border-radius:12px;padding:10px 12px"><label class="grow"><span class="small"><b>🏫 Testing room</b> (the student sees this)</span><input type="text" id="tstT" value="' + esc(EF.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group"></label><button class="btn primary small" onclick="call(\'api_saveTesting\', TS_EMAIL, $(\'tstT\').value).then(function (t) { EF.testing = t; IEPX = \'\'; toast(\'Saved\'); drawEF(); }).catch(oops)">Save</button></div>';
+  if (IEPX === 'svc') h += '<div style="background:var(--card);border-radius:12px;padding:10px 12px;margin-top:10px"><b class="small" style="display:block">🧩 Related services</b><p class="hint" style="margin:4px 0 6px">One per line: service | minutes | day, week or month | notes (optional).</p><textarea id="svcT" style="min-height:70px" placeholder="Social work | 30 | week | group&#10;Special education | 225 | week">' + esc(sv.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
+    '<button class="btn primary small" style="margin-top:6px" onclick="IEPX=\'\';svcSave()">Save services</button></div>';
+  if (ar.length) h += '<details style="margin-top:10px"><summary class="small" style="display:list-item"><b>🧰 After a low score: would an accommodation help?</b> (' + ar.length + ' answer' + (ar.length === 1 ? '' : 's') + ')</summary>' + ar.slice(0, 12).map(function (x) { return '<div class="small" style="display:block;margin:4px 0"><b>' + esc(fmtDay(x.date)) + '</b> · ' + esc(x.about) + ' → ' + (x.picked ? '✅ ' + esc(x.picked) : '❌ No' + (x.why ? ': “' + esc(x.why) + '”' : '')) + '</div>'; }).join('') + '</details>';
+  return h + '</div>' + '<h3 style="margin:0 0 6px">🎯 Goal details</h3>';
+}
 function goalTabs() {
   var l = EF.goals || [GT()], g = GT(), dc = esc(B.dayClass || 'resource');
   var inp = function (lab, id, val, ph, tall, note) { return '<label style="display:block;margin-top:8px"><span class="small"><b>' + lab + '</b>' + (note ? ' ' + note : '') + '</span>' + (tall ? '<textarea id="' + id + '" style="min-height:' + tall + 'px" placeholder="' + esc(ph || '') + '">' + esc(val || '') + '</textarea>' : '<input type="text" id="' + id + '" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '">') + '</label>'; };
   var STU = '<span class="badge up">student sees</span>', STF = '<span class="badge">staff only</span>', PRV = '<span class="badge warn">provisional</span>';
-  var flags = []; if (!g.text) flags.push('Original IEP wording needed'); if (!g.criterion) flags.push('Official criterion not confirmed'); if ((g.ratings || []).filter(String).length < 6) flags.push('Rating descriptions needed'); if (!g.kid) flags.push('“I need to…” needed (the student can’t see this goal yet)'); if (/needs review|proposed/i.test(g.mstatus || '')) flags.push('Measurement: needs review');
+  var flags = goalFlags(g); if (false) flags.push('Original IEP wording needed'); if (!g.criterion) flags.push('Official criterion not confirmed'); if ((g.ratings || []).filter(String).length < 6) flags.push('Rating descriptions needed'); if (!g.kid) flags.push('“I need to…” needed (the student can’t see this goal yet)'); if (/needs review|proposed/i.test(g.mstatus || '')) flags.push('Measurement: needs review');
   return '<div class="seg" style="margin:4px 0 10px;flex-wrap:wrap">' + l.map(function (x, k) {
       return '<button class="' + (k === GI ? 'on' : '') + '" onclick="GI=' + k + ';GTE=null;BE=null;BD=null;drawEF()">' + (x.code ? esc(x.code) + ' · ' : 'Goal ' + (k + 1) + ': ') + esc(x.name || 'Untitled') + (x.active === false ? ' <span style="opacity:.6">(not active)</span>' : '') + '</button>';
     }).join('') + '<button onclick="addGoal()">+ Add a goal</button></div>' +
     (flags.length ? '<div class="small" style="display:block;background:var(--warn-soft);border-radius:10px;padding:6px 10px;margin-bottom:6px">⚠️ ' + flags.map(esc).join(' · ') + '</div>' : '') +
-    '<div class="row" style="gap:12px;align-items:flex-end;flex-wrap:wrap"><label><span class="small"><b>Goal ID</b></span><input type="text" value="' + esc(g.code || '') + '" disabled style="max-width:90px"></label>' +
-      '<label class="grow"><span class="small"><b>Goal title</b> ' + STU + '</span><input type="text" id="gdName" maxlength="80" value="' + esc(g.name || '') + '"></label>' +
-      '<label class="check" style="margin:0 0 6px"><input type="checkbox" id="gdHere"' + (g.here !== false ? ' checked' : '') + '><span>Measured in ' + dc + '</span></label></div>' +
-    inp('I need to… (student words)', 'gdKid', g.kid, 'I need to…', 50, STU) +
-    (g.here === false ? '<div class="small" style="display:block;margin-top:4px;opacity:.8">Not measured in ' + dc + ', so it isn’t in the student’s daily 1–6 check-in (they still see it on their My goals card).</div>' : '') +
-    '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><span class="small"><b>📝 Skill check every two weeks:</b></span><select id="gdSkill" style="max-width:220px">' + [['', 'Automatic (from the goal)'], ['reading', 'Reading'], ['writing', 'Writing'], ['math', 'Math'], ['none', 'None']].map(function (o) { return '<option value="' + o[0] + '"' + ((g.skill || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
-      (function () { var sc = (EF.skillChecks || []).filter(function (x) { return x.goal === g.id; })[0]; return sc ? '<span class="small">now: ' + esc(sc.skillName) + '</span>' : '<span class="small">now: none</span>'; })() + '</div>' +
-    '<details style="margin-top:8px"' + ((g.ratings || []).filter(String).length < 6 ? ' open' : '') + '><summary class="small" style="display:list-item"><b>Rating descriptions for this goal</b> ' + STU + ' <span style="opacity:.75">(1 = had the chance and didn’t; using an accommodation never lowers a rating)</span></summary>' +
+    '<div style="border-left:4px solid var(--line);padding:2px 0 4px 12px;margin-top:6px"><div class="small" style="display:block;font-weight:700;letter-spacing:.03em;opacity:.75">FROM THE IEP ' + STF + '</div>' +
+    inp('Original IEP goal (exactly as written)', 'gdText', g.text, 'Filled in by 📋 Paste this student’s IEP, or paste the goal here.', 70, '<span style="opacity:.75">source of truth</span>') +
+    inp('Official criterion', 'gdCrit', g.criterion, 'For example: 4 of 5 opportunities with no more than 1 prompt', 0, g.criterionAuto ? '<span style="opacity:.75">pulled from the IEP wording: check it, then Save</span>' : '') +
+    ((g.bench || []).length ? '<div style="margin-top:8px"><span class="small"><b>📌 Benchmarks (' + g.bench.length + ')</b></span>' + g.bench.map(function (b, k) { return '<div class="small" style="display:block;margin:4px 0 4px 6px"><b>' + 'ABCDEFGHIJKL'.charAt(k) + '.</b> ' + esc(b.text) + '</div>'; }).join('') + '</div>' : '') + '</div>' +
+    '<div style="border-left:4px solid var(--up);padding:2px 0 4px 12px;margin-top:14px"><div class="small" style="display:block;font-weight:700;letter-spacing:.03em;opacity:.75">WHAT THE STUDENT SEES ' + STU + '</div>' +
+    '<div class="row" style="gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="grow"><span class="small"><b>Goal title</b></span><input type="text" id="gdName" maxlength="80" value="' + esc(g.name || '') + '"></label>' +
+      '<label class="check" style="margin:0 0 6px"><input type="checkbox" id="gdHere"' + (g.here !== false ? ' checked' : '') + '><span>Measured in ' + dc + ' (daily 1–6)</span></label>' + (g.code ? '<span class="small" style="margin-bottom:10px">ID ' + esc(g.code) + '</span>' : '') + '</div>' +
+    inp('I need to… (the translation)', 'gdKid', g.kid, 'I need to…', 50) +
+    (g.here === false ? '<div class="small" style="display:block;margin-top:4px;opacity:.8">Not measured in ' + dc + ', so it isn’t in the student’s daily 1–6 check-in (they still see it on My goals and My IEP).</div>' : '') +
+    '<details style="margin-top:8px"' + ((g.ratings || []).filter(String).length < 6 ? ' open' : '') + '><summary class="small" style="display:list-item"><b>1–6 rating descriptions</b> <span style="opacity:.75">(' + ((g.ratings || []).filter(String).length < 6 ? 'needed' : 'all 6 written') + '; 1 = had the chance and didn’t; using an accommodation never lowers a rating)</span></summary>' +
       [6, 5, 4, 3, 2, 1].map(function (n) { return '<div class="row" style="gap:6px;margin:3px 0"><b style="width:18px">' + n + '</b><input type="text" class="grow" id="gdR' + n + '" maxlength="300" value="' + esc((g.ratings || [])[6 - n] || '') + '" placeholder="' + GCK_MEAN[n] + ' (written for this goal)"></div>'; }).join('') +
-      inp('“I didn’t have a chance” ideas (one per line)', 'gdNo', (g.noIdeas || []).join('\n'), 'No test this week yet.', 44, STU) + '</details>' +
-    inp('Original IEP goal (exactly as written)', 'gdText', g.text, 'Paste the goal from the IEP.', 70, STF + ' <span style="opacity:.75">source of truth</span>') +
-    inp('Official criterion (from the IEP)', 'gdCrit', g.criterion, 'For example: 4 of 5 opportunities with no more than 1 prompt', 0, STF + (g.criterionAuto ? ' <span style="opacity:.75">pulled from the IEP wording: check it, then Save</span>' : '')) +
-    ((g.bench || []).length ? '<div style="margin-top:8px"><span class="small"><b>📌 Benchmarks from the IEP (' + g.bench.length + ')</b> ' + STF + '</span>' + g.bench.map(function (b, k) { return '<div class="small" style="display:block;margin:4px 0 4px 6px"><b>' + 'ABCDEFGHIJKL'.charAt(k) + '.</b> ' + esc(b.text) + '</div>'; }).join('') + '</div>' : '') +
+      inp('“I didn’t have a chance” ideas (one per line)', 'gdNo', (g.noIdeas || []).join('\n'), 'No test this week yet.', 44) + '</details>' +
+    '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><span class="small"><b>📝 Skill check every two weeks:</b></span><select id="gdSkill" style="max-width:220px">' + [['', 'Automatic (from the goal)'], ['reading', 'Reading'], ['writing', 'Writing'], ['math', 'Math'], ['none', 'None']].map(function (o) { return '<option value="' + o[0] + '"' + ((g.skill || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+      (function () { var sc = (EF.skillChecks || []).filter(function (x) { return x.goal === g.id; })[0]; return sc ? '<span class="small">now: ' + esc(sc.skillName) + '</span>' : '<span class="small">now: none</span>'; })() + '</div></div>' +
     '<details style="margin-top:8px"><summary class="small" style="display:list-item"><b>Success, tracking and notes</b> ' + STF + '</summary>' +
       inp('What success looks like', 'gdSucc', g.success, '', 50) + inp('Tracking tool(s)', 'gdTrack', g.track, 'Opportunity Tracker', 0, PRV) + inp('How we track it (proposed measure)', 'gdHow', g.how, '', 60, PRV) +
       inp('Evidence / data source', 'gdLook', g.look, '', 0, PRV) + inp('Measurement notes', 'gdNotes', g.mnotes, '', 50) + inp('Measurement status', 'gdStat', g.mstatus, 'Proposed — needs review / Confirmed') +
@@ -9411,8 +9445,12 @@ function accSentences(a) {          // 2.38: "Provide organizers. Provide checkl
 }
 function accClean(list) {
   list = [].concat.apply([], list.map(accSentences));
-  return list.map(function (a) { return String(a).replace(/\s+(?:[A-Z]\.){1,3}\s*$/, '').replace(/^\s*(?:[A-Z]\.){1,3}\s+/, '').trim(); }).filter(function (a) {
+  return list.map(function (a) { return noBday(String(a).replace(/\b(?:Conference|Meeting|IEP|Review)?\s*Date\s*:?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/gi, '')).text.replace(/\s+[A-Z]\.,?\s*(?:[A-Z]\.?,?\s*){0,2}$/, '').replace(/^\s*(?:[A-Z]\.,?\s*){1,3}\s+(?=[A-Z])/, '').trim(); }).filter(function (a) {
     if (!a || /^(?:[A-Z]\.\s?){1,3}$/.test(a)) return false;
+    if (/^[A-Z.,\s'’-]{1,16}$/.test(a) && /[A-Z]\./.test(a)) return false;          // 2.39: "D., E.D." and other bare initials
+    if (/^(?:student|name|conference|meeting|page|lyons|case manager|parent|guardian|dob|date)\b/i.test(a)) return false;          // footer or header bits
+    if (/^[A-Z][a-z'’-]+,\s*[A-Z][a-z'’-]+(?:\s+[A-Z]\.?)?$/.test(a)) return false;          // "Smith, Eli"
+    if (!ACC_WORDS.test(a) && a.split(/\s+/).length <= 3 && /^[A-Z]/.test(a) && !/[a-z]{4,}\s+[a-z]/.test(a)) return false;          // a short capitalized phrase with no accommodation word
     if (/^[A-Z][a-z'’-]+(?:,?\s+[A-Z][a-z'’.-]*){1,2}$/.test(a) && !ACC_WORDS.test(a)) return false;          // "Jane Smith", "Smith, Jane"
     return !/\bpage\s+\d+\s+of\s+\d+\b/i.test(a);
   });
