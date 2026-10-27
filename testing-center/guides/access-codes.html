@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="How teachers keep their test access codes in one Google Doc that the Testing Center can open.">
+<title>Access-code doc</title><link rel="icon" type="image/png" sizes="512x512" href="../../img/logo-512.png"><link rel="apple-touch-icon" href="../../img/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* One-page printable guide for the LTHS Testing Center. Same tokens as ../index.html (the tour). */
+:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #e9edf6; --ok: #1a7f4b;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); }
+.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1, h2 { font-family: var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: var(--brand); margin-bottom: 4px; }
+p { margin: 0; }
+a { color: var(--brand); }
+.mark { background: linear-gradient(transparent 55%, var(--mark) 55%); padding: 0 .1em; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top a { font-size: .88rem; font-weight: 500; text-decoration: none; }
+.lead { color: var(--soft); margin: 8px 0 16px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.box.wide { grid-column: 1 / -1; }
+ol, ul { margin: 0; padding-left: 1.25em; }
+li { margin: 2px 0; }
+b.btn { font-weight: 600; background: var(--shot-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.tip { margin-top: 12px; font-size: .88rem; color: var(--soft); border-left: 3px solid var(--ok); padding-left: 10px; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; vertical-align: -.05em; margin-right: 2px; }
+.foot { margin-top: 14px; font-size: .78rem; color: var(--soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+@page { size: letter; margin: .4in; }
+@media print {
+  :root, :root[data-theme="dark"] { --bg: #fff; --card: #fff; --ink: #000; --soft: #333; --line: #bbb; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #eef1f7; --ok: #1a7f4b; color-scheme: light; }
+  body { background: #fff; color: #000; font-size: 9.6pt; line-height: 1.36; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: none; padding: 0; }
+  h1 { font-size: 20pt; } h2 { font-size: 10.5pt; }
+  .lead { margin: 4px 0 8px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .box { padding: 6px 9px; border-radius: 8px; break-inside: avoid; }
+  .top { margin-bottom: 4px; } .top a, .noprint { display: none; }
+  .tip { margin-top: 7px; } .foot { margin-top: 7px; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="top"><span class="eyebrow">LTHS Testing Center &middot; for teachers</span><a href="./">&larr; All guides</a></div>
+<h1>Your access-code doc</h1>
+<p class="lead">One Google Doc where you keep the access codes for your online tests. You share it with the Testing Center <b>once</b> and add it to the Testing Center app <b>once</b>. After that, whenever one of your students comes to test, the Testing Center opens your doc and finds the code. <span class="mark">No more emailing codes for each student.</span></p>
+<div class="grid">
+<div class="box"><h2>What it is</h2><ul><li>A Google Doc with a table: class, test, access code, where the test is (Canvas, lockdown browser, AP Classroom…), how long it's open, and notes.</li><li>It's yours. You edit it whenever a code changes; the Testing Center always sees the newest version.</li><li>Students never see it. In the app it shows only to Testing Center staff.</li></ul></div>
+<div class="box"><h2>1. Make your copy</h2><ol><li>Open the template link (in the app: <b class="btn">My classes</b> › Standing resources › <b class="btn">Make my copy of the template</b>).</li><li>Click <b class="btn">Make a copy</b>.</li><li>Rename it, for example <i>Ms. Gibbons — access codes</i>.</li><li>Fill in a row for each test that has a code. Delete the example row.</li></ol></div>
+<div class="box"><h2>2. Share it with the Testing Center</h2><ol><li>In your doc, click <b class="btn">Share</b> (top right).</li><li>Type the Testing Center's Google account (ask the Testing Center for it).</li><li>Choose <b class="btn">Viewer</b>, uncheck <b>Notify people</b> if you like, and click <b class="btn">Share</b>.</li><li>Leave <b>General access</b> as <b>Restricted</b>. Never share it with students or post it in Canvas.</li></ol></div>
+<div class="box"><h2>3. Add it to the Testing Center app (once)</h2><ol><li>Copy the doc's address from the address bar.</li><li>In the app: <b class="btn">My classes</b> › Standing resources › <b class="btn">+ Add</b>.</li><li>Type: <b>Live Google Doc with access codes</b>. Name: <i>My access codes</i>. Paste the link.</li><li>Pick <b>All my classes</b> (or only the classes it covers) and click <b class="btn">Save</b>.</li></ol></div>
+<div class="box wide"><h2>How it works after that</h2><ul><li>When your student books, the Testing Center sees your doc on that appointment under <b>Access the test</b>, with an <b class="btn">Open</b> button.</li><li>The test shows <b>Check</b> (amber) instead of <b>Needs info</b> (red) on your tracker: the code is probably in your doc. Fill in the testing form if anything else is special (time limit, calculator, notes).</li><li>Change a code? Just edit your doc. Nothing to re-add or resend. Starting a new school year? Keep the same doc and update it, or make a fresh copy and swap the link in Standing resources.</li></ul></div>
+</div>
+<p class="tip">Already keep codes somewhere else? Any Google Doc or Sheet works the same way: share it with the Testing Center as Viewer and add its link as a standing resource.</p>
+<div class="foot"><span>LTHS Testing Center &middot; sign in with your school Google account</span><span><a href="teachers.html">Teacher guide</a> &middot; <a href="../">Tour and demo</a></span></div>
+</main>
+</body>
+</html>
