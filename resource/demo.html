@@ -491,7 +491,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.58'
+var VERSION = '2.59'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -501,7 +501,7 @@ var TABS = {
   Classes: ['Email', 'Period', 'Class', 'Teacher', 'Resource (no grade)', 'Order', 'Teacher email', 'Level', 'No grade (lunch, study)', 'Entered by'],
   Grades: ['Week of', 'Email', 'Class', 'Grade', 'Updated', 'Why it is low', 'Plan to improve', 'Plan details', 'Missing (how many)', 'Missing assignments', 'My plan', 'Entered by'],
   Plans: ['Week of', 'Email', 'Focus classes', 'Steps', 'Need help with', "Followed last week's plan?", 'Looking back', 'Updated', 'Teacher check', 'Talked to a teacher'],
-  Tests: ['ID', 'Email', 'Class', 'Date', 'What', 'Type', 'Done', 'Added', 'Reminder sent', 'Accommodations'],
+  Tests: ['ID', 'Email', 'Class', 'Date', 'What', 'Type', 'Done', 'Added', 'Reminder sent', 'Accommodations', 'Points', 'Summative or formative'],          // 2.59: points and category, for 🎯
   'Accommodation plan': ['Email', 'Class', 'Accommodations', 'Updated'],
   'Related services': ['Email', 'Service', 'Minutes', 'Per', 'Notes', 'Updated'],
   'Future research': ['Date', 'Email', 'Goal ID', 'What I looked at', 'What I learned', 'Saved'],
@@ -531,7 +531,8 @@ var TABS = {
   'Assignments': ['ID', 'Email', 'Class', 'Assignment', 'Due', 'Done', 'Added', 'Done on'],          // 2.53: the students' own assignment tracker (🧰 My tools)
   'Said turned in': ['Date', 'Email', 'Class', 'Assignment'],
   'Assignment notes': ['Test ID', 'Email', 'What it needs', 'Saved'],
-  'Grade categories': ['Email', 'Class', 'Categories', 'Pasted'],          // 2.58: each class's summative / formative points from the last pasted detailed page (for 🎯 What will it do to my grade)          // 2.56: the Assignment Decoder's notes for a project (product, checklist, rubric, questions)
+  'Grade categories': ['Email', 'Class', 'Categories', 'Pasted'],
+  'Questions': ['ID', 'Email', 'Class', 'Question', 'Remind me', 'Added', 'Asked', 'Answer', 'Test ID'],          // 2.59: ❓ questions a student wants to ask a teacher (reminded at the start or end of that class)          // 2.58: each class's summative / formative points from the last pasted detailed page (for 🎯 What will it do to my grade)          // 2.56: the Assignment Decoder's notes for a project (product, checklist, rubric, questions)
   'IXL plans': ['Email', 'Weekly goal', 'Minutes or questions', 'On', 'Updated'],          // 2.56: the teacher's weekly IXL goal for a student
   'IXL log': ['When', 'Email', 'Week of', 'Amount', 'Minutes or questions'],          // 2.56: what the student says they did (self-report)
   'IXL weeks': ['Week of', 'Email', 'Planned day', 'Note', 'Updated'],          // 2.53: "I turned it in" on a missing assignment (until Infinite Campus shows it)          // 2.53: every time a student uses a 🧰 tool (for executive functioning data)
@@ -584,7 +585,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29, escort: 30 };   // Students columns
-var TEXT_COLS = { 'Grade categories': [1, 2, 3, 4], 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Questions': [1, 3, 4, 5, 6, 7, 8, 9], 'Grade categories': [1, 2, 3, 4], 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -812,7 +813,7 @@ function setup_() {
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Hall passes', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
-  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'Grade categories', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
+  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'Grade categories', 'Questions', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
 ];
@@ -1220,6 +1221,39 @@ function api_saveTest(t) {
   });
 }
 
+// 2.59: how many points a test or project is worth, and whether it's a summative or a formative (asked of the teacher)
+function api_saveTestInfo(id, points, cat) {
+  var email = need_(), n = +points > 0 ? Math.round(+points * 100) / 100 : '', c = /^f/i.test(String(cat)) ? 'Formative' : /^s/i.test(String(cat)) ? 'Summative' : '';
+  return locked_(function () { var rows = rows_('Tests'), i = find_(rows, function (r) { return String(r[0]) === String(id) && low_(r[1]) === email; }); if (i < 0) throw new Error('That test is not on your list.'); sheet_('Tests').getRange(i + 2, 11, 1, 2).setValues([[n === '' ? (rows[i][10] || '') : n, c || rows[i][11] || '']]); return fresh_(email); });
+}
+// 2.59: ❓ questions for a teacher. Remind me: 'start' / 'end' of that class (needs Bell times) or 'open' (whenever the app is open)
+function questions_(email) { return rows_('Questions').filter(function (r) { return low_(r[1]) === email && (!String(r[6] || '') || day_(r[6]) >= addDaysIso_(today_(), -14)); }).map(function (r) { return { id: String(r[0]), cls: String(r[2] || ''), q: String(r[3] || ''), when: String(r[4] || 'open'), added: day_(r[5]), asked: day_(r[6]), answer: String(r[7] || ''), test: String(r[8] || '') }; }); }
+function api_questions() { return questions_(need_()); }
+function api_saveQuestion(o) {
+  var email = need_(); o = o || {}; var q = clean_(o.q, 300), cls = clean_(o.cls, 80), when = /^(start|end|open)$/.test(String(o.when)) ? o.when : 'open';
+  if (!q) throw new Error('Type your question.');
+  return locked_(function () {
+    if (rows_('Questions').filter(function (r) { return low_(r[1]) === email && !String(r[6] || ''); }).length >= 30) throw new Error('You have 30 questions waiting. Mark some as asked first.');
+    sheet_('Questions').appendRow(['q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), email, cls, q, when, today_(), '', '', clean_(o.test, 40)]);
+    toolLog_(email, 'Ask my teacher', 'Wrote a question' + (cls ? ' for ' + cls : '') + ' (remind: ' + when + ')');
+    if (ROWS_MEMO) delete ROWS_MEMO['Questions']; return questions_(email);
+  });
+}
+// They asked it: the answer is kept; a points answer for a test is saved on that test
+function api_answerQuestion(id, answer, points, cat) {
+  var email = need_();
+  locked_(function () {
+    var rows = rows_('Questions'), i = find_(rows, function (r) { return String(r[0]) === String(id) && low_(r[1]) === email; }); if (i < 0) throw new Error('That question is gone.');
+    sheet_('Questions').getRange(i + 2, 7, 1, 2).setValues([[today_(), clean_(answer, 500)]]);
+    var tid = String(rows[i][8] || '');
+    if (tid && (+points > 0 || cat)) { var tr = rows_('Tests'), j = find_(tr, function (r) { return String(r[0]) === tid && low_(r[1]) === email; }); if (j >= 0) sheet_('Tests').getRange(j + 2, 11, 1, 2).setValues([[+points > 0 ? +points : tr[j][10] || '', /^f/i.test(String(cat)) ? 'Formative' : /^s/i.test(String(cat)) ? 'Summative' : tr[j][11] || '']]); }
+    toolLog_(email, 'Ask my teacher', 'Asked' + (rows[i][2] ? ' in ' + rows[i][2] : '') + ': ' + String(rows[i][3]).slice(0, 80));
+    return true;
+  });
+  var had = ROWS_MEMO; ROWS_MEMO = {};          // read after the writes
+  try { return { questions: questions_(email), data: studentData_(email) }; } finally { ROWS_MEMO = had; }
+}
+function api_deleteQuestion(id) { var email = need_(); return locked_(function () { rewrite_('Questions', function (r) { return !(String(r[0]) === String(id) && low_(r[1]) === email); }); return questions_(email); }); }
 function api_testDone(id, done) {
   var email = need_();
   return locked_(function () {
@@ -4478,7 +4512,7 @@ function api_cardScore(id, pct, mode, n) {
   });
 }
 // Any other tool: one line on the Tool use tab (the teacher sees the counts on the student's page)
-var TOOLS_OK = ['Dictate', 'Start here', 'Assignment decoder', 'Study plan', 'Writing toolkit', 'IXL', 'Assignment tracker', 'Missing work', 'Flashcards', 'Project helper', 'Add a date', 'What do I need', 'Email my teacher', 'Read it to me', 'Links', 'Calculator', 'Focus timer', 'ClassLink'];
+var TOOLS_OK = ['Ask my teacher', 'Dictate', 'Start here', 'Assignment decoder', 'Study plan', 'Writing toolkit', 'IXL', 'Assignment tracker', 'Missing work', 'Flashcards', 'Project helper', 'Add a date', 'What do I need', 'Email my teacher', 'Read it to me', 'Links', 'Calculator', 'Focus timer', 'ClassLink'];
 function toolLog_(email, tool, detail) { sheet_('Tool use').appendRow([stamp_(), email, tool, clean_(detail, 200)]); }
 function api_logTool(tool, detail) {
   var email = need_(); if (isTeacher_(email) || TOOLS_OK.indexOf(String(tool)) < 0) return false;
@@ -4490,7 +4524,8 @@ function toolStats_(email) {
   rows_('Tool use').forEach(function (r) { if (low_(r[1]) !== email || String(r[0]).slice(0, 10) < sem) return; var t = String(r[2]); by[t] = (by[t] || 0) + 1; n++; });
   var sets = cardRows_(email).map(cardSet_), scored = sets.filter(function (s) { return s.best !== null; });
   var as = rows_('Assignments').filter(function (r) { return low_(r[1]) === email && day_(r[6]) >= sem; }), asDone = as.filter(function (r) { return r[5] === true; }), asOnTime = asDone.filter(function (r) { return !r[4] || day_(r[7]) <= day_(r[4]); });
-  return { n: n, by: by, sets: sets.length, assignments: as.length, assignDone: asDone.length, assignOnTime: asDone.length ? Math.round(asOnTime.length / asDone.length * 100) : null, best: scored.length ? Math.round(scored.reduce(function (a, s) { return a + s.best; }, 0) / scored.length) : null,
+  var qs = rows_('Questions').filter(function (r) { return low_(r[1]) === email && day_(r[5]) >= sem; });
+  return { questions: qs.length, asked: qs.filter(function (r) { return String(r[6] || ''); }).length, n: n, by: by, sets: sets.length, assignments: as.length, assignDone: asDone.length, assignOnTime: asDone.length ? Math.round(asOnTime.length / asDone.length * 100) : null, best: scored.length ? Math.round(scored.reduce(function (a, s) { return a + s.best; }, 0) / scored.length) : null,
     recent: rows_('Tool use').filter(function (r) { return low_(r[1]) === email; }).slice(-8).reverse().map(function (r) { return { when: String(r[0]), tool: String(r[2]), detail: String(r[3] || '') }; }) };
 }
 // 2.53: "1 = 7:45-8:35; 2 = 8:41-9:31" → [{ p: '1', start: '07:45', end: '08:35' }] (12-hour times after 6 are taken as PM: 1:05 → 13:05)
@@ -5170,7 +5205,7 @@ function studentData_(email) {
   var plans = rows_('Plans').filter(function (r) { return low_(r[1]) === email; }).map(plan_)
     .sort(function (a, b) { return a.week < b.week ? 1 : -1; });
   var tests = rows_('Tests').filter(function (r) { return low_(r[1]) === email; })
-    .map(function (r) { return { id: String(r[0]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]), done: r[6] === true, accoms: String(r[9] || '').split(';').map(function (x) { return x.trim(); }).filter(String) }; })
+    .map(function (r) { return { id: String(r[0]), cls: String(r[2]), date: day_(r[3]), what: String(r[4]), type: String(r[5]), done: r[6] === true, accoms: String(r[9] || '').split(';').map(function (x) { return x.trim(); }).filter(String), points: +r[10] > 0 ? +r[10] : null, cat: String(r[11] || '') }; })
     .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   var analyses = {};
   rows_('Class analysis').forEach(function (r) {
@@ -7337,7 +7372,7 @@ function toolLog(tool, detail, once) { if (MODE !== 'student' || (B && B.preview
 function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' = My work and plans, 'quick' = Quick tools
   var l = [['tracker', '📝', 'My assignments', 'Keep track of homework in every class', 'work'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do', 'work'],
     ['project', '🔍', 'Assignment Decoder', 'What it needs, how it’s graded, and a plan', 'work'], ['date', '📅', 'Add a test or project', 'Countdown, reminders and a study plan', 'work'],
-    ['need', '🎯', 'What will it do to my grade?', 'The score you need, or what a score would do', 'work'], ['ixl', '📈', 'My IXL', 'This week’s IXL goal', 'work'],
+    ['need', '🎯', 'What will it do to my grade?', 'The score you need, or what a score would do', 'work'], ['ixl', '📈', 'My IXL', 'This week’s IXL goal', 'work'], ['ask', '❓', 'Questions for my teacher', 'Write it down; get reminded in class', 'work'],
     ['hallpass', '🚻', 'Hall pass', 'Take a pass, or get in line', 'quick'], ['classlink', '🏫', 'ClassLink', 'All your school apps in one place', 'quick'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself', 'quick'],
     ['dictate', '🎤', 'Dictate', 'Talk, and it types. Then copy it.', 'quick'], ['write', '✍️', 'Writing toolkit', 'Paragraphs, CER, thesis, citations, proofreading', 'quick'], ['email', '✉️', 'Email my teacher', 'Ready-made emails you fill in', 'quick'],
     ['read', '🔊', 'Read it to me', 'Paste text or a PDF and listen', 'quick'], ['links', '🔗', 'My links', 'IXL, SchooLinks, Drop-In Centers…', 'quick']];
@@ -7348,6 +7383,7 @@ function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' =
 function drawTools() {
   if (AS === null && !AS_BUSY) { AS_BUSY = true; call('api_assignments').then(function (r) { AS = r; AS_BUSY = false; if (VIEW === 'tools') drawTools(); }).catch(function () { AS = { list: [], said: [] }; AS_BUSY = false; }); }
   if (B.ixlOn && IXL === null) { IXL = false; ixlLoad(); }
+  if (QS === null) qsLoad();
   var t = toolList(), tile = function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b><span class="small">' + x[3] + '</span></button>'; };
   var hp = B.hallPass && typeof HP !== 'undefined' && HP && HP.mine ? '<div class="card" style="margin:0 0 12px;border-color:var(--warn);background:var(--warn-soft)"><div class="row"><b class="grow">🚻 You’re out on a pass (' + esc(HP.mine.place || '') + ')</b><button class="btn primary" onclick="hpOpen()">I’m back</button></div></div>' : '';
   var h = '<h1>🧰 My tools</h1><p class="sub">' + (stepDone('plan') ? 'You’re checked in for today ✓ Let’s get something done.' : 'Finish <a href="#" onclick="go(\'checkin\');return false">Today</a> first, then come back here.') + '</p>' + hp + toolsTop() +
@@ -7366,7 +7402,7 @@ function toolOpen(k) {
 }
 function toolDraw() {
   var el = $('toolBox'); if (!el) return;
-  var f = { dictate: dcHtml, ixl: ixlHtml, write: wrHtml, tracker: trHtml, missing: msHtml, cards: fcHtml, project: pjtHtml, date: dtHtml, need: ndHtml, email: emHtml, read: rdHtml, links: lkHtml }[TOOL];
+  var f = { ask: qsHtml, dictate: dcHtml, ixl: ixlHtml, write: wrHtml, tracker: trHtml, missing: msHtml, cards: fcHtml, project: pjtHtml, date: dtHtml, need: ndHtml, email: emHtml, read: rdHtml, links: lkHtml }[TOOL];
   el.innerHTML = f ? '<div class="card" style="border:2px solid var(--brand)">' + f() + '</div>' : '';
   if (TOOL === 'cards' && FC.sets === null) fcLoad();
   if ((TOOL === 'tracker' || TOOL === 'missing') && AS === null) asLoad();
@@ -7573,22 +7609,32 @@ function catNeed(sf, k, pts, target) {          // the score (out of pts) that m
   if (f(0) >= target) return 0; if (f(hi) < target) return Infinity;
   for (var n = 0; n < 60; n++) { var mid = (lo + hi) / 2; if (f(mid) >= target) hi = mid; else lo = mid; } return hi;
 }
-var ND = { cls: '', kind: '', pts: '', goal: '', score: '' };
+var ND = { cls: '', kind: '', pts: '', goal: '', score: '', test: '' };
 function ndHtml() {
   var cl = graded(); if (!ND.cls && cl[0]) ND.cls = cl[0].name;
   var ent = (D.cats || {})[ND.cls], today = ent && ent.date === B.today;
   var h = '<h2>🎯 What will it do to my grade?</h2><p class="hint" style="margin:4px 0 8px">Uses the scores on your class’s Infinite Campus page. At LTHS, <b>summatives</b> (tests, quizzes, projects) count for <b>90%</b> of your grade and <b>formatives</b> (homework, classwork, practice) for <b>10%</b>.</p>' +
-    '<select id="ndC" style="max-width:260px" onchange="ND.cls=this.value;toolDraw()">' + cl.map(function (c) { return '<option' + (c.name === ND.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
+    '<select id="ndC" style="max-width:260px" onchange="ND.cls=this.value;ND.test=\'\';toolDraw()">' + cl.map(function (c) { return '<option' + (c.name === ND.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
   if (!today) h += '<div class="em-prev" style="margin-top:10px"><b>' + (ent ? 'First, paste today’s page for ' + esc(ND.cls) : 'Paste ' + esc(ND.cls) + '’s page first') + '</b><div class="small" style="display:block;margin:2px 0 4px">' + (ent ? 'Your last paste was ' + esc(fmtDay(ent.date)) + '. Pasting today’s page makes sure the math uses your newest scores.' : 'The app adds up your summative and formative points from it.') + ' In Infinite Campus, open Grades and click ' + esc(ND.cls) + '.</div>' + pasteHow('class') +
     '<textarea id="ndP" rows="2" placeholder="Paste ' + esc(ND.cls) + '’s page here (Ctrl + V)" onpaste="setTimeout(ndPaste,30)"></textarea>' + (ent ? '<button class="btn link small" onclick="ND.useOld=ND.cls;toolDraw()">Use my ' + esc(fmtDay(ent.date)) + ' scores instead</button>' : '') + '</div>';
   if (!ent || (!today && ND.useOld !== ND.cls)) return h;
   var sf = catSF(ent), now = catGrade(sf);
   h += '<p style="margin:12px 0 6px">' + (today ? '✓ Using today’s page. ' : 'Using your ' + esc(fmtDay(ent.date)) + ' page. ') + 'Your grade now: <b>' + (now === null ? '?' : Math.round(now * 10) / 10 + '% (' + letter(now) + ')') + '</b> <span class="small" style="display:inline">· summative ' + (sf.s.q ? Math.round(sf.s.e / sf.s.q * 1000) / 10 + '% (' + sf.s.e + '/' + sf.s.q + ')' : 'none yet') + ' · formative ' + (sf.f.q ? Math.round(sf.f.e / sf.f.q * 1000) / 10 + '% (' + sf.f.e + '/' + sf.f.q + ')' : 'none yet') + '</span></p>' +
-    '<p style="margin:10px 0 4px"><b>Is it a summative or a formative?</b> <span class="small" style="display:inline">(needed)</span></p><div class="seg">' + [['s', 'Summative (test, quiz, project) · 90%'], ['f', 'Formative (homework, classwork) · 10%']].map(function (o) { return '<button class="' + (ND.kind === o[0] ? 'on' : '') + '" onclick="ND.kind=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' +
+    ndTestPick() + '<p style="margin:10px 0 4px"><b>Is it a summative or a formative?</b> <span class="small" style="display:inline">(needed)</span></p><div class="seg">' + [['s', 'Summative (test, quiz, project) · 90%'], ['f', 'Formative (homework, classwork) · 10%']].map(function (o) { return '<button class="' + (ND.kind === o[0] ? 'on' : '') + '" onclick="ND.kind=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' +
     '<div class="row" style="gap:8px;margin-top:10px;align-items:center"><b>How many points is it worth?</b><input type="number" min="1" step="any" style="max-width:100px" placeholder="100" value="' + esc(ND.pts) + '" oninput="ND.pts=this.value;ndOut()"> <span class="small">(ask your teacher or check Canvas if you’re not sure)</span></div>' +
     '<div id="ndOut">' + ndOutHtml() + '</div>';
   return h;
 }
+function ndTestPick() {
+  var ts = (D.tests || []).filter(function (t) { return !t.done && t.cls === ND.cls && t.date >= B.today; }); if (!ts.length) return '';
+  var t = ts.filter(function (x) { return x.id === ND.test; })[0];
+  return '<div class="row" style="gap:8px;margin-top:10px;align-items:center"><b>Which one?</b><select style="max-width:280px" onchange="ndPick(this.value)"><option value="">Something not on my list</option>' + ts.map(function (x) { return '<option value="' + x.id + '"' + (x.id === ND.test ? ' selected' : '') + '>' + esc(x.what) + ' (' + esc(shortDay(x.date)) + ')' + (x.points ? ' · ' + x.points + ' pts' : '') + '</option>'; }).join('') + '</select></div>' +
+    (t && !t.points ? '<div class="em-prev" style="margin-top:6px">Don’t know how many points ' + esc(t.what) + ' is worth? <button class="btn small" onclick="ndAsk()">❓ Remind me to ask at the start of class</button></div>' : '') +
+    (t && ND.pts && +ND.pts !== t.points ? '<button class="btn link small" onclick="ndSavePts()">💾 Save ' + esc(ND.pts) + ' points' + (ND.kind ? ' (' + (ND.kind === 's' ? 'summative' : 'formative') + ')' : '') + ' on ' + esc(t.what) + '</button>' : '');
+}
+function ndPick(id) { ND.test = id; var t = (D.tests || []).filter(function (x) { return x.id === id; })[0]; if (t) { if (t.points) ND.pts = String(t.points); if (t.cat) ND.kind = t.cat === 'Formative' ? 'f' : 's'; else if (/^(Test|Quiz|Project|Essay|Presentation|Lab)$/.test(t.type)) ND.kind = ND.kind || 's'; } toolDraw(); }
+function ndAsk() { var t = (D.tests || []).filter(function (x) { return x.id === ND.test; })[0]; if (!t) return; call('api_saveQuestion', { cls: ND.cls, q: 'How many points is the ' + t.what + ' worth, and is it a summative or a formative?', when: 'start', test: t.id }).then(function (l) { QS = l; toast('Saved. You’ll get a reminder at the start of ' + ND.cls + '.'); qsNotifyAsk(); toolDraw(); }).catch(oops); }
+function ndSavePts() { call('api_saveTestInfo', ND.test, ND.pts, ND.kind).then(function (d) { D = d; toast('Saved on your list'); toolDraw(); }).catch(oops); }
 function ndPaste() {
   var t = $('ndP') ? $('ndP').value : '', p = parseClassGrades(t);
   if (!p.items.length) { $('ndP').value = ''; return alert('That’s not one class’s page with its assignments. In Infinite Campus, open Grades and click ' + ND.cls + ' so its assignments and scores show, then copy from the class title down to the last assignment.'); }
@@ -7771,6 +7817,7 @@ function comingItems() {
   if (AS) { var due = AS.list.filter(function (a) { return !a.done && a.due && a.due <= tm; }); if (due.length) out.push({ ic: '📝', h: due.length + ' assignment' + (due.length === 1 ? '' : 's') + ' due by tomorrow', sub: esc(due[0].what) + ' <a href="#" onclick="toolGo(\'tracker\');return false">Open</a>', warn: due.some(function (a) { return a.due < B.today; }) }); }
   var ml = missLeft(); if (ml.length) out.push({ ic: '📌', h: ml.length + ' missing', sub: '<a href="#" onclick="toolGo(\'missing\');return false">See them</a>', warn: ml.length > 3 });
   if (IXL && !IXL.met) out.push({ ic: '📈', h: 'IXL: ' + IXL.total + ' of ' + IXL.target + ' ' + IXL.unit, sub: (IXL.target - IXL.total) + ' left this week' + (IXL.lastDay ? ' · <b>last day!</b>' : '') + ' <a href="#" onclick="toolGo(\'ixl\');return false">Open</a>', warn: IXL.lastDay });
+  var oq = (QS || []).filter(function (q) { return !q.asked; }); if (oq.length) out.push({ ic: '❓', h: oq.length + ' question' + (oq.length === 1 ? '' : 's') + ' to ask', sub: esc(oq[0].cls ? oq[0].cls + ': ' : '') + esc(oq[0].q.length > 50 ? oq[0].q.slice(0, 47) + '…' : oq[0].q) + ' <a href="#" onclick="toolGo(\'ask\');return false">Open</a>', warn: false });
   if (B.checkOwn && F('checklist') && isSchoolDay() && !clDone()) out.push({ ic: '✅', h: 'My checklist', sub: clCount() + ' done · <a href="#" onclick="go(\'checkin\');stepGo(\'check\');return false">Do it</a>', warn: false });
   return out;
 }
@@ -7936,6 +7983,73 @@ function dcToggle() {
   try { r.start(); DC.on = true; toolLog('Dictate', DC.lang, true); toolDraw(); } catch (e) { DC.err = 'Dictation didn’t start. Try again, or use Search + D (below).'; toolDraw(); }
 }
 function dcCopy() { var t = $('dcT') ? $('dcT').value : DC.text; if (!t.trim()) return alert('Say something first.'); try { navigator.clipboard.writeText(t); toast('Copied. Paste it into your assignment (Ctrl + V).'); } catch (e) { $('dcT').select(); alert('Press Ctrl + C to copy.'); } }
+
+/* ❓ Questions for my teacher: write it when you think of it; a reminder at the start or end of that class (Settings: Bell times),
+   or whenever the app is open. The answer is kept, and a points answer for a test goes on that test (for 🎯). Counts as self-advocacy. */
+var QS = null, QF = { cls: '', q: '', when: 'start', test: '' }, QA = null;
+function qsLoad() { QS = []; call('api_questions').then(function (l) { QS = l; if (VIEW === 'tools') drawTools(); }).catch(function () {}); }
+function qsTeacher(cls) { var c = (D.classes || []).filter(function (x) { return x.name === cls; })[0]; return c ? (emTeacher(c) || String(c.teacher || '').split(' / ')[0] || 'your teacher') : 'your teacher'; }
+function qsIdeas(cls) {
+  var out = [], ts = (D.tests || []).filter(function (t) { return !t.done && t.cls === cls && t.date >= B.today; });
+  ts.slice(0, 2).forEach(function (t) { if (!t.points) out.push({ q: 'How many points is the ' + t.what + ' worth?', test: t.id }); if (!t.cat) out.push({ q: 'Is the ' + t.what + ' a summative or a formative?', test: t.id }); });
+  (D.retakes || []).filter(function (r) { return r.cls === cls && r.status !== 'Done' && r.eligible !== 'No'; }).slice(0, 1).forEach(function (r) { out.push({ q: 'Can I retake ' + r.test + '? When?', test: '' }); });
+  missLeft().filter(function (m) { return m.cls === cls; }).slice(0, 1).forEach(function (m) { out.push({ q: 'Can I still turn in ' + m.name + '?', test: '' }); });
+  out.push({ q: 'What will be on the next test?', test: '' }, { q: 'Can you explain ___ again?', test: '' });
+  return out.slice(0, 6);
+}
+function qsHtml() {
+  if (!QF.cls && graded()[0]) QF.cls = graded()[0].name;
+  var open = (QS || []).filter(function (q) { return !q.asked; }), done = (QS || []).filter(function (q) { return q.asked; }), bell = (B.bellTimes || []).length;
+  var W = { start: 'at the start of class', end: 'at the end of class', open: 'whenever the app is open' };
+  var row = function (q) {
+    var t = q.test && (D.tests || []).filter(function (x) { return x.id === q.test; })[0];
+    return '<div class="tr-row" style="flex-wrap:wrap"><span class="grow"><b>' + esc(q.q) + '</b> <span class="small" style="display:inline">' + esc(q.cls || 'any class') + ' · remind me ' + W[q.when] + '</span></span>' +
+      (QA === q.id ? '' : '<button class="btn small primary" onclick="QA=\'' + q.id + '\';toolDraw()">✓ I asked</button><button class="btn link danger small" onclick="qsDel(\'' + q.id + '\')">✕</button>') +
+      (QA === q.id ? '<div style="width:100%;margin-top:6px"><input type="text" id="qaT" maxlength="500" placeholder="What did ' + esc(qsTeacher(q.cls)) + ' say?">' + (t ? '<div class="row" style="gap:8px;margin-top:6px;align-items:center"><span class="small">' + esc(t.what) + ' is worth</span><input type="number" id="qaP" min="1" step="any" style="max-width:90px" value="' + (t.points || '') + '"><span class="small">points ·</span><select id="qaC" style="max-width:150px"><option value="">summative or formative?</option><option value="s"' + (t.cat === 'Summative' ? ' selected' : '') + '>Summative</option><option value="f"' + (t.cat === 'Formative' ? ' selected' : '') + '>Formative</option></select></div>' : '') +
+        '<div class="row" style="gap:8px;margin-top:6px"><button class="btn primary small" onclick="qsAnswer(\'' + q.id + '\')">Save</button><button class="btn link small" onclick="QA=null;toolDraw()">Cancel</button></div></div>' : '') + '</div>';
+  };
+  return '<h2>❓ Questions for my teacher</h2><p class="hint" style="margin:4px 0 8px">Thought of something to ask? Write it down now and the app reminds you in that class. Asking for what you need is a big part of your goals.</p>' +
+    '<div class="row" style="gap:8px"><select id="qC" style="max-width:220px" onchange="QF.cls=this.value;QF.test=\'\';toolDraw()">' + (D.classes || []).filter(function (c) { return !c.resource; }).map(function (c) { return '<option' + (c.name === QF.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>' +
+    '<select id="qW" style="max-width:240px" onchange="QF.when=this.value">' + ['start', 'end', 'open'].map(function (w) { return '<option value="' + w + '"' + (QF.when === w ? ' selected' : '') + '>Remind me ' + W[w] + '</option>'; }).join('') + '</select></div>' +
+    (!bell && QF.when !== 'open' ? '<p class="small" style="margin:4px 0 0">Class-time reminders start once your teacher adds the bell times. Until then you’ll see it here and on My tools.</p>' : '') +
+    '<div class="row" style="gap:8px;margin-top:8px"><input type="text" id="qQ" class="grow" maxlength="300" placeholder="My question" value="' + esc(QF.q) + '" oninput="QF.q=this.value;QF.test=\'\'" onkeydown="if(event.key===\'Enter\')qsAdd()"><button class="btn primary" onclick="qsAdd()">Add</button></div>' +
+    '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="small">Ideas:</span>' + qsIdeas(QF.cls).map(function (x, i) { return '<button class="btn small" onclick="qsIdea(' + i + ')">' + esc(x.q) + '</button>'; }).join('') + '</div>' +
+    (open.length ? '<p class="small" style="margin:14px 0 2px"><b>To ask (' + open.length + ')</b></p>' + open.map(row).join('') : '<p class="small" style="margin:12px 0 0">No questions waiting.</p>') +
+    (done.length ? '<details style="margin-top:10px"><summary class="small" style="display:list-item"><b>Asked</b> (' + done.length + ')</summary>' + done.map(function (q) { return '<div class="tr-row" style="display:block"><b>' + esc(q.q) + '</b> <span class="small" style="display:inline">' + esc(q.cls) + ' · ' + esc(fmtDay(q.asked)) + '</span>' + (q.answer ? '<div class="small" style="display:block">→ ' + esc(q.answer) + '</div>' : '') + '</div>'; }).join('') + '</details>' : '');
+}
+function qsIdea(i) { var x = qsIdeas(QF.cls)[i]; QF.q = x.q; QF.test = x.test; toolDraw(); var el = $('qQ'); if (el) { el.focus(); var k = el.value.indexOf('___'); if (k >= 0) el.setSelectionRange(k, k + 3); } }
+function qsAdd() {
+  var q = { cls: $('qC') ? $('qC').value : QF.cls, q: ($('qQ') ? $('qQ').value : QF.q).trim(), when: $('qW') ? $('qW').value : QF.when, test: QF.test };
+  if (!q.q) return alert('Type your question.'); if (q.q.indexOf('___') >= 0) return alert('Fill in the ___ first.');
+  call('api_saveQuestion', q).then(function (l) { QS = l; QF.q = ''; QF.test = ''; toast(q.when === 'open' ? 'Saved' : 'Saved. You’ll get a reminder ' + (q.when === 'start' ? 'at the start' : 'at the end') + ' of ' + q.cls + '.'); qsNotifyAsk(); toolDraw(); }).catch(oops);
+}
+function qsAnswer(id) {
+  var a = $('qaT') ? $('qaT').value.trim() : '', pts = $('qaP') ? $('qaP').value : '', cat = $('qaC') ? $('qaC').value : '';
+  call('api_answerQuestion', id, a, pts, cat).then(function (r) { QS = r.questions; D = r.data; QA = null; toast('Nice job asking! 🙌'); toolDraw(); }).catch(oops);
+}
+function qsDel(id) { if (confirm('Delete this question?')) call('api_deleteQuestion', id).then(function (l) { QS = l; toolDraw(); }).catch(oops); }
+function qsNotifyAsk() { try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
+// the reminder: when that class starts (its first 4 minutes) or ends (its last 4 minutes), once a day per question, on any page
+function bellAsk() {
+  if (MODE !== 'student' || !B || B.preview || !(B.bellTimes || []).length || !isSchoolDay() || !QS || !QS.length || $('qsPop')) return;
+  var d = new Date(), now = d.getHours() * 60 + d.getMinutes(), mins = function (t) { return +t.slice(0, 2) * 60 + +t.slice(3); };
+  var due = QS.filter(function (q) {
+    if (q.asked || q.when === 'open') return false;
+    var c = (D.classes || []).filter(function (x) { return x.name === q.cls; })[0], bt = c && (B.bellTimes || []).filter(function (b) { return b.p === String(c.period).toUpperCase(); })[0]; if (!bt) return false;
+    var a = q.when === 'start' ? mins(bt.start) - 1 : mins(bt.end) - 4, b = q.when === 'start' ? mins(bt.start) + 4 : mins(bt.end);
+    if (now < a || now >= b) return false;
+    try { return !localStorage.getItem('rci-q-' + q.id + '-' + B.today); } catch (e) { return true; }
+  });
+  if (!due.length) return;
+  due.forEach(function (q) { try { localStorage.setItem('rci-q-' + q.id + '-' + B.today, '1'); } catch (e) {} });
+  var who = qsTeacher(due[0].cls), el = document.createElement('div'); el.className = 'modal'; el.id = 'qsPop';
+  el.innerHTML = '<div class="card" style="max-width:480px;border:3px solid var(--brand)"><h2>❓ Remember to ask ' + esc(who) + '</h2>' + due.map(function (q) { return '<p style="font-size:18px;margin:8px 0"><b>' + esc(q.q) + '</b></p>'; }).join('') +
+    '<div class="row" style="gap:8px;margin-top:10px"><button class="btn primary" onclick="$(\'qsPop\').remove();QA=\'' + due[0].id + '\';go(\'tools\');toolGo(\'ask\')">I asked: write the answer</button><button class="btn" onclick="$(\'qsPop\').remove()">Got it</button></div></div>';
+  document.body.appendChild(el);
+  try { var ac = new (window.AudioContext || window.webkitAudioContext)(), o = ac.createOscillator(), gn = ac.createGain(); o.frequency.value = 880; gn.gain.value = 0.08; o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.25); } catch (e) {}
+  try { if (window.Notification && Notification.permission === 'granted') new Notification('❓ Ask ' + who, { body: due.map(function (q) { return q.q; }).join(' · ') }); } catch (e) {}
+}
+setInterval(function () { try { if (MODE === 'student' && QS === null && B && !B.preview) qsLoad(); bellAsk(); } catch (e) {} }, 20000);
 
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
@@ -9862,7 +9976,7 @@ function efRows(e) {
     ['Used “Email my teacher” in the app', e.contacts.app + ' this semester', ''],
     ['Said they emailed or talked to a teacher', e.contacts.told + ' this semester', 'Retakes scheduled: ' + e.contacts.retakes],
     ['📈 Weekly IXL (student-reported)', e.ixl ? e.ixl.total + ' of ' + e.ixl.target + ' ' + e.ixl.unit + ' this week' : 'no IXL goal', e.ixl && e.ixl.history.length ? 'Met ' + e.ixl.history.filter(function (h) { return h.met; }).length + ' of the last ' + e.ixl.history.length + ' weeks' : ''],
-    ['🧰 Student tools used', e.tools && e.tools.n ? e.tools.n + ' times this semester' : 'not yet', e.tools ? Object.keys(e.tools.by || {}).map(function (k) { return k + ' ' + e.tools.by[k]; }).join(' · ') + (e.tools.sets ? ' · ' + e.tools.sets + ' flashcard set' + (e.tools.sets === 1 ? '' : 's') + (e.tools.best !== null ? ' (average best ' + e.tools.best + '%)' : '') : '') + (e.tools.assignments ? ' · ' + e.tools.assignments + ' assignments tracked, ' + e.tools.assignDone + ' done' + (e.tools.assignOnTime !== null ? ' (' + e.tools.assignOnTime + '% on time)' : '') : '') : ''],
+    ['🧰 Student tools used', e.tools && e.tools.n ? e.tools.n + ' times this semester' : 'not yet', e.tools ? Object.keys(e.tools.by || {}).map(function (k) { return k + ' ' + e.tools.by[k]; }).join(' · ') + (e.tools.sets ? ' · ' + e.tools.sets + ' flashcard set' + (e.tools.sets === 1 ? '' : 's') + (e.tools.best !== null ? ' (average best ' + e.tools.best + '%)' : '') : '') + (e.tools.assignments ? ' · ' + e.tools.assignments + ' assignments tracked, ' + e.tools.assignDone + ' done' + (e.tools.assignOnTime !== null ? ' (' + e.tools.assignOnTime + '% on time)' : '') : '') + (e.tools.questions ? ' · ' + e.tools.questions + ' questions for teachers written, ' + e.tools.asked + ' asked' : '') : ''],
     ['Daily check-in time (opening the app to Done)', e.dayPlan && e.dayPlan.minutes != null ? 'typically ' + (e.dayPlan.minutes < 1 ? 'under 1' : e.dayPlan.minutes) + ' minutes' : 'not measured yet', 'The middle of their last 10 school days'],
     ['Daily plan for class time', (e.dayPlan ? e.dayPlan.days : 0) + ' days written', e.dayPlan && e.dayPlan.flagged ? e.dayPlan.flagged + ' marked: did nothing or didn’t follow it (' + p(e.dayPlan.followed) + ' followed)' : ''],
     ['Missing work they reported vs. their pasted pages', e.selfCheck && e.selfCheck.n ? p(e.selfCheck.pct) + ' matched (' + e.selfCheck.n + ' class-weeks)' : 'not checked yet', e.selfCheck && e.selfCheck.misses.length ? e.selfCheck.misses.map(function (m) { return shortDay(m.week) + ' ' + m.cls + ': said ' + m.said + ', page showed ' + m.found; }).join(' · ') : 'Checked by the app when they type missing work and paste the detailed page the same week'],
