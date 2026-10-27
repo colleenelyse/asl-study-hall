@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.27'
+var VERSION = '2.28'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -8965,8 +8965,7 @@ function ipOpen(email) {
   IP = { email: email || TS_EMAIL || '', res: null };
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'ipModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
   el.innerHTML = '<div class="card" style="max-width:900px"><div class="row"><h2 class="grow">📋 Paste from an IEP</h2><button class="btn link" onclick="$(\'ipModal\').remove()">✕ Close</button></div>' +
-    '<p style="margin:2px 0 8px"><b>Open the IEP PDF, press Ctrl + A (select all), then Ctrl + C, and paste it all in the box (Ctrl + V).</b> One paste: the app finds the student, cleans out private information, and pulls out the goals with their benchmarks, accommodations, the testing room and related services. You check it once, then save. Nothing is sent anywhere.</p>' +
-    '<div style="border:3px solid #c0392b;background:#fdecea;color:#7b1d14;border-radius:12px;padding:12px 14px;margin:6px 0 10px;font-size:16px"><b style="font-size:18px">⚠️ Teachers: if you are copying from an IEP PDF, student information is printed on the bottom of every page.</b><br>Remove last names and dates of birth before you save. The app also cleans what you paste right here on this page: it deletes lines with a date of birth, page footers and ID numbers, and changes the student’s name to initials. Always look it over.</div>' +
+    '<p style="margin:2px 0 8px"><b>Open the IEP PDF, press Ctrl + A (select all), then Ctrl + C, and paste it all in the box (Ctrl + V).</b> One paste: the app finds the student, cleans out private information, and pulls out the goals with their benchmarks, accommodations, the testing room and related services. You check it once, then save. Nothing is sent anywhere. Names become initials and dates of birth, ID numbers and page footers are removed as you paste.</p>' +
     '<select id="ipStu" style="max-width:260px" onchange="ipAuto()"><option value="">The app finds the student (or pick)…</option>' + st.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === IP.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
     '<textarea id="ipT" onpaste="setTimeout(ipAuto,0)" style="min-height:140px;margin-top:8px" placeholder="Paste the whole IEP here (Ctrl + V)" data-example="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
     '<div id="ipClean" class="small" style="display:block;margin-top:4px"></div><div class="row" style="margin-top:6px"><button class="btn small" onclick="ipAuto()">Sort it again</button><span class="small">It sorts by itself when you paste.</span></div><div id="ipOut"></div></div>';
