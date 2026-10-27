@@ -331,6 +331,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .dec{margin-top:10px;padding:12px;border:2px dashed var(--brand);border-radius:12px}.dec-q{margin:10px 0 0}.dec-q input{margin-top:4px}.dec-li{gap:6px;padding:3px 0;border-top:1px solid var(--line)}.wr-in{margin:4px 0}.ixl-bar{height:14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:6px}.ixl-bar i{display:block;height:100%;background:var(--up)}
 .rd-show{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);line-height:1.7;max-height:340px;overflow:auto}.rd-show:empty{display:none}.rd-show.big{font-size:22px;line-height:1.8}.rd-show span{cursor:pointer;border-radius:4px}.rd-now{background:#fde68a;color:#111}
 .paste-how{margin:6px 0 8px;padding-left:22px;font-size:14px}.paste-how li{margin:2px 0}kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--card);font:600 12px/1.4 inherit;text-align:center}
+.nd-head{margin:6px 0 4px;padding:10px 12px;border-radius:10px;background:var(--brand-soft);border:1px solid var(--brand);font-size:15px;line-height:1.45}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -491,7 +492,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.60'
+var VERSION = '2.63'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -4601,7 +4602,7 @@ function checkOwn_(email) { var f = stuFind_(email); return f.i >= 0 && !!String
 function cats_(email) { var o = {}; rows_('Grade categories').forEach(function (r) { if (low_(r[0]) === email) try { o[String(r[1])] = { cats: JSON.parse(r[2]), date: String(r[3] || '').slice(0, 10) }; } catch (e) {} }); return o; }
 function api_saveCats(cls, cats) {
   var email = need_(); cls = clean_(cls, 80); if (!cls) return cats_(email);
-  var l = (cats || []).slice(0, 12).map(function (c) { return { name: clean_(c.name, 60), weight: +c.weight || 0, e: Math.round((+c.e || 0) * 100) / 100, q: Math.round((+c.q || 0) * 100) / 100 }; }).filter(function (c) { return c.name; });
+  var l = (cats || []).slice(0, 12).map(function (c) { return { name: clean_(c.name, 60), weight: +c.weight || 0, e: Math.round((+c.e || 0) * 100) / 100, q: Math.round((+c.q || 0) * 100) / 100, n: Math.round(+c.n || 0) }; }).filter(function (c) { return c.name; });
   return locked_(function () { rewrite_('Grade categories', function (r) { return !(low_(r[0]) === email && String(r[1]) === cls); }); sheet_('Grade categories').appendRow([email, cls, JSON.stringify(l), stamp_()]); if (ROWS_MEMO) delete ROWS_MEMO['Grade categories']; return cats_(email); });
 }
 function lastPaste_(email) { var m = ''; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) === email) { var d = day_(r[5]); if (d > m) m = d; } }); return m; }
@@ -5969,7 +5970,26 @@ function hpGo(mode, place, teacher) {
     .then(function (r) { HPX = {}; hpGot(r); hpClose(); toast('Have a good trip. Your timer is in the corner.'); })
     .catch(function (e) { HPX.err = e.message || String(e); hpLoad(); });
 }
-function hpBack() { call('api_passBack').then(function (r) { HPX = {}; hpGot(r); hpClose(); toast('Welcome back!'); }).catch(oops); }
+// 2.61 (Colleen): "I'm back" shows the lanyard check first, no pass numbers: hang the pass back on the hook (or "I forgot it", and the
+// timer keeps going). A trip without a pass from the hook (paper pass, a pass sent for them, no pass) comes straight back.
+function hpLanyard(size) {
+  return '<svg width="' + size + '" height="' + Math.round(size * 1.25) + '" viewBox="0 0 80 100" aria-hidden="true"><path d="M40 4 C18 4 14 26 22 44 M40 4 C62 4 66 26 58 44" fill="none" stroke="#3b5bdb" stroke-width="5" stroke-linecap="round"/>' +
+    '<rect x="34" y="40" width="12" height="10" rx="2" fill="#adb5bd"/><rect x="16" y="48" width="48" height="46" rx="7" fill="#fff" stroke="#3b5bdb" stroke-width="3"/><text x="40" y="78" text-anchor="middle" font-size="16" font-weight="800" fill="#3b5bdb" font-family="sans-serif">PASS</text></svg>';
+}
+function hpBack(sure) {
+  var m = HP && HP.mine; if (!m) return;
+  if (!sure && (m.how === 'Pass' || m.how === 'Shared')) {
+    if (!$('hpModal')) hpOpen(true);
+    var el = $('hpModal'); if (!el) return;
+    el.innerHTML = '<div class="card" style="max-width:480px;text-align:center"><div style="margin:4px 0 6px">' + hpLanyard(90) + '</div><h2 style="margin:0 0 6px">Hang the pass back on the hook</h2>' +
+      '<p class="small" style="margin:0 0 12px">' + (m.how === 'Shared' ? 'If you’re the one carrying it, put it back where it goes.' : 'Put it back where it goes so the next person can use it.') + '</p>' +
+      '<div class="stack" style="display:flex;flex-direction:column;gap:8px"><button class="btn primary big" onclick="hpBack(true)">✅ I hung it on the hook</button>' +
+      (m.how === 'Shared' ? '<button class="btn" onclick="hpBack(true)">🤝 My partner has it</button>' : '') +
+      '<button class="btn" onclick="hpClose();toast(\'OK. Your pass stays open and the timer keeps going. Tap I’m back when you return with it.\')">🔁 I forgot it. Going back to get it</button></div></div>';
+    return;
+  }
+  call('api_passBack').then(function (r) { HPX = {}; hpGot(r); hpClose(); toast('Welcome back!'); }).catch(oops);
+}
 function hpLine(join) { var p = hpPlace(); call('api_passLine', join, p ? p.name : (HP.myLine || {}).place || '', HPX.teacher || '').then(function (r) { if (!join) HPX = {}; hpGot(r); }).catch(oops); }
 
 /* ---------- 🚻 the teacher's side (2.52): Out now on the Overview, the late-pass pop-up, Hall passes on a student's page ----------
@@ -7612,7 +7632,7 @@ function dtGo() {
 /* 🎯 What will it do to my grade? From the class's detailed page (summative and formative points; LTHS: summative 90%, formative 10%).
    The student says whether it's a summative or a formative and how many points it's worth; the math is instant. Paste today's page first. */
 var CAT_W = { s: 90, f: 10 };
-function catTotals(p) { var o = {}; (p.cats || []).forEach(function (c) { o[c.name] = { name: c.name, weight: c.weight, e: 0, q: 0 }; }); (p.items || []).forEach(function (x) { if (x.score === null || !(x.possible > 0) || x.flags.indexOf('exempt') >= 0 || x.flags.indexOf('dropped') >= 0) return; var c = o[x.cat] = o[x.cat] || { name: x.cat, weight: 0, e: 0, q: 0 }; c.e += x.score; c.q += x.possible; }); return Object.keys(o).map(function (k) { return o[k]; }); }
+function catTotals(p) { var o = {}; (p.cats || []).forEach(function (c) { o[c.name] = { name: c.name, weight: c.weight, e: 0, q: 0, n: 0 }; }); (p.items || []).forEach(function (x) { if (x.score === null || !(x.possible > 0) || x.flags.indexOf('exempt') >= 0 || x.flags.indexOf('dropped') >= 0) return; var c = o[x.cat] = o[x.cat] || { name: x.cat, weight: 0, e: 0, q: 0, n: 0 }; c.e += x.score; c.q += x.possible; c.n++; }); return Object.keys(o).map(function (k) { return o[k]; }); }
 function catSave(cls, p) { var l = catTotals(p); if (!l.length) return; D.cats = D.cats || {}; D.cats[cls] = { cats: l, date: B.today }; if (MODE === 'student' && !(B && B.preview)) call('api_saveCats', cls, l).then(function (m) { D.cats = m; }).catch(function () {}); }
 function catSF(entry) {          // { s: {e, q}, f: {e, q} } by name (Summative / Formative), else the heavier category is summative
   var l = (entry && entry.cats) || [], s = l.filter(function (c) { return /summative|assessment|test/i.test(c.name); })[0], f = l.filter(function (c) { return /formative|practice|homework|classwork|coursework/i.test(c.name); })[0];
@@ -7634,7 +7654,9 @@ var ND = { cls: '', kind: '', pts: '', goal: '', score: '', test: '' };
 function ndHtml() {
   var cl = graded(); if (!ND.cls && cl[0]) ND.cls = cl[0].name;
   var ent = (D.cats || {})[ND.cls], today = ent && ent.date === B.today;
-  var h = '<h2>🎯 What will it do to my grade?</h2><p class="hint" style="margin:4px 0 8px">Uses the scores on your class’s Infinite Campus page. At LTHS, <b>summatives</b> (tests, quizzes, projects) count for <b>90%</b> of your grade and <b>formatives</b> (homework, classwork, practice) for <b>10%</b>.</p>' +
+  var h = '<h2>🎯 What will it do to my grade?</h2>' +
+    '<div class="nd-head"><b>📌 Want an exact answer?</b> Ask your teacher how many points the final (or the test or project) will be worth, and whether it’s a summative. Inside the summative category every point counts the same, so a 100-point final moves your grade twice as much as a 50-point test. Write the answer down right away: <a href="#" onclick="toolGo(\'ask\');return false">❓ Questions for my teacher</a>, or record it below. <b>Just exploring?</b> Use your best guess, or the average of your summatives so far.</div>' +
+    '<p class="hint" style="margin:8px 0 8px">Uses the scores on your class’s Infinite Campus page. At LTHS, <b>summatives</b> (tests, quizzes, projects) count for <b>90%</b> of your grade and <b>formatives</b> (homework, classwork, practice) for <b>10%</b>.</p>' +
     '<select id="ndC" style="max-width:260px" onchange="ND.cls=this.value;ND.test=\'\';toolDraw()">' + cl.map(function (c) { return '<option' + (c.name === ND.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
   if (!today) h += '<div class="em-prev" style="margin-top:10px"><b>' + (ent ? 'First, paste today’s page for ' + esc(ND.cls) : 'Paste ' + esc(ND.cls) + '’s page first') + '</b><div class="small" style="display:block;margin:2px 0 4px">' + (ent ? 'Your last paste was ' + esc(fmtDay(ent.date)) + '. Pasting today’s page makes sure the math uses your newest scores.' : 'The app adds up your summative and formative points from it.') + ' In Infinite Campus, open Grades and click ' + esc(ND.cls) + '.</div>' + pasteHow('class') +
     '<textarea id="ndP" rows="2" placeholder="Paste ' + esc(ND.cls) + '’s page here (Ctrl + V)" onpaste="setTimeout(ndPaste,30)"></textarea>' + (ent ? '<button class="btn link small" onclick="ND.useOld=ND.cls;toolDraw()">Use my ' + esc(fmtDay(ent.date)) + ' scores instead</button>' : '') + '</div>';
@@ -7642,8 +7664,21 @@ function ndHtml() {
   var sf = catSF(ent), now = catGrade(sf);
   h += '<p style="margin:12px 0 6px">' + (today ? '✓ Using today’s page. ' : 'Using your ' + esc(fmtDay(ent.date)) + ' page. ') + 'Your grade now: <b>' + (now === null ? '?' : Math.round(now * 10) / 10 + '% (' + letter(now) + ')') + '</b> <span class="small" style="display:inline">· summative ' + (sf.s.q ? Math.round(sf.s.e / sf.s.q * 1000) / 10 + '% (' + sf.s.e + '/' + sf.s.q + ')' : 'none yet') + ' · formative ' + (sf.f.q ? Math.round(sf.f.e / sf.f.q * 1000) / 10 + '% (' + sf.f.e + '/' + sf.f.q + ')' : 'none yet') + '</span></p>' +
     ndTestPick() + '<p style="margin:10px 0 4px"><b>Is it a summative or a formative?</b> <span class="small" style="display:inline">(needed)</span></p><div class="seg">' + [['s', 'Summative (test, quiz, project) · 90%'], ['f', 'Formative (homework, classwork) · 10%']].map(function (o) { return '<button class="' + (ND.kind === o[0] ? 'on' : '') + '" onclick="ND.kind=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' +
-    '<div class="row" style="gap:8px;margin-top:10px;align-items:center"><b>How many points is it worth?</b><input type="number" min="1" step="any" style="max-width:100px" placeholder="100" value="' + esc(ND.pts) + '" oninput="ND.pts=this.value;ndOut()"> <span class="small">(ask your teacher or check Canvas if you’re not sure)</span></div>' +
+    ndPtsHtml(sf) +
     '<div id="ndOut">' + ndOutHtml() + '</div>';
+  return h;
+}
+// 2.63: the points: the teacher's number (exact), a guess, or the average of the assignments already in that category (estimates)
+function ndAvg(sf) { var c = ND.kind === 'f' ? sf.f : sf.s; return c && c.n ? Math.round(c.q / c.n * 10) / 10 : null; }
+function ndPtsHtml(sf) {
+  var t = (D.tests || []).filter(function (x) { return x.id === ND.test; })[0], how = ND.ptsHow || (t && t.points ? 'teacher' : 'guess'), avg = ndAvg(sf), cat = ND.kind === 'f' ? 'formatives' : 'summatives', n = (ND.kind === 'f' ? sf.f : sf.s).n;
+  if (how === 'teacher' && t && t.points && !ND.ptsTyped) ND.pts = String(t.points);
+  if (how === 'avg') ND.pts = avg === null ? '' : String(avg);
+  var h = '<p style="margin:12px 0 4px"><b>How many points is it worth?</b></p><div class="seg" style="flex-wrap:wrap">' + [['teacher', '✅ My teacher told me'], ['guess', '🤔 My best guess'], ['avg', '📊 Average of my ' + cat]].map(function (o) { return '<button class="' + (how === o[0] ? 'on' : '') + '" onclick="ND.ptsHow=\'' + o[0] + '\';ND.ptsTyped=false;toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>';
+  if (how === 'avg') return h + (avg === null ? '<p class="small" style="margin:6px 0 0">' + (n === 0 ? 'No ' + cat + ' on your page yet.' : 'Paste today’s page for this class to use the average (older pastes didn’t count the assignments).') + '</p>' : '<p class="small" style="margin:6px 0 0">Your ' + n + ' ' + cat + ' so far average <b>' + avg + ' points</b> each. Using that as a guess.</p>');
+  h += '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><input type="number" min="1" step="any" style="max-width:100px" placeholder="' + (how === 'teacher' ? 'points' : '100') + '" value="' + esc(ND.pts) + '" oninput="ND.pts=this.value;ND.ptsTyped=true;ndOut()"><span class="small">points' + (how === 'teacher' ? (t ? (t.points ? ' (saved on ' + esc(t.what) + ')' : '') : '') : ' (a guess)') + '</span>' +
+    (how === 'teacher' && t && ND.pts && +ND.pts !== t.points ? '<button class="btn small primary" onclick="ndSavePts()">💾 Save on ' + esc(t.what) + '</button>' : '') + '</div>' +
+    (how === 'teacher' && !t ? '<p class="small" style="margin:4px 0 0">Pick it under “Which one?” above to save the number on your list (or add it on 📅 Add a test or project first).</p>' : '');
   return h;
 }
 function ndTestPick() {
@@ -7653,7 +7688,7 @@ function ndTestPick() {
     (t && !t.points ? '<div class="em-prev" style="margin-top:6px">Don’t know how many points ' + esc(t.what) + ' is worth? <button class="btn small" onclick="ndAsk()">❓ Remind me to ask at the start of class</button></div>' : '') +
     (t && ND.pts && +ND.pts !== t.points ? '<button class="btn link small" onclick="ndSavePts()">💾 Save ' + esc(ND.pts) + ' points' + (ND.kind ? ' (' + (ND.kind === 's' ? 'summative' : 'formative') + ')' : '') + ' on ' + esc(t.what) + '</button>' : '');
 }
-function ndPick(id) { ND.test = id; var t = (D.tests || []).filter(function (x) { return x.id === id; })[0]; if (t) { if (t.points) ND.pts = String(t.points); if (t.cat) ND.kind = t.cat === 'Formative' ? 'f' : 's'; else if (/^(Test|Quiz|Project|Essay|Presentation|Lab)$/.test(t.type)) ND.kind = ND.kind || 's'; } toolDraw(); }
+function ndPick(id) { ND.test = id; ND.ptsTyped = false; var t = (D.tests || []).filter(function (x) { return x.id === id; })[0]; if (t) { if (t.points) { ND.pts = String(t.points); ND.ptsHow = 'teacher'; } if (t.cat) ND.kind = t.cat === 'Formative' ? 'f' : 's'; else if (/^(Test|Quiz|Project|Essay|Presentation|Lab)$/.test(t.type)) ND.kind = ND.kind || 's'; } toolDraw(); }
 function ndAsk() { var t = (D.tests || []).filter(function (x) { return x.id === ND.test; })[0]; if (!t) return; call('api_saveQuestion', { cls: ND.cls, q: 'How many points is the ' + t.what + ' worth, and is it a summative or a formative?', when: 'start', test: t.id }).then(function (l) { QS = l; toast('Saved. You’ll get a reminder at the start of ' + ND.cls + '.'); qsNotifyAsk(); toolDraw(); }).catch(oops); }
 function ndSavePts() { call('api_saveTestInfo', ND.test, ND.pts, ND.kind).then(function (d) { D = d; toast('Saved on your list'); toolDraw(); }).catch(oops); }
 function ndPaste() {
@@ -7673,7 +7708,7 @@ function ndOutHtml() {
   return '<div class="nd-two"><div class="nd-box"><b>🎯 I want my grade to be</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" max="100" style="max-width:100px" placeholder="85" value="' + esc(ND.goal) + '" oninput="ND.goal=this.value;ndRes(0)"> %</div><div class="small" style="display:block">' + (goal === null ? 'Type the grade you want.' : 'You need ' + need(goal)) + '</div></div>' +
     '<div class="nd-box"><b>🔮 If I get</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" style="max-width:100px" placeholder="' + Math.round(pts * 0.8) + '" value="' + esc(ND.score) + '" oninput="ND.score=this.value;ndRes(1)"><select onchange="ND.scoreAs=this.value;ndRes(1)"><option value="pts"' + (ND.scoreAs !== 'pct' ? ' selected' : '') + '>points out of ' + pts + '</option><option value="pct"' + (ND.scoreAs === 'pct' ? ' selected' : '') + '>percent</option></select></div><div class="small" style="display:block">' + (res || 'Type a score to see what happens to your grade.') + '</div></div></div>' +
     '<table style="margin-top:10px"><tbody>' + c.map(function (t, i) { return '<tr><td style="width:150px"><b>End with ' + (i ? 'a ' : 'an ') + L[i] + '</b> (' + t + '%)</td><td>You need ' + need(t) + '</td></tr>'; }).join('') + '</tbody></table>' +
-    '<p class="small" style="margin:6px 0 0">An estimate from your pasted page: your teacher’s gradebook is the final word.</p>' +
+    '<p class="small" style="margin:6px 0 0">' + ((ND.ptsHow || 'guess') === 'teacher' ? 'Using your teacher’s number (' + pts + ' points). ' : 'Using ' + (ND.ptsHow === 'avg' ? 'the average of your ' + (k === 'f' ? 'formatives' : 'summatives') : 'your guess') + ' (' + pts + ' points), so this is an estimate until you know the real number. ') + 'Your teacher’s gradebook is the final word.</p>' +
     '<button class="btn small" style="margin-top:8px" onclick="toolLog(\'What do I need\', ND.cls + \' (\' + (ND.kind === \'s\' ? \'summative\' : \'formative\') + \', \' + ND.pts + \' pts)\');toast(\'Good plan: put it on your list and study a little each day.\')">👍 Got it</button>';
 }
 function ndOut() { var el = $('ndOut'); if (el) el.innerHTML = ndOutHtml(); }
@@ -8612,22 +8647,23 @@ function extraPick() {
 // 2.60: once a week (Wednesday to Friday until they answer): "Did you use any of your accommodations this week?" Yes → tap which,
 // pick the class and what it was for, add more; No → done. What they already logged this week (the 🧰 tile) is listed first.
 var AWK = { open: false, yes: false, picked: [], cls: '', what: '', list: [] };
-function accWeekCard() {
+function accWeekCard() {          // 2.62 (Colleen: "don't make this too lengthy"): Yes → tap what, which class, what for → Save
   var w = D.accWeek || { logged: [] }, cls = graded().map(function (c) { return c.name; }), fors = ['Test', 'Quiz', 'Assignment', 'Class work', 'Other'];
   var chip = function (on, label, js) { return '<button class="chip' + (on ? ' on' : '') + '" onclick="' + js + '">' + (on ? '✓ ' : '') + esc(label) + '</button>'; };
+  var ready = AWK.picked.length && AWK.cls && AWK.what;
   var h = '<div class="card" id="awkCard" style="border:2px solid var(--brand)"><h2 style="margin:0 0 4px">🧰 Accommodations this week</h2>';
-  if (w.logged.length) h += '<p class="small" style="margin:0 0 6px">You already logged: ' + w.logged.map(function (x) { return '<b>' + esc(x.acc) + '</b>' + (x.cls ? ' in ' + esc(x.cls) : '') + (x['for'] ? ' (' + esc(x['for']) + ')' : ''); }).join(' · ') + '</p>';
-  if (!AWK.yes) return h + '<p style="margin:0 0 8px"><b>' + (w.logged.length ? 'Did you use any others this week?' : 'Did you use any of your accommodations this week?') + '</b></p>' +
-    '<div class="row" style="gap:8px"><button class="btn primary" onclick="AWK.open=true;AWK.yes=true;drawCheckin()">Yes</button><button class="btn" onclick="awkSave(true)">' + (w.logged.length ? 'No others' : 'No') + '</button></div></div>';
-  h += '<p class="small" style="margin:0 0 4px"><b>Which one?</b></p><div class="chips">' + (B.accoms || []).map(function (a, k) { return chip(AWK.picked.indexOf(a) >= 0, a, 'awkPick(' + k + ')'); }).join('') + '</div>' +
-    '<p class="small" style="margin:8px 0 4px"><b>In which class?</b></p><div class="chips">' + cls.map(function (c, k) { return chip(AWK.cls === c, c, 'AWK.cls=graded()[' + k + '].name;drawCheckin()'); }).join('') + '</div>' +
-    '<p class="small" style="margin:8px 0 4px"><b>For what?</b></p><div class="chips">' + fors.map(function (f) { return chip(AWK.what === f, f, 'AWK.what=\'' + f + '\';drawCheckin()'); }).join('') + '</div>' +
-    '<div class="row" style="gap:8px;margin-top:8px"><button class="btn small" onclick="awkAdd()"' + (AWK.picked.length && AWK.cls && AWK.what ? '' : ' disabled') + '>+ Add</button><span class="small">Add each one, then Save.</span></div>';
-  if (AWK.list.length) h += '<div style="margin-top:8px">' + AWK.list.map(function (x, k) { return '<div class="small" style="display:block;margin:2px 0">✅ <b>' + esc(x.acc) + '</b> in ' + esc(x.cls) + ' (' + esc(x['for']) + ') <a href="#" onclick="AWK.list.splice(' + k + ',1);drawCheckin();return false">remove</a></div>'; }).join('') + '</div>';
-  return h + '<div class="row" style="gap:8px;margin-top:10px"><button class="btn primary" onclick="awkSave(false)"' + (AWK.list.length || (AWK.picked.length && AWK.cls && AWK.what) ? '' : ' disabled') + '>Save</button><a href="#" class="small" onclick="AWK.yes=false;AWK.list=[];AWK.picked=[];drawCheckin();return false">Back</a></div></div>';
+  if (w.logged.length) h += '<p class="small" style="margin:0 0 6px">Already logged: ' + w.logged.map(function (x) { return esc(x.acc) + (x.cls ? ' (' + esc(x.cls) + ')' : ''); }).join(' · ') + '</p>';
+  if (!AWK.yes) return h + '<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b class="grow">' + (w.logged.length ? 'Use any others this week?' : 'Did you use any of your accommodations this week?') + '</b>' +
+    '<button class="btn primary" onclick="AWK.open=true;AWK.yes=true;drawCheckin()">Yes</button><button class="btn" onclick="awkSave(true)">No</button></div></div>';
+  h += '<div class="chips">' + (B.accoms || []).map(function (a, k) { return chip(AWK.picked.indexOf(a) >= 0, a, 'awkPick(' + k + ')'); }).join('') + '</div>' +
+    '<div class="chips" style="margin-top:6px">' + cls.map(function (c, k) { return chip(AWK.cls === c, c, 'AWK.cls=graded()[' + k + '].name;drawCheckin()'); }).join('') + '</div>' +
+    '<div class="chips" style="margin-top:6px">' + fors.map(function (f) { return chip(AWK.what === f, f, 'AWK.what=\'' + f + '\';drawCheckin()'); }).join('') + '</div>';
+  if (AWK.list.length) h += '<p class="small" style="margin:6px 0 0">Also: ' + AWK.list.map(function (x) { return esc(x.acc) + ' (' + esc(x.cls) + ', ' + esc(x['for']) + ')'; }).join(' · ') + '</p>';
+  return h + '<div class="row" style="gap:10px;margin-top:10px;align-items:center"><button class="btn primary" onclick="awkSave(false)"' + (ready || AWK.list.length ? '' : ' disabled') + '>Save</button>' +
+    (ready ? '<a href="#" class="small" onclick="awkAdd();return false">+ I used another one too</a>' : '<span class="small">Tap what you used, the class, and what it was for.</span>') + '</div></div>';
 }
 function awkPick(k) { var a = B.accoms[k], i = AWK.picked.indexOf(a); if (i >= 0) AWK.picked.splice(i, 1); else AWK.picked.push(a); drawCheckin(); }
-function awkAdd() { AWK.picked.forEach(function (a) { AWK.list.push({ acc: a, cls: AWK.cls, 'for': AWK.what }); }); AWK.picked = []; AWK.what = ''; drawCheckin(); }
+function awkAdd() { AWK.picked.forEach(function (a) { AWK.list.push({ acc: a, cls: AWK.cls, 'for': AWK.what }); }); AWK.picked = []; AWK.what = ''; AWK.cls = ''; drawCheckin(); }
 function awkSave(none) {
   if (!none && AWK.picked.length && AWK.cls && AWK.what) awkAdd();          // picked one but didn't press + Add
   call('api_saveAccWeek', none ? [] : AWK.list, !!none).then(function (r) { D.accWeek = r.accWeek; D.extraDone = true; AWK = { open: false, yes: false, picked: [], cls: '', what: '', list: [] }; toast(none ? 'Thanks!' : 'Saved. Nice job using your accommodations! 🧰'); drawCheckin(); }).catch(oops);
