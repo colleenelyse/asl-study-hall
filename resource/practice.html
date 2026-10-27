@@ -476,7 +476,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.50'
+var VERSION = '2.51'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -6895,10 +6895,11 @@ function stepList() {
   var s = [], sd = isSchoolDay();
   if (checkMode()) s.push({ k: 'grades', label: 'My grades', req: true });
   if (F('dayPlan') && sd) s.push({ k: 'plan', label: 'My plan', req: true });
-  if (F('checklist') && sd && (B.checkItems || []).length) s.push({ k: 'check', label: 'Checklist' });
+  if (F('checklist') && sd && (B.checkItems || []).length) s.push({ k: 'check', label: 'Checklist', req: nothingDay() });          // 2.51: required when they said they have nothing to work on
   if (F('exit') && sd) s.push({ k: 'exit', label: 'Exit ticket' });
   return s;
 }
+function nothingDay() { var t = D.dayPlan && D.dayPlan.today; return !!(t && /^Nothing to work on today/.test(t.plan || '')); }
 function stepDone(k) {
   if (k === 'grades') return (gradesDone() || !!skipped('grades')) && GSUB !== 1;
   if (k === 'plan') return !!(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan) || !!skipped('plan');
@@ -8922,7 +8923,7 @@ function drawEF() {
     '<h3 style="margin:22px 0 4px;padding-top:14px;border-top:1px solid var(--line)">📊 Executive functioning data</h3><table style="margin-top:4px"><tbody>' + efRows(e).map(function (r) { return '<tr><td style="width:42%"><b>' + esc(r[0]) + '</b></td><td>' + esc(String(r[1])) + (r[2] ? '<small>' + esc(r[2]) + '</small>' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   // this student's own checklist (or the class one)
   var own = EF.checklistOwn && EF.checklistOwn.length, items = CKE || (own ? EF.checklistOwn : EF.checklistClass).slice();
-  h += '<details style="margin-top:12px"' + (CKE ? ' open' : '') + '><summary><b>Daily checklist items</b> ' + (own ? '<span class="badge brand">Just for this student</span>' : '<span class="small" style="display:inline">(the class checklist)</span>') + '</summary>' +
+  var cks = '<details style="margin-top:8px"' + (CKE ? ' open' : '') + '><summary><b>📋 Daily checklist</b> ' + (own ? '<span class="badge brand">Just for this student</span>' : '<span class="small" style="display:inline">(the class checklist)</span>') + '</summary>' +
     '<p class="hint" style="margin:6px 0">Change the items for this student only. The class checklist is on ⚙️ Settings.</p>' +
     items.map(function (t, k) {
       return '<div class="row" style="margin:4px 0;gap:6px"><input type="text" value="' + esc(t) + '" maxlength="120" class="grow" oninput="ckeEdit(' + k + ',this.value)">' +
@@ -8935,10 +8936,12 @@ function drawEF() {
     (own ? '<button class="btn link small" onclick="ckeReset()">Use the class checklist</button>' : '') + '</div></details>';
   // 2.08: this student's own "nothing to work on" checklist (or the class one)
   var nOwn = EF.nothingOwn && EF.nothingOwn.length, nL = NOE !== null ? NOE : (nOwn ? EF.nothingOwn : (EF.nothingClass || [])).join('\n');
-  h += '<details style="margin-top:12px"' + (NOE !== null ? ' open' : '') + '><summary><b>“I have nothing to work on” checklist</b> ' + (nOwn ? '<span class="badge brand">Just for this student</span>' : '<span class="small" style="display:inline">(the class list)</span>') + '</summary>' +
+  cks += '<details style="margin-top:8px"' + (NOE !== null ? ' open' : '') + '><summary><b>🤷 “I have nothing to work on” checklist</b> ' + (nOwn ? '<span class="badge brand">Just for this student</span>' : '<span class="small" style="display:inline">(the class list)</span>') + '</summary>' +
     '<p class="hint" style="margin:6px 0">One per line: what this student checks off before they can say they have nothing to work on. “Cleaned out my backpack and my Google Drive” is always added. The class list is on ⚙️ Settings.</p>' +
     '<textarea id="noeT" style="min-height:120px" oninput="NOE=this.value">' + esc(nL) + '</textarea>' +
     '<div class="row" style="margin-top:6px"><button class="btn primary small" onclick="noeSave()">Save for this student</button>' + (nOwn ? '<button class="btn link small" onclick="noeSave(true)">Use the class list</button>' : '') + '</div></details>';
+  var efH = '<h3 style="margin:22px 0 4px;padding-top:14px;border-top:1px solid var(--line)">📊 Executive functioning data</h3>';          // 2.51: the checklists get their own section, above the numbers
+  h = h.replace(efH, '<h3 style="margin:22px 0 2px;padding-top:14px;border-top:1px solid var(--line)">✅ Checklists for this student</h3><p class="hint" style="margin:0 0 4px">Change either list for this student only. The class lists are on ⚙️ Settings. The daily checklist is optional, except on a day they say they have nothing to work on.</p>' + cks + efH);
   // daily checklist days: prompted or on their own
   h += '<details style="margin-top:12px"><summary><b>Daily checklist, day by day</b></summary>' + (e.checklist.days.length ? '<table><tbody>' + e.checklist.days.map(function (d) {
     return '<tr><td style="width:150px">' + fmtDay(d.date) + '</td><td>' + (d.total ? d.done + ' of ' + d.total + ' items' + (d.noTime ? ' <span class="small" style="display:inline">· ' + d.noTime + ' “no time”</span>' : '') : '<span class="small">not done</span>') + '</td><td style="text-align:right">' +
