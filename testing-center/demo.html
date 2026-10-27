@@ -5,37 +5,44 @@
 <base target="_top">
 <title>Testing Center demo</title><meta name="robots" content="noindex"><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
 <style>
-:root { --bg: #f4f6f9; --card: #fff; --ink: #1d2433; --mute: #5f6b7e; --line: #e2e7ef; --brand: #1f5fbf; --brand2: #e8f0fc; --ok: #1a7f4b; --okbg: #e3f5eb; --warn: #9a6200; --warnbg: #fff3d6; --bad: #b42318; --badbg: #fde7e5; --info: #5b3fb5; --infobg: #efeafd; --r: 10px; }
+:root { --bg: #f4f6f9; --card: #fff; --ink: #1d2433; --mute: #5f6b7e; --line: #e2e7ef; --line2: #cfd7e3; --soft2: #f4f6fa; --brand: #1f5fbf; --brand2: #e8f0fc; --onbrand: #fff; --ok: #1a7f4b; --okbg: #e3f5eb; --warn: #9a6200; --warnbg: #fff3d6; --bad: #b42318; --badbg: #fde7e5; --info: #5b3fb5; --infobg: #efeafd; --toast: #1d2433; --toastink: #fff; --r: 10px; }
+/* color modes (🎨 at the top; remembered on this device) */
+:root[data-look="dark"] { --bg: #0f131c; --card: #181e2b; --ink: #e8ecf4; --mute: #9aa6ba; --line: #2a3346; --line2: #3a4660; --soft2: #1e2534; --brand: #7aa7ff; --brand2: #1d2b4a; --onbrand: #0b1020; --ok: #5fd39a; --okbg: #12352a; --warn: #f0c060; --warnbg: #3a2e10; --bad: #ff8a80; --badbg: #3d1a1a; --info: #c2b2ff; --infobg: #2a2347; --toast: #e8ecf4; --toastink: #0f131c; color-scheme: dark; }
+:root[data-look="contrast"] { --bg: #fff; --card: #fff; --ink: #000; --mute: #1f1f1f; --line: #000; --line2: #000; --soft2: #f0f0f0; --brand: #0033cc; --brand2: #dce4ff; --onbrand: #fff; --ok: #005c1f; --okbg: #d6f5df; --warn: #6b4100; --warnbg: #ffe8a8; --bad: #a30000; --badbg: #ffd9d6; --info: #3a1f99; --infobg: #e6dcff; --toast: #000; --toastink: #fff; }
+:root[data-look="contrast"] .btn, :root[data-look="contrast"] .card, :root[data-look="contrast"] .slot, :root[data-look="contrast"] .chip { border-width: 2px; } :root[data-look="contrast"] body { font-size: 16.5px; }
+:root[data-look="calm"] { --bg: #edf5f1; --card: #fbfdfc; --ink: #1d2b26; --mute: #5a6e66; --line: #d5e6dd; --line2: #b9d2c5; --soft2: #f1f8f4; --brand: #2f7a5f; --brand2: #dcefe6; --onbrand: #fff; --ok: #237a4a; --okbg: #dff3e6; --warn: #8a5c00; --warnbg: #fbefcf; --bad: #b0382c; --badbg: #fbe3df; --info: #4f5aa8; --infobg: #e7e9f9; --toast: #1d2b26; --toastink: #fff; }
+:root[data-look="warm"] { --bg: #faf4ec; --card: #fffdf9; --ink: #2b2118; --mute: #75624f; --line: #ecdfcf; --line2: #dcc8b0; --soft2: #fbf6ef; --brand: #b5561f; --brand2: #f8e6d8; --onbrand: #fff; --ok: #3d7a2a; --okbg: #e6f2dc; --warn: #8a5300; --warnbg: #fdedc8; --bad: #b42318; --badbg: #fbe1dc; --info: #7a3f99; --infobg: #f2e5f8; --toast: #2b2118; --toastink: #fff; }
+body { background: var(--bg); color: var(--ink); }
 * { box-sizing: border-box; }
 body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--brand); }
 h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 0 0 10px; } h3 { font-size: 15px; margin: 0 0 8px; }
-.top { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 10px 18px; flex-wrap: wrap; }
+.top { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 10px 18px; flex-wrap: wrap; }
 .logo { font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.logo i { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); color: #fff; display: inline-grid; place-items: center; font-style: normal; font-size: 15px; }
+.logo i { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); color: var(--onbrand); display: inline-grid; place-items: center; font-style: normal; font-size: 15px; }
 .grow { flex: 1; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 18px; }
 .narrow { max-width: 720px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; margin-bottom: 14px; }
-.btn { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; }
-.btn:hover { border-color: #b9c4d6; }
-.btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
-.btn.pri:hover { background: #184f9f; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--line2); }
+.btn.pri { background: var(--brand); border-color: var(--brand); color: var(--onbrand); }
+.btn.pri:hover { filter: brightness(.92); }
 .btn.big { padding: 12px 20px; font-size: 16px; font-weight: 600; }
 .btn.sm { padding: 3px 9px; font-size: 13px; }
 .btn.bad { color: var(--bad); }
-.btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn.ok { background: var(--ok); border-color: var(--ok); color: var(--onbrand); }
 .btn:disabled { opacity: .5; cursor: default; }
 .link { background: none; border: 0; color: var(--brand); cursor: pointer; padding: 0; text-decoration: underline; }
 .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 .tab { background: none; border: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--mute); font-weight: 600; }
 .tab.on { background: var(--brand2); color: var(--brand); }
-.tab b { background: var(--bad); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+.tab b { background: var(--bad); color: var(--onbrand); border-radius: 10px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button { border: 0; background: #fff; padding: 6px 12px; cursor: pointer; }
-.seg button.on { background: var(--brand); color: #fff; }
-.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #eef1f6; color: var(--mute); white-space: nowrap; }
+.seg button { border: 0; background: var(--card); padding: 6px 12px; cursor: pointer; }
+.seg button.on { background: var(--brand); color: var(--onbrand); }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--soft2); color: var(--mute); white-space: nowrap; }
 .chip.ok { background: var(--okbg); color: var(--ok); } .chip.warn { background: var(--warnbg); color: var(--warn); } .chip.bad { background: var(--badbg); color: var(--bad); } .chip.info { background: var(--infobg); color: var(--info); } .chip.blue { background: var(--brand2); color: var(--brand); }
 .mute { color: var(--mute); } .small { font-size: 13px; } .tiny { font-size: 12px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -43,28 +50,28 @@ h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 0 0 10px;
 table.t { width: 100%; border-collapse: collapse; }
 table.t th { text-align: left; font-size: 12px; color: var(--mute); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 table.t td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-table.t tr.click { cursor: pointer; } table.t tr.click:hover td { background: #f8fafd; }
+table.t tr.click { cursor: pointer; } table.t tr.click:hover td { background: var(--soft2); }
 label.f { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
-input[type=text], input[type=date], input[type=number], input[type=email], select, textarea { width: 100%; border: 1px solid #cfd7e3; border-radius: 8px; padding: 8px 10px; background: #fff; }
+input[type=text], input[type=date], input[type=number], input[type=email], select, textarea { width: 100%; border: 1px solid var(--line2); border-radius: 8px; padding: 8px 10px; background: var(--card); }
 textarea { min-height: 80px; }
 .check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
 .check input { margin-top: 3px; }
-.opt { display: block; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; cursor: pointer; background: #fff; text-align: left; width: 100%; }
+.opt { display: block; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; cursor: pointer; background: var(--card); text-align: left; width: 100%; }
 .opt:hover { border-color: var(--brand); }
 .opt.on { border-color: var(--brand); background: var(--brand2); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.tile { background: #fff; border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
 .tile b { display: block; font-size: 24px; }
 .tile span { font-size: 12px; color: var(--mute); }
 .banner { border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; }
 .banner.warn { background: var(--warnbg); } .banner.info { background: var(--brand2); } .banner.bad { background: var(--badbg); } .banner.ok { background: var(--okbg); }
 .modal-bg { position: fixed; inset: 0; background: rgba(20, 28, 45, .45); z-index: 50; display: flex; align-items: flex-start; justify-content: center; padding: 6vh 12px; overflow: auto; }
-.modal { background: #fff; border-radius: 14px; max-width: 560px; width: 100%; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.modal { background: var(--card); border-radius: 14px; max-width: 560px; width: 100%; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
 .modal.wide { max-width: 760px; }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: #fff; z-index: 40; box-shadow: -10px 0 40px rgba(0,0,0,.15); overflow: auto; padding: 18px 20px 40px; }
-.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1d2433; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 90; font-size: 14px; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--card); z-index: 40; box-shadow: -10px 0 40px rgba(0,0,0,.15); overflow: auto; padding: 18px 20px 40px; }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--toast); color: var(--toastink); padding: 10px 16px; border-radius: 10px; z-index: 90; font-size: 14px; }
 .spin { padding: 40px; text-align: center; color: var(--mute); }
 .empty { padding: 18px; text-align: center; color: var(--mute); }
 .kv { display: grid; grid-template-columns: 140px 1fr; gap: 4px 10px; font-size: 14px; }
@@ -72,30 +79,32 @@ textarea { min-height: 80px; }
 .sev1 { border-left: 4px solid var(--bad); } .sev2 { border-left: 4px solid #e0a100; } .sev3 { border-left: 4px solid #9fb3cf; }
 .att { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
 .bar { height: 10px; background: var(--brand); border-radius: 5px; }
-.clock { position: fixed; right: 16px; bottom: 16px; width: 360px; max-height: 70vh; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(20,28,45,.18); padding: 10px 12px; z-index: 30; }
+.clock { position: fixed; right: 16px; bottom: 16px; width: 360px; max-height: 70vh; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(20,28,45,.18); padding: 10px 12px; z-index: 30; }
 .clock.small-clock { width: 280px; }
 .clock-now { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--brand); white-space: nowrap; }
-.clock-bar { height: 6px; background: #eef1f6; border-radius: 3px; margin-top: 6px; overflow: hidden; } .clock-bar i { display: block; height: 100%; background: var(--brand); }
+.clock-bar { height: 6px; background: var(--soft2); border-radius: 3px; margin-top: 6px; overflow: hidden; } .clock-bar i { display: block; height: 100%; background: var(--brand); }
 tr.clock-cur td { background: var(--brand2); font-weight: 600; }
 body { padding-bottom: 90px; }
-.rm { display: grid; gap: 6px; background: #f7f9fc; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.rm { display: grid; gap: 6px; background: var(--soft2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
 .rm-front { text-align: center; font-size: 12px; color: var(--mute); margin-bottom: 4px; letter-spacing: .04em; text-transform: uppercase; }
-.rm-desk { border: 2px solid #c9d3e3; background: #fff; border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; overflow: hidden; min-width: 0; }
+.rm-desk { border: 2px solid var(--line2); background: var(--card); border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; overflow: hidden; min-width: 0; }
 .rm-desk b { font-size: 16px; } .rm-desk span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 0 3px; } .rm-desk i { font-size: 10px; font-style: normal; opacity: .85; }
 .rm-free { color: var(--mute); } .rm-click { cursor: pointer; } .rm-click:hover { border-color: var(--brand); }
 .rm-sel { border-color: var(--brand); background: var(--brand2); color: var(--brand); box-shadow: 0 0 0 3px rgba(31,95,191,.2); }
-.rm-test { background: var(--brand); border-color: var(--brand); color: #fff; } .rm-in { background: var(--warnbg); border-color: #e0a100; color: var(--warn); }
-.rm-item { background: #e6eaf1; color: var(--mute); border-radius: 6px; font-size: 10px; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+.rm-test { background: var(--brand); border-color: var(--brand); color: var(--onbrand); } .rm-in { background: var(--warnbg); border-color: #e0a100; color: var(--warn); }
+.rm-item { background: var(--soft2); color: var(--mute); border-radius: 6px; font-size: 10px; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
 .rm-board, .rm-screen { background: #3c4a5e; color: #fff; } .rm-door { background: #c98a4b; color: #fff; }
-.side { position: fixed; right: 0; top: 56px; width: 230px; bottom: 0; background: #fff; border-left: 1px solid var(--line); padding: 14px; overflow: auto; z-index: 15; }
+.pg { border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; min-width: 64px; font-size: 12px; cursor: pointer; background: var(--card); color: var(--ink); }
+.pg-open { background: var(--okbg); color: var(--ok); border-color: transparent; } .pg-closed { background: var(--line); color: var(--mute); } .pg-past { opacity: .4; cursor: default; }
+.side { position: fixed; right: 0; top: 56px; width: 230px; bottom: 0; background: var(--card); border-left: 1px solid var(--line); padding: 14px; overflow: auto; z-index: 15; }
 body.withside .wrap { margin-right: 240px; }
 .dim { opacity: .55; }
 .period-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .seats { font-size: 13px; color: var(--mute); }
-.slot { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #fff; }
-.slot.closed { background: #f6f7f9; color: var(--mute); }
+.slot { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: var(--card); }
+.slot.closed { background: var(--soft2); color: var(--mute); }
 .daytabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-.daytab { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 6px 12px; cursor: pointer; text-align: center; min-width: 76px; }
+.daytab { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 6px 12px; cursor: pointer; text-align: center; min-width: 76px; }
 .daytab.on { border-color: var(--brand); background: var(--brand2); }
 @media (max-width: 760px) { .grid2, .grid3 { grid-template-columns: 1fr; } .side { display: none; } body.withside .wrap { margin-right: auto; } .kv { grid-template-columns: 1fr; } .hide-sm { display: none; } }
 </style>
@@ -286,6 +295,7 @@ var TABLES = {
   Waitlist: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['details', 'Details'], ['joined', 'Joined'], ['status', 'Status'], ['changed', 'Changed']],
   Offers: [['id', 'ID'], ['wid', 'Waitlist ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['made', 'Made'], ['expires', 'Expires'], ['status', 'Status'], ['answered', 'Answered'], ['by', 'By']],
   Outbox: [['id', 'ID'], ['created', 'Created'], ['kind', 'Kind'], ['key', 'Key'], ['to', 'To'], ['subject', 'Subject'], ['body', 'Body'], ['appt', 'Appointment ID'], ['status', 'Status'], ['sent', 'Sent'], ['error', 'Error'], ['by', 'By']],
+  'Teacher Schedule': [['tid', 'Staff ID'], ['name', 'Teacher'], ['period', 'Period'], ['pend', 'Period end'], ['what', 'Assignment'], ['room', 'Room'], ['term', 'Term'], ['days', 'Days'], ['src', 'Source row']],
   Mappings: [['name', 'Name'], ['kind', 'Kind'], ['fields', 'Fields'], ['updated', 'Updated'], ['by', 'By']],
   Imports: [['id', 'ID'], ['at', 'When'], ['by', 'By'], ['campus', 'Campus'], ['year', 'School year'], ['kind', 'Kind'], ['mode', 'Mode'], ['file', 'File'], ['rows', 'Rows'], ['summary', 'Summary'], ['status', 'Status']],
   Audit: [['at', 'When'], ['who', 'Who'], ['action', 'Action'], ['target', 'Target'], ['details', 'Details']]
@@ -312,7 +322,10 @@ var DEFAULTS = [
   ['Missing-material emails', 'Review first', 'Review first', 'Off, Review first (drafts wait on the dashboard), or Automatic.'],
   ['Missing-material reminder', 'School day before', 'School day before', 'When the reminder goes out: School day before, or 2 school days before.'],
   ['Teacher emails for co-taught classes', 'Primary teacher', 'Primary teacher', 'Primary teacher, All teachers, or Testing contact (falls back to the primary teacher).'],
-  ['Completion emails to teachers', 'Off', 'Off', 'On: the teacher hears when a student finishes (sent from the dashboard).'],
+  ['Completion emails to teachers', 'On', 'On', 'On: the teacher gets an email when a student finishes (from the Done button).'],
+  ['Email teachers when a student books', 'On', 'On', 'On: the teacher gets an email when one of their students books (or takes a waitlist seat) for their class.'],
+  ['Email teachers about no-shows', 'On', 'On', 'On: the teacher gets an email when their student is marked a no-show.'],
+  ['Email teachers when an appointment is canceled', 'On', 'On', 'On: the teacher gets an email when their student’s appointment is canceled (by the student or the Testing Center).'],
   ['Student confirmation emails', 'Off', 'Off', 'On: a student gets an email when they book or cancel.'],
   ['Securly export', 'Email list', 'Email list', 'Email list (one per line) or CSV. Check what your Securly Classroom accepts before choosing.'],
   ['School email domain', 'd204.lths.net', 'd204.lths.net', 'Students and staff sign in with this domain.'],
@@ -436,7 +449,7 @@ function campusConf_(c) {
     offerHours: settingNum_('Hours to answer a waitlist offer', c, 1), quiet: setting_('Quiet hours', c), insideCutoff: /allow/i.test(setting_('Offers inside the booking cutoff', c)) ? 'allow' : 'ask',
     dropoff: setting_('Paper test drop-off locations', c), materials: (function (v) { return /auto/i.test(v) ? 'auto' : /off/i.test(v) ? 'off' : 'review'; })(setting_('Missing-material emails', c)),
     materialsDays: /2/.test(setting_('Missing-material reminder', c)) ? 2 : 1, coteach: (function (v) { return /all/i.test(v) ? 'all' : /contact/i.test(v) ? 'contact' : 'primary'; })(setting_('Teacher emails for co-taught classes', c)),
-    completion: yes_(setting_('Completion emails to teachers', c)), confirm: yes_(setting_('Student confirmation emails', c)), securly: /csv/i.test(setting_('Securly export', c)) ? 'csv' : 'list',
+    completion: yes_(setting_('Completion emails to teachers', c)), tBook: yes_(setting_('Email teachers when a student books', c)), tNoShow: yes_(setting_('Email teachers about no-shows', c)), tCancel: yes_(setting_('Email teachers when an appointment is canceled', c)), confirm: yes_(setting_('Student confirmation emails', c)), securly: /csv/i.test(setting_('Securly export', c)) ? 'csv' : 'list',
     email: setting_('Testing Center email', c), bellplus: /^https:\/\/[^\s"'<>]+$/.test(setting_('Bell.plus link', c)) ? setting_('Bell.plus link', c) : 'https:' + '/' + '/bell.plus/' };
 }
 function domain_() { return setting_('School email domain', 'S') || 'd204.lths.net'; }
@@ -573,10 +586,15 @@ function setupSheet() {
     var sh = sheet_(name), w = Math.max(sh.getLastColumn(), 1), head = sh.getRange(1, 1, 1, w).getValues()[0].map(str_);
     TABLES[name].forEach(function (c) { if (head.indexOf(c[1]) < 0) { var at = head.filter(String).length + 1; sh.getRange(1, at).setValue(c[1]); head[at - 1] = c[1]; } });
   });
+  if (!ss_().getSheetByName(TS_TAB)) { var ts = ss_().insertSheet(TS_TAB); ts.getRange(1, 1, ts.getMaxRows(), ts.getMaxColumns()).setNumberFormat('@'); }
   if (!ss_().getSheetByName(IC_TAB)) { var ic = ss_().insertSheet(IC_TAB); ic.getRange(1, 1, ic.getMaxRows(), ic.getMaxColumns()).setNumberFormat('@'); }
   MEMO_ = {};
   var have = rows_('Settings').map(function (r) { return r.key; }), add = DEFAULTS.filter(function (d) { return have.indexOf(d[0]) < 0; });
   insertMany_('Settings', add.map(function (d) { return { key: d[0], S: d[1], N: d[2], help: d[3] }; }));
+  if (!PropertiesService.getDocumentProperties().getProperty('teachMail1')) {          // 0.11: teachers hear about bookings, completions, no-shows, cancels
+    rows_('Settings').forEach(function (r) { if (r.key === 'Completion emails to teachers') update_('Settings', r, { S: /off/i.test(r.S) ? 'On' : r.S, N: /off/i.test(r.N) ? 'On' : r.N, help: DEFAULTS.filter(function (x) { return x[0] === r.key; })[0][3] }); });
+    PropertiesService.getDocumentProperties().setProperty('teachMail1', '1');
+  }
   if (!PropertiesService.getDocumentProperties().getProperty('cutoff0')) {          // 0.10: no 24-hour rule; booking is open until the period starts
     rows_('Settings').forEach(function (r) { if (r.key === 'Book at least this many hours ahead') { var d = DEFAULTS.filter(function (x) { return x[0] === r.key; })[0]; update_('Settings', r, { S: str_(r.S) === '24' ? '0' : r.S, N: str_(r.N) === '24' ? '0' : r.N, help: d[3] }); } });
     PropertiesService.getDocumentProperties().setProperty('cutoff0', '1');
@@ -1243,12 +1261,13 @@ function book_(w, sid, req, staff) {
     var cf = conflictFor_(sid, period, half, d).conflict, conflict = '';
     if (cf) {
       if (!req.ack) return { conflict: cf, slot: slotBrief_(s) };          // nothing saved: the page shows the warning first
-      conflict = { course: cf.course, teacher: cf.teacher, secid: cf.secid, ack: staff ? 'Booked by staff' : 'Student says the teacher gave permission', at: iso_(), note: clean_(req.ack.note, 300), verified: false };
+      conflict = { course: cf.course, teacher: cf.teacher, secid: cf.secid, ack: staff ? 'Booked by staff' : 'Student says ' + (cf.teacher || 'the teacher') + ' gave permission and will bring a written note', at: iso_(), note: clean_(req.ack.note, 300), verified: false };
     }
     var appt = { id: uid_('ap'), campus: campus, date: d, period: period, half: half, sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: aid, test: test, purpose: clean_(req.purpose, 40) || 'Makeup test',
       fmt: /^(paper|digital)$/i.test(req.fmt) ? req.fmt : '', status: 'Scheduled', conflict: conflict, source: staff ? 'Staff' : 'Student', req: clean_(req.reqId, 60), created: iso_(), by: w.email, notes: staff && tooSoon_(s, campus) ? 'Booked after the cutoff by ' + w.email : '' };
     insert_('Appointments', appt);
     audit_('Booked', appt.id, { sid: sid, date: d, period: period, half: half, by: staff ? 'staff' : 'student' });
+    teacherNotice_('booked', appt);
     if (conf.confirm && stu.email) mail_('confirm', 'confirm:' + appt.id, low_(stu.email), 'Testing Center appointment booked', confirmText_(appt, stu), appt.id, true);
     return { booked: appt.id, home: staff ? null : studentHome_(who_()) };
   });
@@ -1260,7 +1279,7 @@ function pickClass_(sid, req) {          // the class from the student's schedul
 function slotBrief_(s) { return { date: s.date, period: s.period, ab: s.ab, free: s.free, cap: s.cap }; }
 
 // ---------- cancelling (students cancel their own future appointments; staff any) → the seat goes to the waitlist
-function api_cancel(id) {
+function api_cancel(id, reason) {
   var w = who_();
   return locked_(function () {
     var a = find_('Appointments', 'id', id); if (!a) throw new Error('That appointment isn’t there.');
@@ -1268,13 +1287,23 @@ function api_cancel(id) {
     if (!staff && !(w.sid && str_(a.sid) === w.sid)) throw new Error('That isn’t your appointment.');
     if (!/^(scheduled|awaiting|ready)/i.test(a.status)) throw new Error('That appointment can’t be canceled now.');
     if (!staff && day_(a.date) < today_()) throw new Error('That appointment has passed.');
-    update_('Appointments', a, { status: 'Canceled', changed: iso_() });
-    audit_('Canceled', id, staff ? 'by staff' : 'by student');
-    var stu = student_(a.sid);
-    if (campusConf_(str_(a.campus)).confirm && stu && stu.email && !staff) mail_('cancel', 'cancel:' + id, low_(stu.email), 'Testing Center appointment canceled', 'Your Testing Center appointment on ' + niceDate_(day_(a.date)) + ', ' + perLabel_(a) + ' is canceled.', id, true);
+    cancelAppt_(a, staff ? clean_(reason, 300) : '', staff, w);
     offerOpenSeats_(str_(a.campus), day_(a.date), str_(a.period));
     return w.sid && str_(a.sid) === w.sid ? studentHome_(who_()) : 'ok';
   });
+}
+// Inside locked_(). Staff (or the Testing Center closing) cancel → the student ALWAYS gets an email with the reason; a student's own
+// cancel → an email only when "Student confirmation emails" is on. The seat is NOT re-offered here (callers decide).
+function cancelAppt_(a, reason, staff, w) {
+  update_('Appointments', a, { status: 'Canceled', changed: iso_(), notes: (str_(a.notes) + (reason ? ' · Canceled: ' + reason : '')).replace(/^ · /, '') });
+  audit_('Canceled', str_(a.id), staff ? 'by staff' + (reason ? ': ' + reason : '') : 'by student');
+  teacherNotice_('canceled', a, staff ? (reason || 'not given') : '');
+  var stu = student_(a.sid), c = campusConf_(str_(a.campus));
+  if (!stu || !stu.email) return;
+  if (staff) mail_('cancel', 'cancel:' + str_(a.id), low_(stu.email), 'Your Testing Center appointment was canceled',
+    'Hi ' + str_(stu.alias || stu.first) + ',\n\nYour ' + c.name + ' Testing Center appointment on ' + niceDate_(day_(a.date)) + ', ' + perLabel_(a) + ' (' + str_(a.test) + (str_(a.course) ? ', ' + str_(a.course) : '') + ') was canceled by the Testing Center.' +
+    (reason ? '\n\nReason: ' + reason : '') + '\n\nPlease go to your regular class. You can book a new time in the Testing Center app: ' + appUrl_() + '\n\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+  else if (c.confirm) mail_('cancel', 'cancel:' + str_(a.id), low_(stu.email), 'Testing Center appointment canceled', 'Your Testing Center appointment on ' + niceDate_(day_(a.date)) + ', ' + perLabel_(a) + ' is canceled.', str_(a.id), true, str_(a.campus));
 }
 
 // ---------- the waitlist: offers, never automatic bookings
@@ -1358,9 +1387,10 @@ function api_answerOffer(id, accept, ack) {
     if (cf && !ack && !(det.ack && low_(det.ack.course) === low_(cf.course))) return { conflict: cf };
     update_('Offers', o, { status: 'Accepted', answered: iso_() }); if (x) update_('Waitlist', x, { status: 'Booked', changed: iso_() });
     var appt = { id: uid_('ap'), campus: str_(o.campus), date: day_(o.date), period: str_(o.period), half: str_(o.half), sid: w.sid, secid: det.secid || '', course: det.course || '', teacher: det.teacher || '', aid: det.aid || '', test: det.test || '', purpose: det.purpose || 'Makeup test', fmt: det.fmt || '',
-      status: 'Scheduled', conflict: cf ? { course: cf.course, teacher: cf.teacher, ack: 'Student says the teacher gave permission', at: iso_(), note: clean_((ack || det.ack || {}).note, 300), verified: false } : '', source: 'Waitlist', created: iso_(), by: w.email };
+      status: 'Scheduled', conflict: cf ? { course: cf.course, teacher: cf.teacher, ack: 'Student says ' + (cf.teacher || 'the teacher') + ' gave permission and will bring a written note', at: iso_(), note: clean_((ack || det.ack || {}).note, 300), verified: false } : '', source: 'Waitlist', created: iso_(), by: w.email };
     insert_('Appointments', appt);
     audit_('Offer accepted', id, { appt: appt.id });
+    teacherNotice_('booked', appt);
     return studentHome_(who_());
   });
 }
@@ -1630,6 +1660,18 @@ function morning() {          // daily: reminders for appointments on the school
     });
   });
 }
+// Short notes to the class's teacher(s) (the co-teaching rule decides who; only confirmed addresses; once per appointment and kind)
+function teacherNotice_(kind, a, extra) {
+  var c = campusConf_(str_(a.campus)), on = { booked: c.tBook, noshow: c.tNoShow, canceled: c.tCancel }[kind];
+  if (!on || !str_(a.secid)) return;
+  var rc = recipients_(a); if (!rc.to.length) return;
+  var who = studentName_(student_(a.sid)) || 'A student', when = niceDate_(day_(a.date)) + ', ' + perLabel_(a), cj = a.conflict && typeof a.conflict === 'object' ? a.conflict : json_(a.conflict, null);
+  var subj = { booked: 'Testing Center — ' + who + ' booked a time for ' + str_(a.course), noshow: 'Testing Center — ' + who + ' didn’t come', canceled: 'Testing Center — ' + who + '’s appointment was canceled' }[kind];
+  var body = { booked: who + ' booked the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.purpose) + ', ' + str_(a.course) + ') on ' + when + '.' + (cj ? '\n\nThis is during ' + cj.course + ': the student said ' + (cj.teacher || 'the teacher') + ' gave permission and will bring a written note.' : '') + '\n\nTo give us the test or the access code, open the appointment: ' + appUrl_() + '?appt=' + str_(a.id),
+    noshow: who + ' was scheduled at the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' and didn’t come.',
+    canceled: who + '’s ' + c.name + ' Testing Center appointment for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' was canceled' + (extra ? ' by the Testing Center. Reason: ' + extra : ' by the student') + '.' }[kind];
+  mail_('t-' + kind, 't-' + kind + ':' + str_(a.id), rc.to, subj, 'Hello,\n\n' + body + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+}
 function completionText_(a, outcome, note) {
   var c = campusConf_(str_(a.campus));
   return str_(studentName_(student_(a.sid))) + ' attended the ' + c.name + ' Testing Center on ' + niceDate_(day_(a.date)) + ' and ' + (/incomplete|partial/i.test(outcome) ? 'did not finish ' : 'reported completing ') + str_(a.test) + ' for ' + str_(a.course) + '.\n\nStatus: ' + outcome + (note ? '\n\n' + note : '') + '\n\nThank you,\n' + c.name + ' Testing Center';
@@ -1679,7 +1721,9 @@ function attention_(campus) {
     var who = studentName_(student_(a.sid)) || 'A student', when = day_(a.date) === t ? 'today' : niceDate_(day_(a.date)).split(',')[0], sev = day_(a.date) === t ? 1 : day_(a.date) === soon[1] ? 2 : 3;
     if (!str_(a.sid)) add(1, 'unmatched', 'Appointment not matched to a student (' + str_(a.notes).replace(/^Not matched to a student: /, '') + '), ' + when + ' P' + a.period, { appt: str_(a.id) });
     else if (!str_(a.secid)) add(sev, 'noclass', who + ': class not on their schedule (' + (str_(a.course) || 'unknown') + '), ' + when + ' P' + a.period, { appt: str_(a.id) });
-    var r = readiness_(a); if (r.state === 'Needs info') add(sev, 'materials', who + ' · ' + str_(a.course) + ' · ' + str_(a.test) + ': ' + r.missing.join(', ') + ' (' + when + ' P' + a.period + ')', { appt: str_(a.id) });
+    var r = readiness_(a), pn = day_(a.date) === t ? periodNow_(campus) : {};
+    if (r.state === 'Needs info' && str_(a.sid) && (str_(a.period) === pn.next || str_(a.period) === pn.now)) { add(0, 'nexttest', who + '’s ' + str_(a.course) + ' test (' + str_(a.test) + ') is ' + (str_(a.period) === pn.now ? 'this period' : 'next period') + ' (P' + a.period + ', ' + hmTxt_(pn.bells[str_(a.period)].start) + ') but the Testing Center doesn’t have it: ' + r.missing.join(', ') + '.', { appt: str_(a.id) }); return; }
+    if (r.state === 'Needs info') add(sev, 'materials', who + ' · ' + str_(a.course) + ' · ' + str_(a.test) + ': ' + r.missing.join(', ') + ' (' + when + ' P' + a.period + ')', { appt: str_(a.id) });
     var c = json_(a.conflict, null); if (c && !c.verified && sev <= 2) add(sev, 'conflict', who + ' will miss ' + c.course + (c.teacher ? ' (' + c.teacher + ')' : '') + ' ' + when + ' P' + a.period + ': needs a pass', { appt: str_(a.id) });
     var rc = recipients_(a, campus); if (r.state === 'Needs info' && rc.unresolved.length) add(3, 'email', 'No confirmed email for ' + rc.unresolved.join(', '), { appt: str_(a.id) });
   });
@@ -1700,6 +1744,7 @@ function attention_(campus) {
   rows_('Imports').forEach(function (r) { if (/^held/i.test(r.status) && (str_(r.campus) === campus || str_(r.campus) === 'B')) add(2, 'import', 'Roster import held: ' + (json_(r.summary, {}).hold || ''), { imp: str_(r.id) }); });
   return out.sort(function (a, b) { return a.sev - b.sev; });
 }
+function hmTxt_(hm) { var p = String(hm || '').split(':'), h = +p[0]; return hm ? (h % 12 || 12) + ':' + p[1] + (h < 12 ? ' AM' : ' PM') : ''; }
 function emailCampus_(r) { var id = str_(r.appt).split(',')[0], a = id && find_('Appointments', 'id', id); return a ? str_(a.campus) : (/^materials/.test(str_(r.key)) ? '' : ''); }
 
 function waitlistView_(campus) {
@@ -1746,7 +1791,7 @@ function api_status(id, step, data) {
       var A = str_(a.aid) && find_('Assessments', 'id', a.aid); if (A && /collected/i.test(outcome)) update_('Assessments', A, { paper: 'Awaiting pickup' });
       if (campusConf_(str_(a.campus)).completion && data.notify !== false) { var rc = recipients_(a); if (rc.to.length) mail_('completion', 'completion:' + id, rc.to, 'Testing Center — Assessment Completed', completionText_(a, outcome, clean_(data.note, 400)), id, true, str_(a.campus)); }
     }
-    else if (step === 'noshow') update_('Appointments', a, { status: 'No-show', changed: t });
+    else if (step === 'noshow') { update_('Appointments', a, { status: 'No-show', changed: t }); teacherNotice_('noshow', a); }
     else if (step === 'undo') update_('Appointments', a, { status: 'Scheduled', changed: t });
     else if (step === 'verify') { var c = json_(a.conflict, null); if (c) { c.verified = true; c.verifiedBy = w.email; c.verifiedAt = t; update_('Appointments', a, { conflict: c }); } }
     else if (step === 'noremind') update_('Appointments', a, { notes: (str_(a.notes) + ' · No reminders').replace(/^ · /, '') });
@@ -1930,6 +1975,64 @@ function api_stats(campus, from, to) {
 // ---------- dashboard preferences (per person: hidden sections, landing view, bell panel)
 function prefs_(email) { return json_(PropertiesService.getDocumentProperties().getProperty('prefs:' + email), { hide: [], land: 'today', bell: true }); }
 function api_savePrefs(p) { var w = need_('staff'); var v = { hide: (p.hide || []).slice(0, 20).map(String), land: String(p.land || 'today').slice(0, 20), bell: p.bell !== false, cols: (p.cols || []).slice(0, 20).map(String) }; PropertiesService.getDocumentProperties().setProperty('prefs:' + w.email, JSON.stringify(v)); return v; }
+
+// ---------- Open periods: the coordinators' calendar for which periods take appointments (one-day changes only; the usual week
+// stays on the Testing Periods tab). Close a whole day, leave early (close from a period on), close or reopen single periods; the
+// students already booked can be canceled with an email that says why.
+function api_periodGrid(campus, from, n) {
+  needCampus_(campus);
+  var d = day_(from) || today_(), out = [], guard = 0;
+  n = Math.min(+n || 15, 40);
+  while (out.length < n && guard++ < 90) {
+    var info = dayInfo_(campus, d);
+    if (info.school) {
+      var ch = dateChanges_(campus, d);
+      out.push({ date: d, sched: info.sched, note: info.note, periods: offeredPeriods_(campus).map(function (p) {
+        var s = slot_(campus, d, p), booked = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === d && str_(a.period) === p && /^(scheduled|awaiting|ready|checked|testing|paused)/i.test(a.status); }).length;
+        return { period: p, open: s.open, why: s.why, cap: s.cap, booked: booked, start: s.start, changed: ch.some(function (c) { return str_(c.period) === p || /^all$/i.test(str_(c.period)); }), past: !!s.startMs && s.startMs < now_().getTime() };
+      }) });
+    }
+    d = addDays_(d, 1);
+  }
+  return { campus: campus, edit: who_().campuses[campus] === 'edit', days: out };
+}
+function periodAppts_(campus, d, periods) {
+  return rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === d && periods.indexOf(str_(a.period)) >= 0 && /^(scheduled|awaiting|ready)/i.test(a.status); });
+}
+function api_periodImpact(campus, d, periods) {
+  needCampus_(campus);
+  periods = (periods || []).map(String);
+  return { appts: periodAppts_(campus, day_(d), periods).map(function (a) { return { id: str_(a.id), student: studentName_(student_(a.sid)), period: str_(a.period), test: str_(a.test), course: str_(a.course) }; }),
+    waiting: rows_('Waitlist').filter(function (x) { return str_(x.campus) === campus && day_(x.date) === day_(d) && periods.indexOf(str_(x.period)) >= 0 && /^(waiting|offered)/i.test(x.status); }).length };
+}
+// open = true reopens; false closes. cancel = cancel (and email) the students already booked in the closed periods.
+function api_setPeriods(campus, d, periods, open, cancel, reason) {
+  var w = needCampus_(campus, true); d = day_(d); periods = (periods || []).map(String).filter(function (p) { return offeredPeriods_(campus).indexOf(p) >= 0; });
+  if (!d || !periods.length) throw new Error('Pick a day and at least one period.');
+  reason = clean_(reason, 200);
+  return locked_(function () {
+    var sh = sheet_('Date Changes'), all = offeredPeriods_(campus);
+    // a whole-day "All" change is split into periods, so single periods can be changed inside it
+    dateChanges_(campus, d).filter(function (c) { return /^all$/i.test(str_(c.period)); }).forEach(function (c) {
+      all.forEach(function (p) { insert_('Date Changes', { id: uid_('dc'), campus: campus, date: d, period: p, change: str_(c.change), cap: str_(c.cap), note: str_(c.note), by: str_(c.by) }); });
+    });
+    var drop = dateChanges_(campus, d).filter(function (c) { return /^all$/i.test(str_(c.period)) || (periods.indexOf(str_(c.period)) >= 0 && /close|open/i.test(c.change)); }).map(function (c) { return c._r; }).sort(function (a, b) { return b - a; });
+    drop.forEach(function (r) { sh.deleteRow(r); }); MEMO_ = {};
+    var canceled = 0, waitClosed = 0;
+    periods.forEach(function (p) {
+      var base = slot_(campus, d, p);          // what the usual week (and seat changes) says, with this period's open/close changes removed
+      if (open) { if (!base.open && /closed/i.test(base.why)) insert_('Date Changes', { id: uid_('dc'), campus: campus, date: d, period: p, change: 'Open', cap: '', note: reason || 'Opened', by: w.email }); }
+      else insert_('Date Changes', { id: uid_('dc'), campus: campus, date: d, period: p, change: 'Closed', cap: '', note: reason || 'Testing Center closed', by: w.email });
+    });
+    MEMO_ = {};
+    if (!open) {
+      if (cancel) periodAppts_(campus, d, periods).forEach(function (a) { cancelAppt_(a, reason || 'The Testing Center is closed then.', true, w); canceled++; });
+      rows_('Waitlist').forEach(function (x) { if (str_(x.campus) === campus && day_(x.date) === d && periods.indexOf(str_(x.period)) >= 0 && /^waiting/i.test(x.status)) { update_('Waitlist', x, { status: 'Closed', changed: iso_() }); waitClosed++; } });
+    } else periods.forEach(function (p) { offerOpenSeats_(campus, d, p); });
+    audit_(open ? 'Periods opened' : 'Periods closed', campus + ' ' + d, { periods: periods, canceled: canceled, reason: reason });
+    return { canceled: canceled, waitClosed: waitClosed };
+  });
+}
 
 // The Testing Center room: one seating chart per campus, drawn in Colleen's seating chart tool (Seating.html, ?view=seating,
 // built by dev/build-seating.py), with numbered desks like restaurant tables: front row first, left to right ("Don't use" desks
@@ -2355,6 +2458,97 @@ function icRestore_(id) {
   MEMO_ = {};
 }
 
+// Teacher schedules ("where is the teacher right now?") and the "no test for next period" alert.
+// Colleen uploads the staff schedule export into the Teacher_Schedules_Raw tab (File › Import › Upload › Replace current sheet).
+// "Read teacher schedules" turns it into the Teacher Schedule tab (columns found by their names, rows matched to the Teachers tab by
+// staff number, then email, then name). When a period isn't in it, the classes the teacher teaches (from the student import) are used.
+var TS_TAB = 'Teacher_Schedules_Raw';
+var TS_COLS = [          // [key, header patterns (lowercased, after the last "."), required]
+  ['tid', /^(staff|teacher|employee)[ _.-]*(number|num|id|#)$|^staffnumber$|^personid$/],
+  ['email', /e-?mail/],
+  ['name', /^(teacher|staff)?[ _.-]*(display|full)?[ _.-]*name$|^teacher(display)?$|^staff$|^name$|^teacherfullname$/],
+  ['last', /^last[ _.-]*name$|^lastname$/], ['first', /^first[ _.-]*name$|^firstname$/],
+  ['period', /^period([ _.-]*start)?$|^per$|^periodstart$|^pd$/, true], ['pend', /^period[ _.-]*end$|^periodend$/],
+  ['room', /room/], ['what', /^(course|class)[ _.-]*(name|title)?$|^coursename$|assignment|duty|description|^activity$/],
+  ['term', /^term|semester/], ['days', /^days?$|day[ _.-]*(rotation|pattern)/]
+];
+function api_tsStatus() {
+  anyStaff_();
+  var sh = ss_().getSheetByName(TS_TAB), rows = rows_('Teacher Schedule');
+  return { tab: sh ? { rows: Math.max(0, sh.getLastRow() - 1), cols: sh.getLastColumn() } : null, have: rows.length, teachers: Object.keys(rows.reduce(function (o, r) { o[str_(r.tid) || str_(r.name)] = 1; return o; }, {})).length, at: PropertiesService.getDocumentProperties().getProperty('tsAt') || '' };
+}
+function api_tsProcess() {
+  var w = anyStaff_(), sh = ss_().getSheetByName(TS_TAB);
+  if (!sh || sh.getLastRow() < 2) throw new Error('The ' + TS_TAB + ' tab is empty. Import the teacher schedule CSV into it first.');
+  var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getDisplayValues(), head = v[0].map(str_), idx = {}, used = {};
+  TS_COLS.forEach(function (c) { head.forEach(function (h, i) { if (idx[c[0]] === undefined && !used[i] && (c[1].test(hnorm_(h)) || c[1].test(htail_(h).replace(/\s+/g, '')))) { idx[c[0]] = i; used[i] = 1; } }); });
+  if (idx.period === undefined) throw new Error('No period column found. Columns in the tab: ' + head.join(', '));
+  if (idx.tid === undefined && idx.email === undefined && idx.name === undefined && idx.last === undefined) throw new Error('No teacher column (staff number, email or name) found. Columns in the tab: ' + head.join(', '));
+  var T = rows_('Teachers'), byId = {}, byEmail = {}, byName = {};
+  var key = function (n) { var p = icPeople_(n)[0] || ''; return low_(p).replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim(); };
+  T.forEach(function (t) { byId[str_(t.tid)] = t; if (str_(t.email)) byEmail[low_(t.email)] = t; byName[key(t.name)] = byName[key(t.name)] ? 'many' : t; });
+  var out = [], unmatched = {}, matched = {};
+  v.slice(1).forEach(function (r, i) {
+    var g = function (k) { return idx[k] === undefined ? '' : str_(r[idx[k]]); };
+    if (!r.some(function (x) { return str_(x); })) return;
+    var name = g('name') || (g('first') + ' ' + g('last')).trim(), id = g('tid'), em = low_(g('email'));
+    var t = (id && byId[id]) || (em && byEmail[em]) || (name && byName[key(name)] !== 'many' && byName[key(name)]) || null;
+    var pr = icPeriods_(g('period')), pe = icPeriods_(g('pend'));
+    if (t) matched[str_(t.tid)] = 1; else unmatched[name || id || em] = 1;
+    out.push({ tid: t ? str_(t.tid) : (id || ''), name: t ? str_(t.name) : icPeople_(name)[0] || name, period: pr.list.join(',') || g('period'), pend: pe.list.length ? pe.list[pe.list.length - 1] : '', what: g('what'), room: g('room'), term: g('term'), days: g('days'), src: String(i + 2) });
+  });
+  locked_(function () { replaceAll_('Teacher Schedule', out); });
+  PropertiesService.getDocumentProperties().setProperty('tsAt', iso_());
+  audit_('Teacher schedules read', TS_TAB, { rows: out.length, matched: Object.keys(matched).length });
+  var cols = {}; Object.keys(idx).forEach(function (k) { cols[k] = head[idx[k]]; });
+  return { rows: out.length, matched: Object.keys(matched).length, unmatched: Object.keys(unmatched).slice(0, 40), unmatchedCount: Object.keys(unmatched).length, columns: cols };
+}
+
+// Where a teacher is during a period on a date: their staff schedule first, else a class they teach (from the student import).
+function whereTeacher_(tid, name, d, period) {
+  period = String(period);
+  var inRange = function (r) { var list = str_(r.period).split(',').filter(String), e = parseInt(r.pend, 10); if (list.indexOf(period) >= 0) return true; return list.length === 1 && e > +list[0] && +period >= +list[0] && +period <= e; };
+  var ts = rows_('Teacher Schedule').filter(function (r) { return ((tid && str_(r.tid) === tid) || (!tid && name && low_(r.name) === low_(name))) && inRange(r); });
+  if (ts.length) return { room: str_(ts[0].room), what: str_(ts[0].what), src: 'teacher schedule' };
+  if (!tid) return null;
+  var S = sectionsById_(), hit = null;
+  rows_('Section Teachers').forEach(function (r) {
+    if (hit || str_(r.tid) !== tid) return;
+    var s = S[str_(r.secid)]; if (!s || str_(s.year) && str_(s.year) !== schoolYear_()) return;
+    if (sectionPeriods_(s).some(function (p) { return p.period === period; })) hit = { room: str_(s.room), what: str_(s.course), src: 'class roster' };
+  });
+  return hit;
+}
+function periodNow_(campus) {          // {now, next} period numbers by today's bell schedule
+  var info = dayInfo_(campus, today_()); if (!info.school) return {};
+  var b = bells_(campus, info.sched), hm = Utilities.formatDate(now_(), tz_(), 'HH:mm'), ps = Object.keys(b).sort(function (x, y) { return parseFloat(x) - parseFloat(y); }), now = '', next = '';
+  ps.forEach(function (p) { if (b[p].start <= hm && hm < b[p].end) now = p; if (!next && b[p].start > hm) next = p; });
+  return { now: now, next: next, bells: b };
+}
+function api_teacherNow(apptId) {
+  var a = find_('Appointments', 'id', apptId); if (!a) throw new Error('That appointment isn’t there.');
+  needCampus_(str_(a.campus));
+  var c = str_(a.campus), pn = periodNow_(c), tch = str_(a.secid) ? secTeachers_(a.secid) : [];
+  if (!tch.length && str_(a.teacher)) tch = [{ tid: '', name: str_(a.teacher), email: '' }];
+  return { student: studentName_(student_(a.sid)), test: str_(a.test), course: str_(a.course), period: str_(a.period), nowPeriod: pn.now || '', nextPeriod: pn.next || '',
+    nowLabel: pn.now ? 'Period ' + pn.now : pn.next ? 'Passing time (going to period ' + pn.next + ')' : 'Outside the school day',
+    teachers: tch.map(function (t) { return { name: t.name, email: t.verified ? t.email : '', now: pn.now || pn.next ? whereTeacher_(t.tid, t.name, today_(), pn.now || pn.next) : null, during: whereTeacher_(t.tid, t.name, day_(a.date), str_(a.period)) }; }),
+    hasSchedules: rows_('Teacher Schedule').length > 0 };
+}
+// A quick, direct email to the teacher: the test is needed for this period (one per appointment).
+function api_emailTeacherNow(apptId) {
+  var a = find_('Appointments', 'id', apptId); if (!a) throw new Error('That appointment isn’t there.');
+  var w = needCampus_(str_(a.campus), true), rc = recipients_(a), c = campusConf_(str_(a.campus));
+  if (!rc.to.length) throw new Error('There is no confirmed email for this teacher.');
+  var r = locked_(function () {
+    return mail_('urgent', 'urgent:' + str_(a.id), rc.to, 'Testing Center — test needed for ' + perLabel_(a) + ' today',
+      'Hello,\n\n' + studentName_(student_(a.sid)) + ' is coming to the ' + c.name + ' Testing Center (' + c.where + ') ' + (day_(a.date) === today_() ? 'today' : 'on ' + niceDate_(day_(a.date))) + ', ' + perLabel_(a) + ', for ' + str_(a.test) + ' (' + str_(a.course) + '), and we don’t have the test yet.\n\n' +
+      'Please bring the paper test' + (c.dropoff ? ' to ' + c.dropoff : '') + ', or add the access code here:\n' + appUrl_() + '?appt=' + str_(a.id) + '\n\nIf it can’t be ready in time, just reply and we’ll cancel the appointment.\n\nThank you!\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+  });
+  audit_('Teacher emailed: test needed', str_(a.id), rc.to.join(', ') + ' by ' + w.email);
+  return { to: rc.to, status: str_(r.status) };
+}
+
 // Practice data: made-up students, teachers and classes for both campuses, loaded THROUGH the real roster importer (so the
 // importer is exercised too), plus sample tests, resources, appointments and a waitlist. Never real student information.
 // Sheet menu: Testing Center > Fill with practice data. Also used by dev/test.js and dev/build-preview.py.
@@ -2511,7 +2705,8 @@ function api_clearPractice() {
   var firstStu = rows_('Students').filter(function (s) { return s.campus === 'S' && rows_('Appointments').some(function (a) { return a.sid === s.sid && a.date > today_(); }); })[0];
   var tEmail = function (n) { var t = rows_('Teachers').filter(function (x) { return x.name === n; })[0]; return t ? t.email : ''; };
   var who = { coord: 'stesting@practice.invalid', ncoord: 'ntesting@practice.invalid', admin: 'admin@d204.lths.net', student: firstStu.email, teacher: tEmail('Colleen Gibbons'), teacher2: tEmail('Clara Fenn') }[as] || 'stesting@practice.invalid';
-  HUB_BYPASS_ = !/lock=1/.test(location.search);          // the demo skips the hub password (&lock=1 shows it)
+  HUB_BYPASS_ = !/lock=1/.test(location.search);
+  var look = (location.search.match(/look=(\w+)/) || [])[1]; if (look) try { localStorage.setItem('tcLook', look); } catch (e) {}          // the demo skips the hub password (&lock=1 shows it)
   if (/bellsmall=1/.test(location.search)) PropertiesService.getDocumentProperties().setProperty('prefs:' + who, JSON.stringify({ hide: [], land: 'today', bell: false }));          // screenshots: the Bell.plus box made small
   g.setUser(who); MEMO_ = {};
   // &go=… opens a screen for screenshots: book, slots, conflict, appt, attention, waitlist, comms, people, reports, admin, form, sched
@@ -2523,7 +2718,7 @@ function api_clearPractice() {
     var ict = g.ss.getSheetByName('IC_Raw_Import'); ict.insertColumnsAfter(26, 2); ict.getRange(1, 1, data.length, H.length).setValues(data);
   }
   if (go) setTimeout(function () {
-    if (go === 'book' || go === 'slots' || go === 'conflict') { bkStart(); BK.secid = SH.classes[0].key; BK.test = 'Unit 3 Test'; BK.purpose = 'Makeup test'; bkDraw(); if (go !== 'book') { bkNext(); setTimeout(function () { if (go === 'conflict') { var d = BK.slots.days[0], p = d.periods.filter(function (x) { return x.conflict && x.open; })[0]; bkPick(d.date, p.period, ''); } }, 900); } }
+    if (go === 'book' || go === 'slots' || go === 'conflict') { var waitAV = setInterval(function () { if (!AV) return; clearInterval(waitAV); if (go === 'slots') return; var d = AV.slots.days[1] || AV.slots.days[0], p = d.periods.filter(function (x) { return x.open && !x.soon && (go === 'conflict' ? x.conflict : !x.conflict); })[0]; AV.day = d.date; bkPick(d.date, p.period, p.ab ? 'AB' : ''); BK.secid = SH.classes[0].key; BK.test = 'Unit 3 Test'; BK.purpose = 'Makeup test'; bkDraw(); if (go === 'conflict') bkNext(); }, 200); }
     else if (go === 'sched') stuSchedule(true);
     else if (go === 'form') tchForm(TH.appts.filter(function (a) { return a.ready.state === 'Needs info'; })[0].id);
     else if (go === 'checkin') coCheckIn(CO.dash.periods.map(function (p) { return p.appts.filter(function (a) { return a.status === 'Scheduled' && !a.unmatched; })[0]; }).filter(Boolean)[0].id);
@@ -2532,6 +2727,9 @@ function api_clearPractice() {
       rows: [['500100', 'Tran', 'Ava', '81234', 'EN201', 'English 10', 'Marsh, Dana', '3301', 'dmarsh@practice.invalid', '1', '1', '08/18/2026', '05/28/2027', 'B204'], ['500100', 'Tran', 'Ava', '81240', 'MA210', 'Geometry', 'Ostrow, Jen', '3302', 'jostrow@practice.invalid', '2', '1', '08/18/2026', '05/28/2027', 'B204'], ['500101', 'Garza', 'Nico', '81234', 'EN201', 'English 10', 'Marsh, Dana', '3301', 'dmarsh@practice.invalid', '1', '1', '08/18/2026', '05/28/2027', 'B110']] }; impMapLoad('').catch(console.error); }
     else if (go === 'ic') { coView('admin'); setTimeout(icStart, 600); }
     else if (go === 'tview') { setMode('tview'); setTimeout(function () { tvOpen(TV[0].sid); }, 700); }
+    else if (go === 'periods') coView('periods');
+    else if (go === 'tnow') { var a0 = null; CO.dash.periods.forEach(function (p) { p.appts.forEach(function (a) { if (!a0 && !a.noClass) a0 = a; }); }); coTeacherNow(a0.id); }
+    else if (go === 'pgclose') { coView('periods'); setTimeout(function () { var d = PG.grid.days[3]; pgCell(d.date, '6'); }, 900); }
     else if (go === 'appt') coAppt(CO.dash.periods.filter(function (p) { return p.appts.length; }).pop().appts[0].id);
     else coView(go);
   }, 1800);
@@ -2556,10 +2754,14 @@ function api_clearPractice() {
 <span style="flex:1"></span><a href="./" style="color:#ffe066">← Tour</a></div>
 <script>(function(){var q=location.search;[].forEach.call(document.querySelectorAll('#demoBar a[data-as]'),function(a){a.href='demo.html?as='+a.getAttribute('data-as');if(q.indexOf('as='+a.getAttribute('data-as').split('&')[0])>=0&&(q.indexOf('lock=1')>=0)===(a.getAttribute('data-as').indexOf('lock')>=0))a.style.textDecoration='none',a.style.fontWeight='700';});})();</script>
 
-<div class="top" id="top"><div class="logo"><i>✓</i> <span id="appName">Testing Center</span></div><div class="grow"></div><div id="modes"></div></div>
+<div class="top" id="top"><div class="logo"><i>✓</i> <span id="appName">Testing Center</span></div><div class="grow"></div><div id="modes"></div><select id="lookSel" title="Colors" aria-label="Colors" style="width:auto;padding:5px 8px" onchange="setLook(this.value)"><option value="">🎨 Light</option><option value="dark">🎨 Dark</option><option value="contrast">🎨 High contrast</option><option value="calm">🎨 Calm</option><option value="warm">🎨 Warm</option></select></div>
 <div id="main"><div class="spin">Loading…</div></div>
 <div id="layer"></div>
 <script>
+// ---------- color modes (per device; the page works the same without storage)
+function setLook(v) { if (v) document.documentElement.setAttribute('data-look', v); else document.documentElement.removeAttribute('data-look'); try { localStorage.setItem('tcLook', v || ''); } catch (e) {} var el = document.getElementById('lookSel'); if (el) el.value = v || ''; }
+(function () { var v = ''; try { v = localStorage.getItem('tcLook') || ''; } catch (e) {} if (v) document.documentElement.setAttribute('data-look', v); })();
+window.addEventListener('DOMContentLoaded', function () { var v = ''; try { v = localStorage.getItem('tcLook') || ''; } catch (e) {} var el = document.getElementById('lookSel'); if (el) el.value = v; });
 // ---------- shared by every page
 var B = null, MODE = '', START = {};
 function call(fn) {
@@ -2647,7 +2849,7 @@ function drawStu() {
       '<div class="row"><button class="btn ok" onclick="stuOffer(\'' + o.id + '\', true, this)">Accept</button><button class="btn" onclick="stuOffer(\'' + o.id + '\', false, this)">Decline</button></div></div>';
   });
   if (h.askSchedule && h.schedule.rows.length) out += '<div class="banner info"><b>Is your class schedule right?</b><div class="small mute" style="margin:2px 0 8px">We use it to fill in your classes and warn you about missing a class.</div><div class="row"><button class="btn sm" onclick="stuLooksRight(this)">My schedule looks correct</button><button class="btn sm" onclick="stuSchedule()">Edit my schedule</button><button class="btn sm" onclick="stuSchedule(true)">Paste my updated schedule from Infinite Campus</button></div></div>';
-  out += '<div class="card" style="text-align:center;padding:22px">' + (pv ? '<span class="mute small">Students make and cancel appointments here.</span>' : h.booking ? '<button class="btn pri big" onclick="bkStart()">＋ Schedule a test</button>' : '<b>Sign up in SignUpGenius for now.</b><div class="mute small">The Testing Center is moving to this app soon.</div>') + '</div>';
+  out += pv ? '<div class="card" style="text-align:center"><span class="mute small">Students make and cancel appointments here.</span></div>' : h.booking ? '<div class="card" id="avail"><h2>Book a Testing Center appointment</h2><p class="small mute" style="margin:0 0 10px">Pick a day and a period. Then tell us the class and the test.</p><div id="availBody"><div class="spin">Finding open periods…</div></div></div>' : '<div class="card" style="text-align:center;padding:22px"><b>Sign up in SignUpGenius for now.</b><div class="mute small">The Testing Center is moving to this app soon.</div></div>';
   out += '<div class="card"><h2>Coming up</h2>' + (h.upcoming.length ? h.upcoming.map(function (a) {
     return '<div class="slot"><div class="grow"><b>' + esc(relD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + '</b><div>' + esc(a.test) + ' <span class="mute">· ' + esc(a.course) + '</span></div><div class="small mute">' + esc(a.purpose) + (a.missed ? ' · You’ll miss ' + esc(a.missed) + ': bring a pass' : '') + '</div></div>' +
       (a.canCancel && !pv ? '<button class="btn sm bad" onclick="stuCancel(\'' + a.id + '\')">Cancel</button>' : statusChip(a.status)) + '</div>';
@@ -2664,6 +2866,7 @@ function drawStu() {
     '<p class="tiny mute" style="margin-bottom:0">' + (h.schedule.source === 'student' ? 'This is the schedule you entered.' : 'From the school roster' + (h.schedule.at ? ', updated ' + esc(niceD(h.schedule.at.slice(0, 10))) : '') + '.') + (pv ? '' : ' Something wrong? <button class="link" onclick="stuSchedule()">Fix my schedule</button>') + '</p></div>';
   out += '</div>';
   $('main').innerHTML = out;
+  if (h.booking && !pv) availLoad();
 }
 function stuCancel(id) {
   var a = SH.upcoming.filter(function (x) { return x.id === id; })[0];
@@ -2680,97 +2883,101 @@ function stuOffer(id, yes, btn, ack) {
   }).catch(function (e) { busy(btn, false); fail(e); call('api_studentHome').then(stuRefresh); });
 }
 
-// ---------- booking: class → test → day and period → confirm
-function bkStart() { BK = { step: 1, reqId: uid(), half: '' }; bkDraw(); }
+// ---------- booking, time first: the open periods are on the first page → pick one → class, test, purpose → confirm
+var AV = null;          // { slots, day }
+function availLoad(keepDay) {
+  call('api_slots').then(function (sl) { AV = { slots: sl, day: keepDay && sl.days.some(function (d) { return d.date === keepDay; }) ? keepDay : (sl.days[0] || {}).date }; availDraw(); })
+    .catch(function (e) { var el = $('availBody'); if (el) el.innerHTML = '<div class="small" style="color:var(--bad)">' + esc(e.message || e) + '</div>'; });
+}
+function availDraw() {
+  var el = $('availBody'); if (!el || !AV) return;
+  if (!AV.slots.days.length) { el.innerHTML = '<div class="empty">No open periods right now.</div>'; return; }
+  var day = AV.slots.days.filter(function (d) { return d.date === AV.day; })[0] || AV.slots.days[0];
+  el.innerHTML = '<div class="daytabs">' + AV.slots.days.map(function (d) { var n = d.periods.filter(function (p) { return p.open && !p.soon; }).length; return '<button class="daytab' + (d.date === day.date ? ' on' : '') + '" onclick="AV.day=\'' + d.date + '\';availDraw()"><b>' + (d.date === B.today ? 'Today' : DAYS[dObj(d.date).getDay()]) + '</b><div class="small">' + MONTHS[dObj(d.date).getMonth()] + ' ' + dObj(d.date).getDate() + '</div><div class="tiny mute">' + n + ' open</div></button>'; }).join('') + '</div>' +
+    (day.sched && day.sched !== 'Regular' ? '<p class="small mute">' + esc(day.sched) + ' schedule' + (day.note ? ' · ' + esc(day.note) : '') + '</p>' : '') + day.periods.map(function (p) { return bkSlot(day, p); }).join('');
+}
+function bkSlot(day, p) {
+  if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
+  var time = '<div style="min-width:120px"><b>' + esc(p.label) + '</b><div class="small mute">' + hm(p.start) + '–' + hm(p.end) + '</div></div>';
+  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">' + (SH.cutoffH ? 'Too soon to book (' + SH.cutoffH + ' hours ahead)' : 'Already started') + '</span></div>';
+  var hint = p.conflict ? '<div class="small" style="color:var(--warn)">⚠ You have ' + esc(p.conflict) + '</div>' : p.have.length ? '<div class="small mute">You have ' + p.have.map(function (x) { return esc(x.course) + (x.half ? ' (' + x.half + ')' : ''); }).join(' / ') + '</div>' : '';
+  var btns = '';
+  if (p.ab) {
+    btns = [['A', 'A only', p.free.A > 0], ['B', 'B only', p.free.B > 0], ['AB', 'Whole period', p.free.A > 0 && p.free.B > 0]].map(function (o) { return o[2] ? '<button class="btn sm pri" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'' + o[0] + '\')">' + o[1] + '</button>' : (SH.waitlist ? '<button class="btn sm" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'' + o[0] + '\',true)">' + o[1] + ': waitlist</button>' : '<span class="chip">' + o[1] + ' full</span>'); }).join(' ') +
+      '<div class="tiny mute" style="width:100%">A ' + Math.max(0, p.free.A) + ' seats · B ' + Math.max(0, p.free.B) + ' seats left</div>';
+  } else if (p.free.all > 0) btns = '<button class="btn sm pri" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'\')">Book</button><span class="tiny mute">' + p.free.all + ' seats left</span>';
+  else btns = SH.waitlist ? '<span class="chip">Full</span> <button class="btn sm" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'\',true)">Join waitlist</button>' : '<span class="chip">Full</span>';
+  return '<div class="slot">' + time + '<div class="grow">' + hint + '</div><div class="row" style="max-width:340px;justify-content:flex-end">' + btns + '</div></div>';
+}
+// a period was picked (wait = join its waitlist): now the class, test and purpose
+function bkPick(d, p, half, wait) {
+  var day = AV.slots.days.filter(function (x) { return x.date === d; })[0], slot = day.periods.filter(function (x) { return x.period === p; })[0];
+  BK = { reqId: uid(), date: d, period: p, half: half, wait: !!wait, slot: slot, step: 'details', ack: null };
+  bkDraw();
+}
 function bkDraw() {
-  var h = SH, out = '<div class="wrap narrow"><p><button class="link" onclick="drawStu()">← My Testing Center</button></p><h1>Schedule a test</h1><p class="mute small" style="margin-top:0">Step ' + Math.min(BK.step, 3) + ' of 3</p>';
-  if (BK.step === 1) {
+  var h = SH, when = esc(longD(BK.date)) + ', ' + esc(perTxt(BK.period, BK.half)) + ' · ' + hm(BK.slot.start) + '–' + hm(BK.slot.end);
+  var out = '<div class="wrap narrow"><p><button class="link" onclick="BK=null;drawStu()">← Back to open periods</button></p><h1>' + (BK.wait ? 'Join the waitlist' : 'Book this time') + '</h1>' +
+    '<div class="banner info"><b>' + when + '</b><div class="small">' + esc(h.campusName) + ' Testing Center · ' + esc(h.where) + (BK.wait ? ' · this period is full: you’ll get an email if a seat opens' : '') + '</div></div>';
+  if (BK.step === 'details') {
     out += '<div class="card"><label class="f">Which class is this test for?</label><select id="bkClass" onchange="bkClass(this.value)"><option value="">Choose your class…</option>' + h.classes.map(function (c) { return '<option value="' + esc(c.key) + '"' + (BK.secid === c.key ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') + '<option value="__other"' + (BK.other ? ' selected' : '') + '>My class isn’t listed</option></select>';
-    if (BK.other) out += '<div class="grid2"><div><label class="f">Class</label><input type="text" id="bkOc" value="' + esc(BK.other.course) + '" oninput="BK.other.course=this.value"></div><div><label class="f">Teacher</label><input type="text" id="bkOt" value="' + esc(BK.other.teacher) + '" oninput="BK.other.teacher=this.value"></div></div><p class="small mute">If your schedule changed, you can also <button class="link" onclick="stuSchedule()">fix your schedule</button>.</p>';
+    if (BK.other) out += '<div class="grid2"><div><label class="f">Class</label><input type="text" value="' + esc(BK.other.course) + '" oninput="BK.other.course=this.value"></div><div><label class="f">Teacher</label><input type="text" value="' + esc(BK.other.teacher) + '" oninput="BK.other.teacher=this.value"></div></div><p class="small mute">If your schedule changed, you can also <button class="link" onclick="stuSchedule()">fix your schedule</button>.</p>';
     if (BK.secid || BK.other) {
       var tests = (BK.secid && h.tests[BK.secid]) || [];
       out += '<label class="f">Which test?</label>' + tests.map(function (t) { return '<button class="opt' + (BK.aid === t.id ? ' on' : '') + '" onclick="BK.aid=\'' + t.id + '\';BK.test=\'\';bkDraw()">' + esc(t.name) + '</button>'; }).join('') +
-        '<input type="text" id="bkTest" placeholder="' + (tests.length ? 'Or type the test name' : 'Type the test name (for example: Unit 3 Test)') + '" value="' + esc(BK.test || '') + '" oninput="BK.test=this.value;BK.aid=\'\'">';
-      out += '<label class="f">This is a…</label><div class="row">' + h.purposes.map(function (p) { return '<button class="btn' + (BK.purpose === p ? ' pri' : '') + '" onclick="BK.purpose=\'' + esc(p) + '\';bkDraw()">' + esc(p) + '</button>'; }).join('') + '</div>';
-      out += '<label class="f">Is the test online or on paper?</label><div class="row">' + ['Digital', 'Paper', ''].map(function (f) { return '<button class="btn' + (BK.fmt === f && BK.fmtSet ? ' pri' : '') + '" onclick="BK.fmt=\'' + f + '\';BK.fmtSet=1;bkDraw()">' + (f === 'Digital' ? 'Online' : f || 'Not sure') + '</button>'; }).join('') + '</div><p class="tiny mute">Your teacher’s instructions come first; this just helps the Testing Center get ready.</p>';
-      out += '<div class="row" style="margin-top:16px"><button class="btn pri" onclick="bkNext()">Next: pick a time →</button></div>';
+        '<input type="text" placeholder="' + (tests.length ? 'Or type the test name' : 'Type the test name (for example: Unit 3 Test)') + '" value="' + esc(BK.test || '') + '" oninput="BK.test=this.value;BK.aid=\'\'">' +
+        '<label class="f">This is a…</label><div class="row">' + h.purposes.map(function (p) { return '<button class="btn' + (BK.purpose === p ? ' pri' : '') + '" onclick="BK.purpose=\'' + esc(p) + '\';bkDraw()">' + esc(p) + '</button>'; }).join('') + '</div>' +
+        '<label class="f">Is the test online or on paper?</label><div class="row">' + ['Digital', 'Paper', ''].map(function (f) { return '<button class="btn' + (BK.fmt === f && BK.fmtSet ? ' pri' : '') + '" onclick="BK.fmt=\'' + f + '\';BK.fmtSet=1;bkDraw()">' + (f === 'Digital' ? 'Online' : f || 'Not sure') + '</button>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-top:16px"><button class="btn pri" onclick="bkNext()">Next →</button></div>';
     }
     out += '</div>';
-  } else if (BK.step === 2) {
-    out += '<div class="card"><div class="small mute">' + esc(bkClassLabel()) + ' · ' + esc(BK.testName) + ' · ' + esc(BK.purpose) + ' <button class="link" onclick="BK.step=1;bkDraw()">change</button></div></div>';
-    if (!BK.slots) { out += '<div class="spin">Finding open periods…</div>'; call('api_slots').then(function (s) { BK.slots = s; BK.day = s.days.length ? s.days[0].date : ''; bkDraw(); }).catch(function (e) { fail(e); BK.step = 1; bkDraw(); }); }
-    else if (!BK.slots.days.length) out += '<div class="card empty">No open days right now.</div>';
-    else {
-      out += '<div class="daytabs">' + BK.slots.days.map(function (d) { return '<button class="daytab' + (d.date === BK.day ? ' on' : '') + '" onclick="BK.day=\'' + d.date + '\';bkDraw()"><b>' + DAYS[dObj(d.date).getDay()] + '</b><div class="small">' + MONTHS[dObj(d.date).getMonth()] + ' ' + dObj(d.date).getDate() + '</div></button>'; }).join('') + '</div>';
-      var day = BK.slots.days.filter(function (d) { return d.date === BK.day; })[0];
-      if (day.sched && day.sched !== 'Regular') out += '<p class="small mute">' + esc(day.sched) + ' schedule' + (day.note ? ' · ' + esc(day.note) : '') + '</p>';
-      day.periods.forEach(function (p) { out += bkSlot(day, p); });
-    }
-  } else if (BK.step === 3) {
+  } else {
     var cf = BK.conflict;
-    out += '<div class="card"><h2>Check your appointment</h2><div class="kv"><div>When</div><div><b>' + esc(longD(BK.date)) + '</b>, ' + esc(perTxt(BK.period, BK.half)) + '</div><div>Where</div><div>' + esc(SH.campusName) + ' Testing Center · ' + esc(SH.where) + '</div><div>Class</div><div>' + esc(bkClassLabel()) + '</div><div>Test</div><div>' + esc(BK.testName) + ' (' + esc(BK.purpose) + ')</div>' + (BK.ack ? '<div>Missing</div><div>' + esc(cf.course) + ' — you said your teacher gave permission. Bring a written pass.</div>' : '') + '</div>' +
-      '<ul class="small mute"><li>Tell your teacher you’re testing.</li><li>Bring your student ID.</li>' + (BK.ack ? '<li>Bring the written pass from the teacher whose class you’ll miss.</li>' : '') + '</ul>' +
-      '<div class="row"><button class="btn pri big" id="bkGo" onclick="bkBook()">Book it</button><button class="btn" onclick="BK.step=2;bkDraw()">Back</button></div></div>';
+    out += '<div class="card"><h2>Check it</h2><div class="kv"><div>Class</div><div>' + esc(bkClassLabel()) + '</div><div>Test</div><div>' + esc(BK.testName) + ' (' + esc(BK.purpose) + ')</div>' + (BK.ack ? '<div>Missing</div><div>' + esc(cf.course) + ': you said ' + esc(cf.teacher || 'your teacher') + ' gave permission and you’ll bring a written note.</div>' : '') + '</div>' +
+      '<ul class="small mute"><li>Tell your teacher you’re testing.</li><li>Bring your student ID.</li>' + (BK.ack ? '<li>Bring the written note from ' + esc(cf.teacher || 'the teacher whose class you’ll miss') + '.</li>' : '') + '</ul>' +
+      '<div class="row"><button class="btn pri big" id="bkGo" onclick="' + (BK.wait ? 'bkJoin()' : 'bkBook()') + '">' + (BK.wait ? 'Join the waitlist' : 'Book it') + '</button><button class="btn" onclick="BK.step=\'details\';bkDraw()">Back</button></div></div>';
   }
   $('main').innerHTML = out + '</div>';
 }
 function bkClass(v) { if (v === '__other') { BK.other = { course: '', teacher: '' }; BK.secid = ''; } else { BK.secid = v; BK.other = null; } BK.aid = ''; bkDraw(); }
 function bkClassLabel() { if (BK.other) return BK.other.course + (BK.other.teacher ? ' — ' + BK.other.teacher : ''); var c = SH.classes.filter(function (x) { return x.key === BK.secid; })[0]; return c ? c.label : ''; }
 function bkNext() {
+  if (!BK.secid && !BK.other) return toast('Pick the class.');
   if (BK.other && !BK.other.course.trim()) return toast('Type the class name.');
   var t = BK.aid ? ((SH.tests[BK.secid] || []).filter(function (x) { return x.id === BK.aid; })[0] || {}).name : (BK.test || '').trim();
   if (!t) return toast('Pick or type the test.');
   if (!BK.purpose) return toast('Choose makeup, retake or finishing a test.');
-  BK.testName = t; BK.step = 2; bkDraw();
-}
-function bkSlot(day, p) {
-  if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
-  var time = '<div style="min-width:120px"><b>' + esc(p.label) + '</b><div class="small mute">' + hm(p.start) + '–' + hm(p.end) + '</div></div>';
-  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">' + (SH.cutoffH ? 'Too soon to book (' + SH.cutoffH + ' hours ahead)' : 'Already started') + '</span></div>';
-  var hint = p.conflict ? '<div class="small" style="color:var(--warn)">⚠ You have ' + esc(p.conflict) + '</div>' : p.have.length ? '<div class="small mute">You have ' + p.have.map(function (x) { return esc(x.course) + (x.half ? ' (' + x.half + ')' : ''); }).join(' / ') + '</div>' : '', warn = '';
-  var btns = '';
-  if (p.ab) {
-    var opt = [['A', 'A only', p.free.A > 0], ['B', 'B only', p.free.B > 0], ['AB', 'Whole period', p.free.A > 0 && p.free.B > 0]];
-    btns = opt.map(function (o) { return o[2] ? '<button class="btn sm pri" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'' + o[0] + '\')">' + o[1] + '</button>' : (SH.waitlist ? '<button class="btn sm" onclick="bkWait(\'' + day.date + '\',\'' + p.period + '\',\'' + o[0] + '\')">' + o[1] + ': join waitlist</button>' : '<span class="chip">' + o[1] + ' full</span>'); }).join(' ');
-    btns += '<div class="tiny mute" style="width:100%">A ' + Math.max(0, p.free.A) + ' seats · B ' + Math.max(0, p.free.B) + ' seats left</div>';
-  } else if (p.free.all > 0) btns = '<button class="btn sm pri" onclick="bkPick(\'' + day.date + '\',\'' + p.period + '\',\'\')">Book</button><span class="tiny mute">' + p.free.all + ' seats left</span>';
-  else btns = SH.waitlist ? '<span class="chip">Full</span> <button class="btn sm" onclick="bkWait(\'' + day.date + '\',\'' + p.period + '\',\'\')">Join waitlist</button>' : '<span class="chip">Full</span>';
-  return '<div class="slot">' + time + '<div class="grow">' + hint + warn + '</div><div class="row" style="max-width:340px;justify-content:flex-end">' + btns + '</div></div>';
-}
-function bkReq(d, p, half) { return { reqId: BK.reqId, secid: BK.secid, other: BK.other, aid: BK.aid, test: BK.testName, purpose: BK.purpose, fmt: BK.fmt || '', date: d, period: p, half: half, ack: BK.ack || null }; }
-function bkPick(d, p, half) {
-  BK.date = d; BK.period = p; BK.half = half; BK.ack = null;
-  var day = BK.slots.days.filter(function (x) { return x.date === d; })[0], slot = day.periods.filter(function (x) { return x.period === p; })[0];
+  BK.testName = t;
+  var slot = BK.slot, half = BK.half;          // a class during this time? warn before going on
   var cf = half === 'A' || half === 'B' ? slot.have.filter(function (x) { return x.type === 'academic' && (!x.half || x.half === half); })[0] : slot.have.filter(function (x) { return x.type === 'academic'; })[0];
-  if (cf) { BK.conflict = { course: cf.course, teacher: slot.conflict.replace(/^.* with /, '') }; conflictBox(BK.conflict, function (note) { BK.ack = { note: note }; closeModal(); BK.step = 3; bkDraw(); }); return; }
-  BK.step = 3; bkDraw();
+  if (cf) { BK.conflict = { course: cf.course, teacher: slot.conflict.indexOf(' with ') >= 0 ? slot.conflict.replace(/^.* with /, '') : '' }; conflictBox(BK.conflict, function (note) { BK.ack = { note: note }; closeModal(); BK.step = 'confirm'; bkDraw(); }); return; }
+  BK.step = 'confirm'; bkDraw();
 }
-// the class-conflict warning (students may continue; it's recorded, and is not the same as a teacher's approval)
+function bkReq() { return { reqId: BK.reqId, secid: BK.secid, other: BK.other, aid: BK.aid, test: BK.testName, purpose: BK.purpose, fmt: BK.fmt || '', date: BK.date, period: BK.period, half: BK.half, ack: BK.ack || null }; }
+// the class-conflict warning (students may continue; it's recorded, and is not the same as the teacher's approval)
 function conflictBox(cf, go) {
   window.__cfGo = go;
+  var who = cf.teacher ? esc(cf.teacher) : 'My teacher';
   modal('<h2>⚠ Academic class conflict</h2><p>Your schedule shows that you have <b>' + esc(cf.course) + '</b>' + (cf.teacher ? ' with <b>' + esc(cf.teacher) + '</b>' : '') + ' during this period.</p>' +
     '<p>Students may not miss an academic class to attend the Testing Center without permission from the teacher whose class they will miss. The Testing Center also requires a written pass.</p>' +
-    '<button class="opt" onclick="$(\'cfMore\').hidden=false">✋ My teacher gave me permission</button><div id="cfMore" hidden><label class="f">Optional note (for example, when your teacher said yes)</label><textarea id="cfNote" style="min-height:60px"></textarea><button class="btn pri" style="margin-top:8px" onclick="window.__cfGo($(\'cfNote\').value)">Continue</button></div>' +
+    '<button class="opt" onclick="$(\'cfMore\').hidden=false">✋ ' + who + ' gave me permission, and I’ll have a written note when I arrive</button><div id="cfMore" hidden><label class="f">Optional note (for example, when ' + (cf.teacher ? esc(cf.teacher) : 'your teacher') + ' said yes)</label><textarea id="cfNote" style="min-height:60px"></textarea><button class="btn pri" style="margin-top:8px" onclick="window.__cfGo($(\'cfNote\').value)">Continue</button></div>' +
     '<button class="opt" onclick="closeModal();stuSchedule()">📝 My schedule has changed</button><button class="opt" onclick="closeModal()">← Back — choose another period</button>');
 }
 function bkBook() {
   var btn = $('bkGo'); busy(btn, true);
-  call('api_book', bkReq(BK.date, BK.period, BK.half)).then(function (r) {
-    if (r.full) { busy(btn, false); toast('Someone just took that seat. Pick another period or join the waitlist.'); BK.slots = null; BK.step = 2; bkDraw(); return; }
+  call('api_book', bkReq()).then(function (r) {
+    if (r.full) { busy(btn, false); toast('Someone just took that seat. Pick another period or join the waitlist.'); var d = BK.date; BK = null; drawStu(); availLoad(d); return; }
     if (r.conflict) { busy(btn, false); BK.conflict = r.conflict; conflictBox(r.conflict, function (note) { BK.ack = { note: note }; closeModal(); bkBook(); }); return; }
-    SH = r.home; modal('<h2>✅ You’re booked</h2><p>' + esc(longD(BK.date)) + ', ' + esc(perTxt(BK.period, BK.half)) + '<br>' + esc(SH.campusName) + ' Testing Center · ' + esc(SH.where) + '</p><p class="small">Remember to tell your teacher and bring your student ID.</p><button class="btn pri" onclick="closeModal();drawStu()">Done</button>'); BK = null;
+    var b = BK; SH = r.home; BK = null; drawStu();
+    modal('<h2>✅ You’re booked</h2><p>' + esc(longD(b.date)) + ', ' + esc(perTxt(b.period, b.half)) + '<br>' + esc(SH.campusName) + ' Testing Center · ' + esc(SH.where) + '</p><p class="small">Remember to tell your teacher and bring your student ID' + (b.ack ? ', and the written note from ' + esc(b.conflict.teacher || 'your teacher') : '') + '.</p><button class="btn pri" onclick="closeModal()">Done</button>');
   }).catch(function (e) { busy(btn, false); fail(e); });
 }
-function bkWait(d, p, half) {
-  modal('<h2>Join the waitlist?</h2><p>' + esc(longD(d)) + ', ' + esc(perTxt(p, half)) + ' is full.</p><p class="small">If a seat opens, we’ll email you. You’ll have a short time to sign in and <b>accept</b> it — the email alone does not book you.</p><div class="row"><button class="btn pri" id="wGo">Join the waitlist</button><button class="btn" onclick="closeModal()">Back</button></div>');
-  $('wGo').onclick = function () {
-    var btn = this; busy(btn, true);
-    var go = function (ack) { call('api_joinWaitlist', Object.assign(bkReq(d, p, half), { ack: ack })).then(function (r) {
-      if (r.conflict) { conflictBox(r.conflict, function (note) { go({ note: note }); }); return; }
-      closeModal(); SH = r.home; toast('You’re on the waitlist'); drawStu(); BK = null;
-    }).catch(function (e) { busy(btn, false); fail(e); }); };
-    go(null);
-  };
+function bkJoin() {
+  var btn = $('bkGo'); busy(btn, true);
+  call('api_joinWaitlist', bkReq()).then(function (r) {
+    if (r.conflict) { busy(btn, false); BK.conflict = r.conflict; conflictBox(r.conflict, function (note) { BK.ack = { note: note }; closeModal(); bkJoin(); }); return; }
+    SH = r.home; BK = null; drawStu(); toast('You’re on the waitlist. We’ll email you if a seat opens.');
+  }).catch(function (e) { busy(btn, false); fail(e); });
 }
 
 // ---------- the student's schedule: look, edit period by period, or paste from Infinite Campus
@@ -2915,7 +3122,7 @@ function tvOpen(sid) { $('main').innerHTML = '<div class="spin">Loading…</div>
 <script>
 // ---------- the coordinator dashboard
 var CO = { campus: '', date: '', view: 'today', dash: null, prefs: null };
-var CO_VIEWS = [['today', 'Today'], ['room', 'Room'], ['attention', 'Needs attention'], ['waitlist', 'Waitlist'], ['resources', 'Teacher resources'], ['comms', 'Communications'], ['people', 'Students & teachers'], ['reports', 'Reports'], ['admin', 'Administration']];
+var CO_VIEWS = [['today', 'Today'], ['room', 'Room'], ['periods', 'Open periods'], ['attention', 'Needs attention'], ['waitlist', 'Waitlist'], ['resources', 'Teacher resources'], ['comms', 'Communications'], ['people', 'Students & teachers'], ['reports', 'Reports'], ['admin', 'Administration']];
 function coStart() { CO.campus = CO.campus || B.staff.home; CO.date = CO.date || B.today; coLoad(true); }
 function coLoad(first) {
   if (first) $('main').innerHTML = '<div class="spin">Loading the dashboard…</div>';
@@ -2931,7 +3138,7 @@ function coDraw() {
   var nav = '<div class="row" style="margin-bottom:12px">' + camp + '<div class="tabs grow">' + CO_VIEWS.filter(function (v) { return hide.indexOf(v[0]) < 0 || v[0] === CO.view; }).map(function (v) { return '<button class="tab' + (CO.view === v[0] ? ' on' : '') + '" onclick="coView(\'' + v[0] + '\')">' + v[1] + (v[0] === 'attention' && att ? '<b>' + att + '</b>' : '') + '</button>'; }).join('') + '</div></div>';
   nav = nav.replace('<div class="tabs grow">', '<div class="tabs grow">') + (B.hub && !B.hub.noPw ? '<div style="text-align:right;margin:-6px 0 8px"><button class="btn sm" onclick="hubLock()">🔒 Lock the hub</button></div>' : '');
   if (!d.edit) nav += '<div class="banner info small">You can view ' + esc(d.names[CO.campus]) + ' but not make changes.</div>';
-  var body = { today: coToday, room: coRoom, attention: coAttention, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin }[CO.view]();
+  var body = { today: coToday, room: coRoom, periods: coPeriods, attention: coAttention, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin }[CO.view]();
   $('main').innerHTML = '<div class="wrap">' + nav + '<div id="coBody">' + (typeof body === 'string' ? body : '<div class="spin">Loading…</div>') + '</div></div>';
   coBell();
 }
@@ -2998,6 +3205,12 @@ function coDone(id) {
 }
 
 // ---------- one appointment (drawer): Access the Test, instructions, paper, pass, people, history
+// Staff cancel: the student is emailed with the reason (the seat then goes to the waitlist)
+function coCancel(id, preset) {
+  modal('<h2>Cancel this appointment?</h2><p class="small">The student gets an email saying it was canceled, with the reason below. The seat goes to the waitlist.</p><label class="f">Reason (in the email)</label><select id="cxWhy" onchange="$(\'cxOther\').hidden=this.value!==\'other\'"><option' + (preset === 'materials' ? ' selected' : '') + '>We don’t have your test yet. Please go to class; your teacher will help you reschedule.</option><option>The Testing Center is closed then.</option><option>Your teacher asked us to cancel it.</option><option value="other">Something else…</option></select><textarea id="cxOther" hidden style="min-height:60px;margin-top:6px" placeholder="Type the reason"></textarea>' +
+    '<div class="row" style="margin-top:12px"><button class="btn bad" id="cxGo">Cancel and email the student</button><button class="btn" onclick="closeModal()">Keep it</button></div>');
+  $('cxGo').onclick = function () { var r = $('cxWhy').value === 'other' ? $('cxOther').value : $('cxWhy').value; busy(this, true); call('api_cancel', id, r).then(function () { closeModal(); closeDrawer(); coLoad(); toast('Canceled; the student was emailed'); }).catch(fail); };
+}
 function closeDrawer() { var d = $('drawer'); if (d) d.remove(); }
 function coAppt(id) {
   closeDrawer(); var el = document.createElement('div'); el.id = 'drawer'; el.className = 'drawer'; el.innerHTML = '<div class="spin">Loading…</div>'; document.body.appendChild(el);
@@ -3021,7 +3234,7 @@ function coApptHtml(a) {
   if (a.emails.length) out += '<div class="small mute" style="margin-top:4px">' + a.emails.map(function (e) { return esc(e.kind) + ': ' + esc(e.status) + ' ' + esc(niceD(e.at.slice(0, 10))); }).join(' · ') + '</div>';
   if (ed) {
     out += '<h3 style="margin-top:16px">Actions</h3><div class="row">';
-    if (/^(scheduled|awaiting|ready)/i.test(a.status)) out += (a.date === B.today ? '<button class="btn sm pri" onclick="coCheckIn(\'' + a.id + '\')">Check in</button>' : '') + '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'noshow\')">No-show</button><button class="btn sm bad" onclick="if(confirm(\'Cancel this appointment? The seat goes to the waitlist.\'))call(\'api_cancel\',\'' + a.id + '\').then(function(){closeDrawer();coLoad();toast(\'Canceled\')}).catch(fail)">Cancel</button>';
+    if (/^(scheduled|awaiting|ready)/i.test(a.status)) out += (a.date === B.today ? '<button class="btn sm pri" onclick="coCheckIn(\'' + a.id + '\')">Check in</button>' : '') + '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'noshow\')">No-show</button><button class="btn sm bad" onclick="coCancel(\'' + a.id + '\')">Cancel</button>';
     if (/^checked/i.test(a.status)) out += '<button class="btn sm pri" onclick="coStep(\'' + a.id + '\',\'start\')">Start testing</button>';
     if (/^(testing|paused|checked)/i.test(a.status)) out += '<button class="btn sm ok" onclick="coDone(\'' + a.id + '\')">Done</button>' + (/^testing/i.test(a.status) ? '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'pause\')">Pause</button>' : '');
     if (/^(no-show|completed|partial|checked|testing|paused)/i.test(a.status)) out += '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'undo\')">Undo</button>';
@@ -3065,13 +3278,56 @@ function coCheckIn(id, move) {
   }).catch(fail);
 }
 
+// ---------- Open periods: which periods take appointments, day by day (one-day changes; the usual week is on the Testing Periods tab)
+var PG = { from: '' };
+function coPeriods() {
+  call('api_periodGrid', CO.campus, PG.from || B.today, 15).then(function (g) {
+    PG.grid = g;
+    var ps = g.days.length ? g.days[0].periods.map(function (p) { return p.period; }) : [];
+    var out = '<div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">Open periods · ' + esc(CO.dash.names[CO.campus]) + '</h2><button class="btn sm" onclick="PG.from=\'\';coView(\'periods\')">From today</button><button class="btn sm" onclick="PG.from=PG.grid.days[PG.grid.days.length-1].date;coView(\'periods\')">Later ›</button></div>' +
+      '<p class="small mute" style="margin-top:0">Tap a period to close it, leave early from it, close the whole day, or reopen it. Students already booked can be canceled with an email that says why. The usual week (like North’s Monday 6th) is on the sheet’s Testing Periods tab.</p>' +
+      '<div style="overflow-x:auto"><table class="t small pgrid"><tr><th>Day</th>' + ps.map(function (p) { return '<th style="text-align:center">P' + esc(p) + '</th>'; }).join('') + '<th></th></tr>' +
+      g.days.map(function (d) {
+        return '<tr><td style="white-space:nowrap"><b>' + esc(relD(d.date)) + '</b><div class="tiny mute">' + esc(d.sched) + (d.note ? ' · ' + esc(d.note) : '') + '</div></td>' + d.periods.map(function (p) {
+          var cls = p.past ? 'pg-past' : p.open ? 'pg-open' : 'pg-closed';
+          return '<td style="text-align:center;padding:4px"><button class="pg ' + cls + '"' + (g.edit && !p.past ? ' onclick="pgCell(\'' + d.date + '\',\'' + p.period + '\')"' : ' disabled') + ' title="' + esc(p.open ? 'Open · ' + p.booked + ' of ' + p.cap + ' booked' : p.why || 'Closed') + '">' + (p.open ? (p.booked ? p.booked + '/' + p.cap : 'Open') : 'Closed') + (p.changed ? ' •' : '') + '</button></td>';
+        }).join('') + '<td>' + (g.edit ? '<button class="btn sm" onclick="pgAsk(\'' + d.date + '\', PG.grid.days.filter(function(x){return x.date===\'' + d.date + '\'})[0].periods.map(function(p){return p.period}), false, \'the whole day\')">Close day</button>' : '') + '</td></tr>';
+      }).join('') + '</table></div><p class="tiny mute">Green: open (booked / seats) · grey: closed · • changed for that day only.</p></div>';
+    coBody(out);
+  }).catch(fail);
+  return null;
+}
+function pgCell(d, p) {
+  var day = PG.grid.days.filter(function (x) { return x.date === d; })[0], cell = day.periods.filter(function (x) { return x.period === p; })[0];
+  var later = day.periods.filter(function (x) { return +x.period >= +p; }).map(function (x) { return x.period; });
+  window.__pg = { d: d, p: p, later: later, all: day.periods.map(function (x) { return x.period; }) };
+  modal('<h2>' + esc(longD(d)) + ' · Period ' + esc(p) + '</h2><p class="small">' + (cell.open ? 'Open · ' + cell.booked + ' of ' + cell.cap + ' seats booked.' : 'Closed' + (cell.why ? ': ' + esc(cell.why) : '') + '.') + '</p>' +
+    (cell.open ? '<button class="opt" onclick="pgAsk(__pg.d,[__pg.p],false,\'period \'+__pg.p)">🚫 Close period ' + esc(p) + '</button>' +
+      (later.length > 1 ? '<button class="opt" onclick="pgAsk(__pg.d,__pg.later,false,\'periods \'+__pg.later.join(\', \'))">🏃 Leave early: close period ' + esc(p) + ' and everything after it (' + later.map(function (x) { return 'P' + x; }).join(', ') + ')</button>' : '') +
+      '<button class="opt" onclick="pgAsk(__pg.d,__pg.all,false,\'the whole day\')">📅 Close the whole day</button>'
+    : '<button class="opt" onclick="pgDo(__pg.d,[__pg.p],true,false,\'\')">✅ Reopen period ' + esc(p) + '</button>') + '<button class="opt" onclick="closeModal()">Cancel</button>');
+}
+function pgAsk(d, periods, open, what) {
+  call('api_periodImpact', CO.campus, d, periods).then(function (im) {
+    var n = im.appts.length;
+    modal('<h2>Close ' + esc(what) + ' on ' + esc(longD(d)) + '?</h2>' + (n ? '<p><b>' + n + ' student' + (n > 1 ? 's are' : ' is') + ' booked:</b></p><div class="small" style="max-height:180px;overflow:auto">' + im.appts.map(function (a) { return 'P' + esc(a.period) + ' · ' + esc(a.student) + ' · ' + esc(a.test) + (a.course ? ' (' + esc(a.course) + ')' : ''); }).join('<br>') + '</div>' +
+      '<label class="check" style="margin-top:10px"><input type="checkbox" id="pgCx" checked> Cancel these appointments and email each student (their teachers hear too)</label>' : '<p class="small">Nobody is booked then.</p>') + (im.waiting ? '<p class="small">' + im.waiting + ' waitlist place(s) for these periods will be closed.</p>' : '') +
+      '<label class="f">Reason (in the email to students)</label><input type="text" id="pgWhy" value="The Testing Center is closed then.">' +
+      '<div class="row" style="margin-top:12px"><button class="btn bad" id="pgGo">Close ' + esc(what) + '</button><button class="btn" onclick="closeModal()">Keep it open</button></div>' + (n ? '<p class="tiny mute">Unchecked, the appointments stay on the list even though the period is closed.</p>' : ''));
+    $('pgGo').onclick = function () { busy(this, true); pgDo(d, periods, false, $('pgCx') ? $('pgCx').checked : false, $('pgWhy').value); };
+  }).catch(fail);
+}
+function pgDo(d, periods, open, cancel, why) {
+  call('api_setPeriods', CO.campus, d, periods, open, cancel, why).then(function (r) { closeModal(); toast(open ? 'Reopened' : 'Closed' + (r.canceled ? ' · ' + r.canceled + ' appointment(s) canceled and emailed' : '')); coLoad().then(function () { coView('periods'); }); }).catch(fail);
+}
+
 // ---------- B. Needs attention
 function coAttention() {
   var list = CO.dash.attention;
   if (!list.length) return '<div class="card empty">Nothing needs attention. 🎉</div>';
-  var lab = { 1: 'Today / urgent', 2: 'Next school day', 3: 'Coming up' };
+  var lab = { 0: '⏰ Right now', 1: 'Today / urgent', 2: 'Next school day', 3: 'Coming up' };
   var out = '';
-  [1, 2, 3].forEach(function (s) {
+  [0, 1, 2, 3].forEach(function (s) {
     var g = list.filter(function (x) { return x.sev === s; }); if (!g.length) return;
     out += '<div class="card" style="padding:0"><h3 style="padding:12px 14px 0">' + lab[s] + ' (' + g.length + ')</h3>' + g.map(function (x) { return '<div class="att sev' + s + '"><div class="grow small">' + esc(x.text) + '</div>' + coAttBtn(x) + '</div>'; }).join('') + '</div>';
   });
@@ -3079,12 +3335,22 @@ function coAttention() {
 }
 function coAttBtn(x) {
   var r = x.ref, ed = CO.dash.edit;
+  if (r.appt && x.kind === 'nexttest' && ed) return '<button class="btn sm bad" onclick="coCancel(\'' + r.appt + '\', \'materials\')">Cancel &amp; email student</button><button class="btn sm" onclick="coEmailTeacher(\'' + r.appt + '\')">Email the teacher</button><button class="btn sm" onclick="coTeacherNow(\'' + r.appt + '\')">Where’s the teacher?</button>';
   if (r.appt) return '<button class="btn sm" onclick="coAppt(\'' + r.appt + '\')">Open</button>' + (x.kind === 'materials' && ed ? '<button class="btn sm" onclick="CO.view=\'comms\';coDraw()">Send reminder</button>' : '');
   if (r.wid && ed) return '<button class="btn sm pri" onclick="coOffer(\'' + r.wid + '\')">Offer to next</button>';
   if (r.sid) return '<button class="btn sm" onclick="coStudent(\'' + r.sid + '\')">Open</button>';
   if (r.email && ed) return x.kind === 'draft' ? '<button class="btn sm pri" onclick="coDraft(\'' + r.email + '\',1)">Send</button><button class="btn sm" onclick="coDraft(\'' + r.email + '\',0)">Skip</button>' : '<button class="btn sm" onclick="CO.view=\'comms\';coDraw()">View</button>';
   if (r.imp) return '<button class="btn sm" onclick="CO.view=\'admin\';coDraw()">Review</button>';
   return '';
+}
+function coEmailTeacher(id) { call('api_emailTeacherNow', id).then(function (r) { toast('Emailed ' + r.to.join(', ')); }).catch(fail); }
+function coTeacherNow(id) {
+  call('api_teacherNow', id).then(function (t) {
+    var w = function (x) { return x ? '<b>' + esc(x.room || 'room not listed') + '</b>' + (x.what ? ' · ' + esc(x.what) : '') + ' <span class="tiny mute">(' + esc(x.src) + ')</span>' : '<span class="mute">Nothing on file (prep, duty or lunch?)</span>'; };
+    modal('<h2>Where’s the teacher?</h2><p class="small">' + esc(t.student) + ' · ' + esc(t.test) + ' · ' + esc(t.course) + ' · Period ' + esc(t.period) + '</p>' +
+      t.teachers.map(function (x) { return '<div class="card" style="padding:12px"><b>' + esc(x.name) + '</b>' + (x.email ? ' <a class="small" href="mailto:' + esc(x.email) + '">' + esc(x.email) + '</a>' : '') + '<div class="kv small" style="margin-top:6px"><div>Right now (' + esc(t.nowLabel) + ')</div><div>' + w(x.now) + '</div><div>During the test (P' + esc(t.period) + ')</div><div>' + w(x.during) + '</div></div></div>'; }).join('') +
+      (t.hasSchedules ? '' : '<p class="tiny mute">Only classes they teach are known. Add the staff schedule (Administration › Teacher schedules) to see duties and preps too.</p>') + '<button class="btn" onclick="closeModal()">Close</button>');
+  }).catch(fail);
 }
 function coOffer(wid) { call('api_offerTo', wid).then(function () { toast('Offer sent'); coLoad(); }).catch(fail); }
 function coDraft(id, send) { call(send ? 'api_sendDraft' : 'api_skipDraft', id).then(function () { toast(send ? 'Sent' : 'Skipped'); coLoad(); }).catch(fail); }
@@ -3138,7 +3404,7 @@ function coWalkPick(sid) {
     $('wList').innerHTML = '<div class="banner info small"><b>' + esc(s.name) + '</b> · ' + esc(s.sid) + '</div>';
     var walk = !$('wQ') || CO.date === B.today;
     $('wForm').innerHTML = '<div class="grid2"><div><label class="f">Class</label><select id="wC" onchange="$(\'wNew\').hidden=this.value!==\'__add\'">' + s.classes.map(function (c) { return '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>'; }).join('') + '<option value="__add">＋ Add a class…</option></select></div><div><label class="f">Test</label><input type="text" id="wT"></div></div>' +
-      '<div id="wNew" class="card" style="margin-top:10px;background:#f7f9fc"' + (s.classes.length ? ' hidden' : '') + '><b class="small">Add a class for ' + esc(s.name) + '</b><div class="tiny mute">Use this when the school roster is out of date. It’s marked “added by the Testing Center”; the next district roster replaces it if it disagrees.</div>' +
+      '<div id="wNew" class="card" style="margin-top:10px;background:var(--soft2)"' + (s.classes.length ? ' hidden' : '') + '><b class="small">Add a class for ' + esc(s.name) + '</b><div class="tiny mute">Use this when the school roster is out of date. It’s marked “added by the Testing Center”; the next district roster replaces it if it disagrees.</div>' +
         '<div class="grid3"><div><label class="f">Class name</label><input type="text" id="wNc" placeholder="Algebra II"></div><div><label class="f">Their period for it</label><input type="text" id="wNp" placeholder="3"></div><div><label class="f">Teacher</label><select id="wNt" onchange="$(\'wTnew\').hidden=this.value!==\'__add\'"><option value="">Choose…</option>' + T.map(function (t) { return '<option value="' + esc(t.tid) + '">' + esc(t.name) + '</option>'; }).join('') + '<option value="__add">＋ Add a teacher…</option></select></div></div>' +
         '<div id="wTnew" class="grid2" hidden><div><label class="f">Teacher’s name</label><input type="text" id="wTn" placeholder="Jordan Martinez"></div><div><label class="f">Teacher’s school email</label><input type="email" id="wTe" placeholder="jmartinez@lths.net"></div></div></div>' +
       '<div class="grid3"><div><label class="f">Date</label><input type="date" id="wD" value="' + CO.date + '"></div><div><label class="f">Period</label><select id="wP">' + CO.dash.periods.map(function (p) { return '<option>' + p.period + '</option>'; }).join('') + '</select></div><div><label class="f">Half</label><select id="wH"><option value="">Whole period</option><option>A</option><option>B</option></select></div></div>' +
@@ -3225,6 +3491,7 @@ function coAdmin() {
     '<div class="grid2"><div class="card"><h2>Upload a roster</h2><p class="small mute" style="margin-top:0">An Infinite Campus export (CSV or Excel) of students and their classes. Nothing changes until you’ve looked at the preview.</p><div class="row"><button class="btn pri" onclick="impTab()">Import from a tab in this sheet</button><button class="btn" onclick="impStart(\'roster\')">Upload a roster file</button></div><p class="tiny mute">Best for big exports: paste the export into a new tab of the Testing Center sheet, then import it from there (nothing to upload).</p>' + (B.roles.indexOf('admin') >= 0 ? '<p class="small" style="margin-top:12px"><button class="btn sm bad" onclick="practiceClear()">Remove the practice data</button> <span class="tiny mute">Made-up students, teachers, coordinators and their appointments. Do this before importing real students.</span></p>' : '') + '</div>' +
     '<div class="card"><h2>Import SignUpGenius appointments</h2><p class="small mute" style="margin-top:0">Export the sign-ups as CSV or Excel. Re-importing the same file updates appointments instead of making duplicates.</p><button class="btn" onclick="impStart(\'appointments\')">Upload sign-ups</button></div></div>' +
     '</div></details>' +
+    '<div class="card"><h2>Teacher schedules</h2><p class="small mute" style="margin-top:0">For “where is the teacher right now?”. Import the staff schedule CSV into the <b>Teacher_Schedules_Raw</b> tab (File › Import › Upload › Replace current sheet), then read it here. Without it, only the classes teachers teach are known.</p><div id="tsBody"><div class="spin">Loading…</div></div></div>' +
     '<div class="card"><h2>The room</h2><p class="small mute" style="margin-top:0">Draw the Testing Center room in the seating chart tool. Desks are numbered like restaurant tables (front row first, left to right), and you pick a desk for each student when they check in.</p><div id="roomAdmin"></div></div>' +
     '<div class="card"><h2>Import history</h2><div id="impHist"><div class="spin">Loading…</div></div></div>' +
     '<div class="card"><h2>Upcoming date changes</h2><div id="dcList"><div class="spin">Loading…</div></div></div>' +
@@ -3234,6 +3501,7 @@ function coAdmin() {
 }
 function coHide(v, h) { var l = (CO.prefs.hide || []).filter(function (x) { return x !== v; }); if (h) l.push(v); coPref('hide', l); }
 function coAdminLoad() {
+  call('api_tsStatus').then(function (t) { var el = $('tsBody'); if (el) el.innerHTML = '<div class="row"><span class="grow small">' + (t.tab && t.tab.rows ? '<b>Teacher_Schedules_Raw</b>: ' + t.tab.rows.toLocaleString() + ' rows' : 'The Teacher_Schedules_Raw tab is empty.') + (t.have ? ' · ' + t.have.toLocaleString() + ' schedule rows for ' + t.teachers + ' teachers' + (t.at ? ', read ' + esc(new Date(t.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : '') : '') + '</span>' + (CO.dash.edit ? '<button class="btn"' + (t.tab && t.tab.rows ? '' : ' disabled') + ' onclick="tsRead(this)">Read teacher schedules</button>' : '') + '</div><div id="tsMsg"></div>'; }).catch(function () {});
   call('api_room', CO.campus).then(function (r) { var el = $('roomAdmin'); if (el) el.innerHTML = '<div class="row"><span class="grow small">' + (r.chart ? '<b>' + r.desks.length + ' desks</b> in ' + esc(r.label) + (r.seats && r.seats !== r.desks.length ? ' · the Seats setting is ' + r.seats + ' (Testing Periods tab)' : '') : 'No room drawn yet for ' + esc(r.label) + '.') + '</span>' + (r.editUrl && CO.dash.edit ? '<a class="btn pri" href="' + esc(r.editUrl) + '" target="_blank">' + (r.chart ? 'Edit the room' : 'Draw the room') + '</a>' : '') + '</div>'; }).catch(function () {});
   call('api_imports').then(function (list) {
     var el = $('impHist'); if (!el) return;
@@ -3311,6 +3579,7 @@ function icDetail() {
   }).catch(fail);
 }
 
+function tsRead(btn) { busy(btn, true); call('api_tsProcess').then(function (r) { busy(btn, false); $('tsMsg').innerHTML = '<div class="banner ok small" style="margin-top:8px">' + r.rows.toLocaleString() + ' rows read · ' + r.matched + ' teachers matched' + (r.unmatchedCount ? ' · <b>' + r.unmatchedCount + ' not matched</b> (kept by name): ' + r.unmatched.map(esc).join(', ') : '') + '<div class="tiny mute">Columns used: ' + Object.keys(r.columns).map(function (k) { return esc(k) + ' = “' + esc(r.columns[k]) + '”'; }).join(', ') + '</div></div>'; }).catch(function (e) { busy(btn, false); fail(e); }); }
 function impUndo(id) { if (!confirm('Undo this roster import? Students, classes and teachers go back to how they were before it.')) return; call('api_importRollback', id).then(function () { toast('Import undone'); coAdminLoad(); }).catch(fail); }
 function impStart(kind) {
   IMP = { kind: kind };
