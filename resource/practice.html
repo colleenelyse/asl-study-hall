@@ -330,6 +330,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .tools-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:4px 0 6px}.cu-grid{display:grid;gap:6px}.cu{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:10px;background:var(--bg)}.cu.warn{background:var(--warn-soft)}.cu-ic{font-size:20px}.cu .small{display:block}.sh{border:2px solid var(--brand);background:var(--brand-soft)}.tools-h{margin:16px 0 4px;font-size:15px}
 .dec{margin-top:10px;padding:12px;border:2px dashed var(--brand);border-radius:12px}.dec-q{margin:10px 0 0}.dec-q input{margin-top:4px}.dec-li{gap:6px;padding:3px 0;border-top:1px solid var(--line)}.wr-in{margin:4px 0}.ixl-bar{height:14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:6px}.ixl-bar i{display:block;height:100%;background:var(--up)}
 .rd-show{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);line-height:1.7;max-height:340px;overflow:auto}.rd-show:empty{display:none}.rd-show.big{font-size:22px;line-height:1.8}.rd-show span{cursor:pointer;border-radius:4px}.rd-now{background:#fde68a;color:#111}
+.paste-how{margin:6px 0 8px;padding-left:22px;font-size:14px}.paste-how li{margin:2px 0}kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--card);font:600 12px/1.4 inherit;text-align:center}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -490,7 +491,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.57'
+var VERSION = '2.58'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -529,7 +530,8 @@ var TABS = {
   'Tool use': ['When', 'Email', 'Tool', 'Detail'],
   'Assignments': ['ID', 'Email', 'Class', 'Assignment', 'Due', 'Done', 'Added', 'Done on'],          // 2.53: the students' own assignment tracker (🧰 My tools)
   'Said turned in': ['Date', 'Email', 'Class', 'Assignment'],
-  'Assignment notes': ['Test ID', 'Email', 'What it needs', 'Saved'],          // 2.56: the Assignment Decoder's notes for a project (product, checklist, rubric, questions)
+  'Assignment notes': ['Test ID', 'Email', 'What it needs', 'Saved'],
+  'Grade categories': ['Email', 'Class', 'Categories', 'Pasted'],          // 2.58: each class's summative / formative points from the last pasted detailed page (for 🎯 What will it do to my grade)          // 2.56: the Assignment Decoder's notes for a project (product, checklist, rubric, questions)
   'IXL plans': ['Email', 'Weekly goal', 'Minutes or questions', 'On', 'Updated'],          // 2.56: the teacher's weekly IXL goal for a student
   'IXL log': ['When', 'Email', 'Week of', 'Amount', 'Minutes or questions'],          // 2.56: what the student says they did (self-report)
   'IXL weeks': ['Week of', 'Email', 'Planned day', 'Note', 'Updated'],          // 2.53: "I turned it in" on a missing assignment (until Infinite Campus shows it)          // 2.53: every time a student uses a 🧰 tool (for executive functioning data)
@@ -582,7 +584,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29, escort: 30 };   // Students columns
-var TEXT_COLS = { 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Grade categories': [1, 2, 3, 4], 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -810,7 +812,7 @@ function setup_() {
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Hall passes', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
-  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
+  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'Grade categories', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
 ];
@@ -1133,7 +1135,7 @@ function saveClasses_(email, list, by) {
   var seen = {}, out = [];
   (list || []).forEach(function (c) {
     var name = clean_(c.name, 60).replace(/\|/g, '/'), graded = !c.resource && !c.nograde, key = graded ? low_(name) : 'p:' + clean_(c.period, 10) + ':' + low_(name);
-    if (!name || seen[key]) return;          // a graded course once; resource (or lunch) can be in several periods
+    if (!name || seen[key] || (NOTCLASS_RE.test(name) && !c.resource)) return;          // a graded course once; resource (or lunch) can be in several periods; 2.58: not-classes never
     seen[key] = true;
     out.push([email, clean_(c.period, 10), name, clean_(c.teacher, 80), !!c.resource, out.length + 1,
       String(c.temail || '').toLowerCase().split(/[\s,;]+/).filter(function (e) { return /^[^@\s]+@[^@\s]+$/.test(e); }).join(', '), clean_(c.level, 20), !c.resource && !!c.nograde, by || '']);
@@ -1399,6 +1401,8 @@ function pastedGrade_(email, cls, summary) {
 // 2.01: the assignment names each class's pasted pages have had (so a page pasted into the wrong class can be recognized)
 // 2.04: schedule rows that aren't graded classes: lunch, study hall, and (Colleen) counselor, social worker, case manager, athletics,
 // activities, and anything with "support" or "academy" in the name. They never ask for grades, wherever they were saved.
+// 2.58: not classes at all (Colleen): never saved on a schedule (lunch, study hall and resource are real periods, so they stay as No grade)
+var NOTCLASS_RE = /counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;
 var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;
 function noGradeName_(name) { return NOGRADE_RE.test(String(name || '')); }
 function anames_(email) {
@@ -4538,6 +4542,13 @@ function api_saidTurnedIn(cls, name) {
 // 2.56: is this student's daily checklist their own (assigned by the teacher)? They get checklist reminders.
 function checkOwn_(email) { var f = stuFind_(email); return f.i >= 0 && !!String(f.rows[f.i][SC.checklist] || '').trim(); }
 // 2.56: when the grades pages were last pasted (so an old missing-work list isn't mistaken for today's)
+// 2.58: the summative / formative totals from a class's detailed page: [{ name, weight, e (earned), q (possible) }]
+function cats_(email) { var o = {}; rows_('Grade categories').forEach(function (r) { if (low_(r[0]) === email) try { o[String(r[1])] = { cats: JSON.parse(r[2]), date: String(r[3] || '').slice(0, 10) }; } catch (e) {} }); return o; }
+function api_saveCats(cls, cats) {
+  var email = need_(); cls = clean_(cls, 80); if (!cls) return cats_(email);
+  var l = (cats || []).slice(0, 12).map(function (c) { return { name: clean_(c.name, 60), weight: +c.weight || 0, e: Math.round((+c.e || 0) * 100) / 100, q: Math.round((+c.q || 0) * 100) / 100 }; }).filter(function (c) { return c.name; });
+  return locked_(function () { rewrite_('Grade categories', function (r) { return !(low_(r[0]) === email && String(r[1]) === cls); }); sheet_('Grade categories').appendRow([email, cls, JSON.stringify(l), stamp_()]); if (ROWS_MEMO) delete ROWS_MEMO['Grade categories']; return cats_(email); });
+}
 function lastPaste_(email) { var m = ''; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) === email) { var d = day_(r[5]); if (d > m) m = d; } }); return m; }
 function api_assignments() { var email = need_(); return { list: assignments_(email), said: said_(email), lastPaste: lastPaste_(email) }; }
 // 2.56: 🔍 Assignment Decoder notes for one project (what to make, what to include, how it's graded, what to ask)
@@ -5176,7 +5187,7 @@ function studentData_(email) {
   prof.goal = prof.goals.length ? prof.goals[0].kid || '' : '';
   prof.goalCheck = st.f.goalCheck ? checkinFor_(email) : null;
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
-  var out = { decoded: decoded_(email), extraDone: extraDone_(email), skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { cats: cats_(email), decoded: decoded_(email), extraDone: extraDone_(email), skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? [].concat.apply([], allGoals.map(function (g) { return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })) : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -5778,6 +5789,11 @@ function avatar(email, name, big) {
   var p = PHOTOS[email];
   return p ? '<img class="av' + (big ? ' big' : '') + '" src="' + p + '" alt="">' : '<span class="av' + (big ? ' big' : '') + '">' + esc(initials(name)) + '</span>';
 }
+// 2.58: how to copy and paste, shown on every paste box. 'all' = a whole page, 'part' = just the part you need, 'class' = one IC class page.
+function pasteHow(kind) {
+  var k = function (x) { return '<kbd>' + x + '</kbd>'; }, sel = kind === 'all' ? 'Press ' + k('Ctrl') + ' + ' + k('A') + ' to select everything' : kind === 'class' ? 'Click just before the class title, scroll down, hold ' + k('Shift') + ' and click after the last assignment' : 'Drag across the part you need to select it';
+  return '<ol class="paste-how"><li>' + sel + '.</li><li>Press ' + k('Ctrl') + ' + ' + k('C') + ' to copy.</li><li>Click in the box below and press ' + k('Ctrl') + ' + ' + k('V') + ' to paste.</li></ol>';
+}
 function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
 function setDirty(v) { DIRTY = v; var s = $('status'); if (s) { s.textContent = v ? 'Not saved yet' : (s.dataset.saved || ''); s.className = 'status' + (v ? ' dirty' : ''); } }
 document.addEventListener('click', function (e) {          // a student using an "Email my teacher" link: counted for self-advocacy
@@ -6250,6 +6266,7 @@ function blankRow(p) { return { period: p || '', name: '', teacher: '', temail: 
 /* IC-SCHED */
 // What kind of class a name looks like: the Settings "Resource course names" are resource; lunch, study hall, counselor, social worker,
 // case manager, athletics, activities, and anything with "support" or "academy" get no grade (2.04; same list as Code.gs NOGRADE_RE).
+var NOTCLASS_RE = /counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;          // 2.58: not classes (removed); same as Code.gs
 var NOGRADE_RE = /lunch|study hall|\bstudy\b|counsel(or|ing)|social work|case manag|athletic|activit|support|academy|\bclubs?\b|intramural|class board|student council/i;
 // 2.05: LTHS clubs (lths.net/activities/clubs, Colleen 2026-10-26). A pasted schedule row with one of these names starts as No grade;
 // a student can switch it to graded (some, like Chamber Orchestra or Madrigals, can also be real classes).
@@ -6291,7 +6308,7 @@ function schType(i, t) { var no = t !== 'graded'; SCH[i].resource = no && isResN
 function schDel(i) { SCH.splice(i, 1); setDirty(true); $('schWrap').innerHTML = schedTable(); }
 function schAdd() { SCH.push(blankRow()); setDirty(true); $('schWrap').innerHTML = schedTable(); }
 function schClean() {
-  var list = SCH.filter(function (r) { return r.name.trim(); });
+  var list = cleanSchedule(SCH.filter(function (r) { return r.name.trim(); }));          // 2.58: repeats and non-classes never save
   var ask = list.filter(function (r) { return hyphenAsks(r).length; })[0];
   if (ask) throw new Error(tName(hyphenAsks(ask)[0].name) + ' has two last names. Pick which one is in their email (under the teacher’s name) before saving.');
   if (!list.length) throw new Error('Please type at least one course.');
@@ -6348,15 +6365,27 @@ function parseICSchedule(text, domain) {
   out.forEach(function (r) { var t = guessType(r.name, r.level); r.resource = t === 'resource'; r.nograde = t === 'nograde'; });
   return out;
 }
+// 2.58: a pasted schedule: take out what isn't a class (counselor, athletics, clubs…; resource stays) and any repeat of the same period + course
+function cleanSchedule(list) {
+  var seen = {}, res = (typeof B !== 'undefined' && B && B.resNames) || ['Resource'];
+  return (list || []).filter(function (r) {
+    var n = String(r.name || '').trim(), isRes = res.some(function (x) { return x && n.toLowerCase().indexOf(String(x).toLowerCase()) >= 0; });
+    if (!n || (NOTCLASS_RE.test(n) && !isRes)) return false;
+    var k = String(r.period || '').toUpperCase() + '|' + n.toLowerCase(); if (seen[k]) return false; seen[k] = true; return true;
+  });
+}
+// 2.58: does a paste look like the Grades page (percents, letter grades, "In Progress") rather than the Schedule page?
+function looksLikeGrades(text) { var t = String(text || ''); return (t.match(/\d{1,3}(\.\d+)?%/g) || []).length >= 2 || /\bIn Progress\b|\bSemester Grade|\bQuarter Grade|Weight:|\bAssignments?\b.*\bScore\b/i.test(t); }
 /* /IC-SCHED */
 function schedPasteBox(open) {
   return '<div class="card"><details' + (open ? ' open' : '') + '><summary><b>📋 Fill this in from Infinite Campus</b></summary>' +
-    '<p class="hint" style="margin:8px 0 6px">Open the <b>Schedule</b> page in Infinite Campus, select all (Ctrl + A), copy (Ctrl + C) and paste it here. Periods, courses, levels and teachers fill in. (The Grades page works too, without the periods.)</p>' +
+    '<p class="hint" style="margin:8px 0 6px">Open the <b>Schedule</b> page in Infinite Campus (not the Grades page). Periods, courses, levels and teachers fill in, with repeats and non-classes (clubs, athletics, counselor…) taken out.</p>' + pasteHow('all') +
     '<textarea id="icSched" placeholder="Paste the whole schedule page here"></textarea><button class="btn small" style="margin-top:6px" onclick="schPaste()">Fill in the schedule</button></details></div>';
 }
 function schPaste() {
-  var text = $('icSched').value, list = parseICSchedule(text, B.domain);
-  if (!list.length) return icSchedule();          // the Grades page instead: names and teachers only
+  var text = $('icSched').value, raw = parseICSchedule(text, B.domain), list = cleanSchedule(raw);          // 2.58: only the Schedule page, cleaned
+  if (!raw.length) return alert(looksLikeGrades(text) ? 'That’s the Grades page. Open the Schedule page in Infinite Campus instead, then press Ctrl + A, Ctrl + C, and paste it here with Ctrl + V.' : 'No classes found. Open the Schedule page in Infinite Campus, press Ctrl + A, then Ctrl + C, then click in the box and press Ctrl + V.');
+  var gone = raw.length - list.length;
   var old = SCH.filter(function (r) { return r.name.trim(); });
   SCH = list.map(function (r) {
     var last = r.teacher.split(' / ').map(function (t) { return t.split(' ').pop().toLowerCase(); });
@@ -6365,7 +6394,7 @@ function schPaste() {
     return r;
   }).sort(perSort);
   setDirty(true); $('schWrap').innerHTML = schedTable();
-  toast(list.length + ' classes filled in. Check them, then save.');
+  toast(list.length + ' classes filled in' + (gone ? ' (' + gone + ' repeat' + (gone === 1 ? '' : 's') + ' or non-class' + (gone === 1 ? '' : 'es') + ' taken out)' : '') + '. Check them, then save.');
 }
 
 function drawSchedule() {
@@ -6462,14 +6491,20 @@ function icMatch(list, classes) {
 
 var ICM = null;
 function icPanel() {
-  return '<div id="icBox" style="margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><div><b>📋 Paste from Infinite Campus</b> <span class="small" style="display:inline">(fills in the grades for you)</span></div>' +
-    '<p class="hint" style="margin:8px 0 6px">Open <b>Grades</b> in Infinite Campus, select all (Ctrl + A), copy (Ctrl + C), and paste it here (Ctrl + V).' + (B.analyze ? ' For a class’s detailed page, use 🔍 for that class instead: copy it starting at the class title.' : '') + '</p>' +
-    '<textarea id="icText" placeholder="Paste your Grades page here"></textarea><button class="btn small" style="margin-top:6px" onclick="icRead()">Read my grades</button>' +
+  return '<div id="icBox" style="margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><div><b>📋 Paste one class from Infinite Campus</b> <span class="small" style="display:inline">(fills in that class’s grade and missing work)</span></div>' +
+    '<p class="hint" style="margin:8px 0 6px">One class at a time. In Infinite Campus, open <b>Grades</b> and <b>click the class</b> so its assignments and scores show (not the page with every class).</p>' + pasteHow('class') +
+    '<textarea id="icText" placeholder="Paste ONE class’s page here (Ctrl + V)"></textarea><button class="btn small" style="margin-top:6px" onclick="icRead()">Read this class</button>' +
     '<div id="icOut">' + icTable() + '</div></div>';          // 2.01: always open (no drop-down arrow to find)
 }
+function icOne(list) {          // 2.58: one class's detailed page (with its assignments) at a time; never the summary Grades page
+  if (!list.length) return 'No class found. Click the class in Infinite Campus so its assignments show, then copy from the class title down to the last assignment.';
+  if (!list.some(function (x) { return x.detail; })) return 'That’s the Grades page with every class. Click ONE class in Infinite Campus so its assignments and scores show, and paste that page instead.';
+  if (list.length > 1) return 'That paste has ' + list.length + ' classes. Paste one class at a time: click a class in Infinite Campus, copy its page, paste it, then do the next class.';
+  return '';
+}
 function icRead() {
-  var list = parseICAll($('icText').value);
-  if (!list.length) return alert('No grades found. Copy the whole Grades page from Infinite Campus and try again.');
+  var list = parseICAll($('icText').value), bad = icOne(list);
+  if (bad) return alert(bad);
   ICM = icMatch(list, graded());
   // Ask only when something is left over on both sides: a pasted class with no match AND one of their classes with no grade.
   // Classes that get no grade (resource, lunch, study hall) are skipped quietly.
@@ -7039,7 +7074,7 @@ function anRun() {
   }
   AN.moved = moved;
   AN.parsed = p;
-  AN.res = analyzeClass(p, { today: B.today, onTime: B.retakeOnTime, below: B.retakeBelow, target: 85 });
+  AN.res = analyzeClass(p, { today: B.today, onTime: B.retakeOnTime, below: B.retakeBelow, target: 85 }); catSave(AN.cls.name, p);
   $('anOut').innerHTML = anHtml(AN.res, p);
   D.analyses = D.analyses || {}; D.analyses[AN.cls.name] = D.analyses[AN.cls.name] || {}; D.analyses[AN.cls.name].date = B.today; detailRefresh();
   // tests at a C or below go on the Retakes list (the teacher sees it too)
@@ -7302,7 +7337,7 @@ function toolLog(tool, detail, once) { if (MODE !== 'student' || (B && B.preview
 function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' = My work and plans, 'quick' = Quick tools
   var l = [['tracker', '📝', 'My assignments', 'Keep track of homework in every class', 'work'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do', 'work'],
     ['project', '🔍', 'Assignment Decoder', 'What it needs, how it’s graded, and a plan', 'work'], ['date', '📅', 'Add a test or project', 'Countdown, reminders and a study plan', 'work'],
-    ['need', '🎯', 'What do I need on the test?', 'The score you need, or what a score would do', 'work'], ['ixl', '📈', 'My IXL', 'This week’s IXL goal', 'work'],
+    ['need', '🎯', 'What will it do to my grade?', 'The score you need, or what a score would do', 'work'], ['ixl', '📈', 'My IXL', 'This week’s IXL goal', 'work'],
     ['hallpass', '🚻', 'Hall pass', 'Take a pass, or get in line', 'quick'], ['classlink', '🏫', 'ClassLink', 'All your school apps in one place', 'quick'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself', 'quick'],
     ['dictate', '🎤', 'Dictate', 'Talk, and it types. Then copy it.', 'quick'], ['write', '✍️', 'Writing toolkit', 'Paragraphs, CER, thesis, citations, proofreading', 'quick'], ['email', '✉️', 'Email my teacher', 'Ready-made emails you fill in', 'quick'],
     ['read', '🔊', 'Read it to me', 'Paste text or a PDF and listen', 'quick'], ['links', '🔗', 'My links', 'IXL, SchooLinks, Drop-In Centers…', 'quick']];
@@ -7366,7 +7401,7 @@ function fcEditHtml() {
   var e = FC.edit, cards = fcParse(e.text);
   return '<h2>🃏 ' + (e.id ? 'Change this set' : 'New flashcard set') + '</h2><div class="row" style="gap:8px;margin-top:6px"><select id="fcCls" style="max-width:220px" onchange="FC.edit.cls=this.value">' + classOptions(e.cls) + '</select>' +
     '<input type="text" id="fcName" class="grow" maxlength="80" placeholder="Set name (Unit 3 vocabulary)" value="' + esc(e.name) + '" oninput="FC.edit.name=this.value"></div>' +
-    '<textarea id="fcText" style="min-height:160px;margin-top:8px;font-family:inherit" placeholder="Paste your Quizlet export here (Ctrl + V)&#10;perro&#9;dog&#10;gato&#9;cat" oninput="FC.edit.text=this.value;fcPrev()">' + esc(e.text) + '</textarea>' +
+    '' + pasteHow('part') + '<textarea id="fcText" style="min-height:160px;margin-top:8px;font-family:inherit" placeholder="Paste your Quizlet export here (Ctrl + V)&#10;perro&#9;dog&#10;gato&#9;cat" oninput="FC.edit.text=this.value;fcPrev()">' + esc(e.text) + '</textarea>' +
     '<div id="fcPrev">' + fcPrevHtml(cards) + '</div>' +
     '<div class="row" style="margin-top:10px"><button class="btn primary" onclick="fcSave()">Save set</button><button class="btn" onclick="fcSwap()">⇄ Switch the two sides</button><button class="btn link" onclick="FC.view=\'list\';toolDraw()">Cancel</button></div>';
 }
@@ -7459,7 +7494,7 @@ function pjtHtml() {
     '<div class="row" style="gap:8px"><select id="pjC" style="max-width:220px" onchange="PJT.cls=this.value">' + classOptions(PJT.cls) + '</select><input type="text" id="pjW" class="grow" maxlength="120" placeholder="Project name (Civil War research paper)" value="' + esc(PJT.what) + '" oninput="PJT.what=this.value">' +
     '<label class="small" style="display:flex;align-items:center;gap:6px">Due <input type="date" id="pjD" min="' + B.today + '" value="' + esc(PJT.date) + '" onchange="PJT.date=this.value"></label></div>' +
     '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><span class="small"><b>Spread the work over</b></span><select id="pjS" style="max-width:220px" onchange="PJT.spread=this.value">' + [['', 'every school day until it’s due'], ['2', 'the last 2 school days'], ['3', 'the last 3 school days'], ['5', 'the last 5 school days (a week)'], ['7', 'the last 7 school days'], ['10', 'the last 10 school days (two weeks)']].map(function (o) { return '<option value="' + o[0] + '"' + (PJT.spread === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
-    '<textarea id="pjText" style="min-height:150px;margin-top:8px" placeholder="Paste the directions and the rubric here (Ctrl + V)" oninput="PJT.text=this.value">' + esc(PJT.text) + '</textarea>' +
+    '' + pasteHow('part') + '<textarea id="pjText" style="min-height:150px;margin-top:8px" placeholder="Paste the directions and the rubric here (Ctrl + V)" oninput="PJT.text=this.value">' + esc(PJT.text) + '</textarea>' +
     '<div class="row" style="margin-top:6px;gap:8px"><label class="btn small" style="cursor:pointer">📄 Use a PDF instead<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="pjtFile(this.files[0])"></label><span class="small" id="pjtSt"></span></div>' +
     '<div class="row" style="margin-top:10px"><button class="btn" onclick="decGo()">🔍 Decode it</button><span class="small">See what it needs and how it’s graded before you plan.</span></div><div id="decBox">' + decHtml() + '</div>' +
     '<div class="row" style="margin-top:10px"><button class="btn primary" id="pjtGo" onclick="pjtGo()"' + (PJT.busy ? ' disabled' : '') + '>' + (PJT.busy ? (B.planner === 'ai' ? 'Thinking it through… (up to a minute)' : 'Making your plan…') : 'Make my plan') + '</button><span class="small">You can change every step and date before you save it. It shows on Today with a countdown, and you get a reminder before each step.</span></div>';
@@ -7517,31 +7552,65 @@ function dtGo() {
   call('api_saveTest', t).then(function (d) { D = d; toolLog('Add a date', (t.cls ? t.cls + ' ' : '') + t.what + ' on ' + t.date); toast('Added: it’s on Today with a countdown'); toolDraw(); }).catch(function (e) { oops(e); toolDraw(); });
 }
 
-/* 🎯 What do I need on the test? from the grade now and how much the test counts (percent of the grade, or points) */
-var ND = { cls: '', how: 'pct', now: '', w: '', earned: '', poss: '', pts: '' };
+/* 🎯 What will it do to my grade? From the class's detailed page (summative and formative points; LTHS: summative 90%, formative 10%).
+   The student says whether it's a summative or a formative and how many points it's worth; the math is instant. Paste today's page first. */
+var CAT_W = { s: 90, f: 10 };
+function catTotals(p) { var o = {}; (p.cats || []).forEach(function (c) { o[c.name] = { name: c.name, weight: c.weight, e: 0, q: 0 }; }); (p.items || []).forEach(function (x) { if (x.score === null || !(x.possible > 0) || x.flags.indexOf('exempt') >= 0 || x.flags.indexOf('dropped') >= 0) return; var c = o[x.cat] = o[x.cat] || { name: x.cat, weight: 0, e: 0, q: 0 }; c.e += x.score; c.q += x.possible; }); return Object.keys(o).map(function (k) { return o[k]; }); }
+function catSave(cls, p) { var l = catTotals(p); if (!l.length) return; D.cats = D.cats || {}; D.cats[cls] = { cats: l, date: B.today }; if (MODE === 'student' && !(B && B.preview)) call('api_saveCats', cls, l).then(function (m) { D.cats = m; }).catch(function () {}); }
+function catSF(entry) {          // { s: {e, q}, f: {e, q} } by name (Summative / Formative), else the heavier category is summative
+  var l = (entry && entry.cats) || [], s = l.filter(function (c) { return /summative|assessment|test/i.test(c.name); })[0], f = l.filter(function (c) { return /formative|practice|homework|classwork|coursework/i.test(c.name); })[0];
+  if (!s || !f) { var by = l.slice().sort(function (a, b) { return b.weight - a.weight || b.q - a.q; }); s = s || by[0]; f = f || by.filter(function (c) { return c !== s; })[0]; }
+  return { s: s || { e: 0, q: 0 }, f: f || { e: 0, q: 0 } };
+}
+function catGrade(sf, add) {          // the class grade with summative 90 / formative 10; add = { k: 's' or 'f', pts, got } for a new assignment
+  var c = { s: { e: sf.s.e, q: sf.s.q }, f: { e: sf.f.e, q: sf.f.q } }; if (add) { c[add.k].e += add.got; c[add.k].q += add.pts; }
+  var parts = ['s', 'f'].filter(function (k) { return c[k].q > 0; }); if (!parts.length) return null;
+  var w = parts.reduce(function (a, k) { return a + CAT_W[k]; }, 0);
+  return parts.reduce(function (a, k) { return a + CAT_W[k] / w * (c[k].e / c[k].q * 100); }, 0);
+}
+function catNeed(sf, k, pts, target) {          // the score (out of pts) that makes the grade = target
+  var lo = 0, hi = pts * 3, f = function (x) { return catGrade(sf, { k: k, pts: pts, got: x }); };
+  if (f(0) >= target) return 0; if (f(hi) < target) return Infinity;
+  for (var n = 0; n < 60; n++) { var mid = (lo + hi) / 2; if (f(mid) >= target) hi = mid; else lo = mid; } return hi;
+}
+var ND = { cls: '', kind: '', pts: '', goal: '', score: '' };
 function ndHtml() {
-  var cl = graded(); if (!ND.cls && cl[0]) { ND.cls = cl[0].name; var g0 = nowGrade(D, ND.cls); ND.now = g0 === null ? '' : g0; }
-  var inp = function (id, k, ph, w) { return '<input type="number" id="' + id + '" step="any" min="0" style="max-width:' + (w || 110) + 'px" placeholder="' + ph + '" value="' + esc(ND[k]) + '" oninput="ND.' + k + '=this.value;ndOut()">'; };
-  return '<h2>🎯 What do I need on the test?</h2><div class="row" style="gap:8px;margin-top:6px"><select id="ndC" style="max-width:220px" onchange="ND.cls=this.value;var g=nowGrade(D,this.value);ND.now=g===null?\'\':g;toolDraw()">' + cl.map(function (c) { return '<option' + (c.name === ND.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>' +
-    '<div class="seg">' + [['pct', 'The test is a % of my grade'], ['pts', 'My class uses points']].map(function (o) { return '<button class="' + (ND.how === o[0] ? 'on' : '') + '" onclick="ND.how=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div></div>' +
-    (ND.how === 'pct' ? '<div class="row" style="gap:12px;margin-top:10px;align-items:center"><label class="small">My grade now (%) ' + inp('ndN', 'now', '78') + '</label><label class="small">The test counts for (% of my grade) ' + inp('ndW', 'w', '20') + '</label></div><p class="small" style="margin:4px 0 0">Not sure how much it counts? Look at the categories on Infinite Campus or the syllabus, or ask your teacher.</p>'
-      : '<div class="row" style="gap:12px;margin-top:10px;align-items:center"><label class="small">Points I have ' + inp('ndE', 'earned', '412') + '</label><label class="small">out of ' + inp('ndP', 'poss', '520') + '</label><label class="small">The test is worth (points) ' + inp('ndT', 'pts', '100') + '</label></div>') +
+  var cl = graded(); if (!ND.cls && cl[0]) ND.cls = cl[0].name;
+  var ent = (D.cats || {})[ND.cls], today = ent && ent.date === B.today;
+  var h = '<h2>🎯 What will it do to my grade?</h2><p class="hint" style="margin:4px 0 8px">Uses the scores on your class’s Infinite Campus page. At LTHS, <b>summatives</b> (tests, quizzes, projects) count for <b>90%</b> of your grade and <b>formatives</b> (homework, classwork, practice) for <b>10%</b>.</p>' +
+    '<select id="ndC" style="max-width:260px" onchange="ND.cls=this.value;toolDraw()">' + cl.map(function (c) { return '<option' + (c.name === ND.cls ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>';
+  if (!today) h += '<div class="em-prev" style="margin-top:10px"><b>' + (ent ? 'First, paste today’s page for ' + esc(ND.cls) : 'Paste ' + esc(ND.cls) + '’s page first') + '</b><div class="small" style="display:block;margin:2px 0 4px">' + (ent ? 'Your last paste was ' + esc(fmtDay(ent.date)) + '. Pasting today’s page makes sure the math uses your newest scores.' : 'The app adds up your summative and formative points from it.') + ' In Infinite Campus, open Grades and click ' + esc(ND.cls) + '.</div>' + pasteHow('class') +
+    '<textarea id="ndP" rows="2" placeholder="Paste ' + esc(ND.cls) + '’s page here (Ctrl + V)" onpaste="setTimeout(ndPaste,30)"></textarea>' + (ent ? '<button class="btn link small" onclick="ND.useOld=ND.cls;toolDraw()">Use my ' + esc(fmtDay(ent.date)) + ' scores instead</button>' : '') + '</div>';
+  if (!ent || (!today && ND.useOld !== ND.cls)) return h;
+  var sf = catSF(ent), now = catGrade(sf);
+  h += '<p style="margin:12px 0 6px">' + (today ? '✓ Using today’s page. ' : 'Using your ' + esc(fmtDay(ent.date)) + ' page. ') + 'Your grade now: <b>' + (now === null ? '?' : Math.round(now * 10) / 10 + '% (' + letter(now) + ')') + '</b> <span class="small" style="display:inline">· summative ' + (sf.s.q ? Math.round(sf.s.e / sf.s.q * 1000) / 10 + '% (' + sf.s.e + '/' + sf.s.q + ')' : 'none yet') + ' · formative ' + (sf.f.q ? Math.round(sf.f.e / sf.f.q * 1000) / 10 + '% (' + sf.f.e + '/' + sf.f.q + ')' : 'none yet') + '</span></p>' +
+    '<p style="margin:10px 0 4px"><b>Is it a summative or a formative?</b> <span class="small" style="display:inline">(needed)</span></p><div class="seg">' + [['s', 'Summative (test, quiz, project) · 90%'], ['f', 'Formative (homework, classwork) · 10%']].map(function (o) { return '<button class="' + (ND.kind === o[0] ? 'on' : '') + '" onclick="ND.kind=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' +
+    '<div class="row" style="gap:8px;margin-top:10px;align-items:center"><b>How many points is it worth?</b><input type="number" min="1" step="any" style="max-width:100px" placeholder="100" value="' + esc(ND.pts) + '" oninput="ND.pts=this.value;ndOut()"> <span class="small">(ask your teacher or check Canvas if you’re not sure)</span></div>' +
     '<div id="ndOut">' + ndOutHtml() + '</div>';
+  return h;
+}
+function ndPaste() {
+  var t = $('ndP') ? $('ndP').value : '', p = parseClassGrades(t);
+  if (!p.items.length) { $('ndP').value = ''; return alert('That’s not one class’s page with its assignments. In Infinite Campus, open Grades and click ' + ND.cls + ' so its assignments and scores show, then copy from the class title down to the last assignment.'); }
+  var to = anRoute(p, graded().filter(function (c) { return c.name === ND.cls; })[0] || {}), cls = to && to.name ? to.name : ND.cls;
+  if (to && to.name && to.name !== ND.cls) toast('That was your ' + to.name + ' page, so it’s saved for ' + to.name + '.');
+  catSave(cls, p); ND.cls = cls; toast('✓ ' + cls + ' updated'); toolDraw();
 }
 function ndOutHtml() {
-  var c = B.cutoffs || [90, 80, 70, 60], L = ['A', 'B', 'C', 'D'], need, after;
-  if (ND.how === 'pct') { var now = +ND.now, w = +ND.w / 100; if (!(ND.now !== '' && w > 0 && w < 1)) return '<p class="small" style="margin:8px 0 0">Fill in your grade now and how much the test counts.</p>'; need = function (t) { return (t - now * (1 - w)) / w; }; after = function (sc) { return now * (1 - w) + sc * w; }; }
-  else { var e = +ND.earned, p = +ND.poss, T = +ND.pts; if (!(p > 0 && T > 0 && ND.earned !== '')) return '<p class="small" style="margin:8px 0 0">Fill in your points and what the test is worth.</p>'; need = function (t) { return (t / 100 * (p + T) - e) / T * 100; }; after = function (sc) { return (e + sc / 100 * T) / (p + T) * 100; }; ND.now = Math.round(e / p * 1000) / 10; }
-  var say1 = function (n) { n = Math.ceil(n * 10) / 10; return n > 100 ? 'more than 100%: not possible on this test alone. Ask your teacher about missing work and retakes.' : n <= 0 ? 'nothing: you’ll keep it even with a 0 (but do your best!)' : '<b>' + (Math.round(n * 10) / 10) + '%</b> on the test'; };
-  var goal = ND.goal === undefined || ND.goal === '' ? null : +ND.goal, sc = ND.score === undefined || ND.score === '' ? null : +ND.score;
-  var res = sc === null ? '' : (function () { var g = Math.round(after(sc) * 10) / 10, d = Math.round((g - +ND.now) * 10) / 10; return 'Your grade would be <b>' + g + '% (' + letter(g) + ')</b>, ' + (d > 0 ? 'up ' + d : d < 0 ? 'down ' + (-d) : 'no change') + (d ? ' from ' + ND.now + '%' : '') + '.'; })();
-  return '<div class="nd-two"><div class="nd-box"><b>🎯 I want my grade to be</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" max="100" style="max-width:100px" placeholder="85" value="' + (goal === null ? '' : goal) + '" oninput="ND.goal=this.value;ndRes()"> %</div><div id="ndGoal" class="small" style="display:block">' + (goal === null ? 'Type the grade you want.' : 'You need ' + say1(need(goal))) + '</div></div>' +
-    '<div class="nd-box"><b>🔮 If I get this on the test</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" max="110" style="max-width:100px" placeholder="75" value="' + (sc === null ? '' : sc) + '" oninput="ND.score=this.value;ndRes()"> %</div><div id="ndScore" class="small" style="display:block">' + (res || 'Type a test score to see what happens to your grade.') + '</div></div></div>' +
-    '<table style="margin-top:10px"><tbody>' + c.map(function (t, i) { return '<tr><td style="width:150px"><b>End with ' + (i ? 'a ' : 'an ') + L[i] + '</b> (' + t + '%)</td><td>You need ' + say1(need(t)) + '</td></tr>'; }).join('') + '</tbody></table>' +
-    '<button class="btn small" style="margin-top:8px" onclick="toolLog(\'What do I need\', ND.cls + (ND.goal ? \': goal \' + ND.goal + \'%\' : \'\') + (ND.score ? \', if I get \' + ND.score + \'%\' : \'\'));toast(\'Good plan: put the test on your list and study a little each day.\')">👍 Got it</button>';
+  var ent = (D.cats || {})[ND.cls]; if (!ent) return ''; var sf = catSF(ent), pts = +ND.pts, k = ND.kind;
+  if (!k) return '<p class="small" style="margin:10px 0 0">Pick summative or formative first.</p>'; if (!(pts > 0)) return '<p class="small" style="margin:10px 0 0">Type how many points it’s worth.</p>';
+  var c = B.cutoffs || [90, 80, 70, 60], L = ['A', 'B', 'C', 'D'];
+  var need = function (t) { var x = catNeed(sf, k, pts, t); return x === Infinity ? 'more than ' + pts + ' points: not possible with this one alone. Ask your teacher about missing work and retakes.' : x <= 0 ? 'nothing: you’ll keep it even with a 0 (but do your best!)' : '<b>' + Math.ceil(x * 10) / 10 + ' of ' + pts + ' points (' + Math.ceil(x / pts * 1000) / 10 + '%)</b>'; };
+  var goal = ND.goal === '' ? null : +ND.goal, sc = ND.score === '' ? null : +ND.score, now = catGrade(sf);
+  var res = sc === null ? '' : (function () { var got = ND.scoreAs === 'pct' ? sc / 100 * pts : sc, gr = catGrade(sf, { k: k, pts: pts, got: got }), d = Math.round((gr - now) * 10) / 10; return 'Your grade would be <b>' + Math.round(gr * 10) / 10 + '% (' + letter(gr) + ')</b>, ' + (d > 0 ? 'up ' + d : d < 0 ? 'down ' + (-d) : 'no change') + '.'; })();
+  return '<div class="nd-two"><div class="nd-box"><b>🎯 I want my grade to be</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" max="100" style="max-width:100px" placeholder="85" value="' + esc(ND.goal) + '" oninput="ND.goal=this.value;ndRes(0)"> %</div><div class="small" style="display:block">' + (goal === null ? 'Type the grade you want.' : 'You need ' + need(goal)) + '</div></div>' +
+    '<div class="nd-box"><b>🔮 If I get</b><div class="row" style="gap:6px;margin:6px 0"><input type="number" step="any" min="0" style="max-width:100px" placeholder="' + Math.round(pts * 0.8) + '" value="' + esc(ND.score) + '" oninput="ND.score=this.value;ndRes(1)"><select onchange="ND.scoreAs=this.value;ndRes(1)"><option value="pts"' + (ND.scoreAs !== 'pct' ? ' selected' : '') + '>points out of ' + pts + '</option><option value="pct"' + (ND.scoreAs === 'pct' ? ' selected' : '') + '>percent</option></select></div><div class="small" style="display:block">' + (res || 'Type a score to see what happens to your grade.') + '</div></div></div>' +
+    '<table style="margin-top:10px"><tbody>' + c.map(function (t, i) { return '<tr><td style="width:150px"><b>End with ' + (i ? 'a ' : 'an ') + L[i] + '</b> (' + t + '%)</td><td>You need ' + need(t) + '</td></tr>'; }).join('') + '</tbody></table>' +
+    '<p class="small" style="margin:6px 0 0">An estimate from your pasted page: your teacher’s gradebook is the final word.</p>' +
+    '<button class="btn small" style="margin-top:8px" onclick="toolLog(\'What do I need\', ND.cls + \' (\' + (ND.kind === \'s\' ? \'summative\' : \'formative\') + \', \' + ND.pts + \' pts)\');toast(\'Good plan: put it on your list and study a little each day.\')">👍 Got it</button>';
 }
-function ndRes() { var el = $('ndOut'); if (!el) return; var a = document.activeElement, val = a && a.value, inGoal = a && a.oninput && String(a.getAttribute('oninput')).indexOf('ND.goal') >= 0; el.innerHTML = ndOutHtml(); var ins = el.querySelectorAll('input'); var f = ins[inGoal ? 0 : 1]; if (f) { f.focus(); try { f.setSelectionRange(String(val).length, String(val).length); } catch (e) {} } }
 function ndOut() { var el = $('ndOut'); if (el) el.innerHTML = ndOutHtml(); }
+function ndRes(which) { var el = $('ndOut'); if (!el) return; var a = document.activeElement, v = a && a.value; el.innerHTML = ndOutHtml(); var f = el.querySelectorAll('input')[which]; if (f) { f.focus(); try { f.setSelectionRange(String(v).length, String(v).length); } catch (e) {} } }
 
 /* ✉️ Email my teacher: polite, ready-made emails; they fill in the blanks and send from their own Gmail */
 var EM = { cls: '', kind: 'missing', a: '', d: '', why: '', acc: '' };
@@ -7588,7 +7657,7 @@ function rdSents(t) { return (String(t).match(/[^.!?\n]+[.!?]*["”’)]*\s*|\n+
 function rdHtml() {
   var langs = rdLangs(), ss = rdSents(RD.text);
   return '<h2>🔊 Read it to me</h2><p class="hint" style="margin:4px 0 8px">Paste directions, a reading or your own writing (to hear mistakes), or use a PDF. Your Chromebook reads it out loud. Use headphones.</p>' +
-    '<textarea id="rdT" style="min-height:110px" placeholder="Paste the text here" oninput="RD.text=this.value;RD.at=-1;rdShow()">' + esc(RD.text) + '</textarea>' +
+    '' + pasteHow('part') + '<textarea id="rdT" style="min-height:110px" placeholder="Paste the text here" oninput="RD.text=this.value;RD.at=-1;rdShow()">' + esc(RD.text) + '</textarea>' +
     '<div class="row" style="gap:8px;margin-top:6px"><label class="btn small" style="cursor:pointer">📄 Use a PDF<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="rdFile(this.files[0])"></label><span class="small" id="rdSt"></span></div>' +
     '<div class="row" style="gap:10px;margin-top:8px;align-items:center"><button class="btn primary" onclick="rdGo()">▶ Read</button><button class="btn" onclick="try{speechSynthesis.paused?speechSynthesis.resume():speechSynthesis.pause()}catch(e){}">⏯ Pause / resume</button><button class="btn" onclick="try{speechSynthesis.cancel()}catch(e){};RD.at=-1;rdShow()">⏹ Stop</button>' +
     '<label class="small" style="display:flex;gap:6px;align-items:center">Speed <input type="range" min="0.6" max="1.5" step="0.1" value="' + RD.rate + '" onchange="RD.rate=+this.value"></label>' +
@@ -7798,7 +7867,7 @@ function wrHtml() {
   else if (WR.tab === 'thesis') h = '<p class="hint">Although ___, ___ because ___, ___, and ___.</p>' + wrIn('t1', 'What someone might argue against you') + wrIn('t2', 'Your main point') + wrIn('t3', 'Reason 1') + wrIn('t4', 'Reason 2') + wrIn('t5', 'Reason 3');
   else if (WR.tab === 'cite') h = '<div class="seg" style="margin-bottom:8px">' + [['web', 'Website'], ['book', 'Book'], ['art', 'Article']].map(function (o) { return '<button class="' + (WR.cite === o[0] ? 'on' : '') + '" onclick="WR.cite=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div><div class="row" style="gap:6px">' + wrIn('last', 'Author last name') + wrIn('first', 'Author first name') + '</div>' + wrIn('title', WR.cite === 'book' ? 'Book title' : 'Title of the page or article') +
     (WR.cite === 'book' ? '<div class="row" style="gap:6px">' + wrIn('pub', 'Publisher') + wrIn('year', 'Year') + '</div>' : '<div class="row" style="gap:6px">' + wrIn('site', WR.cite === 'web' ? 'Website name' : 'Magazine, newspaper or journal') + wrIn('date', 'Date (12 Oct. 2026)') + '</div>' + (WR.cite === 'web' ? wrIn('url', 'Web address (without https://)') : wrIn('pages', 'Pages (12-15)'))) + '<p class="small" style="margin:4px 0 0">No author? Leave it blank. In your works cited list, put the title of the website or book in <i>italics</i>.</p>';
-  else h = '<p class="hint">Check each one before you turn it in.</p>' + ['I answered every part of the question or prompt', 'Every sentence starts with a capital letter and ends with . ? or !', 'Every sentence is a full sentence (not a fragment)', 'I fixed the words with red underlines (spell check)', 'Names and the word “I” are capitalized', 'Each paragraph has one main idea', 'I used my evidence and explained it', 'I read it out loud (or had it read to me) and fixed what sounded wrong'].map(function (x, i) { return '<label class="check"><input type="checkbox"' + (WR.f['pc' + i] ? ' checked' : '') + ' onchange="WR.f[\'pc' + i + '\']=this.checked"><span>' + x + '</span></label>'; }).join('') + '<textarea id="wrPaste" style="min-height:90px;margin-top:8px" placeholder="Paste your writing here to hear it read out loud">' + esc(WR.f.paste || '') + '</textarea><button class="btn small" style="margin-top:6px" onclick="WR.f.paste=$(\'wrPaste\').value;rdSpeak(WR.f.paste)">🔊 Read my writing to me</button>';
+  else h = '<p class="hint">Check each one before you turn it in.</p>' + ['I answered every part of the question or prompt', 'Every sentence starts with a capital letter and ends with . ? or !', 'Every sentence is a full sentence (not a fragment)', 'I fixed the words with red underlines (spell check)', 'Names and the word “I” are capitalized', 'Each paragraph has one main idea', 'I used my evidence and explained it', 'I read it out loud (or had it read to me) and fixed what sounded wrong'].map(function (x, i) { return '<label class="check"><input type="checkbox"' + (WR.f['pc' + i] ? ' checked' : '') + ' onchange="WR.f[\'pc' + i + '\']=this.checked"><span>' + x + '</span></label>'; }).join('') + '' + pasteHow('part') + '<textarea id="wrPaste" style="min-height:90px;margin-top:8px" placeholder="Paste your writing here to hear it read out loud">' + esc(WR.f.paste || '') + '</textarea><button class="btn small" style="margin-top:6px" onclick="WR.f.paste=$(\'wrPaste\').value;rdSpeak(WR.f.paste)">🔊 Read my writing to me</button>';
   return '<h2>✍️ Writing toolkit</h2><div class="seg" style="flex-wrap:wrap;margin:6px 0 10px">' + tabs.map(function (o) { return '<button class="' + (WR.tab === o[0] ? 'on' : '') + '" onclick="WR.tab=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' + h + '<div id="wrPrev">' + (WR.tab === 'proof' ? '' : wrPrevHtml()) + '</div>';
 }
 
@@ -7984,6 +8053,7 @@ function gpRead(i, el) {
   if (to && to !== c) { moved = c.name; c = to; }
   else if (!to || !AN_SURE) { var why = anOdd(p, c); if (why && !confirm('Double-check: is this your ' + c.name + ' page? ' + why + '\n\nOK = yes, it’s ' + c.name + '. Cancel = I’ll paste the right page.')) return msg(''); }
   el.dataset.busy = '1';
+  catSave(c.name, p);          // 2.58
   var res = analyzeClass(p, { today: B.today, onTime: B.retakeOnTime, below: B.retakeBelow, target: 85 }), cn = c.name, g = Math.round(Number(res.grade) * 100) / 100, ms = res.missing.map(function (x) { return x.name; });
   GP_LAST[cn] = { res: res, p: p }; delete GP_AGAIN[cn]; delete GP_NOTE[cn];
   if (moved) GP_NOTE[moved] = 'That was your ' + esc(cn) + ' page, so it’s saved there. Paste ' + esc(moved) + '’s page here.';
@@ -8914,7 +8984,7 @@ function ppOpen(id) {
   el.onclick = function (e) { if (e.target === el && !$('ppGo').disabled) el.remove(); };
   el.innerHTML = '<div class="card" style="max-width:640px"><div class="row"><h2 class="grow">📋 Plan ' + esc(t.what) + '</h2><button class="btn link" onclick="$(\'ppModal\').remove()">✕ Close</button></div>' +
     '<p class="hint" style="margin:4px 0 8px">' + esc(t.cls) + ' · due ' + fmtDay(t.date) + '. Open the project in Google Classroom (or wherever your teacher posted it). Select all the directions <b>and the rubric</b>, copy (Ctrl + C), and paste them here (Ctrl + V).</p>' +
-    '<textarea id="ppText" style="min-height:180px" placeholder="Paste the project directions and the rubric here"></textarea>' +
+    '' + pasteHow('part') + '<textarea id="ppText" style="min-height:180px" placeholder="Paste the project directions and the rubric here"></textarea>' +
     '<div class="row" style="margin-top:8px"><button class="btn primary" id="ppGo" onclick="ppGo(\'' + id + '\')">' + (B.planner === 'ai' ? '✨ Make my plan' : 'Make my plan') + '</button><span class="small" id="ppStatus" style="display:inline"></span></div>' +
     '<p class="small" style="margin:8px 0 0">' + (B.planner === 'ai' ? 'An AI helper reads the directions and writes the steps. Only the directions, class and dates are sent, not your name. ' : '') + 'You can change every step and date before you save.</p></div>';
   document.body.appendChild(el); $('ppText').focus();
@@ -9341,7 +9411,7 @@ function ghChatHtml(nSel) {
     '<div class="row" style="gap:6px;margin-top:4px"><button class="btn small" onclick="ghPromptSave()">Save my prompt</button><button class="btn link small" onclick="ghPromptSave(true)">Use the app’s prompt</button></div>' +
     '<p class="small" style="margin:12px 0 4px"><b>2. Copy the checked goals and open ChatGPT</b>, then paste (Ctrl + V) and send.</p>' +
     '<button class="btn primary" onclick="ghCopyChat()"' + (nSel ? '' : ' disabled') + '>📋 Copy ' + nSel + ' goal' + (nSel === 1 ? '' : 's') + ' and open ChatGPT</button>' +
-    '<p class="small" style="margin:12px 0 4px"><b>3. Paste ChatGPT’s answer here</b>, then fill in.</p><textarea id="ghAns" style="min-height:90px;font-size:13px" placeholder="#1 | I need to … | Study Planning | yes | 6 … ; 5 … ; 4 … ; 3 … ; 2 … ; 1 … | No test this week. ; I was absent. | evidence | way to take data"></textarea>' +
+    '<p class="small" style="margin:12px 0 4px"><b>3. Paste ChatGPT’s answer here</b>, then fill in.</p>' + pasteHow('part') + '<textarea id="ghAns" style="min-height:90px;font-size:13px" placeholder="#1 | I need to … | Study Planning | yes | 6 … ; 5 … ; 4 … ; 3 … ; 2 … ; 1 … | No test this week. ; I was absent. | evidence | way to take data"></textarea>' +
     '<button class="btn" style="margin-top:6px" onclick="ghFromAnswer()">Fill in from the answer</button></details>';
 }
 function ghPromptSave(reset) { call('api_saveGoalPrompt', reset ? '' : $('ghPr').value).then(function (t) { GH.prompt = t; GH.chat = true; drawGH(); toast(reset ? 'Back to the app’s prompt' : 'Prompt saved'); }).catch(oops); }
@@ -9745,7 +9815,7 @@ function teGradesCard() {
   var gc = graded(TS); if (!gc.length) return '';
   if (!TE) return '<div class="card"><div class="row"><h2 class="grow">✏️ Enter grades for this student</h2><button class="btn small" onclick="teOpen()">Enter this week’s grades</button></div><p class="hint" style="margin:2px 0 0">Type them or paste their Infinite Campus Grades page. They’re marked “entered by your teacher.”</p></div>';
   return '<div class="card"><h2>✏️ Enter grades for this student</h2><p class="hint" style="margin:2px 0 8px">This week (' + fmtDay(B.week) + '). Saved as entered by you; the student still explains low grades when they check in.</p>' +
-    '<details><summary><b>📋 Paste from Infinite Campus</b> (the Grades page, or a class’s detailed page)</summary><p class="small" style="margin:6px 0 0">The main Grades page fills in percents. A class’s detailed page (click the class in Campus, then copy from the class title at the top down to the last assignment) also fills in missing work and checks which tests they can retake.</p><textarea id="teIC" placeholder="Paste the Grades page, or one class’s detailed page, here" style="margin-top:6px"></textarea><button class="btn small" style="margin-top:6px" onclick="tePaste()">Read the grades</button></details>' +
+    '<details><summary><b>📋 Paste one class from Infinite Campus</b> (its detailed page)</summary><p class="small" style="margin:6px 0 0">One class at a time: click the class in Campus so its assignments and scores show. It fills in the grade and missing work and checks which tests they can retake. The page with every class isn’t accepted.</p>' + pasteHow('class') + '<textarea id="teIC" placeholder="Paste the Grades page, or one class’s detailed page, here" style="margin-top:6px"></textarea><button class="btn small" style="margin-top:6px" onclick="tePaste()">Read the grades</button></details>' +
     '<table style="margin-top:8px"><thead><tr><th>Class</th><th>Grade %</th><th>Missing</th><th class="hide-sm">Which ones</th></tr></thead><tbody>' + gc.map(function (c, k) {
       var m = TE.missing[c.name] || { n: '', list: '' };
       return '<tr><td><b>' + esc(c.name) + '</b></td><td><input class="gin" type="number" step="0.1" min="0" max="150" value="' + esc(TE.grades[c.name]) + '" oninput="TE.grades[graded(TS)[' + k + '].name]=this.value"></td>' +
@@ -9759,7 +9829,7 @@ function teOpen() {
 }
 function teMiss(k, f, v) { var c = graded(TS)[k].name; TE.missing[c] = TE.missing[c] || { n: '', list: '' }; TE.missing[c][f] = v; }
 function tePaste() {
-  var list = parseICAll($('teIC').value); if (!list.length) return alert('No grades found in that paste.');
+  var list = parseICAll($('teIC').value), bad = icOne(list); if (bad) return alert(bad);
   var B0 = B; var n = 0, d = 0;
   icMatch(list, graded(TS)).forEach(function (m) {
     if (!m.cls) return; TE.grades[m.cls] = String(m.ic.pct); n++;
@@ -9821,7 +9891,7 @@ function drawEF() {
         '<button class="btn link small" title="Move up" onclick="ckeMove(' + k + ',-1)"' + (k ? '' : ' disabled') + '>▲</button><button class="btn link small" title="Move down" onclick="ckeMove(' + k + ',1)"' + (k < items.length - 1 ? '' : ' disabled') + '>▼</button>' +
         '<button class="btn link danger small" onclick="ckeDel(' + k + ')">✕</button></div>';
     }).join('') +
-    '<details style="margin:8px 0"><summary class="small" style="display:list-item"><b>📋 Paste a list</b> (from a Google Doc, a sheet or an email: one task per line)</summary><textarea id="ckeP" style="min-height:90px;margin-top:6px" placeholder="Check Canvas for new assignments&#10;Write homework in my planner&#10;Pack my folder for tomorrow"></textarea>' +
+    '<details style="margin:8px 0"><summary class="small" style="display:list-item"><b>📋 Paste a list</b> (from a Google Doc, a sheet or an email: one task per line)</summary>' + pasteHow('part') + '<textarea id="ckeP" style="min-height:90px;margin-top:6px" placeholder="Check Canvas for new assignments&#10;Write homework in my planner&#10;Pack my folder for tomorrow"></textarea>' +
       '<div class="row" style="margin-top:6px"><button class="btn small" onclick="ckePaste(false)">Use this list instead</button><button class="btn small" onclick="ckePaste(true)">Add to the list</button><span class="small">Then check it and press Save. Up to 20 items.</span></div></details>' +
     '<div class="row" style="margin-top:6px"><button class="btn small" onclick="ckeAdd()">+ Add an item</button><button class="btn primary small" onclick="ckeSave()">Save for this student</button>' +
     (own ? '<button class="btn link small" onclick="ckeReset()">Use the class checklist</button>' : '') + '</div></details>';
@@ -10678,7 +10748,7 @@ function ipOpen(email) {
     '<li>Sections the app doesn’t use (present levels, eligibility, transition, extended school year, placement, signatures) are skipped, not saved.</li></ul>' +
     '<span class="small">Only the goals and their benchmarks, accommodations, the testing room and related services are saved, after you check them. Still look it over: other people’s names (like a parent’s first name) can stay in the box, but they aren’t saved.</span></div>' +
     '<select id="ipStu" style="max-width:260px" onchange="ipAuto()"><option value="">The app finds the student (or pick)…</option>' + st.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === IP.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
-    '<textarea id="ipT" onpaste="setTimeout(ipAuto,0)" style="min-height:140px;margin-top:8px" placeholder="Paste the whole IEP here (Ctrl + V)" data-example="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
+    '' + pasteHow('all') + '<textarea id="ipT" onpaste="setTimeout(ipAuto,0)" style="min-height:140px;margin-top:8px" placeholder="Paste the whole IEP here (Ctrl + V)" data-example="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
     '<div id="ipClean" class="small" style="display:block;margin-top:4px"></div><div class="row" style="margin-top:6px"><button class="btn small" onclick="ipAuto()">Sort it again</button><span class="small">It sorts by itself when you paste.</span></div><div id="ipOut"></div></div>';
   document.body.appendChild(el);
 }
@@ -11024,7 +11094,7 @@ function giOpen() {
   el.innerHTML = '<div class="card" style="max-width:980px"><div class="row"><h2 class="grow">📥 Import IEP goals</h2><button class="btn link" onclick="$(\'giModal\').remove()">✕ Close</button></div>' +
     '<p class="hint" style="margin:2px 0 8px">Choose your goals spreadsheet saved as a CSV file, or copy the rows from a spreadsheet and paste them below. The app reads the column names: Goal ID, Student, Goal Title, My Goal — I need to…, What Success Looks Like, Measurement Design Status, Recommended Tracking Tool, How We Track It, Evidence / Data Source, Measurement Notes, Original IEP goal, Official criterion, Rating 6 … Rating 1, No-chance ideas, Measured in ' + esc(B.dayClass || 'resource') + '. Importing the same file again updates goals by their Goal ID (nothing is doubled).</p>' +
     '<div class="row" style="gap:10px"><label class="btn">📄 Choose the CSV file<input type="file" accept=".csv,text/csv" style="display:none" onchange="giFile(this)"></label><span class="small" id="giFileName"></span></div>' +
-    '<textarea id="giT" style="min-height:90px;margin-top:8px" placeholder="…or paste rows from a spreadsheet here"></textarea>' +
+    '' + pasteHow('part') + '<textarea id="giT" style="min-height:90px;margin-top:8px" placeholder="…or paste rows from a spreadsheet here"></textarea>' +
     '<div class="row" style="margin-top:8px"><button class="btn primary" onclick="giCheck()">Check the list</button></div><div id="giOut"></div></div>';
   document.body.appendChild(el);
 }
@@ -11323,7 +11393,7 @@ function drawPhotos() {
   h += '<div class="card"><h2>Add a student</h2><div class="row" style="margin-top:10px"><input class="grow" type="text" id="aFirst" placeholder="First name"><input class="grow" type="text" id="aLast" placeholder="Last name"><input type="text" id="aId" placeholder="ID number" style="max-width:140px" inputmode="numeric"><button class="btn primary" id="aGo">Add</button></div><p class="hint" id="aPrev" style="margin:8px 0 0"></p></div>';
   h += '<div class="card"><details id="rosterBox"' + (ROSTER ? ' open' : '') + '><summary><b>Add many students</b> <span class="small" style="display:inline">(paste a class list)</span></summary>' +
     '<p class="hint" style="margin:8px 0 6px">Copy your class list from Infinite Campus or a spreadsheet and paste it here: one student per line, with their name and ID number (or school email). For example <b>Smith, Jane 513421</b> or <b>Jane Smith 513421</b>. Last names are used only to make the email; the app saves Jane S.</p>' +
-    '<textarea id="rText" style="min-height:120px" placeholder="Smith, Jane	513421"></textarea><button class="btn small" style="margin-top:6px" onclick="rosterRead()">Check the list</button><div id="rOut">' + rosterTable() + '</div></details></div>';
+    '' + pasteHow('part') + '<textarea id="rText" style="min-height:120px" placeholder="Smith, Jane	513421"></textarea><button class="btn small" style="margin-top:6px" onclick="rosterRead()">Check the list</button><div id="rOut">' + rosterTable() + '</div></details></div>';
   var sorted = TD.students.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
   h += '<div class="card" id="photoCard"><h2>Add or change a photo</h2>' +
     '<div class="row" style="margin-top:10px;align-items:flex-end"><label style="flex:1;min-width:220px"><span class="small">Student</span><select id="phWho" onchange="phPick(this.value)"><option value="">Choose a student…</option>' +
