@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.37'
+var VERSION = '2.38'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -9283,13 +9283,18 @@ function ipScrub(text, first, ini) {
   var foot = new RegExp('\\b(' + NW + '),?\\s+(?:[A-Z]\\.?\\s+)?(' + NW + ')\\s+(?=(?:IEP Summary\\s*)?Page\\s+\\d+\\s+of|D\\.?O\\.?B|Date of Birth|Birth\\s*Date)', 'g');
   while ((mm = foot.exec(src2))) { NAMES[mm[1]] = true; NAMES[mm[2]] = true; }
   if (first) NAMES[first] = true; Object.keys(LASTS).forEach(function (L) { NAMES[L] = true; });
+  var PII0 = /^\s*(?:Student\s*:|Lyons\s+(?:Twp|Township)|(?:Conference|Meeting)\s+Date\s*:)/i;
   var PII = /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\b|\bpage\s+\d+\s+of\s+\d+\b|\bstudent\s*(name|id|number|#)\s*:|\b(student\s+)?id\s*(#|no\.?|number)?\s*:?\s*\d{5,}\b|^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/i;
   var FRAG = [/(?:[A-Z][A-Za-z'’-]+,?\s+){1,3}(?=(?:[Dd]\.?[Oo]\.?[Bb]\.?|[Dd]ate of [Bb]irth|[Bb]irth\s*[Dd]ate)(?![a-z]))/g,
     /\b[A-Z][a-z'’-]+,?\s+(?:[A-Z]\.?\s+)?[A-Z][a-z'’-]+\s+(?=(?:IEP Summary\s*)?Page\s+\d+\s+of\s+\d+)/g,          // 2.30: a name printed before a page footer /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\s*[:#-]?\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/gi, /\bIEP Summary\s*Page\s+\d+\s+of\s+\d+(\s*IEP Summary)?/gi, /\bpage\s+\d+\s+of\s+\d+\b/gi,
-    /\b(student\s+)?id\s*(#|no\.?|number)?\s*[:#]?\s*\d{5,}\b/gi, /\bstudent\s*name\s*:\s*[A-Z][\w'’-]+(\s+[A-Z][\w'’-]+){0,2}/g];
+    /\b(student\s+)?id\s*(#|no\.?|number)?\s*[:#]?\s*\d{5,}\b/gi, /\bstudent\s*name\s*:\s*[A-Z][\w'’-]+(\s+[A-Z][\w'’-]+){0,2}/g,
+    /\b(?:Conference|Meeting|IEP|Review|Eligibility)\s+Date\s*:?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/gi,          // 2.38: before the student footer
+    /\bLyons\s+(?:Twp\.?|Township)\s+(?:HSD|H\.?S\.?D\.?|High\s+School(?:\s+District)?)\s*(?:204)?\b/gi,
+    /\bStudent(?:'s)?(?:\s+Name)?\s*:\s*(?:(?!Conference\b|Meeting\b|Date\b|Grade\b|DOB\b|Lyons\b|Allow\b|Provide\b|Use\b)[A-Z][\w'’.-]*,?\s*){1,4}(?=\s|$)/g,          // "Student: D., E.D.\"
+    /\bLyons\s+(?:Twp\.?|Township)\b/gi];
   var out = String(text || '').split(/\r?\n/).filter(function (l) {
     if (l.length > 200) return true;          // long run-together text (copied from a PDF): only the private piece goes (below)
-    if (PII.test(l)) { lines++; return false; } return true;
+    if (PII.test(l) || PII0.test(l)) { lines++; return false; } return true;
   }).map(function (l) { if (l.length <= 200) return l; FRAG.forEach(function (re) { l = l.replace(re, function () { lines++; return ' '; }); }); return l; }).join('\n');
   out = out.replace(/\b\d{1,2}[\/.-]\d{1,2}[\/.-](19|20)\d{2}\b(?=[^\n]*\b(born|dob|birth)\b)/gi, function () { names++; return '[date removed]'; });
   if (first) {
@@ -9401,7 +9406,11 @@ function ipParseSummary(text) {
 function ipTimeOf(t) { t = String(t || '').toLowerCase(); return /triple|\b3x\b|200\s*%|three times/.test(t) ? 'Triple time (3x)' : /double|\b2x\b|100\s*%|twice/.test(t) ? 'Double time (2x)' : /time and a half|1\.5|50\s*%|extended time|extra time/.test(t) ? 'Extended time (1.5x)' : ''; }
 // 2.30: an "accommodation" that is only initials (J.S.) or only a name (Jane Smith) is a leftover footer, not an accommodation
 var ACC_WORDS = /\b(time|tests?|quiz|exam|setting|seat|notes?|calculator|reader|read|breaks?|group|room|copy|guided|audio|graphic|organizer|preferential|extended|double|triple|alternate|small|word|bank|formula|cards?|check|prompt|chunk|reduce|repeat|rephrase|visual|scribe|speech|text|large print|highlight|study|guide|vocabulary|homework|assignments?|directions|choices|questions|problems|fact|sheet|use|allow|provide|frequent|modif)/i;
+function accSentences(a) {          // 2.38: "Provide organizers. Provide checklists." → two; not at "Ms. J." or "e.g."
+  return String(a).split(/(?<![A-Z])(?<!\b(?:Mr|Ms|Mrs|Dr|Mx|St|vs|etc|e\.g|i\.e))[.!?](?=\s+[A-Z])\s+/).map(function (x) { return x.trim().replace(/\.$/, ''); }).filter(Boolean);
+}
 function accClean(list) {
+  list = [].concat.apply([], list.map(accSentences));
   return list.map(function (a) { return String(a).replace(/\s+(?:[A-Z]\.){1,3}\s*$/, '').replace(/^\s*(?:[A-Z]\.){1,3}\s+/, '').trim(); }).filter(function (a) {
     if (!a || /^(?:[A-Z]\.\s?){1,3}$/.test(a)) return false;
     if (/^[A-Z][a-z'’-]+(?:,?\s+[A-Z][a-z'’.-]*){1,2}$/.test(a) && !ACC_WORDS.test(a)) return false;          // "Jane Smith", "Smith, Jane"
@@ -9419,8 +9428,9 @@ function ipOneTime(list) {
 function ipTesting(t) {
   t = String(t || ''); var bits = [ipTimeOf(t) || 'Standard time'];
   if (/read aloud|reader|text.to.speech/i.test(t)) bits.push('Reader');
-  if (/breaks?\s*(as needed|when needed|allowed)|frequent breaks/i.test(t)) bits.push('Breaks as needed');
-  if (/small group/i.test(t)) bits.push('Small group'); else if (/alternate setting|separate setting|distraction.?(free|reduced)|quiet (room|setting)/i.test(t)) bits.push('Alternate setting');
+  if (/breaks?\s*(as needed|when needed|allowed)|frequent[^.;]{0,40}breaks/i.test(t)) bits.push('Breaks as needed');
+  if (/multiple sessions|divided into (?:two|several|multiple)|over (?:two|several) (?:days|sessions)/i.test(t)) bits.push('Multiple sessions');
+  if (/small group/i.test(t)) bits.push('Small group'); else if (/alternate (?:testing )?(?:setting|location|room)|separate (?:setting|location|room)|distraction.?(free|reduced)|quiet (room|setting|location)/i.test(t)) bits.push('Alternate setting');
   if (/scribe/i.test(t)) bits.push('Scribe');
   return bits.join(' · ');
 }
@@ -9450,6 +9460,7 @@ function ipParse(text) {
     if (OTHER.test(l) && l.length < 80) { mode = 'other'; return; }
     var ga = /^(goal area|area of need|area)\s*[:\-]\s*(.+)$/i.exec(l); if (ga) { area = ga[2]; if (g && !g.text) g.area = area; return; }
     if (GOAL.test(l)) { var rest = l.replace(/^((measurable )?(annual )?goal(\s*#?\s*\d+)?|goal area|area of need)\s*[:.\-]?\s*/i, ''); var ar = /^([A-Za-z /&-]{3,40})$/.test(rest) && !/ will /i.test(rest) ? rest : ''; if (ar) area = ar; start(ar ? '' : rest); if (ar) g.area = ar; return; }
+    if (mode === 'acc' && l.length > 160) { accSentences(l).forEach(function (x) { if (x.length < 200) accs.push(x); }); return; }          // 2.38: a run-together list of sentences
     if (mode === 'acc') { var a = cell.replace(/^([-•●▪◦*]|\(?\d+[.)]|[a-h][.)])\s*/i, '').replace(/\s*[-–:]\s*(daily|as needed|all classes|all settings|ongoing).*$/i, '').trim(); if (a && a.length < 80 && !/^(accommodation|frequency|location|duration|description)s?$/i.test(a)) accs.push(a); return; }
     if (mode === 'other') return;
     if (/^((short[- ]term )?objectives?|benchmarks?)\s*:?\s*$/i.test(l)) { mode = 'ben'; return; }
