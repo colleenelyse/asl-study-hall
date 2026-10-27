@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.70'
+var VERSION = '2.71'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -6940,7 +6940,21 @@ var DP_EDIT = false, DP_NONE = null, DP_DRAFT = null;
 function withCheck(b) { if (b && b.check) Object.keys(b.check).forEach(function (k) { b[k] = b.check[k]; }); return b; }
 // every class has this week's grade (after the teacher's override, entered on or after B.checkSince)
 function gradesDone() { return graded().every(function (c) { var g = (D.grades[c.name] || {})[B.week]; return g !== undefined && (!B.checkSince || gDay(D, c.name, B.week) >= B.checkSince) && (!pasteOnly() || !F('lowWhy') || !isLow(g) || ((D.lows[c.name] || {})[B.week] || {}).why); }); }
-function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !skipped('grades') && ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0 && !gradesDone(); }
+// 2.71: "Go on to Today": grades can be finished later today (no reason needed); kept for the day on this Chromebook
+var GRL = false;
+function grLater() { if (GRL) return true; try { return localStorage.getItem('rci-grl-' + (B.email || '') + '-' + B.today) === '1'; } catch (e) { return false; } }
+function grLeft() { return graded().filter(function (c) { return (D.grades[c.name] || {})[B.week] === undefined; }).length; }
+function grGoOn() {
+  GRL = true; try { localStorage.setItem('rci-grl-' + (B.email || '') + '-' + B.today, '1'); } catch (e) {}
+  STEP = null;
+  if (DIRTY && $('ckSave') && CK && !pasteOnly()) {          // typed grades are saved first (pasted ones were saved on each paste); a low one still waiting for its reason waits for later
+    var held = []; if (F('lowWhy')) graded().forEach(function (c) { var x = CK.lows[c.name] || {}; if (isLow(CK.grades[c.name]) && (!String(x.why || '').trim() || (!(x.actions || []).length && !String(x.details || '').trim()))) { held.push(c.name); CK.grades[c.name] = ''; } });
+    if (Object.keys(CK.grades).some(function (k) { return String(CK.grades[k] == null ? '' : CK.grades[k]).trim() !== ''; })) { CK_AFTER = function () { STEP = null; if (held.length) toast(held.join(' and ') + ': under ' + B.low + '%, so finish it later with the reason.'); }; return saveCheckin(); }
+  }
+  setDirty(false); CK = null; toast('OK! Finish your grades later today.'); drawCheckin();
+}
+function grLaterBox() { return '<div class="card" style="border:2px dashed var(--brand);background:var(--brand-soft)"><b>Not all your grades are in?</b><p class="small" style="margin:4px 0 8px">That’s OK. Go on to Today now and come back to finish the rest later' + (B.today >= (B.checkDay || '9') ? ' today' : '') + '.</p><button class="btn primary" onclick="grGoOn()">Go on to Today → I’ll finish my grades later</button></div>'; }
+function needGrades() { return MODE === 'student' && !(PREV && PREV.skip) && !skipped('grades') && !grLater() && ((!!B.checkDay && B.today >= B.checkDay) || firstGrades()) && graded().length > 0 && !gradesDone(); }
 // 2.03: the first time (until every class has been pasted once, or the teacher entered it), grades come first, not only on grade check day
 // 2.11: only a brand-new student (no grades in any class from an earlier week, typed or pasted, and nothing pasted before), and
 // "Some classes have no grades yet" lets them go on once at least one class is in
@@ -7466,7 +7480,7 @@ function stepList() {
 }
 function nothingDay() { var t = D.dayPlan && D.dayPlan.today; return !!(t && /^Nothing to work on today/.test(t.plan || '')); }
 function stepDone(k) {
-  if (k === 'grades') return (gradesDone() || !!skipped('grades')) && GSUB !== 1;
+  if (k === 'grades') return (gradesDone() || !!skipped('grades') || grLater()) && GSUB !== 1;
   if (k === 'plan') return !!(D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan) || !!skipped('plan');
   if (k === 'check') { var c = D.checklist || {}, dn = c.done || [], nt = c.noTime || []; return dn.length > 0 && B.checkItems.every(function (t) { return dn.indexOf(t) >= 0 || nt.indexOf(t) >= 0; }); }
   if (k === 'exit') return !!D.exit;
@@ -7502,7 +7516,8 @@ function drawCheckin() {
   var xtra = ''; if (oneNow) { xtra = h.slice(h0.length); h = h0; }          // 2.50: the extra goes under the Today card, so Today comes first
   if (list.length) h += '<div class="steps">' + list.map(function (s, i) {
     var dn = stepDone(s.k), lk = stepLock(list, i);
-    return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + '</span></button>';
+    var part = s.k === 'grades' && dn && !gradesDone() && !skipped('grades');          // 2.71: left for later
+    return '<button class="stepb' + (s.k === cur ? ' on' : '') + (dn && !part ? ' done' : '') + (lk ? ' lock' : '') + '" onclick="stepGo(\'' + s.k + '\')"><span class="n">' + (part ? '…' : dn ? '✓' : i + 1) + '</span><span class="l">' + s.label + (part ? ' (' + grLeft() + ' left)' : '') + '</span></button>';
   }).join('') + '</div>';
   var nx = function () {          // the big "next" button under a finished step
     var i = keys.indexOf(cur), n = list.slice(i + 1).filter(function (s) { return !stepDone(s.k); })[0];
@@ -7512,10 +7527,10 @@ function drawCheckin() {
   if (cur === 'grades') {
     if (GSUB === 1) { h += weeklyCards() + ckSaveBtn('Save my plan for the week', function () { GSUB = 0; STEP = null; }); after = 'week'; }
     else {
-      h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : skipBox('grades') + (skipped('grades') ? nx() : ''));
+      h += gradesCard(function () { return ''; }) + ckSaveBtn(pasteOnly() ? 'Done: next step →' : 'Save my grades', weeklyOn() ? function () { GSUB = 1; STEP = { k: 'grades', wasDone: true }; } : null) + (gradesDone() ? nx() : (grLater() ? nx() : grLaterBox()) + skipBox('grades') + (skipped('grades') ? nx() : ''));
       after = 'grades';
     }
-  } else if (oneNow) h += todayCard() + skipBox('plan') + xtra;          // 2.50: goals, plan and help on one card, one Done
+  } else if (oneNow) h += (grLater() && !gradesDone() && !skipped('grades') && graded().length ? '<div class="card" style="padding:10px 16px;background:var(--warn-soft)"><span class="small">📊 <b>' + grLeft() + ' class' + (grLeft() === 1 ? '' : 'es') + ' still need' + (grLeft() === 1 ? 's' : '') + ' this week’s grade.</b> <a href="#" onclick="stepGo(\'grades\');return false">Finish my grades</a></span></div>' : '') + todayCard() + skipBox('plan') + xtra;          // 2.50: goals, plan and help on one card, one Done
   else if (cur === 'plan') { var gcc = goalCheckCard(), pc = dayPlanCard() + (D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan ? '' : skipBox('plan')); h += (gcc ? '<div class="side2"><div>' + pc + '</div><div>' + gcc + '</div></div>' : pc) + nx(); }
   else if (cur === 'check') h += checklistCard() + nx();
   else if (cur === 'exit') h += exitCard() + nx();
