@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.33'
+var VERSION = '2.35'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -508,7 +508,8 @@ var TABS = {
   'Seating Layouts': ['Layout', 'Chart', 'With students', 'Updated'],
   // IEP benchmarks (short-term objectives), each measured by the app's own data or by data the teacher enters
   // what the student will do in resource today (required each school day); the teacher can mark that they didn't follow it
-  'Daily plans': ['Date', 'Email', 'Plan', 'Updated', 'Did not follow it', 'Marked by', 'Teacher note'],
+  'Daily plans': ['Date', 'Email', 'Plan', 'Updated', 'Did not follow it', 'Marked by', 'Teacher note', 'Needs help', 'Help with'],
+  'Attention alerts': ['ID', 'When', 'Email', 'Type', 'Detail', 'Status', 'Updated', 'By', 'Key'],
   // a student's typed missing count, checked against the detailed page they pasted that week (filled in by the app)
   // missing work a student says can't be turned in any more (it leaves their missing list; the teacher sees it with the reason)
   // the question of the day (just for fun): the next undated question is used on each school day, and gets that day's date
@@ -549,7 +550,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29 };   // Students columns
-var TEXT_COLS = { 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -688,6 +689,7 @@ function onOpen() {
 
 function setupSheet() {
   var fixed = setup_();
+  try { var nb = scrubSavedBdays_(); if (nb) fixed += ' Removed ' + nb + ' date' + (nb === 1 ? '' : 's') + ' of birth from saved goals.'; } catch (e) {}
   try { allGoals_(); } catch (e) {}
   // Reminder emails go out every morning around 6 AM.
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendReminders'; });
@@ -761,7 +763,7 @@ function setup_() {
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
-  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
+  ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
@@ -1271,7 +1273,7 @@ function teacherData_(week) {
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
   return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
-    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
+    finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null };
 }
 
 function api_teacherStudentRead_(email) {
@@ -3198,6 +3200,23 @@ function goalFields_(r) {
   var t = today_(); g.active = (!g.from || g.from <= t) && (!g.until || g.until >= t);
   return g;
 }
+// 2.34: the measurable part of an IEP goal's wording: "4 out of 5 opportunities", "85% accuracy", "no more than one prompt", "each quarter"…
+function criterionOf_(t) {
+  t = String(t || ''); var out = [], m;
+  var add = function (x) { x = String(x).replace(/\s+/g, ' ').trim(); if (x && out.indexOf(x) < 0) out.push(x); };
+  var re1 = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:out\s+)?of\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+((?:[\w-]+\s+){0,3}?(?:opportunities|trials|probes|attempts|occasions|days|weeks|sessions|observations|data points|assignments|situations|scenarios|tasks|quarters))\b/gi;
+  while ((m = re1.exec(t))) add(m[1] + ' of ' + m[2] + ' ' + m[3]);
+  var re2 = /\b(\d{1,3})\s*%\s*(accuracy|of (?:the )?(?:time|opportunities|trials|assignments|observed opportunities)|or (?:better|higher|more))?/gi;
+  while ((m = re2.exec(t))) add(m[1] + '%' + (m[2] ? ' ' + m[2] : ''));
+  var re3 = /\b(?:with\s+)?(no more than|fewer than|less than|at most|a maximum of)\s+(\w+)\s+((?:verbal|visual|teacher|adult|individual)\s+)?(prompts?|reminders?|cues?|check-ins?)\b/gi;
+  while ((m = re3.exec(t))) add(m[1] + ' ' + m[2] + ' ' + (m[3] || '') + m[4]);
+  if (/\bindependently\b/i.test(t)) add('independently');
+  var re4 = /\b(each|every|per|once a|once per)\s+(week|quarter|semester|month|grading period)\b/gi;
+  while ((m = re4.exec(t))) add(m[0]);
+  var re5 = /\bwithin\s+(\w+)\s+(minutes?|seconds?|school days?|days?)\b/gi;
+  while ((m = re5.exec(t))) add(m[0]);
+  return out.join('; ');
+}
 function goals_(email, ef) {
   email = low_(email);
   var f = stuFind_(email), main = f.i >= 0 ? String(f.rows[f.i][SC.goal] || '') : '', rows = rows_('IEP goals').filter(function (r) { return low_(r[1]) === email && String(r[0]); });
@@ -3207,6 +3226,7 @@ function goals_(email, ef) {
     var g = goal_(email, ef, x[0]), fl = goalFields_(x[2]);
     Object.keys(fl).forEach(function (k) { g[k] = fl[k]; });
     g.id = x[0]; g.text = x[1]; g.phrases = fl.phrases.split(';').map(function (p) { return p.trim(); }).filter(String);
+    if (!g.criterion && g.text) { g.criterion = criterionOf_(g.text); g.criterionAuto = !!g.criterion; }          // 2.34: from the IEP wording
     if (!x[2]) g.here = true;
     return g;
   });
@@ -3541,6 +3561,8 @@ function api_saveGoalCheckin(p) {
     var all = rows_('Goal check-ins').map(function (x) { x = x.slice(); if (low_(x[3]) === email && day_(x[2]) === c.date && String(x[9]) !== 'Replaced') { x[9] = 'Replaced'; had = true; } return x; });
     rewrite_('Goal check-ins', function () { return false; }, all.concat(rows));
     if (had) logChange_('Student changed their check-in', email, c.date, '', '', '', 'Earlier answers kept as Replaced');
+    var recent = checkinsOf_(email, 10);
+    c.goals.forEach(function (g) { var n = 0, of = 0; recent.forEach(function (k) { k.items.forEach(function (it) { if (it.goal === g.id) { of++; if (it.none) n++; } }); }); if (n >= 3) raiseAlert_(email, 'nochance', g.title + ': “didn’t have a chance” ' + n + ' of the last ' + of + ' check-ins', 'nochance:' + email + ':' + g.id + ':' + weekOf_(today_()), true); });
   });
   return checkinFor_(email);
 }
@@ -3596,6 +3618,7 @@ function api_saveGoalDetails(email, gid, x) {
 }
 // call inside locked_. code / how / look: the goal code and the proposed measure and evidence (from an import)
 function saveGoalCore_(email, gid, x, code, how, look) {
+  x = bdayDeep_(x || {}); how = noBday_(how); look = noBday_(look);
   {
     var rows = rows_('IEP goals').map(function (r) { return r.slice(); }), id = gid || 'main', w = TABS['IEP goals'].length;
     var i = find_(rows, function (r) { return low_(r[1]) === email && String(r[0]) === id; });
@@ -3720,8 +3743,32 @@ function accomsFor_(email) {
 }
 // 2.22 Teacher: save what the "Paste from an IEP" page sorted out. p: { goals: [{ text, title, kid, here, benchmarks: [text] }], accoms: [text], accMode: 'add' | 'replace' }
 // A goal with the same IEP wording is updated, not doubled. Benchmarks are kept on IEP benchmarks (hidden in the app for now).
+// 2.35: dates that could be a birthday (years 2000–2015) and DOB / birth wording never get saved, even if the page missed one
+var BDAY_RES_ = [
+  /\b(?:d\.?o\.?b\.?|date\s+of\s+birth|birth\s*date|birthday|born(?:\s+on)?)\s*[:#-]?\s*(?:\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{2,4})?/gi,
+  /\b\d{1,2}[\/.\-]\d{1,2}[\/.\-](?:20(?:0\d|1[0-5])|0\d|1[0-5])\b/g,
+  /\b20(?:0\d|1[0-5])[\/.\-]\d{1,2}[\/.\-]\d{1,2}\b/g,
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+20(?:0\d|1[0-5])\b/gi,
+  /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?,?\s+20(?:0\d|1[0-5])\b/gi,          // 14 March 2009
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+20(?:0\d|1[0-5])\b/gi          // March 2009 (a goal is never dated then)
+];
+function noBday_(t) { var s0 = String(t == null ? '' : t), s1 = s0; BDAY_RES_.forEach(function (re) { s1 = s1.replace(re, ' '); }); return s1 === s0 ? s0 : s1.replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.;])/g, '$1').replace(/\.{2,}/g, '.').trim(); }
+function bdayDeep_(x) { if (Array.isArray(x)) return x.map(bdayDeep_); if (x && typeof x === 'object') { var o = {}; Object.keys(x).forEach(function (k) { o[k] = bdayDeep_(x[k]); }); return o; } return typeof x === 'string' ? noBday_(x) : x; }
+// what's already saved: goal wording, student words, titles and benchmarks; returns how many cells were cleaned (run by Set up or repair)
+function scrubSavedBdays_() {
+  var n = 0;
+  ['IEP goals', 'IEP benchmarks', 'All goals and benchmarks'].forEach(function (tab) {
+    var sh = ss_().getSheetByName(tab); if (!sh || sh.getLastRow() < 2) return;
+    var rows = rows_(tab), changed = false;
+    rows = rows.map(function (r) { return r.map(function (v, c) { if (typeof v !== 'string' || !v) return v; var w = noBday_(v); if (w !== v) { n++; changed = true; } return w; }); });
+    if (changed) rewrite_(tab, function () { return false; }, rows);
+  });
+  var f = rows_('Students'), sh2 = sheet_('Students');
+  f.forEach(function (r, i) { ['goal', 'accoms', 'testing'].forEach(function (k) { var v = String(r[SC[k]] || ''), w = noBday_(v); if (v && w !== v) { sh2.getRange(i + 2, SC[k] + 1).setValue(w); n++; } }); });
+  return n;
+}
 function api_saveIepPaste(email, p) {
-  teacherOnly_(); email = low_(email); p = p || {};
+  teacherOnly_(); email = low_(email); p = bdayDeep_(p || {});
   if (stuFind_(email).i < 0) throw new Error('Pick a student who is on the Students tab.');
   var n = 0, nu = 0, nb = 0, na = 0, off = 0;
   // 2.27: a newer IEP replaces the older one: same IEP goal number, same wording, or very similar wording → that goal is updated;
@@ -4289,15 +4336,38 @@ function skipsWeek_(week, names) {
   return rows_('Skipped steps').filter(function (r) { var d = String(r[0]).slice(0, 10); return d >= week && d <= addDays_(week, 6); })
     .map(function (r) { return { email: low_(r[1]), name: names[low_(r[1])] || low_(r[1]), day: String(r[0]).slice(0, 10), step: String(r[2]), reason: String(r[3]), note: String(r[4] || '') }; }).reverse();
 }
-function api_saveDayPlan(text) {
+// help: { need: true | false, what } (2.34: "Is there anything you need help with?" is answered with the plan; Yes → an alert for the teacher)
+function api_saveDayPlan(text, help) {
   var email = need_(); text = clean_(text, 500);
   if (!text) throw new Error('Write what you will work on today.');
+  var hv = help && typeof help === 'object' ? (help.need ? 'Yes' : 'No') : '', hw = help && help.need ? clean_(help.what, 500) : '';
+  if (hv === 'Yes' && !hw) throw new Error('Tell your teacher what you need help with.');
   return locked_(function () {
     var today = today_(), rows = rows_('Daily plans'), i = find_(rows, function (r) { return day_(r[0]) === today && low_(r[1]) === email; });
-    if (i >= 0) sheet_('Daily plans').getRange(i + 2, 3, 1, 2).setValues([[text, stamp_()]]);
-    else sheet_('Daily plans').appendRow([today, email, text, stamp_(), '', '', '']);
+    if (i >= 0) { sheet_('Daily plans').getRange(i + 2, 3, 1, 2).setValues([[text, stamp_()]]); if (hv) sheet_('Daily plans').getRange(i + 2, 8, 1, 2).setValues([[hv, hw]]); }
+    else sheet_('Daily plans').appendRow([today, email, text, stamp_(), '', '', '', hv, hw]);
+    if (hv === 'Yes') raiseAlert_(email, 'help', hw, 'help:' + email + ':' + today, true);
     return dayPlans_(email);
   });
+}
+// one open alert per issue (key); a newer detail updates it instead of adding another. Call inside locked_.
+var ALERT_ORDER = { help: 0, nochance: 1 };
+function raiseAlert_(email, type, detail, key, refresh) {
+  var rows = rows_('Attention alerts'), i = find_(rows, function (r) { return String(r[8]) === key && String(r[5]) !== 'Addressed'; });
+  if (i >= 0) { if (refresh) sheet_('Attention alerts').getRange(i + 2, 5, 1, 3).setValues([[clean_(detail, 500), 'New', stamp_()]]); }
+  else sheet_('Attention alerts').appendRow([Utilities.getUuid().slice(0, 8), stamp_(), email, type, clean_(detail, 500), 'New', stamp_(), '', key]);
+  if (ROWS_MEMO) delete ROWS_MEMO['Attention alerts'];
+}
+function alerts_(names) {
+  return rows_('Attention alerts').filter(function (r) { return String(r[0]) && String(r[5]) !== 'Addressed'; })
+    .map(function (r) { return { id: String(r[0]), when: String(r[1]), email: low_(r[2]), name: names[low_(r[2])] || low_(r[2]), type: String(r[3]), detail: String(r[4] || ''), status: String(r[5]), updated: String(r[6] || '') }; })
+    .sort(function (a, b) { return ((ALERT_ORDER[a.type] || 9) - (ALERT_ORDER[b.type] || 9)) || (a.when < b.when ? 1 : -1); });
+}
+// Teacher: New → Reviewed → Addressed (logged)
+function api_alertStatus(id, status) {
+  teacherOnly_(); if (['New', 'Reviewed', 'Addressed'].indexOf(status) < 0) throw new Error('Pick a status.');
+  locked_(function () { var rows = rows_('Attention alerts'), i = find_(rows, function (r) { return String(r[0]) === String(id); }); if (i < 0) throw new Error('That item is gone. Reload the page.'); sheet_('Attention alerts').getRange(i + 2, 6, 1, 3).setValues([[status, stamp_(), myEmail_()]]); logChange_('Alert ' + status.toLowerCase(), low_(rows[i][2]), String(rows[i][3]), 'Status', rows[i][5], status, String(rows[i][4]).slice(0, 120)); });
+  return alerts_(nameMap_());
 }
 // Teacher: mark (or unmark) a day when the student did nothing or didn't do what their plan said.
 function api_flagDayPlan(email, date, flag, note) {
@@ -4314,7 +4384,7 @@ function api_flagDayPlan(email, date, flag, note) {
 // today's plan and the recent ones (newest first), with how often the plan was followed this semester
 function dayPlans_(email) {
   var t = today_(), sem = semStart_(), mine = rows_('Daily plans').filter(function (r) { return low_(r[1]) === email && day_(r[0]) >= sem; })
-    .map(function (r) { return { date: day_(r[0]), plan: String(r[2] || ''), updated: String(r[3] || ''), flag: String(r[4]) === 'Yes', by: String(r[5] || ''), note: String(r[6] || '') }; })
+    .map(function (r) { return { date: day_(r[0]), plan: String(r[2] || ''), updated: String(r[3] || ''), flag: String(r[4]) === 'Yes', by: String(r[5] || ''), note: String(r[6] || ''), help: String(r[7] || ''), helpWhat: String(r[8] || '') }; })
     .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
   var today = mine.filter(function (x) { return x.date === t; })[0] || null, flagged = mine.filter(function (x) { return x.flag; }).length;
   return { today: today, recent: mine.slice(0, 10), days: mine.filter(function (x) { return x.plan; }).length, flagged: flagged,
@@ -4920,7 +4990,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     api_saveFinal('US History', '', 'Chapters 5–9. 40 multiple choice and one short essay. We can bring a one-page study guide.', ['Extended time', 'Alternate setting'], { when: 'Thursday, Dec 17 · 11:25am–1:05pm · Period 5', where: 'Testing Center', style: 'Paper' });
     api_saveFinal('Algebra 2', '', '', ['Formula card'], { style: 'Chromebook' });
     g.setUser('smi513421@d204.lths.net');
-    api_saveDayPlan('Study for the Geometry Unit 3 test');
+    api_saveDayPlan('Study for the Geometry Unit 3 test', { need: true, what: 'I don’t get how to find the area of a trapezoid for the Geometry test.' });
     api_saveGradeGoals({ 'Geometry Prep': 80, Chemistry: 90, 'English II': 85 });
     g.setUser('ray@d204.lths.net');
     api_saveGoalText('ort123456@d204.lths.net', 'Marcus will use resource time to plan and complete assignments, turning in 80% of coursework on time, as measured by teacher data and grade reports.', '', 'Executive functioning');
@@ -5942,6 +6012,7 @@ function dayPlanCard() {
     (ideas.length ? '<p class="small" style="margin:0 0 4px"><b>Ideas for you</b> (tap to add)</p><div class="row" style="gap:6px;margin-bottom:8px">' + ideas.map(function (x) { return '<button class="btn small" onclick="dpAdd(this.textContent)">' + esc(x) + '</button>'; }).join('') + '</div>' : '') +
     (graded().length ? '<p class="small" style="margin:0 0 4px"><b>Work on…</b> tap a class, then type what you’ll do</p><div class="row" style="gap:6px;margin-bottom:8px">' + graded().map(function (c, k) { return '<button class="btn small" onclick="dpWork(' + k + ')">📚 ' + esc(c.name) + '</button>'; }).join('') + '</div>' : '') +
     '<textarea id="dpText" maxlength="500" style="min-height:70px" placeholder="Finish the Chapter 6 worksheet for US History, then study vocabulary for Friday’s Spanish quiz." oninput="DP_DRAFT=this.value">' + esc(draft) + '</textarea>' +
+    dpHelpHtml() +
     '<div class="row" style="margin-top:8px"><button class="btn primary" onclick="dpSave()">Save my plan</button>' + (DP_NONE === null ? '<button class="btn" onclick="DP_NONE={};this.hidden=true;setHtml(\'dpNone\',dpNoneHtml())">🤷 I have nothing to work on</button>' : '') +
     (t && t.plan ? '<button class="btn link" onclick="DP_EDIT=false;DP_DRAFT=null;drawCheckin()">Cancel</button>' : needGrades() ? '' : '<span class="small" style="display:inline">Write your plan to see the rest of your check-in.</span>') + '</div>' +
     (ready.length ? '<div class="testwait" id="dpWhyBox"><b>📝 ' + (ready.length > 1 ? 'Tests are' : 'A test is') + ' ready for you: ' + esc(ready.map(function (x) { return x.cls + (x.what ? ' (' + x.what + ')' : ''); }).join(', ')) + '.</b> Plan to take it today. Doing something else? Say why:' +
@@ -5967,6 +6038,15 @@ function dpNoneHtml() {
     '<button class="btn link small" style="margin-top:8px" onclick="DP_NONE=null;drawCheckin()">Never mind</button></div>';
 }
 function dpTick(k, on) { if (on) DP_NONE[k] = true; else delete DP_NONE[k]; setHtml('dpNone', dpNoneHtml()); }
+// 2.34: "Is there anything you need help with?" Yes / No (nothing picked at the start), saved with the plan; Yes needs a few words
+var DP_HELP = { need: null, what: '' };
+function dpHelpHtml() {
+  var t0 = D.dayPlan && D.dayPlan.today; if (DP_HELP.need === null && t0 && t0.help) DP_HELP = { need: t0.help === 'Yes', what: t0.helpWhat || '' };          // editing today's plan: keep today's answer
+  var h = DP_HELP;
+  return '<div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:8px 12px"><b>Is there anything you need help with?</b>' +
+    '<div class="seg" style="margin-top:6px">' + [[true, 'Yes'], [false, 'No']].map(function (o) { return '<button class="' + (h.need === o[0] ? 'on' : '') + '" onclick="DP_HELP.need=' + o[0] + ';if(document.getElementById(\'dpText\'))DP_DRAFT=$(\'dpText\').value;drawCheckin()">' + o[1] + '</button>'; }).join('') + '</div>' +
+    (h.need ? '<textarea id="dpHelpW" maxlength="500" style="min-height:48px;margin-top:6px" placeholder="What do you need help with? (Your teacher will see this.)" oninput="DP_HELP.what=this.value">' + esc(h.what) + '</textarea>' : '') + '</div>';
+}
 function dpNoneSave() {
   var ta = $('dpText');
   if (testsReady().length) return alert('You have a test ready for you, so you do have something to work on. Plan to take it, or say why not.');
@@ -5992,7 +6072,12 @@ function dpSave() {
   dpSend(v);
 }
 function dpSend(v) {
-  gcSaveAll().then(function () { return call('api_saveDayPlan', v); }).then(function (r) {
+  if (DP_HELP.need === null) return alert('Answer “Is there anything you need help with?” (Yes or No).');
+  if (DP_HELP.need && String(DP_HELP.what).trim().split(/\s+/).filter(function (w) { return /[a-z]/i.test(w); }).length < 2) { if ($('dpHelpW')) $('dpHelpW').focus(); return alert('Tell your teacher what you need help with.'); }
+  var help = { need: DP_HELP.need, what: DP_HELP.what };
+  gcSaveAll().then(function () { return call('api_saveDayPlan', v, help); }).then(function (r) {
+    if (help.need) toast('Your teacher will see your help request');
+    DP_HELP = { need: null, what: '' };
     var was = !!gate(); D.dayPlan = r; DP_EDIT = false; DP_NONE = null; DP_DRAFT = null; DP_WHY = ''; toast('Plan saved');
     if (was && !gate()) go('checkin'); else drawCheckin();          // still on grade check day: keep the grades typed so far
   }).catch(oops);
@@ -7545,7 +7630,7 @@ function drawOverview() {
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
     '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
+    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
@@ -8582,7 +8667,7 @@ function goalTabs() {
       [6, 5, 4, 3, 2, 1].map(function (n) { return '<div class="row" style="gap:6px;margin:3px 0"><b style="width:18px">' + n + '</b><input type="text" class="grow" id="gdR' + n + '" maxlength="300" value="' + esc((g.ratings || [])[6 - n] || '') + '" placeholder="' + GCK_MEAN[n] + ' (written for this goal)"></div>'; }).join('') +
       inp('“I didn’t have a chance” ideas (one per line)', 'gdNo', (g.noIdeas || []).join('\n'), 'No test this week yet.', 44, STU) + '</details>' +
     inp('Original IEP goal (exactly as written)', 'gdText', g.text, 'Paste the goal from the IEP.', 70, STF + ' <span style="opacity:.75">source of truth</span>') +
-    inp('Official criterion (from the IEP)', 'gdCrit', g.criterion, 'For example: 4 of 5 opportunities with no more than 1 prompt', 0, STF) +
+    inp('Official criterion (from the IEP)', 'gdCrit', g.criterion, 'For example: 4 of 5 opportunities with no more than 1 prompt', 0, STF + (g.criterionAuto ? ' <span style="opacity:.75">pulled from the IEP wording: check it, then Save</span>' : '')) +
     ((g.bench || []).length ? '<div style="margin-top:8px"><span class="small"><b>📌 Benchmarks from the IEP (' + g.bench.length + ')</b> ' + STF + '</span>' + g.bench.map(function (b, k) { return '<div class="small" style="display:block;margin:4px 0 4px 6px"><b>' + 'ABCDEFGHIJKL'.charAt(k) + '.</b> ' + esc(b.text) + '</div>'; }).join('') + '</div>' : '') +
     '<details style="margin-top:8px"><summary class="small" style="display:list-item"><b>Success, tracking and notes</b> ' + STF + '</summary>' +
       inp('What success looks like', 'gdSucc', g.success, '', 50) + inp('Tracking tool(s)', 'gdTrack', g.track, 'Opportunity Tracker', 0, PRV) + inp('How we track it (proposed measure)', 'gdHow', g.how, '', 60, PRV) +
@@ -9120,6 +9205,16 @@ function ipOpen(email) {
 }
 // 2.22: clean pasted IEP text on the page, before anything is saved: lines with a date of birth, page footers, ID numbers and
 // "Student name:" lines go; the student's name becomes initials ("Jane Smith" → "J.S.", "Jane" → "J."). Returns { text, lines, names }.
+// 2.35: dates that could be a birthday (years 2000–2015 or 00–15) in any form, and DOB / birth wording, never stay in pasted text
+var BDAY_RES = [
+  /\b(?:d\.?o\.?b\.?|date\s+of\s+birth|birth\s*date|birthday|born(?:\s+on)?)\s*[:#-]?\s*(?:\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{2,4})?/gi,
+  /\b\d{1,2}[\/.\-]\d{1,2}[\/.\-](?:20(?:0\d|1[0-5])|0\d|1[0-5])\b/g,
+  /\b20(?:0\d|1[0-5])[\/.\-]\d{1,2}[\/.\-]\d{1,2}\b/g,
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+20(?:0\d|1[0-5])\b/gi,
+  /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?,?\s+20(?:0\d|1[0-5])\b/gi,          // 14 March 2009
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+20(?:0\d|1[0-5])\b/gi          // March 2009 (a goal is never dated then)
+];
+function noBday(t) { var n = 0; t = String(t || ''); BDAY_RES.forEach(function (re) { t = t.replace(re, function () { n++; return ' '; }); }); return { text: n ? t.replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.;])/g, '$1').replace(/\.{2,}/g, '.').trim() : t, n: n }; }
 function ipScrub(text, first, ini) {
   var lines = 0, names = 0, LASTS = {};
   first = String(first || '').replace(/[^A-Za-z'-]/g, '');
@@ -9147,6 +9242,7 @@ function ipScrub(text, first, ini) {
     });
     out = out.replace(new RegExp('\\b' + first + '(\'s|’s)?\\b', 'g'), function (x, sfx) { names++; return F + '.' + (sfx || ''); });
   }
+  var nb = noBday(out); out = nb.text; lines += nb.n;          // 2.35: any birthday-looking date left anywhere
   return { text: out, lines: lines, names: names };
 }
 // 2.27: which student this is, from the name in the paste (first name + last initial, or "Last, First"); only a single clear match
@@ -9329,6 +9425,9 @@ function ipDraw() {
     '<button class="btn primary" onclick="ipSave()">💾 Save to the student</button>');
 }
 function ipSave() {
+  var clean = function (x) { return noBday(x).text; };          // 2.35: the last check: nothing birthday-like is saved
+  IP.res.goals.forEach(function (g) { g.text = clean(g.text); g.kid = clean(g.kid); g.title = clean(g.title); g.benchmarks = g.benchmarks.map(clean); });
+  IP.res.accoms = IP.res.accoms.map(clean); if ($('ipTest')) $('ipTest').value = clean($('ipTest').value); if ($('ipSvc')) $('ipSvc').value = clean($('ipSvc').value);
   var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { num: g.num, text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks.map(function (b) { return String(b).trim(); }).filter(String) }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
   call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + (n.updated ? ' (' + n.updated + ' updated' + (n.off ? ', ' + n.off + ' old turned off' : '') + ')' : '') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
 }
@@ -9412,6 +9511,21 @@ function gckNotice() {
         c.items.filter(function (it) { return it.none; }).map(function (it) { return '<div>⏳ ' + esc(it.title) + ': “' + esc(it.why) + '”</div>'; }).join('') + (c.comment ? '<div>💬 “' + esc(c.comment) + '”</div>' : '') + '</div>'; }).join('') +
     (o.repeats.length ? '<div style="margin-top:8px"><b class="small">⚠️ “Didn’t have a chance” again and again</b>' + o.repeats.map(function (x) { return '<div class="small" style="display:block">' + esc(x.name) + ' · ' + esc(x.title) + ': ' + x.n + ' of the last ' + x.of + ' check-ins</div>'; }).join('') + '</div>' : '') + '</details>';
 }
+// 2.34: Needs my attention: help requests first (urgent), then repeated "didn't have a chance"; New → Reviewed → Addressed.
+// Test requests and tests to return are listed as routine items (their own cards below handle them).
+function attnPanel() {
+  var l = (TD && TD.alerts) || [], rt = (TD && TD.tcReturns) || [], tq = (TD && TD.tcOpen) || 0;
+  if (!l.length && !rt.length && !tq) return '';
+  var LBL = { help: '🙋 Asked for help', nochance: '⏳ Keeps saying “didn’t have a chance”' };
+  return '<div class="card" style="margin-bottom:14px;border:2px solid ' + (l.some(function (a) { return a.type === 'help' && a.status === 'New'; }) ? 'var(--down, #c0392b)' : 'var(--brand)') + '"><h2 style="margin:0 0 6px">🔔 Needs my attention</h2>' +
+    l.map(function (a) {
+      return '<div class="row" style="gap:8px;padding:6px 0;border-top:1px solid var(--line, #e2e6ef);align-items:flex-start"><div class="grow">' + (a.type === 'help' ? '<span class="badge down">urgent</span> ' : '') + '<a href="#" onclick="openStudent(\'' + esc(a.email) + '\');return false"><b>' + esc(a.name) + '</b></a> · ' + (LBL[a.type] || esc(a.type)) + (a.status === 'Reviewed' ? ' <span class="badge">reviewed</span>' : '') +
+        '<div class="small" style="display:block">' + esc(a.detail) + ' · ' + esc(String(a.when).slice(5, 16)) + '</div></div>' +
+        (a.status === 'New' ? '<button class="btn small" onclick="attnSet(\'' + a.id + '\',\'Reviewed\')">Reviewed</button>' : '') + '<button class="btn small primary" onclick="attnSet(\'' + a.id + '\',\'Addressed\')">✓ Addressed</button></div>';
+    }).join('') +
+    (tq || rt.length ? '<div class="small" style="display:block;margin-top:6px;opacity:.85">Routine: ' + [tq ? '📬 ' + tq + ' test request' + (tq === 1 ? '' : 's') : '', rt.length ? '📤 ' + rt.length + ' test' + (rt.length === 1 ? '' : 's') + ' to return' : ''].filter(String).join(' · ') + ' (below)</div>' : '') + '</div>';
+}
+function attnSet(id, st) { call('api_alertStatus', id, st).then(function (l) { TD.alerts = l; toast(st === 'Addressed' ? 'Marked addressed' : 'Marked reviewed'); drawOverview(); }).catch(oops); }
 function skipNotice() {
   var l = (TD && TD.skips) || []; if (!l.length) return '';
   return '<details class="card" style="margin-bottom:14px"><summary><b>⏭️ Steps students skipped this week (' + l.length + ')</b></summary>' + l.map(function (x) {
