@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.30'
+var VERSION = '2.31'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -8450,6 +8450,7 @@ function goalTabs() {
       inp('“I didn’t have a chance” ideas (one per line)', 'gdNo', (g.noIdeas || []).join('\n'), 'No test this week yet.', 44, STU) + '</details>' +
     inp('Original IEP goal (exactly as written)', 'gdText', g.text, 'Paste the goal from the IEP.', 70, STF + ' <span style="opacity:.75">source of truth</span>') +
     inp('Official criterion (from the IEP)', 'gdCrit', g.criterion, 'For example: 4 of 5 opportunities with no more than 1 prompt', 0, STF) +
+    ((g.bench || []).length ? '<div style="margin-top:8px"><span class="small"><b>📌 Benchmarks from the IEP (' + g.bench.length + ')</b> ' + STF + '</span>' + g.bench.map(function (b, k) { return '<div class="small" style="display:block;margin:4px 0 4px 6px"><b>' + 'ABCDEFGHIJKL'.charAt(k) + '.</b> ' + esc(b.text) + '</div>'; }).join('') + '</div>' : '') +
     '<details style="margin-top:8px"><summary class="small" style="display:list-item"><b>Success, tracking and notes</b> ' + STF + '</summary>' +
       inp('What success looks like', 'gdSucc', g.success, '', 50) + inp('Tracking tool(s)', 'gdTrack', g.track, 'Opportunity Tracker', 0, PRV) + inp('How we track it (proposed measure)', 'gdHow', g.how, '', 60, PRV) +
       inp('Evidence / data source', 'gdLook', g.look, '', 0, PRV) + inp('Measurement notes', 'gdNotes', g.mnotes, '', 50) + inp('Measurement status', 'gdStat', g.mstatus, 'Proposed — needs review / Confirmed') +
@@ -9037,6 +9038,13 @@ var IP_AREAS = [[/executive|organi[sz]|planner|planning/i, 'Organization'], [/se
   [/read|fluency|comprehen|decod/i, 'Reading'], [/writ|essay|paragraph|spelling/i, 'Writing'], [/math|calculat|equation|computation/i, 'Math'], [/cop(e|ing)|conflict|frustrat|regulat|behavior/i, 'Coping and behavior'], [/social|peer|interaction|perspective/i, 'Social skills'], [/college|career|transition|post.?secondary|employment/i, 'Transition']];
 function ipArea(t) { for (var i = 0; i < IP_AREAS.length; i++) if (IP_AREAS[i][0].test(t)) return IP_AREAS[i][1]; return 'Goal'; }
 function ipKid(t, name) { var e = easyGoal(t, name); return /^I will /.test(e) ? 'I need to ' + e.slice(7) : /^I (can|am)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
+// 2.31: benchmarks A) B) C) even with no space before the letter ("samples.B)By December"), and a run-together one split at each
+// "By <month> <year>"
+function ipBenchSplit(t) {
+  var out = String(t || '').split(/(?:^|(?<=[\s.;:,)]))[A-H][).]\s*(?=[A-Z(])/).map(function (b) { return b.trim(); }).filter(function (b) { return b.length > 10; });
+  var MON = '(January|February|March|April|May|June|July|August|September|October|November|December)';
+  return [].concat.apply([], out.map(function (b) { return b.split(new RegExp('\\s+(?=By ' + MON + ',? \\d{4})')).map(function (x) { return x.trim(); }).filter(function (x) { return x.length > 10; }); }));
+}
 function ipParseSummary(text) {
   var t = ' ' + String(text || '').replace(/\s+/g, ' ').replace(/(?:\b(?:[A-Z]\.){1,3}\s+|\b[A-Z][a-z'’-]+,?\s+[A-Z][a-z'’-]+\s+)?(?:IEP Summary\s*)?Page\s+\d+\s+of\s+\d+\s*(IEP Summary)?/g, ' ').replace(/\s+IEP Summary\s+/g, ' ') + ' ';
   // 2.27: the whole IEP can be pasted: the sections we use (by their usual names), and any other ALL-CAPS heading just ends a section
@@ -9063,7 +9071,7 @@ function ipParseSummary(text) {
   gs.split(/\bGoal\s*#\s*(?=\d)/i).slice(1).forEach(function (chunk) {
     var mm = /^(\d+)\s*-\s*(.+?)\s+(?:Goal Statement:\s*)?((?:By|Given|When|During|In|Upon|After|With)\b.*)$/i.exec(chunk.trim()); if (!mm) return;
     var parts = mm[3].split(/Benchmark\(s\)\s*or\s*Short[- ]Term\s*Objective\(s\)|Short[- ]Term Objectives?|Benchmarks?:/i);
-    var bens = (parts[1] || '').split(/(?:^|\s)[A-H]\)\s*/).map(function (b) { return b.trim(); }).filter(function (b) { return b.length > 10; });
+    var bens = ipBenchSplit(parts[1] || '');
     goals.push({ num: +mm[1], text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
   });
   // accommodations: a run-together list; "Accommodation -" and a new capital word after a lowercase one start an item; "- -" adds a detail
@@ -9145,6 +9153,7 @@ function ipParse(text) {
     if (g && mode === 'goal') { g.text = (g.text ? g.text + ' ' : '') + l; return; }
     if (!g && /\bwill\b/i.test(l)) start(l);
   });
+  goals.forEach(function (x) { x.benchmarks = [].concat.apply([], x.benchmarks.map(function (b) { return ipBenchSplit(b).length > 1 ? ipBenchSplit(b) : [b]; })); });
   return { goals: goals.filter(function (x) { return x.text; }), accoms: ipOneTime(accs), services: svcs, testing: accs.length ? ipTesting(accs.join(' ')) : '' };
 }
 function svcParse(t) { return String(t || '').split('\n').map(function (l) { var c = l.split('|').map(function (x) { return x.trim(); }); return c[0] ? { service: c[0], minutes: parseInt(c[1], 10) || 0, per: (c[2] || 'week').toLowerCase(), notes: c[3] || '' } : null; }).filter(Boolean); }
@@ -9167,7 +9176,9 @@ function ipDraw() {
       '<div class="row" style="gap:10px;align-items:flex-end;margin-top:4px"><label class="grow"><span class="small"><b>Title</b></span><input type="text" value="' + esc(g.title) + '" oninput="IP.res.goals[' + i + '].title=this.value"></label><label class="check" style="margin:0 0 6px"><input type="checkbox"' + (g.here ? ' checked' : '') + ' onchange="IP.res.goals[' + i + '].here=this.checked"><span>Measured in ' + esc(B.dayClass || 'resource') + '</span></label></div>' +
       '<label style="display:block;margin-top:6px"><span class="small"><b>IEP goal (as written)</b></span><textarea style="min-height:60px" oninput="IP.res.goals[' + i + '].text=this.value">' + esc(g.text) + '</textarea></label>' +
       '<label style="display:block;margin-top:6px"><span class="small"><b>I need to… (first try: fix it)</b></span><textarea style="min-height:40px" oninput="IP.res.goals[' + i + '].kid=this.value">' + esc(g.kid) + '</textarea></label>' +
-      '<label style="display:block;margin-top:6px"><span class="small"><b>Benchmarks / objectives</b> (one per line; kept for later, hidden in the app for now)</span><textarea style="min-height:50px" oninput="IP.res.goals[' + i + '].benchmarks=this.value.split(\'\\n\').map(function(x){return x.trim();}).filter(String)">' + esc(g.benchmarks.join('\n')) + '</textarea></label></div>'; }).join('') +
+      '<div style="margin-top:6px"><span class="small"><b>Benchmarks / objectives (' + g.benchmarks.length + ')</b>, each saved separately</span>' +
+        g.benchmarks.map(function (b, k) { return '<div class="row" style="gap:6px;margin:3px 0;align-items:flex-start"><b style="width:18px;margin-top:6px">' + 'ABCDEFGHIJKL'.charAt(k) + '</b><textarea class="grow" style="min-height:38px" oninput="IP.res.goals[' + i + '].benchmarks[' + k + ']=this.value">' + esc(b) + '</textarea><button class="btn link danger small" title="Remove" onclick="IP.res.goals[' + i + '].benchmarks.splice(' + k + ',1);ipDraw()">✕</button></div>'; }).join('') +
+        '<button class="btn link small" onclick="IP.res.goals[' + i + '].benchmarks.push(\'\');ipDraw()">+ Add a benchmark</button></div></div>'; }).join('') +
     '<h3 style="margin:14px 0 4px">Accommodations (' + r.accoms.length + ')</h3>' + (r.accoms.length ? r.accoms.map(function (a, i) { return '<label class="check" style="margin:2px 0"><input type="checkbox"' + (IP.accKeep[i] ? ' checked' : '') + ' onchange="IP.accKeep[' + i + ']=this.checked"><span>' + esc(a) + '</span></label>'; }).join('') +
       '<div class="seg" style="margin-top:6px"><button class="' + (IP.accMode === 'replace' ? 'on' : '') + '" onclick="IP.accMode=\'replace\';ipDraw()">Replace their list (newer IEP)</button><button class="' + (IP.accMode === 'add' ? 'on' : '') + '" onclick="IP.accMode=\'add\';ipDraw()">Add to their list</button></div>' : '<p class="small">None found.</p>') +
     '<h3 style="margin:14px 0 4px">🏫 Testing room</h3><p class="hint" style="margin:0 0 4px">What the student needs to know about where and how long they test. Fix anything.</p><input type="text" id="ipTest" value="' + esc(r.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group">' +
@@ -9177,7 +9188,7 @@ function ipDraw() {
     '<button class="btn primary" onclick="ipSave()">💾 Save to the student</button>');
 }
 function ipSave() {
-  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { num: g.num, text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
+  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { num: g.num, text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks.map(function (b) { return String(b).trim(); }).filter(String) }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
   call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + (n.updated ? ' (' + n.updated + ' updated' + (n.off ? ', ' + n.off + ' old turned off' : '') + ')' : '') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
 }
 var GI_ROWS = null, GI_STU = [];
