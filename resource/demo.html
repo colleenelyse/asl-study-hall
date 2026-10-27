@@ -339,6 +339,7 @@ body.quickmode header.top nav,body.quickmode #lookBtn,body.quickmode #bellBox,bo
 .qk-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}.qk-chip{font-size:15px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer}.qk-chip.on{background:var(--brand);color:var(--onbrand,#fff);border-color:var(--brand)}
 .qk-item{display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.qk-item:first-of-type{border-top:0}.qk-when{min-width:82px;font-weight:800;font-size:14px;color:var(--brand)}.qk-when.hot{color:var(--down)}.qk-link{color:var(--brand);font-weight:700}.qk-steps{font-size:16px;line-height:1.5;padding-left:22px;margin:8px 0}.qk-key{display:inline-block;padding:0 6px;border-radius:6px;background:var(--card);border:1px solid var(--line)}.qk-more summary{font-size:14px;margin:6px 0;cursor:pointer}
 body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:transparent}body.quickmode #toolBox>.card>h2:first-child,body.quickmode #toolBox>.card>.row:first-child>h2{font-size:15px}
+.touring{padding-bottom:120px}#tourBar{position:fixed;left:0;right:0;bottom:0;z-index:300;background:#1d2433;color:#fff;box-shadow:0 -4px 16px rgba(0,0,0,.25)}.tour-in{max-width:1000px;margin:0 auto;display:flex;gap:10px;align-items:center;padding:10px 14px}.tour-mid{flex:1;min-width:0}.tour-mid select{width:100%;font-weight:700;font-size:15px}.tour-hint{font-size:14px;margin-top:4px;opacity:.92;line-height:1.35}#tourBar .btn{white-space:nowrap}#tourBar .btn:not(.primary){background:#fff;color:#1d2433;border-color:#fff}#tourBar .btn[disabled]{opacity:.4}#tourBar select{background:#fff;color:#1d2433;border:0;border-radius:8px;padding:6px 8px}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -501,7 +502,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.66'
+var VERSION = '2.68'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -5955,6 +5956,7 @@ call('api_boot').then(function (b) {
   else if (b.cm) { MODE = 'cm'; VIEW = 'cm'; }          // a case manager: their students' reports
   if (QUICK_PAGE && MODE === 'student') { document.body.classList.add('quickmode'); if (!gate()) VIEW = 'quick'; }          // 2.66: 📱 the phone page
   go(VIEW);
+  if (TOUR_ON && MODE === 'student') { setTimeout(tourStart, 300); return; }          // 2.68: the screen walkthrough (practice copy)
   if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
   if (VIEW === 'quick') return;          // the phone page: no hall pass, celebrations or boards
@@ -6183,6 +6185,7 @@ function skipSave(k) {
   call('api_skipStep', k, r.value, n).then(function (d) { D.skips = d; STEP = null; toast('Skipped for today'); go('checkin'); }).catch(oops);
 }
 function gate() {
+  if (TOUR) return null;          // 2.68: the screen walkthrough shows any screen
   if (MODE !== 'student' || (PREV && PREV.skip)) return null;          // a teacher's preview can skip the first-visit steps
   if (!D.profile.name || !D.classes.length || (B.bday && B.askBday && !D.profile.birthday)) return 'welcome';          // first visit: name and schedule on one page
   if (!D.classes.length || ((!D.profile.checked || (B.recheck && D.profile.checked < B.recheck)) && !skipped('schedule'))) return 'schedule';
@@ -8329,6 +8332,46 @@ function phoneOpen() {
   if (window.QRCode) draw(); else { var sc = document.createElement('script'); sc.src = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = draw; sc.onerror = function () { $('phQR').textContent = 'Use the link below.'; }; document.head.appendChild(sc); }
 }
 
+/* ---------- 2.68: 🧭 the screen walkthrough (practice copy, &tour=1): every student screen in order, ◀ Back / Next ▶ or jump to any,
+   with what the student does there. Each screen starts from the same made-up student (nothing is saved). ---------- */
+var TOUR = null, TOUR_ON = false; try { TOUR_ON = /[?&]tour=1/.test(location.search); } catch (e) {}
+function tourSteps() {
+  var t = function (k) { return toolList().some(function (x) { return x[0] === k; }); }, l = [
+    ['First visit: name and schedule', 'Type your first name and last initial, then paste the Schedule page from Infinite Campus (Ctrl + A, Ctrl + C, then Ctrl + V in the box).', function () { D.profile.name = ''; D.classes = []; SCH = null; return 'welcome'; }],
+    ['My schedule', 'Check every period. Lunch, study hall and resource are “No grade”. Fix anything wrong, then press “My schedule is right”.', function () { SCH = null; D.profile.checked = ''; return 'schedule'; }],
+    ['My profile (one time)', 'Pick your grade, check your counselor, and pick your case manager. Then “Everything is right: save”.', function () { return 'profile'; }],
+    ['Grades: paste each class', 'On a grade check day: in Infinite Campus open Grades, click one class, copy from the class title down to the last assignment, and paste it in that class’s box. One class at a time.', function () { B.checkDay = B.today; if (D.dayPlan) D.dayPlan.today = null; STEP = { k: 'grades', wasDone: true }; return 'checkin'; }],
+    ['📋 Today (goals, plan, help)', 'Rate each goal 1–6 (or “I didn’t have a chance” plus why), write today’s plan (tap an idea), answer “Do I need help?”, then ✅ Done.', function () { if (D.dayPlan) D.dayPlan.today = null; if (D.profile.goalCheck) D.profile.goalCheck.id = ''; GCK = null; return 'checkin'; }],
+    ['✅ Daily checklist', 'Check off each item they did. Optional, except on a day they say they have nothing to work on.', function () { STEP = { k: 'check', wasDone: true }; return 'checkin'; }],
+    ['🚪 Exit ticket', 'What did you finish today, and what’s next?', function () { STEP = { k: 'exit', wasDone: true }; return 'checkin'; }],
+    ['🎉 All done', 'Checked in! From here: 🧰 Open my tools, or the optional checklist and exit ticket.', function () { STEP = { k: 'done' }; return 'checkin'; }],
+    ['🧰 My tools', 'Questions for my teacher at the top, ⭐ Coming up and ▶ Start here, then every tool. Tap a tile to open it.', function () { TOOL = ''; return 'tools'; }]];
+  [['tracker', '📝 My assignments', 'Type homework the moment you get it, pick the class and due date, ✓ when done.'], ['missing', '📌 Missing work', 'From the pasted pages. Tap “I turned it in”, or ✉️ Ask the teacher what to do.'],
+   ['project', '🔍 Assignment Decoder', 'Paste the directions and rubric (or a PDF), 🔍 Decode it, then Make my plan: dated steps with reminders.'], ['date', '📅 Add a test or project', 'Class, type, what, date. It’s on Today with a countdown. Tests get 📚 Study plan.'],
+   ['need', '🎯 What will it do to my grade?', 'Paste today’s page for the class, pick summative or formative and the points, then “I want my grade to be” or “If I get”.'], ['ask', '❓ Questions for my teacher', 'Write a question for a class and pick a reminder: start of class, end of class, or none. ✓ checks it off.'],
+   ['cards', '🃏 Flashcards', '+ New set, paste a Quizlet export (⋯ › Export › Copy text), then flip cards, multiple choice or type the answer.'], ['write', '✍️ Writing toolkit', 'Paragraph, CER, thesis, MLA citation and a proofreading checklist. Copy it into the assignment.'],
+   ['email', '✉️ Email my teacher', 'Pick the class and what it’s about, fill in the blanks, then Open it in Gmail and press Send.'], ['read', '🔊 Read it to me', 'Paste text or use a PDF, then ▶ Read. Tap a sentence to start there.'],
+   ['dictate', '🎤 Dictate', '🎤 Start talking. Say “period” or “comma”. Then 📋 Copy and paste it into the assignment.'], ['ixl', '📈 My IXL', 'Pick the day for the next session, open IXL, then log the minutes or questions.']].forEach(function (x) {
+    if (t(x[0])) l.push([x[1], x[2], function () { TOOL = x[0]; FC.view = 'list'; return 'tools'; }]);
+  });
+  l.push(['📘 My IEP', 'Their goals in their own words, accommodations, testing room and services.', function () { return 'myiep'; }]);
+  if (F('tests')) l.push(['Tests & reminders', 'Everything coming up, project steps, retakes and email reminders.', function () { return 'tests'; }]);
+  if (F('myWeek')) l.push(['📅 My week', 'The week at a glance.', function () { return 'week'; }]);
+  if (F('focus')) l.push(['⏱️ Focus timer', 'Pick the task and minutes, predict how much you’ll get done, then go.', function () { return 'focus'; }]);
+  if (F('progress')) l.push(['My progress', 'Grades over time.', function () { return 'history'; }]);
+  l.push(['📱 The phone page', 'On their phone: questions, add a test or assignment, coming up, IXL and flashcards. The first time, it shows how to put it on the home screen.', function () { try { localStorage.removeItem('rci-home-' + (B.email || '')); } catch (e) {} document.body.classList.add('quickmode'); return 'quick'; }]);
+  return l;
+}
+function tourStart() { TOUR = { b: JSON.stringify(B), d: JSON.stringify(D), i: 0, steps: tourSteps() }; var bar = document.createElement('div'); bar.id = 'tourBar'; document.body.appendChild(bar); document.body.classList.add('touring'); tourGo(0);
+  document.addEventListener('keydown', function (e) { if (!TOUR || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return; if (e.key === 'ArrowRight') tourGo(TOUR.i + 1); if (e.key === 'ArrowLeft') tourGo(TOUR.i - 1); }); }
+function tourGo(i) {
+  if (!TOUR) return; i = Math.max(0, Math.min(TOUR.steps.length - 1, i)); TOUR.i = i;
+  B = JSON.parse(TOUR.b); D = JSON.parse(TOUR.d); STEP = null; TOOL = ''; CK = null; DP_EDIT = false; GCK = null; DIRTY = false; document.body.classList.remove('quickmode'); var m = $('qsPop'); if (m) m.remove();
+  var st = TOUR.steps[i]; VIEW = st[2]() || 'checkin'; drawNav(); draw(); window.scrollTo(0, 0);
+  if (VIEW === 'tools' && TOOL && $('toolBox')) setTimeout(function () { var el = $('toolBox'); if (el) el.scrollIntoView({ block: 'start' }); }, 50);
+  $('tourBar').innerHTML = '<div class="tour-in"><button class="btn" onclick="tourGo(TOUR.i-1)"' + (i ? '' : ' disabled') + '>◀ Back</button><div class="tour-mid"><select onchange="tourGo(+this.value)">' + TOUR.steps.map(function (x, k) { return '<option value="' + k + '"' + (k === i ? ' selected' : '') + '>' + (k + 1) + '. ' + esc(x[0]) + '</option>'; }).join('') + '</select><div class="tour-hint">' + esc(st[1]) + '</div></div><button class="btn primary" onclick="tourGo(TOUR.i+1)"' + (i < TOUR.steps.length - 1 ? '' : ' disabled') + '>Next ▶</button></div>';
+}
+
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
   var t = stuffTiles(list), hid = pagePref('hide') || [], ord = pagePref('order') || [];
@@ -9535,7 +9578,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/practice.html">📽️ Practice page</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/tour.html">🧭 Student screens</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
