@@ -290,7 +290,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.15';
+var VERSION = '0.15.1';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -371,6 +371,7 @@ var DEFAULTS = [
   ['Daily health email to', '', '', 'School emails (comma list) that get the health check each morning when something needs attention.'],
   ['Daily health email when all is well', 'No', 'No', 'Yes: send the morning health email every school day, even when everything is fine.'],
   ['Testing Center Google Calendar', 'On', 'On', 'On: every appointment shows on the “Testing Center appointments” calendar of the account that runs the app (share that calendar with the Testing Center account).'],
+  ['Testing Center Google account', 'testingcenter@d204.lths.net', 'testingcenter@d204.lths.net', 'The Testing Center’s own Google account: teachers share their “Access Codes – Last name” doc with it.'],
   ['Access-code template link', '', '', 'The make-a-copy link for teachers’ access-code doc (Settings › Imports & more › Make the access-code template).'],
   ['Access-code guide link', 'https://asl.cool/testing-center/guides/access-codes.html', 'https://asl.cool/testing-center/guides/access-codes.html', 'The page that explains the access-code doc to teachers (shown in their Standing resources box).'],
   ['Testing rooms: class names containing', 'BASE, ARC, Academic Resource, Skills for Success, PSD, Resource, Learning Support', 'BASE, ARC, Academic Resource, Skills for Success, PSD, Resource, Learning Support', 'Classes with these words become testing rooms (Settings › Testing rooms › Find testing rooms): their own students can test there during that class.'],
@@ -1729,7 +1730,7 @@ function teacherHome_(w) {
   var appts = rows_('Appointments').filter(function (a) { return teachesAppt_(w, a) && day_(a.date) >= addDays_(today_(), -14) && !/^canceled/i.test(a.status); })
     .sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
   return {
-    courses: myCourses_(w), platforms: PLATFORMS, codeTemplate: setting_('Access-code template link', 'S'), codeGuide: setting_('Access-code guide link', 'S'),
+    courses: myCourses_(w), platforms: PLATFORMS, tcAccount: setting_('Testing Center Google account', 'S'), lastName: String(str_((find_('Teachers', 'tid', w.tid) || {}).name).split(' ').pop()), codeTemplate: setting_('Access-code template link', 'S'), codeGuide: setting_('Access-code guide link', 'S'),
     emailPref: str_((find_('Teachers', 'tid', w.tid) || {}).emailPref),
     appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a), where = str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { where: where, inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: rows_('Assessments').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
@@ -1954,9 +1955,11 @@ function completionText_(a, outcome, note) {
 // (…/copy link). Each teacher keeps codes in their copy, shares it with the Testing Center account, and adds it once as a standing resource.
 function api_makeCodeTemplate() {
   need_('admin');
-  var doc = DocumentApp.create('Access codes for the Testing Center (TEMPLATE — make a copy)'), body = doc.getBody();
-  body.appendParagraph('Access codes for the Testing Center').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph('Teacher: ______________________     Classes: ______________________');
+  var acct = setting_('Testing Center Google account', 'S') || 'testingcenter@d204.lths.net';
+  var doc = DocumentApp.create('Access Codes – TEMPLATE (make a copy, then rename it: Access Codes – Your Last Name)'), body = doc.getBody();
+  body.appendParagraph('Access Codes – Your Last Name').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('Start here: 1) File › Make a copy.  2) Name your copy “Access Codes – ” and your last name, for example “Access Codes – Gibbons”, so the Testing Center can find it.  3) Share › ' + acct + ' › Viewer.  4) In the Testing Center app: My classes › Standing resources › + Add, and paste this doc’s link.').setItalic(true);
+  body.appendParagraph('Teacher: ______________________     Classes: ______________________').setItalic(false);
   body.appendParagraph('Keep this table up to date. The Testing Center opens this document when one of your students tests, so they always see your newest codes. Share it ONLY with the Testing Center (Viewer). Never share it with students or post it in Canvas.');
   var t = body.appendTable([['Class (and period)', 'Test or quiz', 'Access code / password', 'Where (Canvas, lockdown browser, AP Classroom…)', 'Available until', 'Notes for the Testing Center'],
     ['ASL 1 (P2, P3)', 'Unit 3 Test', 'tiger42', 'Canvas', '11/20', 'Extended time students: 75 minutes'], ['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', '']]);
@@ -3747,8 +3750,8 @@ var RES_TYPES = ['Live Google Doc with access codes', 'Google Drive folder', 'Ca
 function tchRes(id) {
   var r = TH.resources.filter(function (x) { return x.id === id; })[0] || { courses: ['*'] }, all = r.courses.indexOf('*') >= 0;
   modal('<h2>' + (id ? 'Edit' : 'Add') + ' a standing resource</h2><label class="f">Type</label><select id="rType">' + RES_TYPES.map(function (t) { return '<option' + (r.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
-    '<label class="f">Name</label><input type="text" id="rTitle" value="' + esc(r.title || '') + '" placeholder="ASL test and retake codes">' +
-    '<label class="f">Link</label><input type="text" id="rLink" value="' + esc(r.link || '') + '" placeholder="Paste the https link (share it with the Testing Center first)">' +
+    '<label class="f">Name</label><input type="text" id="rTitle" value="' + esc(r.title || (id ? '' : 'Access Codes – ' + (TH.lastName || 'Your Last Name'))) + '" placeholder="Access Codes – ' + esc(TH.lastName || 'Your Last Name') + '"><div class="tiny mute">Use the same name as your Google Doc: <b>Access Codes – ' + esc(TH.lastName || 'Your Last Name') + '</b>.</div>' +
+    '<label class="f">Link</label><input type="text" id="rLink" value="' + esc(r.link || '') + '" placeholder="Paste the doc’s https link"><div class="tiny mute">First share the doc with <b>' + esc(TH.tcAccount || 'testingcenter@d204.lths.net') + '</b> as <b>Viewer</b> (Share button, top right of the doc).</div>' +
     '<label class="f">For which classes?</label><label class="check"><input type="checkbox" id="rAll"' + (all ? ' checked' : '') + ' onchange="$(\'rCs\').hidden=this.checked"> All my classes</label><div id="rCs"' + (all ? ' hidden' : '') + '>' + TH.courses.map(function (c, i) { return '<label class="check"><input type="checkbox" class="rc" value="' + esc(c) + '"' + (r.courses.indexOf(c) >= 0 ? ' checked' : '') + '> ' + esc(c) + '</label>'; }).join('') + '</div>' +
     '<div class="grid2"><div><label class="f">Stop showing it after (optional)</label><input type="date" id="rExp" value="' + esc(r.expires || '') + '"></div><div><label class="check" style="margin-top:34px"><input type="checkbox" id="rYears"> Keep it next school year too</label></div></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn pri" id="rGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
@@ -3774,8 +3777,9 @@ function tvOpen(sid) { $('main').innerHTML = '<div class="spin">Loading…</div>
 var RM = null;
 function rmStart() { $('main').innerHTML = '<div class="spin">Loading your testing room…</div>'; call('api_myRoom').then(function (r) { RM = r; rmDraw(); }).catch(fail); }
 function rmDraw() {
-  var out = '<div class="wrap"><h1>My testing room</h1><p class="mute" style="margin-top:0">Your own students can book makeup tests and retakes in your room during your class with them. Run them here: Arrived, Check out, notes.</p>';
-  if (!RM.rooms.length) out += '<div class="card empty">Your room isn’t on the testing-room list right now.</div>';
+  var out = '<div class="wrap"><h1>My testing room</h1><p class="mute" style="margin-top:0">Your class is a testing room. Students in your class can sign up to take a makeup test or retake here in your room, during your class, instead of going to the Testing Center. This page shows who’s coming.</p>' +
+    '<div class="banner info small"><b>When a student arrives,</b> press <b>Arrived</b>. <b>When they finish,</b> press <b>Check out</b>. Use <b>📝 Note</b> to tell their teacher anything that happened. The test’s access code (or the teacher’s code doc) is on each row.</div>';
+  if (!RM.rooms.length) out += '<div class="card empty">Your class isn’t a testing room right now. (If that’s a mistake, tell the Testing Center.)</div>';
   RM.rooms.forEach(function (r) {
     var today = r.appts.filter(function (a) { return a.date === B.today; }), later = r.appts.filter(function (a) { return a.date > B.today; });
     var row = function (a) {
@@ -3783,10 +3787,10 @@ function rmDraw() {
       var acc = (a.resources || []).map(function (x) { return x.link ? '<a class="btn sm" href="' + esc(x.link) + '" target="_blank">🔑 ' + esc(x.title) + '</a>' : ''; }).join(' ') + (a.testInfo && a.testInfo.code ? ' <button class="btn sm" data-c="' + esc(a.testInfo.code) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">Show code</button>' : '');
       return '<tr class="' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(a.status) ? 'needs' : '') + '"><td><b>' + esc(a.student) + '</b><div class="tiny mute">' + esc(relD(a.date)) + ' · P' + esc(a.period) + '</div></td><td>' + esc(a.course) + '<div class="tiny mute">' + esc(a.test) + ' · ' + esc(a.purpose) + '</div>' + (a.snotes || []).map(function (n) { return '<div class="tiny">📝 ' + esc(n.text) + '</div>'; }).join('') + '</td><td>' + readyChip(a.ready) + '<div style="margin-top:4px">' + acc + '</div></td><td>' + statusChip(a.status) + '</td><td><div class="row" style="gap:4px">' + act + '<button class="btn sm" onclick="rmNote(\'' + a.id + '\')">📝 Note</button></div></td></tr>';
     };
-    out += '<div class="card"><div class="row"><h2 class="grow" style="margin:0">🏫 ' + esc(r.name) + '</h2><span class="small mute">Period ' + esc(r.periods) + ' · ' + esc(r.seats) + ' seats</span></div>' +
-      '<h3 style="margin-top:12px">Today</h3>' + (today.length ? '<table class="t small">' + today.map(row).join('') + '</table>' : '<div class="small mute">Nobody today.</div>') +
-      (later.length ? '<h3 style="margin-top:12px">Coming up</h3><table class="t small">' + later.map(row).join('') + '</table>' : '') +
-      '<p class="tiny mute" style="margin-top:12px">Wrong class, or you don’t want your room used for testing? <button class="link" onclick="rmOptOut(\'' + r.id + '\')">Remove my room from the list</button></p></div>';
+    out += '<div class="card"><h2 style="margin:0">🏫 ' + esc(r.name) + '</h2><div class="small mute" style="margin-top:4px">Students can sign up during: <b>Period' + (String(r.periods).indexOf(',') >= 0 ? 's ' : ' ') + esc(r.periods) + '</b> · up to <b>' + esc(r.seats) + '</b> students per period</div>' +
+      '<h3 style="margin-top:14px">Coming today</h3>' + (today.length ? '<table class="t small">' + today.map(row).join('') + '</table>' : '<div class="small mute">No students have signed up to test in your room today.</div>') +
+      (later.length ? '<h3 style="margin-top:14px">Coming later</h3><table class="t small">' + later.map(row).join('') + '</table>' : '') +
+      '<p class="tiny mute" style="margin-top:14px">Don’t want students testing in your room, or is this class listed by mistake? <button class="link" onclick="rmOptOut(\'' + r.id + '\')">Remove my room from the list</button></p></div>';
   });
   $('main').innerHTML = out + '</div>';
 }
@@ -3796,7 +3800,7 @@ function rmDone(id) {
   $('rmGo').onclick = function () { var n = $('rmNoteTx').value.trim(), o = $('rmOut').value; busy(this, true); (n ? call('api_addNote', id, n) : Promise.resolve()).then(function () { closeModal(); rmStep(id, 'done', { outcome: o }); }).catch(fail); };
 }
 function rmNote(id) { var t = prompt('Note for the class’s teacher (what happened?):'); if (!t) return; call('api_addNote', id, t).then(function () { toast('Note added'); rmStart(); }).catch(fail); }
-function rmOptOut(id) { if (!confirm('Remove your room from the testing-room list? Students won’t be able to book it, and the Testing Center will see that you opted out.')) return; call('api_roomOptOut', id).then(function (r) { RM = r; rmDraw(); toast('Your room was removed from the list'); }).catch(fail); }
+function rmOptOut(id) { if (!confirm('Remove your room from the list? Your students won’t be able to sign up to test in your room anymore. The Testing Center will see that you opted out.')) return; call('api_roomOptOut', id).then(function (r) { RM = r; rmDraw(); toast('Your room was removed from the list'); }).catch(fail); }
 </script>
 
 <script>
