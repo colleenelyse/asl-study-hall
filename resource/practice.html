@@ -289,6 +289,14 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 @media (max-width: 900px) { .side2 { grid-template-columns: 1fr; } }
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(15, 20, 35, .45); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; }
 .modal .card { width: 100%; max-width: 760px; margin: 0; }
+#hpBtn { position: fixed; right: 16px; bottom: 16px; z-index: 40; border-radius: 999px; padding: 12px 18px; font-size: 1.05em; box-shadow: 0 4px 14px rgba(15, 20, 35, .25); }
+#hpBtn.out { background: var(--warn); color: #1d2433; border-color: var(--warn); }
+.hp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.hp-grid .btn { min-height: 56px; white-space: normal; text-align: left; }
+.hp-pass { display: inline-block; border: 2px solid var(--line); border-radius: 12px; padding: 6px 12px; margin: 4px 6px 4px 0; }
+.hp-pass.free { border-color: var(--up); background: var(--up-soft); }
+.hp-time { font-size: 2.4em; font-weight: 700; font-variant-numeric: tabular-nums; margin: 6px 0; }
+.hp-red { background: var(--down-soft); border-radius: 12px; padding: 10px 14px; }
 .an-test { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
 .an-test.yes { border-color: var(--up); background: var(--up-soft); }
 .an-test.no { border-color: var(--down); background: var(--down-soft); }
@@ -467,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.41'
+var VERSION = '2.43'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1009,7 +1017,7 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: !!kioskConf_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
     welcome: isTeacher_(email) && !PropertiesService.getDocumentProperties().getProperty('welcome:' + email),          // 1.98: the one-time welcome box
@@ -2642,6 +2650,26 @@ function kioskCall_(act, extra) {
   if (out && out.error) throw new Error('Hall Pass Kiosk: ' + out.error);
   return out;
 }
+/* ---------- Chromebook hall passes (Colleen's own copy only: needs the kiosk connection) ----------
+   Students take the kiosk's numbered hall passes from their Chromebooks: 🚻 Hall pass. Everything is kept in the kiosk (its Hall Pass Log,
+   Currently Out, line, escort-only, weekly reminders, reports); the kiosk's kioskCbPass_ checks the same rules as its own screen. Only the
+   student ID (from the school email) goes to the kiosk; first names + last initials come back. */
+function passFetch_(body) {
+  var k = kioskConf_(); body.seatApi = 1; body.key = k.key;
+  var res = UrlFetchApp.fetch(k.url, { method: 'post', contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true, followRedirects: true });
+  try { return JSON.parse(res.getContentText()); } catch (e) { return { error: 'The Hall Pass Kiosk did not answer. Tell your teacher.' }; }
+}
+function passCall_(act, extra) {
+  if (!kioskConf_()) throw new Error('Hall passes are not turned on here.');
+  var email = need_(), m = String(email).match(/(\d{4,})@/);
+  if (!m) return { error: 'Hall passes need a school email with a student ID.' };
+  var body = { act: act, sid: m[1] }; for (var x in (extra || {})) body[x] = extra[x];
+  return passFetch_(body);
+}
+function api_passInfo() { return passCall_('passInfo'); }
+function api_passOut(o) { o = o || {}; return passCall_('passOut', { dest: String(o.dest || '').slice(0, 60), teacher: String(o.teacher || '').slice(0, 30), pass: o.pass === 'none' ? 'none' : Number(o.pass) || 0, delivered: !!o.delivered, permission: !!o.permission, pin: String(o.pin || '').slice(0, 8) }); }
+function api_passBack(returned) { return passCall_('passBack', { returned: Number(returned) || 0 }); }
+function api_passLine(join) { return passCall_('passLine', { join: !!join }); }
 // The kiosk classes for the chosen periods ("7 Period — …" → 7).
 function kioskClasses_() {
   var k = kioskConf_(), list = (kioskCall_('classes') || {}).classes || [];
@@ -5093,6 +5121,31 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   if (/nothing=1/.test(location.search)) setTimeout(function () { DP_EDIT = true; DP_NONE = { 0: true, 2: true, 3: true }; drawCheckin(); $('dpNone').scrollIntoView(); window.scrollBy(0, -200); }, 2500);
   var tq = (location.search.match(/tile=(\w+)/) || [])[1]; if (tq) setTimeout(function () { tileOpen(tq); }, 2200);
   if (/teopen=1/.test(location.search)) setTimeout(function () { teOpen(); window.scrollTo(0, 300); }, 5000);
+  if (/hp=1/.test(location.search)) {          // 🚻 Hall pass with a pretend Hall Pass Kiosk (&hpfull=1: both passes out, &hpout=1: this student is out, &hprem=1: the weekly reminder)
+    var HPK = { out: [], line: [], t0: Date.now() };
+    if (/hpfull=1/.test(location.search)) HPK.out = [{ sid: '501777', name: 'Dev W.', dest: 'Bathroom', n: 1, at: Date.now() - 240000 }, { sid: '555012', name: 'Linh N.', dest: 'Water', n: 2, at: Date.now() - 60000 }];
+    if (/hpout=1/.test(location.search)) HPK.out = [{ sid: '123456', name: 'Marcus O.', dest: 'Bathroom', n: 1, at: Date.now() - 185000 }];
+    var HPD = [['Bathroom', '🚻', 0, 0, 1], ['Water', '💧', 0, 1, 1], ['Locker', '🔒', 0, 1, 1], ['Counselor', '🧑‍💼', 1, 0, 0], ['Library', '📚', 0, 1, 0], ['Nurse', '🩺', 0, 0, 0], ['Main Office', '🏫', 0, 0, 0], ['Back to my last class', '🚪', 0, 0, 0]];
+    window.kioskConf_ = function () { return { url: 'https://kiosk', key: 'k', periods: [] }; };
+    window.passFetch_ = function (b) {
+      var me = function (o) { return o.sid === b.sid; };
+      var st = function () {
+        var mine = HPK.out.filter(me)[0];
+        var held = {}; HPK.out.forEach(function (o) { if (o.n) held[o.n] = o.name; });
+        return { ok: true, name: 'Marcus', restricted: false, passCount: 2, passes: [1, 2].map(function (n) { return { number: n, out: !!held[n], who: held[n] || '' }; }), free: 2 - HPK.out.filter(function (o) { return o.n; }).length,
+          full: HPK.out.filter(function (o) { return o.n; }).length >= 2, out: [], line: HPK.line.map(function (o) { return o.name; }), place: HPK.line.map(function (o) { return o.sid; }).indexOf(b.sid) + 1,
+          mine: mine ? { row: 9, destination: mine.dest, since: mine.at, passNumber: mine.n || 0, noPass: !mine.n } : null, pinSet: false, inClass: true,
+          reminder: /hprem=1/.test(location.search) ? { red: false, title: 'Hi Marcus — quick check-in 💙', text: 'You’ve left class 3 times this week (about 14 minutes). Every minute here counts: explanations, practice, and time with your classmates add up fast. If it can wait, please stay. If you really need to go, that’s okay.' } : null,
+          dests: HPD.map(function (d) { return { name: d[0], label: /last class/.test(d[0]) ? 'Another teacher’s classroom' : d[0], icon: d[1], askPass: !!d[2], optional: !!d[3], needsPass: !!d[4], teacherRoom: /last class/.test(d[0]) }; }) };
+      };
+      if (b.act === 'passLine') { HPK.line = HPK.line.filter(function (o) { return !me(o); }); if (b.join) HPK.line.push({ sid: b.sid, name: 'Marcus O.' }); }
+      if (b.act === 'passBack') HPK.out = HPK.out.filter(function (o) { return !me(o); });
+      if (b.act === 'passOut') { var s0 = st(); if (s0.full && !b.permission && /Bath|Water|Locker/.test(b.dest)) return { error: 'All the passes are out.', line: true };
+        HPK.out.push({ sid: b.sid, name: 'Marcus O.', dest: b.dest, n: b.pass === 'none' ? 0 : b.pass, at: Date.now() }); HPK.line = HPK.line.filter(function (o) { return !me(o); }); }
+      return st();
+    };
+    if (/hpopen=1/.test(location.search)) setTimeout(function () { hpOpen(); }, 2500);
+  }
   window.google = { script: { run: (function mk(ok, no) {
     return new Proxy({}, { get: function (t, k) {
       if (k === 'withSuccessHandler') return function (f) { return mk(f, no); };
@@ -5257,8 +5310,101 @@ call('api_boot').then(function (b) {
   go(VIEW);
   if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
-  bdayMaybe(); madeUpMaybe();
+  bdayMaybe(); madeUpMaybe(); hpButton();
 }).catch(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message || e) + '</div>'; });
+
+/* ---------- 🚻 Hall pass (Colleen's own copy only, when it is connected to her Hall Pass Kiosk) ----------
+   The kiosk's passes from the student's Chromebook: pick where you're going, take a free pass, come back. The kiosk keeps the log, the
+   line and the rules (escort only, "Did you get a pass?", the weekly reminder); its answer is HP. HPX is this trip's choices so far. */
+var HP = null, HPX = {}, HP_T = null, HP_POLL = null;
+function hpButton() {
+  if (!B || !B.hallPass || B.teacher || MODE !== 'student' || $('hpBtn')) return;
+  call('api_passInfo').then(function (r) {          // shown only when the kiosk answers (a kiosk without Chromebook passes, or a student not on its lists: no button)
+    if (!r || !r.ok || $('hpBtn')) return;
+    var b = document.createElement('button'); b.id = 'hpBtn'; b.className = 'btn primary'; b.onclick = hpOpen; document.body.appendChild(b); HP = r; hpGot(r);
+  }).catch(function () {});
+}
+function hpOpen() {
+  if (PREV) return toast('This is only a preview.');
+  HPX = {}; var el = $('hpModal');
+  if (!el) { el = document.createElement('div'); el.className = 'modal'; el.id = 'hpModal'; el.onclick = function (e) { if (e.target === el) hpClose(); }; document.body.appendChild(el); }
+  el.innerHTML = '<div class="card" style="max-width:640px"><p class="small">Checking the passes…</p></div>';
+  hpLoad(); clearInterval(HP_POLL); HP_POLL = setInterval(hpLoad, 30000);
+}
+function hpClose() { clearInterval(HP_POLL); clearInterval(HP_T); var el = $('hpModal'); if (el) el.remove(); }
+function hpLoad() { call('api_passInfo').then(hpGot).catch(function (e) { hpGot({ error: e.message || String(e) }); }); }
+function hpGot(r) {
+  if (r && r.error && !r.ok) {          // a refused trip keeps this trip's choices and shows why, with the passes as they are now
+    var why = r.error; if (HP) { call('api_passInfo').then(function (x) { if (x && x.ok) HP = x; HPX.err = why; hpDraw(); }).catch(function () { HPX.err = why; hpDraw(); }); return; }
+    HP = null; HPX.err = why; hpDraw(); return;
+  }
+  HP = r; HPX.err = ''; var b = $('hpBtn'); if (b) { b.classList.toggle('out', !!r.mine); b.textContent = r.mine ? '🚻 I’m out · tap when back' : '🚻 Hall pass'; }
+  hpDraw();
+}
+function hpMin(ms) { var s = Math.max(0, Math.floor((Date.now() - ms) / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+function hpClock(ms) { var d = new Date(ms); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+function hpDest() { return HP && HP.dests.filter(function (d) { return d.name === HPX.dest; })[0]; }
+function hpDraw() {
+  var el = $('hpModal'); if (!el) return; clearInterval(HP_T);
+  var top = '<div class="row"><h2 class="grow">🚻 Hall pass</h2><button class="btn link" onclick="hpClose()">✕ Close</button></div>';
+  var err = HPX.err ? '<div class="small" style="display:block;background:var(--warn-soft);border-radius:10px;padding:8px 12px;margin:6px 0">' + esc(HPX.err) + '</div>' : '';
+  if (!HP) { el.innerHTML = '<div class="card" style="max-width:640px">' + top + err + '<button class="btn" onclick="hpLoad()">Try again</button></div>'; return; }
+  el.innerHTML = '<div class="card" style="max-width:640px">' + top + err + hpBody() + '</div>';
+  if (HP.mine) HP_T = setInterval(function () { var t = $('hpTime'); if (t) t.textContent = hpMin(HP.mine.since); }, 1000);
+}
+function hpPasses() {
+  if (!HP.passCount) return '';
+  return '<div style="margin:4px 0 8px">' + HP.passes.map(function (p) { return '<span class="hp-pass' + (p.out ? '' : ' free') + '"><b>Pass #' + p.number + '</b> <span class="small" style="display:inline">' + (p.out ? 'out with ' + esc(p.who) : 'free') + '</span></span>'; }).join('') + '</div>' +
+    (HP.line.length ? '<div class="small" style="display:block">🙋 Next in line: ' + HP.line.map(esc).join(', ') + '</div>' : '');
+}
+function hpBody() {
+  var h = '', d;
+  if (HP.mine) {          // out of the room now
+    var m = HP.mine;
+    return '<p style="margin:4px 0">You’re at <b>' + esc(m.destination) + '</b>' + (m.passNumber ? ' with <b>pass #' + m.passNumber + '</b>' : m.delivered ? ' (a pass was sent for you)' : m.noPass ? ' (no hall pass)' : '') + '. You left at ' + hpClock(m.since) + '.</p>' +
+      '<div class="hp-time" id="hpTime">' + hpMin(m.since) + '</div>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary big" onclick="hpBack()">✅ I’m back' + (m.passNumber ? ' with pass #' + m.passNumber : '') + '</button>' +
+      (m.passNumber ? '<button class="btn" onclick="toast(\'OK. Your pass stays open and the timer keeps going. Tap I’m back when you return with it.\')">I forgot it. Going back to get it</button>' : '') + '</div>';
+  }
+  if (HP.restricted) return '<div class="hp-red"><b>🚫 You need an adult to walk with you.</b><p style="margin:4px 0 0">Ask your teacher.</p></div>';
+  if (!HPX.dest) {          // where are you going?
+    h += hpPasses();
+    if (HP.place) h += '<div class="row" style="gap:8px;margin:6px 0"><b class="grow">You’re #' + HP.place + ' in line.</b><button class="btn small" onclick="hpLine(false)">Leave the line</button></div>' +
+      '<p class="small" style="margin:0 0 6px">When a pass comes back, the person returning hands it to you. Then come back here and leave as usual.</p>';
+    return h + '<h3 style="margin:10px 0 0">Where are you going' + (HP.name ? ', ' + esc(HP.name) : '') + '?</h3><div class="hp-grid">' + HP.dests.map(function (x, k) { return '<button class="btn" onclick="hpPick(' + k + ')">' + hpIcon(x.name) + ' ' + esc(x.label) + '</button>'; }).join('') + '</div>';
+  }
+  d = hpDest(); if (!d) { HPX = {}; return hpBody(); }
+  var back = '<button class="btn link" onclick="HPX={};hpDraw()">← Somewhere else</button>';
+  h = '<p style="margin:4px 0"><b>Going to: ' + esc(d.label) + (HPX.teacher ? ' (' + esc(HPX.teacher) + ')' : '') + '</b> ' + back + '</p>';
+  if (d.teacherRoom && !HPX.teacherOk) return h + '<label><span class="small"><b>Which teacher? (last name)</b></span><input type="text" id="hpTeach" maxlength="30" placeholder="Smith" value="' + esc(HPX.teacher || '') + '"></label><button class="btn primary" style="margin-top:8px" onclick="HPX.teacher=$(\'hpTeach\').value.trim();HPX.teacherOk=true;hpDraw()">Next</button>';
+  if (d.askPass && HPX.delivered === undefined) return h + '<h3 style="margin:8px 0">Did you get a pass?</h3><p class="small">Was a pass delivered to you to go to ' + esc(d.label) + '?</p><div class="row" style="gap:8px"><button class="btn primary" onclick="HPX.delivered=true;hpGo(0)">🎟️ Yes, I got a pass</button><button class="btn" onclick="HPX.delivered=false;hpDraw()">No</button></div>';
+  var ahead = HP.line.length && HP.place !== 1;
+  if (d.needsPass && (HP.full || ahead) && !HPX.permission) {          // the line (just shown: no alert when a pass comes back)
+    return h + hpPasses() + '<h3 style="margin:8px 0">' + (HP.full ? (HP.passCount === 2 ? 'Both passes are out' : 'All ' + HP.passCount + ' passes are out') : esc(HP.line[0]) + ' is next in line') + '</h3>' +
+      (HP.place ? '<p>You’re <b>#' + HP.place + '</b> in line 🙋 When a pass comes back, the person returning will hand it to you. Then come back here and leave as usual.</p>' : '<p>Get in line, and when a pass comes back the person returning will hand it to you.</p>') +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' + (HP.place ? '<button class="btn" onclick="hpLine(false)">Leave the line</button>' : '<button class="btn primary" onclick="hpLine(true)">🙋 Get in line</button>') +
+      '<button class="btn" onclick="HPX.permission=true;hpDraw()">✅ I have permission to leave anyway</button></div>';
+  }
+  if (HP.reminder && !HPX.remOk && !HPX.delivered) {          // reminds, never blocks (an optional trip with a teacher PIN needs the teacher)
+    var pin = d.optional && HP.pinSet;
+    return h + '<div class="' + (HP.reminder.red ? 'hp-red' : '') + '" style="' + (HP.reminder.red ? '' : 'background:var(--brand-soft);border-radius:12px;padding:10px 14px') + '"><h3 style="margin:0 0 6px">' + esc(HP.reminder.title) + '</h3><p style="white-space:pre-wrap;margin:0">' + esc(HP.reminder.text) + (pin ? '\n\nTo leave for ' + esc(d.label) + ' now, ask your teacher.' : '') + '</p></div>' +
+      '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" onclick="hpClose()">👍 I’ll stay in class</button>' +
+      (pin ? '<input type="password" id="hpPin" inputmode="numeric" maxlength="8" placeholder="Teacher PIN" style="max-width:140px"><button class="btn" onclick="HPX.pin=$(\'hpPin\').value;HPX.remOk=true;hpDraw()">🔒 My teacher said yes</button>' : '<button class="btn" onclick="HPX.remOk=true;hpDraw()">I still need to go</button>') + '</div>';
+  }
+  if (!HP.passCount) return h + '<button class="btn primary big" onclick="hpGo(0)">🚶 I’m leaving now</button>';
+  var free = HP.passes.filter(function (p) { return !p.out; });
+  return h + '<h3 style="margin:8px 0">🎟️ Which pass are you taking?</h3><div class="hp-grid">' + free.map(function (p) { return '<button class="btn primary" onclick="hpGo(' + p.number + ')">I’m taking pass #' + p.number + '</button>'; }).join('') +
+    (!d.needsPass ? '<button class="btn" onclick="hpGo(\'none\')">🙅 I’m not taking a pass<br><span class="small">Going somewhere longer</span></button>' : !free.length ? '<button class="btn" onclick="hpGo(\'none\')">🙋 No pass (I have permission)</button>' : '') + '</div>';
+}
+var HP_ICONS = [[/bath|rest ?room/i, '🚻'], [/water/i, '💧'], [/locker/i, '🔒'], [/counsel/i, '💬'], [/library/i, '📚'], [/nurse|health/i, '🩺'], [/help desk|chromebook/i, '💻'], [/book ?store/i, '📖'], [/print/i, '🖨️'], [/cafeteria|lunch/i, '🍎'], [/lost/i, '🔎'], [/last class|teacher/i, '🚪'], [/office|dean/i, '🏫']];
+function hpIcon(name) { var m = HP_ICONS.filter(function (x) { return x[0].test(name); })[0]; return m ? m[1] : '📍'; }
+function hpPick(k) { HPX = { dest: HP.dests[k].name }; hpDraw(); }
+function hpGo(n) {
+  call('api_passOut', { dest: HPX.dest, teacher: HPX.teacher || '', pass: n, delivered: !!HPX.delivered, permission: !!HPX.permission, pin: HPX.pin || '' })
+    .then(function (r) { if (r && r.ok) { HPX = {}; toast('Have a good trip. Tap 🚻 when you’re back.'); } else if (r && r.needPin) HPX.remOk = false; hpGot(r); }).catch(oops);
+}
+function hpBack() { if (!HP || !HP.mine) return; call('api_passBack', HP.mine.passNumber || 0).then(function (r) { HPX = {}; hpGot(r); if (r && r.ok) { toast('Welcome back!'); hpClose(); } }).catch(oops); }
+function hpLine(join) { call('api_passLine', join).then(hpGot).catch(oops); }
 
 // a teacher's own student data, until Student view loads it
 function emptyD() { return { email: B.email, profile: { name: '', periods: [], checked: '' }, checklist: null, exit: null, dayPlan: null, gradeGoals: {}, goalHist: [], finals: {}, steps: [], focus: {}, accom: {}, ef: { missingNow: {}, lateList: {} }, bench: [], classes: [], grades: {}, dates: {}, cplans: {}, gradeBy: {}, lows: {}, missing: {}, retakes: [], analyses: {}, plans: [], tests: [], reminders: [], stub: true }; }
@@ -9448,14 +9594,18 @@ function ipParseSummary(text) {
     return accSplit(txt).filter(function (a) { return a.length > 3 && !/^(Accommodations?|Other|Student will participate.*)$/i.test(a); });
   };
   var accs = splitItems(sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || '');
-  var testing = ipTesting((sec['ASSESSMENT ACCOMMODATIONS'] || '') + ' ' + (sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || ''));
+  var testing = ipTesting((sec['ASSESSMENT ACCOMMODATIONS'] || '').replace(/\b(?:ACCESS\s*\/\s*)?Alternate ACCESS[\s\S]*$/, '') + ' ' + (sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || ''));
   var aa = sec['ASSESSMENT ACCOMMODATIONS'] || '', testAccs = [];
-  if (aa) {
-    var cls = /Classroom-Based Assessments(.*?)(District-Based Assessments|Other Assessment|$)/i.exec(aa), tim = /Timing\/Scheduling\s*-\s*(.*?)(?=Setting\s*-|$)/i.exec(aa), set = /Setting\s*-\s*(.*)$/i.exec(aa);
-    if (cls) testAccs = testAccs.concat(splitItems(cls[1]));
-    if (tim) testAccs.push('Tests: ' + tim[1].replace(/\s*-\s*/g, ' ').trim());
-    if (set) testAccs.push('Tests: ' + set[1].trim());
-    testAccs = testAccs.map(function (a) { return /^Tests:|\b(tests?|exams?|quiz(zes)?)\b/i.test(a) ? a : a + ' (tests)'; });
+  if (aa) {          // 2.42: every part is read: Classroom-Based, District-Based, Other Assessment ("Responding - …", "Timing/Scheduling - …"), ACCESS
+    var segs = aa.split(/\b(Classroom-Based Assessments?|District-Based Assessments?|Other Assessments?|ACCESS\s*\/\s*Alternate ACCESS|Alternate ACCESS)\b/), seen = {};
+    for (var si = 0; si < segs.length; si += 2) {
+      var head = si ? segs[si - 1] : '', body = (segs[si] || '').replace(/\b(Responding|Presentation|Timing\s*\/\s*Scheduling|Timing|Scheduling|Setting)\s*-\s*/g, '\n');
+      splitItems(body).forEach(function (a) {
+        var k = a.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (!k || seen[k]) return; seen[k] = true;
+        testAccs.push(/ACCESS/.test(head) ? a + ' (ACCESS test)' : a);
+      });
+    }
+    testAccs = testAccs.map(function (a) { return /\(ACCESS test\)$|\b(tests?|testing|exams?|quiz(zes)?|assessments?)\b/i.test(a) ? a : a + ' (tests)'; });
   }
   return { goals: goals, accoms: ipOneTime(accs.concat(testAccs)), services: services, testing: testing, summary: true };
 }
@@ -9478,7 +9628,8 @@ function accRun(s) {
     if (depth || !/\s/.test(ch) || !/^[A-Z][a-z]/.test(s.slice(i + 1, i + 3))) continue;
     var w = (cur.replace(/\s+$/, '').match(/(\S+)$/) || ['', ''])[1], next = (s.slice(i + 1).match(/^[A-Za-z&'’]+/) || [''])[0];
     var sentence = /[a-z0-9)%]\.$/.test(w) && !/^\(?(e\.g|i\.e|etc|vs|Mr|Mrs|Ms|Dr|St|approx|min|max)\.$/i.test(w);
-    var plain = /[a-z0-9)%]$/.test(w) && !ACC_NOSPLIT_AFTER.test(w.replace(/[(),:;]/g, '')) && !ACC_NOT_START.test(next);
+    var plain = /[a-z0-9)%]$/.test(w) && (/^[(a-z0-9]/.test(w) || /\)$/.test(w)) &&          // 2.42: "Extended Time" stays together (a capitalized word before)
+ !ACC_NOSPLIT_AFTER.test(w.replace(/[(),:;]/g, '')) && !ACC_NOT_START.test(next);
     var comma = /[a-z)],$/.test(w) && /^(Allow|Provide|Use|Give|Offer|Reduce|Seat|Keep|Check|Repeat|Rephrase|Maintain|Create|Modify|Decrease|Extended|Preferential)$/.test(next);          // "…environment, Allow earbuds…"
     if (sentence || plain || comma) { out.push(cur); cur = ''; }
   }
@@ -9545,7 +9696,7 @@ function ipTesting(t) {
   t = String(t || ''); var bits = [ipTimeOf(t) || 'Standard time'];
   if (/read aloud|reader|text.to.speech/i.test(t)) bits.push('Reader');
   if (/breaks?\s*(as needed|when needed|allowed)|frequent[^.;]{0,40}breaks/i.test(t)) bits.push('Breaks as needed');
-  if (/multiple sessions|divided into (?:two|several|multiple)|over (?:two|several) (?:days|sessions)/i.test(t)) bits.push('Multiple sessions');
+  if (/multiple sessions|divided into (?:two|several|multiple)|over (?:two|several|multiple) (?:days|sessions)/i.test(t)) bits.push('Multiple sessions');
   if (/small group/i.test(t)) bits.push('Small group'); else if (/alternate (?:testing )?(?:setting|location|room)|separate (?:setting|location|room)|distraction.?(free|reduced)|quiet (room|setting|location)/i.test(t)) bits.push('Alternate setting');
   if (/scribe/i.test(t)) bits.push('Scribe');
   return bits.join(' · ');
