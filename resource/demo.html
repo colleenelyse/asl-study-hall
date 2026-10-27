@@ -327,6 +327,9 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .fc-fb{margin-top:8px;padding:8px 12px;border-radius:10px}.fc-fb.right{background:var(--up-soft)}.fc-fb.wrong{background:var(--down-soft)}.fc-prev{font-size:14px}.fc-prev td{padding:4px 8px}
 .em-prev{margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px}.nd-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:12px}.nd-box{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
 .tr-row{gap:8px;padding:6px 0;border-top:1px solid var(--line);margin:0;display:flex;align-items:center}.tr-row.done b{text-decoration:line-through;opacity:.6}
+.tools-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:4px 0 6px}.cu-grid{display:grid;gap:6px}.cu{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:10px;background:var(--bg)}.cu.warn{background:var(--warn-soft)}.cu-ic{font-size:20px}.cu .small{display:block}.sh{border:2px solid var(--brand);background:var(--brand-soft)}.tools-h{margin:16px 0 4px;font-size:15px}
+.dec{margin-top:10px;padding:12px;border:2px dashed var(--brand);border-radius:12px}.dec-q{margin:10px 0 0}.dec-q input{margin-top:4px}.dec-li{gap:6px;padding:3px 0;border-top:1px solid var(--line)}.wr-in{margin:4px 0}.ixl-bar{height:14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:6px}.ixl-bar i{display:block;height:100%;background:var(--up)}
+.rd-show{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);line-height:1.7;max-height:340px;overflow:auto}.rd-show:empty{display:none}.rd-show.big{font-size:22px;line-height:1.8}.rd-show span{cursor:pointer;border-radius:4px}.rd-now{background:#fde68a;color:#111}
 </style>
 <script>/* A small stand-in for Google Apps Script services, so Code.gs can run in Node tests and in the preview page.
    Not part of the installed app. */
@@ -487,7 +490,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.54'
+var VERSION = '2.57'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -525,7 +528,11 @@ var TABS = {
   'Flashcard sets': ['ID', 'Email', 'Class', 'Set name', 'Cards', 'Updated', 'Best score', 'Last studied', 'Times studied'],          // 2.53: one card per line, term TAB answer
   'Tool use': ['When', 'Email', 'Tool', 'Detail'],
   'Assignments': ['ID', 'Email', 'Class', 'Assignment', 'Due', 'Done', 'Added', 'Done on'],          // 2.53: the students' own assignment tracker (🧰 My tools)
-  'Said turned in': ['Date', 'Email', 'Class', 'Assignment'],          // 2.53: "I turned it in" on a missing assignment (until Infinite Campus shows it)          // 2.53: every time a student uses a 🧰 tool (for executive functioning data)
+  'Said turned in': ['Date', 'Email', 'Class', 'Assignment'],
+  'Assignment notes': ['Test ID', 'Email', 'What it needs', 'Saved'],          // 2.56: the Assignment Decoder's notes for a project (product, checklist, rubric, questions)
+  'IXL plans': ['Email', 'Weekly goal', 'Minutes or questions', 'On', 'Updated'],          // 2.56: the teacher's weekly IXL goal for a student
+  'IXL log': ['When', 'Email', 'Week of', 'Amount', 'Minutes or questions'],          // 2.56: what the student says they did (self-report)
+  'IXL weeks': ['Week of', 'Email', 'Planned day', 'Note', 'Updated'],          // 2.53: "I turned it in" on a missing assignment (until Infinite Campus shows it)          // 2.53: every time a student uses a 🧰 tool (for executive functioning data)
   'Exit tickets': ['Date', 'Email', 'Finished today', 'What is next', 'Saved'],
   'Skipped steps': ['When', 'Email', 'Step', 'Reason', 'Note'],
   'Seating Charts': ['Class', 'Chart', 'Updated'],
@@ -575,7 +582,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29, escort: 30 };   // Students columns
-var TEXT_COLS = { 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -803,7 +810,7 @@ function setup_() {
 var TAB_GROUPS = [
   ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Skill checks', 'Hall passes', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
-  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Reminders', 'Emails sent']],
+  ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
   ['#8a94a6', ['Photos', 'Free time', 'Seating Charts', 'Seating Layouts']]
 ];
@@ -1048,7 +1055,7 @@ function boot_(email) {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
     today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
-    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, toolLinks: st.toolLinks, bellTimes: st.bellTimes, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
+    caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, toolLinks: st.toolLinks, bellTimes: st.bellTimes, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), checkOwn: checkOwn_(email), ixlOn: !!ixlPlan_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
     cm: cm.length ? cm : null,          // a case manager: the list of their students (1.80)
     welcome: isTeacher_(email) && !PropertiesService.getDocumentProperties().getProperty('welcome:' + email),          // 1.98: the one-time welcome box
@@ -3196,7 +3203,7 @@ function efData_(email) {
   var ex20 = exDays.slice(-20), freeN = rows_('Free time').filter(function (r) { return low_(r[1]) === email && whenDay_(r[0]) >= sem; }).length;
   var dp = dayPlans_(email), sc = selfChecks_(email);
   return {
-    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed, minutes: dp.minutes }, tools: toolStats_(email),
+    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed, minutes: dp.minutes }, tools: toolStats_(email), ixl: ixl_(email),
     exit: { last20: pct(ex20.filter(function (d) { return exits[d]; }).length, ex20.length), recent: Object.keys(exits).sort().slice(-6).reverse().map(function (d) { return { date: d, finished: exits[d].finished, next: exits[d].next }; }) },
     checklist: { last5: last5.filter(trial).length, of5: last5.length, last20: pct(last20.filter(trial).length, last20.length), noTime20: last20.reduce(function (n, d) { return n + (ck[d] ? ck[d].noTime : 0); }, 0), days: days.slice(-15).reverse().map(function (d) { return { date: d, done: ck[d] ? ck[d].done : 0, noTime: ck[d] ? ck[d].noTime : 0, total: ck[d] ? ck[d].total : 0, own: ck[d] ? ck[d].own : null, met: trial(d) }; }) },
     checkins: { weeks: checkedIn, of: 8 },
@@ -4467,7 +4474,7 @@ function api_cardScore(id, pct, mode, n) {
   });
 }
 // Any other tool: one line on the Tool use tab (the teacher sees the counts on the student's page)
-var TOOLS_OK = ['Assignment tracker', 'Missing work', 'Flashcards', 'Project helper', 'Add a date', 'What do I need', 'Email my teacher', 'Read it to me', 'Links', 'Calculator', 'Focus timer'];
+var TOOLS_OK = ['Dictate', 'Start here', 'Assignment decoder', 'Study plan', 'Writing toolkit', 'IXL', 'Assignment tracker', 'Missing work', 'Flashcards', 'Project helper', 'Add a date', 'What do I need', 'Email my teacher', 'Read it to me', 'Links', 'Calculator', 'Focus timer', 'ClassLink'];
 function toolLog_(email, tool, detail) { sheet_('Tool use').appendRow([stamp_(), email, tool, clean_(detail, 200)]); }
 function api_logTool(tool, detail) {
   var email = need_(); if (isTeacher_(email) || TOOLS_OK.indexOf(String(tool)) < 0) return false;
@@ -4497,7 +4504,6 @@ function assignments_(email) {
 }
 function addDaysIso_(d, n) { var x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
 function said_(email) { return rows_('Said turned in').filter(function (r) { return low_(r[1]) === email && day_(r[0]) >= addDaysIso_(today_(), -21); }).map(function (r) { return { date: day_(r[0]), cls: String(r[2]), name: String(r[3]) }; }); }
-function api_assignments() { var email = need_(); return { list: assignments_(email), said: said_(email) }; }
 function api_saveAssignment(a) {
   var email = need_(); a = a || {}; var what = clean_(a.what, 150), cls = clean_(a.cls, 80), due = /^\d{4}-\d\d-\d\d$/.test(String(a.due)) ? a.due : '';
   if (!what) throw new Error('Type the assignment.');
@@ -4527,6 +4533,83 @@ function api_saidTurnedIn(cls, name) {
     if (!said_(email).some(function (x) { return x.cls === cls && x.name === name; })) { sheet_('Said turned in').appendRow([today_(), email, cls, name]); toolLog_(email, 'Missing work', 'Said turned in: ' + cls + ' ' + name); }
     if (ROWS_MEMO) delete ROWS_MEMO['Said turned in'];
     return { list: assignments_(email), said: said_(email) };
+  });
+}
+// 2.56: is this student's daily checklist their own (assigned by the teacher)? They get checklist reminders.
+function checkOwn_(email) { var f = stuFind_(email); return f.i >= 0 && !!String(f.rows[f.i][SC.checklist] || '').trim(); }
+// 2.56: when the grades pages were last pasted (so an old missing-work list isn't mistaken for today's)
+function lastPaste_(email) { var m = ''; rows_('Assignment history').forEach(function (r) { if (low_(r[0]) === email) { var d = day_(r[5]); if (d > m) m = d; } }); return m; }
+function api_assignments() { var email = need_(); return { list: assignments_(email), said: said_(email), lastPaste: lastPaste_(email) }; }
+// 2.56: 🔍 Assignment Decoder notes for one project (what to make, what to include, how it's graded, what to ask)
+function api_saveDecoded(testId, d) {
+  var email = need_(), t = rows_('Tests').filter(function (r) { return String(r[0]) === String(testId) && low_(r[1]) === email; })[0]; if (!t) throw new Error('That project is not on your list.');
+  d = d || {}; var clip = function (l, n) { return (l || []).map(function (x) { return typeof x === 'object' ? { name: clean_(x.name, 120), pts: clean_(x.pts, 10) } : clean_(x, 200); }).filter(function (x) { return typeof x === 'object' ? x.name : x; }).slice(0, n); };
+  var o = { product: clean_(d.product, 120), size: clip(d.size, 6), include: clip(d.include, 20), rubric: clip(d.rubric, 15), ask: clip(d.ask, 8) };
+  return locked_(function () {
+    rewrite_('Assignment notes', function (r) { return !(String(r[0]) === String(testId) && low_(r[1]) === email); });
+    sheet_('Assignment notes').appendRow([String(testId), email, JSON.stringify(o), stamp_()]);
+    toolLog_(email, 'Assignment decoder', String(t[4]) + ': ' + o.include.length + ' things to include, ' + o.rubric.length + ' rubric parts');
+    return decoded_(email);
+  });
+}
+function decoded_(email) { var o = {}; rows_('Assignment notes').forEach(function (r) { if (low_(r[1]) === email) try { o[String(r[0])] = JSON.parse(r[2]); } catch (e) {} }); return o; }
+// 2.56: a study plan for a test: short sessions on the last N school days before it
+function api_studyPlan(testId, n) {
+  var email = need_(), t = rows_('Tests').filter(function (r) { return String(r[0]) === String(testId) && low_(r[1]) === email; })[0]; if (!t) throw new Error('That test is not on your list.');
+  var due = day_(t[3]), today = today_(); if (due <= today) throw new Error('This test is today or already past. Change its date first.');
+  var days = weekdays_(today, addDays_(due, -1)); n = Math.max(1, Math.min(10, Math.round(+n || 3))); days = days.slice(-n); if (!days.length) days = [today];
+  var what = String(t[4] || 'the test'), cls = String(t[2] || ''), S = [
+    'Gather your notes, study guide and old quizzes for ' + what,
+    'Make flashcards for the words and facts you need (🃏 Flashcards in My tools)',
+    'Do the study guide or practice problems; mark the ones you get wrong',
+    'Quiz yourself: say or write the answers without looking',
+    'Ask your teacher about anything still confusing (✉️ Email my teacher)',
+    'Quick review of what you marked; check your accommodations for the test'];
+  var steps = days.length >= S.length ? S.map(function (s, i) { return { step: s, due: days[Math.round(i * (days.length - 1) / (S.length - 1))] }; })
+    : S.map(function (s, i) { return { step: s, due: days[Math.min(days.length - 1, Math.floor(i * days.length / S.length))] }; });
+  toolLog_(email, 'Study plan', (cls ? cls + ' ' : '') + what + ': ' + days.length + ' day' + (days.length === 1 ? '' : 's'));
+  return { steps: steps };
+}
+// 2.56: 📈 weekly IXL (for students the teacher gives a weekly goal). Practice is the student's own report.
+function ixlPlan_(email) { var r = rows_('IXL plans').filter(function (x) { return low_(x[0]) === email && x[3] !== false && String(x[3]) !== 'No'; })[0]; return r && +r[1] > 0 ? { target: +r[1], unit: /question/i.test(String(r[2])) ? 'questions' : 'minutes' } : null; }
+function ixl_(email) {
+  var p = ixlPlan_(email); if (!p) return null;
+  var today = today_(), wk = weekOf_(today), logs = rows_('IXL log').filter(function (r) { return low_(r[1]) === email && day_(r[2]) === wk; }).map(function (r, k) { return { when: String(r[0]), date: String(r[0]).slice(0, 10), amount: +r[3] || 0 }; });
+  var w = rows_('IXL weeks').filter(function (r) { return low_(r[1]) === email && day_(r[0]) === wk; })[0], total = logs.reduce(function (a, l) { return a + l.amount; }, 0);
+  var days = weekdays_(wk, addDays_(wk, 4)), left = days.filter(function (d) { return d >= today; });
+  var hist = {}; rows_('IXL log').forEach(function (r) { if (low_(r[1]) === email) { var k = day_(r[2]); hist[k] = (hist[k] || 0) + (+r[3] || 0); } });
+  var past = Object.keys(hist).filter(function (k) { return k < wk; }).sort().slice(-8);
+  return { target: p.target, unit: p.unit, week: wk, total: total, logs: logs, planned: w ? day_(w[2]) : '', note: w ? String(w[3] || '') : '', days: days, left: left, met: total >= p.target, lastDay: left.length === 1 && left[0] === today,
+    history: past.map(function (k) { return { week: k, total: hist[k], met: hist[k] >= p.target }; }) };
+}
+function api_ixl() { return ixl_(need_()); }
+function api_ixlLog(amount) {
+  var email = need_(), p = ixlPlan_(email); if (!p) throw new Error('Your teacher hasn’t given you a weekly IXL goal.');
+  var n = Math.round(+amount); if (!(n > 0 && n <= 2000)) throw new Error('Type how many ' + p.unit + ' you did.');
+  return locked_(function () { sheet_('IXL log').appendRow([stamp_(), email, weekOf_(today_()), n, p.unit]); toolLog_(email, 'IXL', 'Logged ' + n + ' ' + p.unit); return ixl_(email); });
+}
+function api_ixlUndo(when, amount) {
+  var email = need_();
+  return locked_(function () { var done = false; rewrite_('IXL log', function (r) { if (!done && low_(r[1]) === email && String(r[0]) === String(when) && (amount === undefined || +r[3] === +amount)) { done = true; return false; } return true; }); return ixl_(email); });
+}
+function api_ixlWeek(planned, note) {
+  var email = need_(); if (!ixlPlan_(email)) throw new Error('Your teacher hasn’t given you a weekly IXL goal.');
+  var wk = weekOf_(today_()), pd = /^\d{4}-\d\d-\d\d$/.test(String(planned)) ? planned : '';
+  return locked_(function () {
+    var rows = rows_('IXL weeks'), i = find_(rows, function (r) { return low_(r[1]) === email && day_(r[0]) === wk; }), nt = note === undefined || note === null ? (i >= 0 ? String(rows[i][3] || '') : '') : clean_(note, 500), pl = planned === undefined || planned === null ? (i >= 0 ? day_(rows[i][2]) : '') : pd;
+    if (i >= 0) sheet_('IXL weeks').getRange(i + 2, 3, 1, 3).setValues([[pl, nt, stamp_()]]); else sheet_('IXL weeks').appendRow([wk, email, pl, nt, stamp_()]);
+    if (planned) toolLog_(email, 'IXL', 'Planned the next session: ' + pd);
+    return ixl_(email);
+  });
+}
+// Teacher: set or turn off a student's weekly IXL goal
+function api_saveIxlPlan(email, target, unit) {
+  teacherOnly_(); email = low_(email); var n = Math.round(+target || 0); unit = /question/i.test(String(unit)) ? 'questions' : 'minutes';
+  return locked_(function () {
+    rewrite_('IXL plans', function (r) { return low_(r[0]) !== email; });
+    if (n > 0) sheet_('IXL plans').appendRow([email, n, unit, true, stamp_()]);
+    logChange_('Weekly IXL goal', email, '', 'IXL', '', n > 0 ? n + ' ' + unit + ' a week' : 'off', '');
+    return ixl_(email);
   });
 }
 function api_planProject(testId, text, spread) {          // 2.53: spread = how many school days to work on it (the last ones before the due date; blank = every day until then)
@@ -5093,7 +5176,7 @@ function studentData_(email) {
   prof.goal = prof.goals.length ? prof.goals[0].kid || '' : '';
   prof.goalCheck = st.f.goalCheck ? checkinFor_(email) : null;
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
-  var out = { extraDone: extraDone_(email), skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
+  var out = { decoded: decoded_(email), extraDone: extraDone_(email), skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
     bench: st.f.benchStu ? [].concat.apply([], allGoals.map(function (g) { return g.bench.filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by, status: b.status, met: b.met, parts: b.parts.map(function (p) { var t = g.tools.filter(function (x) { return x.id === p.tool; })[0]; return { name: p.name, target: p.target, now: p.now, met: p.met, unit: t.unit, word: t.word, better: t.better }; }) }; }); })) : [],
     classes: classes, grades: grades, dates: dates, cplans: cplans, gradeBy: gradeBy, lows: lows, missing: missing, retakes: retakes_(email), analyses: analyses, plans: plans, tests: tests, reminders: reminders_(email) };
   return isTeacher_(myEmail_()) ? out : studentView_(out, st);
@@ -7216,32 +7299,39 @@ function ckSeconds() { var t0 = CK_T0; try { t0 = +localStorage.getItem(ckStartK
 /* ---------- 2.53: 🧰 My tools: where a student's Chromebook can sit after Today. Every use is logged (Tool use tab) for EF data. ---------- */
 var TOOL = '', TOOL_LOGGED = {};
 function toolLog(tool, detail, once) { if (MODE !== 'student' || (B && B.preview)) return; if (once) { if (TOOL_LOGGED[tool]) return; TOOL_LOGGED[tool] = 1; } call('api_logTool', tool, detail || '').catch(function () {}); }
-function toolList() {
-  var l = [['classlink', '🏫', 'ClassLink', 'All your school apps in one place'], ['tracker', '📝', 'My assignments', 'Keep track of homework in every class'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself'], ['project', '📋', 'Project helper', 'Directions, a rubric or a PDF → a step-by-step plan'],
-    ['date', '📅', 'Add a test or project', 'Starts the countdown and the reminders'], ['need', '🎯', 'What do I need on the test?', 'The score you need for the grade you want'],
-    ['email', '✉️', 'Email my teacher', 'Ready-made emails you fill in'], ['read', '🔊', 'Read it to me', 'Paste any text and listen'], ['links', '🔗', 'My links', 'IXL, SchooLinks, Drop-In Centers…']];
-  if (F('calc')) l.push(['calc', '🧮', 'Calculator', 'Opens over the page']);
-  if (F('focus')) l.push(['focus', '⏱️', 'Focus timer', 'Work in a timed block']);
-  if (!B.planner) l = l.filter(function (x) { return x[0] !== 'project'; });
-  if (!F('tests')) l = l.filter(function (x) { return x[0] !== 'date'; });
-  return l;
+function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' = My work and plans, 'quick' = Quick tools
+  var l = [['tracker', '📝', 'My assignments', 'Keep track of homework in every class', 'work'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do', 'work'],
+    ['project', '🔍', 'Assignment Decoder', 'What it needs, how it’s graded, and a plan', 'work'], ['date', '📅', 'Add a test or project', 'Countdown, reminders and a study plan', 'work'],
+    ['need', '🎯', 'What do I need on the test?', 'The score you need, or what a score would do', 'work'], ['ixl', '📈', 'My IXL', 'This week’s IXL goal', 'work'],
+    ['hallpass', '🚻', 'Hall pass', 'Take a pass, or get in line', 'quick'], ['classlink', '🏫', 'ClassLink', 'All your school apps in one place', 'quick'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself', 'quick'],
+    ['dictate', '🎤', 'Dictate', 'Talk, and it types. Then copy it.', 'quick'], ['write', '✍️', 'Writing toolkit', 'Paragraphs, CER, thesis, citations, proofreading', 'quick'], ['email', '✉️', 'Email my teacher', 'Ready-made emails you fill in', 'quick'],
+    ['read', '🔊', 'Read it to me', 'Paste text or a PDF and listen', 'quick'], ['links', '🔗', 'My links', 'IXL, SchooLinks, Drop-In Centers…', 'quick']];
+  if (F('calc')) l.push(['calc', '🧮', 'Calculator', 'Opens over the page', 'quick']);
+  if (F('focus')) l.push(['focus', '⏱️', 'Focus timer', 'Work in a timed block', 'quick']);
+  return l.filter(function (x) { return !(x[0] === 'project' && !B.planner) && !(x[0] === 'date' && !F('tests')) && !(x[0] === 'ixl' && !B.ixlOn) && !(x[0] === 'hallpass' && !B.hallPass); });
 }
 function drawTools() {
-  var t = toolList();
-  var h = '<h1>🧰 My tools</h1><p class="sub">Use these any time' + (stepDone('plan') ? '. You’re checked in for today ✓' : ' (after you finish <a href="#" onclick="go(\'checkin\');return false">Today</a>)') + '.</p>' +
-    '<div class="tools-grid">' + t.map(function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b><span class="small">' + x[3] + '</span></button>'; }).join('') + '</div>' +
+  if (AS === null && !AS_BUSY) { AS_BUSY = true; call('api_assignments').then(function (r) { AS = r; AS_BUSY = false; if (VIEW === 'tools') drawTools(); }).catch(function () { AS = { list: [], said: [] }; AS_BUSY = false; }); }
+  if (B.ixlOn && IXL === null) { IXL = false; ixlLoad(); }
+  var t = toolList(), tile = function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b><span class="small">' + x[3] + '</span></button>'; };
+  var hp = B.hallPass && typeof HP !== 'undefined' && HP && HP.mine ? '<div class="card" style="margin:0 0 12px;border-color:var(--warn);background:var(--warn-soft)"><div class="row"><b class="grow">🚻 You’re out on a pass (' + esc(HP.mine.place || '') + ')</b><button class="btn primary" onclick="hpOpen()">I’m back</button></div></div>' : '';
+  var h = '<h1>🧰 My tools</h1><p class="sub">' + (stepDone('plan') ? 'You’re checked in for today ✓ Let’s get something done.' : 'Finish <a href="#" onclick="go(\'checkin\');return false">Today</a> first, then come back here.') + '</p>' + hp + toolsTop() +
+    '<h3 class="tools-h">My work and plans</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'work'; }).map(tile).join('') + '</div>' +
+    '<h3 class="tools-h">Quick tools</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'quick'; }).map(tile).join('') + '</div>' +
     '<div id="toolBox"></div>';
   $('main').innerHTML = h; toolDraw();
 }
+var AS_BUSY = false;
 function toolOpen(k) {
   if (k === 'classlink') { toolLog('ClassLink', '', true); window.open('https:' + '/' + '/launchpad.classlink.com/lths', '_blank', 'noopener'); return; }          // 2.54: the district sign-in page (no login token in it)
   if (k === 'calc') { toolLog('Calculator', '', true); return calcOpen(); }
   if (k === 'focus') { toolLog('Focus timer', '', true); return go('focus'); }
+  if (k === 'hallpass') return hpOpen();
   TOOL = TOOL === k ? '' : k; drawTools(); if (TOOL && $('toolBox')) $('toolBox').scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 function toolDraw() {
   var el = $('toolBox'); if (!el) return;
-  var f = { tracker: trHtml, missing: msHtml, cards: fcHtml, project: pjtHtml, date: dtHtml, need: ndHtml, email: emHtml, read: rdHtml, links: lkHtml }[TOOL];
+  var f = { dictate: dcHtml, ixl: ixlHtml, write: wrHtml, tracker: trHtml, missing: msHtml, cards: fcHtml, project: pjtHtml, date: dtHtml, need: ndHtml, email: emHtml, read: rdHtml, links: lkHtml }[TOOL];
   el.innerHTML = f ? '<div class="card" style="border:2px solid var(--brand)">' + f() + '</div>' : '';
   if (TOOL === 'cards' && FC.sets === null) fcLoad();
   if ((TOOL === 'tracker' || TOOL === 'missing') && AS === null) asLoad();
@@ -7249,7 +7339,6 @@ function toolDraw() {
 }
 function langOf(cls) { cls = String(cls || ''); return /spanish|español/i.test(cls) ? 'es-ES' : /french/i.test(cls) ? 'fr-FR' : /german/i.test(cls) ? 'de-DE' : /chinese|mandarin/i.test(cls) ? 'zh-CN' : /italian/i.test(cls) ? 'it-IT' : /japanese/i.test(cls) ? 'ja-JP' : 'en-US'; }
 var ACCENTS = { es: 'á é í ó ú ñ ü ¿ ¡', fr: 'à â ç é è ê ë î ï ô ù û œ', de: 'ä ö ü ß', it: 'à è é ì ò ù' };
-function say(text, lang, rate) { try { var u = new SpeechSynthesisUtterance(String(text)); u.lang = lang || 'en-US'; u.rate = rate || 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {} }
 
 /* 🃏 Flashcards: paste a Quizlet export (term TAB definition), two columns from a sheet, or "word - answer" lines */
 var FC = { sets: null, view: 'list', set: null, edit: null, mode: '', dir: 't2d', deck: [], i: 0, flipped: false, right: 0, wrong: [], answered: null, picked: null, full: true };
@@ -7366,12 +7455,13 @@ function fcNext(noAns) {
 /* 📋 Project helper: directions + rubric (pasted, or read from a PDF on this Chromebook) → a dated plan, on the Tests list */
 var PJT = { cls: '', what: '', date: '', text: '', busy: false, spread: '' };
 function pjtHtml() {
-  return '<h2>📋 Project helper</h2><p class="hint" style="margin:4px 0 8px">Get a step-by-step plan with a date for each step, in a smart order, up to the due date. ' + (B.planner === 'ai' ? 'An AI helper reads only the directions and rubric to put the steps in order: it never does any of the project for you. Leave your name out of what you paste.' : 'The app makes the plan itself.') + '</p>' +
+  return '<h2>🔍 Assignment Decoder</h2><p class="hint" style="margin:4px 0 8px">Get a step-by-step plan with a date for each step, in a smart order, up to the due date. ' + (B.planner === 'ai' ? 'An AI helper reads only the directions and rubric to put the steps in order: it never does any of the project for you. Leave your name out of what you paste.' : 'The app makes the plan itself.') + '</p>' +
     '<div class="row" style="gap:8px"><select id="pjC" style="max-width:220px" onchange="PJT.cls=this.value">' + classOptions(PJT.cls) + '</select><input type="text" id="pjW" class="grow" maxlength="120" placeholder="Project name (Civil War research paper)" value="' + esc(PJT.what) + '" oninput="PJT.what=this.value">' +
     '<label class="small" style="display:flex;align-items:center;gap:6px">Due <input type="date" id="pjD" min="' + B.today + '" value="' + esc(PJT.date) + '" onchange="PJT.date=this.value"></label></div>' +
     '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><span class="small"><b>Spread the work over</b></span><select id="pjS" style="max-width:220px" onchange="PJT.spread=this.value">' + [['', 'every school day until it’s due'], ['2', 'the last 2 school days'], ['3', 'the last 3 school days'], ['5', 'the last 5 school days (a week)'], ['7', 'the last 7 school days'], ['10', 'the last 10 school days (two weeks)']].map(function (o) { return '<option value="' + o[0] + '"' + (PJT.spread === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
     '<textarea id="pjText" style="min-height:150px;margin-top:8px" placeholder="Paste the directions and the rubric here (Ctrl + V)" oninput="PJT.text=this.value">' + esc(PJT.text) + '</textarea>' +
     '<div class="row" style="margin-top:6px;gap:8px"><label class="btn small" style="cursor:pointer">📄 Use a PDF instead<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="pjtFile(this.files[0])"></label><span class="small" id="pjtSt"></span></div>' +
+    '<div class="row" style="margin-top:10px"><button class="btn" onclick="decGo()">🔍 Decode it</button><span class="small">See what it needs and how it’s graded before you plan.</span></div><div id="decBox">' + decHtml() + '</div>' +
     '<div class="row" style="margin-top:10px"><button class="btn primary" id="pjtGo" onclick="pjtGo()"' + (PJT.busy ? ' disabled' : '') + '>' + (PJT.busy ? (B.planner === 'ai' ? 'Thinking it through… (up to a minute)' : 'Making your plan…') : 'Make my plan') + '</button><span class="small">You can change every step and date before you save it. It shows on Today with a countdown, and you get a reminder before each step.</span></div>';
 }
 var PDFJS = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
@@ -7406,7 +7496,8 @@ function pjtGo() {
     return call('api_planProject', t.id, p.text, p.spread).then(function (r) {
       PJ = { id: t.id, steps: r.steps.map(function (s) { return { step: s.step, due: s.due, done: false }; }), made: r.how, note: r.note };
       toolLog('Project helper', p.what + ' (' + r.steps.length + ' steps, due ' + p.date + ')');
-      PJT = { cls: '', what: '', date: '', text: '', busy: false, spread: '' }; go('tests'); toast('Here’s your plan. Check each step and date, then click Save steps.');
+      var dec = p.dec || decodeText(p.text); call('api_saveDecoded', t.id, dec).then(function (m) { D.decoded = m; if (VIEW === 'tests') drawTests(); }).catch(function () {});
+      PJT = { cls: '', what: '', date: '', text: '', busy: false, spread: '', dec: null }; go('tests'); toast('Here’s your plan. Check each step and date, then click Save steps.');
     });
   }).catch(function (e) { PJT.busy = false; toolDraw(); oops(e); });
 }
@@ -7417,7 +7508,7 @@ function dtHtml() {
   return '<h2>📅 Add a test or project</h2><p class="hint" style="margin:4px 0 8px">As soon as you hear about one, add it here. It shows on Today with a countdown' + (B.remind ? ', and you’ll get email reminders' : '') + '.</p>' +
     '<div class="row" style="gap:8px"><select id="dtC" style="max-width:200px">' + classOptions('') + '</select><select id="dtT" style="max-width:130px"><option>Test</option><option>Quiz</option><option>Project</option><option>Essay</option><option>Presentation</option><option>Lab</option><option>Other</option></select>' +
     '<input type="text" id="dtW" class="grow" maxlength="120" placeholder="What is it? (Unit 4 test)"><input type="date" id="dtD" style="max-width:170px" min="' + B.today + '"><button class="btn primary" id="dtGo" onclick="dtGo()">Add</button></div>' +
-    (up.length ? '<p class="small" style="margin:12px 0 4px"><b>Coming up</b></p>' + up.map(function (t) { return '<div class="small" style="display:block;margin:3px 0">' + countdown(t.date) + ' <b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '</div>'; }).join('') : '');
+    (up.length ? '<p class="small" style="margin:12px 0 4px"><b>Coming up</b></p>' + up.map(function (t) { var st = ((D.steps || {})[t.id] || []).length; return '<div class="small" style="display:block;margin:3px 0">' + countdown(t.date) + ' <b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + (/^(Test|Quiz)$/.test(t.type) && !st && daysUntil(t.date) >= 1 ? ' <button class="btn small" onclick="stOpen(\'' + t.id + '\',3)">📚 Study plan</button>' : st ? ' · ' + st + ' steps' : '') + '</div>'; }).join('') : '');
 }
 function dtGo() {
   var t = { cls: $('dtC').value, type: $('dtT').value, what: $('dtW').value.trim(), date: $('dtD').value };
@@ -7491,19 +7582,35 @@ function emSent() { var k = EM_KINDS.filter(function (x) { return x[0] === EM.ki
 function emCopy() { var e = emBody(); try { navigator.clipboard.writeText('Subject: ' + e.subject + '\n\n' + e.body); toast('Copied'); emSent(); } catch (x) { alert('Select the email and press Ctrl + C.'); } }
 
 /* 🔊 Read it to me: the Chromebook's own voice (no AI) */
-var RD = { text: '', rate: 1, lang: 'en-US' };
+var RD = { text: '', rate: 1, lang: 'en-US', big: false, at: -1 };
+function rdLangs() { return [['en-US', 'English']].concat(['es-ES', 'fr-FR', 'de-DE', 'it-IT', 'zh-CN', 'ja-JP'].filter(function (l) { return voiceFor(l) && graded().some(function (c) { return langOf(c.name) === l; }); }).map(function (l) { return [l, LANG_NAMES[l]]; })); }
+function rdSents(t) { return (String(t).match(/[^.!?\n]+[.!?]*["”’)]*\s*|\n+/g) || [t]).filter(function (x) { return x.trim(); }); }
 function rdHtml() {
-  var langs = [['en-US', 'English']].concat(graded().map(function (c) { return langOf(c.name); }).filter(function (l, i, a) { return l !== 'en-US' && a.indexOf(l) === i; }).map(function (l) { return [l, { 'es-ES': 'Spanish', 'fr-FR': 'French', 'de-DE': 'German', 'zh-CN': 'Chinese', 'it-IT': 'Italian', 'ja-JP': 'Japanese' }[l]]; }));
-  return '<h2>🔊 Read it to me</h2><p class="hint" style="margin:4px 0 8px">Paste directions, a reading or your own writing (to hear mistakes). Your Chromebook reads it out loud. Use headphones.</p>' +
-    '<textarea id="rdT" style="min-height:140px" placeholder="Paste the text here" oninput="RD.text=this.value">' + esc(RD.text) + '</textarea>' +
-    '<div class="row" style="gap:10px;margin-top:8px;align-items:center"><button class="btn primary" onclick="rdGo()">▶ Read</button><button class="btn" onclick="try{speechSynthesis.paused?speechSynthesis.resume():speechSynthesis.pause()}catch(e){}">⏸ Pause</button><button class="btn" onclick="try{speechSynthesis.cancel()}catch(e){}">⏹ Stop</button>' +
-    '<label class="small" style="display:flex;gap:6px;align-items:center">Speed <input type="range" min="0.6" max="1.5" step="0.1" value="' + RD.rate + '" oninput="RD.rate=+this.value"></label>' +
-    (langs.length > 1 ? '<select style="max-width:150px" onchange="RD.lang=this.value">' + langs.map(function (l) { return '<option value="' + l[0] + '"' + (RD.lang === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select>' : '') + '</div>';
+  var langs = rdLangs(), ss = rdSents(RD.text);
+  return '<h2>🔊 Read it to me</h2><p class="hint" style="margin:4px 0 8px">Paste directions, a reading or your own writing (to hear mistakes), or use a PDF. Your Chromebook reads it out loud. Use headphones.</p>' +
+    '<textarea id="rdT" style="min-height:110px" placeholder="Paste the text here" oninput="RD.text=this.value;RD.at=-1;rdShow()">' + esc(RD.text) + '</textarea>' +
+    '<div class="row" style="gap:8px;margin-top:6px"><label class="btn small" style="cursor:pointer">📄 Use a PDF<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="rdFile(this.files[0])"></label><span class="small" id="rdSt"></span></div>' +
+    '<div class="row" style="gap:10px;margin-top:8px;align-items:center"><button class="btn primary" onclick="rdGo()">▶ Read</button><button class="btn" onclick="try{speechSynthesis.paused?speechSynthesis.resume():speechSynthesis.pause()}catch(e){}">⏯ Pause / resume</button><button class="btn" onclick="try{speechSynthesis.cancel()}catch(e){};RD.at=-1;rdShow()">⏹ Stop</button>' +
+    '<label class="small" style="display:flex;gap:6px;align-items:center">Speed <input type="range" min="0.6" max="1.5" step="0.1" value="' + RD.rate + '" onchange="RD.rate=+this.value"></label>' +
+    (langs.length > 1 ? '<select style="max-width:150px" onchange="RD.lang=this.value">' + langs.map(function (l) { return '<option value="' + l[0] + '"' + (RD.lang === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select>' : '') +
+    '<button class="btn small" onclick="RD.big=!RD.big;rdShow()">A+ Bigger text</button></div>' +
+    '<div id="rdShow" class="rd-show' + (RD.big ? ' big' : '') + '">' + rdShowHtml() + '</div>';
 }
-function rdGo() {
-  var t = ($('rdT') ? $('rdT').value : RD.text).trim(); if (!t) return alert('Paste some text first.'); RD.text = t;
-  try { speechSynthesis.cancel(); (t.match(/[^.!?\n]+[.!?]*/g) || [t]).forEach(function (s) { if (!s.trim()) return; var u = new SpeechSynthesisUtterance(s.trim()); u.lang = RD.lang; u.rate = RD.rate; speechSynthesis.speak(u); }); } catch (e) { alert('This browser can’t read out loud.'); }
+function rdShowHtml() { var ss = rdSents(RD.text); return ss.length && RD.text.trim() ? ss.map(function (x, i) { return /^\n+$/.test(x) ? '<br><br>' : '<span class="' + (i === RD.at ? 'rd-now' : '') + '" onclick="rdGo(' + i + ')">' + esc(x) + '</span>'; }).join('') : ''; }
+function rdShow() { var el = $('rdShow'); if (el) { el.className = 'rd-show' + (RD.big ? ' big' : ''); el.innerHTML = rdShowHtml(); var n = el.querySelector('.rd-now'); if (n) n.scrollIntoView({ block: 'nearest' }); } }
+function rdSpeak(t) { if (!String(t || '').trim()) return alert('There’s nothing to read yet.'); RD.text = String(t); TOOL = 'read'; drawTools(); rdGo(0); }
+function rdGo(from) {
+  var t = ($('rdT') ? $('rdT').value : RD.text); if (!t.trim()) return alert('Paste some text first.'); RD.text = t;
+  var v = voiceFor(RD.lang); if (!v && VOICES.length) return alert('There is no ' + (LANG_NAMES[RD.lang] || RD.lang) + ' voice on this Chromebook.');
+  var ss = rdSents(t), start = typeof from === 'number' ? from : 0;
+  try { speechSynthesis.cancel(); ss.forEach(function (x, i) { if (i < start || !x.trim()) return; var u = new SpeechSynthesisUtterance(x.trim()); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = RD.lang; u.rate = RD.rate; u.onstart = function () { RD.at = i; rdShow(); }; u.onend = function () { if (i === ss.length - 1) { RD.at = -1; rdShow(); } }; speechSynthesis.speak(u); }); } catch (e) { alert('This browser can’t read out loud.'); }
   toolLog('Read it to me', t.split(/\s+/).length + ' words', true);
+}
+function rdFile(file) {
+  if (!file) return; var st = $('rdSt'), done = function (t) { RD.text = String(t || '').replace(/[ \t]+\n/g, '\n').trim(); RD.at = -1; if ($('rdT')) $('rdT').value = RD.text; rdShow(); if (st) st.textContent = RD.text ? '✓ Read ' + file.name + '. Press ▶ Read.' : 'No text found (it may be a scanned picture).'; };
+  if (/\.txt$/i.test(file.name)) { var r = new FileReader(); r.onload = function () { done(r.result); }; r.readAsText(file); return; }
+  if (st) st.textContent = 'Reading ' + file.name + '…';
+  pdfLib(function () { file.arrayBuffer().then(function (buf) { return window.pdfjsLib.getDocument({ data: buf }).promise; }).then(function (pdf) { var pages = [], n = Math.min(pdf.numPages, 30), go1 = function (i) { if (i > n) return done(pages.join('\n\n')); pdf.getPage(i).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push(tc.items.map(function (it) { return it.str + (it.hasEOL ? '\n' : ' '); }).join('')); go1(i + 1); }).catch(function () { go1(i + 1); }); }; go1(1); }).catch(function () { if (st) st.textContent = 'That PDF couldn’t be read. Copy the text and paste it instead.'; }); }, function (m) { if (st) st.textContent = m; });
 }
 
 /* 🔗 My links: the teacher's list (Settings: Student tool links), the testing center, and the Drop-In Centers for their campus */
@@ -7541,12 +7648,16 @@ function trDel(id) { if (!confirm('Delete this assignment?')) return; call('api_
 function msHtml() {
   var m = (D.ef && D.ef.missingNow) || {}, said = (AS && AS.said) || [], cls = Object.keys(m).filter(function (c) { return m[c].length; });
   var isSaid = function (c, n) { return said.filter(function (x) { return x.cls === c && x.name === n; })[0]; };
-  return '<h2>📌 Missing work</h2><p class="hint" style="margin:4px 0 8px">From the grades pages you pasted. Turned one in? Tap the button: it clears when Infinite Campus shows it.</p>' +
+  var lp = AS && AS.lastPaste, old = lp && daysUntil(lp) < -7, first = missOrder(missLeft())[0];
+  return '<h2>📌 Missing work</h2><p class="hint" style="margin:4px 0 8px">' + (lp ? 'From the grades pages you pasted on <b>' + esc(fmtDay(lp)) + '</b>. ' : 'From the grades pages you pasted. ') + 'Turned one in? Tap the button: it clears when Infinite Campus shows it.</p>' +
+    (old ? '<div class="fc-fb wrong" style="margin-bottom:8px">That’s over a week old. Paste your grades page again for an up-to-date list.</div>' : '') +
+    (first ? '<div class="em-prev" style="margin-bottom:8px"><b class="small" style="display:block">SUGGESTED STARTING POINT</b><b>' + esc(first.cls) + ': ' + esc(first.name) + '</b><div class="row" style="gap:8px;margin-top:6px"><button class="btn small" onclick="emAsk(' + JSON.stringify(first.cls).replace(/"/g, '&quot;') + ',' + JSON.stringify(first.name).replace(/"/g, '&quot;') + ')">✉️ Ask my teacher what to do</button></div></div>' : '') +
     (cls.length ? cls.map(function (c) { return '<p class="small" style="margin:10px 0 2px"><b>' + esc(c) + '</b></p>' + m[c].map(function (n) { var sd = isSaid(c, n);
       return '<div class="row tr-row" style="gap:8px"><span class="grow">' + (sd ? '✓ ' : '') + esc(n) + (sd ? ' <span class="small" style="display:inline">· you said you turned it in ' + esc(shortDay(sd.date)) + '</span>' : '') + '</span>' +
-        (sd ? '' : '<button class="btn small primary" onclick="msSaid(this,\'' + esc(c).replace(/'/g, '’') + '\',' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">I turned it in</button>') + '</div>'; }).join(''); }).join('')
+        (sd ? '' : '<button class="btn small" onclick="emAsk(' + JSON.stringify(c).replace(/"/g, '&quot;') + ',' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">✉️ Ask</button><button class="btn small primary" onclick="msSaid(this,\'' + esc(c).replace(/'/g, '’') + '\',' + JSON.stringify(n).replace(/"/g, '&quot;') + ')">I turned it in</button>') + '</div>'; }).join(''); }).join('')
       : '<p class="small">No missing work on the last pages you pasted. 🎉</p>');
 }
+function emAsk(cls, name) { EM = { cls: cls, kind: 'missing', a: name, d: '', why: '', acc: '' }; toolGo('email'); }
 function msSaid(btn, cls, name) { btn.disabled = true; cls = (graded().filter(function (c) { return esc(c.name).replace(/'/g, '’') === cls; })[0] || { name: cls }).name; call('api_saidTurnedIn', cls, name).then(function (r) { AS = r; toast('Great job turning it in! 🎉'); toolDraw(); }).catch(function (e) { btn.disabled = false; oops(e); }); }
 
 /* 🔔 When the bell ends the period before resource (Settings: Bell times), an open app jumps to Today, once a day */
@@ -7562,7 +7673,200 @@ function bellCheck() {
     go('checkin'); toast('🔔 ' + (B.dayClass || 'Resource') + ' is starting: time for Today'); window.scrollTo(0, 0);
   });
 }
+function bellChecklist() {          // 2.56: an assigned checklist that isn't done: a reminder 10 minutes before the resource period ends (once a day)
+  if (MODE !== 'student' || !B || B.preview || !B.checkOwn || !F('checklist') || !(B.bellTimes || []).length || !isSchoolDay() || gate() || !stepDone('plan') || clDone() || DIRTY) return;
+  var d = new Date(), now = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), bt = B.bellTimes;
+  resPeriods().forEach(function (rp) {
+    var x = bt.filter(function (b) { return b.p === String(rp).toUpperCase(); })[0]; if (!x) return;
+    var m = +x.end.slice(0, 2) * 60 + +x.end.slice(3) - 10, from = ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2), key = 'rci-cl-' + (B.email || '') + '-' + B.today + '-' + rp;
+    if (now < from || now >= x.end) return;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) {}
+    go('checkin'); stepGo('check'); toast('✅ 10 minutes left: time for your checklist');
+  });
+}
+setInterval(function () { try { bellChecklist(); } catch (e) {} }, 30000);
 setInterval(function () { try { bellCheck(); } catch (e) {} }, 20000);
+
+/* ---------- 2.56: My tools, round 2 ---------- */
+// ⭐ Coming up (what needs attention) and ▶ Start here (one suggestion; "Pick something else" moves to the next)
+var SH_I = 0, IXL = null;
+function clDone() { var c = D.checklist || {}, dn = c.done || [], nt = c.noTime || []; return (B.checkItems || []).every(function (t) { return dn.indexOf(t) >= 0 || nt.indexOf(t) >= 0; }) && dn.length > 0; }
+function clCount() { var c = D.checklist || {}; return ((c.done || []).length) + ' of ' + (B.checkItems || []).length; }
+function missLeft() { var m = (D.ef && D.ef.missingNow) || {}, said = (AS && AS.said) || [], out = []; Object.keys(m).forEach(function (c) { m[c].forEach(function (n) { if (!said.some(function (x) { return x.cls === c && x.name === n; })) out.push({ cls: c, name: n }); }); }); return out; }
+function missOrder(l) { return l.slice().sort(function (a, b) { var ga = nowGrade(D, a.cls), gb = nowGrade(D, b.cls); return (ga === null ? 999 : ga) - (gb === null ? 999 : gb); }); }
+function stepsDue(when) { var out = []; (D.tests || []).forEach(function (t) { ((D.steps || {})[t.id] || []).forEach(function (s) { if (!s.done && s.due && s.due <= when) out.push({ t: t, s: s }); }); }); return out.sort(function (a, b) { return a.s.due < b.s.due ? -1 : 1; }); }
+function comingItems() {
+  var out = [], tm = addDays(B.today, 1), up = (D.tests || []).filter(function (t) { return !t.done && t.date >= B.today && daysUntil(t.date) <= 7; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  up.slice(0, 3).forEach(function (t) { var st = ((D.steps || {})[t.id] || []).length, isT = /^(Test|Quiz)$/.test(t.type); out.push({ ic: isT ? '📝' : '📋', h: esc(t.cls || 'Any class') + ' ' + esc(t.what), sub: countdownText(t.date) + (isT && !st && daysUntil(t.date) >= 1 ? ' · <a href="#" onclick="stOpen(\'' + t.id + '\',3);return false">📚 Make a study plan</a>' : ''), warn: daysUntil(t.date) <= 1 }); });
+  var sd = stepsDue(B.today); if (sd.length) out.push({ ic: '🧩', h: sd.length + ' step' + (sd.length === 1 ? '' : 's') + ' due', sub: esc(sd[0].s.step) + ' <a href="#" onclick="go(\'tests\');return false">Open</a>', warn: true });
+  if (AS) { var due = AS.list.filter(function (a) { return !a.done && a.due && a.due <= tm; }); if (due.length) out.push({ ic: '📝', h: due.length + ' assignment' + (due.length === 1 ? '' : 's') + ' due by tomorrow', sub: esc(due[0].what) + ' <a href="#" onclick="toolGo(\'tracker\');return false">Open</a>', warn: due.some(function (a) { return a.due < B.today; }) }); }
+  var ml = missLeft(); if (ml.length) out.push({ ic: '📌', h: ml.length + ' missing', sub: '<a href="#" onclick="toolGo(\'missing\');return false">See them</a>', warn: ml.length > 3 });
+  if (IXL && !IXL.met) out.push({ ic: '📈', h: 'IXL: ' + IXL.total + ' of ' + IXL.target + ' ' + IXL.unit, sub: (IXL.target - IXL.total) + ' left this week' + (IXL.lastDay ? ' · <b>last day!</b>' : '') + ' <a href="#" onclick="toolGo(\'ixl\');return false">Open</a>', warn: IXL.lastDay });
+  if (B.checkOwn && F('checklist') && isSchoolDay() && !clDone()) out.push({ ic: '✅', h: 'My checklist', sub: clCount() + ' done · <a href="#" onclick="go(\'checkin\');stepGo(\'check\');return false">Do it</a>', warn: false });
+  return out;
+}
+function startList() {
+  var out = [], tm = addDays(B.today, 1);
+  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: 'Your ' + esc(x.cls) + ' test is here. Ask your teacher for it and take it today.', go: '' }); });
+  if (AS) AS.list.filter(function (a) { return !a.done && a.due && a.due < B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || 'past due') + '). It was due ' + esc(fmtDay(a.due)) + '.', go: 'tracker' }); });
+  stepsDue(B.today).slice(0, 1).forEach(function (x) { out.push({ t: 'Do today’s step for <b>' + esc(x.t.what) + '</b>: ' + esc(x.s.step), go: 'tests' }); });
+  if (AS) AS.list.filter(function (a) { return !a.done && a.due === B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || '') + '). It’s due today.', go: 'tracker' }); });
+  if (IXL && !IXL.met && (IXL.lastDay || IXL.planned === B.today)) out.push({ t: 'Do your IXL: ' + (IXL.target - IXL.total) + ' ' + IXL.unit + ' left this week.', go: 'ixl' });
+  (D.tests || []).filter(function (t) { return !t.done && /^(Test|Quiz)$/.test(t.type) && daysUntil(t.date) >= 1 && daysUntil(t.date) <= 3; }).slice(0, 1).forEach(function (t) { out.push({ t: 'Study for <b>' + esc(t.cls + ' ' + t.what) + '</b>, ' + countdownText(t.date) + '.', go: 'cards' }); });
+  if (AS) AS.list.filter(function (a) { return !a.done && a.due === tm; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Get ahead: <b>' + esc(a.what) + '</b> (' + esc(a.cls || '') + ') is due tomorrow.', go: 'tracker' }); });
+  missOrder(missLeft()).slice(0, 1).forEach(function (m) { out.push({ t: 'Make up <b>' + esc(m.name) + '</b> in ' + esc(m.cls) + '.', go: 'missing' }); });
+  if (B.checkOwn && F('checklist') && isSchoolDay() && !clDone()) out.push({ t: 'Do your checklist (' + clCount() + ' done).', go: 'check' });
+  out.push({ t: 'Nothing urgent. Get ahead: make flashcards for your next test, or add a test date you heard about.', go: 'cards' });
+  return out;
+}
+function toolGo(k) { TOOL = ''; toolOpen(k); }
+function shGo(k) {
+  toolLog('Start here', k);
+  if (k === 'tests') return go('tests'); if (k === 'check') { go('checkin'); return stepGo('check'); } if (k) toolGo(k);
+}
+function toolsTop() {
+  var c = comingItems(), s = startList(), i = SH_I % s.length, x = s[i];
+  return '<div class="tools-top">' + (c.length ? '<div class="card" style="margin:0"><b class="small" style="display:block;margin-bottom:6px">⭐ COMING UP</b><div class="cu-grid">' + c.map(function (it) { return '<div class="cu' + (it.warn ? ' warn' : '') + '"><span class="cu-ic">' + it.ic + '</span><div><b>' + it.h + '</b><div class="small">' + it.sub + '</div></div></div>'; }).join('') + '</div></div>' : '') +
+    '<div class="card sh" style="margin:0"><b class="small" style="display:block">▶ START HERE</b><p style="margin:6px 0 10px;font-size:17px">' + x.t + '</p><div class="row" style="gap:8px">' + (x.go ? '<button class="btn primary" onclick="shGo(\'' + x.go + '\')">Let’s go</button>' : '') + (s.length > 1 ? '<button class="btn" onclick="SH_I++;drawTools()">Pick something else</button>' : '') + '</div></div></div>';
+}
+
+// 🔍 Assignment Decoder: reads the directions and rubric (no AI): what to make, what to include, how it's graded, what to ask
+var DEC_PRODUCTS = ['research paper', 'lab report', 'essay', 'presentation', 'slideshow', 'slide show', 'poster', 'infographic', 'brochure', 'video', 'podcast', 'speech', 'diorama', 'model', 'timeline', 'letter', 'poem', 'short story', 'website', 'comic', 'journal', 'portfolio', 'report', 'paragraph', 'worksheet', 'project'];
+function decodeText(t) {
+  t = String(t || '').replace(/\r/g, ''); var low = t.toLowerCase(), lines = t.split('\n').map(function (l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function (l) { return l.length > 2; });
+  var prod = ''; DEC_PRODUCTS.forEach(function (p) { if (!prod && low.indexOf(p) >= 0) prod = p; });
+  var size = [], re = /(\d+)\s*(?:-|–|to)?\s*(\d+)?\s*(pages?|words?|slides?|paragraphs?|sources?|citations?|minutes?|sentences?|images?|pictures?|examples?)\b/gi, m;
+  while ((m = re.exec(t)) && size.length < 6) { var sz = m[1] + (m[2] ? '–' + m[2] : '') + ' ' + m[3].toLowerCase(); if (size.indexOf(sz) < 0) size.push(sz); }
+  var PTS = /^(.*?)[\s:–—-]*\(?(\d{1,3})\s*(?:points?|pts?)\)?\s*$|^(.*?)\s*\/\s*(\d{1,3})\s*$|^(.*?)\s*\((\d{1,3})\)\s*$/i, LEVEL = /^(exceeds|meets|approaching|beginning|exemplary|proficient|developing|emerging|excellent|good|fair|poor|advanced|basic|below|total)\b/i;
+  var rubric = [], include = [], seen = {};
+  lines.forEach(function (l) {
+    var pm = PTS.exec(l);
+    if (pm && !LEVEL.test(l)) { var name = (pm[1] || pm[3] || pm[5] || '').replace(/^[\-\*•·▪◦●■➢→\d.)\s]+/, '').replace(/[:–—-]+$/, '').trim(), pts = pm[2] || pm[4] || pm[6]; if (name && name.length < 80 && rubric.length < 15) rubric.push({ name: name, pts: pts }); return; }
+    var bullet = /^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/.test(l), must = /\b(must|should|include|needs? to|required|be sure|at least|make sure|you will|remember to)\b/i.test(l);
+    if ((bullet || must) && l.length < 220) { var s = l.replace(/^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/, '').trim(), k = s.toLowerCase().slice(0, 50); if (s.length > 3 && !seen[k] && include.length < 20) { seen[k] = 1; include.push(s); } }
+  });
+  var ask = [], VAGUE = /\b(appropriate|creative|creatively|neat|neatly|etc\.?|as needed|several|a few|TBD|to be determined|discussed in class|see me|your choice|optional|approximately)\b/i;
+  lines.forEach(function (l) { var v = VAGUE.exec(l); if (v && ask.length < 5) { var q = 'What does “' + v[1] + '” mean here? (“' + (l.length > 70 ? l.slice(0, 67) + '…' : l) + '”)'; if (ask.indexOf(q) < 0) ask.push(q); } });
+  var due = '', dm = /\bdue\b[^\n.]{0,30}?\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i.exec(t) || null, mn = /\bdue\b[^\n.]{0,30}?\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})/i.exec(t);
+  var yr = +B.today.slice(0, 4), iso = function (mo, d) { var s = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2); return s < B.today ? (yr + 1) + s.slice(4) : s; };
+  if (dm) due = iso(+dm[1], +dm[2]); else if (mn) due = iso(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(mn[1].toLowerCase()) + 1, +mn[2]);
+  if (!due && !PJT.date) ask.push('When is it due?'); if (!size.length) ask.push('How long or how big should it be?'); if (!rubric.length) ask.push('Is there a rubric? How will it be graded?');
+  return { product: prod ? (/^[aeiou]/.test(prod) ? 'an ' : 'a ') + prod : '', size: size, include: include, rubric: rubric, ask: ask.slice(0, 8), due: due };
+}
+function decHtml() {
+  var d = PJT.dec; if (!d) return '';
+  var list = function (k, items, fmt, ph) { return items.map(function (x, i) { return '<div class="row dec-li"><span class="grow">' + fmt(x) + '</span><button class="btn link danger small" title="Not right? Take it out" onclick="PJT.dec.' + k + '.splice(' + i + ',1);toolDraw()">✕</button></div>'; }).join('') + (ph ? '<div class="row" style="gap:6px;margin-top:4px"><input type="text" class="grow" id="decAdd_' + k + '" placeholder="' + ph + '" onkeydown="if(event.key===\'Enter\')decAdd(\'' + k + '\')"><button class="btn small" onclick="decAdd(\'' + k + '\')">+ Add</button></div>' : ''); };
+  var pts = d.rubric.reduce(function (a, r) { return a + (+r.pts || 0); }, 0);
+  return '<div class="dec"><h3 style="margin:0 0 8px">🔍 What this assignment needs</h3><p class="small" style="margin:0 0 8px">From your directions only. Fix anything that’s wrong (✕ takes it out).</p>' +
+    '<div class="dec-q"><b>What am I making?</b><input type="text" value="' + esc(d.product) + '" placeholder="a poster, an essay, a slideshow…" oninput="PJT.dec.product=this.value">' + (d.size.length ? '<div class="small" style="display:block;margin-top:4px">Size: ' + d.size.map(esc).join(' · ') + '</div>' : '') + '</div>' +
+    '<div class="dec-q"><b>What do I need to include?</b> <span class="small" style="display:inline">(' + d.include.length + ')</span>' + list('include', d.include, esc, 'Something else it needs') + '</div>' +
+    '<div class="dec-q"><b>How will I be graded?</b>' + (d.rubric.length ? list('rubric', d.rubric, function (r) { return esc(r.name) + ' <b>' + esc(r.pts) + ' pts</b>' + (pts ? ' <span class="small" style="display:inline">(' + Math.round(r.pts / pts * 100) + '%)</span>' : ''); }) + (pts ? '<div class="small" style="display:block">Biggest part: <b>' + esc(d.rubric.slice().sort(function (a, b) { return b.pts - a.pts; })[0].name) + '</b>. Spend the most time there.</div>' : '') : '<p class="small" style="margin:4px 0 0">No rubric found in what you pasted.</p>') + '</div>' +
+    '<div class="dec-q"><b>What should I ask my teacher?</b>' + list('ask', d.ask, esc, 'Another question') + (d.ask.length ? '<button class="btn small" style="margin-top:6px" onclick="decAsk()">✉️ Ask my teacher these</button>' : '') + '</div></div>';
+}
+function decAdd(k) { var el = $('decAdd_' + k), v = el && el.value.trim(); if (!v) return; PJT.dec[k].push(v); toolDraw(); }
+function decGo() { PJT.cls = $('pjC').value; PJT.what = $('pjW').value.trim(); PJT.date = $('pjD').value; PJT.text = $('pjText').value; if (PJT.text.trim().length < 20) return alert('Paste the directions (and the rubric), or use a PDF.'); PJT.dec = decodeText(PJT.text); if (PJT.dec.due && !PJT.date) { PJT.date = PJT.dec.due; toast('Found the due date: ' + fmtDay(PJT.dec.due) + '. Check it.'); } toolDraw(); if ($('decBox')) $('decBox').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+function decAsk() { var c = PJT.cls || ($('pjC') && $('pjC').value) || ''; EM = { cls: c, kind: 'help', a: (PJT.what || 'the project') + ' directions', d: '', why: 'My questions:\n' + PJT.dec.ask.map(function (q) { return '- ' + q; }).join('\n'), acc: '' }; toolGo('email'); }
+function decView(id) {
+  var d = (D.decoded || {})[id]; if (!d) return '';
+  return '<details style="margin-top:6px"><summary class="small" style="display:list-item"><b>🔍 What this project needs</b></summary><div class="small" style="display:block;margin:4px 0 0 4px">' + (d.product ? '<b>Making:</b> ' + esc(d.product) + (d.size && d.size.length ? ' (' + d.size.map(esc).join(', ') + ')' : '') + '<br>' : '') +
+    (d.include && d.include.length ? '<b>Include:</b><ul style="margin:2px 0 4px;padding-left:18px">' + d.include.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+    (d.rubric && d.rubric.length ? '<b>Graded on:</b> ' + d.rubric.map(function (r) { return esc(r.name) + ' (' + esc(r.pts) + ')'; }).join(' · ') + '<br>' : '') + (d.ask && d.ask.length ? '<b>To ask:</b> ' + d.ask.map(esc).join(' · ') : '') + '</div></details>';
+}
+
+// 📚 Study plan for a test: short sessions on the last N school days, saved like project steps (with reminders)
+function stOpen(id, n) { call('api_studyPlan', id, n).then(function (r) { PJ = { id: id, steps: r.steps.map(function (s) { return { step: s.step, due: s.due, done: false }; }), made: 'study' }; go('tests'); toast('Here’s your study plan. Change anything, then click Save steps.'); }).catch(oops); }
+
+// ✍️ Writing toolkit: organizers that never write anything for the student
+var WR = { tab: 'para', f: {}, cite: 'web' };
+function wrIn(k, ph, tall) { return (tall ? '<textarea' : '<input type="text"') + ' class="wr-in" placeholder="' + esc(ph) + '" oninput="WR.f[\'' + k + '\']=this.value;wrPrev()"' + (tall ? ' style="min-height:54px">' + esc(WR.f[k] || '') + '</textarea>' : ' value="' + esc(WR.f[k] || '') + '">'); }
+function wrOut() {
+  var f = WR.f, j = function (l) { return l.map(function (x) { return String(f[x] || '').trim(); }).filter(String).join(' '); };
+  if (WR.tab === 'para') return j(['topic', 'ev1', 'ex1', 'ev2', 'ex2', 'end']);
+  if (WR.tab === 'cer') return j(['claim', 'evid', 'reason']);
+  if (WR.tab === 'thesis') return f.t1 || f.t2 ? 'Although ' + (f.t1 || '___') + ', ' + (f.t2 || '___') + ' because ' + (f.t3 || '___') + ', ' + (f.t4 || '___') + ', and ' + (f.t5 || '___') + '.' : '';
+  if (WR.tab === 'cite') { var a = (f.last ? f.last + (f.first ? ', ' + f.first : '') + '. ' : ''); if (WR.cite === 'web') return a + (f.title ? '“' + f.title + '.” ' : '') + (f.site ? f.site + ', ' : '') + (f.date ? f.date + ', ' : '') + (f.url || '') + (f.url ? '.' : ''); if (WR.cite === 'book') return a + (f.title ? f.title + '. ' : '') + (f.pub ? f.pub + ', ' : '') + (f.year || '') + (f.year ? '.' : ''); return a + (f.title ? '“' + f.title + '.” ' : '') + (f.site ? f.site + ', ' : '') + (f.date ? f.date + ', ' : '') + (f.pages ? 'pp. ' + f.pages : '') + '.'; }
+  return '';
+}
+function wrPrev() { var el = $('wrPrev'); if (el) el.innerHTML = wrPrevHtml(); }
+function wrPrevHtml() { var o = wrOut(); return o ? '<div class="em-prev" style="white-space:pre-wrap">' + esc(o) + '</div><div class="row" style="margin-top:6px;gap:8px"><button class="btn small" onclick="wrCopy()">Copy</button><button class="btn small" onclick="rdSpeak(wrOut())">🔊 Read it to me</button></div>' : ''; }
+function wrCopy() { try { navigator.clipboard.writeText(wrOut()); toast('Copied. Paste it into your document.'); } catch (e) { alert('Select the text and press Ctrl + C.'); } }
+function wrHtml() {
+  toolLog('Writing toolkit', '', true);
+  var tabs = [['para', 'Paragraph'], ['cer', 'Claim, evidence, reasoning'], ['thesis', 'Thesis'], ['cite', 'Citation (MLA)'], ['proof', 'Proofread']], h = '';
+  if (WR.tab === 'para') h = '<p class="hint">Write each part in your own words. The parts join into a paragraph below.</p>' + wrIn('topic', 'Topic sentence: what this paragraph is about') + wrIn('ev1', 'Detail or evidence 1 (For example, …)') + wrIn('ex1', 'Explain it (This shows that …)') + wrIn('ev2', 'Detail or evidence 2 (Also, …)') + wrIn('ex2', 'Explain it (This matters because …)') + wrIn('end', 'Concluding sentence (In the end, …)');
+  else if (WR.tab === 'cer') h = '<p class="hint">For science, social studies and any “prove it” question.</p>' + wrIn('claim', 'Claim: your answer (I think …)') + wrIn('evid', 'Evidence: the facts or quotes (The data shows … / In the text, …)', true) + wrIn('reason', 'Reasoning: why the evidence proves the claim (This proves … because …)', true);
+  else if (WR.tab === 'thesis') h = '<p class="hint">Although ___, ___ because ___, ___, and ___.</p>' + wrIn('t1', 'What someone might argue against you') + wrIn('t2', 'Your main point') + wrIn('t3', 'Reason 1') + wrIn('t4', 'Reason 2') + wrIn('t5', 'Reason 3');
+  else if (WR.tab === 'cite') h = '<div class="seg" style="margin-bottom:8px">' + [['web', 'Website'], ['book', 'Book'], ['art', 'Article']].map(function (o) { return '<button class="' + (WR.cite === o[0] ? 'on' : '') + '" onclick="WR.cite=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div><div class="row" style="gap:6px">' + wrIn('last', 'Author last name') + wrIn('first', 'Author first name') + '</div>' + wrIn('title', WR.cite === 'book' ? 'Book title' : 'Title of the page or article') +
+    (WR.cite === 'book' ? '<div class="row" style="gap:6px">' + wrIn('pub', 'Publisher') + wrIn('year', 'Year') + '</div>' : '<div class="row" style="gap:6px">' + wrIn('site', WR.cite === 'web' ? 'Website name' : 'Magazine, newspaper or journal') + wrIn('date', 'Date (12 Oct. 2026)') + '</div>' + (WR.cite === 'web' ? wrIn('url', 'Web address (without https://)') : wrIn('pages', 'Pages (12-15)'))) + '<p class="small" style="margin:4px 0 0">No author? Leave it blank. In your works cited list, put the title of the website or book in <i>italics</i>.</p>';
+  else h = '<p class="hint">Check each one before you turn it in.</p>' + ['I answered every part of the question or prompt', 'Every sentence starts with a capital letter and ends with . ? or !', 'Every sentence is a full sentence (not a fragment)', 'I fixed the words with red underlines (spell check)', 'Names and the word “I” are capitalized', 'Each paragraph has one main idea', 'I used my evidence and explained it', 'I read it out loud (or had it read to me) and fixed what sounded wrong'].map(function (x, i) { return '<label class="check"><input type="checkbox"' + (WR.f['pc' + i] ? ' checked' : '') + ' onchange="WR.f[\'pc' + i + '\']=this.checked"><span>' + x + '</span></label>'; }).join('') + '<textarea id="wrPaste" style="min-height:90px;margin-top:8px" placeholder="Paste your writing here to hear it read out loud">' + esc(WR.f.paste || '') + '</textarea><button class="btn small" style="margin-top:6px" onclick="WR.f.paste=$(\'wrPaste\').value;rdSpeak(WR.f.paste)">🔊 Read my writing to me</button>';
+  return '<h2>✍️ Writing toolkit</h2><div class="seg" style="flex-wrap:wrap;margin:6px 0 10px">' + tabs.map(function (o) { return '<button class="' + (WR.tab === o[0] ? 'on' : '') + '" onclick="WR.tab=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' + h + '<div id="wrPrev">' + (WR.tab === 'proof' ? '' : wrPrevHtml()) + '</div>';
+}
+
+// 📈 My IXL: the weekly goal the teacher set; the student plans a session and logs what they did (their own report)
+function ixlLoad() { call('api_ixl').then(function (r) { IXL = r; if (VIEW === 'tools') drawTools(); }).catch(function () {}); }
+function ixlHtml() {
+  var x = IXL; if (!x) return '<h2>📈 My IXL</h2><p class="small">Loading…</p>';
+  var pct = Math.min(100, Math.round(x.total / x.target * 100)), left = Math.max(0, x.target - x.total), wd = function (d) { return d === B.today ? 'Right now (today)' : fmtDay(d); };
+  var plan = '';
+  if (x.met) plan = '<div class="fc-fb right">🎉 You met your goal this week!</div>';
+  else if (!x.left.length) plan = '<div class="fc-fb wrong">No more school days this week. Your teacher will see where you got to.</div>';
+  else if (x.lastDay) plan = '<div class="fc-fb wrong"><b>It’s the last school day of the week.</b> Time to work on IXL now: ' + left + ' ' + x.unit + ' left.</div>';
+  else if (x.planned && x.planned > B.today && x.left.indexOf(x.planned) >= 0) plan = '<div class="em-prev">Your plan: work on IXL on <b>' + fmtDay(x.planned) + '</b>. Want a head start today? <button class="btn link small" onclick="IXL.planned=\'\';toolDraw()">Change my plan</button></div>';
+  else plan = (x.planned === B.today ? '<div class="em-prev"><b>You planned to work on IXL today.</b> Ready?</div>' : x.planned && x.planned < B.today ? '<div class="fc-fb wrong">Your planned day has passed. Pick your next session.</div>' : '') +
+    '<p style="margin:10px 0 4px"><b>When’s your next IXL session?</b></p>' + x.left.map(function (d) { return '<label class="check"><input type="radio" name="ixlP" value="' + d + '"' + (x.planned === d ? ' checked' : '') + '><span>' + wd(d) + '</span></label>'; }).join('') + '<button class="btn small primary" onclick="ixlPlan()">Save my plan</button>';
+  return '<h2>📈 My IXL</h2><p style="margin:4px 0">This week, I need to ' + (x.unit === 'minutes' ? 'spend <b>' + x.target + ' minutes</b> practicing' : 'answer <b>' + x.target + ' questions</b>') + ' on IXL.</p>' +
+    '<div class="ixl-bar"><i style="width:' + pct + '%"></i></div><div class="row" style="margin:4px 0 10px"><b class="grow">' + x.total + ' / ' + x.target + ' ' + x.unit + '</b><span class="small">' + (x.met ? 'Goal met ✓' : left + ' left') + '</span></div>' +
+    (x.met ? '' : '<a class="btn primary" target="_blank" href="' + 'https:' + '/' + '/www.ixl.com/signin/lths" onclick="toolLog(\'IXL\', \'Opened IXL\', true)">Open IXL ↗</a> <span class="small">Opening IXL doesn’t log practice: log it below when you’re done.</span>') + plan +
+    '<p style="margin:14px 0 4px"><b>Log what you did</b></p><div class="row" style="gap:8px"><span>I did</span><input type="number" id="ixlN" min="1" max="2000" style="max-width:100px"><span>' + x.unit + '</span><button class="btn primary small" onclick="ixlLog()">Log it</button></div>' +
+    (x.logs.length ? '<p class="small" style="margin:10px 0 2px"><b>This week</b></p>' + x.logs.map(function (l) { return '<div class="row tr-row"><span class="grow">' + esc(fmtDay(l.date)) + ': <b>' + l.amount + ' ' + x.unit + '</b></span><button class="btn link small" onclick="ixlUndo(\'' + esc(l.when) + '\',' + l.amount + ')">Undo</button></div>'; }).join('') : '') +
+    '<details style="margin-top:10px"' + (x.note ? ' open' : '') + '><summary class="small" style="display:list-item"><b>Anything your teacher should know?</b> (optional: trouble getting into IXL, a change to your plan…)</summary><textarea id="ixlNote" style="min-height:50px;margin-top:6px">' + esc(x.note) + '</textarea><button class="btn small" style="margin-top:4px" onclick="ixlNoteSave()">Save note</button></details>' +
+    (x.history.length ? '<p class="small" style="margin:10px 0 0">Past weeks: ' + x.history.map(function (h) { return (h.met ? '✅' : '◻️') + ' ' + shortDay(h.week) + ' (' + h.total + ')'; }).join(' · ') + '</p>' : '');
+}
+function ixlPlan() { var p = document.querySelector('input[name="ixlP"]:checked'); if (!p) return alert('Pick a school day first.'); call('api_ixlWeek', p.value, null).then(function (r) { IXL = r; toast('Plan saved'); drawTools(); }).catch(oops); }
+function ixlLog() { var n = +($('ixlN') ? $('ixlN').value : 0); if (!(n > 0)) return alert('Type how many ' + IXL.unit + ' you did.'); call('api_ixlLog', n).then(function (r) { IXL = r; toast(r.met ? '🎉 Weekly goal met!' : 'Logged'); drawTools(); }).catch(oops); }
+function ixlUndo(w, n) { if (confirm('Take this entry out?')) call('api_ixlUndo', w, n).then(function (r) { IXL = r; drawTools(); }).catch(oops); }
+function ixlNoteSave() { call('api_ixlWeek', null, $('ixlNote').value).then(function (r) { IXL = r; toast('Note saved'); }).catch(oops); }
+
+// 🔊 voices: the Chromebook's Google voices first (they pronounce other languages well, as in Study Hall); never English for another language
+var VOICES = [];
+function loadVoices() { try { VOICES = window.speechSynthesis ? speechSynthesis.getVoices() || [] : []; } catch (e) { VOICES = []; } }
+try { loadVoices(); if (window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged', loadVoices); } catch (e) {}
+function voiceFor(lang) {
+  if (!VOICES.length) loadVoices(); var base = String(lang || 'en').toLowerCase().split('-')[0], full = String(lang || '').toLowerCase();
+  var m = VOICES.filter(function (v) { return String(v.lang || '').toLowerCase().replace('_', '-').split('-')[0] === base; });
+  var pick = function (l) { return l.filter(function (v) { return /google/i.test(v.name); })[0] || l.filter(function (v) { return /natural|neural|online|premium|enhanced/i.test(v.name); })[0] || l.filter(function (v) { return v.default; })[0] || l[0] || null; };
+  return pick(m.filter(function (v) { return String(v.lang || '').toLowerCase().replace('_', '-') === full; })) || pick(m);
+}
+var LANG_NAMES = { 'en-US': 'English', 'es-ES': 'Spanish', 'fr-FR': 'French', 'de-DE': 'German', 'zh-CN': 'Chinese', 'it-IT': 'Italian', 'ja-JP': 'Japanese' };
+function say(text, lang, rate) {
+  var v = voiceFor(lang || 'en-US'); if (!v && VOICES.length) return toast('There is no ' + (LANG_NAMES[lang] || lang) + ' voice on this Chromebook.');
+  try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(String(text)); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = lang || 'en-US'; u.rate = rate || 0.9; speechSynthesis.speak(u); } catch (e) {}
+}
+
+// 2.57: 🎤 Dictate: Chrome's own speech recognition (Google's speech service, like Docs voice typing). Text stays on the page until copied.
+var DC = { text: '', on: false, rec: null, lang: 'en-US', err: '' };
+function dcHtml() {
+  var ok = !!(window.SpeechRecognition || window.webkitSpeechRecognition), langs = [['en-US', 'English']].concat(graded().map(function (c) { return langOf(c.name); }).filter(function (l, i, a) { return l !== 'en-US' && a.indexOf(l) === i; }).map(function (l) { return [l, LANG_NAMES[l] || l]; }));
+  return '<h2>🎤 Dictate</h2><p class="hint" style="margin:4px 0 8px">Press the microphone and talk. Say “period”, “comma” or “question mark” for punctuation. Fix anything that’s wrong, then copy it into your assignment.</p>' +
+    (ok ? '<div class="row" style="gap:10px;align-items:center"><button class="btn big' + (DC.on ? ' danger' : ' primary') + '" id="dcBtn" onclick="dcToggle()">' + (DC.on ? '⏹ Stop' : '🎤 Start talking') + '</button>' + (langs.length > 1 ? '<select style="max-width:150px" onchange="DC.lang=this.value">' + langs.map(function (l) { return '<option value="' + l[0] + '"' + (DC.lang === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select>' : '') + '<span class="small" id="dcSt">' + (DC.on ? '🔴 Listening…' : '') + '</span></div>' : '<div class="fc-fb wrong">This browser can’t take dictation. On a Chromebook, use Chrome.</div>') +
+    (DC.err ? '<div class="fc-fb wrong" style="margin-top:8px">' + DC.err + '</div>' : '') +
+    '<textarea id="dcT" style="min-height:150px;margin-top:10px;font-size:17px" placeholder="Your words show up here" oninput="DC.text=this.value">' + esc(DC.text) + '</textarea><div class="small" id="dcLive" style="display:block;min-height:18px;opacity:.7"></div>' +
+    '<div class="row" style="gap:8px;margin-top:6px"><button class="btn primary" onclick="dcCopy()">📋 Copy</button><button class="btn" onclick="rdSpeak($(\'dcT\').value)">🔊 Read it back</button><button class="btn link danger" onclick="if(confirm(\'Clear the box?\')){DC.text=\'\';toolDraw()}">Clear</button></div>' +
+    '<details style="margin-top:12px"><summary class="small" style="display:list-item"><b>Want to talk straight into Canvas or Google Docs instead?</b></summary><ul class="small" style="margin:6px 0 0;padding-left:18px"><li><b>Google Docs:</b> Tools › Voice typing, then click the microphone.</li><li><b>Any box on your Chromebook:</b> press <b>Search + D</b> (or Launcher + D) to dictate. If nothing happens, turn it on in Settings › Accessibility › Keyboard and text input › Dictation.</li></ul></details>';
+}
+function dcPunct(t) { return t.replace(/\s*\b(period|full stop)\b/gi, '.').replace(/\s*\bcomma\b/gi, ',').replace(/\s*\bquestion mark\b/gi, '?').replace(/\s*\bexclamation (point|mark)\b/gi, '!').replace(/\s*\b(new line|next line)\b\s*/gi, '\n').replace(/\s*\bnew paragraph\b\s*/gi, '\n\n'); }
+function dcCap(base, add) { add = dcPunct(add.trim()); if (!add) return base; var needCap = !base.trim() || /[.!?]\s*$|\n\s*$/.test(base); if (needCap) add = add.charAt(0).toUpperCase() + add.slice(1); return base + (base && !/[\s\n]$/.test(base) && !/^[.,!?]/.test(add) ? ' ' : '') + add; }
+function dcToggle() {
+  if (DC.on && DC.rec) { DC.stop = true; try { DC.rec.stop(); } catch (e) {} return; }
+  var R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return;
+  var r = new R(); DC.rec = r; DC.stop = false; DC.err = ''; r.lang = DC.lang; r.continuous = true; r.interimResults = true;
+  if ($('dcT')) DC.text = $('dcT').value;
+  r.onresult = function (e) { var live = ''; for (var i = e.resultIndex; i < e.results.length; i++) { var x = e.results[i][0].transcript; if (e.results[i].isFinal) { DC.text = dcCap(DC.text, x); if ($('dcT')) $('dcT').value = DC.text; } else live += x; } if ($('dcLive')) $('dcLive').textContent = live; };
+  r.onerror = function (e) { DC.err = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'The microphone is blocked here. Click the 🎤 or 🔒 in the address bar and allow the microphone, or use Search + D (below).' : e.error === 'no-speech' ? '' : e.error === 'network' ? 'Dictation needs the internet. Check your connection and try again.' : 'Dictation stopped (' + e.error + ').'; };
+  r.onend = function () { if (!DC.stop && !DC.err && DC.on) { try { r.start(); return; } catch (e) {} } DC.on = false; if (TOOL === 'dictate' && VIEW === 'tools') toolDraw(); };
+  try { r.start(); DC.on = true; toolLog('Dictate', DC.lang, true); toolDraw(); } catch (e) { DC.err = 'Dictation didn’t start. Try again, or use Search + D (below).'; toolDraw(); }
+}
+function dcCopy() { var t = $('dcT') ? $('dcT').value : DC.text; if (!t.trim()) return alert('Say something first.'); try { navigator.clipboard.writeText(t); toast('Copied. Paste it into your assignment (Ctrl + V).'); } catch (e) { $('dcT').select(); alert('Press Ctrl + C to copy.'); } }
 
 // My stuff: one small tile per card, with a one-line status; tapping opens the card under the tiles.
 function myStuff(list) {
@@ -8566,7 +8870,7 @@ function drawTests() {
     var past = daysUntil(t.date) < 0;
     return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + (past ? ' · did you take it?' : '') + '</small>' + testAccHtml(t) + '</td>' +
       '<td style="text-align:right;white-space:nowrap"><button class="btn small" onclick="testDone(\'' + t.id + '\',true)">✓ Done</button> <button class="btn link danger" onclick="testDel(\'' + t.id + '\')">Delete</button></td></tr>' +
-      (F('projects') && !/^(Test|Quiz)$/.test(t.type) ? '<tr><td></td><td colspan="2" style="padding-top:0">' + stepsBox(t) + '</td></tr>' : '');
+      (F('projects') ? '<tr><td></td><td colspan="2" style="padding-top:0">' + stepsBox(t) + '</td></tr>' : '');
   }).join('') + '</tbody></table>' : '<div class="empty">Nothing listed yet.</div>') +
     (done.length ? '<details><summary>Finished (' + done.length + ')</summary><table><tbody>' + done.map(function (t) {
       return '<tr><td><b>' + esc(t.cls) + '</b> ' + esc(t.what) + '<small>' + fmtDay(t.date) + '</small></td><td style="text-align:right"><button class="btn link" onclick="testDone(\'' + t.id + '\',false)">Not done</button></td></tr>';
@@ -8592,13 +8896,14 @@ var PJ = null;          // { id, steps } while editing
 function stepsBox(t) {
   var st = (D.steps || {})[t.id] || [];
   if (PJ && PJ.id === t.id) return '<div class="pjbox"><b>Steps for ' + esc(t.what) + '</b> <span class="small" style="display:inline">(due ' + fmtDay(t.date) + ')</span>' +
-    (PJ.made ? '<p class="small" style="margin:4px 0">' + (PJ.made === 'ai' ? '✨ Made from your directions by the AI helper.' : 'Made from your directions.') + ' Check each step and date: change, add or delete any, then <b>Save steps</b>.' + (PJ.note ? ' ' + esc(PJ.note) : '') + '</p>' : '') + PJ.steps.map(function (x, k) {
+    (PJ.made ? '<p class="small" style="margin:4px 0">' + (PJ.made === 'ai' ? '✨ Made from your directions by the AI helper.' : PJ.made === 'study' ? '📚 Your study plan.' : 'Made from your directions.') + ' Check each step and date: change, add or delete any, then <b>Save steps</b>.' + (PJ.note ? ' ' + esc(PJ.note) : '') + '</p>' : '') + PJ.steps.map(function (x, k) {
       return '<div class="row" style="margin:4px 0;gap:6px"><input type="text" class="grow" maxlength="150" placeholder="Step (Find 3 sources)" value="' + esc(x.step) + '" oninput="PJ.steps[' + k + '].step=this.value">' +
         '<input type="date" style="max-width:160px" value="' + esc(x.due) + '" max="' + t.date + '" oninput="PJ.steps[' + k + '].due=this.value"><button class="btn link danger" onclick="PJ.steps.splice(' + k + ',1);drawTests()">✕</button></div>';
     }).join('') + '<div class="row" style="margin-top:6px"><button class="btn small" onclick="PJ.steps.push({step:\'\',due:\'\',done:false});drawTests()">+ Add a step</button><button class="btn primary small" onclick="pjSave()">Save steps</button><button class="btn link" onclick="PJ=null;drawTests()">Cancel</button></div></div>';
   var plan = B.planner ? ' <button class="btn small" onclick="ppOpen(\'' + t.id + '\')">📋 Plan it from the directions' + (B.planner === 'ai' ? ' ✨' : '') + '</button>' : '';
-  if (!st.length) return '<button class="btn link small" style="padding:0" onclick="pjEdit(\'' + t.id + '\')">🧩 Break it into steps</button>' + plan;
-  return '<div class="pjbox">' + st.map(function (x, k) {
+  if (!st.length && /^(Test|Quiz)$/.test(t.type)) return daysUntil(t.date) >= 1 ? '<span class="small" style="display:inline">📚 Make a study plan over the last </span>' + [2, 3, 5].map(function (n) { return '<button class="btn small" onclick="stOpen(\'' + t.id + '\',' + n + ')">' + n + ' days</button>'; }).join(' ') : '';          // 2.56
+  if (!st.length) return decView(t.id) + '<button class="btn link small" style="padding:0" onclick="pjEdit(\'' + t.id + '\')">🧩 Break it into steps</button>' + plan;
+  return '<div class="pjbox">' + decView(t.id) + st.map(function (x, k) {
     return '<label class="check' + (x.done ? ' done' : '') + '"><input type="checkbox"' + (x.done ? ' checked' : '') + ' onchange="pjTick(\'' + t.id + '\',' + k + ',this.checked)"><span>' + esc(x.step) + (x.due ? ' <span class="small" style="display:inline">· ' + (x.done ? fmtDay(x.due) : countdown(x.due)) + '</span>' : '') + '</span></label>';
   }).join('') + '<button class="btn link small" style="padding:0" onclick="pjEdit(\'' + t.id + '\')">Change steps</button>' + (B.planner ? ' <button class="btn link small" style="padding:0" onclick="ppOpen(\'' + t.id + '\')">📋 Make a new plan from the directions</button>' : '') + '</div>';
 }
@@ -9394,6 +9699,7 @@ function dcGrade(email, n, btn) {
 function tGrade(email, n) {
   call('api_saveGradeLevel', email, n).then(function () { toast('Grade ' + n + ' saved'); openStudent(email); }).catch(oops);
 }
+function ixlSet() { call('api_saveIxlPlan', TS_EMAIL, $('ixlT').value, $('ixlU').value).then(function (r) { EF.ef.ixl = r; toast(r ? 'IXL goal saved' : 'IXL goal turned off'); drawEF(); }).catch(oops); }
 function ttmSave() {
   var t; try { t = tmRead(); } catch (e) { return alert(e.message.replace('your case manager', 'their case manager')); }
   call('api_saveCaseManager', t.name, t.email, TS_EMAIL).then(function (r) { TS.profile.caseMgr = r.caseMgr; TS.profile.caseMgrEmail = r.caseMgrEmail; TTM = false; drawTStudent(); toast('Saved'); }).catch(oops);
@@ -9485,6 +9791,7 @@ function efRows(e) {
     ['Late this semester', e.lateSem || 0, e.lateMax ? 'Most in one class: ' + e.lateMax + ' in ' + e.lateMaxCls + (Object.keys(e.latePer).length > 1 ? ' · ' + Object.keys(e.latePer).map(function (c) { return c + ' ' + e.latePer[c]; }).join(' · ') : '') : ''],
     ['Used “Email my teacher” in the app', e.contacts.app + ' this semester', ''],
     ['Said they emailed or talked to a teacher', e.contacts.told + ' this semester', 'Retakes scheduled: ' + e.contacts.retakes],
+    ['📈 Weekly IXL (student-reported)', e.ixl ? e.ixl.total + ' of ' + e.ixl.target + ' ' + e.ixl.unit + ' this week' : 'no IXL goal', e.ixl && e.ixl.history.length ? 'Met ' + e.ixl.history.filter(function (h) { return h.met; }).length + ' of the last ' + e.ixl.history.length + ' weeks' : ''],
     ['🧰 Student tools used', e.tools && e.tools.n ? e.tools.n + ' times this semester' : 'not yet', e.tools ? Object.keys(e.tools.by || {}).map(function (k) { return k + ' ' + e.tools.by[k]; }).join(' · ') + (e.tools.sets ? ' · ' + e.tools.sets + ' flashcard set' + (e.tools.sets === 1 ? '' : 's') + (e.tools.best !== null ? ' (average best ' + e.tools.best + '%)' : '') : '') + (e.tools.assignments ? ' · ' + e.tools.assignments + ' assignments tracked, ' + e.tools.assignDone + ' done' + (e.tools.assignOnTime !== null ? ' (' + e.tools.assignOnTime + '% on time)' : '') : '') : ''],
     ['Daily check-in time (opening the app to Done)', e.dayPlan && e.dayPlan.minutes != null ? 'typically ' + (e.dayPlan.minutes < 1 ? 'under 1' : e.dayPlan.minutes) + ' minutes' : 'not measured yet', 'The middle of their last 10 school days'],
     ['Daily plan for class time', (e.dayPlan ? e.dayPlan.days : 0) + ' days written', e.dayPlan && e.dayPlan.flagged ? e.dayPlan.flagged + ' marked: did nothing or didn’t follow it (' + p(e.dayPlan.followed) + ' followed)' : ''],
@@ -9525,6 +9832,9 @@ function drawEF() {
     '<textarea id="noeT" style="min-height:120px" oninput="NOE=this.value">' + esc(nL) + '</textarea>' +
     '<div class="row" style="margin-top:6px"><button class="btn primary small" onclick="noeSave()">Save for this student</button>' + (nOwn ? '<button class="btn link small" onclick="noeSave(true)">Use the class list</button>' : '') + '</div></details>';
   var efH = '<h3 style="margin:22px 0 4px;padding-top:14px;border-top:1px solid var(--line)">📊 Executive functioning data</h3>';          // 2.51: the checklists get their own section, above the numbers
+  var ix = EF.ef.ixl;
+  cks += '<div class="row" style="gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap"><b>📈 Weekly IXL goal</b><input type="number" id="ixlT" min="0" max="2000" style="max-width:90px" value="' + (ix ? ix.target : '') + '" placeholder="20"><select id="ixlU" style="max-width:130px"><option value="minutes"' + (ix && ix.unit === 'questions' ? '' : ' selected') + '>minutes</option><option value="questions"' + (ix && ix.unit === 'questions' ? ' selected' : '') + '>questions</option></select> a week' +
+    '<button class="btn small primary" onclick="ixlSet()">Save</button>' + (ix ? '<button class="btn link small" onclick="$(\'ixlT\').value=\'\';ixlSet()">Turn off</button><span class="small">This week: <b>' + ix.total + ' of ' + ix.target + '</b>' + (ix.planned ? ' · plans to work on ' + esc(fmtDay(ix.planned)) : '') + (ix.note ? ' · note: “' + esc(ix.note) + '”' : '') + '</span>' : '<span class="small">Blank = no IXL goal. Students with a goal see 📈 My IXL in My tools.</span>') + '</div>';
   h = h.replace(efH, '<h3 style="margin:22px 0 2px;padding-top:14px;border-top:1px solid var(--line)">✅ Checklists for this student</h3><p class="hint" style="margin:0 0 4px">Change either list for this student only. The class lists are on ⚙️ Settings. The daily checklist is optional, except on a day they say they have nothing to work on.</p>' + cks + efH);
   // daily checklist days: prompted or on their own
   h += '<details style="margin-top:12px"><summary><b>Daily checklist, day by day</b></summary>' + (e.checklist.days.length ? '<table><tbody>' + e.checklist.days.map(function (d) {
