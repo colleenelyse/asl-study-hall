@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.71'
+var VERSION = '2.73'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1084,7 +1084,7 @@ function boot_(email) {
   var st = settings_(), today = today_(), cm = st.f.cm && !isTeacher_(email) && stuFind_(email).i < 0 ? caseload_(email) : [];
   return {
     version: VERSION, app: st.app, perDay: st.perDay, domain: st.domain, remind: st.remind, low: st.low, drop: st.drop, cutoffs: st.cutoffs, warn: st.warn,
-    today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email),
+    today: today, week: weekOf_(today), email: email, teacher: isTeacher_(email), teacherList: isTeacher_(email) ? teacherList_() : null,
     recheck: st.checks.filter(function (d) { return d <= today; }).sort().pop() || '',
     caseMgrs: caseMgrs_(), counselors: counselors_(), aps: st.aps.map(function (a) { return { year: a.year, name: a.name, campus: a.campus, phone: a.phone, cls: '' }; }), classOf12: classOf_('12'), temails: teacherEmails_(), planner: st.f.planner ? (aiKey_() ? 'ai' : 'basic') : '', finalSched: finalSched_(), offToday: calendar_().off[today] || '', testingLink: st.testingLink, appUrl: appUrl_(), toolLinks: st.toolLinks, bellTimes: st.bellTimes, dropIn: st.dropIn, dayClass: st.dayClass, nothingItems: st.nothingItems, bell: /^https:/.test(st.bell) ? st.bell : '', askBday: st.askBday, paste: st.paste, links: freeLinks_(), kiosk: isTeacher_(email) && !!kioskConf_(), hallPass: hallPassOn_(), tapIn: !!st.tapIn, bellName: (function () { try { var tb = todayBells_(); return tb ? tb.name : ''; } catch (e) { return ''; } })(), titles: titles_(), url: isTeacher_(email) ? getSeatingLink() : '', grad: grad_(), f: st.f, checkItems: checkItemsFor_(email), checkOwn: checkOwn_(email), ixlOn: !!ixlPlan_(email), accoms: accomsFor_(email), testGap: st.testGap, lookDefault: st.lookDefault, look: look_(email), resNames: st.resNames, analyze: st.analyze, retakeOnTime: st.retakeOnTime, retakeBelow: st.retakeBelow, bday: st.bday, bdayVideo: st.bdayVideo, bdaySound: st.bdaySound,
     // speed: a teacher opens on the Overview, so it comes with the boot (one trip, not two); their own student data loads only for Student view
@@ -1597,6 +1597,7 @@ function api_saveSettings(changes) {
       if (ui[1] === 'choice' && ui[2].indexOf(v) < 0) throw new Error('"' + k + '": pick one of the choices.');
       if (ui[1] === 'number' && v !== '' && isNaN(Number(v))) throw new Error('"' + k + '" needs a number.');
       if (ui[1] === 'dates' && v && !list_(v).every(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); })) throw new Error('Type dates like 2027-01-05, separated with commas.');
+      if (k === 'Teacher emails' && v) v = (String(v).match(/[^\s,;<>"'()\[\]]+@[^\s,;<>"'()\[\]]+/g) || []).map(function (e) { return low_(e.replace(/^mailto:/i, '').replace(/[.]+$/, '')); }).join(', ');          // 2.72: keep just the emails
       if (k === 'Teacher emails' && v && !String(v).split(/[,;\s]+/).filter(String).every(function (e) { return /^[^@\s]+@[^@\s]+$/.test(e); })) throw new Error('Teacher emails: type full emails (like jsmith@lths.net), separated with commas.');
       var d = DEFAULTS.filter(function (x) { return x[0] === k; })[0];
       if (at[k]) st.getRange(at[k], 2).setValue(v);
@@ -2091,6 +2092,16 @@ function api_tcEdit(id, x) {
     if (how === 'Expected') r[1] = '';
     r[5] = how; if (!r[11]) r[11] = stamp_();
     sh.getRange(i + 2, 1, 1, r.length).setValues([r]);
+  });
+  return api_tcRead_();
+}
+// 2.73: a test entered by mistake (or twice) is deleted outright: it never counts as taken
+function api_tcDelete(id) {
+  teacherOnly_();
+  locked_(function () {
+    var rows = rows_('Tests received'), r = rows.filter(function (x) { return String(x[0]) === String(id); })[0]; if (!r) throw new Error('That test isn’t on the list any more.');
+    rewrite_('Tests received', function (x) { return String(x[0]) !== String(id); });
+    logChange_('Test entry deleted', low_(r[2]), String(r[3]), 'Tests received', String(r[4] || r[5]), '', 'entered by mistake');
   });
   return api_tcRead_();
 }
@@ -5411,7 +5422,7 @@ function settings_() {
   var cut = String(v['Letter cutoffs']).split(',').map(Number).filter(function (n) { return !isNaN(n); });
   var out = {
     app: String(v['App name'] || 'Resource Check-In'),
-    teachers: String(v['Teacher emails'] || '').split(/[,;\s]+/).map(low_).filter(function (e) { return /@/.test(e); }),          // commas, semicolons, spaces or one per line
+    teachers: (String(v['Teacher emails'] || '').match(/[^\s,;<>"'()\[\]]+@[^\s,;<>"'()\[\]]+/g) || []).map(function (e) { return low_(e.replace(/^mailto:/i, '').replace(/[.]+$/, '')); }),          // 2.72: any way it's typed or pasted ("Jane Smith <jsmith@lths.net>", mailto:…)
     aps: String(v['Assistant principals'] || '').split(';').map(function (x) { var m = /^\s*(\d{4})\s*=\s*(.+)$/.exec(x); if (!m) return null; var p = m[2].split('|').map(function (y) { return y.trim(); }); return { year: m[1], name: p[0] || '', campus: p[1] || '', phone: p[2] || '' }; }).filter(function (x) { return x && x.name; }),
     iepDays: list_(v['IEP date reminders (days before)']).map(Number).filter(function (n) { return n >= 0 && n < 400; }), progressDates: list_(v['Progress report dates']).map(function (d) { return day_(d); }).filter(String).sort(),
     weekly: /^y/i.test(String(v['Weekly summary email (Fridays)'] || 'Yes')), weeklyTo: list_(v['Weekly summary goes to']).map(low_).filter(function (e) { return /@/.test(e); }),
@@ -5527,6 +5538,8 @@ function isTeacher_(email) {
 }
 // 2.06: the same staff member under either school domain: staff emails are written @lths.net (lists, the website) but staff sign in
 // to Google as @d204.lths.net. Same name before the @, and one domain ends with the other.
+// 2.72: who gets the teacher dashboard (shown on Settings): the sheet's owner and Settings › Teacher emails
+function teacherList_() { var o = ''; try { o = low_(Session.getEffectiveUser().getEmail()); } catch (e) {} return { owner: o, others: settings_().teachers }; }
 function sameStaff_(a, b) {
   a = low_(a); b = low_(b); if (!a || !b) return false; if (a === b) return true;
   var x = a.split('@'), y = b.split('@'); if (x.length !== 2 || y.length !== 2 || x[0] !== y[0]) return false;
@@ -6353,7 +6366,8 @@ function pfSave() {
 }
 function drawWelcome() {
   if (!SCH) SCH = schedRows(D);
-  $('main').innerHTML = '<h1>Welcome!</h1><p class="sub">Each week you’ll check your grades here, plan your resource time and keep track of upcoming tests. First, tell us who you are and what your schedule is.</p>' +
+  var staff = B.email && !/\d/.test(String(B.email).split('@')[0]) && !PREV && !B.preview;          // 2.72: student accounts have their ID number; staff accounts don't
+  $('main').innerHTML = (staff ? '<div class="card" style="border:2px solid var(--warn);background:var(--warn-soft)"><b>Are you a teacher?</b><p class="small" style="margin:4px 0 0">You’re signed in as <b>' + esc(B.email) + '</b>, which isn’t on this app’s teacher list yet. The teacher who set up this sheet adds it in ⚙️ Settings › <b>Teacher emails</b> (or in the sheet: Settings tab, “Teacher emails” row) and presses Save. Then reload this page.</p></div>' : '') + '<h1>Welcome!</h1><p class="sub">Each week you’ll check your grades here, plan your resource time and keep track of upcoming tests. First, tell us who you are and what your schedule is.</p>' +
     '<div class="card"><h2>1. What’s your name?</h2><p class="hint">Your first name and the first letter of your last name. Only your initial is saved.</p>' +
     '<div class="row" style="align-items:flex-end;gap:12px">' +
       '<label style="flex:0 1 280px"><span class="small" style="font-weight:600;color:var(--ink);margin-bottom:4px">First name</span><input type="text" id="nm" placeholder="Jane" maxlength="30" value="' + esc(D.profile.name.split(' ')[0]) + '"></label>' +
@@ -10015,7 +10029,8 @@ function drawSettings() {
   var ORDER = ['Each week, students…', 'Goals and daily checklist', 'Infinite Campus', 'Pages and tools', 'Grades and flags', 'Look', 'Fun', 'Class setup'];
   SETS.forEach(function (x) { if (groups.indexOf(x.group) < 0) groups.push(x.group); });
   groups.sort(function (a, b) { return (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99; });
-  var h = '<h1>⚙️ Settings</h1><p class="sub">Decide what your students do and see. Changes reach students the next time they open or reload the app.</p>' + stagesCard() +
+  var tl = B.teacherList, h = '<h1>⚙️ Settings</h1><p class="sub">Decide what your students do and see. Changes reach students the next time they open or reload the app.</p>' +
+    (tl ? '<div class="card" style="border-color:var(--brand)"><b>👩‍🏫 Who gets the teacher dashboard</b><div class="small" style="display:block;margin-top:4px">' + [tl.owner + ' (owner of this sheet)'].concat(tl.others).filter(Boolean).map(esc).join('<br>') + '</div><p class="small" style="margin:6px 0 0">To add a teacher, type their school email in <b>Teacher emails</b> (under Class setup, below), press Save, and have them reload. @lths.net and @d204.lths.net both work. Each copy of the sheet has its own list and its own link: add them on the copy whose link they open.</p></div>' : '') + stagesCard() +
     '<div class="card" style="border-color:var(--brand)"><div class="row"><div class="grow"><h2 style="margin:0">🤖 IEP goal helper</h2><p class="small" style="margin:4px 0 0">Pulls every IEP goal on your sheet. Pick goals, and it writes each one in student-friendly words, plus what’s unique to that goal: its area, whether it’s measured in ' + esc(B.dayClass || 'resource') + ', check-in sentences students can tap, what counts as evidence, and a way to take data. It all happens in the app: nothing is sent to AI.</p></div><button class="btn primary" onclick="ghOpen()">Open the goal helper</button></div></div>';
   groups.forEach(function (g) {
     h += '<div class="card set-group"><h2>' + esc(g) + '</h2>' + SETS.map(function (x, k) {
@@ -11753,14 +11768,14 @@ function drawTc() {
   if ((TCD.expected || []).length) h += '<div class="card"><h2>⏳ Expected (not here yet)</h2><p class="hint" style="margin:2px 0 8px">Tests a student will take with you, before you have the paper or the code.</p>' + TCD.expected.map(function (x) {
     if (TCE === x.id) return tcEditForm(x);
     return '<div class="tcrow row"><div class="grow"><b>' + esc(x.name) + '</b> · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '<div class="small">logged ' + esc(String(x.logged).slice(0, 10)) + (x.note ? ' · ' + esc(x.note) : '') + '</div></div>' +
-      '<button class="btn small" onclick="tcArrive(\'' + x.id + '\',\'paper\')">📄 It arrived</button><button class="btn small" onclick="tcArrive(\'' + x.id + '\',\'code\')">🔑 Got the code</button><button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button><button class="btn link small" onclick="tcDone(\'' + x.id + '\')">Remove</button></div>';
+      '<button class="btn small" onclick="tcArrive(\'' + x.id + '\',\'paper\')">📄 It arrived</button><button class="btn small" onclick="tcArrive(\'' + x.id + '\',\'code\')">🔑 Got the code</button><button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button><button class="btn link small" onclick="tcDone(\'' + x.id + '\')">Remove</button><button class="btn link danger small" title="Entered by mistake or twice: delete it (it won’t count as taken)" onclick="tcDel(\'' + x.id + '\')">🗑 Delete</button></div>';
   }).join('') + '</div>';
   h += '<div class="card"><h2>Waiting to be taken</h2>' + (TCD.waiting.length ? TCD.waiting.map(function (x) {
     if (TCE === x.id) return tcEditForm(x);
     var code = x.how === 'Access code';
     return '<div class="tcrow row"><div class="grow"><b>' + esc(x.name) + '</b> · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '<div class="small">' + (code ? '🔑 Access code <span class="acode">' + esc(x.code) + '</span>' + (x.released ? ' · <b>released</b> ' + esc(String(x.released).slice(5, 16)) : ' · not released yet') : '📄 Paper test' + (x.returnTo ? ' · return to ' + esc(x.returnTo) : '')) + ' · received ' + esc(String(x.received).slice(0, 16)) + (x.note ? ' · ' + esc(x.note) : '') + '</div></div>' +
       (code ? '<button class="btn small' + (x.released ? '' : ' primary') + '" onclick="tcRel(\'' + x.id + '\',' + !x.released + ')">' + (x.released ? 'Hide again' : 'Release to student') + '</button>' : '') +
-      '<button class="btn small" onclick="tcDone(\'' + x.id + '\')">✓ Taken</button><button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button></div>';
+      '<button class="btn small" onclick="tcDone(\'' + x.id + '\')">✓ Taken</button><button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button><button class="btn link danger small" title="Entered by mistake or twice: delete it (it won’t count as taken)" onclick="tcDel(\'' + x.id + '\')">🗑 Delete</button></div>';
   }).join('') : '<p class="small" style="margin:4px 0 0">Nothing waiting.</p>') + '</div>';
   if (TCD.done.length) h += '<details class="card"><summary><b>Done recently</b> (' + TCD.done.length + ')</summary>' + TCD.done.map(function (x) { return '<div class="small" style="display:block;margin:3px 0">' + esc(x.name) + ' · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + ' · ' + esc(x.how) + ' · received ' + esc(String(x.received).slice(0, 10)) + ' · taken ' + esc(String(x.done).slice(0, 10)) + ' <button class="btn link small" style="padding:0 4px" onclick="tcDone(\'' + x.id + '\',false)">Undo</button></div>'; }).join('') + '</details>';
   $('main').innerHTML = h;
@@ -11823,6 +11838,7 @@ function retPopup() {
     '<div class="row" style="margin-top:12px"><span class="grow"></span><button class="btn" onclick="$(\'retModal\').remove()">Later</button></div></div>';
   document.body.appendChild(el);
 }
+function tcDel(id) { if (!confirm('Delete this test entry? Use this for one entered twice or by mistake. It won’t count as taken, and the student won’t see it.')) return; call('api_tcDelete', id).then(function (d) { TCD = d; if (TD) TD.tcReturns = d.returns; toast('Deleted'); drawTc(); }).catch(oops); }
 function tcReturned(id) {
   call('api_tcReturned', id).then(function (d) {
     TCD = d; if (TD) TD.tcReturns = d.returns; toast('Marked as returned');
