@@ -289,6 +289,18 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 @media (max-width: 900px) { .side2 { grid-template-columns: 1fr; } }
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(15, 20, 35, .45); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; }
 .modal .card { width: 100%; max-width: 760px; margin: 0; }
+.ov-more { position: relative; display: inline-block; }
+.ov-more > summary { list-style: none; cursor: pointer; }
+.ov-more > summary::-webkit-details-marker { display: none; }
+.ov-more-box { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 240px; box-shadow: 0 8px 24px rgba(15, 20, 35, .15); }
+.ov-more-box .btn { justify-content: flex-start; text-align: left; }
+.rn { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 4px 0 12px; }
+.rn > div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.rn > div.click { cursor: pointer; }
+.rn > div > span { display: block; font-size: 12px; color: var(--soft, #5b6476); }
+.rn b { font-size: 22px; }
+.rn > div.hot { background: var(--warn-soft); border-color: var(--warn); }
+.tdy-help { display: block; background: var(--warn-soft); border-radius: 8px; padding: 2px 8px; font-size: 12px; margin-top: 3px; max-width: 260px; line-height: 1.35; }
 #hpDock { position: fixed; right: 14px; bottom: 14px; z-index: 40; }
 .hp-dock { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 4px; box-shadow: 0 4px 14px rgba(15, 20, 35, .22); }
 .hp-dock.out { background: var(--warn-soft); border-color: var(--warn); }
@@ -502,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.69'
+var VERSION = '2.70'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1333,7 +1345,8 @@ function teacherData_(week) {
   // each class's detailed page pasted this week (students must do every class once a week)
   var detailOn = st.analyze && st.f.weeklyDetail, detail = {};
   if (detailOn) rows_('Class analysis').forEach(function (r) { var d = day_(r[2]); if (d >= week && d <= addDays_(week, 6)) (detail[low_(r[0])] = detail[low_(r[0])] || {})[String(r[1])] = d; });
-  var dayp = {}; if (st.f.dayPlan && week === weekOf_(today)) rows_('Daily plans').forEach(function (r) { if (day_(r[0]) === today) dayp[low_(r[1])] = { plan: String(r[2] || ''), flag: String(r[4]) === 'Yes' }; });
+  var dayp = {}; if (st.f.dayPlan && week === weekOf_(today)) rows_('Daily plans').forEach(function (r) { if (day_(r[0]) === today) dayp[low_(r[1])] = { plan: String(r[2] || ''), flag: String(r[4]) === 'Yes', help: String(r[7]) === 'Yes' ? String(r[8] || '') || 'yes' : '' }; });
+  var glance = week === weekOf_(today) ? glance_(today, week) : {};          // 2.70: the Overview's Today and This week columns
   var muW = {}; rows_('Assignment history').forEach(function (r) { var d = day_(r[9]); if (r[6] === 'Yes' && r[8] !== 'Yes' && d >= week && d <= addDays_(week, 6)) muW[low_(r[0])] = (muW[low_(r[0])] || 0) + 1; });
   var students = order.map(function (email) {
     var p = people[email], classes = p.classes.slice();
@@ -1356,7 +1369,7 @@ function teacherData_(week) {
     rows.forEach(function (g) { var gl2 = (goals[email] || {})[g.cls]; if (gl2 !== undefined && !g.stale && g.now !== null && g.now >= gl2 && (g.prev === null || g.prev < gl2)) wins.push('reached their ' + g.cls + ' goal'); });
     return { email: email, name: p.name, wins: wins, periods: p.periods, last: p.last, bday: p.bday || '', grades: rows,
       lastGrades: p.lastGrades || '', sinceGrades: p.lastGrades ? daysBetween_(p.lastGrades, today) : null, gradesOn: p.gradesOn || '',
-      checkedIn: rows.some(function (g) { return g.now !== null && !g.stale; }) || !!pl, plan: pl, detail: dt, dayPlan: dayp[email] || null,
+      checkedIn: rows.some(function (g) { return g.now !== null && !g.stale; }) || !!pl, plan: pl, detail: dt, dayPlan: dayp[email] || null, glance: glance[email] || null,
       flags: rows.filter(function (g) { return g.low || g.drop; }).length,
       missing: rows.reduce(function (t, g) { return t + g.missing; }, 0) };
   }).sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -1370,10 +1383,19 @@ function teacherData_(week) {
   var retakes = retakes_('').map(function (r) { r.name = names[r.email] || r.email; return r; });
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
-  return { week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
+  return { tripLimit: hallPassOn_() ? (st.hp || {}).trips || 0 : 0, week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
     finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null, ckTime: ckTime_(nm, week, today) };
 }
 
+// 2.70: for each student, today's goal ratings, and this week's accommodations, hall pass trips (own copy) and math level
+function glance_(today, week) {
+  var g = {}, one = function (e) { e = low_(e); return g[e] = g[e] || { ratings: [], noChance: 0, acc: 0, trips: 0, math: 0 }; };
+  rows_('Goal check-ins').forEach(function (x) { if (String(x[9]) === 'Replaced' || String(x[4]) === '*' || String(x[1]).slice(0, 10) !== today) return; var o = one(x[3]); if (String(x[7]) === 'Yes') o.noChance++; else if (Number(x[6])) o.ratings.push(Number(x[6])); });
+  rows_('Accommodations used').forEach(function (r) { if (day_(r[0]) >= week) one(r[1]).acc++; });
+  if (hallPassOn_()) rows_('Hall passes').forEach(function (r) { if (day_(r[0]) >= week && String(r[7]) !== 'Sent for them') one(r[1]).trips++; });
+  rows_('Skill checks').forEach(function (r) { if (String(r[3]) === 'math' && Number(r[10]) >= 1) one(r[1]).math = Number(r[10]); });
+  return g;
+}
 function api_teacherStudentRead_(email) {
   teacherOnly_();
   return studentData_(low_(email));
@@ -6095,7 +6117,7 @@ function hpBoardStart() {
   if (!HPB_POLL) { hpBoardLoad(); HPB_POLL = setInterval(function () { if (!document.hidden) hpBoardLoad(); }, 30000); }
   if (!HPB_T) HPB_T = setInterval(function () { Array.prototype.forEach.call(document.querySelectorAll('.hpb-min'), function (el) { var ms = Number(el.getAttribute('data-since')), m = Math.floor((Date.now() - ms) / 60000); el.textContent = hpMin(ms); el.parentNode.style.color = HPB && m >= HPB.late ? 'var(--down)' : ''; }); }, 1000);
 }
-function hpBoardLoad() { call('api_passBoard').then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); hpLateAlert(); }).catch(function () {}); }
+function hpBoardLoad() { call('api_passBoard').then(function (r) { HPB = r; var el = $('hpBoard'); if (el) el.innerHTML = hpBoardHtml(); hpLateAlert(); rnPaint(); }).catch(function () {}); }
 function hpBoardHtml() {
   var box = function (inner) { return '<div class="card" style="margin:8px 0 12px;padding:12px 16px">' + inner + '</div>'; };
   if (!HPB) return box('<span class="small">🚻 Checking who is out…</span>');
@@ -6155,7 +6177,7 @@ function tapIn() { call('api_tapIn').then(function (r) { D.taps = r; var t = r[0
 var TAPB = null, TAPB_POLL = null;
 function tapBoardStart() {
   if (!B || !B.tapIn || !B.teacher || TAPB_POLL) return;
-  var load = function () { call('api_tapBoard').then(function (r) { TAPB = r; Array.prototype.forEach.call(document.querySelectorAll('.tapb'), function (el) { el.innerHTML = tapBadge(el.getAttribute('data-e')); }); }).catch(function () {}); };
+  var load = function () { call('api_tapBoard').then(function (r) { TAPB = r; rnPaint(); Array.prototype.forEach.call(document.querySelectorAll('.tapb'), function (el) { el.innerHTML = tapBadge(el.getAttribute('data-e')); }); }).catch(function () {}); };
   load(); TAPB_POLL = setInterval(function () { if (!document.hidden) load(); }, 60000);
 }
 function tapBadge(email) {
@@ -9568,6 +9590,8 @@ function drawOverview() {
     if (FILTER.show === 'good' && !(s.wins && s.wins.length)) return false;
     if (FILTER.show === 'missing' && s.checkedIn) return false;
     if (FILTER.show === 'help' && !(s.plan && s.plan.help)) return false;
+    if (FILTER.show === 'helpToday' && !(s.dayPlan && s.dayPlan.help)) return false;
+    if (FILTER.show === 'notToday' && s.dayPlan && s.dayPlan.plan) return false;
     if (FILTER.show === 'detail' && !(s.detail && s.detail.need.length)) return false;
     if (FILTER.show === 'miss' && !s.missing) return false;
     if (FILTER.show === 'stale' && !(s.sinceGrades == null || s.sinceGrades > 7)) return false;
@@ -9581,32 +9605,75 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/tour.html">🧭 Student screens</a><button class="btn small" onclick="raOpen()">📦 Progress reports</button><button class="btn small" onclick="cmOpen()">📧 Email counselors</button><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
-    '<p class="sub">Grades this week compared to each student’s last check-in.</p>' + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + stuckNotice() + skipNotice() + gckNotice() + retNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) +
-    '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>checked in</span></div>' +
+    '<button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><button class="btn small" onclick="raOpen()">📦 Progress reports</button><details class="ov-more"><summary class="btn small">More ▾</summary><div class="ov-more-box"><button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/tour.html">🧭 Student screens</a><button class="btn small" onclick="cmOpen()">📧 Email counselors</button></div></details><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    rightNow(inPer) + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + retNotice() +          // 2.70: what needs the teacher now comes first; the other notes go under the list
+
+    '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>grades checked in this week</span></div>' +
     '<div class="tile click" title="Show only these students" onclick="FILTER.show=\'drop\';drawOverview()"><b style="color:var(--down)">📉 ' + drops + '</b><span>students with a drop of ' + B.drop + '+ points</span></div>' +
     '<div class="tile"><b style="color:var(--down)">' + lows + '</b><span>students with a grade under ' + B.low + '%</span></div>' +
     '<div class="tile"><b style="color:var(--warn)">' + missN + '</b><span>students with missing work</span></div>' +
     '<div class="tile"><b>' + testsWk + '</b><span>tests in the next 7 days</span></div></div>';
   h += '<div class="card"><div class="row" style="margin-bottom:10px">' +
     (Object.keys(periods).length ? '<select style="max-width:170px" onchange="FILTER.period=this.value;drawOverview()"><option value="">All periods</option>' + Object.keys(periods).sort(function (a, b) { return (parseFloat(a) || 99) - (parseFloat(b) || 99); }).map(function (p) { return '<option value="' + esc(p) + '"' + (FILTER.period === p ? ' selected' : '') + '>Period ' + esc(p) + '</option>'; }).join('') + '</select>' : '') +
-    '<select style="max-width:220px" onchange="FILTER.show=this.value;drawOverview()">' + [['all', 'Everyone'], ['flag', 'Needs attention'], ['drop', 'Grades that dropped'], ['good', '🎉 Good news'], ['stale', 'Grades not updated in a week'], ['miss', 'Missing work'], ['missing', 'Not checked in'], ['help', 'Asked for help']].concat(TD.detailOn ? [['detail', 'Detailed grades not done this week']] : []).map(function (o) { return '<option value="' + o[0] + '"' + (FILTER.show === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+    '<select style="max-width:220px" onchange="FILTER.show=this.value;drawOverview()">' + [['all', 'Everyone'], ['flag', 'Needs attention'], ['drop', 'Grades that dropped'], ['good', '🎉 Good news'], ['stale', 'Grades not updated in a week'], ['miss', 'Missing work'], ['missing', 'Not checked in'], ['help', 'Asked for help'], ['helpToday', 'Asked for help today'], ['notToday', 'Today not done']].concat(TD.detailOn ? [['detail', 'Detailed grades not done this week']] : []).map(function (o) { return '<option value="' + o[0] + '"' + (FILTER.show === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
     '<input class="grow" type="text" id="tq" placeholder="Search names or emails" value="' + esc(FILTER.q) + '"></div>';
-  h += list.length ? '<table><thead><tr><th>Student</th><th class="hide-sm">Checked in</th><th>Latest grades</th><th class="hide-sm">Plan</th></tr></thead><tbody>' + list.map(function (s) {
-    return '<tr class="click" onclick="openStudent(\'' + esc(s.email) + '\')"><td><div class="person">' + avatar(s.email, s.name) + '<div><b>' + esc(s.name) + '</b>' + (B.tapIn ? ' <span class="tapb" data-e="' + esc(s.email) + '">' + tapBadge(s.email) + '</span>' : '') + (s.wins && s.wins.length ? ' <span class="badge up" title="' + esc(s.wins.join('; ')) + '">🎉 ' + s.wins.length + '</span>' : '') + (s.bday ? ' <span title="Birthday ' + fmtDay(s.bday) + '">🎂 ' + DAYS[utc(s.bday).getUTCDay()] + '</span>' : '') + '<a href="mailto:' + esc(s.email) + '" onclick="event.stopPropagation()">' + esc(s.email) + '</a>' +
+  h += list.length ? '<table><thead><tr><th>Student</th><th class="hide-sm" style="min-width:190px">Today</th><th>Latest grades</th><th class="hide-sm">This week</th></tr></thead><tbody>' + list.map(function (s) {
+    return '<tr class="click" onclick="openStudent(\'' + esc(s.email) + '\')"><td><div class="person">' + avatar(s.email, s.name) + '<div><b>' + esc(s.name) + '</b>' + (B.tapIn ? '<span class="tapb" style="display:block" data-e="' + esc(s.email) + '">' + tapBadge(s.email) + '</span>' : '') + (s.wins && s.wins.length ? ' <span class="badge up" title="' + esc(s.wins.join('; ')) + '">🎉 ' + s.wins.length + '</span>' : '') + (s.bday ? ' <span title="Birthday ' + fmtDay(s.bday) + '">🎂 ' + DAYS[utc(s.bday).getUTCDay()] + '</span>' : '') + '<a href="mailto:' + esc(s.email) + '" onclick="event.stopPropagation()">' + esc(s.email) + '</a>' +
       (s.periods.length ? '<span class="small">Resource period ' + esc(s.periods.join(', ')) + '</span>' : '') + '</div></div></td>' +
-      '<td class="hide-sm">' + (s.checkedIn ? '<span class="badge up">✓' + (s.gradesOn ? ' ' + shortDay(s.gradesOn) : '') + '</span>' : '<span class="badge">Not yet</span>' + (s.lastGrades ? '<small>grades from ' + shortDay(s.lastGrades) + '</small>' : '')) + (s.detail && s.detail.of ? '<small style="color:' + (s.detail.need.length ? 'var(--warn)' : 'var(--up)') + '" title="' + esc(s.detail.need.length ? 'Still needed: ' + s.detail.need.join(', ') : 'Every class this week') + '">detailed grades ' + (s.detail.of - s.detail.need.length) + ' of ' + s.detail.of + '</small>' : '') + (s.sinceGrades != null && s.sinceGrades > 7 ? '<small style="color:var(--warn)">grades ' + s.sinceGrades + ' days old</small>' : s.sinceGrades == null ? '<small>no grades yet</small>' : '') + '</td>' +
+      '<td class="hide-sm">' + todayCell(s) + '</td>' +
       '<td><div class="gchips">' + (s.grades.length ? s.grades.map(function (g) {
         // color = how low the grade is; a red outline and 📉 = it dropped since their last check-in (by the Drop alert or more)
         var cls = (g.now == null ? 'miss' : g.grad || g.now < B.cutoffs[3] ? 'gradc' : g.low ? 'low' : '') + (g.drop ? ' dropb' : '') + (g.stale ? ' old' : '');
         return '<span class="gchip ' + cls + '" title="' + esc(g.cls) + (g.stale && g.on ? ' (from ' + shortDay(g.on) + ': not updated yet this week)' : '') + (g.prev != null ? ', last time ' + g.prev + (g.change ? ' (' + (g.change > 0 ? 'up ' : 'down ') + Math.abs(g.change) + ')' : '') : '') + (g.missing ? ', missing: ' + (g.missingList || g.missing) : '') + '">' + (g.drop ? '📉 ' : '') + spark(g.hist) + esc(g.cls) + ' ' + (g.now == null ? '—' : g.now + (g.change ? ' <span class="chg ' + (g.change > 0 ? 'up">▲' : 'dn">▼') + Math.abs(g.change) + '</span>' : '')) + (g.missing ? ' <span class="mw">· ' + g.missing + ' missing</span>' : '') + (g.grad ? ' 🎓' : '') + '</span>';
       }).join('') : '<span class="small">No schedule yet</span>') + '</div></td>' +
-      '<td class="hide-sm">' + (TD.dayPlanOn && isSchoolDay() ? (s.dayPlan && s.dayPlan.plan ? '<small title="' + esc(s.dayPlan.plan) + '" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block' + (s.dayPlan.flag ? ';color:var(--down)' : '') + '">' + (s.dayPlan.flag ? '🚫 ' : 'Today: ') + esc(s.dayPlan.plan) + '</small>' : '<small style="color:var(--warn)">' + (s.dayPlan && s.dayPlan.flag ? '🚫 did nothing' : 'no plan today') + '</small>') : '') +
-        (s.plan ? plural(s.plan.steps.length, 'step') + (s.plan.help ? ' <span class="badge warn" title="' + esc(s.plan.help) + '">✋ Help</span>' : '') : '<span class="small">—</span>') + '</td></tr>';
+      '<td class="hide-sm">' + weekCell(s) + '</td></tr>';
   }).join('') + '</tbody></table>' : '<div class="empty">' + (all.length ? 'No students match.' : 'No students yet. They show up here after they open the student link, or add them under Students & photos.') + '</div>';
-  $('main').innerHTML = h + '</div>';
+  h += '</div><div class="ov-notes" style="margin-top:14px">' + stuckNotice() + skipNotice() + gckNotice() + tcNotice() + pollNotice() + iepNotice() + staleNotice(inPer) + '</div>';
+  $('main').innerHTML = h;
   hpBoardStart();
   $('tq').oninput = function () { FILTER.q = this.value; var pos = this.selectionStart; drawOverview(); $('tq').focus(); $('tq').setSelectionRange(pos, pos); };
+}
+/* 2.70 (Colleen OK'd the sketch): the Overview at a glance. rightNow = a strip of what's happening today (here, Today done, need help,
+   out now, tests in the next 3 days); todayCell = goal ratings, plan, help request word for word; weekCell = grades checked in,
+   detailed pages, accommodations, hall pass trips (over the limit), math level, the weekly plan. */
+function rightNow(inPer) {
+  if (TD.week !== TD.thisWeek || !isSchoolDay()) return '';
+  var n = inPer.length, done = inPer.filter(function (s) { return s.dayPlan && s.dayPlan.plan; }).length, help = inPer.filter(function (s) { return s.dayPlan && s.dayPlan.help; }).length;
+  var soon = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 3) && inPer.some(function (s) { return s.email === t.email; }); }).length;
+  var box = function (label, val, js, hot, cls) { return '<div class="' + (js ? 'click' : '') + (hot ? ' hot' : '') + '"' + (js ? ' onclick="' + js + '"' : '') + '><span>' + label + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</b></div>'; };
+  return '<div class="rn">' + (B.tapIn ? box('📍 Here', '<span class="rn-here">' + rnHere(inPer) + '</span> of ' + n, '', false) : '') +
+    box('📝 Today done', done + ' of ' + n, done < n ? 'FILTER.show=\'notToday\';drawOverview()' : '', false) +
+    box('✋ Need help', help, help ? 'FILTER.show=\'helpToday\';drawOverview()' : '', help > 0) +
+    (B.hallPass ? box('🚻 Out now', '<span class="rn-out">' + (HPB && HPB.out ? HPB.out.length : 0) + '</span>', '', false) : '') +
+    box('🗓️ Tests in 3 days', soon, '', false) + '</div>';
+}
+function rnHere(inPer) { if (!TAPB || !TAPB.today) return '…'; return inPer.filter(function (s) { var t = TAPB.today[s.email]; return t && t.status !== 'Not yet'; }).length; }
+function rnPaint() {
+  if (VIEW !== 'overview' || !TD) return;
+  var inPer = TD.students.filter(function (s) { return !FILTER.period || s.periods.indexOf(FILTER.period) >= 0; });
+  Array.prototype.forEach.call(document.querySelectorAll('.rn-here'), function (el) { el.textContent = rnHere(inPer); });
+  Array.prototype.forEach.call(document.querySelectorAll('.rn-out'), function (el) { el.textContent = HPB && HPB.out ? HPB.out.length : 0; });
+}
+function todayCell(s) {
+  if (!(TD.dayPlanOn && isSchoolDay())) return '<span class="small">—</span>';
+  var g = s.glance || {}, dp = s.dayPlan, h = '';
+  if (!dp || !dp.plan) return '<span class="small" style="color:var(--warn)">' + (dp && dp.flag ? '🚫 did nothing' : 'Not started') + '</span>';
+  h += (g.ratings && g.ratings.length ? 'Goals ' + g.ratings.join(', ') + ' · ' : g.noChance ? 'Goals: no chance · ' : '') + '<span title="' + esc(dp.plan) + '">plan ' + (dp.flag ? '🚫' : '✓') + '</span>';
+  if (dp.help) h += '<div class="tdy-help" title="' + esc(dp.help) + '">✋ ' + esc(dp.help === 'yes' ? 'Needs help' : dp.help.length > 60 ? dp.help.slice(0, 58) + '…' : dp.help) + '</div>';
+  return h;
+}
+function weekCell(s) {
+  var g = s.glance || {}, bits = [];
+  bits.push(s.checkedIn ? '<span class="badge up">grades ✓' + (s.gradesOn ? ' ' + shortDay(s.gradesOn) : '') + '</span>' : '<span class="badge">grades not yet</span>');
+  if (s.detail && s.detail.of) bits.push('<span style="color:' + (s.detail.need.length ? 'var(--warn)' : 'var(--up)') + '" title="' + esc(s.detail.need.length ? 'Still needed: ' + s.detail.need.join(', ') : 'Every class this week') + '">detailed ' + (s.detail.of - s.detail.need.length) + ' of ' + s.detail.of + '</span>');
+  if (s.sinceGrades != null && s.sinceGrades > 7) bits.push('<span style="color:var(--warn)">grades ' + s.sinceGrades + ' days old</span>');
+  if (TD.week === TD.thisWeek) {
+    bits.push(plural(g.acc || 0, 'accommodation'));
+    if (B.hallPass) bits.push(plural(g.trips || 0, 'trip') + (TD.tripLimit && (g.trips || 0) >= TD.tripLimit ? ' <span style="color:var(--warn)">(over limit)</span>' : ''));
+    if (g.math) bits.push('math level ' + g.math);
+  }
+  if (s.plan) bits.push('weekly plan ' + plural(s.plan.steps.length, 'step') + (s.plan.help ? ' <span class="badge warn" title="' + esc(s.plan.help) + '">✋</span>' : ''));
+  return '<div class="small" style="display:block;line-height:1.7">' + bits.join(' · ') + '</div>';
 }
 // A notice when students haven't updated their grades in more than a week (or never have).
 // a tiny line of a class's grades this semester (on the Overview chips)
