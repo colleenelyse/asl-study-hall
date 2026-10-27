@@ -487,7 +487,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.53'
+var VERSION = '2.54'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -7217,7 +7217,7 @@ function ckSeconds() { var t0 = CK_T0; try { t0 = +localStorage.getItem(ckStartK
 var TOOL = '', TOOL_LOGGED = {};
 function toolLog(tool, detail, once) { if (MODE !== 'student' || (B && B.preview)) return; if (once) { if (TOOL_LOGGED[tool]) return; TOOL_LOGGED[tool] = 1; } call('api_logTool', tool, detail || '').catch(function () {}); }
 function toolList() {
-  var l = [['tracker', '📝', 'My assignments', 'Keep track of homework in every class'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself'], ['project', '📋', 'Project helper', 'Directions, a rubric or a PDF → a step-by-step plan'],
+  var l = [['classlink', '🏫', 'ClassLink', 'All your school apps in one place'], ['tracker', '📝', 'My assignments', 'Keep track of homework in every class'], ['missing', '📌', 'Missing work', 'Tap “I turned it in” when you do'], ['cards', '🃏', 'Flashcards', 'Paste a Quizlet set and quiz yourself'], ['project', '📋', 'Project helper', 'Directions, a rubric or a PDF → a step-by-step plan'],
     ['date', '📅', 'Add a test or project', 'Starts the countdown and the reminders'], ['need', '🎯', 'What do I need on the test?', 'The score you need for the grade you want'],
     ['email', '✉️', 'Email my teacher', 'Ready-made emails you fill in'], ['read', '🔊', 'Read it to me', 'Paste any text and listen'], ['links', '🔗', 'My links', 'IXL, SchooLinks, Drop-In Centers…']];
   if (F('calc')) l.push(['calc', '🧮', 'Calculator', 'Opens over the page']);
@@ -7234,6 +7234,7 @@ function drawTools() {
   $('main').innerHTML = h; toolDraw();
 }
 function toolOpen(k) {
+  if (k === 'classlink') { toolLog('ClassLink', '', true); window.open('https:' + '/' + '/launchpad.classlink.com/lths', '_blank', 'noopener'); return; }          // 2.54: the district sign-in page (no login token in it)
   if (k === 'calc') { toolLog('Calculator', '', true); return calcOpen(); }
   if (k === 'focus') { toolLog('Focus timer', '', true); return go('focus'); }
   TOOL = TOOL === k ? '' : k; drawTools(); if (TOOL && $('toolBox')) $('toolBox').scrollIntoView({ block: 'start', behavior: 'smooth' });
