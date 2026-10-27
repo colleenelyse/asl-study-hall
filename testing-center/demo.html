@@ -105,6 +105,18 @@ body { padding-bottom: 90px; }
 .rm-board, .rm-screen { background: #3c4a5e; color: #fff; } .rm-door { background: #c98a4b; color: #fff; }
 .pg { border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px; min-width: 64px; font-size: 12px; cursor: pointer; background: var(--card); color: var(--ink); }
 .pg-open { background: var(--okbg); color: var(--ok); border-color: transparent; } .pg-closed { background: var(--line); color: var(--mute); } .pg-past { opacity: .4; cursor: default; }
+.todaygrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; } @media (max-width: 1100px) { .todaygrid { grid-template-columns: 1fr; } }
+.ci input { font-size: 18px; } .ci-ok { display: flex; gap: 14px; align-items: center; margin-top: 10px; padding: 10px; border-radius: 10px; background: var(--okbg); }
+.ci-desk { font-size: 30px; font-weight: 800; color: var(--ok); white-space: nowrap; }
+.trk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; position: relative; }
+.trk-step { display: flex; gap: 8px; align-items: flex-start; padding-right: 8px; position: relative; }
+.trk-step:not(:last-child)::after { content: ''; position: absolute; left: 30px; right: 4px; top: 13px; height: 3px; background: var(--line); border-radius: 2px; }
+.trk-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; background: var(--line); color: var(--mute); position: relative; z-index: 1; }
+.trk-txt { font-size: 13px; line-height: 1.25; padding-top: 30px; margin-left: -34px; }
+.trk-ok .trk-dot { background: var(--ok); color: var(--onbrand); } .trk-ok:not(:last-child)::after { background: var(--ok); }
+.trk-warn .trk-dot { background: var(--warn); color: var(--onbrand); } .trk-bad .trk-dot { background: var(--bad); color: var(--onbrand); } .trk-bad .trk-txt b { color: var(--bad); }
+.trk-now .trk-dot { background: var(--brand); color: var(--onbrand); animation: trkp 1.4s infinite; } @keyframes trkp { 50% { box-shadow: 0 0 0 6px var(--brand2); } }
+@media (max-width: 640px) { .trk { grid-template-columns: 1fr 1fr; row-gap: 12px; } }
 .side { position: fixed; right: 0; top: 56px; width: 230px; bottom: 0; background: var(--card); border-left: 1px solid var(--line); padding: 14px; overflow: auto; z-index: 15; }
 body.withside .wrap { margin-right: 240px; }
 .dim { opacity: .55; }
@@ -262,9 +274,9 @@ body.withside .wrap { margin-right: 240px; }
       DocumentApp: { ParagraphHeading: { HEADING1: 'H1', HEADING2: 'H2' }, create: function (name) { var d = { name: name, parts: [] }; state.docs = (state.docs || []).concat([d]);
         var body = { appendParagraph: function (x) { d.parts.push(['p', x]); return chain({}); }, appendTable: function (x) { d.parts.push(['table', x]); return chain({}); }, appendPageBreak: function () { d.parts.push(['break']); } };
         return { getBody: function () { return body; }, saveAndClose: function () {}, getId: function () { return 'DOC1'; }, getName: function () { return name; }, getUrl: function () { return 'https://docs.google.com/document/d/EXAMPLE'; } }; } },
-      ScriptApp: { getScriptId: function () { return seed.scriptId || 'TEMPLATE'; }, WeekDay: { FRIDAY: 'FRIDAY' }, getService: function () { return { getUrl: function () { return 'https://script.google.com/macros/s/APP/exec'; } }; },
+      ScriptApp: { getScriptId: function () { return seed.scriptId || 'TEMPLATE'; }, WeekDay: { FRIDAY: 'FRIDAY', SUNDAY: 'SUNDAY' }, getService: function () { return { getUrl: function () { return 'https://script.google.com/macros/s/APP/exec'; } }; },
         getProjectTriggers: function () { return (state.triggers = state.triggers || []).slice(); }, deleteTrigger: function (t) { state.triggers = (state.triggers || []).filter(function (x) { return x !== t; }); },
-        newTrigger: function (fn) { var t = { fn: fn, getHandlerFunction: function () { return fn; } }, b = { timeBased: function () { return b; }, everyDays: function (n) { t.days = n; return b; }, onWeekDay: function (d) { t.day = d; return b; }, atHour: function (h) { t.hour = h; return b; }, nearMinute: function (m) { t.minute = m; return b; }, everyMinutes: function (m) { t.every = m; return b; }, create: function () { state.triggers = (state.triggers || []).concat([t]); return t; } }; return b; } },
+        newTrigger: function (fn) { var t = { fn: fn, getHandlerFunction: function () { return fn; } }, b = { timeBased: function () { return b; }, everyDays: function (n) { t.days = n; return b; }, onWeekDay: function (d) { t.day = d; return b; }, atHour: function (h) { t.hour = h; return b; }, nearMinute: function (m) { t.minute = m; return b; }, onMonthDay: function (d) { t.monthDay = d; return b; }, everyMinutes: function (m) { t.every = m; return b; }, create: function () { state.triggers = (state.triggers || []).concat([t]); return t; } }; return b; } },
       MailApp: { getRemainingDailyQuota: function () { return 100; }, sendEmail: function (to, subj, text, opt) { state.mail = (state.mail || []).concat([{ to: to, subj: subj, text: text, html: opt && opt.htmlBody, files: opt && opt.attachments, inline: opt && opt.inlineImages, replyTo: opt && opt.replyTo }]); } },
       HtmlService: { createHtmlOutputFromFile: function () { return chain({}); }, createHtmlOutput: function (h) { state.lastHtml = h; return chain({}); } }
     };
@@ -275,9 +287,9 @@ body.withside .wrap { margin-right: 240px; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
-// Other server files: TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
+// Other server files: Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.12';
+var VERSION = '0.13';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -285,7 +297,7 @@ var TABLES = {
   Settings: [['key', 'Setting'], ['S', 'South'], ['N', 'North'], ['help', 'What it means']],
   Staff: [['email', 'Email'], ['name', 'Name'], ['role', 'Role'], ['campus', 'Home campus'], ['other', 'Other campus'], ['active', 'Active'], ['notes', 'Notes']],
   Students: [['sid', 'Student ID'], ['first', 'First name'], ['last', 'Last name'], ['email', 'Email'], ['grade', 'Grade'], ['campus', 'Campus'], ['status', 'Status'], ['year', 'School year'], ['updated', 'Updated'], ['imp', 'Import'], ['alias', 'Alias'], ['icActive', 'Active today (IC)'], ['calendar', 'Calendar'], ['syear', 'Start year']],
-  Teachers: [['tid', 'Staff ID'], ['name', 'Name'], ['email', 'Email'], ['esrc', 'Email source'], ['campus', 'Campus'], ['contact', 'Testing contact email'], ['notes', 'Notes'], ['full', 'Full name']],
+  Teachers: [['tid', 'Staff ID'], ['name', 'Name'], ['email', 'Email'], ['esrc', 'Email source'], ['campus', 'Campus'], ['contact', 'Testing contact email'], ['notes', 'Notes'], ['full', 'Full name'], ['emailPref', 'Email choice']],
   Sections: [['secid', 'Section ID'], ['year', 'School year'], ['campus', 'Campus'], ['cid', 'Course ID'], ['course', 'Course'], ['period', 'Period'], ['type', 'Type'], ['term', 'Term'], ['pend', 'Period end'], ['tend', 'Term end'], ['room', 'Room'], ['lunch', 'Lunch'], ['cnum', 'Course number'], ['snum', 'Section number'], ['bell', 'Bell schedule'], ['sched', 'Meeting patterns']],
   'Section Teachers': [['secid', 'Section ID'], ['tid', 'Staff ID'], ['role', 'Role'], ['year', 'School year']],
   Enrollments: [['sid', 'Student ID'], ['secid', 'Section ID'], ['year', 'School year'], ['status', 'Status'], ['start', 'Start'], ['end', 'End'], ['imp', 'Import'], ['rid', 'Roster ID']],
@@ -297,7 +309,7 @@ var TABLES = {
   Assessments: [['id', 'ID'], ['year', 'School year'], ['campus', 'Campus'], ['tid', 'Staff ID'], ['secids', 'Section IDs'], ['course', 'Course'], ['name', 'Test name'], ['format', 'Format'], ['platform', 'Platform'], ['minutes', 'Time limit'], ['form', 'Instructions'], ['code', 'Access code'], ['paper', 'Paper status'], ['updated', 'Updated'], ['by', 'Updated by']],
   'Teacher Defaults': [['tid', 'Staff ID'], ['course', 'Course'], ['format', 'Format'], ['platform', 'Platform'], ['form', 'Instructions'], ['updated', 'Updated']],
   Resources: [['id', 'ID'], ['tid', 'Staff ID'], ['type', 'Type'], ['title', 'Title'], ['link', 'Link'], ['courses', 'Courses'], ['year', 'School year'], ['expires', 'Expires'], ['active', 'Active'], ['by', 'Added by']],
-  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show']],
+  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show'], ['cal', 'Calendar event']],
   Sessions: [['id', 'ID'], ['appt', 'Appointment ID'], ['inAt', 'Checked in'], ['start', 'Started'], ['end', 'Ended'], ['outcome', 'Outcome'], ['note', 'Note'], ['by', 'Staff'], ['desk', 'Desk']],
   Rooms: [['campus', 'Campus'], ['name', 'Room'], ['chart', 'Chart'], ['updated', 'Updated'], ['by', 'By']],
   'Seating Layouts': [['name', 'Name'], ['chart', 'Chart'], ['updated', 'Updated']],
@@ -307,6 +319,7 @@ var TABLES = {
   'Teacher Schedule': [['tid', 'Staff ID'], ['name', 'Teacher'], ['period', 'Period'], ['pend', 'Period end'], ['what', 'Assignment'], ['room', 'Room'], ['term', 'Term'], ['days', 'Days'], ['src', 'Source row']],
   Mappings: [['name', 'Name'], ['kind', 'Kind'], ['fields', 'Fields'], ['updated', 'Updated'], ['by', 'By']],
   Imports: [['id', 'ID'], ['at', 'When'], ['by', 'By'], ['campus', 'Campus'], ['year', 'School year'], ['kind', 'Kind'], ['mode', 'Mode'], ['file', 'File'], ['rows', 'Rows'], ['summary', 'Summary'], ['status', 'Status']],
+  Errors: [['at', 'When'], ['who', 'Who'], ['where', 'Where'], ['message', 'What happened']],
   Audit: [['at', 'When'], ['who', 'Who'], ['action', 'Action'], ['target', 'Target'], ['details', 'Details']]
 };
 
@@ -318,7 +331,7 @@ var DEFAULTS = [
   ['Testing Center email', '', '', 'Reply-to address on emails (empty: the account that runs the app).'],
   ['Student booking in this app', 'Off', 'Off', 'Off while students still sign up in SignUpGenius (import those appointments instead). On: students book here.'],
   ['Days ahead students can book', '14', '14', 'How far ahead the calendar goes.'],
-  ['Book at least this many hours ahead', '0', '0', '0 (Colleen’s rule): students can book until the period starts, by that day’s bell schedule. A number of hours makes an earlier cutoff. Coordinators can always book.'],
+  ['Book at least this many hours ahead', '0', '0', '0: students can book until the period starts, by that day’s bell schedule. A number of hours makes an earlier cutoff. Coordinators can always book.'],
   ['No walk-ins during periods', '4, 5', '4, 5', 'Coordinators get a warning when adding a walk-in during these periods.'],
   ['Most upcoming appointments per student', '', '', 'Empty: no limit.'],
   ['Booking purposes', 'Makeup test, Retake, Finish a test I started', 'Makeup test, Retake, Finish a test I started', 'The choices students see (comma list). Add "Other" to allow other purposes.'],
@@ -353,6 +366,9 @@ var DEFAULTS = [
   ['Infinite Campus: skip rows whose period end isn’t a number', 'Yes', 'Yes', 'Yes: a row whose sectionSchedule.periodEnd isn’t a plain number isn’t a class.'],
   ['Coordinator hub: no password needed for', '', '', 'School emails (comma list) that always get into the coordinator hub without the password. Not on the Staff tab: coordinator for both campuses.'],
   ['Coordinator hub: anyone with the password', 'No', 'No', 'No: only people on the Staff tab can unlock the coordinator hub (with the password). Yes: any school account with the password gets coordinator access to both campuses.'],
+  ['Daily health email to', '', '', 'School emails (comma list) that get the health check each morning when something needs attention.'],
+  ['Daily health email when all is well', 'No', 'No', 'Yes: send the morning health email every school day, even when everything is fine.'],
+  ['Testing Center Google Calendar', 'On', 'On', 'On: every appointment shows on the “Testing Center appointments” calendar of the account that runs the app (share that calendar with the Testing Center account).'],
   ['Hold a full roster import that drops more than', '10%', '10%', 'A full roster file that would drop more than this share of current classes is held for review.']
 ];
 
@@ -406,13 +422,43 @@ function sheet_(name) {
   }
   return sh;
 }
+// Speed (0.13): headers read once per request; directory tabs kept in the script cache between requests (gzipped pieces, a version
+// per tab that every write — and every edit typed into the sheet, via onEdit — bumps); anything inside locked_() reads the sheet itself,
+// so a write always uses the real row numbers. Lookups by a column are built once per request (find_ → index).
+var CACHED_ = { Students: 1, Teachers: 1, Sections: 1, 'Section Teachers': 1, Enrollments: 1, Settings: 1, 'Testing Periods': 1, 'Bell Schedules': 1, Calendar: 1, Rooms: 1, 'Teacher Schedule': 1, Resources: 1, 'Teacher Defaults': 1, Assessments: 1, Staff: 1, 'Student Schedules': 1, 'Date Changes': 1 };
+var NOCACHE_ = false;
 function cols_(name) {          // key → column number, by header text (so someone moving a column doesn't break anything)
+  var mk = 'cols:' + name; if (MEMO_[mk]) return MEMO_[mk];
   var sh = sheet_(name), w = Math.max(sh.getLastColumn(), 1), head = sh.getRange(1, 1, 1, w).getValues()[0].map(str_), out = {};
   TABLES[name].forEach(function (c) { var i = head.indexOf(c[1]); if (i >= 0) out[c[0]] = i + 1; });
-  return out;
+  return (MEMO_[mk] = out);
+}
+function tver_(name) { var c = CacheService.getScriptCache(), v = c.get('tv:' + name); if (!v) { v = Utilities.getUuid().slice(0, 8); c.put('tv:' + name, v, 21600); } return v; }
+function bump_(name) { if (CACHED_[name]) try { CacheService.getScriptCache().put('tv:' + name, Utilities.getUuid().slice(0, 8), 21600); } catch (e) {} }
+function bumpAll_() { Object.keys(CACHED_).forEach(bump_); }
+function clearMemo_(name) { delete MEMO_[name]; Object.keys(MEMO_).forEach(function (k) { if (k.indexOf('ix:' + name + ':') === 0) delete MEMO_[k]; }); bump_(name); }
+function tblGet_(name) {
+  try {
+    var c = CacheService.getScriptCache(), key = 'tb:' + name + ':' + tver_(name), n = +c.get(key); if (!n) return null;
+    var ks = []; for (var i = 0; i < n; i++) ks.push(key + ':' + i);
+    var got = c.getAll(ks); if (ks.some(function (k) { return got[k] === undefined || got[k] === null; })) return null;
+    var d = JSON.parse(unpack_(ks.map(function (k) { return got[k]; }).join('')));
+    return d.rows.map(function (v) { var o = { _r: v[0] }; d.keys.forEach(function (k, x) { o[k] = v[x + 1]; }); return o; });
+  } catch (e) { return null; }
+}
+function tblPut_(name, rows) {
+  try {
+    var keys = Object.keys(cols_(name)), s = pack_(JSON.stringify({ keys: keys, rows: rows.map(function (o) { return [o._r].concat(keys.map(function (k) { var x = o[k]; return Object.prototype.toString.call(x) === '[object Date]' ? x.toISOString() : x; })); }) }));
+    if (s.length > 2500000) return;          // very large: just read the sheet
+    var key = 'tb:' + name + ':' + tver_(name), parts = {}, n = 0;
+    for (var at = 0; at < s.length; at += 90000) parts[key + ':' + (n++)] = s.slice(at, at + 90000);
+    parts[key] = String(n); CacheService.getScriptCache().putAll(parts, 21600);
+  } catch (e) {}
 }
 function rows_(name) {          // every row as an object (with _r = its sheet row)
   if (MEMO_[name]) return MEMO_[name];
+  var cached = CACHED_[name] && !NOCACHE_ ? tblGet_(name) : null;
+  if (cached) return (MEMO_[name] = cached);
   var sh = sheet_(name), last = sh.getLastRow(), cols = cols_(name), keys = Object.keys(cols), out = [];
   if (last >= 2) {
     var w = Math.max.apply(null, keys.map(function (k) { return cols[k]; }));
@@ -422,33 +468,45 @@ function rows_(name) {          // every row as an object (with _r = its sheet r
       if (any) out.push(o);
     });
   }
+  if (CACHED_[name]) tblPut_(name, out);
   return (MEMO_[name] = out);
 }
 function asRow_(name, o) { var cols = cols_(name), w = Math.max.apply(null, Object.keys(cols).map(function (k) { return cols[k]; })), r = new Array(w).fill(''); Object.keys(cols).forEach(function (k) { if (o[k] !== undefined) r[cols[k] - 1] = cellVal_(o[k]); }); return r; }
 function cellVal_(v) { return v && typeof v === 'object' && Object.prototype.toString.call(v) !== '[object Date]' ? JSON.stringify(v) : v; }
-function insert_(name, o) { var sh = sheet_(name); sh.appendRow(asRow_(name, o)); delete MEMO_[name]; return o; }
+function insert_(name, o) { var sh = sheet_(name); sh.appendRow(asRow_(name, o)); clearMemo_(name); return o; }
 function insertMany_(name, list) {
   if (!list.length) return;
   var sh = sheet_(name), rows = list.map(function (o) { return asRow_(name, o); });
-  sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows); delete MEMO_[name];
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows); clearMemo_(name);
 }
 function update_(name, r, patch) {          // r = a row object from rows_() (or a row number)
   var sh = sheet_(name), cols = cols_(name), n = typeof r === 'number' ? r : r._r;
   Object.keys(patch).forEach(function (k) { if (cols[k]) sh.getRange(n, cols[k]).setValue(cellVal_(patch[k])); if (typeof r === 'object') r[k] = patch[k]; });
-  delete MEMO_[name];
+  clearMemo_(name);
 }
 function replaceAll_(name, list) {          // rewrites a whole table (roster import, rollback)
   var sh = sheet_(name), cols = cols_(name), w = Math.max(sh.getLastColumn(), Math.max.apply(null, Object.keys(cols).map(function (k) { return cols[k]; })));
   if (sh.getLastRow() >= 2) sh.getRange(2, 1, sh.getLastRow() - 1, w).clearContent();
   var rows = list.map(function (o) { var r = asRow_(name, o); while (r.length < w) r.push(''); return r.slice(0, w); });
   if (rows.length) sh.getRange(2, 1, rows.length, w).setValues(rows);
-  delete MEMO_[name];
+  clearMemo_(name);
 }
-function find_(name, key, val) { val = String(val); return rows_(name).filter(function (o) { return String(o[key]) === val; })[0] || null; }
+function index_(name, key) {          // value → first row, built once per request
+  var mk = 'ix:' + name + ':' + key; if (MEMO_[mk]) return MEMO_[mk];
+  var ix = {}; rows_(name).forEach(function (o) { var v = String(o[key]); if (!(v in ix)) ix[v] = o; }); return (MEMO_[mk] = ix);
+}
+function group_(name, key) {          // value → all rows
+  var mk = 'ix:' + name + ':*' + key; if (MEMO_[mk]) return MEMO_[mk];
+  var ix = {}; rows_(name).forEach(function (o) { var v = String(o[key]); (ix[v] = ix[v] || []).push(o); }); return (MEMO_[mk] = ix);
+}
+function find_(name, key, val) { return index_(name, key)[String(val)] || null; }
+// an edit typed straight into the sheet (Settings, Testing Periods, Bell Schedules, Calendar…) clears that tab's cached copy
+function onEdit(e) { try { var n = e && e.range && e.range.getSheet().getName(); if (n && CACHED_[n]) bump_(n); } catch (x) {} }
 function audit_(action, target, details) { insert_('Audit', { at: iso_(), who: myEmail_(), action: action, target: target, details: typeof details === 'string' ? details : JSON.stringify(details || '') }); }
 function locked_(f) {          // every write that has to see a stable sheet (seats, offers, imports) runs inside this; not reentrant
   var l = LockService.getScriptLock(); l.waitLock(30000);
-  try { MEMO_ = {}; return f(); } finally { l.releaseLock(); }
+  var nc = NOCACHE_; NOCACHE_ = true;          // writes always work from the sheet itself (real row numbers)
+  try { MEMO_ = {}; return f(); } finally { NOCACHE_ = nc; l.releaseLock(); }
 }
 
 // ---------- settings
@@ -568,9 +626,10 @@ function doGet(e) {
   var view = String(e && e.parameter && e.parameter.view || '');
   if (view === 'seating' && isStaff_(who_())) return seatingPage_();          // the room editor (Room.gs)
   // Index.html pulls in Student / Teacher / Coord.html with include() (HtmlService strips HTML comments, so no comment markers)
-  return HtmlService.createTemplateFromFile('Index').evaluate().setTitle('Testing Center').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return HtmlService.createTemplateFromFile('Index').evaluate().setTitle('Testing Center').setFaviconUrl(LOGO_URL).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 function include(f) { return HtmlService.createHtmlOutputFromFile(f).getContent(); }
+var LOGO_URL = 'https:' + '/' + '/colleenelyse.github.io/asl-study-hall/img/logo-64.png';          // the colorful ASL Study Hall logo on the browser tab (GitHub copy: asl.cool is blocked at school)
 function appUrl_() { try { return ScriptApp.getService().getUrl() || ''; } catch (e) { return ''; } }
 function ensureSetup_() {          // a sheet that skipped Set up, lost its starting rows, or was made by an older version (new tabs/columns) is repaired on first use
   var dp = PropertiesService.getDocumentProperties();
@@ -605,6 +664,7 @@ function setupSheet() {
   MEMO_ = {};
   var have = rows_('Settings').map(function (r) { return r.key; }), add = DEFAULTS.filter(function (d) { return have.indexOf(d[0]) < 0; });
   insertMany_('Settings', add.map(function (d) { return { key: d[0], S: d[1], N: d[2], help: d[3] }; }));
+  rows_('Settings').forEach(function (r) { var d = DEFAULTS.filter(function (x) { return x[0] === r.key; })[0]; if (d && str_(r.help) !== d[3]) update_('Settings', r, { help: d[3] }); });          // help text kept current
   if (!PropertiesService.getDocumentProperties().getProperty('teachMail1')) {          // 0.11: teachers hear about bookings, completions, no-shows, cancels
     rows_('Settings').forEach(function (r) { if (r.key === 'Completion emails to teachers') update_('Settings', r, { S: /off/i.test(r.S) ? 'On' : r.S, N: /off/i.test(r.N) ? 'On' : r.N, help: DEFAULTS.filter(function (x) { return x[0] === r.key; })[0][3] }); });
     PropertiesService.getDocumentProperties().setProperty('teachMail1', '1');
@@ -616,12 +676,42 @@ function setupSheet() {
   if (!rows_('Testing Periods').length) insertMany_('Testing Periods', samplePeriods_());
   if (!rows_('Bell Schedules').length) insertMany_('Bell Schedules', sampleBells_());
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'tick' || t.getHandlerFunction() === 'morning' || t.getHandlerFunction() === 'afternoon') ScriptApp.deleteTrigger(t); });
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'monthly' || t.getHandlerFunction() === 'weekly') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('monthly').timeBased().onMonthDay(1).atHour(2).create();          // old rows → Archive tabs
+  ScriptApp.newTrigger('weekly').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();          // a backup copy of the sheet
   ScriptApp.newTrigger('afternoon').timeBased().everyDays(1).atHour(15).nearMinute(30).create();          // 3:30: no-shows marked and emailed, tomorrow's reminders
   ScriptApp.newTrigger('tick').timeBased().everyMinutes(10).create();          // expires waitlist offers and passes the seat on
   ScriptApp.newTrigger('morning').timeBased().everyDays(1).atHour(6).create();          // missing-material reminders for the next school day
+  protectSheet_();
   PropertiesService.getDocumentProperties().setProperty('setupVer', VERSION);
+  MEMO_ = {}; bumpAll_();
   return 'ok';
 }
+// Protect the sheet: dropdowns where a setting has fixed choices; technical tabs hidden, with a warning before anyone edits them.
+var SETTING_CHOICES = { 'Student booking in this app': ['On', 'Off'], 'Waitlist': ['On', 'Off'], 'Waitlist offers': ['Automatic', 'Coordinator approves first'], 'Offers inside the booking cutoff': ['Ask coordinator', 'Allow'],
+  'Missing-material emails': ['Off', 'Review first', 'Automatic'], 'Missing-material reminder': ['School day before', '2 school days before'], 'Teacher emails for co-taught classes': ['Primary teacher', 'All teachers', 'Testing contact'],
+  'Completion emails to teachers': ['On', 'Off'], 'Student confirmation emails': ['On', 'Off'], 'Securly export': ['Email list', 'CSV'], 'Email teachers when a student books': ['On', 'Off'], 'Email teachers about no-shows': ['On', 'Off'],
+  'Email teachers when an appointment is canceled': ['On', 'Off'], 'Start the test clock when a student arrives': ['Yes', 'No'], 'Mark students who never arrived as no-shows': ['At 3:30', 'When the period ends', 'Off'], 'No-show email to students': ['On', 'Off'],
+  'Student reminder the school day before': ['On', 'Off'], 'Student reminder the morning of': ['On', 'Off'], 'Coordinator hub: anyone with the password': ['No', 'Yes'], 'Infinite Campus: skip rows with no room': ['Yes', 'No'],
+  'Infinite Campus: skip rows whose period end isn’t a number': ['Yes', 'No'], 'Daily health email when all is well': ['No', 'Yes'] };
+var TECH_TABS = ['Audit', 'Outbox', 'Sessions', 'Offers', 'Mappings', 'Errors', 'Imports', 'Student Schedules', 'Teacher Schedule', 'Seating Layouts', 'Rooms'];
+function protectSheet_() {
+  try {
+    var st = sheet_('Settings'), cols = cols_('Settings');
+    rows_('Settings').forEach(function (r) {
+      var ch = SETTING_CHOICES[r.key]; if (!ch) return;
+      var rule = SpreadsheetApp.newDataValidation().requireValueInList(ch, true).setAllowInvalid(false).build();
+      ['S', 'N'].forEach(function (c) { if (cols[c]) st.getRange(r._r, cols[c]).setDataValidation(rule); });
+    });
+    if (cols.key) st.getRange(1, cols.key, Math.max(1, st.getLastRow()), 1).protect().setDescription('Setting names (the app reads them)').setWarningOnly(true);
+    Object.keys(TABLES).forEach(function (t) {
+      var sh = ss_().getSheetByName(t); if (!sh) return;
+      if (TECH_TABS.indexOf(t) >= 0 || t.indexOf('Archive · ') === 0) { sh.hideSheet(); if (!sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) sh.protect().setDescription('Kept by the Testing Center app').setWarningOnly(true); }
+      sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).protect().setDescription('Column names (the app finds columns by them)').setWarningOnly(true);
+    });
+  } catch (e) {}          // a sheet without these services (tests) just skips it
+}
+
 // Starting points the coordinators change on the Testing Periods tab (North's current closures: Mon 6, Tue 7, Wed 3, Thu 6, Fri 7).
 function samplePeriods_() {
   var out = [], closedN = { Mon: '6', Tue: '7', Wed: '3', Thu: '6', Fri: '7' };
@@ -1117,8 +1207,9 @@ function backup_(id) {
   });
   var ids = []; ss.getSheets().forEach(function (s) { var m = /^_bk (\S+) /.exec(s.getName()); if (m && ids.indexOf(m[1]) < 0) ids.push(m[1]); });
   var order = rows_('Imports').map(function (r) { return str_(r.id); });
-  ids.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
-  ids.slice(0, Math.max(0, ids.length - 3)).forEach(function (old) { ss.getSheets().forEach(function (s) { if (s.getName().indexOf('_bk ' + old + ' ') === 0) ss.deleteSheet(s); }); });
+  var pos = function (x) { var i = order.indexOf(x); return i < 0 ? 1e9 : i; };          // the import being made now isn't in the list yet: it's the newest
+  ids.sort(function (a, b) { return pos(a) - pos(b); });
+  ids.slice(0, Math.max(0, ids.length - 2)).forEach(function (old) { ss.getSheets().forEach(function (s) { if (s.getName().indexOf('_bk ' + old + ' ') === 0) ss.deleteSheet(s); }); });
 }
 function api_importRollback(id) {
   var w = need_('admin');
@@ -1126,13 +1217,13 @@ function api_importRollback(id) {
     var imp = find_('Imports', 'id', id); if (!imp || !/^applied/i.test(imp.status)) throw new Error('That import can’t be undone.');
     var later = rows_('Imports').filter(function (r) { return r.kind === 'roster' && /^applied/i.test(r.status) && ms_(r.at) > ms_(imp.at); });
     if (later.length) throw new Error('Undo the newer import first (' + str_(later[later.length - 1].id) + ').');
-    BACKUP_TABS.forEach(function (t) { if (!ss_().getSheetByName('_bk ' + id + ' ' + t)) throw new Error('The backup for that import is gone (only the last 3 are kept).'); });
+    BACKUP_TABS.forEach(function (t) { if (!ss_().getSheetByName('_bk ' + id + ' ' + t)) throw new Error('The backup for that import is gone (only the last 2 are kept).'); });
     BACKUP_TABS.forEach(function (t) {
       var b = ss_().getSheetByName('_bk ' + id + ' ' + t), dst = sheet_(t), n = b.getLastRow(), w2 = Math.max(b.getLastColumn(), dst.getLastColumn(), 1);
       if (dst.getLastRow()) dst.getRange(1, 1, dst.getLastRow(), w2).clearContent();
       if (n) dst.getRange(1, 1, n, Math.max(b.getLastColumn(), 1)).setValues(b.getRange(1, 1, n, Math.max(b.getLastColumn(), 1)).getValues());
     });
-    MEMO_ = {};
+    MEMO_ = {}; bumpAll_();
     update_('Imports', find_('Imports', 'id', id), { status: 'Rolled back' });
     PropertiesService.getDocumentProperties().setProperty('rosterVer', String(+stateVer_() + 1));
     audit_('Roster import undone', id, '');
@@ -1187,6 +1278,43 @@ function matchClass_(sid, course, teacher) {          // a typed course/teacher 
   return rows.filter(function (r) { return t.length && t.some(function (x) { return x.length > 2 && low_(r.teacher).indexOf(x) >= 0; }); })[0] || rows.filter(function (r) { return c && low_(r.course).indexOf(c.split(' ')[0]) >= 0; })[0] || null;
 }
 
+// ---------- Clean up rows that aren't really classes (Colleen's rules; anything unclear is hers to decide)
+var NOTCLASS_WORDS = /\b(club|homeroom|advisory|activit(y|ies)|athletic|intramural|council|committee|practice|rehearsal|team)\b/i;
+function cleanupScan_() {
+  var zList = list_(setting_('Infinite Campus: not classes if the course code starts with', 'S')).map(function (x) { return x.toUpperCase(); });
+  var enr = group_('Enrollments', 'secid'), ap = group_('Appointments', 'secid'), out = [];
+  rows_('Sections').forEach(function (s) {
+    if (str_(s.term) === 'Added by Testing Center') return;
+    var fromIC = !!(str_(s.sched) || str_(s.cnum) || str_(s.snum)), code = (str_(s.cnum) + ' ' + str_(s.cid)).toUpperCase().trim().split(/\s+/), why = '', sure = false;
+    if (zList.length && code.some(function (x) { return x && zList.some(function (z) { return x.indexOf(z) === 0; }); })) { why = 'Code starts with ' + zList.join('/') + ' (club or activity)'; sure = true; }
+    else if (fromIC && !str_(s.room)) { why = 'No room'; sure = true; }
+    else if (str_(s.pend) && !/^\d{1,2}$/.test(str_(s.pend))) { why = 'Period end isn’t a number (' + str_(s.pend) + ')'; sure = true; }
+    else if (NOTCLASS_WORDS.test(str_(s.course))) why = 'The name sounds like an activity';
+    else if (!fromIC && !str_(s.room) && !/study|lunch|support|tutorial/i.test(str_(s.course))) why = 'From an older import with no room information';
+    if (!why) return;
+    var n = (enr[str_(s.secid)] || []).filter(function (e) { return !/drop/i.test(e.status); }).length;
+    out.push({ secid: str_(s.secid), course: str_(s.course), period: str_(s.period), room: str_(s.room), campus: str_(s.campus), teacher: secTeachers_(s.secid).map(function (t) { return t.name; }).join(' / '), students: n, appts: (ap[str_(s.secid)] || []).length, why: why, sure: sure });
+  });
+  return out.sort(function (a, b) { return (b.sure - a.sure) || a.course.localeCompare(b.course); });
+}
+function api_cleanupScan() { need_('admin'); return cleanupScan_(); }
+function api_cleanupApply(secids) {
+  var w = need_('admin'), pick = {}; (secids || []).forEach(function (x) { pick[String(x)] = 1; });
+  if (!Object.keys(pick).length) throw new Error('Tick at least one row.');
+  return locked_(function () {
+    var ap = group_('Appointments', 'secid'), id = uid_('cl'); backup_(id);
+    var keepSec = {}; Object.keys(pick).forEach(function (k) { if ((ap[k] || []).length) keepSec[k] = 1; });          // past appointments keep their teacher
+    var before = rows_('Enrollments').length;
+    replaceAll_('Enrollments', rows_('Enrollments').filter(function (e) { return !pick[str_(e.secid)]; }));
+    replaceAll_('Sections', rows_('Sections').filter(function (s) { return !pick[str_(s.secid)] || keepSec[str_(s.secid)]; }));
+    replaceAll_('Section Teachers', rows_('Section Teachers').filter(function (r) { return !pick[str_(r.secid)] || keepSec[str_(r.secid)]; }));
+    var res = { sections: Object.keys(pick).length - Object.keys(keepSec).length, kept: Object.keys(keepSec).length, enrollments: before - rows_('Enrollments').length };
+    insert_('Imports', { id: id, at: iso_(), by: w.email, campus: 'B', year: schoolYear_(), kind: 'roster', mode: 'Clean-up (not classes)', file: '', rows: res.enrollments, summary: res, status: 'Applied' });
+    audit_('Clean-up: not classes', id, res); PropertiesService.getDocumentProperties().setProperty('rosterVer', String(+stateVer_() + 1));
+    return res;
+  });
+}
+
 // Seats, appointments and the waitlist. Every change to seats runs inside locked_(), which re-reads the sheet, so two
 // students can never take the same last seat. A/B: an A-only booking uses an A seat, B-only a B seat, the whole period both.
 var ACTIVE_APPT = /^(scheduled|awaiting|ready|checked|testing|paused)/i;
@@ -1213,11 +1341,12 @@ function slot_(campus, d, period) {
   });
   if (bell) { out.start = bell.start; out.end = bell.end; out.aEnd = bell.aEnd; out.bStart = bell.bStart; out.startMs = stamp_(d, bell.start); }
   var use = function (bucket, half) { if (!out.ab) { bucket.all++; return; } if (half !== 'B') bucket.A++; if (half !== 'A') bucket.B++; };
-  rows_('Appointments').forEach(function (a) { if (str_(a.campus) === campus && day_(a.date) === d && str_(a.period) === String(period) && ACTIVE_APPT.test(a.status)) use(out.used, str_(a.half)); });
+  (slotIndex_()[campus + '|' + d + '|' + period] || []).forEach(function (a) { if (ACTIVE_APPT.test(a.status)) use(out.used, str_(a.half)); });
   rows_('Offers').forEach(function (o) { if (str_(o.campus) === campus && day_(o.date) === d && str_(o.period) === String(period) && /^active/i.test(o.status) && ms_(o.expires) > now_().getTime()) use(out.held, str_(o.half)); });
   out.free = out.ab ? { A: out.cap - out.used.A - out.held.A, B: out.cap - out.used.B - out.held.B } : { all: out.cap - out.used.all - out.held.all };
   return out;
 }
+function slotIndex_() { var mk = 'ix:Appointments:slot'; if (MEMO_[mk]) return MEMO_[mk]; var ix = {}; rows_('Appointments').forEach(function (a) { var k = str_(a.campus) + '|' + day_(a.date) + '|' + str_(a.period); (ix[k] = ix[k] || []).push(a); }); return (MEMO_[mk] = ix); }
 function fits_(s, half) { if (!s.open) return false; if (!s.ab) return s.free.all > 0; if (half === 'A') return s.free.A > 0; if (half === 'B') return s.free.B > 0; return s.free.A > 0 && s.free.B > 0; }
 function normHalf_(s, half) { return s.ab ? (/^(A|B)$/.test(half) ? half : 'AB') : ''; }
 function tooSoon_(s, campus) { return !!s.startMs && s.startMs - now_().getTime() < campusConf_(campus).cutoffH * 3600000; }
@@ -1421,13 +1550,40 @@ function expireOffers_() {          // inside locked_(): every offer past its ti
   rows_('Waitlist').forEach(function (x) { if (/^waiting/i.test(x.status) && day_(x.date) < today_()) update_('Waitlist', x, { status: 'Closed', changed: iso_() }); });
   Object.keys(touched).forEach(function (k) { var p = k.split('|'); offerOpenSeats_(p[0], p[1], p[2]); });
 }
-function tick() { locked_(function () { expireOffers_(); CAMPUSES.forEach(function (c) { if (campusConf_(c).autoNoShow === 'period') markNoShows_(c, today_()); }); }); }          // every 10 minutes
-function afternoon() {          // about 3:30 PM
+function tick() { jobRun_('tick', tickRun_); }
+function tickRun_() { try { calSync_(); } catch (e) { logError_('calendar', e.message); } locked_(function () { expireOffers_(); CAMPUSES.forEach(function (c) { if (campusConf_(c).autoNoShow === 'period') markNoShows_(c, today_()); }); }); }          // every 10 minutes
+function calSync_() {          // create, move or delete events so the calendar matches the appointments (at most 60 per run)
+  if (typeof CalendarApp === 'undefined') return;
+  var on = CAMPUSES.some(function (c) { return yes_(setting_('Testing Center Google Calendar', c)); }); if (!on) return;
+  var dp = PropertiesService.getDocumentProperties(), id = dp.getProperty('calId'), cal = id ? CalendarApp.getCalendarById(id) : null;
+  if (!cal) { cal = CalendarApp.createCalendar('Testing Center appointments', { summary: 'Every Testing Center appointment (kept up to date by the Testing Center app).', color: CalendarApp.Color.BLUE }); dp.setProperty('calId', cal.getId()); }
+  var t = today_(), done = 0, ups = [];
+  rows_('Appointments').forEach(function (a) {
+    if (done >= 60 || day_(a.date) < t) return;
+    var live = ACTIVE_APPT.test(a.status) || /^(completed|partial|no-show)/i.test(a.status), sig = [day_(a.date), str_(a.period), str_(a.status), str_(a.test)].join('|'), cur = json_(a.cal, null);
+    if (!yes_(setting_('Testing Center Google Calendar', str_(a.campus)))) return;
+    if (live && cur && cur.sig === sig) return;
+    if (!live && !cur) return;
+    var info = dayInfo_(str_(a.campus), day_(a.date)), b = bells_(str_(a.campus), info.sched)[str_(a.period)]; if (live && !b) return;
+    try { if (cur && cur.id) { var ev = cal.getEventById(cur.id); if (ev) ev.deleteEvent(); } } catch (e) {}
+    var val = '';
+    if (live) {
+      var stu = student_(a.sid), title = 'P' + a.period + (str_(a.half) && a.half !== 'AB' ? a.half : '') + ' · ' + (studentName_(stu) || 'Student') + ' · ' + str_(a.course) + ' — ' + str_(a.test) + (/^no-show/i.test(a.status) ? ' (no-show)' : /^completed/i.test(a.status) ? ' ✓' : '');
+      var ev2 = cal.createEvent(title, new Date(stamp_(day_(a.date), b.start)), new Date(stamp_(day_(a.date), b.end)), { description: campusName_(str_(a.campus)) + ' Testing Center · ' + str_(a.purpose) + '\n' + appUrl_() + '?hub=1' });
+      val = JSON.stringify({ id: ev2.getId(), sig: sig });
+    }
+    ups.push({ id: str_(a.id), cal: val }); done++;
+  });
+  if (ups.length) locked_(function () { ups.forEach(function (u) { var x = find_('Appointments', 'id', u.id); if (x) update_('Appointments', x, { cal: u.cal }); }); });
+}
+function afternoon() { jobRun_('afternoon', afternoonRun_); }          // about 3:30 PM
+function afternoonRun_() {
   locked_(function () {
     CAMPUSES.forEach(function (c) {
       var conf = campusConf_(c), t = today_(); if (!dayInfo_(c, t).school) return;
       if (conf.autoNoShow !== 'off') markNoShows_(c, t);
       if (conf.nsEmail) rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === t && /^no-show/i.test(a.status)) studentMail_('noshow', a); });
+      if (c === 'S') teacherSummaries_();
       if (conf.remind1) { var nx = nextSchoolDay_(c, t); rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === nx && /^(scheduled|awaiting|ready)/i.test(a.status)) studentMail_('remind1', a); }); }
     });
   });
@@ -1448,7 +1604,8 @@ function offerText_(o, conf) {
 function studentHome_(w) {
   var sid = w.sid, conf = campusConf_(w.campus), t = today_(), stu = student_(sid);
   var mine = rows_('Appointments').filter(function (a) { return str_(a.sid) === sid; }).sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
-  var brief = function (a) { return { nsChoice: str_(a.nsChoice), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), canCancel: /^(scheduled|awaiting|ready)/i.test(a.status) && day_(a.date) >= t, missed: (json_(a.conflict, null) || {}).course || '' }; };
+  var bellOf = function (a) { var b = bells_(w.campus, dayInfo_(w.campus, day_(a.date)).sched)[str_(a.period)] || {}; return b; };
+  var brief = function (a) { var bb = bellOf(a); return { start: bb.start || '', end: bb.end || '', nsChoice: str_(a.nsChoice), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), canCancel: /^(scheduled|awaiting|ready)/i.test(a.status) && day_(a.date) >= t, missed: (json_(a.conflict, null) || {}).course || '' }; };
   var offers = rows_('Offers').filter(function (o) { return str_(o.sid) === sid && /^active/i.test(o.status) && ms_(o.expires) > now_().getTime(); }).map(function (o) { return { id: str_(o.id), date: day_(o.date), period: str_(o.period), half: str_(o.half), expires: str_(o.expires), test: (json_((find_('Waitlist', 'id', o.wid) || {}).details, {})).test || '' }; });
   var waits = rows_('Waitlist').filter(function (x) { return str_(x.sid) === sid && /^waiting/i.test(x.status) && day_(x.date) >= t; }).map(function (x) {
     var q = waitQueue_(w.campus, day_(x.date), str_(x.period)).filter(function (y) { return /^(waiting|offered)/i.test(y.status); }), det = json_(x.details, {});
@@ -1459,7 +1616,11 @@ function studentHome_(w) {
   sch.rows.forEach(function (r) {          // tests the teacher already entered for this class
     if (isFree_(r.type)) return;
     var tids = (r.teachers || []).map(function (x) { return x.tid; });
-    tests[r.secid || r.period + '|' + r.course] = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && low_(A.course) === low_(r.course) && (tids.indexOf(str_(A.tid)) >= 0 || list_(A.secids).indexOf(r.secid) >= 0); }).map(function (A) { return { id: str_(A.id), name: str_(A.name) }; });
+    var key = r.secid || r.period + '|' + r.course, names = {};
+    var list = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && low_(A.course) === low_(r.course) && (tids.indexOf(str_(A.tid)) >= 0 || list_(A.secids).indexOf(r.secid) >= 0); }).map(function (A) { names[low_(A.name)] = 1; return { id: str_(A.id), name: str_(A.name) }; });
+    var since = addDays_(t, -21);          // what classmates in this class booked lately (same section, or same course and teacher)
+    rows_('Appointments').forEach(function (a) { if (str_(a.sid) === sid || day_(a.date) < since || /^canceled/i.test(a.status) || !str_(a.test)) return; if (!((r.secid && str_(a.secid) === r.secid) || (low_(a.course) === low_(r.course) && r.teacher && low_(a.teacher) === low_(r.teacher)))) return; if (!names[low_(a.test)]) { names[low_(a.test)] = 1; list.push({ id: '', name: str_(a.test), fromClass: true }); } });
+    tests[key] = list.slice(0, 6);
   });
   return {
     sid: sid, first: str_(stu && (stu.alias || stu.first)), me: { name: studentName_(stu), sid: sid, grade: str_(stu && stu.grade), email: low_(stu && stu.email), campus: conf.name, updated: day_(stu && stu.updated) }, campus: w.campus, campusName: conf.name, where: conf.where, booking: conf.booking, waitlist: conf.waitlist, purposes: conf.purposes, cutoffH: conf.cutoffH,
@@ -1494,7 +1655,7 @@ function resolveFormat_(a) {
   var tids = str_(a.secid) ? secTeachers_(a.secid).map(function (t) { return t.tid; }) : [];
   var dflt = rows_('Teacher Defaults').filter(function (r) { return tids.indexOf(str_(r.tid)) >= 0 && low_(r.course) === low_(a.course) && /^(paper|digital)$/i.test(r.format); })[0];
   if (dflt) return { value: cap_(dflt.format), source: 'teacher-default', text: 'Teacher’s usual format' };
-  var past = rows_('Assessments').filter(function (r) { return tids.indexOf(str_(r.tid)) >= 0 && /^(paper|digital)$/i.test(r.format); });
+  var byT = group_('Assessments', 'tid'), past = []; tids.forEach(function (t) { (byT[t] || []).forEach(function (r) { if (/^(paper|digital)$/i.test(r.format)) past.push(r); }); });
   var course = past.filter(function (r) { return low_(r.course) === low_(a.course); }), use = course.length >= 3 ? course : past.length >= 5 ? past : [];
   if (use.length) {
     var dig = use.filter(function (r) { return /digital/i.test(r.format); }).length, pct = Math.round(100 * dig / use.length);
@@ -1526,12 +1687,12 @@ function matchAssessment_(a) {          // an appointment not linked to a test y
 function readiness_(a) {
   var m = !str_(a.aid) && matchAssessment_(a); if (m) a = Object.assign({}, a, { aid: str_(m.id) });
   var f = resolveFormat_(a), res = resourcesFor_(a), A = str_(a.aid) && find_('Assessments', 'id', a.aid), missing = [], confirmed = f.source === 'teacher-test' || f.source === 'teacher-default';
-  if (!confirmed && res.length) return { format: f.value, fsource: f.source, ftext: f.text, missing: ['Format not confirmed (a standing resource is on file)'], state: 'Check', resources: res.length, aid: A ? str_(A.id) : '' };
-  if (f.value === 'Paper') { var ps = A ? str_(A.paper) : ''; if (!/^(received|ready|in progress|completed)/i.test(ps)) missing.push(ps && /delivery/i.test(ps) ? 'Paper test: teacher is bringing it' : 'Paper test not received'); }
-  else if (f.value === 'Digital') { if (!(A && (str_(A.code) || /no code/i.test(str_(A.form)))) && !res.length) missing.push('Access code or test link'); }
-  else missing.push(res.length ? 'Format not confirmed (a standing resource is on file)' : 'Format and instructions');
-  if (!A && f.source !== 'teacher-default' && !res.length && missing.indexOf('Format and instructions') < 0) missing.push('Teacher’s testing form');
-  var state = !missing.length && confirmed ? 'Ready' : !missing.length || (res.length && missing.length === 1 && /resource/.test(missing[0])) ? 'Check' : 'Needs info';
+  if (!confirmed && res.length) return { format: f.value, fsource: f.source, ftext: f.text, missing: ['Not confirmed paper or online (the teacher’s code doc is on file)'], state: 'Check', resources: res.length, aid: A ? str_(A.id) : '' };
+  if (f.value === 'Paper') { var ps = A ? str_(A.paper) : ''; if (!/^(received|ready|in progress|completed)/i.test(ps)) missing.push(ps && /delivery/i.test(ps) ? 'Missing: paper test (the teacher is bringing it)' : 'Missing: paper test'); }
+  else if (f.value === 'Digital') { if (!(A && (str_(A.code) || /no code/i.test(str_(A.form)))) && !res.length) missing.push('Missing: access code or test link'); }
+  else missing.push(res.length ? 'Not confirmed paper or online (the teacher’s code doc is on file)' : 'Don’t know if it’s paper or online');
+  if (!A && f.source !== 'teacher-default' && !res.length && missing.indexOf('Don’t know if it’s paper or online') < 0) missing.push('Missing: the teacher’s testing form');
+  var state = !missing.length && confirmed ? 'Ready' : !missing.length || (res.length && missing.length === 1 && /code doc is on file/.test(missing[0])) ? 'Check' : 'Needs info';
   return { format: f.value, fsource: f.source, ftext: f.text, missing: missing, state: state, resources: res.length, aid: A ? str_(A.id) : '' };
 }
 
@@ -1541,7 +1702,8 @@ function teacherHome_(w) {
     .sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
   return {
     courses: myCourses_(w), platforms: PLATFORMS,
-    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a); return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
+    emailPref: str_((find_('Teachers', 'tid', w.tid) || {}).emailPref),
+    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a), ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: rows_('Assessments').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
     resources: rows_('Resources').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && !/^(no|false)$/i.test(str_(r.active)); }).map(function (r) { return { id: str_(r.id), type: str_(r.type), title: str_(r.title), link: str_(r.link), courses: list_(r.courses), expires: day_(r.expires) }; }),
     defaults: rows_('Teacher Defaults').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0; }).map(function (r) { return { course: str_(r.course), format: str_(r.format), platform: str_(r.platform), form: json_(r.form, {}) }; }),
@@ -1550,6 +1712,13 @@ function teacherHome_(w) {
 }
 function assessOut_(r) { return { id: str_(r.id), course: str_(r.course), name: str_(r.name), format: str_(r.format), platform: str_(r.platform), minutes: str_(r.minutes), form: json_(r.form, {}), code: str_(r.code), paper: str_(r.paper), updated: str_(r.updated) }; }
 function api_teacherHome() { return teacherHome_(need_('teacher')); }
+// Each teacher picks how Testing Center emails reach them: each one as it happens, one summary after school, or none.
+// (Missing-materials and "test needed now" emails always come right away: they need an answer.)
+function api_teacherPrefs(pref) {
+  var w = need_('teacher'); pref = /summary/.test(pref) ? 'summary' : /none/.test(pref) ? 'none' : 'each';
+  locked_(function () { var t = find_('Teachers', 'tid', w.tid); if (t) update_('Teachers', t, { emailPref: pref }); audit_('Teacher email choice', w.tid, pref); });
+  return teacherHome_(w);
+}
 function myStudents_(w) {          // students currently in this teacher's sections: sid → {sid, name, classes}
   var secs = {}; mySections_(w).forEach(function (s) { secs[str_(s.secid)] = s; });
   var out = {}, t = today_();
@@ -1676,7 +1845,8 @@ function materialsText_(g, campus) {
     'Thank you!\n\n' + c.name + ' Testing Center';
 }
 function morningReminders_() { CAMPUSES.forEach(function (c) { var t = today_(); if (!campusConf_(c).remind0 || !dayInfo_(c, t).school) return; rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === t && /^(scheduled|awaiting|ready)/i.test(a.status)) studentMail_('remind0', a); }); }); }
-function morning() {          // daily: reminders for appointments on the school day after the next 1 or 2 school days (the real calendar, not "Friday → Monday")
+function morning() { jobRun_('morning', function () { morningRun_(); healthEmail_(); }); }
+function morningRun_() {          // daily: reminders for appointments on the school day after the next 1 or 2 school days (the real calendar, not "Friday → Monday")
   locked_(function () {
     expireOffers_();
     morningReminders_();
@@ -1697,7 +1867,20 @@ function teacherNotice_(kind, a, extra) {
   var body = { booked: who + ' booked the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.purpose) + ', ' + str_(a.course) + ') on ' + when + '.' + (cj ? '\n\nThis is during ' + cj.course + ': the student said ' + (cj.teacher || 'the teacher') + ' gave permission and will bring a written note.' : '') + '\n\nTo give us the test or the access code, open the appointment: ' + appUrl_() + '?appt=' + str_(a.id),
     noshow: who + ' was scheduled at the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' and didn’t come.' + notesText_(a),
     canceled: who + '’s ' + c.name + ' Testing Center appointment for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' was canceled' + (extra ? ' by the Testing Center. Reason: ' + extra : ' by the student') + '.' }[kind];
-  mail_('t-' + kind, 't-' + kind + ':' + str_(a.id), rc.to, subj, 'Hello,\n\n' + body + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+  var pref = {}; rows_('Teachers').forEach(function (t) { if (str_(t.email)) pref[low_(t.email)] = str_(t.emailPref); });
+  rc.to.forEach(function (to) {
+    var p = pref[to] || 'each'; if (p === 'none') return;
+    if (p === 'summary') insert_('Outbox', { id: uid_('em'), created: iso_(), kind: 'summary-item', key: 't-' + kind + ':' + str_(a.id) + ':' + to, to: to, subject: subj, body: body, appt: str_(a.id), status: 'Queued for summary', by: 'automatic' });
+    else mail_('t-' + kind, 't-' + kind + ':' + str_(a.id) + ':' + to, to, subj, 'Hello,\n\n' + body + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+  });
+}
+function teacherSummaries_() {          // at 3:30: one email per teacher with the day's Testing Center news
+  var by = {}; rows_('Outbox').forEach(function (r) { if (r.kind === 'summary-item' && /^queued/i.test(r.status)) (by[low_(r.to)] = by[low_(r.to)] || []).push(r); });
+  Object.keys(by).forEach(function (to) {
+    var items = by[to];
+    mail_('t-summary', 't-summary:' + today_() + ':' + to, to, 'Testing Center — today’s summary (' + items.length + ')', 'Hello,\n\nHere’s what happened with your students at the Testing Center today:\n\n' + items.map(function (r) { return '• ' + str_(r.subject).replace(/^Testing Center — /, '') + '\n  ' + str_(r.body).split('\n')[0]; }).join('\n\n') + '\n\nOpen the Testing Center app for details: ' + appUrl_() + '\n\nYou chose one summary a day. To change it: the app › My settings.', '', true);
+    items.forEach(function (r) { update_('Outbox', r, { status: 'Sent in summary', sent: iso_() }); });
+  });
 }
 function studentMail_(kind, a) {
   var stu = student_(a.sid); if (!stu || !stu.email) return;
@@ -1752,11 +1935,12 @@ function apptRow_(a, withRes) {
   return o;
 }
 
-function api_dash(campus, d) {
+function api_dashMore(campus) { needCampus_(campus); return { attention: attention_(campus), waitlist: waitlistView_(campus), health: health_() }; }
+function api_dash(campus, d, lite) {
   var w = needCampus_(campus);
   d = day_(d) || today_();
-  locked_(function () { expireOffers_(); });          // offers that ran out since the last tick are passed on before anyone looks
-  MEMO_ = {};
+  var nowMs = now_().getTime();          // offers that ran out since the last tick are passed on first (the lock only when there is one)
+  if (rows_('Offers').some(function (o) { return /^active/i.test(o.status) && ms_(o.expires) <= nowMs; })) { locked_(function () { expireOffers_(); }); MEMO_ = {}; }
   var info = dayInfo_(campus, d), bells = info.school ? bells_(campus, info.sched) : {};
   var appts = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === d && !/^canceled/i.test(a.status); });
   var periods = offeredPeriods_(campus).map(function (p) {
@@ -1770,7 +1954,7 @@ function api_dash(campus, d) {
     campus: campus, edit: w.campuses[campus] === 'edit', date: d, info: info, bells: bells, periods: periods,
     counts: { booked: appts.filter(function (a) { return ACTIVE_APPT.test(a.status) || /^(completed|partial|no-show)/i.test(a.status); }).length, inRoom: count(/^(checked|testing|paused)/i), done: count(/^(completed|partial)/i), noShow: count(/^no-show/i), needs: appts.filter(function (a) { return ACTIVE_APPT.test(a.status) && readiness_(a).state === 'Needs info'; }).length },
     todayBells: (function () { var ti = dayInfo_(campus, today_()); return { info: ti, bells: ti.school ? bells_(campus, ti.sched) : {} }; })(),          // the live bell clock always shows today
-    attention: attention_(campus), waitlist: waitlistView_(campus), conf: campusConf_(campus), prefs: prefs_(w.email), campuses: w.campuses, names: { S: campusName_('S'), N: campusName_('N') }
+    attention: lite ? null : attention_(campus), waitlist: lite ? null : waitlistView_(campus), conf: campusConf_(campus), prefs: prefs_(w.email), campuses: w.campuses, names: { S: campusName_('S'), N: campusName_('N') }
   };
 }
 
@@ -1785,7 +1969,7 @@ function attention_(campus) {
     else if (!str_(a.secid)) add(sev, 'noclass', who + ': class not on their schedule (' + (str_(a.course) || 'unknown') + '), ' + when + ' P' + a.period, { appt: str_(a.id) });
     var r = readiness_(a), pn = day_(a.date) === t ? periodNow_(campus) : {};
     if (r.state === 'Needs info' && str_(a.sid) && (str_(a.period) === pn.next || str_(a.period) === pn.now)) { add(0, 'nexttest', who + '’s ' + str_(a.course) + ' test (' + str_(a.test) + ') is ' + (str_(a.period) === pn.now ? 'this period' : 'next period') + ' (P' + a.period + ', ' + hmTxt_(pn.bells[str_(a.period)].start) + ') but the Testing Center doesn’t have it: ' + r.missing.join(', ') + '.', { appt: str_(a.id) }); return; }
-    if (r.state === 'Needs info') add(sev, 'materials', who + ' · ' + str_(a.course) + ' · ' + str_(a.test) + ': ' + r.missing.join(', ') + ' (' + when + ' P' + a.period + ')', { appt: str_(a.id) });
+    if (r.state === 'Needs info') add(sev, 'materials', who + ' · ' + str_(a.course) + ' · ' + str_(a.test) + ' (' + when + ' P' + a.period + ') — ' + r.missing.join('; '), { appt: str_(a.id) });
     var c = json_(a.conflict, null); if (c && !c.verified && sev <= 2) add(sev, 'conflict', who + ' will miss ' + c.course + (c.teacher ? ' (' + c.teacher + ')' : '') + ' ' + when + ' P' + a.period + ': needs a pass', { appt: str_(a.id) });
     var rc = recipients_(a, campus); if (r.state === 'Needs info' && rc.unresolved.length) add(3, 'email', 'No confirmed email for ' + rc.unresolved.join(', '), { appt: str_(a.id) });
   });
@@ -1885,6 +2069,24 @@ function markNoShows_(campus, d, onlyPeriod) {
   return n;
 }
 function api_markNoShows(campus, d, period) { needCampus_(campus, true); return locked_(function () { return markNoShows_(campus, day_(d) || today_(), period); }); }
+function api_checkInById(campus, q) {
+  needCampus_(campus, true); q = low_(q).replace(/\s+/g, '');
+  if (!q) throw new Error('Type or scan a student ID.');
+  var digits = q.replace(/^0+/, ''), s = rows_('Students').filter(function (x) { return String(x.sid).replace(/^0+/, '') === digits || low_(x.email) === q || low_(x.email).split('@')[0] === q; })[0];
+  if (!s) throw new Error('No student with ID ' + q + '.');
+  var t = today_(), pn = periodNow_(campus), list = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === t && str_(a.sid) === str_(s.sid) && /^(scheduled|awaiting|ready)/i.test(a.status); });
+  if (!list.length) {
+    var here = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === t && str_(a.sid) === str_(s.sid) && /^(checked|testing|paused)/i.test(a.status); })[0];
+    return { student: studentName_(s), sid: str_(s.sid), none: true, already: here ? apptRow_(here, true) : null };
+  }
+  var rank = function (a) { var p = +a.period; return str_(a.period) === pn.now ? 0 : str_(a.period) === pn.next ? 1 : 2 + Math.abs(p - (+pn.now || +pn.next || p)); };
+  list.sort(function (a, b) { return rank(a) - rank(b); });
+  var a = list[0], r = api_room(campus), desk = r.chart ? r.suggest : '';
+  api_status(str_(a.id), 'in', { desk: desk });
+  MEMO_ = {};
+  var row = apptRow_(find_('Appointments', 'id', str_(a.id)), true);
+  return { student: studentName_(s), sid: str_(s.sid), appt: row, desk: row.desk || '', others: list.length - 1 };
+}
 function api_setPaper(aid, status) {
   var A = find_('Assessments', 'id', aid); if (!A) throw new Error('No test on file.');
   needCampus_(str_(A.campus) || 'S', true);
@@ -1950,7 +2152,7 @@ function api_student(sid) {
   return { sid: str_(s.sid), name: studentName_(s), email: low_(s.email), grade: str_(s.grade), campus: str_(s.campus), status: str_(s.status),
     official: officialSchedule_(sid).map(function (r) { return { period: r.period, half: r.half, course: r.course, teacher: r.teacher, type: r.type }; }),
     own: fix ? { at: str_(fix.at), method: str_(fix.method), status: str_(fix.status), rows: json_(fix.sched, []) } : null,
-    appts: rows_('Appointments').filter(function (a) { return str_(a.sid) === str_(sid); }).map(function (a) { return apptRow_(a, false); }).reverse(),
+    appts: apptsAll_().filter(function (a) { return str_(a.sid) === str_(sid); }).map(function (a) { return apptRow_(a, false); }).reverse(),
     waits: rows_('Waitlist').filter(function (x) { return str_(x.sid) === str_(sid); }).map(function (x) { return { date: day_(x.date), period: str_(x.period), half: str_(x.half), status: str_(x.status) }; }).reverse(),
     purposes: campusConf_(str_(s.campus)).purposes, classes: schedule_(sid).rows.filter(function (r) { return !isFree_(r.type); }).map(function (r) { return { key: r.secid || r.period + '|' + r.course, label: r.course + (r.teacher ? ' — ' + r.teacher : '') + (r.period ? ' — P' + r.period + (r.half || '') : '') + (/^M/.test(r.secid || '') && (sectionsById_()[r.secid] || {}).term === MANUAL_TERM ? ' (added by the Testing Center)' : '') }; }) };
 }
@@ -2047,7 +2249,7 @@ function api_securly(campus, d, period) {
 function api_stats(campus, from, to) {
   needCampus_(campus);
   from = day_(from) || addDays_(today_(), -30); to = day_(to) || today_();
-  var A = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) >= from && day_(a.date) <= to; });
+  var A = (from < addDays_(today_(), -55) ? apptsAll_() : rows_('Appointments')).filter(function (a) { return str_(a.campus) === campus && day_(a.date) >= from && day_(a.date) <= to; });
   var tally = function (f) { var o = {}; A.forEach(function (a) { var k = f(a); if (k) o[k] = (o[k] || 0) + 1; }); return o; };
   var O = rows_('Offers').filter(function (o) { return str_(o.campus) === campus && day_(o.date) >= from && day_(o.date) <= to; });
   var seatDays = 0, used = 0;
@@ -2119,6 +2321,57 @@ function api_setPeriods(campus, d, periods, open, cancel, reason) {
   });
 }
 
+// ---------- Settings in the app: plain switches for the everyday settings (the sheet's Settings tab stays the store)
+var SETTING_GROUPS = [
+  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Booking purposes', 'No walk-ins during periods']],
+  ['Waitlist', ['Waitlist', 'Waitlist offers', 'Hours to answer a waitlist offer', 'Quiet hours']],
+  ['Arriving and no-shows', ['Start the test clock when a student arrives', 'Mark students who never arrived as no-shows']],
+  ['Emails to students', ['Student confirmation emails', 'Student reminder the school day before', 'Student reminder the morning of', 'No-show email to students']],
+  ['Emails to teachers', ['Email teachers when a student books', 'Completion emails to teachers', 'Email teachers about no-shows', 'Email teachers when an appointment is canceled', 'Missing-material emails', 'Missing-material reminder', 'Teacher emails for co-taught classes']],
+  ['The Testing Center', ['Campus name', 'Testing Center location', 'Testing Center email', 'Paper test drop-off locations', 'Bell.plus link']],
+  ['Hub access and health (administrators)', ['Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well']]
+];
+var SETTING_ADMIN = ['Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well'];
+var SETTING_NUM = ['Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Hours to answer a waitlist offer'];
+function api_settingsGet() {
+  var w = need_('staff'), by = {}; rows_('Settings').forEach(function (r) { by[r.key] = r; });
+  var help = {}; DEFAULTS.forEach(function (d) { help[d[0]] = d[3]; });
+  return { admin: w.roles.indexOf('admin') >= 0, edit: { S: w.campuses.S === 'edit', N: w.campuses.N === 'edit' }, names: { S: campusName_('S'), N: campusName_('N') },
+    groups: SETTING_GROUPS.map(function (g) { return { title: g[0], items: g[1].map(function (k) { var r = by[k] || {}; return { key: k, help: help[k] || '', choices: SETTING_CHOICES[k] || null, num: SETTING_NUM.indexOf(k) >= 0, admin: SETTING_ADMIN.indexOf(k) >= 0, S: str_(r.S !== undefined ? r.S : setting_(k, 'S')), N: str_(r.N !== undefined ? r.N : setting_(k, 'N')) }; }) }; }),
+    periods: { S: periodRows_('S'), N: periodRows_('N') } };
+}
+function periodRows_(c) { return rows_('Testing Periods').filter(function (r) { return str_(r.campus).charAt(0).toUpperCase() === c; }).map(function (r) { var o = { period: str_(r.period), label: str_(r.label), cap: str_(r.cap), ab: yes_(r.ab), walkin: !/^(no|n)$/i.test(str_(r.walkin)) }; ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(function (d) { o[d] = !/closed/i.test(str_(r[d])); }); return o; }).sort(function (a, b) { return perNum_(a.period) - perNum_(b.period); }); }
+function api_settingSave(key, campus, value) {
+  var w = need_('staff'), d = DEFAULTS.filter(function (x) { return x[0] === key; })[0]; if (!d) throw new Error('Unknown setting.');
+  var isAdmin = SETTING_ADMIN.indexOf(key) >= 0;
+  if (isAdmin && w.roles.indexOf('admin') < 0) throw new Error('Only an administrator can change that.');
+  value = clean_(value, 1000);
+  var ch = SETTING_CHOICES[key]; if (ch && ch.indexOf(value) < 0) throw new Error('Choose one of: ' + ch.join(', '));
+  if (SETTING_NUM.indexOf(key) >= 0 && value !== '' && !/^\d+(\.\d+)?$/.test(value)) throw new Error('Type a number.');
+  if (key === 'Bell.plus link' && value && !/^https:\/\/[^\s"'<>]+$/.test(value)) throw new Error('The link has to start with https://');
+  var both = isAdmin || campus === 'B';
+  if (!both && w.campuses[campus] !== 'edit') throw new Error('You don’t have editing access to ' + campusName_(campus) + '.');
+  locked_(function () {
+    var r = rows_('Settings').filter(function (x) { return x.key === key; })[0], patch = both ? { S: value, N: value } : (campus === 'N' ? { N: value } : { S: value });
+    if (r) update_('Settings', r, patch); else insert_('Settings', Object.assign({ key: key, S: d[1], N: d[2], help: d[3] }, patch));
+    audit_('Setting changed', key, { campus: both ? 'both' : campus, value: /password|email/i.test(key) ? '(changed)' : value });
+  });
+  return api_settingsGet();
+}
+function api_periodsSave(campus, list) {
+  var w = needCampus_(campus, true);
+  locked_(function () {
+    (list || []).forEach(function (p) {
+      var r = rows_('Testing Periods').filter(function (x) { return str_(x.campus).charAt(0).toUpperCase() === campus && str_(x.period) === String(p.period); })[0]; if (!r) return;
+      var cap = parseInt(p.cap, 10); if (!(cap >= 0 && cap < 500)) throw new Error('Seats for period ' + p.period + ' must be a number.');
+      var patch = { cap: cap, ab: p.ab ? 'Yes' : 'No', walkin: p.walkin ? 'Yes' : 'No' }; ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(function (d) { patch[d] = p[d] ? 'Open' : 'Closed'; });
+      update_('Testing Periods', r, patch);
+    });
+    audit_('Seats and periods changed', campusName_(campus), '');
+  });
+  return api_settingsGet();
+}
+
 // The Testing Center room: one seating chart per campus, drawn in Colleen's seating chart tool (Seating.html, ?view=seating,
 // built by dev/build-seating.py), with numbered desks like restaurant tables: front row first, left to right ("Don't use" desks
 // skipped). At check-in a coordinator gives the student a desk; the Room tab shows who is where. A desk is busy while its
@@ -2170,7 +2423,7 @@ function checkDesk_(campus, desk, apptId) {          // inside locked_(): a real
 function seatingPage_() {
   var out = HtmlService.createHtmlOutputFromFile('Seating'), url = appUrl_().replace(/"/g, '');
   out.setContent(out.getContent().replace(/<html([^>]*)>/i, function (m, a) { return '<html' + a.replace(/\s*data-theme="[^"]*"/, '') + ' data-room-only data-theme="light" data-kiosk-theme="light"' + (url ? ' data-kiosk-url="' + url + '"' : '') + '>'; }));
-  return out.setTitle('Testing Center room').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  return out.setTitle('Testing Center room').setFaviconUrl(LOGO_URL).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 function roomRooms_() { var w = need_('staff'); return CAMPUSES.filter(function (c) { return w.campuses[c] === 'edit'; }); }
 function api_seating(auth, cls, opts) {
@@ -2316,7 +2569,7 @@ function icWork_() {
     return icSave_(j);
   } catch (e) { return icFail_(j, 'Something went wrong while processing: ' + (e.message || e)); }
 }
-function icLocked_(f) { var l = LockService.getDocumentLock(); if (!l.tryLock(25000)) throw new Error('The import is busy with another step. Try again in a moment.'); try { MEMO_ = {}; return f(); } finally { l.releaseLock(); } }
+function icLocked_(f) { var l = LockService.getDocumentLock(); if (!l.tryLock(25000)) throw new Error('The import is busy with another step. Try again in a moment.'); var nc = NOCACHE_; NOCACHE_ = true; try { MEMO_ = {}; return f(); } finally { NOCACHE_ = nc; l.releaseLock(); } }
 function icTrigger_(on) {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'icContinue') ScriptApp.deleteTrigger(t); });
   if (on) ScriptApp.newTrigger('icContinue').timeBased().everyMinutes(1).create();
@@ -2454,6 +2707,7 @@ var MANUAL_TERM_IC = 'Added by Testing Center';
 function icStatus_(n) { return icInactive_(n.active) ? 'Not active (IC)' : 'Active'; }
 function icPerStr_(list) { return (list || []).map(function (x) { return x.p + '-' + (x.pe || x.p); }).sort().join(','); }
 function api_icDetail() { anyStaff_(); var j = icJob_(); if (!j || j.status !== 'review') throw new Error('There is nothing to review right now.'); return icGet_(j.id, 'plan') || {}; }
+function api_icClearRaw() { need_('admin'); var j = icJob_(); if (icRunning_(j)) throw new Error('An import is running.'); var sh = icSheet_(); if (sh && sh.getLastRow()) sh.getRange(1, 1, sh.getLastRow(), Math.max(1, sh.getLastColumn())).clearContent(); audit_('IC_Raw_Import cleared', IC_TAB, ''); return api_icStatus(); }
 function api_icCancel() { anyStaff_(); return icLocked_(function () { var j = icJob_(); if (!j) return null; if (j.status === 'applying') throw new Error('The changes are being applied; wait for it to finish.'); icDrop_(j); j.status = 'canceled'; icTrigger_(false); return icSave_(j); }); }
 
 // ---------- apply: everything checked again, then one locked write (backup first; on any error the backup is put back)
@@ -2540,7 +2794,7 @@ function icRestore_(id) {
     if (dst.getLastRow()) dst.getRange(1, 1, dst.getLastRow(), w).clearContent();
     if (n) dst.getRange(1, 1, n, Math.max(b.getLastColumn(), 1)).setValues(b.getRange(1, 1, n, Math.max(b.getLastColumn(), 1)).getValues());
   });
-  MEMO_ = {};
+  MEMO_ = {}; bumpAll_();
 }
 
 // Teacher schedules ("where is the teacher right now?") and the "no test for next period" alert.
@@ -2632,6 +2886,91 @@ function api_emailTeacherNow(apptId) {
   });
   audit_('Teacher emailed: test needed', str_(a.id), rc.to.join(', ') + ' by ' + w.email);
   return { to: rc.to, status: str_(r.status) };
+}
+
+// Reliability: the daily health check, the monthly archive of old rows, the weekly backup copy, and the Errors tab.
+// Jobs record when they last ran (document properties ran:<job>); the hub shows a banner when something looks wrong.
+
+// ---------- archive: old rows move to "Archive · <tab>" tabs on the 1st of each month (reports and student history read both)
+var ARCHIVED = ['Appointments', 'Sessions', 'Audit', 'Outbox', 'Offers', 'Waitlist'];
+ARCHIVED.forEach(function (t) { TABLES['Archive · ' + t] = TABLES[t]; });
+function archiveRun_() {          // inside locked_()
+  var t = today_(), cut60 = addDays_(t, -60), cut45 = Date.now() - 45 * 86400000, moved = {};
+  var keepAppt = function (a) { return day_(a.date) >= cut60 || !/^(completed|partial|canceled|no-show|rescheduled)/i.test(a.status); };
+  var move = function (name, keep) {
+    var all = rows_(name), stay = all.filter(keep), go = all.filter(function (r) { return !keep(r); });
+    if (!go.length) return;
+    insertMany_('Archive · ' + name, go); replaceAll_(name, stay); moved[name] = go.length;
+  };
+  move('Appointments', keepAppt);
+  var live = {}; rows_('Appointments').forEach(function (a) { live[str_(a.id)] = 1; });
+  move('Sessions', function (s) { return live[str_(s.appt)]; });
+  move('Audit', function (r) { return ms_(r.at) >= cut45; });
+  move('Outbox', function (r) { return ms_(r.created) >= cut45 || /^draft/i.test(r.status); });
+  move('Offers', function (r) { return ms_(r.made) >= cut45 || /^active/i.test(r.status); });
+  move('Waitlist', function (r) { return day_(r.date) >= addDays_(t, -30); });
+  return moved;
+}
+function apptsAll_() { return rows_('Appointments').concat(rows_('Archive · Appointments')); }
+function monthly() { jobRun_('monthly', function () { var m = locked_(archiveRun_); audit_('Archive', 'monthly', m); }); }
+
+// ---------- weekly backup: a full copy of the spreadsheet in a "Testing Center backups" folder (the last 4 are kept)
+function weekly() {
+  jobRun_('backup', function () {
+    var ss = ss_(), copy = ss.copy(ss.getName() + ' — backup ' + today_()), dp = PropertiesService.getDocumentProperties();
+    var fid = dp.getProperty('backupFolder'), folder = null;
+    try { folder = fid ? DriveApp.getFolderById(fid) : null; } catch (e) { folder = null; }
+    if (!folder) { folder = DriveApp.createFolder('Testing Center backups'); dp.setProperty('backupFolder', folder.getId()); }
+    DriveApp.getFileById(copy.getId()).moveTo(folder);
+    var ids = json_(dp.getProperty('backups'), []); ids.push(copy.getId());
+    while (ids.length > 4) { var old = ids.shift(); try { DriveApp.getFileById(old).setTrashed(true); } catch (e) {} }
+    dp.setProperty('backups', JSON.stringify(ids)); dp.setProperty('backupAt', iso_()); dp.setProperty('backupUrl', folder.getUrl());
+  });
+}
+
+// ---------- errors: unexpected problems (not the plain "you can't do that" messages) are logged without student data
+function logError_(where, msg) { try { insert_('Errors', { at: iso_(), who: myEmail_() || 'automatic', where: clean_(where, 80), message: clean_(String(msg), 400) }); } catch (e) {} }
+function api_logError(where, msg) { logError_('page: ' + where, msg); return 'ok'; }
+function jobRun_(name, f) {          // every clock job: remember it ran; log (don't hide) a failure
+  try { f(); PropertiesService.getDocumentProperties().setProperty('ran:' + name, iso_()); }
+  catch (e) { logError_('job: ' + name, e && e.stack ? e.message : e); PropertiesService.getDocumentProperties().setProperty('fail:' + name, iso_()); }
+}
+
+// ---------- the daily health check (banner in the hub; optional morning email)
+function health_() {
+  var dp = PropertiesService.getDocumentProperties(), now = Date.now(), out = { items: [] };
+  var add = function (level, text, fix) { out.items.push({ level: level, text: text, fix: fix || '' }); };
+  var last = rows_('Imports').filter(function (r) { return /^applied/i.test(r.status) && (r.kind === 'ic' || r.kind === 'roster'); }).pop();
+  var days = last ? Math.floor((now - ms_(last.at)) / 86400000) : null;
+  out.lastImport = last ? str_(last.at) : '';
+  if (days === null) add('warn', 'No Infinite Campus import yet.', 'Settings › Infinite Campus import');
+  else if (days > 14) add('warn', 'The last Infinite Campus import was ' + days + ' days ago.', 'Import a fresh export (Settings › Infinite Campus import).');
+  else add('ok', 'Infinite Campus import: ' + days + ' day' + (days === 1 ? '' : 's') + ' ago.');
+  var failed = rows_('Outbox').filter(function (r) { return /^failed/i.test(r.status) && ms_(r.created) > now - 7 * 86400000; }).length;
+  add(failed ? 'bad' : 'ok', failed ? failed + ' email' + (failed > 1 ? 's' : '') + ' failed this week.' : 'No failed emails this week.', failed ? 'Emails › Email log' : '');
+  [['tick', 'Waitlist timing (every 10 minutes)', 30], ['morning', 'Morning reminders (6 AM)', 30], ['afternoon', '3:30 emails', 30]].forEach(function (j) {
+    var ran = dp.getProperty('ran:' + j[0]), ago = ran ? (now - ms_(ran)) / 3600000 : null, schoolish = j[0] === 'tick' ? 1 : 30;
+    if (!ran) add('warn', j[1] + ' hasn’t run yet.', 'Sheet menu: Testing Center › Set up or repair this sheet (it sets up the timers).');
+    else if (ago > schoolish * (j[0] === 'tick' ? 1 : 1.6)) add('warn', j[1] + ' last ran ' + Math.round(ago) + ' hours ago.', 'Sheet menu: Testing Center › Set up or repair this sheet.');
+    else add('ok', j[1] + ': ran ' + (ago < 1 ? Math.round(ago * 60) + ' minutes' : Math.round(ago) + ' hours') + ' ago.');
+  });
+  var cells = cellUse_(), pct = Math.round(100 * cells.used / cells.limit);
+  out.cells = pct;
+  add(pct > 80 ? 'bad' : pct > 60 ? 'warn' : 'ok', 'The sheet is ' + pct + '% full (Google’s limit is 10 million cells).', pct > 60 ? 'Settings › Free up space: clear IC_Raw_Import after an import, and delete old backup tabs.' : '');
+  var bak = dp.getProperty('backupAt');
+  if (!bak) add('warn', 'No weekly backup copy yet.', 'It runs on Sundays; Settings › Back up now.');
+  else add((now - ms_(bak)) / 86400000 > 9 ? 'warn' : 'ok', 'Last backup copy: ' + Math.floor((now - ms_(bak)) / 86400000) + ' days ago.', dp.getProperty('backupUrl') || '');
+  var errs = rows_('Errors').filter(function (r) { return ms_(r.at) > now - 7 * 86400000; }).length;
+  add(errs ? 'warn' : 'ok', errs ? errs + ' error' + (errs > 1 ? 's' : '') + ' logged this week (Errors tab).' : 'No errors this week.');
+  out.level = out.items.some(function (i) { return i.level === 'bad'; }) ? 'bad' : out.items.some(function (i) { return i.level === 'warn'; }) ? 'warn' : 'ok';
+  return out;
+}
+function api_health() { need_('staff'); return health_(); }
+function api_backupNow() { need_('admin'); weekly(); return health_(); }
+function healthEmail_() {          // in the morning job: to the addresses in Settings › "Daily health email to"
+  var to = list_(setting_('Daily health email to', 'S')).filter(function (e) { return /@/.test(e); }); if (!to.length) return;
+  var h = health_(); if (h.level === 'ok' && !yes_(setting_('Daily health email when all is well', 'S'))) return;
+  mail_('health', 'health:' + today_(), to, 'Testing Center health check — ' + (h.level === 'ok' ? 'all good' : h.level === 'bad' ? 'needs attention' : 'check'), h.items.map(function (i) { return ({ ok: '✓ ', warn: '! ', bad: '✕ ' })[i.level] + i.text + (i.fix ? ' — ' + i.fix : ''); }).join('\n') + '\n\n' + appUrl_() + '?hub=1', '', true);
 }
 
 // Practice data: made-up students, teachers and classes for both campuses, loaded THROUGH the real roster importer (so the
@@ -2813,6 +3152,7 @@ function api_clearPractice() {
     else if (go === 'ic') { coView('admin'); setTimeout(icStart, 600); }
     else if (go === 'tview') { setMode('tview'); setTimeout(function () { tvOpen(TV[0].sid); }, 700); }
     else if (go === 'periods') coView('periods');
+    else if (go === 'switches' || go === 'health' || go === 'seats') coView(go);
     else if (go === 'tnow') { var a0 = null; CO.dash.periods.forEach(function (p) { p.appts.forEach(function (a) { if (!a0 && !a.noClass) a0 = a; }); }); coTeacherNow(a0.id); }
     else if (go === 'pgclose') { coView('periods'); setTimeout(function () { var d = PG.grid.days[3]; pgCell(d.date, '6'); }, 900); }
     else if (go === 'appt') coAppt(CO.dash.periods.filter(function (p) { return p.appts.length; }).pop().appts[0].id);
@@ -2850,13 +3190,20 @@ window.addEventListener('DOMContentLoaded', function () { var v = ''; try { v = 
 // ---------- shared by every page
 var B = null, MODE = '', START = {};
 function call(fn) {
-  var args = [].slice.call(arguments, 1);
+  var args = [].slice.call(arguments, 1); window.__lastCall = fn;
   return new Promise(function (ok, no) { var r = google.script.run.withSuccessHandler(ok).withFailureHandler(no); r[fn].apply(r, args); });
 }
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function toast(m) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3200); }
-function fail(e) { toast((e && e.message) || String(e)); console.error(e); }
+function fail(e) {
+  var m = (e && e.message) || String(e);
+  if (/TypeError|ReferenceError|RangeError|SyntaxError|is not a function|Cannot read prop|undefined|Exception: Service|Internal error|timed out|Exceeded/i.test(m)) {
+    try { google.script.run.api_logError(MODE + ' ' + (window.__lastCall || ''), m); } catch (x) {}
+    m = 'Something went wrong on our side, and it was written down so it can be fixed. Please try again in a moment.';
+  }
+  toast(m); console.error(e);
+}
 function busy(btn, on) { if (btn) { btn.disabled = on; if (on) { btn.dataset.t = btn.innerHTML; btn.innerHTML = '…'; } else if (btn.dataset.t) btn.innerHTML = btn.dataset.t; } }
 function modal(html, wide) { $('layer').innerHTML = '<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal' + (wide ? ' wide' : '') + '">' + html + '</div></div>'; }
 function closeModal() { $('layer').innerHTML = ''; }
@@ -2877,6 +3224,7 @@ function readyChip(r) { if (!r) return ''; var c = r.state === 'Ready' ? 'ok' : 
 function fmtChip(r) { if (!r) return ''; var conf = /^teacher/.test(r.fsource); return r.format ? '<span class="chip" title="' + esc(r.ftext) + '">' + (conf ? '✓ ' : '~ ') + esc(r.format) + '</span>' : '<span class="chip" title="' + esc(r.ftext) + '">?</span>'; }
 
 // ---------- start
+function switchUrl() { return 'https:' + '/' + '/accounts.google.com/AccountChooser?continue=' + encodeURIComponent((B && B.url) || location.href); }
 function boot() {
   call('api_boot').then(function (b) { B = b; drawModes(START.hub ? 'staff' : ''); }).catch(function (e) { $('main').innerHTML = '<div class="wrap narrow"><div class="card bad"><h2>Something went wrong</h2><p>' + esc(e.message || e) + '</p></div></div>'; });
 }
@@ -2888,10 +3236,10 @@ function drawModes(want) {
   if (b.teacher) { modes.push(['teacher', 'My classes']); modes.push(['tview', 'Student view']); }
   if (b.student) modes.push(['student', 'My Testing Center']);
   if (b.staff || (b.hub && b.hub.eligible)) modes.push(['staff', (b.staff ? '' : '🔒 ') + 'Coordinator hub']);
-  if (!modes.length) { $('main').innerHTML = '<div class="wrap narrow"><div class="card"><h2>We couldn’t find you</h2><p>You’re signed in as <b>' + esc(b.email) + '</b>, but that account isn’t on the Testing Center roster yet. If you’re a student, ask the Testing Center to check your school email. If you’re a teacher, your email may still need to be confirmed.</p></div></div>'; return; }
+  if (!modes.length) { $('main').innerHTML = '<div class="wrap narrow"><div class="card"><h2>We couldn’t find you</h2><p>You’re signed in as <b>' + esc(b.email) + '</b>, but that account isn’t on the Testing Center roster yet. If you’re a student, ask the Testing Center to check your school email. If you’re a teacher, your email may still need to be confirmed.</p><p><a class="btn pri" href="' + switchUrl() + '" target="_top">Switch to my school account</a></p><p class="small mute">Signed in to more than one Google account? Google opens this app with the first one you signed in to. Use the button above, or open the link in a Chrome window or profile that has only your school account (@d204.lths.net or @lths.net).</p></div></div>'; return; }
   var ids = modes.map(function (m) { return m[0]; });
   MODE = want && ids.indexOf(want) >= 0 ? want : START.appt && b.teacher ? 'teacher' : modes[0][0];
-  $('modes').innerHTML = (modes.length > 1 ? '<div class="seg">' + modes.map(function (m) { return '<button id="mode-' + m[0] + '" onclick="setMode(\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('') + '</div>' : '') + '<span class="mute small" style="margin-left:10px">' + esc(b.name || b.email) + '</span>';
+  $('modes').innerHTML = (modes.length > 1 ? '<div class="seg">' + modes.map(function (m) { return '<button id="mode-' + m[0] + '" onclick="setMode(\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('') + '</div>' : '') + '<span class="mute small" style="margin-left:10px" title="' + esc(b.email) + '">' + esc(b.name || b.email) + ' · <a href="' + switchUrl() + '" target="_top">Wrong account?</a></span>';
   setMode(MODE);
 }
 function setMode(m) {
@@ -2947,10 +3295,10 @@ function drawStu() {
       '<div class="row"><button class="btn ok" onclick="stuOffer(\'' + o.id + '\', true, this)">Accept</button><button class="btn" onclick="stuOffer(\'' + o.id + '\', false, this)">Decline</button></div></div>';
   });
   if (h.askSchedule && h.schedule.rows.length) out += '<div class="banner info"><b>Is your class schedule right?</b><div class="small mute" style="margin:2px 0 8px">We use it to fill in your classes and warn you about missing a class.</div><div class="row"><button class="btn sm" onclick="stuLooksRight(this)">My schedule looks correct</button><button class="btn sm" onclick="stuSchedule()">Edit my schedule</button><button class="btn sm" onclick="stuSchedule(true)">Paste my updated schedule from Infinite Campus</button></div></div>';
-  out += pv ? '<div class="card" style="text-align:center"><span class="mute small">Students make and cancel appointments here.</span></div>' : h.booking ? '<div class="card" id="avail"><h2>Book a Testing Center appointment</h2><p class="small mute" style="margin:0 0 10px">Pick a day and a period. Then tell us the class and the test.</p><div id="availBody"><div class="spin">Finding open periods…</div></div></div>' : '<div class="card" style="text-align:center;padding:22px"><b>Sign up in SignUpGenius for now.</b><div class="mute small">The Testing Center is moving to this app soon.</div></div>';
+  out += pv ? '<div class="card" style="text-align:center"><span class="mute small">Students make and cancel appointments here.</span></div>' : h.booking ? '<div class="card" id="avail"><h2>Book a Testing Center appointment</h2><p class="small mute" style="margin:0 0 10px"><b>1.</b> Pick a day. <b>2.</b> Pick a time that’s open. <b>3.</b> Tell us the class and the test.</p><div id="availBody"><div class="spin">Finding open periods…</div></div></div>' : '<div class="card" style="text-align:center;padding:22px"><b>Sign up in SignUpGenius for now.</b><div class="mute small">The Testing Center is moving to this app soon.</div></div>';
   out += '<div class="card"><h2>Coming up</h2>' + (h.upcoming.length ? h.upcoming.map(function (a) {
     return '<div class="slot"><div class="grow"><b>' + esc(relD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + '</b><div>' + esc(a.test) + ' <span class="mute">· ' + esc(a.course) + '</span></div><div class="small mute">' + esc(a.purpose) + (a.missed ? ' · You’ll miss ' + esc(a.missed) + ': bring a pass' : '') + '</div></div>' +
-      (a.canCancel && !pv ? '<button class="btn sm bad" onclick="stuCancel(\'' + a.id + '\')">Cancel</button>' : statusChip(a.status)) + '</div>';
+      (a.start && !pv ? '<a class="btn sm" target="_blank" title="Add to my Google Calendar" href="' + gcalUrl(a.date, a.start, a.end, 'Testing Center: ' + a.test, h.campusName + ' Testing Center, ' + h.where) + '">📅</a>' : '') + (a.canCancel && !pv ? '<button class="btn sm bad" onclick="stuCancel(\'' + a.id + '\')">Cancel</button>' : statusChip(a.status)) + '</div>';
   }).join('') : '<div class="empty">No appointments yet.</div>') + '</div>';
   if (h.waits.length) out += '<div class="card"><h2>Waitlists</h2>' + h.waits.map(function (x) {
     return '<div class="slot"><div class="grow"><b>' + esc(relD(x.date)) + ' · ' + esc(perTxt(x.period, x.half)) + '</b><div class="small">' + esc(x.test) + ' · ' + esc(x.course) + '</div><div class="small mute">You’re <b>#' + x.pos + '</b> of ' + x.of + ' waiting. We’ll email you if a seat opens.</div></div>' + (pv ? '' : '<button class="btn sm" onclick="stuLeave(\'' + x.id + '\', this)">Leave</button>') + '</div>';
@@ -2992,7 +3340,9 @@ function availDraw() {
   if (!AV.slots.days.length) { el.innerHTML = '<div class="empty">No open periods right now.</div>'; return; }
   var day = AV.slots.days.filter(function (d) { return d.date === AV.day; })[0] || AV.slots.days[0];
   el.innerHTML = '<div class="daytabs">' + AV.slots.days.map(function (d) { var n = d.periods.filter(function (p) { return p.open && !p.soon; }).length; return '<button class="daytab' + (d.date === day.date ? ' on' : '') + '" onclick="AV.day=\'' + d.date + '\';availDraw()"><b>' + (d.date === B.today ? 'Today' : DAYS[dObj(d.date).getDay()]) + '</b><div class="small">' + MONTHS[dObj(d.date).getMonth()] + ' ' + dObj(d.date).getDate() + '</div><div class="tiny mute">' + n + ' open</div></button>'; }).join('') + '</div>' +
-    (day.sched && day.sched !== 'Regular' ? '<p class="small mute">' + esc(day.sched) + ' schedule' + (day.note ? ' · ' + esc(day.note) : '') + '</p>' : '') + day.periods.map(function (p) { return bkSlot(day, p); }).join('');
+    '<h3 style="margin:14px 0 4px">Open times on ' + esc(longD(day.date)) + '</h3>' + (day.sched && day.sched !== 'Regular' ? '<p class="small mute" style="margin:0">' + esc(day.sched) + ' schedule' + (day.note ? ' · ' + esc(day.note) : '') + '</p>' : '') +
+    day.periods.filter(function (p) { return p.open && !p.soon; }).map(function (p) { return bkSlot(day, p); }).join('') +
+    (function () { var started = day.periods.filter(function (p) { return p.open && p.soon; }).length, closed = day.periods.filter(function (p) { return !p.open; }).map(function (p) { return p.label.replace('Period ', 'P'); }); return (started ? '<p class="tiny mute">' + started + ' earlier period' + (started > 1 ? 's have' : ' has') + ' already started.</p>' : '') + (closed.length ? '<p class="tiny mute">Closed: ' + closed.join(', ') + '.</p>' : ''); })();
 }
 function bkSlot(day, p) {
   if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
@@ -3022,7 +3372,7 @@ function bkDraw() {
     if (BK.other) out += '<div class="grid2"><div><label class="f">Class</label><input type="text" value="' + esc(BK.other.course) + '" oninput="BK.other.course=this.value"></div><div><label class="f">Teacher</label><input type="text" value="' + esc(BK.other.teacher) + '" oninput="BK.other.teacher=this.value"></div></div><p class="small mute">If your schedule changed, you can also <button class="link" onclick="stuSchedule()">fix your schedule</button>.</p>';
     if (BK.secid || BK.other) {
       var tests = (BK.secid && h.tests[BK.secid]) || [];
-      out += '<label class="f">Which test?</label>' + tests.map(function (t) { return '<button class="opt' + (BK.aid === t.id ? ' on' : '') + '" onclick="BK.aid=\'' + t.id + '\';BK.test=\'\';bkDraw()">' + esc(t.name) + '</button>'; }).join('') +
+      out += '<label class="f">Which test?</label>' + tests.map(function (t, i) { var on = t.id ? BK.aid === t.id : (!BK.aid && BK.test === t.name); return '<button class="opt' + (on ? ' on' : '') + '" onclick="bkTestPick(' + i + ')">' + esc(t.name) + (t.fromClass ? ' <span class="tiny mute">(a classmate booked this)</span>' : '') + '</button>'; }).join('') +
         '<input type="text" placeholder="' + (tests.length ? 'Or type the test name' : 'Type the test name (for example: Unit 3 Test)') + '" value="' + esc(BK.test || '') + '" oninput="BK.test=this.value;BK.aid=\'\'">' +
         '<label class="f">This is a…</label><div class="row">' + h.purposes.map(function (p) { return '<button class="btn' + (BK.purpose === p ? ' pri' : '') + '" onclick="BK.purpose=\'' + esc(p) + '\';bkDraw()">' + esc(p) + '</button>'; }).join('') + '</div>' +
         '<label class="f">Is the test online or on paper?</label><div class="row">' + ['Digital', 'Paper', ''].map(function (f) { return '<button class="btn' + (BK.fmt === f && BK.fmtSet ? ' pri' : '') + '" onclick="BK.fmt=\'' + f + '\';BK.fmtSet=1;bkDraw()">' + (f === 'Digital' ? 'Online' : f || 'Not sure') + '</button>'; }).join('') + '</div>' +
@@ -3037,6 +3387,9 @@ function bkDraw() {
   }
   $('main').innerHTML = out + '</div>';
 }
+function bkTestPick(i) { var t = (SH.tests[BK.secid] || [])[i]; if (!t) return; if (t.id) { BK.aid = t.id; BK.test = ''; } else { BK.aid = ''; BK.test = t.name; } bkDraw(); }
+// a Google Calendar link for one appointment (opens Google Calendar with it filled in; the student presses Save)
+function gcalUrl(date, start, end, title, where) { var f = function (t) { return date.replace(/-/g, '') + 'T' + t.replace(':', '') + '00'; }; return 'https:' + '/' + '/calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + f(start) + '/' + f(end) + '&ctz=America/Chicago&location=' + encodeURIComponent(where) + '&details=' + encodeURIComponent('Bring your student ID. Cancel in the Testing Center app if you can’t come.'); }
 function bkClass(v) { if (v === '__other') { BK.other = { course: '', teacher: '' }; BK.secid = ''; } else { BK.secid = v; BK.other = null; } BK.aid = ''; bkDraw(); }
 function bkClassLabel() { if (BK.other) return BK.other.course + (BK.other.teacher ? ' — ' + BK.other.teacher : ''); var c = SH.classes.filter(function (x) { return x.key === BK.secid; })[0]; return c ? c.label : ''; }
 function bkNext() {
@@ -3067,7 +3420,7 @@ function bkBook() {
     if (r.full) { busy(btn, false); toast('Someone just took that seat. Pick another period or join the waitlist.'); var d = BK.date; BK = null; drawStu(); availLoad(d); return; }
     if (r.conflict) { busy(btn, false); BK.conflict = r.conflict; conflictBox(r.conflict, function (note) { BK.ack = { note: note }; closeModal(); bkBook(); }); return; }
     var b = BK; SH = r.home; BK = null; drawStu();
-    modal('<h2>✅ You’re booked</h2><p>' + esc(longD(b.date)) + ', ' + esc(perTxt(b.period, b.half)) + '<br>' + esc(SH.campusName) + ' Testing Center · ' + esc(SH.where) + '</p><p class="small">Remember to tell your teacher and bring your student ID' + (b.ack ? ', and the written note from ' + esc(b.conflict.teacher || 'your teacher') : '') + '.</p><button class="btn pri" onclick="closeModal()">Done</button>');
+    modal('<h2>✅ You’re booked</h2><p>' + esc(longD(b.date)) + ', ' + esc(perTxt(b.period, b.half)) + '<br>' + esc(SH.campusName) + ' Testing Center · ' + esc(SH.where) + '</p><p class="small">Remember to tell your teacher and bring your student ID' + (b.ack ? ', and the written note from ' + esc(b.conflict.teacher || 'your teacher') : '') + '.</p><div class="row"><a class="btn" target="_blank" href="' + gcalUrl(b.date, b.slot.start, b.slot.end, 'Testing Center: ' + b.testName, SH.campusName + ' Testing Center, ' + SH.where) + '">📅 Add to my Google Calendar</a><button class="btn pri" onclick="closeModal()">Done</button></div>');
   }).catch(function (e) { busy(btn, false); fail(e); });
 }
 function bkJoin() {
@@ -3141,17 +3494,37 @@ function drawTch() {
   var need = up.filter(function (a) { return a.ready.state === 'Needs info'; }).length;
   var out = '<div class="wrap"><h1>My classes · Testing Center</h1><p class="mute" style="margin-top:0">Your students’ makeup tests and retakes. Fill in the testing form once per test; it’s used for every student taking it.</p>';
   if (need) out += '<div class="banner warn"><b>' + need + ' appointment' + (need > 1 ? 's need' : ' needs') + ' testing information.</b> Open one and fill in what’s missing.</div>';
-  out += '<div class="card"><h2>Coming up</h2>' + (up.length ? tchTable(up) : '<div class="empty">None of your students are scheduled right now.</div>') + '</div>';
+  if (!h.emailPref) out += '<div class="card" style="border-color:var(--brand)"><h2>How do you want Testing Center emails?</h2><p class="small mute" style="margin-top:0">When your students book, finish, miss or cancel a test. (Requests for missing tests always come right away.) You can change this anytime in My settings.</p><div class="row">' + tchPrefBtns('') + '</div></div>';
+  out += '<div class="card"><div class="row"><h2 class="grow" style="margin:0">Your tests out</h2><button class="btn sm" onclick="tchSettings()">⚙️ My settings</button></div><p class="small mute">Each test, step by step, like a delivery tracker.</p>' + (up.length ? up.map(tchTrack).join('') : '<div class="empty">None of your students are scheduled right now.</div>') + '</div>';
   out += '<div class="grid2"><div class="card"><div class="row"><h2 class="grow">Standing resources</h2><button class="btn sm" onclick="tchRes()">＋ Add</button></div><p class="small mute" style="margin-top:0">For example, a live Google Doc with all your access codes. The Testing Center sees it on every appointment for those classes. Students never see it.</p>' +
     (h.resources.length ? h.resources.map(function (r) { return '<div class="slot"><div class="grow"><b>' + esc(r.title) + '</b><div class="small mute">' + esc(r.type) + ' · ' + (r.courses.indexOf('*') >= 0 ? 'All my classes' : esc(r.courses.join(', '))) + (r.expires ? ' · until ' + esc(niceD(r.expires)) : '') + '</div>' + (r.link ? '<a class="small" href="' + esc(r.link) + '" target="_blank">Open</a>' : '') + '</div><button class="btn sm" onclick="tchRes(\'' + r.id + '\')">Edit</button><button class="btn sm bad" onclick="tchResDel(\'' + r.id + '\')">Remove</button></div>'; }).join('') : '<div class="empty">None yet.</div>') + '</div>';
   out += '<div class="card"><h2>My usual formats</h2><p class="small mute" style="margin-top:0">What you usually do, so the Testing Center can get ready even before you fill in a form.</p>';
   out += h.suggest.map(function (s) { return '<div class="banner info small"><b>' + esc(s.course) + ':</b> ' + esc(s.text) + '. <button class="btn sm" onclick="tchDefault(\'' + esc(s.course) + '\',\'' + s.format + '\')">Yes, usually ' + s.format.toLowerCase() + '</button></div>'; }).join('');
   out += h.courses.length ? '<table class="t"><tr><th>Course</th><th>Usually</th><th></th></tr>' + h.courses.map(function (c) { var d = h.defaults.filter(function (x) { return x.course === c; })[0]; return '<tr><td>' + esc(c) + '</td><td>' + (d && d.format ? esc(d.format) + (d.platform ? ' · ' + esc(d.platform) : '') : '<span class="mute">Not set</span>') + '</td><td><select onchange="if(this.value)tchDefault(\'' + esc(c) + '\',this.value)"><option value="">Set…</option><option>Digital</option><option>Paper</option></select></td></tr>'; }).join('') + '</table>' : '<div class="empty">No classes on file.</div>';
   out += '</div></div>';
-  if (past.length) out += '<details class="card"><summary><b>Last two weeks</b> (' + past.length + ')</summary>' + tchTable(past.reverse()) + '</details>';
+  if (past.length) out += '<details class="card"><summary><b>Last two weeks</b> (' + past.length + ')</summary>' + past.reverse().map(tchTrack).join('') + '</details>';
   out += '<div class="card"><h2>My tests on file</h2>' + (h.tests.length ? '<table class="t"><tr><th>Course</th><th>Test</th><th>Format</th><th>Paper</th><th></th></tr>' + h.tests.map(function (t) { return '<tr><td>' + esc(t.course) + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.format) + (t.platform ? ' · ' + esc(t.platform) : '') + '</td><td>' + esc(t.paper) + '</td><td><button class="btn sm" onclick="tchForm(null,\'' + t.id + '\')">Edit</button></td></tr>'; }).join('') + '</table>' : '<div class="empty">None yet. They’re added when you fill in a testing form.</div>') + '</div>';
   $('main').innerHTML = out + '</div>';
 }
+// ---------- the tracker: Booked → The Testing Center has the test → Arrived → Finished (or what went wrong)
+function tchTrack(a) {
+  var t = function (iso) { return iso ? new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : ''; };
+  var st = a.status, gone = /cancel/i.test(st), ns = /no-show/i.test(st), part = /partial/i.test(st), done = /complete/i.test(st) && !part;
+  var r = a.ready, info = r.state === 'Ready' ? ['ok', '✓', 'Has the test'] : r.state === 'Check' ? ['warn', '!', 'Probably (your standing doc is on file)'] : ['bad', '✕', esc(r.missing.join('; '))];
+  if (/^(testing|paused|completed|partial)/i.test(st) && r.state !== 'Ready') info = ['ok', '✓', 'Testing went ahead'];
+  var steps = [
+    ['ok', '✓', 'Booked', t(a.created) || 'Booked'],
+    [info[0], info[1], 'Testing Center has the test', info[2]],
+    a.inAt ? ['ok', '✓', 'Arrived', t(a.inAt)] : ns ? ['bad', '✕', 'Didn’t come', relD(a.date)] : ['todo', '3', 'Arrived', relD(a.date) + ' · ' + perTxt(a.period, a.half)],
+    done ? ['ok', '✓', 'Finished', esc(a.outcome || 'Done') + (a.end ? ' · ' + t(a.end) : '')] : part ? ['warn', '!', 'Didn’t finish', esc(a.outcome || 'Partially completed')] : ns ? ['bad', '✕', 'Missed', a.nsChoice ? 'Student said: ' + esc(a.nsChoice) : 'Student hasn’t said what to do with the test'] : /^(testing|paused)/i.test(st) ? ['now', '…', 'Testing now', a.start ? 'since ' + t(a.start) : ''] : ['todo', '4', 'Finished', '']
+  ];
+  var bar = gone ? '<div class="small mute" style="margin-top:6px">Canceled.</div>' : '<div class="trk">' + steps.map(function (x, i) { return '<div class="trk-step trk-' + x[0] + '"><span class="trk-dot">' + x[1] + '</span><div class="trk-txt"><b>' + x[2] + '</b><div class="tiny">' + x[3] + '</div></div></div>'; }).join('') + '</div>';
+  var notes = (a.notes || []).map(function (n) { return '<div class="tiny" style="margin-top:4px">📝 ' + esc(n.text) + ' <span class="mute">(Testing Center)</span></div>'; }).join('');
+  return '<div class="slot" style="display:block' + (gone ? ';opacity:.6' : '') + '"><div class="row"><div class="grow"><b>' + esc(a.student) + '</b> · ' + esc(a.course) + ' · ' + esc(a.test) + ' <span class="small mute">(' + esc(a.purpose) + ')</span><div class="tiny mute">' + esc(relD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + (a.missedClass ? ' · will miss ' + esc(a.missedClass) + ' (note promised)' : '') + '</div></div>' + (gone ? '' : '<button class="btn sm' + (r.state === 'Needs info' && !/^(completed|partial|no-show)/i.test(st) ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (r.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button>') + '</div>' + bar + notes + '</div>';
+}
+function tchPrefBtns(cur) { return [['each', '📬 Each one as it happens'], ['summary', '🗓️ One summary after school'], ['none', '🔕 None']].map(function (o) { return '<button class="btn' + (cur === o[0] ? ' pri' : '') + '" onclick="tchPref(\'' + o[0] + '\')">' + o[1] + '</button>'; }).join(''); }
+function tchPref(p) { call('api_teacherPrefs', p).then(function (h) { TH = h; closeModal(); drawTch(); toast('Saved'); }).catch(fail); }
+function tchSettings() { modal('<h2>⚙️ My settings</h2><h3>Testing Center emails</h3><p class="small mute">When your students book, finish, miss or cancel a test. Requests for missing tests always come right away.</p><div class="row">' + tchPrefBtns(TH.emailPref || 'each') + '</div><h3 style="margin-top:16px">Colors</h3><p class="small mute">Use the 🎨 menu at the top right.</p><button class="btn" style="margin-top:8px" onclick="closeModal()">Close</button>'); }
 function tchTable(list) {
   return '<table class="t"><tr><th>When</th><th>Student</th><th>Course · Test</th><th>Ready?</th><th>Status</th><th></th></tr>' + list.map(function (a) {
     return '<tr><td>' + esc(relD(a.date)) + '<div class="small mute">' + esc(perTxt(a.period, a.half)) + '</div></td><td>' + esc(a.student) + (a.missedClass ? '<div class="tiny" style="color:var(--warn)">Will miss ' + esc(a.missedClass) + '</div>' : '') + '</td><td>' + esc(a.course) + '<div class="small">' + esc(a.test) + ' <span class="mute">· ' + esc(a.purpose) + '</span></div>' + (a.notes && a.notes.length ? a.notes.map(function (n) { return '<div class="tiny" style="margin-top:3px">📝 ' + esc(n.text) + ' <span class="mute">(Testing Center)</span></div>'; }).join('') : '') + (a.nsChoice ? '<div class="tiny" style="color:var(--bad)">Missed it · student said: ' + esc(a.nsChoice) + '</div>' : '') + '</td><td>' + readyChip(a.ready) + (a.ready.missing.length ? '<div class="tiny mute">' + esc(a.ready.missing.join(', ')) + '</div>' : '') + '</td><td>' + statusChip(a.status) + '</td><td><button class="btn sm' + (a.ready.state === 'Needs info' ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (a.ready.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button></td></tr>';
@@ -3165,7 +3538,7 @@ function tchForm(apptId, testId) {
 }
 function formDraw(a, t0) {
   var t = (a && a.test0) || t0 || {}, d = (a && a.dflt) || {}, f = t.form || d.form || {}, fmt = t.format || d.format || '', plat = t.platform || d.platform || '';
-  var head = a ? '<p class="small" style="margin-top:0"><b>' + esc(a.student) + '</b> · ' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.course) + ' · ' + esc(a.purpose) + '</p>' + (a.ready.missing.length ? '<div class="banner warn small">Missing: ' + esc(a.ready.missing.join(', ')) + '</div>' : '<div class="banner ok small">The Testing Center has what it needs.</div>') : '';
+  var head = a ? '<p class="small" style="margin-top:0"><b>' + esc(a.student) + '</b> · ' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.course) + ' · ' + esc(a.purpose) + '</p>' + (a.ready.missing.length ? '<div class="banner bad small">' + esc(a.ready.missing.join('; ')) + '</div>' : '<div class="banner ok small">The Testing Center has what it needs.</div>') : '';
   var notesHtml = a && a.notes && a.notes.length ? '<div class="banner info small"><b>Notes from the Testing Center</b>' + a.notes.map(function (n) { return '<div>📝 ' + esc(n.text) + ' <span class="tiny mute">· ' + esc(n.name) + '</span></div>'; }).join('') + '</div>' : '';
   var res = a && a.resources.length ? '<div class="banner info small">Your standing resource is attached: ' + a.resources.map(function (r) { return '<b>' + esc(r.title) + '</b>'; }).join(', ') + '. You don’t need to retype codes that are in it.</div>' : '';
   modal('<h2>Testing form</h2>' + head + notesHtml + res +
@@ -3221,23 +3594,30 @@ function tvOpen(sid) { $('main').innerHTML = '<div class="spin">Loading…</div>
 <script>
 // ---------- the coordinator dashboard
 var CO = { campus: '', date: '', view: 'today', dash: null, prefs: null };
-var CO_VIEWS = [['today', 'Today'], ['room', 'Room'], ['periods', 'Open periods'], ['attention', 'Needs attention'], ['waitlist', 'Waitlist'], ['resources', 'Teacher resources'], ['comms', 'Communications'], ['people', 'Students & teachers'], ['reports', 'Reports'], ['admin', 'Administration']];
+// Five tabs (Colleen, 0.13). CO.view is the page inside a tab; each tab has its pages (sub-tabs).
+var CO_VIEWS = [['today', 'Today'], ['schedule', 'Schedule'], ['people', 'People'], ['emails', 'Emails'], ['settings', 'Settings']];
+var CO_SUBS = { today: [['today', 'List'], ['room', 'Room']], schedule: [['periods', 'Open periods'], ['waitlist', 'Waitlist']], people: [['people', 'Students & teachers'], ['resources', 'Teacher resources']], emails: [['comms', 'Emails']], settings: [['health', 'Health check'], ['switches', 'Switches'], ['seats', 'Seats & periods'], ['admin', 'Imports & more'], ['reports', 'Reports']] };
+var CO_TOP = {}; Object.keys(CO_SUBS).forEach(function (t) { CO_SUBS[t].forEach(function (x) { CO_TOP[x[0]] = t; }); }); CO_TOP.attention = 'today';
 function coStart() { CO.campus = CO.campus || B.staff.home; CO.date = CO.date || B.today; coLoad(true); }
 function coLoad(first) {
   if (first) $('main').innerHTML = '<div class="spin">Loading the dashboard…</div>';
-  return call('api_dash', CO.campus, CO.date).then(function (d) {
+  return call('api_dash', CO.campus, CO.date, true).then(function (d) {
     CO.dash = d; CO.prefs = d.prefs;
     if (first && d.prefs.land && d.prefs.land !== 'today') CO.view = d.prefs.land;
     coDraw();
+    return call('api_dashMore', CO.campus).then(function (m) { if (!CO.dash || CO.dash.campus !== d.campus) return; CO.dash.attention = m.attention; CO.dash.waitlist = m.waitlist; CO.health = m.health; if (/^(today|room)$/.test(CO.view) && $('todayAtt')) { $('todayAtt').innerHTML = coAttPanel(); var n = m.attention.filter(function (x) { return x.sev <= 2; }).length, t = document.querySelector('.tabs .tab'); if (t) t.innerHTML = 'Today' + (n ? '<b>' + n + '</b>' : ''); if (CO.health && CO.health.level !== 'ok' && !document.querySelector('.hbanner')) { var w = document.querySelector('#coBody'); if (w) w.insertAdjacentHTML('afterbegin', '<div class="banner hbanner ' + (CO.health.level === 'bad' ? 'bad' : 'warn') + ' small">🩺 ' + esc(CO.health.items.filter(function (i) { return i.level !== 'ok'; }).map(function (i) { return i.text; }).join(' · ')) + ' <button class="link" onclick="coView(\'health\')">Health check</button></div>'); } } else if (CO.view === 'waitlist') coDraw(); });
   }).catch(fail);
 }
 function coDraw() {
-  var d = CO.dash, att = d.attention.filter(function (x) { return x.sev <= 2; }).length, hide = CO.prefs.hide || [];
+  var d = CO.dash, att = (d.attention || []).filter(function (x) { return x.sev <= 2; }).length, hide = CO.prefs.hide || [];
   var camp = Object.keys(d.campuses).length > 1 ? '<div class="seg">' + ['S', 'N'].filter(function (c) { return d.campuses[c]; }).map(function (c) { return '<button class="' + (c === CO.campus ? 'on' : '') + '" onclick="coCampus(\'' + c + '\')">' + esc(d.names[c]) + (d.campuses[c] === 'view' ? ' (view)' : '') + '</button>'; }).join('') + '</div>' : '<b>' + esc(d.names[CO.campus]) + '</b>';
-  var nav = '<div class="row" style="margin-bottom:12px">' + camp + '<div class="tabs grow">' + CO_VIEWS.filter(function (v) { return hide.indexOf(v[0]) < 0 || v[0] === CO.view; }).map(function (v) { return '<button class="tab' + (CO.view === v[0] ? ' on' : '') + '" onclick="coView(\'' + v[0] + '\')">' + v[1] + (v[0] === 'attention' && att ? '<b>' + att + '</b>' : '') + '</button>'; }).join('') + '</div></div>';
+  if (CO.view === 'attention') CO.view = 'today';
+  var top = CO_TOP[CO.view] || 'today', subs = CO_SUBS[top];
+  var nav = '<div class="row" style="margin-bottom:8px">' + camp + '<div class="tabs grow">' + CO_VIEWS.map(function (v) { return '<button class="tab' + (top === v[0] ? ' on' : '') + '" onclick="coView(\'' + CO_SUBS[v[0]][0][0] + '\')">' + v[1] + (v[0] === 'today' && att ? '<b>' + att + '</b>' : '') + '</button>'; }).join('') + '</div></div>' +
+    (subs.length > 1 ? '<div class="row" style="margin:0 0 12px"><div class="seg">' + subs.map(function (x) { return '<button class="' + (CO.view === x[0] ? 'on' : '') + '" onclick="coView(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>' : '');
   nav = nav.replace('<div class="tabs grow">', '<div class="tabs grow">') + (B.hub && !B.hub.noPw ? '<div style="text-align:right;margin:-6px 0 8px"><button class="btn sm" onclick="hubLock()">🔒 Lock the hub</button></div>' : '');
   if (!d.edit) nav += '<div class="banner info small">You can view ' + esc(d.names[CO.campus]) + ' but not make changes.</div>';
-  var body = { today: coToday, room: coRoom, periods: coPeriods, attention: coAttention, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin }[CO.view]();
+  var body = { today: coTodayWrap, room: coTodayWrap, periods: coPeriods, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin, health: coHealth, switches: coSwitches, seats: coSeats }[CO.view]();
   $('main').innerHTML = '<div class="wrap">' + nav + '<div id="coBody">' + (typeof body === 'string' ? body : '<div class="spin">Loading…</div>') + '</div></div>';
   coBell();
 }
@@ -3270,6 +3650,36 @@ function clockTick() {
   [].forEach.call(document.querySelectorAll('.elapsed'), function (x) { var t = x.getAttribute('data-s'), i = x.getAttribute('data-in'); x.textContent = t ? Math.max(0, Math.floor((Date.now() - new Date(t).getTime()) / 60000)) + ' min' : i ? 'not started' : ''; });
 }
 function coPref(k, v) { CO.prefs[k] = v; call('api_savePrefs', CO.prefs).then(function (p) { CO.prefs = p; }); if (k === 'bell') clockTick(); else coDraw(); }
+
+// ---------- Today: the check-in box (type or scan a student ID), the list or the room, and Needs attention alongside
+function coTodayWrap() {
+  var d = CO.dash, ci = d.edit && d.date === B.today ? '<div class="card ci"><div class="row" style="flex-wrap:nowrap"><b style="white-space:nowrap">🪪 Check in</b><input type="text" id="ciQ" placeholder="Scan or type a student ID, then Enter" autocomplete="off" onkeydown="if(event.key===\'Enter\')coCheckInId()"><button class="btn pri" onclick="coCheckInId()">Arrived</button></div><div id="ciRes"></div></div>' : '';
+  var hb = CO.health && CO.health.level !== 'ok' ? '<div class="banner hbanner ' + (CO.health.level === 'bad' ? 'bad' : 'warn') + ' small">🩺 ' + esc(CO.health.items.filter(function (i) { return i.level !== 'ok'; }).map(function (i) { return i.text; }).join(' · ')) + ' <button class="link" onclick="coView(\'health\')">Health check</button></div>' : '';
+  var main = CO.view === 'room' ? '<div class="spin">Loading the room…</div>' : coToday();
+  if (CO.view === 'room') setTimeout(coRoom, 0);
+  setTimeout(function () { var q = $('ciQ'); if (q && !$('layer').innerHTML) q.focus(); }, 50);
+  return hb + ci + '<div class="todaygrid"><div id="todayMain">' + main + '</div><aside id="todayAtt">' + coAttPanel() + '</aside></div>';
+}
+function coAttPanel() {
+  var list = CO.dash.attention; if (!list) return '<div class="card"><h3>Needs attention</h3><div class="spin">Checking…</div></div>';
+  if (!list.length) return '<div class="card"><h3>Needs attention</h3><div class="small mute">Nothing right now. 🎉</div></div>';
+  var lab = { 0: '⏰ Right now', 1: 'Today', 2: 'Next school day', 3: 'Coming up' };
+  return '<div class="card" style="padding:0"><h3 style="padding:12px 14px 0">Needs attention (' + list.length + ')</h3>' + [0, 1, 2, 3].map(function (s) {
+    var g = list.filter(function (x) { return x.sev === s; }); if (!g.length) return '';
+    return '<div class="tiny mute" style="padding:8px 14px 0;font-weight:600">' + lab[s] + '</div>' + g.slice(0, s >= 2 ? 15 : 50).map(function (x) { return '<div class="att sev' + Math.max(1, s) + '" style="display:block"><div class="small">' + esc(x.text) + '</div><div class="row" style="margin-top:6px;gap:6px">' + coAttBtn(x) + '</div></div>'; }).join('') + (g.length > (s >= 2 ? 15 : 50) ? '<div class="tiny mute" style="padding:6px 14px">…and ' + (g.length - 15) + ' more</div>' : '');
+  }).join('') + '</div>';
+}
+function coCheckInId() {
+  var q = $('ciQ').value.trim(); if (!q) return;
+  $('ciRes').innerHTML = '<div class="spin" style="padding:8px">Checking in…</div>';
+  call('api_checkInById', CO.campus, q).then(function (r) {
+    $('ciQ').value = '';
+    if (r.none) { $('ciRes').innerHTML = '<div class="banner ' + (r.already ? 'info' : 'warn') + ' small" style="margin:8px 0 0">' + esc(r.student) + (r.already ? ' is already here' + (r.already.desk ? ' at <b>Desk ' + esc(r.already.desk) + '</b>' : '') + ' (' + esc(r.already.test) + ').' : ' has no appointment here today. <button class="btn sm" onclick="coWalkIn(\'' + esc(r.sid) + '\')">Book a walk-in</button>') + '</div>'; return; }
+    var a = r.appt, res = (a.resources || []).map(function (x) { return x.link ? '<a class="btn sm pri" href="' + esc(x.link) + '" target="_blank">🔑 ' + esc(x.title) + '</a>' : ''; }).join(' ');
+    $('ciRes').innerHTML = '<div class="ci-ok"><div class="ci-desk">' + (r.desk ? 'Desk ' + esc(r.desk) : 'No desk') + '</div><div class="grow"><b>' + esc(r.student) + '</b> · ' + esc(a.test) + ' · ' + esc(a.course) + ' · ' + esc(perTxt(a.period, a.half)) + '<div class="row" style="margin-top:6px;gap:6px">' + readyChip(a.ready) + (a.testInfo && a.testInfo.code ? '<span class="chip ok">access code on file</span>' : '') + res + (a.conflict && !a.conflict.verified ? '<span class="chip warn">check the written note (' + esc(a.conflict.course) + ')</span>' : '') + '</div>' + (r.others ? '<div class="tiny mute">' + r.others + ' more appointment(s) today.</div>' : '') + '</div><div class="row" style="flex-direction:column;gap:6px"><button class="btn sm" onclick="coAppt(\'' + a.id + '\')">Open</button><button class="btn sm" onclick="coCheckIn(\'' + a.id + '\', true)">Move desk</button><button class="btn sm" onclick="coStep(\'' + a.id + '\',\'undo\')">Undo</button></div></div>';
+    call('api_dash', CO.campus, CO.date, true).then(function (d) { d.attention = CO.dash.attention; d.waitlist = CO.dash.waitlist; CO.dash = d; var m = $('todayMain'); if (m && CO.view === 'today') m.innerHTML = coToday(); });
+  }).catch(function (e) { $('ciRes').innerHTML = ''; fail(e); });
+}
 
 // ---------- A. Today's testing
 function coToday() {
@@ -3325,7 +3735,7 @@ function coApptHtml(a) {
   out += '<div class="kv" style="margin-top:12px"><div>When</div><div>' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '</div><div>Class</div><div>' + esc(a.course) + ' · ' + esc(a.teacher) + (a.noClass ? ' <span class="chip warn">not on their schedule</span>' : '') + '</div><div>Test</div><div>' + esc(a.test) + ' · ' + esc(a.purpose) + '</div><div>Status</div><div>' + statusChip(a.status) + (a.outcome ? ' ' + esc(a.outcome) : '') + '</div>' + (a.desk ? '<div>Desk</div><div><b>Desk ' + esc(a.desk) + '</b>' + (ed && /^(checked|testing|paused)/i.test(a.status) ? ' <button class="btn sm" onclick="coCheckIn(\'' + a.id + '\', true)">Move</button>' : '') + '</div>' : '') + '<div>Booked by</div><div>' + esc(a.source) + '</div></div>';
   if (a.conflict) out += '<div class="banner ' + (a.conflict.verified ? 'ok' : 'warn') + ' small" style="margin-top:12px"><b>Will miss ' + esc(a.conflict.course) + '</b>' + (a.conflict.teacher ? ' (' + esc(a.conflict.teacher) + ')' : '') + '. ' + esc(a.conflict.ack) + (a.conflict.note ? ': “' + esc(a.conflict.note) + '”' : '') + '. ' + (a.conflict.verified ? 'Pass checked by ' + esc(a.conflict.verifiedBy) + '.' : 'This is not a teacher’s approval: check the written pass.') + (ed && !a.conflict.verified ? ' <button class="btn sm" onclick="coStep(\'' + a.id + '\',\'verify\')">Pass seen</button>' : '') + '</div>';
   out += '<h3 style="margin-top:16px">Access the test</h3><div class="card" style="padding:12px">';
-  out += '<div class="row">' + readyChip(r) + fmtChip(r) + '<span class="small mute">' + esc(r.ftext) + '</span></div>' + (r.missing.length ? '<div class="small" style="color:var(--bad);margin-top:6px">Missing: ' + esc(r.missing.join(', ')) + '</div>' : '');
+  out += '<div class="row">' + readyChip(r) + fmtChip(r) + '<span class="small mute">' + esc(r.ftext) + '</span></div>' + (r.missing.length ? '<div class="small" style="color:var(--bad);margin-top:6px">' + esc(r.missing.join('; ')) + '</div>' : '');
   a.resources.forEach(function (x) { out += '<div class="slot" style="margin:8px 0 0"><div class="grow"><b>' + esc(x.title) + '</b><div class="tiny mute">' + esc(x.type) + '</div></div>' + (x.link ? '<a class="btn sm pri" href="' + esc(x.link) + '" target="_blank">Open</a>' : '') + '</div>'; });
   if (t) {
     out += '<div class="kv small" style="margin-top:10px">' + (t.platform ? '<div>Platform</div><div>' + esc(t.platform) + '</div>' : '') + (t.code ? '<div>Access code</div><div><button class="link" data-c="' + esc(t.code) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">Show code</button></div>' : '') + (t.minutes ? '<div>Time limit</div><div>' + esc(t.minutes) + ' min' + (t.form.extSpec ? ' · extended: ' + esc(t.form.extSpec) : '') + '</div>' : '') +
@@ -3365,8 +3775,8 @@ function roomMap(r, opt) {          // opt.pick = name of the function a free de
 function coRoom() {
   call('api_room', CO.campus).then(function (r) {
     var busy = r.desks.filter(function (d) { return d.appt; }), free = r.desks.length - busy.length;
-    coBody('<div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">' + esc(r.label) + '</h2>' + (r.chart ? '<span class="chip blue">' + busy.length + ' in the room</span><span class="chip ok">' + free + ' desks free</span>' : '') + '<button class="btn sm" onclick="coView(\'room\')">Refresh</button>' + (r.editUrl && CO.dash.edit ? '<a class="btn sm" href="' + esc(r.editUrl) + '" target="_blank">Edit the room</a>' : '') + '</div>' +
-      roomMap(r, { big: true }) + '<p class="tiny mute">Blue: testing (minutes since they started) · amber: checked in, not started yet · white: free. Click a student to open their appointment. A desk frees up when the student is marked Done.</p></div>');
+    var tgt = $('todayMain') || $('coBody'); if (!tgt) return; tgt.innerHTML = ('<div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">' + esc(r.label) + '</h2>' + (r.chart ? '<span class="chip blue">' + busy.length + ' in the room</span><span class="chip ok">' + free + ' desks free</span>' : '') + '<button class="btn sm" onclick="coView(\'room\')">Refresh</button>' + (r.editUrl && CO.dash.edit ? '<a class="btn sm" href="' + esc(r.editUrl) + '" target="_blank">Edit the room</a>' : '') + '</div>' +
+      roomMap(r, { big: true }) + '<p class="tiny mute">Blue: testing (minutes since they started) · amber: arrived, not started yet · white: free. Click a student to open their appointment. A desk frees up when the student checks out.</p></div>');
     clockTick();
   }).catch(fail);
   return null;
@@ -3376,7 +3786,7 @@ function coCheckIn(id, move) {
   call('api_room', CO.campus).then(function (r) {
     if (!r.chart || !r.desks.length) { if (move) return toast('Draw the room first (Administration).'); return coStep(id, 'in'); }
     var a = null; CO.dash.periods.forEach(function (p) { p.appts.forEach(function (x) { if (x.id === id) a = x; }); });
-    window.__ciGo = function (n) { coStep(id, move ? 'desk' : 'in', { desk: n }).then(function () { closeModal(); if (CO.view === 'room') coView('room'); }); };
+    window.__ciGo = function (n) { coStep(id, move ? 'desk' : 'in', { desk: n }).then(function () { closeModal(); if (CO.view === 'room') coView('room'); else coLoad(); }); };
     var free = r.desks.filter(function (d) { return !d.appt; }).length;
     modal('<h2>' + (move ? 'Move ' : 'Check in ') + esc(a ? a.student : '') + '</h2><p class="small mute" style="margin-top:0">' + (a ? esc(a.test) + ' · ' + esc(a.course) + ' · ' : '') + free + ' of ' + r.desks.length + ' desks free. Tap a desk.</p>' + roomMap(r, { pick: '__ciGo', sel: r.suggest }) +
       '<div class="row" style="margin-top:12px">' + (r.suggest ? '<button class="btn pri" onclick="__ciGo(' + r.suggest + ')">Desk ' + r.suggest + ' (suggested)</button>' : '<span class="chip bad">The room is full</span>') + (move ? '' : '<button class="btn" onclick="coStep(\'' + id + '\',\'in\').then(closeModal)">Check in without a desk</button>') + '<button class="btn" onclick="closeModal()">Cancel</button></div>', true);
@@ -3426,9 +3836,53 @@ function pgDo(d, periods, open, cancel, why) {
   call('api_setPeriods', CO.campus, d, periods, open, cancel, why).then(function (r) { closeModal(); toast(open ? 'Reopened' : 'Closed' + (r.canceled ? ' · ' + r.canceled + ' appointment(s) canceled and emailed' : '')); coLoad().then(function () { coView('periods'); }); }).catch(fail);
 }
 
+// ---------- Settings › Health check
+function coHealth() {
+  call('api_health').then(function (h) {
+    CO.health = h;
+    var ic = { ok: '✓', warn: '!', bad: '✕' }, col = { ok: 'ok', warn: 'warn', bad: 'bad' };
+    coBody('<div class="card"><h2>Daily health check</h2><p class="small mute" style="margin-top:0">Checked every time the hub opens. Problems also show as a banner on Today, and can be emailed each morning (Switches › Hub access and health).</p>' +
+      h.items.map(function (i) { return '<div class="slot"><span class="chip ' + col[i.level] + '" style="min-width:28px;text-align:center">' + ic[i.level] + '</span><div class="grow">' + esc(i.text) + (i.fix ? '<div class="tiny mute">' + (/^https:/.test(i.fix) ? '<a href="' + esc(i.fix) + '" target="_blank">Open the backups folder</a>' : esc(i.fix)) + '</div>' : '') + '</div></div>'; }).join('') +
+      (B.roles.indexOf('admin') >= 0 ? '<div class="row" style="margin-top:10px"><button class="btn" onclick="busy(this,true);call(\'api_backupNow\').then(function(){toast(\'Backup copy made\');coView(\'health\')}).catch(fail)">Back up now</button></div>' : '') + '</div>' +
+      '<div class="card"><h2>Free up space</h2><ol class="small"><li>After each Infinite Campus import is applied, press <b>Clear IC_Raw_Import</b> (Settings › Imports &amp; more). The export is a full copy of everyone’s schedule; the app already has what it needs.</li><li>Old appointments, emails and the activity log move to <b>Archive</b> tabs on the 1st of each month by themselves.</li><li>Only the last two import backups are kept (hidden tabs named “_bk …”).</li><li>If the sheet still gets above 80% full, delete old “_bk …” tabs (right-click the tab › Delete) and any extra tabs you pasted.</li></ol></div>');
+  }).catch(fail);
+  return null;
+}
+// ---------- Settings › Switches (the everyday settings, in plain words)
+function coSwitches() {
+  call('api_settingsGet').then(function (st) {
+    var cell = function (it, c) {
+      var can = it.admin ? st.admin : st.edit[c], v = it[c], id = 'set-' + btoa(unescape(encodeURIComponent(it.key))).replace(/[^a-z0-9]/gi, '') + '-' + c;
+      var onch = 'coSet(\'' + esc(it.key).replace(/'/g, '\\\'') + '\',\'' + (it.admin ? 'B' : c) + '\',this.value)';
+      if (it.choices) return '<select id="' + id + '"' + (can ? '' : ' disabled') + ' onchange="' + onch + '">' + it.choices.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+      return '<input type="' + (it.num ? 'number' : 'text') + '" id="' + id + '" value="' + esc(v) + '"' + (can ? '' : ' disabled') + ' onchange="' + onch + '">';
+    };
+    coBody(st.groups.map(function (g) {
+      var adm = /administrators/.test(g.title);
+      return '<div class="card"><h2>' + esc(g.title) + '</h2><table class="t small"><tr><th style="width:38%"></th>' + (adm ? '<th>Both campuses</th>' : '<th>' + esc(st.names.S) + '</th><th>' + esc(st.names.N) + '</th>') + '</tr>' +
+        g.items.map(function (it) { return '<tr><td><b>' + esc(it.key) + '</b><div class="tiny mute">' + esc(it.help) + '</div></td>' + (adm ? '<td>' + cell(it, 'S') + '</td>' : '<td>' + cell(it, 'S') + '</td><td>' + cell(it, 'N') + '</td>') + '</tr>'; }).join('') + '</table></div>';
+    }).join('') + '<p class="tiny mute">Changes save when you leave the box. They’re stored on the sheet’s Settings tab (dropdowns there too).</p>');
+  }).catch(fail);
+  return null;
+}
+function coSet(key, campus, value) { call('api_settingSave', key, campus, value).then(function () { toast('Saved'); call('api_dash', CO.campus, CO.date, true).then(function (d) { d.attention = CO.dash.attention; d.waitlist = CO.dash.waitlist; CO.dash = d; }); }).catch(function (e) { fail(e); coView('switches'); }); }
+// ---------- Settings › Seats & periods (the usual week; one-day changes are on Schedule › Open periods)
+function coSeats() {
+  call('api_settingsGet').then(function (st) {
+    window.__seats = st.periods;
+    coBody(['S', 'N'].filter(function (c) { return CO.dash.campuses[c]; }).map(function (c) {
+      var can = st.edit[c];
+      return '<div class="card"><h2>' + esc(st.names[c]) + ': the usual week</h2><table class="t small"><tr><th>Period</th><th>Seats</th>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(function (d) { return '<th>' + d + '</th>'; }).join('') + '<th>A/B halves</th><th>Walk-ins</th></tr>' +
+        st.periods[c].map(function (p, i) { var cb = function (k) { return '<input type="checkbox"' + (p[k] ? ' checked' : '') + (can ? '' : ' disabled') + ' onchange="__seats.' + c + '[' + i + '].' + k + '=this.checked">'; }; return '<tr><td><b>' + esc(p.label || 'Period ' + p.period) + '</b></td><td><input type="number" style="width:80px" value="' + esc(p.cap) + '"' + (can ? '' : ' disabled') + ' onchange="__seats.' + c + '[' + i + '].cap=this.value"></td>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(function (d) { return '<td>' + cb(d) + '</td>'; }).join('') + '<td>' + cb('ab') + '</td><td>' + cb('walkin') + '</td></tr>'; }).join('') + '</table>' +
+        (can ? '<button class="btn pri" style="margin-top:10px" onclick="busy(this,true);call(\'api_periodsSave\',\'' + c + '\',__seats.' + c + ').then(function(){toast(\'Saved\');coLoad()}).catch(fail)">Save ' + esc(st.names[c]) + '</button>' : '') + '<p class="tiny mute">Checked = open that weekday. To close a single day or leave early, use Schedule › Open periods.</p></div>';
+    }).join(''));
+  }).catch(fail);
+  return null;
+}
+
 // ---------- B. Needs attention
 function coAttention() {
-  var list = CO.dash.attention;
+  var list = CO.dash.attention; if (!list) return '<div class="spin">Checking what needs attention…</div>';
   if (!list.length) return '<div class="card empty">Nothing needs attention. 🎉</div>';
   var lab = { 0: '⏰ Right now', 1: 'Today / urgent', 2: 'Next school day', 3: 'Coming up' };
   var out = '';
@@ -3441,11 +3895,11 @@ function coAttention() {
 function coAttBtn(x) {
   var r = x.ref, ed = CO.dash.edit;
   if (r.appt && x.kind === 'nexttest' && ed) return '<button class="btn sm bad" onclick="coCancel(\'' + r.appt + '\', \'materials\')">Cancel &amp; email student</button><button class="btn sm" onclick="coEmailTeacher(\'' + r.appt + '\')">Email the teacher</button><button class="btn sm" onclick="coTeacherNow(\'' + r.appt + '\')">Where’s the teacher?</button>';
-  if (r.appt) return '<button class="btn sm" onclick="coAppt(\'' + r.appt + '\')">Open</button>' + (x.kind === 'materials' && ed ? '<button class="btn sm" onclick="CO.view=\'comms\';coDraw()">Send reminder</button>' : '');
+  if (r.appt) return '<button class="btn sm" onclick="coAppt(\'' + r.appt + '\')">Open</button>' + (x.kind === 'materials' && ed ? '<button class="btn sm" onclick="coView(\'comms\')">Send reminder</button>' : '');
   if (r.wid && ed) return '<button class="btn sm pri" onclick="coOffer(\'' + r.wid + '\')">Offer to next</button>';
   if (r.sid) return '<button class="btn sm" onclick="coStudent(\'' + r.sid + '\')">Open</button>';
-  if (r.email && ed) return x.kind === 'draft' ? '<button class="btn sm pri" onclick="coDraft(\'' + r.email + '\',1)">Send</button><button class="btn sm" onclick="coDraft(\'' + r.email + '\',0)">Skip</button>' : '<button class="btn sm" onclick="CO.view=\'comms\';coDraw()">View</button>';
-  if (r.imp) return '<button class="btn sm" onclick="CO.view=\'admin\';coDraw()">Review</button>';
+  if (r.email && ed) return x.kind === 'draft' ? '<button class="btn sm pri" onclick="coDraft(\'' + r.email + '\',1)">Send</button><button class="btn sm" onclick="coDraft(\'' + r.email + '\',0)">Skip</button>' : '<button class="btn sm" onclick="coView(\'comms\')">View</button>';
+  if (r.imp) return '<button class="btn sm" onclick="coView(\'admin\')">Review</button>';
   return '';
 }
 function coEmailTeacher(id) { call('api_emailTeacherNow', id).then(function (r) { toast('Emailed ' + r.to.join(', ')); }).catch(fail); }
@@ -3462,7 +3916,7 @@ function coDraft(id, send) { call(send ? 'api_sendDraft' : 'api_skipDraft', id).
 
 // ---------- D. Waitlist
 function coWaitlist() {
-  var w = CO.dash.waitlist, ed = CO.dash.edit;
+  var w = CO.dash.waitlist, ed = CO.dash.edit; if (!w) return '<div class="spin">Loading the waitlist…</div>';
   var out = '<div class="banner info small">Waitlist offers: <b>' + (CO.dash.conf.offerMode === 'auto' ? 'automatic' : 'coordinator approves first') + '</b> · ' + CO.dash.conf.offerHours + ' hour(s) to answer' + (CO.dash.conf.cutoffH ? ' · inside the ' + CO.dash.conf.cutoffH + '-hour cutoff: ' + (CO.dash.conf.insideCutoff === 'ask' ? 'ask a coordinator' : 'offer anyway') : ' · open seats are offered until the period starts') + '. Change these on the Settings tab.</div>';
   if (!w.length) return out + '<div class="card empty">No one is waiting.</div>';
   w.forEach(function (g) {
@@ -3596,6 +4050,7 @@ function coAdmin() {
     '<div class="grid2"><div class="card"><h2>Upload a roster</h2><p class="small mute" style="margin-top:0">An Infinite Campus export (CSV or Excel) of students and their classes. Nothing changes until you’ve looked at the preview.</p><div class="row"><button class="btn pri" onclick="impTab()">Import from a tab in this sheet</button><button class="btn" onclick="impStart(\'roster\')">Upload a roster file</button></div><p class="tiny mute">Best for big exports: paste the export into a new tab of the Testing Center sheet, then import it from there (nothing to upload).</p>' + (B.roles.indexOf('admin') >= 0 ? '<p class="small" style="margin-top:12px"><button class="btn sm bad" onclick="practiceClear()">Remove the practice data</button> <span class="tiny mute">Made-up students, teachers, coordinators and their appointments. Do this before importing real students.</span></p>' : '') + '</div>' +
     '<div class="card"><h2>Import SignUpGenius appointments</h2><p class="small mute" style="margin-top:0">Export the sign-ups as CSV or Excel. Re-importing the same file updates appointments instead of making duplicates.</p><button class="btn" onclick="impStart(\'appointments\')">Upload sign-ups</button></div></div>' +
     '</div></details>' +
+    (B.roles.indexOf('admin') >= 0 ? '<div class="card"><h2>Clean up things that aren’t classes</h2><p class="small mute" style="margin-top:0">Finds clubs and activities (codes starting with Z), rows with no room, and rows whose period end isn’t a number, plus anything that only <i>might</i> not be a class, for you to decide. Nothing is deleted until you choose.</p><button class="btn" onclick="clScan(this)">Look for them</button><div id="clBody"></div></div>' : '') +
     '<div class="card"><h2>Teacher schedules</h2><p class="small mute" style="margin-top:0">For “where is the teacher right now?”. Import the staff schedule CSV into the <b>Teacher_Schedules_Raw</b> tab (File › Import › Upload › Replace current sheet), then read it here. Without it, only the classes teachers teach are known.</p><div id="tsBody"><div class="spin">Loading…</div></div></div>' +
     '<div class="card"><h2>The room</h2><p class="small mute" style="margin-top:0">Draw the Testing Center room in the seating chart tool. Desks are numbered like restaurant tables (front row first, left to right), and you pick a desk for each student when they check in.</p><div id="roomAdmin"></div></div>' +
     '<div class="card"><h2>Import history</h2><div id="impHist"><div class="spin">Loading…</div></div></div>' +
@@ -3685,6 +4140,24 @@ function icDetail() {
 }
 
 function tsRead(btn) { busy(btn, true); call('api_tsProcess').then(function (r) { busy(btn, false); $('tsMsg').innerHTML = '<div class="banner ok small" style="margin-top:8px">' + r.rows.toLocaleString() + ' rows read · ' + r.matched + ' teachers matched' + (r.unmatchedCount ? ' · <b>' + r.unmatchedCount + ' not matched</b> (kept by name): ' + r.unmatched.map(esc).join(', ') : '') + '<div class="tiny mute">Columns used: ' + Object.keys(r.columns).map(function (k) { return esc(k) + ' = “' + esc(r.columns[k]) + '”'; }).join(', ') + '</div></div>'; }).catch(function (e) { busy(btn, false); fail(e); }); }
+function clScan(btn) {
+  busy(btn, true);
+  call('api_cleanupScan').then(function (list) {
+    busy(btn, false);
+    if (!list.length) { $('clBody').innerHTML = '<div class="banner ok small" style="margin-top:10px">Nothing to clean up.</div>'; return; }
+    var row = function (x) { return '<tr><td><input type="checkbox" class="clc" value="' + esc(x.secid) + '"' + (x.sure ? ' checked' : '') + '></td><td><b>' + esc(x.course) + '</b><div class="tiny mute">' + esc(x.teacher) + ' · P' + esc(x.period) + (x.room ? ' · ' + esc(x.room) : '') + ' · ' + esc(x.campus === 'N' ? 'North' : 'South') + '</div></td><td class="small">' + esc(x.why) + '</td><td class="small">' + x.students + ' students' + (x.appts ? '<div class="tiny" style="color:var(--warn)">' + x.appts + ' appointment(s): the class record is kept for them</div>' : '') + '</td></tr>'; };
+    var sure = list.filter(function (x) { return x.sure; }), unsure = list.filter(function (x) { return !x.sure; });
+    $('clBody').innerHTML = (sure.length ? '<h3 style="margin-top:14px">Not classes by your rules (' + sure.length + ')</h3><table class="t small"><tr><th></th><th>Row</th><th>Why</th><th></th></tr>' + sure.map(row).join('') + '</table>' : '') +
+      (unsure.length ? '<h3 style="margin-top:14px">Not sure — you decide (' + unsure.length + ')</h3><p class="tiny mute">Tick the ones that aren’t real classes.</p><table class="t small"><tr><th></th><th>Row</th><th>Why it’s listed</th><th></th></tr>' + unsure.map(row).join('') + '</table>' : '') +
+      '<div class="row" style="margin-top:10px"><button class="btn bad" onclick="clApply(this)">Delete the ticked rows</button><span class="tiny mute">A backup is made first; undo it from Import history.</span></div>';
+  }).catch(function (e) { busy(btn, false); fail(e); });
+}
+function clApply(btn) {
+  var ids = [].map.call(document.querySelectorAll('.clc:checked'), function (x) { return x.value; });
+  if (!ids.length) return toast('Tick at least one row.');
+  if (!confirm('Delete ' + ids.length + ' row(s) that aren’t classes, and those students’ enrollments in them?')) return;
+  busy(btn, true); call('api_cleanupApply', ids).then(function (r) { toast(r.sections + ' removed' + (r.kept ? ', ' + r.kept + ' kept for past appointments' : '') + ' · ' + r.enrollments + ' enrollments'); coAdminLoad(); $('clBody').innerHTML = ''; }).catch(function (e) { busy(btn, false); fail(e); });
+}
 function impUndo(id) { if (!confirm('Undo this roster import? Students, classes and teachers go back to how they were before it.')) return; call('api_importRollback', id).then(function () { toast('Import undone'); coAdminLoad(); }).catch(fail); }
 function impStart(kind) {
   IMP = { kind: kind };

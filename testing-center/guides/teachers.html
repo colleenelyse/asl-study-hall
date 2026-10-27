@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="How teachers see their students' Testing Center appointments and send testing info.">
+<title>Testing Center: Teachers</title><link rel="icon" type="image/png" sizes="512x512" href="../../img/logo-512.png"><link rel="apple-touch-icon" href="../../img/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* One-page printable guide for the LTHS Testing Center. Same tokens as ../index.html (the tour). */
+:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #e9edf6; --ok: #1a7f4b;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); }
+.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1, h2 { font-family: var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: var(--brand); margin-bottom: 4px; }
+p { margin: 0; }
+a { color: var(--brand); }
+.mark { background: linear-gradient(transparent 55%, var(--mark) 55%); padding: 0 .1em; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top a { font-size: .88rem; font-weight: 500; text-decoration: none; }
+.lead { color: var(--soft); margin: 8px 0 16px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.box.wide { grid-column: 1 / -1; }
+ol, ul { margin: 0; padding-left: 1.25em; }
+li { margin: 2px 0; }
+b.btn { font-weight: 600; background: var(--shot-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.tip { margin-top: 12px; font-size: .88rem; color: var(--soft); border-left: 3px solid var(--ok); padding-left: 10px; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; vertical-align: -.05em; margin-right: 2px; }
+.foot { margin-top: 14px; font-size: .78rem; color: var(--soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+@page { size: letter; margin: .4in; }
+@media print {
+  :root, :root[data-theme="dark"] { --bg: #fff; --card: #fff; --ink: #000; --soft: #333; --line: #bbb; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #eef1f7; --ok: #1a7f4b; color-scheme: light; }
+  body { background: #fff; color: #000; font-size: 9.6pt; line-height: 1.36; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: none; padding: 0; }
+  h1 { font-size: 20pt; } h2 { font-size: 10.5pt; }
+  .lead { margin: 4px 0 8px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .box { padding: 6px 9px; border-radius: 8px; break-inside: avoid; }
+  .top { margin-bottom: 4px; } .top a, .noprint { display: none; }
+  .tip { margin-top: 7px; } .foot { margin-top: 7px; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="top"><span class="eyebrow">LTHS Testing Center &middot; North and South Campus</span><a href="../">&larr; Back to the tour</a></div>
+
+<h1>The Testing Center for teachers</h1>
+<p class="lead">Sign in with your <b>school Google account</b> and the app opens <b>My classes</b>: your students&rsquo; upcoming Testing Center appointments, so you can send the test info once instead of chasing emails.</p>
+<div class="grid">
+<div class="box"><h2>1. Check your list</h2><p>Each test has a tracker: <b>Booked → Testing Center has the test → Arrived → Finished</b>. The test step is marked:</p><ul>
+<li><span class="dot" style="background:#1a7f4b"></span><b>Ready</b>: the center has what it needs.</li>
+<li><span class="dot" style="background:#d49a00"></span><b>Check</b>: take a quick look.</li>
+<li><span class="dot" style="background:#c62828"></span><b>Needs info</b>: please add testing info.</li>
+</ul></div>
+<div class="box"><h2>2. Add testing info</h2><ol>
+<li>Tap <b class="btn">Add testing info</b> to open the testing form.</li>
+<li>Fill in: online or paper, platform, access code, time limit, extended time, calculators, scratch paper, open book / notes, and notes.</li>
+<li>You fill it in <b>once per test</b>. Every student taking that test gets it.</li>
+</ol></div>
+<div class="box"><h2>3. Save time</h2><ul>
+<li><b class="btn">Standing resources</b>: attach something you reuse (for example, a live Google Doc of access codes) to one course or all classes. <b>Students never see these.</b></li>
+<li><b class="btn">My usual formats</b>: set the usual format for each course.</li>
+</ul></div>
+<div class="box"><h2>4. Emails you get</h2><ul>
+<li>When your student books, finishes, is a no-show, or cancels.</li>
+<li>A missing-materials reminder the school day before.</li>
+<li>The email link opens that exact appointment.</li>
+</ul></div>
+<div class="box"><h2>5. Choose your emails</h2><p>The first time you open the app it asks; change it later in <b class="btn">My settings</b>:</p><ul>
+<li>emails as they happen,</li><li>one summary after school, or</li><li>none.</li>
+</ul></div>
+<div class="box"><h2>6. See what happened</h2><ul>
+<li>Notes from the Testing Center (late, finished early, anything unusual) show on your page and in your emails.</li>
+<li><b class="btn">Student view</b> lets you look at one of your own students&rsquo; pages. It&rsquo;s look only.</li>
+</ul></div>
+</div>
+<p class="tip">You only see your own students. Access codes and resources go straight to Testing Center staff, never to students.</p>
+<div class="foot"><span>LTHS Testing Center &middot; sign in with your school Google account</span><span>Tour and demo: <a href="../">asl.cool/testing-center</a> &middot; <a href="./">All guides</a></span></div>
+</main>
+</body>
+</html>
