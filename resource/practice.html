@@ -475,7 +475,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.48'
+var VERSION = '2.49'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -540,7 +540,7 @@ var TABS = {
   'IEP benchmarks': ['ID', 'Email', 'Benchmark', 'Targets (tool ID: target)', 'By', 'Status', 'Added', 'Updated', 'Goal ID'],
   'IEP goals': ['ID', 'Email', 'Goal name', 'Goal', 'Added', 'Updated', 'In student words', 'Measured in BASE/ARC', 'Student', 'Check-in sentences', 'What counts as evidence', 'How to measure (idea)',
     'Goal code', 'Rating 6', 'Rating 5', 'Rating 4', 'Rating 3', 'Rating 2', 'Rating 1', 'No-chance ideas', 'What success looks like', 'Tracking tools (provisional)', 'Measurement status', 'Measurement notes', 'Official criterion (from the IEP)', 'Active from', 'Active until', 'Skill check'],
-  'Skill checks': ['Date', 'Email', 'Goal ID', 'Skill', 'Score', 'Out of', 'Percent', 'Answers', 'Saved'],
+  'Skill checks': ['Date', 'Email', 'Goal ID', 'Skill', 'Score', 'Out of', 'Percent', 'Answers', 'Saved', 'Start level', 'End level'],
   'Goal check-ins': ['Check-in ID', 'Submitted', 'Reflection date', 'Email', 'Goal ID', 'Goal title', 'Rating (1-6)', 'Did not have a chance', 'Explanation', 'Status', 'Changed by', 'Change note'],
   'Goal change log': ['When', 'Who', 'What', 'Email', 'Goal or check-in', 'Field', 'Before', 'After', 'Note'],
   'All goals and benchmarks': ['Student', 'Resource period', 'Goal #', 'Area', 'Measured in BASE/ARC', 'IEP goal (initial only)', 'In student words', 'Benchmarks', 'How it’s measured (now)', 'Daily goal check-ins', 'Email'],
@@ -4026,6 +4026,62 @@ var SKILL_BANK = [
 
 // 2.33: a short skill check every two weeks for each goal that isn't measured in BASE/ARC and is about reading, writing or math.
 // The teacher can pick the kind or turn it off (IEP goals: Skill check = reading / writing / math / none; blank = worked out from the goal).
+/* Math skill checks, one question at a time (2.49). Six levels (Colleen's planning doc, from the 2026–27 Academic Program Guide):
+   1 money, fractions, percents, measurement · 2 expressions, one- and two-step equations · 3 Algebra 1 · 4 Geometry · 5 Algebra 2 ·
+   6 precalculus and trig. A right answer moves the next question up one level, a wrong one down one (never below 1 or above 6);
+   5 questions a check; where it ends is the student's math level, saved on the Skill checks tab (Start level, End level).
+   Original questions, 8 a level. The answer (a) and why never go to the page before the student answers. */
+var SKILL_MATH_N = 5, SKILL_MATH_LEVELS = ['', 'Money, fractions, percents, measurement', 'Expressions and one- and two-step equations', 'Algebra 1', 'Geometry', 'Algebra 2', 'Precalculus and trig'];
+var SKILL_MATH = [
+  { id: 'L1a', lv: 1, q: 'A shirt costs $18 and is 25% off. What is the sale price?', c: ['$4.50', '$13.50', '$14.00', '$22.50'], a: 1, why: '25% of $18 is $4.50. $18 − $4.50 = $13.50.' },
+  { id: 'L1b', lv: 1, q: 'You buy a $2.35 snack and pay with a $5 bill. How much change do you get?', c: ['$2.35', '$2.65', '$3.65', '$2.75'], a: 1, why: '$5.00 − $2.35 = $2.65.' },
+  { id: 'L1c', lv: 1, q: 'Which fraction is equal to 0.75?', c: ['1/4', '2/3', '3/4', '7/5'], a: 2, why: '3 ÷ 4 = 0.75.' },
+  { id: 'L1d', lv: 1, q: 'A recipe uses 1/2 cup of sugar. You make 3 batches. How much sugar do you need?', c: ['1 cup', '1 1/2 cups', '2 cups', '3 1/2 cups'], a: 1, why: '3 × 1/2 = 3/2 = 1 1/2 cups.' },
+  { id: 'L1e', lv: 1, q: 'How many inches are in 3 feet?', c: ['24', '30', '36', '48'], a: 2, why: 'There are 12 inches in a foot. 3 × 12 = 36.' },
+  { id: 'L1f', lv: 1, q: 'What is 10% of $60?', c: ['$0.60', '$6', '$16', '$50'], a: 1, why: '10% means divide by 10: $60 ÷ 10 = $6.' },
+  { id: 'L1g', lv: 1, q: 'A movie starts at 7:45 PM and lasts 1 hour 30 minutes. When does it end?', c: ['8:15 PM', '9:00 PM', '9:15 PM', '9:30 PM'], a: 2, why: '7:45 + 1 hour = 8:45. 8:45 + 30 minutes = 9:15 PM.' },
+  { id: 'L1h', lv: 1, q: 'You earn $12 an hour and work 6 hours. How much do you earn?', c: ['$18', '$62', '$72', '$78'], a: 2, why: '$12 × 6 = $72.' },
+  { id: 'L2a', lv: 2, q: 'If x + 9 = 15, what is x?', c: ['6', '9', '15', '24'], a: 0, why: 'Subtract 9 from both sides: x = 15 − 9 = 6.' },
+  { id: 'L2b', lv: 2, q: 'If 4x = 28, what is x?', c: ['4', '7', '24', '32'], a: 1, why: 'Divide both sides by 4: x = 28 ÷ 4 = 7.' },
+  { id: 'L2c', lv: 2, q: 'What is the value of 3a + 2 when a = 5?', c: ['10', '15', '17', '35'], a: 2, why: '3 × 5 = 15, and 15 + 2 = 17.' },
+  { id: 'L2d', lv: 2, q: 'If 2x − 3 = 11, what is x?', c: ['4', '7', '8', '14'], a: 1, why: 'Add 3: 2x = 14. Divide by 2: x = 7.' },
+  { id: 'L2e', lv: 2, q: 'Simplify: 5x + 3x − 2x', c: ['6x', '8x', '10x', '6'], a: 0, why: 'Combine like terms: 5 + 3 − 2 = 6, so 6x.' },
+  { id: 'L2f', lv: 2, q: 'A phone plan costs $20 a month plus $5 for each extra gigabyte. One month you pay $35. How many extra gigabytes did you use?', c: ['3', '5', '7', '15'], a: 0, why: '$35 − $20 = $15 for extra data. $15 ÷ $5 = 3.' },
+  { id: 'L2g', lv: 2, q: 'If x ÷ 3 = 6, what is x?', c: ['2', '3', '9', '18'], a: 3, why: 'Multiply both sides by 3: x = 18.' },
+  { id: 'L2h', lv: 2, q: 'Tickets cost $8 each. Which expression gives the cost of t tickets?', c: ['8 + t', '8t', 't ÷ 8', 't − 8'], a: 1, why: 'Each ticket is $8, so t tickets cost 8 × t, written 8t.' },
+  { id: 'L3a', lv: 3, q: 'Solve: 5x − 4 = 2x + 11', c: ['3', '5', '7', '15'], a: 1, why: 'Subtract 2x: 3x − 4 = 11. Add 4: 3x = 15. Divide by 3: x = 5.' },
+  { id: 'L3b', lv: 3, q: 'Solve: 2(x − 4) = 10', c: ['1', '7', '9', '14'], a: 2, why: 'Divide by 2: x − 4 = 5. Add 4: x = 9.' },
+  { id: 'L3c', lv: 3, q: 'Solve: −3x > 12', c: ['x > −4', 'x < −4', 'x > 4', 'x < 4'], a: 1, why: 'Divide by −3. Dividing by a negative flips the sign: x < −4.' },
+  { id: 'L3d', lv: 3, q: 'What is the slope of the line through (1, 2) and (3, 8)?', c: ['2', '3', '4', '6'], a: 1, why: 'Slope = change in y ÷ change in x = (8 − 2) ÷ (3 − 1) = 6 ÷ 2 = 3.' },
+  { id: 'L3e', lv: 3, q: 'What is the slope of y = −2x + 5?', c: ['−2', '2', '5', '−5'], a: 0, why: 'In y = mx + b, the slope is m. Here m = −2.' },
+  { id: 'L3f', lv: 3, q: 'A gym charges $25 to join and $15 a month. Which equation gives the total cost C after m months?', c: ['C = 25m + 15', 'C = 15m + 25', 'C = 40m', 'C = 25 + m'], a: 1, why: '$15 for each month is 15m, plus the $25 to join once: C = 15m + 25.' },
+  { id: 'L3g', lv: 3, q: 'Solve: 4(x + 1) = 2x + 10', c: ['2', '3', '4', '6'], a: 1, why: '4x + 4 = 2x + 10. Subtract 2x: 2x + 4 = 10. Subtract 4: 2x = 6. x = 3.' },
+  { id: 'L3h', lv: 3, q: 'Two numbers add up to 30. One is 6 more than the other. What is the smaller number?', c: ['12', '15', '18', '24'], a: 0, why: 'x + (x + 6) = 30, so 2x = 24 and x = 12 (the other is 18).' },
+  { id: 'L4a', lv: 4, q: 'A rectangle is 8 cm long and 5 cm wide. What is its area?', c: ['13 cm²', '26 cm²', '40 cm²', '80 cm²'], a: 2, why: 'Area = length × width = 8 × 5 = 40 cm².' },
+  { id: 'L4b', lv: 4, q: 'A right triangle has legs of 6 and 8. How long is the hypotenuse?', c: ['10', '12', '14', '100'], a: 0, why: '6² + 8² = 36 + 64 = 100, and √100 = 10.' },
+  { id: 'L4c', lv: 4, q: 'Two angles of a triangle are 50° and 60°. What is the third angle?', c: ['70°', '80°', '90°', '110°'], a: 0, why: 'The angles of a triangle add to 180°: 180 − 50 − 60 = 70°.' },
+  { id: 'L4d', lv: 4, q: 'A circle has a radius of 3. What is its area?', c: ['6π', '9π', '3π', '36π'], a: 1, why: 'Area = πr² = π × 3² = 9π.' },
+  { id: 'L4e', lv: 4, q: 'What is the perimeter of a square with sides of 7 inches?', c: ['14 in', '21 in', '28 in', '49 in'], a: 2, why: 'A square has 4 equal sides: 4 × 7 = 28 inches.' },
+  { id: 'L4f', lv: 4, q: 'How far apart are the points (0, 0) and (3, 4)?', c: ['5', '7', '12', '25'], a: 0, why: 'Use the Pythagorean theorem: √(3² + 4²) = √25 = 5.' },
+  { id: 'L4g', lv: 4, q: 'Two angles form a straight line. One is 115°. What is the other?', c: ['55°', '65°', '75°', '245°'], a: 1, why: 'Angles on a straight line add to 180°: 180 − 115 = 65°.' },
+  { id: 'L4h', lv: 4, q: 'What is the midpoint of (2, 6) and (8, 10)?', c: ['(5, 8)', '(6, 4)', '(10, 16)', '(3, 2)'], a: 0, why: 'Average the x’s and the y’s: ((2 + 8) ÷ 2, (6 + 10) ÷ 2) = (5, 8).' },
+  { id: 'L5a', lv: 5, q: 'If x + y = 10 and x − y = 4, what is x?', c: ['3', '6', '7', '14'], a: 2, why: 'Add the two equations: 2x = 14, so x = 7 (and y = 3).' },
+  { id: 'L5b', lv: 5, q: 'What are the solutions of x² − 5x + 6 = 0?', c: ['2 and 3', '−2 and −3', '1 and 6', '−1 and −6'], a: 0, why: 'Factor: (x − 2)(x − 3) = 0, so x = 2 or x = 3.' },
+  { id: 'L5c', lv: 5, q: 'Simplify: x³ · x⁴', c: ['x⁷', 'x¹²', '2x⁷', 'x'], a: 0, why: 'When you multiply powers with the same base, add the exponents: 3 + 4 = 7.' },
+  { id: 'L5d', lv: 5, q: 'If f(x) = 2x² − 1, what is f(3)?', c: ['11', '17', '35', '5'], a: 1, why: '3² = 9, 2 × 9 = 18, and 18 − 1 = 17.' },
+  { id: 'L5e', lv: 5, q: 'What is the vertex of y = (x − 2)² + 5?', c: ['(2, 5)', '(−2, 5)', '(5, 2)', '(2, −5)'], a: 0, why: 'In y = (x − h)² + k the vertex is (h, k), here (2, 5).' },
+  { id: 'L5f', lv: 5, q: 'Simplify: (2x²)³', c: ['6x⁶', '8x⁵', '8x⁶', '2x⁶'], a: 2, why: 'Cube each part: 2³ = 8 and (x²)³ = x⁶, so 8x⁶.' },
+  { id: 'L5g', lv: 5, q: 'If 3ˣ = 81, what is x?', c: ['3', '4', '9', '27'], a: 1, why: '3 × 3 × 3 × 3 = 81, so x = 4.' },
+  { id: 'L5h', lv: 5, q: 'f(x) = x + 7. What is its inverse, f⁻¹(x)?', c: ['x − 7', '7x', 'x ÷ 7', '7 − x'], a: 0, why: 'The inverse undoes the function: f adds 7, so f⁻¹ subtracts 7.' },
+  { id: 'L6a', lv: 6, q: 'What is sin 30°?', c: ['1/2', '√3/2', '1', '√2/2'], a: 0, why: 'In a 30-60-90 triangle the side across from 30° is half the hypotenuse, so sin 30° = 1/2.' },
+  { id: 'L6b', lv: 6, q: 'In a right triangle, the side opposite angle A is 3 and the hypotenuse is 5. What is cos A?', c: ['3/5', '4/5', '3/4', '5/4'], a: 1, why: 'The third side is 4 (3-4-5 triangle). cos = adjacent ÷ hypotenuse = 4/5.' },
+  { id: 'L6c', lv: 6, q: 'What is log₂ 32?', c: ['4', '5', '6', '16'], a: 1, why: '2⁵ = 32, so log₂ 32 = 5.' },
+  { id: 'L6d', lv: 6, q: 'What is 180° in radians?', c: ['π/2', 'π', '2π', '90π'], a: 1, why: '180° = π radians (a half turn).' },
+  { id: 'L6e', lv: 6, q: 'What is the period of y = sin(2x)?', c: ['π/2', 'π', '2π', '4π'], a: 1, why: 'The period of sin(bx) is 2π ÷ b = 2π ÷ 2 = π.' },
+  { id: 'L6f', lv: 6, q: 'Solve: eˣ = 1', c: ['0', '1', 'e', 'No solution'], a: 0, why: 'Any nonzero number to the power 0 is 1, so x = 0.' },
+  { id: 'L6g', lv: 6, q: 'f(x) = x² and g(x) = x + 3. What is f(g(1))?', c: ['4', '7', '10', '16'], a: 3, why: 'g(1) = 1 + 3 = 4, then f(4) = 4² = 16.' },
+  { id: 'L6h', lv: 6, q: 'What is the 10th term of 3, 7, 11, 15, …?', c: ['39', '40', '43', '47'], a: 0, why: 'It goes up by 4 each time: 3 + 9 × 4 = 39.' }
+];
 var SKILL_EVERY = 14, SKILL_N = 4, SKILL_NAMES = { reading: 'Reading', writing: 'Writing', math: 'Math' };
 function skillOf_(g) {
   if (g.skill === 'none') return '';
@@ -4035,16 +4091,17 @@ function skillOf_(g) {
   return /read|comprehen|inferen|text|passage|fluency|literature/.test(t) ? 'reading' : /writ|essay|edit|grammar|paragraph|composition/.test(t) ? 'writing' : /math|calculat|equation|variable|problem.?solv|fraction|algebra|geometry|computation/.test(t) ? 'math' : '';
 }
 function skillChecks_(email) {
-  var done = rows_('Skill checks').filter(function (r) { return low_(r[1]) === email; }).map(function (r) { return { date: day_(r[0]), goal: String(r[2]), skill: String(r[3]), score: Number(r[4]) || 0, of: Number(r[5]) || 0, pct: Number(r[6]) || 0, answers: String(r[7] || '') }; });
+  var done = rows_('Skill checks').filter(function (r) { return low_(r[1]) === email; }).map(function (r) { return { date: day_(r[0]), goal: String(r[2]), skill: String(r[3]), score: Number(r[4]) || 0, of: Number(r[5]) || 0, pct: Number(r[6]) || 0, answers: String(r[7] || ''), start: Number(r[9]) || 0, end: Number(r[10]) || 0 }; });
   return goals_(email).filter(function (g) { return g.active && skillOf_(g); }).map(function (g) {
     var mine = done.filter(function (x) { return x.goal === g.id; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; }), last = mine[0];
-    return { goal: g.id, title: g.name || SKILL_NAMES[skillOf_(g)], skill: skillOf_(g), skillName: SKILL_NAMES[skillOf_(g)], due: !last || daysBetween_(last.date, today_()) >= SKILL_EVERY, last: last || null, history: mine.slice(0, 12).map(function (x) { return { date: x.date, score: x.score, of: x.of, pct: x.pct }; }) };
+    return { goal: g.id, title: g.name || SKILL_NAMES[skillOf_(g)], skill: skillOf_(g), skillName: SKILL_NAMES[skillOf_(g)], due: !last || daysBetween_(last.date, today_()) >= SKILL_EVERY, last: last || null, history: mine.slice(0, 12).map(function (x) { return { date: x.date, score: x.score, of: x.of, pct: x.pct, start: x.start, end: x.end }; }), level: skillOf_(g) === 'math' ? mathLevel_(email) : 0, levelNames: skillOf_(g) === 'math' ? SKILL_MATH_LEVELS : null };
   });
 }
 // the questions for one check: 4 of that kind, not seen lately; reading questions come with their passage. Never the answers.
-function api_skillCheckStart(gid) { return skillStart_(need_(), gid); }
+function api_skillCheckStart(gid) { var email = need_(); return skillIsMath_(email, gid) ? mathStart_(email, gid, email) : skillStart_(email, gid); }
+function skillIsMath_(email, gid) { return skillChecks_(email).some(function (x) { return x.goal === String(gid || '') && x.skill === 'math'; }); }
 // A teacher previewing a student (👁 Preview as): the same questions that student would get. Nothing is saved.
-function api_skillCheckPreview(email, gid) { teacherOnly_(); return skillStart_(low_(email), gid); }
+function api_skillCheckPreview(email, gid) { teacherOnly_(); email = low_(email); return skillIsMath_(email, gid) ? mathStart_(email, gid, myEmail_()) : skillStart_(email, gid); }
 function api_skillCheckTry(email, gid, answers) { teacherOnly_(); var r = skillScore_(low_(email), gid, answers); r.checks = skillChecks_(low_(email)); r.preview = true; return r; }
 function skillStart_(email, gid) {
   var c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || ''); })[0];
@@ -4075,6 +4132,69 @@ function skillScore_(email, gid, answers) {
   var score = res.filter(function (x) { return x.right; }).length, pct = Math.round(score / res.length * 100);
   return { score: score, of: res.length, pct: pct, results: res, c: c };
 }
+// Where a student's math check starts: where their last one ended; else their math class (IP = a special ed class, two teachers =
+// co-taught, one level lower); else their grade, one level below the usual sequence (9th → 2 … 12th → 5).
+function mathLevel_(email) {
+  var last = rows_('Skill checks').filter(function (r) { return low_(r[1]) === email && String(r[3]) === 'math' && Number(r[10]) >= 1; }).pop();
+  if (last) return Math.min(6, Math.max(1, Number(last[10])));
+  var cms = caseMgrs_().map(function (c) { return c.name.toLowerCase().split(/\s+/).pop(); });
+  var lv = 0;
+  rows_('Classes').filter(function (r) { return low_(r[0]) === email; }).forEach(function (r) {
+    var name = String(r[2] || ''), lvl = String(r[7] || ''), all = name + ' ' + lvl, t = String(r[3] || '');
+    if (!/math|algebra|geometry|calc|trig|statistic|probability/i.test(name)) return;
+    var teachers = t.split(/\s*(?:\/|,|&|\band\b)\s*/).filter(String), sped = teachers.some(function (x) { return cms.indexOf(x.toLowerCase().split(/\s+/).pop()) >= 0; });
+    var leveled = /prep|accel|honors|\bML\b|\bAP\b/i.test(all), ip = !leveled, co = teachers.length > 1 && sped, n;          // a Prep / Accel / Honors name is a general-education class, whoever teaches it
+    if (/life|practical/i.test(name)) n = 1;
+    else if (/pre-?calc|trig|calculus|\bAP\b|accel|honors/i.test(all)) n = 6;
+    else if (/financial|probability|statistic|algebra (iii|3)/i.test(name)) n = 4;
+    else if (/algebra (ii|2)\b/i.test(name)) n = ip ? 4 : 5;
+    else if (/geometry/i.test(name)) n = ip ? 3 : 4;
+    else if (/essentials/i.test(name)) n = 2;
+    else if (/algebra/i.test(name)) n = ip ? 2 : 3;
+    else return;
+    if (co) n--;
+    lv = Math.max(lv, n);
+  });
+  if (lv) return Math.max(1, lv);
+  var f = stuFind_(email), gr = f.i >= 0 ? Number(String(f.rows[f.i][SC.grade]).replace(/\D/g, '')) : 0;
+  return gr >= 9 && gr <= 12 ? gr - 7 : 3;
+}
+function mathPick_(lv, used) {
+  var pool = SKILL_MATH.filter(function (q) { return q.lv === lv && used.indexOf(q.id) < 0; });
+  if (!pool.length) pool = SKILL_MATH.filter(function (q) { return q.lv === lv; });
+  var q = pool[Math.floor(Math.random() * pool.length)];
+  return { id: q.id, q: q.q, c: q.c };
+}
+// state: { goal, start, lv, asked: [{ id, lv, picked, right }], next: id } in the user cache (6 hours); a teacher preview keeps its own
+function mathKey_(email, who) { return 'skm:' + who + ':' + email; }
+function mathStart_(email, gid, who) {
+  var c = skillChecks_(email).filter(function (x) { return x.goal === String(gid || '') && x.skill === 'math'; })[0];
+  if (!c) throw new Error('This goal doesn’t have a math check.');
+  var seen = []; rows_('Skill checks').filter(function (r) { return low_(r[1]) === email && String(r[3]) === 'math'; }).slice(-2).forEach(function (r) { String(r[7]).split(';').forEach(function (x) { seen.push(x.split(':')[0]); }); });
+  var lv = mathLevel_(email), q = mathPick_(lv, seen), st = { goal: c.goal, start: lv, lv: lv, asked: [], seen: seen, next: q.id };
+  CacheService.getScriptCache().put(mathKey_(email, who), JSON.stringify(st), 21600);
+  return { goal: c.goal, title: c.title, skill: 'math', adaptive: true, n: 1, of: SKILL_MATH_N, item: q };
+}
+function mathAnswer_(email, gid, qid, picked, who, save) {
+  var cache = CacheService.getScriptCache(), raw = cache.get(mathKey_(email, who)), st = raw ? JSON.parse(raw) : null;
+  if (!st || st.goal !== String(gid || '') || st.next !== String(qid || '')) throw new Error('This check timed out. Press Start to begin again.');
+  var q = SKILL_MATH.filter(function (x) { return x.id === st.next; })[0], p = Number(picked), right = p === q.a;
+  st.asked.push({ id: q.id, lv: q.lv, picked: p, right: right });
+  st.lv = Math.min(6, Math.max(1, q.lv + (right ? 1 : -1)));
+  var out = { right: right, answer: q.c[q.a], why: q.why, n: st.asked.length, of: SKILL_MATH_N };
+  if (st.asked.length < SKILL_MATH_N) {
+    var nq = mathPick_(st.lv, st.seen.concat(st.asked.map(function (x) { return x.id; })));
+    st.next = nq.id; cache.put(mathKey_(email, who), JSON.stringify(st), 21600); out.item = nq; return out;
+  }
+  cache.remove(mathKey_(email, who));
+  var score = st.asked.filter(function (x) { return x.right; }).length, pct = Math.round(score / st.asked.length * 100);
+  if (save) locked_(function () { sheet_('Skill checks').appendRow([today_(), email, st.goal, 'math', score, st.asked.length, pct, st.asked.map(function (x) { return x.id + ':' + x.picked + ':' + (x.right ? 1 : 0); }).join(';'), stamp_(), st.start, st.lv]); });
+  out.done = { score: score, of: st.asked.length, pct: pct, start: st.start, end: st.lv, levelName: SKILL_MATH_LEVELS[st.lv] };
+  return out;
+}
+function api_mathAnswer(gid, qid, picked) { var email = need_(), r = mathAnswer_(email, gid, qid, picked, email, true); if (r.done) r.checks = skillChecks_(email); return r; }
+function api_mathAnswerPreview(email, gid, qid, picked) { teacherOnly_(); var r = mathAnswer_(low_(email), gid, qid, picked, myEmail_(), false); if (r.done) r.preview = true; return r; }
+
 function api_saveServices(email, list) { teacherOnly_(); email = low_(email); locked_(function () { saveServices_(email, list); logChange_('Related services changed', email, '', '', '', (list || []).length + ' services', ''); }); return services_(email); }
 // 2.22: the accommodation bank: which of their accommodations a student uses in each class, and on each test
 function accomPlan_(email) { var o = {}; rows_('Accommodation plan').forEach(function (r) { if (low_(r[0]) === email) o[String(r[1])] = String(r[2] || '').split(';').map(function (x) { return x.trim(); }).filter(String); }); return o; }
@@ -5304,7 +5424,7 @@ var CK = null, SCH = null, TD = null, TS = null, TS_EMAIL = '', PHOTOS = {}, FIL
 function call(fn) {
   var args = [].slice.call(arguments, 1);
   // previewing a student: only read the teacher's own data, never save anything as (or for) the student
-  if (PREV && !/^api_(previewAs|teacher|teacherStudent|photos|efData|skillCheckPreview|skillCheckTry)$/.test(fn)) return Promise.reject(new Error('This is only a preview of what ' + (D.profile.name || 'this student') + ' sees, so nothing was saved.'));
+  if (PREV && !/^api_(previewAs|teacher|teacherStudent|photos|efData|skillCheckPreview|skillCheckTry|mathAnswerPreview)$/.test(fn)) return Promise.reject(new Error('This is only a preview of what ' + (D.profile.name || 'this student') + ' sees, so nothing was saved.'));
   return new Promise(function (ok, no) {
     var r = google.script.run.withSuccessHandler(ok).withFailureHandler(no);
     r[fn].apply(r, args);
@@ -7418,6 +7538,7 @@ var PRACTICE = [['Khan Academy: Official SAT Practice (free)', 'https:' + '/' + 
 function skillCard(c, featured) {
   var on = SKC && SKC.goal === c.goal, links = '<div class="small" style="display:block;margin-top:8px">More practice: ' + PRACTICE.map(function (p) { return '<a href="' + p[1] + '" target="_blank" rel="noopener">' + esc(p[0]) + '</a>'; }).join(' · ') + '</div>';
   var h = '<div class="card" id="skc_' + esc(c.goal || 'g1') + '" style="' + (featured ? 'border:2px solid var(--brand)' : '') + '"><h2 style="margin:0 0 4px">📝 Skill check: ' + esc(c.title) + (featured ? ' <span class="badge brand">ready</span>' : '') + '</h2>';
+  if (on && SKC.adaptive) return h + mathCardBody(links);          // 2.49: math, one question at a time
   if (on && SKC.result) {
     var r = SKC.result;
     return h + '<p style="font-size:18px;margin:4px 0"><b>' + r.score + ' of ' + r.of + ' (' + r.pct + '%)</b>' + (r.pct >= 80 ? ' 🎉 Nice work!' : r.pct >= 50 ? ' Good effort. Check the ones you missed below.' : ' Keep practicing. Look at why below.') + '</p>' +
@@ -7431,10 +7552,37 @@ function skillCard(c, featured) {
       return pas + '<fieldset class="gck" style="margin:8px 0"><legend>' + (k + 1) + '. ' + esc(q.q) + '</legend>' + q.c.map(function (ch, j) { return '<label class="check" style="margin:3px 0"><input type="radio" name="skq_' + q.id + '"' + (SKC.ans[q.id] === j ? ' checked' : '') + ' onchange="SKC.ans[\'' + q.id + '\']=' + j + '"><span>' + 'ABCD'.charAt(j) + ') ' + esc(ch) + '</span></label>'; }).join('') + '</fieldset>';
     }).join('') + '<div class="row" style="gap:10px"><button class="btn primary" id="skcGo" onclick="skillSubmit()">Check my answers</button><a href="#" class="small" onclick="SKC=null;drawCheckin();return false">Not now</a></div></div>';
   }
-  return h + '<p style="margin:0 0 8px">' + (c.due ? '4 quick questions, about 5 minutes. Every two weeks, so you and your teacher can see your progress.' : 'Your next one is ready ' + esc(fmtDay(addDays(c.last.date, 14))) + '.') + (c.last ? ' <span class="small" style="display:inline">Last time: ' + c.last.score + ' of ' + c.last.of + ' (' + esc(fmtDay(c.last.date)) + ').</span>' : '') + '</p>' +
+  return h + '<p style="margin:0 0 8px">' + (c.due ? (c.skill === 'math' ? '5 quick questions, one at a time, about 5 minutes' : '4 quick questions, about 5 minutes') + '. Every two weeks, so you and your teacher can see your progress.' : 'Your next one is ready ' + esc(fmtDay(addDays(c.last.date, 14))) + '.') + (c.last ? ' <span class="small" style="display:inline">Last time: ' + c.last.score + ' of ' + c.last.of + ' (' + esc(fmtDay(c.last.date)) + ').</span>' : '') + '</p>' +
     (c.due ? '<button class="btn primary" onclick="skillStart(\'' + esc(c.goal) + '\')">Start</button>' : '') + links + '</div>';
 }
-function skillStart(gid) { (PREV ? call('api_skillCheckPreview', PREV.email, gid) : call('api_skillCheckStart', gid)).then(function (r) { SKC = { goal: r.goal, items: r.items, ans: {} }; drawCheckin(); var e = $('skc_' + (r.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(oops); }
+function skillStart(gid) { (PREV ? call('api_skillCheckPreview', PREV.email, gid) : call('api_skillCheckStart', gid)).then(function (r) { SKC = r.adaptive ? { goal: r.goal, adaptive: true, item: r.item, n: 1, of: r.of, pick: null, last: null } : { goal: r.goal, items: r.items, ans: {} }; drawCheckin(); var e = $('skc_' + (r.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }).catch(oops); }
+// Math (2.49): one question; Check → right or wrong with the answer and why → Next question (a level up after a right answer, down after a
+// wrong one: the server picks it). After 5, the score. The level itself is for the teacher (their page), not shown here.
+function mathCardBody(links) {
+  var q = SKC.item, l = SKC.last;
+  if (SKC.done) {
+    var d = SKC.done;
+    return '<p style="font-size:18px;margin:4px 0"><b>' + d.score + ' of ' + d.of + ' right</b>' + (d.score >= 4 ? ' 🎉 Nice work!' : d.score >= 2 ? ' Good effort!' : ' Keep practicing. You’ve got this.') + '</p>' +
+      (l ? mathFeedback(l) : '') + links + '<button class="btn small" style="margin-top:8px" onclick="SKC=null;drawCheckin()">Done</button></div>';
+  }
+  var h = '<p class="small" style="margin:0 0 6px">Question ' + SKC.n + ' of ' + SKC.of + '. One at a time: do your best, then press Check.</p>' +
+    '<fieldset class="gck" style="margin:8px 0"><legend style="font-size:17px">' + esc(q.q) + '</legend>' + q.c.map(function (ch, j) {
+      var mark = l ? (ch === l.answer ? ' ✅' : j === SKC.pick && !l.right ? ' ❌' : '') : '';
+      return '<label class="check" style="margin:5px 0"><input type="radio" name="mq"' + (SKC.pick === j ? ' checked' : '') + (l ? ' disabled' : '') + ' onchange="SKC.pick=' + j + ';$(\'mqGo\').disabled=false"> <span>' + esc(ch) + mark + '</span></label>';
+    }).join('') + '</fieldset>';
+  if (!l) return h + '<div class="row" style="gap:10px"><button class="btn primary" id="mqGo" onclick="mathSend()"' + (SKC.pick === null ? ' disabled' : '') + '>Check</button><a href="#" class="small" onclick="SKC=null;drawCheckin();return false">Not now</a></div></div>';
+  return h + mathFeedback(l) + '<button class="btn primary" style="margin-top:8px" onclick="mathNext()">Next question →</button></div>';
+}
+function mathFeedback(l) { return '<div style="background:' + (l.right ? 'var(--up-soft)' : 'var(--warn-soft)') + ';border-radius:10px;padding:8px 12px;margin:6px 0"><b>' + (l.right ? '✅ Right!' : '❌ Not quite. The answer: ' + esc(l.answer)) + '</b><div class="small" style="display:block">' + esc(l.why) + '</div></div>'; }
+function mathSend() {
+  if (SKC.pick === null) return; $('mqGo').disabled = true;
+  (PREV ? call('api_mathAnswerPreview', PREV.email, SKC.goal, SKC.item.id, SKC.pick) : call('api_mathAnswer', SKC.goal, SKC.item.id, SKC.pick)).then(function (r) {
+    SKC.last = r; SKC.nextItem = r.item || null;
+    if (r.done) { SKC.done = r.done; if (r.preview) toast('Preview: nothing was saved'); else { D.skillChecks = r.checks; D.extraDone = true; } }
+    drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' });
+  }).catch(function (e) { oops(e); if (/timed out/.test(e.message || '')) { SKC = null; drawCheckin(); } else if ($('mqGo')) $('mqGo').disabled = false; });
+}
+function mathNext() { SKC.item = SKC.nextItem; SKC.n++; SKC.pick = null; SKC.last = null; drawCheckin(); var e = $('skc_' + (SKC.goal || 'g1')); if (e) e.scrollIntoView({ block: 'start' }); }
 function skillSubmit() {
   if (SKC.items.some(function (q) { return SKC.ans[q.id] === undefined; })) return alert('Answer every question first.');
   $('skcGo').disabled = true;
@@ -9068,7 +9216,8 @@ function skillHist(g) {
   var sc = (EF.skillChecks || []).filter(function (x) { return x.goal === g.id; })[0]; if (!sc) return '';
   return '<details style="margin-top:12px" open><summary><b>📝 Skill checks (' + esc(sc.skillName) + ')</b> <span class="badge up">scored by the app</span> <span class="small" style="display:inline">(' + sc.history.length + (sc.history.length === 1 ? ' check' : ' checks') + (sc.due ? ', one is due' : '') + ')</span></summary>' +
     (g.criterion ? '<div class="small" style="display:block;margin:4px 0">Official criterion: ' + esc(g.criterion) + '</div>' : '') +
-    (sc.history.length ? sc.history.map(function (x) { return '<div class="small" style="display:block;margin:3px 0"><b>' + esc(fmtDay(x.date)) + '</b> · ' + x.score + ' of ' + x.of + ' (<b>' + x.pct + '%</b>)</div>'; }).join('') : '<p class="small">None yet. The student sees one every two weeks.</p>') + '</details>';
+    (sc.level && sc.levelNames ? '<div style="margin:6px 0"><b>Math level now: ' + sc.level + ' of 6</b> <span class="small" style="display:inline">(' + esc(sc.levelNames[sc.level]) + '; the next check starts here)</span>' + (sc.history.some(function (x) { return x.end; }) ? '<div class="small" style="display:block">Over time: ' + sc.history.filter(function (x) { return x.end; }).slice().reverse().map(function (x) { return x.end; }).join(' → ') + '</div>' : '') + '</div>' : '') +
+    (sc.history.length ? sc.history.map(function (x) { return '<div class="small" style="display:block;margin:3px 0"><b>' + esc(fmtDay(x.date)) + '</b> · ' + x.score + ' of ' + x.of + ' (<b>' + x.pct + '%</b>)' + (x.end ? ' · level ' + x.start + ' → ' + x.end : '') + '</div>'; }).join('') : '<p class="small">None yet. The student sees one every two weeks.</p>') + '</details>';
 }
 function futHist(g) {
   var f = EF.future; if (!f || f.goal !== g.id || (f.encourage && GI !== 0)) return '';
