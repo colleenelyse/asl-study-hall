@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.40'
+var VERSION = '2.41'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -3824,7 +3824,7 @@ function api_saveIepPaste(email, p) {
       }
     });
     if (n) goals_(email).forEach(function (x) { if (/^IEP-/.test(x.code) && !used[x.id || 'main'] && x.active) { saveGoalCore_(email, x.id, { until: addDays_(today_(), -1) }); off++; } });
-    var add = (p.accoms || []).map(function (x) { return clean_(x, 160).replace(/;/g, ','); }).filter(String).slice(0, 30);
+    var add = (p.accoms || []).map(function (x) { return clean_(x, 400).replace(/;/g, ','); }).filter(String).slice(0, 30);
     if (add.length) {
       var f2 = stuFind_(email), cur = p.accMode === 'add' ? String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
       add.forEach(function (x) { if (cur.map(low_).indexOf(low_(x)) < 0) { cur.push(x); na++; } });
@@ -9444,10 +9444,8 @@ function ipParseSummary(text) {
     goals.push({ num: +mm[1], text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
   });
   // accommodations: a run-together list; "Accommodation -" and a new capital word after a lowercase one start an item; "- -" adds a detail
-  var splitItems = function (txt) {
-    return txt.replace(/\bAccommodation\s*-\s*/g, '\n').replace(/\s+-\s*-\s*/g, ' -- ').split(/\n|(?<=(?:^|\s)[a-z][\w\/'’-]*[a-z0-9)%])\s+(?=[A-Z][a-z])(?!Accommodation)/).map(function (a) {
-      a = a.replace(/\s+-\s*$/, '').trim(); var d = a.split(' -- '); return d[1] ? d[0].trim() + ' (' + d.slice(1).join(', ').trim() + ')' : a;
-    }).filter(function (a) { return a.length > 3 && !/^(Accommodations?|Other|Student will participate.*)$/i.test(a); });
+  var splitItems = function (txt) {          // 2.41: accSplit (below) keeps details together and never cuts inside ( )
+    return accSplit(txt).filter(function (a) { return a.length > 3 && !/^(Accommodations?|Other|Student will participate.*)$/i.test(a); });
   };
   var accs = splitItems(sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || '');
   var testing = ipTesting((sec['ASSESSMENT ACCOMMODATIONS'] || '') + ' ' + (sec['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS'] || ''));
@@ -9465,8 +9463,63 @@ function ipParseSummary(text) {
 function ipTimeOf(t) { t = String(t || '').toLowerCase(); return /triple|\b3x\b|200\s*%|three times/.test(t) ? 'Triple time (3x)' : /double|\b2x\b|100\s*%|twice/.test(t) ? 'Double time (2x)' : /time and a half|1\.5|50\s*%|extended time|extra time/.test(t) ? 'Extended time (1.5x)' : ''; }
 // 2.30: an "accommodation" that is only initials (J.S.) or only a name (Jane Smith) is a leftover footer, not an accommodation
 var ACC_WORDS = /\b(time|tests?|quiz|exam|setting|seat|notes?|calculator|reader|read|breaks?|group|room|copy|guided|audio|graphic|organizer|preferential|extended|double|triple|alternate|small|word|bank|formula|cards?|check|prompt|chunk|reduce|repeat|rephrase|visual|scribe|speech|text|large print|highlight|study|guide|vocabulary|homework|assignments?|directions|choices|questions|problems|fact|sheet|use|allow|provide|frequent|modif)/i;
-function accSentences(a) {          // 2.38: "Provide organizers. Provide checklists." → two; not at "Ms. J." or "e.g."
-  return String(a).split(/(?<![A-Z])(?<!\b(?:Mr|Ms|Mrs|Dr|Mx|St|vs|etc|e\.g|i\.e))[.!?](?=\s+[A-Z])\s+/).map(function (x) { return x.trim().replace(/\.$/, ''); }).filter(Boolean);
+// 2.41: splitting a run-together accommodation list (the IEP prints "Item - - detail- detail Next item - detail…")
+// A new item starts at "Accommodation -", at a sentence end, or where a capitalized word follows a lowercase one, but never inside ( ),
+// never after "in / with / for / e.g. …", and never before a subject or app name (Math, Formative, Google…). An item's details stay
+// with it in ( ); a "- one- two- three" run with no item in front becomes separate accommodations.
+var ACC_NOSPLIT_AFTER = /^(in|with|for|on|at|of|to|by|from|during|using|use|like|eg|e\.g|including|include|and|or|nor|the|a|an|as|into|via|per|than|such|about|between|especially|than|her|his|their|my|our|your)$/i;
+var ACC_NOT_START = /^(Math|Mathematics|English|Science|Reading|History|Biology|Chemistry|Physics|Algebra|Geometry|Spanish|French|German|Health|Formative|Google|Grammarly|Read|Canvas|Kami|Desmos|IXL|Khan|Quizlet|Bookshare|Learning|Chromebook|Chromebooks|Word|Docs|Slides|Sheets|Microsoft|Social|Studies|Physical|Education|Art|Music|ACT|SAT|PSAT|IAR|English|Language|Arts|Speech|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday)\b/;
+function accRun(s) {
+  var out = [], cur = '', depth = 0, i, ch;
+  for (i = 0; i < s.length; i++) {
+    ch = s.charAt(i);
+    if (ch === '(') depth++; else if (ch === ')') depth = Math.max(0, depth - 1);
+    cur += ch;
+    if (depth || !/\s/.test(ch) || !/^[A-Z][a-z]/.test(s.slice(i + 1, i + 3))) continue;
+    var w = (cur.replace(/\s+$/, '').match(/(\S+)$/) || ['', ''])[1], next = (s.slice(i + 1).match(/^[A-Za-z&'’]+/) || [''])[0];
+    var sentence = /[a-z0-9)%]\.$/.test(w) && !/^\(?(e\.g|i\.e|etc|vs|Mr|Mrs|Ms|Dr|St|approx|min|max)\.$/i.test(w);
+    var plain = /[a-z0-9)%]$/.test(w) && !ACC_NOSPLIT_AFTER.test(w.replace(/[(),:;]/g, '')) && !ACC_NOT_START.test(next);
+    var comma = /[a-z)],$/.test(w) && /^(Allow|Provide|Use|Give|Offer|Reduce|Seat|Keep|Check|Repeat|Rephrase|Maintain|Create|Modify|Decrease|Extended|Preferential)$/.test(next);          // "…environment, Allow earbuds…"
+    if (sentence || plain || comma) { out.push(cur); cur = ''; }
+  }
+  out.push(cur);
+  return out;
+}
+function accParts(s) {          // "Main - - one- two" → ['Main', 'one', 'two']; hyphenated words (long-term, 2-3, Pre-teach) stay whole
+  var out = [], cur = '', depth = 0, i, ch;
+  for (i = 0; i < s.length; i++) {
+    ch = s.charAt(i);
+    if (ch === '(') depth++; else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === '-' && !depth) {
+      var pv = s.charAt(i - 1), nx = s.charAt(i + 1);
+      if (!(/[A-Za-z0-9]/.test(pv) && /[A-Za-z0-9]/.test(nx) && !(/[a-z]/.test(pv) && /[A-Z]/.test(nx)))) { out.push(cur); cur = ''; continue; }
+    }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map(function (x) { return x.replace(/\s+/g, ' ').trim(); });
+}
+function accSplit(txt) {
+  var items = [];
+  String(txt || '').replace(/\bAccommodation\s*-\s*/g, '\n').split(/\n/).forEach(function (chunk) {
+    accRun(chunk.replace(/\s+/g, ' ')).forEach(function (piece) {
+      piece = piece.replace(/\s+/g, ' ').replace(/[\s.,;]+$/, '').trim(); if (!piece) return;
+      var parts = accParts(piece), main = parts[0], det = parts.slice(1).filter(Boolean);
+      if (!main) { det.forEach(function (d) { items.push(d); }); return; }          // "- one- two- three": each is its own accommodation
+      items.push(det.length ? main + ' (' + det.join('; ') + ')' : main);
+    });
+  });
+  return items.map(function (a) { return a.replace(/\(\s*\)/g, '').trim(); }).filter(Boolean);
+}
+function accSentences(a) {          // 2.41: never inside ( )
+  var out = [], cur = '', depth = 0, s0 = String(a), i, ch;
+  for (i = 0; i < s0.length; i++) {
+    ch = s0.charAt(i); if (ch === '(') depth++; else if (ch === ')') depth = Math.max(0, depth - 1);
+    cur += ch;
+    if (!depth && /[.!?]/.test(ch) && /^\s+[A-Z]/.test(s0.slice(i + 1, i + 3)) && !/(?:^|\s|\()(?:[A-Z]|Mr|Ms|Mrs|Dr|Mx|St|vs|etc|e\.g|i\.e)\.$/.test(cur)) { out.push(cur); cur = ''; }
+  }
+  out.push(cur);
+  return out.map(function (x) { return x.trim().replace(/\.$/, ''); }).filter(Boolean);
 }
 function accClean(list) {
   list = [].concat.apply([], list.map(accSentences));
