@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.35'
+var VERSION = '2.37'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -689,7 +689,7 @@ function onOpen() {
 
 function setupSheet() {
   var fixed = setup_();
-  try { var nb = scrubSavedBdays_(); if (nb) fixed += ' Removed ' + nb + ' date' + (nb === 1 ? '' : 's') + ' of birth from saved goals.'; } catch (e) {}
+  try { var nb = scrubSavedBdays_(); if (nb) fixed += ' Cleaned ' + nb + ' saved item' + (nb === 1 ? '' : 's') + ' (dates of birth or names changed to initials).'; } catch (e) {}
   try { allGoals_(); } catch (e) {}
   // Reminder emails go out every morning around 6 AM.
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendReminders'; });
@@ -3760,15 +3760,25 @@ function scrubSavedBdays_() {
   ['IEP goals', 'IEP benchmarks', 'All goals and benchmarks'].forEach(function (tab) {
     var sh = ss_().getSheetByName(tab); if (!sh || sh.getLastRow() < 2) return;
     var rows = rows_(tab), changed = false;
-    rows = rows.map(function (r) { return r.map(function (v, c) { if (typeof v !== 'string' || !v) return v; var w = noBday_(v); if (w !== v) { n++; changed = true; } return w; }); });
+    var firsts = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) firsts[low_(r[SC.email])] = String(r[SC.first] || ''); });
+    var emailCol = tab === 'All goals and benchmarks' ? 10 : 1;
+    rows = rows.map(function (r) { var fn = firsts[low_(r[emailCol])] || ''; return r.map(function (v, c) { if (typeof v !== 'string' || !v || c === emailCol || (tab !== 'All goals and benchmarks' && c === 8 && tab === 'IEP goals') || (tab === 'All goals and benchmarks' && c === 0)) return v; var w = nameDeep_(noBday_(v), fn); if (w !== v) { n++; changed = true; } return w; }); });          // 2.37: names → initials too (not the Student column)
     if (changed) rewrite_(tab, function () { return false; }, rows);
   });
   var f = rows_('Students'), sh2 = sheet_('Students');
-  f.forEach(function (r, i) { ['goal', 'accoms', 'testing'].forEach(function (k) { var v = String(r[SC[k]] || ''), w = noBday_(v); if (v && w !== v) { sh2.getRange(i + 2, SC[k] + 1).setValue(w); n++; } }); });
+  f.forEach(function (r, i) { ['goal', 'accoms', 'testing'].forEach(function (k) { var v = String(r[SC[k]] || ''), w = nameDeep_(noBday_(v), String(r[SC.first] || '')); if (v && w !== v) { sh2.getRange(i + 2, SC[k] + 1).setValue(w); n++; } }); });
   return n;
+}
+// 2.36: the student's first name (as the app has it) becomes an initial in everything pasted, as a last guard on the server
+function nameDeep_(x, first) {
+  first = String(first || '').replace(/[^A-Za-z'-]/g, ''); if (first.length < 2) return x;
+  var re = new RegExp('\\b' + first + '(\'s|’s)?\\b', 'g'), f = function (v) { return typeof v === 'string' ? v.replace(re, function (m, s) { return first.charAt(0) + '.' + (s || ''); }).replace(/\b(Mr|Mrs|Ms|Miss|Mx|Dr|Coach)\.?\s+([A-Z])[a-z'’-]+\b/g, function (m, t, i) { return t + (t === 'Coach' || t === 'Miss' ? ' ' : '. ') + i + '.'; }) : v; };
+  var walk = function (y) { if (Array.isArray(y)) return y.map(walk); if (y && typeof y === 'object') { var o = {}; Object.keys(y).forEach(function (k) { o[k] = walk(y[k]); }); return o; } return f(y); };
+  return walk(x);
 }
 function api_saveIepPaste(email, p) {
   teacherOnly_(); email = low_(email); p = bdayDeep_(p || {});
+  var fs0 = stuFind_(email); if (fs0.i >= 0) p = nameDeep_(p, String(fs0.rows[fs0.i][SC.first] || ''));
   if (stuFind_(email).i < 0) throw new Error('Pick a student who is on the Students tab.');
   var n = 0, nu = 0, nb = 0, na = 0, off = 0;
   // 2.27: a newer IEP replaces the older one: same IEP goal number, same wording, or very similar wording → that goal is updated;
@@ -4627,8 +4637,8 @@ function studentData_(email) {
   prof.classPhrases = settings_().goalPhrases;
   prof.lastSaid = (reflections_(email).filter(function (x) { return x.date < today_() && x.said && x.did !== 'Not today'; })[0] || {}).said || '';
   prof.myCheck = fr.i >= 0 ? String(fr.rows[fr.i][SC.myCheck] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
-  var allGoals = goals_(email, ef); prof.goals = allGoals.filter(function (g) { return g.active && g.kid; }).map(function (g) { return { id: g.id, name: g.name, kid: g.kid, phrases: g.phrases }; });
-  prof.goal = prof.goals.length ? prof.goals[0].kid : '';
+  var allGoals = goals_(email, ef); prof.goals = allGoals.filter(function (g) { return g.active && (g.kid || g.text); }).map(function (g) { return { id: g.id, name: g.name, kid: g.kid, text: g.text, here: g.here !== false, bench: (g.bench || []).filter(function (b) { return b.status !== 'Stopped'; }).map(function (b) { return { text: b.text, by: b.by }; }), phrases: g.phrases }; });          // 2.37: the official wording too (Colleen: yes, with a translation)
+  prof.goal = prof.goals.length ? prof.goals[0].kid || '' : '';
   prof.goalCheck = st.f.goalCheck ? checkinFor_(email) : null;
   prof.reflToday = reflections_(email).filter(function (x) { return x.date === today_(); });
   var out = { skillChecks: st.f.goalCheck ? skillChecks_(email) : [], accAsked: accAsked_(email), future: future_(email), services: services_(email), accomPlan: accomPlan_(email), madeUp: madeUp_(email), skips: skipsToday_(email), anames: anames_(email), tc: st.f.tc ? tcFor_(email) : null, email: email, profile: prof, checklist: checklistToday_(email), exit: exitToday_(email), dayPlan: dayPlans_(email), gradeGoals: gradeGoals_(email), goalHist: goalHist_(email), finals: finals_(email), steps: projectSteps_(email), focus: ef.focus, accom: ef.accom, ef: { last5: ef.checklist.last5, of5: ef.checklist.of5, missingNow: ef.missingNow, missingExplained: ef.missingExplained, explainedAll: ef.explainedAll, missingSemCore: ef.missingSemCore, missingSem: ef.missingSem, lateMax: ef.lateMax, lateSem: ef.lateSem, lateList: ef.lateList, turnedIn: ef.turnedIn, app: ef.contacts.app, told: ef.contacts.told, checkins: ef.checkins.weeks },
@@ -5284,7 +5294,7 @@ function go(v) {
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
     ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
-    : (gate() ? [] : [['checkin', 'Today'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+    : (gate() ? [] : [['checkin', 'Today'], ['myiep', '📘 My IEP'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   items = items.filter(Boolean);
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
@@ -5311,7 +5321,7 @@ function navTo(v) {
 function draw() {
   var f = {
     welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
-    cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent
+    myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent
   }[VIEW];
   f();
 }
@@ -6913,10 +6923,13 @@ function ckSet(k, how) {
 function easyGoal(t, name) {
   var s = String(t || '').trim(), first = String(name || '').split(' ')[0], fn = first ? first.replace(/[^A-Za-z]/g, '') : '';
   s = s.replace(/^(by|given|when given|within)\b[^,]{0,80},\s*/i, '');
+  s = s.replace(/\b[A-Z]\.(?:\s?[A-Z]\.)?\s+(will|is|has|was|can)\b/g, function (m, v) { return 'I ' + (v === 'is' ? 'am' : v === 'has' ? 'have' : v); }).replace(/\b[A-Z]\.(?:\s?[A-Z]\.)?(?:'s|’s)/g, 'my');          // 2.37: initials ("C. will") → I
+  if (fn.length < 2) fn = '';
   if (fn) { var re = function (x) { return new RegExp('\\b' + fn + x, 'g'); };
     s = s.replace(re('\\s+is\\b'), 'I am').replace(re('\\s+has\\b'), 'I have').replace(re('\\s+was\\b'), 'I was').replace(re('(\'|’)s\\b'), 'my').replace(re('\\b'), 'I'); }
   s = s.replace(/\b(the student|student)\s+will\b/gi, 'I will').replace(/\b(he|she|they)\s+(will|can|is|are|has|have)\b/gi, function (m, a, v) { v = v.toLowerCase(); return 'I ' + (v === 'is' || v === 'are' ? 'am' : v === 'has' ? 'have' : v); })
     .replace(/\b(his|her|their)\b/gi, 'my').replace(/\b(himself|herself|themselves|themself)\b/gi, 'myself').replace(/\b(him|them)\b/gi, 'me');
+  s = s.replace(/,?\s*by (?:his|her|their|the) next annual review[^.;]*/gi, '').replace(/,?\s*(?:during|for|in)?\s*(?:the )?school year \d{4}\s*[-–]\s*\d{2,4}/gi, '');
   s = s.replace(/,?\s*(as measured by|as evidenced by|as documented by|as recorded|according to|measured by)[^.;]*/gi, '')
     .replace(/,?\s*(in|on|during)\s+\d+\s+(out\s+)?of\s+\d+\s+([\w-]+\s+){0,2}(trials|opportunities|probes|data points|observations|days|sessions|occasions|attempts)[^.,;]*/gi, '')
     .replace(/,?\s*with\s+\d+%\s+accuracy/gi, '').replace(/,?\s*across\s+\d+\s+consecutive[^.,;]*/gi, '');
@@ -7077,6 +7090,44 @@ function achSave(yes) {
   call('api_saveAccomReflect', t.key, t.cls, t.about, yes ? ACH.picked : [], yes, yes ? '' : ($('achWhy') ? $('achWhy').value : '')).then(function (r) {
     D.accAsked = r.asked; D.accomPlan = r.plan; ACH = { picked: [] }; toast(yes ? 'Saved: they’ll be ready for your next ' + t.cls + ' test' : 'Thanks for thinking about it'); drawCheckin();
   }).catch(oops);
+}
+// 2.37: 📘 My IEP: everything in the student's IEP that's theirs to know, in IEP words with a plain "translation", plus what it all
+// means and their rights. Never the criteria, measures or staff notes.
+function drawMyIep() {
+  var p = D.profile, gl = p.goals || [], first = String(p.name || '').split(' ')[0];
+  var sec = function (t, body) { return '<div class="card"><h2 style="margin:0 0 6px">' + t + '</h2>' + body + '</div>'; };
+  var what = function (t) { return '<details style="margin-top:6px"><summary class="small" style="display:list-item;color:var(--brand)">What does this mean?</summary><p class="small" style="display:block;margin:4px 0 0">' + t + '</p></details>'; };
+  var tr = function (t) { return ipKid(t, p.name); };
+  var h = '<h1>📘 My IEP</h1><p class="sub">Your IEP (Individualized Education Program) is your plan for school: the skills you’re working on, the help you get, and your rights. It’s private: only you, your family and the people who work with you can see it.</p>';
+  h += sec('🎯 My goals', gl.length ? gl.map(function (g, k) {
+    var kid = g.kid || (g.text ? tr(g.text) : '');
+    return '<div style="border-top:' + (k ? '1px solid var(--line, #e2e6ef)' : '0') + ';padding:' + (k ? '10px' : '0') + ' 0 6px"><b style="font-size:17px">' + esc(g.name || ('Goal ' + (k + 1))) + '</b>' +
+      (kid ? '<div style="background:var(--brand-soft, #eef2ff);border-radius:10px;padding:8px 12px;margin:6px 0"><span class="small"><b>What this means</b></span><div style="font-size:16px">' + esc(kid) + '</div></div>' : '') +
+      (g.text ? '<div style="margin:4px 0"><span class="small"><b>In your IEP’s words</b></span><div class="small" style="display:block">' + esc(g.text) + '</div></div>' : '') +
+      ((g.bench || []).length ? '<details style="margin-top:4px"><summary class="small" style="display:list-item"><b>Steps along the way (benchmarks)</b> (' + g.bench.length + ')</summary>' + g.bench.map(function (b, j) { return '<div style="margin:6px 0 6px 8px"><b>' + 'ABCDEFGHIJKL'.charAt(j) + '.</b> ' + esc(tr(b.text)) + '<div class="small" style="display:block;opacity:.8">IEP words: ' + esc(b.text) + '</div></div>'; }).join('') + '</details>' : '') +
+      (g.here ? '<div class="small" style="display:block;margin-top:4px">You work on this in ' + esc(B.dayClass || 'resource') + ' and rate it in your daily check-in.</div>' : '') + '</div>';
+  }).join('') + what('A goal is a skill your IEP team thinks you can grow this year. Benchmarks are smaller steps with dates, so you can see if you’re on track. Your teachers keep track of your progress, and you’ll hear about it at progress reports and your IEP meeting.') : '<p class="small">No goals are in the app yet. Ask your case manager.</p>');
+  var acc = B.accoms || [];
+  h += sec('🧰 My accommodations', (p.testing ? '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;margin:0 0 8px">🏫 <b>When you test:</b> ' + esc(p.testing) + '</div>' : '') +
+    (acc.length ? '<ul style="margin:4px 0 0;padding-left:20px">' + acc.map(function (a) { return '<li style="margin:3px 0">' + esc(a) + '</li>'; }).join('') + '</ul>' : '<p class="small">None listed yet.</p>') +
+    what('Accommodations change how you learn or show what you know, not what you’re expected to learn. Your teachers are required to give you the accommodations in your IEP, in every class and on tests. Using them is your right, not cheating, and it never counts against you. If you need one and don’t get it, tell your teacher or your case manager.'));
+  var sv = D.services || [];
+  h += sec('🧩 My services', sv.length ? sv.map(function (x) { return '<div style="margin:4px 0"><b>' + esc(x.service) + '</b>: ' + x.minutes + ' minutes a ' + esc(x.per || 'week') + '</div>'; }).join('') +
+    what('Services are extra support written into your IEP, like special education classes, speech/language, social work or OT. The minutes are how much time you get. “Consult” or “indirect” means the specialist works with your teachers to help you, not always with you directly.') : '<p class="small">No related services are listed in the app.</p>');
+  h += sec('🤝 My IEP team', '<div>' + (p.caseMgr ? 'Case manager: <b>' + esc(p.caseMgr) + '</b><br>' : '') + (p.counselor ? 'Counselor: <b>' + esc(p.counselor) + '</b><br>' : '') + (p.iep && p.iep.meet ? 'Next IEP meeting: <b>' + esc(fmtDay(p.iep.meet)) + '</b>' : '') + '</div>' +
+    what('Your case manager is the special education teacher who looks after your IEP: they’re your go-to person for questions. Your IEP team also includes you, your family, your teachers and anyone else who helps you. The team meets at least once a year to update your IEP.'));
+  h += sec('⚖️ My rights', '<ul style="margin:0;padding-left:20px;line-height:1.5">' + [
+    'You can go to your IEP meetings and speak up about your goals, your accommodations and your plans.',
+    'You can invite someone you trust to your meeting.',
+    'You or your family can ask for an IEP meeting at any time, not just once a year.',
+    'You get the accommodations and services in your IEP, in every class and on tests.',
+    'Your IEP is private. It’s only shared with people who work with you.',
+    'Starting in high school, your IEP includes a plan for life after high school (college, training or work), and you help make it.',
+    'When you turn 18, the rights your family has had about your IEP move to you (unless a court decides otherwise). You’ll be the one who agrees to your IEP.',
+    'If you or your family disagree with something in your IEP, you can say so and ask for changes. Start with your case manager.'
+  ].map(function (x) { return '<li style="margin:3px 0">' + x + '</li>'; }).join('') + '</ul><p class="small" style="margin:8px 0 0">Questions about any of this? Ask your case manager or your ' + esc(B.dayClass || 'resource') + ' teacher.</p>');
+  h += sec('📖 Words to know', '<dl style="margin:0">' + [['IEP', 'Individualized Education Program: your plan for school.'], ['Goal', 'A skill you’re working to grow this year.'], ['Benchmark', 'A smaller step toward a goal, with a date.'], ['Accommodation', 'A change in how you learn or show what you know (like extra time or a reader).'], ['Modification', 'A change in what you’re expected to learn.'], ['Services / minutes', 'Extra support in your IEP, and how much time you get.'], ['Case manager', 'The special education teacher in charge of your IEP.'], ['Co-taught class', 'A class with two teachers: a subject teacher and a special education teacher.'], ['Annual review', 'The meeting each year to update your IEP.'], ['Re-evaluation', 'Testing at least every three years to see what support you still need.'], ['Transition plan', 'The part of your IEP about life after high school.']].map(function (x) { return '<dt style="font-weight:700;margin-top:6px">' + x[0] + '</dt><dd style="margin:0 0 0 12px" class="small">' + x[1] + '</dd>'; }).join('') + '</dl>');
+  $('main').innerHTML = h;
 }
 // 2.33: a short skill check (4 questions, original SAT/ACT-style) for reading, writing or math goals, every two weeks. Scored on the server.
 var SKC = null;          // { goal, items, ans, result }
@@ -9224,6 +9275,14 @@ function ipScrub(text, first, ini) {
     while ((m0 = cap.exec(src))) if ((!I || m0[1].charAt(0).toUpperCase() === I) && !/^(Will|Is|Was|Has|And|The|To|In|Needs|Can|Did|Does|Should|May|Grade|Student|DOB)$/.test(m0[1])) LASTS[m0[1]] = true;
     var rev = new RegExp('\\b([A-Z][A-Za-z\'’-]{1,}),\\s*' + first + '\\b', 'g'); while ((m0 = rev.exec(src))) if (!I || m0[1].charAt(0).toUpperCase() === I) LASTS[m0[1]] = true;
   }
+  // 2.36: the name as the IEP prints it (a legal name or nickname can differ from the app's): "Student: First Last", "Student Name:",
+  // and the name in a footer before "Page _ of _" or "DOB"; every one of these words becomes an initial everywhere
+  var NAMES = {}, src2 = String(text || ''), mm, NW = "[A-Z][a-z'’-]+";
+  var hdr = new RegExp('\\bStudent(?:\'s)?(?:\\s+Name)?\\s*:\\s*(' + NW + ')(?:\\s+(?:[A-Z]\\.?\\s+)?(' + NW + '))?(?:\\s+(' + NW + '))?', 'g');
+  while ((mm = hdr.exec(src2))) [mm[1], mm[2], mm[3]].forEach(function (w) { if (w && !/^(Grade|Date|DOB|Birth|ID|Number|School|Case|Meeting|Age|Will|Is)$/.test(w)) NAMES[w] = true; });
+  var foot = new RegExp('\\b(' + NW + '),?\\s+(?:[A-Z]\\.?\\s+)?(' + NW + ')\\s+(?=(?:IEP Summary\\s*)?Page\\s+\\d+\\s+of|D\\.?O\\.?B|Date of Birth|Birth\\s*Date)', 'g');
+  while ((mm = foot.exec(src2))) { NAMES[mm[1]] = true; NAMES[mm[2]] = true; }
+  if (first) NAMES[first] = true; Object.keys(LASTS).forEach(function (L) { NAMES[L] = true; });
   var PII = /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\b|\bpage\s+\d+\s+of\s+\d+\b|\bstudent\s*(name|id|number|#)\s*:|\b(student\s+)?id\s*(#|no\.?|number)?\s*:?\s*\d{5,}\b|^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/i;
   var FRAG = [/(?:[A-Z][A-Za-z'’-]+,?\s+){1,3}(?=(?:[Dd]\.?[Oo]\.?[Bb]\.?|[Dd]ate of [Bb]irth|[Bb]irth\s*[Dd]ate)(?![a-z]))/g,
     /\b[A-Z][a-z'’-]+,?\s+(?:[A-Z]\.?\s+)?[A-Z][a-z'’-]+\s+(?=(?:IEP Summary\s*)?Page\s+\d+\s+of\s+\d+)/g,          // 2.30: a name printed before a page footer /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\s*[:#-]?\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/gi, /\bIEP Summary\s*Page\s+\d+\s+of\s+\d+(\s*IEP Summary)?/gi, /\bpage\s+\d+\s+of\s+\d+\b/gi,
@@ -9242,6 +9301,8 @@ function ipScrub(text, first, ini) {
     });
     out = out.replace(new RegExp('\\b' + first + '(\'s|’s)?\\b', 'g'), function (x, sfx) { names++; return F + '.' + (sfx || ''); });
   }
+  Object.keys(NAMES).forEach(function (w) { if (w.length < 2 || /^(The|And|Will|With|For|Page|Student|Goal|IEP|Summary)$/.test(w)) return; out = out.replace(new RegExp('\\b' + w + '(\'s|’s)?\\b', 'g'), function (x, sfx) { names++; return w.charAt(0) + '.' + (sfx || ''); }); });
+  out = out.replace(/\b(Mr|Mrs|Ms|Miss|Mx|Dr|Coach)\.?\s+([A-Z])[a-z'’-]+\b/g, function (x, t, i) { names++; return t + (t === 'Coach' || t === 'Miss' ? ' ' : '. ') + i + '.'; });          // staff names too
   var nb = noBday(out); out = nb.text; lines += nb.n;          // 2.35: any birthday-looking date left anywhere
   return { text: out, lines: lines, names: names };
 }
@@ -9274,7 +9335,7 @@ function ipClean() {
 var IP_AREAS = [[/executive|organi[sz]|planner|planning/i, 'Organization'], [/self.?advoca|ask(s|ing)? for help|request/i, 'Self-advocacy'], [/initiat|start(s|ing)? (the |a )?task|on.task|attention|focus/i, 'Starting and focus'], [/missing|turn(s|ed)? in|complet|assignments? on time/i, 'Work completion'],
   [/read|fluency|comprehen|decod/i, 'Reading'], [/writ|essay|paragraph|spelling/i, 'Writing'], [/math|calculat|equation|computation/i, 'Math'], [/cop(e|ing)|conflict|frustrat|regulat|behavior/i, 'Coping and behavior'], [/social|peer|interaction|perspective/i, 'Social skills'], [/college|career|transition|post.?secondary|employment/i, 'Transition']];
 function ipArea(t) { for (var i = 0; i < IP_AREAS.length; i++) if (IP_AREAS[i][0].test(t)) return IP_AREAS[i][1]; return 'Goal'; }
-function ipKid(t, name) { var e = easyGoal(t, name); return /^I will /.test(e) ? 'I need to ' + e.slice(7) : /^I (can|am)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
+function ipKid(t, name) { var e = easyGoal(t, name); return /\bI will\b/.test(e) ? e.replace(/\bI will\b/, 'I need to') : /^I (can|am|need)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
 // 2.31: benchmarks A) B) C) even with no space before the letter ("samples.B)By December"), and a run-together one split at each
 // "By <month> <year>"
 function ipBenchSplit(t) {
@@ -9306,7 +9367,14 @@ function ipParseSummary(text) {
   // goals: "Goal #1 - Title Goal Statement: By …" or "Goal Goal Statement: #2 - Title By …"; benchmarks A) B) C)
   var goals = [], gs = (sec['GOALS AND OBJECTIVES'] || '').replace(/Goal\s+Goal Statement:\s*#/gi, 'Goal #');
   gs.split(/\bGoal\s*#\s*(?=\d)/i).slice(1).forEach(function (chunk) {
-    var mm = /^(\d+)\s*-\s*(.+?)\s+(?:Goal Statement:\s*)?((?:By|Given|When|During|In|Upon|After|With)\b.*)$/i.exec(chunk.trim()); if (!mm) return;
+    // 2.37: "Goal Statement:" splits title from statement; otherwise the statement starts at a CAPITALIZED opening word or the student's
+    // initials ("C. will"), never at a lowercase "in" mid-sentence; a title is at most 8 words
+    var ch = chunk.trim(), mm = /^(\d+)\s*-\s*(.+?)\s*Goal Statement:\s*(.+)$/.exec(ch);
+    if (!mm) {
+      var START = '(?:By|Given|When|During|In|Upon|After|With|Across|Throughout|Within|Using|While|Following|Through|At|For|Each|Provided|Utilizing|Over|Before|Once|During|The student|[A-Z]\\.(?:\\s?[A-Z]\\.)?\\s+will)\\b';
+      mm = new RegExp('^(\\d+)\\s*-\\s*((?:\\S+\\s+){0,7}?\\S+?)\\s+(' + START + '.*)$').exec(ch);
+    }
+    if (!mm) return;
     var parts = mm[3].split(/Benchmark\(s\)\s*or\s*Short[- ]Term\s*Objective\(s\)|Short[- ]Term Objectives?|Benchmarks?:/i);
     var bens = ipBenchSplit(parts[1] || '');
     goals.push({ num: +mm[1], text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
