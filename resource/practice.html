@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.31'
+var VERSION = '2.32'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -3326,7 +3326,7 @@ function api_reviewEvidence(email, date, gid, act, p) {
 function nameMap_() { var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); }); return nm; }
 // 2.15 Teacher: import IEP goals for many students at once. rows: [{ who (email, student number or name), area, text, here ('yes'/'no'/'')}].
 // dry = true: just say who each row matches. Goals already on file (same text) are skipped. Goal 1 is filled first.
-var HERE_AREAS = /executive|organiz|self.?advoc|advocacy|study skills|work (completion|habits)|task initiation|initiat|time management|planning|planner|on.task|missing (work|assignments)/i;          // 2.24: self-advocacy and executive functioning
+var HERE_AREAS = /executive|organiz|self.?advoc|advocacy|advocate|speak up|ask(s|ing)? for (help|clarification)|request(s|ing)? (help|clarification|accommodations?)|study skills|work (completion|habits)|task initiation|initiat|time management|planning|planner|on.task|missing (work|assignments)/i;          // 2.24: self-advocacy and executive functioning
 function api_importGoals(rows, dry) {
   teacherOnly_();
   var stu = rows_('Students').filter(function (r) { return low_(r[SC.email]); });
@@ -3350,9 +3350,10 @@ function api_importGoals(rows, dry) {
     var o = { who: String(x.who || ''), email: r ? low_(r[SC.email]) : '', name: r ? stuName_(r) : '', code: clip(x.code, 20), area: clip(x.area, 80), text: clip(x.text, 3000), kid: clip(x.kid, 600),
       success: clip(x.success), track: clip(x.track, 300), mstatus: clip(x.mstatus, 80), how: clip(x.how), look: clip(x.look, 600), mnotes: clip(x.mnotes), criterion: clip(x.criterion),
       ratings: ratings, noIdeas: (Array.isArray(x.noIdeas) ? x.noIdeas : String(x.noIdeas || '').split('|')).map(function (t) { return clip(t, 160); }).filter(String).slice(0, 6),
-      here: String(x.here || '').trim() ? /^(y|yes|true|x|1|✓)/i.test(String(x.here).trim()) : HERE_AREAS.test(clip(x.area) + ' ' + clip(x.text) + ' ' + clip(x.kid)),
+      here: String(x.here || '').trim() ? /^(y|yes|true|x|1|✓)/i.test(String(x.here).trim()) : HERE_AREAS.test(clip(x.area) + ' ' + clip(x.text) + ' ' + clip(x.kid)), hereGiven: !!String(x.here || '').trim(),
       choices: r ? [] : (m.list.length > 1 ? m.list : []).map(label) };
     o.why = !r ? (m.list.length > 1 ? 'More than one student fits: pick one' : 'No student matches: pick one') : !o.text && !o.kid ? 'No goal text' : '';
+    if (r && o.code && !o.hereGiven) { var ex = goals_(low_(r[SC.email])).filter(function (g) { return g.code === o.code; })[0]; if (ex) o.here = ex.here !== false; }          // an existing goal: start from the teacher's setting
     o.flags = [];
     if (!o.text) o.flags.push('Original IEP wording needed');
     if (o.ratings.filter(String).length < 6) o.flags.push('Rating descriptions needed');
@@ -3372,6 +3373,7 @@ function api_importGoals(rows, dry) {
       var f = { name: x.area, kid: x.kid, here: x.here, success: x.success, track: x.track, mstatus: x.mstatus, mnotes: x.mnotes };
       if (x.text) f.text = x.text; if (x.criterion) f.criterion = x.criterion; if (x.ratings.filter(String).length) f.ratings = x.ratings; if (x.noIdeas.length) f.noIdeas = x.noIdeas;
       Object.keys(f).forEach(function (k) { if (f[k] === '' && same) delete f[k]; });
+      if (same && !x.hereGiven) delete f.here;          // 2.32: an update keeps the teacher's measured-here choice unless the file says
       saveGoalCore_(x.email, gid, f, x.code, x.how, x.look);
     });
     logChange_('Imported IEP goals', '', '', '', '', added + ' added, ' + updated + ' updated, ' + skipped + ' skipped', '');
@@ -3504,7 +3506,7 @@ function reflect_(today, mode) {
 }
 // what a student's page gets: only their active goals that have student words, never the original IEP text or staff notes
 function checkinFor_(email) {
-  var r = reflect_(today_(), reflectMode_(email)), goals = goals_(email).filter(function (g) { return g.active && g.kid; });
+  var r = reflect_(today_(), reflectMode_(email)), goals = goals_(email).filter(function (g) { return g.active && g.kid && g.here !== false; });          // 2.32: only goals measured in BASE/ARC get the daily 1–6
   var out = { date: r.date, phrase: r.phrase, longDate: r.date ? niceLong_(r.date) : '', goals: goals.map(function (g) { return { id: g.id, title: g.name || 'My goal', kid: g.kid, ratings: g.ratings, noIdeas: g.noIdeas }; }), answers: {}, comment: '', id: '', sent: '' };
   if (r.date) rows_('Goal check-ins').forEach(function (x) {
     if (low_(x[3]) !== email || day_(x[2]) !== r.date || String(x[9]) === 'Replaced') return;
@@ -8445,6 +8447,7 @@ function goalTabs() {
       '<label class="grow"><span class="small"><b>Goal title</b> ' + STU + '</span><input type="text" id="gdName" maxlength="80" value="' + esc(g.name || '') + '"></label>' +
       '<label class="check" style="margin:0 0 6px"><input type="checkbox" id="gdHere"' + (g.here !== false ? ' checked' : '') + '><span>Measured in ' + dc + '</span></label></div>' +
     inp('I need to… (student words)', 'gdKid', g.kid, 'I need to…', 50, STU) +
+    (g.here === false ? '<div class="small" style="display:block;margin-top:4px;opacity:.8">Not measured in ' + dc + ', so it isn’t in the student’s daily 1–6 check-in (they still see it on their My goals card).</div>' : '') +
     '<details style="margin-top:8px"' + ((g.ratings || []).filter(String).length < 6 ? ' open' : '') + '><summary class="small" style="display:list-item"><b>Rating descriptions for this goal</b> ' + STU + ' <span style="opacity:.75">(1 = had the chance and didn’t; using an accommodation never lowers a rating)</span></summary>' +
       [6, 5, 4, 3, 2, 1].map(function (n) { return '<div class="row" style="gap:6px;margin:3px 0"><b style="width:18px">' + n + '</b><input type="text" class="grow" id="gdR' + n + '" maxlength="300" value="' + esc((g.ratings || [])[6 - n] || '') + '" placeholder="' + GCK_MEAN[n] + ' (written for this goal)"></div>'; }).join('') +
       inp('“I didn’t have a chance” ideas (one per line)', 'gdNo', (g.noIdeas || []).join('\n'), 'No test this week yet.', 44, STU) + '</details>' +
