@@ -117,6 +117,7 @@ body { padding-bottom: 90px; }
 .trk-warn .trk-dot { background: var(--warn); color: var(--onbrand); } .trk-bad .trk-dot { background: var(--bad); color: var(--onbrand); } .trk-bad .trk-txt b { color: var(--bad); }
 .trk-now .trk-dot { background: var(--brand); color: var(--onbrand); animation: trkp 1.4s infinite; } @keyframes trkp { 50% { box-shadow: 0 0 0 6px var(--brand2); } }
 @media (max-width: 640px) { .trk { grid-template-columns: 1fr 1fr; row-gap: 12px; } }
+.hubbtn { margin-left: 10px; font-weight: 600; }
 .side { position: fixed; right: 0; top: 56px; width: 230px; bottom: 0; background: var(--card); border-left: 1px solid var(--line); padding: 14px; overflow: auto; z-index: 15; }
 body.withside .wrap { margin-right: 240px; }
 .dim { opacity: .55; }
@@ -289,7 +290,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.13';
+var VERSION = '0.14';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -3159,7 +3160,7 @@ function api_clearPractice() {
     else coView(go);
   }, 1800);
   window.google = { script: {
-    url: { getLocation: function (cb) { var p = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var x = kv.split('='); if (x[0]) p[x[0]] = decodeURIComponent(x[1] || ''); }); cb({ parameter: p }); } },
+    url: { getLocation: function (cb) { var p = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var x = kv.split('='); if (x[0]) p[x[0]] = decodeURIComponent(x[1] || ''); }); if (/^(coord|ncoord|admin)$/.test(as) && !p.lock) p.hub = '1'; cb({ parameter: p }); } },
     run: (function mk(ok, no) {
       return new Proxy({}, { get: function (t, k) {
         if (k === 'withSuccessHandler') return function (f) { return mk(f, no); };
@@ -3232,35 +3233,48 @@ function boot() {
 function drawModes(want) {
   var b = B;
   if (b.error === 'signin') { $('main').innerHTML = '<div class="wrap narrow"><div class="card"><h2>Please sign in</h2><p>Sign in with your school Google account, then reload this page.</p></div></div>'; return; }
-  var modes = [];
+  var modes = [], hubOk = !!(b.staff || (b.hub && b.hub.eligible));
   if (b.teacher) { modes.push(['teacher', 'My classes']); modes.push(['tview', 'Student view']); }
   if (b.student) modes.push(['student', 'My Testing Center']);
-  if (b.staff || (b.hub && b.hub.eligible)) modes.push(['staff', (b.staff ? '' : '🔒 ') + 'Coordinator hub']);
-  if (!modes.length) { $('main').innerHTML = '<div class="wrap narrow"><div class="card"><h2>We couldn’t find you</h2><p>You’re signed in as <b>' + esc(b.email) + '</b>, but that account isn’t on the Testing Center roster yet. If you’re a student, ask the Testing Center to check your school email. If you’re a teacher, your email may still need to be confirmed.</p><p><a class="btn pri" href="' + switchUrl() + '" target="_top">Switch to my school account</a></p><p class="small mute">Signed in to more than one Google account? Google opens this app with the first one you signed in to. Use the button above, or open the link in a Chrome window or profile that has only your school account (@d204.lths.net or @lths.net).</p></div></div>'; return; }
+  var showLogin = hubOk || !!b.teacher;          // everyone but students sees the coordinator log-in button
+  if (!modes.length && !showLogin) { $('main').innerHTML = '<div class="wrap narrow"><div class="card"><h2>We couldn’t find you</h2><p>You’re signed in as <b>' + esc(b.email) + '</b>, but that account isn’t on the Testing Center roster yet. If you’re a student, ask the Testing Center to check your school email. If you’re a teacher, your email may still need to be confirmed.</p><p><a class="btn pri" href="' + switchUrl() + '" target="_top">Switch to my school account</a></p><p class="small mute">Signed in to more than one Google account? Google opens this app with the first one you signed in to. Use the button above, or open the link in a Chrome window or profile that has only your school account (@d204.lths.net or @lths.net).</p></div></div>'; return; }
+  if (!modes.length) modes.push(['welcome', 'Home']);
   var ids = modes.map(function (m) { return m[0]; });
-  MODE = want && ids.indexOf(want) >= 0 ? want : START.appt && b.teacher ? 'teacher' : modes[0][0];
-  $('modes').innerHTML = (modes.length > 1 ? '<div class="seg">' + modes.map(function (m) { return '<button id="mode-' + m[0] + '" onclick="setMode(\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('') + '</div>' : '') + '<span class="mute small" style="margin-left:10px" title="' + esc(b.email) + '">' + esc(b.name || b.email) + ' · <a href="' + switchUrl() + '" target="_top">Wrong account?</a></span>';
+  // coordinators open on the teacher dashboard too; the coordinator tools are one button away (top right)
+  MODE = want === 'staff' && b.staff ? 'staff' : want && ids.indexOf(want) >= 0 ? want : modes[0][0];
+  $('modes').innerHTML = (modes.length > 1 ? '<div class="seg">' + modes.map(function (m) { return '<button id="mode-' + m[0] + '" onclick="setMode(\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('') + '</div>' : '') +
+    (showLogin ? '<span id="hubBtn"></span>' : '') + '<span class="mute small" style="margin-left:10px" title="' + esc(b.email) + '">' + esc(b.name || b.email) + ' · <a href="' + switchUrl() + '" target="_top">Wrong account?</a></span>';
   setMode(MODE);
+  if (want === 'staff' && !b.staff && hubOk) hubGate();
+}
+function hubBtnDraw() {
+  var el = $('hubBtn'); if (!el) return;
+  el.innerHTML = MODE === 'staff' ? (B.teacher ? '<button class="btn hubbtn" onclick="setMode(\'teacher\')">← Teacher view</button>' : '')
+    : B.staff ? '<button class="btn pri hubbtn" onclick="setMode(\'staff\')">🗂️ Coordinator tools</button>'
+    : '<button class="btn pri hubbtn" onclick="hubGate()">🔒 Testing Center Coordinator Log In</button>';
 }
 function setMode(m) {
-  MODE = m; [].forEach.call(document.querySelectorAll('#modes button'), function (x) { x.classList.toggle('on', x.id === 'mode-' + m); });
+  MODE = m; [].forEach.call(document.querySelectorAll('#modes .seg button'), function (x) { x.classList.toggle('on', x.id === 'mode-' + m); });
   if (m !== 'staff' && typeof clockStop === 'function') clockStop();
-  if (m === 'student') stuStart(); else if (m === 'teacher') tchStart(); else if (m === 'tview') tvStart(); else if (B.staff) coStart(); else hubGate();
+  hubBtnDraw();
+  if (m === 'student') stuStart(); else if (m === 'teacher') tchStart(); else if (m === 'tview') tvStart(); else if (m === 'staff' && B.staff) coStart();
+  else $('main').innerHTML = '<div class="wrap narrow"><div class="card" style="text-align:center;padding:30px"><h2>Welcome to the Testing Center app</h2><p class="mute">Testing Center staff: use <b>Testing Center Coordinator Log In</b> at the top right to open the coordinator tools.</p><button class="btn pri big" onclick="' + (B.staff ? 'setMode(\'staff\')">🗂️ Coordinator tools' : 'hubGate()">🔒 Testing Center Coordinator Log In') + '</button></div></div>';
 }
-// ---------- the coordinator hub's password screen
+// ---------- the coordinator log-in (a password box over the teacher dashboard)
 function hubGate() {
-  var h = B.hub || {}, out = '<div class="wrap narrow"><div class="card" style="max-width:440px;margin:40px auto"><h2>🔒 Coordinator hub</h2>';
-  if (!h.hasPassword && h.owner) out += '<p class="small">Create the password coordinators will use to open the hub. Only its scrambled form is stored. You can change it later in Administration.</p><label class="f">New password (8 or more characters)</label><input type="password" id="hubNew"><label class="f">Type it again</label><input type="password" id="hubNew2"><button class="btn pri" style="margin-top:12px" id="hubGo">Create password and open</button>';
-  else if (!h.hasPassword) out += '<p>The administrator hasn’t set a hub password yet.</p>';
-  else out += '<p class="small mute">Enter the Testing Center hub password.</p><input type="password" id="hubPw" onkeydown="if(event.key===\'Enter\')$(\'hubGo\').click()"><button class="btn pri" style="margin-top:12px" id="hubGo">Open the hub</button><p class="tiny mute">It stays open on this account for 6 hours, or until you press Lock.</p>';
-  $('main').innerHTML = out + '</div></div>';
+  var h = B.hub || {}, out = '<h2>🔒 Testing Center Coordinator Log In</h2>';
+  if (!h.eligible && !h.owner) out += '<p>This account isn’t set up for the coordinator tools. If you work in the Testing Center, ask the Testing Center administrator to add your school email.</p><button class="btn" onclick="closeModal()">Close</button>';
+  else if (!h.hasPassword && h.owner) out += '<p class="small">Create the password coordinators will use. Only its scrambled form is stored; you can change it later in Settings.</p><label class="f">New password (8 or more characters)</label><input type="password" id="hubNew"><label class="f">Type it again</label><input type="password" id="hubNew2"><div class="row" style="margin-top:12px"><button class="btn pri" id="hubGo">Create password and open</button><button class="btn" onclick="closeModal()">Cancel</button></div>';
+  else if (!h.hasPassword) out += '<p>The administrator hasn’t set the coordinator password yet.</p><button class="btn" onclick="closeModal()">Close</button>';
+  else out += '<p class="small mute">Enter the Testing Center coordinator password.</p><input type="password" id="hubPw" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')$(\'hubGo\').click()"><div class="row" style="margin-top:12px"><button class="btn pri" id="hubGo">Log in</button><button class="btn" onclick="closeModal()">Cancel</button></div><p class="tiny mute">You stay logged in on this account for 6 hours, or until you press Lock.</p>';
+  modal(out);
   if ($('hubGo')) $('hubGo').onclick = function () {
     var btn = this, p;
     if ($('hubNew')) { if ($('hubNew').value !== $('hubNew2').value) return toast('The two passwords don’t match.'); p = call('api_hubSetPassword', $('hubNew').value, ''); }
     else p = call('api_hubUnlock', $('hubPw').value);
-    busy(btn, true); p.then(function (b) { B = b; drawModes('staff'); }).catch(function (e) { busy(btn, false); fail(e); });
+    busy(btn, true); p.then(function (b) { B = b; closeModal(); drawModes('staff'); }).catch(function (e) { busy(btn, false); fail(e); });
   };
-  if ($('hubPw')) $('hubPw').focus();
+  setTimeout(function () { var x = $('hubPw') || $('hubNew'); if (x) x.focus(); }, 50);
 }
 function hubLock() { call('api_hubLock').then(function (b) { B = b; drawModes(''); toast('The hub is locked'); }).catch(fail); }
 window.addEventListener('load', function () {
@@ -3690,7 +3704,7 @@ function coToday() {
   out += '<div class="tiles"><div class="tile"><b>' + c.booked + '</b><span>Scheduled</span></div><div class="tile"><b>' + c.inRoom + '</b><span>In the room</span></div><div class="tile"><b>' + c.done + '</b><span>Finished</span></div><div class="tile"><b>' + c.noShow + '</b><span>No-shows</span></div><div class="tile"><b style="color:' + (c.needs ? 'var(--bad)' : 'inherit') + '">' + c.needs + '</b><span>Need test info</span></div></div>';
   d.periods.forEach(function (p) {
     var seats = !p.open ? '' : p.ab ? 'A ' + (p.cap - p.free.A) + '/' + p.cap + ' · B ' + (p.cap - p.free.B) + '/' + p.cap : (p.cap - p.free.all) + '/' + p.cap + ' seats';
-    out += '<div class="card' + (p.open || p.appts.length ? '' : ' dim') + '" style="padding:12px 14px"><div class="period-h"><h3 style="margin:0">' + esc(p.label) + '</h3><span class="seats">' + (p.start ? hm(p.start) + '–' + hm(p.end) : '') + '</span><span class="seats">' + (p.open ? seats : esc(p.why || 'Closed')) + '</span>' + (p.waiting ? '<span class="chip warn">' + p.waiting + ' waiting</span>' : '') + '<div class="grow"></div>' + (p.appts.length ? '<button class="btn sm" onclick="coSecurly(\'' + p.period + '\')">Export for Securly</button>' : '') + (d.edit ? '<button class="btn sm" onclick="coChange(\'' + p.period + '\')">Seats / close</button>' : '') + '</div>';
+    out += '<div class="card' + (p.open || p.appts.length ? '' : ' dim') + '" style="padding:12px 14px"><div class="period-h"><h3 style="margin:0">' + esc(p.label) + '</h3><span class="seats">' + (p.start ? hm(p.start) + '–' + hm(p.end) : '') + '</span><span class="seats">' + (p.open ? seats : esc(p.why || 'Closed') + ' · <b>No walk-ins</b>') + '</span>' + (p.waiting ? '<span class="chip warn">' + p.waiting + ' waiting</span>' : '') + '<div class="grow"></div>' + (p.appts.length ? '<button class="btn sm" onclick="coSecurly(\'' + p.period + '\')">Export for Securly</button>' : '') + (d.edit ? '<button class="btn sm" onclick="coChange(\'' + p.period + '\')">Seats / close</button>' : '') + '</div>';
     var waitingOn = p.appts.filter(function (a) { return /^(scheduled|awaiting|ready)/i.test(a.status) && !a.unmatched; }).length, ended = p.end && (d.date < B.today || (d.date === B.today && new Date().toTimeString().slice(0, 5) > p.end));
     if (d.edit && ended && waitingOn) out += '<div class="banner warn small" style="margin:6px 0">' + waitingOn + ' student' + (waitingOn > 1 ? 's never' : ' never') + ' arrived. <button class="btn sm bad" onclick="coNoShows(\'' + p.period + '\', ' + waitingOn + ')">Mark ' + (waitingOn > 1 ? 'them' : 'as') + ' no-show' + (waitingOn > 1 ? 's' : '') + '</button></div>';
     if (p.appts.length) out += '<table class="t"><tr><th>Student</th><th class="hide-sm">Course · Teacher</th><th>Test</th><th>Half</th><th>Format</th><th>Ready?</th><th>Status</th><th></th></tr>' + p.appts.map(coRow).join('') + '</table>';
@@ -3966,12 +3980,14 @@ function coWalkPick(sid) {
       '<div id="wNew" class="card" style="margin-top:10px;background:var(--soft2)"' + (s.classes.length ? ' hidden' : '') + '><b class="small">Add a class for ' + esc(s.name) + '</b><div class="tiny mute">Use this when the school roster is out of date. It’s marked “added by the Testing Center”; the next district roster replaces it if it disagrees.</div>' +
         '<div class="grid3"><div><label class="f">Class name</label><input type="text" id="wNc" placeholder="Algebra II"></div><div><label class="f">Their period for it</label><input type="text" id="wNp" placeholder="3"></div><div><label class="f">Teacher</label><select id="wNt" onchange="$(\'wTnew\').hidden=this.value!==\'__add\'"><option value="">Choose…</option>' + T.map(function (t) { return '<option value="' + esc(t.tid) + '">' + esc(t.name) + '</option>'; }).join('') + '<option value="__add">＋ Add a teacher…</option></select></div></div>' +
         '<div id="wTnew" class="grid2" hidden><div><label class="f">Teacher’s name</label><input type="text" id="wTn" placeholder="Jordan Martinez"></div><div><label class="f">Teacher’s school email</label><input type="email" id="wTe" placeholder="jmartinez@lths.net"></div></div></div>' +
-      '<div class="grid3"><div><label class="f">Date</label><input type="date" id="wD" value="' + CO.date + '"></div><div><label class="f">Period</label><select id="wP">' + CO.dash.periods.map(function (p) { return '<option>' + p.period + '</option>'; }).join('') + '</select></div><div><label class="f">Half</label><select id="wH"><option value="">Whole period</option><option>A</option><option>B</option></select></div></div>' +
+      '<div class="grid3"><div><label class="f">Date</label><input type="date" id="wD" value="' + CO.date + '"></div><div><label class="f">Period</label><select id="wP">' + CO.dash.periods.map(function (p) { var shut = !p.open && CO.date === B.today; return '<option value="' + p.period + '"' + (shut ? ' disabled' : '') + '>Period ' + p.period + (shut ? ' — closed, no walk-ins' + (p.why ? ' (' + esc(p.why) + ')' : '') : '') + '</option>'; }).join('') + '</select></div><div><label class="f">Half</label><select id="wH"><option value="">Whole period</option><option>A</option><option>B</option></select></div></div>' +
       '<label class="f">Purpose</label><select id="wU">' + s.purposes.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('') + '</select>' +
       '<div class="row" style="margin-top:12px"><button class="btn pri" id="wGo">Book' + (walk ? ' and check in' : '') + '</button><button class="btn" onclick="closeModal()">Cancel</button></div><p class="tiny mute">Staff can book after the cutoff. Class conflicts are recorded as booked by staff.</p>';
     if (!s.classes.length) $('wC').value = '__add';
     $('wGo').onclick = function () {
       var p = $('wP').value, nw = CO.dash.conf.noWalkins, btn = this;
+      var pp = CO.dash.periods.filter(function (x) { return x.period === p; })[0];
+      if ($('wD').value === B.today && pp && !pp.open) return toast('The Testing Center is closed period ' + p + ' today, so no walk-ins.');
       if ($('wD').value === B.today && nw.indexOf(p) >= 0 && !confirm('Walk-ins are not usually allowed during period ' + p + '. Book anyway?')) return;
       var adding = $('wC').value === '__add', tsel = $('wNt').value;
       if (adding && !$('wNc').value.trim()) return toast('Type the class name.');
