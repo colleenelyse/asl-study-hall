@@ -188,7 +188,8 @@ const PAIRS = Object.keys(window.LOOK_GROUPS || {});      // letter groups for L
 /* ---------- settings ---------- */
 const CATS = Object.keys(window.FS_WORDS || {});
 const S = Object.assign({ speed: 0, limit: 8, count: 10, mode: 'plain', cats: CATS.slice(), one: false, showCount: false, assist: 'off', tone: '3', paper: 'no',
-  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: '3', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+  levels: ['1'], scount: 10, pairs: ['M N S T', 'A E O'], pairkind: 'words', flash: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), flcount: 20, game: 'type', banks: { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }, tlevels: ['1'], tcount: 10, nums: NUMS.slice(), ncount: 20, nteens: 'mix', nform: 'mix', nkind: 'type', nhund: 'mix', hearts: 'off', qrange: '1', qmin: 0, qmax: 1000, qcount: 10, fcats: ['K–2 level vocab', 'Grades 3–5 level vocab', 'Fruits & Vegetables', 'Animals', 'School', 'Careers', 'Holidays'] }, store.get('settings', {}));
+if (!S.hv) { if (S.hearts === '3') S.hearts = 'off'; S.hv = 1; }      /* 2026-10-27 (Colleen: "in speed ladder the default should be off hearts not 3 hearts"): the old default turns off once on every device */
 if (!Array.isArray(S.ytypes) || !S.ytypes.length) S.ytypes = ['teen', '200x', '20xx'];
 if (!Array.isArray(S.atypes) || !S.atypes.length) S.atypes = ['1-9', '10-19', '20-99'];      // ages: all three groups to start      // years: all three kinds to start
 S.cats = S.cats.filter(c => CATS.indexOf(c) >= 0); if (!S.cats.length) S.cats = CATS.slice();
@@ -497,7 +498,7 @@ function startRound(fixedWords) {
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
   if (!list.length) return;
   R = { game: g, list, i: -1, items: [], started: Date.now(), settings: JSON.parse(JSON.stringify(S)), review: !!fixedWords, pool };
-  if (g === 'ladder') { R.lspeed = S.speed; R.top = null; R.hearts = S.hearts === 'off' ? 0 : +S.hearts || 3; R.lives = R.hearts || Infinity; }      /* Hearts: 1, 3 or 5, or off (no game over; End round finishes) (Colleen) */
+  if (g === 'ladder') { R.lspeed = S.speed; R.top = null; R.hearts = S.hearts === 'off' ? 0 : +S.hearts || 0; R.lives = R.hearts || Infinity; }      /* Hearts: 1, 3 or 5, or off (no game over; End round finishes) (Colleen) */
   track('round_start', { game: g, speed: speedName(S.speed), words: list.length });
   if (location.hash === '#/play') { setupShow(g); playShow(); } else location.hash = '#/play';
 }
