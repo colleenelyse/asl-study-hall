@@ -40,6 +40,19 @@ header { padding-block: clamp(32px, 6vw, 64px) 8px; }
 section { padding-block: clamp(36px, 6vw, 64px); border-top: 1px solid var(--line); }
 section > .wrap > .intro { display: grid; gap: 10px; margin-bottom: 28px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 22px; }
+.data { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; align-items: center; }
+.ws { border: 2px dashed var(--ok); border-radius: 18px; padding: 18px; display: grid; gap: 12px; background: color-mix(in srgb, var(--ok) 6%, var(--card)); }
+.ws > .lab { font: 600 .78rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--ok); }
+.tile2 { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.tile2 b { font-family: var(--display); font-size: 1.05rem; }
+.tabs2 { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs2 span { font-size: .78rem; background: var(--shot-bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--soft); }
+.who { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.who span { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+.arrow { text-align: center; color: var(--soft); font-size: .85rem; }
+.no { color: var(--soft); font-size: .9rem; text-align: center; }
+.no s { opacity: .8; }
+@media (max-width: 820px) { .data { grid-template-columns: 1fr; } }
 .fact { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
 .fact b { display: block; font-family: var(--display); font-size: 1.15rem; }
 .fact span { color: var(--soft); font-size: .92rem; }
@@ -77,6 +90,7 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   </div>
   <div class="wrap">
     <div class="facts">
+      <div class="fact" style="border-color:var(--ok)"><b>🔒 Data stays at school</b><span>Every student record lives in one Google Sheet in the school's own Google account. Nothing goes to an outside company.</span></div>
       <div class="fact"><b>No cost</b><span>Google Sheets + Apps Script in the district's own Google Workspace. No per-user fees.</span></div>
       <div class="fact"><b>School sign-in</b><span>Everyone uses their school Google account; the app knows who is a student, teacher or coordinator.</span></div>
       <div class="fact"><b>Two campuses</b><span>South (Library, Room D) and North (Room 31) run separately, with their own seats, closures and staff.</span></div>
@@ -84,6 +98,32 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
     </div>
   </div>
 </header>
+
+<section id="data">
+  <div class="wrap data">
+    <div class="intro" style="display:grid;gap:12px">
+      <p class="eyebrow">Where student data lives</p>
+      <h2>All student information stays in a Google Sheet in the school's Google account</h2>
+      <p>Students, schedules, appointments, teacher instructions and the activity log are rows in <span class="mark">one Google Sheet owned by a school Google account</span> in the district's Google Workspace. The app itself is Google Apps Script attached to that same sheet.</p>
+      <ul style="margin:0;padding-left:1.2em;color:var(--soft)">
+        <li>No outside database, vendor or subscription: nothing is copied out of the school's Google account.</li>
+        <li>The sheet is shared only with Testing Center staff; students and teachers never open it. They see only what the app shows them, after signing in with their school account.</li>
+        <li>The district keeps control: it owns the account, and Google Workspace's own security, backups and admin controls apply.</li>
+        <li>Imports from Infinite Campus go straight into a tab of the same sheet.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="who"><span>🎒 Students</span><span>🧑‍🏫 Teachers</span><span>🗂️ Testing Center staff</span></div>
+      <p class="arrow">↓ sign in with their school Google account (@d204.lths.net / @lths.net) ↓</p>
+      <div class="ws"><span class="lab">🔒 School Google account · district Google Workspace</span>
+        <div class="tile2"><b>Testing Center app</b><span class="note">Google Apps Script. Checks who you are on every request: students see only their own records, teachers only their own students, staff need the hub password.</span></div>
+        <div class="tile2"><b>📗 Testing Center Google Sheet</b><span class="note">Shared only with Testing Center staff. Every record is a row:</span>
+          <div class="tabs2"><span>Students</span><span>Teachers</span><span>Sections</span><span>Enrollments</span><span>Appointments</span><span>Sessions</span><span>Waitlist</span><span>Assessments</span><span>Rooms</span><span>Outbox</span><span>Audit</span><span>IC_Raw_Import</span><span>Settings</span></div></div>
+      </div>
+      <p class="no" style="margin-top:10px">Outside services that get student data: <b>none</b></p>
+    </div>
+  </div>
+</section>
 
 <section id="students">
   <div class="wrap">
@@ -94,7 +134,7 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
     </div>
     <div class="screen flip">
       <figure><img src="img/stu-slots.jpg" alt="Choosing a day and period, with seats left and the student's class each period" loading="lazy"></figure>
-      <div class="txt"><h3>Pick a class, a test, a time</h3><ul><li>Their real classes in one dropdown: no typing teacher names.</li><li>Only open periods, with seats left. Closed periods (like North's Monday 6th) and the 24-hour cutoff are enforced.</li><li>Lunch/study hall periods can be booked as the A half, the B half or the whole period, and seats are counted for each half.</li><li>Full? Join the waitlist. An open seat is <b>offered</b> by email for a short time; the student signs in to accept.</li></ul></div>
+      <div class="txt"><h3>Pick a class, a test, a time</h3><ul><li>Their real classes in one dropdown: no typing teacher names.</li><li>Only open periods, with seats left. Closed periods (like North's Monday 6th) are enforced, and a period stays open until it starts by that day's bell schedule.</li><li>Lunch/study hall periods can be booked as the A half, the B half or the whole period, and seats are counted for each half.</li><li>Full? Join the waitlist. An open seat is <b>offered</b> by email for a short time; the student signs in to accept.</li></ul></div>
     </div>
     <div class="screen">
       <figure><img src="img/stu-conflict.jpg" alt="The academic class conflict warning" loading="lazy"></figure>
@@ -159,7 +199,7 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   <div class="wrap">
     <div class="intro"><p class="eyebrow">Privacy and safety</p><h2>Designed for a district review</h2></div>
     <div class="two">
-      <div class="box"><h3>Where the data lives</h3><ul><li>One Google Sheet in the district's Google Workspace, shared only with Testing Center staff. No outside services.</li><li>The app is open only to school Google accounts; the server checks every request (students see only their own records; teachers only their own students).</li><li>Access codes and test links never reach students or student emails.</li><li>No IEP or 504 details are stored; the form has an extended-time line only.</li></ul></div>
+      <div class="box"><h3>Where the data lives</h3><ul><li>One Google Sheet in a school Google account in the district's Google Workspace, shared only with Testing Center staff. No outside services or databases.</li><li>The app is open only to school Google accounts; the server checks every request (students see only their own records; teachers only their own students).</li><li>Access codes and test links never reach students or student emails.</li><li>No IEP or 504 details are stored; the form has an extended-time line only.</li></ul></div>
       <div class="box"><h3>Safeguards</h3><ul><li>The coordinator hub needs a password (stored scrambled) on top of school sign-in; it locks after 6 hours.</li><li>Every sensitive change is logged (who, what, when).</li><li>Roster imports are previewed, backed up and reversible; a file that looks incomplete is held.</li><li>History is kept: appointments are never rewritten when schedules change.</li></ul></div>
     </div>
   </div>

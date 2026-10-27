@@ -259,7 +259,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.9';
+var VERSION = '0.10';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -299,7 +299,7 @@ var DEFAULTS = [
   ['Testing Center email', '', '', 'Reply-to address on emails (empty: the account that runs the app).'],
   ['Student booking in this app', 'Off', 'Off', 'Off while students still sign up in SignUpGenius (import those appointments instead). On: students book here.'],
   ['Days ahead students can book', '14', '14', 'How far ahead the calendar goes.'],
-  ['Book at least this many hours ahead', '24', '24', 'The booking cutoff. Coordinators can still book after it.'],
+  ['Book at least this many hours ahead', '0', '0', '0 (Colleen’s rule): students can book until the period starts, by that day’s bell schedule. A number of hours makes an earlier cutoff. Coordinators can always book.'],
   ['No walk-ins during periods', '4, 5', '4, 5', 'Coordinators get a warning when adding a walk-in during these periods.'],
   ['Most upcoming appointments per student', '', '', 'Empty: no limit.'],
   ['Booking purposes', 'Makeup test, Retake, Finish a test I started', 'Makeup test, Retake, Finish a test I started', 'The choices students see (comma list). Add "Other" to allow other purposes.'],
@@ -430,7 +430,7 @@ function setting_(key, campus) { var r = settingRows_().filter(function (s) { re
 function settingNum_(key, campus, dflt) { var v = parseFloat(setting_(key, campus)); return isNaN(v) ? dflt : v; }
 function campusConf_(c) {
   return { code: c, name: campusName_(c), where: setting_('Testing Center location', c), booking: yes_(setting_('Student booking in this app', c)),
-    daysAhead: settingNum_('Days ahead students can book', c, 14), cutoffH: settingNum_('Book at least this many hours ahead', c, 24),
+    daysAhead: settingNum_('Days ahead students can book', c, 14), cutoffH: settingNum_('Book at least this many hours ahead', c, 0),
     noWalkins: list_(setting_('No walk-ins during periods', c)), maxUpcoming: settingNum_('Most upcoming appointments per student', c, 0),
     purposes: list_(setting_('Booking purposes', c)), waitlist: yes_(setting_('Waitlist', c)), offerMode: /approve/i.test(setting_('Waitlist offers', c)) ? 'approve' : 'auto',
     offerHours: settingNum_('Hours to answer a waitlist offer', c, 1), quiet: setting_('Quiet hours', c), insideCutoff: /allow/i.test(setting_('Offers inside the booking cutoff', c)) ? 'allow' : 'ask',
@@ -577,6 +577,10 @@ function setupSheet() {
   MEMO_ = {};
   var have = rows_('Settings').map(function (r) { return r.key; }), add = DEFAULTS.filter(function (d) { return have.indexOf(d[0]) < 0; });
   insertMany_('Settings', add.map(function (d) { return { key: d[0], S: d[1], N: d[2], help: d[3] }; }));
+  if (!PropertiesService.getDocumentProperties().getProperty('cutoff0')) {          // 0.10: no 24-hour rule; booking is open until the period starts
+    rows_('Settings').forEach(function (r) { if (r.key === 'Book at least this many hours ahead') { var d = DEFAULTS.filter(function (x) { return x[0] === r.key; })[0]; update_('Settings', r, { S: str_(r.S) === '24' ? '0' : r.S, N: str_(r.N) === '24' ? '0' : r.N, help: d[3] }); } });
+    PropertiesService.getDocumentProperties().setProperty('cutoff0', '1');
+  }
   if (!rows_('Testing Periods').length) insertMany_('Testing Periods', samplePeriods_());
   if (!rows_('Bell Schedules').length) insertMany_('Bell Schedules', sampleBells_());
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'tick' || t.getHandlerFunction() === 'morning') ScriptApp.deleteTrigger(t); });
@@ -1204,7 +1208,7 @@ function api_slots(from) {
       return { period: p, label: s.label, open: s.open, why: s.why, start: s.start, end: s.end, aEnd: s.aEnd, bStart: s.bStart, ab: s.ab, free: s.free, cap: s.cap, soon: tooSoon_(s, c),
         have: cf.have, conflict: cf.conflict ? cf.conflict.course + (cf.conflict.teacher ? ' with ' + cf.conflict.teacher : '') : '' };
     }) };
-    if (day.periods.some(function (p) { return p.open && !p.soon; })) days.push(day);          // a day that's all inside the cutoff isn't shown
+    if (day.periods.some(function (p) { return p.open && !p.soon; })) days.push(day);          // a day with nothing left to book (all started, or inside the cutoff) isn't shown
   }
   return { days: days, next: d <= end ? d : '' };
 }
@@ -1231,7 +1235,7 @@ function book_(w, sid, req, staff) {
     var s = slot_(campus, d, period), half = normHalf_(s, req.half);
     if (!s.open) throw new Error('The Testing Center is closed then' + (s.why ? ' (' + s.why + ')' : '') + '.');
     if (d < today_() || (s.startMs && s.startMs < now_().getTime() && !staff)) throw new Error('That period has already started.');
-    if (!staff && tooSoon_(s, campus)) throw new Error('Appointments have to be made at least ' + conf.cutoffH + ' hours ahead. Ask the Testing Center if they can fit you in.');
+    if (!staff && tooSoon_(s, campus)) throw new Error(conf.cutoffH ? 'Appointments have to be made at least ' + conf.cutoffH + ' hours ahead. Ask the Testing Center if they can fit you in.' : 'That period has already started. Pick a later one.');
     if (!fits_(s, half)) return { full: true, slot: slotBrief_(s) };
     var mine = rows_('Appointments').filter(function (a) { return str_(a.sid) === sid && ACTIVE_APPT.test(a.status); });
     if (mine.some(function (a) { return day_(a.date) === d && str_(a.period) === period; })) throw new Error('You already have an appointment then.');
@@ -2547,7 +2551,7 @@ function api_clearPractice() {
 </script>
 </head>
 <body><div id="demoBar" style="position:sticky;top:0;z-index:60;background:#18203a;color:#fff;font:500 14px/1.4 system-ui,sans-serif;padding:8px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-<b>Demo · made-up students · nothing is saved</b><span style="opacity:.75">See it as:</span>
+<b>Demo · made-up students · nothing is saved</b><span style="background:#1a7f4b;border-radius:999px;padding:2px 10px">🔒 In the real app, all student data stays in a Google Sheet in the school’s Google account</span><span style="opacity:.75">See it as:</span>
 <a data-as="coord" style="color:#fff">Coordinator</a><a data-as="ncoord" style="color:#fff">North coordinator</a><a data-as="teacher" style="color:#fff">Teacher</a><a data-as="student" style="color:#fff">Student</a><a data-as="coord&amp;lock=1" style="color:#fff">Hub password screen</a>
 <span style="flex:1"></span><a href="./" style="color:#ffe066">← Tour</a></div>
 <script>(function(){var q=location.search;[].forEach.call(document.querySelectorAll('#demoBar a[data-as]'),function(a){a.href='demo.html?as='+a.getAttribute('data-as');if(q.indexOf('as='+a.getAttribute('data-as').split('&')[0])>=0&&(q.indexOf('lock=1')>=0)===(a.getAttribute('data-as').indexOf('lock')>=0))a.style.textDecoration='none',a.style.fontWeight='700';});})();</script>
@@ -2722,7 +2726,7 @@ function bkNext() {
 function bkSlot(day, p) {
   if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
   var time = '<div style="min-width:120px"><b>' + esc(p.label) + '</b><div class="small mute">' + hm(p.start) + '–' + hm(p.end) + '</div></div>';
-  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">Too soon to book (' + SH.cutoffH + ' hours ahead)</span></div>';
+  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">' + (SH.cutoffH ? 'Too soon to book (' + SH.cutoffH + ' hours ahead)' : 'Already started') + '</span></div>';
   var hint = p.conflict ? '<div class="small" style="color:var(--warn)">⚠ You have ' + esc(p.conflict) + '</div>' : p.have.length ? '<div class="small mute">You have ' + p.have.map(function (x) { return esc(x.course) + (x.half ? ' (' + x.half + ')' : ''); }).join(' / ') + '</div>' : '', warn = '';
   var btns = '';
   if (p.ab) {
@@ -3088,7 +3092,7 @@ function coDraft(id, send) { call(send ? 'api_sendDraft' : 'api_skipDraft', id).
 // ---------- D. Waitlist
 function coWaitlist() {
   var w = CO.dash.waitlist, ed = CO.dash.edit;
-  var out = '<div class="banner info small">Waitlist offers: <b>' + (CO.dash.conf.offerMode === 'auto' ? 'automatic' : 'coordinator approves first') + '</b> · ' + CO.dash.conf.offerHours + ' hour(s) to answer · inside the ' + CO.dash.conf.cutoffH + '-hour cutoff: ' + (CO.dash.conf.insideCutoff === 'ask' ? 'ask a coordinator' : 'offer anyway') + '. Change these on the Settings tab.</div>';
+  var out = '<div class="banner info small">Waitlist offers: <b>' + (CO.dash.conf.offerMode === 'auto' ? 'automatic' : 'coordinator approves first') + '</b> · ' + CO.dash.conf.offerHours + ' hour(s) to answer' + (CO.dash.conf.cutoffH ? ' · inside the ' + CO.dash.conf.cutoffH + '-hour cutoff: ' + (CO.dash.conf.insideCutoff === 'ask' ? 'ask a coordinator' : 'offer anyway') : ' · open seats are offered until the period starts') + '. Change these on the Settings tab.</div>';
   if (!w.length) return out + '<div class="card empty">No one is waiting.</div>';
   w.forEach(function (g) {
     var free = g.ab ? 'Open: A ' + Math.max(0, g.free.A) + ' · B ' + Math.max(0, g.free.B) : 'Open seats: ' + Math.max(0, g.free.all);
