@@ -467,7 +467,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.26'
+var VERSION = '2.27'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -3719,31 +3719,48 @@ function accomsFor_(email) {
 function api_saveIepPaste(email, p) {
   teacherOnly_(); email = low_(email); p = p || {};
   if (stuFind_(email).i < 0) throw new Error('Pick a student who is on the Students tab.');
-  var n = 0, nb = 0, na = 0;
+  var n = 0, nu = 0, nb = 0, na = 0, off = 0;
+  // 2.27: a newer IEP replaces the older one: same IEP goal number, same wording, or very similar wording → that goal is updated;
+  // goals from an earlier paste that aren't in this one are turned off (kept, with their check-ins). Student words and ratings stay.
+  var words = function (t) { var o = {}; low_(t).replace(/\b[a-z]{4,}\b/g, function (w) { o[w] = 1; }); return o; };
+  var sim = function (a, b) { var A = words(a), Bw = words(b), ka = Object.keys(A), kb = Object.keys(Bw); if (!ka.length || !kb.length) return 0; var c = ka.filter(function (w) { return Bw[w]; }).length; return c / Math.max(ka.length, kb.length); };
   locked_(function () {
+    var used = {};
     (p.goals || []).slice(0, 20).forEach(function (g) {
       var text = clean_(g.text, 3000); if (!text) return;
-      var have = goals_(email), same = have.filter(function (x) { return low_(x.text) === low_(text); })[0], gid;
-      if (same) gid = same.id; else if (!have[0].text && !have[0].kid && !have[0].code) gid = '';
+      var num = parseInt(g.num, 10), code = num ? 'IEP-' + num : '';
+      var have = goals_(email).filter(function (x) { return !used[x.id || 'main']; });
+      var same = have.filter(function (x) { return x.text && low_(x.text) === low_(text); })[0] || (code ? have.filter(function (x) { return x.code === code; })[0] : null) ||
+        have.filter(function (x) { return x.text && sim(x.text, text) >= 0.6; }).sort(function (a, b) { return sim(b.text, text) - sim(a.text, text); })[0] ||
+        // a goal imported from the spreadsheet (student words, no IEP wording yet): matched by what it's about
+        have.filter(function (x) { return !x.text && (x.kid || x.name) && sim(x.kid + ' ' + x.name + ' ' + x.success, text) >= 0.3; }).sort(function (a, b) { return sim(b.kid + ' ' + b.name + ' ' + b.success, text) - sim(a.kid + ' ' + a.name + ' ' + a.success, text); })[0];
+      var gid, all = goals_(email);
+      if (same) { gid = same.id; nu++; }
+      else if (!all[0].text && !all[0].kid && !all[0].code) gid = '';
       else { gid = Utilities.getUuid().slice(0, 8); sheet_('IEP goals').appendRow([gid, email, '', '', stamp_(), stamp_(), '', '']); if (ROWS_MEMO) delete ROWS_MEMO['IEP goals']; }
-      var f = { text: text, name: clean_(g.title, 80), here: g.here !== false }; if (clean_(g.kid, 600)) f.kid = clean_(g.kid, 600);
-      saveGoalCore_(email, gid, f); n++;
-      var old = rows_('IEP benchmarks').filter(function (r) { return low_(r[1]) === email && String(r[8] || '') === gid; }).map(function (r) { return low_(r[2]); });
-      (g.benchmarks || []).slice(0, 12).forEach(function (b) { b = clean_(b, 500); if (!b || old.indexOf(low_(b)) >= 0) return; sheet_('IEP benchmarks').appendRow([Utilities.getUuid().slice(0, 8), email, b, '', '', 'Working on it', today_(), stamp_(), gid]); nb++; });
-      if (ROWS_MEMO) delete ROWS_MEMO['IEP benchmarks'];
+      used[gid || 'main'] = true;
+      var f = { text: text, until: '' }; if (!(same && same.code && !/^IEP-/.test(same.code) && same.name)) f.name = clean_(g.title, 80);          // a spreadsheet goal keeps its title
+      if (!same) f.here = g.here !== false;
+      if (clean_(g.kid, 600) && !(same && same.kid)) f.kid = clean_(g.kid, 600);
+      saveGoalCore_(email, gid, f, same && same.code && !/^IEP-/.test(same.code) ? '' : code);
+      n++;
+      if (Array.isArray(g.benchmarks) && g.benchmarks.length) {          // this IEP's benchmarks replace the goal's old ones
+        rewrite_('IEP benchmarks', function (r) { return !(low_(r[1]) === email && String(r[8] || '') === gid); }, g.benchmarks.slice(0, 12).map(function (b) { nb++; return [Utilities.getUuid().slice(0, 8), email, clean_(b, 500), '', '', 'Working on it', today_(), stamp_(), gid]; }));
+      }
     });
+    if (n) goals_(email).forEach(function (x) { if (/^IEP-/.test(x.code) && !used[x.id || 'main'] && x.active) { saveGoalCore_(email, x.id, { until: addDays_(today_(), -1) }); off++; } });
     var add = (p.accoms || []).map(function (x) { return clean_(x, 160).replace(/;/g, ','); }).filter(String).slice(0, 30);
     if (add.length) {
-      var f2 = stuFind_(email), cur = p.accMode === 'replace' ? [] : String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
+      var f2 = stuFind_(email), cur = p.accMode === 'add' ? String(f2.rows[f2.i][SC.accoms] || '').split(';').map(function (x) { return x.trim(); }).filter(String) : [];
       add.forEach(function (x) { if (cur.map(low_).indexOf(low_(x)) < 0) { cur.push(x); na++; } });
       stuSet_(f2.i, 'accoms', cur.slice(0, 30).join('; '));
     }
     var ns = Array.isArray(p.services) && p.services.length ? saveServices_(email, p.services) : 0;
     if (clean_(p.testing, 200)) { var f3 = stuFind_(email); stuSet_(f3.i, 'testing', clean_(p.testing, 200)); }
-    logChange_('Pasted from an IEP', email, '', '', '', n + ' goals, ' + nb + ' benchmarks, ' + na + ' accommodations, ' + ns + ' services', '');
+    logChange_('Pasted from an IEP', email, '', '', '', n + ' goals (' + nu + ' updated, ' + off + ' turned off), ' + nb + ' benchmarks, ' + na + ' accommodations, ' + ns + ' services', '');
   });
   try { memo_(allGoals_); } catch (e) {}
-  return { goals: n, benchmarks: nb, accoms: na, services: Array.isArray(p.services) ? p.services.length : 0 };
+  return { goals: n, updated: nu, off: off, benchmarks: nb, accoms: na, services: Array.isArray(p.services) ? p.services.length : 0 };
 }
 // 2.22: related service minutes (from the IEP): students see them on their page; teachers edit them. list: [{ service, minutes, per, notes }]
 var SVC_PER = ['day', 'week', 'month', 'quarter', 'semester', 'year'];
@@ -8442,7 +8459,7 @@ function goalTabs() {
 }
 function svcHtml() {
   var l = EF.services || [], ar = EF.accRefl || [];
-  return '<div class="row" style="gap:8px;margin-top:12px;align-items:flex-end"><label class="grow"><span class="small"><b>🏫 Testing room</b> (the student sees this)</span><input type="text" id="tstT" value="' + esc(EF.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group"></label><button class="btn small" onclick="call(\'api_saveTesting\', TS_EMAIL, $(\'tstT\').value).then(function (t) { EF.testing = t; toast(\'Saved\'); }).catch(oops)">Save</button></div>' +
+  return '<div class="row" style="margin-top:12px"><button class="btn" onclick="ipOpen(TS_EMAIL)">📋 Paste from this student’s IEP</button><span class="small">goals, benchmarks, accommodations, testing room and services in one paste</span></div>' + '<div class="row" style="gap:8px;margin-top:12px;align-items:flex-end"><label class="grow"><span class="small"><b>🏫 Testing room</b> (the student sees this)</span><input type="text" id="tstT" value="' + esc(EF.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group"></label><button class="btn small" onclick="call(\'api_saveTesting\', TS_EMAIL, $(\'tstT\').value).then(function (t) { EF.testing = t; toast(\'Saved\'); }).catch(oops)">Save</button></div>' +
     '<details style="margin-top:12px"><summary><b>🧩 Related services</b> <span class="small" style="display:inline">(' + (l.length ? svcText(l).map(esc).join(' · ') : 'none yet') + '; the student sees these)</span></summary>' +
     '<p class="hint" style="margin:6px 0">One per line: service | minutes | day, week or month | notes (optional).</p><textarea id="svcT" style="min-height:70px" placeholder="Social work | 30 | week | group&#10;Special education | 225 | week">' + esc(l.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
     '<button class="btn primary small" style="margin-top:6px" onclick="svcSave()">Save services</button></details>' +
@@ -8948,17 +8965,24 @@ function ipOpen(email) {
   IP = { email: email || TS_EMAIL || '', res: null };
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'ipModal'; el.onclick = function (e) { if (e.target === el) el.remove(); };
   el.innerHTML = '<div class="card" style="max-width:900px"><div class="row"><h2 class="grow">📋 Paste from an IEP</h2><button class="btn link" onclick="$(\'ipModal\').remove()">✕ Close</button></div>' +
-    '<p class="hint" style="margin:2px 0 8px">Open the student’s IEP, copy the goals (with their benchmarks or objectives) and the accommodations, and paste them here. The app sorts them out on this page; nothing is sent anywhere. You check everything before it’s saved.</p>' +
+    '<p style="margin:2px 0 8px"><b>Open the IEP PDF, press Ctrl + A (select all), then Ctrl + C, and paste it all in the box (Ctrl + V).</b> One paste: the app finds the student, cleans out private information, and pulls out the goals with their benchmarks, accommodations, the testing room and related services. You check it once, then save. Nothing is sent anywhere.</p>' +
     '<div style="border:3px solid #c0392b;background:#fdecea;color:#7b1d14;border-radius:12px;padding:12px 14px;margin:6px 0 10px;font-size:16px"><b style="font-size:18px">⚠️ Teachers: if you are copying from an IEP PDF, student information is printed on the bottom of every page.</b><br>Remove last names and dates of birth before you save. The app also cleans what you paste right here on this page: it deletes lines with a date of birth, page footers and ID numbers, and changes the student’s name to initials. Always look it over.</div>' +
-    '<select id="ipStu" style="max-width:260px" onchange="ipClean()"><option value="">Pick the student…</option>' + st.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === IP.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
-    '<textarea id="ipT" onpaste="setTimeout(ipClean,0)" style="min-height:180px;margin-top:8px" placeholder="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
-    '<div id="ipClean" class="small" style="display:block;margin-top:4px"></div><div class="row" style="margin-top:8px"><button class="btn primary" onclick="ipSort()">Sort it</button></div><div id="ipOut"></div></div>';
+    '<select id="ipStu" style="max-width:260px" onchange="ipAuto()"><option value="">The app finds the student (or pick)…</option>' + st.map(function (x) { return '<option value="' + esc(x.email) + '"' + (x.email === IP.email ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' +
+    '<textarea id="ipT" onpaste="setTimeout(ipAuto,0)" style="min-height:140px;margin-top:8px" placeholder="Paste the whole IEP here (Ctrl + V)" data-example="Goal 1: Organization&#10;Given a planner, Jane will record her assignments…&#10;Benchmarks:&#10;1. By December, …&#10;2. By March, …&#10;&#10;Accommodations&#10;Extended time (1.5x)&#10;Preferential seating"></textarea>' +
+    '<div id="ipClean" class="small" style="display:block;margin-top:4px"></div><div class="row" style="margin-top:6px"><button class="btn small" onclick="ipAuto()">Sort it again</button><span class="small">It sorts by itself when you paste.</span></div><div id="ipOut"></div></div>';
   document.body.appendChild(el);
 }
 // 2.22: clean pasted IEP text on the page, before anything is saved: lines with a date of birth, page footers, ID numbers and
 // "Student name:" lines go; the student's name becomes initials ("Jane Smith" → "J.S.", "Jane" → "J."). Returns { text, lines, names }.
 function ipScrub(text, first, ini) {
-  var lines = 0, names = 0;
+  var lines = 0, names = 0, LASTS = {};
+  first = String(first || '').replace(/[^A-Za-z'-]/g, '');
+  if (first) {          // the last name, found first (before footers are removed), so it can be changed everywhere, even in "Parent: Jennifer Kent"
+    var I = String(ini || '').replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase(), m0, src = String(text || '');
+    var cap = new RegExp('\\b' + first + '\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z\'’-]{1,})', 'g');
+    while ((m0 = cap.exec(src))) if ((!I || m0[1].charAt(0).toUpperCase() === I) && !/^(Will|Is|Was|Has|And|The|To|In|Needs|Can|Did|Does|Should|May|Grade|Student|DOB)$/.test(m0[1])) LASTS[m0[1]] = true;
+    var rev = new RegExp('\\b([A-Z][A-Za-z\'’-]{1,}),\\s*' + first + '\\b', 'g'); while ((m0 = rev.exec(src))) if (!I || m0[1].charAt(0).toUpperCase() === I) LASTS[m0[1]] = true;
+  }
   var PII = /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\b|\bpage\s+\d+\s+of\s+\d+\b|\bstudent\s*(name|id|number|#)\s*:|\b(student\s+)?id\s*(#|no\.?|number)?\s*:?\s*\d{5,}\b|^\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/i;
   var FRAG = [/(?:[A-Z][A-Za-z'’-]+,?\s+){1,3}(?=(?:[Dd]\.?[Oo]\.?[Bb]\.?|[Dd]ate of [Bb]irth|[Bb]irth\s*[Dd]ate)(?![a-z]))/g, /\b(d\.?o\.?b\.?|date of birth|birth\s*date|birthday)\s*[:#-]?\s*\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/gi, /\bIEP Summary\s*Page\s+\d+\s+of\s+\d+(\s*IEP Summary)?/gi, /\bpage\s+\d+\s+of\s+\d+\b/gi,
     /\b(student\s+)?id\s*(#|no\.?|number)?\s*[:#]?\s*\d{5,}\b/gi, /\bstudent\s*name\s*:\s*[A-Z][\w'’-]+(\s+[A-Z][\w'’-]+){0,2}/g];
@@ -8967,12 +8991,8 @@ function ipScrub(text, first, ini) {
     if (PII.test(l)) { lines++; return false; } return true;
   }).map(function (l) { if (l.length <= 200) return l; FRAG.forEach(function (re) { l = l.replace(re, function () { lines++; return ' '; }); }); return l; }).join('\n');
   out = out.replace(/\b\d{1,2}[\/.-]\d{1,2}[\/.-](19|20)\d{2}\b(?=[^\n]*\b(born|dob|birth)\b)/gi, function () { names++; return '[date removed]'; });
-  first = String(first || '').replace(/[^A-Za-z'-]/g, '');
   if (first) {
-    var F = first.charAt(0).toUpperCase(), I = String(ini || '').replace(/[^A-Za-z]/g, '').charAt(0).toUpperCase(), lasts = {};
-    var cap = new RegExp('\\b' + first + '\\s+(?:[A-Z]\\.\\s+)?([A-Z][A-Za-z\'’-]{1,})', 'g'), m;
-    while ((m = cap.exec(out))) if ((!I || m[1].charAt(0).toUpperCase() === I) && !/^(Will|Is|Was|Has|And|The|To|In|Needs|Can|Did|Does|Should|May)$/.test(m[1])) lasts[m[1]] = true;
-    var rev = new RegExp('\\b([A-Z][A-Za-z\'’-]{1,}),\\s*' + first + '\\b', 'g'); while ((m = rev.exec(out))) if (!I || m[1].charAt(0).toUpperCase() === I) lasts[m[1]] = true;
+    var F = first.charAt(0).toUpperCase(), lasts = LASTS;
     Object.keys(lasts).forEach(function (L) {
       out = out.replace(new RegExp('\\b' + first + '\\s+(?:[A-Z]\\.\\s+)?' + L + '\\b', 'g'), function () { names++; return F + '.' + L.charAt(0) + '.'; })
         .replace(new RegExp('\\b' + L + ',\\s*' + first + '\\b', 'g'), function () { names++; return F + '.' + L.charAt(0) + '.'; })
@@ -8981,6 +9001,25 @@ function ipScrub(text, first, ini) {
     out = out.replace(new RegExp('\\b' + first + '(\'s|’s)?\\b', 'g'), function (x, sfx) { names++; return F + '.' + (sfx || ''); });
   }
   return { text: out, lines: lines, names: names };
+}
+// 2.27: which student this is, from the name in the paste (first name + last initial, or "Last, First"); only a single clear match
+function ipFindStudent(raw) {
+  var st = (TD && TD.students) || [], hits = [];
+  st.forEach(function (x) {
+    var p = String(x.name).split(' '), f = (p[0] || '').replace(/[^A-Za-z'-]/g, ''), ini = (p[1] || '').charAt(0); if (!f) return;
+    var full = new RegExp('\\b' + f + '\\s+(?:[A-Z]\\.?\\s+)?' + ini + '[A-Za-z\'’-]+', ''), rev = new RegExp('\\b' + ini + '[A-Za-z\'’-]+,\\s*' + f + '\\b'), once = new RegExp('\\b' + f + '\\b', 'g');
+    var n = (String(raw).match(once) || []).length, score = (ini && (full.test(raw) || rev.test(raw)) ? 100 : 0) + n;
+    if (n) hits.push({ email: x.email, score: score });
+  });
+  hits.sort(function (a, b) { return b.score - a.score; });
+  return hits.length && (hits.length === 1 || hits[0].score >= 100 && hits[1].score < 100) ? hits[0].email : '';
+}
+// paste → find the student → clean → sort, with no extra clicks
+function ipAuto() {
+  var t = $('ipT'); if (!t || !t.value.trim()) return;
+  if (!$('ipStu').value) { var e = ipFindStudent(t.value); if (e) $('ipStu').value = e; }
+  ipClean();
+  if ($('ipStu').value) ipSort(true); else setHtml('ipOut', '<p style="margin:10px 0;color:var(--down, #c0392b)"><b>Pick the student above</b> (the app couldn’t tell who this is), and it will sort it out.</p>');
 }
 function ipClean() {
   var t = $('ipT'); if (!t || !t.value.trim()) return;
@@ -8995,9 +9034,16 @@ function ipArea(t) { for (var i = 0; i < IP_AREAS.length; i++) if (IP_AREAS[i][0
 function ipKid(t, name) { var e = easyGoal(t, name); return /^I will /.test(e) ? 'I need to ' + e.slice(7) : /^I (can|am)/.test(e) ? e : 'I need to ' + e.charAt(0).toLowerCase() + e.slice(1); }
 function ipParseSummary(text) {
   var t = ' ' + String(text || '').replace(/\s+/g, ' ').replace(/IEP Summary\s*Page\s+\d+\s+of\s+\d+\s*(IEP Summary)?/gi, ' ').replace(/\s+IEP Summary\s+/g, ' ') + ' ';
-  var H = /\b(RELATED SERVICES|GOALS AND OBJECTIVES|EDUCATIONAL ACCOMMODATIONS AND SUPPORTS|ASSESSMENT ACCOMMODATIONS|ASSESSMENT|SPECIAL EDUCATION SERVICES|TRANSITION|PRESENT LEVELS[A-Z ]*|SUPPLEMENTARY AIDS[A-Z ,]*)\b/g, cuts = [], m;
-  while ((m = H.exec(t))) cuts.push({ name: m[1], at: m.index, end: m.index + m[1].length });
-  var sec = {}; cuts.forEach(function (c, i) { sec[c.name] = (sec[c.name] || '') + ' ' + t.slice(c.end, i + 1 < cuts.length ? cuts[i + 1].at : t.length); });
+  // 2.27: the whole IEP can be pasted: the sections we use (by their usual names), and any other ALL-CAPS heading just ends a section
+  var KNOWN = [['RELATED SERVICES', /^RELATED SERVICES$/], ['GOALS AND OBJECTIVES', /^(GOALS AND OBJECTIVES|(MEASURABLE )?ANNUAL GOALS?( AND (SHORT[- ]TERM )?OBJECTIVES| AND BENCHMARKS)?|GOALS)$/],
+    ['ASSESSMENT ACCOMMODATIONS', /^(ASSESSMENT|TESTING|TEST) ACCOMMODATIONS$/], ['EDUCATIONAL ACCOMMODATIONS AND SUPPORTS', /^(EDUCATIONAL ACCOMMODATIONS AND SUPPORTS|ACCOMMODATIONS( AND (MODIFICATIONS|SUPPORTS))?|CLASSROOM ACCOMMODATIONS|SUPPLEMENTARY AIDS.*)$/], ['ASSESSMENT', /^ASSESSMENTS?$/]];
+  var CAPS = /\b([A-Z][A-Z&\/,'’()-]*[A-Z)](?:\s+(?:AND|OF|THE|FOR|TO|IN|&|[A-Z][A-Z&\/,'’()-]*[A-Z)]))*)(?![a-z])/g, cuts = [], m;
+  while ((m = CAPS.exec(t))) {
+    var hd = m[1].replace(/\s+/g, ' ').trim(), k = KNOWN.filter(function (x) { return x[1].test(hd); })[0];
+    if (!k && (hd.length < 8 || !/\s/.test(hd))) continue;
+    cuts.push({ name: k ? k[0] : 'OTHER', at: m.index, end: m.index + m[1].length });
+  }
+  var sec = {}; cuts.forEach(function (c, i) { if (c.name === 'OTHER') return; sec[c.name] = (sec[c.name] || '') + ' ' + t.slice(c.end, i + 1 < cuts.length ? cuts[i + 1].at : t.length); });
   // related services: the date range that covers today (or the latest), then "Service - type 90 - Quarterly"
   var services = [], rs = sec['RELATED SERVICES'] || '';
   if (rs) {
@@ -9013,7 +9059,7 @@ function ipParseSummary(text) {
     var mm = /^(\d+)\s*-\s*(.+?)\s+(?:Goal Statement:\s*)?((?:By|Given|When|During|In|Upon|After|With)\b.*)$/i.exec(chunk.trim()); if (!mm) return;
     var parts = mm[3].split(/Benchmark\(s\)\s*or\s*Short[- ]Term\s*Objective\(s\)|Short[- ]Term Objectives?|Benchmarks?:/i);
     var bens = (parts[1] || '').split(/(?:^|\s)[A-H]\)\s*/).map(function (b) { return b.trim(); }).filter(function (b) { return b.length > 10; });
-    goals.push({ text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
+    goals.push({ num: +mm[1], text: parts[0].trim(), benchmarks: bens, area: mm[2].replace(/\s*Goal Statement:?\s*$/i, '').trim() });
   });
   // accommodations: a run-together list; "Accommodation -" and a new capital word after a lowercase one start an item; "- -" adds a detail
   var splitItems = function (txt) {
@@ -9051,7 +9097,7 @@ function ipTesting(t) {
   return bits.join(' · ');
 }
 function ipParse(text) {
-  if (/GOALS AND OBJECTIVES|Goal Statement:/.test(text)) return ipParseSummary(text);          // the IEP Summary layout
+  if (/GOALS AND OBJECTIVES|ANNUAL GOALS?|Goal Statement:|EDUCATIONAL ACCOMMODATIONS|RELATED SERVICES/.test(text)) return ipParseSummary(text);          // the IEP layout (whole document, or one run-together line)
   var raw = String(text || '').replace(/\r/g, '').split('\n'), lines = raw.map(function (l) { return l.replace(/\s+/g, ' ').trim(); });
   var goals = [], accs = [], mode = '', g = null, area = '';
   var ACC = /^(testing |classroom |instructional |presentation |response |setting |timing )?(accommodations?|supplementary aids|supports? for (the )?(student|school personnel)|modifications)\b/i;
@@ -9088,16 +9134,16 @@ function ipParse(text) {
 }
 function svcParse(t) { return String(t || '').split('\n').map(function (l) { var c = l.split('|').map(function (x) { return x.trim(); }); return c[0] ? { service: c[0], minutes: parseInt(c[1], 10) || 0, per: (c[2] || 'week').toLowerCase(), notes: c[3] || '' } : null; }).filter(Boolean); }
 function svcText(l) { return (l || []).map(function (x) { return x.service + ': ' + x.minutes + ' minutes a' + (x.per === 'hour' ? 'n ' : ' ') + (x.per || 'week'); }); }
-function ipSort() {
+function ipSort(auto) {
   IP.email = $('ipStu').value; if (!IP.email) return alert('Pick the student first.');
-  ipClean();
-  var r = ipParse($('ipT').value); if (!r.goals.length && !r.accoms.length && !r.services.length) return alert('No goals or accommodations found. Paste the goal text (with “will”) and an “Accommodations” heading above the accommodations.');
+  if (!auto) ipClean();
+  var r = ipParse($('ipT').value); if (!r.goals.length && !r.accoms.length && !r.services.length) return setHtml('ipOut', '<p style="margin:10px 0;color:var(--down, #c0392b)"><b>No goals, accommodations or services found.</b> Make sure the paste includes the goals section and the accommodations section of the IEP.</p>');
   var nm = (((TD && TD.students) || []).filter(function (x) { return x.email === IP.email; })[0] || {}).name || '';
   var F0 = String(nm).charAt(0);
   r.goals.forEach(function (g) { g.title = g.area && g.area !== 'Goal' ? g.area : ipArea(g.text);
     if (/self.?advoca/i.test(g.text) && !/advoca/i.test(g.title)) g.title += ' - Self-advocacy';          // the IEP title, plus what the goal is really about
     else if (/executive function|organi[sz]|planner|task initiation|initiat(e|ing) (the |a )?task/i.test(g.text) && !/executive|organi/i.test(g.title) && g.title !== 'Organization') g.title += ' - Executive functioning'; g.kid = ipKid(g.text.replace(new RegExp('\\b' + F0 + '\\.([A-Z]\\.)?(?=\\s)', 'g'), String(nm).split(' ')[0]), nm); g.keep = true; g.here = /self.?advoca|executive|organi[sz]|planner|initiat|on.task|time manag|work completion|missing (work|assignments)/i.test(g.title + ' ' + g.text); });
-  IP.res = r; IP.accKeep = r.accoms.map(function () { return true; }); IP.accMode = 'add'; ipDraw();
+  IP.res = r; IP.accKeep = r.accoms.map(function () { return true; }); IP.accMode = 'replace'; ipDraw();
 }
 function ipDraw() {
   var r = IP.res;
@@ -9108,15 +9154,16 @@ function ipDraw() {
       '<label style="display:block;margin-top:6px"><span class="small"><b>I need to… (first try: fix it)</b></span><textarea style="min-height:40px" oninput="IP.res.goals[' + i + '].kid=this.value">' + esc(g.kid) + '</textarea></label>' +
       '<label style="display:block;margin-top:6px"><span class="small"><b>Benchmarks / objectives</b> (one per line; kept for later, hidden in the app for now)</span><textarea style="min-height:50px" oninput="IP.res.goals[' + i + '].benchmarks=this.value.split(\'\\n\').map(function(x){return x.trim();}).filter(String)">' + esc(g.benchmarks.join('\n')) + '</textarea></label></div>'; }).join('') +
     '<h3 style="margin:14px 0 4px">Accommodations (' + r.accoms.length + ')</h3>' + (r.accoms.length ? r.accoms.map(function (a, i) { return '<label class="check" style="margin:2px 0"><input type="checkbox"' + (IP.accKeep[i] ? ' checked' : '') + ' onchange="IP.accKeep[' + i + ']=this.checked"><span>' + esc(a) + '</span></label>'; }).join('') +
-      '<div class="seg" style="margin-top:6px"><button class="' + (IP.accMode === 'add' ? 'on' : '') + '" onclick="IP.accMode=\'add\';ipDraw()">Add to their list</button><button class="' + (IP.accMode === 'replace' ? 'on' : '') + '" onclick="IP.accMode=\'replace\';ipDraw()">Replace their list</button></div>' : '<p class="small">None found.</p>') +
+      '<div class="seg" style="margin-top:6px"><button class="' + (IP.accMode === 'replace' ? 'on' : '') + '" onclick="IP.accMode=\'replace\';ipDraw()">Replace their list (newer IEP)</button><button class="' + (IP.accMode === 'add' ? 'on' : '') + '" onclick="IP.accMode=\'add\';ipDraw()">Add to their list</button></div>' : '<p class="small">None found.</p>') +
     '<h3 style="margin:14px 0 4px">🏫 Testing room</h3><p class="hint" style="margin:0 0 4px">What the student needs to know about where and how long they test. Fix anything.</p><input type="text" id="ipTest" value="' + esc(r.testing || '') + '" placeholder="Extended time (1.5x) · Reader · Small group">' +
     '<h3 style="margin:14px 0 4px">Related services (' + r.services.length + ')</h3><p class="hint" style="margin:0 0 4px">One per line: service | minutes | day, week or month | notes. The student sees these on their page. Saving replaces their list' + (r.services.length ? '' : ' (leave it empty to keep their list as it is)') + '.</p><textarea id="ipSvc" style="min-height:60px">' + esc(r.services.map(function (x) { return x.service + ' | ' + x.minutes + ' | ' + x.per + (x.notes ? ' | ' + x.notes : ''); }).join('\n')) + '</textarea>' +
-    '<p class="small" style="margin:12px 0 4px">Rating descriptions aren’t written here (they must fit each goal): add them on the student’s goal card, or with ⚙️ Settings › 🤖 IEP goal helper.</p>' +
+    '<p class="small" style="margin:12px 0 4px">Pasting a newer IEP for the same student updates their goals (matched by goal number or wording) instead of doubling them, keeps the student words and rating descriptions you wrote, and turns off goals from the older IEP that aren’t in this one (kept, not deleted).</p>' +
+    '<p class="small" style="margin:4px 0 4px">Rating descriptions aren’t written here (they must fit each goal): add them on the student’s goal card, or with ⚙️ Settings › 🤖 IEP goal helper.</p>' +
     '<button class="btn primary" onclick="ipSave()">💾 Save to the student</button>');
 }
 function ipSave() {
-  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
-  call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
+  var r = IP.res, p = { goals: r.goals.filter(function (g) { return g.keep; }).map(function (g) { return { num: g.num, text: g.text, title: g.title, kid: g.kid, here: g.here, benchmarks: g.benchmarks }; }), accoms: r.accoms.filter(function (a, i) { return IP.accKeep[i]; }), accMode: IP.accMode, services: svcParse($('ipSvc') ? $('ipSvc').value : ''), testing: $('ipTest') ? $('ipTest').value.trim() : '' };
+  call('api_saveIepPaste', IP.email, p).then(function (n) { $('ipModal').remove(); toast(n.goals + ' goal' + (n.goals === 1 ? '' : 's') + (n.updated ? ' (' + n.updated + ' updated' + (n.off ? ', ' + n.off + ' old turned off' : '') + ')' : '') + ', ' + n.benchmarks + ' benchmark' + (n.benchmarks === 1 ? '' : 's') + ', ' + n.accoms + ' accommodation' + (n.accoms === 1 ? '' : 's') + ', ' + n.services + ' service' + (n.services === 1 ? '' : 's') + ' saved'); EF = null; if (VIEW === 'tstudent' && TS_EMAIL === IP.email) openStudent(IP.email); }).catch(oops);
 }
 var GI_ROWS = null, GI_STU = [];
 function giOpen() {
