@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.178';
+var VERSION = '4.179';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -6651,9 +6651,10 @@ function api_pushList(auth) {
   needFeat_('push', 'Push to students');
   var st = static_(), sh = stuSheet_(), H = stuHead_(sh), names = {}, size = {};
   rows_(sh, 2, H.n).forEach(function (v) { var e = str_(v[H.Email]).toLowerCase(), c = str_(v[H.Class]); if (e) { names[e] = str_(v[H.Name]); size[c] = (size[c] || 0) + 1; size[''] = (size[''] || 0) + 1; } });
+  var allP = PropertiesService.getDocumentProperties().getProperties(), got = function (k) { var v = parse_(allP[k], {}); return v && typeof v === 'object' ? v : {}; };      /* 4.179 one read for every post's views and votes (was two reads per post) */
   return { pollTok: st.settings.pollTok, classes: st.classes.map(function (c) { return c.name; }), list: pushAll_().slice().reverse().map(function (p) {
-    var seen = Object.keys(pushSeen_(p.id)).length, out = { id: p.id, kind: p.kind, text: p.text, title: p.title || '', url: p.url || '', opts: p.opts || [], cls: p.cls || '', t: p.t, open: !!p.open, showRes: !!p.showRes, tok: num_(p.tok), seen: seen, of: size[p.cls || ''] || 0 };
-    if (p.kind === 'poll') { var v = pushVotes_(p.id); out.counts = out.opts.map(function () { return 0; }); out.who = out.opts.map(function () { return []; }); Object.keys(v).forEach(function (e) { if (out.counts[v[e]] !== undefined) { out.counts[v[e]]++; out.who[v[e]].push(names[e] || e); } }); out.votes = Object.keys(v).length; }
+    var seen = Object.keys(got('pz:' + p.id)).length, out = { id: p.id, kind: p.kind, text: p.text, title: p.title || '', url: p.url || '', opts: p.opts || [], cls: p.cls || '', t: p.t, open: !!p.open, showRes: !!p.showRes, tok: num_(p.tok), seen: seen, of: size[p.cls || ''] || 0 };
+    if (p.kind === 'poll') { var v = got('pv:' + p.id); out.counts = out.opts.map(function () { return 0; }); out.who = out.opts.map(function () { return []; }); Object.keys(v).forEach(function (e) { if (out.counts[v[e]] !== undefined) { out.counts[v[e]]++; out.who[v[e]].push(names[e] || e); } }); out.votes = Object.keys(v).length; }
     return out;
   }) };
 }

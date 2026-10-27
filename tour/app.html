@@ -1362,7 +1362,7 @@ div.sts { cursor: default }
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.178';
+var VERSION = '4.179';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8004,9 +8004,10 @@ function api_pushList(auth) {
   needFeat_('push', 'Push to students');
   var st = static_(), sh = stuSheet_(), H = stuHead_(sh), names = {}, size = {};
   rows_(sh, 2, H.n).forEach(function (v) { var e = str_(v[H.Email]).toLowerCase(), c = str_(v[H.Class]); if (e) { names[e] = str_(v[H.Name]); size[c] = (size[c] || 0) + 1; size[''] = (size[''] || 0) + 1; } });
+  var allP = PropertiesService.getDocumentProperties().getProperties(), got = function (k) { var v = parse_(allP[k], {}); return v && typeof v === 'object' ? v : {}; };      /* 4.179 one read for every post's views and votes (was two reads per post) */
   return { pollTok: st.settings.pollTok, classes: st.classes.map(function (c) { return c.name; }), list: pushAll_().slice().reverse().map(function (p) {
-    var seen = Object.keys(pushSeen_(p.id)).length, out = { id: p.id, kind: p.kind, text: p.text, title: p.title || '', url: p.url || '', opts: p.opts || [], cls: p.cls || '', t: p.t, open: !!p.open, showRes: !!p.showRes, tok: num_(p.tok), seen: seen, of: size[p.cls || ''] || 0 };
-    if (p.kind === 'poll') { var v = pushVotes_(p.id); out.counts = out.opts.map(function () { return 0; }); out.who = out.opts.map(function () { return []; }); Object.keys(v).forEach(function (e) { if (out.counts[v[e]] !== undefined) { out.counts[v[e]]++; out.who[v[e]].push(names[e] || e); } }); out.votes = Object.keys(v).length; }
+    var seen = Object.keys(got('pz:' + p.id)).length, out = { id: p.id, kind: p.kind, text: p.text, title: p.title || '', url: p.url || '', opts: p.opts || [], cls: p.cls || '', t: p.t, open: !!p.open, showRes: !!p.showRes, tok: num_(p.tok), seen: seen, of: size[p.cls || ''] || 0 };
+    if (p.kind === 'poll') { var v = got('pv:' + p.id); out.counts = out.opts.map(function () { return 0; }); out.who = out.opts.map(function () { return []; }); Object.keys(v).forEach(function (e) { if (out.counts[v[e]] !== undefined) { out.counts[v[e]]++; out.who[v[e]].push(names[e] || e); } }); out.votes = Object.keys(v).length; }
     return out;
   }) };
 }
@@ -12745,11 +12746,15 @@ window.addEventListener('message', e => {
 });
 /* ───────── push to students: messages, links and polls ─────────
    The teacher posts; students' apps check about every 30 seconds and show it as a pop-up, never in the middle of a game or a round. */
-VIEW.push = () => { S.psh = S.psh || { kind: 'msg', cls: '', opts: ['', ''], showRes: true }; call('api_pushList', AUTH).then(d => { S.pshData = d; if (S.view === 'push') paintPush(); }).catch(e => toast(e.message));
+/* 4.179 (Colleen: "the drop down to select which class to send a question to never loads"): the form, with its class list (already known), is drawn at once;
+   only the list of what was sent waits for the server, and if that fails it says so with Try again instead of a spinner forever */
+const pushLoad = () => { S.pshErr = ''; call('api_pushList', AUTH).then(d => { S.pshData = d; if (S.view === 'push') paintPush(); }).catch(e => { S.pshErr = e.message || 'No answer'; if (S.view === 'push') paintPush(); }); };
+ACT.pshretry = () => { S.pshErr = ''; const l = $('#pshlist2'); if (l) l.innerHTML = '<div class="splash"><div class="spin"></div></div>'; pushLoad(); };
+VIEW.push = () => { S.psh = S.psh || { kind: 'msg', cls: '', opts: ['', ''], showRes: true }; pushLoad(); setTimeout(paintPush, 0);
   clearInterval(S.boardT); S.boardT = setInterval(() => { if (S.view === 'push' && !document.hidden) call('api_pushList', AUTH).then(d => { S.pshData = d; const l = $('#pshlist2'); if (l) { l.innerHTML = pushListHtml(); hydrate(l); } }).catch(() => {}); }, 8000);      /* poll results come in live */
-  return `<div class="stack"><div class="row"><div class="grow"><p class="eyebrow">Teacher</p><h1>Push to Students</h1></div></div>${teachNav('push')}<div id="pshbody"><div class="splash"><div class="spin"></div></div></div></div>`; };
+  return `<div class="stack"><div class="row"><div class="grow"><p class="eyebrow">Teacher</p><h1>Push to Students</h1></div></div>${teachNav('push')}<div id="pshbody"></div></div>`; };
 function paintPush() {
-  const g = S.psh, d = S.pshData, b = $('#pshbody'); if (!b || !d) return;
+  const g = S.psh, b = $('#pshbody'); if (!b) return; const d = S.pshData || { classes: (S.d.classes || []).map(c => c.name), pollTok: (S.set && S.set.pollTok) || 0, list: null };
   b.innerHTML = `<div class="stack"><form class="card stack" data-f="pshsend" style="gap:10px">
       <div class="seg">${[['msg', '💬 Message'], ['link', '🔗 Link'], ['poll', '📊 Poll']].map(k => `<button type="button" class="${g.kind === k[0] ? 'on' : ''}" data-a="pshkind" data-k="${k[0]}">${k[1]}</button>`).join('')}</div>
       <label class="field" for="pshcls">Send to<select id="pshcls"><option value="">Everyone</option>${d.classes.map(c => `<option${g.cls === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
@@ -12763,7 +12768,10 @@ function paintPush() {
   hydrate(b);
 }
 function pushListHtml() {
-  const d = S.pshData; if (!d || !d.list.length) return '<p class="muted">Nothing sent yet.</p>';
+  const d = S.pshData;
+  if (!d && S.pshErr) return `<div class="card stack" style="gap:8px"><p style="margin:0">⚠️ Your earlier messages and polls didn’t load (${esc(S.pshErr)}). You can still send a new one above.</p><button class="btn alt sm" data-a="pshretry" style="align-self:flex-start">↻ Try again</button></div>`;
+  if (!d) return '<div class="row" style="gap:8px;align-items:center"><div class="spin" style="margin:0"></div><span class="muted">Loading what you’ve sent…</span></div>';
+  if (!d.list.length) return '<p class="muted">Nothing sent yet.</p>';
   return `<div class="stack">${d.list.map(p => { const when = new Date(p.t), tm = when.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const res = p.kind === 'poll' ? `<div class="stack" style="gap:6px">${p.opts.map((o, i) => { const pct = p.votes ? Math.round(100 * p.counts[i] / p.votes) : 0; return `<div><div class="row small"><b class="grow">${esc(o)}</b><span>${p.counts[i]} · ${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div>${p.who[i].length ? `<p class="small muted" style="margin:2px 0 0">${esc(p.who[i].join(', '))}</p>` : ''}</div>`; }).join('')}</div>` : '';
     return `<section class="card stack" style="gap:8px${p.open ? '' : ';opacity:.75'}"><div class="row" style="flex-wrap:wrap"><span class="pill">${p.kind === 'poll' ? '📊 Poll' : p.kind === 'link' ? '🔗 Link' : '💬 Message'}</span><span class="small muted grow">${esc(p.cls || 'Everyone')} · ${esc(tm)}${p.kind === 'poll' && p.tok ? ` · ${p.tok} ${esc(S.set.tok)} for voting` : ''}</span>${p.open ? '<span class="pill good">Showing</span>' : '<span class="pill">Closed</span>'}</div>
