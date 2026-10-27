@@ -6,12 +6,21 @@
 <title>Testing Center demo</title><meta name="robots" content="noindex"><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
 <style>
 :root { --bg: #f4f6f9; --card: #fff; --ink: #1d2433; --mute: #5f6b7e; --line: #e2e7ef; --line2: #cfd7e3; --soft2: #f4f6fa; --brand: #1f5fbf; --brand2: #e8f0fc; --onbrand: #fff; --ok: #1a7f4b; --okbg: #e3f5eb; --warn: #9a6200; --warnbg: #fff3d6; --bad: #b42318; --badbg: #fde7e5; --info: #5b3fb5; --infobg: #efeafd; --toast: #1d2433; --toastink: #fff; --r: 10px; }
-/* color modes (🎨 at the top; remembered on this device) */
-:root[data-look="dark"] { --bg: #0f131c; --card: #181e2b; --ink: #e8ecf4; --mute: #9aa6ba; --line: #2a3346; --line2: #3a4660; --soft2: #1e2534; --brand: #7aa7ff; --brand2: #1d2b4a; --onbrand: #0b1020; --ok: #5fd39a; --okbg: #12352a; --warn: #f0c060; --warnbg: #3a2e10; --bad: #ff8a80; --badbg: #3d1a1a; --info: #c2b2ff; --infobg: #2a2347; --toast: #e8ecf4; --toastink: #0f131c; color-scheme: dark; }
-:root[data-look="contrast"] { --bg: #fff; --card: #fff; --ink: #000; --mute: #1f1f1f; --line: #000; --line2: #000; --soft2: #f0f0f0; --brand: #0033cc; --brand2: #dce4ff; --onbrand: #fff; --ok: #005c1f; --okbg: #d6f5df; --warn: #6b4100; --warnbg: #ffe8a8; --bad: #a30000; --badbg: #ffd9d6; --info: #3a1f99; --infobg: #e6dcff; --toast: #000; --toastink: #fff; }
-:root[data-look="contrast"] .btn, :root[data-look="contrast"] .card, :root[data-look="contrast"] .slot, :root[data-look="contrast"] .chip { border-width: 2px; } :root[data-look="contrast"] body { font-size: 16.5px; }
-:root[data-look="calm"] { --bg: #edf5f1; --card: #fbfdfc; --ink: #1d2b26; --mute: #5a6e66; --line: #d5e6dd; --line2: #b9d2c5; --soft2: #f1f8f4; --brand: #2f7a5f; --brand2: #dcefe6; --onbrand: #fff; --ok: #237a4a; --okbg: #dff3e6; --warn: #8a5c00; --warnbg: #fbefcf; --bad: #b0382c; --badbg: #fbe3df; --info: #4f5aa8; --infobg: #e7e9f9; --toast: #1d2b26; --toastink: #fff; }
+/* color modes (🎨 at the top; the same set as the Hall Pass Kiosk and Resource Check-In; remembered on this device).
+   Meanings never change: --bad red = missing / no-show, --warn amber = check / arrived, --ok green = ready / done, --brand = testing, --info = waitlist and offers. */
+:root[data-look="calmroom"] { --bg: #f7f2ea; --card: #fffdf9; --ink: #2f2a26; --mute: #6f655b; --line: #e8dfd2; --line2: #d5c8b6; --soft2: #f3ece2; --brand: #2f6f73; --brand2: #dcecec; --onbrand: #fff; --ok: #2e7d5b; --okbg: #dff1e7; --warn: #9a6a12; --warnbg: #fbefcf; --bad: #c0392b; --badbg: #f9e0dd; --info: #6a4c9c; --infobg: #ece4f6; --toast: #2f2a26; --toastink: #fff; }
+:root[data-look="night"] { --bg: #0f172a; --card: #1e293b; --ink: #f8fafc; --mute: #cbd5e1; --line: #334155; --line2: #475569; --soft2: #273449; --brand: #93c5fd; --brand2: #1e3a5f; --onbrand: #0f172a; --ok: #4ade80; --okbg: #14532d; --warn: #fbbf24; --warnbg: #4a3410; --bad: #f87171; --badbg: #5b1d1d; --info: #c4b5fd; --infobg: #3b2a66; --toast: #f8fafc; --toastink: #0f172a; color-scheme: dark; }
+:root[data-look="contrast"] { --bg: #ffffff; --card: #ffffff; --ink: #000000; --mute: #262626; --line: #000000; --line2: #000000; --soft2: #f2f2f2; --brand: #0033cc; --brand2: #dde4ff; --onbrand: #fff; --ok: #006b2d; --okbg: #c8f5d6; --warn: #7a5200; --warnbg: #ffe08a; --bad: #b00000; --badbg: #ffd0cc; --info: #4b1fa8; --infobg: #e6dcff; --toast: #000; --toastink: #fff; }
+:root[data-look="neon"] { --bg: #07060f; --card: #120f24; --ink: #f5f3ff; --mute: #b9b3d9; --line: #2e2650; --line2: #3d3566; --soft2: #1c1736; --brand: #00f0ff; --brand2: #0b2e3a; --onbrand: #07060f; --ok: #39ff14; --okbg: #0f2e14; --warn: #ffe600; --warnbg: #2e2a06; --bad: #ff3b5c; --badbg: #3a0f1c; --info: #ff2ec4; --infobg: #33102b; --toast: #f5f3ff; --toastink: #07060f; color-scheme: dark; }
+:root[data-look="pastelnight"] { --bg: #1e1b2e; --card: #2a2640; --ink: #fbf7ff; --mute: #c9c1df; --line: #3d3758; --line2: #4b4470; --soft2: #332e4d; --brand: #a0d8ef; --brand2: #2f3e52; --onbrand: #1e1b2e; --ok: #a8e6cf; --okbg: #2d4a43; --warn: #ffd3b6; --warnbg: #4d3d36; --bad: #ff8a8a; --badbg: #4d2a2e; --info: #ffaacb; --infobg: #4d3044; --toast: #fbf7ff; --toastink: #1e1b2e; color-scheme: dark; }
+:root[data-look="ocean"] { --bg: #031722; --card: #0b3447; --ink: #ecfeff; --mute: #a5d8e6; --line: #155068; --line2: #1d6380; --soft2: #0f4158; --brand: #5eead4; --brand2: #0f4a4a; --onbrand: #031722; --ok: #86efac; --okbg: #14432c; --warn: #fcd34d; --warnbg: #4a3f17; --bad: #ff8a8a; --badbg: #4a1d22; --info: #f9a8d4; --infobg: #4a2240; --toast: #ecfeff; --toastink: #031722; color-scheme: dark; }
+:root[data-look="sunset"] { --bg: #ffd8c4; --card: #fffaf8; --ink: #3b2140; --mute: #7a5470; --line: #f2cfd6; --line2: #e4b5bf; --soft2: #fff0ea; --brand: #b4436c; --brand2: #fbe0ea; --onbrand: #fff; --ok: #2f8a5f; --okbg: #dff3e6; --warn: #a65d00; --warnbg: #ffe9c7; --bad: #c92a2a; --badbg: #ffdcdc; --info: #7b3fa8; --infobg: #efe2fa; --toast: #3b2140; --toastink: #fff; }
+:root[data-look="candy"] { --bg: #fff0f6; --card: #ffffff; --ink: #3d1f33; --mute: #8a5a78; --line: #ffd1e6; --line2: #f5b3d2; --soft2: #fff5fa; --brand: #e0479e; --brand2: #ffe0ef; --onbrand: #fff; --ok: #12a67a; --okbg: #d5f7ea; --warn: #b45f06; --warnbg: #fff1c9; --bad: #d62828; --badbg: #ffe0e0; --info: #7a3fd1; --infobg: #efe5ff; --toast: #3d1f33; --toastink: #fff; }
 :root[data-look="warm"] { --bg: #faf4ec; --card: #fffdf9; --ink: #2b2118; --mute: #75624f; --line: #ecdfcf; --line2: #dcc8b0; --soft2: #fbf6ef; --brand: #b5561f; --brand2: #f8e6d8; --onbrand: #fff; --ok: #3d7a2a; --okbg: #e6f2dc; --warn: #8a5300; --warnbg: #fdedc8; --bad: #b42318; --badbg: #fbe1dc; --info: #7a3f99; --infobg: #f2e5f8; --toast: #2b2118; --toastink: #fff; }
+@media (prefers-color-scheme: dark) { :root[data-look="auto"] { --bg: #0f172a; --card: #1e293b; --ink: #f8fafc; --mute: #cbd5e1; --line: #334155; --line2: #475569; --soft2: #273449; --brand: #93c5fd; --brand2: #1e3a5f; --onbrand: #0f172a; --ok: #4ade80; --okbg: #14532d; --warn: #fbbf24; --warnbg: #4a3410; --bad: #f87171; --badbg: #5b1d1d; --info: #c4b5fd; --infobg: #3b2a66; --toast: #f8fafc; --toastink: #0f172a; color-scheme: dark; } }
+:root[data-look="neon"] body { background: radial-gradient(circle at 20% 0%, #1a0b2e 0%, #07060f 55%) fixed; } :root[data-look="neon"] .logo, :root[data-look="neon"] h1 { text-shadow: 0 0 10px rgba(0, 240, 255, .55); }
+:root[data-look="ocean"] body { background: linear-gradient(180deg, #072a3a 0%, #031722 100%) fixed; } :root[data-look="sunset"] body { background: linear-gradient(160deg, #ffd8b8 0%, #ffc2c7 45%, #d9c4f2 100%) fixed; }
+:root[data-look="contrast"] .btn, :root[data-look="contrast"] .card, :root[data-look="contrast"] .slot, :root[data-look="contrast"] .chip { border-width: 2px; }
 body { background: var(--bg); color: var(--ink); }
 * { box-sizing: border-box; }
 body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
@@ -43,7 +52,7 @@ h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 0 0 10px;
 .seg button { border: 0; background: var(--card); padding: 6px 12px; cursor: pointer; }
 .seg button.on { background: var(--brand); color: var(--onbrand); }
 .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--soft2); color: var(--mute); white-space: nowrap; }
-.chip.ok { background: var(--okbg); color: var(--ok); } .chip.warn { background: var(--warnbg); color: var(--warn); } .chip.bad { background: var(--badbg); color: var(--bad); } .chip.info { background: var(--infobg); color: var(--info); } .chip.blue { background: var(--brand2); color: var(--brand); }
+.chip.ok { background: var(--okbg); color: var(--ok); } tr.needs td:first-child { box-shadow: inset 4px 0 0 var(--bad); } .chip.warn { background: var(--warnbg); color: var(--warn); } .chip.bad { background: var(--badbg); color: var(--bad); } .chip.info { background: var(--infobg); color: var(--info); } .chip.blue { background: var(--brand2); color: var(--brand); }
 .mute { color: var(--mute); } .small { font-size: 13px; } .tiny { font-size: 12px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .stack > * + * { margin-top: 10px; }
@@ -255,7 +264,7 @@ body.withside .wrap { margin-right: 240px; }
         return { getBody: function () { return body; }, saveAndClose: function () {}, getId: function () { return 'DOC1'; }, getName: function () { return name; }, getUrl: function () { return 'https://docs.google.com/document/d/EXAMPLE'; } }; } },
       ScriptApp: { getScriptId: function () { return seed.scriptId || 'TEMPLATE'; }, WeekDay: { FRIDAY: 'FRIDAY' }, getService: function () { return { getUrl: function () { return 'https://script.google.com/macros/s/APP/exec'; } }; },
         getProjectTriggers: function () { return (state.triggers = state.triggers || []).slice(); }, deleteTrigger: function (t) { state.triggers = (state.triggers || []).filter(function (x) { return x !== t; }); },
-        newTrigger: function (fn) { var t = { fn: fn, getHandlerFunction: function () { return fn; } }, b = { timeBased: function () { return b; }, everyDays: function (n) { t.days = n; return b; }, onWeekDay: function (d) { t.day = d; return b; }, atHour: function (h) { t.hour = h; return b; }, everyMinutes: function (m) { t.every = m; return b; }, create: function () { state.triggers = (state.triggers || []).concat([t]); return t; } }; return b; } },
+        newTrigger: function (fn) { var t = { fn: fn, getHandlerFunction: function () { return fn; } }, b = { timeBased: function () { return b; }, everyDays: function (n) { t.days = n; return b; }, onWeekDay: function (d) { t.day = d; return b; }, atHour: function (h) { t.hour = h; return b; }, nearMinute: function (m) { t.minute = m; return b; }, everyMinutes: function (m) { t.every = m; return b; }, create: function () { state.triggers = (state.triggers || []).concat([t]); return t; } }; return b; } },
       MailApp: { getRemainingDailyQuota: function () { return 100; }, sendEmail: function (to, subj, text, opt) { state.mail = (state.mail || []).concat([{ to: to, subj: subj, text: text, html: opt && opt.htmlBody, files: opt && opt.attachments, inline: opt && opt.inlineImages, replyTo: opt && opt.replyTo }]); } },
       HtmlService: { createHtmlOutputFromFile: function () { return chain({}); }, createHtmlOutput: function (h) { state.lastHtml = h; return chain({}); } }
     };
@@ -266,9 +275,9 @@ body.withside .wrap { margin-right: 240px; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
-// Other server files: IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
+// Other server files: TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.10';
+var VERSION = '0.12';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -288,7 +297,7 @@ var TABLES = {
   Assessments: [['id', 'ID'], ['year', 'School year'], ['campus', 'Campus'], ['tid', 'Staff ID'], ['secids', 'Section IDs'], ['course', 'Course'], ['name', 'Test name'], ['format', 'Format'], ['platform', 'Platform'], ['minutes', 'Time limit'], ['form', 'Instructions'], ['code', 'Access code'], ['paper', 'Paper status'], ['updated', 'Updated'], ['by', 'Updated by']],
   'Teacher Defaults': [['tid', 'Staff ID'], ['course', 'Course'], ['format', 'Format'], ['platform', 'Platform'], ['form', 'Instructions'], ['updated', 'Updated']],
   Resources: [['id', 'ID'], ['tid', 'Staff ID'], ['type', 'Type'], ['title', 'Title'], ['link', 'Link'], ['courses', 'Courses'], ['year', 'School year'], ['expires', 'Expires'], ['active', 'Active'], ['by', 'Added by']],
-  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes']],
+  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show']],
   Sessions: [['id', 'ID'], ['appt', 'Appointment ID'], ['inAt', 'Checked in'], ['start', 'Started'], ['end', 'Ended'], ['outcome', 'Outcome'], ['note', 'Note'], ['by', 'Staff'], ['desk', 'Desk']],
   Rooms: [['campus', 'Campus'], ['name', 'Room'], ['chart', 'Chart'], ['updated', 'Updated'], ['by', 'By']],
   'Seating Layouts': [['name', 'Name'], ['chart', 'Chart'], ['updated', 'Updated']],
@@ -322,6 +331,11 @@ var DEFAULTS = [
   ['Missing-material emails', 'Review first', 'Review first', 'Off, Review first (drafts wait on the dashboard), or Automatic.'],
   ['Missing-material reminder', 'School day before', 'School day before', 'When the reminder goes out: School day before, or 2 school days before.'],
   ['Teacher emails for co-taught classes', 'Primary teacher', 'Primary teacher', 'Primary teacher, All teachers, or Testing contact (falls back to the primary teacher).'],
+  ['Start the test clock when a student arrives', 'Yes', 'Yes', 'Yes: “Arrived” checks the student in and starts their testing time; “Check out” ends it. No: a separate Start button.'],
+  ['Mark students who never arrived as no-shows', 'At 3:30', 'At 3:30', 'At 3:30: students still not checked in are marked no-shows just before the 3:30 emails. When the period ends: 10 minutes after their period. Off: only by hand.'],
+  ['No-show email to students', 'On', 'On', 'On: at 3:30 a student who missed their appointment gets an email (rebook, or tell us to save or toss the test).'],
+  ['Student reminder the school day before', 'On', 'On', 'On: students get a reminder at 3:30 the school day before, with a link to cancel.'],
+  ['Student reminder the morning of', 'On', 'On', 'On: students get a reminder at 6 AM on the day, with a link to cancel.'],
   ['Completion emails to teachers', 'On', 'On', 'On: the teacher gets an email when a student finishes (from the Done button).'],
   ['Email teachers when a student books', 'On', 'On', 'On: the teacher gets an email when one of their students books (or takes a waitlist seat) for their class.'],
   ['Email teachers about no-shows', 'On', 'On', 'On: the teacher gets an email when their student is marked a no-show.'],
@@ -449,7 +463,7 @@ function campusConf_(c) {
     offerHours: settingNum_('Hours to answer a waitlist offer', c, 1), quiet: setting_('Quiet hours', c), insideCutoff: /allow/i.test(setting_('Offers inside the booking cutoff', c)) ? 'allow' : 'ask',
     dropoff: setting_('Paper test drop-off locations', c), materials: (function (v) { return /auto/i.test(v) ? 'auto' : /off/i.test(v) ? 'off' : 'review'; })(setting_('Missing-material emails', c)),
     materialsDays: /2/.test(setting_('Missing-material reminder', c)) ? 2 : 1, coteach: (function (v) { return /all/i.test(v) ? 'all' : /contact/i.test(v) ? 'contact' : 'primary'; })(setting_('Teacher emails for co-taught classes', c)),
-    completion: yes_(setting_('Completion emails to teachers', c)), tBook: yes_(setting_('Email teachers when a student books', c)), tNoShow: yes_(setting_('Email teachers about no-shows', c)), tCancel: yes_(setting_('Email teachers when an appointment is canceled', c)), confirm: yes_(setting_('Student confirmation emails', c)), securly: /csv/i.test(setting_('Securly export', c)) ? 'csv' : 'list',
+    completion: yes_(setting_('Completion emails to teachers', c)), tBook: yes_(setting_('Email teachers when a student books', c)), arriveStart: !/^(no|n|off)$/i.test(setting_('Start the test clock when a student arrives', c)), autoNoShow: (function (v) { return /period/i.test(v) ? 'period' : /off|no/i.test(v) ? 'off' : '330'; })(setting_('Mark students who never arrived as no-shows', c)), nsEmail: yes_(setting_('No-show email to students', c)), remind1: yes_(setting_('Student reminder the school day before', c)), remind0: yes_(setting_('Student reminder the morning of', c)), tNoShow: yes_(setting_('Email teachers about no-shows', c)), tCancel: yes_(setting_('Email teachers when an appointment is canceled', c)), confirm: yes_(setting_('Student confirmation emails', c)), securly: /csv/i.test(setting_('Securly export', c)) ? 'csv' : 'list',
     email: setting_('Testing Center email', c), bellplus: /^https:\/\/[^\s"'<>]+$/.test(setting_('Bell.plus link', c)) ? setting_('Bell.plus link', c) : 'https:' + '/' + '/bell.plus/' };
 }
 function domain_() { return setting_('School email domain', 'S') || 'd204.lths.net'; }
@@ -601,7 +615,8 @@ function setupSheet() {
   }
   if (!rows_('Testing Periods').length) insertMany_('Testing Periods', samplePeriods_());
   if (!rows_('Bell Schedules').length) insertMany_('Bell Schedules', sampleBells_());
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'tick' || t.getHandlerFunction() === 'morning') ScriptApp.deleteTrigger(t); });
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'tick' || t.getHandlerFunction() === 'morning' || t.getHandlerFunction() === 'afternoon') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('afternoon').timeBased().everyDays(1).atHour(15).nearMinute(30).create();          // 3:30: no-shows marked and emailed, tomorrow's reminders
   ScriptApp.newTrigger('tick').timeBased().everyMinutes(10).create();          // expires waitlist offers and passes the seat on
   ScriptApp.newTrigger('morning').timeBased().everyDays(1).atHour(6).create();          // missing-material reminders for the next school day
   PropertiesService.getDocumentProperties().setProperty('setupVer', VERSION);
@@ -1406,7 +1421,17 @@ function expireOffers_() {          // inside locked_(): every offer past its ti
   rows_('Waitlist').forEach(function (x) { if (/^waiting/i.test(x.status) && day_(x.date) < today_()) update_('Waitlist', x, { status: 'Closed', changed: iso_() }); });
   Object.keys(touched).forEach(function (k) { var p = k.split('|'); offerOpenSeats_(p[0], p[1], p[2]); });
 }
-function tick() { locked_(function () { expireOffers_(); }); }          // every 10 minutes
+function tick() { locked_(function () { expireOffers_(); CAMPUSES.forEach(function (c) { if (campusConf_(c).autoNoShow === 'period') markNoShows_(c, today_()); }); }); }          // every 10 minutes
+function afternoon() {          // about 3:30 PM
+  locked_(function () {
+    CAMPUSES.forEach(function (c) {
+      var conf = campusConf_(c), t = today_(); if (!dayInfo_(c, t).school) return;
+      if (conf.autoNoShow !== 'off') markNoShows_(c, t);
+      if (conf.nsEmail) rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === t && /^no-show/i.test(a.status)) studentMail_('noshow', a); });
+      if (conf.remind1) { var nx = nextSchoolDay_(c, t); rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === nx && /^(scheduled|awaiting|ready)/i.test(a.status)) studentMail_('remind1', a); }); }
+    });
+  });
+}
 
 // ---------- wording for emails (no access codes or test links ever go in a student email)
 function niceDate_(d) { return Utilities.formatDate(new Date(d + 'T12:00:00Z'), 'UTC', 'EEEE') + ', ' + (+d.slice(5, 7)) + '/' + (+d.slice(8, 10)); }
@@ -1423,7 +1448,7 @@ function offerText_(o, conf) {
 function studentHome_(w) {
   var sid = w.sid, conf = campusConf_(w.campus), t = today_(), stu = student_(sid);
   var mine = rows_('Appointments').filter(function (a) { return str_(a.sid) === sid; }).sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
-  var brief = function (a) { return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), canCancel: /^(scheduled|awaiting|ready)/i.test(a.status) && day_(a.date) >= t, missed: (json_(a.conflict, null) || {}).course || '' }; };
+  var brief = function (a) { return { nsChoice: str_(a.nsChoice), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), canCancel: /^(scheduled|awaiting|ready)/i.test(a.status) && day_(a.date) >= t, missed: (json_(a.conflict, null) || {}).course || '' }; };
   var offers = rows_('Offers').filter(function (o) { return str_(o.sid) === sid && /^active/i.test(o.status) && ms_(o.expires) > now_().getTime(); }).map(function (o) { return { id: str_(o.id), date: day_(o.date), period: str_(o.period), half: str_(o.half), expires: str_(o.expires), test: (json_((find_('Waitlist', 'id', o.wid) || {}).details, {})).test || '' }; });
   var waits = rows_('Waitlist').filter(function (x) { return str_(x.sid) === sid && /^waiting/i.test(x.status) && day_(x.date) >= t; }).map(function (x) {
     var q = waitQueue_(w.campus, day_(x.date), str_(x.period)).filter(function (y) { return /^(waiting|offered)/i.test(y.status); }), det = json_(x.details, {});
@@ -1439,7 +1464,7 @@ function studentHome_(w) {
   return {
     sid: sid, first: str_(stu && (stu.alias || stu.first)), me: { name: studentName_(stu), sid: sid, grade: str_(stu && stu.grade), email: low_(stu && stu.email), campus: conf.name, updated: day_(stu && stu.updated) }, campus: w.campus, campusName: conf.name, where: conf.where, booking: conf.booking, waitlist: conf.waitlist, purposes: conf.purposes, cutoffH: conf.cutoffH,
     upcoming: mine.filter(function (a) { return day_(a.date) >= t && ACTIVE_APPT.test(a.status); }).map(brief),
-    recent: mine.filter(function (a) { return /^(completed|partial)/i.test(a.status) && day_(a.date) >= addDays_(t, -30); }).map(brief).reverse(),
+    recent: mine.filter(function (a) { return /^(completed|partial|no-show)/i.test(a.status) && day_(a.date) >= addDays_(t, -30); }).map(brief).reverse(),
     canceled: mine.filter(function (a) { return /^canceled/i.test(a.status) && day_(a.date) >= t; }).map(brief),
     offers: offers, waits: waits,
     schedule: { rows: sch.rows.map(function (r) { return { period: r.period, half: r.half, course: r.course, teacher: r.teacher, type: r.type, secid: r.secid || '', room: r.room || '', raw: r.raw || '' }; }), source: sch.source, at: sch.at },
@@ -1516,7 +1541,7 @@ function teacherHome_(w) {
     .sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
   return {
     courses: myCourses_(w), platforms: PLATFORMS,
-    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a); return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
+    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a); return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: rows_('Assessments').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
     resources: rows_('Resources').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && !/^(no|false)$/i.test(str_(r.active)); }).map(function (r) { return { id: str_(r.id), type: str_(r.type), title: str_(r.title), link: str_(r.link), courses: list_(r.courses), expires: day_(r.expires) }; }),
     defaults: rows_('Teacher Defaults').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0; }).map(function (r) { return { course: str_(r.course), format: str_(r.format), platform: str_(r.platform), form: json_(r.form, {}) }; }),
@@ -1548,7 +1573,7 @@ function api_teacherAppt(id) {
   var w = need_('teacher'), a = find_('Appointments', 'id', id);
   if (!a || !teachesAppt_(w, a)) throw new Error('That appointment isn’t for one of your classes.');
   var A = str_(a.aid) && find_('Assessments', 'id', a.aid), d = rows_('Teacher Defaults').filter(function (r) { return str_(r.tid) === w.tid && low_(r.course) === low_(a.course); })[0];
-  return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), student: studentName_(student_(a.sid)), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), ready: readiness_(a), test0: A ? assessOut_(A) : null, dflt: d ? { format: str_(d.format), platform: str_(d.platform), form: json_(d.form, {}) } : null, resources: resourcesFor_(a) };
+  return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), student: studentName_(student_(a.sid)), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), ready: readiness_(a), test0: A ? assessOut_(A) : null, dflt: d ? { format: str_(d.format), platform: str_(d.platform), form: json_(d.form, {}) } : null, resources: resourcesFor_(a) };
 }
 
 // The digital Make-Up Testing Procedure Form. Saved as a test for the course (all of this teacher's sections), linked to the appointment
@@ -1650,9 +1675,11 @@ function materialsText_(g, campus) {
     (online ? 'For an online assessment, please use the link below to open the appointment and provide the access code or testing instructions:\n' + g.appts.map(function (x) { return appUrl_() + '?appt=' + x.id + (g.appts.length > 1 ? '  (' + x.student + ')' : ''); }).join('\n') + '\n\n' : '') +
     'Thank you!\n\n' + c.name + ' Testing Center';
 }
+function morningReminders_() { CAMPUSES.forEach(function (c) { var t = today_(); if (!campusConf_(c).remind0 || !dayInfo_(c, t).school) return; rows_('Appointments').forEach(function (a) { if (str_(a.campus) === c && day_(a.date) === t && /^(scheduled|awaiting|ready)/i.test(a.status)) studentMail_('remind0', a); }); }); }
 function morning() {          // daily: reminders for appointments on the school day after the next 1 or 2 school days (the real calendar, not "Friday → Monday")
   locked_(function () {
     expireOffers_();
+    morningReminders_();
     CAMPUSES.forEach(function (c) {
       var conf = campusConf_(c); if (conf.materials === 'off' || !dayInfo_(c, today_()).school) return;
       var target = nextSchoolDay_(c, today_(), conf.materialsDays);
@@ -1668,13 +1695,48 @@ function teacherNotice_(kind, a, extra) {
   var who = studentName_(student_(a.sid)) || 'A student', when = niceDate_(day_(a.date)) + ', ' + perLabel_(a), cj = a.conflict && typeof a.conflict === 'object' ? a.conflict : json_(a.conflict, null);
   var subj = { booked: 'Testing Center — ' + who + ' booked a time for ' + str_(a.course), noshow: 'Testing Center — ' + who + ' didn’t come', canceled: 'Testing Center — ' + who + '’s appointment was canceled' }[kind];
   var body = { booked: who + ' booked the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.purpose) + ', ' + str_(a.course) + ') on ' + when + '.' + (cj ? '\n\nThis is during ' + cj.course + ': the student said ' + (cj.teacher || 'the teacher') + ' gave permission and will bring a written note.' : '') + '\n\nTo give us the test or the access code, open the appointment: ' + appUrl_() + '?appt=' + str_(a.id),
-    noshow: who + ' was scheduled at the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' and didn’t come.',
+    noshow: who + ' was scheduled at the ' + c.name + ' Testing Center for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' and didn’t come.' + notesText_(a),
     canceled: who + '’s ' + c.name + ' Testing Center appointment for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + when + ' was canceled' + (extra ? ' by the Testing Center. Reason: ' + extra : ' by the student') + '.' }[kind];
   mail_('t-' + kind, 't-' + kind + ':' + str_(a.id), rc.to, subj, 'Hello,\n\n' + body + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
 }
+function studentMail_(kind, a) {
+  var stu = student_(a.sid); if (!stu || !stu.email) return;
+  var c = campusConf_(str_(a.campus)), url = appUrl_(), first = str_(stu.alias || stu.first), when = niceDate_(day_(a.date)) + ', ' + perLabel_(a), what = str_(a.test) + (str_(a.course) ? ' (' + str_(a.course) + ')' : '');
+  var cj = json_(a.conflict, null), bring = 'Bring your student ID' + (cj ? ' and the written note from ' + (cj.teacher || 'your teacher') + ' (you’ll miss ' + cj.course + ')' : '') + '.';
+  var subj, body;
+  if (kind === 'remind1' || kind === 'remind0') {
+    subj = 'Reminder: Testing Center ' + (kind === 'remind0' ? 'today' : 'tomorrow') + ', ' + perLabel_(a);
+    body = 'Hi ' + first + ',\n\nThis is a reminder that you’re signed up for the ' + c.name + ' Testing Center (' + c.where + ') ' + (kind === 'remind0' ? 'today, ' : '') + when + ', for ' + what + '.\n\n' + bring +
+      '\n\nCan’t make it? Please cancel so someone else can have the seat:\n' + url + '?cancel=' + str_(a.id) + '\n\n' + c.name + ' Testing Center';
+  } else {
+    subj = 'You missed your Testing Center appointment today';
+    body = 'Hi ' + first + ',\n\nYou were signed up for the ' + c.name + ' Testing Center today, ' + perLabel_(a) + ', for ' + what + ', and we didn’t see you.\n\n' +
+      'Next time, if you can’t come, please cancel your appointment in the Testing Center app so the seat can go to someone else.\n\n' +
+      'What should we do with your test?\n' +
+      '• Save it, I’ll make another appointment: ' + url + '?noshow=' + str_(a.id) + '&do=save\n' +
+      '• Toss it, I changed my mind and am not planning to take it: ' + url + '?noshow=' + str_(a.id) + '&do=toss\n\n' +
+      'Book a new time: ' + url + '\n\n' + c.name + ' Testing Center';
+  }
+  mail_('s-' + kind, 's-' + kind + ':' + str_(a.id), low_(stu.email), subj, body, str_(a.id), true, str_(a.campus));
+}
+// The student answers the no-show email: save the test (they'll rebook) or toss it. The teacher hears which.
+function api_noShowChoice(id, choice) {
+  var w = need_('student'), a = find_('Appointments', 'id', id);
+  if (!a || str_(a.sid) !== w.sid) throw new Error('That appointment isn’t yours.');
+  if (!/^no-show/i.test(a.status)) throw new Error('That appointment wasn’t marked as missed.');
+  choice = choice === 'toss' ? 'Toss it (not planning to take it)' : 'Save it (will make another appointment)';
+  locked_(function () {
+    a = find_('Appointments', 'id', id); update_('Appointments', a, { nsChoice: choice + ' · ' + iso_().slice(0, 10), changed: iso_() }); audit_('No-show choice', id, choice);
+    var rc = recipients_(a), c = campusConf_(str_(a.campus));
+    if (c.tNoShow && rc.to.length) mail_('t-nschoice', 't-nschoice:' + id, rc.to, 'Testing Center — ' + studentName_(student_(a.sid)) + ': ' + (/toss/i.test(choice) ? 'not planning to take ' : 'will rebook ') + str_(a.test),
+      'Hello,\n\n' + studentName_(student_(a.sid)) + ' missed their Testing Center appointment for ' + str_(a.test) + ' (' + str_(a.course) + ') on ' + niceDate_(day_(a.date)) + ' and told us: ' + choice + '.\n\nThank you,\n' + c.name + ' Testing Center', id, true, str_(a.campus));
+  });
+  return studentHome_(who_());
+}
+function notesText_(a) { var l = json_(a.snotes, []); return l.length ? '\n\nNotes from the Testing Center:\n' + l.map(function (n) { return '• ' + n.text + ' (' + (n.name || '') + ')'; }).join('\n') : ''; }
 function completionText_(a, outcome, note) {
   var c = campusConf_(str_(a.campus));
-  return str_(studentName_(student_(a.sid))) + ' attended the ' + c.name + ' Testing Center on ' + niceDate_(day_(a.date)) + ' and ' + (/incomplete|partial/i.test(outcome) ? 'did not finish ' : 'reported completing ') + str_(a.test) + ' for ' + str_(a.course) + '.\n\nStatus: ' + outcome + (note ? '\n\n' + note : '') + '\n\nThank you,\n' + c.name + ' Testing Center';
+  return str_(studentName_(student_(a.sid))) + ' attended the ' + c.name + ' Testing Center on ' + niceDate_(day_(a.date)) + ' and ' + (/incomplete|partial/i.test(outcome) ? 'did not finish ' : 'reported completing ') + str_(a.test) + ' for ' + str_(a.course) + '.\n\nStatus: ' + outcome + (note ? '\n\n' + note : '') + notesText_(a) + '\n\nThank you,\n' + c.name + ' Testing Center';
 }
 
 // The coordinator dashboard: today's testing, needs attention, waitlist, resources, communications, search, check-in to
@@ -1685,7 +1747,7 @@ function apptRow_(a, withRes) {
   var s = student_(a.sid), r = readiness_(a), ses = rows_('Sessions').filter(function (x) { return str_(x.appt) === str_(a.id); }).pop();
   var o = { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), sid: str_(a.sid), student: s ? studentName_(s) : (str_(a.notes).replace(/^Not matched to a student: /, '') || '(not matched)'), email: s ? low_(s.email) : '', grade: s ? str_(s.grade) : '',
     course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), source: str_(a.source), notes: str_(a.notes), unmatched: !s, noClass: !str_(a.secid),
-    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '' };
+    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), snotes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '' };
   if (withRes) { o.resources = resourcesFor_(a); var A = r.aid && find_('Assessments', 'id', r.aid); o.testInfo = A ? assessOut_(A) : null; }
   return o;
 }
@@ -1779,7 +1841,7 @@ function api_status(id, step, data) {
     a = find_('Appointments', 'id', id);
     var ses = rows_('Sessions').filter(function (x) { return str_(x.appt) === id; }).pop(), t = iso_();
     if (step === 'in' && day_(a.date) !== today_()) throw new Error('Students can only be checked in on the day of their appointment.');
-    if (step === 'in') { var desk = checkDesk_(str_(a.campus), data.desk, id); if (!ses || str_(ses.end)) { insert_('Sessions', { id: uid_('se'), appt: id, inAt: t, by: w.email, desk: desk }); } else update_('Sessions', ses, { desk: desk || str_(ses.desk) }); update_('Appointments', a, { status: 'Checked in', changed: t }); }
+    if (step === 'in') { var desk = checkDesk_(str_(a.campus), data.desk, id), go = campusConf_(str_(a.campus)).arriveStart; if (!ses || str_(ses.end)) { insert_('Sessions', { id: uid_('se'), appt: id, inAt: t, start: go ? t : '', by: w.email, desk: desk }); } else update_('Sessions', ses, { desk: desk || str_(ses.desk), start: go ? (str_(ses.start) || t) : str_(ses.start) }); update_('Appointments', a, { status: go ? 'Testing' : 'Checked in', changed: t }); }
     else if (step === 'desk') { if (!ses || str_(ses.end)) throw new Error('Check the student in first.'); update_('Sessions', ses, { desk: checkDesk_(str_(a.campus), data.desk, id) }); }
     else if (step === 'start') { if (!ses) { insert_('Sessions', { id: uid_('se'), appt: id, inAt: t, start: t, by: w.email }); } else update_('Sessions', ses, { start: str_(ses.start) || t }); update_('Appointments', a, { status: 'Testing', changed: t }); }
     else if (step === 'pause') update_('Appointments', a, { status: 'Paused', changed: t });
@@ -1800,6 +1862,29 @@ function api_status(id, step, data) {
     return 'ok';
   });
 }
+// Notes from the Testing Center about what happened; the class's teachers see them on their page and in the emails about it
+function api_addNote(id, text) {
+  var a = find_('Appointments', 'id', id); if (!a) throw new Error('That appointment isn’t there.');
+  var w = needCampus_(str_(a.campus), true); text = clean_(text, 1000); if (!text) throw new Error('Type the note first.');
+  return locked_(function () {
+    a = find_('Appointments', 'id', id);
+    var list = json_(a.snotes, []); list.push({ at: iso_(), by: w.email, name: w.name || w.email.split('@')[0], text: text });
+    update_('Appointments', a, { snotes: list }); audit_('Note added', id, ''); return list;
+  });
+}
+// No-shows: students on today's list who never arrived, for one period (by hand) or for every period that has ended (automatic)
+function markNoShows_(campus, d, onlyPeriod) {
+  var info = dayInfo_(campus, d); if (!info.school) return 0;
+  var b = bells_(campus, info.sched), now = now_().getTime(), n = 0;
+  rows_('Appointments').forEach(function (a) {
+    if (str_(a.campus) !== campus || day_(a.date) !== d || !/^(scheduled|awaiting|ready)/i.test(a.status) || !str_(a.sid)) return;
+    if (onlyPeriod && str_(a.period) !== String(onlyPeriod)) return;
+    var bell = b[str_(a.period)]; if (!bell || stamp_(d, bell.end) + (onlyPeriod ? 0 : 10 * 60000) > now) return;
+    update_('Appointments', a, { status: 'No-show', changed: iso_() }); audit_('Status: noshow', str_(a.id), 'automatic' + (onlyPeriod ? ' (by period, staff)' : '')); teacherNotice_('noshow', a); n++;
+  });
+  return n;
+}
+function api_markNoShows(campus, d, period) { needCampus_(campus, true); return locked_(function () { return markNoShows_(campus, day_(d) || today_(), period); }); }
 function api_setPaper(aid, status) {
   var A = find_('Assessments', 'id', aid); if (!A) throw new Error('No test on file.');
   needCampus_(str_(A.campus) || 'S', true);
@@ -2754,13 +2839,13 @@ function api_clearPractice() {
 <span style="flex:1"></span><a href="./" style="color:#ffe066">← Tour</a></div>
 <script>(function(){var q=location.search;[].forEach.call(document.querySelectorAll('#demoBar a[data-as]'),function(a){a.href='demo.html?as='+a.getAttribute('data-as');if(q.indexOf('as='+a.getAttribute('data-as').split('&')[0])>=0&&(q.indexOf('lock=1')>=0)===(a.getAttribute('data-as').indexOf('lock')>=0))a.style.textDecoration='none',a.style.fontWeight='700';});})();</script>
 
-<div class="top" id="top"><div class="logo"><i>✓</i> <span id="appName">Testing Center</span></div><div class="grow"></div><div id="modes"></div><select id="lookSel" title="Colors" aria-label="Colors" style="width:auto;padding:5px 8px" onchange="setLook(this.value)"><option value="">🎨 Light</option><option value="dark">🎨 Dark</option><option value="contrast">🎨 High contrast</option><option value="calm">🎨 Calm</option><option value="warm">🎨 Warm</option></select></div>
+<div class="top" id="top"><div class="logo"><i>✓</i> <span id="appName">Testing Center</span></div><div class="grow"></div><div id="modes"></div><select id="lookSel" title="Colors" aria-label="Colors" style="width:auto;padding:5px 8px" onchange="setLook(this.value)"><option value="">🎨 Classic</option><option value="auto">🎨 Match my computer</option><option value="calmroom">🎨 Calm classroom</option><option value="night">🎨 Night</option><option value="contrast">🎨 High contrast</option><option value="neon">🎨 🌈 Neon</option><option value="pastelnight">🎨 🍬 Pastel night</option><option value="ocean">🎨 🌊 Ocean</option><option value="sunset">🎨 🌅 Sunset</option><option value="candy">🎨 🍭 Candy shop</option><option value="warm">🎨 Warm</option></select></div>
 <div id="main"><div class="spin">Loading…</div></div>
 <div id="layer"></div>
 <script>
 // ---------- color modes (per device; the page works the same without storage)
 function setLook(v) { if (v) document.documentElement.setAttribute('data-look', v); else document.documentElement.removeAttribute('data-look'); try { localStorage.setItem('tcLook', v || ''); } catch (e) {} var el = document.getElementById('lookSel'); if (el) el.value = v || ''; }
-(function () { var v = ''; try { v = localStorage.getItem('tcLook') || ''; } catch (e) {} if (v) document.documentElement.setAttribute('data-look', v); })();
+(function () { var v = ''; try { v = localStorage.getItem('tcLook') || ''; if (v === 'dark') v = 'night'; if (v === 'calm') v = 'calmroom'; } catch (e) {} if (v) document.documentElement.setAttribute('data-look', v); })();
 window.addEventListener('DOMContentLoaded', function () { var v = ''; try { v = localStorage.getItem('tcLook') || ''; } catch (e) {} var el = document.getElementById('lookSel'); if (el) el.value = v; });
 // ---------- shared by every page
 var B = null, MODE = '', START = {};
@@ -2786,9 +2871,10 @@ function timeOf(iso) { if (!iso) return ''; var x = new Date(iso); return x.toLo
 function halfTxt(h) { return h === 'A' ? 'A half' : h === 'B' ? 'B half' : h === 'AB' ? 'Whole period' : ''; }
 function perTxt(p, h) { return 'Period ' + p + (h && h !== '' ? ' · ' + halfTxt(h) : ''); }
 function untilTxt(iso) { var m = Math.round((new Date(iso).getTime() - Date.now()) / 60000); if (m <= 0) return 'ending now'; if (m < 60) return m + ' min left'; return Math.floor(m / 60) + ' h ' + (m % 60) + ' min left'; }
-function statusChip(s) { var c = /complete/i.test(s) && !/partial/i.test(s) ? 'ok' : /testing|checked/i.test(s) ? 'blue' : /no-show|cancel/i.test(s) ? 'bad' : /partial|paused/i.test(s) ? 'warn' : ''; return '<span class="chip ' + c + '">' + esc(s) + '</span>'; }
+function statusChip(s) { var c = /complete/i.test(s) && !/partial/i.test(s) ? 'ok' : /testing/i.test(s) ? 'blue' : /checked/i.test(s) ? 'warn' : /no-show|missed/i.test(s) ? 'bad' : /partial|paused/i.test(s) ? 'warn' : /waiting|offer/i.test(s) ? 'info' : ''; return '<span class="chip ' + c + '">' + esc(/^checked/i.test(s) ? 'Arrived' : s) + '</span>'; }
+var COLOR_KEY = '<div class="tiny" style="display:flex;gap:10px;flex-wrap:wrap;margin:-4px 0 12px"><span class="chip bad">Missing / no-show</span><span class="chip warn">Check / arrived</span><span class="chip ok">Ready / done</span><span class="chip blue">Testing</span><span class="chip info">Waitlist / offer</span><span class="chip">Scheduled / canceled</span></div>';
 function readyChip(r) { if (!r) return ''; var c = r.state === 'Ready' ? 'ok' : r.state === 'Check' ? 'warn' : 'bad'; return '<span class="chip ' + c + '" title="' + esc(r.missing.join(', ')) + '">' + esc(r.state) + '</span>'; }
-function fmtChip(r) { if (!r) return ''; var conf = /^teacher/.test(r.fsource); return r.format ? '<span class="chip ' + (conf ? 'info' : '') + '" title="' + esc(r.ftext) + '">' + (conf ? '' : '~ ') + esc(r.format) + '</span>' : '<span class="chip" title="' + esc(r.ftext) + '">?</span>'; }
+function fmtChip(r) { if (!r) return ''; var conf = /^teacher/.test(r.fsource); return r.format ? '<span class="chip" title="' + esc(r.ftext) + '">' + (conf ? '✓ ' : '~ ') + esc(r.format) + '</span>' : '<span class="chip" title="' + esc(r.ftext) + '">?</span>'; }
 
 // ---------- start
 function boot() {
@@ -2837,7 +2923,19 @@ window.addEventListener('load', function () {
 <script>
 // ---------- the student's page: My Testing Center, booking, the waitlist, and fixing their schedule
 var SH = null, BK = null;          // SH = home data; BK = the booking in progress
-function stuStart() { SH = B.student; drawStu(); }
+function stuStart() {
+  SH = B.student; drawStu();
+  if (START.cancel) { var c = START.cancel; START.cancel = ''; if (SH.upcoming.some(function (a) { return a.id === c && a.canCancel; })) stuCancel(c); else toast('That appointment can’t be canceled any more (or it’s already canceled).'); }
+  if (START.noshow) { var n = START.noshow, how = START['do']; START.noshow = ''; stuNoShow(n, how); }
+}
+// from the no-show email: save the test (I'll rebook) or toss it
+function stuNoShow(id, how) {
+  var a = SH.recent.filter(function (x) { return x.id === id; })[0];
+  if (!a) return toast('That missed appointment isn’t on your list.');
+  modal('<h2>You missed your appointment</h2><p>' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.test) + ' · ' + esc(a.course) + '</p>' + (a.nsChoice ? '<p class="small">You already told us: <b>' + esc(a.nsChoice) + '</b>. You can change it:</p>' : '<p class="small">What should the Testing Center do with your test?</p>') +
+    '<button class="opt' + (how === 'save' ? ' on' : '') + '" onclick="stuNoShowGo(\'' + id + '\', \'save\')">💾 Save it, I’ll make another appointment</button><button class="opt' + (how === 'toss' ? ' on' : '') + '" onclick="stuNoShowGo(\'' + id + '\', \'toss\')">🗑️ Toss it, I changed my mind and am not planning to take it</button><button class="opt" onclick="closeModal()">Not now</button>');
+}
+function stuNoShowGo(id, how) { call('api_noShowChoice', id, how).then(function (h) { SH = h; closeModal(); drawStu(); toast(how === 'save' ? 'Thanks! Your test is saved. Book a new time below.' : 'Thanks, we’ll let your teacher know.'); }).catch(fail); }
 function stuRefresh(h) { if (h) SH = h; drawStu(); }
 function drawStu() {
   var h = SH, pv = !!h.preview, out = '<div class="wrap narrow">';
@@ -2857,7 +2955,7 @@ function drawStu() {
   if (h.waits.length) out += '<div class="card"><h2>Waitlists</h2>' + h.waits.map(function (x) {
     return '<div class="slot"><div class="grow"><b>' + esc(relD(x.date)) + ' · ' + esc(perTxt(x.period, x.half)) + '</b><div class="small">' + esc(x.test) + ' · ' + esc(x.course) + '</div><div class="small mute">You’re <b>#' + x.pos + '</b> of ' + x.of + ' waiting. We’ll email you if a seat opens.</div></div>' + (pv ? '' : '<button class="btn sm" onclick="stuLeave(\'' + x.id + '\', this)">Leave</button>') + '</div>';
   }).join('') + '</div>';
-  if (h.recent.length) out += '<div class="card"><h2>Recently finished</h2>' + h.recent.map(function (a) { return '<div class="slot"><div class="grow">' + esc(niceD(a.date)) + ' · ' + esc(a.test) + ' <span class="mute">· ' + esc(a.course) + '</span></div>' + statusChip(a.status) + '</div>'; }).join('') + '</div>';
+  if (h.recent.length) out += '<div class="card"><h2>Recent</h2>' + h.recent.map(function (a) { var ns = /^no-show/i.test(a.status); return '<div class="slot"><div class="grow">' + esc(niceD(a.date)) + ' · ' + esc(a.test) + ' <span class="mute">· ' + esc(a.course) + '</span>' + (ns ? '<div class="tiny">' + (a.nsChoice ? 'You told us: ' + esc(a.nsChoice) : 'You missed this one. What should we do with the test?') + '</div>' : '') + '</div>' + (ns && !pv ? '<button class="btn sm" onclick="stuNoShow(\'' + a.id + '\')">' + (a.nsChoice ? 'Change' : 'Save or toss') + '</button>' : '') + statusChip(ns ? 'Missed' : a.status) + '</div>'; }).join('') + '</div>';
   if (h.canceled.length) out += '<details class="card"><summary class="mute">Canceled (' + h.canceled.length + ')</summary>' + h.canceled.map(function (a) { return '<div class="small" style="margin-top:6px">' + esc(niceD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + ' · ' + esc(a.test) + '</div>'; }).join('') + '</details>';
   // My info and My classes, from the school roster (the sheet)
   var m = h.me || {}, rows = (h.schedule.rows || []).filter(function (r) { return r.course; });
@@ -2870,7 +2968,7 @@ function drawStu() {
 }
 function stuCancel(id) {
   var a = SH.upcoming.filter(function (x) { return x.id === id; })[0];
-  modal('<h2>Cancel this appointment?</h2><p>' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.test) + ' · ' + esc(a.course) + '</p><p class="mute small">Your seat goes to the next student on the waitlist.</p><div class="row"><button class="btn bad" id="cx" onclick="stuCancelGo(\'' + id + '\')">Yes, cancel it</button><button class="btn" onclick="closeModal()">Keep it</button></div>');
+  modal('<h2>Are you sure you want to cancel?</h2><p>' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.test) + ' · ' + esc(a.course) + '</p><p class="mute small">Your seat goes to the next student on the waitlist.</p><div class="row"><button class="btn pri" onclick="closeModal()">No, keep my appointment</button><button class="btn bad" id="cx" onclick="stuCancelGo(\'' + id + '\')">Yes, cancel it</button></div>');
 }
 function stuCancelGo(id) { busy($('cx'), true); call('api_cancel', id).then(function (h) { closeModal(); toast('Canceled'); stuRefresh(h); }).catch(function (e) { busy($('cx'), false); fail(e); }); }
 function stuLeave(id, btn) { if (!confirm('Leave this waitlist?')) return; busy(btn, true); call('api_leaveWaitlist', id).then(stuRefresh).catch(function (e) { busy(btn, false); fail(e); }); }
@@ -3056,7 +3154,7 @@ function drawTch() {
 }
 function tchTable(list) {
   return '<table class="t"><tr><th>When</th><th>Student</th><th>Course · Test</th><th>Ready?</th><th>Status</th><th></th></tr>' + list.map(function (a) {
-    return '<tr><td>' + esc(relD(a.date)) + '<div class="small mute">' + esc(perTxt(a.period, a.half)) + '</div></td><td>' + esc(a.student) + (a.missedClass ? '<div class="tiny" style="color:var(--warn)">Will miss ' + esc(a.missedClass) + '</div>' : '') + '</td><td>' + esc(a.course) + '<div class="small">' + esc(a.test) + ' <span class="mute">· ' + esc(a.purpose) + '</span></div></td><td>' + readyChip(a.ready) + (a.ready.missing.length ? '<div class="tiny mute">' + esc(a.ready.missing.join(', ')) + '</div>' : '') + '</td><td>' + statusChip(a.status) + '</td><td><button class="btn sm' + (a.ready.state === 'Needs info' ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (a.ready.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button></td></tr>';
+    return '<tr><td>' + esc(relD(a.date)) + '<div class="small mute">' + esc(perTxt(a.period, a.half)) + '</div></td><td>' + esc(a.student) + (a.missedClass ? '<div class="tiny" style="color:var(--warn)">Will miss ' + esc(a.missedClass) + '</div>' : '') + '</td><td>' + esc(a.course) + '<div class="small">' + esc(a.test) + ' <span class="mute">· ' + esc(a.purpose) + '</span></div>' + (a.notes && a.notes.length ? a.notes.map(function (n) { return '<div class="tiny" style="margin-top:3px">📝 ' + esc(n.text) + ' <span class="mute">(Testing Center)</span></div>'; }).join('') : '') + (a.nsChoice ? '<div class="tiny" style="color:var(--bad)">Missed it · student said: ' + esc(a.nsChoice) + '</div>' : '') + '</td><td>' + readyChip(a.ready) + (a.ready.missing.length ? '<div class="tiny mute">' + esc(a.ready.missing.join(', ')) + '</div>' : '') + '</td><td>' + statusChip(a.status) + '</td><td><button class="btn sm' + (a.ready.state === 'Needs info' ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (a.ready.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button></td></tr>';
   }).join('') + '</table>';
 }
 // ---------- the digital Make-Up Testing Procedure Form
@@ -3068,8 +3166,9 @@ function tchForm(apptId, testId) {
 function formDraw(a, t0) {
   var t = (a && a.test0) || t0 || {}, d = (a && a.dflt) || {}, f = t.form || d.form || {}, fmt = t.format || d.format || '', plat = t.platform || d.platform || '';
   var head = a ? '<p class="small" style="margin-top:0"><b>' + esc(a.student) + '</b> · ' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '<br>' + esc(a.course) + ' · ' + esc(a.purpose) + '</p>' + (a.ready.missing.length ? '<div class="banner warn small">Missing: ' + esc(a.ready.missing.join(', ')) + '</div>' : '<div class="banner ok small">The Testing Center has what it needs.</div>') : '';
+  var notesHtml = a && a.notes && a.notes.length ? '<div class="banner info small"><b>Notes from the Testing Center</b>' + a.notes.map(function (n) { return '<div>📝 ' + esc(n.text) + ' <span class="tiny mute">· ' + esc(n.name) + '</span></div>'; }).join('') + '</div>' : '';
   var res = a && a.resources.length ? '<div class="banner info small">Your standing resource is attached: ' + a.resources.map(function (r) { return '<b>' + esc(r.title) + '</b>'; }).join(', ') + '. You don’t need to retype codes that are in it.</div>' : '';
-  modal('<h2>Testing form</h2>' + head + res +
+  modal('<h2>Testing form</h2>' + head + notesHtml + res +
     '<div class="grid2"><div><label class="f">Course</label><input type="text" id="fCourse" value="' + esc(t.course || (a && a.course) || '') + '"' + (a ? ' disabled' : '') + '></div><div><label class="f">Test name</label><input type="text" id="fName" value="' + esc(t.name || (a && a.test) || '') + '"></div></div>' +
     '<label class="f">Paper or online?</label><div class="seg" id="fFmt">' + ['Digital', 'Paper'].map(function (x) { return '<button type="button" class="' + (fmt === x ? 'on' : '') + '" onclick="fSet(\'' + x + '\')">' + (x === 'Digital' ? 'Online' : 'Paper') + '</button>'; }).join('') + '</div>' +
     '<div id="fDig"' + (fmt === 'Digital' ? '' : ' hidden') + '><div class="grid2"><div><label class="f">Platform</label><select id="fPlat"><option value="">Not specified</option>' + TH.platforms.filter(function (p) { return p !== 'Not specified'; }).map(function (p) { return '<option' + (plat === p ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div><div><label class="f">Access code (staff only)</label><input type="text" id="fCode" value="' + esc(t.code || '') + '" placeholder="' + (a && a.resources.length ? 'In my standing doc' : '') + '"></div></div></div>' +
@@ -3177,30 +3276,34 @@ function coToday() {
   var d = CO.dash, c = d.counts;
   var out = '<div class="row" style="margin-bottom:10px"><button class="btn sm" onclick="coDay(-1)">‹</button><input type="date" style="width:auto" value="' + d.date + '" onchange="CO.date=this.value;coLoad()"><button class="btn sm" onclick="coDay(1)">›</button>' + (d.date !== B.today ? '<button class="btn sm" onclick="CO.date=B.today;coLoad()">Today</button>' : '') + '<h2 style="margin:0 0 0 6px" class="grow">' + esc(longD(d.date)) + '</h2>' + (d.edit ? '<button class="btn sm" onclick="coWalkIn()">＋ Walk-in</button>' : '') + '</div>';
   if (!d.info.school) return out + '<div class="card empty">No school' + (d.info.note ? ': ' + esc(d.info.note) : '') + '.</div>';
+  out += COLOR_KEY;
   out += '<div class="tiles"><div class="tile"><b>' + c.booked + '</b><span>Scheduled</span></div><div class="tile"><b>' + c.inRoom + '</b><span>In the room</span></div><div class="tile"><b>' + c.done + '</b><span>Finished</span></div><div class="tile"><b>' + c.noShow + '</b><span>No-shows</span></div><div class="tile"><b style="color:' + (c.needs ? 'var(--bad)' : 'inherit') + '">' + c.needs + '</b><span>Need test info</span></div></div>';
   d.periods.forEach(function (p) {
     var seats = !p.open ? '' : p.ab ? 'A ' + (p.cap - p.free.A) + '/' + p.cap + ' · B ' + (p.cap - p.free.B) + '/' + p.cap : (p.cap - p.free.all) + '/' + p.cap + ' seats';
     out += '<div class="card' + (p.open || p.appts.length ? '' : ' dim') + '" style="padding:12px 14px"><div class="period-h"><h3 style="margin:0">' + esc(p.label) + '</h3><span class="seats">' + (p.start ? hm(p.start) + '–' + hm(p.end) : '') + '</span><span class="seats">' + (p.open ? seats : esc(p.why || 'Closed')) + '</span>' + (p.waiting ? '<span class="chip warn">' + p.waiting + ' waiting</span>' : '') + '<div class="grow"></div>' + (p.appts.length ? '<button class="btn sm" onclick="coSecurly(\'' + p.period + '\')">Export for Securly</button>' : '') + (d.edit ? '<button class="btn sm" onclick="coChange(\'' + p.period + '\')">Seats / close</button>' : '') + '</div>';
+    var waitingOn = p.appts.filter(function (a) { return /^(scheduled|awaiting|ready)/i.test(a.status) && !a.unmatched; }).length, ended = p.end && (d.date < B.today || (d.date === B.today && new Date().toTimeString().slice(0, 5) > p.end));
+    if (d.edit && ended && waitingOn) out += '<div class="banner warn small" style="margin:6px 0">' + waitingOn + ' student' + (waitingOn > 1 ? 's never' : ' never') + ' arrived. <button class="btn sm bad" onclick="coNoShows(\'' + p.period + '\', ' + waitingOn + ')">Mark ' + (waitingOn > 1 ? 'them' : 'as') + ' no-show' + (waitingOn > 1 ? 's' : '') + '</button></div>';
     if (p.appts.length) out += '<table class="t"><tr><th>Student</th><th class="hide-sm">Course · Teacher</th><th>Test</th><th>Half</th><th>Format</th><th>Ready?</th><th>Status</th><th></th></tr>' + p.appts.map(coRow).join('') + '</table>';
     else if (p.open) out += '<div class="small mute">No one scheduled.</div>';
     out += '</div>';
   });
   return out;
 }
+function coNoShows(period, n) { if (!confirm('Mark ' + n + ' student(s) in period ' + period + ' as no-shows? Their teachers are told, and at 3:30 the students get the missed-appointment email.')) return; call('api_markNoShows', CO.campus, CO.date, period).then(function (k) { toast(k + ' marked no-show'); coLoad(); }).catch(fail); }
 function coDay(n) { var x = dObj(CO.date); x.setDate(x.getDate() + n); while (x.getDay() === 0 || x.getDay() === 6) x.setDate(x.getDate() + (n > 0 ? 1 : -1)); CO.date = x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); coLoad(); }
 function coRow(a) {
   var act = '', ed = CO.dash.edit, s = a.status;
   if (ed) {
-    if (/^(scheduled|awaiting|ready)/i.test(s)) act = a.date === B.today ? '<button class="btn sm pri" onclick="event.stopPropagation();coCheckIn(\'' + a.id + '\')">Check in</button>' : '';
-    else if (/^checked/i.test(s)) act = '<button class="btn sm pri" onclick="event.stopPropagation();coStep(\'' + a.id + '\',\'start\')">Start</button>';
-    else if (/^(testing|paused)/i.test(s)) act = '<button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Done</button>';
+    if (/^(scheduled|awaiting|ready)/i.test(s)) act = a.date === B.today ? '<button class="btn sm pri" onclick="event.stopPropagation();coCheckIn(\'' + a.id + '\')">Arrived</button>' : '';
+    else if (/^checked/i.test(s)) act = '<button class="btn sm pri" onclick="event.stopPropagation();coStep(\'' + a.id + '\',\'start\')">Start</button><button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Check out</button>';
+    else if (/^(testing|paused)/i.test(s)) act = '<button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Check out</button>';
   }
   var flags = (a.conflict && !a.conflict.verified ? ' <span class="chip warn" title="Will miss ' + esc(a.conflict.course) + '">pass?</span>' : '') + (a.unmatched ? ' <span class="chip bad">not matched</span>' : '') + (a.resources && a.resources.length ? ' <span class="chip info" title="Standing resource">doc</span>' : '');
-  return '<tr class="click" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.start ? ' · started ' + timeOf(a.start) : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td><td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td><td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td><td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td><td>' + fmtChip(a.ready) + '</td><td>' + readyChip(a.ready) + '</td><td>' + statusChip(s) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
+  return '<tr class="click' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(s) ? ' needs' : '') + '" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.start ? ' · started ' + timeOf(a.start) : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td><td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td><td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td><td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td><td>' + fmtChip(a.ready) + '</td><td>' + readyChip(a.ready) + '</td><td>' + statusChip(s) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
 }
-function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Checked in', start: 'Started', done: 'Finished', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
+function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', start: 'Started', done: 'Checked out', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
 function coDone(id) {
-  modal('<h2>Finish testing</h2><label class="f">What do we know?</label><select id="dOut"><option>Student-reported complete</option><option>Staff-confirmed complete</option><option>Digital submission verified</option><option>Paper test collected</option><option>Partially completed</option><option>Incomplete</option></select><p class="tiny mute">“Verified” only if you actually saw the submission. Teachers see exactly this wording.</p><label class="f">Note for the teacher (optional)</label><textarea id="dNote" style="min-height:60px"></textarea>' + (CO.dash.conf.completion ? '<label class="check"><input type="checkbox" id="dMail" checked> Email the teacher</label>' : '<p class="tiny mute">Completion emails are off for this campus.</p>') + '<div class="row" style="margin-top:10px"><button class="btn ok" id="dGo">Done</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
+  modal('<h2>Check out</h2><label class="f">What do we know?</label><select id="dOut"><option>Student-reported complete</option><option>Staff-confirmed complete</option><option>Digital submission verified</option><option>Paper test collected</option><option>Partially completed</option><option>Incomplete</option></select><p class="tiny mute">“Verified” only if you actually saw the submission. Teachers see exactly this wording.</p><label class="f">Note for the teacher (optional)</label><textarea id="dNote" style="min-height:60px"></textarea>' + (CO.dash.conf.completion ? '<label class="check"><input type="checkbox" id="dMail" checked> Email the teacher</label>' : '<p class="tiny mute">Completion emails are off for this campus.</p>') + '<div class="row" style="margin-top:10px"><button class="btn ok" id="dGo">Check out</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
   $('dGo').onclick = function () { busy(this, true); coStep(id, 'done', { outcome: $('dOut').value, note: $('dNote').value, notify: $('dMail') ? $('dMail').checked : false }).then(closeModal); };
 }
 
@@ -3211,6 +3314,7 @@ function coCancel(id, preset) {
     '<div class="row" style="margin-top:12px"><button class="btn bad" id="cxGo">Cancel and email the student</button><button class="btn" onclick="closeModal()">Keep it</button></div>');
   $('cxGo').onclick = function () { var r = $('cxWhy').value === 'other' ? $('cxOther').value : $('cxWhy').value; busy(this, true); call('api_cancel', id, r).then(function () { closeModal(); closeDrawer(); coLoad(); toast('Canceled; the student was emailed'); }).catch(fail); };
 }
+function coNote(id) { var t = $('noteTx').value.trim(); if (!t) return toast('Type the note first.'); call('api_addNote', id, t).then(function () { toast('Note added'); coAppt(id); }).catch(fail); }
 function closeDrawer() { var d = $('drawer'); if (d) d.remove(); }
 function coAppt(id) {
   closeDrawer(); var el = document.createElement('div'); el.id = 'drawer'; el.className = 'drawer'; el.innerHTML = '<div class="spin">Loading…</div>'; document.body.appendChild(el);
@@ -3230,13 +3334,14 @@ function coApptHtml(a) {
   } else out += '<p class="small mute">The teacher hasn’t filled in a testing form for this test.</p>';
   if (ed) out += '<button class="btn sm" style="margin-top:10px" onclick="coStaffForm(\'' + a.id + '\')">' + (t ? 'Edit instructions' : 'Enter instructions (paper form arrived)') + '</button>';
   out += '</div>';
+  out += '<h3>Notes for the teacher</h3><div class="small">' + (a.snotes.length ? a.snotes.map(function (n) { return '<div style="margin:4px 0">📝 ' + esc(n.text) + ' <span class="tiny mute">· ' + esc(n.name) + ', ' + esc(new Date(n.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + '</span></div>'; }).join('') : '<span class="mute">None yet.</span>') + '</div>' + (ed ? '<div class="row" style="margin:6px 0 14px;flex-wrap:nowrap"><input type="text" id="noteTx" placeholder="What happened? (the teacher of this class sees it)"><button class="btn sm" onclick="coNote(\'' + a.id + '\')">Add</button></div>' : '') + (a.nsChoice ? '<div class="banner info small">After missing it, the student said: <b>' + esc(a.nsChoice) + '</b></div>' : '');
   out += '<h3>Teacher email</h3><div class="small">' + (a.recipients.to.length ? esc(a.recipients.to.join(', ')) : '<span style="color:var(--bad)">No confirmed address</span>') + (a.recipients.unresolved.length ? ' · unconfirmed: ' + esc(a.recipients.unresolved.join(', ')) : '') + '</div>';
   if (a.emails.length) out += '<div class="small mute" style="margin-top:4px">' + a.emails.map(function (e) { return esc(e.kind) + ': ' + esc(e.status) + ' ' + esc(niceD(e.at.slice(0, 10))); }).join(' · ') + '</div>';
   if (ed) {
     out += '<h3 style="margin-top:16px">Actions</h3><div class="row">';
-    if (/^(scheduled|awaiting|ready)/i.test(a.status)) out += (a.date === B.today ? '<button class="btn sm pri" onclick="coCheckIn(\'' + a.id + '\')">Check in</button>' : '') + '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'noshow\')">No-show</button><button class="btn sm bad" onclick="coCancel(\'' + a.id + '\')">Cancel</button>';
+    if (/^(scheduled|awaiting|ready)/i.test(a.status)) out += (a.date === B.today ? '<button class="btn sm pri" onclick="coCheckIn(\'' + a.id + '\')">Arrived</button>' : '') + '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'noshow\')">No-show</button><button class="btn sm bad" onclick="coCancel(\'' + a.id + '\')">Cancel</button>';
     if (/^checked/i.test(a.status)) out += '<button class="btn sm pri" onclick="coStep(\'' + a.id + '\',\'start\')">Start testing</button>';
-    if (/^(testing|paused|checked)/i.test(a.status)) out += '<button class="btn sm ok" onclick="coDone(\'' + a.id + '\')">Done</button>' + (/^testing/i.test(a.status) ? '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'pause\')">Pause</button>' : '');
+    if (/^(testing|paused|checked)/i.test(a.status)) out += '<button class="btn sm ok" onclick="coDone(\'' + a.id + '\')">Check out</button>' + (/^testing/i.test(a.status) ? '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'pause\')">Pause</button>' : '');
     if (/^(no-show|completed|partial|checked|testing|paused)/i.test(a.status)) out += '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'undo\')">Undo</button>';
     out += '<button class="btn sm" onclick="coStep(\'' + a.id + '\',\'noremind\')">No reminders</button></div>';
   }
