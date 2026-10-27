@@ -657,7 +657,7 @@ var DEFAULTS = [
   ['Students: final exam notes', 'Yes', 'Students write down what each class says the final exam will look like (and its date) when it is announced.'],
   ['What students call this class', 'BASE/ARC', 'The class name students see in the daily plan question: “What’s my plan for BASE/ARC today?”'],
   ['Grade check day', 'Friday', 'The day each week students must enter their grades before anything else (the check-in opens with the grade paste, then today’s plan). It moves to the school day before when there is no school (School calendar tab), and is skipped in finals weeks. Students who already entered every grade earlier that week skip it. None: grades are never required.'],
-  ['Nothing-to-do checklist', 'Checked Infinite Campus for missing or late work; Checked Google Classroom for anything due this week; Looked for tests or quizzes coming up and studied for them; Checked if I can retake or redo a test or assignment; Worked ahead on a project, essay or reading; Reviewed my notes or made flashcards; Asked a teacher if there is anything I can work on; Cleaned out my backpack and my Google Drive', 'When a student taps “I have nothing to work on”, they check off each of these one at a time (separated with semicolons) before they can save “nothing to work on”.'],
+  ['Nothing-to-do checklist', 'Checked Infinite Campus for missing or late work; Checked Canvas for anything due this week; Looked for tests or quizzes coming up and studied for them; Checked if I can retake or redo a test or assignment; Worked ahead on a project, essay or reading; Reviewed my notes or made flashcards; Asked a teacher if there is anything I can work on; Cleaned out my backpack and my Google Drive', 'When a student taps “I have nothing to work on”, they check off each of these one at a time (separated with semicolons) before they can save “nothing to work on”.'],
   ['Students: daily plan for class time', 'Yes', 'Each school day, students must write what they will spend resource time doing before they can use the rest of the app (they can change it any time). You can mark a day when they did nothing or didn\'t follow it.'],
   ['Case managers: see their students', 'Yes', 'A case manager who opens the app link (signed in with the email on the Students tab or the Case managers tab) sees a list of the students who picked them, and each one’s full progress report. No: they see nothing.'],
   ['IEP benchmarks', 'Yes', 'Track each student\'s IEP benchmarks (short-term objectives) on their page: measured by the app\'s data or by data you enter.'],
@@ -5284,7 +5284,7 @@ function studentData_(email) {
     prof = { name: stuName_(r), checked: day_(r[SC.checked]), birthday: bd, bdayShow: st.bday ? bdayShow_(bd, String(r[SC.seen] || ''), today_()) : null,
       periods: periods_(r[SC.period]), grade: String(r[SC.grade] || ''), number: String(r[SC.number] || ''), counselor: String(r[SC.counselor] || ''),
       iep: { meet: day_(r[SC.iepMeet]), note: String(r[SC.iepNote] || ''), annual: day_(r[SC.iepAnnual]), reeval: day_(r[SC.reeval]) },
-      nothing: String(r[SC.nothing] || '').split(';').map(function (x) { return x.trim(); }).filter(String),          // 2.08: their own nothing-to-do list
+      nothing: String(r[SC.nothing] || '').split(';').map(function (x) { return noGC_(x.trim()); }).filter(String),          // 2.08: their own nothing-to-do list
       caseMgr: String(r[SC.caseMgr] || ''), caseMgrEmail: String(r[SC.caseMgrEmail] || ''), counselorEmail: String(r[SC.cemail] || '') || staffEmail_(String(r[SC.counselor] || '')),
       ap: apFor_(r[SC.grade], st), profileOk: day_(r[SC.profileOk]),
       autoCounselor: (function () { var c = counselorBest_(classOf_(r[SC.grade]), nameStart_(r[SC.email])); return c.length === 1 ? c[0] : null; })() };
@@ -5412,7 +5412,7 @@ function settings_() {
     testingLink: (function (t) { t = String(t || '').trim(); if (/^none$/i.test(t)) return ''; if (!t) return 'https:' + '/' + '/lths.net/testingcenter'; if (!/^https?:/i.test(t)) t = 'https:' + '/' + '/' + t.replace(/^\/+/, ''); return t; })(v['Testing Center appointment link']),
     dropIn: dropIn_(v['Drop-In Center locations']),
     checkDay: String(v['Grade check day'] === undefined ? 'Friday' : v['Grade check day']).trim(), dayClass: String(v['What students call this class'] || 'BASE/ARC').trim(),
-    nothingItems: String(v['Nothing-to-do checklist'] || '').split(';').map(function (x) { return x.trim(); }).filter(String).slice(0, 12),
+    nothingItems: String(v['Nothing-to-do checklist'] || '').split(';').map(function (x) { return noGC_(x.trim()); }).filter(String).slice(0, 12),
     bellTimes: (function () { var tb = null; try { tb = todayBells_(); } catch (e) {} return tb ? tb.times : bellTimes_(v['Bell times']); })(),          // 2.64: today's schedule from the Bell Schedule tabs when they're there
     tapIn: KIOSK_COPIES.indexOf(ScriptApp.getScriptId()) >= 0 && on('Students: tap in for attendance'),
     toolLinks: String(v['Student tool links'] || '').split(';').map(function (x) { var m = /^\s*(.+?)\s*=\s*(https:\S+)\s*$/.exec(x); return m ? { name: m[1].slice(0, 40), url: m[2] } : null; }).filter(Boolean).slice(0, 12),
@@ -5574,6 +5574,8 @@ function shortName_(v) {
 function find_(rows, f) { for (var i = 0; i < rows.length; i++) if (f(rows[i])) return i; return -1; }
 function low_(v) { return String(v || '').trim().toLowerCase(); }
 function clean_(v, max) { return String(v === undefined || v === null ? '' : v).trim().slice(0, max || 200); }
+// 2.69 (Colleen): the school uses Canvas and Infinite Campus, not Google Classroom (saved lists from before are read the new way)
+function noGC_(t) { return String(t).replace(/Google Classroom/g, 'Canvas'); }
 function list_(v) { return String(v || '').split(',').map(function (s) { return s.trim(); }).filter(String); }
 // How many assignments are missing: a whole number from 0 to 99, or '' when the student left it blank.
 function missing_(v) {
@@ -5629,6 +5631,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Class grade analysis') r[1] = 'Yes'; });
   if (/nobday/.test(location.search)) g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Birthday celebration') r[1] = 'No'; });
   var today = today_(), wk = weekOf_(today), W = function (n) { return addDays_(wk, -7 * n); };
+  var sch = function (n) { var d = addDays_(today, n), w = new Date(d + 'T12:00:00Z').getUTCDay(); return w === 6 ? addDays_(d, n < 0 ? -1 : 2) : w === 0 ? addDays_(d, n < 0 ? -2 : 1) : d; };          // sample tests and due dates never on a weekend
   var kids = [
     ['smi513421', 'Jane Smith', '2010-' + today.slice(5), [['1', 'Geometry Prep', 'Ms. Paluch'], ['2', 'Resource', 'Ms. Ray', 1], ['3', 'Chemistry', 'Ms. Orrico'], ['4', 'English II', 'Ms. Morris'], ['5', 'ASL 1', 'Mrs. Gibbons'], ['6', 'Driver Ed', 'Mr. Danner'], ['7', 'Strength Training', 'Mr. Bergman']],
       { 'Geometry Prep': [70, 74, 78], Chemistry: [88, 91, 90], 'English II': [80, 83, 82], 'ASL 1': [90, 89, 88], 'Driver Ed': [84, 84, 85], 'Strength Training': [97, 96, 96] }],
@@ -5656,25 +5659,25 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
   });
   // Marcus checked in this week with a low grade, Dev and Jane did not yet
   g.setUser('ort123456@d204.lths.net');
-  api_saveTest({ cls: 'US History', date: addDays_(today, 1), what: 'Chapter 7 test', type: 'Test' });
+  api_saveTest({ cls: 'US History', date: sch(1), what: 'Chapter 7 test', type: 'Test' });
   api_saveClasses([{ period: '1', name: 'Resource', teacher: 'Ms. Ray', resource: true }, { period: '2', name: 'US History', teacher: 'Daniel Kahn / Rita Moreno', temail: 'dkahn@d204.lths.net, rmoreno@d204.lths.net' }, { period: '3', name: 'Algebra 2', teacher: 'Maria Diaz', temail: 'mdiaz@d204.lths.net' }, { period: '4', name: 'Biology', teacher: 'Sam Lee', temail: 'slee@d204.lths.net' }, { period: '5', name: 'Resource', teacher: 'Ms. Ray', resource: true }, { period: '6', name: 'Spanish 2', teacher: 'Ana Ruiz', temail: 'aruiz@d204.lths.net' }, { period: '7', name: 'Art', teacher: 'Jo Cole', temail: 'jcole@d204.lths.net' }]);
-  var cellP = api_saveTest({ cls: 'Biology', date: addDays_(today, 5), what: 'Cell project', type: 'Project' }).tests.filter(function (t) { return t.what === 'Cell project'; })[0];
-  api_saveProjectSteps(cellP.id, [{ step: 'Sketch the cell', due: addDays_(today, 1) }, { step: 'Label 10 parts', due: addDays_(today, 3) }, { step: 'Make the poster', due: addDays_(today, 5) }]);
+  var cellP = api_saveTest({ cls: 'Biology', date: sch(5), what: 'Cell project', type: 'Project' }).tests.filter(function (t) { return t.what === 'Cell project'; })[0];
+  api_saveProjectSteps(cellP.id, [{ step: 'Sketch the cell', due: sch(1) }, { step: 'Label 10 parts', due: sch(3) }, { step: 'Make the poster', due: sch(5) }]);
   api_saveCheckin({ cplans: { 'US History': 'Work on missing assignments', 'Algebra 2': 'No plan needed', Biology: 'Get Help / Email Teacher', 'Spanish 2': 'No plan needed' }, missing: { 'US History': { n: 2, list: 'Ch. 6 worksheet, Quiz 4 corrections' }, Biology: { n: 1, list: 'Cell diagram' }, 'Algebra 2': { n: 0 }, 'Spanish 2': { n: 0 }, Art: { n: 0 } }, grades: { 'US History': 61, 'Algebra 2': 80, Biology: 73, 'Spanish 2': 88, Art: 96 },
     lows: { 'US History': { why: 'I missed the last quiz and two homework assignments when I was sick.', actions: ['Turn in missing work', 'Email my teacher'], details: 'Ask Mr. Kahn on Tuesday if I can still turn in the homework.' } },
     plan: { focus: ['US History'], steps: [{ cls: 'US History', text: 'Study for Chapter 7 test (Thu)', done: false }, { cls: 'Biology', text: 'Start the cell project', done: true }], help: 'Making flashcards for history', followed: 'Partly', lookBack: 'I did the worksheet but forgot my binder.' } });
-  api_saveRetakes('US History', [], { grade: 61, counted: 20, turnedIn: 18, lateCount: 3, items: [{ name: 'Ch. 6 worksheet', due: addDays_(today, -6), missing: true }, { name: 'Quiz 4 corrections', due: addDays_(today, -3), missing: true }, { name: 'Ch. 5 notes', due: addDays_(today, -12), late: true }] });
-  api_saveRetakes('Biology', [], { grade: 71, counted: 15, turnedIn: 13, lateCount: 1, items: [{ name: 'Lab 2 report', due: addDays_(today, -9), missing: true }] });          // 2.14: made up later
-  api_saveRetakes('Biology', [], { grade: 73, counted: 15, turnedIn: 14, lateCount: 1, items: [{ name: 'Cell diagram', due: addDays_(today, -2), missing: true }, { name: 'Lab 2 report', due: addDays_(today, -9), late: true }] });
+  api_saveRetakes('US History', [], { grade: 61, counted: 20, turnedIn: 18, lateCount: 3, items: [{ name: 'Ch. 6 worksheet', due: sch(-6), missing: true }, { name: 'Quiz 4 corrections', due: sch(-3), missing: true }, { name: 'Ch. 5 notes', due: sch(-12), late: true }] });
+  api_saveRetakes('Biology', [], { grade: 71, counted: 15, turnedIn: 13, lateCount: 1, items: [{ name: 'Lab 2 report', due: sch(-9), missing: true }] });          // 2.14: made up later
+  api_saveRetakes('Biology', [], { grade: 73, counted: 15, turnedIn: 14, lateCount: 1, items: [{ name: 'Cell diagram', due: sch(-2), missing: true }, { name: 'Lab 2 report', due: sch(-9), late: true }] });
   if (!/madeup=1/.test(location.search)) api_madeUpSeen();          // the confetti only with &madeup=1
   api_saveChecklist([{ text: 'Reviewed my missing assignments', done: true }, { text: 'Studied or worked on an assignment', done: true }]);
   api_logContact('US History', 'Email link in the app');
   api_saveFocus({ cls: 'US History', task: 'Study for Chapter 7 test', planned: 20, minutes: 20, predicted: 100, done: 70, distracted: ['Phone'] });
   api_logAccom({ acc: 'Extended time', cls: 'US History', 'for': 'Test' });
   g.setUser('smi513421@d204.lths.net');
-  api_saveTest({ cls: 'Geometry Prep', date: addDays_(today, 3), what: 'Unit 3 test', type: 'Test' });
-  api_saveTest({ cls: 'Chemistry', date: addDays_(today, 10), what: 'Lab report', type: 'Lab' });
-  api_addReminder({ date: addDays_(today, 2), message: 'Bring my calculator to Geometry' });
+  api_saveTest({ cls: 'Geometry Prep', date: sch(3), what: 'Unit 3 test', type: 'Test' });
+  api_saveTest({ cls: 'Chemistry', date: sch(10), what: 'Lab report', type: 'Lab' });
+  api_addReminder({ date: sch(2), message: 'Bring my calculator to Geometry' });
   g.setUser('ray@d204.lths.net'); api_saveTitles({ 'Daniel Kahn': 'Mr.', 'Rita Moreno': 'Ms.', 'Maria Diaz': 'Ms.' });
   if (/demo=1/.test(location.search)) {          // the showcase demo: returning students with goals, IEP dates, plans and finals filled in
     if (!/bell=1/.test(location.search)) g.ss.getSheetByName('Settings')._data.forEach(function (r) { if (r[0] === 'Bell schedule link') r[1] = ''; });
@@ -9444,7 +9447,7 @@ function ppOpen(id) {
   var el = document.createElement('div'); el.className = 'modal'; el.id = 'ppModal';
   el.onclick = function (e) { if (e.target === el && !$('ppGo').disabled) el.remove(); };
   el.innerHTML = '<div class="card" style="max-width:640px"><div class="row"><h2 class="grow">📋 Plan ' + esc(t.what) + '</h2><button class="btn link" onclick="$(\'ppModal\').remove()">✕ Close</button></div>' +
-    '<p class="hint" style="margin:4px 0 8px">' + esc(t.cls) + ' · due ' + fmtDay(t.date) + '. Open the project in Google Classroom (or wherever your teacher posted it). Select all the directions <b>and the rubric</b>, copy (Ctrl + C), and paste them here (Ctrl + V).</p>' +
+    '<p class="hint" style="margin:4px 0 8px">' + esc(t.cls) + ' · due ' + fmtDay(t.date) + '. Open the project in Canvas (or wherever your teacher posted it). Select all the directions <b>and the rubric</b>, copy (Ctrl + C), and paste them here (Ctrl + V).</p>' +
     '' + pasteHow('part') + '<textarea id="ppText" style="min-height:180px" placeholder="Paste the project directions and the rubric here"></textarea>' +
     '<div class="row" style="margin-top:8px"><button class="btn primary" id="ppGo" onclick="ppGo(\'' + id + '\')">' + (B.planner === 'ai' ? '✨ Make my plan' : 'Make my plan') + '</button><span class="small" id="ppStatus" style="display:inline"></span></div>' +
     '<p class="small" style="margin:8px 0 0">' + (B.planner === 'ai' ? 'An AI helper reads the directions and writes the steps. Only the directions, class and dates are sent, not your name. ' : '') + 'You can change every step and date before you save.</p></div>';
@@ -11087,7 +11090,7 @@ function signinHelp() {
     '<p style="margin:0 0 12px">This app only works with your <b>school</b> Google account (your <b>@d204.lths.net</b> email).</p>' +
     '<ol class="signsteps"><li>Look at the <b>top right corner</b> of Chrome and click your <b>picture or letter</b>.</li>' +
     '<li>Click your <b>school email</b> in the list. Not there? Click <b>Add</b> and sign in with your school email and password.</li>' +
-    '<li>In that window, open the link again from <b>Google Classroom</b>.</li></ol>' +
+    '<li>In that window, open the link again from <b>Canvas</b>.</li></ol>' +
     '<p class="small" style="margin:10px 0 0">💡 Quick fix: press <b>Ctrl + Shift + N</b> for a private window, paste the link there, and sign in with only your school account.</p>' +
     '<div class="row" style="margin-top:14px"><a class="btn primary" target="_blank" href="' + SIGNIN_URL + '">More help (Chromebook, phone)</a><span class="small" style="display:inline">Still stuck? Raise your hand and show your teacher this screen.</span></div></div>';
 }
