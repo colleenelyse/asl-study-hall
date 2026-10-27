@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.73'
+var VERSION = '2.78'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -577,6 +577,7 @@ var TABS = {
   // logs tests that arrived (paper from the mailbox, or an access code that is released to the student when they start)
   'Test requests': ['ID', 'When', 'Email', 'Class', 'Kind', 'What', 'Status', 'Updated'],
   'Tests received': ['ID', 'Received', 'Email', 'Class', 'What', 'How', 'Access code', 'Released', 'Done', 'Note', 'Logged by', 'Logged', 'Return to (teacher)', 'Returned'],
+  'Test sessions': ['Test ID', 'Email', 'Class', 'Test', 'Started', 'Ended', 'Minutes', 'Start ms', 'End ms'],          // 2.78: each stretch a student had a test (extended time), so the minutes add up
   'Missing explained': ['Date', 'Email', 'Class', 'Assignment', 'Why it won’t be turned in'],
   'Self-report checks': ['Week of', 'Email', 'Class', 'Said missing', 'Found missing (pasted page)', 'Checked', 'Match'],
   // the grade each student wants to finish the semester with, per class; and what each class said the final exam will be like
@@ -610,7 +611,7 @@ var TABS = {
     'Focus sessions', 'Focus minutes', 'Focus predicted % (avg)', 'Focus got done % (avg)', 'Accommodations used']
 };
 var SC = { period: 0, initial: 1, first: 2, grade: 3, number: 4, bday: 5, counselor: 6, classes: 7, email: 8, firstVisit: 9, last: 10, checked: 11, seen: 12, parent: 13, cemail: 14, goal: 15, checklist: 16, accoms: 17, plang: 18, iepMeet: 19, iepNote: 20, iepAnnual: 21, reeval: 22, caseMgr: 23, caseMgrEmail: 24, profileOk: 25, nothing: 26, myCheck: 27, phrases: 28, testing: 29, escort: 30 };   // Students columns
-var TEXT_COLS = { 'Attendance': [1, 2, 3, 4, 5, 6], 'Accommodation check': [1, 2, 3, 4], 'Questions': [1, 3, 4, 5, 6, 7, 8, 9], 'Grade categories': [1, 2, 3, 4], 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
+var TEXT_COLS = { 'Test sessions': [1, 2, 3, 4, 5, 6], 'Attendance': [1, 2, 3, 4, 5, 6], 'Accommodation check': [1, 2, 3, 4], 'Questions': [1, 3, 4, 5, 6, 7, 8, 9], 'Grade categories': [1, 2, 3, 4], 'Assignment notes': [1, 3, 4], 'IXL plans': [5], 'IXL log': [1, 3], 'IXL weeks': [1, 3, 4, 5], 'Assignments': [1, 3, 4, 5, 7, 8], 'Said turned in': [1, 3, 4], 'Flashcard sets': [1, 3, 4, 5, 6, 8], 'Tool use': [1, 3, 4], 'Hall passes': [1, 2, 3, 4, 8, 9, 10, 11], 'Attention alerts': [2, 7], 'Skill checks': [1, 9], 'Accommodation reflections': [1], 'Future research': [1, 6], 'Related services': [6], 'Accommodation plan': [4], 'Goal check-ins': [2, 3], 'Goal change log': [1], 'Goal reflections': [1, 7], 'Skipped steps': [1], 'IEP goals': [5, 6, 26, 27], Counselors: [1, 2, 3, 6], 'Test requests': [2, 8], 'Tests received': [2, 7, 8, 9, 12, 14], 'Missing explained': [1], 'Daily questions': [9], 'Question answers': [1], 'Self-report checks': [1, 6], 'Grade goals': [2, 5], 'Final exams': [2, 4, 6], 'Final exam schedule': [1, 2, 3], 'School calendar': [1], 'Daily plans': [1, 4], 'Goal tools': [6], 'IEP benchmarks': [5, 7, 8], 'Benchmark data': [1], 'Free time': [1], 'Project steps': [5, 7], 'Exit tickets': [1, 5], 'Focus sessions': [1, 10, 11], 'Accommodations used': [1], 'Goal data history': [1, 22], Checklist: [1, 7], Observations: [1], Contacts: [1], 'Assignment history': [4, 5, 6, 10, 11], 'Goal data': [23], 'Emails sent': [1], 'Class analysis': [3, 8], Retakes: [5, 9, 10], Students: [1, 5, 6, 8, 10, 11, 12, 13, 20, 22, 23, 26, 27, 28, 29, 30], Classes: [2], Grades: [1, 5], Plans: [1, 8], Tests: [4, 8, 9], Reminders: [3, 6] };
 
 // Settings tab rows: label, default value, what it means.
 var DEFAULTS = [
@@ -837,7 +838,7 @@ function setup_() {
 // The tabs in the order a teacher uses them: the everyday ones on the left, then goal data, then logs the app keeps,
 // then the school-wide lists you update once a year, then things you rarely open. Each group has its own tab color.
 var TAB_GROUPS = [
-  ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test requests', 'Daily questions']],
+  ['#3355d1', ['Students', 'Settings', 'Goal data', 'Grades', 'Classes', 'Plans', 'Daily plans', 'Tests', 'Retakes', 'Tests received', 'Test sessions', 'Test requests', 'Daily questions']],
   ['#2e7d5b', ['All goals and benchmarks', 'IEP goals', 'Accommodation plan', 'Related services', 'Future research', 'Accommodation reflections', 'Accommodation check', 'Skill checks', 'Hall passes', 'Attendance', 'Attention alerts', 'Goal check-ins', 'Goal change log', 'Goal reflections', 'IEP benchmarks', 'Benchmark data', 'Goal tools', 'Grade goals', 'Final exams', 'Class analysis', 'Self-report checks', 'Missing explained', 'Question answers', 'Goal data history']],
   ['#b7791f', ['Checklist', 'Exit tickets', 'Skipped steps', 'Observations', 'Contacts', 'Accommodations used', 'Focus sessions', 'Assignment history', 'Project steps', 'Flashcard sets', 'Tool use', 'Assignments', 'Said turned in', 'Assignment notes', 'Grade categories', 'Questions', 'IXL plans', 'IXL log', 'IXL weeks', 'Reminders', 'Emails sent']],
   ['#7a5470', ['Counselors', 'Case managers', 'School calendar', 'Final exam schedule', 'Graduation requirements', 'Teachers', 'Free time links']],
@@ -1383,7 +1384,8 @@ function teacherData_(week) {
   var retakes = retakes_('').map(function (r) { r.name = names[r.email] || r.email; return r; });
   var nm = {}; students.forEach(function (x) { nm[x.email] = x.name; });
   var iepSoon = week === weekOf_(today) ? iepSoon_(30) : [];
-  return { tripLimit: hallPassOn_() ? (st.hp || {}).trips || 0 : 0, week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
+  var tcWaiting = st.f.tc ? rows_('Tests received').filter(function (r) { return !String(r[8]); }).map(function (r) { var e = low_(r[2]); return { email: e, name: names[e] || e, cls: String(r[3]), what: String(r[4]), how: String(r[5]), released: !!String(r[7]), received: String(r[1]) }; }) : [];          // 2.76: tests and codes from 📬 Tests & codes count as upcoming
+  return { tcWaiting: tcWaiting, tripLimit: hallPassOn_() ? (st.hp || {}).trips || 0 : 0, week: week, thisWeek: weekOf_(today), today: today, students: students, tests: tests, retakes: retakes, detailOn: detailOn, dayPlanOn: st.f.dayPlan && week === weekOf_(today),
     finalsAccoms: st.f.finals ? finalsAccoms_(nm) : [], iepSoon: iepSoon, stuck: week === weekOf_(today) ? stuck_(students, today, st) : [], tcOpen: st.f.tc ? rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).length : 0, tcReturns: st.f.tc ? tcReturns_(nm) : [], skips: skipsWeek_(week, nm), evidence: st.f.goalCheck ? evidence_(nm, week) : [], alerts: week === weekOf_(today) ? alerts_(nm) : [], gcheck: st.f.goalCheck && week === weekOf_(today) ? gcheckOverview_(nm) : null, poll: week === weekOf_(today) && st.f.poll ? pollResults_(today, nm) : null, ckTime: ckTime_(nm, week, today) };
 }
 
@@ -2056,6 +2058,7 @@ function api_tcRead_() {
   var nm = {}; rows_('Students').forEach(function (r) { if (low_(r[SC.email])) nm[low_(r[SC.email])] = stuName_(r); });
   var req = rows_('Test requests').filter(function (r) { return String(r[6]) === 'Open'; }).map(function (r) { return { id: String(r[0]), when: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), kind: String(r[4]), what: String(r[5]) }; });
   var rec = rows_('Tests received').map(function (r) { return { id: String(r[0]), received: String(r[1]), email: low_(r[2]), name: nm[low_(r[2])] || low_(r[2]), cls: String(r[3]), what: String(r[4]), how: String(r[5]), code: String(r[6]), released: String(r[7]), done: String(r[8]), note: String(r[9]), logged: String(r[11] || r[1] || ''), returnTo: String(r[12] || ''), returned: String(r[13] || '') }; });
+  var ss = testSessions_(); rec.forEach(function (x) { x.sess = ss[x.id] || { list: [], total: 0, open: null }; });          // 2.78
   var open = rec.filter(function (x) { return !x.done; });
   return { requests: req, expected: open.filter(function (x) { return x.how === 'Expected'; }), waiting: open.filter(function (x) { return x.how !== 'Expected'; }), done: rec.filter(function (x) { return x.done; }).slice(-20).reverse(), returns: tcReturns_(nm), teachers: classTeachers_() };
 }
@@ -2120,6 +2123,42 @@ function classTeachers_() {
   var out = {}; rows_('Classes').forEach(function (r) { var e = low_(r[0]), c = String(r[2]); if (e && c) { out[e] = out[e] || {}; if (!out[e][c]) out[e][c] = classTeacher_(e, c); } });
   return out;
 }
+// 2.78: ⏱ extended time: the stretches a student had a test ("▶ Hand it to the student", then "⏸ Got it back" or "✓ Finished"), with minutes
+function testSessions_() {
+  var o = {}; rows_('Test sessions').forEach(function (r) {
+    var id = String(r[0]); if (!id) return; var s = o[id] = o[id] || { list: [], total: 0, open: null };
+    var x = { start: String(r[4] || ''), end: String(r[5] || ''), min: +r[6] || 0, ms: +r[7] || 0 }; s.list.push(x); if (!x.end) s.open = x; else s.total += x.min;
+  });
+  return o;
+}
+// for the student's page: each test's minutes this semester (several stretches add up)
+function testTime_(email) {
+  var sem = semStart_(), by = {};
+  rows_('Test sessions').forEach(function (r) { if (low_(r[1]) !== email || !String(r[5] || '') || String(r[4]).slice(0, 10) < sem) return; var k = String(r[0]); var t = by[k] = by[k] || { cls: String(r[2] || ''), test: String(r[3] || ''), min: 0, days: {} }; t.min += +r[6] || 0; t.days[String(r[4]).slice(0, 10)] = 1; });
+  var l = Object.keys(by).map(function (k) { var t = by[k]; return { cls: t.cls, test: t.test, min: t.min, days: Object.keys(t.days).length }; });
+  return { tests: l.length, min: l.reduce(function (a, t) { return a + t.min; }, 0), list: l };
+}
+function api_tcStart(id) {
+  teacherOnly_();
+  locked_(function () {
+    var t = rows_('Tests received').filter(function (r) { return String(r[0]) === String(id); })[0]; if (!t) throw new Error('That test isn’t on the list any more.');
+    if (rows_('Test sessions').some(function (r) { return String(r[0]) === String(id) && !String(r[5] || ''); })) return;          // already with the student
+    sheet_('Test sessions').appendRow([String(id), low_(t[2]), String(t[3] || ''), String(t[4] || t[5] || ''), stamp_(), '', '', Date.now(), '']);
+  });
+  return api_tcRead_();
+}
+function tcStopOpen_(id) {
+  var did = false;
+  locked_(function () {
+    var rows = rows_('Test sessions'), i = -1; rows.forEach(function (r, k) { if (String(r[0]) === String(id) && !String(r[5] || '')) i = k; }); if (i < 0) return;
+    var now = Date.now(), min = Math.max(0, Math.round((now - (+rows[i][7] || now)) / 60000));
+    sheet_('Test sessions').getRange(i + 2, 6, 1, 4).setValues([[stamp_(), min, rows[i][7], now]]); did = true;
+    if (ROWS_MEMO) delete ROWS_MEMO['Test sessions'];
+  });
+  return did;
+}
+// they gave it back: "⏸ finish another day" keeps the test here (not taken, not to the mailbox); finished = taken
+function api_tcStop(id, finished) { tcStopOpen_(id); if (finished) return tcSet_(id, 9, stamp_()); return api_tcRead_(); }
 function api_tcReturned(id) { return tcSet_(id, 14, stamp_()); }
 // the Overview: paper tests taken but not back in the teacher's mailbox yet
 function tcReturns_(names) {
@@ -2127,7 +2166,7 @@ function tcReturns_(names) {
     .map(function (r) { return { id: String(r[0]), name: names[low_(r[2])] || low_(r[2]), cls: String(r[3]), what: String(r[4]), returnTo: String(r[12] || '') || classTeacher_(low_(r[2]), String(r[3])), taken: String(r[8]) }; });
 }
 function api_tcRelease(id, on) { return tcSet_(id, 8, on ? stamp_() : ''); }          // the student sees the code
-function api_tcDone(id, on) { return tcSet_(id, 9, on === false ? '' : stamp_()); }          // taken (it leaves the student's page)
+function api_tcDone(id, on) { if (on !== false) tcStopOpen_(id); return tcSet_(id, 9, on === false ? '' : stamp_()); }          // 2.78: a stretch still going ends when it's marked taken          // taken (it leaves the student's page)
 function api_tcRequest(id, status) {
   teacherOnly_();
   locked_(function () { var rows = rows_('Test requests'), i = find_(rows, function (r) { return String(r[0]) === String(id); }); if (i >= 0) sheet_('Test requests').getRange(i + 2, 7, 1, 2).setValues([[status === 'Open' ? 'Open' : 'Done', stamp_()]]); });
@@ -3291,7 +3330,7 @@ function efData_(email) {
   var ex20 = exDays.slice(-20), freeN = rows_('Free time').filter(function (r) { return low_(r[1]) === email && whenDay_(r[0]) >= sem; }).length;
   var dp = dayPlans_(email), sc = selfChecks_(email);
   return {
-    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed, minutes: dp.minutes }, tools: toolStats_(email), ixl: ixl_(email),
+    sem: sem, focus: fo, accom: ac, freeTime: freeN, selfCheck: sc, dayPlan: { days: dp.days, flagged: dp.flagged, followed: dp.followed, minutes: dp.minutes }, tools: toolStats_(email), ixl: ixl_(email), testTime: testTime_(email),
     exit: { last20: pct(ex20.filter(function (d) { return exits[d]; }).length, ex20.length), recent: Object.keys(exits).sort().slice(-6).reverse().map(function (d) { return { date: d, finished: exits[d].finished, next: exits[d].next }; }) },
     checklist: { last5: last5.filter(trial).length, of5: last5.length, last20: pct(last20.filter(trial).length, last20.length), noTime20: last20.reduce(function (n, d) { return n + (ck[d] ? ck[d].noTime : 0); }, 0), days: days.slice(-15).reverse().map(function (d) { return { date: d, done: ck[d] ? ck[d].done : 0, noTime: ck[d] ? ck[d].noTime : 0, total: ck[d] ? ck[d].total : 0, own: ck[d] ? ck[d].own : null, met: trial(d) }; }) },
     checkins: { weeks: checkedIn, of: 8 },
@@ -4642,12 +4681,14 @@ function tapPeriod_(email, nowHM) {
   bt.forEach(function (b, k) { if (res.indexOf(b.p) < 0) return; var from = k > 0 ? bt[k - 1].end : (b.opens || b.start); if (nowHM >= from && nowHM < b.end) hit = b; });
   return hit;
 }
-function tapToday_(email) { var t = today_(); return rows_('Attendance').filter(function (r) { return low_(r[1]) === email && day_(r[0]) === t; }).map(function (r) { return { period: String(r[3] || ''), time: String(r[4] || ''), status: String(r[5] || ''), late: Number(r[6]) || 0 }; }); }
+// 2.77: a tap-in time as "13:24", even when Sheets turned the cell into a time (it reads back as a date in 1899)
+function hm_(v) { if (v instanceof Date) return Utilities.formatDate(v, tz_(), 'HH:mm'); var m = /(\d{1,2}):(\d\d)/.exec(String(v || '')); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : String(v || ''); }
+function tapToday_(email) { var t = today_(); return rows_('Attendance').filter(function (r) { return low_(r[1]) === email && day_(r[0]) === t; }).map(function (r) { return { period: String(r[3] || ''), time: hm_(r[4]), status: String(r[5] || ''), late: Number(r[6]) || 0 }; }); }
 // the teacher's Overview: who tapped in today (time, on time or late), and who hasn't yet though their resource period has started
 function api_tapBoard() {
   teacherOnly_(); var st = settings_(); if (!st.tapIn) return null;
   var t = today_(), now = Utilities.formatDate(new Date(), tz_(), 'HH:mm'), out = {}, bt = st.bellTimes || [];
-  rows_('Attendance').forEach(function (r) { if (day_(r[0]) === t) out[low_(r[1])] = { time: String(r[4] || ''), status: String(r[5] || ''), late: Number(r[6]) || 0 }; });
+  rows_('Attendance').forEach(function (r) { if (day_(r[0]) === t) out[low_(r[1])] = { time: hm_(r[4]), status: String(r[5] || ''), late: Number(r[6]) || 0 }; });
   var started = bt.filter(function (b) { return now >= b.start; }).map(function (b) { return b.p; });
   rows_('Classes').forEach(function (r) { var e = low_(r[0]); if (r[4] === true && started.indexOf(String(r[1]).toUpperCase()) >= 0 && !out[e]) out[e] = { status: 'Not yet' }; });
   return { today: out, schedule: (todayBells_() || {}).name || '' };
@@ -4660,6 +4701,7 @@ function api_tapIn() {
     var late = 0; if (b) { var mins = function (t) { return +t.slice(0, 2) * 60 + +t.slice(3); }; late = Math.max(0, mins(now) - mins(b.start)); }
     var status = !b ? 'Here' : late <= 5 ? 'On time' : 'Late';
     sheet_('Attendance').appendRow([today_(), email, hpName_(email), period, now, status, status === 'Late' ? late : '']);
+    var atS = sheet_('Attendance'), atR = atS.getLastRow(); atS.getRange(atR, 5).setNumberFormat('@').setValue(String(now));          // 2.77: kept as text, never a Sheets time
   });
   return tapToday_(email);
 }
@@ -5943,6 +5985,15 @@ function gDay(data, cls, w) { var d = ((data || D).dates || {})[cls]; return (d 
 function weekDay(data, w) { var best = ''; Object.keys((data || D).dates || {}).forEach(function (c) { var x = data.dates[c][w]; if (x && x > best) best = x; }); return best || w; }
 function addDays(s, n) { var d = utc(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function daysUntil(s) { return Math.round((utc(s) - utc(B.today)) / 864e5); }
+// 2.76 (Colleen): a test the teacher has (a code waiting, a paper test here, or one on its way) is an upcoming test too
+function tcLabel(x) { return x.how === 'Expected' ? '<span class="badge">⏳ on its way</span>' : x.how === 'Access code' ? (x.released ? '<span class="badge up">🔑 code released</span>' : '<span class="badge warn">🔑 code waiting</span>') : '<span class="badge warn">📄 here</span>'; }
+function tcRows(list, who, me) {
+  return (list || []).map(function (x) {
+    var note = me ? (x.how === 'Expected' ? 'Your teacher is waiting for it to arrive' : x.released ? 'Your code is at the top of Today' : 'When you’re ready, ask the teacher to ' + (x.how === 'Access code' ? 'release the code' : 'give it to you')) : 'With the teacher' + (x.how === 'Expected' ? ': waiting for it to arrive' : ': ready when they are');
+    if (who) return '<tr class="click" onclick="openStudent(\'' + esc(x.email) + '\')"><td>' + tcLabel(x) + '</td><td><div class="person">' + avatar(x.email, x.name) + '<b>' + esc(x.name) + '</b></div></td><td>' + esc(x.cls) + '</td><td class="hide-sm">' + esc(x.what || '') + '<small>' + note + '</small></td></tr>';
+    return '<tr><td style="width:140px">' + tcLabel(x) + '</td><td><b>' + esc(x.cls) + '</b> ' + esc(x.what || '') + '<small>' + note + '</small></td></tr>';
+  }).join('');
+}
 function countdown(s) {
   var n = daysUntil(s);
   if (n < 0) return '<span class="badge">' + (-n) + ' day' + (n === -1 ? '' : 's') + ' ago</span>';
@@ -8050,7 +8101,7 @@ function comingItems() {
 }
 function startList() {
   var out = [], tm = addDays(B.today, 1);
-  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: 'Your ' + esc(x.cls) + ' test is here. Ask your teacher for it and take it today.', go: '' }); });
+  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: x.how === 'Access code' && x.released ? 'Your ' + esc(x.cls) + ' access code is at the top of Today. Take your test now.' : x.how === 'Access code' ? 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher to release the code.' : 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher for it.', go: '' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due && a.due < B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || 'past due') + '). It was due ' + esc(fmtDay(a.due)) + '.', go: 'tracker' }); });
   stepsDue(B.today).slice(0, 1).forEach(function (x) { out.push({ t: 'Do today’s step for <b>' + esc(x.t.what) + '</b>: ' + esc(x.s.step), go: 'tests' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due === B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || '') + '). It’s due today.', go: 'tracker' }); });
@@ -9451,7 +9502,8 @@ function drawTests() {
     '<input class="grow" type="text" id="tWhat" maxlength="120" placeholder="What is it? (Unit 4 test)">' +
     '<input type="date" id="tDate" style="max-width:170px" min="' + B.today + '">' +
     '<button class="btn primary" id="tAdd">Add</button></div></div>';
-  h += '<div class="card"><h2>Coming up</h2>' + (up.length ? '<table><tbody>' + up.map(function (t) {
+  var tw3 = ((D.tc && D.tc.received) || []);
+  h += '<div class="card"><h2>Coming up</h2>' + (up.length || tw3.length ? '<table><tbody>' + tcRows(tw3, false, true) + up.map(function (t) {
     var past = daysUntil(t.date) < 0;
     return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls || 'Any class') + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + (past ? ' · did you take it?' : '') + '</small>' + testAccHtml(t) + '</td>' +
       '<td style="text-align:right;white-space:nowrap"><button class="btn small" onclick="testDone(\'' + t.id + '\',true)">✓ Done</button> <button class="btn link danger" onclick="testDel(\'' + t.id + '\')">Delete</button></td></tr>' +
@@ -9845,7 +9897,8 @@ function tWeek(n) { $('main').innerHTML = '<div class="loading">Loading…</div>
 function drawUpcoming() {
   if (!TD) { $('main').innerHTML = '<div class="loading">Loading…</div>'; Promise.all([loadTeacher(), loadPhotos()]).then(drawUpcoming).catch(oops); return; }
   var h = '<h1>Upcoming tests</h1><p class="sub">Everything your students listed for the next two weeks.</p><div class="card">';
-  h += TD.tests.length ? '<table><thead><tr><th>When</th><th>Student</th><th>Class</th><th class="hide-sm">What</th></tr></thead><tbody>' + TD.tests.map(function (t) {
+  var tw = TD.tcWaiting || [];
+  h += TD.tests.length || tw.length ? '<table><thead><tr><th>When</th><th>Student</th><th>Class</th><th class="hide-sm">What</th></tr></thead><tbody>' + tcRows(tw, true) + TD.tests.map(function (t) {
     return '<tr class="click" onclick="openStudent(\'' + esc(t.email) + '\')"><td>' + countdown(t.date) + '<small>' + fmtDay(t.date) + '</small></td><td><div class="person">' + avatar(t.email, t.name) + '<b>' + esc(t.name) + '</b></div></td><td>' + esc(t.cls) + '</td><td class="hide-sm">' + esc(t.what) + '<small>' + esc(t.type) + (t.accoms ? ' · 🧰 ' + esc(t.accoms) : '') + '</small></td></tr>';
   }).join('') + '</tbody></table>' : '<div class="empty">No tests listed for the next two weeks.</div>';
   h += '</div>';
@@ -10270,7 +10323,8 @@ function drawTStudent() {
       (r.eligible === 'No' && !r.status ? '<span class="badge">Not eligible</span>' : retakeButtons(r.cls, r.test, TS_EMAIL)) + '</td></tr>';
   }).join('') + '</tbody></table></div>';
   var up = TS.tests.filter(function (t) { return !t.done && daysUntil(t.date) >= -3; });
-  h += '<div class="card"><h2>Upcoming tests</h2>' + (up.length ? '<table><tbody>' + up.map(function (t) { return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls) + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + '</small></td></tr>'; }).join('') + '</tbody></table>' : '<p class="small">None listed.</p>') + '</div>';
+  var tw2 = ((TS.tc && TS.tc.received) || []);
+  h += '<div class="card"><h2>Upcoming tests</h2>' + (up.length || tw2.length ? '<table><tbody>' + tcRows(tw2, false) + up.map(function (t) { return '<tr><td style="width:120px">' + countdown(t.date) + '</td><td><b>' + esc(t.cls) + '</b> ' + esc(t.what) + '<small>' + esc(t.type) + ' · ' + fmtDay(t.date) + '</small></td></tr>'; }).join('') + '</tbody></table>' : '<p class="small">None listed.</p>') + '</div>';
   h += remindersCard(TS, true);
 
   // schedule: the teacher can fix it (dropped or added course)
@@ -10422,6 +10476,7 @@ function efRows(e) {
     ['Late this semester', e.lateSem || 0, e.lateMax ? 'Most in one class: ' + e.lateMax + ' in ' + e.lateMaxCls + (Object.keys(e.latePer).length > 1 ? ' · ' + Object.keys(e.latePer).map(function (c) { return c + ' ' + e.latePer[c]; }).join(' · ') : '') : ''],
     ['Used “Email my teacher” in the app', e.contacts.app + ' this semester', ''],
     ['Said they emailed or talked to a teacher', e.contacts.told + ' this semester', 'Retakes scheduled: ' + e.contacts.retakes],
+    ['⏱ Extended time on tests (this semester)', e.testTime && e.testTime.tests ? e.testTime.min + ' minutes on ' + e.testTime.tests + ' test' + (e.testTime.tests === 1 ? '' : 's') : 'none timed yet', e.testTime ? e.testTime.list.map(function (t) { return (t.cls ? t.cls + ' ' : '') + t.test + ': ' + t.min + ' min' + (t.days > 1 ? ' over ' + t.days + ' days' : ''); }).join(' · ') : ''],
     ['📈 Weekly IXL (student-reported)', e.ixl ? e.ixl.total + ' of ' + e.ixl.target + ' ' + e.ixl.unit + ' this week' : 'no IXL goal', e.ixl && e.ixl.history.length ? 'Met ' + e.ixl.history.filter(function (h) { return h.met; }).length + ' of the last ' + e.ixl.history.length + ' weeks' : ''],
     ['🧰 Student tools used', e.tools && e.tools.n ? e.tools.n + ' times this semester' : 'not yet', e.tools ? Object.keys(e.tools.by || {}).map(function (k) { return k + ' ' + e.tools.by[k]; }).join(' · ') + (e.tools.sets ? ' · ' + e.tools.sets + ' flashcard set' + (e.tools.sets === 1 ? '' : 's') + (e.tools.best !== null ? ' (average best ' + e.tools.best + '%)' : '') : '') + (e.tools.assignments ? ' · ' + e.tools.assignments + ' assignments tracked, ' + e.tools.assignDone + ' done' + (e.tools.assignOnTime !== null ? ' (' + e.tools.assignOnTime + '% on time)' : '') : '') + (e.tools.questions ? ' · ' + e.tools.questions + ' questions for teachers written, ' + e.tools.asked + ' asked' : '') : ''],
     ['Daily check-in time (opening the app to Done)', e.dayPlan && e.dayPlan.minutes != null ? 'typically ' + (e.dayPlan.minutes < 1 ? 'under 1' : e.dayPlan.minutes) + ' minutes' : 'not measured yet', 'The middle of their last 10 school days'],
@@ -11215,13 +11270,17 @@ function welcomeDone() { var m = $('welModal'); if (m) m.remove(); if (B.welcome
 var TCK = null;
 function codeBanner() {
   var rel = ((D.tc && D.tc.received) || []).filter(function (x) { return x.released && x.code; });
-  return rel.map(function (x) { return '<div class="card codebanner">🔑 <b>Your access code for ' + esc(x.cls) + (x.what ? ' (' + esc(x.what) + ')' : '') + ':</b> <span class="acode">' + esc(x.code) + '</span></div>'; }).join('');
+  // 2.74 (Colleen): a test or code that's waiting tells the student, at the top of Today, to ask out loud (not through the app)
+  var wait = ((D.tc && D.tc.received) || []).filter(function (x) { return x.ready && !x.released && x.how !== 'Expected'; });
+  return rel.map(function (x) { return '<div class="card codebanner">🔑 <b>Your access code for ' + esc(x.cls) + (x.what ? ' (' + esc(x.what) + ')' : '') + ':</b> <span class="acode">' + esc(x.code) + '</span></div>'; }).join('') +
+    wait.map(function (x) { var code = x.how === 'Access code', t = esc(x.cls) + (code ? ' test' : ' paper test') + (x.what ? ' (' + esc(x.what) + ')' : '');
+      return '<div class="card" style="border:2px solid var(--warn);background:var(--warn-soft)">🙋 <b>Your ' + t + ' is here.</b> When you’re ready, ask the teacher to ' + (code ? 'release the code' : 'give it to you') + '.</div>'; }).join('');
 }
 function tcCard() {
   var tc = D.tc || { requests: [], received: [] }, h = '<div class="card" id="tcCard"><h2>🧪 Tests with my teacher</h2>';
   if (tc.received.length) h += tc.received.map(function (x) {
     if (x.how === 'Expected') return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">⏳ Your teacher is waiting for this test to arrive.</div></div>';
-    return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">' + (x.how === 'Access code' ? (x.released ? '🔑 Access code: <span class="acode">' + esc(x.code) + '</span>' : '🔒 Your teacher has your access code. Ask when you’re ready to start.') : '📄 Your paper test is here (since ' + shortDay(String(x.received).slice(0, 10)) + '). Ask your teacher when you’re ready.') + '</div></div>';
+    return '<div class="tcrow"><b>' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '</b><div class="small">' + (x.how === 'Access code' ? (x.released ? '🔑 Access code: <span class="acode">' + esc(x.code) + '</span>' : '🔒 When you’re ready, ask the teacher to release the code.') : '📄 Your paper test is here (since ' + shortDay(String(x.received).slice(0, 10)) + '). When you’re ready, ask the teacher for it.') + '</div></div>';
   }).join('');
   h += '<p style="margin:10px 0 6px"><b>Tell your teacher:</b></p><div class="row" style="gap:8px">' +
     '<button class="btn' + (TCK === 'waiting' ? ' primary' : '') + '" onclick="TCK=TCK===\'waiting\'?null:\'waiting\';tcRedraw()">⏳ I’m waiting for a test</button>' +
@@ -11773,11 +11832,12 @@ function drawTc() {
   h += '<div class="card"><h2>Waiting to be taken</h2>' + (TCD.waiting.length ? TCD.waiting.map(function (x) {
     if (TCE === x.id) return tcEditForm(x);
     var code = x.how === 'Access code';
-    return '<div class="tcrow row"><div class="grow"><b>' + esc(x.name) + '</b> · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '<div class="small">' + (code ? '🔑 Access code <span class="acode">' + esc(x.code) + '</span>' + (x.released ? ' · <b>released</b> ' + esc(String(x.released).slice(5, 16)) : ' · not released yet') : '📄 Paper test' + (x.returnTo ? ' · return to ' + esc(x.returnTo) : '')) + ' · received ' + esc(String(x.received).slice(0, 16)) + (x.note ? ' · ' + esc(x.note) : '') + '</div></div>' +
+    return '<div class="tcrow row"><div class="grow"><b>' + esc(x.name) + '</b> · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + '<div class="small">' + (code ? '🔑 Access code <span class="acode">' + esc(x.code) + '</span>' + (x.released ? ' · <b>released</b> ' + esc(String(x.released).slice(5, 16)) : ' · not released yet') : '📄 Paper test' + (x.returnTo ? ' · return to ' + esc(x.returnTo) : '')) + ' · received ' + esc(String(x.received).slice(0, 16)) + (x.note ? ' · ' + esc(x.note) : '') + '</div>' + tcTime(x) + '</div>' +
       (code ? '<button class="btn small' + (x.released ? '' : ' primary') + '" onclick="tcRel(\'' + x.id + '\',' + !x.released + ')">' + (x.released ? 'Hide again' : 'Release to student') + '</button>' : '') +
-      '<button class="btn small" onclick="tcDone(\'' + x.id + '\')">✓ Taken</button><button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button><button class="btn link danger small" title="Entered by mistake or twice: delete it (it won’t count as taken)" onclick="tcDel(\'' + x.id + '\')">🗑 Delete</button></div>';
+      (x.sess && x.sess.open ? '<button class="btn small primary" title="They gave it back but need more time: it stays here (not taken, not to the mailbox)" onclick="tcStop(\'' + x.id + '\',false)">⏸ Got it back: finish another day</button><button class="btn small" onclick="tcStop(\'' + x.id + '\',true)">✓ Finished</button>'
+        : '<button class="btn small" title="Start the clock: the student has the test now" onclick="tcStart(\'' + x.id + '\')">▶ Hand it to the student</button><button class="btn small" onclick="tcDone(\'' + x.id + '\')">✓ Taken</button>') + '<button class="btn link small" onclick="TCE=\'' + x.id + '\';drawTc()">✏️ Edit</button><button class="btn link danger small" title="Entered by mistake or twice: delete it (it won’t count as taken)" onclick="tcDel(\'' + x.id + '\')">🗑 Delete</button></div>';
   }).join('') : '<p class="small" style="margin:4px 0 0">Nothing waiting.</p>') + '</div>';
-  if (TCD.done.length) h += '<details class="card"><summary><b>Done recently</b> (' + TCD.done.length + ')</summary>' + TCD.done.map(function (x) { return '<div class="small" style="display:block;margin:3px 0">' + esc(x.name) + ' · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + ' · ' + esc(x.how) + ' · received ' + esc(String(x.received).slice(0, 10)) + ' · taken ' + esc(String(x.done).slice(0, 10)) + ' <button class="btn link small" style="padding:0 4px" onclick="tcDone(\'' + x.id + '\',false)">Undo</button></div>'; }).join('') + '</details>';
+  if (TCD.done.length) h += '<details class="card"><summary><b>Done recently</b> (' + TCD.done.length + ')</summary>' + TCD.done.map(function (x) { return '<div class="small" style="display:block;margin:3px 0">' + esc(x.name) + ' · ' + esc(x.cls) + (x.what ? ': ' + esc(x.what) : '') + ' · ' + esc(x.how) + ' · received ' + esc(String(x.received).slice(0, 10)) + ' · taken ' + esc(String(x.done).slice(0, 10)) + (x.sess && x.sess.total ? ' · ⏱ ' + x.sess.total + ' min over ' + tcDays(x) : '') + ' <button class="btn link small" style="padding:0 4px" onclick="tcDone(\'' + x.id + '\',false)">Undo</button></div>'; }).join('') + '</details>';
   $('main').innerHTML = h;
   TC_AUTO = {}; if (TCF.email && $('tfCls') && $('tfCls').value) tcTeach('tfRet', TCF.email, $('tfCls').value);
 }
@@ -11839,6 +11899,17 @@ function retPopup() {
   document.body.appendChild(el);
 }
 function tcDel(id) { if (!confirm('Delete this test entry? Use this for one entered twice or by mistake. It won’t count as taken, and the student won’t see it.')) return; call('api_tcDelete', id).then(function (d) { TCD = d; if (TD) TD.tcReturns = d.returns; toast('Deleted'); drawTc(); }).catch(oops); }
+// 2.78: ⏱ the stretches the student had the test, and the total minutes
+function tcClock(st) { var m = /(\d{4})-(\d\d)-(\d\d) (\d{1,2}:\d\d\s*[AP]M)/i.exec(st || ''); return m ? { day: shortDay(m[1] + '-' + m[2] + '-' + m[3]), time: m[4].replace(/\s+/, ' ') } : { day: '', time: st || '' }; }
+function tcDays(x) { var d = {}; (x.sess.list || []).forEach(function (s) { d[String(s.start).slice(0, 10)] = 1; }); var n = Object.keys(d).length; return n + ' day' + (n === 1 ? '' : 's'); }
+function tcTime(x) {
+  var s = x.sess; if (!s || (!s.list.length)) return '';
+  var done = s.list.filter(function (y) { return y.end; }), live = s.open ? Math.max(0, Math.round((Date.now() - s.open.ms) / 60000)) : 0;
+  return '<div class="small" style="display:block;margin-top:3px">⏱ ' + (s.open ? '<b style="color:var(--up)">With the student now</b> since ' + esc(tcClock(s.open.start).time) + ' (' + live + ' min) · ' : '') + '<b>' + (s.total + live) + ' min</b> so far' +
+    (done.length ? ': ' + done.map(function (y) { var a = tcClock(y.start), b = tcClock(y.end); return esc(a.day + ' ' + a.time + '–' + b.time) + ' (' + y.min + ')'; }).join(' · ') : '') + '</div>';
+}
+function tcStart(id) { call('api_tcStart', id).then(function (d) { TCD = d; toast('⏱ Clock started: the student has the test'); drawTc(); }).catch(oops); }
+function tcStop(id, fin) { call('api_tcStop', id, fin).then(function (d) { TCD = d; if (TD) TD.tcReturns = d.returns; toast(fin ? '✓ Finished' : '⏸ Saved. It stays here for another day.'); drawTc(); }).catch(oops); }
 function tcReturned(id) {
   call('api_tcReturned', id).then(function (d) {
     TCD = d; if (TD) TD.tcReturns = d.returns; toast('Marked as returned');
