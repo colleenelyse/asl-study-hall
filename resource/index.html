@@ -105,13 +105,15 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
     <div>
       <div class="eyebrow">A Google Sheets app for resource classes</div>
       <h1 style="margin-top:10px">Resource Check-In</h1>
-      <p class="lead">Every week, resource students check their grades, explain anything under a C, and plan their resource time. Every day, they write a plan and tick off a short checklist. The resource teacher sees the <span class="mark">whole caseload on one page</span>, with IEP goal data that builds itself.</p>
+      <p class="lead">Every day, resource students do one short card: rate their IEP goals, write a plan, say if they need help. Every week, they check their grades and plan their resource time. Then their Chromebook stays useful all period with their own tools. The resource teacher sees the <span class="mark">whole caseload on one page</span>, with IEP goal data that builds itself.</p>
     </div>
     <div class="doors">
       <a class="door main" href="demo.html?as=teacher&amp;demo=1&amp;nobday"><div><b>Try the teacher view</b><span>Four made-up students, ready to click through</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=ort&amp;demo=1&amp;nobday"><div><b>Try a student’s view</b><span>Marcus, a junior with a low grade and an IEP meeting coming up</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=jane&amp;demo=1&amp;nobday&amp;checkday=1"><div><b>See grade check day</b><span>Jane’s Friday: every grade first, then today’s plan</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=cm&amp;demo=1&amp;nobday"><div><b>See a case manager’s view</b><span>Only their own students, each with the full report</span></div><span class="go">Open →</span></a>
+      <a class="door" href="demo.html?as=ort&amp;demo=1&amp;nobday&amp;hp=1&amp;hpfull=1&amp;hpline=1&amp;hpopen=1"><div><b>See the hall pass (optional)</b><span>Both passes out, one student waiting in line</span></div><span class="go">Open →</span></a>
+      <a class="door" href="tour.html"><div><b>Walk through the student screens</b><span>Every screen a student sees, in order, with what to say</span></div><span class="go">Open →</span></a>
       <a class="door" href="demo.html?as=new&amp;nobday"><div><b>See a student’s first visit</b><span>Name, schedule pasted from Infinite Campus, profile</span></div><span class="go">Open →</span></a>
       <p class="note">The demo runs on sample data in your browser. Nothing you type is saved or sent anywhere.</p>
     </div>
@@ -129,15 +131,63 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
 
     <div class="feat">
       <div class="txt">
-        <h3>Big, obvious steps</h3>
-        <p>Every day the check-in is a row of numbered steps, one on the screen at a time: today’s plan, the checklist, the exit ticket. A big Next button moves them on, and finished steps turn green.</p>
+        <h3>Today: one card, about three minutes</h3>
+        <p>Every day starts with a single card. Students rate how they did on each IEP goal from 1 to 6, with descriptions written for that goal in their own words, then write a specific plan for the period and answer “Do I need help?” One Done button sends it all.</p>
         <ul>
-          <li>Everything else waits in small “My stuff” tiles: wins, IEP meeting, missing work, grade goals, finals, support team, accommodations</li>
-          <li>Tiles that need attention turn amber</li>
-          <li>Grades and missing work for every class, pasted from Infinite Campus</li>
+          <li>“I didn’t have a chance to work on this goal” is an honest answer, with a reason</li>
+          <li>Periods 1–4 rate yesterday, periods 5–8 rate today, using the school calendar</li>
+          <li>A help request goes straight to the teacher’s “Needs my attention” list</li>
+          <li>Then the checklist and exit ticket, as big numbered steps; everything else waits in small “My stuff” tiles</li>
         </ul>
       </div>
-      <figure class="shot tall"><img src="img/checkin.jpg" alt="A student's check-in: four numbered steps, the checklist open, and My stuff tiles below" loading="lazy"><figcaption>Marcus’s check-in, on step 3.</figcaption></figure>
+      <figure class="shot tall"><img src="img/today.jpg" alt="The Today card: 1 to 6 goal ratings, today's plan with a button for each class, and Do I need help" loading="lazy"><figcaption>Dev’s morning, before he starts.</figcaption></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>One small extra a day, never a pile</h3>
+        <p>Some questions come weekly or every two weeks: a skill check, “Which accommodations did you use this week?”, “Would an accommodation help after that low score?”, college and career exploring. They take turns, so a student never gets more than one extra on a day, and none on grade check day.</p>
+        <ul>
+          <li>The weekly accommodation question is three rows of taps: which one, which class, what for. One time is one entry, and it only counts when they used it and the rest of the class didn’t (a calculator everyone used isn’t an accommodation).</li>
+          <li>Every answer counts toward the student’s accommodation data</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/accweek.jpg" alt="The weekly accommodation question: chips for the accommodation, the class and what it was for" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Skill checks that find their level</h3>
+        <p>Every two weeks, a short check on a student’s academic IEP goal. Math comes one question at a time: a right answer makes the next one harder, a wrong one makes it easier, across six levels from everyday money and fractions up to precalculus. Each answer shows the right one and why.</p>
+        <ul>
+          <li>The first check starts from the student’s math course (Prep, co-taught or special education) or their grade</li>
+          <li>The teacher sees the level over time: “Math level 4 of 6 (Geometry), 3 → 4 → 5”</li>
+          <li>Reading and writing checks too, scored on the server so the answers never reach the page early</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/mathcheck.jpg" alt="A math skill check question with the right answer marked and a short why" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>🧰 My tools: the rest of the period</h3>
+        <p>After Today, the Chromebook can sit on My tools. It starts with what’s coming up and one suggestion of where to start, then everything a student needs to get work done.</p>
+        <ul>
+          <li>My assignments, missing work (“I turned it in”), and an Assignment Decoder that turns directions into what it needs, how it’s graded and a plan</li>
+          <li>❓ Questions for my teacher, with a reminder when that class’s bell rings</li>
+          <li>Flashcards from a pasted Quizlet set, Dictate, a writing toolkit, Read it to me, and “What will it do to my grade?”</li>
+          <li>One tap to ClassLink and the student’s other school links</li>
+        </ul>
+      </div>
+      <figure class="shot tall"><img src="img/mytools.jpg" alt="My tools: questions for my teacher, coming up, start here, and tool tiles" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>📘 My IEP, in plain words</h3>
+        <p>Students see their own IEP: each goal in student words beside the IEP’s wording, the steps along the way, their accommodations and testing room, related services, their IEP team, the next meeting, and their rights. Every part has a “What does this mean?”</p>
+      </div>
+      <figure class="shot tall"><img src="img/myiep.jpg" alt="My IEP: goals in plain words, accommodations, services, team and rights" loading="lazy"></figure>
     </div>
 
     <div class="feat">
@@ -156,7 +206,7 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
     <div class="feat">
       <div class="txt">
         <h3>“I have nothing to work on”</h3>
-        <p>Instead of an empty plan, students go through a short list of things to check, one at a time, in order: missing work, Google Classroom, upcoming tests, retakes, working ahead, notes, asking a teacher.</p>
+        <p>Instead of an empty plan, students go through a short list of things to check, one at a time, in order: missing work, Canvas, upcoming tests, retakes, working ahead, notes, asking a teacher.</p>
         <p>The plan box stays open the whole time, so when the list jogs their memory they write the real plan. Only after the last item can they save “nothing to work on.”</p>
       </div>
       <figure class="shot"><img src="img/nothing.jpg" alt="The nothing-to-do checklist, three items checked, the rest waiting their turn" loading="lazy"><figcaption>The list is the teacher’s to change.</figcaption></figure>
@@ -251,6 +301,20 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
 
     <div class="feat">
       <div class="txt">
+        <h3>Paste the whole IEP</h3>
+        <p>Open the IEP PDF, select all, copy, paste it in one box. The app finds the student and fills in the goals, benchmarks, accommodations, testing room and related services. Pasting a new IEP replaces the old one.</p>
+        <ul>
+          <li>Names become initials and dates of birth are removed before anything is saved</li>
+          <li>Each goal keeps the IEP’s exact wording, its criterion and a student-words version</li>
+          <li>A “To check” list shows what still needs a look, goal by goal</li>
+          <li>No AI: nothing about a student leaves the teacher’s Google account</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/iepbox.jpg" alt="The IEP box on a student's page: the paste button, a to-check list, and tiles for goals, accommodations, testing room and services" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
         <h3>IEP goals and benchmarks</h3>
         <p>The teacher picks once how a goal is measured: things the app tracks by itself (coursework turned in, missing work, checklists, plans followed) and their own data (trials, percents, counts). Each benchmark sets a target in plain words, like “at least 80%” or “no more than 2 missing assignments.”</p>
         <ul>
@@ -284,6 +348,34 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
         <p>Four roll-out stages turn features on in steps: Grades, then Planning, then Retakes, then Goals. Every feature also has its own switch.</p>
       </div>
       <figure class="shot"><img src="img/settings.jpg" alt="Settings with roll-out stages" loading="lazy"></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="opt">
+    <div class="sec-head"><div class="eyebrow">Optional</div><h2 id="opt">Hall passes and attendance, for a room without a kiosk</h2></div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>A hall pass on every Chromebook</h3>
+        <p>Students see how many passes are on the hook, who is out and for how long, and who is waiting. They pick where they’re going and leave; a small timer stays in the corner, so the Chromebook keeps working in the library. Coming back, they tap “I’m back” and hang the pass on the hook.</p>
+        <ul>
+          <li>Going where a classmate already is? It asks whether they’re sharing a pass</li>
+          <li>No pass on the hook: get in line. If the pass ahead is very late, the student may go on a paper pass, and the teacher gets a pop-up with a chime</li>
+          <li>Weekly limit reminders, escort-only students, and “Did you get a pass?” for the counselor</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/hallpass.jpg" alt="The hall pass card: no passes on the hook, two students out, one in line, and the places to go" loading="lazy"></figure>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <h3>Who’s out, who’s here</h3>
+        <p>The Overview shows everyone out right now with a running timer (red when it’s late) and an “I’m back” button, plus the line. Students tap 📍 I’m here when their period starts: on time until five minutes after the bell. A badge beside each name shows when they arrived, late, or not yet.</p>
+        <ul>
+          <li>Bell times follow the day’s schedule: late starts, assemblies and days off</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/outnow.jpg" alt="The teacher's Out now box with timers and the line, above the student list with tap-in badges" loading="lazy"></figure>
     </div>
   </section>
 
@@ -328,7 +420,12 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
       <div class="tile"><b>IEP date reminders</b><span>An email 21 and 7 days before each meeting and each progress report date.</span></div>
       <div class="tile"><b>First-login profile</b><span>Students confirm their grade and case manager; counselor and AP fill in by themselves.</span></div>
       <div class="tile"><b>Graduation warnings</b><span>A D or F in a class needed to graduate is flagged for the student and the teacher.</span></div>
-      <div class="tile"><b>Accommodations log</b><span>Students tap an accommodation when they use it; the teacher sees how often and where.</span></div>
+      <div class="tile"><b>Accommodations log</b><span>Students tap an accommodation when they use it, one time per entry; the teacher sees how often and where.</span></div>
+      <div class="tile"><b>Needs my attention</b><span>Help requests and anything that needs the teacher, in one list until it’s handled.</span></div>
+      <div class="tile"><b>Questions for my teacher</b><span>Students write a question for a class and get a reminder when that class starts.</span></div>
+      <div class="tile"><b>Flashcards</b><span>Paste a Quizlet set and study by flipping, multiple choice or typing.</span></div>
+      <div class="tile"><b>“What will it do to my grade?”</b><span>The score needed for the grade they want, with summative and formative categories.</span></div>
+      <div class="tile"><b>Bell-aware</b><span>Today pops up when the period before ends, on the day’s real bell schedule.</span></div>
       <div class="tile"><b>Focus timer</b><span>Predict how much will get done, then report what did. The gap is good data.</span></div>
       <div class="tile"><b>“See what they see”</b><span>The teacher previews the exact student view for any student.</span></div>
       <div class="tile"><b>Schedules from Infinite Campus</b><span>Paste the schedule page; periods, levels, teachers and their emails fill in.</span></div>
@@ -339,7 +436,7 @@ footer { padding-block: 48px 40px; color: var(--soft); font-size: .9rem; }
   <section aria-labelledby="facts">
     <div class="sec-head"><div class="eyebrow">Privacy and setup</div><h2 id="facts">Built for a school account</h2></div>
     <div class="facts">
-      <div class="tile"><b>Student privacy</b><span>Students are saved as first name and last initial only. The link opens only for school Google accounts, students see only their own information, and only the resource teacher (and anyone they add) sees the teacher view.</span></div>
+      <div class="tile"><b>Student privacy</b><span>Students are saved as first name and last initial only, and pasted IEPs lose names and birthdays before they’re saved. No AI. The link opens only for school Google accounts, students see only their own information, and only the resource teacher (and anyone they add) sees the teacher view.</span></div>
       <div class="tile"><b>Setup</b><span>About 20 minutes, once: make a copy of the sheet, paste a class list, publish the student link. A step-by-step guide comes with it.</span></div>
       <div class="tile"><b>Cost</b><span>None. It runs inside Google Sheets in the teacher’s own account.</span></div>
       <div class="tile"><b>New school year</b><span>One menu item saves a copy of the year and clears it. Counselors and assistant principals roll forward with their classes automatically.</span></div>
