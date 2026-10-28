@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="How the Testing Center coordinator uploads a new student list (students, classes and schedules) from Infinite Campus.">
+<title>New student list</title><link rel="icon" type="image/png" sizes="512x512" href="../../img/logo-512.png"><link rel="apple-touch-icon" href="../../img/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* One-page printable guide for the LTHS Testing Center. Same tokens as ../index.html (the tour). */
+:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #e9edf6; --ok: #1a7f4b;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); }
+.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1, h2 { font-family: var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: var(--brand); margin-bottom: 4px; }
+p { margin: 0; }
+a { color: var(--brand); }
+.mark { background: linear-gradient(transparent 55%, var(--mark) 55%); padding: 0 .1em; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top a { font-size: .88rem; font-weight: 500; text-decoration: none; }
+.lead { color: var(--soft); margin: 8px 0 16px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.box.wide { grid-column: 1 / -1; }
+ol, ul { margin: 0; padding-left: 1.25em; }
+li { margin: 2px 0; }
+b.btn { font-weight: 600; background: var(--shot-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.tip { margin-top: 12px; font-size: .88rem; color: var(--soft); border-left: 3px solid var(--ok); padding-left: 10px; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; vertical-align: -.05em; margin-right: 2px; }
+.foot { margin-top: 14px; font-size: .78rem; color: var(--soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+@page { size: letter; margin: .4in; }
+@media print {
+  :root, :root[data-theme="dark"] { --bg: #fff; --card: #fff; --ink: #000; --soft: #333; --line: #bbb; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #eef1f7; --ok: #1a7f4b; color-scheme: light; }
+  body { background: #fff; color: #000; font-size: 9.6pt; line-height: 1.36; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: none; padding: 0; }
+  h1 { font-size: 20pt; } h2 { font-size: 10.5pt; }
+  .lead { margin: 4px 0 8px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .box { padding: 6px 9px; border-radius: 8px; break-inside: avoid; }
+  .top { margin-bottom: 4px; } .top a, .noprint { display: none; }
+  .tip { margin-top: 7px; } .foot { margin-top: 7px; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="top"><span class="eyebrow">LTHS Testing Center &middot; for coordinators</span><a href="./">&larr; All guides</a></div>
+<h1>Upload a new student list</h1>
+<p class="lead">Until IT approves an automatic connection, the student list is updated by hand: an Infinite Campus export pasted into the Testing Center sheet, then checked and applied in the app. It takes about <b>15 minutes</b>, most of it waiting. <span class="mark">Do it at the start of each semester, and any week schedules change a lot.</span></p>
+<div class="grid">
+<div class="box"><h2>1. Export from Infinite Campus</h2><ol><li>Run the <b>same schedule report as last time</b> (every student, every class, all 27 columns, starting with <b>student.studentNumber</b>).</li><li>Include <b>both campuses</b> (or one campus at a time) and <b>every grade</b>.</li><li>Save it as <b>CSV</b>. Don't open it in Excel first; Excel drops the zeros at the start of student numbers.</li></ol></div>
+<div class="box"><h2>2. Put it in the sheet</h2><ol><li>Open the Testing Center sheet and click the <b>IC_Raw_Import</b> tab at the bottom.</li><li><b class="btn">File</b> › <b class="btn">Import</b> › <b class="btn">Upload</b>, and choose the CSV.</li><li>Import location: <b>Replace current sheet</b> (not "Replace spreadsheet").</li><li>Uncheck <b>Convert text to numbers, dates, and formulas</b>.</li><li>Click <b class="btn">Import data</b>. You should see the export's rows, with headers like <i>student.studentNumber</i> in row 1.</li></ol></div>
+<div class="box"><h2>3. Process it in the app</h2><ol><li>Open the Testing Center app and press <b class="btn">🔒 Testing Center Coordinator Log In</b>.</li><li>Go to <b class="btn">Settings</b> › <b class="btn">Student list &amp; imports</b>.</li><li>Click <b class="btn">Process Infinite Campus Import</b>.</li><li>A progress bar shows <i>Validating</i>, then <i>Reading</i>, then <i>Matching</i>. A whole-school export takes a few minutes. You can leave the page; it keeps going and picks up where it left off.</li></ol></div>
+<div class="box"><h2>4. Check the numbers</h2><ul><li>When it says <b>Ready for review</b>, a summary opens: students, classes, new enrollments, and what will change.</li><li>Clubs and activities (codes starting with Z), rows with no room, and odd period ends are skipped automatically. They aren't classes.</li><li>Want to see names? Click <b class="btn">Inspect the changes</b>.</li><li>Numbers look wrong (far too few students)? Click <b class="btn">Cancel import</b>. Nothing has changed yet.</li></ul></div>
+<div class="box wide"><h2>5. Apply</h2><ol><li>If the export was <b>everyone</b> on that campus, tick <b>This export is the complete schedule</b>. Students who left and classes they dropped are then ended (kept as history, not deleted). If it was only part of the school, leave it unticked: it only adds and updates.</li><li>Leave <b>Empty the IC_Raw_Import tab afterward</b> ticked. The app keeps what it needs, and the sheet stays small.</li><li>Click <b class="btn">Apply changes</b>. You should see <i>Infinite Campus import applied</i>, and <i>last synced</i> shows today.</li></ol></div>
+<div class="box"><h2>6. Tidy up (two minutes)</h2><ol><li>Go to <b class="btn">Settings</b> › <b class="btn">Tidy up</b>.</li><li>Fill in any new email addresses. For teachers with two last names, pick which one the school used.</li><li>Click <b class="btn">Clean up what's ticked</b>.</li></ol></div>
+<div class="box"><h2>If something goes wrong</h2><ul><li><b>Undo:</b> Settings › Student list &amp; imports › Import history › <b class="btn">Undo</b> puts the student and class tabs back the way they were. The last two imports can be undone.</li><li><b>"Missing columns":</b> the wrong report was exported. Run the schedule report with all 27 columns.</li><li><b>Stuck on Paused:</b> press <b class="btn">Continue</b>.</li></ul></div>
+</div>
+<p class="tip"><b>What never changes:</b> appointments, notes, teachers' testing forms and access-code links stay as they are. Students who left keep their history. All student data stays in the Testing Center Google Sheet in the school's Google account.</p>
+<div class="foot"><span>LTHS Testing Center &middot; sign in with your school Google account</span><span><a href="coordinators.html">Coordinator guide</a> &middot; <a href="../">Tour and demo</a></span></div>
+</main>
+</body>
+</html>
