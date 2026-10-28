@@ -514,7 +514,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.78'
+var VERSION = '2.79'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -6647,13 +6647,17 @@ function parseICSchedule(text, domain) {
   return out;
 }
 // 2.58: a pasted schedule: take out what isn't a class (counselor, athletics, clubs…; resource stays) and any repeat of the same period + course
-function cleanSchedule(list) {
-  var seen = {}, res = (typeof B !== 'undefined' && B && B.resNames) || ['Resource'];
-  return (list || []).filter(function (r) {
-    var n = String(r.name || '').trim(), isRes = res.some(function (x) { return x && n.toLowerCase().indexOf(String(x).toLowerCase()) >= 0; });
-    if (!n || (NOTCLASS_RE.test(n) && !isRes)) return false;
-    var k = String(r.period || '').toUpperCase() + '|' + n.toLowerCase(); if (seen[k]) return false; seen[k] = true; return true;
+function cleanSchedule(list) {          // 2.79: a week view repeats every class each day: a graded class is kept once (course + teacher, whatever period each copy got)
+  var seen = {}, res = (typeof B !== 'undefined' && B && B.resNames) || ['Resource'], out = [];
+  (list || []).forEach(function (r) {
+    var n = String(r.name || '').trim(), low = n.toLowerCase(), isRes = res.some(function (x) { return x && low.indexOf(String(x).toLowerCase()) >= 0; });
+    if (!n || (NOTCLASS_RE.test(n) && !isRes)) return;
+    var per = String(r.period || '').toUpperCase(), noGrade = isRes || r.resource || r.nograde || NOGRADE_RE.test(n);
+    var k = noGrade ? 'n|' + per + '|' + low : 'g|' + low + '|' + String(r.teacher || '').toLowerCase().replace(/[^a-z]/g, '');
+    if (seen[k] !== undefined) { var was = out[seen[k]]; if (!was.period && per) out[seen[k]] = r; return; }          // keep the copy that has its period
+    seen[k] = out.length; out.push(r);
   });
+  return out;
 }
 // 2.58: does a paste look like the Grades page (percents, letter grades, "In Progress") rather than the Schedule page?
 function looksLikeGrades(text) { var t = String(text || ''); return (t.match(/\d{1,3}(\.\d+)?%/g) || []).length >= 2 || /\bIn Progress\b|\bSemester Grade|\bQuarter Grade|Weight:|\bAssignments?\b.*\bScore\b/i.test(t); }
