@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Assignment Decoder</title>
+<!-- Built by Resource Check-In/dev/build-decoder.py from dev/decoder-page.html. Edit those, not this copy. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1d2433;--soft:#5b6476;--line:#e2e6ef;--brand:#3355d1;--brand-soft:#e8edff;--up:#12805c;--up-soft:#dcf5ea;--down:#c2362f;--warn-soft:#fff1d6}
+@media (prefers-color-scheme:dark){:root{--bg:#141821;--card:#1d2330;--ink:#e8ecf4;--soft:#a3acbd;--line:#323a4b;--brand:#8aa4ff;--brand-soft:#26304a;--up:#5fd3a5;--up-soft:#1b3a2f;--down:#ff8a80;--warn-soft:#3a3020}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Lexend,system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:20px;margin:0 0 8px}h3{font-size:17px;margin:0 0 8px}
+.sub{color:var(--soft);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.grow{flex:1 1 220px;min-width:0}
+input[type=text],input[type=date],select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-width:100%}
+input[type=text]{width:100%}textarea{width:100%;min-height:170px;resize:vertical}
+.btn{font:600 15px Lexend,system-ui,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:var(--brand)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.link{border:0;background:none;padding:2px 6px;color:var(--brand)}.btn.danger{color:var(--down)}
+.small{font-size:14px;color:var(--soft)}
+.note{background:var(--up-soft);border-radius:10px;padding:8px 12px;font-size:14px;margin:0 0 14px}
+.dec{border:2px dashed var(--brand)}.dec-q{margin:14px 0 0}.dec-q>b{display:block}.dec-q input{margin-top:4px}
+.li{display:flex;gap:6px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}.li .grow{flex:1}
+.pts{font-weight:700}.pct{color:var(--soft);font-size:14px}
+.step{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}.step .n{font-weight:700;width:24px;text-align:right;flex:none}
+.step textarea{flex:1;min-height:0;resize:vertical}.step input[type=date]{flex:none;width:165px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+@media (max-width:560px){.step{flex-wrap:wrap}.step input[type=date]{width:100%}}
+@media print{body{background:#fff;color:#000}.noprint,.btn{display:none!important}.card{border:0;padding:0}.step input,.step textarea{border:0;padding:0}}
+</style></head><body><main>
+<h1>🔍 Assignment Decoder</h1>
+<p class="sub">Paste the directions and the rubric. See what it needs, how it’s graded and what to ask, then get a step-by-step plan with dates.</p>
+<p class="note noprint">🔒 Everything stays in this browser. Nothing is sent anywhere or saved, and no AI is used. Leave student names out anyway.</p>
+
+<div class="card noprint">
+  <div class="row"><input type="text" id="what" class="grow" maxlength="120" placeholder="Project name (Civil War research paper)">
+    <label class="small row" style="gap:6px">Due <input type="date" id="due"></label></div>
+  <div class="row" style="margin-top:8px"><span class="small"><b>Spread the work over</b></span><select id="spread">
+    <option value="">every school day until it’s due</option><option value="2">the last 2 school days</option><option value="3">the last 3 school days</option>
+    <option value="5">the last 5 school days (a week)</option><option value="7">the last 7 school days</option><option value="10">the last 10 school days (two weeks)</option></select></div>
+  <textarea id="text" style="margin-top:10px" placeholder="Paste the directions and the rubric here (Ctrl + V)"></textarea>
+  <div class="row" style="margin-top:6px"><label class="btn" style="cursor:pointer">📄 Use a PDF instead<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="readFile(this.files[0]);this.value=''"></label>
+    <button class="btn link" onclick="sample()">Try a sample assignment</button><span class="small" id="fileSt"></span></div>
+  <div class="row" style="margin-top:12px"><button class="btn" onclick="decGo()">🔍 Decode it</button><button class="btn primary" onclick="planGo()">Make my plan</button>
+    <button class="btn link" onclick="startOver()">Start over</button></div>
+</div>
+<div id="decBox"></div>
+<div id="planBox"></div>
+</main><div class="toast" id="toast"></div>
+<script>
+var PDFJS = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function addDays(s, n) { var d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d); }
+function fmtDay(s) { return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+function toast(m) { var t = $('toast'); t.textContent = m; t.className = 'toast on'; clearTimeout(toast.t); toast.t = setTimeout(function () { t.className = 'toast'; }, 2600); }
+function copy(txt, msg) { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { toast(msg); }, function () { prompt('Copy this (Ctrl + C):', txt); }); }
+var B = { today: iso(new Date()) }, PJT = { date: '', dec: null }, PLAN = null;
+$('due').min = addDays(B.today, 1);
+
+// ---- copied from Resource Check-In Index.html (decodeText): ----
+var DEC_PRODUCTS = ['research paper', 'lab report', 'essay', 'presentation', 'slideshow', 'slide show', 'poster', 'infographic', 'brochure', 'video', 'podcast', 'speech', 'diorama', 'model', 'timeline', 'letter', 'poem', 'short story', 'website', 'comic', 'journal', 'portfolio', 'report', 'paragraph', 'worksheet', 'project'];
+function decodeText(t) {
+  t = String(t || '').replace(/\r/g, ''); var low = t.toLowerCase(), lines = t.split('\n').map(function (l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function (l) { return l.length > 2; });
+  var prod = '', at = 1e9; DEC_PRODUCTS.forEach(function (p) { var i = low.search(new RegExp('\\b' + p + 's?\\b')); if (i >= 0 && p !== 'project' && (i < at || (i === at && p.length > prod.length))) { prod = p; at = i; } });          // 2.85: the one named first (a poster, not the presentation in its rubric)
+  if (!prod && /\bproject\b/.test(low)) prod = 'project';
+  var size = [], re = /(\d+)\s*(?:-|–|to)?\s*(\d+)?\s*(pages?|words?|slides?|paragraphs?|sources?|citations?|minutes?|sentences?|images?|pictures?|examples?)\b/gi, m;
+  while ((m = re.exec(t)) && size.length < 6) { var sz = m[1] + (m[2] ? '–' + m[2] : '') + ' ' + m[3].toLowerCase(); if (size.indexOf(sz) < 0) size.push(sz); }
+  var PTS = /^(.*?)[\s:–—-]*\(?(\d{1,3})\s*(?:points?|pts?)\)?\s*$|^(.*?)\s*\/\s*(\d{1,3})\s*$|^(.*?)\s*\((\d{1,3})\)\s*$/i, LEVEL = /^(exceeds|meets|approaching|beginning|exemplary|proficient|developing|emerging|excellent|good|fair|poor|advanced|basic|below|total)\b/i;
+  var rubric = [], include = [], seen = {};
+  lines.forEach(function (l) {
+    var pm = PTS.exec(l);
+    if (pm && !LEVEL.test(l) && !/\b(due|date|deadline)\b/i.test(l)) { var name = (pm[1] || pm[3] || pm[5] || '').replace(/^[\-\*•·▪◦●■➢→\d.)\s]+/, '').replace(/[:–—-]+$/, '').trim(), pts = pm[2] || pm[4] || pm[6]; if (name && name.length < 80 && rubric.length < 15) rubric.push({ name: name, pts: pts }); return; }          // 2.85: “Due 11/9” is not a 9-point rubric row
+    var bullet = /^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/.test(l), must = /\b(must|should|include|needs? to|required|be sure|at least|make sure|you will|remember to)\b/i.test(l);
+    if ((bullet || must) && l.length < 220 && !/:$/.test(l)) { var s = l.replace(/^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/, '').trim(), k = s.toLowerCase().slice(0, 50); if (s.length > 3 && !seen[k] && include.length < 20) { seen[k] = 1; include.push(s); } }          // 2.85: “Your poster must include:” is a heading
+  });
+  var ask = [], VAGUE = /\b(appropriate|creative|creatively|neat|neatly|etc\.?|as needed|several|a few|TBD|to be determined|discussed in class|see me|your choice|optional|approximately)\b/i;
+  lines.forEach(function (l) { var v = VAGUE.exec(l); if (v && ask.length < 5) { var q = 'What does “' + v[1] + '” mean here? (“' + (l.length > 70 ? l.slice(0, 67) + '…' : l) + '”)'; if (ask.indexOf(q) < 0) ask.push(q); } });
+  var due = '', dm = /\bdue\b[^\n.]{0,30}?\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i.exec(t) || null, mn = /\bdue\b[^\n.]{0,30}?\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})/i.exec(t);
+  var yr = +B.today.slice(0, 4), iso = function (mo, d) { var s = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2); return s < B.today ? (yr + 1) + s.slice(4) : s; };
+  if (dm) due = iso(+dm[1], +dm[2]); else if (mn) due = iso(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(mn[1].toLowerCase()) + 1, +mn[2]);
+  if (!due && !PJT.date) ask.push('When is it due?'); if (!size.length) ask.push('How long or how big should it be?'); if (!rubric.length) ask.push('Is there a rubric? How will it be graded?');
+  return { product: prod ? (/^[aeiou]/.test(prod) ? 'an ' : 'a ') + prod : '', size: size, include: include, rubric: rubric, ask: ask.slice(0, 8), due: due };
+}
+// ---- copied from Resource Check-In Code.gs (planBasic_): ----
+function planBasic_(text, days, due) {
+  var lines = text.split('\n').map(function (l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function (l) { return l.length > 3; });
+  var level = /^(exceeds|meets|approaching|beginning|exemplary|proficient|developing|emerging|excellent|good|fair|poor|advanced|basic|below)\b/i;
+  var req = [], rub = [], seen = {};
+  var add = function (list, s) { s = s.replace(/^[\-\*•·▪◦○●■□➢➤→]+\s*/, '').replace(/^(\(?[0-9]{1,2}[\.\)]|\(?[a-hA-H][\.\)])\s+/, '').trim(); if (s.length < 4) return; var k = s.toLowerCase().slice(0, 60); if (seen[k]) return; seen[k] = true; list.push(s.length > 140 ? s.slice(0, 137) + '…' : s); };
+  lines.forEach(function (l) {
+    var pts = /(\d+)\s*(points?|pts?)\b|\/\s*\d+\s*$|\(\s*\d+\s*\)\s*$/i.exec(l);
+    var cells = l.split(/\t+/);
+    if (level.test(l) || /:$/.test(l)) return;          // 2.85: headings (“Your poster must include:”) aren't steps
+    if ((pts || cells.length > 2) && !/\b(due|date|deadline)\b/i.test(l)) { add(rub, cells[0].replace(/[:\-–]\s*$/, '').replace(/\(?\s*\d+\s*(points?|pts?)\s*\)?/i, '').trim() + (pts && pts[1] ? ' (' + pts[1] + ' pts)' : '')); return; }          // 2.85: “Due 11/9” is not a rubric row
+    if (/^([\-\*•·▪◦○●■□➢➤→]|\(?[0-9]{1,2}[\.\)]\s|\(?[a-hA-H][\.\)]\s)/.test(l) || /\b(must|include|includes|including|need to|needs to|should|required|at least|minimum|cite|create|write|research|explain|describe|design|present|submit)\b/i.test(l)) add(req, l);
+  });
+  var steps = [{ step: 'Read the directions and rubric, and highlight everything you have to do' }];
+  var work = req.length ? req : rub.map(function (r) { return 'Work on: ' + r; });
+  if (work.length > 9) {          // too many to do one a day: group them
+    var g = Math.ceil(work.length / 8), grouped = [];
+    for (var i = 0; i < work.length; i += g) grouped.push(work.slice(i, i + g).join('; '));
+    work = grouped;
+  }
+  if (!work.length) work = ['Gather what you need (sources, materials, notes)', 'Make a first draft', 'Finish the draft'];
+  work.forEach(function (w) { steps.push({ step: w.length > 150 ? w.slice(0, 147) + '…' : w }); });
+  steps.push({ step: rub.length ? 'Check your work against every rubric row: ' + rub.slice(0, 6).map(function (r) { return r.replace(/ \(\d+ pts\)$/, ''); }).join(', ').slice(0, 110) : 'Check your work against the directions and fix anything missing' });
+  var n = steps.length;
+  steps.forEach(function (s, k) { s.step = s.step.slice(0, 150); s.due = days[Math.min(days.length - 1, Math.floor(k * days.length / n))]; });
+  steps[n - 1].due = days[days.length - 1];
+  return steps.concat([{ step: 'Turn it in', due: due }]);
+}
+// ---- end of copied code ----
+function weekdays(a, b) { var out = []; for (var d = a; d <= b; d = addDays(d, 1)) { var w = new Date(d + 'T12:00:00').getDay(); if (w > 0 && w < 6) out.push(d); } return out; }
+function planDays(today, due) { var d = weekdays(addDays(today, 1), addDays(due, -1)); return d.length ? d : [today]; }
+
+function grab() { PJT.date = $('due').value; return $('text').value; }
+function decGo() {
+  var t = grab(); if (t.trim().length < 20) return alert('Paste the directions (and the rubric), or use a PDF.');
+  PJT.dec = decodeText(t);
+  if (PJT.dec.due && !PJT.date) { PJT.date = PJT.dec.due; $('due').value = PJT.dec.due; toast('Found the due date: ' + fmtDay(PJT.dec.due) + '. Check it.'); }
+  decDraw(); $('decBox').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function decDraw() {
+  var d = PJT.dec; if (!d) { $('decBox').innerHTML = ''; return; }
+  var list = function (k, items, fmt, ph) { return items.map(function (x, i) { return '<div class="li"><span class="grow">' + fmt(x) + '</span><button class="btn link danger" title="Not right? Take it out" onclick="PJT.dec.' + k + '.splice(' + i + ',1);decDraw()">✕</button></div>'; }).join('') + (ph ? '<div class="row noprint" style="margin-top:4px"><input type="text" class="grow" id="add_' + k + '" placeholder="' + ph + '" onkeydown="if(event.key===\'Enter\')decAdd(\'' + k + '\')"><button class="btn" onclick="decAdd(\'' + k + '\')">+ Add</button></div>' : ''); };
+  var pts = d.rubric.reduce(function (a, r) { return a + (+r.pts || 0); }, 0);
+  $('decBox').innerHTML = '<div class="card dec"><h2>🔍 What this assignment needs</h2><p class="small" style="margin:0">From the directions only. Fix anything that’s wrong (✕ takes it out).</p>' +
+    '<div class="dec-q"><b>What am I making?</b><input type="text" value="' + esc(d.product) + '" placeholder="a poster, an essay, a slideshow…" oninput="PJT.dec.product=this.value">' + (d.size.length ? '<div class="small" style="margin-top:4px">Size: ' + d.size.map(esc).join(' · ') + '</div>' : '') + '</div>' +
+    '<div class="dec-q"><b>What do I need to include? <span class="small">(' + d.include.length + ')</span></b>' + list('include', d.include, esc, 'Something else it needs') + '</div>' +
+    '<div class="dec-q"><b>How will I be graded?</b>' + (d.rubric.length ? list('rubric', d.rubric, function (r) { return typeof r === 'string' ? esc(r) : esc(r.name) + ' <span class="pts">' + esc(r.pts) + ' pts</span>' + (pts ? ' <span class="pct">(' + Math.round(r.pts / pts * 100) + '%)</span>' : ''); }, 'Another rubric row') +
+      (pts ? '<div class="small">Total: ' + pts + ' points. Biggest part: <b>' + esc(d.rubric.filter(function (r) { return typeof r !== 'string'; }).sort(function (a, b) { return b.pts - a.pts; })[0].name) + '</b>. Spend the most time there.</div>' : '') : '<p class="small" style="margin:4px 0 0">No rubric found in what you pasted.</p>') + '</div>' +
+    '<div class="dec-q"><b>What should I ask my teacher?</b>' + list('ask', d.ask, esc, 'Another question') + (d.ask.length ? '<button class="btn noprint" style="margin-top:8px" onclick="copyAsk()">📋 Copy the questions</button>' : '') + '</div>' +
+    '<div class="row noprint" style="margin-top:14px"><button class="btn" onclick="copyDec()">📋 Copy all of this</button><button class="btn primary" onclick="planGo()">Make my plan</button></div></div>';
+}
+function decAdd(k) { var el = $('add_' + k), v = el && el.value.trim(); if (!v) return; PJT.dec[k].push(v); decDraw(); var n = $('add_' + k); if (n) n.focus(); }
+function copyAsk() { copy('My questions:\n' + PJT.dec.ask.map(function (q) { return '- ' + q; }).join('\n'), 'Questions copied. Paste them into an email.'); }
+function decText() {
+  var d = PJT.dec, w = $('what').value.trim();
+  return (w ? w + '\n' : '') + (d.product ? 'Making: ' + d.product + (d.size.length ? ' (' + d.size.join(', ') + ')' : '') + '\n' : '') +
+    (d.include.length ? '\nInclude:\n' + d.include.map(function (x) { return '- ' + x; }).join('\n') + '\n' : '') +
+    (d.rubric.length ? '\nGraded on:\n' + d.rubric.map(function (r) { return '- ' + (typeof r === 'string' ? r : r.name + ' (' + r.pts + ' pts)'); }).join('\n') + '\n' : '') +
+    (d.ask.length ? '\nTo ask my teacher:\n' + d.ask.map(function (q) { return '- ' + q; }).join('\n') + '\n' : '');
+}
+function copyDec() { copy(decText(), 'Copied. Paste it into a doc or an email.'); }
+
+function planGo() {
+  var t = grab(), due = PJT.date;
+  if (t.trim().length < 20) return alert('Paste the directions (and the rubric), or use a PDF.');
+  if (!due) { var f = decodeText(t).due; if (f) { due = PJT.date = f; $('due').value = f; toast('Found the due date: ' + fmtDay(f) + '. Check it.'); } }
+  if (!due) return alert('Pick the due date.'); if (due <= B.today) return alert('Pick a due date after today.');
+  if (!PJT.dec) { PJT.dec = decodeText(t); decDraw(); }
+  var days = planDays(B.today, due), sp = Math.round(+$('spread').value || 0); if (sp >= 1 && sp < days.length) days = days.slice(-sp);
+  PLAN = planBasic_(t.replace(/\r/g, '').trim().slice(0, 30000), days, due).map(function (s) { return { step: s.step, due: s.due }; });
+  planDraw(); $('planBox').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function planDraw() {
+  if (!PLAN) { $('planBox').innerHTML = ''; return; }
+  var w = $('what').value.trim();
+  $('planBox').innerHTML = '<div class="card"><h2>🗓️ My plan' + (w ? ': ' + esc(w) : '') + '</h2><p class="small noprint" style="margin:0 0 6px">Change any step or date. ✕ takes a step out.</p>' +
+    PLAN.map(function (s, i) { return '<div class="step"><span class="n">' + (i + 1) + '.</span><textarea rows="' + Math.max(1, Math.ceil(s.step.length / 60)) + '" oninput="PLAN[' + i + '].step=this.value">' + esc(s.step) + '</textarea><input type="date" value="' + esc(s.due) + '" onchange="PLAN[' + i + '].due=this.value"><button class="btn link danger" title="Take this step out" onclick="PLAN.splice(' + i + ',1);planDraw()">✕</button></div>'; }).join('') +
+    '<div class="row noprint" style="margin-top:12px"><button class="btn" onclick="PLAN.splice(PLAN.length-1,0,{step:\'\',due:PLAN.length?PLAN[PLAN.length-1].due:B.today});planDraw()">+ Add a step</button><button class="btn" onclick="planSort()">Sort by date</button><button class="btn" onclick="copyPlan()">📋 Copy the plan</button><button class="btn" onclick="window.print()">🖨️ Print</button></div></div>';
+}
+function planSort() { PLAN.sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; }); planDraw(); }
+function copyPlan() { var w = $('what').value.trim(); copy((w ? w + ' plan\n' : 'My plan\n') + PLAN.filter(function (s) { return s.step.trim(); }).map(function (s, i) { return (i + 1) + '. ' + fmtDay(s.due) + ': ' + s.step.trim(); }).join('\n'), 'Plan copied.'); }
+
+function startOver() { if (($('text').value || PLAN) && !confirm('Clear everything and start over?')) return; $('text').value = ''; $('what').value = ''; $('due').value = ''; $('spread').value = ''; $('fileSt').textContent = ''; PJT = { date: '', dec: null }; PLAN = null; decDraw(); planDraw(); window.scrollTo(0, 0); }
+function pdfLib(cb, bad) {
+  if (window.pdfjsLib) return cb();
+  var s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js';
+  s.onload = function () { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; } catch (e) {} cb(); };
+  s.onerror = function () { bad('The PDF reader didn’t load. Copy the text from the PDF and paste it instead.'); }; document.head.appendChild(s);
+}
+function readFile(file) {
+  if (!file) return; var st = $('fileSt'), done = function (t) { t = String(t || '').replace(/[ \t]+\n/g, '\n').trim(); $('text').value = t; st.textContent = t ? '✓ Read ' + file.name + '. Check the text, then press 🔍 Decode it.' : 'No text found in that file (it may be a scanned picture). Copy and paste the directions instead.'; };
+  var bad = function (m) { st.textContent = m; };
+  if (/\.txt$/i.test(file.name)) { var r = new FileReader(); r.onload = function () { done(r.result); }; r.readAsText(file); return; }
+  st.textContent = 'Reading ' + file.name + '…';
+  pdfLib(function () {
+    file.arrayBuffer().then(function (buf) { return window.pdfjsLib.getDocument({ data: buf }).promise; }).then(function (pdf) {
+      var pages = [], n = Math.min(pdf.numPages, 30), go = function (i) {
+        if (i > n) return done(pages.join('\n\n'));
+        pdf.getPage(i).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push(tc.items.map(function (it) { return it.str + (it.hasEOL ? '\n' : ' '); }).join('')); go(i + 1); }).catch(function () { go(i + 1); });
+      }; go(1);
+    }).catch(function () { bad('That PDF couldn’t be read. Copy the text from it and paste it instead.'); });
+  }, bad);
+}
+function sample() {
+  var due = weekdays(addDays(B.today, 10), addDays(B.today, 16))[0], md = (+due.slice(5, 7)) + '/' + (+due.slice(8, 10));
+  $('what').value = 'Endangered animal poster';
+  $('text').value = 'Endangered Animal Poster Project\nDue ' + md + '\n\nChoose an endangered animal and create a poster that teaches your classmates about it.\n\nYour poster must include:\n1. The animal’s name and at least 3 pictures\n2. Where it lives (habitat) and a map\n3. Why it is endangered\n4. Two things people can do to help\n5. At least 2 sources, cited in MLA format\n\nBe creative and make it neat!\n\nRubric\nContent and accuracy (40 points)\nPictures and map (20 points)\nSources and citations (20 points)\nNeatness and design (10 points)\nPresentation to the class (10 points)';
+  $('due').value = ''; PJT = { date: '', dec: null }; PLAN = null; decDraw(); planDraw(); toast('Sample pasted. Press 🔍 Decode it.');
+}
+</script>
+</body></html>
