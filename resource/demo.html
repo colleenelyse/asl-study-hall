@@ -339,6 +339,12 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .fc-fb{margin-top:8px;padding:8px 12px;border-radius:10px}.fc-fb.right{background:var(--up-soft)}.fc-fb.wrong{background:var(--down-soft)}.fc-prev{font-size:14px}.fc-prev td{padding:4px 8px}
 .em-prev{margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px}.nd-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:12px}.nd-box{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
 .tr-row{gap:8px;padding:6px 0;border-top:1px solid var(--line);margin:0;display:flex;align-items:center}.tr-row.done b{text-decoration:line-through;opacity:.6}
+.home-ck{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);margin:0 0 12px}.home-ck.wait{background:var(--warn-soft);border-color:var(--warn)}
+.home-next{border:2px solid var(--brand);background:var(--brand-soft);border-radius:14px;padding:14px 16px;margin:0 0 12px}.home-next p{margin:6px 0 10px;font-size:18px}
+.hd-add{gap:6px;margin:10px 0 6px;flex-wrap:wrap}.hd-row{display:flex;gap:10px;align-items:center;padding:8px 4px;border-top:1px solid var(--line);cursor:default}label.hd-row{cursor:pointer}.hd-row input[type=checkbox]{width:20px;height:20px;flex:none}.hd-ic{width:20px;text-align:center;flex:none}
+.due{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bg);white-space:nowrap;flex:none}.due.late{background:#fde2e2;color:var(--down)}.due.now{background:var(--warn-soft)}.due.soon{background:var(--brand-soft)}.btn.warnb{border-color:var(--warn);background:var(--warn-soft)}
+.home-tools{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}.home-tools .tool-tile{flex-direction:row;align-items:center;gap:8px;padding:10px 12px}.home-tools .tool-tile .ti{font-size:22px}
+@media (max-width:560px){.hd-add select,.hd-add input[type=text]{max-width:none!important;width:100%}}
 .tools-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:4px 0 6px}.cu-grid{display:grid;gap:6px}.cu{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:10px;background:var(--bg)}.cu.warn{background:var(--warn-soft)}.cu-ic{font-size:20px}.cu .small{display:block}.sh{border:2px solid var(--brand);background:var(--brand-soft)}.tools-h{margin:16px 0 4px;font-size:15px}
 .dec{margin-top:10px;padding:12px;border:2px dashed var(--brand);border-radius:12px}.dec-q{margin:10px 0 0}.dec-q input{margin-top:4px}.dec-li{gap:6px;padding:3px 0;border-top:1px solid var(--line)}.wr-in{margin:4px 0}.ixl-bar{height:14px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:6px}.ixl-bar i{display:block;height:100%;background:var(--up)}
 .rd-show{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);line-height:1.7;max-height:340px;overflow:auto}.rd-show:empty{display:none}.rd-show.big{font-size:22px;line-height:1.8}.rd-show span{cursor:pointer;border-radius:4px}.rd-now{background:#fde68a;color:#111}
@@ -514,7 +520,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.79'
+var VERSION = '2.82'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -764,6 +770,7 @@ function onOpen() {
 
 function setupSheet() {
   var fixed = setup_();
+  try { var bt = bellTabs_(); if (bt.length) fixed += ' Added the ' + bt.join(' and ') + ' tab' + (bt.length > 1 ? 's' : '') + ' (LTHS bells).'; } catch (e) {}
   try { var fv = firstVisitFix_(); if (fv) fixed += ' Filled in First visit for ' + fv + ' student' + (fv === 1 ? '' : 's') + ' who had used the app.'; } catch (e) {}
   try { var nb = scrubSavedBdays_(); if (nb) fixed += ' Cleaned ' + nb + ' saved item' + (nb === 1 ? '' : 's') + ' (dates of birth or names changed to initials).'; } catch (e) {}
   try { allGoals_(); } catch (e) {}
@@ -4640,6 +4647,84 @@ function toolStats_(email) {
 /* 2.64: today's bells from the tabs Colleen copies from her Hall Pass Kiosk sheet: "Bell Schedule" (Enabled, Schedule, Period, Roster
    period, Opens, Late bell, Ends, Type, Notes) and "Schedule Calendar" (Rule type = Specific Date or Weekday, Value, Schedule, School day).
    A specific date wins over its weekday. null when there's no Bell Schedule tab (then Settings › Bell times is used). */
+// 2.82: LTHS 2026-27 bells (from Colleen's kiosk). Set up or repair makes the "Bell Schedule" and "Schedule Calendar" tabs from these when
+// a sheet doesn't have them yet; a teacher changes the tabs, never this list. Columns: Schedule, Period, Roster period, Opens, Late bell, Ends, Type, Notes.
+var LTHS_BELLS = [
+  ["Regular", "1", "1st", "7:45 AM", "7:45 AM", "8:33 AM", "Class", "LTHS 2026-27"],
+  ["Regular", "2", "2nd", "8:33 AM", "8:39 AM", "9:27 AM", "Class", "LTHS 2026-27 — 6-minute passing period before late bell"],
+  ["Regular", "3", "3rd", "9:27 AM", "9:33 AM", "10:21 AM", "Class", "LTHS 2026-27 — 6-minute passing period before late bell"],
+  ["Regular", "4A", "4th", "10:21 AM", "10:27 AM", "10:52 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Regular", "4B", "4th", "10:52 AM", "10:57 AM", "11:22 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Regular", "5A", "5th", "11:22 AM", "11:28 AM", "11:53 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Regular", "5B", "Lunch", "11:53 AM", "11:58 AM", "12:23 PM", "Lunch", "Teacher lunch. Nothing scheduled; 5th period study hall ends with 5A."],
+  ["Regular", "6", "6th", "12:23 PM", "12:29 PM", "1:17 PM", "Class", "LTHS 2026-27 — 6-minute passing period before late bell"],
+  ["Regular", "7", "7th", "1:17 PM", "1:23 PM", "2:11 PM", "Class", "LTHS 2026-27 — 6-minute passing period before late bell"],
+  ["Regular", "8", "8th", "2:11 PM", "2:17 PM", "3:05 PM", "Class", "LTHS 2026-27 — 6-minute passing period before late bell"],
+  ["Late Start", "1", "1st", "9:15 AM", "9:15 AM", "9:48 AM", "Class", "LTHS 2026-27"],
+  ["Late Start", "2", "2nd", "9:48 AM", "9:54 AM", "10:27 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Late Start", "3", "3rd", "10:27 AM", "10:33 AM", "11:06 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Late Start", "4A", "4th", "11:06 AM", "11:12 AM", "11:37 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Late Start", "4B", "4th", "11:37 AM", "11:42 AM", "12:07 PM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Late Start", "5A", "5th", "12:07 PM", "12:13 PM", "12:38 PM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Late Start", "5B", "Lunch", "12:38 PM", "12:43 PM", "1:08 PM", "Lunch", "Teacher lunch. Nothing scheduled; 5th period study hall ends with 5A."],
+  ["Late Start", "6", "6th", "1:08 PM", "1:14 PM", "1:47 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Late Start", "7", "7th", "1:47 PM", "1:53 PM", "2:26 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Late Start", "8", "8th", "2:26 PM", "2:32 PM", "3:05 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "1", "1st", "7:45 AM", "7:45 AM", "8:08 AM", "Class", "LTHS 2026-27"],
+  ["Early Dismissal", "2", "2nd", "8:08 AM", "8:14 AM", "8:37 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "3", "3rd", "8:37 AM", "8:43 AM", "9:06 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "4", "4th", "9:06 AM", "9:12 AM", "9:35 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "5", "5th", "9:35 AM", "9:41 AM", "10:04 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "6", "6th", "10:04 AM", "10:10 AM", "10:33 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "7", "7th", "10:33 AM", "10:39 AM", "11:02 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Early Dismissal", "8", "8th", "11:02 AM", "11:08 AM", "11:30 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Comm Period", "1", "1st", "7:45 AM", "7:45 AM", "8:29 AM", "Class", "LTHS 2026-27"],
+  ["Comm Period", "2", "2nd", "8:29 AM", "8:35 AM", "9:19 AM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Comm Period", "3", "3rd", "9:19 AM", "9:25 AM", "10:33 AM", "Class", "LTHS 2026-27 — Communications Period occurs 9:25–9:45; keep Period 3 roster active"],
+  ["Comm Period", "4A", "4th", "10:33 AM", "10:39 AM", "11:04 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Comm Period", "4B", "4th", "11:04 AM", "11:09 AM", "11:34 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Comm Period", "5A", "5th", "11:34 AM", "11:40 AM", "12:05 PM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Comm Period", "5B", "Lunch", "12:05 PM", "12:10 PM", "12:35 PM", "Lunch", "Teacher lunch. Nothing scheduled; 5th period study hall ends with 5A."],
+  ["Comm Period", "6", "6th", "12:35 PM", "12:41 PM", "1:25 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Comm Period", "7", "7th", "1:25 PM", "1:31 PM", "2:15 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Comm Period", "8", "8th", "2:15 PM", "2:21 PM", "3:05 PM", "Class", "LTHS 2026-27 — 6-minute passing period"],
+  ["Finals Wed", "2", "2nd", "7:45 AM", "7:45 AM", "9:25 AM", "Class", "LTHS semester finals — Semester final exam"],
+  ["Finals Wed", "3", "3rd", "9:25 AM", "9:35 AM", "11:15 AM", "Class", "LTHS semester finals — 10-minute passing period"],
+  ["Finals Wed", "4", "4th", "11:15 AM", "11:25 AM", "1:05 PM", "Class", "LTHS semester finals — 4AB final exam"],
+  ["Finals Thu", "7", "7th", "7:45 AM", "7:45 AM", "9:25 AM", "Class", "LTHS semester finals — Semester final exam"],
+  ["Finals Thu", "6", "6th", "9:25 AM", "9:35 AM", "11:15 AM", "Class", "LTHS semester finals — 10-minute passing period"],
+  ["Finals Thu", "5", "5th", "11:15 AM", "11:25 AM", "1:05 PM", "Class", "LTHS semester finals — Semester final exam"],
+  ["Finals Fri", "1", "1st", "7:45 AM", "7:45 AM", "9:25 AM", "Class", "LTHS semester finals — Semester final exam"],
+  ["Finals Fri", "8", "8th", "9:25 AM", "9:45 AM", "11:25 AM", "Class", "LTHS semester finals — 20-minute passing period before Period 8"],
+  ["Finals Fri", "MAKEUP", "", "11:25 AM", "11:30 AM", "1:00 PM", "Special", "LTHS semester finals — Final exam makeup block; no automatic roster"],
+  ["Veterans Day", "1", "1st", "7:45 AM", "7:45 AM", "8:25 AM", "Class", "Veterans Day 11/10"],
+  ["Veterans Day", "2", "2nd", "8:25 AM", "8:31 AM", "9:09 AM", "Class", "Veterans Day 11/10"],
+  ["Veterans Day", "Assembly", "Assembly", "9:09 AM", "9:29 AM", "9:54 AM", "Special", "Veterans Day assembly (passing 9:09–9:29)"],
+  ["Veterans Day", "2", "2nd", "9:54 AM", "9:54 AM", "9:59 AM", "Class", "Return to 2nd after the assembly"],
+  ["Veterans Day", "3", "3rd", "9:59 AM", "10:05 AM", "10:45 AM", "Class", "Veterans Day 11/10"],
+  ["Veterans Day", "4A", "4th", "10:45 AM", "10:51 AM", "11:16 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Veterans Day", "4B", "4th", "11:16 AM", "11:21 AM", "11:46 AM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Veterans Day", "5A", "5th", "11:46 AM", "11:52 AM", "12:17 PM", "Class", "Lunch subperiods shown separately; same roster period."],
+  ["Veterans Day", "5B", "Lunch", "12:17 PM", "12:22 PM", "12:47 PM", "Lunch", "Teacher lunch."],
+  ["Veterans Day", "6", "6th", "12:47 PM", "12:53 PM", "1:33 PM", "Class", "Veterans Day 11/10"],
+  ["Veterans Day", "7", "7th", "1:33 PM", "1:39 PM", "2:19 PM", "Class", "Veterans Day 11/10"],
+  ["Veterans Day", "8", "8th", "2:19 PM", "2:25 PM", "3:05 PM", "Class", "Veterans Day 11/10"]
+];
+function bellTabs_() {
+  var ss = ss_(), made = [];
+  if (!ss.getSheetByName('Bell Schedule')) {
+    var bs = ss.insertSheet('Bell Schedule'), rows = LTHS_BELLS.map(function (r) { return ['ON'].concat(r); });
+    bs.getRange(1, 1, 1, 9).setValues([['Enabled', 'Schedule Name', 'Period', 'Roster Period', 'Roster Opens', 'Late Bell', 'Class Ends', 'Block Type', 'Notes']]).setFontWeight('bold');
+    bs.getRange(2, 1, rows.length, 9).setNumberFormat('@').setValues(rows); bs.setFrozenRows(1); made.push('Bell Schedule');
+  }
+  if (!ss.getSheetByName('Schedule Calendar')) {
+    var cal = ss.insertSheet('Schedule Calendar'), cr = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(function (d) { return ['Weekday', d, 'Regular', 'Yes']; }).concat([['Specific Date', '11/10/2026', 'Veterans Day', 'Yes']]);
+    cal.getRange(1, 1, 1, 4).setValues([['Rule type', 'Value', 'Schedule', 'School day']]).setFontWeight('bold');
+    cal.getRange(2, 1, cr.length, 4).setNumberFormat('@').setValues(cr); cal.setFrozenRows(1); made.push('Schedule Calendar');
+  }
+  return made;
+}
+function bellPer_(v) { return String(v || '').replace(/^period\s*/i, '').trim().replace(/(st|nd|rd|th)$/i, '').replace(/^0+(?=\d)/, '').toUpperCase(); }          // "4th" / "Period 04" → "4"
 function todayBells_() {
   if (ROWS_MEMO && ROWS_MEMO.__bells !== undefined) return ROWS_MEMO.__bells;
   var out = (function () {
@@ -4666,8 +4751,12 @@ function todayBells_() {
     var rows = bs.getRange(2, 1, bs.getLastRow() - 1, Math.min(9, bs.getLastColumn())).getValues().filter(function (r) { return r[0] === true || /^(on|yes|y|true)$/i.test(String(r[0]).trim()); });
     if (!name && rows.length) name = String(rows[0][1]).trim();          // no calendar rule for today: the first schedule (usually Regular)
     var times = rows.filter(function (r) { return String(r[1]).trim() === name && !/lunch|passing/i.test(String(r[7])); }).map(function (r) {
-      return { p: String(r[3] || r[2]).replace(/^period\s*/i, '').trim().toUpperCase(), opens: hm(r[4]), start: hm(r[5]), end: hm(r[6]) };
+      return { p: bellPer_(/\d/.test(String(r[3])) ? r[3] : r[2]), opens: hm(r[4]), start: hm(r[5]), end: hm(r[6]) };
     }).filter(function (x) { return x.p && x.start && x.end; }).sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+    var by = {}; times = times.filter(function (x) {          // 2.82: 4A + 4B are one 4th period (roster "4th" = "4"); a period split by an assembly is one too
+      var o = by[x.p]; if (!o) { by[x.p] = x; return true; }
+      if (x.end > o.end) o.end = x.end; if (x.start < o.start) o.start = x.start; if (x.opens && (!o.opens || x.opens < o.opens)) o.opens = x.opens; return false;
+    });
     return { name: name, times: times };
   })();
   if (ROWS_MEMO) ROWS_MEMO.__bells = out;
@@ -4676,7 +4765,7 @@ function todayBells_() {
 // 2.64: 📍 I'm here (Colleen's own copy, Settings "Students: tap in for attendance"). The resource period now is the one whose window is
 // open (from the previous period's end to this one's end); on time until 5 minutes after its start bell, then Late (minutes after).
 function tapPeriod_(email, nowHM) {
-  var st = settings_(), bt = st.bellTimes || [], res = rows_('Classes').filter(function (r) { return low_(r[0]) === email && r[4] === true; }).map(function (r) { return String(r[1]).toUpperCase(); });
+  var st = settings_(), bt = st.bellTimes || [], res = rows_('Classes').filter(function (r) { return low_(r[0]) === email && r[4] === true; }).map(function (r) { return bellPer_(r[1]); });
   var hit = null;
   bt.forEach(function (b, k) { if (res.indexOf(b.p) < 0) return; var from = k > 0 ? bt[k - 1].end : (b.opens || b.start); if (nowHM >= from && nowHM < b.end) hit = b; });
   return hit;
@@ -5807,6 +5896,7 @@ function weekOf_(s) { var p = s.split('-'), dow = new Date(Date.UTC(+p[0], +p[1]
     api_saveGoalDetails('ort123456@d204.lths.net', mg0[0].id, { kid: 'I need to plan my resource time and turn in my work on time.', ratings: R3, criterion: 'Turn in 80% of coursework on time, per grade reports', mstatus: 'Confirmed', track: 'Assignment & Deadline Audit' });
     api_saveGoalDetails('ort123456@d204.lths.net', mg0[1].id, { kid: 'I need to email or talk to my teacher when I’m confused.', ratings: R4, noIdeas: ['I wasn’t confused about anything.'], mstatus: 'Proposed — needs review', track: 'Self-Advocacy Tracker' });
     api_saveTesting('ort123456@d204.lths.net', 'Extended time (1.5x) · Small group · Breaks as needed'); api_saveServices('ort123456@d204.lths.net', [{ service: 'Special education', minutes: 225, per: 'week' }, { service: 'Social work', minutes: 30, per: 'week' }]); api_saveStudentAccoms('ort123456@d204.lths.net', ['Extended time (1.5x) on tests and quizzes', 'Preferential seating', 'Copy of class notes', 'Calculator', 'Frequent checks for understanding', 'Breaks as needed']);          // 2.39: the IEP box has something to show
+    g.setUser('ort123456@d204.lths.net'); [['US History', 'Ch. 6 worksheet', 0], ['Geometry Prep', 'p. 214 #1-15', 1], ['English 10', 'Read chapter 4', 2], ['Spanish 2', 'Vocab quiz flashcards', -1]].forEach(function (a) { var d = new Date(); d.setDate(d.getDate() + a[2]); api_saveAssignment({ cls: a[0], what: a[1], due: Utilities.formatDate(d, 'America/Chicago', 'yyyy-MM-dd') }); });          // 2.81: homework on 🏠 Home
     g.setUser('ort123456@d204.lths.net'); var mc = api_myData().profile.goalCheck;
     if (mc && mc.date && !/gck=1/.test(location.search)) api_saveGoalCheckin({ id: 'demo1', date: mc.date, items: mc.goals.map(function (x, k) { return k ? { goal: x.id, none: true, why: 'I wasn’t confused about anything.' } : { goal: x.id, rating: 4 }; }), comment: 'I finished my Biology lab but forgot the cell diagram.' });
     g.setUser('ray@d204.lths.net');
@@ -6279,7 +6369,7 @@ function gate() {
   if (!D.profile.name || !D.classes.length || (B.bday && B.askBday && !D.profile.birthday)) return 'welcome';          // first visit: name and schedule on one page
   if (!D.classes.length || ((!D.profile.checked || (B.recheck && D.profile.checked < B.recheck)) && !skipped('schedule'))) return 'schedule';
   if (F('team') && !D.profile.profileOk && !D.stub && !skipped('profile')) return 'profile';          // first login: confirm grade, counselor, case manager
-  if (needPoll() || needGrades() || needDayPlan()) return 'checkin';          // the question of the day comes first of all          // grade check day, then today's plan for class time, come first
+  if ((needPoll() || needGrades() || needDayPlan()) && resTimeNow()) return 'checkin';          // 2.80: only required in the resource period (other periods can use the dashboard)          // the question of the day comes first of all          // grade check day, then today's plan for class time, come first
   return null;
 }
 
@@ -6299,7 +6389,7 @@ function go(v) {
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
     ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], ['settings', '⚙️ Settings'], ['me', 'Student view']]
-    : (gate() ? [] : [['checkin', 'Today'], F('tools') ? ['tools', '🧰 My tools'] : null, ['myiep', '📘 My IEP'], F('focus') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+    : (gate() ? [] : [F('tools') ? ['tools', '🏠 Home'] : ['checkin', 'Today'], ['myiep', '📘 My IEP'], F('focus') && !F('tools') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') && !F('tools') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   items = items.filter(Boolean);
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
@@ -6307,7 +6397,7 @@ function drawNav() {
   if (PREV) pb.innerHTML = '👁 This is what <b>' + esc(D.profile.name || B.email) + '</b> sees. It’s only a preview: nothing you do here is saved. ' +
     (!PREV.skip && (gate() || needDayPlan()) ? '<button class="btn small" onclick="PREV.skip=true;go(\'checkin\')">Skip ahead to the check-in (preview only)</button> ' : '') +
     '<button class="btn small" onclick="previewEnd()">◀ Back to teacher view</button>';
-  var cur = VIEW === 'tstudent' ? 'overview' : VIEW;
+  var cur = VIEW === 'tstudent' ? 'overview' : VIEW === 'checkin' && F('tools') && MODE === 'student' ? 'tools' : VIEW;
   $('nav').innerHTML = items.map(function (it) { return '<button class="' + (it[0] === cur ? 'on' : '') + '" onclick="navTo(\'' + it[0] + '\')">' + it[1] + '</button>'; }).join('');
   $('who').innerHTML = MODE === 'teacher' ? 'Teacher' : esc(D.profile.name || B.email) + (B.teacher ? ' · <a href="#" onclick="startOver();return false" style="color:var(--down)">Start over</a>' : '');
 }
@@ -7135,7 +7225,7 @@ function dpSend(v) {
     if (help.need) toast('Your teacher will see your help request');
     DP_HELP = { need: null, what: '' };
     var was = !!gate(); D.dayPlan = r; DP_EDIT = false; DP_NONE = null; DP_DRAFT = null; DP_WHY = ''; toast('Plan saved');
-    if (fromToday && F('tools') && !nothingDay() && !gate()) { go('tools'); toast('✅ You’re checked in. Here are your tools.'); return; }          // 2.53: on to 🧰 My tools
+    if (fromToday && F('tools') && !nothingDay() && !gate()) { CK_EARLY = false; STEP = null; go('tools'); toast('✅ You’re checked in.'); return; }          // 2.53: on to 🏠 Home
     if (was && !gate()) go('checkin'); else drawCheckin();          // still on grade check day: keep the grades typed so far
   }).catch(function (e) { TODAY_SEND = false; var b = $('todayBtn'); if (b) { b.disabled = false; b.textContent = '✅ Done'; } oops(e); });
 }
@@ -7560,7 +7650,7 @@ function stepGo(k) {
   var list = stepList(), i = list.map(function (s) { return s.k; }).indexOf(k), lk = i < 0 ? 0 : stepLock(list, i);
   if (lk) return toast('Finish step ' + lk + ' first');
   if (DIRTY && !confirm('You have changes that are not saved. Leave without saving?')) return;
-  setDirty(false); STEP = { k: k, wasDone: stepDone(k) }; if (k !== 'grades') GSUB = 0; drawCheckin(); window.scrollTo(0, 0);
+  setDirty(false); STEP = { k: k, wasDone: stepDone(k) }; if (k !== 'grades') GSUB = 0; if (VIEW !== 'checkin') { VIEW = 'checkin'; drawNav(); } drawCheckin(); window.scrollTo(0, 0);
 }
 function weeklyOn() { return F('focus') || (CK.last && F('lookBack')) || F('talk') || F('plan') || F('help'); }
 function ckSaveBtn(label, after) { CK_AFTER = after || null; return '<div class="row" style="margin-top:4px"><button class="btn primary big" id="ckSave">' + label + '</button><span class="status" id="status"></span></div>'; }
@@ -7570,9 +7660,11 @@ function drawCheckin() {
   var list = stepList(), keys = list.map(function (s) { return s.k; });
   if (STEP && (keys.indexOf(STEP.k) < 0 || (!STEP.wasDone && stepDone(STEP.k)))) STEP = null;          // a step just finished: on to the next one
   var cur = STEP ? STEP.k : (list.filter(function (s, i) { return s.req && !stepDone(s.k) && !stepLock(list, i); })[0] || { k: 'done' }).k;          // 2.50: only the required steps open by themselves (the checklist and exit ticket are offered when done)
+  if (homeOn() && !gate() && !STEP && (cur === 'done' || (!CK_EARLY && !resTimeNow())) && !(cur === 'done' && needPoll())) { VIEW = 'tools'; drawNav(); return drawTools(); }          // 2.81: done (or not the resource period): 🏠 Home
   var soon = soonTests(), name = String(D.profile.name || '').split(' ')[0];
   var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Today') + '</h1><p class="sub">' + fmtDay(B.today) + (keys[0] === 'grades' ? (B.checkDay && B.today >= B.checkDay ? ' · <b>Grade check day</b>' : ' · <b>First, paste your grades</b>') : '') + '</p>';
   if (soon.length && pagePref('countdown') !== false) h += '<div class="soon">' + soon.map(function (t) { return '<div class="t">' + countdown(t.date) + ' <b>' + esc(t.cls) + '</b> ' + esc(t.what) + '</div>'; }).join('') + '</div>';
+  if (homeOn() && !gate()) h = '<p style="margin:0 0 6px"><a href="#" onclick="CK_EARLY=false;STEP=null;go(\'tools\');return false">← Home</a></p>' + h;          // 2.81: doing the check-in early, or an optional step
   h += tapCard();          // 2.64: 📍 I'm here comes first
   if (needPoll()) { $('main').innerHTML = h + pollCard(); return; }          // the question of the day first
   var planHere = F('dayPlan') && isSchoolDay() && keys.indexOf('plan') >= 0;
@@ -7647,20 +7739,79 @@ function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' =
   if (F('focus')) l.push(['focus', '⏱️', 'Focus timer', 'Work in a timed block', 'quick']);
   return l.filter(function (x) { return !(x[0] === 'project' && !B.planner) && !(x[0] === 'date' && !F('tests')) && !(x[0] === 'ixl' && !B.ixlOn) && !(x[0] === 'hallpass' && !B.hallPass); });
 }
+// 2.81: 🏠 Home = Today + My tools on one page: the check-in line, ▶ Next up, 📋 What's due (add homework right there),
+// ❓ questions, my most-used tools (the rest folded), then My stuff (only what needs a look; the rest folded).
+var CK_EARLY = false, TOOLS_ALL = false, STUFF_ALL = false;
 function drawTools() {
   if (AS === null && !AS_BUSY) { AS_BUSY = true; call('api_assignments').then(function (r) { AS = r; AS_BUSY = false; if (VIEW === 'tools') drawTools(); }).catch(function () { AS = { list: [], said: [] }; AS_BUSY = false; }); }
   if (B.ixlOn && IXL === null) { IXL = false; ixlLoad(); }
   if (QS === null) qsLoad();
-  var t = toolList(), tile = function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b><span class="small">' + x[3] + '</span></button>'; };
+  if (!CK) initCK();
+  var name = String(D.profile.name || '').split(' ')[0], sl = startList(), x = sl[SH_I % sl.length];
   var hp = B.hallPass && typeof HP !== 'undefined' && HP && HP.mine ? '<div class="card" style="margin:0 0 12px;border-color:var(--warn);background:var(--warn-soft)"><div class="row"><b class="grow">🚻 You’re out on a pass (' + esc(HP.mine.place || '') + ')</b><button class="btn primary" onclick="hpOpen()">I’m back</button></div></div>' : '';
-  var h = '<h1>🧰 My tools</h1><p class="sub">' + (stepDone('plan') ? 'You’re checked in for today ✓ Let’s get something done.' : 'Finish <a href="#" onclick="go(\'checkin\');return false">Today</a> first, then come back here.') + '</p>' + hp + qsQuick() + toolsTop() +
-    '<h3 class="tools-h">My work and plans</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'work'; }).map(tile).join('') + '</div>' +
-    '<h3 class="tools-h">Quick tools</h3><div class="tools-grid">' + t.filter(function (x) { return x[4] === 'quick'; }).map(tile).join('') + '</div>' +
-    '<div id="toolBox"></div>';
+  var xq = homeCkDone() ? extraPick() : '', xh = xq === 'acc' ? accHelpCard() : xq === 'skill' ? (D.skillChecks || []).filter(function (c) { return c.due || (SKC && SKC.goal === c.goal); }).slice(0, 1).map(function (c) { return skillCard(c, true); }).join('') : xq === 'accweek' ? accWeekCard() : xq === 'future' ? futureCard(true) : '';
+  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Home') + '</h1><p class="sub">' + fmtDay(B.today) + '</p>' + codeBanner() + hp + homeCk() +
+    '<div class="home-next"><b class="small" style="display:block">▶ NEXT UP</b><p>' + x.t + '</p><div class="row" style="gap:8px">' + (x.go ? '<button class="btn primary" onclick="shGo(\'' + x.go + '\')">Let’s go</button>' : '') + (sl.length > 1 ? '<button class="btn" onclick="SH_I++;drawTools()">Something else</button>' : '') + '</div></div>' +
+    '<div class="card" id="homeDue">' + homeDueHtml() + '</div>' + qsQuick() + xh +
+    homeToolsHtml() + '<div id="toolBox"></div>' + homeStuff();
   $('main').innerHTML = h; toolDraw();
+  if (TILE === 'grades' || TILE === 'week') drawSugg();
+  if ($('ckSave')) $('ckSave').onclick = saveCheckin;
+}
+function homeCkDone() { return !stepList().some(function (s) { return s.req && !stepDone(s.k); }) && !needPoll(); }
+function homeCk() {          // one line: checked in ✓ (and today's plan), or the check-in waiting for the resource period
+  if (!isSchoolDay()) return '';
+  var cls = esc(B.dayClass || 'resource'), opt = stepList().filter(function (s) { return !s.req && !stepDone(s.k); }), pl = D.dayPlan && D.dayPlan.today && D.dayPlan.today.plan;
+  if (!homeCkDone()) return '<div class="home-ck wait"><span class="grow">📋 <b>Your ' + cls + ' check-in isn’t done yet.</b> It’s required when ' + cls + ' starts.</span><button class="btn small" onclick="CK_EARLY=true;go(\'checkin\')">Do it now</button></div>';
+  return '<div class="home-ck"><span class="grow">✅ <b>Checked in today.</b>' + (pl ? ' <span class="small" style="display:inline">My plan: ' + esc(pl.length > 90 ? pl.slice(0, 87) + '…' : pl) + '</span>' : '') + '</span>' +
+    opt.map(function (s) { return '<button class="btn small" onclick="stepGo(\'' + s.k + '\')">' + (s.k === 'check' ? '✅ ' : s.k === 'exit' ? '🚪 ' : '') + esc(s.label) + '</button>'; }).join('') + '</div>';
+}
+// 📋 What's due: their assignments, tests and projects, and project steps, soonest first; add homework in one line
+function homeDueHtml() {
+  var tm = addDays(B.today, 1), items = [];
+  if (AS) AS.list.filter(function (a) { return !a.done; }).forEach(function (a) { items.push({ d: a.due || '9999', k: 'a', a: a }); });
+  (D.tests || []).filter(function (t) { return !t.done && t.date >= B.today && daysUntil(t.date) <= 14; }).forEach(function (t) { items.push({ d: t.date, k: 't', t: t }); });
+  stepsDue(tm).forEach(function (x) { items.push({ d: x.s.due, k: 's', x: x }); });
+  items.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.k === 't' ? -1 : 1; });
+  var when = function (d) { return d === '9999' ? '' : d < B.today ? '<span class="due late">Past due</span>' : d === B.today ? '<span class="due now">Today</span>' : d === tm ? '<span class="due soon">Tomorrow</span>' : '<span class="due">' + esc(fmtDay(d).split(',')[0] + ' ' + shortDay(d)) + '</span>'; };
+  var row = function (it) {
+    if (it.k === 'a') return '<label class="hd-row"><input type="checkbox" onchange="trDone(\'' + it.a.id + '\',true)">' + when(it.d) + '<span class="grow"><b>' + esc(it.a.what) + '</b> <span class="small" style="display:inline">' + esc(it.a.cls || '') + '</span></span></label>';
+    if (it.k === 't') { var t = it.t, isT = /^(Test|Quiz)$/.test(t.type), st = ((D.steps || {})[t.id] || []).length;
+      return '<div class="hd-row"><span class="hd-ic">' + (isT ? '📝' : '📋') + '</span>' + when(it.d) + '<span class="grow"><b>' + esc(t.cls || '') + ' ' + esc(t.what) + '</b>' + (daysUntil(t.date) > 1 ? ' <span class="small" style="display:inline">' + countdownText(t.date) + '</span>' : '') + '</span>' + (isT && !st && daysUntil(t.date) >= 1 ? '<button class="btn small" onclick="stOpen(\'' + t.id + '\',3)">📚 Study plan</button>' : '') + '</div>'; }
+    return '<div class="hd-row"><span class="hd-ic">🧩</span>' + when(it.d) + '<span class="grow">' + esc(it.x.s.step) + ' <span class="small" style="display:inline">' + esc(it.x.t.what) + '</span></span><button class="btn small" onclick="go(\'tests\')">Open</button></div>';
+  };
+  var ml = missLeft(), more = items.length - 7;
+  return '<div class="row"><h2 class="grow" style="margin:0">📋 What’s due</h2>' + (F('tests') ? '<a href="#" class="small" onclick="toolGo(\'date\');return false">+ Test or project</a>' : '') + '</div>' +
+    '<div class="row hd-add"><select id="trC" style="max-width:190px" onchange="TRF.cls=this.value">' + classOptions(TRF.cls) + '</select><input type="text" id="trW" class="grow" maxlength="150" placeholder="Got homework? Type it here" value="' + esc(TRF.what) + '" oninput="TRF.what=this.value" onkeydown="if(event.key===\'Enter\')trAdd()">' +
+    '<span class="row" style="gap:4px">' + [[B.today, 'Today'], [tm, 'Tomorrow']].map(function (d) { return '<button class="btn small' + (TRF.due === d[0] ? ' primary' : '') + '" onclick="TRF.due=TRF.due===\'' + d[0] + '\'?\'\':\'' + d[0] + '\';$(\'trD\').value=TRF.due;homeDueRedraw()">' + d[1] + '</button>'; }).join('') +
+    '<input type="date" id="trD" style="max-width:150px" value="' + esc(TRF.due) + '" onchange="TRF.due=this.value;homeDueRedraw()" title="Due date"></span><button class="btn primary" onclick="trAdd()">Add</button></div>' +
+    (AS === null ? '<p class="small">Loading…</p>' : items.length ? items.slice(0, 7).map(row).join('') + (more > 0 ? '<p class="small" style="margin:6px 0 0"><a href="#" onclick="toolGo(\'tracker\');return false">See all (' + more + ' more)</a></p>' : '') : '<p class="small" style="margin:10px 0 0">Nothing written down yet. When a teacher gives homework, add it here so you don’t forget. 🎉</p>') +
+    (ml.length || (IXL && !IXL.met) ? '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (ml.length ? '<button class="btn small' + (ml.length > 3 ? ' warnb' : '') + '" onclick="toolGo(\'missing\')">📌 ' + ml.length + ' missing in Infinite Campus</button>' : '') + (IXL && !IXL.met ? '<button class="btn small" onclick="toolGo(\'ixl\')">📈 IXL: ' + IXL.total + ' of ' + IXL.target + ' ' + esc(IXL.unit) + '</button>' : '') + '</div>' : '');
+}
+function homeDueRedraw() { var el = $('homeDue'); if (el) el.innerHTML = homeDueHtml(); }
+// 🧰 tools: the ones this student opens most come first (counted on this Chromebook); 6 show, the rest fold
+function toolUses() { try { return JSON.parse(localStorage.getItem('rci-tools-' + (B.email || '')) || '{}'); } catch (e) { return {}; } }
+function toolUsed(k) { try { var u = toolUses(); u[k] = (u[k] || 0) + 1; localStorage.setItem('rci-tools-' + (B.email || ''), JSON.stringify(u)); } catch (e) {} }
+var TOOL_RANK = ['hallpass', 'missing', 'need', 'cards', 'email', 'date', 'project', 'classlink', 'ixl', 'read', 'dictate', 'write', 'links', 'calc', 'focus'];
+function homeTools() {
+  var u = toolUses(), r = function (k) { var i = TOOL_RANK.indexOf(k); return i < 0 ? 50 : i; };
+  return toolList().filter(function (x) { return x[0] !== 'tracker' && x[0] !== 'ask'; }).sort(function (a, b) { return ((u[b[0]] || 0) - (u[a[0]] || 0)) || (r(a[0]) - r(b[0])); });
+}
+function homeToolsHtml() {
+  var t = homeTools(), show = TOOLS_ALL ? t : t.slice(0, 6);
+  if (TOOL && !TOOLS_ALL && show.every(function (x) { return x[0] !== TOOL; })) show = show.concat(t.filter(function (x) { return x[0] === TOOL; }));
+  return '<h3 class="tools-h">🧰 My tools</h3><div class="tools-grid home-tools">' + show.map(function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b></button>'; }).join('') + '</div>' +
+    (t.length > 6 ? '<p style="margin:-6px 0 12px"><a href="#" onclick="TOOLS_ALL=!TOOLS_ALL;drawTools();return false">' + (TOOLS_ALL ? '▲ Fewer tools' : '▼ More tools (' + (t.length - 6) + ')') + '</a></p>' : '');
+}
+function homeStuff() {          // My stuff: tiles that need a look show; the rest fold
+  var all = stuffTiles([]), hid = pagePref('hide') || [];
+  all = all.filter(function (x) { return hid.indexOf(x[0]) < 0 && x[0] !== 'missing'; });
+  var show = STUFF_ALL ? all : all.filter(function (x) { return x[3] || x[0] === TILE; }), rest = all.length - show.length;
+  return (show.length ? stuffHtml(show) : '<h2 class="stuffh">My stuff</h2>') + (STUFF_ALL || rest ? '<p style="margin:6px 0 0"><a href="#" onclick="STUFF_ALL=!STUFF_ALL;drawTools();return false">' + (STUFF_ALL ? '▲ Show less' : '▼ Everything else: my grades, goals, IEP, calendar… (' + rest + ')') + '</a></p>' : '');
 }
 var AS_BUSY = false;
 function toolOpen(k) {
+  if (k !== TOOL) toolUsed(k);
   if (k === 'classlink') { toolLog('ClassLink', '', true); window.open('https:' + '/' + '/launchpad.classlink.com/lths', '_blank', 'noopener'); return; }          // 2.54: the district sign-in page (no login token in it)
   if (k === 'calc') { toolLog('Calculator', '', true); return calcOpen(); }
   if (k === 'focus') { toolLog('Focus timer', '', true); return go('focus'); }
@@ -7671,6 +7822,7 @@ function toolDraw() {
   var el = $('toolBox'); if (!el) return;
   var f = { ask: qsHtml, dictate: dcHtml, ixl: ixlHtml, write: wrHtml, tracker: trHtml, missing: msHtml, cards: fcHtml, project: pjtHtml, date: dtHtml, need: ndHtml, email: emHtml, read: rdHtml, links: lkHtml }[TOOL];
   el.innerHTML = f ? '<div class="card" style="border:2px solid var(--brand)">' + f() + '</div>' : '';
+  if (TOOL !== 'tracker') homeDueRedraw();          // 2.81: checking off or adding homework updates 📋 What's due
   if (TOOL === 'cards' && FC.sets === null) fcLoad();
   if ((TOOL === 'tracker' || TOOL === 'missing') && AS === null) asLoad();
   if (TOOL === 'cards' && FC.view === 'study' && FC.mode === 'type' && $('fcIn') && !FC.answered) $('fcIn').focus();
@@ -8036,9 +8188,9 @@ function trHtml() {
 }
 function trAdd() {
   var a = { cls: $('trC').value, what: $('trW').value.trim(), due: $('trD').value }; if (!a.what) { $('trW').focus(); return alert('Type the assignment.'); }
-  call('api_saveAssignment', a).then(function (r) { AS = r; TRF.what = ''; TRF.cls = a.cls; toolDraw(); if ($('trW')) $('trW').focus(); }).catch(oops);
+  call('api_saveAssignment', a).then(function (r) { AS = r; TRF.what = ''; TRF.due = ''; TRF.cls = a.cls; toolDraw(); homeDueRedraw(); toast('Added ✓'); if ($('trW')) $('trW').focus(); }).catch(oops);
 }
-function trDone(id, v) { call('api_assignmentDone', id, v).then(function (r) { AS = r; if (v) toast('Nice! ✅'); toolDraw(); }).catch(oops); }
+function trDone(id, v) { call('api_assignmentDone', id, v).then(function (r) { AS = r; if (v) toast('Nice! ✅'); toolDraw(); homeDueRedraw(); }).catch(oops); }
 function trDel(id) { if (!confirm('Delete this assignment?')) return; call('api_deleteAssignment', id).then(function (r) { AS = r; toolDraw(); }).catch(oops); }
 
 /* 📌 Missing work: from the pages they pasted; "I turned it in" is their word until Infinite Campus shows it */
@@ -8058,12 +8210,23 @@ function emAsk(cls, name) { EM = { cls: cls, kind: 'missing', a: name, d: '', wh
 function msSaid(btn, cls, name) { btn.disabled = true; cls = (graded().filter(function (c) { return esc(c.name).replace(/'/g, '’') === cls; })[0] || { name: cls }).name; call('api_saidTurnedIn', cls, name).then(function (r) { AS = r; toast('Great job turning it in! 🎉'); toolDraw(); }).catch(function (e) { btn.disabled = false; oops(e); }); }
 
 /* 🔔 When the bell ends the period before resource (Settings: Bell times), an open app jumps to Today, once a day */
+function bp(v) { return String(v || '').replace(/^period\s*/i, '').trim().replace(/(st|nd|rd|th)$/i, '').replace(/^0+(?=\d)/, '').toUpperCase(); }          // 2.82: "05" / "5th" / "5" are one period
+// 2.80: is it the student's resource period now (from the last minute of the period before)? No Bell times: always (as before)
+function resTimeNow() {
+  var bt = (B && B.bellTimes) || [], rp = resPeriods(); if (!bt.length || !rp.length) return true;
+  var d = new Date(), now = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), mm = function (t, n) { var m = +t.slice(0, 2) * 60 + +t.slice(3) + n; return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }, known = false;
+  var hit = rp.some(function (p) {
+    var k = bt.map(function (x) { return bp(x.p); }).indexOf(bp(p)); if (k < 0) return false; known = true;
+    return now >= (k > 0 ? mm(bt[k - 1].end, -1) : mm(bt[k].start, -5)) && now < bt[k].end;
+  });
+  return hit || !known;
+}
 function bellCheck() {
-  if (MODE !== 'student' || !B || B.preview || !(B.bellTimes || []).length || !isSchoolDay() || gate()) return;
+  if (MODE !== 'student' || !B || B.preview || !(B.bellTimes || []).length || !isSchoolDay() || (gate() && gate() !== 'checkin')) return;
   if (stepDone('plan') || DIRTY || VIEW === 'checkin') return;
   var d = new Date(), now = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), bt = B.bellTimes, mm = function (t, n) { var m = +t.slice(0, 2) * 60 + +t.slice(3) + n; return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); };
   resPeriods().forEach(function (rp) {
-    var k = bt.map(function (x) { return x.p; }).indexOf(String(rp).toUpperCase()); if (k < 0) return;
+    var k = bt.map(function (x) { return bp(x.p); }).indexOf(bp(rp)); if (k < 0) return;
     var from = k > 0 ? mm(bt[k - 1].end, -1) : mm(bt[k].start, -5), to = bt[k].end, key = 'rci-bell-' + (B.email || '') + '-' + B.today + '-' + rp;
     if (now < from || now >= to) return;
     try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) {}
@@ -8074,7 +8237,7 @@ function bellChecklist() {          // 2.56: an assigned checklist that isn't do
   if (MODE !== 'student' || !B || B.preview || !B.checkOwn || !F('checklist') || !(B.bellTimes || []).length || !isSchoolDay() || gate() || !stepDone('plan') || clDone() || DIRTY) return;
   var d = new Date(), now = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), bt = B.bellTimes;
   resPeriods().forEach(function (rp) {
-    var x = bt.filter(function (b) { return b.p === String(rp).toUpperCase(); })[0]; if (!x) return;
+    var x = bt.filter(function (b) { return bp(b.p) === bp(rp); })[0]; if (!x) return;
     var m = +x.end.slice(0, 2) * 60 + +x.end.slice(3) - 10, from = ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2), key = 'rci-cl-' + (B.email || '') + '-' + B.today + '-' + rp;
     if (now < from || now >= x.end) return;
     try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) {}
@@ -8105,7 +8268,7 @@ function comingItems() {
 }
 function startList() {
   var out = [], tm = addDays(B.today, 1);
-  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: x.how === 'Access code' && x.released ? 'Your ' + esc(x.cls) + ' access code is at the top of Today. Take your test now.' : x.how === 'Access code' ? 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher to release the code.' : 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher for it.', go: '' }); });
+  testsReady().slice(0, 1).forEach(function (x) { out.push({ t: x.how === 'Access code' && x.released ? 'Your ' + esc(x.cls) + ' access code is at the top of this page. Take your test now.' : x.how === 'Access code' ? 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher to release the code.' : 'Your ' + esc(x.cls) + ' test is here. When you’re ready, ask the teacher for it.', go: '' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due && a.due < B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || 'past due') + '). It was due ' + esc(fmtDay(a.due)) + '.', go: 'tracker' }); });
   stepsDue(B.today).slice(0, 1).forEach(function (x) { out.push({ t: 'Do today’s step for <b>' + esc(x.t.what) + '</b>: ' + esc(x.s.step), go: 'tests' }); });
   if (AS) AS.list.filter(function (a) { return !a.done && a.due === B.today; }).slice(0, 1).forEach(function (a) { out.push({ t: 'Finish <b>' + esc(a.what) + '</b> (' + esc(a.cls || '') + '). It’s due today.', go: 'tracker' }); });
@@ -8315,6 +8478,7 @@ function qsQuick() {
     (open.length ? '<div style="margin-top:8px">' + qsGroups(open, 'qsCheck') + '</div>' : '') + '</div>';
 }
 function toolsRedraw() { if (VIEW === 'quick') drawQuick(); else if (VIEW === 'tools') drawTools(); }
+function homeOn() { return MODE === 'student' && F('tools'); }          // 2.81: Today + My tools are one 🏠 Home page
 function qsQuickAdd() {
   var q = { cls: $('qqC') ? $('qqC').value : QF.cls, q: ($('qqQ') ? $('qqQ').value : '').trim(), when: $('qqW') ? $('qqW').value : 'start', test: '' };
   if (!q.q) { if ($('qqQ')) $('qqQ').focus(); return; }
@@ -8345,7 +8509,7 @@ function bellAsk() {
   var d = new Date(), now = d.getHours() * 60 + d.getMinutes(), mins = function (t) { return +t.slice(0, 2) * 60 + +t.slice(3); };
   var due = QS.filter(function (q) {
     if (q.asked || q.when === 'open') return false;
-    var c = (D.classes || []).filter(function (x) { return x.name === q.cls; })[0], bt = c && (B.bellTimes || []).filter(function (b) { return b.p === String(c.period).toUpperCase(); })[0]; if (!bt) return false;
+    var c = (D.classes || []).filter(function (x) { return x.name === q.cls; })[0], bt = c && (B.bellTimes || []).filter(function (b) { return bp(b.p) === bp(c.period); })[0]; if (!bt) return false;
     var a = q.when === 'start' ? mins(bt.start) - 1 : mins(bt.end) - 4, b = q.when === 'start' ? mins(bt.start) + 4 : mins(bt.end);
     if (now < a || now >= b) return false;
     try { return !localStorage.getItem('rci-q-' + q.id + '-' + B.today); } catch (e) { return true; }
@@ -8454,7 +8618,7 @@ function tourSteps() {
     ['✅ Daily checklist', 'Check off each item they did. Optional, except on a day they say they have nothing to work on.', function () { STEP = { k: 'check', wasDone: true }; return 'checkin'; }],
     ['🚪 Exit ticket', 'What did you finish today, and what’s next?', function () { STEP = { k: 'exit', wasDone: true }; return 'checkin'; }],
     ['🎉 All done', 'Checked in! From here: 🧰 Open my tools, or the optional checklist and exit ticket.', function () { STEP = { k: 'done' }; return 'checkin'; }],
-    ['🧰 My tools', 'Questions for my teacher at the top, ⭐ Coming up and ▶ Start here, then every tool. Tap a tile to open it.', function () { TOOL = ''; return 'tools'; }]];
+    ['🏠 Home', 'After the check-in (or in any other period): ▶ Next up, 📋 What’s due with a one-line homework box, questions for teachers, then their most-used tools.', function () { TOOL = ''; return 'tools'; }]];
   [['tracker', '📝 My assignments', 'Type homework the moment you get it, pick the class and due date, ✓ when done.'], ['missing', '📌 Missing work', 'From the pasted pages. Tap “I turned it in”, or ✉️ Ask the teacher what to do.'],
    ['project', '🔍 Assignment Decoder', 'Paste the directions and rubric (or a PDF), 🔍 Decode it, then Make my plan: dated steps with reminders.'], ['date', '📅 Add a test or project', 'Class, type, what, date. It’s on Today with a countdown. Tests get 📚 Study plan.'],
    ['need', '🎯 What will it do to my grade?', 'Paste today’s page for the class, pick summative or formative and the points, then “I want my grade to be” or “If I get”.'], ['ask', '❓ Questions for my teacher', 'Write a question for a class and pick a reminder: start of class, end of class, or none. ✓ checks it off.'],
@@ -8520,7 +8684,7 @@ function stuffHtml(t) {
 function tileOpen(k) {
   if (DIRTY && !confirm('You have changes that are not saved. Leave without saving?')) return;
   setDirty(false); TILE = TILE === k ? null : k; if (TILE === 'grades' || TILE === 'week') CK = null;
-  drawCheckin(); var p = $('tilePanel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (VIEW === 'tools') drawTools(); else drawCheckin(); var p = $('tilePanel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 // the weekly part: what to focus on, last week, talking with teachers, the plan for resource time
 function weeklyCards() {
