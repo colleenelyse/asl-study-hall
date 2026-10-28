@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.184';
+var VERSION = '4.185';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -6467,8 +6467,9 @@ function rsVocWords_(d, name) {
   var detail = function (m) { return ' (' + rsVocVal_(m.k, m.me) + ', ' + L + ' average ' + rsVocVal_(m.k, m.avg) + ')'; };
   var sum = '';
   if (best && best.p >= 50) sum = first + ' ' + did[best.k] + ' about ' + rsShare_(best.p) + ' ' + L + ' students' + detail(best);
-  else if (best) sum = first + '’s strongest area is ' + area[best.k] + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');
-  if (worst && worst !== best) sum += ' and is ' + rsStanding_(worst.p) + ' for ' + area[worst.k] + '.';
+  else if (best && best.p >= 40) sum = first + '’s strongest area is ' + area[best.k] + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');
+  else if (best) sum = first + ' is still building all of these skills. ' + first + '’s best so far is ' + area[best.k] + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');      /* 4.185 (Colleen): a 12th percentile is not a "strongest area" */
+  if (worst && worst !== best) sum += best.p < 40 ? '. The area that needs the most work is ' + area[worst.k] + '.' : ' and is ' + rsStanding_(worst.p) + ' for ' + area[worst.k] + '.';
   else if (sum) sum += '.';
   if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
   var next = '';
@@ -6493,8 +6494,9 @@ function rsFsWords_(d, name) {
   var detail = function (m) { return m.k === 'top' ? ' (top speed ' + rsFsVal_('top', m.me).replace(' / sec', '') + ' letters a second, ' + L + ' average ' + rsFsVal_('top', m.avg).replace(' / sec', '') + ')' : ' (' + rsFsVal_(m.k, m.me) + ', ' + L + ' average ' + rsFsVal_(m.k, m.avg) + ')'; };
   var sum = '';
   if (best && best.p >= 50) sum = first + ' ' + did[best.k] + ' about ' + rsShare_(best.p) + ' ' + L + ' students' + detail(best);
-  else if (best) sum = first + '’s strongest area is ' + area(best.k) + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');
-  if (worst && worst !== best) sum += ' and is ' + rsStanding_(worst.p) + ' for ' + area(worst.k) + '.';
+  else if (best && best.p >= 40) sum = first + '’s strongest area is ' + area(best.k) + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');
+  else if (best) sum = first + ' is still building all of these skills. ' + first + '’s best so far is ' + area(best.k) + ' (' + rsOrd_(best.p) + ' percentile' + detail(best).replace(' (', ': ');      /* 4.185 (Colleen): a 12th percentile is not a "strongest area" */
+  if (worst && worst !== best) sum += best.p < 40 ? '. The area that needs the most work is ' + area(worst.k) + '.' : ' and is ' + rsStanding_(worst.p) + ' for ' + area(worst.k) + '.';
   else if (sum) sum += '.';
   if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
   var slower = rsComfName_(d);      /* 4.184: practice at the speed the student has shown they can read (comfortable speed), not the speed they picked */
