@@ -57,6 +57,14 @@ const saveMine = () => { try { localStorage.setItem('fs-reader-mine', JSON.strin
    SWING holds the model's G and H turned forward step by step; each check uses the turn closest to the student's hand. */
 const SWING = {}, SWING_DEG = [-15, 0, 15, 30, 45, 60];
 const swingJoints = (P, deg) => { const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return P.map(([x, y, z]) => [x * c - z * s, y, x * s + z * c]); };      /* about the up-down line: +x (to the side) turns toward +z (the camera) */
+/* Q (Colleen 2026-10-28: "it expects the fingers that should point down to undercut way too far and point back at the wrist… straight down and even a
+   little less than straight down should be accepted"): the model's Q turned so its fingers point straight down, and down tipped 20° and 40° to either side
+   or forward. The Q must-have (fingers clearly down) still keeps it apart from G. */
+const turnJoints = (P, to) => { const k = unit(sub(P[9], P[0])), t = unit(to), c = dot(k, t), ax = cross(k, t), s = len(ax); if (s < 1e-6) return P;
+  const a = ax.map(v => v / s); return P.map(v => { const kv = cross(a, v), ad = dot(a, v); return [0, 1, 2].map(i => v[i] * c + kv[i] * s + a[i] * ad * (1 - c)); }); };      /* turns the hand so wrist-to-knuckles points along `to` */
+const rollJoints = (P, deg) => { const a = unit(sub(P[9], P[0])), r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  return P.map(v => { const kv = cross(a, v), ad = dot(a, v); return [0, 1, 2].map(i => v[i] * c + kv[i] * s + a[i] * ad * (1 - c)); }); };      /* turns the hand about its own length, so the palm faces another way */
+const Q_DIRS = [[0, -1, 0]].concat(...[20, 40].map(d => { const r = d * Math.PI / 180; return [[Math.sin(r), -Math.cos(r), 0], [-Math.sin(r), -Math.cos(r), 0], [0, -Math.cos(r), Math.sin(r)]]; }));
 const odist = (f, t) => { let o = 0; for (let i = 0; i < 6; i++) o += (f.orient[i] - t.orient[i]) ** 2; return o; };
 const tplFor = (f, c) => SWING[c] ? SWING[c].reduce((b, t) => odist(f, t) < odist(f, b) ? t : b) : TPL[c];
 const dModel = (f, c) => Math.min(TPL[c] ? dist(f, tplFor(f, c), c) : 99, ALT[c] ? dist(f, ALT[c], c) : 99);
@@ -1113,7 +1121,7 @@ $('#rd-alpha').onclick = e => { const b = e.target.closest('button'); if (b) go(
 $('#rd-teachbtn').onclick = () => { if (!landmarker) return; if (NUMS && SET[cur].length > 1) { $('#rd-status').textContent = 'Teaching works for 0 to 9. Moving numbers are read from the movement.'; return; } if (!NUMS && MOVING[SET[cur]]) { $('#rd-status').textContent = 'J and Z are read from the motion, so they don\u2019t need teaching.'; return; } teachBuf = []; teaching = 30; $('#rd-teachbtn').disabled = true; $('#rd-teachbtn').textContent = 'Hold still…'; };
 $('#rd-forget').onclick = () => { delete MINE[SET[cur]]; saveMine(); drawAlpha(); };
 refHand = window.FSHand.create($('#rd-model'), {});
-refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); if (P && (c === 'G' || c === 'H')) SWING[c] = SWING_DEG.map(d => feat(swingJoints(P, d))); });
+refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); if (P && (c === 'G' || c === 'H')) SWING[c] = SWING_DEG.map(d => feat(swingJoints(P, d))); if (P && c === 'Q') SWING.Q = [TPL.Q].concat(...Q_DIRS.map(d => [-60, -30, 0, 30, 60].map(r => feat(rollJoints(turnJoints(P, d), r)))));      /* and the palm turned up to 60° either way (the model's faces almost straight back at the signer) */ });
   STILL.filter(c => !'WFOC'.includes(c)).forEach(c => { if (TPL[c]) NOTNUM[c] = TPL[c]; }); { const P = refHand.numberJoints(10, false); if (P) NOTNUM['thumbs up'] = feat(P); }      /* W = 6, F = 9, O and C = 0: those stay out */
   DIGITS.forEach(c => { const n = +c, P = refHand.numberJoints(n, false); if (P) TPL[c] = feat(P); if (n >= 1 && n <= 5) { const Q = refHand.numberJoints(n, true); if (Q) ALT[c] = feat(Q); } });      /* 1-5: palm toward you (counting) or palm out (inside a bigger number); both count */
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
