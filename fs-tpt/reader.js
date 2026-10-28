@@ -52,7 +52,14 @@ const TPL = {}, ALT = {}, NOTNUM = {};      /* NOTNUM: shapes that are not numbe
 let MINE = {}; try { MINE = JSON.parse(localStorage.getItem('fs-reader-mine') || '{}'); } catch (e) {}
 const MINE_KEY = 'fs-reader-mine';
 const saveMine = () => { try { localStorage.setItem('fs-reader-mine', JSON.stringify(MINE)); } catch (e) {} };
-const dModel = (f, c) => Math.min(TPL[c] ? dist(f, TPL[c], c) : 99, ALT[c] ? dist(f, ALT[c], c) : 99);
+/* G and H (Colleen 2026-10-28: "it expects my index finger to point backwards when it should be sideways"): the model hand points straight to the side,
+   tipped a little back toward the signer, but real hands point to the side and somewhat forward (and the camera makes the forward part look bigger).
+   SWING holds the model's G and H turned forward step by step; each check uses the turn closest to the student's hand. */
+const SWING = {}, SWING_DEG = [-15, 0, 15, 30, 45, 60];
+const swingJoints = (P, deg) => { const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return P.map(([x, y, z]) => [x * c - z * s, y, x * s + z * c]); };      /* about the up-down line: +x (to the side) turns toward +z (the camera) */
+const odist = (f, t) => { let o = 0; for (let i = 0; i < 6; i++) o += (f.orient[i] - t.orient[i]) ** 2; return o; };
+const tplFor = (f, c) => SWING[c] ? SWING[c].reduce((b, t) => odist(f, t) < odist(f, b) ? t : b) : TPL[c];
+const dModel = (f, c) => Math.min(TPL[c] ? dist(f, tplFor(f, c), c) : 99, ALT[c] ? dist(f, ALT[c], c) : 99);
 const rankModel = f => (NUMS ? DIGITS.map(c => [c, TPL[c] ? dist(f, TPL[c], c) : 99]).concat(Object.keys(ALT).map(c => [c + '*', dist(f, ALT[c], c)]), Object.keys(NOTNUM).map(c => ['~' + c, dist(f, NOTNUM[c], c)])) : STILLSET.map(c => [c, dModel(f, c)])).sort((a, b) => a[1] - b[1]);      /* Colleen's hand only */
 const nearModel = (f, c, n) => rankModel(f).slice(0, n).some(x => x[0] === c);      /* SAFEGUARD: is the hand at least close to Colleen's letter? */
 /* K and P (and G and Q) are the same handshape; only the direction differs: P and Q point down. When both are in the running, the direction decides. */
@@ -111,9 +118,9 @@ function loop() {
   if (WORD) { const L0 = r.landmarks[0], sz = Math.hypot(L0[9].x - L0[0].x, L0[9].y - L0[0].y); BOUNCE.push({ y: L0[0].y, s: sz }); if (BOUNCE.length > 240) BOUNCE.shift(); }
   MOT = [];
   const R = rank(f), target = target0;
-  const T = (MINE[target] || []).concat(TPL[target] ? [TPL[target]] : []).sort((a, b) => dist(f, a, target) - dist(f, b, target))[0];      /* the closest version of the target letter */
+  const T = (MINE[target] || []).concat(TPL[target] ? [tplFor(f, target)] : []).sort((a, b) => dist(f, a, target) - dist(f, b, target))[0];      /* the closest version of the target letter */
   const dTgt = (R.find(x => x[0] === target) || [0, 99])[1];
-  const easy = EASY[target], gate = GATE[target], gateOK = !gate || gate[0](f), AIM = TPL[target] || T, aimOK = !AIM || (dot(f.orient.slice(0, 3), AIM.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), AIM.orient.slice(3)) >= 0.2), right = gateOK && aimOK && (R[0][0] === target || (R.slice(0, easy ? 3 : 2).some(x => x[0] === target) && dTgt <= R[0][1] * (easy || 1.15))) && nearModel(f, target, NUMS ? 3 : 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
+  const easy = EASY[target], gate = GATE[target], gateOK = !gate || gate[0](f), AIM = (TPL[target] && tplFor(f, target)) || T, aimOK = !AIM || (dot(f.orient.slice(0, 3), AIM.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), AIM.orient.slice(3)) >= 0.2), right = gateOK && aimOK && (R[0][0] === target || (R.slice(0, easy ? 3 : 2).some(x => x[0] === target) && dTgt <= R[0][1] * (easy || 1.15))) && nearModel(f, target, NUMS ? 3 : 4), dT = T ? dist(f, T, target) : 9; if (right) lastD = dT;      /* fewer struggles (Colleen: S, H): the target also counts when it is a very close second */
   const pct = right ? 100 : Math.max(0, Math.min(90, Math.round(100 - dT * 18)));      /* the right letter shows 100% at once; anything else tops out at 90% (never stuck at 99%) */
   const hot = right || !T ? -1 : worstFinger(f, T); dots(r.landmarks[0], hot, right);
   const palmWrong = NUMS && !right && R[0][0] === target + '*';      /* the right number, the palm the wrong way */
@@ -184,7 +191,7 @@ function go(k) {
 }
 function drawAlpha() { $('#rd-alpha').innerHTML = SET.map((c, i) => '<button class="' + (MINE[c] && MINE[c].length ? 'has ' : '') + (i === cur ? 'cur' : '') + '" data-i="' + i + '">' + c + '</button>').join(''); }
 function finishTeach() {      /* SAFEGUARD (Colleen: new learners could teach it a mistake): only frames that already look close to Colleen's letter are kept */
-  const c = SET[cur], M = TPL[c], good = teachBuf.filter(f => nearModel(f, c, 3) && (!M || (dot(f.orient.slice(0, 3), M.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), M.orient.slice(3)) >= 0.2))); teachBuf = [];      /* it can't learn a turned-around hand (Colleen: palm toward the signer) */
+  const c = SET[cur], M = TPL[c], good = teachBuf.filter(f => { const A = M && tplFor(f, c); return nearModel(f, c, 3) && (!A || (dot(f.orient.slice(0, 3), A.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), A.orient.slice(3)) >= 0.2)); }); teachBuf = [];      /* it can't learn a turned-around hand (Colleen: palm toward the signer) */
   $('#rd-teachbtn').disabled = false; $('#rd-teachbtn').textContent = 'Teach this ' + UNIT();
   if (good.length < 15) { $('#rd-status').textContent = 'That doesn\u2019t look close enough to ' + c + ' yet. Check the picture, then try again.'; return; }
   MINE[c] = (MINE[c] || []).concat(good).slice(-60); saveMine(); drawAlpha(); $('#rd-status').textContent = 'Learned your ' + c + '.';
@@ -879,7 +886,7 @@ function paceSend(P, lps, pct) {
 }
 function paceRead(f, L) {
   const P = GAME.pace; if (!P.run || P.i < 0 || !WORD) { dots(L, -1, false); return; }
-  const R = rank(f), palmOK = c => { const A = TPL[c]; return !A || (dot(f.orient.slice(0, 3), A.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), A.orient.slice(3)) >= 0.2); };      /* the palm facing the wrong way never counts, even here (Colleen) */
+  const R = rank(f), palmOK = c => { const A = TPL[c] && tplFor(f, c); return !A || (dot(f.orient.slice(0, 3), A.orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), A.orient.slice(3)) >= 0.2); };      /* the palm facing the wrong way never counts, even here (Colleen) */
   const check = i => { const want = (PACE_ALIKE[WORD[i]] || [WORD[i]]).filter(palmOK); if (!want.length) return false; const top = R.slice(0, 3), dT = Math.min(...want.map(c => (R.find(x => x[0] === c) || [0, 99])[1]));
     return top.some(x => want.indexOf(x[0]) >= 0) || dT <= R[0][1] * 1.4 + 0.15; };
   let hit = false;
@@ -1087,7 +1094,7 @@ function calcKey(k) {
 }
 $('#rd-calc').onclick = e => { const b = e.target.closest('button'); if (b) calcKey(b.dataset.k); };
 function freeRead(f, L) {
-  const R = rank(f).filter(x => !MOVING[x[0]] && x[0].length === 1 && /[A-Z]/.test(x[0])), top = R[0][0], ok = nearModel(f, top, 2) && (!GATE[top] || GATE[top][0](f)) && (!TPL[top] || (dot(f.orient.slice(0, 3), TPL[top].orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), TPL[top].orient.slice(3)) >= 0.2)), now = clock();      /* the must-haves apply here too */
+  const R = rank(f).filter(x => !MOVING[x[0]] && x[0].length === 1 && /[A-Z]/.test(x[0])), top = R[0][0], ok = nearModel(f, top, 2) && (!GATE[top] || GATE[top][0](f)) && (!TPL[top] || (dot(f.orient.slice(0, 3), tplFor(f, top).orient.slice(0, 3)) >= 0.7 && dot(f.orient.slice(3), tplFor(f, top).orient.slice(3)) >= 0.2)), now = clock();      /* the must-haves apply here too */
   const dt = Math.min(100, FREE.t ? now - FREE.t : 33); FREE.t = now; dots(L, -1, false);
   if (FREE.lock && (top !== FREE.lock || Math.abs(L[0].x - FREE.x0) > 0.06)) FREE.lock = '';
   if (!ok || top === FREE.lock) { FREE.ms = 0; $('#rd-hold').style.width = '0'; $('#rd-tip').textContent = FREE.lock ? 'Next letter' : 'Sign a letter'; return; }
@@ -1106,7 +1113,7 @@ $('#rd-alpha').onclick = e => { const b = e.target.closest('button'); if (b) go(
 $('#rd-teachbtn').onclick = () => { if (!landmarker) return; if (NUMS && SET[cur].length > 1) { $('#rd-status').textContent = 'Teaching works for 0 to 9. Moving numbers are read from the movement.'; return; } if (!NUMS && MOVING[SET[cur]]) { $('#rd-status').textContent = 'J and Z are read from the motion, so they don\u2019t need teaching.'; return; } teachBuf = []; teaching = 30; $('#rd-teachbtn').disabled = true; $('#rd-teachbtn').textContent = 'Hold still…'; };
 $('#rd-forget').onclick = () => { delete MINE[SET[cur]]; saveMine(); drawAlpha(); };
 refHand = window.FSHand.create($('#rd-model'), {});
-refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); });
+refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); if (P && (c === 'G' || c === 'H')) SWING[c] = SWING_DEG.map(d => feat(swingJoints(P, d))); });
   STILL.filter(c => !'WFOC'.includes(c)).forEach(c => { if (TPL[c]) NOTNUM[c] = TPL[c]; }); { const P = refHand.numberJoints(10, false); if (P) NOTNUM['thumbs up'] = feat(P); }      /* W = 6, F = 9, O and C = 0: those stay out */
   DIGITS.forEach(c => { const n = +c, P = refHand.numberJoints(n, false); if (P) TPL[c] = feat(P); if (n >= 1 && n <= 5) { const Q = refHand.numberJoints(n, true); if (Q) ALT[c] = feat(Q); } });      /* 1-5: palm toward you (counting) or palm out (inside a bigger number); both count */
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
