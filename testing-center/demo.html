@@ -297,7 +297,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.29';
+var VERSION = '0.31';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -320,8 +320,8 @@ var TABLES = {
   'Platform Guides': [['platform', 'Platform'], ['title', 'Title'], ['steps', 'How to give it'], ['updated', 'Updated'], ['by', 'By']],
   Suggestions: [['id', 'ID'], ['at', 'When'], ['by', 'From'], ['name', 'Name'], ['view', 'Tried as'], ['screen', 'Screen'], ['text', 'Suggestion'], ['priority', 'How important'], ['status', 'Status'], ['note', 'Admin note']],
   Counselors: [['campus', 'Campus'], ['grades', 'Grades'], ['from', 'Last names from'], ['to', 'Last names to'], ['name', 'Counselor'], ['email', 'Email']],
-  'Test Requests': [['id', 'ID'], ['campus', 'Campus'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['where', 'Where'], ['status', 'Status'], ['appt', 'Appointment'], ['note', 'Note'], ['created', 'Created'], ['by', 'Created by'], ['byName', 'Created by (name)'], ['changed', 'Changed'], ['reqId', 'Request ID']],
-  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show'], ['cal', 'Calendar event'], ['loc', 'Testing room']],
+  'Test Requests': [['id', 'ID'], ['campus', 'Campus'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['where', 'Where'], ['status', 'Status'], ['appt', 'Appointment'], ['note', 'Note'], ['created', 'Created'], ['by', 'Created by'], ['byName', 'Created by (name)'], ['changed', 'Changed'], ['reqId', 'Request ID'], ['mailbox', 'Back in teacher’s mailbox'], ['mailboxBy', 'Put there by']],
+  Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show'], ['cal', 'Calendar event'], ['loc', 'Testing room'], ['mailbox', 'Back in teacher’s mailbox'], ['mailboxBy', 'Put there by']],
   'Testing Rooms': [['id', 'ID'], ['campus', 'Campus'], ['name', 'Name'], ['tids', 'Teachers'], ['secids', 'Sections'], ['periods', 'Periods'], ['room', 'Room'], ['seats', 'Seats'], ['status', 'Status'], ['src', 'Found by'], ['notified', 'Teachers emailed'], ['kind', 'Kind'], ['runby', 'Run by'], ['notes', 'Notes'], ['open', 'Who can be sent here'], ['sids', 'Students'], ['emails', 'Run by emails']],
   Sessions: [['id', 'ID'], ['appt', 'Appointment ID'], ['inAt', 'Checked in'], ['start', 'Started'], ['end', 'Ended'], ['outcome', 'Outcome'], ['note', 'Note'], ['by', 'Staff'], ['desk', 'Desk']],
   Rooms: [['campus', 'Campus'], ['name', 'Room'], ['chart', 'Chart'], ['updated', 'Updated'], ['by', 'By']],
@@ -437,7 +437,7 @@ function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function sheet_(name) {
   var sh = ss_().getSheetByName(name);
   if (!sh) {
-    sh = ss_().insertSheet(name);
+    sh = ss_().insertSheet(name); roomFor_(sh, 1, TABLES[name].length);          // a new tab has 26 columns; Appointments has more
     sh.getRange(1, 1, sh.getMaxRows(), Math.max(sh.getMaxColumns(), TABLES[name].length)).setNumberFormat('@');          // plain text: IDs keep leading zeros, dates and times stay as typed
     sh.getRange(1, 1, 1, TABLES[name].length).setValues([TABLES[name].map(function (c) { return c[1]; })]);
   }
@@ -1872,7 +1872,7 @@ function api_studentHome() { return studentHome_(need_('student')); }
 
 // Tests (assessments), teacher defaults and standing resources, test readiness, teacher emails (missing materials,
 // completion) and the outbox. Access codes and resource links are staff/teacher-only: they never go to a student.
-var PAPER_STEPS = ['Expected', 'Awaiting delivery', 'Received', 'Ready', 'In progress', 'Completed', 'Awaiting pickup', 'Returned'];
+var PAPER_STEPS = ['Expected', 'Awaiting delivery', 'In the drop box', 'Received', 'Ready', 'In progress', 'Completed', 'Awaiting pickup', 'Returned'];
 var PLATFORMS = ['Canvas', 'Lockdown browser', 'AP Classroom', 'Bluebook', 'Google Forms (locked mode)', 'Other', 'Not specified'];
 // "How to give it" sheets, one per digital platform (Colleen 2026-10-28: BASE / ARC teachers need to know how each kind works). Starting
 // text is general; the Testing Center edits it to match LTHS (Settings › How to give tests; tab Platform Guides).
@@ -1945,13 +1945,13 @@ function matchAssessment_(a) {          // an appointment not linked to a test y
 function readiness_(a) {
   var m = !str_(a.aid) && matchAssessment_(a); if (m) a = Object.assign({}, a, { aid: str_(m.id) });
   var f = resolveFormat_(a), res = resourcesFor_(a), A = str_(a.aid) && find_('Assessments', 'id', a.aid), missing = [], confirmed = f.source === 'teacher-test' || f.source === 'teacher-default';
-  if (!confirmed && res.length) return { format: f.value, fsource: f.source, ftext: f.text, missing: ['Not confirmed paper or online (the teacher’s code doc is on file)'], state: 'Check', resources: res.length, aid: A ? str_(A.id) : '' };
-  if (f.value === 'Paper') { var ps = A ? str_(A.paper) : ''; if (!/^(received|ready|in progress|completed)/i.test(ps)) missing.push(ps && /delivery/i.test(ps) ? 'Missing: paper test (the teacher is bringing it)' : 'Missing: paper test'); }
+  if (!confirmed && res.length) return { format: f.value, fsource: f.source, ftext: f.text, missing: ['Not confirmed paper or online (the teacher’s code doc is on file)'], state: 'Check', resources: res.length, aid: A ? str_(A.id) : '', paper: A ? str_(A.paper) : '' };
+  if (f.value === 'Paper') { var ps = A ? str_(A.paper) : ''; if (!/^(received|ready|in progress|completed|in the drop box)/i.test(ps)) missing.push(ps && /delivery/i.test(ps) ? 'Missing: paper test (the teacher is bringing it)' : 'Missing: paper test'); }
   else if (f.value === 'Digital') { if (!(A && (str_(A.code) || str_(A.rcode) || /no code/i.test(str_(A.form)))) && !res.length) missing.push('Missing: access code or test link'); }
   else missing.push(res.length ? 'Not confirmed paper or online (the teacher’s code doc is on file)' : 'Don’t know if it’s paper or online');
   if (!A && f.source !== 'teacher-default' && !res.length && missing.indexOf('Don’t know if it’s paper or online') < 0) missing.push('Missing: the teacher’s testing form');
   var state = !missing.length && confirmed ? 'Ready' : !missing.length || (res.length && missing.length === 1 && /code doc is on file/.test(missing[0])) ? 'Check' : 'Needs info';
-  return { format: f.value, fsource: f.source, ftext: f.text, missing: missing, state: state, resources: res.length, aid: A ? str_(A.id) : '' };
+  return { format: f.value, fsource: f.source, ftext: f.text, missing: missing, state: state, resources: res.length, aid: A ? str_(A.id) : '', paper: A ? str_(A.paper) : '' };
 }
 
 // ---------- the teacher's page
@@ -1961,7 +1961,7 @@ function teacherHome_(w) {
   return {
     courses: myCourses_(w), platforms: PLATFORMS, tcAccount: setting_('Testing Center Google account', 'S'), lastName: String(str_((find_('Teachers', 'tid', w.tid) || {}).name).split(' ').pop()), codeTemplate: setting_('Access-code template link', 'S'), codeGuide: setting_('Access-code guide link', 'S'),
     emailPref: str_((find_('Teachers', 'tid', w.tid) || {}).emailPref),
-    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a), where = str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { where: where, inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
+    appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a), where = str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { where: where, inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: rows_('Assessments').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
     resources: rows_('Resources').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && !/^(no|false)$/i.test(str_(r.active)); }).map(function (r) { return { id: str_(r.id), type: str_(r.type), title: str_(r.title), link: str_(r.link), courses: list_(r.courses), expires: day_(r.expires) }; }),
     rules: rulesFor_(w.tid),
@@ -1974,7 +1974,7 @@ function assessOut_(r) {
   if (use) { form = Object.assign({}, form); RULE_BOXES.forEach(function (k) { form[k] = !!rules[k]; }); }
   return { guide: platformGuide_(r.platform), useRules: use, rulesNotes: rules ? str_(rules.notes) : '', id: str_(r.id), course: str_(r.course), name: str_(r.name), format: str_(r.format), platform: str_(r.platform), minutes: str_(r.minutes), form: form, code: str_(r.code), rcode: str_(r.rcode), tdate: day_(r.tdate), deadline: day_(r.deadline), paper: str_(r.paper), updated: str_(r.updated) }; }
 // The code for this attempt (teachers often have one for the original test and another for the retake)
-function codeFor_(t, purpose) { if (!t) return t; var re = /retake/i.test(str_(purpose)); t.useCode = re && t.rcode ? t.rcode : t.code || (re ? '' : t.rcode); t.useLabel = t.rcode ? (re && t.rcode ? 'Retake code' : 'Original test code') : 'Access code'; if (re && !t.rcode && t.code) t.useLabel = 'Access code (no separate retake code)'; return t; }
+function codeFor_(t, purpose) { if (!t) return t; var re = /retake/i.test(str_(purpose)); t.useCode = (re && t.rcode) || t.code || t.rcode; t.useLabel = 'Access code'; return t; }          // one code per test (0.31); an older separate retake code still shows for a retake
 function api_teacherHome() { return teacherHome_(need_('teacher')); }
 // Each teacher picks how Testing Center emails reach them: each one as it happens, one summary after school, or none.
 // (Missing-materials and "test needed now" emails always come right away: they need an answer.)
@@ -2029,7 +2029,7 @@ function api_saveTest(data, apptId) {
     var A = data.id ? find_('Assessments', 'id', data.id) : (a && str_(a.aid) ? find_('Assessments', 'id', a.aid) : null);
     var secids = (a && str_(a.secid) ? [str_(a.secid)] : mySections_(w).filter(function (s) { return low_(s.course) === low_(course); }).map(function (s) { return str_(s.secid); })).join(',');
     var patch = { year: schoolYear_(), campus: a ? str_(a.campus) : '', tid: tid, secids: secids, course: course, name: name, format: /^(paper|digital)$/i.test(data.format) ? cap_(data.format) : '', platform: PLATFORMS.indexOf(data.platform) >= 0 ? data.platform : '',
-      minutes: clean_(data.minutes, 20), form: form, code: clean_(data.code, 200), rcode: clean_(data.rcode, 200), tdate: day_(data.tdate) || '', deadline: day_(data.deadline) || '', paper: PAPER_STEPS.indexOf(data.paper) >= 0 ? data.paper : (/paper/i.test(data.format) && !(A && A.paper) ? 'Expected' : (A ? str_(A.paper) : '')), updated: iso_(), by: who_().email };
+      minutes: clean_(data.minutes, 20), form: form, code: clean_(data.code, 200), rcode: data.rcode === undefined ? (A ? str_(A.rcode) : '') : clean_(data.rcode, 200), tdate: day_(data.tdate) || '', deadline: day_(data.deadline) || '', paper: PAPER_STEPS.indexOf(data.paper) >= 0 ? data.paper : (/paper/i.test(data.format) && !(A && A.paper) ? 'Expected' : (A ? str_(A.paper) : '')), updated: iso_(), by: who_().email };
     if (A) update_('Assessments', A, patch); else { patch.id = uid_('as'); insert_('Assessments', patch); A = find_('Assessments', 'id', patch.id); }
     var key = function (s) { return low_(s).replace(/[^a-z0-9]/g, ''); };
     rows_('Appointments').forEach(function (x) {          // this appointment, and the other upcoming ones for the same test in this teacher's class
@@ -2259,14 +2259,14 @@ function api_makeCodeTemplate() {
   var doc = DocumentApp.create('Access Codes – TEMPLATE (make a copy, then rename it: Access Codes – Your Last Name)'), body = doc.getBody();
   body.appendParagraph('Access Codes – Your Last Name').setHeading(H1);
   body.appendParagraph('Start here (then delete this paragraph): 1) File › Make a copy.  2) Name your copy “Access Codes – ” and your last name, so the Testing Center can find it.  3) Share › add ' + acct + ' as Viewer. Keep General access “Restricted”: never “Anyone with the link”, and never share it with students; it has live test codes.  4) In the Testing Center app, open My classes › Standing resources › Add, and paste your copy’s link.').setItalic(true);
-  var head = ['Test', 'Original Test Code', 'Retake Test Code', 'Original Test Date', 'Retake Deadline'];
-  [['Class 1 (for example: ASL 1) Access Codes', ['Unit 1 Test\n(Anything the Testing Center should know about this test: videos that need reloading, a link to a backup, extra materials…)', 'tiger42', 'lion42', '9/10', '9/17']],
-   ['Class 2 Access Codes', ['', '', '', '', '']]].forEach(function (c) {
+  var head = ['Test', 'Access Code', 'Original Test Date', 'Retake Deadline'];
+  [['Class 1 (for example: ASL 1) Access Codes', ['Unit 1 Test\n(Anything the Testing Center should know about this test: videos that need reloading, a link to a backup, extra materials…)', 'tiger42', '9/10', '9/17']],
+   ['Class 2 Access Codes', ['', '', '', '']]].forEach(function (c) {
     body.appendParagraph(c[0]).setHeading(H2);
-    var t = body.appendTable([head, c[1], ['', '', '', '', ''], ['', '', '', '', ''], ['', '', '', '', ''], ['', '', '', '', '']]);
+    var t = body.appendTable([head, c[1], ['', '', '', ''], ['', '', '', ''], ['', '', '', ''], ['', '', '', '']]);
     try { t.getRow(0).editAsText().setBold(true); } catch (e) {}
   });
-  body.appendParagraph('Copy a class table for each class you teach. Leave the Retake Test Code empty if the retake uses the same code. Keep old rows or delete them; the Testing Center reads the whole table.').setItalic(true);
+  body.appendParagraph('Copy a class table for each class you teach. One access code per test: the same code for the original test and the retake. Keep old rows or delete them; the Testing Center reads the whole table.').setItalic(true);
   body.appendParagraph('Rules for all my tests').setHeading(H2);
   body.appendParagraph('These apply to every test above unless the test’s row says otherwise (put exceptions in the note under the test name). Mark each one Yes or No. You can also set them once in the Testing Center app: My classes › Rules for all my tests.').setItalic(true);
   ['Calculator: the student’s own — Yes / No', 'Calculator: the Testing Center’s — Yes / No', 'Scratch paper — Yes / No', 'The student may write on the test — Yes / No', 'Notes — Yes / No', 'Open book — Yes / No', 'Time limit: ____ minutes (extended time: ____)']
@@ -2313,6 +2313,13 @@ function api_setupDone() {
   return teacherHome_(w);
 }
 
+// ---------- paper tests: the teacher drops one in the Testing Center drop box; a finished one goes back to the teacher's mailbox
+function api_paperDropped(aid) {
+  var w = need_('teacher'), A = find_('Assessments', 'id', aid); if (!A || myTids_(w).indexOf(str_(A.tid)) < 0) throw new Error('That test isn’t yours.');
+  locked_(function () { update_('Assessments', find_('Assessments', 'id', aid), { paper: 'In the drop box', updated: iso_(), by: w.email }); audit_('Paper test: in the drop box', aid, w.email); });
+  return api_teacherHome();
+}
+
 // The coordinator dashboard: today's testing, needs attention, waitlist, resources, communications, search, check-in to
 // completion, temporary seat/closure changes, Securly list, and simple numbers. One campus at a time; switching campus
 // needs access to it (view or edit), and every change checks edit access on the server.
@@ -2321,7 +2328,7 @@ function apptRow_(a, withRes) {
   var s = student_(a.sid), r = readiness_(a), ses = rows_('Sessions').filter(function (x) { return str_(x.appt) === str_(a.id); }).pop();
   var o = { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), sid: str_(a.sid), student: s ? studentName_(s) : (str_(a.notes).replace(/^Not matched to a student: /, '') || '(not matched)'), email: s ? low_(s.email) : '', grade: s ? str_(s.grade) : '',
     course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), source: str_(a.source), loc: str_(a.loc), locName: str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', notes: str_(a.notes), unmatched: !s, noClass: !str_(a.secid),
-    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), snotes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '' };
+    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), snotes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '', mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy) };
   if (withRes) { o.resources = resourcesFor_(a); var A = r.aid && find_('Assessments', 'id', r.aid); o.testInfo = A ? codeFor_(assessOut_(A), a.purpose) : null; }
   return o;
 }
@@ -2435,6 +2442,8 @@ function api_status(id, step, data) {
     else if (step === 'noshow') { update_('Appointments', a, { status: 'No-show', changed: t }); teacherNotice_('noshow', a); }
     else if (step === 'undo') update_('Appointments', a, { status: 'Scheduled', changed: t });
     else if (step === 'verify') { var c = json_(a.conflict, null); if (c) { c.verified = true; c.verifiedBy = w.email; c.verifiedAt = t; update_('Appointments', a, { conflict: c }); } }
+    else if (step === 'mailbox') update_('Appointments', a, { mailbox: t, mailboxBy: w.name || w.email });          // a finished paper test is back in the teacher's mailbox
+    else if (step === 'unmailbox') update_('Appointments', a, { mailbox: '', mailboxBy: '' });
     else if (step === 'noremind') update_('Appointments', a, { notes: (str_(a.notes) + ' · No reminders').replace(/^ · /, '') });
     else throw new Error('Unknown step');
     audit_('Status: ' + step, id, data.outcome || (data.desk ? 'Desk ' + data.desk : ''));
@@ -3778,7 +3787,7 @@ function reqOut_(r, w) {
   var mineClass = !!(w && str_(r.secid) && secTeachers_(r.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; }));
   return { id: str_(r.id), sid: str_(r.sid), student: studentName_(student_(r.sid)), course: str_(r.course), teacher: str_(r.teacher), test: str_(r.test), note: str_(r.note),
     where: str_(r.where), whereName: room ? str_(room.name) : 'Testing Center', status: str_(r.status), created: str_(r.created), byName: str_(r.byName), byMe: !!(w && str_(r.by) === w.email),
-    myClass: mineClass, info: A ? assessOut_(A) : null, appt: a ? { date: day_(a.date), period: str_(a.period), half: str_(a.half), status: str_(a.status) } : null };
+    myClass: mineClass, info: A ? assessOut_(A) : null, mailbox: str_(r.mailbox), mailboxBy: str_(r.mailboxBy), appt: a ? { date: day_(a.date), period: str_(a.period), half: str_(a.half), status: str_(a.status) } : null };
 }
 // What the teacher picks from: the student's classes, their testing locations, and the tests this teacher already set up
 function api_reqPrep(sid) {
@@ -3865,6 +3874,11 @@ function api_reqDone(id) {
   locked_(function () { update_('Test Requests', req_(id), { status: 'Done · ' + (w.name || w.email) + ' · ' + today_(), changed: iso_() }); audit_('Test request done', id, w.email); });
   return api_myRoom();
 }
+function api_reqMailbox(id) {          // a finished paper test from a testing location is back in the teacher's mailbox
+  var w = needRoomUser_(), r = req_(id); if (!r || !reqCanSee_(w, r)) throw new Error('That request isn’t there.');
+  locked_(function () { update_('Test Requests', req_(id), { mailbox: iso_(), mailboxBy: w.name || w.email, changed: iso_() }); audit_('Paper test back in the mailbox', id, w.email); });
+  return api_myRoom();
+}
 // ---------- the student: invitations to book (Testing Center), and tests waiting for them in a testing location
 function studentRequests_(sid) {
   return reqRows_().filter(function (r) { return str_(r.sid) === sid && /^open/i.test(r.status); }).map(function (r) {
@@ -3884,7 +3898,8 @@ function reqFinished_(apptId) {          // the appointment was completed
 }
 // the testing location's teacher: open requests in their rooms, with the test info and codes
 function roomRequests_(roomId) {
-  return reqRows_().filter(function (r) { return str_(r.where) === String(roomId) && /^open/i.test(r.status); }).map(function (r) { return reqOut_(r, who_()); });
+  var since = addDays_(today_(), -14), paper = function (r) { var A = str_(r.aid) && find_('Assessments', 'id', r.aid); return A && /paper/i.test(str_(A.format)); };          // and finished paper tests not yet back in the teacher's mailbox
+  return reqRows_().filter(function (r) { return str_(r.where) === String(roomId) && (/^open/i.test(r.status) || (/^done/i.test(r.status) && !str_(r.mailbox) && str_(r.changed).slice(0, 10) >= since && paper(r))); }).map(function (r) { return reqOut_(r, who_()); });
 }
 
 // Practice data: made-up students, teachers and classes for both campuses, loaded THROUGH the real roster importer (so the
@@ -4485,7 +4500,8 @@ function drawTch() {
 // ---------- test requests (no time): content teacher or BASE teacher → student invitation, or the BASE room gets the test info
 var RQ = null;
 function rqLoad() { call('api_reqList').then(function (l) { RQ = l; rqDraw(); }).catch(function (e) { var el = $('rqList'); if (el) el.innerHTML = '<div class="small" style="color:var(--bad)">' + esc(e.message || e) + '</div>'; }); }
-function rqChip(r) { var s = r.status; return /^open/i.test(s) ? (r.where ? '<span class="chip info">Waiting in ' + esc(r.whereName) + '</span>' : '<span class="chip info">Invited to book</span>') : /^booked/i.test(s) ? '<span class="chip ok">Booked' + (r.appt ? ' · ' + esc(niceD(r.appt.date)) + ' P' + esc(r.appt.period) : '') + '</span>' : /^done/i.test(s) ? '<span class="chip ok">Done</span>' : '<span class="chip">' + esc(s) + '</span>'; }
+function rqChip(r) { var s = r.status; if (r.mailbox) return '<span class="chip ok">📬 In your mailbox</span>';
+  return /^open/i.test(s) ? (r.where ? '<span class="chip info">Waiting in ' + esc(r.whereName) + '</span>' : '<span class="chip info">Invited to book</span>') : /^booked/i.test(s) ? '<span class="chip ok">Booked' + (r.appt ? ' · ' + esc(niceD(r.appt.date)) + ' P' + esc(r.appt.period) : '') + '</span>' : /^done/i.test(s) ? '<span class="chip ok">Done</span>' : '<span class="chip">' + esc(s) + '</span>'; }
 function rqDraw() {
   var el = $('rqList'); if (!el) return;
   el.innerHTML = RQ.length ? RQ.map(function (r, i) {
@@ -4498,9 +4514,9 @@ function rqDraw() {
 function rqInfoFields(t) {
   t = t || {}; var f = t.form || {};
   return '<div class="grid2"><div><label class="f">Format</label><select id="rqFmt"><option value="">Not sure yet</option><option' + (t.format === 'Digital' ? ' selected' : '') + '>Digital</option><option' + (t.format === 'Paper' ? ' selected' : '') + '>Paper</option></select></div><div><label class="f">Time limit (minutes)</label><input type="text" id="rqMin" value="' + esc(t.minutes || '') + '"></div></div>' +
-    '<div class="grid2"><div><label class="f">Original test code</label><input type="text" id="rqCode" value="' + esc(t.code || '') + '"></div><div><label class="f">Retake code (if different)</label><input type="text" id="rqRcode" value="' + esc(t.rcode || '') + '"></div></div><p class="tiny mute" style="margin:2px 0 0">Only the Testing Center and the testing teacher see codes.</p><label class="f">Instructions</label><textarea id="rqIns" style="min-height:60px">' + esc(f.notes || '') + '</textarea>';
+    '<label class="f">Access code</label><input type="text" id="rqCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="The same code for the test and the retake"><p class="tiny mute" style="margin:2px 0 0">Only the Testing Center and the testing teacher see codes.</p><label class="f">Instructions</label><textarea id="rqIns" style="min-height:60px">' + esc(f.notes || '') + '</textarea>';
 }
-function rqInfoVal() { return { format: $('rqFmt').value, minutes: $('rqMin').value, code: $('rqCode').value, rcode: $('rqRcode').value, instructions: $('rqIns').value }; }
+function rqInfoVal() { return { format: $('rqFmt').value, minutes: $('rqMin').value, code: $('rqCode').value, instructions: $('rqIns').value }; }
 function rqInfo(i) {
   var r = RQ[i];
   modal('<h2>Test info: ' + esc(r.test) + '</h2><p class="small mute">' + esc(r.student) + ' · ' + esc(r.course) + ' · ' + esc(r.whereName) + '. Saved with your test, so other students taking it get it too.</p>' + rqInfoFields(r.info) + '<div class="row" style="margin-top:12px"><button class="btn pri" id="rqGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
@@ -4553,9 +4569,11 @@ function tchTrack(a) {
     done ? ['ok', '✓', 'Finished', esc(a.outcome || 'Done') + (a.end ? ' · ' + t(a.end) : '')] : part ? ['warn', '!', 'Didn’t finish', esc(a.outcome || 'Partially completed')] : ns ? ['bad', '✕', 'Missed', a.nsChoice ? 'Student said: ' + esc(a.nsChoice) : 'Student hasn’t said what to do with the test'] : /^(testing|paused)/i.test(st) ? ['now', '…', 'Testing now', a.start ? 'since ' + t(a.start) : ''] : ['todo', '4', 'Finished', '']
   ];
   var bar = gone ? '<div class="small mute" style="margin-top:6px">Canceled.</div>' : '<div class="trk">' + steps.map(function (x, i) { return '<div class="trk-step trk-' + x[0] + '"><span class="trk-dot">' + x[1] + '</span><div class="trk-txt"><b>' + x[2] + '</b><div class="tiny">' + x[3] + '</div></div></div>'; }).join('') + '</div>';
+  var paperNow = r.format === 'Paper' && !gone && !ns ? (a.mailbox ? '<div class="small" style="margin-top:6px">📬 <b>Back in your mailbox</b> · ' + t(a.mailbox) + '</div>' : done || part ? '<div class="small mute" style="margin-top:6px">📄 The paper test isn’t back in your mailbox yet.</div>' : r.aid && /^(|expected|awaiting delivery)$/i.test(r.paper || '') ? '<div class="small" style="margin-top:6px">📄 Paper test: <button class="btn sm" onclick="tchDrop(\'' + r.aid + '\', this)">📥 I put it in the drop box</button></div>' : /drop box/i.test(r.paper || '') ? '<div class="small mute" style="margin-top:6px">📥 In the Testing Center drop box</div>' : '') : '';
   var notes = (a.notes || []).map(function (n) { return '<div class="tiny" style="margin-top:4px">📝 ' + esc(n.text) + ' <span class="mute">(Testing Center)</span></div>'; }).join('');
-  return '<div class="slot" style="display:block' + (gone ? ';opacity:.6' : '') + '"><div class="row"><div class="grow"><b>' + esc(a.student) + '</b> · ' + esc(a.course) + ' · ' + esc(a.test) + ' <span class="small mute">(' + esc(a.purpose) + ')</span><div class="tiny mute">' + esc(relD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + (a.where ? ' · 🏫 ' + esc(a.where) : ' · Testing Center') + (a.missedClass ? ' · will miss ' + esc(a.missedClass) + ' (note promised)' : '') + '</div></div>' + (gone ? '' : '<button class="btn sm' + (r.state === 'Needs info' && !/^(completed|partial|no-show)/i.test(st) ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (r.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button>') + '</div>' + bar + notes + '</div>';
+  return '<div class="slot" style="display:block' + (gone ? ';opacity:.6' : '') + '"><div class="row"><div class="grow"><b>' + esc(a.student) + '</b> · ' + esc(a.course) + ' · ' + esc(a.test) + ' <span class="small mute">(' + esc(a.purpose) + ')</span><div class="tiny mute">' + esc(relD(a.date)) + ' · ' + esc(perTxt(a.period, a.half)) + (a.where ? ' · 🏫 ' + esc(a.where) : ' · Testing Center') + (a.missedClass ? ' · will miss ' + esc(a.missedClass) + ' (note promised)' : '') + '</div></div>' + (gone ? '' : '<button class="btn sm' + (r.state === 'Needs info' && !/^(completed|partial|no-show)/i.test(st) ? ' pri' : '') + '" onclick="tchForm(\'' + a.id + '\')">' + (r.state === 'Needs info' ? 'Add testing info' : 'Open') + '</button>') + '</div>' + bar + paperNow + notes + '</div>';
 }
+function tchDrop(aid, btn) { busy(btn, true); call('api_paperDropped', aid).then(function (h) { TH = h; drawTch(); toast('Marked: in the Testing Center drop box'); }).catch(function (e) { busy(btn, false); fail(e); }); }
 function tchPrefBtns(cur) { return [['each', '📬 Each one as it happens'], ['summary', '🗓️ One summary after school'], ['none', '🔕 None']].map(function (o) { return '<button class="btn' + (cur === o[0] ? ' pri' : '') + '" onclick="tchPref(\'' + o[0] + '\')">' + o[1] + '</button>'; }).join(''); }
 function tchPref(p) {          // shows the choice at once; saves in the background
   var was = TH.emailPref; TH.emailPref = p; closeModal(); drawTch(); toast('Saved');
@@ -4635,9 +4653,9 @@ function formDraw(a, t0) {
   modal('<h2>Testing form</h2>' + head + notesHtml + res +
     '<div class="grid2"><div><label class="f">Course</label><input type="text" id="fCourse" value="' + esc(t.course || (a && a.course) || '') + '"' + (a ? ' disabled' : '') + '></div><div><label class="f">Test name</label><input type="text" id="fName" value="' + esc(t.name || (a && a.test) || '') + '"></div></div>' +
     '<label class="f">Paper or online?</label><div class="seg" id="fFmt">' + ['Digital', 'Paper'].map(function (x) { return '<button type="button" class="' + (fmt === x ? 'on' : '') + '" onclick="fSet(\'' + x + '\')">' + (x === 'Digital' ? 'Online' : 'Paper') + '</button>'; }).join('') + '</div>' +
-    '<div id="fDig"' + (fmt === 'Digital' ? '' : ' hidden') + '><div class="grid2"><div><label class="f">Platform</label><select id="fPlat"><option value="">Not specified</option>' + TH.platforms.filter(function (p) { return p !== 'Not specified'; }).map(function (p) { return '<option' + (plat === p ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div><div><label class="f">Access code (staff only)</label><input type="text" id="fCode" value="' + esc(t.code || '') + '" placeholder="' + (a && a.resources.length ? 'In my standing doc' : 'Original test') + '"></div><div><label class="f">Retake code (if different)</label><input type="text" id="fRcode" value="' + esc(t.rcode || '') + '"></div></div></div>' +
+    '<div id="fDig"' + (fmt === 'Digital' ? '' : ' hidden') + '><div class="grid2"><div><label class="f">Platform</label><select id="fPlat"><option value="">Not specified</option>' + TH.platforms.filter(function (p) { return p !== 'Not specified'; }).map(function (p) { return '<option' + (plat === p ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div><div><label class="f">Access code (staff only)</label><input type="text" id="fCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="' + (a && a.resources.length ? 'In my standing doc' : 'The same code for the test and the retake') + '"></div></div></div>' +
     '<div class="grid2"><div><label class="f">Original test date</label><input type="date" id="fTdate" value="' + esc(t.tdate || '') + '"></div><div><label class="f">Retake deadline</label><input type="date" id="fDead" value="' + esc(t.deadline || '') + '"></div></div>' +
-    '<div id="fPap"' + (fmt === 'Paper' ? '' : ' hidden') + '><label class="f">Paper test</label><select id="fPaper"><option value="">—</option><option' + (t.paper === 'Awaiting delivery' ? ' selected' : '') + ' value="Awaiting delivery">I’ll drop it off</option><option' + (t.paper === 'Expected' ? ' selected' : '') + '>Expected</option></select><p class="tiny mute">The Testing Center marks it Received when it arrives.</p></div>' +
+    '<div id="fPap"' + (fmt === 'Paper' ? '' : ' hidden') + '><label class="f">Paper test</label><select id="fPaper"><option value="">—</option><option' + (t.paper === 'Awaiting delivery' ? ' selected' : '') + ' value="Awaiting delivery">I’ll drop it off</option><option' + (t.paper === 'In the drop box' ? ' selected' : '') + ' value="In the drop box">It’s in the Testing Center drop box</option><option' + (t.paper === 'Expected' ? ' selected' : '') + '>Expected</option></select><p class="tiny mute">The Testing Center marks it Received when it arrives.</p></div>' +
     '<div class="grid2"><div><label class="f">Time limit (minutes)</label><input type="text" id="fMin" value="' + esc(t.minutes || '') + '"></div><div><label class="f">Extended time</label><input type="text" id="fExt" value="' + esc(f.extSpec || '') + '" placeholder="Only if this student has it (for example: 1.5x)"></div></div>' +
     '<label class="f">Allowed</label>' + (TH.rules ? '<div id="fRulesOn"' + (useR ? '' : ' hidden') + ' class="banner info small" style="margin:0">Uses your <b>Rules for all my tests</b>: ' + esc(rulesText(TH.rules)) + ' <button type="button" class="link" onclick="$(\'fRulesOn\').hidden=true;$(\'fBoxes\').hidden=false">Change for this test</button></div>' : '') +
     '<div id="fBoxes"' + (useR ? ' hidden' : '') + '>' + (TH.rules ? '<div class="tiny mute">Only for this test. <button type="button" class="link" onclick="$(\'fRulesOn\').hidden=false;$(\'fBoxes\').hidden=true">Go back to my rules</button></div>' : '') + '<div class="grid2">' + FORM_LABELS.map(function (x) { return '<label class="check"><input type="checkbox" id="fk-' + x[0] + '"' + (f[x[0]] ? ' checked' : '') + '> ' + x[1] + '</label>'; }).join('') + '</div></div>' +
@@ -4649,7 +4667,7 @@ function formDraw(a, t0) {
   $('fGo').onclick = function () {
     var form = { extSpec: $('fExt').value, answerForm: $('fAns').value, notes: $('fNotes').value }; FORM_LABELS.forEach(function (x) { form[x[0]] = $('fk-' + x[0]).checked; });
     form.useRules = !!TH.rules && $('fBoxes').hidden;          // following my rules, or changed for this test
-    var data = { id: t.id || '', course: $('fCourse').value, name: $('fName').value, format: window.__fFmt, platform: $('fPlat').value, code: $('fCode').value, rcode: $('fRcode').value, tdate: $('fTdate').value, deadline: $('fDead').value, paper: $('fPaper').value, minutes: $('fMin').value, form: form, saveDefault: $('fDef').checked };
+    var data = { id: t.id || '', course: $('fCourse').value, name: $('fName').value, format: window.__fFmt, platform: $('fPlat').value, code: $('fCode').value, tdate: $('fTdate').value, deadline: $('fDead').value, paper: $('fPaper').value, minutes: $('fMin').value, form: form, saveDefault: $('fDef').checked };
     var btn = this; busy(btn, true);
     call('api_saveTest', data, a ? a.id : null).then(function () { closeModal(); toast('Saved. The Testing Center sees it now.'); return call('api_teacherHome'); }).then(function (h) { TH = h; drawTch(); }).catch(function (e) { busy(btn, false); fail(e); });
   };
@@ -4708,14 +4726,14 @@ function rmDraw() {
   RM.rooms.forEach(function (r) {
     var today = r.appts.filter(function (a) { return a.date === B.today; }), later = r.appts.filter(function (a) { return a.date > B.today; });
     var row = function (a) {
-      var act = /^(scheduled|awaiting|ready)/i.test(a.status) && a.date === B.today ? '<button class="btn sm pri" onclick="rmStep(\'' + a.id + '\',\'in\')">Arrived</button><button class="btn sm" onclick="rmStep(\'' + a.id + '\',\'noshow\')">No-show</button>' : /^(checked|testing|paused)/i.test(a.status) ? '<button class="btn sm ok" onclick="rmDone(\'' + a.id + '\')">Check out</button>' : '';
+      var act = /^(scheduled|awaiting|ready)/i.test(a.status) && a.date === B.today ? '<button class="btn sm pri" onclick="rmStep(\'' + a.id + '\',\'in\')">Arrived</button><button class="btn sm" onclick="rmStep(\'' + a.id + '\',\'noshow\')">No-show</button>' : /^(checked|testing|paused)/i.test(a.status) ? '<button class="btn sm ok" onclick="rmDone(\'' + a.id + '\')">Check out</button>' : mailBtn(a, 'rmStep');
       var acc = (a.resources || []).map(function (x) { return x.link ? '<a class="btn sm" href="' + esc(x.link) + '" target="_blank">🔑 ' + esc(x.title) + '</a>' : ''; }).join(' ') + (a.testInfo && a.testInfo.useCode ? ' <button class="btn sm" title="' + esc(a.testInfo.useLabel) + '" data-c="' + esc(a.testInfo.useCode) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">🔑 ' + esc(a.testInfo.useLabel) + '</button>' : '') + (a.testInfo ? guideBtn(a.testInfo.platform) : '');
       return '<tr class="' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(a.status) ? 'needs' : '') + '"><td><b>' + esc(a.student) + '</b><div class="tiny mute">' + esc(relD(a.date)) + ' · P' + esc(a.period) + '</div></td><td>' + esc(a.course) + '<div class="tiny mute">' + esc(a.test) + ' · ' + esc(a.purpose) + '</div>' + (a.snotes || []).map(function (n) { return '<div class="tiny">📝 ' + esc(n.text) + '</div>'; }).join('') + '</td><td>' + readyChip(a.ready) + '<div style="margin-top:4px">' + acc + '</div></td><td>' + statusChip(a.status) + '</td><td><div class="row" style="gap:4px">' + act + '<button class="btn sm" onclick="rmNote(\'' + a.id + '\')">📝 Note</button></div></td></tr>';
     };
     out += '<div class="card"><h2 style="margin:0">🏫 ' + esc(r.name) + '</h2><div class="small mute" style="margin-top:4px">' + (r.place ? 'Teachers send tests here for students who are with you. When one arrives, the test info and code are below.' : 'Students can sign up during: <b>Period' + (String(r.periods).indexOf(',') >= 0 ? 's ' : ' ') + esc(r.periods) + '</b> · up to <b>' + esc(r.seats) + '</b> students per period') + '</div>' +
       ((r.requests || []).length ? '<h3 style="margin-top:14px">Tests waiting here (no appointment needed)</h3><table class="t small">' + r.requests.map(function (q) {
         var i = q.info || {};
-        return '<tr><td><b>' + esc(q.student) + '</b><div class="tiny mute">from ' + esc(q.byName) + '</div></td><td>' + esc(q.test) + '<div class="tiny mute">' + esc(q.course) + (q.teacher ? ' · ' + esc(q.teacher) : '') + '</div>' + (q.note ? '<div class="tiny">“' + esc(q.note) + '”</div>' : '') + '</td><td class="small">' + (q.info ? esc(i.format || '') + (i.minutes ? ' · ' + esc(i.minutes) + ' min' : '') + (i.form && i.form.notes ? '<div class="tiny">' + esc(i.form.notes) + '</div>' : '') + guideBtn(i.platform) + [[i.code, i.rcode ? 'Original code' : 'Show code'], [i.rcode, 'Retake code']].map(function (c) { return c[0] ? ' <button class="btn sm" data-c="' + esc(c[0]) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">🔑 ' + c[1] + '</button>' : ''; }).join('') : '<span class="chip bad">Waiting for the teacher’s test info</span>') + '</td><td><button class="btn sm pri" onclick="rqDone(\'' + q.id + '\')">Done</button></td></tr>';
+        return '<tr><td><b>' + esc(q.student) + '</b><div class="tiny mute">from ' + esc(q.byName) + '</div></td><td>' + esc(q.test) + '<div class="tiny mute">' + esc(q.course) + (q.teacher ? ' · ' + esc(q.teacher) : '') + '</div>' + (q.note ? '<div class="tiny">“' + esc(q.note) + '”</div>' : '') + '</td><td class="small">' + (q.info ? esc(i.format || '') + (i.minutes ? ' · ' + esc(i.minutes) + ' min' : '') + (i.form && i.form.notes ? '<div class="tiny">' + esc(i.form.notes) + '</div>' : '') + guideBtn(i.platform) + (i.code || i.rcode ? ' <button class="btn sm" data-c="' + esc(i.code || i.rcode) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">🔑 Show code</button>' : '') : '<span class="chip bad">Waiting for the teacher’s test info</span>') + '</td><td>' + (/^done/i.test(q.status) ? '<span class="chip ok">Done</span> <button class="btn sm pri" onclick="rqMailbox(\'' + q.id + '\')">📬 Back in teacher’s mailbox</button>' : '<button class="btn sm pri" onclick="rqDone(\'' + q.id + '\')">Done</button>') + '</td></tr>';
       }).join('') + '</table>' : '') +
       '<h3 style="margin-top:14px">Coming today</h3>' + (today.length ? '<table class="t small">' + today.map(row).join('') + '</table>' : '<div class="small mute">No students have signed up to test in your room today.</div>') +
       (later.length ? '<h3 style="margin-top:14px">Coming later</h3><table class="t small">' + later.map(row).join('') + '</table>' : '') +
@@ -4723,10 +4741,16 @@ function rmDraw() {
   });
   $('main').innerHTML = out + '</div>';
 }
-function rmStep(id, step, data) { call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', noshow: 'Marked no-show', done: 'Checked out' }[step] || 'Saved'); rmStart(); }).catch(fail); }
+function rmStep(id, step, data) { call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', noshow: 'Marked no-show', done: 'Checked out', mailbox: 'Marked: back in the teacher’s mailbox' }[step] || 'Saved'); rmStart(); }).catch(fail); }
 function rmDone(id) {
   modal('<h2>Check out</h2><label class="f">What do we know?</label><select id="rmOut"><option>Student-reported complete</option><option>Staff-confirmed complete</option><option>Digital submission verified</option><option>Paper test collected</option><option>Partially completed</option><option>Incomplete</option></select><label class="f">Note for the class’s teacher (optional)</label><textarea id="rmNoteTx" style="min-height:60px"></textarea><div class="row" style="margin-top:10px"><button class="btn ok" id="rmGo">Check out</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
   $('rmGo').onclick = function () { var n = $('rmNoteTx').value.trim(), o = $('rmOut').value; busy(this, true); (n ? call('api_addNote', id, n) : Promise.resolve()).then(function () { closeModal(); rmStep(id, 'done', { outcome: o }); }).catch(fail); };
+}
+function rqMailbox(id) { call('api_reqMailbox', id).then(function (r) { RM = r; rmDraw(); toast('Marked: back in the teacher’s mailbox'); }).catch(fail); }
+// a finished paper test: the proctor (a room teacher or the Testing Center) puts it back in the teacher's mailbox
+function mailBtn(a, fn) {
+  if (!/^(completed|partial)/i.test(a.status) || !a.ready || a.ready.format !== 'Paper') return '';
+  return a.mailbox ? '<span class="chip ok" title="' + esc(a.mailboxBy || '') + '">📬 In teacher’s mailbox</span>' : '<button class="btn sm" onclick="event.stopPropagation();' + fn + '(\'' + a.id + '\',\'mailbox\')">📬 Back in teacher’s mailbox</button>';
 }
 function rqDone(id) { if (!confirm('Mark this test as done?')) return; call('api_reqDone', id).then(function (r) { RM = r; rmDraw(); toast('Done'); }).catch(fail); }
 function rmNote(id) { var t = prompt('Note for the class’s teacher (what happened?):'); if (!t) return; call('api_addNote', id, t).then(function () { toast('Note added'); rmStart(); }).catch(fail); }
@@ -4840,11 +4864,12 @@ function coRow(a) {
     if (/^(scheduled|awaiting|ready)/i.test(s)) act = a.date === B.today ? '<button class="btn sm pri" onclick="event.stopPropagation();coCheckIn(\'' + a.id + '\')">Arrived</button>' : '';
     else if (/^checked/i.test(s)) act = '<button class="btn sm pri" onclick="event.stopPropagation();coStep(\'' + a.id + '\',\'start\')">Start</button><button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Check out</button>';
     else if (/^(testing|paused)/i.test(s)) act = '<button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Check out</button>';
+    else act = mailBtn(a, 'coStep');
   }
   var flags = (a.conflict && !a.conflict.verified ? ' <span class="chip warn" title="Will miss ' + esc(a.conflict.course) + '">pass?</span>' : '') + (a.unmatched ? ' <span class="chip bad">not matched</span>' : '') + (a.resources && a.resources.length ? ' <span class="chip info" title="Standing resource">doc</span>' : '');
   return '<tr class="click' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(s) ? ' needs' : '') + '" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.start ? ' · started ' + timeOf(a.start) : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td><td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td><td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td><td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td><td>' + fmtChip(a.ready) + '</td><td>' + readyChip(a.ready) + '</td><td>' + statusChip(s) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
 }
-function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', start: 'Started', done: 'Checked out', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
+function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', start: 'Started', done: 'Checked out', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one', mailbox: 'Marked: back in the teacher’s mailbox', unmailbox: 'Not in the mailbox after all' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
 function coDone(id) {
   modal('<h2>Check out</h2><label class="f">What do we know?</label><select id="dOut"><option>Student-reported complete</option><option>Staff-confirmed complete</option><option>Digital submission verified</option><option>Paper test collected</option><option>Partially completed</option><option>Incomplete</option></select><p class="tiny mute">“Verified” only if you actually saw the submission. Teachers see exactly this wording.</p><label class="f">Note for the teacher (optional)</label><textarea id="dNote" style="min-height:60px"></textarea>' + (CO.dash.conf.completion ? '<label class="check"><input type="checkbox" id="dMail" checked> Email the teacher</label>' : '<p class="tiny mute">Completion emails are off for this campus.</p>') + '<div class="row" style="margin-top:10px"><button class="btn ok" id="dGo">Check out</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
   $('dGo').onclick = function () { busy(this, true); coStep(id, 'done', { outcome: $('dOut').value, note: $('dNote').value, notify: $('dMail') ? $('dMail').checked : false }).then(closeModal); };
