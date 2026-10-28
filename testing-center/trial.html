@@ -297,7 +297,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.30';
+var VERSION = '0.30.1';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -5737,7 +5737,7 @@ function parseCSV(text, prog) {
       return function (run) {
         var el = need(typeof sel === 'string' ? document.querySelector(sel) : sel(), sel);
         return ring(el).then(function () { guard(run); el.focus(); el.value = ''; var i = 0;
-          return new Promise(function (r) { (function k() { if (run !== TR.run) return r(); if (TR.quick || i >= val.length) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); return r(); } el.value = val.slice(0, ++i); el.dispatchEvent(new Event('input', { bubbles: true })); setTimeout(k, TR.fast ? 18 : 45); })(); });
+          return new Promise(function (r) { (function k() { if (run !== TR.run) return r(); if (TR.quick || i >= val.length) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); return r(); } el.value = val.slice(0, ++i); el.dispatchEvent(new Event('input', { bubbles: true })); setTimeout(k, Math.min(20, 600 / val.length) / (TR.fast ? 2 : 1)); })(); });          // typing takes at most about half a second
         }).then(settle).then(function () { unring(); return pace(200); });
       };
     },
