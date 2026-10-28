@@ -15,7 +15,7 @@ p{color:var(--soft);margin:4px 0}
 .q:hover{border-color:var(--blue)}.q .i{font-size:30px;line-height:1;flex:none;width:38px;text-align:center}.q b{display:block;font:600 18px Fredoka,system-ui,sans-serif}.q small{display:block;color:var(--soft);font-size:14px;line-height:1.3;margin-top:2px}
 .cp{position:absolute;top:8px;right:8px;font:700 12px Nunito,system-ui,sans-serif;border:1px solid var(--line);background:var(--bg);color:var(--soft);border-radius:999px;padding:2px 9px;cursor:pointer;opacity:0;transition:opacity .15s}
 .q:hover .cp,.q:focus-within .cp{opacity:1}@media (hover:none){.cp{opacity:1}}
-.q{padding-bottom:40px}.po{position:absolute;left:62px;bottom:9px;font:800 13px Nunito,system-ui,sans-serif;border:1px solid var(--line);background:var(--bg);color:var(--blue);border-radius:999px;padding:3px 11px;cursor:pointer}.po:hover{border-color:var(--blue)}
+.q{padding-bottom:40px}.inc{position:absolute;left:62px;bottom:9px;font:800 13px Nunito,system-ui,sans-serif;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:3px 11px;cursor:pointer}.po{position:absolute;left:62px;bottom:9px;font:800 13px Nunito,system-ui,sans-serif;border:1px solid var(--line);background:var(--bg);color:var(--blue);border-radius:999px;padding:3px 11px;cursor:pointer}.po:hover{border-color:var(--blue)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin:14px 0;max-width:520px}
 form{display:flex;gap:8px;flex-wrap:wrap}input{font:inherit;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;flex:1 1 200px;min-width:0;background:var(--bg);color:var(--ink)}
 button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20px;background:var(--blue);color:#fff;cursor:pointer}
@@ -128,7 +128,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
     ['Behind the scenes', [
       ['🔐', 'asl.cool admin', 'Buttons, passwords, teacher links.', SITE + 'admin/'],
       ['🧪', 'ASL Study test link', 'The newest version before it\u2019s published.', 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbxGGqXddAyMvRKnCmsHFVQd4Mfnl8VnEOA8mpiaRyk/dev'],
-      ['🧪', 'Kiosk test link', 'The newest Kiosk before it\u2019s published.', 'https:' + '//script.google.com/macros/s/AKfycbzRau547mRA4mQH0W3wHySQ6kSS2CmfIrJlqwTJt4c/dev?view=teacher'],
+      ['🧪', 'Kiosk test link', 'The newest Kiosk before it\u2019s published. Needs your personal account: open it in a Chrome window signed in only to your personal Google account.', 'https:' + '//script.google.com/macros/s/AKfycbzRau547mRA4mQH0W3wHySQ6kSS2CmfIrJlqwTJt4c/dev?view=teacher'],
       ['🌐', 'School-safe copy of this page', 'For school, where asl.cool is blocked.', 'https:' + '//colleenelyse.github.io/asl-study-hall/colleen/'],
       ['📜', 'Credits', '', SITE + 'credits.html']
     ]]
@@ -140,9 +140,10 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
     box.innerHTML = GROUPS.map(function (g) {
       return '<h2>' + esc(g[0]) + '</h2><div class="grid">' + g[1].map(function (t) {
         var abs = new URL(t[3], location.href).href;
-        return '<a class="q" href="' + esc(abs) + '" target="_blank" rel="noopener"><span class="i" aria-hidden="true">' + t[0] + '</span><span><b>' + esc(t[1]) + '</b>' + (t[2] ? '<small>' + esc(t[2]) + '</small>' : '') + '</span><button class="cp" type="button" data-u="' + esc(abs) + '" title="Copy this link (for the Stream Deck)">Copy</button><button class="po" type="button" data-pop="' + esc(abs) + '" data-small="' + (g[0] === 'Class tools' ? 1 : '') + '" title="Open in its own window you can drag to the projector screen">⧉ Pop out</button></a>';
+        var inc = abs.indexOf(KIOSK) === 0 || /\/wait(-student)?\/$/.test(abs);      /* her personal-account apps: Google can't open them while she is also signed in to school (2026-10-28) */
+        return '<a class="q" href="' + esc(abs) + '" target="_blank" rel="noopener"><span class="i" aria-hidden="true">' + t[0] + '</span><span><b>' + esc(t[1]) + '</b>' + (t[2] ? '<small>' + esc(t[2]) + '</small>' : '') + '</span><button class="cp" type="button" data-u="' + esc(abs) + '" title="Copy this link (for the Stream Deck)">Copy</button>' + (inc ? '<button class="inc" type="button" data-u="' + esc(abs) + '" title="Copies the link. Press ⌘ Shift N for an incognito window and paste it there.">🕶️ Incognito</button>' : '<button class="po" type="button" data-pop="' + esc(abs) + '" data-small="' + (g[0] === 'Class tools' ? 1 : '') + '" title="Open in its own window you can drag to the projector screen">⧉ Pop out</button>') + '</a>';
       }).join('') + '</div>';
-    }).join('') + '<p class="tip"><b>⧉ Pop out</b> opens a tool in its own window: drag it onto the projector screen. Stream Deck: drag a <b>Website</b> action onto a key and paste a link from <b>Copy</b>. Each link opens straight to that page.</p>';
+    }).join('') + '<p class="tip"><b>🕶️ Incognito</b> marks your personal-account apps (the Kiosk and its tools, Wait…). Google can\u2019t open them while you\u2019re also signed in to your school account. Press 🕶️ Incognito to copy the link, press <b>⌘ Shift N</b>, paste and press Return. (Or right-click the card and choose <b>Open Link in Incognito Window</b>.) Everything else opens normally.</p><p class="tip"><b>⧉ Pop out</b> opens a tool in its own window: drag it onto the projector screen. Stream Deck: drag a <b>Website</b> action onto a key and paste a link from <b>Copy</b>. Each link opens straight to that page.</p>';
     box.onclick = function (e) {
       var po = e.target.closest('.po');
       if (po) {      /* its own small window (Colleen: open it on my monitor and slide it onto the projector screen) */
@@ -151,6 +152,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
         if (!win) alert('The pop-out window was blocked. Allow pop-ups for this page (the icon at the right end of the address bar), then press Pop out again.');
         return;
       }
+      var ic = e.target.closest('.inc'); if (ic) { e.preventDefault(); e.stopPropagation(); (navigator.clipboard ? navigator.clipboard.writeText(ic.dataset.u) : Promise.reject()).then(function () { ic.textContent = 'Copied: ⌘ Shift N, then paste'; setTimeout(function () { ic.textContent = '🕶️ Incognito'; }, 3500); }, function () { prompt('Copy this link, then open an incognito window (⌘ Shift N) and paste it:', ic.dataset.u); }); return; }
       var b = e.target.closest('.cp'); if (!b) return; e.preventDefault(); e.stopPropagation();
       (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.u) : Promise.reject()).then(function () { b.textContent = 'Copied ✓'; }, function () { prompt('Copy this link:', b.dataset.u); });
       setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
