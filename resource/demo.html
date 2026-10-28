@@ -336,6 +336,11 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0 14px}.tool-tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;font:inherit;color:inherit}.tool-tile:hover{border-color:var(--brand)}.tool-tile.on{border:2px solid var(--brand);background:var(--brand-soft)}.tool-tile .ti{font-size:26px}.tool-tile .small{display:block}
 .fc-set{gap:8px;padding:8px 0;border-top:1px solid var(--line)}.fc-card{border:2px solid var(--line);border-radius:16px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;text-align:center;cursor:pointer;background:var(--card)}.fc-big{font-size:30px;font-weight:800;line-height:1.25;word-break:break-word}
 .fc-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:10px}.fc-opt{text-align:left;white-space:normal;min-height:46px}.fc-opt.right{background:var(--up-soft);border-color:var(--up)}.fc-opt.wrong{background:var(--down-soft);border-color:var(--down)}
+.fg-match{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fg-col{display:flex;flex-direction:column;gap:8px}.fg-col .fc-opt{min-height:52px}.fc-opt.fg-sel{border:2px solid var(--brand);background:var(--brand-soft)}.fc-opt.fg-gone{opacity:.45}
+.fg-clock{font-size:22px;font-variant-numeric:tabular-nums}.fg-clock.low{color:var(--down)}.fg-isle{display:flex;flex-wrap:wrap;gap:14px}.fg-isle>div{flex:1 1 300px;min-width:0}.fg-sand{display:grid;gap:3px;max-width:420px}
+.fg-cell{aspect-ratio:1;border:1px solid rgba(0,0,0,.12);border-radius:6px;cursor:pointer;font-size:18px;padding:0;display:flex;align-items:center;justify-content:center}.fg-cell.d0{background:#f4d58d}.fg-cell.d1{background:#e3b964}.fg-cell.d2{background:#c48f45}.fg-cell.d3{background:#7a5a33}.fg-cell.sel{outline:3px solid var(--brand)}.fg-cell.mine{outline:3px solid #f9a825}.fg-x{color:#c62828;font-weight:800}
+.fg-bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin:0 0 10px}.fg-bar i{display:block;height:100%;background:var(--brand);transition:width .2s linear}.fg-bar i.low{background:var(--down)}
+.fg-mob{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;max-width:440px;width:100%;margin:10px auto 0}.fg-mob i{aspect-ratio:1;background:var(--brand);border-radius:3px}.fg-mob i.out{background:var(--line)}.fg-mob i.zap{background:var(--down)}.fg-mob i.rise{background:var(--up)}.fg-strikes i{font-style:normal;font-weight:800;color:var(--line);margin-left:4px;font-size:20px}.fg-strikes i.on{color:var(--down)}
 .fc-fb{margin-top:8px;padding:8px 12px;border-radius:10px}.fc-fb.right{background:var(--up-soft)}.fc-fb.wrong{background:var(--down-soft)}.fc-prev{font-size:14px}.fc-prev td{padding:4px 8px}
 .em-prev{margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px}.nd-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:12px}.nd-box{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
 .tr-row{gap:8px;padding:6px 0;border-top:1px solid var(--line);margin:0;display:flex;align-items:center}.tr-row.done b{text-decoration:line-through;opacity:.6}
@@ -520,7 +525,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.82'
+var VERSION = '2.83'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -7893,6 +7898,7 @@ function fcCheck(given, ans) {
 function fcStudyHtml() {
   var s = FC.set, n = FC.deck.length, lang = langOf(s.cls);
   var top = '<div class="row"><h2 class="grow">🃏 ' + esc(s.name) + '</h2><button class="btn link" onclick="FC.view=\'list\';FC.mode=\'\';toolDraw()">← My sets</button></div>';
+  if (fgOn() && FG) return top + fgHtml();          // 2.83: a flashcard game
   if (FC.view === 'done') {
     var pct = Math.round(FC.right / Math.max(1, n) * 100);
     return top + '<div class="fc-card" style="cursor:default"><div style="font-size:42px">' + (pct >= 90 ? '🌟' : pct >= 70 ? '👍' : '💪') + '</div><div style="font-size:28px;font-weight:800">' + FC.right + ' of ' + n + ' (' + pct + '%)</div>' +
@@ -7903,7 +7909,7 @@ function fcStudyHtml() {
   if (!FC.mode) return top + '<p class="small" style="margin:4px 0 10px">' + s.cards.length + ' cards' + (s.best !== null ? ' · your best: ' + s.best + '%' : '') + '</p>' +
     '<p style="margin:0 0 6px"><b>Show me:</b></p><div class="seg" style="margin-bottom:12px">' + [['t2d', 'the word, I give the answer'], ['d2t', 'the answer, I give the word']].map(function (o) { return '<button class="' + (FC.dir === o[0] ? 'on' : '') + '" onclick="FC.dir=\'' + o[0] + '\';toolDraw()">' + o[1] + '</button>'; }).join('') + '</div>' +
     '<p style="margin:0 0 6px"><b>How do you want to study?</b></p><div class="tools-grid">' + [['flip', '🔄', 'Flip cards', 'Look, think, flip'], ['mc', '🔘', 'Multiple choice', 'Pick from 4'], ['type', '⌨️', 'Type the answer', 'Best practice for tests']].map(function (m) {
-      return '<button class="tool-tile" onclick="fcStart(\'' + m[0] + '\')"><span class="ti">' + m[1] + '</span><b>' + m[2] + '</b><span class="small">' + m[3] + '</span></button>'; }).join('') + '</div>';
+      return '<button class="tool-tile" onclick="fcStart(\'' + m[0] + '\')"><span class="ti">' + m[1] + '</span><b>' + m[2] + '</b><span class="small">' + m[3] + '</span></button>'; }).join('') + '</div>' + fgTiles();
   var k = FC.deck[FC.i], x = fcSides(k), qLang = FC.dir === 't2d' ? lang : 'en-US', prog = '<div class="small" style="display:block;margin:4px 0 8px">Card ' + (FC.i + 1) + ' of ' + n + ' · ✓ ' + FC.right + ' · ✗ ' + FC.wrong.length + '</div>';
   var spk = function (t, l) { return '<button class="btn link small" title="Read it to me" onclick="event.stopPropagation();say(\'' + esc(t).replace(/'/g, '’') + '\',\'' + l + '\')">🔊</button>'; };
   var h = top + prog;
@@ -7940,6 +7946,258 @@ function fcNext(noAns) {
     if (MODE === 'student' && !(B && B.preview)) call('api_cardScore', FC.set.id, pct, names[FC.mode] + (FC.full ? '' : ' (missed ones)'), FC.deck.length).then(function (l) { FC.sets = l; var s = l.filter(function (x) { return x.id === FC.set.id; })[0]; if (s) FC.set.best = s.best; }).catch(function () {});
   }
   toolDraw();
+}
+
+/* 2.83 🎮 Flashcard games, from ASL Study's solo games: Matching, Speed Round, Treasure Island, 1 vs. The Mob.
+   They use the set's cards and the Show me direction; a finished game saves a score (percent right) with api_cardScore like the other ways to study.
+   Personal bests (fastest match, most right in 60 seconds, biggest haul, Mob wins) stay on this Chromebook. */
+var FG = null, FG_NAMES = { match: 'Matching', speed: 'Speed Round', isle: 'Treasure Island', mob: '1 vs. The Mob' };
+var FG_ISLE = { w: 8, h: 6, per: 2 }, FG_MOB = { mob: 100, goal: 20, rounds: 12, strikes: 3, secs: 15 };
+var FG_FIND = { coins: ['🪙', 'Coins'], shell: ['🐚', 'A seashell'], gem: ['💎', 'A gem'], map: ['🗺️', 'A map piece'], crab: ['🦀', 'A crab'], chest: ['💰', 'A treasure chest'], skull: ['☠️', 'The cursed skull'], legend: ['👑', 'THE LEGENDARY TREASURE'], sand: ['💨', 'Just sand'] };
+function fgOn() { return !!FG_NAMES[FC.mode]; }
+function fgStart(mode) {
+  if (mode !== 'match' && FC.set.cards.length < 4) return alert(FG_NAMES[mode] + ' needs at least 4 cards in the set.');
+  if (FG) clearInterval(FG.tick);
+  FC.mode = mode; FC.view = 'study';
+  FG = { mode: mode, right: 0, wrong: [], seen: 0, done: false, saved: false, t0: Date.now(), fb: null, q: null, bag: [] };
+  if (mode === 'match') { FG.all = fcShuffle(FC.set.cards.map(function (c, k) { return k; })).slice(0, 25); FG.off = 0; fgMatchBoard(); }
+  else if (mode === 'speed') { fgNewQ(); FG.end = Date.now() + 60000; FG.tick = setInterval(fgSpeedTick, 250); }
+  else if (mode === 'isle') FG.phase = 'pick';
+  else FG.phase = 'intro';
+  toolDraw();
+}
+// the game keeps running only while its screen is open
+function fgLive(mode) { var ok = FG && FG.mode === mode && FC.mode === mode && !FG.done && $('fgGame'); if (!ok && FG) clearInterval(FG.tick); return !!ok; }
+function fgPick(avoid) { if (!FG.bag.length) FG.bag = fcShuffle(FC.set.cards.map(function (c, k) { return k; })); var k = FG.bag.pop(); if (k === avoid && FG.bag.length) { FG.bag.unshift(k); k = FG.bag.pop(); } return k; }
+function fgOpts(k) {
+  var seen = {}; seen[fcBase(fcSides(k).a)] = 1;
+  var others = fcShuffle(FC.set.cards.map(function (c, j) { return j; })).filter(function (j) { var b = fcBase(fcSides(j).a); if (j === k || seen[b]) return false; seen[b] = 1; return true; }).slice(0, 3);
+  return fcShuffle(others.concat([k]));
+}
+function fgNewQ() { var k = fgPick(FG.q ? FG.q.k : -1); FG.q = { k: k, opts: fgOpts(k) }; }
+function fgQHtml(act) {
+  var x = fcSides(FG.q.k);
+  return '<div class="fc-card" style="cursor:default;min-height:80px;padding:12px"><div class="fc-big" style="font-size:24px">' + esc(x.q) + '</div></div><div class="fc-opts">' +
+    FG.q.opts.map(function (j) { return '<button class="btn fc-opt" onclick="' + act + '(' + j + ')">' + esc(fcSides(j).a) + '</button>'; }).join('') + '</div>';
+}
+function fgRecord(k, ok) {
+  var x = fcSides(k); FG.seen++;
+  if (ok) FG.right++; else if (FG.wrong.indexOf(k) < 0) FG.wrong.push(k);
+  FG.fb = ok ? { ok: true, text: '✓ Right!' } : { ok: false, text: '✗ <b>' + esc(x.q) + '</b> → <b>' + esc(x.a) + '</b>' };
+}
+function fgFb() { return FG.fb ? '<div class="fc-fb ' + (FG.fb.ok ? 'right' : 'wrong') + '">' + FG.fb.text + '</div>' : ''; }
+function fgPct() { return Math.round(FG.right / Math.max(1, FG.seen) * 100); }
+function fgSave() {
+  if (FG.saved || !FG.seen) return; FG.saved = true; var id = FC.set.id;
+  if (MODE === 'student' && !(B && B.preview)) call('api_cardScore', id, fgPct(), FG_NAMES[FG.mode], FG.seen).then(function (l) { FC.sets = l; var s = l.filter(function (x) { return x.id === id; })[0]; if (s && FC.set && FC.set.id === id) FC.set.best = s.best; }).catch(function () {});
+}
+// a personal best on this Chromebook: { prev, best } (lower = true when a smaller number is better, like seconds)
+function fgBest(key, val, lower) {
+  var k = 'rci-fg:' + FC.set.id + ':' + key, prev = 0, best = false;
+  try { prev = +localStorage.getItem(k) || 0; best = val > 0 && (!prev || (lower ? val < prev : val > prev)); if (best) localStorage.setItem(k, String(val)); } catch (e) {}
+  return { prev: prev, best: best };
+}
+function fgBestGet(key) { try { return +localStorage.getItem('rci-fg:' + FC.set.id + ':' + key) || 0; } catch (e) { return 0; } }
+function fgParty() { if (pagePref('confetti') !== false) confetti(document.body); }
+function fgMmss(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+function fgEndHtml(big, sub, again) {
+  return '<div class="fc-card" style="cursor:default">' + big + '<div class="small">' + sub + '</div></div>' +
+    (FG.wrong.length ? '<p class="small" style="margin:10px 0 4px"><b>To practice:</b></p><table class="fc-prev"><tbody>' + FG.wrong.map(function (k) { var x = fcSides(k); return '<tr><td>' + esc(x.q) + '</td><td>' + esc(x.a) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
+    '<div class="row" style="margin-top:12px;gap:8px"><button class="btn primary" onclick="' + again + '">Play again</button><button class="btn" onclick="FC.mode=\'\';FC.view=\'study\';toolDraw()">Another way</button></div>';
+}
+function fgHtml() {
+  var h = FG.mode === 'match' ? fgMatchHtml() : FG.mode === 'speed' ? fgSpeedHtml() : FG.mode === 'isle' ? fgIsleHtml() : fgMobHtml();
+  return '<div id="fgGame">' + h + '</div>';
+}
+
+/* 🧩 Matching: boards of 5, tap a card on the left and its answer on the right. A miss on a card counts it as missed. */
+function fgMatchBoard() {
+  var left = FG.all.length - FG.off, take = left <= 7 ? left : 5;
+  if (!left) return fgMatchEnd();
+  FG.batch = FG.all.slice(FG.off, FG.off + take); FG.words = fcShuffle(FG.batch); FG.pl = -1; FG.pr = -1; FG.got = {}; FG.bad = -1;
+}
+function fgMatchTap(side, k) {
+  if (FG.done || FG.got[k]) return;
+  if (side === 'l') FG.pl = k; else FG.pr = k; FG.bad = -1;
+  if (FG.pl >= 0 && FG.pr >= 0) {
+    if (FG.pl === FG.pr) {
+      FG.got[k] = 1; FG.seen++; if (FG.wrong.indexOf(k) < 0) FG.right++;
+      if (Object.keys(FG.got).length === FG.batch.length) { FG.off += FG.batch.length; setTimeout(function () { if (fgLive('match')) { fgMatchBoard(); toolDraw(); } }, 350); }
+    } else { if (FG.wrong.indexOf(FG.pl) < 0) FG.wrong.push(FG.pl); FG.bad = FG.pr; }
+    FG.pl = -1; FG.pr = -1;
+  }
+  toolDraw();
+}
+function fgMatchEnd() {
+  FG.done = true; FG.secs = Math.round((Date.now() - FG.t0) / 1000); FG.seen = FG.all.length; FG.right = FG.all.length - FG.wrong.length;
+  FG.rec = FG.wrong.length ? { prev: fgBestGet('match'), best: false } : fgBest('match', FG.secs, true);
+  fgSave(); if (FG.rec.best) fgParty();
+}
+function fgMatchHtml() {
+  if (FG.done) {
+    var r = FG.rec, sub = FG.wrong.length ? FG.wrong.length + ' with a miss. Match them all with no misses to set a best time.' + (r.prev ? ' Your best: ' + r.prev + ' seconds.' : '') : r.best ? (r.prev ? '🎉 A new best time! (Before: ' + r.prev + ' seconds.)' : '🎉 Your first perfect match!') : 'No misses! Your best: ' + r.prev + ' seconds.';
+    return fgEndHtml('<div style="font-size:42px">🧩</div><div style="font-size:26px;font-weight:800">' + FG.all.length + ' matched in ' + FG.secs + ' seconds</div>', sub, 'fgStart(\'match\')');
+  }
+  var done = FG.off + Object.keys(FG.got).length, btn = function (side, k, text) {
+    var cls = FG.got[k] ? ' right fg-gone' : (side === 'l' ? FG.pl === k : FG.pr === k) ? ' fg-sel' : side === 'r' && FG.bad === k ? ' wrong' : '';
+    return '<button class="btn fc-opt' + cls + '"' + (FG.got[k] ? ' disabled' : '') + ' onclick="fgMatchTap(\'' + side + '\',' + k + ')">' + esc(text) + '</button>';
+  };
+  return '<p class="small" style="margin:0 0 8px">🧩 <b>Matching:</b> tap a card on the left, then its answer on the right. ' + done + ' of ' + FG.all.length + ' matched' + (FG.wrong.length ? ' · ✗ ' + FG.wrong.length : '') + '</p>' +
+    '<div class="fg-match"><div class="fg-col">' + FG.batch.map(function (k) { return btn('l', k, fcSides(k).q); }).join('') + '</div><div class="fg-col">' + FG.words.map(function (k) { return btn('r', k, fcSides(k).a); }).join('') + '</div></div>';
+}
+
+/* ⚡ Speed Round: 60 seconds, as many as you can. A miss shows the right answer while the next card is up. */
+function fgSpeedTick() {
+  if (!fgLive('speed')) return;
+  var left = FG.end - Date.now(), c = $('fgClock'); if (c) { c.textContent = fgMmss(left); c.className = 'fg-clock' + (left < 10000 ? ' low' : ''); }
+  if (left <= 0) { clearInterval(FG.tick); FG.done = true; FG.rec = fgBest('speed', FG.right); fgSave(); if (FG.rec.best) fgParty(); toolDraw(); }
+}
+function fgSpeedAns(j) { if (!fgLive('speed')) return; fgRecord(FG.q.k, j === FG.q.k); fgNewQ(); toolDraw(); }
+function fgSpeedHtml() {
+  if (FG.done) {
+    var r = FG.rec;
+    return fgEndHtml('<div style="font-size:42px">⚡</div><div style="font-size:26px;font-weight:800">' + FG.right + ' right in 60 seconds</div>',
+      FG.right + ' of ' + FG.seen + ' (' + fgPct() + '%). ' + (r.best ? (r.prev ? '🎉 A new best! (Before: ' + r.prev + '.)' : '🎉 Your first Speed Round!') : 'Your best: ' + r.prev + '.'), 'fgStart(\'speed\')');
+  }
+  return '<div class="row" style="margin:0 0 8px"><span class="small grow">⚡ <b>Speed Round:</b> as many as you can. ✓ ' + FG.right + ' · ✗ ' + (FG.seen - FG.right) + (fgBestGet('speed') ? ' · your best: ' + fgBestGet('speed') : '') + '</span><b class="fg-clock" id="fgClock">' + fgMmss(FG.end - Date.now()) + '</b></div>' + fgQHtml('fgSpeedAns') + fgFb();
+}
+
+/* 🏝️ Treasure Island: every 2 right answers earn a shovel. Each patch of sand has 3 layers: deeper finds are bigger, but a crab or the
+   cursed skull makes you drop your pouch, so bank it to keep it. Map pieces cross out rows and columns where the legendary treasure isn't. */
+function fgRoll(layer) {
+  var r = Math.random(), b = function (lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); };
+  if (layer === 0) return r < 0.35 ? ['sand', 0] : r < 0.8 ? ['coins', b(5, 15)] : ['shell', 10];
+  if (layer === 1) return r < 0.3 ? ['coins', b(15, 30)] : r < 0.55 ? ['gem', 40] : r < 0.8 ? ['crab', 0] : ['sand', 0];
+  return r < 0.4 ? ['chest', b(80, 150)] : r < 0.6 ? ['gem', 50] : r < 0.9 ? ['skull', 0] : ['coins', 40];
+}
+function fgTile() { return { c: [fgRoll(0), fgRoll(1), fgRoll(2)], d: 0 }; }
+function fgAt(i) { return 'ABCDEFGH'[i % FG_ISLE.w] + (Math.floor(i / FG_ISLE.w) + 1); }
+function fgShovels() { return Math.max(0, Math.floor(FG.right / FG_ISLE.per) - FG.spent); }
+function fgIsleGo(mins) {
+  var n = FG_ISLE.w * FG_ISLE.h, tiles = []; for (var i = 0; i < n; i++) tiles.push(fgTile());
+  var legend = Math.floor(Math.random() * n); tiles[legend].c[2] = ['legend', 300];
+  fcShuffle(tiles.map(function (x, i) { return i; }).filter(function (i) { return i !== legend; })).slice(0, 4).forEach(function (i) { tiles[i].c[1] = ['map', 0]; });
+  FG.phase = 'play'; FG.mins = mins; FG.tiles = tiles; FG.legend = legend; FG.legendFound = false; FG.maps = []; FG.pouch = { cell: -1, val: 0 }; FG.gold = 0; FG.spent = 0; FG.digs = 0; FG.sel = -1; FG.res = null; FG.t0 = Date.now(); FG.end = Date.now() + mins * 60000;
+  fgNewQ(); clearInterval(FG.tick); FG.tick = setInterval(fgIsleTick, 250); toolDraw();
+}
+function fgIsleTick() {
+  if (!fgLive('isle') || FG.phase !== 'play') return;
+  var left = FG.end - Date.now(), c = $('fgClock'); if (c) { c.textContent = fgMmss(left); c.className = 'fg-clock' + (left < 30000 ? ' low' : ''); }
+  if (left <= 0) fgIsleEnd();
+}
+function fgIsleEnd() {
+  clearInterval(FG.tick); if (FG.pouch.val) fgBank(true); FG.done = true;
+  FG.rec = fgBest('isle' + FG.mins, FG.gold); fgSave(); if (FG.rec.best || FG.legendFound) fgParty(); toolDraw();
+}
+function fgIsleAns(j) {
+  if (!fgLive('isle')) return; var had = fgShovels(); fgRecord(FG.q.k, j === FG.q.k); fgNewQ();
+  if (fgShovels() > had) FG.fb.text += ' ⛏️ You earned a shovel!';
+  toolDraw();
+}
+function fgCell(i) { if (FG.done) return; if (FG.tiles[i].d >= 3) FG.res = { ok: false, text: 'That patch is dug out. Pick another one.' }; else { FG.sel = i; FG.res = null; } toolDraw(); }
+function fgDig(i) {
+  if (FG.done || i < 0) return; if (!fgShovels()) { FG.res = { ok: false, text: 'You need a shovel. Answer the questions below!' }; return toolDraw(); }
+  if (FG.pouch.cell >= 0 && FG.pouch.cell !== i) fgBank(true);
+  var t = FG.tiles[i]; if (t.d >= 3) return;
+  var f = t.c[t.d], kind = f[0], val = f[1], at = fgAt(i), name = FG_FIND[kind][1], icon = '<span style="font-size:22px">' + FG_FIND[kind][0] + '</span>';
+  t.d++; FG.spent++; FG.digs++;
+  if (kind === 'crab' || kind === 'skull') { var lost = FG.pouch.val; FG.pouch = { cell: -1, val: 0 }; FG.res = { ok: false, text: icon + ' ' + name + ' at ' + at + '! ' + (lost ? 'You dropped your pouch (' + lost + ' gold).' : 'Good thing your pouch was empty.') }; }
+  else if (kind === 'map') {
+    var lr = Math.floor(FG.legend / FG_ISLE.w), lc = FG.legend % FG_ISLE.w, opts = [], r, c;
+    for (r = 0; r < FG_ISLE.h; r++) if (r !== lr && FG.maps.indexOf('r' + r) < 0) opts.push('r' + r);
+    for (c = 0; c < FG_ISLE.w; c++) if (c !== lc && FG.maps.indexOf('c' + c) < 0) opts.push('c' + c);
+    if (opts.length && !FG.legendFound) { var p = opts[Math.floor(Math.random() * opts.length)]; FG.maps.push(p); FG.res = { ok: true, text: icon + ' A map piece! It crossed out ' + (p[0] === 'r' ? 'row ' + (+p.slice(1) + 1) : 'column ' + 'ABCDEFGH'[+p.slice(1)]) + ': the legendary treasure isn’t there.' }; }
+    else { FG.pouch.val += 20; FG.res = { ok: true, text: icon + ' A map piece: +20 gold.' }; }
+    FG.pouch.cell = t.d < 3 ? i : -1;
+  } else if (kind === 'legend') { FG.gold += val; FG.legendFound = true; FG.pouch.cell = -1; FG.res = { ok: true, text: icon + ' THE LEGENDARY TREASURE! +' + val + ' gold!' }; fgParty(); }
+  else { FG.pouch.val += val; FG.pouch.cell = t.d < 3 ? i : -1; FG.res = { ok: !!val, text: icon + ' ' + name + (val ? ' (+' + val + ')' : '') + ' at ' + at + '.' + (FG.pouch.val ? ' Your pouch: ' + FG.pouch.val + ' gold.' : '') }; }
+  if (t.d >= 3 && FG.pouch.val && kind !== 'crab' && kind !== 'skull') { var v = FG.pouch.val; fgBank(true); FG.res.text += ' The bottom! Banked ' + v + ' gold.'; }
+  FG.sel = -1; toolDraw();
+}
+function fgBank(quiet) { var v = FG.pouch.val; FG.gold += v; FG.pouch = { cell: -1, val: 0 }; if (!quiet) { FG.res = { ok: true, text: '🏦 Banked ' + v + ' gold!' }; toolDraw(); } }
+function fgIsleHtml() {
+  if (FG.phase === 'pick') return '<div class="fc-card" style="cursor:default"><div style="font-size:42px">🏝️</div><div style="font-size:24px;font-weight:800">Treasure Island</div>' +
+    '<div class="small" style="max-width:460px">Answer questions to earn shovels (2 right answers = 1 shovel). Dig your island: each patch has 3 layers, and deeper finds are bigger. But a 🦀 crab or the ☠️ cursed skull makes you drop your pouch, so 🏦 bank your gold to keep it safe. 🗺️ Map pieces show where the 👑 legendary treasure <i>isn’t</i>.</div>' +
+    '<div class="row" style="gap:8px;margin-top:8px">' + [3, 5].map(function (m) { var b = fgBestGet('isle' + m); return '<button class="btn primary" onclick="fgIsleGo(' + m + ')">Play ' + m + ' minutes' + (b ? ' (best: ' + b + ' gold)' : '') + '</button>'; }).join('') + '</div></div>';
+  if (FG.done) {
+    var r = FG.rec;
+    return fgEndHtml('<div style="font-size:42px">🏝️</div><div style="font-size:26px;font-weight:800">' + FG.gold + ' gold in ' + FG.mins + ' minutes!</div>',
+      'You dug ' + FG.digs + (FG.digs === 1 ? ' time' : ' times') + ' and got ' + FG.right + ' of ' + FG.seen + ' right. ' + (FG.legendFound ? '👑 You found the legendary treasure! ' : '') + (r.best ? (r.prev ? '🎉 A new best haul! (Before: ' + r.prev + ' gold.)' : '🎉 Your first haul!') : 'Your best: ' + r.prev + ' gold.'), 'fgStart(\'isle\')');
+  }
+  var n = fgShovels(), holding = FG.pouch.cell >= 0, depth = holding ? FG.tiles[FG.pouch.cell].d : 0, cells = '', i;
+  for (i = 0; i < FG.tiles.length; i++) {
+    var d = FG.tiles[i].d, row = Math.floor(i / FG_ISLE.w), col = i % FG_ISLE.w, x = FG.maps.indexOf('r' + row) >= 0 || FG.maps.indexOf('c' + col) >= 0, leg = FG.legendFound && i === FG.legend;
+    cells += '<button class="fg-cell d' + d + (FG.sel === i ? ' sel' : '') + (i === FG.pouch.cell ? ' mine' : '') + '" title="' + fgAt(i) + '" onclick="fgCell(' + i + ')">' + (leg ? '👑' : x ? '<span class="fg-x">✖</span>' : '') + '</button>';
+  }
+  var act = holding && depth < 3 ? '<div class="row" style="gap:6px;margin:6px 0"><button class="btn primary grow"' + (n ? '' : ' disabled') + ' onclick="fgDig(FG.pouch.cell)">⛏️ Dig deeper at ' + fgAt(FG.pouch.cell) + ' (layer ' + (depth + 1) + ' of 3)</button><button class="btn grow"' + (FG.pouch.val ? '' : ' disabled') + ' onclick="fgBank()">🏦 Bank ' + FG.pouch.val + ' gold</button></div>'
+    : FG.sel >= 0 ? '<div class="row" style="margin:6px 0"><button class="btn primary grow"' + (n ? '' : ' disabled') + ' onclick="fgDig(FG.sel)">⛏️ Dig at ' + fgAt(FG.sel) + ' (1 shovel)</button></div>' : '';
+  var hint = !n ? 'Answer the questions to earn shovels.' : holding && depth < 3 ? 'Dig deeper for bigger treasure, or bank it to keep it safe.' : FG.sel >= 0 ? 'Press Dig, or tap a different patch.' : 'Tap a patch of sand to choose where to dig.';
+  return '<div class="row" style="margin:0 0 6px;flex-wrap:wrap;gap:6px 12px"><b class="grow">🏝️ Treasure Island</b><span>🏦 ' + FG.gold + ' banked' + (FG.pouch.val ? ' · 👝 ' + FG.pouch.val + ' in your pouch' : '') + '</span><span>⛏️ <b>' + n + '</b> shovel' + (n === 1 ? '' : 's') + '</span><b class="fg-clock" id="fgClock">' + fgMmss(FG.end - Date.now()) + '</b></div>' +
+    '<div class="fg-isle"><div>' + (FG.res ? '<div class="fc-fb ' + (FG.res.ok ? 'right' : 'wrong') + '" style="margin:0 0 6px">' + FG.res.text + '</div>' : '') + act + '<p class="small" style="margin:0 0 6px">' + hint + '</p>' +
+    '<div class="fg-sand" style="grid-template-columns:repeat(' + FG_ISLE.w + ',1fr)">' + cells + '</div>' + (FG.maps.length ? '<p class="small" style="margin:6px 0 0"><span class="fg-x">✖</span> = the legendary treasure isn’t here (other treasure can be).</p>' : '') + '</div>' +
+    '<div><p class="small" style="margin:0 0 6px"><b>Answer to earn shovels</b> (' + (FG_ISLE.per - FG.right % FG_ISLE.per) + ' more right for the next one)</p>' + fgQHtml('fgIsleAns') + fgFb() + '</div></div>';
+}
+
+/* 👥 1 vs. The Mob: you against a pretend Mob of 100. Right: every Mob member who missed is out. Wrong (or time up): a strike, and a few
+   fight back in. Get the Mob down to 20 within 12 rounds, before 3 strikes. Every third round you type the answer (short answers only). */
+function fgMobLeft() { return FG.mob.reduce(function (a, x) { return a + x; }, 0); }
+function fgMobGo() { FG.mob = []; for (var i = 0; i < FG_MOB.mob; i++) FG.mob.push(1); FG.round = 0; FG.strikes = 0; FG.t0 = Date.now(); fgMobNext(); }
+function fgMobNext() {
+  if (FG.done) return; FG.round++; fgNewQ();
+  FG.typeIt = FG.round % 3 === 0 && fcSides(FG.q.k).a.length <= 30; FG.phase = 'q'; FG.zap = {}; FG.rise = {}; FG.typed = undefined;
+  FG.endAt = Date.now() + FG_MOB.secs * 1000; clearInterval(FG.tick); FG.tick = setInterval(fgMobTick, 200);
+  toolDraw(); if (FG.typeIt && $('fgIn')) $('fgIn').focus();
+}
+function fgMobTick() {
+  if (!fgLive('mob') || FG.phase !== 'q') return;
+  var left = FG.endAt - Date.now(), b = $('fgBar'); if (b) { b.style.width = Math.max(0, 100 * left / (FG_MOB.secs * 1000)) + '%'; b.className = left < 4000 ? 'low' : ''; }
+  if (left <= 0) fgMobAns(-1);
+}
+function fgMobType() { var v = $('fgIn') ? $('fgIn').value : ''; if (!v.trim()) return; FG.typed = v; fgMobAns(fcCheck(v, fcSides(FG.q.k).a) !== 'wrong' ? FG.q.k : -2); }
+function fgMobAns(j) {
+  if (FG.phase !== 'q') return; clearInterval(FG.tick); FG.phase = 'res';
+  var ok = j === FG.q.k, pr = 0.62 + Math.random() * 0.25, zap = 0, rise = 0; fgRecord(FG.q.k, ok); FG.picked = j;
+  if (ok) { FG.mob.forEach(function (x, i) { if (x && Math.random() > pr) { FG.mob[i] = 0; FG.zap[i] = 1; zap++; } }); FG.line = zap ? '✔ You got it! <b>' + zap + '</b> of the Mob missed it and ' + (zap === 1 ? 'is' : 'are') + ' out!' : '✔ You got it! But the whole Mob got it too: nobody is out.'; }
+  else {
+    FG.strikes++; var outs = FG.mob.map(function (x, i) { return x ? -1 : i; }).filter(function (i) { return i >= 0; }), k = outs.length ? 1 + Math.floor(Math.random() * Math.min(5, outs.length)) : 0;
+    for (var m = 0; m < k; m++) { var i = outs.splice(Math.floor(Math.random() * outs.length), 1)[0]; FG.mob[i] = 1; FG.rise[i] = 1; rise++; }
+    FG.line = '✖ ' + (j === -1 ? '⏱ Time is up' : 'Not this time') + '. Strike ' + FG.strikes + ' of ' + FG_MOB.strikes + '.' + (rise ? ' <b>' + rise + '</b> of the Mob ' + (rise === 1 ? 'fights its' : 'fight their') + ' way back in!' : '');
+  }
+  var left = fgMobLeft(); FG.over = left <= FG_MOB.goal ? 'win' : FG.strikes >= FG_MOB.strikes || FG.round >= FG_MOB.rounds ? 'lose' : '';
+  toolDraw(); if (ok && zap >= 20) fgParty();
+}
+function fgMobEnd() {
+  FG.done = true; FG.phase = 'end'; clearInterval(FG.tick);
+  if (FG.over === 'win') { FG.rec = fgBest('mobwins', fgBestGet('mobwins') + 1); fgParty(); }
+  fgSave(); toolDraw();
+}
+function fgMobGrid() { return '<div class="fg-mob" aria-hidden="true">' + FG.mob.map(function (x, i) { return '<i class="' + (x ? '' : 'out') + (FG.zap[i] ? ' zap' : '') + (FG.rise[i] ? ' rise' : '') + '"></i>'; }).join('') + '</div>'; }
+function fgMobHead() {
+  return '<div class="row" style="margin:0 0 6px"><b class="grow">👥 Round ' + FG.round + ' of ' + FG_MOB.rounds + '</b><span class="fg-strikes">' + [0, 1, 2].map(function (i) { return '<i class="' + (i < FG.strikes ? 'on' : '') + '">✕</i>'; }).join('') + '</span></div>' +
+    '<p class="small" style="margin:0 0 8px">Mob left: <b>' + fgMobLeft() + '</b> · get it down to ' + FG_MOB.goal + '</p>';
+}
+function fgMobHtml() {
+  if (FG.phase === 'intro') { var w = fgBestGet('mobwins');
+    return '<div class="fc-card" style="cursor:default"><div style="font-size:42px">⭐</div><div style="font-size:26px;font-weight:800">YOU ARE THE ONE</div><div class="small">You against a Mob of ' + FG_MOB.mob + '.' + (w ? ' You’ve beaten the Mob ' + w + (w === 1 ? ' time' : ' times') + ' with this set.' : '') + '</div></div>' +
+      '<div style="margin:10px 0"><p style="margin:4px 0">✔ <b>Right answer:</b> every Mob member who got it wrong is out.</p><p style="margin:4px 0">✖ <b>Wrong answer:</b> a strike, and some of the Mob fight back in.</p><p style="margin:4px 0">🏆 <b>Win:</b> get the Mob down to ' + FG_MOB.goal + ' within ' + FG_MOB.rounds + ' rounds, before ' + FG_MOB.strikes + ' strikes. You have ' + FG_MOB.secs + ' seconds for each question.</p></div>' +
+      '<button class="btn primary big" onclick="fgMobGo()">Start</button>';
+  }
+  if (FG.phase === 'end') {
+    var won = FG.over === 'win', out = FG_MOB.mob - fgMobLeft();
+    return fgEndHtml('<div style="font-size:42px">' + (won ? '🎉' : '👥') + '</div><div style="font-size:24px;font-weight:800">' + (won ? 'You beat the Mob!' : FG.strikes >= FG_MOB.strikes ? 'Three strikes. The Mob wins this time.' : 'Out of rounds. The Mob wins this time.') + '</div>' + fgMobGrid(),
+      out + ' of the Mob knocked out' + (won ? '' : ' (you needed ' + (FG_MOB.mob - FG_MOB.goal) + ')') + ' in ' + FG.round + (FG.round === 1 ? ' round' : ' rounds') + '. ' + FG.right + ' of ' + FG.seen + ' right.', 'fgStart(\'mob\')');
+  }
+  var x = fcSides(FG.q.k);
+  if (FG.phase === 'res') return fgMobHead() + '<div class="fc-card" style="cursor:default;min-height:0;padding:14px"><div class="small">' + esc(x.q) + '</div><div style="font-size:22px;font-weight:800">' + esc(x.a) + '</div>' + (FG.typed !== undefined && FG.picked !== FG.q.k ? '<div class="small">You typed “' + esc(FG.typed) + '”</div>' : '') + '</div>' +
+    '<div class="fc-fb ' + (FG.picked === FG.q.k ? 'right' : 'wrong') + '" style="font-size:17px">' + FG.line + '</div>' + fgMobGrid() +
+    '<div class="row" style="margin-top:10px"><button class="btn primary big grow" onclick="' + (FG.over ? 'fgMobEnd()' : 'fgMobNext()') + '">' + (FG.over ? 'See how you did' : 'Next round ▶') + '</button></div>';
+  var body = FG.typeIt ? '<div class="fc-card" style="cursor:default;min-height:80px;padding:12px"><div class="fc-big" style="font-size:24px">' + esc(x.q) + '</div></div><div class="row" style="margin-top:10px;gap:8px"><input type="text" id="fgIn" class="grow" autocomplete="off" placeholder="Type the answer" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fgMobType()}"><button class="btn primary" onclick="fgMobType()">Lock in</button></div>'
+    : fgQHtml('fgMobAns');
+  return fgMobHead() + '<div class="fg-bar"><i id="fgBar" style="width:' + Math.max(0, 100 * (FG.endAt - Date.now()) / (FG_MOB.secs * 1000)) + '%"></i></div>' + body;
+}
+function fgTiles() {
+  return '<p style="margin:0 0 6px"><b>🎮 Or play a game:</b></p><div class="tools-grid">' + [['match', '🧩', 'Matching', 'Pair each card with its answer'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'], ['isle', '🏝️', 'Treasure Island', 'Answer for shovels, dig for treasure'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100']].map(function (m) {
+    return '<button class="tool-tile" onclick="fgStart(\'' + m[0] + '\')"><span class="ti">' + m[1] + '</span><b>' + m[2] + '</b><span class="small">' + m[3] + '</span></button>'; }).join('') + '</div>';
 }
 
 /* 📋 Project helper: directions + rubric (pasted, or read from a PDF on this Chromebook) → a dated plan, on the Tests list */
