@@ -36,6 +36,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
   var ASL = 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec';
   var TC = 'https:' + '//script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec';
   var SAYIT = 'https:' + '//colleenelyse.github.io/study-hall-sayit/';
+  var SH = function (id) { return 'https:' + '//docs.google.com/spreadsheets/d/' + id + '/edit'; };
   var ON = /(^|\.)asl\.cool$/.test(location.hostname), SITE = ON ? '/' : '../';
   var GROUPS = [
     ['Every day', [
@@ -53,6 +54,18 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
       ['🗂️', 'Testing Center demo: coordinator hub', 'Made-up students; nothing is saved.', SITE + 'testing-center/demo.html?as=coord'],
       ['🧑‍🏫', 'Testing Center demo: teacher view', '', SITE + 'testing-center/demo.html?as=teacher'],
       ['🎒', 'Testing Center demo: student view', '', SITE + 'testing-center/demo.html?as=student']
+    ]],
+    ['My Google Sheets', [          // 2026-10-28 Colleen: "links to all the google sheets i use"; each opens in the account that owns it
+      ['📗', 'Resource Grade Check-In', 'Your working copy, the one you use. School account.', SH('1CdvKWrWgFpWiUPLzcoT7SYY3oT-5_oBWh63a7A6q2_g')],
+      ['📄', 'Resource Check-In: master template', 'The copy other teachers get. Keep its data tabs empty. School account.', SH('1WU4RGrF2-8yA13kAxJKjjMWFT6U4NMhZZPTJ72ywKOA')],
+      ['🧪', 'Testing Center sheet', 'School account.', SH('1wMGPhEEMLXQbYtOfMM4qLUvOLYVn9l0qOitXX8hUaa0')],
+      ['🚪', 'Hall Pass Kiosk: teacher template', 'The copy other teachers make.', SH('1rcyfhYnKIBjtcLud6nBlPPcGnAtTu-VtyACkMY_X0TE')],
+      ['✋', 'TpT: ASL Spellbound', 'Selling account (jaqjoeyboutique).', SH('1CCssx__hY-n5ck04LPDClzj7_GYSov5EVh3c7dAEu1E')],
+      ['📷', 'TpT: ASL Spellbound Plus', 'Selling account.', SH('1hjRFwz2LYZHntmtw7QBaYD6KSok8UVTNcL0OF8Zt4pU')],
+      ['🔟', 'TpT: ASL Numberwise', 'Selling account.', SH('1Ey8KGJprufWM3MMHg-erZTD6k3MMuJL4BerEfcH6mOQ')],
+      ['🔢', 'TpT: ASL Numberwise Plus', 'Selling account.', SH('1eW8yOZd7UPdmEF_vKmkolT8kIFcVqd-7cbZ2fnlwZOw')],
+      ['📦', 'TpT: Spellbound & Numberwise', 'Selling account.', SH('1s4pODOYavenx6XjheF5azZ4zg0cLSUQZwIleH2IRGFI')],
+      ['🌟', 'TpT: Everything edition', 'Selling account.', SH('15RUNtXCrHNlgRMX6zR3Yuyd0Cbgh_Gq8rFo6DKU196w')]
     ]],
     ['Projector', [
       ['📽️', 'Projector (with Freeze)', 'Best opened from the teacher view: 🧰 Tools > 📽️ Projector, so Freeze works from your monitor.', KIOSK + '?view=teacher'],
