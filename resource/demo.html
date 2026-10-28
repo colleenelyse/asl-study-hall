@@ -525,7 +525,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.83'
+var VERSION = '2.84'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -7745,8 +7745,8 @@ function toolList() {          // 2.56: [key, icon, name, line, group]: 'work' =
   return l.filter(function (x) { return !(x[0] === 'project' && !B.planner) && !(x[0] === 'date' && !F('tests')) && !(x[0] === 'ixl' && !B.ixlOn) && !(x[0] === 'hallpass' && !B.hallPass); });
 }
 // 2.81: 🏠 Home = Today + My tools on one page: the check-in line, ▶ Next up, 📋 What's due (add homework right there),
-// ❓ questions, my most-used tools (the rest folded), then My stuff (only what needs a look; the rest folded).
-var CK_EARLY = false, TOOLS_ALL = false, STUFF_ALL = false;
+// ❓ questions, every tool (most-used first; 2.84), then My stuff (only what needs a look; the rest folded).
+var CK_EARLY = false, STUFF_ALL = false;
 function drawTools() {
   if (AS === null && !AS_BUSY) { AS_BUSY = true; call('api_assignments').then(function (r) { AS = r; AS_BUSY = false; if (VIEW === 'tools') drawTools(); }).catch(function () { AS = { list: [], said: [] }; AS_BUSY = false; }); }
   if (B.ixlOn && IXL === null) { IXL = false; ixlLoad(); }
@@ -7802,11 +7802,8 @@ function homeTools() {
   var u = toolUses(), r = function (k) { var i = TOOL_RANK.indexOf(k); return i < 0 ? 50 : i; };
   return toolList().filter(function (x) { return x[0] !== 'tracker' && x[0] !== 'ask'; }).sort(function (a, b) { return ((u[b[0]] || 0) - (u[a[0]] || 0)) || (r(a[0]) - r(b[0])); });
 }
-function homeToolsHtml() {
-  var t = homeTools(), show = TOOLS_ALL ? t : t.slice(0, 6);
-  if (TOOL && !TOOLS_ALL && show.every(function (x) { return x[0] !== TOOL; })) show = show.concat(t.filter(function (x) { return x[0] === TOOL; }));
-  return '<h3 class="tools-h">🧰 My tools</h3><div class="tools-grid home-tools">' + show.map(function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b></button>'; }).join('') + '</div>' +
-    (t.length > 6 ? '<p style="margin:-6px 0 12px"><a href="#" onclick="TOOLS_ALL=!TOOLS_ALL;drawTools();return false">' + (TOOLS_ALL ? '▲ Fewer tools' : '▼ More tools (' + (t.length - 6) + ')') + '</a></p>' : '');
+function homeToolsHtml() {          // 2.84: every tool always shows (most-used first); no More tools fold
+  return '<h3 class="tools-h">🧰 My tools</h3><div class="tools-grid home-tools">' + homeTools().map(function (x) { return '<button class="tool-tile' + (TOOL === x[0] ? ' on' : '') + '" onclick="toolOpen(\'' + x[0] + '\')"><span class="ti">' + x[1] + '</span><b>' + x[2] + '</b></button>'; }).join('') + '</div>';
 }
 function homeStuff() {          // My stuff: tiles that need a look show; the rest fold
   var all = stuffTiles([]), hid = pagePref('hide') || [];
