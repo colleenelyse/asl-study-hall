@@ -301,7 +301,9 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .rn b { font-size: 22px; }
 .rn > div.hot { background: var(--warn-soft); border-color: var(--warn); }
 .tdy-help { display: block; background: var(--warn-soft); border-radius: 8px; padding: 2px 8px; font-size: 12px; margin-top: 3px; max-width: 260px; line-height: 1.35; }
-#hpDock { position: fixed; right: 14px; bottom: 14px; z-index: 40; }
+#hpDock { position: fixed; right: 14px; bottom: 14px; z-index: 9500; }          /* 2.88: above every pop-up and gate screen (birthday is 9000), so a pass is always one tap away */
+#hpModal { z-index: 9600; }
+body:has(#bellBox) #hpDock { right: 268px; } body:has(#bellBox.small) #hpDock { right: 70px; } body.quickmode #hpDock { right: 14px; }          /* beside the bell clock, not on it */
 .hp-dock { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 4px; box-shadow: 0 4px 14px rgba(15, 20, 35, .22); }
 .hp-dock.out { background: var(--warn-soft); border-color: var(--warn); }
 .hp-dock-main { border: 0; background: transparent; color: var(--ink); font: inherit; font-weight: 600; padding: 6px 10px; cursor: pointer; border-radius: 999px; }
@@ -356,7 +358,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .paste-how{margin:6px 0 8px;padding-left:22px;font-size:14px}.paste-how li{margin:2px 0}kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--card);font:600 12px/1.4 inherit;text-align:center}
 .nd-head{margin:6px 0 4px;padding:10px 12px;border-radius:10px;background:var(--brand-soft);border:1px solid var(--brand);font-size:15px;line-height:1.45}
 .qs-quick{border:2px solid var(--brand);margin:0 0 12px}.qs-cls{margin:6px 0 2px}.qs-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)}.qs-check{width:30px;height:30px;border-radius:50%;border:2px solid var(--up);background:var(--card);color:var(--up);font-weight:800;cursor:pointer;flex:none}.qs-check:hover{background:var(--up);color:#fff}
-body.quickmode header.top nav,body.quickmode #lookBtn,body.quickmode #bellBox,body.quickmode #hpDock{display:none!important}body.quickmode main,body.quickmode #main{max-width:520px;margin:0 auto;padding:10px 12px}
+body.quickmode header.top nav,body.quickmode #lookBtn,body.quickmode #bellBox{display:none!important}body.quickmode main,body.quickmode #main{max-width:520px;margin:0 auto;padding:10px 12px}
 .qk-top{display:flex;align-items:baseline;justify-content:space-between;margin:6px 2px 10px}.qk-hi{font-size:26px;font-weight:800}.qk-date{font-size:14px;opacity:.7}.qk-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:0 0 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}.qk-home{border:2px solid var(--brand);background:var(--brand-soft)}
 .qk-h{font-size:19px;font-weight:800;margin:0 0 8px}.qk-sub{font-size:13px;opacity:.75}.qk-in{display:block;width:100%;font-size:17px;padding:12px;border-radius:12px;margin:6px 0;box-sizing:border-box}.qk-btn{display:block;width:100%;font-size:18px;font-weight:700;padding:13px;border-radius:14px;border:0;background:var(--brand);color:var(--onbrand,#fff);margin-top:8px;cursor:pointer}.qk-btn.ghost{background:transparent;color:var(--brand);border:2px solid var(--brand)}
 .qk-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}.qk-chip{font-size:15px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer}.qk-chip.on{background:var(--brand);color:var(--onbrand,#fff);border-color:var(--brand)}
@@ -525,7 +527,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.86'
+var VERSION = '2.88'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -2967,6 +2969,21 @@ function api_passHistory(email) {
   var set = hpSet_(), f = stuFind_(email), wk = hpWeek_(email);
   var recent = rows_('Hall passes').filter(function (r) { return low_(r[1]) === email; }).slice(-10).reverse().map(function (r) { return { at: hpMs_(r[4]), back: hpMs_(r[5]), place: String(r[3] || ''), how: String(r[7] || ''), note: String(r[9] || '') }; });
   return { ok: true, week: wk.week, lastWeek: wk.lastWeek, limits: { trips: set.trips, minutes: set.minutes }, recent: recent, escort: f.i >= 0 && /^y/i.test(String(f.rows[f.i][SC.escort] || '')) };
+}
+// 2.88: the 🚻 Hall passes tab: everyone's trips today (newest first) and this week's totals, most minutes first
+function api_passPage() {
+  teacherOnly_(); if (!hallPassOn_()) return null;
+  var set = hpSet_(), t = today_(), wk = weekOf_(t), now = Date.now(), per = {}, today = [];
+  rows_('Hall passes').forEach(function (r) {
+    var d = day_(r[0]), email = low_(r[1]), out = hpMs_(r[4]), back = hpMs_(r[5]), how = String(r[7] || '');
+    if (d === t) today.push({ email: email, name: String(r[2] || ''), place: String(r[3] || ''), at: out, back: back, how: how, note: String(r[9] || '') });
+    if (d < wk || how === 'Sent for them') return;
+    var w = per[email] || (per[email] = { email: email, name: String(r[2] || '') || hpName_(email), trips: 0, minutes: 0 });
+    w.trips++; w.minutes += Math.max(0, ((back || (d === t ? now : out)) - out) / 60000);
+  });
+  var week = Object.keys(per).map(function (k) { var w = per[k]; w.minutes = Math.round(w.minutes); w.over = w.minutes > set.minutes || w.trips >= set.trips; return w; })
+    .sort(function (a, b) { return b.minutes - a.minutes || b.trips - a.trips; });
+  return { today: today.sort(function (a, b) { return b.at - a.at; }), week: week, limits: { trips: set.trips, minutes: set.minutes } };
 }
 function api_passEscort(email, on) {
   teacherOnly_(); email = low_(email);
@@ -6170,11 +6187,12 @@ call('api_boot').then(function (b) {
   else if (b.cm) { MODE = 'cm'; VIEW = 'cm'; }          // a case manager: their students' reports
   if (QUICK_PAGE && MODE === 'student') { document.body.classList.add('quickmode'); if (!gate()) VIEW = 'quick'; }          // 2.66: 📱 the phone page
   go(VIEW);
+  try { hpButton(); } catch (e) {}          // 2.88: the hall pass comes first, on every screen (first visit, required check-in, the phone page)
   if (TOUR_ON && MODE === 'student') { setTimeout(tourStart, 300); return; }          // 2.68: the screen walkthrough (practice copy)
   if (b.teacher && b.welcome) welcomeOpen();          // the first time a teacher opens the app
   bellBox();
-  if (VIEW === 'quick') return;          // the phone page: no hall pass, celebrations or boards
-  bdayMaybe(); madeUpMaybe(); hpButton(); hpBoardStart(); tapBoardStart();
+  if (VIEW === 'quick') return;          // the phone page: no celebrations or boards
+  bdayMaybe(); madeUpMaybe(); hpBoardStart(); tapBoardStart();
 }).catch(function (e) { $('main').innerHTML = '<div class="card empty">' + esc(e.message || e) + '</div>'; });
 
 /* ---------- 🚻 Hall pass (2.52, Colleen's own copy only): the room's passes from the Chromebook, kept in this app ----------
@@ -6236,7 +6254,7 @@ function hpBody() {
       '<div class="hp-time" id="hpTime">' + hpMin(m.since) + '</div><p class="small">Your Chromebook keeps working. The timer stays in the corner. Tap <b>I’m back</b> there when you return.</p>' +
       '<button class="btn primary big" onclick="hpBack()">✅ I’m back</button>';
   }
-  if (B.tapIn && !(D.taps || []).length) return '<div style="text-align:center;padding:8px 0"><p style="margin:0 0 10px"><b>Tap in first, then take a pass.</b></p><button class="btn primary big" onclick="hpClose();tapIn()">📍 I’m here</button></div>';
+  if (B.tapIn && !(D.taps || []).length) return '<div style="text-align:center;padding:8px 0"><p style="margin:0 0 10px"><b>Tap in first, then take a pass.</b></p><button class="btn primary big" onclick="tapIn(1)">📍 I’m here</button></div>';
   if (HP.restricted) return '<div class="hp-red"><b>🚫 You need an adult to walk with you.</b><p style="margin:4px 0 0">Ask your teacher.</p></div>';
   if (HPX.offer && HP.offer && HP.myLine) {          // waited long enough behind a pass that is late
     return hpHook() + '<div class="hp-red"><h3 style="margin:0 0 6px">⏰ ' + esc(HP.offer.name) + ' has been gone ' + hpMins(HP.offer.since) + '</h3><p style="margin:0">You’ve waited ' + hpMins(HP.myLine.since) + '. That’s not on you. You can go now on a paper pass, or keep waiting.</p></div>' +
@@ -6335,6 +6353,28 @@ function hpLateAlert() {
     '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="hpPaperFor(\'' + esc(o.nextEmail) + '\')">🧾 Let ' + esc(o.next) + ' go on a paper pass</button><button class="btn" onclick="$(\'hpAlert\').remove()">OK</button></div></div>';
   document.body.appendChild(el); hpChime();
 }
+// 2.88: the 🚻 Hall passes tab (teacher): Out now and the line, today's trips, this week's totals, and a shortcut to the settings
+var HPP = null;
+function drawPasses() {
+  hpBoardStart();
+  var h = '<div class="row"><h1 class="grow">🚻 Hall passes</h1><button class="btn small" onclick="SETS_JUMP=\'Hall passes\';go(\'settings\')">⚙️ Hall pass settings</button></div>' +
+    '<p class="sub">Who is out right now, today’s trips and this week’s totals. Click a name to open that student.</p><div id="hpBoard">' + hpBoardHtml() + '</div><div id="hpPage"><div class="loading">Loading today’s trips…</div></div>';
+  $('main').innerHTML = h;
+  call('api_passPage').then(function (r) { HPP = r; var el = $('hpPage'); if (el && VIEW === 'passes') el.innerHTML = hpPageHtml(); }).catch(oops);
+}
+function hpPageHtml() {
+  var r = HPP; if (!r) return '';
+  var nm = function (x) { return '<a href="#" onclick="openStudent(\'' + esc(x.email) + '\');return false"><b>' + esc(x.name) + '</b></a>'; };
+  var h = '<div class="card"><h2>📋 Today’s trips' + (r.today.length ? ' <span class="badge">' + r.today.length + '</span>' : '') + '</h2>' + (r.today.length ? '<table><tbody>' + r.today.map(function (t) {
+      var mins = t.back ? Math.round((t.back - t.at) / 60000) : null;
+      return '<tr><td style="width:90px">' + hpClock(t.at) + '</td><td>' + nm(t) + '</td><td>' + esc(t.place) + '<small>' + [t.how === 'Pass' ? 'Pass from the hook' : t.how, t.note].filter(Boolean).map(esc).join(' · ') + '</small></td>' +
+        '<td style="white-space:nowrap">' + (mins == null ? '<span class="badge warn">out now</span>' : mins + ' min') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<p class="small" style="margin:0">No trips yet today.</p>') + '</div>';
+  h += '<div class="card"><h2>📅 This week</h2><p class="small" style="margin:0 0 6px">Limit: ' + r.limits.trips + ' trips or ' + r.limits.minutes + ' minutes a week (passes sent for them don’t count).</p>' + (r.week.length ? '<table><tbody>' + r.week.map(function (w) {
+      return '<tr><td>' + nm(w) + '</td><td>' + w.trips + ' trip' + (w.trips === 1 ? '' : 's') + '</td><td>about ' + w.minutes + ' min</td><td>' + (w.over ? '<span class="badge warn">over the weekly limit</span>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '<p class="small" style="margin:0">No trips yet this week.</p>') + '</div>';
+  return h;
+}
 function hpHistLoad() {
   var email = TS_EMAIL;
   call('api_passHistory', email).then(function (r) {
@@ -6362,7 +6402,9 @@ function tapCard() {
     '<p class="small" style="margin:8px 0 0">Tap in within the first 5 minutes of class, then do Today.</p></div>';
 }
 function tapTime(hm) { var m = /^(\d\d):(\d\d)/.exec(hm || ''); if (!m) return hm || ''; var h = +m[1]; return (h % 12 || 12) + ':' + m[2] + (h < 12 ? ' AM' : ' PM'); }
-function tapIn() { call('api_tapIn').then(function (r) { D.taps = r; var t = r[0]; toast(t && t.status === 'Late' ? '📍 Checked in (late)' : '📍 You’re checked in'); if (VIEW === 'checkin') drawCheckin(); else go('checkin'); }).catch(oops); }
+function tapIn(pass) {          // 2.88: pass = tapped in from the hall pass, so stay on this screen and go straight on to the pass
+  call('api_tapIn').then(function (r) { D.taps = r; var t = r[0]; toast(t && t.status === 'Late' ? '📍 Checked in (late)' : '📍 You’re checked in'); if (VIEW === 'checkin') drawCheckin(); else if (!pass) go('checkin'); if (pass) hpOpen(); }).catch(oops);
+}
 var TAPB = null, TAPB_POLL = null;
 function tapBoardStart() {
   if (!B || !B.tapIn || !B.teacher || TAPB_POLL) return;
@@ -6423,7 +6465,7 @@ function go(v) {
 
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
-    ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], B.ai ? ['breakdown', '✨ AI Breakdown'] : null, ['settings', '⚙️ Settings'], ['me', 'Student view']]
+    ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], B.hallPass ? ['passes', '🚻 Hall passes'] : null, F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], B.ai ? ['breakdown', '✨ AI Breakdown'] : null, ['settings', '⚙️ Settings'], ['me', 'Student view']]
     : (gate() ? [] : [F('tools') ? ['tools', '🏠 Home'] : ['checkin', 'Today'], ['myiep', '📘 My IEP'], F('focus') && !F('tools') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') && !F('tools') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   items = items.filter(Boolean);
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
@@ -6451,7 +6493,7 @@ function navTo(v) {
 function draw() {
   var f = {
     welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tools: drawTools, quick: drawQuick, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
-    myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent, breakdown: drawBreakdown
+    myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent, breakdown: drawBreakdown, passes: drawPasses
   }[VIEW];
   f();
 }
@@ -8600,8 +8642,9 @@ function bkHtml() {
     '<h3 style="margin:14px 0 6px">🗓️ ' + (tch ? 'The' : 'Your') + ' steps</h3><p class="small" style="margin:0 0 4px">Change any step or date. ✕ takes a step out.</p>' + r.steps.map(function (x, k) {
       return '<div class="dec-li" style="display:block"><div class="row" style="gap:6px"><input type="text" class="grow" maxlength="150" value="' + esc(x.step) + '" oninput="BK.res.steps[' + k + '].step=this.value"><input type="date" style="max-width:160px" value="' + esc(x.due) + '" max="' + esc(BK.date) + '" onchange="BK.res.steps[' + k + '].due=this.value"><button class="btn link danger" onclick="BK.res.steps.splice(' + k + ',1);bkDraw()">✕</button></div>' +
         (x.rubric || x.check ? '<div class="small" style="display:block;margin:2px 0 0 4px">' + (x.rubric ? '🎯 Points for: <b>' + esc(x.rubric) + '</b>' : '') + (x.rubric && x.check ? ' · ' : '') + (x.check ? '✓ Done well when: ' + esc(x.check) : '') + '</div>' : '') + '</div>'; }).join('') +
-    '<div class="row" style="margin-top:10px">' + (bkSaves() ? '<button class="btn primary" onclick="bkSave()">Save to my list</button>' : '') + '<button class="btn" onclick="bkCopy()">📋 Copy the plan</button>' +
-    (bkSaves() ? '<span class="small">Saving puts it on Tests & reminders with a countdown, and you get a reminder before each step.</span>' : PREV ? '<span class="small">Preview: the student would see Save to my list here.</span>' : '') + '</div></div>';
+    '<div class="row" style="margin-top:10px">' + (bkSaves() ? '<button class="btn primary" onclick="bkSave()">Save to my list</button>' : '') + '<button class="btn" onclick="bkDoc()">📄 Save as a Google Doc</button><button class="btn" onclick="bkCopy()">📋 Copy the plan</button>' +
+    (bkSaves() ? '<span class="small">Saving puts it on Tests & reminders with a countdown, and you get a reminder before each step.</span>' : PREV ? '<span class="small">Preview: the student would see Save to my list here.</span>' : '') + '</div>' +
+    '<p class="small" style="margin:6px 0 0">📄 makes a Google Doc in ' + (tch ? 'your' : 'your own') + ' Google Drive (in a folder called <b>Assignment plans</b>) to look back at. The first time, Google asks you to <b>Allow</b>; then click 📄 again.</p></div>';
   return h;
 }
 function bkDraw() { if (VIEW === 'breakdown') drawBreakdown(); else toolDraw(); }
@@ -8621,6 +8664,21 @@ function bkPlanText() {
     '\n\nSteps:\n' + BK.res.steps.filter(function (x) { return x.step.trim(); }).map(function (x, k) { return (k + 1) + '. ' + fmtDay(x.due) + ': ' + x.step.trim() + (x.check ? '\n   Done well when: ' + x.check : ''); }).join('\n');
 }
 function bkCopy() { try { navigator.clipboard.writeText(bkPlanText()); toast('Copied. Paste it into a doc or an email.'); } catch (e) { alert('Select the plan and press Ctrl + C to copy it.'); } }
+// 2.87: 📄 Save as a Google Doc. The plan goes to the Doc Saver (dev/doc-saver, one copy for the whole school), which runs as the student,
+// so the Doc is made in THEIR Drive and nothing is kept anywhere else. Only the plan is sent: no name, email or grades.
+var BK_DOC_URL = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbwjoxunnns-Tt6dB7GWEyw49w_fZvS_at29bHl-F34ZxLWBhxrpMKbpSWI40l5wSVLp/exec';
+function bkDocPlan() {
+  return { what: BK.what, cls: BK.cls, due: BK.date, scored: BK.res.scored,
+    steps: BK.res.steps.filter(function (x) { return x.step.trim(); }).map(function (x) { return { step: x.step.trim(), due: x.due, rubric: x.rubric, check: x.check }; }) };
+}
+function bkDoc() {
+  if (!/googleusercontent\.com$/.test(location.hostname)) return alert('In the real app, this saves the plan as a Google Doc in your own Google Drive.');
+  var f = document.createElement('form'), i = document.createElement('input');
+  f.method = 'post'; f.action = BK_DOC_URL; f.target = '_blank'; i.type = 'hidden'; i.name = 'plan'; i.value = JSON.stringify(bkDocPlan());
+  f.appendChild(i); document.body.appendChild(f); f.submit(); document.body.removeChild(f);
+  toolLog('Assignment Breakdown', 'Saved as a Google Doc: ' + BK.what);
+  toast('Opening a new tab… The first time, click Allow, then click 📄 Save as a Google Doc again.');
+}
 function bkSave() {
   var steps = BK.res.steps.filter(function (x) { return x.step.trim(); }).map(function (x) { return { step: (x.step.trim() + (x.rubric && x.step.indexOf(x.rubric) < 0 ? ' (' + x.rubric + ')' : '')).slice(0, 150), due: x.due, done: false }; });
   var before = (D.tests || []).map(function (t) { return t.id; });
@@ -8630,7 +8688,7 @@ function bkSave() {
   }).catch(oops);
 }
 function bkReset() { if (!confirm('Clear this and start over?')) return; BK = { cls: '', what: '', date: '', text: '', spread: '', ok: false, busy: false, res: null }; bkDraw(); }
-function drawBreakdown() { $('main').innerHTML = '<h1>✨ AI Assignment Breakdown</h1><p class="sub">The students’ AI tool, to try with any assignment. Nothing here is saved.</p><div class="card">' + bkHtml() + '</div>'; }
+function drawBreakdown() { $('main').innerHTML = '<h1>✨ AI Assignment Breakdown</h1><p class="sub">The students’ AI tool, to try with any assignment. Nothing here is saved, unless you click 📄 to make a Google Doc in your own Drive.</p><div class="card">' + bkHtml() + '</div>'; }
 
 // 🔍 Assignment Decoder: reads the directions and rubric (no AI): what to make, what to include, how it's graded, what to ask
 var DEC_PRODUCTS = ['research paper', 'lab report', 'essay', 'presentation', 'slideshow', 'slide show', 'poster', 'infographic', 'brochure', 'video', 'podcast', 'speech', 'diorama', 'model', 'timeline', 'letter', 'poem', 'short story', 'website', 'comic', 'journal', 'portfolio', 'report', 'paragraph', 'worksheet', 'project'];
@@ -10461,7 +10519,7 @@ function faPrint() {
     '<style>table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #d9dee8;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f1f4fa}small{display:block;color:#5b6476}.faslot{break-inside:avoid;margin:0 0 18px}.faslot h3{font-size:15px;margin:0 0 4px}.chip{display:inline-block;border:1px solid #d9dee8;border-radius:12px;padding:1px 8px;margin:0 4px 4px 0;font-size:12px}.row{display:flex;gap:8px}.grow{flex:1}</style>' + (FA_BY === 'period' ? faPeriods(TD.finalsAccoms || [], false) : faTable(TD.finalsAccoms || [], false)), 'Finals accommodations');
 }
 /* ---------- teacher: the app's Settings page (each teacher decides what students do and see) ---------- */
-var SETS = null, SET_CHG = {};
+var SETS = null, SET_CHG = {}, SETS_JUMP = '';          // 2.88: SETS_JUMP = a settings group to scroll to (the Hall passes tab's ⚙️ button)
 var SET_LABELS = {
   'Students: missing assignments': 'Enter missing assignments for each class',
   'Students: explain low grades': 'Explain grades under the Low grade line (required)',
@@ -10596,7 +10654,7 @@ function drawSettings() {
     (tl ? '<div class="card" style="border-color:var(--brand)"><b>👩‍🏫 Who gets the teacher dashboard</b><div class="small" style="display:block;margin-top:4px">' + [tl.owner + ' (owner of this sheet)'].concat(tl.others).filter(Boolean).map(esc).join('<br>') + '</div><p class="small" style="margin:6px 0 0">To add a teacher, type their school email in <b>Teacher emails</b> (under Class setup, below), press Save, and have them reload. @lths.net and @d204.lths.net both work. Each copy of the sheet has its own list and its own link: add them on the copy whose link they open.</p></div>' : '') + stagesCard() +
     '<div class="card" style="border-color:var(--brand)"><div class="row"><div class="grow"><h2 style="margin:0">🤖 IEP goal helper</h2><p class="small" style="margin:4px 0 0">Pulls every IEP goal on your sheet. Pick goals, and it writes each one in student-friendly words, plus what’s unique to that goal: its area, whether it’s measured in ' + esc(B.dayClass || 'resource') + ', check-in sentences students can tap, what counts as evidence, and a way to take data. It all happens in the app: nothing is sent to AI.</p></div><button class="btn primary" onclick="ghOpen()">Open the goal helper</button></div></div>';
   groups.forEach(function (g) {
-    h += '<div class="card set-group"><h2>' + esc(g) + '</h2>' + SETS.map(function (x, k) {
+    h += '<div class="card set-group" data-g="' + esc(g) + '"><h2>' + esc(g) + '</h2>' + SETS.map(function (x, k) {
       if (x.group !== g) return '';
       var v = x.key in SET_CHG ? SET_CHG[x.key] : x.value, label = SET_LABELS[x.key] || x.key;
       var ctl = x.kind === 'choice'
@@ -10612,6 +10670,7 @@ function drawSettings() {
   h += '<div class="card set-group" id="titlesCard"><h2>Teacher titles</h2><p class="hint" style="margin:-4px 0 8px">Students see “Ms. Orrico” instead of “Annette Orrico.” Pick each teacher’s title once (the app can’t tell from a name). Teachers come from your students’ schedules.</p><div id="titlesList"><p class="small">Loading teachers…</p></div></div>';
   h += '<div class="savebar"><span class="status" id="status"></span><button class="btn primary" id="setSave">Save settings</button></div>';
   $('main').innerHTML = h;
+  if (SETS_JUMP) { var sj = document.querySelector('.set-group[data-g="' + SETS_JUMP + '"]'); SETS_JUMP = ''; if (sj) sj.scrollIntoView({ block: 'start' }); }
   call('api_teacherTitles').then(drawTitles).catch(function () {});
   $('setSave').onclick = function () {
     if (!Object.keys(SET_CHG).length) return toast('Nothing changed');
