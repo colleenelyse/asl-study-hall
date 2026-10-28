@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.183';
+var VERSION = '4.184';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -5746,8 +5746,8 @@ function api_fsStats(auth, cls) {
    kind are compared. A student sees the averages and their own numbers, never anyone else's. */
 var FS_CMP_MIN = 0, FS_CMP_SMALL = 5;      // 4.88: everyone in the level counts (was 3 rounds); see fsCmpGroup_      // rounds needed to be in the comparison; fewer students than this = "based on few students"
 var FS_CMP = {      // [measure, stats field, counts toward Overall]
-  letters: [['top', 'top', 1], ['pct', 'pct', 1], ['perMin', 'perMin', 1], ['speed', 'speed', 0], ['minutes', 'minutes', 0]],
-  numbers: [['pct', 'nPct', 1], ['perMin', 'nPerMin', 1], ['speed', 'nSpeed', 0], ['minutes', 'nMinutes', 0]] };
+  letters: [['top', 'top', 1], ['pct', 'pct', 1], ['perMin', 'perMin', 1], ['minutes', 'minutes', 0]],
+  numbers: [['pct', 'nPct', 1], ['perMin', 'nPerMin', 1], ['minutes', 'nMinutes', 0]] };      /* 4.184 (Colleen: "what they choose doesn't matter. what they demonstrate they can actually do is what matters"): the speed setting a student picks is no longer on reports */
 /** A student's program level: the class's Course on the Classes tab, else a Level that reads like "ASL 2", else "ASL 2" taken from the class name. */
 function fsLevelOf_(st, cls, level) {
   var c = courseOf_(st, cls); if (c) return c;
@@ -6371,7 +6371,7 @@ var RS_FS_NAMES = { letters: { top: 'Top Speed ladder speed', pct: '% right', pe
   numbers: { pct: '% right', perMin: 'Numbers right per minute', speed: 'Average speed (1–10)', minutes: 'Minutes practiced' } };
 var RS_FS_AREA = { top: 'speed', pct: 'accuracy', perMin: 'words a minute', minutes: 'practice time' };
 var RS_TIME = { app: 'All of ASL Study (every activity)', fs: 'Fingerspelling games', num: 'Number games' };
-var RS_SPEEDS = ['Beginner', 'Intermediate', 'Advanced', 'Deaf'];
+function rsComfName_(d) { var c = d && d.spd && d.spd.read; return !c ? 'Beginner' : c >= 8 ? 'Deaf' : c >= 4 ? 'Advanced' : c >= 2 ? 'Intermediate' : 'Beginner'; }
 function rsEsc_(x) { return String(x === null || x === undefined ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function rsBand_(p) { return p < 20 ? 0 : p < 40 ? 1 : p < 75 ? 2 : 3; }
 function rsOrd_(x) { return x + (x % 100 >= 11 && x % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][x % 10] || 'th'); }
@@ -6497,7 +6497,7 @@ function rsFsWords_(d, name) {
   if (worst && worst !== best) sum += ' and is ' + rsStanding_(worst.p) + ' for ' + area(worst.k) + '.';
   else if (sum) sum += '.';
   if (mins) sum += ' ' + first + (mins.p >= 75 ? ' practices more than most of the class.' : mins.p < 25 ? ' has practiced less than most of the class so far.' : ' practices about as much as the class.');
-  var sm = d.measures.filter(function (m) { return m.k === 'speed'; })[0], sp = Math.round(Math.max(0, ((sm && sm.me) || 1) - 1) / 9 * 3), slower = RS_SPEEDS[Math.max(0, sp - 1)];
+  var slower = rsComfName_(d);      /* 4.184: practice at the speed the student has shown they can read (comfortable speed), not the speed they picked */
   var next = '';
   if (!worst || worst.p >= 75) next = 'keep it up. ' + (num ? 'Try the <b>Numbers quiz</b> with a bigger range' : 'Try <b>Speed ladder</b> again and pass one more level, or try <b>Silent Letters &amp; Strange Spellings</b>') + ' for a challenge.';
   else if (worst.k === 'pct') next = 'accuracy is the area to grow. ' + (num ? numFocus_(d, slower) : 'Practice <b>Read the word</b> at ' + slower + ' speed and watch a word again before you answer') + (worst.me !== null && worst.me >= 85 ? ' to keep % right above 85% while you speed up.' : ' to bring % right above 85%.');
