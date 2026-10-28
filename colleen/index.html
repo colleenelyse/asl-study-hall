@@ -75,14 +75,14 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
       ['🐣', 'Class Sidekick (Pip)', 'Quiet-time buddy for the projector. Open it from ASL Study for rewards.', SAYIT + 'class.html'],
       ['🗣️', 'Say It', 'Big words on the screen.', SAYIT]
     ]],
-    ['Class tools', [
-      ['⏱️', 'Timer', '', KIOSK + '?view=tools&tool=timer'],
-      ['🎲', 'Dice', '', KIOSK + '?view=tools&tool=dice'],
-      ['🎰', 'Name picker', '', KIOSK + '?view=seating&tool=picker'],
-      ['🔢', 'Random number', '', KIOSK + '?view=tools&tool=rnum'],
-      ['🏆', 'Scoreboard', '', KIOSK + '?view=tools&tool=score'],
-      ['🔊', 'Noise meter', '', KIOSK + '?view=tools&tool=noise'],
-      ['🎫', 'Hall pass board', '', KIOSK + '?view=tools&tool=passboard']
+    ['Class tools', [          // 2026-10-28: none of these opens the kiosk any more (Google wouldn't open it beside her school account): asl.cool/tools copies, the noise page, and ASL Study's picker and pass board
+      ['⏱️', 'Timer', '', SITE + 'tools/?tool=timer'],
+      ['🎲', 'Dice', '', SITE + 'tools/?tool=dice'],
+      ['🎰', 'Name picker', 'In ASL Study, with your seating-chart classes.', ASL + '?view=picker'],
+      ['🔢', 'Random number', '', SITE + 'tools/?tool=rnum'],
+      ['🏆', 'Scoreboard', '', SITE + 'tools/?tool=score'],
+      ['🔊', 'Noise meter', '', SITE + 'projector/noise.html'],
+      ['🎫', 'Hall pass board', 'In ASL Study: who is out, from your kiosk.', ASL + '?view=passboard']
     ]],
     ['ASL practice', [
       ['🤟', 'Fingerspelling', 'Read fingerspelling from the 3D hand.', SITE + 'fingerspelling/'],
@@ -143,7 +143,7 @@ button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px 20
         var inc = abs.indexOf(KIOSK) === 0 || /\/wait(-student)?\/$/.test(abs);      /* her personal-account apps: Google can't open them while she is also signed in to school (2026-10-28) */
         return '<a class="q" href="' + esc(abs) + '" target="_blank" rel="noopener"><span class="i" aria-hidden="true">' + t[0] + '</span><span><b>' + esc(t[1]) + '</b>' + (t[2] ? '<small>' + esc(t[2]) + '</small>' : '') + '</span><button class="cp" type="button" data-u="' + esc(abs) + '" title="Copy this link (for the Stream Deck)">Copy</button>' + (inc ? '<button class="inc" type="button" data-u="' + esc(abs) + '" title="Copies the link. Press ⌘ Shift N for an incognito window and paste it there.">🕶️ Incognito</button>' : '<button class="po" type="button" data-pop="' + esc(abs) + '" data-small="' + (g[0] === 'Class tools' ? 1 : '') + '" title="Open in its own window you can drag to the projector screen">⧉ Pop out</button>') + '</a>';
       }).join('') + '</div>';
-    }).join('') + '<p class="tip"><b>🕶️ Incognito</b> marks your personal-account apps (the Kiosk and its tools, Wait…). Google can\u2019t open them while you\u2019re also signed in to your school account. Press 🕶️ Incognito to copy the link, press <b>⌘ Shift N</b>, paste and press Return. (Or right-click the card and choose <b>Open Link in Incognito Window</b>.) Everything else opens normally.</p><p class="tip"><b>⧉ Pop out</b> opens a tool in its own window: drag it onto the projector screen. Stream Deck: drag a <b>Website</b> action onto a key and paste a link from <b>Copy</b>. Each link opens straight to that page.</p>';
+    }).join('') + '<p class="tip"><b>🕶️ Incognito</b> marks your personal-account apps (the Kiosk pages and Wait…). Google can\u2019t open them while you\u2019re also signed in to your school account. Press 🕶️ Incognito to copy the link, press <b>⌘ Shift N</b>, paste and press Return. (Or right-click the card and choose <b>Open Link in Incognito Window</b>.) Everything else opens normally.</p><p class="tip"><b>⧉ Pop out</b> opens a tool in its own window: drag it onto the projector screen. Stream Deck: drag a <b>Website</b> action onto a key and paste a link from <b>Copy</b>. Each link opens straight to that page.</p>';
     box.onclick = function (e) {
       var po = e.target.closest('.po');
       if (po) {      /* its own small window (Colleen: open it on my monitor and slide it onto the projector screen) */
