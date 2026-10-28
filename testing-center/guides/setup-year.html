@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="Step by step: set up the LTHS Testing Center for the school year, for teachers, testing-location teachers, case managers and coordinators.">
+<title>Set up your year</title><link rel="icon" type="image/png" sizes="512x512" href="../../img/logo-512.png"><link rel="apple-touch-icon" href="../../img/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* One-page printable guide for the LTHS Testing Center. Same tokens as ../index.html (the tour). */
+:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #e9edf6; --ok: #1a7f4b;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); }
+.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1, h2 { font-family: var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: var(--brand); margin-bottom: 4px; }
+p { margin: 0; }
+a { color: var(--brand); }
+.mark { background: linear-gradient(transparent 55%, var(--mark) 55%); padding: 0 .1em; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.top a { font-size: .88rem; font-weight: 500; text-decoration: none; }
+.lead { color: var(--soft); margin: 8px 0 16px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.box.wide { grid-column: 1 / -1; }
+ol, ul { margin: 0; padding-left: 1.25em; }
+li { margin: 2px 0; }
+b.btn { font-weight: 600; background: var(--shot-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.tip { margin-top: 12px; font-size: .88rem; color: var(--soft); border-left: 3px solid var(--ok); padding-left: 10px; }
+.dot { display: inline-block; width: .7em; height: .7em; border-radius: 50%; vertical-align: -.05em; margin-right: 2px; }
+.foot { margin-top: 14px; font-size: .78rem; color: var(--soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+@page { size: letter; margin: .4in; }
+@media print {
+  :root, :root[data-theme="dark"] { --bg: #fff; --card: #fff; --ink: #000; --soft: #333; --line: #bbb; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #eef1f7; --ok: #1a7f4b; color-scheme: light; }
+  body { background: #fff; color: #000; font-size: 9.6pt; line-height: 1.36; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: none; padding: 0; }
+  h1 { font-size: 20pt; } h2 { font-size: 10.5pt; }
+  .lead { margin: 4px 0 8px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .box { padding: 6px 9px; border-radius: 8px; break-inside: avoid; }
+  .top { margin-bottom: 4px; } .top a, .noprint { display: none; }
+  .tip { margin-top: 7px; } .foot { margin-top: 7px; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="top"><span class="eyebrow">LTHS Testing Center &middot; every August</span><a href="./">&larr; All guides</a></div>
+<h1>Set up your Testing Center year</h1>
+<p class="lead">About ten minutes once a year, and the Testing Center runs most of the year without asking you: it has your codes, your rules and your usual formats for every student who tests. The first time you open the app after <b>August 1</b>, a <b class="btn">🗓️ Set up my year</b> window walks you through it, with last year&rsquo;s answers filled in.</p>
+<div class="grid">
+<div class="box wide"><h2>Before you start: your access-code doc</h2><ol><li>In the app, open <b class="btn">My classes</b> and click <b>Make my copy of the template</b> (or keep last year&rsquo;s doc).</li><li>Name it <b>Makeups and Retakes &ndash; your last name</b>.</li><li>For each class, fill in the table: <b>Test &middot; Original Test Code &middot; Retake Test Code &middot; Original Test Date &middot; Retake Deadline</b>. Put anything unusual about a test in a note under its name.</li><li>Fill in <b>Rules for all my tests</b> and <b>For the Testing Center</b> at the bottom.</li><li><b class="btn">Share</b> &rsaquo; add <b>testingcenter@d204.lths.net</b> as <b>Viewer</b>. Keep General access <b>Restricted</b>: never &ldquo;Anyone with the link&rdquo;, never students.</li></ol></div>
+<div class="box"><h2>1. Emails</h2><p>Choose how Testing Center emails reach you: <b>each one as it happens</b>, <b>one summary after school</b>, or <b>none</b>. Requests for missing test info always come right away.</p></div>
+<div class="box"><h2>2. My access-code doc</h2><p>Paste your doc&rsquo;s link. It&rsquo;s used for all your classes and kept from year to year. Only a Google Doc or Google Sheet works.</p></div>
+<div class="box"><h2>3. Rules for all my tests</h2><p>Tick what you allow on every test (your own calculator, the Testing Center&rsquo;s calculator, scratch paper, writing on the test, notes, open book) and anything the Testing Center should always know (&ldquo;Please monitor on Securly&rdquo;). One test can still be different: its testing form has <b class="btn">Change for this test</b>.</p></div>
+<div class="box"><h2>4. Paper or online?</h2><p>For each class, what your tests usually are, so the Testing Center can get ready before you fill anything in.</p></div>
+<div class="box"><h2>5. If your class is a testing location</h2><p>B.A.S.E., A.R.C., PSD Resource and Skills for Success classes are testing locations: your own students can test in your room during your class, and teachers can send you their test info and codes. Check the list; press <b class="btn">Not my room</b> if one is wrong. You&rsquo;ll run them from <b class="btn">My testing room</b>.</p></div>
+<div class="box"><h2>6. Case managers and support-class teachers</h2><p>Your caseload (from Infinite Campus flags) and the students in your support classes are on <b class="btn">My students&rsquo; testing</b>: what&rsquo;s coming up, what happened, who keeps missing, and tests waiting for them. Nothing to set.</p></div>
+<div class="box wide"><h2>During the year</h2><ul><li><b>Asking a student to take a test:</b> <b class="btn">＋ New test request</b> on My classes. Pick the student, the class and the test, then <b>Testing Center</b> (they&rsquo;re invited to book a time), their <b>support class</b>, <b>RIR</b> (any student), or a place they&rsquo;re listed for (Tapestry). No appointment time needed.</li><li><b>When a student books one of your tests:</b> you only hear from the app if something is missing (and then once, with a link to fill it in).</li><li><b>Change anything:</b> My classes &rsaquo; <b class="btn">🗓️ Set up my year</b> opens these steps again.</li></ul></div>
+<div class="box wide"><h2>Coordinators: the start of the year</h2><ol><li><b>Student list:</b> upload the new Infinite Campus export (see <a href="student-list.html">Upload a new student list</a>). Include the counselor and flag columns if you can.</li><li><b>Testing locations:</b> Settings &rsaquo; Testing locations &rsaquo; <b class="btn">Find classes</b>. Fill in who runs <b>RIR</b> (emails are fine) and add places like <b>Tapestry</b> with their students.</li><li><b>Counselors:</b> Settings &rsaquo; Reports &rsaquo; Counselors (only if the export doesn&rsquo;t have them).</li><li><b>Seats, periods, bell schedules and no-school days:</b> Settings &rsaquo; Seats &amp; periods, and the sheet&rsquo;s Bell Schedules and Calendar tabs.</li><li><b>Emails:</b> Switches &rsaquo; <b>Send emails</b> stays Off until you&rsquo;re ready to go live.</li></ol></div>
+</div>
+<p class="tip"><b>Second semester:</b> on January 1 the app switches to second-semester classes by itself. Nothing to do.</p>
+<div class="foot"><span>LTHS Testing Center &middot; sign in with your school Google account</span><span><a href="teachers.html">Teacher guide</a> &middot; <a href="../">Tour and demo</a></span></div>
+</main>
+</body>
+</html>
