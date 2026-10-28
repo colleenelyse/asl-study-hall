@@ -525,7 +525,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.84'
+var VERSION = '2.85'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -4988,8 +4988,8 @@ function planBasic_(text, days, due) {
   lines.forEach(function (l) {
     var pts = /(\d+)\s*(points?|pts?)\b|\/\s*\d+\s*$|\(\s*\d+\s*\)\s*$/i.exec(l);
     var cells = l.split(/\t+/);
-    if (level.test(l)) return;
-    if (pts || cells.length > 2) { add(rub, cells[0].replace(/[:\-–]\s*$/, '').replace(/\(?\s*\d+\s*(points?|pts?)\s*\)?/i, '').trim() + (pts && pts[1] ? ' (' + pts[1] + ' pts)' : '')); return; }
+    if (level.test(l) || /:$/.test(l)) return;          // 2.85: headings (“Your poster must include:”) aren't steps
+    if ((pts || cells.length > 2) && !/\b(due|date|deadline)\b/i.test(l)) { add(rub, cells[0].replace(/[:\-–]\s*$/, '').replace(/\(?\s*\d+\s*(points?|pts?)\s*\)?/i, '').trim() + (pts && pts[1] ? ' (' + pts[1] + ' pts)' : '')); return; }          // 2.85: “Due 11/9” is not a rubric row
     if (/^([\-\*•·▪◦○●■□➢➤→]|\(?[0-9]{1,2}[\.\)]\s|\(?[a-hA-H][\.\)]\s)/.test(l) || /\b(must|include|includes|including|need to|needs to|should|required|at least|minimum|cite|create|write|research|explain|describe|design|present|submit)\b/i.test(l)) add(req, l);
   });
   var steps = [{ step: 'Read the directions and rubric, and highlight everything you have to do' }];
@@ -8550,16 +8550,17 @@ function toolsTop() {
 var DEC_PRODUCTS = ['research paper', 'lab report', 'essay', 'presentation', 'slideshow', 'slide show', 'poster', 'infographic', 'brochure', 'video', 'podcast', 'speech', 'diorama', 'model', 'timeline', 'letter', 'poem', 'short story', 'website', 'comic', 'journal', 'portfolio', 'report', 'paragraph', 'worksheet', 'project'];
 function decodeText(t) {
   t = String(t || '').replace(/\r/g, ''); var low = t.toLowerCase(), lines = t.split('\n').map(function (l) { return l.replace(/\s+/g, ' ').trim(); }).filter(function (l) { return l.length > 2; });
-  var prod = ''; DEC_PRODUCTS.forEach(function (p) { if (!prod && low.indexOf(p) >= 0) prod = p; });
+  var prod = '', at = 1e9; DEC_PRODUCTS.forEach(function (p) { var i = low.search(new RegExp('\\b' + p + 's?\\b')); if (i >= 0 && p !== 'project' && (i < at || (i === at && p.length > prod.length))) { prod = p; at = i; } });          // 2.85: the one named first (a poster, not the presentation in its rubric)
+  if (!prod && /\bproject\b/.test(low)) prod = 'project';
   var size = [], re = /(\d+)\s*(?:-|–|to)?\s*(\d+)?\s*(pages?|words?|slides?|paragraphs?|sources?|citations?|minutes?|sentences?|images?|pictures?|examples?)\b/gi, m;
   while ((m = re.exec(t)) && size.length < 6) { var sz = m[1] + (m[2] ? '–' + m[2] : '') + ' ' + m[3].toLowerCase(); if (size.indexOf(sz) < 0) size.push(sz); }
   var PTS = /^(.*?)[\s:–—-]*\(?(\d{1,3})\s*(?:points?|pts?)\)?\s*$|^(.*?)\s*\/\s*(\d{1,3})\s*$|^(.*?)\s*\((\d{1,3})\)\s*$/i, LEVEL = /^(exceeds|meets|approaching|beginning|exemplary|proficient|developing|emerging|excellent|good|fair|poor|advanced|basic|below|total)\b/i;
   var rubric = [], include = [], seen = {};
   lines.forEach(function (l) {
     var pm = PTS.exec(l);
-    if (pm && !LEVEL.test(l)) { var name = (pm[1] || pm[3] || pm[5] || '').replace(/^[\-\*•·▪◦●■➢→\d.)\s]+/, '').replace(/[:–—-]+$/, '').trim(), pts = pm[2] || pm[4] || pm[6]; if (name && name.length < 80 && rubric.length < 15) rubric.push({ name: name, pts: pts }); return; }
+    if (pm && !LEVEL.test(l) && !/\b(due|date|deadline)\b/i.test(l)) { var name = (pm[1] || pm[3] || pm[5] || '').replace(/^[\-\*•·▪◦●■➢→\d.)\s]+/, '').replace(/[:–—-]+$/, '').trim(), pts = pm[2] || pm[4] || pm[6]; if (name && name.length < 80 && rubric.length < 15) rubric.push({ name: name, pts: pts }); return; }          // 2.85: “Due 11/9” is not a 9-point rubric row
     var bullet = /^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/.test(l), must = /\b(must|should|include|needs? to|required|be sure|at least|make sure|you will|remember to)\b/i.test(l);
-    if ((bullet || must) && l.length < 220) { var s = l.replace(/^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/, '').trim(), k = s.toLowerCase().slice(0, 50); if (s.length > 3 && !seen[k] && include.length < 20) { seen[k] = 1; include.push(s); } }
+    if ((bullet || must) && l.length < 220 && !/:$/.test(l)) { var s = l.replace(/^([\-\*•·▪◦●■➢→]|\(?\d{1,2}[.)]|\(?[a-h][.)])\s+/, '').trim(), k = s.toLowerCase().slice(0, 50); if (s.length > 3 && !seen[k] && include.length < 20) { seen[k] = 1; include.push(s); } }          // 2.85: “Your poster must include:” is a heading
   });
   var ask = [], VAGUE = /\b(appropriate|creative|creatively|neat|neatly|etc\.?|as needed|several|a few|TBD|to be determined|discussed in class|see me|your choice|optional|approximately)\b/i;
   lines.forEach(function (l) { var v = VAGUE.exec(l); if (v && ask.length < 5) { var q = 'What does “' + v[1] + '” mean here? (“' + (l.length > 70 ? l.slice(0, 67) + '…' : l) + '”)'; if (ask.indexOf(q) < 0) ask.push(q); } });
