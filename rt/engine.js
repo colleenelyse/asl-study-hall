@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.206';
+var VERSION = '4.207';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -671,7 +671,7 @@ var DEFAULTS = [
   ['Quiet minutes per reward', 5, 'Calm minutes for each reward: with 5, 23 calm minutes earn 4 for each student.'],
   ['Silent House minutes', 12, 'The Silent House: how many minutes a game lasts (5 to 20).'],
   ['Silent House typing locks', 'Yes', 'The Silent House: Yes includes the Fogged mirror lock, where students type the word from memory; No keeps every lock tap-only.'],
-  ['Lucky Claw coins per play', 3, 'Lucky Claw: students earn Claw Coins by answering questions in the game (1 for each right answer); this is how many one play costs.'],
+  ['Lucky Claw coins per play', 2, 'Lucky Claw: students earn Claw Coins by answering questions in the game (1 for each right answer); this is how many one play costs.'],
   ['Escape room minutes', 10, 'The Carnival After Dark (escape room): how many minutes students get to escape. Any number from 3 to 30, or Until done (no timer: the end screen shows how long it took).'],
   ['Escape room hand speed', 'Beginner', 'The Carnival After Dark (escape room): how fast the 3D hand signs. Beginner, Intermediate, Advanced or Deaf, or Speeds up (a little faster each game played in a row).'],
   ['Treasure Island ways to earn', 'Signs', 'Treasure Island (solo): how students earn shovels. Any of: Signs, Fingerspelling, Numbers, Camera. Students get a mix of what you list (they don\'t choose).'],
@@ -687,7 +687,7 @@ var DEFAULTS = [
   ['Sea Battle ship names: Gold', 'Golden Hoard, Doubloon Galleon, Sun Raven, Gilded Ray, Lucky Coin', 'Sea Battle: the Gold team\'s five ship names, separated by commas, in this order: Carrier (5 squares), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2).'],
   ['Sea Battle ship names: Purple', 'Midnight Kraken, Royal Galleon, Phantom Bat, Night Squid, Plum Parrot', 'Sea Battle: the Purple team\'s five ship names, separated by commas, in this order: Carrier (5 squares), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2).'],
   ['Sea Battle ship names: Pink', 'Coral Leviathan, Rose Galleon, Flamingo Flyer, Pink Octopus, Starfish Sprite', 'Sea Battle: the Pink team\'s five ship names, separated by commas, in this order: Carrier (5 squares), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2).'],
-  ['Lucky Claw plays per day', 3, 'How many Lucky Claw plays each student gets a day (0 = no limit).'],
+  ['Lucky Claw plays per day', 6, 'How many Lucky Claw plays each student gets a day (0 = no limit).'],
   ['Breach sounds', '', 'Which sound plays at each moment of Breach, on the projector. Set it in ASL Study: Teacher > Host a class game > Breach > 🔊 Breach sounds (or asl.cool/colleen). Blank = the starting picks.'],
   ['Students can host class games', 'Yes', 'Yes lets students open a class game (Tower Climb, Race Day, 1 vs. The Mob) from their own account for classmates to join with a code, and play in it too. Their games earn the usual XP and Tokens, and a 10-Ticket bonus for a 1 vs. The Mob win, but nobody keeps a game character: that only happens in games you host. No turns it off.'],
   ['Mob stage nameplates', 'Character', 'What the small nameplate under each station shows in 1 vs. The Mob. Type one of: Character, Name, Character and name. Character is the game character the student picked when joining.'],
@@ -953,7 +953,7 @@ function buildStatic_(locked) {
     escSpeed: (function (v) { return /up/.test(v) ? -1 : /deaf/.test(v) ? 1 : /adv/.test(v) ? 0.66 : /inter/.test(v) ? 0.33 : 0; })(str_(g('Escape room hand speed') || 'beginner').toLowerCase()),
     isleWays: (function (v) { var w = ['signs', 'fingerspelling', 'numbers', 'camera'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['signs']; })(str_(g('Treasure Island ways to earn') || 'signs').toLowerCase()),
     houseMin: Math.max(5, Math.min(20, Math.floor(num_(g('Silent House minutes'))) || 12)), houseType: !/^n/i.test(str_(g('Silent House typing locks') || 'Yes')),      // 4.74
-    clawCost: Math.max(1, Math.floor(num_(g('Lucky Claw coins per play'))) || 3), clawWays: (function (v) { var w = ['signs', 'fingerspelling', 'numbers', 'camera'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['signs']; })(str_(g('Lucky Claw ways to earn') || 'signs, fingerspelling, numbers, camera').toLowerCase()), clawDay: Math.max(0, Math.floor(num_(g('Lucky Claw plays per day')))), sayit: /^https:/i.test(str_(g('Say It page link'))) ? str_(g('Say It page link')) : '', fspell: TRIAL.fs && /^https:/i.test(movedLink_(g('Fingerspelling page link'))) ? movedLink_(g('Fingerspelling page link')) : '', hearSite: TRIAL.fs && /^https:/i.test(movedLink_(g('Hearing site link'))) ? movedLink_(g('Hearing site link')).replace(/\/?$/, '/') : '', genders: /^y/i.test(str_(g('My nouns have gendered articles (le/la, el/la, der/die/das): turn on Choose the Article'))),
+    clawCost: Math.max(1, Math.floor(num_(g('Lucky Claw coins per play'))) || 2), clawWays: (function (v) { var w = ['signs', 'fingerspelling', 'numbers', 'camera'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['signs']; })(str_(g('Lucky Claw ways to earn') || 'signs, fingerspelling, numbers, camera').toLowerCase()), clawDay: Math.max(0, Math.floor(num_(g('Lucky Claw plays per day')))), sayit: /^https:/i.test(str_(g('Say It page link'))) ? str_(g('Say It page link')) : '', fspell: TRIAL.fs && /^https:/i.test(movedLink_(g('Fingerspelling page link'))) ? movedLink_(g('Fingerspelling page link')) : '', hearSite: TRIAL.fs && /^https:/i.test(movedLink_(g('Hearing site link'))) ? movedLink_(g('Hearing site link')).replace(/\/?$/, '/') : '', genders: /^y/i.test(str_(g('My nouns have gendered articles (le/la, el/la, der/die/das): turn on Choose the Article'))),
     pollTok: Math.max(0, Math.min(100, Math.round(num_(g('Tokens for answering a poll'))))),
     camTL: (function (v) { v = num_(v); return isFinite(v) ? Math.max(0, Math.min(60, Math.round(v))) : 8; })(g('Camera time limit per letter (seconds)') === '' || g('Camera time limit per letter (seconds)') === undefined ? 8 : g('Camera time limit per letter (seconds)')),      /* Fingerspell to the Camera check */
     mobPlate: (function () { var v = str_(g('Mob stage nameplates')).toLowerCase(), ch = /char/.test(v), nm = /name/.test(v); return ch && nm ? 'both' : nm ? 'name' : 'char'; })(),      // anything else reads as Character
@@ -7824,8 +7824,8 @@ function seatTeams_(cls, how, n) {
 var CLAW_HEAD = ['Prize', 'Kind', 'Amount', 'Rarity', 'In the machine'];
 var CLAW_SEED = [['Empty capsule', 'empty', 0, 'common', 'Yes'], ['A few Tokens', 'tokens', 10, 'common', 'Yes'], ['A pile of Tokens', 'tokens', 30, 'uncommon', 'Yes'], ['Tickets back', 'tickets', 3, 'common', 'Yes'],
   ['Ticket jackpot', 'tickets', 12, 'rare', 'Yes'], ['A game character', 'character', 1, 'rare', 'Yes'], ['A shop extra', 'shop', 1, 'epic', 'Yes']];
-var CLAW_ODDS = { common: [50, 0.62], uncommon: [28, 0.45], rare: [15, 0.3], epic: [7, 0.18] };      // 4.29: harder (Colleen: not every grab wins; sometimes it is dropped)
-var CLAW_CARRY_DROP = 0.15;      // a held prize falls on the way to the chute      // how often it is in the machine, how often the claw holds it
+var CLAW_ODDS = { common: [50, 0.75], uncommon: [28, 0.6], rare: [15, 0.42], epic: [7, 0.28] };      // 4.207 (Colleen: fewer drops): a better grip on every egg      // 4.29: harder (Colleen: not every grab wins; sometimes it is dropped)
+var CLAW_CARRY_DROP = 0.05;      // 4.207: was 0.15      // a held prize falls on the way to the chute      // how often it is in the machine, how often the claw holds it
 function clawTab_() {
   var t = ensureTab_(TABS.claw, CLAW_HEAD, [220, 110, 90, 110, 130]);
   if (t.sheet.getLastRow() < 2) t.sheet.getRange(2, 1, CLAW_SEED.length, CLAW_HEAD.length).setValues(CLAW_SEED);
