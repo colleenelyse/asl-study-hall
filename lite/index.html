@@ -217,11 +217,11 @@ function langAsk() {
 }
 function setup() {
   document.title = 'Study Hall Lite: make a set';
-  app.innerHTML = `<h1>Study Hall Lite</h1><p class="mut">Turn any two-column list into flashcards and games for your students. No accounts, no setup.</p>
+  app.innerHTML = `<div class="top"><h1>Study Hall Lite</h1><a href="#guide" target="_blank" rel="noopener" class="small" style="font-weight:800">📖 Game guide</a></div><p class="mut">Turn any two-column list into flashcards and games for your students. No accounts, no setup.</p>
   <section class="card"><h2>1. Your list</h2><ol class="steps"><li>In Google Sheets or Excel, put the word or question in <b>column A</b> and the answer in <b>column B</b>.</li><li>A cell can be words, or a <b>link to a picture or GIF</b> (a Google Drive file shared with "Anyone with the link" works too).</li><li>Select the cells, copy, and paste them in the box below. Or paste the link to a Google Sheet shared as "Anyone with the link can view"; then changes to the sheet show up for students automatically.</li></ol>
   <textarea id="paste" placeholder="Paste your two columns here (or a Google Sheet link)"></textarea><p class="msg" id="pmsg"></p><div id="pv"></div></section>
   <section class="card"><h2>2. Name it</h2><input type="text" id="title" placeholder="For example: Unit 3 vocabulary" maxlength="80"></section>
-  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span>${g[4] ? ' <span class="tag">Needs a language (step 4)</span>' : ''}<br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div>
+  <section class="card"><h2>3. Pick the games</h2><p class="small"><a href="#guide" target="_blank" rel="noopener">📖 Which game is which? Open the game guide</a> (opens in a new tab; you can try every game there with sample words)</p><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span>${g[4] ? ' <span class="tag">Needs a language (step 4)</span>' : ''}<br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div>
   <p class="small mut" style="margin-top:12px"><b>Whole-class games, coming soon</b> (the teacher shows a join code on the projector; students join with a code, no names): ${SOON.map(g => `${g[1]} ${g[2]} <span class="tag">Class</span>`).join(' · ')}</p></section>
   <section class="card"><h2>4. Pronunciation <span class="tag">Recommended for world language teachers</span></h2><p class="mut small">Pick each column's language to add 🔊 read-aloud buttons and three listening and speaking games (Listen and Type, Listen and Pick, Say It). It uses the device's own voices; Chrome and Chromebooks have natural ones for most languages. Anyone can use this, for any language, English included.</p>
     <div class="row"><label>Column A: <select id="la">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label><label>Column B: <select id="lb">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label></div>
@@ -261,10 +261,39 @@ function menu() {
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
   app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, listen, hear, sayit })[b.dataset.g]());
 }
+/* the game guide (Colleen: a little link that shows what each game does, so teachers can browse; also a pop-out from the paste screen).
+   Each game: how it plays, Solo or Class, and Try it with a built-in sample set (Spanish and English, with read-aloud on). */
+const GUIDE = {
+  flash: 'Flip through the cards one at a time. Tap a card to see the other side; Back, Next and Shuffle buttons (arrow keys work too).',
+  quiz: '10 questions. See one side of a card and pick its answer out of four. The right answer turns green, and the cards you missed show at the end.',
+  match: 'Six pairs laid out face up. Tap two cards that go together; matched pairs disappear. Counts tries and seconds.',
+  memory: 'Like Matching, but the tiles start face down: flip two at a time to find each card and its answer. Counts moves.',
+  yesno: 'A card and an answer side by side: do they go together? Tap Yes or No. 15 questions; a wrong answer shows the right one.',
+  speed: '60 seconds on the clock: answer as many as you can, four choices each. Beat your best.',
+  type: 'See one side and type the other. Capitals, accents and punctuation don’t count against you. Shows only when the answers are words.',
+  toast: 'An arcade game. Fly a winged toaster through dodge zones of forks or neon pipes, then fly into the toast with the right answer. A bump only sends you back; only a wrong answer costs a heart. Gets harder with three choices.',
+  mob: 'You are THE ONE against a Mob of 100. A right answer knocks out everyone in the Mob who missed it; a wrong one is a strike and some fight back in. Get the Mob down to 20 in 12 rounds, before 3 strikes.',
+  isle: 'Dig your own treasure island for 3, 5 or 10 minutes. Right answers earn shovels; dig deeper or bank your gold, watch out for crabs and the cursed skull, follow map pieces to the legendary treasure, and tap fast in the Gold Rush.',
+  listen: 'Hear column A read aloud in its language and type what you hear. Needs a language picked in step 4.',
+  hear: 'Hear column A read aloud and pick its answer out of four. Listening practice. Needs a language picked in step 4.',
+  sayit: 'See the answer and say column A out loud. Tap Hear it for a model; if the teacher allows it, Chrome checks the pronunciation. Needs a language picked in step 4.'
+};
+const SOON_INFO = { tower: 'The class answers on their own devices; each right answer lets you pick a door and climb. The projector shows the tower race.', race: 'Answer streaks make your racer faster; the projector shows the whole class racing.', mob: 'One student is secretly THE ONE; the rest of the class is the Mob, all answering together on the projector.', sea: 'Teams answer to load cannons, then take turns sinking each other’s hidden fleets.', isle: 'The whole class digs one shared island in teams, with a team Gold Rush.' };
+const SAMPLE = [['el perro', 'the dog'], ['el gato', 'the cat'], ['la casa', 'the house'], ['el libro', 'the book'], ['el agua', 'the water'], ['la manzana', 'the apple'], ['el sol', 'the sun'], ['la escuela', 'the school']];
+function guide() {
+  document.title = 'Game guide · Study Hall Lite';
+  app.innerHTML = `<h1>Game guide</h1><p class="mut">Every game in Study Hall Lite. Tap <b>Try it</b> to play it with sample words (Spanish and English).</p>
+    <div class="menu">${GAMES.map(g => `<div class="gbtn" style="cursor:default"><i>${g[1]}</i><b>${g[2]}</b><span><span class="tag">Solo</span>${g[4] ? ' <span class="tag">Needs a language</span>' : ''}</span><span style="color:var(--ink);font-weight:500">${GUIDE[g[0]] || g[3]}</span><div><button data-try="${g[0]}">▶ Try it</button></div></div>`).join('')}
+    ${SOON.map(g => `<div class="gbtn" style="cursor:default;opacity:.8"><i>${g[1]}</i><b>${g[2].replace(' (class)', '')}</b><span><span class="tag">Class</span> <span class="tag">Coming soon</span></span><span style="color:var(--ink);font-weight:500">${SOON_INFO[g[0]] || ''}</span></div>`).join('')}</div>`;
+  app.querySelectorAll('[data-try]').forEach(b => b.onclick = () => {
+    CARDS = SAMPLE.slice(); META = { t: 'Sample words', g: GAMES.map(x => x[0]), key: 'sample', la: 'es-US', lb: 'en-US', chk: false, guide: true }; FLIP = false;
+    ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, listen, hear, sayit })[b.dataset.try]();
+  });
+}
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
 let GEN = 0;      /* leaving a game cancels anything it still had waiting (the next question, a flip back) */
 const later = (fn, ms) => { const g = GEN; setTimeout(() => { if (g === GEN) fn(); }, ms); };
-const backBtn = () => { $('#back').onclick = () => { GEN++; stopToast(); menu(); }; };
+const backBtn = () => { $('#back').onclick = () => { GEN++; stopToast(); META.guide ? guide() : menu(); }; };
 
 function flash() {
   let deck = CARDS.slice(), i = 0;
@@ -725,6 +754,7 @@ function startToast() {
 /* ───────── start: a link with a set opens the games; otherwise the setup page ───────── */
 (async () => {
   const p = new URLSearchParams(location.hash.slice(1));
+  if (location.hash === '#guide') return guide();
   if (!p.get('d') && !p.get('s')) return setup();
   META = { t: p.get('t') || 'Study set', g: (p.get('g') || 'flash,quiz,match,toast').split(','), key: '', la: p.get('la') || '', lb: p.get('lb') || '', chk: p.get('chk') === '1' };
   try { CARDS = p.get('s') ? await readSheet(p.get('s'), p.get('gid') || '') : await unpack(p.get('d')); }
