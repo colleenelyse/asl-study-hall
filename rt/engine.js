@@ -8374,12 +8374,17 @@ function api_arcadeScore(auth, game, score) {
     return after(rows, { saved: true, newBest: score > prevBest, newWeek: score > prevWeek, prevBest: prevBest });
   });
 }
-/** Student: how they show on every arcade board: 'Initials' (1 to 3 letters they type), 'First name', or 'Anonymous'. */
-function api_arcadeName(auth, game, show, ini) {
+/** Their real initials: first and last from the name on the Students tab, with the middle initial they type (or none). Colleen: real initials only. */
+function arcInitials_(name, mid) {
+  var p = str_(name).trim().split(/\s+/).filter(function (x) { return /[A-Za-z]/.test(x); }), first = p.length ? p[0].replace(/[^A-Za-z]/g, '').charAt(0) : '', last = p.length > 1 ? p[p.length - 1].replace(/[^A-Za-z]/g, '').charAt(0) : '';
+  return (first + str_(mid).replace(/[^A-Za-z]/g, '').charAt(0) + last).toUpperCase();
+}
+/** Student: how they show on every arcade board: 'Initials' (their real initials; they add only a middle initial), 'First name', or 'Anonymous'. The teacher can fix an Initials cell on the tab. */
+function api_arcadeName(auth, game, show, mid) {
   var w = arcWho_(auth, game); show = ARC_SHOW.filter(function (x) { return x.toLowerCase() === str_(show).toLowerCase(); })[0];
   if (!show) throw new Error('Pick how your name shows.');
-  ini = str_(ini).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-  if (show === 'Initials' && (!ini || ARC_BAD.indexOf(ini) >= 0)) throw new Error(ini ? 'Those initials are not allowed. Pick different ones.' : 'Type 1 to 3 letters.');
+  var ini = arcInitials_(w.name, mid);
+  if (show === 'Initials' && (!ini || ARC_BAD.indexOf(ini) >= 0)) throw new Error(ini ? 'Those initials can’t be shown. Leave the middle initial blank, or pick First name or Anonymous.' : 'Your name is not on your account yet.');
   if (w.teacher) return api_arcadeBoard(auth, game);
   return lock_(function () {
     var sh = ensureTab_(ARC_TAB, ARC_HEAD, [200, 140, 160, 150, 100, 90, 90, 100, 70, 150]).sheet, rows = arcRows_(sh);
