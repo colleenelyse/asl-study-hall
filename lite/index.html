@@ -194,7 +194,7 @@ function setup() {
   <p class="small mut" style="margin-top:12px"><b>Whole-class games, coming soon</b> (the teacher shows a join code on the projector; students join with a code, no names): ${SOON.map(g => `${g[1]} ${g[2]} <span class="tag">Class</span>`).join(' · ')}</p></section>
   <section class="card"><h2>4. Pronunciation <span class="tag">Recommended for world language teachers</span></h2><p class="mut small">Pick each column's language to add 🔊 read-aloud buttons and three listening and speaking games (Listen and Type, Listen and Pick, Say It). It uses the device's own voices; Chrome and Chromebooks have natural ones for most languages. Anyone can use this, for any language, English included.</p>
     <div class="row"><label>Column A: <select id="la">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label><label>Column B: <select id="lb">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label></div>
-    <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="chk" style="margin-top:4px"><span>Let <b>Say It</b> check pronunciation automatically. This works in Chrome and sends what the student says to Google's speech service to be checked. Without it, students hear the model, record themselves on their own device, and compare.</span></label></section>
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="chk" style="margin-top:4px"><span>Let <b>Say It</b> check pronunciation automatically. This works in Chrome and sends what the student says to Google's speech service to be checked. Without it, students hear the model and practice saying it out loud.</span></label></section>
   <section class="card"><h2>5. Share it</h2><div class="row"><button id="make" disabled>Make the student link</button></div><div id="out"></div></section>`;
   const ta = $('#paste');
   ta.oninput = async () => {
@@ -357,10 +357,10 @@ function hear() {
   };
   paint();
 }
-/* Say It: see column B, say column A. Hear the model, record yourself (kept on this device only) and compare; with the teacher's OK, Chrome checks it too */
+/* Say It: see column B, say column A out loud. Hear the model; with the teacher's OK, Chrome checks it (no recording in the public Lite edition) */
 function sayit() {
   const qs = shuffle(CARDS.filter(c => !pic(c[0]))); let i = 0, rec = null, url = '', good = 0;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, canCheck = META.chk && !!SR, canRec = !!(navigator.mediaDevices && window.MediaRecorder);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, canCheck = META.chk && !!SR, canRec = false;      /* Colleen: no Record me in the public Lite edition */
   const paint = () => {
     const c = qs[i % qs.length]; if (url) { URL.revokeObjectURL(url); url = ''; }
     app.innerHTML = head('🎤 Say It', `<span class="mut">${(i % qs.length) + 1} / ${qs.length}${canCheck ? ' · ' + good + ' said right' : ''}</span>`) + `<p class="mut" style="text-align:center">Say this in ${esc((LANGS.find(l => l[0] === META.la) || ['', 'the language'])[1])}:</p><div class="q-ask">${media(c[1])}</div>
