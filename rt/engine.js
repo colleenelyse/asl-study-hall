@@ -13054,7 +13054,7 @@ var GROUP_WORDS = {
   'a pet': 'dog|cat|bird|fish|turtle|rat|rabbit|pet|play with a dog|feed the cat|walk the dog|take dog for a walk',
   'something in a classroom': 'window|door|lights|chair|book|paper|table|box|shelf|trash can|backpack|tv|pencil|pen|pencil/pen|cup|picture|phone|computer|classroom|homework|student|teacher|class|clock|calendar|schedule|quiz|lab|test',
   'a classroom command': 'stand|sit|dance|jump|turn around|fold|throw|look at|read|turn on lights|turn off lights|open door|close door|draw|write|jot-down|copy me|put on|hide|look for|search|find|summon|pay attention',
-  'a language': 'asl|english|french|spanish|language|sign|black asl|basl|protactile',
+  'a language': 'latin|chinese|german|italian|japanese|english|french|spanish|language|sign|black asl|basl|protactile',
   'a question word': 'what|who|where|when|which|how|why|how many|what for?|what time?|how long?|how are you?|how many minutes?|how many hours?|what time is it?|what\'s the matter?|must do what?|how do you come here?',
   'a feeling': 'fine|ok|okay|so-so|tired|sick|happy|excited|mad|scared|sorry|hurt|hungry|thirsty|nervous|proud|confident|bored|boring|laugh|cry|let down|enjoy|like|detest|love|interesting|cute|friendly|mean|messed up|swell|starving|in the mood for|compassion|empathy|discouraged|pride|trauma|fall in love',
   'a leisure activity': 'boating|walking|stay home|take a picture|watch|play with a dog|sewing|chat on the phone|fishing|run|travel|paint|camping|exercise|cook|play|shop|shopping|dance|bicycling|bowling|movie|game|play game|watch tv|listen|music|read|skiing|swimming|sunbathing|visit|party|hanging out with friends|photography|reading|knitting|bird watching|watching movies|watching tv|scrapbooking|crafting|geocaching|playing video games|baking|grilling|road trip|sightseeing|tour|staycation|playing cards|play a game|go on a date|chatting|mingle',
@@ -13098,9 +13098,12 @@ var GROUP_WORDS = {
   'a daily routine': 'wake up|get up|shower|brush teeth|shave|get dressed|wash face|apply makeup|brush hair|comb|make your bed|undress|get changed|take a bath|bathe|go to bed|sleep|study|go to work|go to school|drive to work|ride the bus to school|leave the office|arrive home|eat|breakfast|lunch|dinner|need to wash hands|walk the dog|feed the cat',
   'a reason or excuse': 'car accident|traffic jam|pulled over by a cop|flat tire|dead battery|broke down|ran out of gas|lost keys|locked out|swallowed keys|forgot|lost track of time|clock broken|power outage|overslept|oversleep|the dog ate my homework|i forgot my homework|sick|absent|arrive late|sleep in',
   'a place at school': 'school|north campus|south campus|high school|library|cafeteria|auditorium|theatre|auditorium/theatre|campus police|security|campus police/security|nurse|principal\'s office|gym|pe|gym/pe|field house|counseling office|advising office|counseling/advising office|hallway|bookstore|book store|classroom|computer lab|science lab|lab|restroom|toilet/bathroom|bathroom|office|lobby|stairs|elevator|dining room|front door',
-  'a school subject': 'english|history|world language|math|algebra|geometry|calculus|trigonometry|statistics|art|health|science|biology|chemistry|physics|music|asl|spanish|french|language',
-  'a kind of school': 'public school|private school|religious school|parochial school|religious/parochial school|homeschool|kindergarten|elementary school|junior high|middle school|high school|college|law school|medical school|undergrad degree|grad school|residential/deaf school|deaf school|gallaudet|school',
-  'a school word': 'school|college|high school|class|classroom|student|teacher|homework|learn|teach|study|library|book|paper|pencil|pen|backpack|graduation|semester break|quiz|test|lab|gallaudet|residential/deaf school|absent|cut class|skip|practice|instruction',
+  'a person at school': 'principal|teacher|student|nurse|aide|coach|boss|counselor|librarian|secretary|custodian|interpreter|freshman|sophomore|junior|senior|classmate|roommate',
+  'a grade in school': 'freshman|sophomore|junior|senior|kindergarten|elementary school|middle school|junior high|high school|college|undergrad degree|grad school',
+  'a country': 'france|spain|china|germany|italy|england|america|mexico|canada|japan|india|greece',
+  'a school subject': 'world language|world|latin|chinese|german|italian|japanese|speech|public speaking|public-speaking|pe|english|history|world language|math|algebra|geometry|calculus|trigonometry|statistics|art|health|science|biology|chemistry|physics|music|asl|spanish|french|language',
+  'a kind of school': 'school for the deaf|institution|hs|university|public school|private school|religious school|parochial school|religious/parochial school|homeschool|kindergarten|elementary school|junior high|middle school|high school|college|law school|medical school|undergrad degree|grad school|residential/deaf school|deaf school|gallaudet|school',
+  'a school word': 'homework|principal|club|hs|graduate|bell|alarm|period|lunch|late|not-yet|not yet|absent|finish|all-done|freshman|sophomore|junior|senior|speech|public speaking|university|aide|coach|school|college|high school|class|classroom|student|teacher|homework|learn|teach|study|library|book|paper|pencil|pen|backpack|graduation|semester break|quiz|test|lab|gallaudet|residential/deaf school|absent|cut class|skip|practice|instruction',
   'something about money or shopping': 'money|bank|atm|withdraw|deposit|pay bills|shop|shopping|buy|store|food store|shopping mall|need money|need to buy|wallet|purse|coins|due, owe|due|owe|speeding ticket|parking ticket|grocery|food shopping',
   'a place to go on vacation or for fun': 'beach|museum|zoo|amusement park|water park|carnival|fair|circus|resort|cabin|camping|park|festival|pool|club|bar|mountains|road trip|sightseeing|tour|staycation|roller coaster|playground|movie',
   'a way to describe a person\'s looks': 'tight curls|white teeth|gap|scruffy|5 o\'clock shadow|long fake nails|tall|short|average|skinny|slender|slim|thin|chubby|muscular|curly|wavy|straight|bald|balding|blonde|red hair|black hair|brown hair|gray hair|white hair|freckles|braces|big eyes|long eyelashes|beauty mark|scar on the face|tattoo|body piercings|mustache|beard|cute|pretty|handsome|look young|look different|looks the same|looks like you|young|old|older|younger',
@@ -13126,9 +13129,9 @@ var GROUP_WORDS = {
 var GROUP_SKIP = { 'the': 1, 'a': 1, 'and': 1, 'of': 1 };
 /** The English gloss as the pieces we try: lower case, without "the"/"a", parentheses, and split on / , and "or". */
 function groupKeys_(en) {
-  var s = str_(en).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim();
+  var s = str_(en).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[“”"#]/g, '').replace(/\+/g, '').replace(/\s+/g, ' ').trim();      /* gloss marks: HOME+WORK = homework, #club = club */
   var out = [s.replace(/^(the|a|an) /, '')];
-  s.split(/\s*[\/,]\s*|\s+or\s+/).forEach(function (p) { p = p.trim().replace(/^(the|a|an) /, '').replace(/[.!?]+$/, ''); if (p && out.indexOf(p) < 0 && !GROUP_SKIP[p]) out.push(p); });
+  s.split(/\s*[\/,]\s*|\s+or\s+/).forEach(function (p) { p = p.trim().replace(/^(the|a|an) /, '').replace(/[.!?]+$/, ''); [p, p.replace(/-/g, ' ')].forEach(function (q) { if (q && out.indexOf(q) < 0 && !GROUP_SKIP[q]) out.push(q); }); });
   return out;
 }
 var GROUP_INDEX_ = null;
