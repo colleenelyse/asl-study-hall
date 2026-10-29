@@ -753,12 +753,12 @@ function toast() {
 }
 function panel(html) { const p = $('#ttp'); if (!p) return; p.hidden = !html; if (html) p.innerHTML = `<div>${html}</div>`; }
 function startPanel(sc, T) {
-  const fly = get('lite-fly', 'glide'), best = +get('lite-best-toast-' + META.key, 0);
+  const fly = get('lite-fly', 'flap'), best = +get('lite-best-toast-' + META.key, 0);
   panel(`${T ? `<h2>${T.right >= 8 ? 'Amazing flying!' : T.right >= 4 ? 'Great job!' : T.right ? 'Nice work!' : 'Good try!'}</h2><p>⭐ ${T.score} points · ✅ ${T.right} right · ${T.wrong} wrong</p><p class="small">Your best: ${best}</p>` : `<img class="logo" src="${TT}neon_toasters_logo.webp${TV}" alt="Neon Flying Toasters"><p>Fly into the toast with the right answer. Dodge the forks and pipes: a bump sends you back; only a wrong answer costs a heart.</p><p class="small">Your best: ${best}</p>`}
     <div class="tt-opts">${FLY.map(f => `<button data-fly="${f[0]}" class="${f[0] === fly ? 'on' : ''}">${f[1]}</button>`).join('')}</div><p class="small" id="flyhow">${FLY.find(f => f[0] === fly)[2]}</p>
     <div class="row" style="justify-content:center"><button data-w="kitchen">🍴 Kitchen</button><button data-w="pipes">〰️ Pipes</button></div>`);
   document.querySelectorAll('#ttp [data-fly]').forEach(b => b.onclick = () => { put('lite-fly', b.dataset.fly); document.querySelectorAll('#ttp [data-fly]').forEach(x => x.classList.toggle('on', x === b)); $('#flyhow').textContent = FLY.find(f => f[0] === b.dataset.fly)[2]; });
-  document.querySelectorAll('#ttp [data-w]').forEach(b => b.onclick = () => { panel(''); sc.begin(b.dataset.w, get('lite-fly', 'glide')); });
+  document.querySelectorAll('#ttp [data-w]').forEach(b => b.onclick = () => { panel(''); sc.begin(b.dataset.w, get('lite-fly', 'flap')); });
 }
 function startToast() {
   const ov = $('#tto');

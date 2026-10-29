@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.192';
+var VERSION = '4.193';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -528,7 +528,8 @@ var FEATURES = [
   ['tickets', 'Tickets and the Prize Counter', 'Rewards', 'Tickets for goals, streaks and mastery, spent on real prizes.'],
   ['tokens', 'Tokens and the character shop', 'Rewards', 'Tokens for every correct answer, spent on characters, themes and extras.'],
   ['seasolo', 'Sea Battle (solo)', 'Practice', 'Students answer to earn cannonballs and battle the computer\'s hidden fleet.'],
-  ['toast', 'Neon Flying Toasters', 'Practice', 'An arcade game: students fly a winged toaster into the toast with the right sign (or letters and pictures), dodging forks and neon pipes. Right answers count toward progress; wrong ones never count against them. Weekly and all-time arcade leaderboards.'],
+  ['toast', 'Neon Flying Toasters', 'Practice', 'An arcade game: students fly a winged toaster into the toast with the right sign (or letters and pictures), dodging forks and neon pipes. A right toast counts half toward mastery (it is already a 50/50); a wrong toast costs a heart in the game but never counts against a student (it may be poor flying). Weekly and all-time arcade leaderboards.'],
+  ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
   ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
   ['claw', 'Lucky Claw', 'Practice', 'A claw machine game: students answer signs to earn Claw Coins, then grab mystery eggs; prizes (Tokens, Tickets, game characters, shop extras) go straight to their account.'],
@@ -572,11 +573,11 @@ var FEATURE_ROWS = [
 var PRACTICE_KEYS = ['review', 'learn', 'flashcards', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'mobsolo', 'test'];
 function feat_(st, k) { var f = (st || static_()).settings.feat; return !f || f[k] !== false; }
 function needFeat_(k, what) { if (!feat_(null, k)) throw new Error('Your teacher has turned off ' + what + '.'); }
-var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast'];      // 4.191 Neon Flying Toasters (right answers only)      // 4.74: the Silent House saves its answers like a round
+var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast', 'munch'];      // 4.191 Neon Flying Toasters; 4.193 Sign Munchers      // 4.74: the Silent House saves its answers like a round
 // Mastery: a sign is New (0), Learning (1), Familiar (2) or Mastered (3), from the evidence a student has shown.
 // Multiple choice and matching are worth 1.0, typing 1.5, and 3.0 masters a sign. It can happen in one session.
 var MASTERED_BOX = 3;
-var EVIDENCE = { pick: 100, typed: 150, know: 25, mastered: 300 };   // stored as hundredths so the sheet holds whole numbers
+var EVIDENCE = { pick: 100, typed: 150, half: 50, know: 25, mastered: 300 };      // half: 4.193 a right toast in Neon Flying Toasters (Colleen: it is already a 50/50)   // stored as hundredths so the sheet holds whole numbers
 var KNOW_PER_DAY = 3, KNOW_TO_MASTER = 6;                              // flashcard "Know it" path: 6 in a row, at most 3 a day
 /**
  * One progress entry: [state, right, wrong, last day, pay day, paid today, mastery Tickets paid, evidence,
@@ -1555,7 +1556,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['sea', 'breach', 'isle', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly'];      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['sea', 'breach', 'isle', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1684,7 +1685,7 @@ function api_submitRound(auth, r) {
   function holdBack(p, id, was) { var full = need[id]; if (!full || was >= MASTERED_BOX) return; if ((num_(p[12]) & full) !== full) p[7] = Math.min(p[7], 275); }
   var ans = [];
   (r.answers instanceof Array ? r.answers : []).slice(0, 400).forEach(function (a) {
-    if (a && known[a[0]]) ans.push([a[0], a[1] ? 1 : 0, a[2] === 't' ? 't' : '', typeof a[3] === 'number' && a[3] >= 0 && a[3] < 30 ? Math.floor(a[3]) : -1, !a[1] && typeof a[4] === 'string' ? a[4].replace(/\s+/g, ' ').trim().slice(0, 40) : '']);      // [4] the wrong answer given, for Question results
+    if (a && known[a[0]]) ans.push([a[0], a[1] ? 1 : 0, a[2] === 't' ? 't' : a[2] === 'h' ? 'h' : '', typeof a[3] === 'number' && a[3] >= 0 && a[3] < 30 ? Math.floor(a[3]) : -1, !a[1] && typeof a[4] === 'string' ? a[4].replace(/\s+/g, ' ').trim().slice(0, 40) : '']);      // [4] the wrong answer given, for Question results
   });
   // flashcards are self-graded: "Know it" / "Don't know it" taps, never counted as questions
   var know = [];
@@ -1731,7 +1732,7 @@ function api_submitRound(auth, r) {
         if (a[1]) { weight += S.repeat[Math.min(p[5], S.repeat.length - 1)]; p[5] += 1; }
         if (game !== 'memory') {                     // Memory tests where the tiles are, not whether you know the sign
           var was = p[0];
-          if (a[1]) { p[1] += 1; p[7] = Math.min(EVIDENCE.mastered, p[7] + (a[2] === 't' ? EVIDENCE.typed : EVIDENCE.pick)); if (a[3] >= 0 && a[3] < (versions[a[0]] || 0)) p[12] = num_(p[12]) | Math.pow(2, a[3]); holdBack(p, a[0], was); }
+          if (a[1]) { p[1] += 1; p[7] = Math.min(EVIDENCE.mastered, p[7] + (a[2] === 'h' ? EVIDENCE.half : a[2] === 't' ? EVIDENCE.typed : EVIDENCE.pick)); if (a[3] >= 0 && a[3] < (versions[a[0]] || 0)) p[12] = num_(p[12]) | Math.pow(2, a[3]); holdBack(p, a[0], was); }
           else {                                     // a miss: Mastered falls to Familiar; anything else loses one step but never below Learning
             p[2] += 1;
             if (a[4]) p[13] = (p[13] instanceof Array ? p[13] : []).concat([a[4]]).slice(-5);      // the last 5 wrong answers, for Question results
