@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.189';
+var VERSION = '4.190';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8321,7 +8321,7 @@ function api_isleScore(auth, gold, mins) {
    Boards: This week and All time, each for My class and Everyone (top 10). Teachers are never on a board (they see where they would rank).
    The teacher can change Show as / Initials on the tab. No emails leave the server. */
 var ARC_TAB = 'Arcade Scores', ARC_HEAD = ['Email', 'Name', 'Class', 'Game', 'All-time best', 'Week', 'Week best', 'Show as', 'Initials', 'Last played'];
-var ARC_GAMES = { toast: 'Neon Flying Toasters' }, ARC_MAX = 100000, ARC_TOP = 10, ARC_SHOW = ['Initials', 'First name', 'Anonymous'];
+var ARC_GAMES = { toast: 'Neon Flying Toasters', toastabc: 'Neon Flying Toasters (letters)' }, ARC_MAX = 100000, ARC_TOP = 10, ARC_SHOW = ['Initials', 'First name', 'Anonymous'];
 var ARC_BAD = ['ASS', 'FUK', 'FUC', 'FCK', 'FUX', 'SEX', 'DIK', 'DIC', 'KKK', 'NIG', 'NGR', 'FAG', 'CUM', 'TIT', 'WTF', 'STD', 'GAY', 'JEW', 'POO', 'PEE', 'VAG', 'KYS', 'HOE', 'SUK', 'SUC', 'XXX', 'BCH', 'BIT', 'DMN', 'PIS', 'PMS', 'BUM', 'FAT', 'NAZ', 'LSD', 'THC', 'WOP', 'SPK', 'CRP', 'DUM', 'UGH', 'GUN', 'DIE', 'KIL', 'RAP', 'HOR', 'PUS', 'SHT', 'SHI', 'AZZ', 'JIZ', 'GOD'];
 function arcLabel_(show, ini, name) {
   show = str_(show).toLowerCase(); ini = str_(ini).toUpperCase();
