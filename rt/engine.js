@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.212';
+var VERSION = '4.213';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -575,7 +575,7 @@ var FEATURE_ROWS = [
 var PRACTICE_KEYS = ['review', 'learn', 'flashcards', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'mobsolo', 'test'];
 function feat_(st, k) { var f = (st || static_()).settings.feat; return !f || f[k] !== false; }
 function needFeat_(k, what) { if (!feat_(null, k)) throw new Error('Your teacher has turned off ' + what + '.'); }
-var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast', 'munch', 'wagon'];      // 4.191 Neon Flying Toasters; 4.193 Sign Munchers      // 4.74: the Silent House saves its answers like a round
+var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast', 'munch', 'wagon', 'pawtopia'];      // 4.191 Neon Flying Toasters; 4.193 Sign Munchers      // 4.74: the Silent House saves its answers like a round
 // Mastery: a sign is New (0), Learning (1), Familiar (2) or Mastered (3), from the evidence a student has shown.
 // Multiple choice and matching are worth 1.0, typing 1.5, and 3.0 masters a sign. It can happen in one session.
 var MASTERED_BOX = 3;
@@ -1783,7 +1783,7 @@ function api_submitRound(auth, r) {
     var xp = Math.floor(weight * S.ppc * mult), tokens = Math.floor(weight * S.tpc * mult);
     if (S.xpLimit > 0) { var room = Math.max(0, S.xpLimit * mult - o['Day points']); if (xp > room) { xp = room; res.capped = true; } }
     res.xp = xp; res.tokens = tokens; res.slowed = nC > 0 && weight < nC;
-    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta); } catch (e) {}      /* 4.210 Pawtopia: Treats, incubation and growth from every practice round (once per round ID) */
+    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta, { game: game, trick: str_(r.trick).replace(/[^a-z]/g, '').slice(0, 12) }); } catch (e) {}      /* 4.210 Pawtopia: Treats, incubation and growth from every practice round (once per round ID) */
     o['Day points'] += xp; o.Lifetime += xp; o.Tokens += tokens;
     o.Questions += nQ; o.Correct += nC;
     o.Minutes = Math.round((o.Minutes + secs / 60) * 10) / 10;
