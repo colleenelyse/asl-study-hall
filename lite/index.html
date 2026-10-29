@@ -45,6 +45,7 @@ button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px va
 /* matching */
 .mt { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px } .mt button { background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 16px; min-height: 120px; padding: 6px; display: grid; place-items: center; font-weight: 800; overflow: hidden }
 .mt button img { max-width: 100%; max-height: 130px; object-fit: contain } .mt button.sel { border-color: var(--acc); box-shadow: 0 0 0 3px #C9D8FF } .mt button.done { visibility: hidden } .mt button.no { border-color: var(--bad) }
+.mt button.down .backf { font: 700 40px Fredoka, sans-serif; color: #C9BBA6 } .mt button .face { display: grid; place-items: center; width: 100%; height: 100% }
 .big { font: 700 clamp(22px, 4vw, 34px) Fredoka, sans-serif; text-align: center; margin: 10px 0 }
 /* flying toasters */
 .tt-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #05030f; box-shadow: 0 0 0 2px #3b1d6e, 0 10px 40px rgba(120, 40, 255, .35); touch-action: none; user-select: none; -webkit-user-select: none }
@@ -65,7 +66,11 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const rand = a => a[Math.floor(Math.random() * a.length)];
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
-const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer']];
+const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'],
+  ['memory', '🎴', 'Memory', 'Flip face-down tiles to find the pairs'], ['yesno', '👍', 'Yes or No', 'Do these two go together?'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'],
+  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer']];
+/* the class games, coming to Lite next (Colleen: show which games are solo and which are whole class) */
+const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island']];
 
 /* a cell is a picture when it is a link to an image or GIF (Google Drive share links work when the file is shared with anyone) */
 function pic(v) {
@@ -122,7 +127,8 @@ function setup() {
   <section class="card"><h2>1. Your list</h2><ol class="steps"><li>In Google Sheets or Excel, put the word or question in <b>column A</b> and the answer in <b>column B</b>.</li><li>A cell can be words, or a <b>link to a picture or GIF</b> (a Google Drive file shared with "Anyone with the link" works too).</li><li>Select the cells, copy, and paste them in the box below. Or paste the link to a Google Sheet shared as "Anyone with the link can view"; then changes to the sheet show up for students automatically.</li></ol>
   <textarea id="paste" placeholder="Paste your two columns here (or a Google Sheet link)"></textarea><p class="msg" id="pmsg"></p><div id="pv"></div></section>
   <section class="card"><h2>2. Name it</h2><input type="text" id="title" placeholder="For example: Unit 3 vocabulary" maxlength="80"></section>
-  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span><br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div></section>
+  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span><br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div>
+  <p class="small mut" style="margin-top:12px"><b>Whole-class games, coming soon</b> (the teacher shows a join code on the projector; students join with a code, no names): ${SOON.map(g => `${g[1]} ${g[2]} <span class="tag">Class</span>`).join(' · ')}</p></section>
   <section class="card"><h2>4. Share it</h2><div class="row"><button id="make" disabled>Make the student link</button></div><div id="out"></div></section>`;
   const ta = $('#paste');
   ta.oninput = async () => {
@@ -149,15 +155,17 @@ let CARDS = [], META = {}, FLIP = false;
 const side = (c, k) => (FLIP ? 1 - k : k) === 0 ? c[0] : c[1];      /* "Switch sides": answer with column A instead of B */
 function menu() {
   document.title = META.t + ' · Study Hall Lite';
-  const games = GAMES.filter(g => META.g.includes(g[0]));
+  const games = GAMES.filter(g => META.g.includes(g[0]) && (g[0] !== 'type' || typeable()));
   app.innerHTML = `<div class="top"><div><p class="mut small" style="margin:0">Study Hall Lite</p><h1>${esc(META.t)}</h1><p class="mut">${CARDS.length} cards</p></div>
     <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
     <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
-  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, toast })[b.dataset.g]());
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast })[b.dataset.g]());
 }
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
-const backBtn = () => { $('#back').onclick = () => { stopToast(); menu(); }; };
+let GEN = 0;      /* leaving a game cancels anything it still had waiting (the next question, a flip back) */
+const later = (fn, ms) => { const g = GEN; setTimeout(() => { if (g === GEN) fn(); }, ms); };
+const backBtn = () => { $('#back').onclick = () => { GEN++; stopToast(); menu(); }; };
 
 function flash() {
   let deck = CARDS.slice(), i = 0;
@@ -187,8 +195,66 @@ function quiz() {
       if (app.querySelector('.q-opt.ok')) return; const o = opts[+b.dataset.k], ok = o === c;
       if (ok) right++; else missed.push(c);
       app.querySelectorAll('.q-opt').forEach((x, k) => { if (opts[k] === c) x.classList.add('ok'); }); if (!ok) b.classList.add('no');
-      setTimeout(() => { i++; paint(); }, ok ? 700 : 1600);
+      later(() => { i++; paint(); }, ok ? 700 : 1600);
     });
+  };
+  paint();
+}
+/* answers are compared loosely: capitals, accents, punctuation and extra spaces don't matter */
+const loose = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\u0400-\u04ff\u0370-\u03ff\u0590-\u06ff\u3040-\u30ff\u4e00-\u9fff]+/g, ' ').trim();
+const typeable = () => CARDS.filter(c => !pic(side(c, 1))).length >= 4;      /* Type It needs word answers */
+function endScreen(name, big, sub, missed, again) {
+  app.innerHTML = head(name) + `<p class="big">${big}</p><p class="mut" style="text-align:center">${sub}</p>${missed.length ? `<div class="card"><h2>Look at these again</h2><div class="preview">${missed.map(c => `<div class="pv"><div class="m">${media(side(c, 0))}</div><div class="m">${media(side(c, 1))}</div></div>`).join('')}</div></div>` : ''}<div class="row" style="justify-content:center"><button id="again">Play again</button></div>`;
+  backBtn(); $('#again').onclick = again;
+}
+const best = (k, v) => { const key = 'lite-best-' + k + '-' + META.key, b = Math.max(+get(key, 0), v); put(key, b); return b; };
+function memory() {
+  const set = shuffle(CARDS).slice(0, Math.min(6, CARDS.length)), tiles = shuffle(set.flatMap((c, k) => [{ k, v: side(c, 0) }, { k, v: side(c, 1) }])); let up = [], found = 0, moves = 0, busy = false;
+  app.innerHTML = head('🎴 Memory', '<span class="mut" id="mm">0 moves</span>') + `<p class="mut" style="text-align:center">Flip two tiles. Find each card and its answer.</p><div class="mt">${tiles.map((x, i) => `<button data-i="${i}" class="down"><span class="face" hidden>${media(x.v)}</span><span class="backf">?</span></button>`).join('')}</div>`;
+  backBtn();
+  const show = (b, on) => { b.querySelector('.face').hidden = !on; b.querySelector('.backf').hidden = on; };
+  app.querySelectorAll('.mt button').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i; if (busy || b.classList.contains('done') || up.includes(i)) return;
+    show(b, true); up.push(i); if (up.length < 2) return;
+    moves++; $('#mm').textContent = moves + ' moves'; const [a, c] = up, ba = app.querySelector(`[data-i="${a}"]`);
+    if (tiles[a].k === tiles[c].k) { later(() => { ba.classList.add('done'); b.classList.add('done'); }, 350); found++; up = [];
+      if (found === set.length) later(() => endScreen('🎴 Memory', `All pairs in ${moves} moves!`, `Fewest moves: ${Math.min(moves, +get('lite-mem-' + META.key, 999))}`, [], memory) || put('lite-mem-' + META.key, Math.min(moves, +get('lite-mem-' + META.key, 999))), 700); }
+    else { busy = true; later(() => { show(ba, false); show(b, false); up = []; busy = false; }, 1000); }
+  });
+}
+function yesno() {
+  const qs = shuffle(CARDS).slice(0, Math.min(15, CARDS.length)); let i = 0, right = 0; const missed = [];
+  const paint = () => {
+    if (i >= qs.length) return endScreen('👍 Yes or No', `${right} out of ${qs.length} right!`, `Your best: ${best('yesno', right)} / ${qs.length}`, missed, yesno);
+    const c = qs[i], match = Math.random() < .5, other = match ? c : (choices(c, 2).find(d => d !== c) || c), truth = other === c;
+    app.innerHTML = head('👍 Yes or No', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<p class="mut" style="text-align:center">Do these two go together?</p><div class="q-opts" style="grid-template-columns:1fr 1fr"><div class="q-ask" style="margin:0">${media(side(c, 0))}</div><div class="q-ask" style="margin:0">${media(side(other, 1))}</div></div><div class="row" style="justify-content:center"><button id="yes" style="font-size:22px;padding:12px 34px">👍 Yes</button><button id="no" class="alt" style="font-size:22px;padding:12px 34px">👎 No</button></div><p class="big" id="yn"></p>`;
+    backBtn();
+    const pick = say => { if ($('#yn').textContent) return; const ok = say === truth; if (ok) right++; else missed.push(c); $('#yn').innerHTML = ok ? '<span class="good">Right!</span>' : `<span style="color:var(--bad)">Not quite.</span> <span class="small mut">${truth ? 'They do go together.' : 'The answer is: ' + media(side(c, 1))}</span>`; later(() => { i++; paint(); }, ok ? 650 : 1800); };
+    $('#yes').onclick = () => pick(true); $('#no').onclick = () => pick(false);
+  };
+  paint();
+}
+function speed() {
+  let right = 0, wrong = 0, end = Date.now() + 60000, t = null; const missed = [];
+  const next = () => {
+    if (Date.now() >= end) { clearInterval(t); return endScreen('⚡ Speed Round', `${right} right in 60 seconds!`, `${wrong} wrong · your best: ${best('speed', right)}`, missed, speed); }
+    const c = rand(CARDS), opts = choices(c, 4);
+    app.innerHTML = head('⚡ Speed Round', `<span class="mut"><b id="clock">${Math.ceil((end - Date.now()) / 1000)}</b> s · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
+    backBtn(); $('#back').addEventListener('click', () => clearInterval(t));
+    app.querySelectorAll('.q-opt').forEach(b => b.onclick = () => { if (app.querySelector('.q-opt.ok,.q-opt.no')) return; const ok = opts[+b.dataset.k] === c; if (ok) right++; else { wrong++; missed.push(c); } b.classList.add(ok ? 'ok' : 'no'); later(next, ok ? 150 : 600); });
+  };
+  t = setInterval(() => { const el = $('#clock'); if (!el) return clearInterval(t); const s2 = Math.ceil((end - Date.now()) / 1000); el.textContent = Math.max(0, s2); if (s2 <= 0) next(); }, 250);
+  next();
+}
+function type() {
+  const qs = shuffle(CARDS.filter(c => !pic(side(c, 1)))).slice(0, 10); let i = 0, right = 0; const missed = [];
+  const paint = () => {
+    if (i >= qs.length) return endScreen('⌨️ Type It', `${right} out of ${qs.length} right!`, `Your best: ${best('type', right)} / ${qs.length}`, missed, type);
+    const c = qs[i];
+    app.innerHTML = head('⌨️ Type It', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}</div><form id="tf" class="row" style="justify-content:center;max-width:640px;margin:10px auto"><input type="text" id="ti" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the answer" style="flex:1 1 260px;font-size:22px"><button>Check</button></form><p class="big" id="tr"></p>`;
+    backBtn(); $('#ti').focus();
+    $('#tf').onsubmit = e => { e.preventDefault(); if ($('#tr').textContent) return; const ok = loose($('#ti').value) === loose(side(c, 1)); if (ok) right++; else missed.push(c);
+      $('#tr').innerHTML = ok ? '<span class="good">Right!</span>' : `<span style="color:var(--bad)">The answer is:</span> ${esc(side(c, 1))}`; later(() => { i++; paint(); }, ok ? 700 : 2000); };
   };
   paint();
 }
@@ -202,8 +268,8 @@ function match() {
     if (sel === i) { b.classList.remove('sel'); sel = null; return; }
     const a = app.querySelector(`[data-i="${sel}"]`); tries++; $('#mtries').textContent = tries + ' tries';
     if (tiles[sel].k === tiles[i].k) { a.classList.add('done'); b.classList.add('done'); found++; sel = null;
-      if (found === set.length) { const secs = Math.round((Date.now() - t0) / 1000); setTimeout(() => { app.querySelector('.mt').outerHTML = `<p class="big">All matched in ${tries} tries (${secs} s)!</p><div class="row" style="justify-content:center"><button id="again">Play again</button></div>`; $('#again').onclick = match; }, 300); } }
-    else { a.classList.remove('sel'); a.classList.add('no'); b.classList.add('no'); sel = null; setTimeout(() => { a.classList.remove('no'); b.classList.remove('no'); }, 600); }
+      if (found === set.length) { const secs = Math.round((Date.now() - t0) / 1000); later(() => { app.querySelector('.mt').outerHTML = `<p class="big">All matched in ${tries} tries (${secs} s)!</p><div class="row" style="justify-content:center"><button id="again">Play again</button></div>`; $('#again').onclick = match; }, 300); } }
+    else { a.classList.remove('sel'); a.classList.add('no'); b.classList.add('no'); sel = null; later(() => { a.classList.remove('no'); b.classList.remove('no'); }, 600); }
   });
 }
 
