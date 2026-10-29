@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.217';
+var VERSION = '4.218';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1783,7 +1783,7 @@ function api_submitRound(auth, r) {
     var xp = Math.floor(weight * S.ppc * mult), tokens = Math.floor(weight * S.tpc * mult);
     if (S.xpLimit > 0) { var room = Math.max(0, S.xpLimit * mult - o['Day points']); if (xp > room) { xp = room; res.capped = true; } }
     res.xp = xp; res.tokens = tokens; res.slowed = nC > 0 && weight < nC;
-    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta, { game: game, trick: str_(r.trick).replace(/[^a-z]/g, '').slice(0, 12), vet: !!r.vet }); } catch (e) {}      /* 4.210 Pawtopia: Treats, incubation and growth from every practice round (once per round ID) */
+    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta, { game: game, trick: str_(r.trick).replace(/[^a-z]/g, '').slice(0, 12), vet: !!r.vet, job: str_(r.job).replace(/[^a-z]/g, '').slice(0, 12) }); } catch (e) {}      /* 4.210 Pawtopia: Treats, incubation and growth from every practice round (once per round ID) */
     o['Day points'] += xp; o.Lifetime += xp; o.Tokens += tokens;
     o.Questions += nQ; o.Correct += nC;
     o.Minutes = Math.round((o.Minutes + secs / 60) * 10) / 10;
