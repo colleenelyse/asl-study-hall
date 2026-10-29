@@ -484,6 +484,14 @@ body.sch-ocean { --pick: #0A7A86; } body.sch-sunset { --pick: #C9363E; } body.sc
 .ey-ph { aspect-ratio: 300 / 320; border: 3px dashed var(--line); border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; text-align: center; background: var(--surface); }
 .ey-ph .ic { font-size: 64px; line-height: 1; } .ey-ph b { font: 700 22px var(--display); } .ey-ph small { color: var(--muted); }
 .ey-choice canvas { filter: none; }
+/* one screen (Colleen, 2026-10-29): hands sized by the screen height, the message and Next button beside the picture */
+[data-screen="eventyear"] .ap-card h2 { margin-bottom: 2px; } [data-screen="eventyear"] .ap-card > .hint { margin: 0 0 4px; }
+.ey-wrap { margin: 4px 0 8px; align-items: start; } .ey-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ey-event img { max-height: calc(100vh - 230px); width: auto; max-width: 100%; margin: 0 auto; object-fit: contain; }
+#ey-grid { grid-template-columns: repeat(2, minmax(0, calc((100vh - 370px) / 2))); justify-content: center; gap: 8px; }
+#ey-grid .ap-cell { gap: 4px; } #ey-grid .ap-pickbtn { padding: 6px 10px; font-size: 16px; } #ey-grid .ap-pickbtn.ey-whybtn { font-size: 13px; line-height: 1.15; padding: 4px 6px; white-space: normal; }
+#ey-msg { margin: 2px 0; font-weight: 700; min-height: 1.3em; } .ey-row { align-items: center; gap: 12px; margin: 0; }
+@media (max-width: 640px) { #ey-grid { grid-template-columns: 1fr 1fr; } .ey-event img { max-height: 34vh; } }
 .ey-why { font-size: 14px; color: var(--muted); text-align: center; }
 .ap-cell { display: flex; flex-direction: column; gap: 8px; } .ap-pickbtn { width: 100%; font-size: 18px; }
 .ap-pickbtn.ok, .ap-pickbtn.no { opacity: 1 !important; } .ap-pickbtn.ok { background: var(--good, #2F9E5F); color: #fff; border-color: transparent; } .ap-pickbtn.no { background: var(--bad, #C7362E); color: #fff; border-color: transparent; }

@@ -256,9 +256,10 @@
     <div class="card ap-card">
       <h2>When Did It Happen?</h2>
       <p class="hint">Tap each hand to watch it sign a year. Then pick the year this happened.</p>
-      <div class="ap-wrap"><div class="ap-pic ey-event" id="ey-event"></div><div class="ap-grid" id="ey-grid"></div></div>
-      <div class="row"><button class="btn" id="ey-next" hidden>Next event</button></div>
-      <p class="hint" id="ey-msg" aria-live="polite"></p><p class="hint" id="ey-score"></p>
+      <div class="ap-wrap ey-wrap"><div class="ap-pic ey-event" id="ey-event"></div>
+        <div class="ey-side"><div class="ap-grid" id="ey-grid"></div>
+          <p class="hint" id="ey-msg" aria-live="polite"></p>
+          <div class="row ey-row"><button class="btn" id="ey-next" hidden>Next event</button><span class="hint" id="ey-score"></span></div></div></div>
       <div class="field small"><span class="lab">Speed</span>
         <div class="speed"><input id="ey-speed" type="range" min="0" max="100" value="0" aria-label="Speed">
           <div class="marks"><span style="left:0">Beginner</span><span style="left:33.3%">Intermediate</span><span style="left:66.6%">Advanced</span><span style="left:100%">Deaf</span></div></div>

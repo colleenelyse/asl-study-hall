@@ -2086,10 +2086,11 @@ function eyPick(k) {
   const R = EY.cur, good = R.ch[k].kind === 'right'; if (good) EY.right++;
   $$('#ey-grid .ap-cell').forEach((cell, j) => { const c = R.ch[j], b = cell.querySelector('.ap-pickbtn'), t = cell.querySelector('.ap-choice'); b.disabled = true;
     if (c.kind === 'right') { b.classList.add('ok'); t.classList.add('ok'); } else if (j === k) { b.classList.add('no'); t.classList.add('no'); }
-    t.insertAdjacentHTML('beforeend', '<span class="ap-age">' + c.y + '</span>'); cell.insertAdjacentHTML('beforeend', '<span class="ey-why">' + EY_WHY[c.kind] + '</span>'); });
+    t.insertAdjacentHTML('beforeend', '<span class="ap-age">' + c.y + '</span>'); b.textContent = EY_WHY[c.kind]; b.classList.add('ey-whybtn'); });      /* the reason replaces the Pick label, so nothing grows taller */
   $('#ey-msg').textContent = (good ? 'Right! ' : 'Not this time. ') + R.e.title + ': ' + R.e.year + '.';
   $('#ey-score').textContent = EY.right + ' of ' + EY.tries + ' right so far.'; $('#ey-next').hidden = false;
   if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+  if (good) { const was = EY.cur; $('#ey-msg').textContent += ' Next one coming…'; setTimeout(() => { if (EY.cur === was && location.hash.indexOf('eventyear') >= 0) eyDraw(); }, 2600); }      /* right answers move on by themselves (Colleen); a miss waits for Next so they can read why */
 }
 function eyShow() { $('#ey-speed').value = Math.round(S.speed * 100); if (!EY.cur) setTimeout(eyDraw, 50); else $$('#ey-grid .ap-choice').forEach((t, k) => tileHand(k, t, '', EY.tone)); }
 function eventyearInit() { $('#ey-next').onclick = eyDraw; $('#ey-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); }; }
