@@ -66,6 +66,32 @@ button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px va
 .tt-panel { position: absolute; inset: 0; display: flex; align-items: safe center; justify-content: center; background: rgba(5, 3, 15, .74); color: #fff; text-align: center; padding: 2% 3%; overflow-y: auto }
 .tt-panel > div { max-width: 640px; display: flex; flex-direction: column; gap: 10px; align-items: center } .tt-panel h2 { color: #ff6ee7; text-shadow: 0 0 12px #ff2bd6; font-size: clamp(22px, 4vw, 38px); margin: 0 }
 .tt-panel img.logo { width: min(46vw, 320px) } .tt-opts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center } .tt-opts button { padding: 6px 14px; opacity: .6 } .tt-opts button.on { opacity: 1; box-shadow: 0 0 0 3px #3dffc5 }
+/* Treasure Island (copied from ASL Study, her art from ../img/isle/) */
+:root { --display: Fredoka, system-ui, sans-serif }
+.sx-me { background: rgba(8,39,61,.8); padding: 4px 12px; border-radius: 999px; font-weight: 800 } .sx-big { font: 800 clamp(18px, 3vw, 26px) var(--display); margin: 6px 0 2px; text-shadow: 0 2px 4px rgba(0,0,0,.5) } .sx-sub { margin: 0 0 10px; background: rgba(8,39,61,.7); padding: 6px 10px; border-radius: 10px }
+.sx-arsbox { display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, #0b4f8a, #0f6c97); color: #fff; border-radius: 12px; padding: 8px 12px } .sx-arsbox img { width: 40px; height: 40px } .sx-arsbox b { font: 800 1.2rem var(--display) } .sx-arsbox small { display: block; opacity: .85 }
+.sx-result { margin: 0; padding: 10px 12px; border-radius: 12px; text-align: center; font: 900 1.3rem var(--display); color: #fff; animation: sxpop .45s ease-out } .sx-result.hit { background: #c5221f } .sx-result.miss { background: #0f6c97 } .sx-result.small { font-size: .95rem; padding: 6px 10px; margin-bottom: 6px } .sx-firebtn { width: 100%; font-size: 1.2rem; min-height: 54px; animation: sxpop .35s ease-out }
+.ti { border-radius: 18px; padding: 14px; color: #fff; background: #2fb4c9 url('https://colleenelyse.github.io/asl-study-hall/img/isle/island-background-sm.jpg?v=1') center / cover; min-width: 0 } .ti-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px } .ti-head h2 { margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,.4) } .ti-stat { margin-left: auto; background: rgba(60,35,10,.75); padding: 4px 12px; border-radius: 999px; font-weight: 800 }
+.ti-grid { display: grid; grid-template-columns: 1.4em 1fr; grid-template-rows: 1.4em auto; max-width: 620px; margin: 8px auto 0 } .ti-labs { display: grid } .ti-labs.top { grid-template-columns: repeat(var(--w), 1fr) } .ti-labs.side { grid-template-rows: repeat(var(--h), 1fr) } .ti-labs b { display: grid; place-items: center; color: #fff; font: 800 .8rem var(--display); text-shadow: 0 1px 3px #000 }
+.ti-sand { display: grid; grid-template-columns: repeat(var(--w, 12), 1fr); gap: 2px; padding: 6px; border-radius: 14px; background: rgba(226,189,108,.55); border: 4px solid #8a5a2b } .ti-cell { aspect-ratio: 1; border: 0; border-radius: 6px; padding: 0; font-size: clamp(10px, 2vw, 20px); display: grid; place-items: center; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,.12) }
+.ti-cell.d0, .ti-cell.d1, .ti-cell.d2, .ti-cell.d3 { background: center / cover no-repeat; box-shadow: none } .ti-cell.d0 { background-image: url('https://colleenelyse.github.io/asl-study-hall/img/isle/patch-0.png?v=1') } .ti-cell.d1 { background-image: url('https://colleenelyse.github.io/asl-study-hall/img/isle/patch-1.png?v=1') } .ti-cell.d2 { background-image: url('https://colleenelyse.github.io/asl-study-hall/img/isle/patch-2.png?v=1') } .ti-cell.d3 { background-image: url('https://colleenelyse.github.io/asl-study-hall/img/isle/patch-3.png?v=1'); cursor: default }      /* 4.48: Colleen's sand patches */
+.ti-cell { position: relative } .ti-cell.sel { transform: scale(1.06); z-index: 1 } .ti-cell.sel::after { content: ''; position: absolute; inset: -4%; background: url('https://colleenelyse.github.io/asl-study-hall/img/isle/patch-selected.png?v=1') center / 100% 100% no-repeat; pointer-events: none } .ti-cell.mine { outline: 3px solid #fff; outline-offset: -2px; animation: sxpick 1s infinite } .ti-cell.held { outline: 3px solid var(--tc); outline-offset: -3px } .ti-cell.x::before { content: '✖'; position: absolute; top: 3%; right: 7%; font: 900 clamp(9px, 1.3vw, 15px) / 1 system-ui, sans-serif; color: #d42a1e; text-shadow: 0 0 2px #fff; pointer-events: none }      /* 4.65 (Colleen): crossed-off squares still look like sand you can dig */
+.ti-cell.xspot { z-index: 1; outline: 4px solid #ffd400; outline-offset: -2px; box-shadow: 0 0 0 3px #ffd400, 0 0 14px 4px #ffd400; animation: tixspot 1.6s ease-in-out infinite } .ti-cell.xspot::before { content: '✖'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 clamp(20px, 3.2vw, 40px) / 1 system-ui, sans-serif; color: #d42a1e; text-shadow: 0 0 3px #fff, 0 0 6px #fff; pointer-events: none } @keyframes tixspot { 50% { box-shadow: 0 0 0 3px #ffd400, 0 0 22px 8px #ffd400 } } @media (prefers-reduced-motion: reduce) { .ti-cell.xspot { animation: none } }
+.ti-key { position: relative; z-index: 2; margin: 6px auto 0; width: fit-content; max-width: 100%; box-sizing: border-box; font-size: .9rem; text-align: center; background: rgba(20,14,6,.82); color: #fff3d6; border-radius: 10px; padding: 4px 10px } .ti-key.spot { background: #7a1610; color: #fff; border: 2px solid #ffd400 } .ti-key b.red { color: #d42a1e } .ti-key.spot { font-weight: 800; font-size: 1.02rem } .ti-cell.leg { background: #ffe27a !important; box-shadow: 0 0 12px #ffd400 } .ti-cell.fresh { animation: sxpop .5s ease-out }
+.ti .sb-msg { background: rgba(60,35,10,.78); padding: 6px 10px; border-radius: 10px; min-height: 0; margin: 6px 0 } .ti-acts .btn { min-height: 50px } .ti-intro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 22px } .ti-intro #tspick { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100% } .ti-lens { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center } .ti-len { display: flex; flex-direction: column; gap: 2px; padding: 12px 18px; border-radius: 14px; border: 3px solid #fff; background: rgba(60,35,10,.75); color: #fff; font: 800 1.1rem var(--display); cursor: pointer } .ti-len small { font: 600 .8rem var(--body, inherit); opacity: .9 } .ti-len.on { background: #ffd400; color: #3b2a05 }
+.ti-lbbox { background: rgba(60,35,10,.78); border-radius: 14px; padding: 10px 16px; width: min(100%, 420px); text-align: left } .ti-lbbox h3 { margin: 0 0 6px; font-size: 1rem } .ti-lb { margin: 0; padding-left: 1.6em; display: grid; gap: 3px } .ti-lb li span { display: inline-block; min-width: 8em } .ti-lb li.me { color: #ffd400; font-weight: 800 } .ti-ic { width: 1.4em; height: 1.4em; object-fit: contain; vertical-align: middle; display: inline-block; text-align: center } .ti-ic.big { width: 2.2em; height: 2.2em } .ti-ban { width: min(90%, 420px); height: auto; animation: sxpop .5s ease-out } .ti-bigban { width: 48%; height: auto; animation: sxpop .5s ease-out } .ti-winban { position: absolute; left: 50%; top: 14%; width: 34%; transform: translateX(-50%); z-index: 13; animation: sxpop .5s ease-out } .sx-result.gold { background: #b8860b } .ti-feed li.other { background: rgba(60,35,10,.7) } .ti-big { font-size: 34px } .ti-dim { opacity: .35; pointer-events: none }
+.ti-dig { display: flex; gap: 14px; align-items: stretch; justify-content: center; flex-wrap: wrap; width: 100% } .ti-digside { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 260px }
+.ti-hole { display: flex; flex-direction: column; align-items: center; gap: 4px } .ti-dirt { position: relative; width: 110px; height: 340px; background: url('https://colleenelyse.github.io/asl-study-hall/img/isle/hole-dig.png?v=1') center / 100% 100% no-repeat; overflow: visible }      /* 4.50: Colleen's hole; packed sand fills what isn't dug yet */
+.ti-dirt > i { position: absolute; left: 17%; right: 17%; bottom: 3%; border-radius: 6px 6px 10px 10px; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.18) 0 2px, transparent 3px) 0 0 / 14px 14px, linear-gradient(#e7c27a, #c9964f 50%, #9c6c34); box-shadow: inset 0 3px 0 rgba(255,240,200,.6); transition: top .25s }
+.ti-mark { position: absolute; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; display: grid; place-items: center; background: rgba(255,255,255,.25); border-radius: 50%; filter: grayscale(.8) brightness(.8); font-size: 26px } .ti-mark .ti-ic { width: 36px; height: 36px } .ti-mark.got { filter: none; background: #ffe27a; box-shadow: 0 0 14px #ffd400; animation: sxpop .4s ease-out } .ti-mark.mega { width: 54px; height: 54px } .ti-pct { font: 900 1.2rem var(--display) } .ti-first { margin: 0; font-weight: 800; color: #ffe27a }
+.ti-holes { display: flex; gap: 3cqw; align-items: flex-end } .ti-holecol { display: flex; flex-direction: column; align-items: center; gap: .6cqw; font: 800 1.8cqw var(--display) } .ti-holecol .ti-dirt { width: 6.5cqw; height: 22cqw; filter: drop-shadow(0 0 .4cqw var(--tc)) drop-shadow(0 0 .2cqw var(--tc)) } .ti-holecol .ti-mark { width: 3cqw; height: 3cqw; font-size: 1.8cqw } .ti-holecol .ti-mark .ti-ic { width: 2.4cqw; height: 2.4cqw } .ti-holecol .ti-pct { font-size: 1.6cqw } .ti-got .ti-ic { width: 3cqw; height: 3cqw }
+.ti-rush { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 10px; background: rgba(60,35,10,.55); border-radius: 16px } .ti-nugget { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: clamp(60px, 10vw, 110px); line-height: 1; border: 0; background: radial-gradient(circle, #ffe27a 0%, #f5b700 60%, #b8860b 100%); border-radius: 50%; width: 1.5em; height: 1.5em; cursor: pointer; box-shadow: 0 8px 0 #7a5a00, 0 0 30px #ffd400; touch-action: manipulation; user-select: none } .ti-nugget small { font: 900 .3em var(--display) } .ti-nugget img { width: 55%; height: 55%; object-fit: contain; pointer-events: none } .ti-shovel { width: 44px; height: 44px; object-fit: contain } .ti-cell .ti-ic { width: 80%; height: 80% } .ti-nugget.pop { animation: tipop .12s ease-out } @keyframes tipop { 50% { transform: scale(.92) } } .ti-taps { font: 900 2rem var(--display); margin: 0 }
+.tip { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: 18px; overflow: hidden; background: #2fb4c9 url('https://colleenelyse.github.io/asl-study-hall/img/isle/island-background.jpg?v=1') center / cover; color: #fff; container-type: inline-size }
+.sb-msg { margin: 0; font-weight: 700; color: #ffe27a }
+@keyframes sxpop { 0% { transform: scale(.2); opacity: 0 } 70% { transform: scale(1.35) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes sxpick { 50% { opacity: .7 } }
+
+.ti button { font-family: inherit } .ti-wrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start } .ti-wrap > .ti { flex: 3 1 460px } .ti-wrap > .tiq { flex: 2 1 280px; min-width: 0 } .tiq .q-ask { aspect-ratio: auto; min-height: 120px; font-size: clamp(22px, 3vw, 34px) } .tiq .q-opts { grid-template-columns: 1fr 1fr } .tiq .q-opt { min-height: 70px; font-size: 18px } .ti .btnw { width: 100%; font-size: 1.1rem; min-height: 50px; background: #FFC83D; color: #3b2a12 }
 </style></head>
 <body><main id="app"><p class="mut">Loading…</p></main>
 <script>
@@ -76,7 +102,7 @@ const rand = a => a[Math.floor(Math.random() * a.length)];
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'],
   ['memory', '🎴', 'Memory', 'Flip face-down tiles to find the pairs'], ['yesno', '👍', 'Yes or No', 'Do these two go together?'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'],
-  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100: knock them out before 3 strikes'],
+  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100: knock them out before 3 strikes'], ['isle', '🏝️', 'Treasure Island', 'Answer for shovels, dig your island, beat your best haul'],
   ['listen', '👂', 'Listen and Type', 'Hear column A, type what you hear', 1], ['hear', '🗣️', 'Listen and Pick', 'Hear column A, pick its answer', 1], ['sayit', '🎤', 'Say It', 'See the answer, say column A out loud', 1]];
 /* pronunciation (Colleen: recommended for world language teachers, anyone can use it): each column can have a language; the device's most natural voice
    for it reads that column aloud (Google voices first: Chrome and Chromebooks have them). A column with no voice on the device gets no speaker, so a
@@ -102,7 +128,7 @@ const colLang = col => col === 0 ? META.la : META.lb, sideCol = k => FLIP ? 1 - 
 /* a speaker for one side of a card (k as in side()); nothing when that column has no language, is a picture, or has no voice on this device */
 function spk(c, k) { const col = sideCol(k), t = c[col], loc = colLang(col); if (!loc || pic(t) || (VOICES.length && !voiceFor(loc))) return ''; return `<button type="button" class="spk" data-say="${esc(t)}" data-loc="${esc(loc)}" title="Listen" aria-label="Listen">🔊</button>`; }
 /* the class games, coming to Lite next (Colleen: show which games are solo and which are whole class) */
-const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob (class)'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island']];
+const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob (class)'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island (class)']];
 
 /* a cell is a picture when it is a link to an image or GIF (Google Drive share links work when the file is shared with anyone) */
 function pic(v) {
@@ -233,7 +259,7 @@ function menu() {
     <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
     <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
-  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, listen, hear, sayit })[b.dataset.g]());
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, listen, hear, sayit })[b.dataset.g]());
 }
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
 let GEN = 0;      /* leaving a game cancels anything it still had waiting (the next question, a flip back) */
@@ -437,6 +463,101 @@ function mob() {
     app.innerHTML = head('👥 1 vs. The Mob') + `<div class="theone"><h2>${win ? '🎉 You beat the Mob!' : M.strikes >= MOB.strikes ? 'Three strikes. The Mob wins this time.' : 'Out of rounds. The Mob wins this time.'}</h2><p>${out} of the Mob knocked out${win ? '' : ` (you needed ${MOB.size - MOB.goal})`} in ${M.q} ${M.q === 1 ? 'round' : 'rounds'}. Your best: ${b}.</p></div>${grid()}<div class="row" style="justify-content:center"><button id="again">Play again</button></div>`;
     backBtn(); $('#again').onclick = mob;
   };
+}
+/* Treasure Island (from ASL Study's solo game): your own 8 x 6 island for 3, 5 or 10 minutes. Every 2 right answers = 1 shovel. Each patch has 3 layers:
+   dig deeper for bigger finds or bank your pouch; a crab or the cursed skull drops the pouch; map pieces cross out rows and columns where the legendary
+   treasure isn't. A Gold Rush every 90 seconds: 15 seconds of tapping DIG. Everything runs on this device; best hauls are kept in this browser. */
+const TI = '../img/isle/', TIV = '?v=1', TIW = 8, TIH = 6, TI_RUSH = 15000, TI_EVERY = 90000, TI_GOAL = 60, TI_PER = 2;
+const TI_FIND = { coins: 'Coins', shell: 'A seashell', gem: 'A gem', map: 'A map piece', crab: 'A crab', chest: 'A treasure chest', skull: 'The cursed skull', legend: 'THE LEGENDARY TREASURE', sand: 'Just sand' }, TI_MARK = ['coins', 'gem', 'chest'];
+const tImg = (f, cls) => `<img class="ti-ic ${cls || ''}" src="${TI}${f}.png${TIV}" alt="">`, tIcon = (k, cls) => tImg('find-' + k, cls), tCoord = i => 'ABCDEFGH'[i % TIW] + (Math.floor(i / TIW) + 1);
+const mmss = ms => { const s2 = Math.ceil(ms / 1000); return Math.floor(s2 / 60) + ':' + String(s2 % 60).padStart(2, '0'); };
+function tRoll(layer) { const r = Math.random(), b = (a, c) => a + Math.floor(Math.random() * (c - a + 1));
+  if (layer === 0) return r < .35 ? ['sand', 0] : r < .8 ? ['coins', b(5, 15)] : ['shell', 10];
+  if (layer === 1) return r < .3 ? ['coins', b(15, 30)] : r < .55 ? ['gem', 40] : r < .8 ? ['crab', 0] : ['sand', 0];
+  return r < .4 ? ['chest', b(80, 150)] : r < .6 ? ['gem', 50] : r < .9 ? ['skull', 0] : ['coins', 40]; }
+const tTile = () => ({ c: [tRoll(0), tRoll(1), tRoll(2)], d: 0 });
+function isle() {
+  let T = null, tick = null, mins = +get('lite-isle-mins', 5);
+  const bestOf = m => +get('lite-best-isle' + m + '-' + META.key, 0);
+  const intro = () => {
+    app.innerHTML = head('🏝️ Treasure Island') + `<div class="ti ti-intro"><img class="ti-ban" src="${TI}banner-legend.png${TIV}" alt="Treasure Island" style="max-width:360px;width:100%"><p class="sx-sub">Answer for shovels, dig your own island, and beat your best haul. Pick how long to play:</p>
+      <div class="row" style="justify-content:center">${[3, 5, 10].map(x => `<button class="${x === mins ? '' : 'alt'}" data-m="${x}">${x} minutes<br><small>Best: ${bestOf(x)} gold</small></button>`).join('')}</div><button id="go" class="btnw" style="max-width:360px">🏝️ Start digging (${mins} minutes)</button></div>`;
+    backBtn(); app.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mins = +b.dataset.m; put('lite-isle-mins', mins); intro(); }); $('#go').onclick = start;
+  };
+  const start = () => {
+    const tiles = Array.from({ length: TIW * TIH }, tTile), legend = Math.floor(Math.random() * tiles.length); tiles[legend].c[2] = ['legend', 300];
+    shuffle(tiles.map((x, i) => i).filter(i => i !== legend)).slice(0, 4).forEach(i => { tiles[i].c[1] = ['map', 0]; });
+    T = { tiles, legend, found: false, maps: [], pouch: { cell: -1, val: 0 }, gold: 0, right: 0, spent: 0, digs: 0, sel: -1, res: null, endAt: Date.now() + mins * 60000, rushAt: Date.now() + TI_EVERY, rush: null, done: false };
+    app.innerHTML = head('🏝️ Treasure Island', `<b id="tclock">${mmss(mins * 60000)}</b>`) + `<div class="ti-wrap"><div class="ti"><div class="ti-head"><h2 style="margin:0">🏝️ Treasure Island</h2><span class="ti-stat" id="tstat"></span></div><div id="tbody"></div></div><section class="card tiq" id="tq"><div id="tars"></div><div id="tqb"></div></section></div>`;
+    backBtn(); $('#back').addEventListener('click', () => clearInterval(tick));
+    tick = setInterval(step, 250); paint(); ars(); question();
+  };
+  const shovels = () => Math.max(0, Math.floor(T.right / TI_PER) - T.spent);
+  const ars = () => { const el = $('#tars'); if (!el) return; const n = shovels(), l = TI_PER - (T.right % TI_PER); el.innerHTML = `<div class="sx-arsbox"><img src="${TI}item-shovel.png${TIV}" alt=""><span><b>${n} shovel${n === 1 ? '' : 's'}</b> to dig with<small>${l === TI_PER ? 'Every 2 right answers = 1 shovel' : l + ' more right answer for the next one'}</small></span></div>`; };
+  const question = () => {
+    const el = $('#tqb'); if (!el || T.done) return; const c = rand(CARDS), opts = choices(c, 4);
+    el.innerHTML = `<p class="mut small" style="margin:8px 0 4px">Answer to earn shovels</p><div class="q-ask">${media(side(c, 0))}${spk(c, 0)}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
+    el.querySelectorAll('.q-opt').forEach(b => b.onclick = () => { if (el.querySelector('.q-opt.ok') || T.rush) return; const ok = opts[+b.dataset.k] === c; el.querySelectorAll('.q-opt').forEach((x, k) => { if (opts[k] === c) x.classList.add('ok'); }); if (!ok) b.classList.add('no'); else { T.right++; ars(); } later(question, ok ? 450 : 1300); });
+  };
+  const step = () => {
+    if (!T || T.done) return; if (!$('#tbody')) return clearInterval(tick);
+    const now = Date.now(), c = $('#tclock'); if (c) c.textContent = mmss(Math.max(0, T.endAt - now));
+    if (now >= T.endAt) return finish();
+    if (!T.rush && now >= T.rushAt) { T.rush = { until: now + TI_RUSH, taps: 0 }; return paint(); }
+    if (T.rush && now >= T.rush.until) return rushEnd();
+    if (T.rush) { const t = $('#trl'); if (t) t.textContent = Math.ceil((T.rush.until - now) / 1000); }
+  };
+  const hole = taps => { const pct = Math.min(100, Math.round(100 * taps / TI_GOAL)); return `<div class="ti-dirt"><i style="top:${Math.max(4, pct)}%"></i>${TI_MARK.map((m, k) => `<span class="ti-mark${pct >= (k + 1) * 25 ? ' got' : ''}" style="top:${(k + 1) * 25}%">${tIcon(m)}</span>`).join('')}<span class="ti-mark mega${pct >= 100 ? ' got' : ''}" style="top:97%">${tImg('find-mystery')}</span></div><b class="ti-pct">${pct}% deep</b>`; };
+  const rushEnd = () => {
+    const pct = T.rush.taps / TI_GOAL, got = TI_MARK.filter((m, k) => pct >= (k + 1) * .25); let gold = [40, 80, 150].slice(0, got.length).reduce((a, b) => a + b, 0), mega = '';
+    if (pct >= 1) { if (!T.found && Math.random() < .4) { crossAllBut(); mega = `🏆 Mystery treasure: X marks the spot! The legendary treasure is at <b>${tCoord(T.legend)}</b>.`; } else { gold += 300; mega = `🏆 Mystery treasure: ${tImg('item-nugget')} a giant gold nugget, +300 gold!`; } }
+    T.gold += gold; let refill = 0; T.tiles.forEach((x, i) => { if (x.d >= 3 && i !== T.legend) { T.tiles[i] = tTile(); refill++; } });
+    T.rush = null; T.rushAt = Date.now() + TI_EVERY;
+    T.res = { cls: 'hit gold', text: `⚡ Gold Rush over! You reached ${got.length ? got.map(k => tIcon(k)).join(' ') : 'no markers'} for <b>${gold}</b> gold. ${mega} 🌊 The tide brought new treasure${refill ? ` to ${refill} empty ${refill === 1 ? 'patch' : 'patches'}` : ''}.` };
+    paint();
+  };
+  const crossAllBut = () => { const lr = Math.floor(T.legend / TIW), lc = T.legend % TIW; for (let r = 0; r < TIH; r++) if (r !== lr && !T.maps.includes('r' + r)) T.maps.push('r' + r); for (let c = 0; c < TIW; c++) if (c !== lc && !T.maps.includes('c' + c)) T.maps.push('c' + c); };
+  const xspot = cross => { if (T.found || !cross.size) return -1; let only = -1, n = 0; for (let i = 0; i < TIW * TIH; i++) if (!cross.has('r' + Math.floor(i / TIW)) && !cross.has('c' + (i % TIW))) { n++; only = i; } return n === 1 ? only : -1; };
+  const paint = () => {
+    const el = $('#tbody'); if (!el) return; const st = $('#tstat'); if (st) st.innerHTML = `${tImg('item-bank')} ${T.gold} banked${T.pouch.val ? ` · ${tImg('item-pouch')} ${T.pouch.val} in your pouch` : ''}`;
+    const q = $('#tq'); if (q) q.style.opacity = T.rush || T.done ? .35 : 1;
+    if (T.rush) {
+      el.innerHTML = `<div class="ti-rush"><img class="ti-ban" src="${TI}banner-gold-rush.png${TIV}" alt="Gold Rush!"><p class="sx-sub">Tap DIG as fast as you can! <b id="trl">${Math.ceil((T.rush.until - Date.now()) / 1000)}</b> s</p><div class="ti-dig"><div class="ti-hole" id="thole">${hole(T.rush.taps)}</div><div class="ti-digside"><button class="ti-nugget" id="tdig" aria-label="Dig"><img src="${TI}item-shovel.png${TIV}" alt=""><small>DIG!</small></button><p class="ti-taps"><b id="ttaps">0</b> taps</p><p class="small" style="margin:0">Reach the bottom for the mystery treasure!</p></div></div></div>`;
+      const b = $('#tdig'); b.onpointerdown = e => { e.preventDefault(); if (!T.rush) return; T.rush.taps++; $('#ttaps').textContent = T.rush.taps; $('#thole').innerHTML = hole(T.rush.taps); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); };
+      return;
+    }
+    if (T.done) { const b = Math.max(bestOf(mins), T.gold), nb = T.gold > bestOf(mins); put('lite-best-isle' + mins + '-' + META.key, b);
+      el.innerHTML = `<div class="ti-rush"><img class="ti-ban" src="${TI}banner-victory.png${TIV}" alt=""><p class="sx-big">${T.gold} gold in ${mins} minutes!</p><p class="sx-sub">${nb ? '🎉 A new best haul!' : 'Your best: ' + b + ' gold.'} You dug ${T.digs} ${T.digs === 1 ? 'time' : 'times'} and answered ${T.right} right.</p><button id="again" class="btnw" style="max-width:320px">Play again</button></div>`;
+      $('#again').onclick = intro; return; }
+    const cross = new Set(T.maps), n = shovels(), holding = T.pouch.cell >= 0, depth = holding ? T.tiles[T.pouch.cell].d : 0, spot = xspot(cross);
+    let cells = ''; for (let i = 0; i < TIW * TIH; i++) { const d = T.tiles[i].d, r = Math.floor(i / TIW), c = i % TIW, leg = T.found && i === T.legend;
+      cells += `<button class="ti-cell d${d}${T.sel === i ? ' sel' : ''}${i === T.pouch.cell ? ' mine' : ''}${i === spot ? ' xspot' : cross.has('r' + r) || cross.has('c' + c) ? ' x' : ''}${leg ? ' leg' : ''}" data-i="${i}" aria-label="${tCoord(i)}">${leg ? tIcon('legend') : ''}</button>`; }
+    const act = holding && depth < 3 ? `<div class="row ti-acts" style="gap:6px;flex-wrap:wrap"><button class="btnw" id="deeper" style="flex:1"${n ? '' : ' disabled'}>Dig deeper at ${tCoord(T.pouch.cell)} (layer ${depth + 1} of 3)</button><button class="btnw" id="bank" style="flex:1;background:#fff"${T.pouch.val ? '' : ' disabled'}>Bank ${T.pouch.val} gold</button></div>`
+      : T.sel >= 0 ? `<button class="btnw" id="dig"${n ? '' : ' disabled'}>Dig at ${tCoord(T.sel)} (1 shovel)</button>` : '';
+    const hint = !n ? 'Answer the questions to earn shovels.' : holding && depth < 3 ? 'Dig deeper for bigger treasure, or bank it to keep it safe.' : T.sel >= 0 ? 'Press Dig, or tap a different patch.' : 'Tap a patch of sand to choose where to dig.';
+    el.innerHTML = `${T.res ? `<p class="sx-result ${T.res.cls}">${T.res.text}</p>` : ''}${act}<p class="sb-msg">${hint} · ⚡ Gold Rush in ${mmss(Math.max(0, T.rushAt - Date.now()))}</p>
+      <div class="ti-grid" style="--w:${TIW};--h:${TIH}"><span></span><div class="ti-labs top">${'ABCDEFGH'.split('').map(c => `<b>${c}</b>`).join('')}</div><div class="ti-labs side">${Array.from({ length: TIH }, (_, i) => `<b>${i + 1}</b>`).join('')}</div><div class="ti-sand">${cells}</div></div>
+      ${!cross.size ? '' : `<p class="ti-key${spot >= 0 ? ' spot' : ''}">${spot >= 0 ? `❌ X marks the spot! The legendary treasure is at <b>${tCoord(spot)}</b>.` : '<b class="red">✖</b> = the legendary treasure isn’t here (you can still dig for other treasure).'}</p>`}`;
+    el.querySelectorAll('.ti-cell').forEach(b => b.onclick = () => { const i = +b.dataset.i; if (T.tiles[i].d >= 3) { T.res = { cls: 'miss', text: 'That patch is dug out. Pick another one.' }; return paint(); } T.sel = i; T.res = null; paint(); });
+    if ($('#dig')) $('#dig').onclick = () => dig(T.sel); if ($('#deeper')) $('#deeper').onclick = () => dig(T.pouch.cell); if ($('#bank')) $('#bank').onclick = () => bank(false);
+  };
+  const bank = quiet => { const v = T.pouch.val; T.gold += v; T.pouch = { cell: -1, val: 0 }; if (!quiet) { T.res = { cls: 'hit gold', text: `${tImg('item-bank')} Banked ${v} gold!` }; paint(); } };
+  const dig = i => {
+    if (!shovels()) { T.res = { cls: 'miss', text: 'You need a shovel. Answer the questions!' }; return paint(); }
+    if (T.pouch.cell >= 0 && T.pouch.cell !== i) bank(true);
+    const t = T.tiles[i]; if (t.d >= 3) return; const f = t.c[t.d], kind = f[0], at = tCoord(i); let val = f[1]; t.d++; T.spent++; T.digs++;
+    const icon = tIcon(kind, 'big'), name = TI_FIND[kind];
+    if (kind === 'crab' || kind === 'skull') { const lost = T.pouch.val; T.pouch = { cell: -1, val: 0 }; T.res = { cls: 'hit', text: `${icon} ${name} at ${at}! ${lost ? `You dropped your pouch (${lost} gold).` : 'Good thing your pouch was empty.'}` }; }
+    else if (kind === 'map') { const lr = Math.floor(T.legend / TIW), lc = T.legend % TIW, opts = []; for (let r = 0; r < TIH; r++) if (r !== lr && !T.maps.includes('r' + r)) opts.push('r' + r); for (let c = 0; c < TIW; c++) if (c !== lc && !T.maps.includes('c' + c)) opts.push('c' + c);
+      if (opts.length && !T.found) { const p = rand(opts); T.maps.push(p); T.res = { cls: 'miss', text: `${icon} A map piece! It crossed out ${p[0] === 'r' ? 'row ' + (+p.slice(1) + 1) : 'column ' + 'ABCDEFGH'[+p.slice(1)]}: the treasure isn't there.` }; }
+      else { T.pouch.val += 20; T.res = { cls: 'hit gold', text: `${icon} A map piece: +20 gold.` }; } T.pouch.cell = t.d < 3 ? i : -1; }
+    else if (kind === 'legend') { T.gold += val; T.found = true; T.pouch.cell = -1; T.res = { cls: 'hit gold', text: `${icon} THE LEGENDARY TREASURE! +${val} gold!` }; }
+    else { T.pouch.val += val; T.pouch.cell = t.d < 3 ? i : -1; T.res = { cls: val ? 'hit gold' : 'miss', text: `${icon} ${name}${val ? ' (+' + val + ')' : ''} at ${at}.${T.pouch.val ? ` Your pouch: ${T.pouch.val} gold.` : ''}` }; }
+    if (t.d >= 3 && T.pouch.val && kind !== 'crab' && kind !== 'skull') { const v = T.pouch.val; bank(true); T.res.text += ` The bottom! Banked ${v} gold.`; }
+    T.sel = -1; ars(); paint();
+  };
+  const finish = () => { if (T.rush) rushEnd(); if (T.pouch.val) bank(true); T.done = true; clearInterval(tick); paint(); };
+  intro();
 }
 function match() {
   const set = shuffle(CARDS).slice(0, Math.min(6, CARDS.length)), tiles = shuffle(set.flatMap((c, k) => [{ k, v: side(c, 0) }, { k, v: side(c, 1) }])); let sel = null, found = 0, tries = 0; const t0 = Date.now();
