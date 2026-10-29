@@ -93,6 +93,20 @@ button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px va
 @keyframes sxpick { 50% { opacity: .7 } }
 
 .ti button { font-family: inherit } .ti-wrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start } .ti-wrap > .ti { flex: 3 1 460px } .ti-wrap > .tiq { flex: 2 1 280px; min-width: 0 } .tiq .q-ask { aspect-ratio: auto; min-height: 120px; font-size: clamp(22px, 3vw, 34px) } .tiq .q-opts { grid-template-columns: 1fr 1fr } .tiq .q-opt { min-height: 70px; font-size: 18px } .ti .btnw { width: 100%; font-size: 1.1rem; min-height: 50px; background: #FFC83D; color: #3b2a12 }
+/* Sea Battle (copied from ASL Study, her art from ../img/sea/) */
+.sb { border-radius: 18px; padding: 14px; color: #fff; background: #0b4f8a url('https://colleenelyse.github.io/asl-study-hall/img/sea/harbor-sm.jpg?v=1') center / cover; text-shadow: 0 1px 2px rgba(0,0,0,.6) } .sb-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; background: rgba(8,39,61,.75); border-radius: 12px; padding: 6px 12px } .sb-head h2 { margin: 0; color: #fff } .sb-stat { display: flex; gap: 14px; flex-wrap: wrap; font-weight: 700; align-items: center }
+.sb-ico { width: 1.4em; height: 1.4em; vertical-align: middle; object-fit: contain } .sb-main { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; align-items: flex-start } .sb-main > div:first-child { flex: 2 1 340px } .sb-side { flex: 1 1 230px; display: flex; flex-direction: column; gap: 8px; background: rgba(8,39,61,.72); border-radius: 14px; padding: 10px }
+.sb-cap { font: 800 15px var(--display); color: #fff; margin-bottom: 4px; background: rgba(8,39,61,.75); display: inline-block; padding: 2px 10px; border-radius: 999px }
+.sb-grid { display: grid; grid-template-columns: 2.4em 1fr; grid-template-rows: 1.8em auto; } .sb-grid.mine { grid-template-columns: 1.4em 1fr; grid-template-rows: 1.3em auto; font-size: 11px }
+.sb-labs { display: grid; } .sb-labs.top { grid-template-columns: repeat(8, 1fr) } .sb-labs.side { grid-template-rows: repeat(8, 1fr) } .sb-labs b { display: grid; place-items: center; font: 800 clamp(10px, 1.5vw, 15px) var(--display); color: #ffe27a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.sb-sea { position: relative; aspect-ratio: 1; border: 5px solid #8a5a2b; border-radius: 10px; background: linear-gradient(125deg, rgba(0,123,168,.88), rgba(56,194,216,.9)); box-shadow: 0 4px 0 #5b3a1e, 0 9px 15px rgba(0,28,51,.6); overflow: hidden }
+.sb-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); z-index: 2 }
+.sb-cell { border: 1px solid rgba(211,247,255,.4); background: transparent; padding: 0; cursor: pointer; display: grid; place-items: center } .sb-cell img { width: 88%; height: 88%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)) } .sb-grid.mine .sb-cell { cursor: default }
+.sb-grid.enemy .sb-cell:not(.shot):hover { background: rgba(255,247,138,.35) } .sb-cell.sel { background: rgba(255,247,138,.6); outline: 3px solid #fff; outline-offset: -3px }
+.sb-ship { position: absolute; width: calc(var(--len) * 12.5%); height: 12.5%; object-fit: contain; z-index: 1; pointer-events: none; filter: drop-shadow(0 3px 3px rgba(0,0,0,.45)) } .sb-ship.v { transform-origin: 0 0; transform: rotate(90deg) translateY(-100%); width: calc(var(--len) * 12.5% * var(--ar, 1)); }
+.sx-leg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px } .sx-leg li { display: flex; justify-content: space-between; gap: 8px; background: rgba(8,39,61,.78); color: #fff; border-radius: 8px; padding: 4px 10px; font-size: .9rem } .sx-leg li span { color: #ffe27a; font-size: .8rem; white-space: nowrap } .sx-leg li.gone { opacity: .55; text-decoration: line-through } .sx-leg li.pick { outline: 3px solid #ffe27a } .sx-leg li[data-a] { cursor: pointer }
+.sb-ctl { display: flex; flex-direction: column; gap: 8px } .sb-ctl .seg button { font-size: 13px } .sb-msg { min-height: 2.6em; margin: 0; font-weight: 700; color: #ffe27a }
+.sb button { font-family: inherit } .sb .seg button { color: #fff } .sb .seg { background: rgba(8,39,61,.7); border-color: transparent } .sb .seg button.on { background: #FFC83D; color: #3b2a12 }
 </style></head>
 <body><main id="app"><p class="mut">Loading…</p></main>
 <script>
@@ -103,7 +117,7 @@ const rand = a => a[Math.floor(Math.random() * a.length)];
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'],
   ['memory', '🎴', 'Memory', 'Flip face-down tiles to find the pairs'], ['yesno', '👍', 'Yes or No', 'Do these two go together?'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'],
-  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100: knock them out before 3 strikes'], ['isle', '🏝️', 'Treasure Island', 'Answer for shovels, dig your island, beat your best haul'],
+  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100: knock them out before 3 strikes'], ['isle', '🏝️', 'Treasure Island', 'Answer for shovels, dig your island, beat your best haul'], ['sea', '⚓', 'Sea Battle', 'Answer for cannonballs, then sink the computer\u2019s hidden fleet'],
   ['listen', '👂', 'Listen and Type', 'Hear column A, type what you hear', 1], ['hear', '🗣️', 'Listen and Pick', 'Hear column A, pick its answer', 1], ['sayit', '🎤', 'Say It', 'See the answer, say column A out loud', 1]];
 /* pronunciation (Colleen: recommended for world language teachers, anyone can use it): each column can have a language; the device's most natural voice
    for it reads that column aloud (Google voices first: Chrome and Chromebooks have them). A column with no voice on the device gets no speaker, so a
@@ -129,7 +143,7 @@ const colLang = col => col === 0 ? META.la : META.lb, sideCol = k => FLIP ? 1 - 
 /* a speaker for one side of a card (k as in side()); nothing when that column has no language, is a picture, or has no voice on this device */
 function spk(c, k) { const col = sideCol(k), t = c[col], loc = colLang(col); if (!loc || pic(t) || (VOICES.length && !voiceFor(loc))) return ''; return `<button type="button" class="spk" data-say="${esc(t)}" data-loc="${esc(loc)}" title="Listen" aria-label="Listen">🔊</button>`; }
 /* the class games, coming to Lite next (Colleen: show which games are solo and which are whole class) */
-const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob (class)'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island (class)']];
+const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob (class)'], ['sea', '⚓', 'Sea Battle (class)'], ['isle', '🏝️', 'Treasure Island (class)']];
 
 /* a cell is a picture when it is a link to an image or GIF (Google Drive share links work when the file is shared with anyone) */
 function pic(v) {
@@ -292,7 +306,7 @@ function menu() {
     <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
     <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
-  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, listen, hear, sayit })[b.dataset.g]());
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, sea, listen, hear, sayit })[b.dataset.g]());
 }
 /* the game guide (Colleen: a little link that shows what each game does, so teachers can browse; also a pop-out from the paste screen).
    Each game: how it plays, Solo or Class, and Try it with a built-in sample set (Spanish and English, with read-aloud on). */
@@ -306,6 +320,7 @@ const GUIDE = {
   type: 'See one side and type the other. Capitals, accents and punctuation don’t count against you. Shows only when the answers are words.',
   toast: 'An arcade game. Fly a winged toaster through dodge zones of forks or neon pipes, then fly into the toast with the right answer. A bump only sends you back; only a wrong answer costs a heart. Gets harder with three choices.',
   mob: 'You are THE ONE against a Mob of 100. A right answer knocks out everyone in the Mob who missed it; a wrong one is a strike and some fight back in. Get the Mob down to 20 in 12 rounds, before 3 strikes.',
+  sea: 'Battleship-style. Every right answer earns a cannonball. Tap a square on the enemy sea and fire; the computer fires back. Treasure chests give extra cannonballs, and the mega torpedo (3 cannonballs) blasts a plus shape but is sometimes a dud. Sink the whole fleet first.',
   isle: 'Dig your own treasure island for 3, 5 or 10 minutes. Right answers earn shovels; dig deeper or bank your gold, watch out for crabs and the cursed skull, follow map pieces to the legendary treasure, and tap fast in the Gold Rush.',
   listen: 'Hear column A read aloud in its language and type what you hear. Needs a language picked in step 4.',
   hear: 'Hear column A read aloud and pick its answer out of four. Listening practice. Needs a language picked in step 4.',
@@ -335,7 +350,7 @@ function guide() {
   if (!VOICES.length) setTimeout(() => { if (VOICES.length && $('[data-demo]')) guide(); }, 700);      /* voices load a moment after the page */
   app.querySelectorAll('[data-try]').forEach(b => b.onclick = () => {
     CARDS = D[3].slice(); META = { t: D[0] + ' sample words', g: GAMES.map(x => x[0]), key: 'sample-' + DEMO, la: D[2], lb: 'en-US', chk: D[2] !== 'la', guide: true }; FLIP = false;
-    ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, listen, hear, sayit })[b.dataset.try]();
+    ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, isle, sea, listen, hear, sayit })[b.dataset.try]();
   });
 }
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
@@ -635,6 +650,78 @@ function isle() {
   };
   const finish = () => { if (T.rush) rushEnd(); if (T.pouch.val) bank(true); T.done = true; clearInterval(tick); paint(); };
   intro();
+}
+/* Sea Battle (from ASL Study's solo game, tap to aim): answer for cannonballs (1 per right answer), tap a square on the enemy sea, Fire; the computer fires
+   back (it hunts around a hit). 3 hidden treasure chests = +2 cannonballs each. The mega torpedo costs 3: a plus-shaped blast, 1 in 3 is a dud. Her ships and markers. */
+const SEA = '../img/sea/', SEAV = '?v=2', SN = 8, SLENS = [5, 4, 3, 3, 2], SFILE = ['carrier', 'battleship', 'cruiser', 'submarine', 'destroyer'], SKIND = ['Carrier', 'Battleship', 'Cruiser', 'Submarine', 'Destroyer'];
+const SNAMES = [["Kraken's Fury", 'Fire Galleon', 'Red Raven', 'Ember Eel', 'Scarlet Parrot'], ['Tidal Leviathan', 'Storm Galleon', 'Blue Marlin', 'Ghost Eel', 'Salty Gull']];
+function seaFleet() {
+  for (let t = 0; t < 400; t++) {
+    const occ = new Map(), ships = [], loose = t >= 250; let ok = true;
+    for (const len of SLENS) { let placed = false;
+      for (let a = 0; a < 200 && !placed; a++) { const h = Math.random() < .5, r = Math.floor(Math.random() * (h ? SN : SN - len + 1)), c = Math.floor(Math.random() * (h ? SN - len + 1 : SN)), cells = [];
+        for (let k = 0; k < len; k++) cells.push((r + (h ? 0 : k)) * SN + c + (h ? k : 0));
+        const near = cells.some(i => { const rr = Math.floor(i / SN), cc = i % SN; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const r2 = rr + dr, c2 = cc + dc; if (r2 >= 0 && r2 < SN && c2 >= 0 && c2 < SN && occ.has(r2 * SN + c2)) return true; } return false; });
+        if (!(loose ? cells.some(i => occ.has(i)) : near)) { cells.forEach(i => occ.set(i, ships.length)); ships.push({ len, cells, h }); placed = true; } }
+      if (!placed) { ok = false; break; } }
+    if (ok) return { occ, ships };
+  }
+}
+function sea() {
+  const B = { me: seaFleet(), cpu: seaFleet(), cpuShots: {}, fired: {}, chests: new Set(), balls: 0, sel: -1, kind: 'shot', hunt: [], over: false, busy: false, res: null, cpuMsg: null, fresh: null, cpuFresh: null, right: 0 };
+  shuffle([...Array(SN * SN).keys()].filter(i => !B.cpu.occ.has(i))).slice(0, 3).forEach(i => B.chests.add(i));
+  const coord = i => 'ABCDEFGH'[i % SN] + (Math.floor(i / SN) + 1), nb = i => { const r = Math.floor(i / SN), c = i % SN; return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([a, b]) => a >= 0 && a < SN && b >= 0 && b < SN).map(([a, b]) => a * SN + b); };
+  app.innerHTML = head('⚓ Sea Battle') + `<div class="ti-wrap"><div class="sb" id="sb" style="flex:3 1 460px"><div class="sb-head"><h2 style="margin:0">⚓ Sea Battle</h2><div id="sbstat" class="sb-stat"></div></div>
+    <div class="sb-main"><div><div class="sb-cap">The enemy fleet</div><div id="sbenemy"></div></div><div class="sb-side"><div id="sbctl" class="sb-ctl"></div><div class="sb-cap">Your fleet</div><div id="sbme"></div></div></div></div>
+    <section class="card tiq"><div class="sx-arsbox"><img src="${SEA}item-cannonball.png${SEAV}" alt=""><span><b>Earn cannonballs</b><small>Every right answer = 1 cannonball</small></span></div><div id="sq"></div></section></div>`;
+  backBtn();
+  const grid = enemy => {
+    const shots = enemy ? B.fired : B.cpuShots, F = enemy ? B.cpu : B.me, sunkShips = F.ships.filter(sh => sh.cells.every(i => shots[i] === 'h')), sunk = new Set(); sunkShips.forEach(sh => sh.cells.forEach(i => sunk.add(i)));
+    const ship = sh => { const r = Math.floor(sh.cells[0] / SN), c = sh.cells[0] % SN, done = sunkShips.includes(sh); return `<img class="sb-ship${sh.h ? '' : ' v'}${done ? ' sunk' : ''}" src="${SEA}ship-${SFILE[F.ships.indexOf(sh)] || 'cruiser'}${done ? '-sunk' : ''}${enemy ? '-blue' : ''}.png${SEAV}" alt="" style="left:${c * 12.5}%;top:${r * 12.5}%;--len:${sh.len}">`; };
+    const mark = v => v === 'h' ? 'marker-hit' : v === 'm' ? 'marker-splash' : v === 'c' ? 'item-chest-open' : '', fr = enemy ? B.fresh : B.cpuFresh;
+    let cells = ''; for (let i = 0; i < SN * SN; i++) { const v = shots[i]; cells += `<button class="sb-cell${enemy && B.sel === i ? ' sel' : ''}${v ? ' shot' : ''}${fr && fr.has(i) ? ' fresh' : ''}"${enemy ? ` data-i="${i}" aria-label="${coord(i)}"` : ' tabindex="-1"'}>${v ? `<img src="${SEA}${sunk.has(i) ? 'marker-smoke' : mark(v)}.png${SEAV}" alt="">` : ''}</button>`; }
+    return `<div class="sb-grid${enemy ? ' enemy' : ' mine'}"><span></span><div class="sb-labs top">${'ABCDEFGH'.split('').map(c => `<b>${c}</b>`).join('')}</div><div class="sb-labs side">${'12345678'.split('').map(r => `<b>${r}</b>`).join('')}</div><div class="sb-sea">${(enemy ? sunkShips : F.ships).map(ship).join('')}<div class="sb-cells">${cells}</div></div></div>`;
+  };
+  const legend = (t, F, shots) => `<ol class="sx-leg">${SLENS.map((len, k) => `<li class="${F.ships[k].cells.every(i => shots[i] === 'h') ? 'gone' : ''}"><b>${esc(SNAMES[t][k])}</b><span>${SKIND[k]} · ${'▮'.repeat(len)}</span></li>`).join('')}</ol>`;
+  const left = (F, shots) => F.ships.filter(sh => !sh.cells.every(i => shots[i] === 'h')).length;
+  const paint = msg => {
+    if (!$('#sb')) return; const cost = B.kind === 'torpedo' ? 3 : 1;
+    $('#sbenemy').innerHTML = grid(true) + legend(1, B.cpu, B.fired); $('#sbme').innerHTML = (B.cpuMsg ? `<p class="sx-result small ${B.cpuMsg.cls}">${B.cpuMsg.text}</p>` : '') + grid(false) + legend(0, B.me, B.cpuShots);
+    $('#sbstat').innerHTML = `<span><img class="sb-ico" src="${SEA}item-cannonball.png${SEAV}" alt=""> <b>${B.balls}</b> cannonball${B.balls === 1 ? '' : 's'}</span><span>Enemy ships left: <b>${left(B.cpu, B.fired)}</b></span><span>Yours left: <b>${left(B.me, B.cpuShots)}</b></span>`;
+    $('#sbctl').innerHTML = `<div class="seg"><button class="${B.kind === 'shot' ? 'on' : ''}" data-k="shot">Cannonball (1)</button><button class="${B.kind === 'torpedo' ? 'on' : ''}" data-k="torpedo"><img class="sb-ico" src="${SEA}item-torpedo.png${SEAV}" alt=""> Mega torpedo (3)</button></div>` +
+      (B.res ? `<p class="sx-result ${B.res.cls}">${B.res.text}</p>` : '') + (B.sel >= 0 && !B.over && !B.busy ? (B.balls >= cost ? `<button class="btnw" id="fire" style="background:#FFC83D;color:#3b2a12">🔥 Fire ${B.kind === 'torpedo' ? 'the torpedo ' : ''}at ${coord(B.sel)}</button>` : `<p class="sb-msg">You need ${B.kind === 'torpedo' ? '3 cannonballs' : 'a cannonball'}. Answer the questions!</p>`) : '') +
+      `<p class="sb-msg">${msg || (B.over ? '' : B.busy ? 'The enemy is firing back…' : B.balls < cost ? 'Answer the questions to earn cannonballs.' : B.sel >= 0 ? 'Aimed! Press Fire, or tap a different square.' : 'Tap a square on the enemy sea to aim.')}</p>` + (B.over ? '<button class="btnw" id="sagain" style="background:#FFC83D;color:#3b2a12">Play again</button>' : '');
+    $('#sbenemy').querySelectorAll('.sb-cell').forEach(b => b.onclick = () => { if (B.over || B.busy) return; const i = +b.dataset.i; if (B.fired[i]) return paint('You already fired there. Pick a new square.'); B.sel = i; B.res = null; paint(); });
+    $('#sbctl').querySelectorAll('[data-k]').forEach(b => b.onclick = () => { B.kind = b.dataset.k; paint(); });
+    if ($('#fire')) $('#fire').onclick = () => fire(B.sel); if ($('#sagain')) $('#sagain').onclick = sea;
+  };
+  const hit = (F, shots, cells) => { const out = []; cells.forEach(i => { if (shots[i]) return; shots[i] = F.occ.has(i) ? 'h' : (F === B.cpu && B.chests.has(i)) ? 'c' : 'm'; out.push([i, shots[i]]); }); return out; };
+  const fire = i => {
+    const torp = B.kind === 'torpedo'; B.balls -= torp ? 3 : 1; let cells = [i], note = '';
+    if (torp) { if (Math.random() < 1 / 3) { cells = []; note = '💨 The torpedo was a dud!'; } else { cells = [i].concat(nb(i)); note = '🚀 Torpedo blast!'; } B.kind = 'shot'; }
+    const sunkK = () => B.cpu.ships.map((sh, k) => sh.cells.every(x => B.fired[x] === 'h') ? k : -1).filter(k => k >= 0), before = sunkK(), res = hit(B.cpu, B.fired, cells);
+    const hits = res.filter(r => r[1] === 'h').length, chest = res.filter(r => r[1] === 'c').length; B.balls += chest * 2;
+    const now = sunkK().filter(k => !before.includes(k));
+    note += (hits ? ' 💥 Hit' + (hits > 1 ? ' ×' + hits : '') + '!' : cells.length ? ' 💦 Miss.' : '') + (chest ? ' 💰 Treasure! +' + chest * 2 + ' cannonballs.' : '') + (now.length ? ' ' + now.map(k => '🔥 You sank the enemy’s ' + SNAMES[1][k] + '!').join(' ') : '');
+    B.sel = -1; B.fresh = new Set(res.map(r => r[0])); B.cpuFresh = null; B.cpuMsg = null; B.res = { cls: hits ? 'hit' : 'miss', text: coord(i) + ': ' + note.trim() };
+    if (B.cpu.ships.every(sh => sh.cells.every(x => B.fired[x] === 'h'))) { B.over = true; B.res = { cls: 'hit', text: '🏆 You sank the whole enemy fleet! You win!' }; best('sea', 1); return paint(); }
+    B.busy = true; paint(); later(cpu, 1400);
+  };
+  const cpu = () => {
+    if (B.over) return; let i;
+    while (B.hunt.length && i === undefined) { const t = B.hunt.shift(); if (!B.cpuShots[t]) i = t; }
+    if (i === undefined) { const free = [...Array(SN * SN).keys()].filter(x => !B.cpuShots[x] && (Math.floor(x / SN) + x) % 2 === 0), any = free.length ? free : [...Array(SN * SN).keys()].filter(x => !B.cpuShots[x]); i = rand(any); }
+    const r = hit(B.me, B.cpuShots, [i])[0]; if (r && r[1] === 'h') B.hunt.push(...shuffle(nb(i)));
+    B.busy = false; B.cpuFresh = new Set([i]); B.cpuMsg = { cls: r && r[1] === 'h' ? 'hit' : 'miss', text: 'The enemy fired at ' + coord(i) + (r && r[1] === 'h' ? ' and hit your ship! 💥' : ' and missed. 💦') };
+    if (B.me.ships.every(sh => sh.cells.every(x => B.cpuShots[x] === 'h'))) { B.over = true; B.res = { cls: 'hit', text: '💀 The computer sank your fleet. Try again!' }; }
+    paint();
+  };
+  const question = () => {
+    const el = $('#sq'); if (!el || B.over) return; const c = rand(CARDS), opts = choices(c, 4);
+    el.innerHTML = `<div class="q-ask">${media(side(c, 0))}${spk(c, 0)}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
+    el.querySelectorAll('.q-opt').forEach(b => b.onclick = () => { if (el.querySelector('.q-opt.ok')) return; const ok = opts[+b.dataset.k] === c; el.querySelectorAll('.q-opt').forEach((x, k) => { if (opts[k] === c) x.classList.add('ok'); }); if (!ok) b.classList.add('no'); else { B.balls++; paint('+1 cannonball!'); } later(question, ok ? 450 : 1300); });
+  };
+  paint(); question();
 }
 function match() {
   const set = shuffle(CARDS).slice(0, Math.min(6, CARDS.length)), tiles = shuffle(set.flatMap((c, k) => [{ k, v: side(c, 0) }, { k, v: side(c, 1) }])); let sel = null, found = 0, tries = 0; const t0 = Date.now();
