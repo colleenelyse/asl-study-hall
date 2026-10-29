@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.211';
+var VERSION = '4.212';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -529,7 +529,7 @@ var FEATURES = [
   ['tokens', 'Tokens and the character shop', 'Rewards', 'Tokens for every correct answer, spent on characters, themes and extras.'],
   ['seasolo', 'Sea Battle (solo)', 'Practice', 'Students answer to earn cannonballs and battle the computer\'s hidden fleet.'],
   ['toast', 'Neon Flying Toasters', 'Practice', 'An arcade game: students fly a winged toaster into the toast with the right sign (or letters and pictures), dodging forks and neon pipes. A right toast counts half toward mastery (it is already a 50/50); a wrong toast costs a heart in the game but never counts against a student (it may be poor flying). Weekly and all-time arcade leaderboards.'],
-  ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Paw Coins and moves eggs toward hatching.'],
+  ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Treats and moves eggs toward hatching.'],
   ['wagon', 'Wagon West', 'Practice', 'An 1800s wagon-trail adventure: students lead five travelers west, choosing pace, rations, river crossings and shortcuts. Rounds of signs (at trading posts, rivers, repairs, hunts) earn supplies, and the score sets their quality. Illness, disasters and graves; a Hall of Fame.'],
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
@@ -1783,7 +1783,7 @@ function api_submitRound(auth, r) {
     var xp = Math.floor(weight * S.ppc * mult), tokens = Math.floor(weight * S.tpc * mult);
     if (S.xpLimit > 0) { var room = Math.max(0, S.xpLimit * mult - o['Day points']); if (xp > room) { xp = room; res.capped = true; } }
     res.xp = xp; res.tokens = tokens; res.slowed = nC > 0 && weight < nC;
-    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta); } catch (e) {}      /* 4.210 Pawtopia: Paw Coins, incubation and growth from every practice round (once per round ID) */
+    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta); } catch (e) {}      /* 4.210 Pawtopia: Treats, incubation and growth from every practice round (once per round ID) */
     o['Day points'] += xp; o.Lifetime += xp; o.Tokens += tokens;
     o.Questions += nQ; o.Correct += nC;
     o.Minutes = Math.round((o.Minutes + secs / 60) * 10) / 10;
@@ -7825,20 +7825,22 @@ function seatTeams_(cls, how, n) {
    on the Redemptions tab (Lucky Claw). On average a play gives back a little less than it costs, so Tickets keep their meaning. */
 var CLAW_HEAD = ['Prize', 'Kind', 'Amount', 'Rarity', 'In the machine'];
 var CLAW_SEED = [['Empty capsule', 'empty', 0, 'common', 'Yes'], ['A few Tokens', 'tokens', 10, 'common', 'Yes'], ['A pile of Tokens', 'tokens', 30, 'uncommon', 'Yes'], ['Tickets back', 'tickets', 3, 'common', 'Yes'],
-  ['Ticket jackpot', 'tickets', 12, 'rare', 'Yes'], ['A game character', 'character', 1, 'rare', 'Yes'], ['A shop extra', 'shop', 1, 'epic', 'Yes']];
+  ['Ticket jackpot', 'tickets', 12, 'rare', 'Yes'], ['A game character', 'character', 1, 'rare', 'Yes'], ['A shop extra', 'shop', 1, 'epic', 'Yes'],
+  ['A few Treats', 'treats', 25, 'common', 'Yes'], ['A pile of Treats', 'treats', 60, 'uncommon', 'Yes'], ['Treat jackpot', 'treats', 150, 'rare', 'Yes']];      // 4.212 Treats for Pawtopia (Colleen)
 var CLAW_ODDS = { common: [50, 0.75], uncommon: [28, 0.6], rare: [15, 0.42], epic: [7, 0.28] };      // 4.207 (Colleen: fewer drops): a better grip on every egg      // 4.29: harder (Colleen: not every grab wins; sometimes it is dropped)
 var CLAW_CARRY_DROP = 0.05;      // 4.207: was 0.15      // a held prize falls on the way to the chute      // how often it is in the machine, how often the claw holds it
 function clawTab_() {
   var t = ensureTab_(TABS.claw, CLAW_HEAD, [220, 110, 90, 110, 130]);
   if (t.sheet.getLastRow() < 2) t.sheet.getRange(2, 1, CLAW_SEED.length, CLAW_HEAD.length).setValues(CLAW_SEED);
-  else { var pr = PropertiesService.getDocumentProperties(); if (pr.getProperty('clawSeedV') !== '2') { var has = t.sheet.getRange(2, 2, t.sheet.getLastRow() - 1, 1).getValues().some(function (r) { return str_(r[0]).toLowerCase() === 'empty'; }); if (!has) t.sheet.appendRow(CLAW_SEED[0]); pr.setProperty('clawSeedV', '2'); } }      // 4.29: empty capsules
+  else { var pr = PropertiesService.getDocumentProperties(); if (pr.getProperty('clawSeedV') !== '2' && pr.getProperty('clawSeedV') !== '3') { var has = t.sheet.getRange(2, 2, t.sheet.getLastRow() - 1, 1).getValues().some(function (r) { return str_(r[0]).toLowerCase() === 'empty'; }); if (!has) t.sheet.appendRow(CLAW_SEED[0]); pr.setProperty('clawSeedV', '2'); }
+    if (pr.getProperty('clawSeedV') === '2') { var kinds = t.sheet.getRange(2, 2, t.sheet.getLastRow() - 1, 1).getValues().map(function (r) { return str_(r[0]).toLowerCase(); }); if (kinds.indexOf('treats') < 0) CLAW_SEED.filter(function (r) { return r[1] === 'treats'; }).forEach(function (r) { t.sheet.appendRow(r); }); pr.setProperty('clawSeedV', '3'); }      /* 4.212: the Treat prizes join existing machines once */ }      // 4.29: empty capsules
   return t.sheet;
 }
 function clawPrizes_() {
   var sh = clawTab_(), out = [];
   if (sh.getLastRow() >= 2) sh.getRange(2, 1, sh.getLastRow() - 1, CLAW_HEAD.length).getValues().forEach(function (r) {
     var kind = str_(r[1]).toLowerCase(), rar = str_(r[3]).toLowerCase();
-    if (!str_(r[0]) || /^n/i.test(str_(r[4])) || ['tokens', 'tickets', 'character', 'shop', 'empty'].indexOf(kind) < 0) return;
+    if (!str_(r[0]) || /^n/i.test(str_(r[4])) || ['tokens', 'tickets', 'character', 'shop', 'empty', 'treats'].indexOf(kind) < 0) return;
     out.push({ name: str_(r[0]).slice(0, 40), kind: kind, amount: Math.max(1, Math.min(500, Math.floor(num_(r[2])) || 1)), rarity: CLAW_ODDS[rar] ? rar : 'common' });
   });
   return out;
@@ -7920,8 +7922,12 @@ function api_clawGrab(auth, play, x, z) {
       var items = st.shop.filter(function (i) { return !i.kind && ['theme', 'title', 'effect'].indexOf(i.type) >= 0 && (i.type !== 'theme' || i.bg) && owned.indexOf(i.id) < 0 && !i.needs; });
       if (items.length) { var it = items[Math.floor(Math.random() * items.length)]; owned.push(it.id); o.Owned = owned.join(','); got = { kind: 'shop', name: it.name, id: it.id, type: it.type }; label = it.name + ' (' + ({ theme: 'background', title: 'title', effect: 'effect' }[it.type] || 'shop extra') + ')'; }      // 4.64: say what kind of prize it is
     }
+    else if (p.kind === 'treats' && typeof pawRead_ === 'function' && feat_(st, 'pawtopia')) {      /* 4.212 Treats straight into the student's Pawtopia save */
+      var PR = pawRead_(id.key); if (!PR.g) PR.g = pawNew_(); PR.g.coins += p.amount; PR.g.unseen = (PR.g.unseen || 0) + p.amount; pawLog_(PR.g, 'Lucky Claw prize', p.amount); pawWrite_(PR, id.key);
+      got = { kind: 'treats', amount: p.amount, name: p.amount + ' Treats' }; label = got.name;
+    }
     if (!got) {      // Tokens, Tickets, or a stand-in when every character or extra is already owned
-      var tix = p.kind === 'tickets' || (p.kind === 'character' && !got), amt = p.kind === 'tokens' || p.kind === 'tickets' ? p.amount : (p.kind === 'character' ? 8 : 40);
+      var tix = p.kind === 'tickets' || (p.kind === 'character' && !got), amt = p.kind === 'tokens' || p.kind === 'tickets' ? p.amount : (p.kind === 'character' ? 8 : p.kind === 'treats' ? 10 : 40);
       if (p.kind === 'shop') tix = false;
       if (tix) o.Wallet += amt; else o.Tokens += amt;
       got = { kind: tix ? 'tickets' : 'tokens', amount: amt, name: amt + ' ' + (tix ? S.cur : S.tok) }; label = got.name;
