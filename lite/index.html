@@ -46,6 +46,9 @@ button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px va
 .mt { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px } .mt button { background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 16px; min-height: 120px; padding: 6px; display: grid; place-items: center; font-weight: 800; overflow: hidden }
 .mt button img { max-width: 100%; max-height: 130px; object-fit: contain } .mt button.sel { border-color: var(--acc); box-shadow: 0 0 0 3px #C9D8FF } .mt button.done { visibility: hidden } .mt button.no { border-color: var(--bad) }
 .mt button.down .backf { font: 700 40px Fredoka, sans-serif; color: #C9BBA6 } .mt button .face { display: grid; place-items: center; width: 100%; height: 100% }
+.ask { position: fixed; inset: 0; background: rgba(27, 30, 60, .45); display: grid; place-items: center; padding: 16px; z-index: 50 } .ask .card { max-width: 560px; width: 100% } .ask select { font: inherit; padding: 6px; border-radius: 8px; max-width: 100% }
+.spkbig { font-size: 24px; padding: 16px 30px }
+.spk { position: absolute; top: 10px; right: 10px; background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc); padding: 6px 12px; font-size: 20px; z-index: 2 } .q-ask, .fc-side { position: relative }
 .big { font: 700 clamp(22px, 4vw, 34px) Fredoka, sans-serif; text-align: center; margin: 10px 0 }
 /* flying toasters */
 .tt-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #05030f; box-shadow: 0 0 0 2px #3b1d6e, 0 10px 40px rgba(120, 40, 255, .35); touch-action: none; user-select: none; -webkit-user-select: none }
@@ -68,7 +71,31 @@ const rand = a => a[Math.floor(Math.random() * a.length)];
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'],
   ['memory', '🎴', 'Memory', 'Flip face-down tiles to find the pairs'], ['yesno', '👍', 'Yes or No', 'Do these two go together?'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'],
-  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer']];
+  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'],
+  ['listen', '👂', 'Listen and Type', 'Hear column A, type what you hear', 1], ['hear', '🗣️', 'Listen and Pick', 'Hear column A, pick its answer', 1], ['sayit', '🎤', 'Say It', 'See the answer, say column A out loud', 1]];
+/* pronunciation (Colleen: recommended for world language teachers, anyone can use it): each column can have a language; the device's most natural voice
+   for it reads that column aloud (Google voices first: Chrome and Chromebooks have them). A column with no voice on the device gets no speaker, so a
+   Spanish word is never read by an English voice. The page itself stays in English. */
+const LANGS = [['', 'No read-aloud'], ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['es-US', 'Spanish (Latin America)'], ['es-ES', 'Spanish (Spain)'], ['fr-FR', 'French (France)'], ['fr-CA', 'French (Canada)'], ['de-DE', 'German'], ['it-IT', 'Italian'], ['pt-BR', 'Portuguese (Brazil)'], ['pt-PT', 'Portuguese (Portugal)'],
+  ['nl-NL', 'Dutch'], ['ru-RU', 'Russian'], ['el-GR', 'Greek'], ['ar-SA', 'Arabic'], ['he-IL', 'Hebrew'], ['zh-CN', 'Chinese (Mandarin)'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['hi-IN', 'Hindi'], ['vi-VN', 'Vietnamese'], ['pl-PL', 'Polish'], ['tr-TR', 'Turkish']];
+let VOICES = []; const loadVoices = () => { try { VOICES = speechSynthesis.getVoices() || []; } catch (e) { VOICES = []; } };
+try { loadVoices(); speechSynthesis.addEventListener('voiceschanged', loadVoices); } catch (e) {}
+const NEAR = { 'es-us': ['es-mx', 'es-419', 'es-co', 'es-ar', 'es-cl', 'es-pe'], 'fr-ca': [], 'pt-br': [], 'en-us': [], 'en-gb': ['en-ie', 'en-au'] }, AVOID = { 'es-us': ['es-es'], 'pt-br': ['pt-pt'], 'pt-pt': ['pt-br'], 'fr-ca': [], 'en-us': ['en-gb', 'en-in'] };
+function voiceFor(loc) {
+  if (!loc) return null; if (!VOICES.length) loadVoices();
+  const norm = v => String(v.lang || '').replace('_', '-').toLowerCase(), L = loc.toLowerCase(), base = L.split('-')[0];
+  const exact = VOICES.filter(v => norm(v) === L), same = VOICES.filter(v => norm(v).split('-')[0] === base);
+  const pickBest = list => list.find(v => /google/i.test(v.name)) || list.find(v => /natural|premium|enhanced/i.test(v.name)) || list.find(v => v.localService === false) || list[0];
+  const near = (NEAR[L] || []).map(x => VOICES.filter(v => norm(v) === x)).find(l => l.length);      /* the closest region when the exact one is missing */
+  return pickBest(exact) || (near && pickBest(near)) || pickBest(same.filter(v => !(AVOID[L] || []).includes(norm(v)))) || pickBest(same) || null;
+}
+function speak(text, loc) {
+  const v = voiceFor(loc); if (!v || !text) return false;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text)); u.voice = v; u.lang = v.lang; u.rate = .9; speechSynthesis.speak(u); return true; } catch (e) { return false; }
+}
+const colLang = col => col === 0 ? META.la : META.lb, sideCol = k => FLIP ? 1 - k : k;
+/* a speaker for one side of a card (k as in side()); nothing when that column has no language, is a picture, or has no voice on this device */
+function spk(c, k) { const col = sideCol(k), t = c[col], loc = colLang(col); if (!loc || pic(t) || (VOICES.length && !voiceFor(loc))) return ''; return `<button type="button" class="spk" data-say="${esc(t)}" data-loc="${esc(loc)}" title="Listen" aria-label="Listen">🔊</button>`; }
 /* the class games, coming to Lite next (Colleen: show which games are solo and which are whole class) */
 const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island']];
 
@@ -121,15 +148,54 @@ function readSheet(id, gid) {
 
 /* ───────── the teacher's setup page ───────── */
 let SET = { title: '', games: ['flash', 'quiz', 'match', 'toast'], cards: [], sheet: null };
+/* Colleen: two columns of short words (not a word and its definition) are probably two languages: ask which, with a best guess filled in */
+const EN = new Set('the a an to of and is in it you that he she was for on are with as i his they be at one have this from or had by not but what all were we when your can said there use each which do how their if will up other about out many then them these so some her would make like him into time has look two more go see no way could my than first been call who its now find long down day did get come made may part'.split(' '));
+/* Colleen: judge the whole column, not one word here or there (English has borrowed words like café or déjà vu): each cell gets its own guess,
+   and a language wins only when at least a third of the column's cells point to it */
+function cellLang(t) {
+  const has = re => re.test(t);
+  if (has(/[぀-ヿ]/)) return 'ja-JP'; if (has(/[가-힯]/)) return 'ko-KR'; if (has(/[一-鿿]/)) return 'zh-CN';
+  if (has(/[Ѐ-ӿ]/)) return 'ru-RU'; if (has(/[Ͱ-Ͽ]/)) return 'el-GR'; if (has(/[؀-ۿ]/)) return 'ar-SA'; if (has(/[֐-׿]/)) return 'he-IL'; if (has(/[ऀ-ॿ]/)) return 'hi-IN';
+  if (has(/[ñ¿¡]/i) || /^(el|la|los|las|un|una)\s/i.test(t)) return 'es-US'; if (has(/[ßäöü]/i) || /^(der|die|das|ein|eine)\s/i.test(t)) return 'de-DE'; if (has(/[ãõ]/i)) return 'pt-BR';
+  if (has(/[çèêëîïôœùûÿàâ]/i) || /^(le|la|les|l'|un|une|des)\s?/i.test(t) && /^(le|les|l'|une|des)\b/i.test(t)) return 'fr-FR'; if (has(/[áéíóú]/i)) return 'es-US';
+  const words = t.toLowerCase().split(/[^a-z']+/).filter(Boolean); if (words.some(w => EN.has(w))) return 'en-US';
+  return '';
+}
+function guessLang(col) {
+  const n = {}; col.forEach(t => { const g = cellLang(String(t)); if (g) n[g] = (n[g] || 0) + 1; });
+  const top = Object.keys(n).filter(k => k !== 'en-US').sort((a, b) => n[b] - n[a])[0];
+  if (top && n[top] >= col.length / 3) return top;
+  return col.every(t => /^[\x00-\x7f]*$/.test(t) || cellLang(String(t)) === 'en-US' || (n['en-US'] || 0) >= col.length / 3) ? 'en-US' : '';
+}
+let ASKED = '';
+function langAsk() {
+  const c = SET.cards; if (c.length < 4 || $('#la').value || $('#lb').value) return;
+  const short = k => c.filter(x => !pic(x[k]) && String(x[k]).trim().split(/\s+/).length <= 3).length / c.length >= .8;
+  if (!short(0) || !short(1)) return;
+  const sig = c.slice(0, 5).map(x => x.join('|')).join('/'); if (ASKED === sig) return; ASKED = sig;
+  const ga = guessLang(c.map(x => x[0])), gb = guessLang(c.map(x => x[1]));
+  let A = ga, B = gb; if (A === B) A = '';      /* plain letters look alike: let the teacher pick column A (short words on both sides usually mean two languages) */
+  const opt = sel => [['', 'Pick one']].concat(LANGS.filter(l => l[0])).map(l => `<option value="${l[0]}"${l[0] === sel ? ' selected' : ''}>${l[1]}</option>`).join('');
+  const box = document.createElement('div'); box.className = 'ask';
+  box.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h2>Two languages?</h2><p class="mut">These look like words in two languages. Which language is each column? (This adds read-aloud and the listening and speaking games.)</p>
+    <div class="row"><label>Column A (for example "${esc(c[0][0])}"): <select id="aa">${opt(A)}</select></label><label>Column B (for example "${esc(c[0][1])}"): <select id="ab">${opt(B)}</select></label></div>
+    <div class="row" style="margin-top:14px"><button id="aok">Use these</button><button class="alt" id="ano">It's not two languages</button></div></div>`;
+  document.body.appendChild(box);
+  $('#aok').onclick = () => { $('#la').value = $('#aa').value; $('#lb').value = $('#ab').value; box.remove(); };
+  $('#ano').onclick = () => box.remove();
+}
 function setup() {
   document.title = 'Study Hall Lite: make a set';
   app.innerHTML = `<h1>Study Hall Lite</h1><p class="mut">Turn any two-column list into flashcards and games for your students. No accounts, no setup.</p>
   <section class="card"><h2>1. Your list</h2><ol class="steps"><li>In Google Sheets or Excel, put the word or question in <b>column A</b> and the answer in <b>column B</b>.</li><li>A cell can be words, or a <b>link to a picture or GIF</b> (a Google Drive file shared with "Anyone with the link" works too).</li><li>Select the cells, copy, and paste them in the box below. Or paste the link to a Google Sheet shared as "Anyone with the link can view"; then changes to the sheet show up for students automatically.</li></ol>
   <textarea id="paste" placeholder="Paste your two columns here (or a Google Sheet link)"></textarea><p class="msg" id="pmsg"></p><div id="pv"></div></section>
   <section class="card"><h2>2. Name it</h2><input type="text" id="title" placeholder="For example: Unit 3 vocabulary" maxlength="80"></section>
-  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span><br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div>
+  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span>${g[4] ? ' <span class="tag">Needs a language (step 4)</span>' : ''}<br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div>
   <p class="small mut" style="margin-top:12px"><b>Whole-class games, coming soon</b> (the teacher shows a join code on the projector; students join with a code, no names): ${SOON.map(g => `${g[1]} ${g[2]} <span class="tag">Class</span>`).join(' · ')}</p></section>
-  <section class="card"><h2>4. Share it</h2><div class="row"><button id="make" disabled>Make the student link</button></div><div id="out"></div></section>`;
+  <section class="card"><h2>4. Pronunciation <span class="tag">Recommended for world language teachers</span></h2><p class="mut small">Pick each column's language to add 🔊 read-aloud buttons and three listening and speaking games (Listen and Type, Listen and Pick, Say It). It uses the device's own voices; Chrome and Chromebooks have natural ones for most languages. Anyone can use this, for any language, English included.</p>
+    <div class="row"><label>Column A: <select id="la">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label><label>Column B: <select id="lb">${LANGS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select></label></div>
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="chk" style="margin-top:4px"><span>Let <b>Say It</b> check pronunciation automatically. This works in Chrome and sends what the student says to Google's speech service to be checked. Without it, students hear the model, record themselves on their own device, and compare.</span></label></section>
+  <section class="card"><h2>5. Share it</h2><div class="row"><button id="make" disabled>Make the student link</button></div><div id="out"></div></section>`;
   const ta = $('#paste');
   ta.oninput = async () => {
     const v = ta.value.trim(), sh = sheetId(v); SET.sheet = null; SET.cards = []; $('#pmsg').textContent = ''; $('#pmsg').className = 'msg';
@@ -139,10 +205,11 @@ function setup() {
     else if (v && !sh) $('#pmsg').textContent = 'No cards yet: copy two columns from a spreadsheet and paste them here.';
     $('#pv').innerHTML = SET.cards.length ? `<p class="small mut">The first few, as students will see them:</p><div class="preview">${SET.cards.slice(0, 8).map(c => `<div class="pv"><div class="m">${media(c[0])}</div><div class="m">${media(c[1])}</div></div>`).join('')}</div>` : '';
     $('#make').disabled = SET.cards.length < 4;
+    langAsk();
   };
   $('#make').onclick = async () => {
     const games = [...document.querySelectorAll('.gpick input:checked')].map(x => x.value); if (!games.length) return alert('Pick at least one game.');
-    const title = $('#title').value.trim() || 'Study set', p = new URLSearchParams({ t: title, g: games.join(',') });
+    const title = $('#title').value.trim() || 'Study set', p = new URLSearchParams({ t: title, g: games.join(',') }); if ($('#la').value) p.set('la', $('#la').value); if ($('#lb').value) p.set('lb', $('#lb').value); if ($('#chk').checked) p.set('chk', '1');
     if (SET.sheet) { p.set('s', SET.sheet.id); if (SET.sheet.gid) p.set('gid', SET.sheet.gid); } else p.set('d', await pack(SET.cards));
     const url = location.origin + location.pathname + '#' + p.toString();
     $('#out').innerHTML = `<p class="small mut" style="margin-top:10px">Give this link to your students (post it in your class page). Anyone with it can play; nothing about them is saved.</p><div class="link"><input type="text" readonly value="${esc(url)}" id="url"><button id="copy">Copy</button><a href="${esc(url)}" target="_blank"><button class="alt" type="button">Try it</button></a></div>${url.length > 6000 ? '<p class="small mut">This list is long, so the link is long too. If a site will not take it, use a shared Google Sheet link instead.</p>' : ''}`;
@@ -153,14 +220,15 @@ function setup() {
 /* ───────── the student side ───────── */
 let CARDS = [], META = {}, FLIP = false;
 const side = (c, k) => (FLIP ? 1 - k : k) === 0 ? c[0] : c[1];      /* "Switch sides": answer with column A instead of B */
+app.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (!b) return; e.stopPropagation(); e.preventDefault(); if (!speak(b.dataset.say, b.dataset.loc)) alert('There is no voice for that language on this device.'); }, true);
 function menu() {
   document.title = META.t + ' · Study Hall Lite';
-  const games = GAMES.filter(g => META.g.includes(g[0]) && (g[0] !== 'type' || typeable()));
+  const games = GAMES.filter(g => META.g.includes(g[0]) && (g[0] !== 'type' || typeable()) && (!g[4] || listenable()));
   app.innerHTML = `<div class="top"><div><p class="mut small" style="margin:0">Study Hall Lite</p><h1>${esc(META.t)}</h1><p class="mut">${CARDS.length} cards</p></div>
     <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
     <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
-  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast })[b.dataset.g]());
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, listen, hear, sayit })[b.dataset.g]());
 }
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
 let GEN = 0;      /* leaving a game cancels anything it still had waiting (the next question, a flip back) */
@@ -171,7 +239,7 @@ function flash() {
   let deck = CARDS.slice(), i = 0;
   const paint = () => {
     const c = deck[i];
-    app.innerHTML = head('🃏 Flashcards', `<span class="mut">${i + 1} / ${deck.length}</span>`) + `<div class="fc" id="fc"><div class="fc-in"><div class="fc-side">${media(side(c, 0))}</div><div class="fc-side back">${media(side(c, 1))}</div></div></div>
+    app.innerHTML = head('🃏 Flashcards', `<span class="mut">${i + 1} / ${deck.length}</span>`) + `<div class="fc" id="fc"><div class="fc-in"><div class="fc-side">${media(side(c, 0))}${spk(c, 0)}</div><div class="fc-side back">${media(side(c, 1))}${spk(c, 1)}</div></div></div>
       <p class="mut small" style="text-align:center">Tap the card to flip it. Arrow keys work too.</p><div class="row" style="justify-content:center"><button class="alt" id="prev">← Back</button><button id="next">Next →</button><button class="alt" id="shuf">Shuffle</button></div>`;
     backBtn(); $('#fc').onclick = () => $('#fc').classList.toggle('flip');
     $('#prev').onclick = () => { i = (i - 1 + deck.length) % deck.length; paint(); }; $('#next').onclick = () => { i = (i + 1) % deck.length; paint(); }; $('#shuf').onclick = () => { deck = shuffle(deck); i = 0; paint(); };
@@ -189,7 +257,7 @@ function quiz() {
       app.innerHTML = head('✅ Quiz') + `<p class="big">${right} out of ${qs.length} right!</p><p class="mut" style="text-align:center">Your best: ${best} / ${qs.length}</p>${missed.length ? `<div class="card"><h2>Look at these again</h2><div class="preview">${missed.map(c => `<div class="pv"><div class="m">${media(side(c, 0))}</div><div class="m">${media(side(c, 1))}</div></div>`).join('')}</div></div>` : ''}<div class="row" style="justify-content:center"><button id="again">Play again</button></div>`;
       backBtn(); $('#again').onclick = quiz; return; }
     const c = qs[i], opts = choices(c, 4);
-    app.innerHTML = head('✅ Quiz', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
+    app.innerHTML = head('✅ Quiz', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}${spk(c, 0)}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
     backBtn();
     app.querySelectorAll('.q-opt').forEach(b => b.onclick = () => {
       if (app.querySelector('.q-opt.ok')) return; const o = opts[+b.dataset.k], ok = o === c;
@@ -227,7 +295,7 @@ function yesno() {
   const paint = () => {
     if (i >= qs.length) return endScreen('👍 Yes or No', `${right} out of ${qs.length} right!`, `Your best: ${best('yesno', right)} / ${qs.length}`, missed, yesno);
     const c = qs[i], match = Math.random() < .5, other = match ? c : (choices(c, 2).find(d => d !== c) || c), truth = other === c;
-    app.innerHTML = head('👍 Yes or No', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<p class="mut" style="text-align:center">Do these two go together?</p><div class="q-opts" style="grid-template-columns:1fr 1fr"><div class="q-ask" style="margin:0">${media(side(c, 0))}</div><div class="q-ask" style="margin:0">${media(side(other, 1))}</div></div><div class="row" style="justify-content:center"><button id="yes" style="font-size:22px;padding:12px 34px">👍 Yes</button><button id="no" class="alt" style="font-size:22px;padding:12px 34px">👎 No</button></div><p class="big" id="yn"></p>`;
+    app.innerHTML = head('👍 Yes or No', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<p class="mut" style="text-align:center">Do these two go together?</p><div class="q-opts" style="grid-template-columns:1fr 1fr"><div class="q-ask" style="margin:0">${media(side(c, 0))}${spk(c, 0)}</div><div class="q-ask" style="margin:0">${media(side(other, 1))}</div></div><div class="row" style="justify-content:center"><button id="yes" style="font-size:22px;padding:12px 34px">👍 Yes</button><button id="no" class="alt" style="font-size:22px;padding:12px 34px">👎 No</button></div><p class="big" id="yn"></p>`;
     backBtn();
     const pick = say => { if ($('#yn').textContent) return; const ok = say === truth; if (ok) right++; else missed.push(c); $('#yn').innerHTML = ok ? '<span class="good">Right!</span>' : `<span style="color:var(--bad)">Not quite.</span> <span class="small mut">${truth ? 'They do go together.' : 'The answer is: ' + media(side(c, 1))}</span>`; later(() => { i++; paint(); }, ok ? 650 : 1800); };
     $('#yes').onclick = () => pick(true); $('#no').onclick = () => pick(false);
@@ -251,10 +319,70 @@ function type() {
   const paint = () => {
     if (i >= qs.length) return endScreen('⌨️ Type It', `${right} out of ${qs.length} right!`, `Your best: ${best('type', right)} / ${qs.length}`, missed, type);
     const c = qs[i];
-    app.innerHTML = head('⌨️ Type It', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}</div><form id="tf" class="row" style="justify-content:center;max-width:640px;margin:10px auto"><input type="text" id="ti" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the answer" style="flex:1 1 260px;font-size:22px"><button>Check</button></form><p class="big" id="tr"></p>`;
+    app.innerHTML = head('⌨️ Type It', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}${spk(c, 0)}</div><form id="tf" class="row" style="justify-content:center;max-width:640px;margin:10px auto"><input type="text" id="ti" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the answer" style="flex:1 1 260px;font-size:22px"><button>Check</button></form><p class="big" id="tr"></p>`;
     backBtn(); $('#ti').focus();
     $('#tf').onsubmit = e => { e.preventDefault(); if ($('#tr').textContent) return; const ok = loose($('#ti').value) === loose(side(c, 1)); if (ok) right++; else missed.push(c);
       $('#tr').innerHTML = ok ? '<span class="good">Right!</span>' : `<span style="color:var(--bad)">The answer is:</span> ${esc(side(c, 1))}`; later(() => { i++; paint(); }, ok ? 700 : 2000); };
+  };
+  paint();
+}
+/* listening and speaking games always use column A as the spoken words (the language being learned) */
+const listenable = () => !!META.la && CARDS.filter(c => !pic(c[0])).length >= 4;
+const heardOk = (said, want) => { const a = loose(said), b = loose(want); if (!a) return false; if (a === b || a.includes(b)) return true; const d = lev(a, b); return d <= Math.max(1, Math.floor(b.length * .2)); };
+function lev(a, b) { const m = Array.from({ length: a.length + 1 }, (x, i) => [i]); for (let j = 1; j <= b.length; j++) m[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return m[a.length][b.length]; }
+const hearBtn = t => `<div class="q-ask"><button type="button" class="spkbig" data-say="${esc(t)}" data-loc="${esc(META.la)}">🔊 Listen again</button></div>`;
+function listen() {
+  const qs = shuffle(CARDS.filter(c => !pic(c[0]))).slice(0, 10); let i = 0, right = 0; const missed = [];
+  const paint = () => {
+    if (i >= qs.length) return endScreen('👂 Listen and Type', `${right} out of ${qs.length} right!`, `Your best: ${best('listen', right)} / ${qs.length}`, missed.map(c => FLIP ? [c[1], c[0]] : c), listen);
+    const c = qs[i];
+    app.innerHTML = head('👂 Listen and Type', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + hearBtn(c[0]) + `<form id="tf" class="row" style="justify-content:center;max-width:640px;margin:10px auto"><input type="text" id="ti" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type what you hear" style="flex:1 1 260px;font-size:22px"><button>Check</button></form><p class="big" id="tr"></p>`;
+    backBtn(); $('#ti').focus(); later(() => speak(c[0], META.la), 250);
+    $('#tf').onsubmit = e => { e.preventDefault(); if ($('#tr').textContent) return; const ok = loose($('#ti').value) === loose(c[0]); if (ok) right++; else missed.push(c);
+      $('#tr').innerHTML = ok ? '<span class="good">Right!</span>' : `<span style="color:var(--bad)">It was:</span> ${esc(c[0])}`; later(() => { i++; paint(); }, ok ? 800 : 2200); };
+  };
+  paint();
+}
+function hear() {
+  const qs = shuffle(CARDS.filter(c => !pic(c[0]))).slice(0, 10); let i = 0, right = 0; const missed = [];
+  const keep = FLIP; FLIP = false;      /* hear column A, answer with column B */
+  const done = () => { FLIP = keep; };
+  const paint = () => {
+    if (i >= qs.length) { done(); return endScreen('🗣️ Listen and Pick', `${right} out of ${qs.length} right!`, `Your best: ${best('hear', right)} / ${qs.length}`, missed, hear); }
+    const c = qs[i], opts = choices(c, 4);
+    app.innerHTML = head('🗣️ Listen and Pick', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + hearBtn(c[0]) + `<div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(o[1])}</button>`).join('')}</div>`;
+    backBtn(); $('#back').addEventListener('click', done); later(() => speak(c[0], META.la), 250);
+    app.querySelectorAll('.q-opt').forEach(b => b.onclick = () => { if (app.querySelector('.q-opt.ok')) return; const ok = opts[+b.dataset.k] === c; if (ok) right++; else missed.push(c);
+      app.querySelectorAll('.q-opt').forEach((x, k) => { if (opts[k] === c) x.classList.add('ok'); }); if (!ok) b.classList.add('no'); later(() => { i++; paint(); }, ok ? 800 : 1800); });
+  };
+  paint();
+}
+/* Say It: see column B, say column A. Hear the model, record yourself (kept on this device only) and compare; with the teacher's OK, Chrome checks it too */
+function sayit() {
+  const qs = shuffle(CARDS.filter(c => !pic(c[0]))); let i = 0, rec = null, url = '', good = 0;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, canCheck = META.chk && !!SR, canRec = !!(navigator.mediaDevices && window.MediaRecorder);
+  const paint = () => {
+    const c = qs[i % qs.length]; if (url) { URL.revokeObjectURL(url); url = ''; }
+    app.innerHTML = head('🎤 Say It', `<span class="mut">${(i % qs.length) + 1} / ${qs.length}${canCheck ? ' · ' + good + ' said right' : ''}</span>`) + `<p class="mut" style="text-align:center">Say this in ${esc((LANGS.find(l => l[0] === META.la) || ['', 'the language'])[1])}:</p><div class="q-ask">${media(c[1])}</div>
+      <div class="row" style="justify-content:center"><button class="alt" id="model">🔊 Hear it</button>${canRec ? '<button id="rec">🎙️ Record me</button><button class="alt" id="mine" disabled>▶ Play mine</button>' : ''}${canCheck ? '<button id="check">✔ Check me</button>' : ''}<button class="alt" id="show">Show the word</button><button id="next">Next →</button></div><p class="big" id="said"></p>`;
+    backBtn(); $('#back').addEventListener('click', () => { try { rec && rec.state === 'recording' && rec.stop(); } catch (e) {} });
+    $('#model').onclick = () => { if (!speak(c[0], META.la)) alert('There is no voice for that language on this device.'); };
+    $('#show').onclick = () => { $('#said').innerHTML = esc(c[0]); };
+    $('#next').onclick = () => { i++; paint(); };
+    if (canRec) $('#rec').onclick = async () => {
+      if (rec && rec.state === 'recording') return rec.stop();
+      try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }), parts = []; rec = new MediaRecorder(st); rec.ondataavailable = e => parts.push(e.data);
+        rec.onstop = () => { st.getTracks().forEach(t => t.stop()); if (!$('#mine')) return; url = URL.createObjectURL(new Blob(parts, { type: rec.mimeType })); $('#mine').disabled = false; $('#rec').textContent = '🎙️ Record again'; new Audio(url).play(); };
+        rec.start(); $('#rec').textContent = '⏹ Stop'; later(() => { if (rec && rec.state === 'recording') rec.stop(); }, 5000);
+      } catch (e) { alert('The microphone is not available. Check that this page may use it.'); } };
+    if (canRec) $('#mine').onclick = () => url && new Audio(url).play();
+    if (canCheck) $('#check').onclick = () => {
+      const r = new SR(); r.lang = META.la; r.maxAlternatives = 5; r.interimResults = false; $('#said').innerHTML = '<span class="mut">Listening…</span>';
+      r.onresult = e => { const alts = [...e.results[0]].map(a => a.transcript), ok = alts.some(a => heardOk(a, c[0])); if (ok) good++; $('#said').innerHTML = ok ? `<span class="good">✓ Sounds right!</span>` : `<span style="color:var(--bad)">I heard:</span> ${esc(alts[0] || '…')} <span class="small mut">(try again, or tap Hear it)</span>`; };
+      r.onerror = e => { $('#said').innerHTML = `<span class="mut">${e.error === 'not-allowed' ? 'The microphone is not allowed on this page.' : 'I did not catch that. Try again.'}</span>`; };
+      try { r.start(); } catch (e) {}
+    };
+    later(() => {}, 0);
   };
   paint();
 }
@@ -425,7 +553,7 @@ function startToast() {
 (async () => {
   const p = new URLSearchParams(location.hash.slice(1));
   if (!p.get('d') && !p.get('s')) return setup();
-  META = { t: p.get('t') || 'Study set', g: (p.get('g') || 'flash,quiz,match,toast').split(','), key: '' };
+  META = { t: p.get('t') || 'Study set', g: (p.get('g') || 'flash,quiz,match,toast').split(','), key: '', la: p.get('la') || '', lb: p.get('lb') || '', chk: p.get('chk') === '1' };
   try { CARDS = p.get('s') ? await readSheet(p.get('s'), p.get('gid') || '') : await unpack(p.get('d')); }
   catch (e) { app.innerHTML = `<h1>Study Hall Lite</h1><p class="msg">This set could not be opened. ${esc(e.message || '')}</p>`; return; }
   CARDS = CARDS.filter(c => c && c[0] && c[1]); META.key = String(CARDS.length) + ':' + (CARDS[0] ? CARDS[0][0] : '').slice(0, 20);
