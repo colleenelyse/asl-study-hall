@@ -49,6 +49,11 @@ button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px va
 .ask { position: fixed; inset: 0; background: rgba(27, 30, 60, .45); display: grid; place-items: center; padding: 16px; z-index: 50 } .ask .card { max-width: 560px; width: 100% } .ask select { font: inherit; padding: 6px; border-radius: 8px; max-width: 100% }
 .spkbig { font-size: 24px; padding: 16px 30px }
 .spk { position: absolute; top: 10px; right: 10px; background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc); padding: 6px 12px; font-size: 20px; z-index: 2 } .q-ask, .fc-side { position: relative }
+.mob-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 } .strk { font-size: 26px; letter-spacing: 4px } .strk .on { filter: none } .strk .off { opacity: .2 }
+.mob-bar { height: 10px; border-radius: 999px; background: #E9E1D4; overflow: hidden; margin: 6px 0 12px } .mob-bar i { display: block; height: 100%; background: linear-gradient(90deg, #FFC83D, #FF7A45); transition: width .2s linear } .mob-bar.low i { background: #e03157 }
+.mob-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 4px; max-width: 640px; margin: 12px auto } .mob-grid i { aspect-ratio: 1; border-radius: 4px; background: #2F6BFF; transition: background .4s, transform .4s } .mob-grid i.out { background: #E3D9CC } .mob-grid i.zap { animation: zap .6s } .mob-grid i.rise { animation: rise .6s } @keyframes zap { 50% { transform: scale(1.5); background: #e03157 } } @keyframes rise { 50% { transform: scale(1.5); background: #12b886 } }
+.theone { text-align: center; background: linear-gradient(135deg, #1B1E3C, #3B2A7A); color: #fff; border-radius: 22px; padding: 26px 18px; margin: 10px 0 } .theone h2 { font-size: clamp(28px, 6vw, 46px); margin: 6px 0; color: #FFC83D }
+.fate { text-align: center; font-weight: 800; font-size: 20px; border-radius: 16px; padding: 12px; margin: 8px 0 } .fate.safe { background: #E6FCF5; color: #087f5b } .fate.out { background: #FFF0F3; color: #c2255c }
 .big { font: 700 clamp(22px, 4vw, 34px) Fredoka, sans-serif; text-align: center; margin: 10px 0 }
 /* flying toasters */
 .tt-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #05030f; box-shadow: 0 0 0 2px #3b1d6e, 0 10px 40px rgba(120, 40, 255, .35); touch-action: none; user-select: none; -webkit-user-select: none }
@@ -71,7 +76,7 @@ const rand = a => a[Math.floor(Math.random() * a.length)];
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'],
   ['memory', '🎴', 'Memory', 'Flip face-down tiles to find the pairs'], ['yesno', '👍', 'Yes or No', 'Do these two go together?'], ['speed', '⚡', 'Speed Round', '60 seconds, as many as you can'],
-  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'],
+  ['type', '⌨️', 'Type It', 'Type the answer (for word answers)'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer'], ['mob', '👥', '1 vs. The Mob', 'You against a Mob of 100: knock them out before 3 strikes'],
   ['listen', '👂', 'Listen and Type', 'Hear column A, type what you hear', 1], ['hear', '🗣️', 'Listen and Pick', 'Hear column A, pick its answer', 1], ['sayit', '🎤', 'Say It', 'See the answer, say column A out loud', 1]];
 /* pronunciation (Colleen: recommended for world language teachers, anyone can use it): each column can have a language; the device's most natural voice
    for it reads that column aloud (Google voices first: Chrome and Chromebooks have them). A column with no voice on the device gets no speaker, so a
@@ -97,7 +102,7 @@ const colLang = col => col === 0 ? META.la : META.lb, sideCol = k => FLIP ? 1 - 
 /* a speaker for one side of a card (k as in side()); nothing when that column has no language, is a picture, or has no voice on this device */
 function spk(c, k) { const col = sideCol(k), t = c[col], loc = colLang(col); if (!loc || pic(t) || (VOICES.length && !voiceFor(loc))) return ''; return `<button type="button" class="spk" data-say="${esc(t)}" data-loc="${esc(loc)}" title="Listen" aria-label="Listen">🔊</button>`; }
 /* the class games, coming to Lite next (Colleen: show which games are solo and which are whole class) */
-const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island']];
+const SOON = [['tower', '🏰', 'Tower Climb'], ['race', '🏁', 'Race Day'], ['mob', '👥', '1 vs. The Mob (class)'], ['sea', '⚓', 'Sea Battle'], ['isle', '🏝️', 'Treasure Island']];
 
 /* a cell is a picture when it is a link to an image or GIF (Google Drive share links work when the file is shared with anyone) */
 function pic(v) {
@@ -228,7 +233,7 @@ function menu() {
     <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
     <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
-  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, listen, hear, sayit })[b.dataset.g]());
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, memory, yesno, speed, type, toast, mob, listen, hear, sayit })[b.dataset.g]());
 }
 const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
 let GEN = 0;      /* leaving a game cancels anything it still had waiting (the next question, a flip back) */
@@ -385,6 +390,53 @@ function sayit() {
     later(() => {}, 0);
   };
   paint();
+}
+/* 1 vs. The Mob (from ASL Study's solo game): you are THE ONE every round against a pretend Mob of 100 played on this device. Right: every Mob member who
+   missed is out. Wrong (or out of time): a strike, and a few fight back in. Win: the Mob down to 20 within 12 rounds, before 3 strikes. Each Mob member is
+   right about 62-87% of the time, a little different every round. Rounds take turns: pick B for A, pick A for B, and type it when the answers are words. */
+const MOB = { size: 100, goal: 20, rounds: 12, strikes: 3, secs: 15 };
+function mob() {
+  const M = { mob: Array(MOB.size).fill(1), q: 0, strikes: 0, used: new Set() }, left = () => M.mob.filter(Boolean).length;
+  const strikes = () => `<span class="strk" aria-label="${M.strikes} strikes">${[0, 1, 2].map(k => `<span class="${k < M.strikes ? 'on' : 'off'}">❌</span>`).join('')}</span>`;
+  const grid = (zap, rise) => `<div class="mob-grid" aria-hidden="true">${M.mob.map((x, i) => `<i class="${x ? '' : 'out'}${zap && zap.has(i) ? ' zap' : ''}${rise && rise.has(i) ? ' rise' : ''}"></i>`).join('')}</div>`;
+  const top = () => `<div class="mob-top"><b>Round ${M.q} of ${MOB.rounds}</b><span>Mob left: <b>${left()}</b> · get it to ${MOB.goal}</span>${strikes()}</div>`;
+  app.innerHTML = head('👥 1 vs. The Mob') + `<div class="theone"><div style="font-size:44px">⭐</div><h2>YOU ARE THE ONE</h2><p>You against a Mob of ${MOB.size}.</p></div>
+    <div class="card"><p>✔ <b>Right answer:</b> every Mob member who got it wrong is out.</p><p>✖ <b>Wrong answer:</b> a strike, and some of the Mob fight back in.</p><p style="margin:0">🏆 <b>Win:</b> get the Mob down to ${MOB.goal} within ${MOB.rounds} rounds, before ${MOB.strikes} strikes.</p></div><div class="row" style="justify-content:center"><button id="go" style="font-size:22px;padding:12px 40px">Start</button></div>`;
+  backBtn(); $('#go').onclick = () => next();
+  let tick = null;
+  const next = () => {
+    M.q++; let c; for (let k = 0; k < 10; k++) { c = rand(CARDS); if (!M.used.has(c)) break; } M.used.add(c);
+    const words = !pic(side(c, 1)) && String(side(c, 1)).length <= 30, kind = M.q % 3 === 0 && words ? 'type' : M.q % 2 ? 'pick' : 'back';
+    const keep = FLIP; if (kind === 'back') FLIP = !FLIP; const opts = choices(c, 4), ask = side(c, 0), ans = side(c, 1); FLIP = keep;
+    const end = Date.now() + MOB.secs * 1000;
+    app.innerHTML = head('👥 1 vs. The Mob') + top() + `<div class="mob-bar" id="mb"><i style="width:100%"></i></div><div class="q-ask">${media(ask)}</div>` +
+      (kind === 'type' ? `<form id="tf" class="row" style="justify-content:center;max-width:640px;margin:10px auto"><input type="text" id="ti" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the answer" style="flex:1 1 260px;font-size:22px"><button>Lock in</button></form>`
+        : `<div class="q-opts">${opts.map((o, k) => { if (kind === 'back') FLIP = !FLIP; const v = side(o, 1); FLIP = keep; return `<button class="q-opt" data-k="${k}">${media(v)}</button>`; }).join('')}</div>`);
+    backBtn(); $('#back').addEventListener('click', () => clearInterval(tick));
+    let locked = false;
+    const answer = (ok, el, typed) => {
+      if (locked) return; locked = true; clearInterval(tick);
+      app.querySelectorAll('.q-opt').forEach((b, k) => { b.disabled = true; if (opts[k] === c) b.classList.add('ok'); }); if (el && !ok) el.classList.add('no');
+      const pr = .62 + Math.random() * .25, zap = new Set(), rise = new Set(); let line;
+      if (ok) { M.mob.forEach((x, i) => { if (x && Math.random() > pr) { M.mob[i] = 0; zap.add(i); } }); line = zap.size ? `✔ You got it! ${zap.size} of the Mob missed it and ${zap.size === 1 ? 'is' : 'are'} out!` : '✔ You got it! But the whole Mob got it too: nobody is out.'; }
+      else { M.strikes++; const outs = M.mob.map((x, i) => x ? -1 : i).filter(i => i >= 0), n = outs.length ? 1 + Math.floor(Math.random() * Math.min(5, outs.length)) : 0;
+        for (let j = 0; j < n; j++) { const i = outs.splice(Math.floor(Math.random() * outs.length), 1)[0]; M.mob[i] = 1; rise.add(i); }
+        line = `✖ ${typed !== undefined ? 'Not quite' : el ? 'Not this time' : '⏱ Time is up'}. Strike ${M.strikes} of ${MOB.strikes}.${rise.size ? ` ${rise.size} of the Mob ${rise.size === 1 ? 'fights its' : 'fight their'} way back in!` : ''}`; }
+      const win = left() <= MOB.goal, lose = M.strikes >= MOB.strikes || (!win && M.q >= MOB.rounds);
+      later(() => {
+        app.innerHTML = head('👥 1 vs. The Mob') + top() + `<p class="mut" style="text-align:center;margin:0">The answer</p><div class="q-ask" style="aspect-ratio:auto;min-height:90px">${media(ans)}</div>${typed !== undefined && !ok ? `<p class="mut" style="text-align:center">You typed “${esc(typed)}”</p>` : ''}<div class="fate ${ok ? 'safe' : 'out'}">${line}</div>${grid(zap, rise)}<div class="row" style="justify-content:center"><button id="nx" style="font-size:20px;padding:12px 36px">${win || lose ? 'See how you did' : 'Next round ▶'}</button></div>`;
+        backBtn(); $('#nx').onclick = () => win || lose ? finish(win) : next();
+      }, ok ? 650 : 1300);
+    };
+    if (kind === 'type') { $('#ti').focus(); $('#tf').onsubmit = e => { e.preventDefault(); const v = $('#ti').value; if (!v.trim()) return; answer(loose(v) === loose(ans), null, v); }; }
+    else app.querySelectorAll('.q-opt').forEach(b => b.onclick = () => answer(opts[+b.dataset.k] === c, b));
+    tick = setInterval(() => { const bar = $('#mb'); if (!bar) return clearInterval(tick); const l = end - Date.now(); bar.firstChild.style.width = Math.max(0, 100 * l / (MOB.secs * 1000)) + '%'; bar.classList.toggle('low', l < 4000); if (l <= 0) answer(false, null); }, 200);
+  };
+  const finish = win => {
+    const out = MOB.size - left(), b = best('mob', out);
+    app.innerHTML = head('👥 1 vs. The Mob') + `<div class="theone"><h2>${win ? '🎉 You beat the Mob!' : M.strikes >= MOB.strikes ? 'Three strikes. The Mob wins this time.' : 'Out of rounds. The Mob wins this time.'}</h2><p>${out} of the Mob knocked out${win ? '' : ` (you needed ${MOB.size - MOB.goal})`} in ${M.q} ${M.q === 1 ? 'round' : 'rounds'}. Your best: ${b}.</p></div>${grid()}<div class="row" style="justify-content:center"><button id="again">Play again</button></div>`;
+    backBtn(); $('#again').onclick = mob;
+  };
 }
 function match() {
   const set = shuffle(CARDS).slice(0, Math.min(6, CARDS.length)), tiles = shuffle(set.flatMap((c, k) => [{ k, v: side(c, 0) }, { k, v: side(c, 1) }])); let sel = null, found = 0, tries = 0; const t0 = Date.now();
