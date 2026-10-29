@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.209';
+var VERSION = '4.210';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -529,6 +529,7 @@ var FEATURES = [
   ['tokens', 'Tokens and the character shop', 'Rewards', 'Tokens for every correct answer, spent on characters, themes and extras.'],
   ['seasolo', 'Sea Battle (solo)', 'Practice', 'Students answer to earn cannonballs and battle the computer\'s hidden fleet.'],
   ['toast', 'Neon Flying Toasters', 'Practice', 'An arcade game: students fly a winged toaster into the toast with the right sign (or letters and pictures), dodging forks and neon pipes. A right toast counts half toward mastery (it is already a 50/50); a wrong toast costs a heart in the game but never counts against a student (it may be poor flying). Weekly and all-time arcade leaderboards.'],
+  ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Paw Coins and moves eggs toward hatching.'],
   ['wagon', 'Wagon West', 'Practice', 'An 1800s wagon-trail adventure: students lead five travelers west, choosing pace, rations, river crossings and shortcuts. Rounds of signs (at trading posts, rivers, repairs, hunts) earn supplies, and the score sets their quality. Illness, disasters and graves; a Hall of Fame.'],
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
@@ -1557,7 +1558,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['sea', 'breach', 'isle', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['sea', 'breach', 'isle', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1782,6 +1783,7 @@ function api_submitRound(auth, r) {
     var xp = Math.floor(weight * S.ppc * mult), tokens = Math.floor(weight * S.tpc * mult);
     if (S.xpLimit > 0) { var room = Math.max(0, S.xpLimit * mult - o['Day points']); if (xp > room) { xp = room; res.capped = true; } }
     res.xp = xp; res.tokens = tokens; res.slowed = nC > 0 && weight < nC;
+    try { if (typeof pawEarn_ === 'function' && feat_(st, 'pawtopia') && ans.length) res.paw = pawEarn_(id.key, ans, stateWas, delta); } catch (e) {}      /* 4.210 Pawtopia: Paw Coins, incubation and growth from every practice round (once per round ID) */
     o['Day points'] += xp; o.Lifetime += xp; o.Tokens += tokens;
     o.Questions += nQ; o.Correct += nC;
     o.Minutes = Math.round((o.Minutes + secs / 60) * 10) / 10;
