@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Study Hall Lite</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;700;800&display=swap">
+<!-- Study Hall Lite (Colleen 2026-10-28): "something quick and easy around to a few colleagues to try simply. the cells should accept text or gifs".
+     No accounts and no Google Apps Script. A teacher pastes a two-column table (or a shared Google Sheet link), picks the games, and gets a student link.
+     The cards travel inside the link (#d=…, compressed) or are read from the shared sheet (#s=…). Nothing is saved anywhere except personal bests in the browser.
+     Games: Flashcards, Quiz, Matching, Neon Flying Toasters (Phaser; art from ../img/toasters/). Nothing ASL-specific: column A and B can each be words or a picture/GIF link. -->
+<style>
+:root { --bg: #F6F2EA; --ink: #1B1E3C; --mut: #5A6185; --line: #E3D9CC; --card: #fff; --acc: #2F6BFF; --ok: #12b886; --bad: #e03157 }
+* { box-sizing: border-box } [hidden] { display: none !important }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 500 17px/1.5 Nunito, system-ui, sans-serif }
+main { max-width: 1080px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left)) 48px }
+h1 { font: 700 clamp(28px, 5vw, 40px) Fredoka, system-ui, sans-serif; margin: 0 0 4px } h2 { font: 600 22px Fredoka, system-ui, sans-serif; margin: 0 0 8px }
+p { margin: 0 0 10px } .mut { color: var(--mut) } .small { font-size: 14px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 2px 10px rgba(60, 40, 20, .06); margin: 14px 0 }
+textarea, input[type=text] { width: 100%; font: inherit; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff }
+textarea { min-height: 150px; font-size: 15px; white-space: pre; overflow-wrap: normal; overflow: auto }
+button { font: inherit; font-weight: 800; border: 0; border-radius: 999px; padding: 10px 20px; background: var(--acc); color: #fff; cursor: pointer }
+button.alt { background: #fff; color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc) } button:disabled { opacity: .5; cursor: default }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.steps { margin: 0; padding-left: 22px } .steps li { margin: 4px 0 }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px }
+.gpick { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; cursor: pointer; background: #fff }
+.gpick input { margin-top: 5px; width: 18px; height: 18px } .gpick b { font: 600 18px Fredoka, sans-serif } .tag { display: inline-block; font-size: 12px; font-weight: 800; background: #EAF0FF; color: var(--acc); border-radius: 999px; padding: 1px 8px; margin-left: 4px }
+.preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px } .pv { border: 1px solid var(--line); border-radius: 12px; padding: 6px; display: grid; grid-template-rows: 90px 90px; gap: 4px; background: #fff }
+.m { display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: #FBF8F2; text-align: center; font-weight: 800; line-height: 1.15; padding: 4px; min-height: 0 }
+.m img { max-width: 100%; max-height: 100%; object-fit: contain; display: block }
+.link { display: flex; gap: 8px; flex-wrap: wrap } .link input { flex: 1 1 260px; font-size: 14px }
+.msg { min-height: 22px; font-weight: 700; color: var(--bad) } .good { color: var(--ok) }
+.menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px }
+.gbtn { text-align: left; background: #fff; color: var(--ink); border: 1.5px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 4px; box-shadow: 0 2px 10px rgba(60, 40, 20, .06) }
+.gbtn:hover { border-color: var(--acc) } .gbtn b { font: 600 22px Fredoka, sans-serif } .gbtn span { color: var(--mut); font-weight: 600; font-size: 15px } .gbtn i { font-style: normal; font-size: 30px }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap } .back { background: none; color: var(--acc); padding: 4px 0 }
+.seg { display: inline-flex; background: #fff; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px } .seg button { background: none; color: var(--mut); padding: 6px 14px } .seg button.on { background: var(--acc); color: #fff }
+/* flashcards */
+.fc { perspective: 1200px; max-width: 640px; margin: 10px auto } .fc-in { position: relative; aspect-ratio: 4 / 3; transition: transform .45s; transform-style: preserve-3d; cursor: pointer } .fc.flip .fc-in { transform: rotateY(180deg) }
+.fc-side { position: absolute; inset: 0; backface-visibility: hidden; background: #fff; border: 1.5px solid var(--line); border-radius: 22px; box-shadow: 0 8px 26px rgba(60, 40, 20, .12); display: grid; place-items: center; padding: 18px; font: 700 clamp(26px, 5vw, 48px) Fredoka, sans-serif; text-align: center; overflow: hidden }
+.fc-side.back { transform: rotateY(180deg); background: #FFFDF6 } .fc-side img { max-width: 100%; max-height: 100%; object-fit: contain }
+/* quiz */
+.q-ask { max-width: 640px; margin: 8px auto; aspect-ratio: 16 / 9; background: #fff; border: 1.5px solid var(--line); border-radius: 22px; display: grid; place-items: center; padding: 14px; font: 700 clamp(26px, 5vw, 46px) Fredoka, sans-serif; text-align: center; overflow: hidden }
+.q-ask img { max-width: 100%; max-height: 100%; object-fit: contain } .q-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 760px; margin: 10px auto }
+.q-opt { background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 16px; padding: 8px; min-height: 96px; display: grid; place-items: center; font-weight: 800; font-size: clamp(18px, 2.6vw, 26px); overflow: hidden }
+.q-opt img { max-width: 100%; max-height: 150px; object-fit: contain } .q-opt.ok { border-color: var(--ok); background: #E6FCF5 } .q-opt.no { border-color: var(--bad); background: #FFF0F3 }
+/* matching */
+.mt { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px } .mt button { background: #fff; color: var(--ink); border: 2px solid var(--line); border-radius: 16px; min-height: 120px; padding: 6px; display: grid; place-items: center; font-weight: 800; overflow: hidden }
+.mt button img { max-width: 100%; max-height: 130px; object-fit: contain } .mt button.sel { border-color: var(--acc); box-shadow: 0 0 0 3px #C9D8FF } .mt button.done { visibility: hidden } .mt button.no { border-color: var(--bad) }
+.big { font: 700 clamp(22px, 4vw, 34px) Fredoka, sans-serif; text-align: center; margin: 10px 0 }
+/* flying toasters */
+.tt-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #05030f; box-shadow: 0 0 0 2px #3b1d6e, 0 10px 40px rgba(120, 40, 255, .35); touch-action: none; user-select: none; -webkit-user-select: none }
+.tt-stage canvas { display: block; width: 100% !important; height: 100% !important } .tt-ov { position: absolute; inset: 0; pointer-events: none }
+.tt-c { position: absolute; width: 17.5%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 10%; overflow: hidden; background: #fff; box-shadow: 0 0 0 .3vmin #ffd36b, 0 0 1.6vmin rgba(255, 190, 80, .9); transition: opacity .3s, filter .3s, transform .25s, box-shadow .25s; display: grid; place-items: center; container-type: inline-size; text-align: center; color: #1B1E3C; font: 700 16px/1.1 Fredoka, sans-serif; padding: 6%; overflow-wrap: break-word }
+.tt-c img { position: absolute; inset: 5%; width: 90%; height: 90%; object-fit: contain } .tt-c.sm { width: 13% } .tt-c.gone { opacity: 0 }
+.tt-c.prompt { width: 19%; background: #160f2e; color: #fff; box-shadow: 0 0 0 .4vmin #ff2bd6, 0 0 2.4vmin #ff2bd6 } .tt-c.prompt.sm { width: 16% }
+.tt-c.right { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 .6vmin #3dffc5, 0 0 4vmin #3dffc5 } .tt-c.reveal { box-shadow: 0 0 0 .6vmin #3dffc5, 0 0 4vmin #3dffc5 }
+.tt-c.wrong { filter: grayscale(1) brightness(.55); transform: translate(-50%, -50%) rotate(-8deg) scale(.9); box-shadow: 0 0 0 .6vmin #ff3b5c, 0 0 3vmin #ff3b5c }
+.tt-panel { position: absolute; inset: 0; display: flex; align-items: safe center; justify-content: center; background: rgba(5, 3, 15, .74); color: #fff; text-align: center; padding: 2% 3%; overflow-y: auto }
+.tt-panel > div { max-width: 640px; display: flex; flex-direction: column; gap: 10px; align-items: center } .tt-panel h2 { color: #ff6ee7; text-shadow: 0 0 12px #ff2bd6; font-size: clamp(22px, 4vw, 38px); margin: 0 }
+.tt-panel img.logo { width: min(46vw, 320px) } .tt-opts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center } .tt-opts button { padding: 6px 14px; opacity: .6 } .tt-opts button.on { opacity: 1; box-shadow: 0 0 0 3px #3dffc5 }
+</style></head>
+<body><main id="app"><p class="mut">Loading…</p></main>
+<script>
+const $ = s => document.querySelector(s), app = $('#app');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rand = a => a[Math.floor(Math.random() * a.length)];
+const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const GAMES = [['flash', '🃏', 'Flashcards', 'Flip through the cards'], ['quiz', '✅', 'Quiz', 'Pick the right answer out of four'], ['match', '🧩', 'Matching', 'Tap two cards that go together'], ['toast', '🍞', 'Neon Flying Toasters', 'Fly into the toast with the right answer']];
+
+/* a cell is a picture when it is a link to an image or GIF (Google Drive share links work when the file is shared with anyone) */
+function pic(v) {
+  v = String(v || '').trim(); if (!/^https?:\S+$/i.test(v)) return '';
+  const d = v.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/); if (d) return 'https:' + '/' + '/lh3.googleusercontent.com/d/' + d[1];
+  if (/\.(gif|png|jpe?g|webp|svg)(\?|#|$)/i.test(v) || /giphy\.com|tenor\.com|googleusercontent\.com|imgur\.com/i.test(v)) return v;
+  return '';
+}
+const media = v => { const p = pic(v); return p ? `<img src="${esc(p)}" alt="" loading="lazy">` : esc(v); };
+/* text on a toast: the longer the words, the smaller the letters, so they always fit */
+const fit = (el, v, frac) => {      /* frac: the box's share of the stage width. Words never break in the middle; long answers get smaller letters */
+  if (pic(v)) { el.innerHTML = media(v); return; }
+  const box = ($('#tts') ? $('#tts').clientWidth : 1000) * frac, inner = box * .78, t = String(v), longest = Math.max(...t.split(/\s+/).map(w => w.length), 1);
+  let px = Math.min(box * .3, inner / (.72 * longest));
+  for (let k = 0; k < 20; k++) { const perLine = Math.max(1, Math.floor(inner / (.72 * px))), lines = Math.ceil(t.length / perLine); if (lines * 1.15 * px <= box * .84) break; px *= .9; }
+  el.innerHTML = `<span style="font-size:${Math.round(px)}px">${esc(t)}</span>`;
+};
+
+/* the cards: [[a, b], ...] from pasted spreadsheet cells (tabs between columns) or the first two columns of a shared sheet */
+function parseTable(txt) {
+  const rows = String(txt || '').replace(/\r/g, '').split('\n').map(l => l.split('\t').map(x => x.trim())).filter(r => r[0] && r[1]);
+  if (rows.length && /^(term|word|front|question|english|sign|a)$/i.test(rows[0][0]) && /^(definition|answer|back|meaning|gif|b)$/i.test(rows[0][1])) rows.shift();      /* a header row */
+  return rows.map(r => [r[0], r[1]]);
+}
+async function pack(o) {
+  const bytes = new TextEncoder().encode(JSON.stringify(o));
+  if (window.CompressionStream) { const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw')); const buf = new Uint8Array(await new Response(cs).arrayBuffer()); return 'z' + b64(buf); }
+  return 'j' + b64(bytes);
+}
+async function unpack(s) {
+  const bytes = unb64(s.slice(1));
+  if (s[0] === 'z') { const ds = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return JSON.parse(await new Response(ds).text()); }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+const b64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+/* a Google Sheet shared as "Anyone with the link can view": its first two columns, read with Google's chart-data feed (JSONP, so no server is needed) */
+function sheetId(url) { const m = String(url).match(/\/spreadsheets\/d\/([\w-]{20,})/); const g = String(url).match(/[#&?]gid=(\d+)/); return m ? { id: m[1], gid: g ? g[1] : '' } : null; }
+function readSheet(id, gid) {
+  return new Promise((ok, no) => {
+    const cb = '__sh' + Date.now(), s = document.createElement('script'), done = () => { delete window[cb]; s.remove(); };
+    window[cb] = r => { done(); if (!r || r.status === 'error') return no(new Error('The sheet could not be read. Is it shared as "Anyone with the link can view"?')); ok((r.table.rows || []).map(x => (x.c || []).slice(0, 2).map(c => c ? String(c.f ?? c.v ?? '').trim() : '')).filter(r2 => r2[0] && r2[1])); };
+    s.onerror = () => { done(); no(new Error('The sheet could not be read. Is it shared as "Anyone with the link can view"?')); };
+    s.src = 'https:' + '/' + '/docs.google.com/spreadsheets/d/' + id + '/gviz/tq?headers=0&tqx=responseHandler:' + cb + (gid ? '&gid=' + gid : '');
+    document.head.appendChild(s); setTimeout(() => { if (window[cb]) { done(); no(new Error('The sheet took too long to answer.')); } }, 15000);
+  });
+}
+
+/* ───────── the teacher's setup page ───────── */
+let SET = { title: '', games: ['flash', 'quiz', 'match', 'toast'], cards: [], sheet: null };
+function setup() {
+  document.title = 'Study Hall Lite: make a set';
+  app.innerHTML = `<h1>Study Hall Lite</h1><p class="mut">Turn any two-column list into flashcards and games for your students. No accounts, no setup.</p>
+  <section class="card"><h2>1. Your list</h2><ol class="steps"><li>In Google Sheets or Excel, put the word or question in <b>column A</b> and the answer in <b>column B</b>.</li><li>A cell can be words, or a <b>link to a picture or GIF</b> (a Google Drive file shared with "Anyone with the link" works too).</li><li>Select the cells, copy, and paste them in the box below. Or paste the link to a Google Sheet shared as "Anyone with the link can view"; then changes to the sheet show up for students automatically.</li></ol>
+  <textarea id="paste" placeholder="Paste your two columns here (or a Google Sheet link)"></textarea><p class="msg" id="pmsg"></p><div id="pv"></div></section>
+  <section class="card"><h2>2. Name it</h2><input type="text" id="title" placeholder="For example: Unit 3 vocabulary" maxlength="80"></section>
+  <section class="card"><h2>3. Pick the games</h2><div class="games">${GAMES.map(g => `<label class="gpick"><input type="checkbox" value="${g[0]}" checked><span><b>${g[1]} ${g[2]}</b> <span class="tag">Solo</span><br><span class="mut small">${g[3]}</span></span></label>`).join('')}</div></section>
+  <section class="card"><h2>4. Share it</h2><div class="row"><button id="make" disabled>Make the student link</button></div><div id="out"></div></section>`;
+  const ta = $('#paste');
+  ta.oninput = async () => {
+    const v = ta.value.trim(), sh = sheetId(v); SET.sheet = null; SET.cards = []; $('#pmsg').textContent = ''; $('#pmsg').className = 'msg';
+    if (sh) { $('#pmsg').textContent = 'Reading the sheet…'; try { SET.cards = await readSheet(sh.id, sh.gid); SET.sheet = sh; } catch (e) { $('#pmsg').textContent = e.message; } }
+    else SET.cards = parseTable(ta.value);
+    if (SET.cards.length) { $('#pmsg').className = 'msg good'; $('#pmsg').textContent = `${SET.cards.length} card${SET.cards.length === 1 ? '' : 's'} found${SET.sheet ? ' in your sheet' : ''}.` + (SET.cards.length < 4 ? ' Add at least 4 for the games.' : ''); }
+    else if (v && !sh) $('#pmsg').textContent = 'No cards yet: copy two columns from a spreadsheet and paste them here.';
+    $('#pv').innerHTML = SET.cards.length ? `<p class="small mut">The first few, as students will see them:</p><div class="preview">${SET.cards.slice(0, 8).map(c => `<div class="pv"><div class="m">${media(c[0])}</div><div class="m">${media(c[1])}</div></div>`).join('')}</div>` : '';
+    $('#make').disabled = SET.cards.length < 4;
+  };
+  $('#make').onclick = async () => {
+    const games = [...document.querySelectorAll('.gpick input:checked')].map(x => x.value); if (!games.length) return alert('Pick at least one game.');
+    const title = $('#title').value.trim() || 'Study set', p = new URLSearchParams({ t: title, g: games.join(',') });
+    if (SET.sheet) { p.set('s', SET.sheet.id); if (SET.sheet.gid) p.set('gid', SET.sheet.gid); } else p.set('d', await pack(SET.cards));
+    const url = location.origin + location.pathname + '#' + p.toString();
+    $('#out').innerHTML = `<p class="small mut" style="margin-top:10px">Give this link to your students (post it in your class page). Anyone with it can play; nothing about them is saved.</p><div class="link"><input type="text" readonly value="${esc(url)}" id="url"><button id="copy">Copy</button><a href="${esc(url)}" target="_blank"><button class="alt" type="button">Try it</button></a></div>${url.length > 6000 ? '<p class="small mut">This list is long, so the link is long too. If a site will not take it, use a shared Google Sheet link instead.</p>' : ''}`;
+    $('#copy').onclick = () => { const u = $('#url'); u.select(); (navigator.clipboard ? navigator.clipboard.writeText(u.value) : Promise.reject()).then(() => { $('#copy').textContent = 'Copied!'; }, () => document.execCommand('copy')); };
+  };
+}
+
+/* ───────── the student side ───────── */
+let CARDS = [], META = {}, FLIP = false;
+const side = (c, k) => (FLIP ? 1 - k : k) === 0 ? c[0] : c[1];      /* "Switch sides": answer with column A instead of B */
+function menu() {
+  document.title = META.t + ' · Study Hall Lite';
+  const games = GAMES.filter(g => META.g.includes(g[0]));
+  app.innerHTML = `<div class="top"><div><p class="mut small" style="margin:0">Study Hall Lite</p><h1>${esc(META.t)}</h1><p class="mut">${CARDS.length} cards</p></div>
+    <div class="seg"><button class="${FLIP ? '' : 'on'}" data-f="0">Show A, answer B</button><button class="${FLIP ? 'on' : ''}" data-f="1">Show B, answer A</button></div></div>
+    <div class="menu">${games.map(g => `<button class="gbtn" data-g="${g[0]}"><i>${g[1]}</i><b>${g[2]}</b><span>${g[3]}</span></button>`).join('')}</div>`;
+  app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { FLIP = b.dataset.f === '1'; menu(); });
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => ({ flash, quiz, match, toast })[b.dataset.g]());
+}
+const head = (name, right) => `<div class="top"><button class="back" id="back">← ${esc(META.t)}</button><b>${name}</b>${right || '<span></span>'}</div>`;
+const backBtn = () => { $('#back').onclick = () => { stopToast(); menu(); }; };
+
+function flash() {
+  let deck = CARDS.slice(), i = 0;
+  const paint = () => {
+    const c = deck[i];
+    app.innerHTML = head('🃏 Flashcards', `<span class="mut">${i + 1} / ${deck.length}</span>`) + `<div class="fc" id="fc"><div class="fc-in"><div class="fc-side">${media(side(c, 0))}</div><div class="fc-side back">${media(side(c, 1))}</div></div></div>
+      <p class="mut small" style="text-align:center">Tap the card to flip it. Arrow keys work too.</p><div class="row" style="justify-content:center"><button class="alt" id="prev">← Back</button><button id="next">Next →</button><button class="alt" id="shuf">Shuffle</button></div>`;
+    backBtn(); $('#fc').onclick = () => $('#fc').classList.toggle('flip');
+    $('#prev').onclick = () => { i = (i - 1 + deck.length) % deck.length; paint(); }; $('#next').onclick = () => { i = (i + 1) % deck.length; paint(); }; $('#shuf').onclick = () => { deck = shuffle(deck); i = 0; paint(); };
+  };
+  document.onkeydown = e => { if (!$('#fc')) return; if (e.key === 'ArrowRight') $('#next').click(); if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); $('#fc').click(); } };
+  paint();
+}
+
+/* wrong choices: other cards whose answer is different */
+function choices(c, n) { const ans = side(c, 1), seen = new Set([ans]), out = [c]; for (const d of shuffle(CARDS)) { if (out.length >= n) break; const a = side(d, 1); if (!seen.has(a)) { seen.add(a); out.push(d); } } return shuffle(out); }
+function quiz() {
+  const qs = shuffle(CARDS).slice(0, Math.min(10, CARDS.length)); let i = 0, right = 0; const missed = [];
+  const paint = () => {
+    if (i >= qs.length) { const best = Math.max(+get('lite-best-quiz-' + META.key, 0), right); put('lite-best-quiz-' + META.key, best);
+      app.innerHTML = head('✅ Quiz') + `<p class="big">${right} out of ${qs.length} right!</p><p class="mut" style="text-align:center">Your best: ${best} / ${qs.length}</p>${missed.length ? `<div class="card"><h2>Look at these again</h2><div class="preview">${missed.map(c => `<div class="pv"><div class="m">${media(side(c, 0))}</div><div class="m">${media(side(c, 1))}</div></div>`).join('')}</div></div>` : ''}<div class="row" style="justify-content:center"><button id="again">Play again</button></div>`;
+      backBtn(); $('#again').onclick = quiz; return; }
+    const c = qs[i], opts = choices(c, 4);
+    app.innerHTML = head('✅ Quiz', `<span class="mut">${i + 1} / ${qs.length} · ${right} right</span>`) + `<div class="q-ask">${media(side(c, 0))}</div><div class="q-opts">${opts.map((o, k) => `<button class="q-opt" data-k="${k}">${media(side(o, 1))}</button>`).join('')}</div>`;
+    backBtn();
+    app.querySelectorAll('.q-opt').forEach(b => b.onclick = () => {
+      if (app.querySelector('.q-opt.ok')) return; const o = opts[+b.dataset.k], ok = o === c;
+      if (ok) right++; else missed.push(c);
+      app.querySelectorAll('.q-opt').forEach((x, k) => { if (opts[k] === c) x.classList.add('ok'); }); if (!ok) b.classList.add('no');
+      setTimeout(() => { i++; paint(); }, ok ? 700 : 1600);
+    });
+  };
+  paint();
+}
+function match() {
+  const set = shuffle(CARDS).slice(0, Math.min(6, CARDS.length)), tiles = shuffle(set.flatMap((c, k) => [{ k, v: side(c, 0) }, { k, v: side(c, 1) }])); let sel = null, found = 0, tries = 0; const t0 = Date.now();
+  app.innerHTML = head('🧩 Matching', '<span class="mut" id="mtries">0 tries</span>') + `<p class="mut" style="text-align:center">Tap two cards that go together.</p><div class="mt">${tiles.map((x, i) => `<button data-i="${i}">${media(x.v)}</button>`).join('')}</div>`;
+  backBtn();
+  app.querySelectorAll('.mt button').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i; if (b.classList.contains('done')) return;
+    if (sel === null) { sel = i; b.classList.add('sel'); return; }
+    if (sel === i) { b.classList.remove('sel'); sel = null; return; }
+    const a = app.querySelector(`[data-i="${sel}"]`); tries++; $('#mtries').textContent = tries + ' tries';
+    if (tiles[sel].k === tiles[i].k) { a.classList.add('done'); b.classList.add('done'); found++; sel = null;
+      if (found === set.length) { const secs = Math.round((Date.now() - t0) / 1000); setTimeout(() => { app.querySelector('.mt').outerHTML = `<p class="big">All matched in ${tries} tries (${secs} s)!</p><div class="row" style="justify-content:center"><button id="again">Play again</button></div>`; $('#again').onclick = match; }, 300); } }
+    else { a.classList.remove('sel'); a.classList.add('no'); b.classList.add('no'); sel = null; setTimeout(() => { a.classList.remove('no'); b.classList.remove('no'); }, 600); }
+  });
+}
+
+/* ───────── Neon Flying Toasters (a copy of the ASL Study game, made generic: column A is the prompt, column B the toasts) ───────── */
+const TT = '../img/toasters/', TV = '?v=1', PH = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js', W = 1600, H = 900;
+const FLAPS = [[0.80, 0.943], [0.81, 0.933], [0.815, 0.926], [0.805, 0.924]], PIPE = [0xff2bd6, 0x2bc8ff, 0xa45bff, 0xffc23a, 0x3dffc5];
+const TOP = ['fork_top', 'knife_top', 'whisk_top', 'salt_shaker_top'], BOT = ['fork_bottom', 'knife_bottom', 'whisk_bottom', 'salt_shaker_bottom', 'mug_bottom'];
+const TREATS = ['butter', 'chocolate_chip_cookie', 'donut', 'strawberry', 'pancakes', 'milk_carton', 'peanut_butter'];
+const FLY = [['glide', '🖱️ Glide', 'Move the mouse (or your finger, or the arrow keys) up and down.'], ['flap', '👆 Flap', 'Each click, tap or space bar is a soft flap up.'], ['hover', '✋ Hover', 'Hold to rise, let go to sink.']];
+let TG = null, phP = null;
+const phaser = () => window.Phaser ? Promise.resolve() : phP || (phP = new Promise((ok, no) => { const s = document.createElement('script'); s.src = PH; s.onload = ok; s.onerror = () => { phP = null; no(new Error('The game engine did not load.')); }; document.head.appendChild(s); }));
+function stopToast() { if (TG) { try { TG.destroy(true); } catch (e) {} TG = null; } document.onkeydown = null; }
+function toast() {
+  app.innerHTML = head('🍞 Neon Flying Toasters') + `<div class="tt-stage" id="tts"><div id="ttg" style="position:absolute;inset:0"></div><div class="tt-ov" id="tto"></div><div class="tt-panel" id="ttp"><div><p>Loading…</p></div></div></div>`;
+  backBtn(); phaser().then(() => startToast(), e => { $('#ttp').innerHTML = `<div><h2>Oops</h2><p>${esc(e.message)}</p></div>`; });
+}
+function panel(html) { const p = $('#ttp'); if (!p) return; p.hidden = !html; if (html) p.innerHTML = `<div>${html}</div>`; }
+function startPanel(sc, T) {
+  const fly = get('lite-fly', 'glide'), best = +get('lite-best-toast-' + META.key, 0);
+  panel(`${T ? `<h2>${T.right >= 8 ? 'Amazing flying!' : T.right >= 4 ? 'Great job!' : T.right ? 'Nice work!' : 'Good try!'}</h2><p>⭐ ${T.score} points · ✅ ${T.right} right · ${T.wrong} wrong</p><p class="small">Your best: ${best}</p>` : `<img class="logo" src="${TT}neon_toasters_logo.webp${TV}" alt="Neon Flying Toasters"><p>Fly into the toast with the right answer. Dodge the forks and pipes: a bump sends you back; only a wrong answer costs a heart.</p><p class="small">Your best: ${best}</p>`}
+    <div class="tt-opts">${FLY.map(f => `<button data-fly="${f[0]}" class="${f[0] === fly ? 'on' : ''}">${f[1]}</button>`).join('')}</div><p class="small" id="flyhow">${FLY.find(f => f[0] === fly)[2]}</p>
+    <div class="row" style="justify-content:center"><button data-w="kitchen">🍴 Kitchen</button><button data-w="pipes">〰️ Pipes</button></div>`);
+  document.querySelectorAll('#ttp [data-fly]').forEach(b => b.onclick = () => { put('lite-fly', b.dataset.fly); document.querySelectorAll('#ttp [data-fly]').forEach(x => x.classList.toggle('on', x === b)); $('#flyhow').textContent = FLY.find(f => f[0] === b.dataset.fly)[2]; });
+  document.querySelectorAll('#ttp [data-w]').forEach(b => b.onclick = () => { panel(''); sc.begin(b.dataset.w, get('lite-fly', 'glide')); });
+}
+function startToast() {
+  const ov = $('#tto');
+  class Fly extends Phaser.Scene {
+    constructor() { super('fly'); }
+    preload() {
+      const L = this.load; L.setPath(TT); L.image('bg', 'bg.jpg' + TV); [1, 2, 3, 4].forEach(i => L.image('f' + i, `toaster_flap_0${i}.webp${TV}`));
+      TOP.concat(BOT).forEach(k => { L.image(k, k + '.webp' + TV); L.image(k + '_s', k + '_shaft.webp' + TV); });
+      ['toast_regular', 'toast_golden', 'heart_full', 'pixel_sparkles', 'sparkle_trail_06', 'sparkle_trail_01'].forEach(k => L.image(k, k + '.webp' + TV)); TREATS.forEach(k => L.image('b_' + k, 'bubble_' + k + '.webp' + TV));
+    }
+    fresh() { return { on: false, score: 0, right: 0, wrong: 0, hearts: 3, speed: 200, vy: 0, flapT: 0, inv: 0, hold: false, keys: 0, aimY: H / 2, cols: [], pairs: [], items: [], nextX: W + 250, slow: 1, dist: 0, secStart: 0, made: 0, zone: 'dodge', left: 2, zoneId: 0, last: null }; }
+    create() {
+      this.T = this.fresh(); this.bg = this.add.tileSprite(0, 0, W, H, 'bg').setOrigin(0);
+      this.anims.create({ key: 'flap', frames: [1, 2, 3, 4, 3, 2].map(i => ({ key: 'f' + i })), frameRate: 10, repeat: -1 });
+      this.trail = this.add.particles(0, 0, 'sparkle_trail_06', { speedX: { min: -260, max: -160 }, speedY: { min: -30, max: 30 }, lifespan: 700, scale: { start: .7, end: 0 }, alpha: { start: 1, end: 0 }, frequency: 45, blendMode: 'ADD' });
+      this.tz = this.add.sprite(400, H / 2 + 55, 'f1').setScale(.8).setOrigin(FLAPS[0][0], FLAPS[0][1]).setDepth(5).play('flap');
+      this.tz.on('animationupdate', (a, f) => { const o = FLAPS[+f.textureKey.slice(1) - 1]; this.tz.setOrigin(o[0], o[1]); }); this.trail.startFollow(this.tz, -110, -55).setDepth(4);
+      this.burst = this.add.particles(0, 0, 'pixel_sparkles', { speed: { min: 150, max: 460 }, lifespan: 750, scale: { start: .7, end: 0 }, blendMode: 'ADD', emitting: false }).setDepth(8);
+      this.confetti = this.add.particles(0, 0, 'sparkle_trail_06', { speed: { min: 260, max: 700 }, angle: { min: 200, max: 340 }, gravityY: 900, lifespan: 1400, scale: { start: 1.1, end: .3 }, tint: PIPE, emitting: false }).setDepth(8);
+      this.smoke = this.add.particles(0, 0, 'sparkle_trail_01', { speed: { min: 30, max: 120 }, angle: { min: 240, max: 300 }, lifespan: 1100, scale: { start: .6, end: 1.6 }, alpha: { start: .7, end: 0 }, tint: 0x55505a, emitting: false }).setDepth(8);
+      const glow = { fontFamily: 'Fredoka, sans-serif', fontStyle: 'bold', color: '#ffffff', stroke: '#2bc8ff', strokeThickness: 8, shadow: { color: '#2bc8ff', blur: 20, fill: true, stroke: true } };
+      this.scoreTx = this.add.text(W - 40, 40, '0', Object.assign({ fontSize: '52px' }, glow)).setOrigin(1, 0).setDepth(10); this.hearts = [0, 1, 2].map(i => this.add.image(50 + i * 72, 52, 'heart_full').setScale(.42).setDepth(10));
+      const press = () => { const T = this.T; if (!T.on) return; if (this.fly === 'flap') { T.vy = Math.min(T.vy, 0) * .35 - 430; T.flapT = .3; } if (this.fly === 'hover') T.hold = true; }, release = () => { this.T.hold = false; };
+      this.input.on('pointerdown', p => { press(); if (this.fly === 'glide') this.T.aimY = p.worldY; }); this.input.on('pointermove', p => { if (this.fly === 'glide') this.T.aimY = p.worldY; });
+      this.input.on('pointerup', release); this.input.on('pointerupoutside', release);
+      const kb = this.input.keyboard, stop = e => { if (this.T.on && e.preventDefault) e.preventDefault(); };
+      kb.on('keydown-SPACE', e => { stop(e); if (!e.repeat) press(); }); kb.on('keyup-SPACE', release);
+      kb.on('keydown-UP', e => { stop(e); if (this.fly === 'glide') this.T.keys = -1; else if (!e.repeat) press(); }); kb.on('keyup-UP', () => { if (this.T.keys < 0) this.T.keys = 0; release(); });
+      kb.on('keydown-DOWN', e => { stop(e); if (this.fly === 'glide') this.T.keys = 1; }); kb.on('keyup-DOWN', () => { if (this.T.keys > 0) this.T.keys = 0; });
+      this.scene.pause(); startPanel(this);
+    }
+    begin(world, fly) {
+      const T = this.T; this.world = world; this.fly = fly;
+      T.cols.forEach(c => c.parts.forEach(p => p.destroy())); T.pairs.forEach(p => { p.el.remove(); p.toasts.forEach(o => { o.img.destroy(); o.el.remove(); }); }); T.items.forEach(i => i.img.destroy());
+      this.T = this.fresh(); this.T.on = true; this.tz.setPosition(400, H / 2 + 55).setAlpha(1); this.scoreTx.setText('0'); this.hearts.forEach(h => h.setAlpha(1));
+      this.scene.resume(); this.banner('DODGE!', '#2bc8ff');
+    }
+    banner(text, col, size) { const t = this.add.text(W / 2, H / 2, text, { fontFamily: 'Fredoka, sans-serif', fontStyle: 'bold', fontSize: (size || 110) + 'px', color: '#fff', stroke: col, strokeThickness: 12, shadow: { color: col, blur: 40, fill: true, stroke: true } }).setOrigin(.5).setDepth(11).setScale(.4).setAlpha(0); this.tweens.add({ targets: t, scale: 1, alpha: 1, duration: 260, ease: 'Back.out', yoyo: true, hold: 750, onComplete: () => t.destroy() }); }
+    spawn() {
+      const T = this.T, x = T.nextX;
+      if (T.zone === 'dodge') { this.column(x); const c = T.cols[T.cols.length - 1]; c.zone = T.zoneId; if (Math.random() < .35) { const y = Math.random() < .5 ? c.top + 50 : c.bot - 50, img = this.add.image(x, y, 'b_' + rand(TREATS)).setScale(.8).setDepth(4); T.items.push({ img, x, y }); } T.nextX += 620; if (--T.left === 0) { c.lastOfZone = true; T.zone = 'pick'; T.left = 3; T.nextX += 480; } }
+      else { this.pair(x); const p = T.pairs[T.pairs.length - 1]; T.nextX += 1250; if (--T.left === 0) { p.lastOfZone = true; T.zone = 'dodge'; T.left = 3; T.zoneId++; T.nextX += 600; } }
+    }
+    column(x) {
+      const gap = 400, cy = Phaser.Math.Between(H * .38 | 0, H * .62 | 0), top = cy - gap / 2, bot = cy + gap / 2;
+      if (this.world === 'pipes') {
+        const jog = (from, to) => { const run = Math.abs(to - from), dir = Math.sign(to - from); if (run < 300 || Math.random() < .35) return [[0, from], [0, to]]; const j = rand([-150, -90, 90, 150]), y1 = from + dir * run * .3, y2 = from + dir * run * .6; return [[j, from], [j, y1], [0, y1], [0, to]].concat(Math.random() < .5 ? [] : []).filter(Boolean) && [[j, from], [j, y1], [0, y1], [0, y2], [0, to]]; };
+        const g = this.add.graphics().setDepth(3).setPosition(x, 0).setBlendMode(Phaser.BlendModes.ADD), paths = [jog(-30, top), jog(H + 30, bot)];
+        this.T.cols.push({ x, top, bot, parts: [g], pipe: { g, color: rand(PIPE), paths, len: paths.map(p => p.reduce((s, q, i) => i ? s + Math.abs(q[0] - p[i - 1][0]) + Math.abs(q[1] - p[i - 1][1]) : 0, 0)), grow: 0 } }); return;
+      }
+      const sc = .5, parts = [], tk = rand(TOP), bk = rand(BOT), ti = this.add.image(x, top, tk).setOrigin(.5, 1).setScale(sc); parts.push(ti);
+      if (ti.displayHeight < top) parts.push(this.add.tileSprite(x, 0, ti.width, (top - ti.displayHeight) / sc + 2, tk + '_s').setOrigin(.5, 0).setScale(sc));
+      const bi = this.add.image(x, bot, bk).setOrigin(.5, 0).setScale(sc); parts.push(bi);
+      if (bot + bi.displayHeight < H) parts.push(this.add.tileSprite(x, bot + bi.displayHeight - 2, bi.width, (H - bot - bi.displayHeight) / sc + 4, bk + '_s').setOrigin(.5, 0).setScale(sc));
+      parts.forEach(p => p.setDepth(3)); this.T.cols.push({ x, top, bot, parts, hw: 24 });
+    }
+    drawPipe(c) {
+      const P = c.pipe, g = P.g; g.clear();
+      P.paths.forEach((path, k) => {
+        let left = P.len[k] * P.grow; const pts = [path[0]];
+        for (let i = 1; i < path.length && left > 0; i++) { const a = path[i - 1], b = path[i], d = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]) || 1, t = Math.min(1, left / d); pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); left -= d; }
+        [[64, .12], [46, .28], [32, 1]].forEach(([w, al]) => { g.lineStyle(w, P.color, al); g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); pts.slice(1).forEach(q => g.lineTo(q[0], q[1])); g.strokePath(); pts.slice(1, -1).forEach(q => { g.fillStyle(P.color, al); g.fillCircle(q[0], q[1], w * .62); }); });
+        g.lineStyle(7, 0xffffff, .55); g.beginPath(); g.moveTo(pts[0][0] - 7, pts[0][1]); pts.slice(1).forEach(q => g.lineTo(q[0] - 7, q[1])); g.strokePath();
+        const e = pts[pts.length - 1]; if (P.grow < 1) { g.fillStyle(0xffffff, .9); g.fillCircle(e[0], e[1], 13); } else { g.fillStyle(P.color, 1); g.fillRoundedRect(e[0] - 38, e[1] + (k === 0 ? -22 : 0), 76, 22, 6); }
+      });
+    }
+    pipeHit(c, bx, by) { const r = 44; return c.pipe.paths.some(path => path.some((q, i) => { if (!i) return false; const a = path[i - 1]; return bx > c.x + Math.min(a[0], q[0]) - r && bx < c.x + Math.max(a[0], q[0]) + r && by > Math.min(a[1], q[1]) - r && by < Math.max(a[1], q[1]) + r; })); }
+    pair(x) {
+      const T = this.T, n = T.made >= 6 ? 3 : 2; T.made++;
+      let t = rand(CARDS), k = 0; while (CARDS.length > 2 && t === T.last && k++ < 9) t = rand(CARDS); T.last = t;
+      const opts = choices(t, n), ys = n === 3 ? [160, 450, 740] : [215, 685], gold = Math.random() < .12;
+      const el = document.createElement('div'); el.className = 'tt-c prompt' + (n === 3 ? ' sm' : ''); fit(el, side(t, 0), n === 3 ? .16 : .19); ov.appendChild(el);
+      const toasts = opts.map((o, i) => {
+        const img = this.add.image(x, ys[i], o === t && gold ? 'toast_golden' : 'toast_regular').setScale(n === 3 ? 1.6 : 2.1).setDepth(2);
+        const e = document.createElement('div'); e.className = 'tt-c' + (n === 3 ? ' sm' : ''); fit(e, side(o, 1), n === 3 ? .13 : .175); ov.appendChild(e);
+        return { img, el: e, sc: n === 3 ? 1.6 : 2.1, ok: o === t, gold: o === t && gold, y: ys[i] };
+      });
+      T.pairs.push({ x, el, toasts, done: false, card: t });
+    }
+    bump() {
+      const T = this.T; if (T.inv > 0) return; const back = T.dist - T.secStart; T.inv = 1.2; this.cameras.main.shake(180, .006); this.cameras.main.flash(250, 120, 60, 200);
+      const bx = this.tz.x - 45; T.cols = T.cols.filter(c => { if (c.zone === T.zoneId || c.x > bx) return true; c.parts.forEach(p => p.destroy()); return false; });
+      T.pairs = T.pairs.filter(p => { if (!p.done) return true; p.el.remove(); p.toasts.forEach(o => { o.img.destroy(); o.el.remove(); }); return false; });
+      T.cols.forEach(c => { c.x += back; c.parts.forEach(p => { p.x = c.x; }); if (c.zone === T.zoneId) c.passed = false; }); T.pairs.forEach(p => { p.x += back; }); T.items.forEach(i => { i.x += back; i.img.x = i.x; });
+      T.nextX += back; T.dist = T.secStart; T.vy = 0; T.aimY = H / 2; this.tweens.add({ targets: this.tz, y: H / 2 + 55, duration: 300 }); this.banner('BACK TO THE START OF THIS PART', '#a45bff', 56);
+    }
+    pop(x, y, text, color, pts) { if (pts) { this.T.score += pts; this.scoreTx.setText(String(this.T.score)); } const t = this.add.text(x, y, text, { fontFamily: 'Fredoka, sans-serif', fontStyle: 'bold', fontSize: '54px', color, stroke: '#000', strokeThickness: 6 }).setOrigin(.5).setDepth(9); this.tweens.add({ targets: t, y: y - 90, alpha: 0, duration: 800, onComplete: () => t.destroy() }); }
+    end() { const T = this.T; T.on = false; this.scene.pause(); const k = 'lite-best-toast-' + META.key; put(k, Math.max(+get(k, 0), T.score)); startPanel(this, T); }
+    update(time, dms) {
+      const T = this.T, dt = Math.min(dms, 50) / 1000; if (!T.on) return;
+      const tz = this.tz, lo = 130, hi = H - 20;
+      if (this.fly === 'glide') { if (T.keys) T.aimY = Phaser.Math.Clamp(T.aimY + T.keys * 700 * dt, 60, H - 60); T.vy = Phaser.Math.Clamp((Phaser.Math.Clamp(T.aimY + 55, lo, hi) - tz.y) * 6, -700, 700); }
+      else if (this.fly === 'flap') T.vy = Math.min(T.vy + 1150 * dt, 480); else T.vy = Phaser.Math.Clamp(T.vy + (T.hold ? -1700 : 1100) * dt, -430, 470);
+      if (T.flapT > 0) T.flapT -= dt; tz.y = Phaser.Math.Clamp(tz.y + T.vy * dt, lo, hi); tz.setAngle(Phaser.Math.Clamp(T.vy * .03, -16, 22)); tz.anims.msPerFrame = 1000 / (T.flapT > 0 || T.vy < -150 ? 24 : 9);
+      const bx = tz.x - 45, by = tz.y - 55; if (T.inv > 0) T.inv -= dt;
+      const near = T.pairs.some(p => !p.done && p.x - bx < 950 && p.x > bx - 100); T.slow += ((near ? .55 : 1) - T.slow) * Math.min(1, dt * 4);
+      const dx = T.speed * T.slow * (this.fly === 'glide' ? 1.45 : 1) * dt; this.bg.tilePositionX += dx * .25; T.dist += dx;
+      if (T.nextX - dx <= W + 250) this.spawn(); T.nextX -= dx;
+      T.items = T.items.filter(it => { it.x -= dx; it.img.x = it.x; if (Math.hypot(it.x - bx, it.y - by) < 100) { this.burst.explode(20, it.x, it.y); this.pop(it.x, it.y - 60, '+2', '#9effc8', 2); it.img.destroy(); return false; } if (it.x > -120) return true; it.img.destroy(); return false; });
+      let bumped = false;
+      T.cols.forEach(c => { c.x -= dx; c.parts.forEach(p => { p.x = c.x; }); if (!c.passed && c.x < bx - 60) { c.passed = true; if (c.lastOfZone) this.banner('PICK THE ANSWER!', '#ffc23a', 96); }
+        if (c.pipe && c.pipe.grow < 1 && c.x < W + 60) { c.pipe.grow = Math.min(1, c.pipe.grow + dt * .5); this.drawPipe(c); }
+        if (!bumped && (c.pipe ? c.pipe.grow >= 1 && this.pipeHit(c, bx, by) : Math.abs(c.x - bx) < c.hw + 36 && (by - 26 < c.top - 6 || by + 26 > c.bot + 6))) bumped = true; });
+      if (bumped) return this.bump();
+      T.cols = T.cols.filter(c => { if (c.x > -150 || c.zone === T.zoneId) return true; c.parts.forEach(p => p.destroy()); return false; });
+      T.pairs.forEach(p => {
+        p.x -= dx; p.el.style.left = ((p.x - 330) / W * 100) + '%'; p.el.style.top = '50%';
+        p.toasts.forEach(o => { o.img.x = p.x; o.el.style.left = (p.x / W * 100) + '%'; o.el.style.top = ((o.y - 8) / H * 100) + '%'; });
+        if (!p.done) { const o = p.toasts.find(o => Math.abs(o.img.x - bx) < 150 && Math.abs(o.y - by) < (p.toasts.length === 3 ? 125 : 160));
+          if (o) { p.done = true; this.close(p); this.grab(p, o); } else if (p.x < bx - 130) { p.done = true; this.close(p); p.toasts.forEach(o => { const fade = () => { o.el.classList.add('gone'); this.tweens.add({ targets: o.img, alpha: 0, duration: 300 }); }; if (o.ok) { o.el.classList.add('reveal'); this.time.delayedCall(900, fade); } else fade(); }); } }
+      });
+      T.pairs = T.pairs.filter(p => { if (p.x > -700) return true; p.el.remove(); p.toasts.forEach(o => { o.img.destroy(); o.el.remove(); }); return false; });
+    }
+    close(p) { p.el.classList.add('gone'); if (p.lastOfZone) { this.T.secStart = this.T.dist; this.time.delayedCall(700, () => { if (this.T.on) this.banner('DODGE!', '#2bc8ff'); }); } }
+    grab(p, o) {
+      const T = this.T, r = p.toasts.find(x => x.ok);
+      if (o.ok) { T.right++; o.el.classList.add('right'); this.cameras.main.flash(160, 255, 255, 255); p.toasts.filter(x => x !== o).forEach(x => { x.el.classList.add('gone'); this.tweens.add({ targets: x.img, alpha: 0, duration: 250 }); });
+        this.tweens.add({ targets: o.img, scale: o.sc * 1.3, duration: 160, yoyo: true, onComplete: () => { this.burst.explode(30, o.img.x, o.y); this.confetti.explode(40, o.img.x, o.y); o.el.classList.add('gone'); this.tweens.add({ targets: o.img, scale: 0, duration: 200 }); this.pop(o.img.x, o.y - 60, o.gold ? '+5' : '+1', o.gold ? '#ffd84a' : '#fff', o.gold ? 5 : 1); } });
+        T.speed = Math.min(300, T.speed + 4); }
+      else { T.wrong++; o.el.classList.add('wrong'); o.img.setTint(0x3a2a20); this.smoke.explode(16, o.img.x, o.y); r.el.classList.add('reveal'); p.toasts.filter(x => !x.ok && x !== o).forEach(x => { x.el.classList.add('gone'); this.tweens.add({ targets: x.img, alpha: 0, duration: 250 }); });
+        this.time.delayedCall(650, () => { o.el.classList.add('gone'); this.tweens.add({ targets: o.img, y: o.y + 500, angle: -40, alpha: 0, duration: 700 }); }); this.time.delayedCall(1500, () => { r.el.classList.add('gone'); this.tweens.add({ targets: r.img, alpha: 0, duration: 300 }); });
+        T.hearts--; this.hearts[T.hearts] && this.hearts[T.hearts].setAlpha(.18); this.cameras.main.shake(260, .01); if (T.hearts <= 0) this.time.delayedCall(900, () => this.end()); }
+    }
+  }
+  TG = new Phaser.Game({ type: Phaser.AUTO, parent: 'ttg', width: W, height: H, backgroundColor: '#05030f', scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: Fly, banner: false, audio: { noAudio: true } });
+}
+
+/* ───────── start: a link with a set opens the games; otherwise the setup page ───────── */
+(async () => {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (!p.get('d') && !p.get('s')) return setup();
+  META = { t: p.get('t') || 'Study set', g: (p.get('g') || 'flash,quiz,match,toast').split(','), key: '' };
+  try { CARDS = p.get('s') ? await readSheet(p.get('s'), p.get('gid') || '') : await unpack(p.get('d')); }
+  catch (e) { app.innerHTML = `<h1>Study Hall Lite</h1><p class="msg">This set could not be opened. ${esc(e.message || '')}</p>`; return; }
+  CARDS = CARDS.filter(c => c && c[0] && c[1]); META.key = String(CARDS.length) + ':' + (CARDS[0] ? CARDS[0][0] : '').slice(0, 20);
+  if (CARDS.length < 2) { app.innerHTML = '<h1>Study Hall Lite</h1><p class="msg">This set needs at least 2 cards.</p>'; return; }
+  menu();
+})();
+</script>
+</body></html>
