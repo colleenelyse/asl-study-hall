@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.207';
+var VERSION = '4.208';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8386,6 +8386,30 @@ function arcInitials_(name, mid) {
   return (first + str_(mid).replace(/[^A-Za-z]/g, '').charAt(0) + last).toUpperCase();
 }
 /** Student: how they show on every arcade board: 'Initials' (their real initials; they add only a middle initial), 'First name', or 'Anonymous'. The teacher can fix an Initials cell on the tab. */
+/** 4.208 Wagon West: the names carved at Redstone Bluff (Colleen: students fingerspell their own name to the camera to carve it). One rock per class:
+    first names only, and a student sees only their own class's rock. Kept in document properties (wwcarve:<class>), keyed by email on the server only. */
+function wwFirst_(n) { return str_(n).split(/\s+/)[0].replace(/[^A-Za-z'-]/g, '').slice(0, 14); }
+function wwCarveKey_(cls) { return 'wwcarve:' + str_(cls).slice(0, 60); }
+function wwCarveMap_(cls) { return parse_(PropertiesService.getDocumentProperties().getProperty(wwCarveKey_(cls)) || '{}', {}) || {}; }
+function wwCarveList_(m) { return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0; }).slice(0, 80); }
+function api_wagonCarvings(auth) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  var sh = stuSheet_(), row = findRow_(sh, id.key), o = row ? readStu_(sh, row) : null;
+  if (!o || isTeacher_()) return { names: [], first: '', mine: false, student: false };
+  var m = wwCarveMap_(o.Class);
+  return { names: wwCarveList_(m), first: wwFirst_(o.Name), mine: !!m[id.key], student: true };
+}
+function api_wagonCarve(auth) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  var sh = stuSheet_(), row = findRow_(sh, id.key), o = row ? readStu_(sh, row) : null;
+  if (!o || isTeacher_()) throw new Error('Only students can carve a name.');
+  return lock_(function () {
+    var m = wwCarveMap_(o.Class), keys; m[id.key] = [wwFirst_(o.Name), dayStr_()];
+    keys = Object.keys(m); if (keys.length > 200) keys.sort(function (a, b) { return m[a][1] < m[b][1] ? -1 : 1; }).slice(0, keys.length - 200).forEach(function (k) { delete m[k]; });
+    PropertiesService.getDocumentProperties().setProperty(wwCarveKey_(o.Class), JSON.stringify(m));
+    return { names: wwCarveList_(m), first: wwFirst_(o.Name), mine: true };
+  });
+}
 function api_arcadeName(auth, game, show, mid) {
   var w = arcWho_(auth, game); show = ARC_SHOW.filter(function (x) { return x.toLowerCase() === str_(show).toLowerCase(); })[0];
   if (!show) throw new Error('Pick how your name shows.');
@@ -13175,4 +13199,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_vaultAct, api_viewAs, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
