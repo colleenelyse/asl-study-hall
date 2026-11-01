@@ -777,9 +777,11 @@ function gsay(html, ms, next) { gchoose('<div class="rd-gsay">' + html + '</div>
 const PRICES = [['🍕', 'A large pizza', 14], ['🚲', 'A new bike', 250], ['🎮', 'A video game', 60], ['🍦', 'An ice cream cone', 4], ['👟', 'Brand-name sneakers', 120], ['📱', 'A new phone', 800],
   ['🎟️', 'A movie ticket', 13], ['🎧', 'Wireless earbuds', 150], ['🧸', 'A teddy bear', 20], ['🚗', 'A new car', 28000], ['🏀', 'A basketball', 30], ['🎸', 'A beginner guitar', 150],
   ['📚', 'A paperback book', 12], ['🥤', 'A large soda', 3], ['🛹', 'A skateboard', 80], ['💻', 'A laptop', 700], ['🐶', 'A dog from a shelter (adoption fee)', 150], ['⌚', 'A smartwatch', 300]];      /* about what they cost; a game, not a store */
-/* MONEY (for now, 2026-11-01): the hand signs the plain number and the screen calls it dollars. When Colleen teaches DOLLAR (and the decimal point
-   and cents), the money signs replace this one function. Same rules as "Show me the number": 250 = 2 HUNDRED, 50; 1,000 = 1 THOUSAND. */
-async function signAmount(n) { await refHand.ready; if (partsFor(n).length > 1) await refHand.signParts(tokensFor(n).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]), {}); else await refHand.sign(n, {}); }
+/* MONEY (2026-11-01): the hand signs the number, then DOLLAR (the 'D' token in hand.signParts), for every amount ($1 to $1,000) for now. Cents and
+   the decimal-point form come later, when Colleen teaches them; the money signs replace this one function. Same number rules as "Show me the
+   number": 250 = 2 HUNDRED, 50; 1,000 = 1 THOUSAND; the number keeps the form it has alone (5 DOLLAR: the 5 as usual). */
+async function signAmount(n) { await refHand.ready; refHand.helper(true);      /* two-hand view from the start so it does not jump before DOLLAR; the left hand waits out of view below (hold) */
+  await refHand.signParts(tokensFor(n).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]).concat(['D']), { hold: true }); }      /* hold: both hands stay on the finished DOLLAR, no palm-up rest after (Colleen) */
 const CASE_AMTS = [1, 5, 10, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000];      /* the money amounts (repeated to fill the bigger boards) */
 const CASE_COUNTS = [20, 50, 100];      /* how many cases to choose from (Colleen): bigger boards = bigger case numbers to sign */      /* the 13 money cases; the other 2 of the 15 are Ink Splats (Colleen: students should win more than they lose) */
 const dollars = v => '$' + Number(v).toLocaleString('en-US');

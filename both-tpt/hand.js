@@ -796,6 +796,31 @@ const HM_S = { f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 10
 const HM_5 = { f: [[20, 25, 12, 15], [20, 25, 12, 3], [20, 25, 12, -9], [20, 25, 12, -20]], t: [12, 40, 0, 15, 15] };      /* almost a 5, not quite */
 const HM_R0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.055, -0.07, 0.03] }), HM_L0 = Object.assign({}, HM_S, { w: [-90, 0, 180], p: [-0.095, -0.07, 0.03] });      /* palm up, the thumb on top toward the sky, the backs of the curled fingers toward the student (never the wrist, Colleen) */
 const HM_R1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.07, 0.0, 0.03] }), HM_L1 = Object.assign({}, HM_5, { w: [20, 180, 0], p: [-0.08, 0.0, 0.03] });      /* a good amount of empty space between the hands (Colleen); the left hand is mirrored, so its x runs the other way */
+/* DOLLAR (Colleen, 2026-11-01, with a drawing): two hands. The left hand is the base: a flat hand, fingers together and straight, held level in
+   front of the chest, fingers pointing toward the signer's right, thumb up along the top, palm toward the signer. The right hand comes down on top
+   and grasps the left fingertips (its fingers in front, on the back of the left fingers, its thumb behind, on the palm side, like holding the end
+   of a dollar bill), then slides off the end of the left fingers toward the signer's right (the student's left), closing into a flattened O with
+   the thumb on top. Poses are written as right-hand poses (the left one is mirrored). Checked from the front, from below and from the signer's side:
+   the fingers and thumb touch the left fingers but never pass through them (dev/hand-choices/dollar-try1.png). APPROVED by Colleen (2026-11-01, dev/hand-choices/dollar-try2-250.gif): the sign is LOCKED; change it only when she asks. */
+const DOL_L = { f: [[0, 0, 0, 3], [0, 0, 0, 0], [0, 0, 0, -3], [0, 0, 0, -6]], t: [0, 0, 0, 0, 0], w: [180, 0, -90], p: [-0.09, -0.03, 0] };      /* the left B: fingers toward the signer's right, palm toward the signer, thumb up */
+const DOL_W = [63, 90, 0];      /* the right hand: palm toward the left fingertips, thumb on top, fingers curling around the front */
+const DOL_R0 = { f: [[30, 25, 10, 0], [30, 25, 10, 0], [30, 25, 10, 0], [30, 25, 10, 0]], t: [10, 20, -40, 10, 5], w: DOL_W, p: [-0.095, 0.0, -0.016] };      /* open, above the left fingertips */
+const DOL_R1 = { f: [[50, 45, 15, 0], [50, 45, 15, 0], [50, 45, 15, 0], [50, 45, 15, 0]], t: [25, 20, -40, 15, 8], w: DOL_W, p: [-0.055, -0.06, -0.016] };      /* grasping the left fingertips: fingers in front, thumb behind */
+const DOL_R2 = Object.assign({}, DOL_R1, { t: [25, 24, -40, 15, 8], p: [-0.09, -0.06, -0.018] });      /* halfway: sliding off the very tips */
+const DOL_R3 = { f: [[60, 20, 12, 0], [60, 20, 12, 0], [60, 20, 12, 0], [60, 20, 12, 0]], t: [32, -2, -47, 20, 12], w: DOL_W, p: [-0.125, -0.06, -0.02] };      /* off the end: a closed flattened O, thumb on top */
+const HELPER_LOW = { f: DOL_L.f, t: DOL_L.t, w: DOL_L.w, p: [-0.12, -0.4, 0] };      /* the left hand waiting below the view (Colleen: no hand held up in the corner before or after) */
+async function dollar(o) {
+  const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); if (o.hold) helperMove(HELPER_LOW, 1); }
+  if (o.onLetter) o.onLetter('DOLLAR');
+  moveTo(DOL_R0, per * 0.5); await wait(per * 0.25);      /* the right hand goes up first (after THOUSAND it is right where the left fingers will be) */
+  helperMove(DOL_L, per * 0.4); await wait(per * 0.45);      /* then the left hand comes up; the right hand waits above its fingertips */
+  moveTo(DOL_R1, per * 0.3); await wait(per * 0.35);      /* down onto the fingertips: grasp */
+  await wait(per * 0.12);
+  playPath([DOL_R1, DOL_R2, DOL_R3], per * 0.6); await wait(per * 0.65);      /* slide off the end, closing */
+  await wait(per * 0.35);
+  if (!o.hold) helperMove(HELPER_REST, per * 0.6);      /* back to the corner; signParts brings the right hand to rest. With hold (Cash or Crash) both hands stay on the finished sign */
+}
 /* DAYS OF THE WEEK (Colleen, 2026-10-18). MONDAY, TUESDAY, WEDNESDAY, FRIDAY, SATURDAY: the day's first letter, palm facing the signer,
    a small circle. THURSDAY: a normal T, flips to an H, then the same circle. SUNDAY: both open B hands, palms out, at the same time the right
    hand draws a flat circle on the palm plane counterclockwise and the left hand clockwise (mirrored). CHECKED by Colleen (2026-10-18: "these are good"): clockwise circles as the student sees them. */
@@ -1087,29 +1112,32 @@ async function signOp(op, o) {
   if (o.stay) return;
   moveTo(POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter('');
 }
-/* a whole number from blocks, in spoken order (Colleen's rules): tokens are numbers 0-99 and 'H' (HUNDRED, after a digit 1-9).
+/* a whole number from blocks, in spoken order (Colleen's rules): tokens are numbers 0-99, 'H' (HUNDRED, after a digit 1-9), 'T' (THOUSAND), 'M' (MILLION)
+   and 'D' (DOLLAR, at the end: [5, 'D'] = 5 DOLLAR).
    The parts flow into each other with no return to rest in between; onPart(i) tells which block is playing. */
 function partsOf(tokens) {
   const out = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     if (tokens[i + 1] === 'H' && t >= 1 && t <= 9) { out.push({ n: t * 100, blocks: [i, i + 1] }); i++; }
-    else if (t === 'T' || t === 'M') out.push({ n: t, blocks: [i] });
+    else if (t === 'T' || t === 'M' || t === 'D') out.push({ n: t, blocks: [i] });
     else if (t !== 'H') out.push({ n: t, blocks: [i] });
   }
   return out;
 }
 async function signParts(tokens, o) {
   o = o || {};
-  const parts = partsOf(tokens);
+  const parts = partsOf(tokens), nums = parts.filter(P => P.n !== 'D').length;
+  if (o.hold && tokens.indexOf('D') >= 0) { if (H2) helperMove(HELPER_LOW, 1); moveTo(DOL_R3, 1); await new Promise(r => setTimeout(r, 30)); }      /* hold: the left hand starts out of view, below, and comes up only for DOLLAR; the right hand starts relaxed and closed, not held up palm out */
   for (let k = 0; k < parts.length; k++) {
     if (o.stop && o.stop()) break;
     if (o.onPart) o.onPart(parts[k].blocks);
     if (parts[k].n === 'T' || parts[k].n === 'M') { await thousand(o, k === parts.length - 1, parts[k].n === 'M'); continue; }
-    await sign(parts[k].n, Object.assign({}, o, { stay: k < parts.length - 1, series: parts.length > 1 }));      /* inside a longer number, 1-5 face palm out */
+    if (parts[k].n === 'D') { await dollar(o); continue; }
+    await sign(parts[k].n, Object.assign({}, o, { stay: k < parts.length - 1, series: nums > 1 }));      /* inside a longer number, 1-5 face palm out (DOLLAR after a number does not count: 5 DOLLAR keeps the 5 as it is alone) */
   }
   if (o.onPart) o.onPart([]);
-  if (tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
+  if ((tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0 || tokens.indexOf('D') >= 0) && !(o.hold && tokens[tokens.length - 1] === 'D')) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
 }
 /* AGES (Colleen, 2026-10-15; dev/ASL-number-rules.md "Ages"): every age starts at the center of the chin (the face behind the hand is drawn
    by the app). 1-9: the number's handshape palm out, the pointer finger on the chin, then a push down and forward (toward the student).
