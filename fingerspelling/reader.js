@@ -780,12 +780,21 @@ const PRICES = [['🍕', 'A large pizza', 14], ['🚲', 'A new bike', 250], ['�
 /* MONEY (2026-11-01): the hand signs the number, then DOLLAR (the 'D' token in hand.signParts), for every amount ($1 to $1,000) for now. Cents and
    the decimal-point form come later, when Colleen teaches them; the money signs replace this one function. Same number rules as "Show me the
    number": 250 = 2 HUNDRED, 50; 1,000 = 1 THOUSAND; the number keeps the form it has alone (5 DOLLAR: the 5 as usual). */
-async function signAmount(n) { await refHand.ready; refHand.helper(true);      /* two-hand view from the start so it does not jump before DOLLAR; the left hand waits out of view below (hold) */
-  await refHand.signParts(tokensFor(n).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]).concat(['D']), { hold: true }); }      /* hold: both hands stay on the finished DOLLAR, no palm-up rest after (Colleen) */
+const amtTokens = n => tokensFor(n).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]);
+async function signAmount(n) { await refHand.ready;      /* Colleen: a mix of money forms. Dollars and cents: the decimal point (2 POINT 5 0). Whole dollars: the number + DOLLAR.
+                                                           $1-9 will use the dollar twist once she teaches it (DOLLAR until then). Cents off the temple: later. */
+  if (!Number.isInteger(n)) { refHand.helper(false); const d = Math.floor(n), c = String(Math.round((n - d) * 100)).padStart(2, '0');
+    return refHand.signParts(amtTokens(d).concat(['.'], c.split('').map(Number)), { hold: true }); }
+  refHand.helper(true);      /* two-hand view from the start so it does not jump before DOLLAR; the left hand waits out of view below (hold) */
+  await refHand.signParts(amtTokens(n).concat(['D']), { hold: true }); }      /* hold: both hands stay on the finished DOLLAR, no palm-up rest after (Colleen) */
+const CASE_CENTS = [1.25, 2.5, 3.75, 4.1, 5.99, 7.5, 9.25, 12.5, 15.75, 19.99, 24.5, 49.95, 99.99];      /* dollars and cents, all $1 or more (cents alone are signed off the temple: not taught yet) */
+const cents = v => Math.round(v * 100) / 100;
 const CASE_AMTS = [1, 5, 10, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000];      /* the money amounts (repeated to fill the bigger boards) */
 const CASE_COUNTS = [20, 50, 100];      /* how many cases to choose from (Colleen): bigger boards = bigger case numbers to sign */      /* the 13 money cases; the other 2 of the 15 are Ink Splats (Colleen: students should win more than they lose) */
-const dollars = v => '$' + Number(v).toLocaleString('en-US');
-function lookAlikes(n) {      /* 3 wrong amounts that look close when signed: the digits swapped first, then neighbors (one more ten, ten times as much...) */
+const dollars = v => '$' + Number(v).toLocaleString('en-US', Number.isInteger(+v) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function lookAlikes(n) {
+  if (!Number.isInteger(n)) { const d = Math.floor(n), c = Math.round((n - d) * 100), cs = String(c).padStart(2, '0'), out = new Set();      /* dollars and cents: the cents digits swapped, a dollar off, a quarter off, the digits shifted */
+    [d + (+(cs[1] + cs[0])) / 100, n + 1, n - 1, n + 0.25, n - 0.25, d * 10 + c / 100 * 10, c + d / 100].map(cents).forEach(v => { if (v > 0 && v !== cents(n) && v < 10000) out.add(v); }); return shuffleA([...out]).slice(0, 3); }      /* 3 wrong amounts that look close when signed: the digits swapped first, then neighbors (one more ten, ten times as much...) */
   const s = String(n), swaps = new Set(), near = new Set(), ok = v => Number.isInteger(v) && v > 0 && v <= 9999 && v !== n;
   for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) { const a = s.split(''); [a[i], a[j]] = [a[j], a[i]]; if (a[0] !== '0' && ok(+a.join(''))) swaps.add(+a.join('')); }
   (n >= 100 ? [n + 100, n - 100, n + 50, n - 50, n * 10, n / 10] : [n + 10, n - 10, n + 5, n - 5, n + 1, n - 1, n * 10]).forEach(v => { if (ok(v) && !swaps.has(v)) near.add(v); });
@@ -851,17 +860,17 @@ const PICKGAMES = {
     if (!G.n) { bar('Cash or Crash', []); gpic('<div class="rd-hilo">💼 <b>Cash or Crash</b><small>How many cases?</small></div>'); ghead('Choose a board');
       return gchoose('<div class="rd-gpicks">' + CASE_COUNTS.map(m => '<button class="btn ghost" data-n="' + m + '">' + m + ' cases</button>').join('') + '</div>', e => { e.querySelector('.rd-gpicks').onclick = ev => { const b = ev.target.closest('[data-n]'); if (b) { G.n = +b.dataset.n; PICKGAMES.cases(G, k); } }; }); }
     const inks = Math.max(2, Math.round(G.n * 0.13)), money = [];      /* about 1 case in 8 is an Ink Splat on every board */
-    while (money.length < G.n - inks) money.push(...shuffleA(CASE_AMTS.slice())); money.length = G.n - inks;
+    while (money.length < G.n - inks) money.push(...shuffleA(CASE_AMTS.slice()).slice(0, 7), ...shuffleA(CASE_CENTS.slice()).slice(0, 6)); money.length = G.n - inks;      /* a mix of whole dollars and dollars and cents (Colleen) */
     G.cases = shuffleA(money.concat(Array(inks).fill('ink'))); G.open = {}; G.picks = 0; G.bank = 0; G.total = 0; G.amt = null; bar('Cash or Crash · ' + G.n + ' cases', []);
     G.board = () => { gpic('<div class="rd-cases' + (G.n > 20 ? ' many' : '') + '">' + G.cases.map((c, i) => { const o = G.open[i + 1], n = i + 1;      /* o: '?' = open but not read yet, 1 = shown */
       return '<button class="rd-case' + (o ? ' open' + (c === 'ink' ? ' ink' : '') : '') + (G.picking && G.pick === n ? ' pick' : '') + '" data-case="' + n + '"' + (o ? ' disabled' : '') + '>' + (!o ? n : c === 'ink' ? '🐙' : o === '?' ? '$?' : dollars(c)) + '</button>'; }).join('') + '</div>');
       ghead('Pick <b>' + Math.min(5, G.picks + 1) + '</b> of 5 · Bank <b>' + dollars(G.bank) + '</b> · Saved <b>' + dollars(G.total) + '</b>'); };
     $('#rd-gpic').onclick = ev => { const b = ev.target.closest('[data-case]'); if (b && GAME === G && G.picking) G.choose(+b.dataset.case); };      /* tapping a case picks it (it still has to be signed) */
     G.ask = () => { G.pick = 0; G.board(); $('#rd-letter').textContent = '?';
-      if (G.picks >= 5) { if (!G.bank) return G.finish(); return gchoose('<button class="btn" id="rd-clast">🏁 Cash out ' + dollars(G.bank) + ' and finish</button>', e => { $('#rd-clast').onclick = () => { G.total += G.bank; G.bank = 0; G.finish(); }; }); }      /* no more cases: the last bank is cashed out with one tap */
+      if (G.picks >= 5) { if (!G.bank) return G.finish(); return gchoose('<button class="btn" id="rd-clast">🏁 Cash out ' + dollars(G.bank) + ' and finish</button>', e => { $('#rd-clast').onclick = () => { G.total = cents(G.total + G.bank); G.bank = 0; G.finish(); }; }); }      /* no more cases: the last bank is cashed out with one tap */
       if (!G.bank) return G.pickCase();
       gchoose('<button class="btn" id="rd-cgo">💼 Open another case</button><button class="btn ghost" id="rd-ccash">💰 Cash out ' + dollars(G.bank) + '</button><p class="rd-small">' + (G.picks === 4 ? '⚠️ Last case! ' : '') + 'An Ink Splat wipes out money you have not cashed out.</p>', e => { $('#rd-cgo').onclick = G.pickCase; $('#rd-ccash').onclick = G.cash; }); };
-    G.cash = () => { const b = G.bank; G.total += b; G.bank = 0; G.board(); gsay('💰 Saved ' + dollars(b) + '!', 1300, G.pickCase); };
+    G.cash = () => { const b = G.bank; G.total = cents(G.total + b); G.bank = 0; G.board(); gsay('💰 Saved ' + dollars(b) + '!', 1300, G.pickCase); };
     G.pickCase = () => { G.picking = true; G.board(); gtype('Case number', 1, G.n, G.choose); $('#rd-gmsg').textContent = 'Tap a case or type its number, then sign it to open it.'; };
     G.choose = v => { if (G.open[v]) { gtype('Case number', 1, G.n, G.choose); $('#rd-gmsg').textContent = 'Case ' + v + ' is already open. Pick another one.'; return; }
       G.pick = v; G.board(); gsign(String(v), 'Sign ' + v + ' to open case ' + v); };      /* tapping another case before signing changes the pick */
@@ -873,12 +882,12 @@ const PICKGAMES = {
     G.watch = async () => { if (G.busy || G.amt === null) return; G.busy = true; const box = $('#rd-gmodel'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false;
       try { await signAmount(G.amt); } catch (e) {} G.busy = false; if (GAME === G && G.amt !== null && !G.shown) G.offer(); };
     G.offer = () => { G.shown = true; const opts = shuffleA([G.amt].concat(lookAlikes(G.amt)));      /* 4 choices, or type it for 10% more */
-      gchoose('<div class="rd-gpicks">' + opts.map(v => '<button class="btn ghost" data-v="' + v + '">' + dollars(v) + '</button>').join('') + '</div><label class="rd-gtype">or type it (+10%): $ <input type="number" inputmode="numeric" min="1" max="9999" id="rd-gin"></label><button class="btn" id="rd-ggo">Check</button><p class="rd-small" id="rd-gmsg"></p>', e => {
+      gchoose('<div class="rd-gpicks">' + opts.map(v => '<button class="btn ghost" data-v="' + v + '">' + dollars(v) + '</button>').join('') + '</div><label class="rd-gtype">or type it (+10%): $ <input type="number" inputmode="decimal" step="0.01" min="0.01" max="9999" id="rd-gin"></label><button class="btn" id="rd-ggo">Check</button><p class="rd-small" id="rd-gmsg"></p>', e => {
         e.querySelector('.rd-gpicks').onclick = ev => { const b = ev.target.closest('[data-v]'); if (b) G.answer(+b.dataset.v, false); };
-        const typed = () => { const t = $('#rd-gin').value; if (t === '' || !(+t > 0)) { $('#rd-gmsg').textContent = 'Type the number of dollars.'; return; } G.answer(Math.round(+t), true); };
+        const typed = () => { const t = $('#rd-gin').value; if (t === '' || !(+t > 0)) { $('#rd-gmsg').textContent = 'Type the number of dollars (like 250 or 2.50).'; return; } G.answer(cents(+t), true); };
         $('#rd-ggo').onclick = typed; $('#rd-gin').onkeydown = ev => { if (ev.key === 'Enter') typed(); }; }); };
-    G.answer = (v, typed) => { if (G.amt === null) return; const a = G.amt, ok = v === a, got = ok ? (typed ? Math.round(a * 1.1) : a) : Math.floor(a / 2);
-      G.bank += got; G.picks++; G.open[G.pick] = 1; G.amt = null; $('#rd-gmodel').hidden = true; bar('Cash or Crash', []); G.board(); $('#rd-letter').textContent = dollars(a);
+    G.answer = (v, typed) => { if (G.amt === null) return; const a = G.amt, ok = cents(v) === cents(a), got = ok ? (typed ? cents(a * 1.1) : a) : Math.floor(a * 50) / 100;      /* exact to the cent */
+      G.bank = cents(G.bank + got); G.picks++; G.open[G.pick] = 1; G.amt = null; $('#rd-gmodel').hidden = true; bar('Cash or Crash', []); G.board(); $('#rd-letter').textContent = dollars(a);
       gsay((ok ? (typed ? '🎯 Typed it! ' : '✅ Yes! ') + 'It was <b>' + dollars(a) + '</b>.' : '❌ The hand signed <b>' + dollars(a) + '</b>. Half goes in the bank.') + ' <b>+' + dollars(got) + '</b>', 2600, G.ask); };
     G.finish = () => { G.bank = 0; const b = best(G.n === 20 ? 'cases' : 'cases' + G.n, G.total), t = G.total, rank = t >= 1000 ? '🏆 HIGH ROLLER!' : t >= 400 ? '💰 BIG CASH!' : t > 0 ? '💵 CASH!' : '🐙 CRASH!';      /* each board keeps its own best */
       endGame('<h3>' + rank + '</h3><div class="big">' + dollars(t) + '</div><p class="rd-small">saved' + (t ? '' : '. The Ink Splats got you this time. Cash out sooner next game!') + (b.isNew ? ' A new best!' : b.old !== undefined ? ' Best: ' + dollars(b.old) + '.' : '') + '</p>', k); };
