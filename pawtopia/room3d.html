@@ -106,6 +106,7 @@
     document.querySelectorAll('[data-bg]').forEach(b => b.classList.toggle('on', b.dataset.bg === k)); const sel = document.getElementById('bgsel'); if (sel) sel.value = BACK[k] && BACK[k].name ? k : '';
     placeFurniture(k); roomBits.forEach(o => { if (o === bed && FURN_ON) o.visible = false; });
     if (pet) { pet.position.set(0, 0, back ? 1.4 : 0); act(S.act === 'sleep' ? 'walk' : S.act); }
+    compsPlace();
   }
   const AREA = () => back ? back.area : [-2.2, 2.2, -1.5, 1.1];
   /* ───── 2026-11-01 furniture pets can walk behind (Colleen's furniture sheet, cut to see-through pictures). Each piece stands upright on the
@@ -134,6 +135,7 @@
       const sh = new THREE.Mesh(new THREE.CircleGeometry(h * 0.6, 32), new THREE.MeshBasicMaterial({ color: 0x3b2a5c, transparent: true, opacity: 0.12, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.scale.y = 0.35; sh.position.set(x, 0.006, z + 0.02); m.userData.sh = sh; furnGroup.add(sh);
     });
     if (G && G.swim && !S.poolSet && S.pool) { poolSpot(); if (S.inPool) pet.position.copy(S.pool); }      /* a swimmer's pool moves out of the furniture's way */
+    COMPS.forEach(c => { if (c.ready && c.swim) compPlace(c); });
   }
   /* the pet: pivots are the "skeleton"; every pose and animation just turns them */
   const LOOKS = {
@@ -234,26 +236,29 @@
   const SWIM = { dolphin: 1, whale: 1 };      /* whale: the Galaxy Shark (its id stayed 'whale' when Colleen renamed the Star Whale) */
   const SWU = { t: { value: 0 }, amp: { value: 0.05 }, flip: { value: 0.3 }, spd: { value: 6 } };
   function swimSetup(root, len) {
+    swimShader(root, SWU);
+    if (!S.pool) S.pool = new THREE.Vector3(); if (!S.poolSet) poolSpot(); pool.position.copy(S.pool); S.inPool = true; pet.position.copy(S.pool);
+  }
+  function swimShader(root, SWU) {      /* 4.274 each swimmer has its own wiggle (SWU: its uniforms) */
     root.traverse(o => { if (!o.isMesh) return; [].concat(o.material).forEach(m => { m.onBeforeCompile = sh => { Object.assign(sh.uniforms, { uT: SWU.t, uAmp: SWU.amp, uFlip: SWU.flip, uSpd: SWU.spd });
       sh.vertexShader = 'uniform float uT, uAmp, uFlip, uSpd;\n' + sh.vertexShader.replace('#include <begin_vertex>', ['#include <begin_vertex>',
         'float back = clamp((0.15 - position.z) / 0.65, 0.0, 1.0);',      /* 0 at the head, 1 at the tail (model space: nose at +z, half a unit long each way) */
         'transformed.x += sin(position.z * 7.0 + uT * uSpd) * uAmp * back * back;',
         'float side = smoothstep(0.1, 0.27, abs(position.x)) * (1.0 - smoothstep(0.25, 0.45, position.y));',      /* flippers: out to the sides and low */
         'transformed.y += sin(uT * uSpd * 0.8) * uFlip * side * (abs(position.x) - 0.1);'].join('\n')); }; m.needsUpdate = true; }); });
-    if (!S.pool) S.pool = new THREE.Vector3(); if (!S.poolSet) poolSpot(); pool.position.copy(S.pool); S.inPool = true; pet.position.copy(S.pool);
   }
-  const pool = (() => { const g = new THREE.Group(), R = 0.6, H = 0.17;
+  const makePool = () => { const g = new THREE.Group(), R = 0.6, H = 0.17;
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 0.97, H, 40, 1, true), new THREE.MeshStandardMaterial({ color: 0x5fb8ff, roughness: 0.5, side: THREE.DoubleSide })); wall.position.y = H / 2; g.add(wall);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 10, 40), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })); rim.rotation.x = Math.PI / 2; rim.position.y = H; g.add(rim);
     for (let i = 0; i < 8; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.004, R * 0.97 + 0.004, H * 0.5, 6, 1, true, i * Math.PI / 4, Math.PI / 8), new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide })); st.position.y = H / 2; g.add(st); }
     const water = new THREE.Mesh(new THREE.CircleGeometry(R * 0.96, 40), new THREE.MeshStandardMaterial({ color: 0x8fdcff, transparent: true, opacity: 0.72, roughness: 0.1, metalness: 0.1 })); water.rotation.x = -Math.PI / 2; water.position.y = H * 0.72; g.add(water);
     const floorW = new THREE.Mesh(new THREE.CircleGeometry(R * 0.96, 40), new THREE.MeshStandardMaterial({ color: 0x3f9be0 })); floorW.rotation.x = -Math.PI / 2; floorW.position.y = 0.01; g.add(floorW);
-    g.userData = { R, water }; g.visible = false; scene.add(g); return g; })();
-  function poolSpot() {      /* the most open spot on the floor, away from the furniture (front half preferred) */
-    const a = AREA(), furn = furnGroup.children.filter(o => o.userData.furn); let best = null, bs = -1;
+    g.userData = { R, water }; g.visible = false; scene.add(g); return g; }, pool = makePool();
+  function poolSpot(v) {      /* the most open spot on the floor, away from the furniture and the other pools (front half preferred); v: whose pool (the main pet's S.pool if none) */
+    v = v || S.pool; const a = AREA(), furn = furnGroup.children.filter(o => o.userData.furn).map(o => o.position).concat(G && G.swim && S.pool && v !== S.pool ? [S.pool] : [], COMPS.filter(c => c.poolPos && c.poolPos !== v).map(c => c.poolPos), v !== S.pool && pet ? [pet.position] : []);      /* a buddy's pool also keeps clear of the main pet */ let best = null, bs = -1;
     for (let i = 0; i <= 6; i++) for (let j = 0; j <= 4; j++) { const x = a[0] + 0.5 + (a[1] - a[0] - 1) * i / 6, z = a[2] + 0.4 + (a[3] - a[2] - 0.5) * j / 4;
-      const sc = Math.min(2, ...furn.map(o => Math.hypot(o.position.x - x, o.position.z - z))) + z * 0.15 - Math.abs(x) * 0.05; if (sc > bs) { bs = sc; best = [x, z]; } }
-    if (best) S.pool.set(best[0], 0, best[1]);
+      const sc = Math.min(2, ...furn.map(o => Math.hypot(o.x - x, o.z - z))) + z * 0.15 - Math.abs(x) * 0.05; if (sc > bs) { bs = sc; best = [x, z]; } }
+    if (best) v.set(best[0], 0, best[1]);
   }
   const HOME_ACTS = { walk: 1, stay: 1, idle: 1, sit: 1, wave: 1, happy: 1, sleep: 1, huh: 1, bath: 1 };      /* the behaviors a swimmer does in its pool */
   const allWater = () => back === BACK.bg_underwater;
@@ -284,8 +289,8 @@
      then attached to the head or chest bone so they move with it and grow with it. All are built once, hidden; ACC picks the one that shows. ───── */
   let ACC = Q.get('acc') || '', OUTFITS = {};
   const omat = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: col(c), roughness: 0.6, metalness: 0 }, o || {}));
-  function fitOutfits(root, rig) {
-    OUTFITS = {}; root.updateMatrixWorld(true);
+  function fitOutfits(root, rig, own) {      /* own: a buddy (4.274) keeps its own outfits; without it they are the main pet's OUTFITS */
+    const OUT = {}; if (!own) OUTFITS = OUT; root.updateMatrixWorld(true);
     const V = []; root.traverse(o => { if (!o.isMesh) return; const pa = o.geometry.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < pa.count; i += 2) { v.fromBufferAttribute(pa, i); o.localToWorld(v); V.push(root.worldToLocal(v.clone())); } });
     const L = b => root.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
     const ring = (c, ax, band, maxR, keep, pc) => { const pts = V.filter(p => Math.abs(p.clone().sub(c).dot(ax)) < band && p.distanceTo(c) < maxR && (!keep || keep(p))); if (pts.length < 6) return null;
@@ -305,7 +310,7 @@
     const collar = (color, rr, tube) => { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.TorusGeometry(neck.r * (rr || 1.06), neck.r * (tube || 0.13), 10, 36), omat(color)); g.add(t); return atNeck(g); };
     const front = (g, o, dist) => { o.position.copy(new THREE.Vector3(0, -1, 0).multiplyScalar(neck.r * (dist || 1.1))); g.add(o); return g; };      /* in the collar's own frame: -y is under the chin */
     const bowShape = (color, w) => { const b = new THREE.Group(), m = omat(color); [-1, 1].forEach(sx => { const c = new THREE.Mesh(new THREE.ConeGeometry(w * 0.45, w, 14), m); c.rotation.z = sx * Math.PI / 2; c.position.x = sx * w * 0.5; c.scale.z = 0.55; b.add(c); }); const k = new THREE.Mesh(new THREE.SphereGeometry(w * 0.22, 12, 10), m); b.add(k); return b; };
-    const add = (id, grp, bone) => { root.add(grp); (bone || rig.head).attach(grp); grp.visible = false; OUTFITS[id] = grp; };
+    const add = (id, grp, bone) => { root.add(grp); (bone || rig.head).attach(grp); grp.visible = false; OUT[id] = grp; };
     /* Blue Collar with a silver paw tag */
     { const g = collar(0x2f6fe0); const tag = new THREE.Mesh(new THREE.SphereGeometry(neck.r * 0.24, 12, 10), omat(0xd8dde6, { metalness: 0.6, roughness: 0.3 })); tag.scale.y = 0.45; add('collar', front(g, tag, 1.25), rig.neck[rig.neck.length - 1] || rig.head); }
     /* Red Bandana: a thin band and a triangle under the chin */
@@ -366,9 +371,9 @@
     { const hipZ = rig.pivot ? rig.pivot.z : chest.z - Hh * 0.45, len = Math.max(Hh * 0.22, (chest.z - hipZ) * 0.9), g = new THREE.Group();
       const cp = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), omat(0x7b3fc4, { side: THREE.DoubleSide, roughness: 0.5 })); cp.scale.set(body.r * 1.2, body.r * 1.05, len); g.add(cp);
       g.position.set(body.c.x, body.c.y - body.r * 0.35, (chest.z + hipZ) / 2 - Hh * 0.06); add('cape', g, rig.chest || rig.top); const c2 = collar(0x7b3fc4, 1.04, 0.1); add('cape2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
-    showOutfit();
+    if (own) { own.outfits = OUT; showOutfit(OUT, own.acc); } else showOutfit();
   }
-  function showOutfit() { const on = String(ACC || '').split(',').filter(Boolean); Object.keys(OUTFITS).forEach(k => OUTFITS[k].visible = on.some(a => k === a || k === a + '2')); }      /* 4.256 up to one per slot */
+  function showOutfit(O, acc) { O = O || OUTFITS; const on = String((acc === undefined ? ACC : acc) || '').split(',').filter(Boolean); Object.keys(O).forEach(k => O[k].visible = on.some(a => k === a || k === a + '2')); }      /* 4.256 up to one per slot */
   /* ───── 2026-11-01 two-legged rigs (Tripo "Humanoid", Mixamo bone names): birds and other pets that stand up. Wings are the arms. ───── */
   function findBiped(root) {
     const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); }); const by = n => bones.find(b => b.name.replace(/^mixamorig\d*[:_]?/i, '') === n);
@@ -394,11 +399,11 @@
     carry: { drop: 0, lean: 0, knee: 0.35, open: 0.9, nP: -0.1, hP: 0 },
     bow: { drop: -0.05, lean: 0.4, knee: 0.4, open: 0.5, nP: -0.3, hP: -0.1 }
   };
-  const BP = Object.assign({}, BIPOSE.stand);
-  function poseBiped(dt, doing, walking) {
-    const rig = G.rig, t = S.t, want = BIPOSE[doing === 'wave' || doing === 'beg' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
+  const BPm = Object.assign({}, BIPOSE.stand), STAGEm = () => STAGE;
+  function poseBiped(dt, doing, walking, X) {      /* X: a buddy (4.274); without it, the main pet (G, S, BP, STAGE) */
+    const g = X || G, BP = X ? X.BP : BPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, want = BIPOSE[doing === 'wave' || doing === 'beg' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in BP) BP[key] += (want[key] - BP[key]) * k;
-    G.gait = (G.gait || 0) + dt * (walking ? 8 : 0); const ph = G.gait, wk = (G.wk = (G.wk || 0) + ((walking ? 1 : 0) - (G.wk || 0)) * Math.min(1, dt * 6));
+    g.gait = (g.gait || 0) + dt * (walking ? 8 : 0); const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));
     rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); });
     /* the body: drops, leans forward or back around the feet, and rolls side to side as it waddles */
     const roll = Math.sin(ph) * 0.16 * wk, r0 = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
@@ -470,13 +475,13 @@
     beg: { pitch: -0.95, drop: 0.0, roll: 0, fU: -0.4, fL: 1.1, hU: -1.25, hK: 1.85, hH: -0.65, nP: -0.15, nY: 0, hP: 0.2, tY: 0, tP: 0.6 },      /* 4.272 sitting up tall on the back legs, front paws tucked up */
     bow: { pitch: 0.35, drop: -0.02, roll: 0, fU: -0.9, fL: 0.35, hU: 0.1, hK: 0, hH: 0, nP: -0.35, nY: 0, hP: -0.1, tY: 0, tP: -0.5 }
   };
-  const RP = Object.assign({}, RIGPOSE.stand);
-  function poseRig(dt, doing, walking) {
-    if (G.rig.biped) return poseBiped(dt, doing, walking);
-    const rig = G.rig, t = S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
+  const RPm = Object.assign({}, RIGPOSE.stand);
+  function poseRig(dt, doing, walking, X) {      /* X: a buddy (4.274) with its own rig, pose, clock and stage; without it, the main pet */
+    const g = X || G; if (g.rig.biped) return poseBiped(dt, doing, walking, X);
+    const RP = X ? X.RP : RPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in RP) RP[key] += (want[key] - RP[key]) * k;
-    const clip = walking && G.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
-    const hop = G.gaitType === 'hop'; G.gait = (G.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) : 0); const ph = G.gait, wk = (G.wk = (G.wk || 0) + ((walking ? 1 : 0) - (G.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
+    const clip = walking && g.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
+    const hop = g.gaitType === 'hop'; g.gait = (g.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) : 0); const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
     if (!clip) {
       /* the whole body tips around the back paws (sitting, play bow), drops (sleeping) and leans */
       const r = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
@@ -629,12 +634,13 @@
     if (a === 'highfive') { S.pose = 'sit'; S.act = 'wave'; say('High five, ' + n + '!'); }
     if (a === 'happy') { S.pose = 'stand'; S.hop = 3; P.tongue.visible = true; hearts(6); puff('star_burst', 1, 0.5); say(n + ' is SO happy!'); }
   }
-  const pick = () => { if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); S.moving = true; };      // a short stroll to somewhere nearby
+  const pick = () => { if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
+  const outOfPools = v => { if (allWater()) return; COMPS.forEach(c => { if (!c.poolPos || c.gone) return; const dx = v.x - c.poolPos.x, dz = v.z - c.poolPos.z, d = Math.hypot(dx, dz) || 1e-3, R = c.pool.userData.R + 0.4; if (d < R) { v.x = c.poolPos.x + dx / d * R; v.z = c.poolPos.z + dz / d * R; clampArea(v); } }); };      /* 4.274 the main pet's strolls stay out of a buddy's pool */      // a short stroll to somewhere nearby
   const fetchT = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); fetchT.scale.setScalar(0.3); fetchT.visible = false; scene.add(fetchT);
   const throwBall = () => { const a = AREA(); ball.position.set(a[0] + Math.random() * (a[1] - a[0]), 0.15, a[2] + Math.random() * (a[3] - a[2])); S.target.copy(ball.position).setY(0); S.moving = true; };
   /* little floating hearts and Zzz, drawn as sprites */
   const spriteTex = {}; const tex = ch => spriteTex[ch] || (spriteTex[ch] = /^(fx|care):/.test(ch) ? (() => { const t = furnLoader.load(ART + ch.replace(':', '/') + '.webp'); t.encoding = THREE.sRGBEncoding; return t; })() : (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.font = '96px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 64, 70); const t = new THREE.CanvasTexture(c); return t; })());
-  function fx(ch, n) { for (let k = 0; k < n; k++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(ch), transparent: true })); const p = new THREE.Vector3(); P.head.getWorldPosition(p); s.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.2, (Math.random() - 0.5) * 0.3)); s.scale.setScalar(/^fx:/.test(ch) ? 0.42 : 0.28); s.userData = { life: 1.6 + k * 0.25, vy: 0.5 + Math.random() * 0.3 }; scene.add(s); S.fx.push(s); } }
+  function fx(ch, n, src) { for (let k = 0; k < n; k++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(ch), transparent: true })); const p = new THREE.Vector3(); (src || P.head).getWorldPosition(p); s.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.2, (Math.random() - 0.5) * 0.3)); s.scale.setScalar(/^fx:/.test(ch) ? 0.42 : 0.28); s.userData = { life: 1.6 + k * 0.25, vy: 0.5 + Math.random() * 0.3 }; scene.add(s); S.fx.push(s); } }
   const hearts = n => { fx('fx:hearts', 1); if (n > 1) fx('💖', n - 1); };
   /* 2026-11-01 Colleen's care items and effects: a picture standing on the floor (food or water bowl, shampoo) and a puff at the paws */
   function prop(group, name, h) { group.clear(); const t = tex('care:' + name), m = new THREE.Mesh(new THREE.PlaneGeometry(h / 0.9, h / 0.9), new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.35 }));
@@ -643,6 +649,97 @@
     sp.position.copy(pet.position).add(new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.12 + Math.random() * 0.25, 0.1)); sp.scale.setScalar(sz || 0.4); sp.userData = { life: 1.1 + k * 0.2, vy: 0.25 + Math.random() * 0.2 }; scene.add(sp); S.fx.push(sp); } }
   const propBox = new THREE.Group(); scene.add(propBox); propBox.visible = false;
   { const bs = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex('care:tennis_ball'), transparent: true })); bs.scale.setScalar(0.34); ball.add(bs); }
+
+  /* ───── 4.274 the buddy: a second pet the student brought along (Pawtopia sends it: comp=id~kind~stage~form~outfits(+)~look, several joined with |).
+     It loads its own model (the file is fetched once per kind), wears its own outfits at its own size and form glow, and wanders by itself: picks an open
+     spot (not in the furniture, not on the main pet), walks there, rests a while, repeats. Swimmers paddle in their own kiddie pool (the whole room in
+     Underwater). No needs, tricks or fetch. Tap it: a hop and hearts, and Pawtopia swaps it with the main pet ('pick'). ───── */
+  let COMPS = [], COMP_OFF = false; const COMP_MAX = 2; window.__comps = () => COMPS.map(c => ({ id: c.id, who: c.who, ready: !!c.ready, failed: !!c.failed, swim: !!c.swim, rig: !!c.rig, biped: !!(c.rig && c.rig.biped), x: c.holder ? +c.holder.position.x.toFixed(2) : null, z: c.holder ? +c.holder.position.z.toFixed(2) : null, moving: c.moving, outfits: c.outfits ? Object.keys(c.outfits).filter(k => c.outfits[k].visible) : [] }));
+  const parseComp = str => String(str || '').split('|').map(x => x.split('~')).filter(a => a.length >= 2 && WHO[a[1]] && MODELS[WHO[a[1]]] && +a[0] > 0).slice(0, COMP_MAX)
+    .map(a => ({ id: +a[0], who: WHO[a[1]], stage: Math.max(0, Math.min(6, +a[2] || 0)), form: /^[nsr]$/.test(a[3]) ? a[3] : 'n', acc: String(a[4] || '').split(/[+ ,]/).filter(x => /^[a-z_]+$/.test(x)).join(','), look: a[5] === 'r' ? 'r' : '' }));
+  function freeSpot(c) {      /* an open spot on the floor for a buddy: away from the furniture, the main pet, the pools and the other buddies */
+    const a = AREA(), furn = furnGroup.children.filter(o => o.userData.furn), pools = (G && G.swim && S.pool && !allWater() ? [S.pool] : []).concat(COMPS.filter(o => o.poolPos && !allWater()).map(o => o.poolPos));
+    let best = null, bs = -1e9;
+    for (let i = 0; i < 14; i++) { const x = a[0] + 0.25 + Math.random() * (a[1] - a[0] - 0.5), z = a[2] + 0.1 + Math.random() * (a[3] - a[2] - 0.15);
+      let sc = Math.min(1.2, pet ? Math.hypot(pet.position.x - x, pet.position.z - z) : 2);
+      furn.forEach(o => { const w = (FURN_H[o.userData.furn] || 0.6) / 0.9 * 0.5 + 0.18; if (Math.abs(o.position.x - x) < w && Math.abs(o.position.z - z) < 0.35) sc -= 3; });
+      pools.forEach(p => { if (Math.hypot(p.x - x, p.z - z) < 0.95) sc -= 3; });
+      COMPS.forEach(o => { if (o !== c && o.holder) sc = Math.min(sc, Math.hypot(o.target.x - x, o.target.z - z)); });
+      if (sc > bs) { bs = sc; best = [x, z]; } }
+    return new THREE.Vector3(best[0], 0, best[1]);
+  }
+  function compDrop(c) {      /* take a buddy out of the room and free its model */
+    [c.holder, c.pool, c.ring].forEach(o => { if (!o) return; scene.remove(o); o.traverse(m => { if (m.geometry) m.geometry.dispose(); [].concat(m.material || []).forEach(mt => { ['map', 'normalMap', 'roughnessMap', 'emissiveMap'].forEach(k => mt[k] && mt[k].dispose && mt[k].dispose()); mt.dispose(); }); }); });
+    c.gone = true;
+  }
+  function setComps(list) {
+    if (COMP_OFF) list = []; const keep = [];
+    COMPS.forEach(c => { const n = list.find(x => x.id === c.id && x.who === c.who); if (!n) return compDrop(c); c.stage = n.stage; c.form = n.form; if (c.acc !== n.acc) { c.acc = n.acc; if (c.outfits) showOutfit(c.outfits, c.acc); } keep.push(c); });
+    list.filter(n => !keep.some(c => c.id === n.id)).forEach(n => { const c = Object.assign(n, { t: Math.random() * 10, RP: Object.assign({}, RIGPOSE.stand), BP: Object.assign({}, BIPOSE.stand), target: new THREE.Vector3(), moving: false, wait: 1 + Math.random() * 2, hop: 0 }); keep.push(c); loadComp(c); });
+    COMPS = keep;
+  }
+  function loadComp(c) {
+    getBuf(c.who).then(buf => { if (!buf || c.gone) { c.failed = true; return; } loader.parse(buf, '', g => { if (c.gone) return; try { useComp(c, g); } catch (e) { console.error(e); c.failed = true; } }, e => { console.error(e); c.failed = true; }); });
+  }
+  function useComp(c, gltf) {      /* like useModel for the main pet, kept to what a buddy needs */
+    const root = gltf.scene, size = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()), swim = !!SWIM[c.who];
+    const k = swim ? 0.85 / (size.z || 1) : 0.95 / (size.y || 1); root.scale.multiplyScalar(k);
+    const b2 = new THREE.Box3().setFromObject(root), ctr = b2.getCenter(new THREE.Vector3()); root.position.x -= ctr.x; root.position.z -= ctr.z; root.position.y -= b2.min.y;
+    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.userData.comp = c.id; } });
+    const mixer = new THREE.AnimationMixer(root), acts = {}; gltf.animations.forEach(a => { if (!acts.idle && CLIPS.idle.test(a.name)) acts.idle = mixer.clipAction(a); });
+    const holder = new THREE.Group(); holder.add(root); scene.add(holder);
+    const head = new THREE.Object3D(); head.position.set(0, size.y * 0.9, 0); root.add(head);      /* where its hearts float from */
+    const rig = swim ? null : rigOf(root);
+    Object.assign(c, { root, holder, head, mixer, acts, rig, swim: swim && !rig, base: root.position.clone(), gaitType: GAIT[c.who] || 'trot', gait: 0, wk: 0 });
+    if (rig) fitOutfits(root, rig, c);
+    if (c.swim) { c.swimH = size.y * k; c.U = { t: { value: 0 }, amp: { value: 0.035 }, flip: { value: 0.25 }, spd: { value: 4 } }; swimShader(root, c.U); fitOutfits(root, swimRig(root), c);
+      c.pool = makePool(); c.poolPos = new THREE.Vector3(); poolSpot(c.poolPos); c.pool.position.copy(c.poolPos); }
+    else if (!rig && acts.idle) acts.idle.play();
+    c.ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.5, 40), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }));
+    c.ring.rotation.x = -Math.PI / 2; c.ring.visible = false; scene.add(c.ring);
+    compPlace(c); c.ready = true;
+  }
+  function compPlace(c) {      /* a fresh spot (on load and when the room changes) */
+    if (!c.holder) return; if (c.swim && !allWater()) { poolSpot(c.poolPos); c.pool.position.copy(c.poolPos); c.holder.position.copy(c.poolPos); }
+    else c.holder.position.copy(freeSpot(c)); c.holder.rotation.y = (Math.random() - 0.5) * 1.5; c.target.copy(c.holder.position); c.moving = false; c.wait = 1 + Math.random() * 2;
+  }
+  const compsPlace = () => COMPS.forEach(compPlace);
+  function compPick(c) {      /* where to stroll next */
+    if (c.swim && !allWater()) { const ang = Math.random() * Math.PI * 2, rr = Math.random() * c.pool.userData.R * 0.4; c.target.set(c.poolPos.x + Math.cos(ang) * rr, 0, c.poolPos.z + Math.sin(ang) * rr); }
+    else c.target.copy(freeSpot(c));
+    c.moving = true;
+  }
+  function compFrame(dt) {
+    COMPS.forEach(c => { if (!c.ready || c.gone) return; c.t += dt; const h = c.holder, t = c.t, sea = allWater(); h.visible = !lineup; let walking = false;
+      if (c.moving) { const d = new THREE.Vector3().subVectors(c.target, h.position); d.y = 0; const dist = d.length();
+        c.stuck = dist > (c.lastD === undefined ? 1e9 : c.lastD) - 0.0015 ? (c.stuck || 0) + dt : 0; c.lastD = dist; if (c.stuck > 1.2) { c.stuck = 0; c.lastD = undefined; compPick(c); }      /* blocked (the main pet is in the way): go somewhere else */
+        if (dist > 0.05) { const want = Math.atan2(d.x, d.z); let dy = want - h.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; h.rotation.y += dy * Math.min(1, dt * 5);
+          h.position.addScaledVector(d.normalize(), Math.min(dist - 0.05, (c.swim ? 0.6 : 0.85) * (Math.abs(dy) > 1.2 ? 0.3 : 1) * dt)); walking = true; }
+        else { c.moving = false; c.lastD = undefined; c.wait = 2.5 + Math.random() * 4.5; } }
+      else { c.wait -= dt; if (c.wait < 0) compPick(c); }
+      /* never on the main pet: step aside when it comes close */
+      if (pet && !(c.swim && !sea)) { const dx = h.position.x - pet.position.x, dz = h.position.z - pet.position.z, dd = Math.hypot(dx, dz), near = 0.5 * Math.max(0.6, pet.scale.x);
+        if (dd < near && dd > 1e-4) { h.position.x += dx / dd * (near - dd) * Math.min(1, dt * 6); h.position.z += dz / dd * (near - dd) * Math.min(1, dt * 6); clampArea(h.position); if (!c.moving) c.wait = Math.min(c.wait, 0.4); } }
+      const gr = growOf(c.stage); h.scale.setScalar(gr.size);
+      let y = 0; if (c.swim) { if (!sea) { c.pool.visible = !lineup; c.pool.userData.water.material.opacity = 0.7 + Math.sin(t * 2) * 0.04; } else c.pool.visible = false;
+        y = sea ? 0.24 + Math.sin(t * 1.8) * 0.04 : 0.03 + Math.sin(t * 2.2) * 0.012; c.U.t.value = t; c.U.spd.value = walking ? 9 : 4; c.U.amp.value = walking ? 0.07 : 0.035; c.U.flip.value = walking ? 0.5 : 0.25;
+        c.root.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : Math.sin(t * 1.5) * 0.04; }
+      if (c.hop > 0) { const hh = Math.abs(Math.sin(t * 7)); y += hh * 0.3; if (hh < 0.05 && (c._lh || 0) >= 0.05) c.hop--; c._lh = hh; }
+      h.position.y = lerp(h.position.y, y, c.hop > 0 ? 1 : 0.15);
+      /* the glow under it: Shimmer / Radiant ring, or the grown-up glow (Young Adult, Adult) */
+      const fm = c.form === 's' || c.form === 'r', col = c.form === 'r' ? new THREE.Color().setHSL((t * 0.12) % 1, 0.9, 0.62) : c.form === 's' ? new THREE.Color(0x8fe3ff) : new THREE.Color(c.stage === 6 ? 0xffd84a : 0xbfe6ff);
+      c.ring.visible = !lineup && (fm || c.stage >= 5); if (c.ring.visible) { c.ring.position.set(h.position.x, 0.013, h.position.z); c.ring.scale.setScalar(gr.size * (1 + Math.sin(t * 2.2) * 0.04)); c.ring.material.color.copy(col); c.ring.material.opacity = fm ? 0.55 : c.stage === 6 ? 0.5 : 0.3; }
+      if (fm || c.glowOn) { c.glowOn = fm; c.root.traverse(o => { if (!o.isMesh || !o.material) return; [].concat(o.material).forEach(m => { if (!m.emissive) return; if (m.userData.e0 === undefined) m.userData.e0 = m.emissive.getHex();
+        if (fm) { m.emissive.copy(col); m.emissiveIntensity = 0.16 + Math.sin(t * 2.2) * 0.04; } else { m.emissive.setHex(m.userData.e0); m.emissiveIntensity = 1; } }); }); }
+      if (fm) { c.sp = (c.sp || 0) - dt; if (c.sp < 0) { fx('✨', 1, c.head); c.sp = c.form === 'r' ? 0.7 : 1.1; } }
+      c.mixer.update(dt);
+      if (c.rig) { c.rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); }); poseRig(dt, c.hop > 0 ? 'happy' : walking ? 'walk' : 'idle', walking, c); }
+      else if (!c.swim) c.root.position.y = c.base.y + (walking ? Math.abs(Math.sin(t * 10)) * 0.03 : 0);
+    });
+  }
+  const compHit = () => { let best = null; COMPS.forEach(c => { if (!c.ready || c.gone || !c.holder.visible) return; const h = ray.intersectObject(c.holder, true); if (h.length && (!best || h[0].distance < best.d)) best = { c, d: h[0].distance }; }); return best; };
+  /* the model files: fetched once per kind, shared by the main pet and the buddies (each still gets its own copy to wear and move) */
+  const BUF = {}; const getBuf = who => BUF[who] || (BUF[who] = fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null));
 
   const lerp = (a, b, k) => a + (b - a) * k;
   const clock = new THREE.Clock();
@@ -702,7 +799,7 @@
     else if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else pet.rotation.z *= 0.8;
     if (S.pose === 'sleep') { S.sleepT -= dt; if (S.sleepT < 0) { fx('fx:sleep_z', 1); S.sleepT = 2.2; } }
     for (let i = S.fx.length - 1; i >= 0; i--) { const s = S.fx[i]; s.userData.life -= dt; s.position.y += s.userData.vy * dt; s.material.opacity = Math.min(1, s.userData.life); if (s.userData.life <= 0) { scene.remove(s); S.fx.splice(i, 1); } }
-    stageFrame(dt); formFrame(dt);
+    stageFrame(dt); formFrame(dt); compFrame(dt);
     if (G) driveModel(dt, S.carry ? 'carry' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking);
     R.render(scene, cam); requestAnimationFrame(frame);
   }
@@ -718,14 +815,17 @@
   R.domElement.style.touchAction = 'none';
   const furnHit = () => { const h = ray.intersectObjects(furnGroup.children.filter(o => o.userData.furn), false); return h.length ? h[0].object : null; };
   const sendLayout = () => { if (!MINE) return; MINE.items = furnGroup.children.filter(o => o.userData.furn).sort((a, b) => a.userData.idx - b.userData.idx).map(o => [o.userData.furn].concat(toUV(o.position.x, o.position.z))); tell({ t: 'layout', items: MINE.items }); };
-  R.domElement.addEventListener('pointerdown', e => { at(e); const fh = EDIT && MINE ? furnHit() : null, onPet = !fh && pet && ray.intersectObject(pet, true).length > 0;
-    drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, furn: fh, t: Date.now() }; if (onPet || fh) R.domElement.setPointerCapture(e.pointerId); });
+  R.domElement.addEventListener('pointerdown', e => { at(e); const fh = EDIT && MINE ? furnHit() : null, ph = !fh && pet ? ray.intersectObject(pet, true) : [], ch = !fh && !EDIT ? compHit() : null;
+    const comp = ch && (!ph.length || ch.d < ph[0].distance) ? ch.c : null, onPet = !comp && ph.length > 0;      /* 4.274 the nearer of the main pet and a buddy */
+    drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, comp, furn: fh, t: Date.now() }; if (onPet || fh || comp) R.domElement.setPointerCapture(e.pointerId); });
   addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy2 = e.clientY - drag.y; if (Math.hypot(dx, dy2) > 6) drag.moved = true;
     if (drag.furn && drag.moved) { at(e); const v = floorPt(); if (v) { const z = FZONE(), m = drag.furn; m.position.x = Math.max(z[0], Math.min(z[1], v.x)); m.position.z = Math.max(z[2], Math.min(z[3], v.z)); m.lookAt(cam.position.x, m.position.y, cam.position.z); if (m.userData.sh) m.userData.sh.position.set(m.position.x, 0.006, m.position.z + 0.02); } return; }
     if (drag.pet && drag.moved) { if (!S.carry) { S.carry = true; S.moving = false; S.hop = 0; S.pose = 'stand'; say('Wheee!'); } at(e); const v = floorPt(); if (v) { clampArea(v); pet.position.x = v.x; pet.position.z = v.z; pet.rotation.y += (Math.atan2(cam.position.x - v.x, cam.position.z - v.z) - pet.rotation.y) * 0.15; } return; }
+    if (drag.comp) return;
     if (!drag.pet && !back) { camAng = Math.max(-0.9, Math.min(0.9, drag.a - dx * 0.006)); camAt(); } });
   addEventListener('pointerup', e => { if (!drag) return; const d = drag; drag = null;
     if (d.furn) { if (d.moved) sendLayout(); else tell({ t: 'furntap', i: d.furn.userData.idx, n: d.furn.userData.furn }); return; }
+    if (d.comp) { if (!d.moved) { const c = d.comp; c.hop = 2; c.moving = false; c.wait = 3; fx('fx:hearts', 1, c.head); fx('💖', 1, c.head); setTimeout(() => tell({ t: 'pick', i: c.id }), 450); } return; }      /* 4.274 a tapped buddy hops, then Pawtopia swaps it in */
     if (!d.moved && !d.pet && TOYS.length) { at(e); const th = ray.intersectObjects(toyGroup.children, false); if (th.length) { act('play'); fx('💖', 2); tell({ t: 'toy', n: th[0].object.userData.toy }); return; } }
     if (S.carry && G && G.swim) { S.pool.copy(pet.position).setY(0); clampArea(S.pool); S.poolSet = true; }
     if (S.carry) { S.carry = false; S.act = 'stay'; S.pose = 'stand'; S.hop = 1; puff('dust_puff', 1, 0.45); fx('💖', 1); say(P.look.name + ' likes it here!'); document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); return; }
@@ -759,7 +859,7 @@
   /* how each kind travels: 'trot' (dogs, cats, horses) or 'hop' (bunnies; later frogs) */
   const GAIT = { bunny: 'hop', frog: 'hop' };
   const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
-  const loadFor = who => { if (!MODELS[who]) return; fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
+  const loadFor = who => { if (!MODELS[who]) return; getBuf(who).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
   const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', penguin: 'penguin', owl: 'owl', dolphin: 'dolphin', whale: 'whale', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
@@ -774,14 +874,19 @@
     if (m.pet && WHO[m.pet]) { const b = document.querySelector('[data-who="' + WHO[m.pet] + '"]'); if (b && !b.classList.contains('on')) b.click(); }
     if (m.toy) S.toy = String(m.toy).replace(/[^a-z_]/g, '');
     if (m.act) act(m.act);
-    if (m.fx) fx(m.fx, 4); });
+    if (m.fx) fx(m.fx, 4);
+    if (m.comp !== undefined) setComps(parseComp(m.comp)); });
   /* speed check: frames in the first seconds after the pet appears; Pawtopia switches to pictures when it is too slow */
-  let perfN = 0, perfT0 = 0; const perfTick = () => { if (!G) return requestAnimationFrame(perfTick); if (!perfT0) perfT0 = performance.now(); perfN++; const el = performance.now() - perfT0;
-    if (el < 4000) requestAnimationFrame(perfTick); else tell({ t: 'perf', fps: Math.round(perfN / el * 1000) }); };
+  /* 4.274 with a buddy: wait until it has loaded too; if it is slow (under 24 frames a second), the buddy leaves first ('comphide': Pawtopia shows its
+     picture instead) and the speed is measured again before Pawtopia decides about 3D */
+  let perfN = 0, perfT0 = 0; const perfTick = () => { if (!G || COMPS.some(c => !c.ready && !c.failed)) return requestAnimationFrame(perfTick); if (!perfT0) perfT0 = performance.now(); perfN++; const el = performance.now() - perfT0;
+    if (el < 4000) return requestAnimationFrame(perfTick); const fps = Math.round(perfN / el * 1000);
+    if (fps < 24 && COMPS.length && !COMP_OFF) { COMP_OFF = true; setComps([]); tell({ t: 'comphide', fps }); perfN = 0; perfT0 = 0; return requestAnimationFrame(perfTick); }
+    tell({ t: 'perf', fps }); };
   build(WHO[Q.get('pet')] || 'jaq'); if (Q.get('stage')) STAGE = +Q.get('stage'); if (Q.get('form')) FORM = Q.get('form'); size();
   if (EMBED && Q.get('room')) { const [b0, ...its] = Q.get('room').split(';'); setRoom({ bg: b0, items: its.filter(String).map(x => { const a = x.split(','); return [a[0], +a[1], +a[2]]; }) }, (Q.get('toys') || '').split(',').filter(String)); EDIT = Q.has('edit'); }
   if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
-  act('walk'); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
+  act('walk'); setComps(parseComp(Q.get('comp'))); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
   if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }
 })();
 </script>
