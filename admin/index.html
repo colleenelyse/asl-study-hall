@@ -73,7 +73,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), tob64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const hex = buf => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let state = null, tools = [], shares = [], classes = [], products = null, curPw = '';
+  let state = null, tools = [], shares = [], classes = [], products = null, curPw = '', seen = [];
   const newCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789', r = crypto.getRandomValues(new Uint8Array(10)); return [...r].map(x => a[x % a.length]).join(''); };
   const shareUrl = c => 'https://asl.cool/t/' + c;
   const pbkdf2 = async (pw, salt, iter) => crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']), 256);
@@ -164,6 +164,21 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     if (e.target.hasAttribute('data-del') && confirm('Remove "' + (tools[i].title || 'this button') + '"?')) { tools.splice(i, 1); draw(); }
   });
   $('#add').onclick = () => { tools.push({ icon: '⭐', title: '', desc: '', href: '' }); draw(); $('#tools .tool:last-child input[data-k=title]').focus(); };
+  /* 2026-11-01 (Colleen): every link on asl.cool/colleen is on the home page too. New ones arrive here from colleen/links.json, ticked for every
+     student password unless they are teacher views; the Testing Center and ARC/BASE passwords open their own links; her Google Sheets are left out.
+     A link she removes stays removed (seen). Nothing is live until she saves. */
+  async function addColleen() {
+    let L = []; try { L = (await (await fetch('/colleen/links.json', { cache: 'no-store' })).json()).links || []; } catch (e) { return ''; }
+    const role = r => classes.find(c => c.role === r), made = [];
+    [['tc', 'Testing Center'], ['arc', 'ARC/BASE']].forEach(([r, nm]) => { if (L.some(x => x.aud.includes(r)) && !role(r)) { classes.push({ id: newCode(), name: nm, pw: '', role: r }); made.push(nm); } });
+    const students = classes.filter(c => !c.role).map(c => c.id), have = new Set(tools.map(t => t.href)), news = [];
+    L.forEach(x => { if (have.has(x.href) || seen.includes(x.href)) return; seen.push(x.href);
+      const cl = [].concat(x.aud.includes('students') ? students : [], x.aud.includes('tc') ? [role('tc').id] : [], x.aud.includes('arc') ? [role('arc').id] : []);
+      tools.push({ icon: x.icon, title: x.title, desc: x.desc, href: x.href, s: x.aud.includes('students'), cl, sh: [] }); news.push(x); });
+    if (!news.length && !made.length) return '';
+    return `<b>${news.length} link${news.length === 1 ? '' : 's'} from your /colleen page ${news.length === 1 ? 'was' : 'were'} added.</b> ${news.filter(x => x.aud.includes('students')).length} are ticked for every student password; teacher views are for you only; your Google Sheets are left out.`
+      + (made.length ? ` <b>New passwords: ${made.join(' and ')}.</b> Type a password for ${made.length > 1 ? 'each' : 'it'} under Passwords (they open only their own links), then save.` : '') + ' Look them over, untick anything you like, then click <b>Save and put it live</b>.';
+  }
   $('#step1').onsubmit = async e => {
     e.preventDefault(); $('#m1').textContent = 'Checking…';
     try {
@@ -172,9 +187,11 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       if (Array.isArray(got)) {      // the first time: the old one-list format; the buttons already on asl.cool/mytools become the students' buttons
         tools = got; let open = []; try { const m = await (await fetch('/mytools.json', { cache: 'no-store' })).json(); open = (m.tools || []).map(t => t.href); } catch (e2) {}
         tools.forEach(t => { t.s = open.indexOf(t.href) >= 0; }); shares = [];
-      } else { tools = got.tools || []; shares = got.shares || []; classes = got.classes || []; }
+      } else { tools = got.tools || []; shares = got.shares || []; classes = got.classes || []; seen = got.seen || []; }
+      const added = await addColleen();
       try { const pr = await (await fetch('/products.json', { cache: 'no-store' })).json(); products = (pr && pr.products) || []; } catch (e3) { products = []; }
       $('#m1').textContent = ''; $('#step1').hidden = true; $('#step2').hidden = false; draw(); drawShares(); drawClasses(); drawProducts();
+      if (added) { const n = document.createElement('div'); n.className = 'card'; n.style.cssText = 'background:#fff7d6;border-color:#f0c64b'; n.innerHTML = added; $('#step2').prepend(n); }
     } catch (err) { $('#m1').textContent = err.message === 'nolock' ? 'Could not reach asl.cool. Check the internet connection.' : "That's not the current password."; }
   };
   $('#step3').onsubmit = async e => {
@@ -187,7 +204,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     clean.forEach(t => { if (!t.alt) delete t.alt; if (!t.icon) delete t.icon; });
     const pub = t => { const o = { title: t.title, href: t.href }; if (t.icon) o.icon = t.icon; if (t.desc) o.desc = t.desc; if (t.alt) o.alt = t.alt; return o; };      // what students and teachers can see: never the ticks or names
     const shareOut = shares.map(x => ({ code: x.code, shop: !!x.shop, start: x.start || '', end: x.end || '', tools: clean.filter(t => t.sh.indexOf(x.code) >= 0).map(pub) }));
-    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim(), shop: !!c.shop }));      // exact, capitals count (Colleen: LTHS and lths can be two passwords)
+    const pw = n1 || curPw, cls = classes.map(c => ({ id: c.id, name: String(c.name || '').trim(), pw: String(c.pw || '').trim(), shop: !!c.shop, role: c.role || '' }));      // exact, capitals count (Colleen: LTHS and lths can be two passwords)
     const bad = cls.find(c => c.pw.length < 4) ? 'Each password needs at least 4 characters.' : cls.some(c => c.pw === pw) ? 'Each password must be different from your own password.' : new Set(cls.map(c => c.pw)).size < cls.length ? 'Two passwords are the same. Make each one different.' : '';
     if (bad) { m.className = 'msg bad'; m.textContent = bad; return; }
     const prods = (products || []).map(x => ({ title: String(x.title || '').trim(), link: String(x.link || '').trim(), img: String(x.img || '').trim(), price: String(x.price || '').trim(), desc: String(x.desc || '').trim(), tag: String(x.tag || '').trim() })).filter(x => x.title || x.link);
@@ -196,7 +213,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     $('#save').disabled = true; m.textContent = 'Saving…';
     try {
       const vsalt = crypto.getRandomValues(new Uint8Array(16));
-      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim(), shop: !!x.shop, start: x.start || '', end: x.end || '' })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, shop: c.shop, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut, products: prods, shopOn: $('#shopon').checked };
+      const body = { proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)), lock: await encryptList(pw, { seen, tools: clean, shares: shares.map(x => ({ code: x.code, name: String(x.name || '').trim(), shop: !!x.shop, start: x.start || '', end: x.end || '' })), classes: cls }), slocks: await Promise.all(cls.map(c => encryptList(c.pw, { name: c.name, shop: c.shop, tools: clean.filter(t => t.cl.indexOf(c.id) >= 0).map(pub) }, 100000))), vsalt: tob64(vsalt), vhash: hex(await crypto.subtle.digest('SHA-256', await pbkdf2(pw, vsalt, ITER))), mytools: cls.length ? [] : clean.filter(t => t.s).map(pub), shares: shareOut, products: prods, shopOn: $('#shopon').checked };
       const r = await fetch('/admin/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not save.');
       curPw = pw; state = { lock: body.lock, vsalt: body.vsalt }; tools = clean; draw(); drawShares(); $('#new1').value = ''; $('#new2').value = '';

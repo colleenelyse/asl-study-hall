@@ -1,0 +1,528 @@
+{
+ "updated": "2026-11-01",
+ "links": [
+  {
+   "icon": "🤟",
+   "title": "ASL Study Hall",
+   "desc": "The class app. Teacher dashboard is inside.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec",
+   "group": "Every day",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🍎",
+   "title": "Kiosk: Teacher view",
+   "desc": "Who’s here, who’s out, attendance, Tools.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec?view=teacher",
+   "group": "Every day",
+   "aud": []
+  },
+  {
+   "icon": "🚪",
+   "title": "Kiosk: Student screen",
+   "desc": "The check-in screen by the door.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec",
+   "group": "Every day",
+   "aud": []
+  },
+  {
+   "icon": "💺",
+   "title": "Seating charts",
+   "desc": "Charts, groups and today’s check-ins.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec?view=seating",
+   "group": "Every day",
+   "aud": []
+  },
+  {
+   "icon": "🔥",
+   "title": "Drill view",
+   "desc": "Who to account for in a drill.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec?view=drill",
+   "group": "Every day",
+   "aud": []
+  },
+  {
+   "icon": "📊",
+   "title": "BASE/ARC Grade Check In",
+   "desc": "",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycby6TtScPayZdgkNLi7kzSHCUtEdMKu0lu7QtwmjCaRRhzHWrtjn_cumk9LaGI_pgJbr/exec",
+   "group": "Every day",
+   "aud": [
+    "arc"
+   ]
+  },
+  {
+   "icon": "🧪",
+   "title": "Testing Center app",
+   "desc": "Opens your teacher view (students get their own page).",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "🔒",
+   "title": "Testing Center: coordinator hub",
+   "desc": "The password-protected hub.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec?hub=1",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "📋",
+   "title": "Testing Center tour (for administration)",
+   "desc": "Screenshots and what each person sees.",
+   "href": "/testing-center/",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "🗂️",
+   "title": "Testing Center demo: coordinator hub",
+   "desc": "Made-up students; nothing is saved.",
+   "href": "/testing-center/demo.html?as=coord",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "🧑‍🏫",
+   "title": "Testing Center demo: teacher view",
+   "desc": "",
+   "href": "/testing-center/demo.html?as=teacher",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "🎒",
+   "title": "Testing Center demo: student view",
+   "desc": "",
+   "href": "/testing-center/demo.html?as=student",
+   "group": "Testing Center",
+   "aud": [
+    "tc"
+   ]
+  },
+  {
+   "icon": "📽️",
+   "title": "Projector (with Freeze)",
+   "desc": "Best opened from the teacher view: 🧰 Tools > 📽️ Projector, so Freeze works from your monitor.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec?view=teacher",
+   "group": "Projector",
+   "aud": []
+  },
+  {
+   "icon": "🐠",
+   "title": "Living Screensavers",
+   "desc": "In the teacher view: 🧰 Tools > 🐠 Living Screensavers.",
+   "href": "https://script.google.com/macros/s/AKfycbwUqOVMu6CzVjG9KVuD7DBlhNGYLGypZrHMwbp7z64WJgMb9YLCbM9OsjyTOVh5M0A/exec?view=teacher",
+   "group": "Projector",
+   "aud": []
+  },
+  {
+   "icon": "🐣",
+   "title": "Class Sidekick (Pip)",
+   "desc": "Quiet-time buddy for the projector. Open it from ASL Study for rewards.",
+   "href": "https://colleenelyse.github.io/study-hall-sayit/class.html",
+   "group": "Projector",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🗣️",
+   "title": "Say It",
+   "desc": "Big words on the screen.",
+   "href": "https://colleenelyse.github.io/study-hall-sayit/",
+   "group": "Projector",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "⏱️",
+   "title": "Timer",
+   "desc": "",
+   "href": "/tools/?tool=timer",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎲",
+   "title": "Dice",
+   "desc": "",
+   "href": "/tools/?tool=dice",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎰",
+   "title": "Name picker",
+   "desc": "In ASL Study, with your seating-chart classes.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec?view=picker",
+   "group": "Class tools",
+   "aud": []
+  },
+  {
+   "icon": "🔢",
+   "title": "Random number",
+   "desc": "",
+   "href": "/tools/?tool=rnum",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🏆",
+   "title": "Scoreboard",
+   "desc": "",
+   "href": "/tools/?tool=score",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔊",
+   "title": "Noise meter",
+   "desc": "",
+   "href": "/projector/noise.html",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎫",
+   "title": "Hall pass board",
+   "desc": "In ASL Study: who is out, from your kiosk.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec?view=passboard",
+   "group": "Class tools",
+   "aud": []
+  },
+  {
+   "icon": "🤟",
+   "title": "Fingerspelling",
+   "desc": "Read fingerspelling from the 3D hand.",
+   "href": "/fingerspelling/",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔢",
+   "title": "Numbers",
+   "desc": "ASL numbers practice.",
+   "href": "/numbers/",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "📷",
+   "title": "Sign to the camera",
+   "desc": "Fingerspell or sign numbers to the camera.",
+   "href": "/fingerspelling/reader.html",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "👉",
+   "title": "Pronoun Signs",
+   "desc": "ME, MY, YOU, YOUR on camera.",
+   "href": "/fingerspelling/pronouns.html",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎱",
+   "title": "Fingerspelling Bingo",
+   "desc": "",
+   "href": "/fingerspelling/#/bingo",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔎",
+   "title": "WordSearch Studio",
+   "desc": "",
+   "href": "/wordsearch/",
+   "group": "ASL practice",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔊",
+   "title": "Breach sounds",
+   "desc": "Listen to and change the music and sound effects for each moment of Breach.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec?view=brsounds",
+   "group": "Game sounds",
+   "aud": []
+  },
+  {
+   "icon": "🦻",
+   "title": "Hearing Loss Simulator",
+   "desc": "",
+   "href": "/hearing/",
+   "group": "Hearing and the Ear",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔊",
+   "title": "Cochlear Implant Simulator",
+   "desc": "",
+   "href": "/ci/",
+   "group": "Hearing and the Ear",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "👂",
+   "title": "Parts of the Ear",
+   "desc": "Parts, labels and the ear quiz.",
+   "href": "/ear/",
+   "group": "Hearing and the Ear",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🤔",
+   "title": "Wait… But What Does That Mean?",
+   "desc": "Teacher view, for the projector.",
+   "href": "/wait/",
+   "group": "Reading warm-up",
+   "aud": []
+  },
+  {
+   "icon": "📝",
+   "title": "Wait… (student link)",
+   "desc": "What students open.",
+   "href": "/wait-student/",
+   "group": "Reading warm-up",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🏠",
+   "title": "asl.cool home",
+   "desc": "What students see.",
+   "href": "/",
+   "group": "For students",
+   "aud": []
+  },
+  {
+   "icon": "🎓",
+   "title": "ASL Study Hall (student link)",
+   "desc": "Opens the class app.",
+   "href": "/study/",
+   "group": "For students",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔑",
+   "title": "Log into your school account",
+   "desc": "Help page for signing in.",
+   "href": "/login-help/",
+   "group": "For students",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "📊",
+   "title": "Resource Check-In showcase",
+   "desc": "The tour for other teachers: screenshots and clickable demos.",
+   "href": "/resource/",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🧑‍🏫",
+   "title": "Resource Check-In demo: teacher view",
+   "desc": "Four made-up students to click through.",
+   "href": "/resource/demo.html?as=teacher&demo=1&nobday",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎒",
+   "title": "Resource Check-In demo: student view",
+   "desc": "Marcus, a made-up student.",
+   "href": "/resource/demo.html?as=ort&demo=1&nobday",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🗂️",
+   "title": "Resource Check-In demo: case manager view",
+   "desc": "Their students, then each full report.",
+   "href": "/resource/demo.html?as=cm&demo=1&nobday",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "📽️",
+   "title": "Resource Check-In practice page",
+   "desc": "For the projector: a new student’s first visit. Nothing is saved.",
+   "href": "/resource/practice.html",
+   "group": "Demo sites",
+   "aud": [
+    "arc",
+    "students"
+   ]
+  },
+  {
+   "icon": "🔑",
+   "title": "Resource Check-In sign-in help",
+   "desc": "For students who can’t open the app.",
+   "href": "/resource/signin.html",
+   "group": "Demo sites",
+   "aud": [
+    "arc",
+    "students"
+   ]
+  },
+  {
+   "icon": "🔍",
+   "title": "Assignment Decoder",
+   "desc": "The students’ Decoder on its own page: paste directions and a rubric, get what it needs and a dated plan. Nothing is saved.",
+   "href": "/decoder/",
+   "group": "Demo sites",
+   "aud": [
+    "arc",
+    "students"
+   ]
+  },
+  {
+   "icon": "👪",
+   "title": "ASL Study family tour",
+   "desc": "What families see about ASL Study.",
+   "href": "/tour/",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🛍️",
+   "title": "aslstudyhall.com",
+   "desc": "My Shopify store.",
+   "href": "https://aslstudyhall.com/",
+   "group": "My shop and TpT",
+   "aud": []
+  },
+  {
+   "icon": "🍎",
+   "title": "My TpT store",
+   "desc": "Jaq Joey Boutique.",
+   "href": "https://www.teacherspayteachers.com/store/jaq-joey-boutique",
+   "group": "My shop and TpT",
+   "aud": []
+  },
+  {
+   "icon": "✋",
+   "title": "ASL Spellbound (TpT copy)",
+   "desc": "What fingerspelling buyers get.",
+   "href": "/fs-tpt/",
+   "group": "My shop and TpT",
+   "aud": []
+  },
+  {
+   "icon": "🔟",
+   "title": "ASL Numberwise (TpT copy)",
+   "desc": "What numbers buyers get.",
+   "href": "/num-tpt/",
+   "group": "My shop and TpT",
+   "aud": []
+  },
+  {
+   "icon": "📦",
+   "title": "Bundle (TpT copy)",
+   "desc": "Fingerspelling and numbers together.",
+   "href": "/both-tpt/",
+   "group": "My shop and TpT",
+   "aud": []
+  },
+  {
+   "icon": "🔐",
+   "title": "asl.cool admin",
+   "desc": "Buttons, passwords, teacher links.",
+   "href": "/admin/",
+   "group": "Behind the scenes",
+   "aud": []
+  },
+  {
+   "icon": "🧪",
+   "title": "ASL Study test link",
+   "desc": "The newest version before it’s published.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxGGqXddAyMvRKnCmsHFVQd4Mfnl8VnEOA8mpiaRyk/dev",
+   "group": "Behind the scenes",
+   "aud": []
+  },
+  {
+   "icon": "🧪",
+   "title": "Kiosk test link",
+   "desc": "The newest Kiosk before it’s published. Needs your personal account: open it in a Chrome window signed in only to your personal Google account.",
+   "href": "https://script.google.com/macros/s/AKfycbzRau547mRA4mQH0W3wHySQ6kSS2CmfIrJlqwTJt4c/dev?view=teacher",
+   "group": "Behind the scenes",
+   "aud": []
+  },
+  {
+   "icon": "🌐",
+   "title": "School-safe copy of this page",
+   "desc": "For school, where asl.cool is blocked.",
+   "href": "https://colleenelyse.github.io/asl-study-hall/colleen/",
+   "group": "Behind the scenes",
+   "aud": []
+  },
+  {
+   "icon": "📜",
+   "title": "Credits",
+   "desc": "",
+   "href": "/credits.html",
+   "group": "Behind the scenes",
+   "aud": [
+    "students"
+   ]
+  }
+ ]
+}
