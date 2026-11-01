@@ -33,7 +33,7 @@
   #say { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: #fff; border-radius: 999px; padding: 6px 16px; font-weight: 700; box-shadow: 0 4px 0 #ecd2e3; pointer-events: none }
 </style></head><body>
 <div class="wrap">
-  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
+  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="gus">Gus</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
   <div class="stage"><div id="view"><div id="say">Hi! I'm Jaq.</div><div id="drop">Drop a .glb model here</div></div>
     <div id="cmp" hidden><div class="cmpt">The painting</div><img id="cmpimg" alt="The grown-up painting of this pet"></div></div>
   <div class="row acts">
@@ -143,6 +143,7 @@
     pony: { paint: 'pets/pony_adult', name: 'Pony', fur: 0xd99a5b, saddle: null, belly: 0xf3e3c8, ear: 0xd99a5b, inner: 0xf2b7a0, nose: 0xf3e3c8, ears: 'up', earSize: 0.9, bow: false, fluff: 0 },
     fox: { paint: 'pets/fox_adult', name: 'Fox', fur: 0xf07a2a, saddle: null, belly: 0xfff3e6, ear: 0xf07a2a, inner: 0x3a2a22, nose: 0x1d1d22, ears: 'up', earSize: 1.3, bow: false, fluff: 1 },
     bunny: { paint: 'pets/bunny_adult', name: 'Bunny', fur: 0xf4ece4, saddle: null, belly: 0xffffff, ear: 0xf4ece4, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.8, bow: false, fluff: 0 },
+    gus: { paint: 'pets/gus_adult', name: 'Gus', fur: 0x8f97a3, saddle: null, belly: 0xffffff, ear: 0x8f97a3, inner: 0xf5a5b5, nose: 0x3a3a44, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },      /* 2026-11-01 Colleen's cat Gus (replaced the Kitten in the eggs) */
     kitten: { paint: 'pets/kitten_adult', name: 'Kitten', fur: 0xb9b2aa, saddle: 0x6f6862, belly: 0xf3ece6, ear: 0xb9b2aa, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },
     golden: { paint: 'pets/retriever_adult', name: 'Golden Pup', fur: 0xe8b25c, saddle: null, belly: 0xf4d08f, ear: 0xd99a45, inner: 0xd99a45, nose: 0x2a1d18, ears: 'flop', earSize: 1.2, bow: false, collar: 0x3b8bff, fluff: 1 }
   };
@@ -529,11 +530,11 @@
   /* a model listed here loads by itself for that pet (once Colleen's GLB files exist) */
   /* how each kind travels: 'trot' (dogs, cats, horses) or 'hop' (bunnies; later frogs) */
   const GAIT = { bunny: 'hop', frog: 'hop' };
-  const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
+  const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
-  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
+  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
   const setRoom = (r, toys) => { if (r && r.bg && BACK['bg_' + r.bg]) MINE = { bg: r.bg, items: (r.items || []).slice(0, 12) }; if (toys) TOYS = toys.filter(n => /^[a-z_]+$/.test(n) && n !== 'brush'); };
   addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
     if (m.edit !== undefined) EDIT = !!m.edit;
