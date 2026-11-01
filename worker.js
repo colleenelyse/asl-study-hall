@@ -57,6 +57,31 @@ async function save(req, env) {
   await env.LOCKS.delete(failKey);
   return json({ ok: true, updated: next.updated });
 }
+/* the quick links page is behind her password: the page proves it (PBKDF2, same as admin), and the Worker sets a signed cookie for a year.
+   Changing her password in admin changes the key, so every remembered device asks again. */
+async function qSig(env, req, exp) { const st = await state(env, req); if (!st || !st.vhash) return ''; const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(st.vhash), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return [...new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('q:' + exp)))].map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function qOk(req, env) { const m = (req.headers.get('cookie') || '').match(/(?:^|;\s*)aslq=(\d+)\.([0-9a-f]{64})/); if (!m || +m[1] < Date.now()) return false; return same(m[2], await qSig(env, req, m[1])); }
+async function qUnlock(req, env) {
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'fail:' + ip, fails = env.LOCKS ? +(await env.LOCKS.get(failKey) || 0) : 0;
+  if (fails >= MAX_FAILS) return json({ error: 'Too many wrong passwords. Wait 10 minutes and try again.' }, 429);
+  let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
+  const st = await state(env, req); let ok = false; try { ok = !!(st && st.vhash) && same(await sha256hex(b64(body.proof || '')), st.vhash); } catch (e) {}
+  if (!ok) { if (env.LOCKS) await env.LOCKS.put(failKey, String(fails + 1), { expirationTtl: FAIL_WINDOW }); return json({ error: 'That password is not right.' }, 403); }
+  const exp = String(Date.now() + 365 * 864e5), r = json({ ok: true });
+  r.headers.append('set-cookie', 'aslq=' + exp + '.' + (await qSig(env, req, exp)) + '; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax'); return r;
+}
+function qGate() {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>asl.cool</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#F6F2EA;color:#1B1E3C;font:500 17px/1.4 system-ui,sans-serif}form{background:#fff;border:1px solid #E3D9CC;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:10px;width:min(340px,90vw)}
+input{font:inherit;padding:10px 14px;border:1.5px solid #E3D9CC;border-radius:12px}button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:10px;background:#2F6BFF;color:#fff;cursor:pointer}#m{min-height:20px;color:#C7362E;font-weight:700;margin:0}</style></head>
+<body><form id="f"><b>Password</b><input id="p" type="password" autocomplete="current-password" autofocus><button>Open</button><p id="m"></p></form><script>
+const enc=new TextEncoder(),b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),tob64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+document.getElementById('f').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('m');m.textContent='Checking…';try{const st=await (await fetch('/lock.json',{cache:'no-store'})).json();
+const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:b64(st.vsalt),iterations:200000},await crypto.subtle.importKey('raw',enc.encode(document.getElementById('p').value),'PBKDF2',false,['deriveBits']),256);
+const r=await fetch('/q-unlock',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({proof:tob64(bits)})}),d=await r.json();if(d.ok)location.reload();else m.textContent=d.error||'Try again.';}catch(err){m.textContent='Try again.';}};
+</script></body></html>`, { status: 401, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+}
 /* her quick links for the home page (admin adds new ones): only after the same password proof that saving needs */
 async function quicklinks(req, env) {
   const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'fail:' + ip, fails = env.LOCKS ? +(await env.LOCKS.get(failKey) || 0) : 0;
@@ -133,6 +158,8 @@ export default {
     if (p.startsWith('/numbers/')) return numbers(req, env, url, p);      // asl.cool/numbers: the games in numbers mode, at their own address (Colleen, 2026-10-17)
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
     if (p.startsWith('/_private/')) return new Response('Not found', { status: 404 });      // never served directly
+    if (p === '/q-unlock') return req.method === 'POST' ? qUnlock(req, env) : json({ error: 'POST only' }, 405);
+    if (p === '/colleen' || p.startsWith('/colleen/')) { if (!(await qOk(req, env))) return qGate(); }      // her quick links page: her password, remembered on the device for a year
     if (p === '/admin/quicklinks') return req.method === 'POST' ? quicklinks(req, env) : json({ error: 'POST only' }, 405);      // admin only, with her password's proof
     const res = await env.ASSETS.fetch(req);
     return shopSwitch(req, env, res, p);
