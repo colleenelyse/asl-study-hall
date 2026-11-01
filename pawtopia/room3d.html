@@ -41,7 +41,7 @@
     <button data-act="play">⚽ Play ball</button><button data-act="happy">💖 Happy</button><button data-act="bath">🫧 Bath</button><button data-act="drink">💧 Drink</button><button data-act="sleep">💤 Sleep</button>
   </div>
   <div class="row stages"><span style="font-weight:700;align-self:center">Growth:</span></div>
-  <div class="row tools"><button id="formbtn">✨ Normal</button><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
+  <div class="row tools"><button id="formbtn">✨ Normal</button><select id="accsel" aria-label="Outfit"><option value="">👕 No outfit</option><option value="collar">Red Collar</option><option value="bow">Pink Bow</option><option value="bandana">Blue Bandana</option><option value="bowtie">Black Bowtie</option><option value="crown">Flower Crown</option><option value="harness">Pink Bow Harness</option><option value="raincoat">Yellow Raincoat</option></select><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
   <div id="report" hidden></div>
   <p class="note">Tap the pet to pet it. <b>Press and drag the pet to pick it up and move it.</b> Tap the floor to send it there. In the plain room, drag empty space to turn the room. The Joey and Golden Pup buttons are the same model with different colors, ears and fur.</p>
 </div>
@@ -219,8 +219,58 @@
     root.add(P.head); P.head.position.set(0, size.y * k * 0.9 / k, 0);      // where hearts and Zzz float from
     const rig = findRig(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
     G = { gaitType: GAIT[who && who.who] || 'trot', root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
+    if (rig) fitOutfits(root, rig);
     report(); tell({ t: 'pet' }); document.getElementById('phbtn').hidden = false; document.getElementById('walkbtn').hidden = !(rig && acts.walk); document.getElementById('hopbtn').hidden = !rig; say('Hi! I\'m ' + P.look.name + '.'); act(S.act);
   }
+  /* ───── 2026-11-01 (Pawtopia 4.240) outfits in 3D: made of simple shapes and fitted to each pet when it loads (measured around its neck, head and chest),
+     then attached to the head or chest bone so they move with it and grow with it. All are built once, hidden; ACC picks the one that shows. ───── */
+  let ACC = Q.get('acc') || '', OUTFITS = {};
+  const omat = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: col(c), roughness: 0.6, metalness: 0 }, o || {}));
+  function fitOutfits(root, rig) {
+    OUTFITS = {}; root.updateMatrixWorld(true);
+    const V = []; root.traverse(o => { if (!o.isMesh) return; const pa = o.geometry.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < pa.count; i += 2) { v.fromBufferAttribute(pa, i); o.localToWorld(v); V.push(root.worldToLocal(v.clone())); } });
+    const L = b => root.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
+    const ring = (c, ax, band, maxR, keep, pc) => { const pts = V.filter(p => Math.abs(p.clone().sub(c).dot(ax)) < band && p.distanceTo(c) < maxR && (!keep || keep(p))); if (pts.length < 6) return null;
+      const m = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length), ds = pts.map(p => { const d = p.clone().sub(m); return d.sub(ax.clone().multiplyScalar(d.dot(ax))).length(); }).sort((x, y) => x - y);
+      return { c: m, r: ds[Math.floor(ds.length * (pc || 0.65))] }; };      /* a low-ish middle distance: fluffy cheeks and stray fur do not make the collar too big */
+    const ys = V.map(p => p.y), Hh = Math.max(...ys) - Math.min(...ys), band = Hh * 0.025, chest = L(rig.chest || rig.top), zs = V.map(p => p.z), zmax = Math.max(...zs), zlen = zmax - Math.min(...zs), floor0 = Math.min(...ys);
+    const hp = V.filter(p => p.z > zmax - zlen * 0.24 && p.y > floor0 + Hh * 0.45), hb = L(rig.head), head = hp.length > 20 ? hp.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(hp.length) : hb;      /* the head found from the model's shape (some rigs put the "head" bone low) */
+    if (hb.y > head.y) head.copy(hb);
+    const nax = head.clone().sub(chest).normalize(), neck = [0.15, 0.22, 0.3, 0.38, 0.46, 0.54].map(t => ring(head.clone().lerp(chest, t), nax, band, Hh * 0.22)).filter(Boolean).reduce((m, x) => !m || x.r < m.r ? x : m, null) || { c: head.clone().lerp(chest, 0.35), r: Hh * 0.08 };      /* the narrowest place between the head and the chest */
+    neck.r = Math.max(neck.r * 1.08, Hh * 0.085);      /* never thinner than a sensible neck, so outfits stay visible on slim pets */ 
+    const hr = (ring(head.clone().add(nax.clone().multiplyScalar(Hh * 0.08)), nax, band, Hh * 0.3) || { r: neck.r * 1.3 }).r;
+    const cx = V.reduce((a, p) => a + p.x, 0) / V.length, top = V.filter(p => Math.abs(p.x - cx) < hr * 0.2 && p.z > head.z - hr * 0.3 && p.z < head.z + hr && p.y > head.y).reduce((m, p) => p.y > m.y ? p : m, head.clone().add(new THREE.Vector3(0, hr, 0)));
+    const floorY = Math.min(...ys), body = ring(chest.clone().add(new THREE.Vector3(0, 0, -Hh * 0.08)), new THREE.Vector3(0, 0, 1), band * 1.5, Hh * 0.35, p => p.y > floorY + Hh * 0.28, 0.88) || { c: chest.clone(), r: Hh * 0.18 };      /* the chest without the legs */
+    const fwd = new THREE.Vector3(0, 0, 1), down = nax.clone().cross(new THREE.Vector3(1, 0, 0)).normalize(); if (down.y > 0) down.negate();      /* the front-bottom of the neck */
+    const atNeck = (grp, rr) => { const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), nax); grp.position.copy(neck.c); grp.quaternion.copy(q); return grp; };
+    const collar = (color, rr, tube) => { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.TorusGeometry(neck.r * (rr || 1.06), neck.r * (tube || 0.13), 10, 36), omat(color)); g.add(t); return atNeck(g); };
+    const front = (g, o, dist) => { o.position.copy(new THREE.Vector3(0, -1, 0).multiplyScalar(neck.r * (dist || 1.1))); g.add(o); return g; };      /* in the collar's own frame: -y is under the chin */
+    const bowShape = (color, w) => { const b = new THREE.Group(), m = omat(color); [-1, 1].forEach(sx => { const c = new THREE.Mesh(new THREE.ConeGeometry(w * 0.45, w, 14), m); c.rotation.z = sx * Math.PI / 2; c.position.x = sx * w * 0.5; c.scale.z = 0.55; b.add(c); }); const k = new THREE.Mesh(new THREE.SphereGeometry(w * 0.22, 12, 10), m); b.add(k); return b; };
+    const add = (id, grp, bone) => { root.add(grp); (bone || rig.head).attach(grp); grp.visible = false; OUTFITS[id] = grp; };
+    /* Red Collar with a heart tag */
+    { const g = collar(0xd8262f); const tag = new THREE.Mesh(new THREE.SphereGeometry(neck.r * 0.24, 12, 10), omat(0xffd34d, { metalness: 0.5, roughness: 0.3 })); tag.scale.y = 0.45; add('collar', front(g, tag, 1.25), rig.neck[rig.neck.length - 1] || rig.head); }
+    /* Blue Bandana: a thin band and a triangle under the chin */
+    { const g = collar(0x2f7fe0, 1.05, 0.1); const tri = new THREE.Mesh(new THREE.ConeGeometry(neck.r * 0.95, neck.r * 1.5, 3), omat(0x2f7fe0, { side: THREE.DoubleSide })); tri.rotation.x = -Math.PI / 2; tri.scale.z = 0.22; front(g, tri, 0.98); tri.position.z = -neck.r * 0.55;      /* hangs down the chest */
+      const paw = new THREE.Mesh(new THREE.CircleGeometry(neck.r * 0.17, 16), omat(0xffffff)); paw.rotation.x = Math.PI / 2; paw.position.set(0, -neck.r * 1.13, -neck.r * 0.5); g.add(paw); add('bandana', g, rig.neck[rig.neck.length - 1] || rig.head); }
+    /* Black Bowtie: a black collar and a purple bowtie */
+    { const g = collar(0x1d1d24, 1.05, 0.11); const bt = bowShape(0x9b6bd6, neck.r * 0.5); bt.rotation.x = Math.PI / 2; front(g, bt, 1.12); add('bowtie', g, rig.neck[rig.neck.length - 1] || rig.head); }
+    /* Pink Bow on top of the head, a little to one side */
+    { const g = new THREE.Group(); const b = bowShape(0xff5fa2, hr * 0.42); b.position.copy(top).add(new THREE.Vector3(hr * 0.3, -hr * 0.02, hr * 0.12)); b.rotation.z = -0.3; g.add(b); add('bow', g); }
+    /* Flower Crown: a green ring around the top of the head with flowers */
+    { const g = new THREE.Group(), ringM = new THREE.Mesh(new THREE.TorusGeometry(hr * 0.92, hr * 0.07, 8, 32), omat(0x58a84b)); ringM.rotation.x = Math.PI / 2; g.add(ringM);
+      const cols = [0xff6fae, 0xffd34d, 0xff9ecb, 0xc58cff]; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, f = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.2, 10, 8), omat(cols[i % 4])); f.position.set(Math.cos(a) * hr * 0.92, hr * 0.05, Math.sin(a) * hr * 0.92); f.scale.y = 0.6; g.add(f); }
+      g.position.copy(top).add(new THREE.Vector3(0, -hr * 0.06, -hr * 0.05)); g.rotation.x = -0.25; add('crown', g); }
+    /* Pink Bow Harness: a band around the chest and a bow on the back */
+    { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.TorusGeometry(body.r * 1.04, body.r * 0.2, 10, 40), omat(0xff6fae)); g.add(t); const b = bowShape(0xff3f8e, body.r * 0.5); b.position.set(0, body.r * 1.2, 0); b.rotation.x = -Math.PI / 2; g.add(b);
+      g.position.copy(body.c); add('harness', g, rig.chest || rig.top); }
+    /* Yellow Raincoat: a coat over the back from the shoulders to the hips (half a stretched ball) and a collar */
+    { const hipZ = rig.pivot ? rig.pivot.z : chest.z - Hh * 0.45, len = Math.max(Hh * 0.2, (chest.z - hipZ) * 0.78), g = new THREE.Group();
+      const coat = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), omat(0xffd02e, { side: THREE.DoubleSide, roughness: 0.35 })); coat.scale.set(body.r * 1.15, body.r * 0.95, len); g.add(coat);
+      g.position.set(body.c.x, body.c.y - body.r * 0.4, (chest.z + hipZ) / 2 - Hh * 0.04); add('raincoat', g, rig.chest || rig.top);
+      const c2 = collar(0xffd02e, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
+    showOutfit();
+  }
+  function showOutfit() { Object.keys(OUTFITS).forEach(k => OUTFITS[k].visible = !!ACC && (k === ACC || k === ACC + '2')); }
   /* ───── four-legged rigs (Tripo "Other"): find each part by WHERE it is, since the bone names are unreliable ─────
      Model space: +Z is where the nose points, +Y is up. Returns { root, legs: {fl, fr, bl, br: [bones top→paw]}, tail: [...], neck: [...], head, ears: [l, r], rest } */
   function findRig(root) {
@@ -517,6 +567,7 @@
   const cmp = document.getElementById('cmp'), cmpimg = document.getElementById('cmpimg');
   const showPaint = () => { if (P && P.look.paint) cmpimg.src = ART + P.look.paint + '.webp'; };
   document.getElementById('formbtn').onclick = e => { FORM = FORM === 'n' ? 's' : FORM === 's' ? 'r' : 'n'; e.currentTarget.textContent = '✨ ' + { n: 'Normal', s: 'Shimmer', r: 'Radiant' }[FORM]; };
+  document.getElementById('accsel').onchange = e => { ACC = e.target.value; showOutfit(); };
   document.getElementById('furnbtn').onclick = e => { FURN_ON = !FURN_ON; e.currentTarget.classList.toggle('on', FURN_ON); setBack(bgsel.value || 'plain'); };
   document.getElementById('cmpbtn').onclick = e => { cmp.hidden = !cmp.hidden; e.currentTarget.classList.toggle('on', !cmp.hidden); showPaint(); size(); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', showPaint));
@@ -542,6 +593,7 @@
     if (m.bg && BACK['bg_' + m.bg]) setBack('bg_' + m.bg);
     if (m.stage !== undefined) STAGE = Math.max(0, Math.min(6, +m.stage || 0));
     if (m.form) FORM = m.form;
+    if (m.acc !== undefined) { ACC = m.acc || ''; showOutfit(); }
     if (m.pet && WHO[m.pet]) { const b = document.querySelector('[data-who="' + WHO[m.pet] + '"]'); if (b && !b.classList.contains('on')) b.click(); }
     if (m.act) act(m.act);
     if (m.fx) fx(m.fx, 4); });
