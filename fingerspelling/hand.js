@@ -821,6 +821,20 @@ async function dollar(o) {
   await wait(per * 0.35);
   if (!o.hold) helperMove(HELPER_REST, per * 0.6);      /* back to the corner; signParts brings the right hand to rest. With hold (Cash or Crash) both hands stay on the finished sign */
 }
+/* POINT, the decimal point (Colleen, 2026-11-01): one hand (the right). The pointer fingertip and the thumb tip touch, scrunched into a small,
+   tight circle, as if holding a pen; the middle, ring and pinky fingers curl loosely out of the way (not described by Colleen: check them). The
+   hand is nearly palm out, turned a little, so the student can see the small circle. Then the front of the hand jabs forward toward the student, short
+   and crisp, with a clear stop, like making a dot in the air in front of the chest with a pen. Once, no repeat. Token '.' in signParts:
+   [2, '.', 5, 0] = 2 POINT 5 0 (the digits around the point are a series: 1-5 palm out). APPROVED by Colleen (2026-11-01, dev/hand-choices/point-try1.gif): LOCKED; change it only when she asks. */
+const PT_SH = { f: [[50, 50, 30, 0], [72, 88, 45, -3], [78, 94, 50, -8], [82, 98, 52, -14]], t: [35, 9, -48, 10, 2] };      /* the pointer and thumb exactly as in the F (their tips touch, 12.7 mm bone to bone, the same as F); the other three curled loosely into the palm, below the circle so they do not hide it */
+const PT_BACK = Object.assign({}, PT_SH, { w: [5, 25, 0], p: [0, 0.006, -0.02] }), PT_JAB = Object.assign({}, PT_SH, { w: [20, 28, -5], p: [0, -0.004, 0.05] });      /* turned a little toward the thumb so the student sees the circle; the jab: 7 cm toward the student, a hint down, the fingertips tipping forward into the dot */
+async function point(o) {
+  const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
+  if (o.onLetter) o.onLetter('POINT');
+  moveTo(PT_BACK, per * 0.45); await wait(per * 0.7);      /* into the pinch, a little back, and a moment still there */
+  playPath([PT_BACK, PT_JAB], per * 0.28, EASE_IN); await wait(per * 0.3);      /* fastest at the end: the dot, with an abrupt stop */
+  await wait(per * 0.45);      /* a clear stop; then (unless hold) the next part goes on from here */
+}
 /* DAYS OF THE WEEK (Colleen, 2026-10-18). MONDAY, TUESDAY, WEDNESDAY, FRIDAY, SATURDAY: the day's first letter, palm facing the signer,
    a small circle. THURSDAY: a normal T, flips to an H, then the same circle. SUNDAY: both open B hands, palms out, at the same time the right
    hand draws a flat circle on the palm plane counterclockwise and the left hand clockwise (mirrored). CHECKED by Colleen (2026-10-18: "these are good"): clockwise circles as the student sees them. */
@@ -1113,31 +1127,32 @@ async function signOp(op, o) {
   moveTo(POSE.rest, 500); await wait(520); if (o.onLetter) o.onLetter('');
 }
 /* a whole number from blocks, in spoken order (Colleen's rules): tokens are numbers 0-99, 'H' (HUNDRED, after a digit 1-9), 'T' (THOUSAND), 'M' (MILLION)
-   and 'D' (DOLLAR, at the end: [5, 'D'] = 5 DOLLAR).
+   and 'D' (DOLLAR, at the end: [5, 'D'] = 5 DOLLAR) and '.' (POINT, the decimal point: [2, '.', 5, 0] = 2 POINT 5 0).
    The parts flow into each other with no return to rest in between; onPart(i) tells which block is playing. */
 function partsOf(tokens) {
   const out = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     if (tokens[i + 1] === 'H' && t >= 1 && t <= 9) { out.push({ n: t * 100, blocks: [i, i + 1] }); i++; }
-    else if (t === 'T' || t === 'M' || t === 'D') out.push({ n: t, blocks: [i] });
+    else if (t === 'T' || t === 'M' || t === 'D' || t === '.') out.push({ n: t, blocks: [i] });
     else if (t !== 'H') out.push({ n: t, blocks: [i] });
   }
   return out;
 }
 async function signParts(tokens, o) {
   o = o || {};
-  const parts = partsOf(tokens), nums = parts.filter(P => P.n !== 'D').length;
+  const parts = partsOf(tokens), nums = parts.filter(P => P.n !== 'D' && P.n !== '.').length, dec = tokens.indexOf('.') >= 0;
   if (o.hold && tokens.indexOf('D') >= 0) { if (H2) helperMove(HELPER_LOW, 1); moveTo(DOL_R3, 1); await new Promise(r => setTimeout(r, 30)); }      /* hold: the left hand starts out of view, below, and comes up only for DOLLAR; the right hand starts relaxed and closed, not held up palm out */
   for (let k = 0; k < parts.length; k++) {
     if (o.stop && o.stop()) break;
     if (o.onPart) o.onPart(parts[k].blocks);
     if (parts[k].n === 'T' || parts[k].n === 'M') { await thousand(o, k === parts.length - 1, parts[k].n === 'M'); continue; }
     if (parts[k].n === 'D') { await dollar(o); continue; }
-    await sign(parts[k].n, Object.assign({}, o, { stay: k < parts.length - 1, series: nums > 1 }));      /* inside a longer number, 1-5 face palm out (DOLLAR after a number does not count: 5 DOLLAR keeps the 5 as it is alone) */
+    if (parts[k].n === '.') { await point(o); continue; }
+    await sign(parts[k].n, Object.assign({}, o, { stay: k < parts.length - 1, series: nums > 1 || dec }));      /* digits around a POINT are a series too (2.5: the 2 and the 5 palm out) */      /* inside a longer number, 1-5 face palm out (DOLLAR after a number does not count: 5 DOLLAR keeps the 5 as it is alone) */
   }
   if (o.onPart) o.onPart([]);
-  if ((tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0 || tokens.indexOf('D') >= 0) && !(o.hold && tokens[tokens.length - 1] === 'D')) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
+  if ((tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0 || tokens.indexOf('D') >= 0 || tokens[tokens.length - 1] === '.') && !(o.hold && (tokens[tokens.length - 1] === 'D' || tokens[tokens.length - 1] === '.'))) { moveTo(POSE.rest, 500); await new Promise(r => setTimeout(r, 520)); }
 }
 /* AGES (Colleen, 2026-10-15; dev/ASL-number-rules.md "Ages"): every age starts at the center of the chin (the face behind the hand is drawn
    by the app). 1-9: the number's handshape palm out, the pointer finger on the chin, then a push down and forward (toward the student).
@@ -1240,7 +1255,7 @@ function numberJoints(n, out) { return SH[n] ? jointsOf(out ? DIGIT_OUT(n) : SH[
    the signing hand only (the camera watches one hand): the flattened bent B landing, back of the hand to the student */
 function formsOf(n, o) {
   o = o || {}; const seq = F => [F.start].concat((F.steps || []).map(s => s[0])).concat(F.arc ? F.arc.keys : []);
-  if (n === 'T') return [[TH_ABOVE, TH_TOUCH]]; if (n === 'M') return [[TM_ABOVE1, TM_TOUCH1, TH_ABOVE2, TH_TOUCH2]];
+  if (n === '.') return [[PT_BACK, PT_JAB]]; if (n === 'T') return [[TH_ABOVE, TH_TOUCH]]; if (n === 'M') return [[TM_ABOVE1, TM_TOUCH1, TH_ABOVE2, TH_TOUCH2]];
   const N = NUM[n]; if (!N) return [];
   if (n >= 1 && n <= 9 && o.series) return [[DIGIT_OUT(n)]];      /* 0 keeps its own shape and turn */
   if (N.hund) return [seq(N.hund.c), seq(N.hund.curl)];
