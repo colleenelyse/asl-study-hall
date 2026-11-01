@@ -1,0 +1,511 @@
+<!doctype html>
+<!-- Pawtopia 3D test (2026-10-31): Jaq built from simple rounded 3D shapes with a "skeleton" of pivots, so one model can walk, sit, sleep, wag,
+     play and wave. Not part of the game yet; Colleen is deciding whether pets move to 3D. three.js 0.128 (the same as the fingerspelling hand). -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pawtopia 3D Test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+  body.embed .wrap > :not(.stage), body.embed #cmp, body.embed #say { display: none !important } body.embed .wrap { padding: 0; max-width: none }
+  body.embed #view { position: fixed; inset: 0; aspect-ratio: auto; border-radius: 0; box-shadow: none }
+  body { margin: 0; background: #fff1f8; font-family: 'Fredoka', system-ui, sans-serif; color: #3b2a5c }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px }
+  h1 { margin: 0; font-size: 28px; color: #fff; text-shadow: 0 3px 0 #ff5fa2 }
+  .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between }
+  #view { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; box-shadow: 0 10px 30px rgba(90, 60, 140, .18); background: #ffe7f1 }
+  #view canvas { display: block; width: 100%; height: 100% }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
+  button { font: 700 16px 'Fredoka', system-ui, sans-serif; border: 0; border-radius: 16px; padding: 10px 16px; cursor: pointer; background: #fff; color: #3b2a5c; box-shadow: 0 4px 0 #e6cfe0 }
+  button.on { background: #ff7eb6; color: #fff; box-shadow: 0 4px 0 #d9568f }
+  .who button.on { background: #5ab8ff; box-shadow: 0 4px 0 #2f8fd8 }
+  #bgsel { font: 700 16px 'Fredoka', system-ui, sans-serif; border: 0; border-radius: 16px; padding: 10px 14px; background: #fff; color: #3b2a5c; box-shadow: 0 4px 0 #e6cfe0 }
+  .stages button.on { background: #ffc83d; color: #3b2a5c; box-shadow: 0 4px 0 #d9a21e }
+  .bg button.on { background: #4fd1a5; box-shadow: 0 4px 0 #2fae84 }
+  .stage { display: flex; gap: 10px; align-items: stretch } .stage #view { flex: 1; min-width: 0 }
+  #cmp { width: 30%; min-width: 150px; background: #fff; border-radius: 22px; box-shadow: 0 10px 30px rgba(90, 60, 140, .18); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box }
+  #cmp[hidden] { display: none } #cmp img { width: 100%; height: auto } .cmpt { font-weight: 700; color: #7a6a99 }
+  @media (max-width: 640px) { .stage { flex-direction: column } #cmp { width: 100% } #cmp img { max-width: 260px } }
+  .filebtn { font: 700 16px 'Fredoka', system-ui, sans-serif; border-radius: 16px; padding: 10px 16px; cursor: pointer; background: #fff; box-shadow: 0 4px 0 #e6cfe0 }
+  #drop { position: absolute; inset: 0; display: none; place-items: center; background: rgba(90, 184, 255, .35); color: #fff; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, .3) } #view.over #drop { display: grid }
+  #report { background: #fff; border-radius: 18px; padding: 12px 16px; box-shadow: 0 4px 0 #e6cfe0; font-size: 15px; line-height: 1.5 } #report table { border-collapse: collapse; margin-top: 6px } #report td { padding: 2px 10px 2px 0 }
+  .ok { color: #1f9d6b; font-weight: 700 } .warn { color: #d97706; font-weight: 700 } .bad { color: #e2557f; font-weight: 700 }
+  #view.paint { background: #ffe7f1 center / cover no-repeat }
+  .note { text-align: center; font-size: 14px; color: #7a6a99; margin: 0 }
+  #say { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: #fff; border-radius: 999px; padding: 6px 16px; font-weight: 700; box-shadow: 0 4px 0 #ecd2e3; pointer-events: none }
+</style></head><body>
+<div class="wrap">
+  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
+  <div class="stage"><div id="view"><div id="say">Hi! I'm Jaq.</div><div id="drop">Drop a .glb model here</div></div>
+    <div id="cmp" hidden><div class="cmpt">The painting</div><img id="cmpimg" alt="The grown-up painting of this pet"></div></div>
+  <div class="row acts">
+    <button data-act="walk" class="on">🐾 Walk around</button><button data-act="sit">Sit</button><button data-act="wave">👋 Wave</button><button data-act="eat">🥣 Eat</button>
+    <button data-act="play">⚽ Play ball</button><button data-act="happy">💖 Happy</button><button data-act="sleep">💤 Sleep</button>
+  </div>
+  <div class="row stages"><span style="font-weight:700;align-self:center">Growth:</span></div>
+  <div class="row tools"><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
+  <div id="report" hidden></div>
+  <p class="note">Tap the pet to pet it. <b>Press and drag the pet to pick it up and move it.</b> Tap the floor to send it there. In the plain room, drag empty space to turn the room. The Joey and Golden Pup buttons are the same model with different colors, ears and fur.</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script>
+(function () {
+  const view = document.getElementById('view'), say = t => { document.getElementById('say').textContent = t; };
+  let back = null, pet = null, P = null;      // the painted backdrop in use (null = the plain 3D room)
+  const col = c => new THREE.Color(c).convertSRGBToLinear();      // colors are picked as normal web colors
+  const Q = new URLSearchParams(location.search), EMBED = Q.has('embed'); if (EMBED) document.body.classList.add('embed');
+  const tell = m => { try { parent.postMessage(Object.assign({ pt3d: 1 }, m), '*'); } catch (e) {} };      /* to Pawtopia */
+  let R; try { R = new THREE.WebGLRenderer({ antialias: !EMBED || (devicePixelRatio || 1) < 1.5, alpha: true }); } catch (e) { tell({ t: 'nogl' }); throw e; } R.setPixelRatio(EMBED ? Math.min(devicePixelRatio || 1, 1) : Math.min(devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  R.outputEncoding = THREE.sRGBEncoding; view.appendChild(R.domElement);
+  const scene = new THREE.Scene(); scene.background = col(0xffe7f1);
+  const cam = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100); let camAng = 0, camD = 4.6; window.__cam = (a, d) => { camAng = a; camD = d || 4.6; camAt(); }; const camAt = () => { if (back) { cam.position.set(...back.cam); cam.lookAt(...back.at); return; } const px = pet ? pet.position.x : 0, pz = pet ? pet.position.z : -0.2; cam.position.set(px + Math.sin(camAng) * camD, camD * 0.5, pz + Math.cos(camAng) * camD); cam.lookAt(px, 0.4, pz); }; camAt();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xf3c2d8, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(3, 6, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 }); scene.add(sun);
+  const mat = c => new THREE.MeshStandardMaterial({ color: col(c), roughness: 0.8, metalness: 0 });      // colors are picked as normal web colors
+  const add = (parent, geo, m, x, y, z, sx, sy, sz) => { const o = new THREE.Mesh(geo, m); o.position.set(x || 0, y || 0, z || 0); if (sx) o.scale.set(sx, sy, sz); o.castShadow = true; parent.add(o); return o; };
+  const SPH = new THREE.SphereGeometry(1, 32, 24), CAP = r => new THREE.CylinderGeometry(r, r * 0.9, 1, 16);
+
+  /* the room: a floor, two walls, a window, a rug (like the 2D Home) */
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), mat(0xf6c9a4)); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), mat(0xffe3ee)); wall.position.set(0, 3, -3.2); wall.receiveShadow = true; scene.add(wall);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(14, 0.25, 0.1), mat(0xe7a97f)); base.position.set(0, 0.12, -3.15); scene.add(base);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 0.08), mat(0xffffff)); win.position.set(-2.2, 2.6, -3.15); scene.add(win);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.05), new THREE.MeshBasicMaterial({ color: col(0xbfe6ff) })); glass.position.set(-2.2, 2.6, -3.1); scene.add(glass);
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(1.6, 48), mat(0xff9fc8)); rug.rotation.x = -Math.PI / 2; rug.position.y = 0.005; rug.scale.set(1.3, 0.8, 1); rug.receiveShadow = true; scene.add(rug);
+  const bed = new THREE.Group(); bed.position.set(2.3, 0, -1.9); bed.scale.setScalar(1.35); scene.add(bed);
+  add(bed, new THREE.TorusGeometry(0.62, 0.2, 14, 32), mat(0x9b7bd6), 0, 0.18, 0).rotation.x = Math.PI / 2; add(bed, new THREE.CylinderGeometry(0.62, 0.62, 0.1, 32), mat(0xd9c8ff), 0, 0.06, 0);
+  const bowl = new THREE.Group(); scene.add(bowl); bowl.visible = false;
+  add(bowl, new THREE.CylinderGeometry(0.26, 0.2, 0.14, 24, 1, true), mat(0x5ab8ff), 0, 0.07, 0); add(bowl, new THREE.CylinderGeometry(0.22, 0.22, 0.06, 24), mat(0x9a5a2c), 0, 0.1, 0);
+  const ball = add(scene, new THREE.SphereGeometry(0.15, 20, 16), mat(0xffc83d), 0, 0.15, 0); ball.visible = false;
+
+  /* Colleen's painted backdrops: the painting is the page background, the 3D floor turns invisible (it only catches the pet's shadow),
+     and each backdrop says where its floor is, where the camera stands, and what color its light is */
+  const ART = location.hostname === 'localhost' ? 'ptart/' : /\/pawtopia\//.test(location.pathname) ? '../img/pawtopia/' : 'https:' + '/' + '/colleenelyse.github.io/asl-study-hall/img/pawtopia/';      /* the site copy (pawtopia/room3d.html) uses the site's own pictures */
+  const BACK = {
+    plain: null,
+    academy: { img: 'rooms/scene_pet_academy.webp', cam: [0, 5, 11], at: [0, 0, -3], fov: 24, area: [-2.1, 1.5, 0.5, 2.4], light: 1.25, sky: 0xfff1d6, ground: 0xe0a86a, sun: 0xffe2b0 },
+    /* Colleen's 15 backdrops (2026-10-31): each sets only its light; the stage and floor are shared */
+    nursery: { img: 'eggs/scene_nursery.webp', cam: [0, 5, 11], at: [0, 0, -3], fov: 24, area: [-2.4, 2.4, 0.5, 2.4], light: 1.15, sky: 0xffffff, ground: 0xf7c6dd, sun: 0xfff3e6 }
+  };
+  const SET = { cam: [0, 3.2, 7], at: [0, 0.15, -1.6], fov: 26, area: [-1.9, 1.9, -0.3, 0.9] };
+  [['nursery', 'Nursery', 0xfff3fb, 0xe7c6f0, 0xfff1e6, 1.15], ['pet_bedroom', 'Bedroom', 0xfff0f6, 0xf5bcd4, 0xffe9e0, 1.15], ['pet_academy', 'Pet Academy', 0xfff4dc, 0xe2b27a, 0xffe6b8, 1.2],
+   ['vet_clinic', 'Vet Clinic', 0xf2f8ff, 0xbcd6f0, 0xffffff, 1.2], ['backyard', 'Backyard', 0xf3fbff, 0x9fd27a, 0xfff6e0, 1.25, [-1.9, 1.9, -1.95, 0.9]], ['backyard_alternate', 'Backyard 2', 0xf3fbff, 0x9fd27a, 0xfff6e0, 1.25],
+   ['pet_park', 'Pet Park', 0xf3fbff, 0xd9c08a, 0xfff6e0, 1.25], ['spring_garden', 'Spring Garden', 0xfff6fb, 0x9fd27a, 0xfff2f6, 1.25], ['beach', 'Beach', 0xf0fbff, 0xf1d79c, 0xfff4dc, 1.3],
+   ['beach_alternate', 'Beach 2', 0xf0fbff, 0xf1d79c, 0xfff4dc, 1.3], ['town_plaza', 'Town Plaza', 0xfff8ee, 0xe8b98f, 0xfff0dc, 1.2], ['autumn_harvest', 'Autumn', 0xfff1dc, 0xe7a35a, 0xffd9a0, 1.2],
+   ['winter_wonderland', 'Winter', 0xf2f7ff, 0xe9eefb, 0xf4f8ff, 1.15], ['stargazing_terrace', 'Stargazing', 0xb9b6ff, 0x8a7cc0, 0xcfd4ff, 0.95], ['crystal_cavern', 'Crystal Cavern', 0xd9c6ff, 0x9a7ae0, 0xc8b8ff, 1.0]]
+    .forEach(([id, name, sky, ground, sun, light, area]) => { BACK['bg_' + id] = Object.assign({ img: 'bg/' + id + '.webp', name, sky, ground, sun, light }, SET, area ? { area } : {}); });
+  const roomBits = [floor, wall, base, win, glass, rug, bed]; const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.28 }));
+  shadowFloor.rotation.x = -Math.PI / 2; shadowFloor.receiveShadow = true; shadowFloor.visible = false; scene.add(shadowFloor);
+  const hemi = scene.children.find(o => o.isHemisphereLight);
+  function setBack(k) {
+    back = BACK[k]; roomBits.forEach(o => o.visible = !back); shadowFloor.visible = !!back; scene.background = back ? null : col(0xffe7f1);
+    view.classList.toggle('paint', !!back); view.style.backgroundImage = back ? `url('${ART}${back.img}')` : '';
+    hemi.color = col(back ? back.sky : 0xffffff); hemi.groundColor = col(back ? back.ground : 0xf3c2d8); sun.color = col(back ? back.sun : 0xffffff); hemi.intensity = 0.6 * (back ? back.light : 1); sun.intensity = 0.75 * (back ? back.light : 1);
+    cam.fov = back ? back.fov : 38; cam.updateProjectionMatrix(); camAng = 0; camAt();
+    document.querySelectorAll('[data-bg]').forEach(b => b.classList.toggle('on', b.dataset.bg === k)); const sel = document.getElementById('bgsel'); if (sel) sel.value = BACK[k] && BACK[k].name ? k : '';
+    placeFurniture(k); roomBits.forEach(o => { if (o === bed && FURN_ON) o.visible = false; });
+    if (pet) { pet.position.set(0, 0, back ? 1.4 : 0); act(S.act === 'sleep' ? 'walk' : S.act); }
+  }
+  const AREA = () => back ? back.area : [-2.2, 2.2, -1.5, 1.1];
+  /* ───── 2026-11-01 furniture pets can walk behind (Colleen's furniture sheet, cut to see-through pictures). Each piece stands upright on the
+     floor facing the camera, so a pet farther back is hidden by it and a pet in front covers it. [picture, height in the room, x, z] ───── */
+  const FURN_H = { sofa: 0.95, armchair: 0.9, wicker_bed: 0.62, donut_bed: 0.62, toy_chest: 0.7, dresser: 0.95, potted_plant: 0.9, doghouse: 1.25, flower_planter: 0.6, shrub: 0.85, fence: 0.75, garden_bench: 0.85 };
+  const LAYOUT = { bg_pet_bedroom: [['donut_bed', -1.2, 0.5], ['toy_chest', 1.3, -0.1], ['potted_plant', 0.2, -0.25]], bg_nursery: [['wicker_bed', 1.2, 0.4], ['potted_plant', -1.4, 0.1]],
+    bg_backyard: [['flower_planter', 1.49, -1.5, 0.84], ['shrub', -1.1, 0.35]],      // the planter sits on the painted one by the fence, so pets can walk behind it bg_backyard_alternate: [['doghouse', 1.2, -0.15], ['shrub', -1.3, 0.5]],
+    bg_pet_park: [['garden_bench', -0.9, 0.0], ['shrub', 1.1, 0.5]], bg_spring_garden: [['flower_planter', -1.0, 0.45], ['shrub', 1.2, 0.05]], plain: [['sofa', -1.6, -1.1], ['donut_bed', 1.0, 0.3], ['shrub', -0.4, 0.6]] };
+  const furnLoader = new THREE.TextureLoader(), furnGroup = new THREE.Group(); scene.add(furnGroup); let FURN_ON = true;
+  function placeFurniture(k) {
+    furnGroup.clear(); if (!FURN_ON) return; (LAYOUT[k] || []).forEach(([n, x, z, hh]) => {
+      const h = hh || FURN_H[n] || 0.6, tex = furnLoader.load(ART + 'furniture/' + n + '.webp'); tex.encoding = THREE.sRGBEncoding;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(h / 0.9, h / 0.9), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.35 }));      // the picture is a square with the piece 90% tall, feet at 88%
+      m.position.set(x, h / 0.9 * 0.5 - h / 0.9 * 0.12, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.furn = n; furnGroup.add(m);
+      if (hh) return;      // a piece laid over the painting's own uses the painted shadow
+      const sh = new THREE.Mesh(new THREE.CircleGeometry(h * 0.6, 32), new THREE.MeshBasicMaterial({ color: 0x3b2a5c, transparent: true, opacity: 0.12, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.scale.y = 0.35; sh.position.set(x, 0.006, z + 0.02); furnGroup.add(sh);
+    });
+  }
+  /* the pet: pivots are the "skeleton"; every pose and animation just turns them */
+  const LOOKS = {
+    jaq: { paint: 'yorkie/pet_yorkie_adult', name: 'Jaq', fur: 0xc98b4e, saddle: 0x4a4f5c, belly: 0xe2b483, ear: 0xc98b4e, inner: 0xf2a5a5, nose: 0x1d1d22, ears: 'up', earSize: 1, bow: true, fluff: 1 },
+    joey: { paint: 'pets/joey_adult', name: 'Joey', fur: 0xfaf3ec, saddle: null, belly: 0xfffaf5, ear: 0xfaf3ec, inner: 0xf59a9a, nose: 0xe8838f, ears: 'up', earSize: 1.75, bow: false, collar: 0x4fb6f0, eye: 0x3a8ee6, fluff: 0 },
+    hamster: { paint: 'pets/hamster_adult', name: 'Mochi', fur: 0xf0a24a, saddle: null, belly: 0xfff1de, ear: 0xf0a24a, inner: 0xf5a5b5, nose: 0xf08a9a, ears: 'up', earSize: 0.8, bow: false, fluff: 1 },
+    raccoon: { paint: 'pets/raccoon_adult', name: 'Raccoon', fur: 0x8a8079, saddle: null, belly: 0xefe4d6, ear: 0x8a8079, inner: 0xd9a39a, nose: 0x1d1d22, ears: 'up', earSize: 0.9, bow: false, fluff: 1 },
+    pony: { paint: 'pets/pony_adult', name: 'Pony', fur: 0xd99a5b, saddle: null, belly: 0xf3e3c8, ear: 0xd99a5b, inner: 0xf2b7a0, nose: 0xf3e3c8, ears: 'up', earSize: 0.9, bow: false, fluff: 0 },
+    fox: { paint: 'pets/fox_adult', name: 'Fox', fur: 0xf07a2a, saddle: null, belly: 0xfff3e6, ear: 0xf07a2a, inner: 0x3a2a22, nose: 0x1d1d22, ears: 'up', earSize: 1.3, bow: false, fluff: 1 },
+    bunny: { paint: 'pets/bunny_adult', name: 'Bunny', fur: 0xf4ece4, saddle: null, belly: 0xffffff, ear: 0xf4ece4, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.8, bow: false, fluff: 0 },
+    kitten: { paint: 'pets/kitten_adult', name: 'Kitten', fur: 0xb9b2aa, saddle: 0x6f6862, belly: 0xf3ece6, ear: 0xb9b2aa, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },
+    golden: { paint: 'pets/retriever_adult', name: 'Golden Pup', fur: 0xe8b25c, saddle: null, belly: 0xf4d08f, ear: 0xd99a45, inner: 0xd99a45, nose: 0x2a1d18, ears: 'flop', earSize: 1.2, bow: false, collar: 0x3b8bff, fluff: 1 }
+  };
+  /* pet, P (the named pivots) are declared at the top */
+  function build(look) {
+    if (pet) scene.remove(pet);
+    const L = LOOKS[look], M = { fur: mat(L.fur), sad: mat(L.saddle || L.fur), bel: mat(L.belly), ear: mat(L.ear), inn: mat(L.inner), nose: mat(L.nose), eye: mat(0x16131c), shine: new THREE.MeshBasicMaterial({ color: 0xffffff }), pink: mat(0xff7eb6), tongue: mat(0xff6f8e) };
+    pet = new THREE.Group(); scene.add(pet); P = { look: L };
+    const hips = new THREE.Group(); hips.position.set(0, 0.46, -0.32); pet.add(hips); P.hips = hips;          // the body turns around the back hips (for sitting)
+    const body = new THREE.Group(); body.position.set(0, 0, 0.32); hips.add(body); P.body = body;
+    add(body, SPH, M.fur, 0, 0.02, 0, 0.36, 0.32, 0.55);                                                       // the body
+    if (L.saddle) add(body, SPH, M.sad, 0, 0.1, -0.04, 0.37, 0.27, 0.5);                                       // Jaq's dark saddle
+    add(body, SPH, M.bel, 0, -0.06, 0.28, 0.26, 0.26, 0.24);                                                   // the chest
+    if (L.collar) add(body, new THREE.TorusGeometry(0.2, 0.045, 10, 24), mat(L.collar), 0, 0.17, 0.42).rotation.x = 1.25;
+    if (L.fluff) add(body, SPH, M.bel, 0, -0.2, 0.05, 0.3, 0.12, 0.42);      // a soft fur skirt under the belly
+    /* head */
+    const neck = new THREE.Group(); neck.position.set(0, 0.22, 0.46); body.add(neck); P.neck = neck;
+    const head = new THREE.Group(); head.position.set(0, 0.2, 0.06); neck.add(head); P.head = head;
+    add(head, SPH, M.fur, 0, 0, 0, 0.3, 0.28, 0.28);
+    add(head, SPH, M.bel, 0, -0.08, 0.2, 0.15, 0.12, 0.14);                                                    // the muzzle
+    add(head, SPH, M.nose, 0, -0.03, 0.33, 0.055, 0.042, 0.04);
+    const tongue = add(head, SPH, M.tongue, 0, -0.17, 0.27, 0.05, 0.025, 0.06); tongue.visible = false; P.tongue = tongue;
+    P.eyes = [-1, 1].map(s => { const e = new THREE.Group(); e.position.set(s * 0.12, 0.05, 0.22); head.add(e); add(e, SPH, L.eye ? mat(L.eye) : M.eye, 0, 0, 0, 0.065, 0.075, 0.05); add(e, SPH, M.shine, s * -0.015, 0.025, 0.04, 0.02, 0.02, 0.012); return e; });
+    if (L.eye) P.eyes.forEach(e => add(e, SPH, M.eye, 0, 0, 0.02, 0.035, 0.04, 0.03));
+    if (L.fluff) { add(head, SPH, M.fur, 0, 0.2, 0.02, 0.18, 0.1, 0.16); for (let k = -1; k <= 1; k += 2) add(head, SPH, M.fur, k * 0.18, -0.14, 0.12, 0.09, 0.12, 0.08); }      // topknot and whiskery cheeks
+    if (L.bow) { const bow = new THREE.Group(); bow.position.set(0, 0.3, 0.02); head.add(bow); add(bow, SPH, M.pink, -0.07, 0, 0, 0.07, 0.05, 0.04); add(bow, SPH, M.pink, 0.07, 0, 0, 0.07, 0.05, 0.04); add(bow, SPH, M.pink, 0, 0, 0, 0.03, 0.03, 0.03); }
+    P.ears = [-1, 1].map(s => {
+      const piv = new THREE.Group(); piv.position.set(s * 0.17, 0.18, -0.02); head.add(piv); const k = L.earSize;
+      const g = new THREE.ConeGeometry(0.085 * k, 0.26 * k, 16); g.translate(0, 0.13 * k, 0);
+      const outer = add(piv, g, M.ear, 0, 0, 0, 1, 1, 0.45), inner = add(piv, g, M.inn, 0, 0.01, 0.025, 0.7, 0.85, 0.3);
+      piv.userData.base = L.ears === 'flop' ? { x: 0.2, z: s * 2.3 } : { x: -0.1, z: s * -0.32 }; return piv;
+    });
+    /* legs: a pivot at each hip and shoulder */
+    const leg = (x, z, front) => { const piv = new THREE.Group(); piv.position.set(x, -0.08, z); (front ? body : hips).add(piv);
+      add(piv, CAP(0.075), front ? M.bel : M.fur, 0, -0.17, 0, 1, 0.34, 1); add(piv, SPH, M.bel, 0, -0.34, 0.03, 0.085, 0.06, 0.11); return piv; };
+    P.legs = { fl: leg(-0.17, 0.3, true), fr: leg(0.17, 0.3, true), bl: leg(-0.18, 0, false), br: leg(0.18, 0, false) };
+    const tail = new THREE.Group(); tail.position.set(0, 0.12, -0.52); body.add(tail); P.tail = tail;
+    const tg = new THREE.CylinderGeometry(0.05, 0.08, 0.34, 12); tg.translate(0, 0.17, 0); add(tail, tg, M.sad, 0, 0, 0); add(tail, SPH, M.sad, 0, 0.34, 0, 0.06, 0.07, 0.06);
+    pet.traverse(o => { if (o.isMesh) o.userData.pet = 1; });
+    say("Hi! I'm " + L.name + '.');
+  }
+
+  /* ───── imported characters (GLB/GLTF, rigged, with named animations) ─────
+     Every pet speaks the same animation language: idle, walk, sit, sleep, eat, drink, play, wave, happy. A model's own clips are matched to those
+     names (CLIPS below); any move it doesn't have is made by bending its skeleton (spine, neck, head, tail, legs) or, failing that, the whole body. */
+  const CLIPS = { idle: /idle|breath|stand/i, walk: /walk|trot|run/i, sit: /sit/i, sleep: /sleep|lie|lay|curl|rest/i, eat: /eat|chew|bite/i, drink: /drink|lap/i, play: /play|pounce|bow/i, wave: /wave|paw|shake/i, happy: /happy|jump|wag|excite|celebrat/i };
+  const BUDGET = { tris: 20000, tex: 1024, mb: 3 };      // light enough for school Chromebooks
+  const BONES = { spine: /spine|chest|torso|body/i, hips: /hip|pelvis|root/i, neck: /neck/i, head: /head/i, tail: /tail/i, legFL: /(front|fore|arm|shoulder|hand).*(l\b|left|_l|\.l)|(l\b|left|_l|\.l).*(front|fore|arm|shoulder|hand)/i,
+    legFR: /(front|fore|arm|shoulder|hand).*(r\b|right|_r|\.r)|(r\b|right|_r|\.r).*(front|fore|arm|shoulder|hand)/i, legBL: /(back|rear|hind|thigh|leg|foot).*(l\b|left|_l|\.l)/i, legBR: /(back|rear|hind|thigh|leg|foot).*(r\b|right|_r|\.r)/i };
+  let G = null; window.__G = () => G; window.__act = a => act(a); window.__S = () => S; window.__floorAt = (fx, fy) => { const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(fx * 2 - 1, -(fy * 2 - 1)), cam); const v = new THREE.Vector3(); r.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v); return [+v.x.toFixed(2), +v.z.toFixed(2)]; };      // the loaded model: { root, mixer, acts: {name: AnimationAction}, now, bones: {key: [bone, restQuaternion]}, info }
+  const loader = new THREE.GLTFLoader();
+  function useModel(gltf, label, bytes) {
+    const root = gltf.scene, box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+    const k = 0.95 / (size.y || 1); root.scale.multiplyScalar(k);      // grown-up height in the room, feet on the floor, centered
+    const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3()); root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
+    let tris = 0, tex = 0, mats = new Set(), skinned = 0;
+    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; if (o.isSkinnedMesh) skinned++;
+      [].concat(o.material).forEach(m => { mats.add(m); ['map', 'normalMap', 'roughnessMap', 'emissiveMap'].forEach(t => { if (m[t] && m[t].image) tex = Math.max(tex, m[t].image.width || 0, m[t].image.height || 0); }); }); } });
+    /* a clip's own forward motion would fight Pawtopia moving the pet, so walks happen in place: drop position tracks above the legs */
+    const topBone = (() => { let t = null; root.traverse(o => { if (!t && o.isBone && !(o.parent && o.parent.isBone)) t = o; }); return t; })(), above = new Set();
+    for (let x = topBone; x; x = x.parent) above.add(x.name);
+    gltf.animations.forEach(a => { a.tracks = a.tracks.filter(tr => !(/\.position$/.test(tr.name) && above.has(tr.name.replace(/\.position$/, '')))); });
+    const mixer = new THREE.AnimationMixer(root), acts = {}, matched = {};
+    Object.keys(CLIPS).forEach(n => { const clip = gltf.animations.find(a => CLIPS[n].test(a.name) && !Object.values(matched).includes(a.name)) || (n === 'walk' ? null : null);
+      if (clip) { acts[n] = mixer.clipAction(clip); matched[n] = clip.name; } });
+    const bones = {}; root.traverse(o => { if (!o.isBone) return; for (const key in BONES) if (!bones[key] && BONES[key].test(o.name)) bones[key] = [o, o.quaternion.clone()]; });
+    const holder = new THREE.Group(); holder.add(root);
+    const pos = pet ? pet.position.clone() : new THREE.Vector3(), ry = pet ? pet.rotation.y : 0; if (pet) scene.remove(pet);
+    pet = holder; pet.position.copy(pos); pet.rotation.y = ry; scene.add(pet);
+    const ghost = () => new THREE.Object3D(); P = { look: { name: label.replace(/\.(glb|gltf)$/i, ''), paint: P && P.look.paint }, hips: ghost(), body: ghost(), neck: ghost(), head: ghost(), tail: ghost(), tongue: ghost(), eyes: [], ears: [],
+      legs: { fl: ghost(), fr: ghost(), bl: ghost(), br: ghost() } };
+    root.add(P.head); P.head.position.set(0, size.y * k * 0.9 / k, 0);      // where hearts and Zzz float from
+    const rig = findRig(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
+    G = { gaitType: GAIT[who && who.who] || 'trot', root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
+    report(); tell({ t: 'pet' }); document.getElementById('phbtn').hidden = false; document.getElementById('walkbtn').hidden = !(rig && acts.walk); document.getElementById('hopbtn').hidden = !rig; say('Hi! I\'m ' + P.look.name + '.'); act(S.act);
+  }
+  /* ───── four-legged rigs (Tripo "Other"): find each part by WHERE it is, since the bone names are unreliable ─────
+     Model space: +Z is where the nose points, +Y is up. Returns { root, legs: {fl, fr, bl, br: [bones top→paw]}, tail: [...], neck: [...], head, ears: [l, r], rest } */
+  function findRig(root) {
+    const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); }); if (bones.length < 8) return null;
+    root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), P = new Map();
+    bones.forEach(b => P.set(b, new THREE.Vector3().setFromMatrixPosition(b.matrixWorld).applyMatrix4(inv)));
+    const top = bones.find(b => !b.parent || !b.parent.isBone), kids = b => b.children.filter(c => c.isBone);
+    const leafOf = b => { let x = b; while (kids(x).length) x = kids(x).reduce((m, c) => P.get(c).y < P.get(m).y ? c : m); return x; };
+    const chain = (from, to) => { const c = []; for (let x = to; x && x !== from.parent; x = x.parent) c.unshift(x); return c; };
+    const ys = bones.map(b => P.get(b).y), floor = Math.min(...ys), height = Math.max(...ys) - floor;
+    /* legs: the chains whose lowest bone reaches the floor; the first bone of each that starts near the body */
+    /* a paw is a chain end near the floor; a leg Tripo rigged only partway down still counts if its end is in the lower part of the body. One per corner. */
+    const ends = bones.filter(b => !kids(b).length && P.get(b).y < floor + height * 0.3), cx = ends.reduce((n, b) => n + P.get(b).x, 0) / (ends.length || 1), cz = ends.reduce((n, b) => n + P.get(b).z, 0) / (ends.length || 1);
+    const feet = []; [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([sx, sz]) => { const c = ends.filter(b => (P.get(b).x - cx) * sx > 0 && (P.get(b).z - cz) * sz > 0).sort((a, b) => P.get(a).y - P.get(b).y)[0]; if (c) feet.push(c); });
+    const legs = feet.map(f => { let c = []; for (let x = f; x && x.isBone && x !== top; x = x.parent) { c.unshift(x); if (x.parent && kids(x.parent).length > 1 && P.get(x.parent).y > P.get(f).y + height * 0.25) break; } return c; }).filter(c => c.length >= 3);
+    if (legs.length < 4) return null;
+    legs.sort((a, b) => P.get(b[0]).z - P.get(a[0]).z); const front = legs.slice(0, 2), hind = legs.slice(-2), side = pair => pair.sort((a, b) => P.get(a[a.length - 1]).x - P.get(b[b.length - 1]).x);
+    side(front); side(hind);
+    const legSet = new Set(legs.flat());
+    /* head: the bone with the most branches above the front legs; neck: the bones from the chest up to it */
+    const cand = bones.filter(b => !legSet.has(b) && P.get(b).z > 0 && kids(b).length >= 3).sort((a, b) => P.get(b).y - P.get(a).y);
+    const head = cand[0]; if (!head) return null;
+    const neck = []; let chest = null; for (let x = head.parent; x && x.isBone && x !== top; x = x.parent) { if (kids(x).some(c => legSet.has(c))) { chest = x; break; } neck.unshift(x); }
+    /* ears: from the head, the two chains that end highest; tail: from the back, the chain that ends farthest behind and off the floor */
+    const ears = kids(head).map(k => { let x = k; while (kids(x).length) x = kids(x).reduce((m, c) => P.get(c).y > P.get(m).y ? c : m); return [k, x]; })
+      .filter(([k, end]) => P.get(end).y > P.get(head).y + height * 0.1).sort((a, b) => P.get(b[1]).y - P.get(a[1]).y).slice(0, 2).sort((a, b) => P.get(a[1]).x - P.get(b[1]).x).map(e => chain(e[0], e[1]));
+    const tailStart = bones.filter(b => !legSet.has(b) && !neck.includes(b) && b !== head && P.get(b).z < 0 && kids(b).length && /tail/i.test(b.name))[0]
+      || bones.filter(b => !legSet.has(b) && P.get(b).z < -height * 0.25 && P.get(b).y > floor + height * 0.25 && !kids(b).some(c => legSet.has(c))).sort((a, b) => P.get(b).z - P.get(a).z).pop();
+    let tail = []; if (tailStart) { tail = [tailStart]; let x = tailStart; while (kids(x).length) { x = kids(x).reduce((m, c) => P.get(c).z < P.get(m).z ? c : m); tail.push(x); } }
+    /* the rest pose, so every move is a bend away from it (in model space, about each bone's own joint) */
+    const rest = new Map(); bones.forEach(b => { const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw); const rw = new THREE.Quaternion(); root.getWorldQuaternion(rw);
+      rest.set(b, { s: b.scale.clone(), q: b.quaternion.clone(), p: b.position.clone(), pw: rw.clone().invert().multiply(pw), pwm: new THREE.Matrix4().copy(inv).multiply(b.parent.matrixWorld) }); });
+    const backFeet = hind.map(c => P.get(c[c.length - 1])), pivot = new THREE.Vector3((backFeet[0].x + backFeet[1].x) / 2, floor, (backFeet[0].z + backFeet[1].z) / 2);
+    return { chest, top, legs: { fl: front[0], fr: front[1], bl: hind[0], br: hind[1] }, tail, neck, head, ears, rest, P, height, pivot };
+  }
+  /* bend one bone by a rotation given in model space (x = nod / swing forward-back, y = turn, z = tip sideways) */
+  const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+  function bendBone(rig, b, x, y, z, base) {
+    if (!b) return; const r = rig.rest.get(b); _q.setFromEuler(_e.set(x || 0, y || 0, z || 0, 'YXZ'));
+    _q2.copy(r.pw).invert().multiply(_q).multiply(r.pw); b.quaternion.copy(_q2.multiply(base || r.q));
+  }
+  /* each pose is a set of bends; frame() eases between them */
+  const RIGPOSE = {
+    stand: { pitch: 0, drop: 0, roll: 0, fU: 0, fL: 0, hU: 0, hK: 0, hH: 0, nP: 0, nY: 0, hP: 0, tY: 0, tP: 0 },
+    sit: { pitch: -0.55, drop: -0.03, roll: 0, fU: 0.5, fL: 0, hU: -1.1, hK: 1.7, hH: -0.6, nP: 0.05, nY: 0, hP: 0.3, tY: 0, tP: 0.6 },
+    sleep: { pitch: 0, drop: -0.21, roll: 0.12, fU: -1.35, fL: 0.25, hU: -1.25, hK: 1.4, hH: -0.2, nP: 0.35, nY: 0.85, hP: 0.4, tY: 1.4, tP: 2.2 },
+    eat: { pitch: 0.08, drop: 0, roll: 0, fU: -0.08, fL: 0, hU: 0, hK: 0, hH: 0, nP: 0.6, nY: 0, hP: 0.35, tY: 0, tP: -0.1 },
+    carry: { pitch: 0, drop: 0, roll: 0, fU: 0.35, fL: 0.25, hU: 0.45, hK: 0.35, hH: 0.1, nP: -0.15, nY: 0, hP: -0.1, tY: 0, tP: -0.3 },      // held up: legs dangle
+    bow: { pitch: 0.35, drop: -0.02, roll: 0, fU: -0.9, fL: 0.35, hU: 0.1, hK: 0, hH: 0, nP: -0.35, nY: 0, hP: -0.1, tY: 0, tP: -0.5 }
+  };
+  const RP = Object.assign({}, RIGPOSE.stand);
+  function poseRig(dt, doing, walking) {
+    const rig = G.rig, t = S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
+    for (const key in RP) RP[key] += (want[key] - RP[key]) * k;
+    const clip = walking && G.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
+    const hop = G.gaitType === 'hop'; G.gait = (G.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) : 0); const ph = G.gait, wk = (G.wk = (G.wk || 0) + ((walking ? 1 : 0) - (G.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
+    if (!clip) {
+      /* the whole body tips around the back paws (sitting, play bow), drops (sleeping) and leans */
+      const r = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
+      _q.setFromEuler(_e.set(RP.pitch, 0, RP.roll, 'YXZ')); const np = p0.clone().sub(piv).applyQuaternion(_q).add(piv); np.y += RP.drop * rig.height;
+      np.y -= growRig(rig, STAGE);      // a young pet's shorter legs bring its body down
+      const dl = np.sub(p0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.pwm.clone().invert()));      // the move, turned into the parent's own units
+      rig.top.position.copy(r.p).add(dl); bendBone(rig, rig.top, RP.pitch, 0, RP.roll);
+      const L = rig.legs, breathe = Math.sin(t * (doing === 'sleep' ? 1.6 : 3)) * (doing === 'sleep' ? 0.03 : 0.012);
+      /* the trot: diagonal legs move together (front-left with back-right); a leg bends as it swings forward, so the paw lifts */
+      /* a hop: both back legs push together, then both front paws reach and land; the body arcs and tips nose-down as it lands */
+      const hp = (ph % (Math.PI * 2)) / (Math.PI * 2), air = hop ? Math.max(0, Math.sin(Math.min(1, hp / 0.55) * Math.PI)) : 0;
+      if (hop && wk > 0.01) { const push = hp < 0.55 ? Math.sin(hp / 0.55 * Math.PI) : 0;
+        rig.top.position.y += air * 0.32 * rig.height * wk; bendBone(rig, rig.top, -RP.pitch * 0 + RP.pitch + (hp < 0.3 ? -0.18 : 0.15) * push * wk, 0, RP.roll); }
+      const sw = hop ? { fl: Math.cos(hp * Math.PI * 2), fr: Math.cos(hp * Math.PI * 2), bl: -Math.cos(hp * Math.PI * 2) * 1.3, br: -Math.cos(hp * Math.PI * 2) * 1.3 }
+        : { fl: Math.sin(ph), br: Math.sin(ph), fr: Math.sin(ph + Math.PI), bl: Math.sin(ph + Math.PI) }, lift = v => Math.max(0, -Math.cos(Math.asin(Math.max(-1, Math.min(1, v)))) ) ;
+      const up = s => hop ? air * (s[0] === 'b' ? 0.6 : 0.3) : Math.max(0, Math.cos(s === 'fl' || s === 'br' ? ph : ph + Math.PI));      // the part of the stride when the paw is in the air
+      ['fl', 'fr'].forEach(s => { const c = L[s], waving = doing === 'wave' && s === 'fr';
+        bendBone(rig, c[1], -RP.pitch + RP.fU + (waving ? -1.9 + Math.sin(t * 9) * 0.35 : 0) - sw[s] * 0.42 * wk, 0, 0); bendBone(rig, c[2], RP.fL + (waving ? 0.6 : 0) + up(s) * 0.7 * wk, 0, 0); });
+      ['bl', 'br'].forEach(s => { const c = L[s]; bendBone(rig, c[1], RP.hU - sw[s] * 0.38 * wk, 0, 0); bendBone(rig, c[2], RP.hK + up(s) * 0.55 * wk, 0, 0); bendBone(rig, c[3], RP.hH - up(s) * 0.35 * wk, 0, 0); });
+      /* the body bobs twice a stride and sways a little; the head steadies against it */
+      if (!hop) rig.top.position.y += Math.abs(Math.cos(ph)) * 0.018 * rig.height * wk * (1 + (1 - STAGE / 6) * 1.8);      // young ones bounce more
+      if (rig.chest) bendBone(rig, rig.chest, Math.sin(ph * 2) * 0.03 * wk, Math.sin(ph) * 0.06 * wk, 0);
+      const look = doing === 'idle' ? Math.sin(t * 0.7) * 0.35 : 0, chew = doing === 'eat' ? Math.sin(t * 9) * 0.1 : 0, tilt = doing === 'sit' ? Math.sin(t * 1.3) * 0.2 : 0;
+      const bob = Math.sin(ph * 2) * 0.05 * wk;
+      rig.neck.forEach((b, i) => bendBone(rig, b, (RP.nP + chew + bob) / rig.neck.length * (i ? 1 : 0.6) - (i ? 0 : breathe), (RP.nY + look) / rig.neck.length, 0));
+      bendBone(rig, rig.head, RP.hP + chew, look * 0.5, tilt);
+    }
+    /* always: the tail wags, the ears twitch and flop */
+    const wag = doing === 'sleep' ? 0 : doing === 'happy' || doing === 'play' || doing === 'carry' ? 20 : walking ? 12 : 7, amp = doing === 'sleep' ? 0 : 0.45;
+    rig.tail.forEach((b, i) => { const base = clip ? b.quaternion.clone() : null; bendBone(rig, b, i ? 0 : -RP.tP * 0.5, (RP.tY / rig.tail.length) + Math.sin(t * wag - i * 0.6) * amp * (i ? 0.6 : 1), 0, base || undefined); });
+    rig.ears.forEach((c, i) => { const flick = Math.max(0, Math.sin(t * 0.9 + i * 2.3) - 0.95) * 8, droop = doing === 'sleep' ? 0.5 : 0, base = clip ? c[0].quaternion.clone() : null;
+      bendBone(rig, c[0], droop * 0.5 + Math.sin(ph * 2 + 0.6) * 0.1 * wk, 0, (i ? -1 : 1) * (flick * 0.25 + droop + Math.abs(Math.sin(ph)) * 0.08 * wk), base || undefined);
+      if (c[1]) bendBone(rig, c[1], Math.sin(ph * 2 + 1.2) * 0.12 * wk, 0, 0, clip ? c[1].quaternion.clone() : undefined); });      // ears bounce with each step
+    if (clip) {      // Tripo's walk: add a head bob and a swaying back on top
+      rig.neck.forEach(b => bendBone(rig, b, Math.sin(t * 9.5 * 2) * 0.04, 0, 0, b.quaternion.clone()));
+      if (rig.chest) bendBone(rig, rig.chest, 0, Math.sin(t * 9.5) * 0.05, 0, rig.chest.quaternion.clone());
+    }
+  }
+  /* ───── growing up (2026-11-01): one model, seven stages. Smaller, with a bigger head and shorter legs while young (bones scaled),
+     bouncier steps; a soft glow under a Young Adult and a glow with sparkles under an Adult, so classmates can see how far a pet has been raised. ───── */
+  const STAGES = ['Hatchling', 'Sprout', 'Little One', 'Youngster', 'Teen', 'Young Adult', 'Adult'];
+  let STAGE = 6;
+  const growOf = st => { const t = st / 6; return { size: 0.55 + 0.45 * t, head: 1 + 0.42 * (1 - t), leg: 0.74 + 0.26 * t, t }; };
+  function growRig(rig, st) {      /* scales the head and legs; returns how far the body must come down so the paws stay on the floor */
+    const gr = growOf(st), sc = (b, k) => { if (!b) return; const r = rig.rest.get(b); b.scale.copy(r.s).multiplyScalar(k); };
+    sc(rig.head, gr.head); let drop = 0;
+    Object.values(rig.legs).forEach(c => { sc(c[1], gr.leg); const top = rig.P.get(c[1]), paw = rig.P.get(c[c.length - 1]); drop = Math.max(drop, (top.y - paw.y) * (1 - gr.leg)); });
+    return drop;
+  }
+  const stageRing = (() => { const g = new THREE.Group(), m = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.5, 48), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.012; const d = new THREE.Mesh(new THREE.CircleGeometry(0.34, 48), new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.25, depthWrite: false })); d.rotation.x = -Math.PI / 2; d.position.y = 0.011;
+    g.add(m, d); g.visible = false; scene.add(g); return g; })();
+  let sparkleT = 0;
+  function stageFrame(dt) {      /* every frame for the pet: its size and the glow under it */
+    const gr = growOf(STAGE); if (pet) pet.scale.setScalar(gr.size);
+    stageRing.visible = !!pet && !lineup && STAGE >= 5; if (stageRing.visible) { stageRing.position.set(pet.position.x, 0, pet.position.z); stageRing.scale.setScalar(gr.size * (1 + Math.sin(S.t * 2.2) * 0.04)); stageRing.children[0].material.opacity = STAGE === 6 ? 0.6 : 0.32; stageRing.children[0].material.color.set(STAGE === 6 ? 0xffd84a : 0xbfe6ff); }
+    if (pet && !lineup && STAGE === 6) { sparkleT -= dt; if (sparkleT < 0) { fx('✨', 1); sparkleT = 1.1 + Math.random(); } }
+  }
+  /* all seven stages side by side (copies of the model, standing still) */
+  let lineup = null;
+  function showLineup(on) {
+    if (lineup) { lineup.forEach(o => scene.remove(o)); lineup = null; }
+    if (pet) pet.visible = !on; stageRing.visible = false; if (!on || !G || !THREE.SkeletonUtils) return;
+    lineup = STAGES.map((nm, st) => { const c = THREE.SkeletonUtils.clone(G.root), holder = new THREE.Group(); holder.add(c); const rig = findRig(c);
+      if (rig) { rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); }); const drop = growRig(rig, st); const r = rig.rest.get(rig.top);
+        rig.top.position.copy(r.p).add(new THREE.Vector3(0, -drop, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.pwm.clone().invert()))); }
+      holder.scale.setScalar(growOf(st).size); holder.position.set((st - 3) * 0.78, 0, 0.3); holder.rotation.y = 0; scene.add(holder);
+      const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: (() => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.roundRect ? x.roundRect(4, 8, 248, 48, 24) : x.rect(4, 8, 248, 48); x.fill(); x.fillStyle = '#3b2a5c'; x.font = 'bold 26px Fredoka, sans-serif'; x.textAlign = 'center'; x.fillText(nm, 128, 42); return new THREE.CanvasTexture(cv); })(), transparent: true }));
+      lab.scale.set(0.62, 0.155, 1); lab.position.set((st - 3) * 0.78, growOf(st).size * 1.02 + 0.08, 0.3); scene.add(lab); holder.userData.lab = lab;
+      return [holder, lab]; }).flat();
+  }
+  function loadBuffer(buf, name) { loader.parse(buf, '', g => useModel(g, name, buf.byteLength), e => { say('That model would not load.'); console.error(e); }); }
+  function report() {
+    const I = G.info, r = document.getElementById('report'), mb = I.bytes / 1048576, chk = (ok, warn) => ok ? '<span class="ok">✓</span>' : warn ? '<span class="warn">!</span>' : '<span class="bad">✗</span>';
+    const how = n => G.acts[n] ? `<span class="ok">its own animation</span> (${I.matched[n]})` : G.rig ? '<span class="ok">Pawtopia\'s four-legged moves</span>' : (Object.keys(G.bones).length >= 3 ? '<span class="warn">made by bending its skeleton</span>' : '<span class="warn">made by moving the whole body</span>');
+    r.innerHTML = `<b>${I.label}</b><table>
+      <tr><td>${chk(mb <= BUDGET.mb, mb <= BUDGET.mb * 2)} File size</td><td>${mb.toFixed(1)} MB (aim for ${BUDGET.mb} MB or less)</td></tr>
+      <tr><td>${chk(I.tris <= BUDGET.tris, I.tris <= BUDGET.tris * 2)} Triangles</td><td>${I.tris.toLocaleString()} (aim for ${BUDGET.tris.toLocaleString()} or less)</td></tr>
+      <tr><td>${chk(I.tex <= BUDGET.tex, I.tex <= 2048)} Biggest texture</td><td>${I.tex || 'none'} px (aim for ${BUDGET.tex} px)</td></tr>
+      <tr><td>${chk(I.skinned > 0, false)} Skeleton (rig)</td><td>${I.skinned ? 'yes' : 'no: it can only move as one piece'}${G.rig ? ` · four-legged: found 4 legs, a ${G.rig.neck.length}-bone neck, the head, ${G.rig.ears.length} ears, a ${G.rig.tail.length}-bone tail` : Object.keys(G.bones).length ? ' · found: ' + Object.keys(G.bones).join(', ') : ''}</td></tr></table>
+      <table>${Object.keys(CLIPS).map(n => `<tr><td>${n}</td><td>${how(n)}</td></tr>`).join('')}</table>
+      <div style="margin-top:6px;color:#7a6a99">Animations in the file: ${I.clips.length ? I.clips.join(', ') : 'none'}</div>`;
+    r.hidden = false;
+  }
+  /* each frame: play the model's own clip for what the pet is doing, or bend the skeleton / the whole body */
+  function driveModel(dt, doing, walking) {
+    const ownWalk = G.rig && OWNWALK, want = G.acts[doing] && !(ownWalk && doing === 'walk') ? doing : walking && G.acts.walk && !ownWalk ? 'walk' : (G.acts.idle && !G.rig) ? 'idle' : null;
+    if (want !== G.now) { const next = want && G.acts[want], prev = G.now && G.acts[G.now]; if (next) { next.reset().fadeIn(0.25).play(); if (want === 'walk') next.timeScale = 1.4; } if (prev) prev.fadeOut(0.25); G.now = want; }
+    G.mixer.update(dt);
+    if (G.rig) { if (!G.now) G.rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); }); poseRig(dt, doing, walking); return; }
+    const own = !!G.acts[doing], B = G.bones, C = S.cur, r = G.root;
+    if (!own) {      // no clip for this: bend the bones that were found, on top of whatever is playing
+      const bend = (key, x, y, z) => { if (!B[key]) return false; const [bone, rest] = B[key]; bone.quaternion.copy(rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y || 0, z || 0))); return true; };
+      const sitK = (0.3 - (C.hipsY - 0.3)) || 0;
+      const bent = [bend('spine', C.hipsX * 0.6, 0, C.hipsZ), bend('neck', C.neckX * 0.6, C.neckY * 0.6, 0), bend('head', C.neckX * 0.3, C.neckY * 0.3, 0), bend('tail', 0, C.tailY * 0.5, Math.sin(S.t * 9) * 0.4),
+        bend('legBL', C.legB * 0.7), bend('legBR', C.legB * 0.7), bend('legFL', C.legF * 0.7 + (walking ? Math.sin(S.t * 12) * 0.5 : 0)), bend('legFR', C.legF * 0.7 - (walking ? Math.sin(S.t * 12) * 0.5 : 0) + (doing === 'wave' ? -1.6 + Math.sin(S.t * 9) * 0.3 : 0))].filter(Boolean).length;
+      if (bent < 3) {      // too few bones: tip and lower the whole model instead
+        r.rotation.x = C.hipsX * 0.5; r.rotation.z = C.hipsZ * 2; r.position.y = G.base.y - (0.46 - C.hipsY) * 0.6 + (walking ? Math.abs(Math.sin(S.t * 12)) * 0.03 : 0); r.scale.y = r.scale.x * (1 + Math.sin(S.t * 3) * 0.01) / (r.scale.x / r.scale.y);
+      }
+    } else { r.rotation.x = 0; r.rotation.z = 0; r.position.y = G.base.y; }
+  }
+  /* poses: target angles the pivots ease toward; animations add motion on top */
+  const POSE = {
+    stand: { hipsX: 0, hipsY: 0.46, neckX: 0, legF: 0, legB: 0, tailX: -0.5, neckY: 0, tailY: 0, hipsZ: 0, lift: 0 },
+    sit: { hipsX: -0.62, hipsY: 0.3, neckX: 0.55, legF: 0.62, legB: -1.1, tailX: -1.4, neckY: 0, tailY: 0, hipsZ: 0, lift: 0 },
+    sleep: { hipsX: 0.05, hipsY: 0.17, neckX: 0.55, legF: -1.5, legB: 1.45, tailX: -1.57, neckY: 1.55, tailY: -2.1, hipsZ: 0.22, lift: 0.1 },      // 4.x curled up: head back along the side, tail around the front
+    eat: { hipsX: 0.12, hipsY: 0.44, neckX: 0.95, legF: 0, legB: 0, tailX: -0.4, neckY: 0, tailY: 0, hipsZ: 0, lift: 0 }
+  };
+  const S = { pose: 'stand', cur: Object.assign({}, POSE.stand), act: 'walk', t: 0, target: new THREE.Vector3(), moving: false, wag: 1, blink: 2, sleepT: 0, hop: 0, fx: [] };
+  function act(a) {
+    S.act = a; S.moving = false; bowl.visible = false; ball.visible = false; P.tongue.visible = false; S.hop = 0;
+    document.querySelectorAll('[data-act]').forEach(b => b.classList.toggle('on', b.dataset.act === a));
+    const n = P.look.name;
+    if (a === 'walk') { S.pose = 'stand'; pick(); say(n + ' is exploring!'); }
+    if (a === 'sit') { S.pose = 'sit'; say('Good sit, ' + n + '!'); }
+    if (a === 'wave') { S.pose = 'sit'; say(n + ' says hi!'); }
+    if (a === 'sleep') { S.pose = 'stand'; const fb = furnGroup.children.find(o => /bed/.test(o.userData.furn || '')); if (fb) S.target.set(fb.position.x, 0, fb.position.z - 0.12); else if (back) S.target.copy(pet.position).setY(0); else S.target.set(bed.position.x, 0, bed.position.z); S.moving = true; say(n + ' is going to bed…'); }
+    if (a === 'eat') { S.pose = 'stand'; const f = new THREE.Vector3(0, 0, back ? 1.0 : 0.9); bowl.position.set(f.x, 0, f.z + 0.55); bowl.visible = true; S.target.copy(f); S.moving = true; say('Dinner time!'); }
+    if (a === 'play') { S.pose = 'stand'; ball.visible = true; throwBall(); say('Fetch!'); }
+    if (a === 'happy') { S.pose = 'stand'; S.hop = 3; P.tongue.visible = true; hearts(6); say(n + ' is SO happy!'); }
+  }
+  const pick = () => { const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); S.moving = true; };      // a short stroll to somewhere nearby
+  const throwBall = () => { const a = AREA(); ball.position.set(a[0] + Math.random() * (a[1] - a[0]), 0.15, a[2] + Math.random() * (a[3] - a[2])); S.target.copy(ball.position).setY(0); S.moving = true; };
+  /* little floating hearts and Zzz, drawn as sprites */
+  const spriteTex = {}; const tex = ch => spriteTex[ch] || (spriteTex[ch] = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.font = '96px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 64, 70); const t = new THREE.CanvasTexture(c); return t; })());
+  function fx(ch, n) { for (let k = 0; k < n; k++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(ch), transparent: true })); const p = new THREE.Vector3(); P.head.getWorldPosition(p); s.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.2, (Math.random() - 0.5) * 0.3)); s.scale.setScalar(0.28); s.userData = { life: 1.6 + k * 0.25, vy: 0.5 + Math.random() * 0.3 }; scene.add(s); S.fx.push(s); } }
+  const hearts = n => fx('💖', n);
+
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const clock = new THREE.Clock();
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05); S.t += dt; const t = S.t, C = S.cur, T = POSE[S.pose];
+    let walking = false;
+    if (S.moving) {      // turn toward the target and trot there
+      const d = new THREE.Vector3().subVectors(S.target, pet.position); d.y = 0; const dist = d.length();
+      const stop = S.act === 'eat' ? 0.05 : S.act === 'play' ? 0.42 : 0.05;
+      if (dist > stop) { const want = Math.atan2(d.x, d.z); let dy = want - pet.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; pet.rotation.y += dy * Math.min(1, dt * 6);
+        const hopNow = G && G.gaitType === 'hop' && G.rig && OWNWALK, hf = hopNow ? Math.max(0, Math.sin(Math.min(1, ((G.gait || 0) % (Math.PI * 2)) / (Math.PI * 2) / 0.55) * Math.PI)) * 2.2 : 1;
+        const sp = (S.act === 'play' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? 0.3 : 1) * hf; pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
+      else { S.moving = false;
+        if (S.act === 'walk') setTimeout(() => { if (S.act === 'walk' && !S.moving && !S.carry) pick(); }, 2500 + Math.random() * 4000);      // a good rest between strolls
+        if (S.act === 'go') { S.act = 'stay'; }
+        if (S.act === 'sleep') { S.pose = 'sleep'; if (!back) pet.rotation.y = 0.6; say('Shh… ' + P.look.name + ' is asleep.'); }
+        if (S.act === 'eat') { S.pose = 'eat'; pet.rotation.y = 0; }
+        if (S.act === 'play') { const kick = new THREE.Vector3().subVectors(ball.position, pet.position).setY(0).normalize(); S.ballV = kick.multiplyScalar(3.2); S.hop = 1; setTimeout(() => { if (S.act === 'play') { S.target.copy(ball.position).setY(0); S.moving = true; } }, 1400); }
+      } }
+    if (!walking && !S.moving && !window.__noface && (S.pose === 'sit' || S.act === 'happy')) {      // sitting, waving, happy: turn to face the student
+      const want = Math.atan2(cam.position.x - pet.position.x, cam.position.z - pet.position.z); let dy = want - pet.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
+      if (S.act !== 'happy') pet.rotation.y += dy * Math.min(1, dt * 4); }
+    if (S.ballV) { ball.position.addScaledVector(S.ballV, dt); ball.rotation.x += S.ballV.z * dt * 6; ball.rotation.z -= S.ballV.x * dt * 6; S.ballV.multiplyScalar(1 - dt * 1.6);
+      const A = AREA(); if (ball.position.x < A[0] || ball.position.x > A[1]) { S.ballV.x *= -1; ball.position.x = Math.max(A[0], Math.min(A[1], ball.position.x)); } if (ball.position.z < A[2] || ball.position.z > A[3]) { S.ballV.z *= -1; ball.position.z = Math.max(A[2], Math.min(A[3], ball.position.z)); }
+      if (S.ballV.length() < 0.05) S.ballV = null; }
+    if (S.act === 'play' && S.moving) S.target.copy(ball.position).setY(0);
+    const k = Math.min(1, dt * 5); for (const key in T) C[key] = lerp(C[key], T[key], k);
+    const breathe = Math.sin(t * (S.pose === 'sleep' ? 1.6 : 3)) * (S.pose === 'sleep' ? 0.035 : 0.015);
+    P.hips.rotation.z = C.hipsZ; P.neck.rotation.y = C.neckY; P.tail.rotation.order = 'YXZ'; P.tail.rotation.y = C.tailY;
+    P.hips.rotation.x = C.hipsX; P.hips.position.y = C.hipsY + (walking ? Math.abs(Math.sin(t * 12)) * 0.04 : 0);
+    P.body.scale.set(1 + breathe, 1 + breathe, 1);
+    const sw = walking ? Math.sin(t * 12) * 0.6 : 0;      // trot: diagonal legs swing together
+    P.legs.fl.rotation.x = C.legF + sw; P.legs.br.rotation.x = C.legB + sw; P.legs.fr.rotation.x = C.legF - sw; P.legs.bl.rotation.x = C.legB - sw;
+    if (S.pose === 'sit') { P.legs.fl.rotation.x = P.legs.fr.rotation.x = C.legF; }
+    if (S.act === 'wave' && S.pose === 'sit') { P.legs.fr.rotation.x = -1.9 + Math.sin(t * 9) * 0.35; P.legs.fr.rotation.z = -0.3; } else P.legs.fr.rotation.z = 0;
+    P.neck.rotation.x = C.neckX + (S.pose === 'eat' ? Math.sin(t * 9) * 0.12 : 0);
+    P.head.rotation.z = S.pose === 'sit' && S.act === 'sit' ? Math.sin(t * 1.3) * 0.18 : 0;      // a curious head tilt
+    P.head.rotation.y = !walking && S.pose === 'stand' ? Math.sin(t * 0.7) * 0.35 : 0;
+    const wagSpeed = S.pose === 'sleep' ? 0 : S.act === 'happy' || S.act === 'play' ? 22 : 9;
+    P.tail.rotation.x = C.tailX; P.tail.rotation.z = Math.sin(t * wagSpeed) * (S.pose === 'sleep' ? 0 : 0.55);
+    P.ears.forEach((e, i) => { const b = e.userData.base, flick = Math.max(0, Math.sin(t * 0.9 + i * 2) - 0.96) * 6; e.rotation.x = b.x + (walking ? Math.sin(t * 12) * 0.08 : 0); e.rotation.z = b.z + flick * (i ? 1 : -1) * 0.3 + (S.pose === 'sleep' ? (i ? 0.4 : -0.4) : 0); });
+    S.blink -= dt; const closed = S.pose === 'sleep' || S.act === 'happy' && S.hop > 0; let ey = closed ? 0.12 : 1; if (S.blink < 0.12 && !closed) ey = 0.12; if (S.blink < 0) S.blink = 2 + Math.random() * 3;
+    P.eyes.forEach(e => { e.scale.y = lerp(e.scale.y, ey, 0.5); });      // (a model blinks only if it has a blink clip)
+    const inBed = S.pose === 'sleep' && !back && pet.position.distanceTo(bed.position) < 0.3; S.bedY = lerp(S.bedY || 0, inBed ? C.lift : 0, 0.1);
+    if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35; if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else pet.position.y = lerp(pet.position.y, S.bedY, 0.3);
+    if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else pet.rotation.z *= 0.8;
+    if (S.pose === 'sleep') { S.sleepT -= dt; if (S.sleepT < 0) { fx('💤', 1); S.sleepT = 1.8; } }
+    for (let i = S.fx.length - 1; i >= 0; i--) { const s = S.fx[i]; s.userData.life -= dt; s.position.y += s.userData.vy * dt; s.material.opacity = Math.min(1, s.userData.life); if (s.userData.life <= 0) { scene.remove(s); S.fx.splice(i, 1); } }
+    stageFrame(dt);
+    if (G) driveModel(dt, S.carry ? 'carry' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking);
+    R.render(scene, cam); requestAnimationFrame(frame);
+  }
+  function size() { const w = view.clientWidth, h = view.clientHeight; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  addEventListener('resize', size);
+  /* tap the pet to pet it; drag to turn the room */
+  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let drag = null;
+  /* 2026-11-01 pick up and move: press on the pet and drag to carry it (it lifts, legs dangle, tail wags); let go to set it down, and it
+     stays there. Tap the pet to pet it. Tap the floor to send the pet walking there. In the plain room, drag empty space to turn the room. */
+  const at = e => { const r = R.domElement.getBoundingClientRect(); mouse.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(mouse, cam); };
+  const floorPt = () => { const v = new THREE.Vector3(); return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v) ? v : null; };
+  const clampArea = v => { const a = AREA(); v.x = Math.max(a[0], Math.min(a[1], v.x)); v.z = Math.max(a[2], Math.min(a[3], v.z)); v.y = 0; return v; };
+  R.domElement.style.touchAction = 'none';
+  R.domElement.addEventListener('pointerdown', e => { at(e); const onPet = pet && ray.intersectObject(pet, true).length > 0;
+    drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, t: Date.now() }; if (onPet) R.domElement.setPointerCapture(e.pointerId); });
+  addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy2 = e.clientY - drag.y; if (Math.hypot(dx, dy2) > 6) drag.moved = true;
+    if (drag.pet && drag.moved) { if (!S.carry) { S.carry = true; S.moving = false; S.hop = 0; S.pose = 'stand'; say('Wheee!'); } at(e); const v = floorPt(); if (v) { clampArea(v); pet.position.x = v.x; pet.position.z = v.z; pet.rotation.y += (Math.atan2(cam.position.x - v.x, cam.position.z - v.z) - pet.rotation.y) * 0.15; } return; }
+    if (!drag.pet && !back) { camAng = Math.max(-0.9, Math.min(0.9, drag.a - dx * 0.006)); camAt(); } });
+  addEventListener('pointerup', e => { if (!drag) return; const d = drag; drag = null;
+    if (S.carry) { S.carry = false; S.act = 'stay'; S.pose = 'stand'; S.hop = 1; fx('💖', 1); say(P.look.name + ' likes it here!'); document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); return; }
+    if (d.moved) return; at(e);
+    if (d.pet) { hearts(3); if (S.pose !== 'sleep') { S.hop = Math.max(S.hop, 1); P.tongue.visible = true; setTimeout(() => { if (S.act !== 'happy') P.tongue.visible = false; }, 1500); } else say('Shh… ' + P.look.name + ' is sleeping. 💤'); return; }
+    const v = floorPt(); if (v && S.pose !== 'sleep') { clampArea(v); S.act = 'go'; S.pose = 'stand'; S.target.copy(v); S.moving = true; bowl.visible = false; ball.visible = false; document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); say(P.look.name + ' is on the way!'); } });
+  document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
+  document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x === b)); const pos = pet.position.clone(), ry = pet.rotation.y; G = null; document.getElementById('report').hidden = true; document.getElementById('phbtn').hidden = true; build(b.dataset.who); pet.position.copy(pos); pet.rotation.y = ry; act(S.act); });
+  document.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => setBack(b.dataset.bg));
+  const stRow = document.querySelector('.stages'); STAGES.forEach((nm, st) => { const b = document.createElement('button'); b.textContent = nm; b.dataset.st = st; if (st === STAGE) b.className = 'on'; stRow.appendChild(b); });
+  const lb = document.createElement('button'); lb.textContent = '👀 All stages side by side'; stRow.appendChild(lb);
+  stRow.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+    if (b === lb) { const on = !lineup; showLineup(on); lb.classList.toggle('on', on); if (on) { back && setBack('plain'); cam.position.set(0, 2.2, 6.6); cam.lookAt(0, 0.45, 0.3); } else camAt(); return; }
+    STAGE = +b.dataset.st; stRow.querySelectorAll('[data-st]').forEach(x => x.classList.toggle('on', x === b)); if (lineup) { showLineup(false); lb.classList.remove('on'); camAt(); } say(P.look.name + ' as a ' + STAGES[STAGE] + '.'); });
+  const bgsel = document.getElementById('bgsel'); Object.keys(BACK).filter(k => BACK[k] && BACK[k].name).forEach(k => bgsel.add(new Option(BACK[k].name, k))); bgsel.onchange = () => setBack(bgsel.value || 'plain');
+  const cmp = document.getElementById('cmp'), cmpimg = document.getElementById('cmpimg');
+  const showPaint = () => { if (P && P.look.paint) cmpimg.src = ART + P.look.paint + '.webp'; };
+  document.getElementById('furnbtn').onclick = e => { FURN_ON = !FURN_ON; e.currentTarget.classList.toggle('on', FURN_ON); setBack(bgsel.value || 'plain'); };
+  document.getElementById('cmpbtn').onclick = e => { cmp.hidden = !cmp.hidden; e.currentTarget.classList.toggle('on', !cmp.hidden); showPaint(); size(); };
+  document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', showPaint));
+  document.getElementById('glbin').onchange = e => { const f = e.target.files[0]; if (f) f.arrayBuffer().then(buf => loadBuffer(buf, f.name)); e.target.value = ''; };
+  view.addEventListener('dragover', e => { e.preventDefault(); view.classList.add('over'); }); view.addEventListener('dragleave', () => view.classList.remove('over'));
+  view.addEventListener('drop', e => { e.preventDefault(); view.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) f.arrayBuffer().then(buf => loadBuffer(buf, f.name)); });
+  let OWNWALK = true;      // Pawtopia's own trot (smoother than Tripo's preset); the button compares the two
+  document.getElementById('walkbtn').onclick = e => { OWNWALK = !OWNWALK; e.currentTarget.textContent = '🐾 Walk: ' + (OWNWALK ? "Pawtopia's" : "Tripo's"); };
+  document.getElementById('hopbtn').onclick = e => { if (!G) return; G.gaitType = G.gaitType === 'hop' ? 'trot' : 'hop'; e.currentTarget.classList.toggle('on', G.gaitType === 'hop'); };
+  document.getElementById('phbtn').onclick = () => document.querySelector('[data-who].on').click();
+  /* a model listed here loads by itself for that pet (once Colleen's GLB files exist) */
+  /* how each kind travels: 'trot' (dogs, cats, horses) or 'hop' (bunnies; later frogs) */
+  const GAIT = { bunny: 'hop', frog: 'hop' };
+  const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
+  const loadFor = who => { if (!MODELS[who]) return; fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
+  document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
+  /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
+  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
+  addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
+    if (m.bg && BACK['bg_' + m.bg]) setBack('bg_' + m.bg);
+    if (m.stage !== undefined) STAGE = Math.max(0, Math.min(6, +m.stage || 0));
+    if (m.pet && WHO[m.pet]) { const b = document.querySelector('[data-who="' + WHO[m.pet] + '"]'); if (b && !b.classList.contains('on')) b.click(); }
+    if (m.act) act(m.act === 'drink' ? 'eat' : m.act === 'bath' ? 'happy' : m.act);
+    if (m.fx) fx(m.fx, 4); });
+  /* speed check: frames in the first seconds after the pet appears; Pawtopia switches to pictures when it is too slow */
+  let perfN = 0, perfT0 = 0; const perfTick = () => { if (!G) return requestAnimationFrame(perfTick); if (!perfT0) perfT0 = performance.now(); perfN++; const el = performance.now() - perfT0;
+    if (el < 4000) requestAnimationFrame(perfTick); else tell({ t: 'perf', fps: Math.round(perfN / el * 1000) }); };
+  build(WHO[Q.get('pet')] || 'jaq'); if (Q.get('stage')) STAGE = +Q.get('stage'); size();
+  if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
+  act('walk'); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
+  if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }
+})();
+</script>
+</body></html>
