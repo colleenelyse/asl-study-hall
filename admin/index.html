@@ -164,11 +164,11 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
     if (e.target.hasAttribute('data-del') && confirm('Remove "' + (tools[i].title || 'this button') + '"?')) { tools.splice(i, 1); draw(); }
   });
   $('#add').onclick = () => { tools.push({ icon: '⭐', title: '', desc: '', href: '' }); draw(); $('#tools .tool:last-child input[data-k=title]').focus(); };
-  /* 2026-11-01 (Colleen): every link on asl.cool/colleen is on the home page too. New ones arrive here from colleen/links.json, ticked for every
+  /* 2026-11-01 (Colleen): her quick links are on the home page too. New ones arrive here (only after her password), ticked for every
      student password unless they are teacher views; the Testing Center and ARC/BASE passwords open their own links; her Google Sheets are left out.
      A link she removes stays removed (seen). Nothing is live until she saves. */
   async function addColleen() {
-    let L = []; try { L = (await (await fetch('/colleen/links.json', { cache: 'no-store' })).json()).links || []; } catch (e) { return ''; }
+    let L = []; try { L = (await (await fetch('/admin/quicklinks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proof: tob64(await pbkdf2(curPw, b64(state.vsalt), ITER)) }) })).json()).links || []; } catch (e) { return ''; }
     const role = r => classes.find(c => c.role === r), made = [];
     [['tc', 'Testing Center'], ['arc', 'ARC/BASE']].forEach(([r, nm]) => { if (L.some(x => x.aud.includes(r)) && !role(r)) { classes.push({ id: newCode(), name: nm, pw: '', role: r }); made.push(nm); } });
     const students = classes.filter(c => !c.role).map(c => c.id), have = new Set(tools.map(t => t.href)), news = [];
@@ -176,7 +176,7 @@ button.ghost{background:#EFE8DC;color:#1B1E3C}button.small{padding:5px 12px;font
       const cl = [].concat(x.aud.includes('students') ? students : [], x.aud.includes('tc') ? [role('tc').id] : [], x.aud.includes('arc') ? [role('arc').id] : []);
       tools.push({ icon: x.icon, title: x.title, desc: x.desc, href: x.href, s: x.aud.includes('students'), cl, sh: [] }); news.push(x); });
     if (!news.length && !made.length) return '';
-    return `<b>${news.length} link${news.length === 1 ? '' : 's'} from your /colleen page ${news.length === 1 ? 'was' : 'were'} added.</b> ${news.filter(x => x.aud.includes('students')).length} are ticked for every student password; teacher views are for you only; your Google Sheets are left out.`
+    return `<b>${news.length} link${news.length === 1 ? '' : 's'} from your quick links ${news.length === 1 ? 'was' : 'were'} added.</b> ${news.filter(x => x.aud.includes('students')).length} are ticked for every student password; teacher views are for you only; your Google Sheets are left out.`
       + (made.length ? ` <b>New passwords: ${made.join(' and ')}.</b> Type a password for ${made.length > 1 ? 'each' : 'it'} under Passwords (they open only their own links), then save.` : '') + ' Look them over, untick anything you like, then click <b>Save and put it live</b>.';
   }
   $('#step1').onsubmit = async e => {

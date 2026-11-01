@@ -57,6 +57,16 @@ async function save(req, env) {
   await env.LOCKS.delete(failKey);
   return json({ ok: true, updated: next.updated });
 }
+/* her quick links for the home page (admin adds new ones): only after the same password proof that saving needs */
+async function quicklinks(req, env) {
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown', failKey = 'fail:' + ip, fails = env.LOCKS ? +(await env.LOCKS.get(failKey) || 0) : 0;
+  if (fails >= MAX_FAILS) return json({ error: 'Too many wrong passwords. Wait 10 minutes and try again.' }, 429);
+  let body; try { body = JSON.parse(await req.text()); } catch (e) { return json({ error: 'That request was not readable.' }, 400); }
+  const st = await state(env, req); let ok = false; try { ok = !!(st && st.vhash) && same(await sha256hex(b64(body.proof || '')), st.vhash); } catch (e) {}
+  if (!ok) { if (env.LOCKS) await env.LOCKS.put(failKey, String(fails + 1), { expirationTtl: FAIL_WINDOW }); return json({ error: 'Not allowed.' }, 403); }
+  const r = await env.ASSETS.fetch(new Request(new URL('/_private/quicklinks.json', req.url)));
+  return r.ok ? json(await r.json()) : json({ links: [] });
+}
 /* every product in her Shopify store, from its public products.json (cached 10 minutes by Cloudflare) */
 async function shopProducts() {
   try {
@@ -122,6 +132,8 @@ export default {
     if (p === '/numbers') return Response.redirect(url.origin + '/numbers/' + url.search, 301);
     if (p.startsWith('/numbers/')) return numbers(req, env, url, p);      // asl.cool/numbers: the games in numbers mode, at their own address (Colleen, 2026-10-17)
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
+    if (p.startsWith('/_private/')) return new Response('Not found', { status: 404 });      // never served directly
+    if (p === '/admin/quicklinks') return req.method === 'POST' ? quicklinks(req, env) : json({ error: 'POST only' }, 405);      // admin only, with her password's proof
     const res = await env.ASSETS.fetch(req);
     return shopSwitch(req, env, res, p);
   }
