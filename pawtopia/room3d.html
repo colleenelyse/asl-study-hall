@@ -112,16 +112,26 @@
      floor facing the camera, so a pet farther back is hidden by it and a pet in front covers it. [picture, height in the room, x, z] ───── */
   const FURN_H = { sofa: 0.95, armchair: 0.9, wicker_bed: 0.62, donut_bed: 0.62, toy_chest: 0.7, dresser: 0.95, potted_plant: 0.9, doghouse: 1.25, flower_planter: 0.6, shrub: 0.85, fence: 0.75, garden_bench: 0.85 };
   const LAYOUT = { bg_pet_bedroom: [['donut_bed', -1.2, 0.5], ['toy_chest', 1.3, -0.1], ['potted_plant', 0.2, -0.25]], bg_nursery: [['wicker_bed', 1.2, 0.4], ['potted_plant', -1.4, 0.1]],
-    bg_backyard: [['flower_planter', 1.49, -1.5, 0.84], ['shrub', -1.1, 0.35]],      // the planter sits on the painted one by the fence, so pets can walk behind it bg_backyard_alternate: [['doghouse', 1.2, -0.15], ['shrub', -1.3, 0.5]],
+    bg_backyard: [['flower_planter', 1.49, -1.5, 0.84], ['shrub', -1.1, 0.35]], bg_backyard_alternate: [['doghouse', 1.2, -0.15], ['shrub', -1.3, 0.5]],      /* the backyard planter sits on the painted one by the fence, so pets can walk behind it */
     bg_pet_park: [['garden_bench', -0.9, 0.0], ['shrub', 1.1, 0.5]], bg_spring_garden: [['flower_planter', -1.0, 0.45], ['shrub', 1.2, 0.05]], plain: [['sofa', -1.6, -1.1], ['donut_bed', 1.0, 0.3], ['shrub', -0.4, 0.6]] };
   const furnLoader = new THREE.TextureLoader(), furnGroup = new THREE.Group(); scene.add(furnGroup); let FURN_ON = true;
+  /* 2026-11-01 (Pawtopia 4.237) a student's own room: { bg, items: [[piece, u, v]] } with u across and v back to front (0 to 1) in FZONE; toys lie on the floor.
+     EDIT: drag a piece to move it, tap it to take it out (Pawtopia saves). */
+  let MINE = null, TOYS = [], EDIT = false; const toyGroup = new THREE.Group(); scene.add(toyGroup);
+  const FZONE = () => { const a = AREA(); return [a[0] - 0.2, a[1] + 0.2, a[2] - 0.5, a[3]]; };
+  const fromUV = (u, v) => { const z = FZONE(); return [z[0] + u * (z[1] - z[0]), z[2] + v * (z[3] - z[2])]; };
+  const toUV = (x, zz) => { const z = FZONE(); return [Math.round((x - z[0]) / (z[1] - z[0]) * 1000) / 1000, Math.round((zz - z[2]) / (z[3] - z[2]) * 1000) / 1000]; };
+  const myLayout = () => MINE.items.filter(it => FURN_H[it[0]]).map(([n, u, v]) => { const [x, z] = fromUV(u, v); return [n, x, z]; });
+  function placeToys() { toyGroup.clear(); if (!back) return; const spots = [[-0.55, 0.75], [0.6, 0.8], [-1.25, 0.65], [1.3, 0.6], [0.05, 0.85]];
+    TOYS.slice(0, 5).forEach((n, i) => { const h = 0.26, t = furnLoader.load(ART + 'care/' + n + '.webp'); t.encoding = THREE.sRGBEncoding; const [u, v] = spots[i], [x, z] = fromUV(0.5 + u / 4, v);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(h, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.35 })); m.position.set(x, h * 0.42, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.toy = n; toyGroup.add(m); }); }
   function placeFurniture(k) {
-    furnGroup.clear(); if (!FURN_ON) return; (LAYOUT[k] || []).forEach(([n, x, z, hh]) => {
+    furnGroup.clear(); placeToys(); if (!FURN_ON) return; (MINE && k === 'bg_' + MINE.bg ? myLayout() : LAYOUT[k] || []).forEach(([n, x, z, hh], idx) => {
       const h = hh || FURN_H[n] || 0.6, tex = furnLoader.load(ART + 'furniture/' + n + '.webp'); tex.encoding = THREE.sRGBEncoding;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(h / 0.9, h / 0.9), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.35 }));      // the picture is a square with the piece 90% tall, feet at 88%
-      m.position.set(x, h / 0.9 * 0.5 - h / 0.9 * 0.12, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.furn = n; furnGroup.add(m);
+      m.position.set(x, h / 0.9 * 0.5 - h / 0.9 * 0.12, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.furn = n; m.userData.idx = idx; furnGroup.add(m);
       if (hh) return;      // a piece laid over the painting's own uses the painted shadow
-      const sh = new THREE.Mesh(new THREE.CircleGeometry(h * 0.6, 32), new THREE.MeshBasicMaterial({ color: 0x3b2a5c, transparent: true, opacity: 0.12, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.scale.y = 0.35; sh.position.set(x, 0.006, z + 0.02); furnGroup.add(sh);
+      const sh = new THREE.Mesh(new THREE.CircleGeometry(h * 0.6, 32), new THREE.MeshBasicMaterial({ color: 0x3b2a5c, transparent: true, opacity: 0.12, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.scale.y = 0.35; sh.position.set(x, 0.006, z + 0.02); m.userData.sh = sh; furnGroup.add(sh);
     });
   }
   /* the pet: pivots are the "skeleton"; every pose and animation just turns them */
@@ -479,12 +489,17 @@
   const floorPt = () => { const v = new THREE.Vector3(); return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v) ? v : null; };
   const clampArea = v => { const a = AREA(); v.x = Math.max(a[0], Math.min(a[1], v.x)); v.z = Math.max(a[2], Math.min(a[3], v.z)); v.y = 0; return v; };
   R.domElement.style.touchAction = 'none';
-  R.domElement.addEventListener('pointerdown', e => { at(e); const onPet = pet && ray.intersectObject(pet, true).length > 0;
-    drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, t: Date.now() }; if (onPet) R.domElement.setPointerCapture(e.pointerId); });
+  const furnHit = () => { const h = ray.intersectObjects(furnGroup.children.filter(o => o.userData.furn), false); return h.length ? h[0].object : null; };
+  const sendLayout = () => { if (!MINE) return; MINE.items = furnGroup.children.filter(o => o.userData.furn).sort((a, b) => a.userData.idx - b.userData.idx).map(o => [o.userData.furn].concat(toUV(o.position.x, o.position.z))); tell({ t: 'layout', items: MINE.items }); };
+  R.domElement.addEventListener('pointerdown', e => { at(e); const fh = EDIT && MINE ? furnHit() : null, onPet = !fh && pet && ray.intersectObject(pet, true).length > 0;
+    drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, furn: fh, t: Date.now() }; if (onPet || fh) R.domElement.setPointerCapture(e.pointerId); });
   addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy2 = e.clientY - drag.y; if (Math.hypot(dx, dy2) > 6) drag.moved = true;
+    if (drag.furn && drag.moved) { at(e); const v = floorPt(); if (v) { const z = FZONE(), m = drag.furn; m.position.x = Math.max(z[0], Math.min(z[1], v.x)); m.position.z = Math.max(z[2], Math.min(z[3], v.z)); m.lookAt(cam.position.x, m.position.y, cam.position.z); if (m.userData.sh) m.userData.sh.position.set(m.position.x, 0.006, m.position.z + 0.02); } return; }
     if (drag.pet && drag.moved) { if (!S.carry) { S.carry = true; S.moving = false; S.hop = 0; S.pose = 'stand'; say('Wheee!'); } at(e); const v = floorPt(); if (v) { clampArea(v); pet.position.x = v.x; pet.position.z = v.z; pet.rotation.y += (Math.atan2(cam.position.x - v.x, cam.position.z - v.z) - pet.rotation.y) * 0.15; } return; }
     if (!drag.pet && !back) { camAng = Math.max(-0.9, Math.min(0.9, drag.a - dx * 0.006)); camAt(); } });
   addEventListener('pointerup', e => { if (!drag) return; const d = drag; drag = null;
+    if (d.furn) { if (d.moved) sendLayout(); else tell({ t: 'furntap', i: d.furn.userData.idx, n: d.furn.userData.furn }); return; }
+    if (!d.moved && !d.pet && TOYS.length) { at(e); const th = ray.intersectObjects(toyGroup.children, false); if (th.length) { act('play'); fx('💖', 2); tell({ t: 'toy', n: th[0].object.userData.toy }); return; } }
     if (S.carry) { S.carry = false; S.act = 'stay'; S.pose = 'stand'; S.hop = 1; puff('dust_puff', 1, 0.45); fx('💖', 1); say(P.look.name + ' likes it here!'); document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); return; }
     if (d.moved) return; at(e);
     if (d.pet) { hearts(3); if (S.pose !== 'sleep') { S.hop = Math.max(S.hop, 1); P.tongue.visible = true; setTimeout(() => { if (S.act !== 'happy') P.tongue.visible = false; }, 1500); } else say('Shh… ' + P.look.name + ' is sleeping. 💤'); return; }
@@ -519,7 +534,10 @@
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
   const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
+  const setRoom = (r, toys) => { if (r && r.bg && BACK['bg_' + r.bg]) MINE = { bg: r.bg, items: (r.items || []).slice(0, 12) }; if (toys) TOYS = toys.filter(n => /^[a-z_]+$/.test(n) && n !== 'brush'); };
   addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
+    if (m.edit !== undefined) EDIT = !!m.edit;
+    if (m.room || m.toys) { setRoom(m.room, m.toys); const k = MINE ? 'bg_' + MINE.bg : (back ? Object.keys(BACK).find(x => BACK[x] === back) : 'plain'); if (back === BACK[k]) placeFurniture(k); else setBack(k); }
     if (m.bg && BACK['bg_' + m.bg]) setBack('bg_' + m.bg);
     if (m.stage !== undefined) STAGE = Math.max(0, Math.min(6, +m.stage || 0));
     if (m.form) FORM = m.form;
@@ -530,7 +548,8 @@
   let perfN = 0, perfT0 = 0; const perfTick = () => { if (!G) return requestAnimationFrame(perfTick); if (!perfT0) perfT0 = performance.now(); perfN++; const el = performance.now() - perfT0;
     if (el < 4000) requestAnimationFrame(perfTick); else tell({ t: 'perf', fps: Math.round(perfN / el * 1000) }); };
   build(WHO[Q.get('pet')] || 'jaq'); if (Q.get('stage')) STAGE = +Q.get('stage'); if (Q.get('form')) FORM = Q.get('form'); size();
-  if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
+  if (EMBED && Q.get('room')) { const [b0, ...its] = Q.get('room').split(';'); setRoom({ bg: b0, items: its.filter(String).map(x => { const a = x.split(','); return [a[0], +a[1], +a[2]]; }) }, (Q.get('toys') || '').split(',').filter(String)); EDIT = Q.has('edit'); }
+  if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
   act('walk'); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
   if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }
 })();
