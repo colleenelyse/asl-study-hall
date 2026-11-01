@@ -396,7 +396,7 @@
   };
   const BP = Object.assign({}, BIPOSE.stand);
   function poseBiped(dt, doing, walking) {
-    const rig = G.rig, t = S.t, want = BIPOSE[doing === 'wave' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
+    const rig = G.rig, t = S.t, want = BIPOSE[doing === 'wave' || doing === 'beg' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in BP) BP[key] += (want[key] - BP[key]) * k;
     G.gait = (G.gait || 0) + dt * (walking ? 8 : 0); const ph = G.gait, wk = (G.wk = (G.wk || 0) + ((walking ? 1 : 0) - (G.wk || 0)) * Math.min(1, dt * 6));
     rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); });
@@ -410,7 +410,7 @@
       bendBone(rig, c[1], -BP.lean - BP.knee * 0.55 - sw, 0, -roll); bendBone(rig, c[2], BP.knee + up, 0, 0); if (c[3]) bendBone(rig, c[3], -BP.knee * 0.45 - up * 0.6, 0, 0); });
     /* wings: folded down against the sides, a little out while waddling, flapping when happy or carried; the right one waves */
     const happy = doing === 'happy' || doing === 'carry' ? 0.55 + Math.sin(t * 18) * 0.45 : 0, waddle = (0.18 + Math.sin(ph * 2) * 0.08) * wk;
-    [['l', -1], ['r', 1]].forEach(([s, sg]) => { const a = rig.arms[s]; if (a.length < 2) return; const fold = 1.35 - rig.droop[s], wave = doing === 'wave' && s === 'r';
+    [['l', -1], ['r', 1]].forEach(([s, sg]) => { const a = rig.arms[s]; if (a.length < 2) return; const fold = 1.35 - rig.droop[s], wave = (doing === 'wave' && s === 'r') || doing === 'beg';      /* beg: both wings up */
       const out = BP.open + waddle + happy, z = wave ? -(rig.droop[s] + 1.2) + Math.sin(t * 9) * 0.35 : fold - out;
       bendBone(rig, a[1], 0, 0, sg * z); if (a[2]) bendBone(rig, a[2], 0, 0, sg * (wave ? 0.3 : happy * 0.3)); });
     /* the head: steady against the waddle, looks around while idle, nods to eat */
@@ -467,6 +467,7 @@
     sleep: { pitch: 0, drop: -0.21, roll: 0.12, fU: -1.35, fL: 0.25, hU: -1.25, hK: 1.4, hH: -0.2, nP: 0.35, nY: 0.85, hP: 0.4, tY: 1.4, tP: 2.2 },
     eat: { pitch: 0.08, drop: 0, roll: 0, fU: -0.08, fL: 0, hU: 0, hK: 0, hH: 0, nP: 0.6, nY: 0, hP: 0.35, tY: 0, tP: -0.1 },
     carry: { pitch: 0, drop: 0, roll: 0, fU: 0.35, fL: 0.25, hU: 0.45, hK: 0.35, hH: 0.1, nP: -0.15, nY: 0, hP: -0.1, tY: 0, tP: -0.3 },      // held up: legs dangle
+    beg: { pitch: -0.95, drop: 0.0, roll: 0, fU: -0.4, fL: 1.1, hU: -1.25, hK: 1.85, hH: -0.65, nP: -0.15, nY: 0, hP: 0.2, tY: 0, tP: 0.6 },      /* 4.272 sitting up tall on the back legs, front paws tucked up */
     bow: { pitch: 0.35, drop: -0.02, roll: 0, fU: -0.9, fL: 0.35, hU: 0.1, hK: 0, hH: 0, nP: -0.35, nY: 0, hP: -0.1, tY: 0, tP: -0.5 }
   };
   const RP = Object.assign({}, RIGPOSE.stand);
@@ -603,7 +604,7 @@
   };
   const S = { pose: 'stand', cur: Object.assign({}, POSE.stand), act: 'walk', t: 0, target: new THREE.Vector3(), moving: false, wag: 1, blink: 2, sleepT: 0, hop: 0, fx: [] };
   function act(a) {
-    S.act = a; S.moving = false; bowl.visible = false; ball.visible = false; propBox.visible = false; S.fly = null; S.fstep = null; if (a !== 'fetch' && a !== 'huh') fetchT.visible = false; P.tongue.visible = false; S.hop = 0;
+    S.act = a; S.trick = null; S.moving = false; bowl.visible = false; ball.visible = false; propBox.visible = false; S.fly = null; S.fstep = null; if (a !== 'fetch' && a !== 'huh') fetchT.visible = false; P.tongue.visible = false; S.hop = 0;
     document.querySelectorAll('[data-act]').forEach(b => b.classList.toggle('on', b.dataset.act === a));
     const n = P.look.name;
     if (a === 'walk') { S.pose = 'stand'; pick(); say(n + ' is exploring!'); }
@@ -618,6 +619,14 @@
     if (a === 'fetch') { S.pose = 'stand'; const A = AREA(), to = new THREE.Vector3(A[0] + 0.2 + Math.random() * (A[1] - A[0] - 0.4), 0.12, A[2] + Math.random() * 0.45 * (A[3] - A[2]));
       fetchT.material.map = tex('care:' + (S.toy || 'tennis_ball')); fetchT.material.needsUpdate = true; fetchT.visible = true; S.fly = { from: new THREE.Vector3(pet.position.x * 0.5, 0.4, A[3] + 0.5), to, t: 0 }; S.fstep = 'fly'; say('Fetch!'); }
     if (a === 'huh') { S.pose = 'sit'; fx('❓', 1); say(n + ' is puzzled. Try the next one!'); }
+    /* 4.272 tricks from the Pet Academy (Colleen: more than sit): each plays for a few seconds, then the pet carries on */
+    if (a === 'jump') { S.pose = 'stand'; S.hop = 2; say(n + ' jumps!'); }
+    if (a === 'spin') { S.pose = 'stand'; S.trick = { k: 'spin', t: 0, dur: 1.5 }; say(n + ' spins around!'); }
+    if (a === 'roll') { S.pose = 'stand'; S.trick = { k: 'roll', t: 0, dur: 1.6 }; say(n + ' rolls over!'); }
+    if (a === 'dance') { S.pose = 'stand'; S.trick = { k: 'dance', t: 0, dur: 3.2 }; say(n + ' is dancing!'); }
+    if (a === 'dead') { S.pose = 'sleep'; S.trick = { k: 'dead', t: 0, dur: 3 }; say('Bang! ' + n + ' plays dead…'); }
+    if (a === 'beg') { S.pose = 'sit'; say(n + ' sits up and begs!'); }
+    if (a === 'highfive') { S.pose = 'sit'; S.act = 'wave'; say('High five, ' + n + '!'); }
     if (a === 'happy') { S.pose = 'stand'; S.hop = 3; P.tongue.visible = true; hearts(6); puff('star_burst', 1, 0.5); say(n + ' is SO happy!'); }
   }
   const pick = () => { if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); S.moving = true; };      // a short stroll to somewhere nearby
@@ -684,11 +693,17 @@
     const inBed = S.pose === 'sleep' && !back && pet.position.distanceTo(bed.position) < 0.3; S.bedY = lerp(S.bedY || 0, inBed ? C.lift : 0, 0.1);
     if (G && G.swim) swimFrame(dt, walking);
     if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (G && G.swim && !S.inPool ? 0.24 : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY, 0.3);
-    if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else pet.rotation.z *= 0.8;
+    const T2 = S.trick; if (T2) { T2.t += dt; const k = Math.min(1, T2.t / T2.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      if (T2.k === 'spin') { pet.rotation.y = (T2.y0 === undefined ? (T2.y0 = pet.rotation.y) : T2.y0) + e * Math.PI * 4; pet.position.y = Math.sin(k * Math.PI) * 0.12; }      /* two full turns with a little hop */
+      if (T2.k === 'roll') { pet.rotation.z = e * Math.PI * 2; pet.position.y = Math.sin(k * Math.PI) * 0.08; }      /* over onto its back and up the other side */
+      if (T2.k === 'dance') { pet.position.y = Math.abs(Math.sin(T2.t * 8)) * 0.1; pet.rotation.z = Math.sin(T2.t * 4) * 0.25; pet.rotation.y += Math.sin(T2.t * 4) * dt * 2.5; }      /* bouncing and swaying side to side */
+      if (T2.k === 'dead') pet.rotation.z = Math.min(1, T2.t / 0.4) * Math.PI / 2 * (T2.t < T2.dur - 0.4 ? 1 : Math.max(0, (T2.dur - T2.t) / 0.4));      /* tips onto its side, stays, gets back up */
+      if (T2.t >= T2.dur) { S.trick = null; pet.rotation.z = 0; if (T2.k === 'dead') { S.pose = 'stand'; S.hop = 1; hearts(2); } S.act = 'stay'; } }
+    else if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else pet.rotation.z *= 0.8;
     if (S.pose === 'sleep') { S.sleepT -= dt; if (S.sleepT < 0) { fx('fx:sleep_z', 1); S.sleepT = 2.2; } }
     for (let i = S.fx.length - 1; i >= 0; i--) { const s = S.fx[i]; s.userData.life -= dt; s.position.y += s.userData.vy * dt; s.material.opacity = Math.min(1, s.userData.life); if (s.userData.life <= 0) { scene.remove(s); S.fx.splice(i, 1); } }
     stageFrame(dt); formFrame(dt);
-    if (G) driveModel(dt, S.carry ? 'carry' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking);
+    if (G) driveModel(dt, S.carry ? 'carry' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking);
     R.render(scene, cam); requestAnimationFrame(frame);
   }
   function size() { const w = view.clientWidth, h = view.clientHeight; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
