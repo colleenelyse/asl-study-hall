@@ -9,8 +9,9 @@
 /* color modes (🎨 at the top; the same set as the Hall Pass Kiosk and Resource Check-In; remembered on this device).
    LT Lions (the default since 0.41) is the school brand: LTHS blue #003366 as the page, gold #DEB946 for buttons; the lion is docs/brand/lt-lion.png.
    Meanings never change: --bad red = missing / no-show, --warn amber = check / arrived, --ok green = ready / done, --brand = testing, --info = waitlist and offers. */
-:root[data-look="lt"] { --bg: #003366; --card: #0b3f73; --ink: #ffffff; --mute: #c9d7e8; --line: #1f5a93; --line2: #3470aa; --soft2: #114a82; --brand: #deb946; --brand2: #4e4a33; --onbrand: #002147; --ok: #6ee7a0; --okbg: #14532d; --warn: #ffb36b; --warnbg: #5a3510; --bad: #ff8f8f; --badbg: #5b1d1d; --info: #c9b8ff; --infobg: #3b2a66; --toast: #ffffff; --toastink: #003366; color-scheme: dark; }
+:root[data-look="lt"] { --bg: #003366; --card: #0b3f73; --ink: #ffffff; --mute: #c9d7e8; --line: #1f5a93; --line2: #3470aa; --soft2: #114a82; --brand: #deb946; --brand2: #1d5c9b; --onbrand: #002147; --ok: #6ee7a0; --okbg: #14532d; --warn: #ffd54a; --warnbg: #123a66; --bad: #ff8f8f; --badbg: #5b1d1d; --info: #c9b8ff; --infobg: #3b2a66; --toast: #ffffff; --toastink: #003366; color-scheme: dark; }
 :root[data-look="lt"] .top { background: #002a55; border-bottom: 3px solid #deb946; } :root[data-look="lt"] a { color: #f0d27a; }
+:root[data-look="lt"] .banner.warn { border-left: 5px solid #ffd54a; } :root[data-look="lt"] .banner.info { border-left: 5px solid #8fc1ff; }          /* 0.59: no mustard: highlights are LT blue, warnings bright yellow on blue */
 :root[data-look="calmroom"] { --bg: #f7f2ea; --card: #fffdf9; --ink: #2f2a26; --mute: #6f655b; --line: #e8dfd2; --line2: #d5c8b6; --soft2: #f3ece2; --brand: #2f6f73; --brand2: #dcecec; --onbrand: #fff; --ok: #2e7d5b; --okbg: #dff1e7; --warn: #9a6a12; --warnbg: #fbefcf; --bad: #c0392b; --badbg: #f9e0dd; --info: #6a4c9c; --infobg: #ece4f6; --toast: #2f2a26; --toastink: #fff; }
 :root[data-look="night"] { --bg: #0f172a; --card: #1e293b; --ink: #f8fafc; --mute: #cbd5e1; --line: #334155; --line2: #475569; --soft2: #273449; --brand: #93c5fd; --brand2: #1e3a5f; --onbrand: #0f172a; --ok: #4ade80; --okbg: #14532d; --warn: #fbbf24; --warnbg: #4a3410; --bad: #f87171; --badbg: #5b1d1d; --info: #c4b5fd; --infobg: #3b2a66; --toast: #f8fafc; --toastink: #0f172a; color-scheme: dark; }
 :root[data-look="contrast"] { --bg: #ffffff; --card: #ffffff; --ink: #000000; --mute: #262626; --line: #000000; --line2: #000000; --soft2: #f2f2f2; --brand: #0033cc; --brand2: #dde4ff; --onbrand: #fff; --ok: #006b2d; --okbg: #c8f5d6; --warn: #7a5200; --warnbg: #ffe08a; --bad: #b00000; --badbg: #ffd0cc; --info: #4b1fa8; --infobg: #e6dcff; --toast: #000; --toastink: #fff; }
@@ -315,7 +316,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.58';
+var VERSION = '0.59';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -3501,10 +3502,12 @@ function icCols_(headers) {          // header name → our key; plus missing / 
   headers.forEach(function (h, i) {          // case managers are Infinite Campus flags whose label is the staff member's name
     if (idx.cmgr === undefined && /case\s*manag|flag/i.test(h) && !IC_COLS.some(function (c) { return hnorm_(c[1]) === hnorm_(h); })) { idx.cmgr = i; extra.push('(' + h + ' = case manager)'); }
   });
+  var planLabels = [];          // 0.59: IEP / 504 columns by any name ("Section 504", "504 Plan", "Special Ed Status", "IEP", "SPED"…): keys plan0, plan1…, read with their header
+  headers.forEach(function (h, i) { if (i !== idx.cmgr && planLabels.length < 5 && /\b504\b|\biep\b|special\s*ed|\bsped\b|learning\s*plan|disabilit/i.test(h)) { idx['plan' + planLabels.length] = i; planLabels.push(h); extra.push('(' + h + ' = IEP / 504)'); } });
   var used = {}; Object.keys(idx).forEach(function (k) { used[idx[k]] = 1; });
-  headers.forEach(function (h, i) { if (h && !used[i] && !/counsel|case\s*manag|flag/i.test(h)) extra.push(h); });
+  headers.forEach(function (h, i) { if (h && !used[i] && !/counsel|case\s*manag|flag|\b504\b|\biep\b|special\s*ed|\bsped\b|learning\s*plan|disabilit/i.test(h)) extra.push(h); });
   var ambiguous = dup.filter(function (h) { return IC_COLS.some(function (c) { return hnorm_(c[1]) === hnorm_(h); }); });
-  return { idx: idx, missing: missing, dupes: dup, ambiguous: ambiguous, extra: extra };
+  return { idx: idx, missing: missing, dupes: dup, ambiguous: ambiguous, extra: extra, planLabels: planLabels };
 }
 // Row 1 of IC_Raw_Import (the column names) stays frozen: Google's Data › Sort sheet then leaves it on top. A new upload with
 // "Replace current sheet" can unfreeze it, so the app freezes it again whenever it reads the tab.
@@ -3562,7 +3565,7 @@ function api_icStart() {
     if (hr === 0 && best > 0) icFreeze_();
     var headers = top[hr].map(str_), c = icCols_(headers);
     n = sh.getLastRow() - (hr + 1); j.hrow = hr + 1;
-    j.total = n; j.width = wcol; j.headers = headers.length; j.chunks = Math.ceil(n / IC_CHUNK); j.idx = c.idx; j.dupes = c.dupes; j.extra = c.extra;
+    j.total = n; j.width = wcol; j.headers = headers.length; j.chunks = Math.ceil(n / IC_CHUNK); j.idx = c.idx; j.planLabels = c.planLabels; j.dupes = c.dupes; j.extra = c.extra;
     // never echo the row when it isn't column names: it would be a student's information (and the job is saved in the sheet's properties)
     if (best < 1) return icFail_(j, 'The export has no column-names row: the first row is already a student, so the app can’t tell which column is which. Export the report again with its column names (the first row should say student.lastName, student.firstName, student.studentNumber…), or paste that row above the data.');
     if (c.missing.length) return icFail_(j, 'These required columns are missing from ' + IC_TAB + ': ' + c.missing.join(', ') + '. The column names the app found (row ' + j.hrow + '): ' + headers.filter(function (h) { return /[a-z]/i.test(h) && !/\d{4,}|@/.test(h); }).slice(0, 30).join(' · ') + '. Check the Infinite Campus report.');
@@ -3642,6 +3645,7 @@ function icModel_(j) {
       if (!campus) { problems.push({ line: line, what: 'Can’t tell the campus (no North/South in the calendar name and no grade)' }); return; }
       var s = stu[sid] || (stu[sid] = { sid: sid, first: g('first'), last: g('last'), alias: g('alias'), grade: g('grade').replace(/\D/g, ''), campus: campus, active: g('active'), calendar: g('calendar'), syear: g('syear'), cname: g('cname'), cemail: low_(g('cemail')), cmgrs: [] });
       if (g('cmgr') && s.cmgrs && s.cmgrs.indexOf(g('cmgr')) < 0) s.cmgrs.push(g('cmgr'));          // one flag per row; a student can have several
+      (j.planLabels || []).forEach(function (h, pi) { var v = String(g('plan' + pi) || '').trim(); if (!v || /^(n|no|false|0|none|inactive|exited|-)$/i.test(v)) return; var tag = h + ': ' + v; if (s.cmgrs.indexOf(tag) < 0) s.cmgrs.push(tag); });          // "Section 504: Y" → 504, "Special Ed Status: Active" → IEP
       // not a class (the student is still kept): clubs/activities (code starts with Z), no room, or a period end that isn't a number
       var code = (g('cnum') + ' ' + g('cid')).toUpperCase().trim().split(/\s+/);
       if (zList.length && code.some(function (x) { return zList.some(function (z) { return x && x.indexOf(z) === 0; }); })) { c.notClass++; c.clubs++; return; }
@@ -3672,7 +3676,7 @@ function icModel_(j) {
   var cov = { campuses: [], grades: [] };
   Object.keys(stu).forEach(function (k) { var s = stu[k]; if (cov.campuses.indexOf(s.campus) < 0) cov.campuses.push(s.campus); if (s.grade && cov.grades.indexOf(s.grade) < 0) cov.grades.push(s.grade); });
   cov.campuses.sort(); cov.grades.sort(function (a, b) { return a - b; });
-  return { stu: stu, tch: tch, sec: sec, ros: ros, counts: c, problems: problems, coverage: cov, hasCmgr: !!(j.idx && j.idx.cmgr !== undefined) };
+  return { stu: stu, tch: tch, sec: sec, ros: ros, counts: c, problems: problems, coverage: cov, hasCmgr: !!(j.idx && (j.idx.cmgr !== undefined || (j.planLabels || []).length)) };
 }
 // A period cell → the period numbers in it, as text, in order: "8" → [8]; "8 · 8 · 7" or "8, 7" or "3;4" → [8, 7]; "Per 05" → [5].
 // Never arithmetic or decimals ("8.7" is not 8.7 — it's unclear); a date or anything without a clear 0–15 period is unclear ([]).
