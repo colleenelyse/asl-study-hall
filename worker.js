@@ -157,9 +157,13 @@ export default {
     if (p === '/numbers') return Response.redirect(url.origin + '/numbers/' + url.search, 301);
     if (p.startsWith('/numbers/')) return numbers(req, env, url, p);      // asl.cool/numbers: the games in numbers mode, at their own address (Colleen, 2026-10-17)
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
-    if (p.startsWith('/_private/')) return new Response('Not found', { status: 404 });      // never served directly
+    if (p.startsWith('/_private/') || p.startsWith('/_colleen/')) return new Response('Not found', { status: 404 });      // never served directly (an underscore folder is also left out of the github.io copy)
     if (p === '/q-unlock') return req.method === 'POST' ? qUnlock(req, env) : json({ error: 'POST only' }, 405);
-    if (p === '/colleen' || p.startsWith('/colleen/')) { if (!(await qOk(req, env))) return qGate(); }      // her quick links page: her password, remembered on the device for a year
+    if (p === '/colleen' || p.startsWith('/colleen/')) {      // her quick links page (files in _colleen/): her password, remembered on the device for a year
+      if (!(await qOk(req, env))) return qGate();
+      if (p === '/colleen') return Response.redirect(url.origin + '/colleen/' + url.search, 301);
+      const r = await env.ASSETS.fetch(new Request(new URL('/_colleen/' + p.slice('/colleen/'.length) + url.search, req.url), req)); const h = new Headers(r.headers); h.set('cache-control', 'no-store');
+      return new Response(r.body, { status: r.status, headers: h }); }
     if (p === '/admin/quicklinks') return req.method === 'POST' ? quicklinks(req, env) : json({ error: 'POST only' }, 405);      // admin only, with her password's proof
     const res = await env.ASSETS.fetch(req);
     return shopSwitch(req, env, res, p);
