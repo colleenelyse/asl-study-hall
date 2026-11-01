@@ -297,14 +297,14 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.31';
+var VERSION = '0.40';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
 var TABLES = {
   Settings: [['key', 'Setting'], ['S', 'South'], ['N', 'North'], ['help', 'What it means']],
   Staff: [['email', 'Email'], ['name', 'Name'], ['role', 'Role'], ['campus', 'Home campus'], ['other', 'Other campus'], ['active', 'Active'], ['notes', 'Notes']],
-  Students: [['sid', 'Student ID'], ['first', 'First name'], ['last', 'Last name'], ['email', 'Email'], ['grade', 'Grade'], ['campus', 'Campus'], ['status', 'Status'], ['year', 'School year'], ['updated', 'Updated'], ['imp', 'Import'], ['alias', 'Alias'], ['icActive', 'Active today (IC)'], ['calendar', 'Calendar'], ['syear', 'Start year'], ['counselor', 'Counselor'], ['cemail', 'Counselor email'], ['cmgr', 'Case manager']],
+  Students: [['sid', 'Student ID'], ['first', 'First name'], ['last', 'Last name'], ['email', 'Email'], ['grade', 'Grade'], ['campus', 'Campus'], ['status', 'Status'], ['year', 'School year'], ['updated', 'Updated'], ['imp', 'Import'], ['alias', 'Alias'], ['icActive', 'Active today (IC)'], ['calendar', 'Calendar'], ['syear', 'Start year'], ['counselor', 'Counselor'], ['cemail', 'Counselor email'], ['cmgr', 'Case manager'], ['plan', 'Support plan (IEP / 504)']],
   Teachers: [['tid', 'Staff ID'], ['name', 'Name'], ['email', 'Email'], ['esrc', 'Email source'], ['campus', 'Campus'], ['contact', 'Testing contact email'], ['notes', 'Notes'], ['full', 'Full name'], ['emailPref', 'Email choice'], ['setupYear', 'Year set up']],
   Sections: [['secid', 'Section ID'], ['year', 'School year'], ['campus', 'Campus'], ['cid', 'Course ID'], ['course', 'Course'], ['period', 'Period'], ['type', 'Type'], ['term', 'Term'], ['pend', 'Period end'], ['tend', 'Term end'], ['room', 'Room'], ['lunch', 'Lunch'], ['cnum', 'Course number'], ['snum', 'Section number'], ['bell', 'Bell schedule'], ['sched', 'Meeting patterns']],
   'Section Teachers': [['secid', 'Section ID'], ['tid', 'Staff ID'], ['role', 'Role'], ['year', 'School year']],
@@ -320,7 +320,10 @@ var TABLES = {
   'Platform Guides': [['platform', 'Platform'], ['title', 'Title'], ['steps', 'How to give it'], ['updated', 'Updated'], ['by', 'By']],
   Suggestions: [['id', 'ID'], ['at', 'When'], ['by', 'From'], ['name', 'Name'], ['view', 'Tried as'], ['screen', 'Screen'], ['text', 'Suggestion'], ['priority', 'How important'], ['status', 'Status'], ['note', 'Admin note']],
   Counselors: [['campus', 'Campus'], ['grades', 'Grades'], ['from', 'Last names from'], ['to', 'Last names to'], ['name', 'Counselor'], ['email', 'Email']],
-  'Test Requests': [['id', 'ID'], ['campus', 'Campus'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['where', 'Where'], ['status', 'Status'], ['appt', 'Appointment'], ['note', 'Note'], ['created', 'Created'], ['by', 'Created by'], ['byName', 'Created by (name)'], ['changed', 'Changed'], ['reqId', 'Request ID'], ['mailbox', 'Back in teacher’s mailbox'], ['mailboxBy', 'Put there by']],
+  Accommodations: [['id', 'ID'], ['sid', 'Student ID'], ['course', 'Course'], ['tid', 'Teacher ID'], ['items', 'Accommodations'], ['other', 'Other'], ['updated', 'Updated'], ['by', 'Updated by']],
+  'Semester Tests': [['id', 'ID'], ['year', 'School year'], ['sem', 'Semester'], ['tid', 'Teacher ID'], ['course', 'Course'], ['count', 'Number of summative tests'], ['titles', 'Test titles'], ['updated', 'Updated'], ['by', 'Updated by']],
+  'Retake Overrides': [['id', 'ID'], ['year', 'School year'], ['sem', 'Semester'], ['sid', 'Student ID'], ['course', 'Course'], ['tid', 'Teacher ID'], ['test', 'Test asked for'], ['status', 'Status'], ['asked', 'Asked'], ['answered', 'Answered'], ['by', 'Answered by']],
+  'Test Requests': [['id', 'ID'], ['campus', 'Campus'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['where', 'Where'], ['status', 'Status'], ['appt', 'Appointment'], ['note', 'Note'], ['created', 'Created'], ['by', 'Created by'], ['byName', 'Created by (name)'], ['changed', 'Changed'], ['reqId', 'Request ID'], ['mailbox', 'Back in teacher’s mailbox'], ['mailboxBy', 'Put there by'], ['tcToo', 'Or the Testing Center']],
   Appointments: [['id', 'ID'], ['campus', 'Campus'], ['date', 'Date'], ['period', 'Period'], ['half', 'Half'], ['sid', 'Student ID'], ['secid', 'Section ID'], ['course', 'Course'], ['teacher', 'Teacher'], ['aid', 'Assessment ID'], ['test', 'Test name'], ['purpose', 'Purpose'], ['fmt', 'Student said'], ['status', 'Status'], ['conflict', 'Class conflict'], ['source', 'Source'], ['ext', 'External ID'], ['req', 'Request ID'], ['created', 'Created'], ['by', 'Created by'], ['changed', 'Changed'], ['notes', 'Notes'], ['snotes', 'Staff notes'], ['nsChoice', 'After no-show'], ['cal', 'Calendar event'], ['loc', 'Testing room'], ['mailbox', 'Back in teacher’s mailbox'], ['mailboxBy', 'Put there by']],
   'Testing Rooms': [['id', 'ID'], ['campus', 'Campus'], ['name', 'Name'], ['tids', 'Teachers'], ['secids', 'Sections'], ['periods', 'Periods'], ['room', 'Room'], ['seats', 'Seats'], ['status', 'Status'], ['src', 'Found by'], ['notified', 'Teachers emailed'], ['kind', 'Kind'], ['runby', 'Run by'], ['notes', 'Notes'], ['open', 'Who can be sent here'], ['sids', 'Students'], ['emails', 'Run by emails']],
   Sessions: [['id', 'ID'], ['appt', 'Appointment ID'], ['inAt', 'Checked in'], ['start', 'Started'], ['end', 'Ended'], ['outcome', 'Outcome'], ['note', 'Note'], ['by', 'Staff'], ['desk', 'Desk']],
@@ -454,10 +457,15 @@ function cols_(name) {          // key → column number, by header text (so som
   TABLES[name].forEach(function (c) { var i = head.indexOf(c[1]); if (i >= 0) out[c[0]] = i + 1; });
   return (MEMO_[mk] = out);
 }
-function tver_(name) { var c = CacheService.getScriptCache(), v = c.get('tv:' + name); if (!v) { v = Utilities.getUuid().slice(0, 8); c.put('tv:' + name, v, 21600); } return v; }
-function bump_(name) { if (CACHED_[name]) try { CacheService.getScriptCache().put('tv:' + name, Utilities.getUuid().slice(0, 8), 21600); } catch (e) {} }
+function tver_(name) {          // the tab's cache version; every tab's version comes in ONE cache call per request (0.36)
+  var c = CacheService.getScriptCache(), tv = MEMO_._tv;
+  if (!tv) { var ks = Object.keys(CACHED_).map(function (k) { return 'tv:' + k; }), got = {}; try { got = c.getAll(ks) || {}; } catch (e) {} tv = MEMO_._tv = {}; Object.keys(CACHED_).forEach(function (k) { if (got['tv:' + k]) tv[k] = got['tv:' + k]; }); }
+  var v = tv[name]; if (!v) { v = tv[name] = Utilities.getUuid().slice(0, 8); c.put('tv:' + name, v, 21600); }
+  return v;
+}
+function bump_(name) { if (CACHED_[name]) try { var v = Utilities.getUuid().slice(0, 8); CacheService.getScriptCache().put('tv:' + name, v, 21600); if (MEMO_._tv) MEMO_._tv[name] = v; } catch (e) {} }
 function bumpAll_() { Object.keys(CACHED_).forEach(bump_); }
-function clearMemo_(name) { delete MEMO_[name]; Object.keys(MEMO_).forEach(function (k) { if (k.indexOf('ix:' + name + ':') === 0) delete MEMO_[k]; }); bump_(name); }
+function clearMemo_(name) { delete MEMO_[name]; Object.keys(MEMO_).forEach(function (k) { if (k.indexOf('ix:' + name + ':') === 0 || k.indexOf('sm:' + name + ':') === 0 || k.indexOf('sx:' + name + ':') === 0 || k.indexOf('sn:sm:' + name + ':') === 0) delete MEMO_[k]; }); bump_(name); }
 function tblGet_(name) {
   try {
     var c = CacheService.getScriptCache(), key = 'tb:' + name + ':' + tver_(name), n = +c.get(key); if (!n) return null;
@@ -529,6 +537,51 @@ function group_(name, key) {          // value → all rows
   var ix = {}; rows_(name).forEach(function (o) { var v = String(o[key]); (ix[v] = ix[v] || []).push(o); }); return (MEMO_[mk] = ix);
 }
 function find_(name, key, val) { return index_(name, key)[String(val)] || null; }
+// Speed (0.36): a few people's rows without loading a whole big tab. Most screens are about one student or one teacher, but loading
+// all Students (~0.5 MB) or all Enrollments (~2.5 MB for 3,600 students) from the cache took seconds in Apps Script. The rows are also
+// kept in the script cache one person (or class) at a time, under the tab's version, so any change to the tab starts fresh. The first
+// request after a change builds them all from the whole tab (once); inside locked_() or when the tab is loaded already, the tab is used.
+var SLICE_CALLS_ = 40;          // more separate look-ups than this in one request: just load the whole tab
+function slices_(name, key, vals) {
+  var want = vals.map(function (v) { return low_(v); }), out = {};
+  var full = function () {
+    var xk = 'sx:' + name + ':' + key, gx = MEMO_[xk];
+    if (!gx) { gx = {}; rows_(name).forEach(function (o) { var v = low_(o[key]); (gx[v] = gx[v] || []).push(o); }); MEMO_[xk] = gx; }
+    want.forEach(function (v) { out[v] = gx[v] || []; }); return out;
+  };
+  if (NOCACHE_ || MEMO_[name] || !CACHED_[name]) return full();
+  var mk = 'sm:' + name + ':' + key, have = MEMO_[mk] || (MEMO_[mk] = {}), miss = want.filter(function (v) { return v && !(v in have); });
+  if (miss.length) {
+    var nk = 'sn:' + mk; MEMO_[nk] = (MEMO_[nk] || 0) + 1; if (MEMO_[nk] > SLICE_CALLS_) return full();
+    try {
+      var c = CacheService.getScriptCache(), pre = 'sl:' + name + ':' + key + ':' + tver_(name) + ':', ks = miss.map(function (v) { return pre + v; }).filter(function (k) { return k.length <= 240; }), got = c.getAll(ks.concat([pre + '*'])) || {};
+      if (!got[pre + '*']) { slicesPut_(name, key, pre); return full(); }
+      for (var i = 0; i < miss.length; i++) { var x = got[pre + miss[i]]; if (x === 'X' || (pre + miss[i]).length > 240) return full(); have[miss[i]] = x ? JSON.parse(x) : []; }
+    } catch (e) { return full(); }
+  }
+  want.forEach(function (v) { out[v] = have[v] || []; }); return out;
+}
+function slicesPut_(name, key, pre) {
+  try {
+    var gx = {}; rows_(name).forEach(function (o) { var v = low_(o[key]); if (v) (gx[v] = gx[v] || []).push(o); });
+    var c = CacheService.getScriptCache(), batch = {}, n = 0, flush = function () { if (n) c.putAll(batch, 21600); batch = {}; n = 0; };
+    Object.keys(gx).forEach(function (v) { if ((pre + v).length > 240) return; var j = JSON.stringify(gx[v]); batch[pre + v] = j.length > 90000 ? 'X' : j; if (++n >= 250) flush(); });
+    flush(); c.put(pre + '*', '1', 21600);
+  } catch (e) {}
+}
+function withField_(name, field, keep) {          // just the rows with something in one column (case managers…), a few columns each
+  var full = function () { return rows_(name).filter(function (o) { return str_(o[field]); }); };
+  if (NOCACHE_ || MEMO_[name] || !CACHED_[name]) return full();
+  var mk = 'wf:' + name + ':' + field; if (MEMO_[mk]) return MEMO_[mk];
+  try {
+    var c = CacheService.getScriptCache(), key = mk + ':' + tver_(name), x = c.get(key);
+    if (x && x !== 'X') return (MEMO_[mk] = JSON.parse(x));
+    if (x === 'X') return full();
+    var l = full().map(function (o) { var r = {}; keep.forEach(function (k) { r[k] = o[k]; }); return r; }), j = JSON.stringify(l);
+    c.put(key, j.length > 90000 ? 'X' : j, 21600); return l;
+  } catch (e) { return full(); }
+}
+function studentsLoad_(sids) { if (sids.length) slices_('Students', 'sid', sids); }          // one cache call for a list of students
 // an edit typed straight into the sheet (Settings, Testing Periods, Bell Schedules, Calendar…) clears that tab's cached copy
 function onEdit(e) { try { var n = e && e.range && e.range.getSheet().getName(); if (n && CACHED_[n]) bump_(n); } catch (x) {} }
 function audit_(action, target, details) { insert_('Audit', { at: iso_(), who: myEmail_(), action: action, target: target, details: typeof details === 'string' ? details : JSON.stringify(details || '') }); }
@@ -545,7 +598,7 @@ function settingNum_(key, campus, dflt) { var v = parseFloat(setting_(key, campu
 function campusConf_(c) {
   return { code: c, name: campusName_(c), where: setting_('Testing Center location', c), booking: yes_(setting_('Student booking in this app', c)),
     daysAhead: settingNum_('Days ahead students can book', c, 14), cutoffH: settingNum_('Book at least this many hours ahead', c, 0),
-    noWalkins: list_(setting_('No walk-ins during periods', c)), maxUpcoming: settingNum_('Most upcoming appointments per student', c, 0),
+    noWalkins: noWalkins_(c), maxUpcoming: settingNum_('Most upcoming appointments per student', c, 0),
     purposes: list_(setting_('Booking purposes', c)), waitlist: yes_(setting_('Waitlist', c)), offerMode: /approve/i.test(setting_('Waitlist offers', c)) ? 'approve' : 'auto',
     offerHours: settingNum_('Hours to answer a waitlist offer', c, 1), quiet: setting_('Quiet hours', c), insideCutoff: /allow/i.test(setting_('Offers inside the booking cutoff', c)) ? 'allow' : 'ask',
     dropoff: setting_('Paper test drop-off locations', c), materials: (function (v) { return /auto/i.test(v) ? 'auto' : /off/i.test(v) ? 'off' : 'review'; })(setting_('Missing-material emails', c)),
@@ -576,7 +629,7 @@ function who_() {
   }
   var t = rows_('Teachers').filter(function (r) { return low_(r.email) === email && verifiedSrc_(r.esrc); })[0] || teacherByPattern_(email);
   if (t) { w.roles.push('teacher'); w.tid = str_(t.tid); w.name = w.name || str_(t.name); }
-  var s = rows_('Students').filter(function (r) { return low_(r.email) === email && /^active$/i.test(str_(r.status) || 'active'); })[0] || studentByPattern_(email);
+  var s = slices_('Students', 'email', [email])[email].filter(function (r) { return /^active$/i.test(str_(r.status) || 'active'); })[0] || studentByPattern_(email);
   if (!t && !s && troomRows_().some(function (r) { return troomActive_(r) && list_(r.emails).map(low_).indexOf(email) >= 0; })) w.roles.push('room');          // runs RIR / Tapestry… without teaching
   if (s) { w.roles.push('student'); w.sid = str_(s.sid); w.name = w.name || studentName_(s); w.campus = str_(s.campus) === 'N' ? 'N' : 'S'; }
   return (MEMO_._who = w);
@@ -586,7 +639,7 @@ function who_() {
 // confirmed the account; the pattern must point to exactly one person.
 function studentByPattern_(email) {
   var m = /^([a-z]{1,3})(\d{3,})@(.+)$/.exec(email); if (!m || m[3] !== domain_()) return null;
-  var hit = rows_('Students').filter(function (r) { return /^active$/i.test(str_(r.status) || 'active') && String(str_(r.sid)).replace(/^0+/, '') === m[2].replace(/^0+/, '') && low_(r.last).replace(/[^a-z]/g, '').slice(0, 3) === m[1]; });
+  var hit = [m[2], m[2].replace(/^0+/, '')].reduce(function (a, v) { var sl = slices_('Students', 'sid', [v])[low_(v)]; return a.concat(sl.filter(function (r) { return a.indexOf(r) < 0; })); }, []).filter(function (r) { return /^active$/i.test(str_(r.status) || 'active') && String(str_(r.sid)).replace(/^0+/, '') === m[2].replace(/^0+/, '') && low_(r.last).replace(/[^a-z]/g, '').slice(0, 3) === m[1]; });
   return hit.length === 1 ? hit[0] : null;
 }
 function teacherByPattern_(email) {
@@ -690,8 +743,11 @@ function api_boot() {
   if (myEmail_() === owner_()) ensureSetup_();
   var w = who_();
   if (!w.email) return { error: 'signin' };
+  rollTests_();          // once a year: last year's test names carry over
+  semRoll_();          // once a semester: schedule corrections end, students re-check their schedules
+  autoRooms_();          // BASE / support classes become testing locations by themselves after an import
   var out = { email: w.email, name: w.name, roles: w.roles, campuses: w.campuses, version: VERSION, today: today_(), url: appUrl_(), names: { S: campusName_('S'), N: campusName_('N') } };
-  if (w.roles.indexOf('student') >= 0) out.student = studentHome_(w);
+  if (w.roles.indexOf('student') >= 0) { out.student = studentHome_(w); if (out.student.booking) try { out.student.slots = slotsFor_(w); } catch (e) {} }          // the open periods come with the page: one trip, not two (0.36)
   if (w.roles.indexOf('teacher') >= 0) { out.teacher = teacherHome_(w); out.setup = needSetup_(w); }
   if (w.roles.indexOf('teacher') >= 0 || w.roles.indexOf('room') >= 0) {
     out.rooms = myRooms_(w).map(function (r) { return { id: str_(r.id), name: str_(r.name) }; });
@@ -717,8 +773,8 @@ function onOpen() {
 }
 function setupSheet() {
   setupTabs_();
-  if (!rows_('Testing Periods').length) insertMany_('Testing Periods', samplePeriods_());
-  if (!rows_('Bell Schedules').length) insertMany_('Bell Schedules', sampleBells_());
+  if (!rows_('Testing Periods').length) { insertMany_('Testing Periods', samplePeriods_()); makeupPeriod_(); }
+  if (!rows_('Bell Schedules').some(function (r) { return !/^final exams/i.test(str_(r.sched)); })) insertMany_('Bell Schedules', sampleBells_());          // (the final exam days may be there first)
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'tick' || t.getHandlerFunction() === 'morning' || t.getHandlerFunction() === 'afternoon') ScriptApp.deleteTrigger(t); });
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'monthly' || t.getHandlerFunction() === 'weekly') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('monthly').timeBased().onMonthDay(1).atHour(2).create();          // old rows → Archive tabs
@@ -740,6 +796,14 @@ function setupTabs_() {
       insertMany_('Testing Rooms', CAMPUSES.map(function (c) { return { id: uid_('tr'), campus: c, name: 'RIR', kind: 'Other place', open: 'Everyone', runby: '', tids: '', emails: '', seats: 0, status: 'Active', src: 'Added by setup', notes: 'Students sent here for discipline. Add the RIR staff emails in Run by so they see tests sent here.' }; }));
     PropertiesService.getDocumentProperties().setProperty('rir1', '1');
   }
+  if (!PropertiesService.getDocumentProperties().getProperty('finals1')) {          // 0.38: LTHS final exam days (Colleen 2026-10-29): the same periods every semester
+    if (!rows_('Bell Schedules').some(function (r) { return /^final exams/i.test(str_(r.sched)); })) insertMany_('Bell Schedules', finalBells_());
+    var fallDates = ['2026-12-16', '2026-12-17', '2026-12-18'];
+    if (fallDates[0] >= today_() && !rows_('Calendar').some(function (r) { return fallDates.indexOf(day_(r.date)) >= 0; }))
+      insertMany_('Calendar', fallDates.map(function (d, i) { return { date: d, campus: 'Both', sched: FINALS_[i], school: 'Yes', note: 'Final exams, day ' + (i + 1) }; }));
+    PropertiesService.getDocumentProperties().setProperty('finals1', '1');
+  }
+  if (!PropertiesService.getDocumentProperties().getProperty('finals2')) { if (rows_('Testing Periods').length) makeupPeriod_(); PropertiesService.getDocumentProperties().setProperty('finals2', '1'); }          // 0.39
   var icj = json_(PropertiesService.getDocumentProperties().getProperty('icJob'), null);          // 0.23.2 echoed a student's row in a failure message: remove it
   if (icj && /column names the app found/.test(str_(icj.error))) { icj.error = 'The export has no column-names row (see Student list & imports). Press Process again after fixing it.'; PropertiesService.getDocumentProperties().setProperty('icJob', JSON.stringify(icj)); }
   Object.keys(TABLES).forEach(function (name) {          // every tab, and any missing header added at the end (nothing moved or removed)
@@ -800,6 +864,47 @@ function samplePeriods_() {
     });
   });
   return out;
+}
+// LTHS final exams (fall 2026 schedule from Colleen): three days, the same periods and times every semester; an administrator only picks
+// the three dates (Settings › Seats & periods › Final exams). "Make-up" is the make-up exam block on day 3 (not a Testing Center period).
+var FINALS_ = ['Final Exams 1', 'Final Exams 2', 'Final Exams 3'];
+var FINAL_BELLS_ = [[['2', '07:45', '09:25'], ['3', '09:35', '11:15'], ['4', '11:25', '13:05']], [['7', '07:45', '09:25'], ['6', '09:35', '11:15'], ['5', '11:25', '13:05']], [['1', '07:45', '09:25'], ['8', '09:45', '11:25'], ['Make-up', '11:30', '13:00']]];
+function finalBells_() { var out = []; CAMPUSES.forEach(function (c) { FINAL_BELLS_.forEach(function (day, i) { day.forEach(function (p) { out.push({ campus: c, sched: FINALS_[i], period: p[0], start: p[1], end: p[2], aEnd: '', bStart: '' }); }); }); }); return out; }
+// 0.39 (Colleen): students can book the Testing Center during the Make-up block of final exam day 3. It's a Testing Center period like
+// the others (Testing Periods, the same seats as period 1); it only exists on a day whose bell schedule has it, so only on that day.
+function makeupPeriod_() {
+  CAMPUSES.forEach(function (c) {
+    var have = rows_('Testing Periods').filter(function (r) { return str_(r.campus).charAt(0).toUpperCase() === c; }); if (!have.length || have.some(function (r) { return str_(r.period) === 'Make-up'; })) return;
+    var p1 = have.filter(function (r) { return str_(r.period) === '1'; })[0] || have[0];
+    insert_('Testing Periods', { campus: str_(p1.campus) || c, period: 'Make-up', label: 'Final exam make-up block', Mon: 'Open', Tue: 'Open', Wed: 'Open', Thu: 'Open', Fri: 'Open', cap: str_(p1.cap), ab: 'No', walkin: 'Yes' });
+  });
+}
+// 0.40: walk-ins follow the Walk-ins boxes on Settings › Seats & periods (one place to set it); the older Settings row is used only
+// when no period has a Walk-ins value at all
+function noWalkins_(c) {
+  var rows = rows_('Testing Periods').filter(function (r) { return str_(r.campus).charAt(0).toUpperCase() === c; });
+  if (!rows.some(function (r) { return str_(r.walkin); })) return list_(setting_('No walk-ins during periods', c));
+  return rows.filter(function (r) { return /^(no|n|false)$/i.test(str_(r.walkin)); }).map(function (r) { return str_(r.period); });
+}
+function api_finalsGet() {
+  var w = need_('staff'), t = today_(), cal = rows_('Calendar').filter(function (r) { return FINALS_.indexOf(str_(r.sched)) >= 0; });
+  var next = FINALS_.map(function (sc) { var ds = cal.filter(function (r) { return str_(r.sched) === sc; }).map(function (r) { return day_(r.date); }).sort(); return ds.filter(function (d) { return d >= t; })[0] || ''; });
+  var past = FINALS_.map(function (sc) { return cal.filter(function (r) { return str_(r.sched) === sc && day_(r.date) < t; }).map(function (r) { return day_(r.date); }).sort().pop() || ''; });
+  return { edit: w.roles.indexOf('admin') >= 0, scheds: FINALS_, next: next, last: past, bells: FINAL_BELLS_.map(function (day) { return day.map(function (p) { return { period: p[0], start: p[1], end: p[2] }; }); }) };
+}
+// dates = [day 1, day 2, day 3] (yyyy-mm-dd, or '' to leave that day out): replaces the upcoming final exam days on the Calendar (both campuses)
+function api_finalsSave(dates) {
+  var w = need_('admin'), t = today_(); dates = (dates || []).map(function (d) { return day_(d) || ''; });
+  if (dates.some(function (d) { return d && d < t; })) throw new Error('Pick days from today on.');
+  locked_(function () {
+    if (!rows_('Bell Schedules').some(function (r) { return /^final exams/i.test(str_(r.sched)); })) insertMany_('Bell Schedules', finalBells_());
+    makeupPeriod_();
+    var keep = rows_('Calendar').filter(function (r) { return !(FINALS_.indexOf(str_(r.sched)) >= 0 && day_(r.date) >= t) && dates.indexOf(day_(r.date)) < 0; });
+    dates.forEach(function (d, i) { if (d) keep.push({ date: d, campus: 'Both', sched: FINALS_[i], school: 'Yes', note: 'Final exams, day ' + (i + 1) }); });
+    replaceAll_('Calendar', keep);
+    audit_('Final exam days set', '', { dates: dates, by: w.email });
+  });
+  return api_finalsGet();
 }
 // SAMPLE times only (not LTHS's real bells): the coordinators replace them on the Bell Schedules tab.
 function sampleBells_() {
@@ -866,9 +971,9 @@ function enrActive_(e, d) {
 }
 function officialSchedule_(sid, d) {
   d = d || today_();
-  if (!MEMO_._enr) { var by = {}; rows_('Enrollments').forEach(function (e) { if (!/drop/i.test(e.status)) (by[str_(e.sid)] = by[str_(e.sid)] || []).push({ secid: str_(e.secid), start: day_(e.start), end: day_(e.end) }); }); MEMO_._enr = by; }
+  var mine = slices_('Enrollments', 'sid', [str_(sid)])[low_(sid)].filter(function (e) { return !/drop/i.test(e.status); }).map(function (e) { return { secid: str_(e.secid), start: day_(e.start), end: day_(e.end) }; });
   var S = sectionsById_(), out = [], seen = {};
-  (MEMO_._enr[str_(sid)] || []).forEach(function (e) {
+  mine.forEach(function (e) {
     if (!enrActive_(e, d)) return;
     var s = S[e.secid]; if (!s || seen[e.secid]) return; seen[e.secid] = 1;
     var tch = secTeachers_(e.secid), pers = sectionPeriods_(s);
@@ -901,7 +1006,7 @@ function schedule_(sid, d) {          // what booking uses (on date d): the stud
   return { rows: officialSchedule_(sid, d), source: 'district', at: lastImport_() };
 }
 function lastImport_() { var r = rows_('Imports').filter(function (i) { return (i.kind === 'roster' || i.kind === 'ic') && /^applied/i.test(i.status); }).sort(function (a, b) { return ms_(b.at) - ms_(a.at); })[0]; return r ? str_(r.at) : ''; }
-function student_(sid) { return find_('Students', 'sid', sid); }
+function student_(sid) { if (NOCACHE_ || MEMO_.Students) return find_('Students', 'sid', sid); return slices_('Students', 'sid', [str_(sid)])[low_(sid)][0] || null; }
 function fullName_(first, alias, last) { first = str_(first); alias = str_(alias); return first + (alias && low_(alias) !== low_(first) ? ' (' + alias + ')' : '') + ' ' + str_(last); }          // First (Nickname) Last
 function studentName_(s) { return s ? fullName_(s.first, s.alias, s.last) : ''; }
 
@@ -1561,7 +1666,7 @@ function conflictFor_(sid, period, half, d) {
 }
 
 // ---------- the student's calendar of open periods
-function api_slots(from) { return slotsFor_(need_('student'), from); }
+function api_slots(from) { var w = need_('student'); autoRooms_(); return slotsFor_(w, from); }
 function slotsFor_(w, from) {          // w = {sid, campus}: the student, or the student a teacher is booking for
   var c = w.campus, conf = campusConf_(c);
   if (!conf.booking) throw new Error('Book your Testing Center appointment in SignUpGenius for now.');
@@ -1603,9 +1708,11 @@ function book_(w, sid, req, staff) {
   var cls = pickClass_(sid, req), test = clean_(req.test, 120), aid = str_(req.aid);
   var RQ = req.rq ? req_(req.rq) : null;          // booked from a teacher's test request: its class and test
   if (RQ && str_(RQ.sid) === sid && /^open/i.test(RQ.status)) { req.secid = str_(RQ.secid); cls = pickClass_(sid, req); aid = str_(RQ.aid); test = str_(RQ.test); } else RQ = null;
+  if (!aid && test && cls.secid) { var M = matchAssessment_({ secid: cls.secid, course: cls.course, test: test }); if (M) aid = str_(M.id); }          // a typed name that matches the teacher's test counts as that test (so its deadline applies)
   if (aid) { var A = find_('Assessments', 'id', aid); if (!A) throw new Error('That test isn’t on file any more.'); test = str_(A.name); }
   if (!cls.course) throw new Error('Pick the class this test is for.');
   if (!test) throw new Error('Type the name of the test.');
+  if (!staff && A) { var late = lateMsg_(A, d); if (late) throw new Error(late); }
   if (req.loc) return bookRoom_(w, sid, stu, req, cls, test, aid, staff);
   return locked_(function () {
     if (req.reqId) { var dup = rows_('Appointments').filter(function (a) { return str_(a.req) === str_(req.reqId); })[0]; if (dup) return { booked: str_(dup.id), home: staff ? null : studentHome_(who_()) }; }          // the same click twice: one booking
@@ -1617,13 +1724,14 @@ function book_(w, sid, req, staff) {
     var mine = rows_('Appointments').filter(function (a) { return str_(a.sid) === sid && ACTIVE_APPT.test(a.status); });
     if (mine.some(function (a) { return day_(a.date) === d && str_(a.period) === period; })) throw new Error('You already have an appointment then.');
     if (!staff && conf.maxUpcoming && mine.filter(function (a) { return day_(a.date) >= today_(); }).length >= conf.maxUpcoming) throw new Error('You can have ' + conf.maxUpcoming + ' upcoming appointments at a time.');
+    var over = retakeCheck_(w, sid, cls, test, d, req.purpose, staff);
     var cf = conflictFor_(sid, period, half, d).conflict, conflict = '';
     if (cf) {
       if (!req.ack) return { conflict: cf, slot: slotBrief_(s) };          // nothing saved: the page shows the warning first
       conflict = { course: cf.course, teacher: cf.teacher, secid: cf.secid, ack: staff ? 'Booked by staff' : 'Student says ' + (cf.teacher || 'the teacher') + ' gave permission and will bring a written note', at: iso_(), note: clean_(req.ack.note, 300), verified: false };
     }
     var appt = { id: uid_('ap'), campus: campus, date: d, period: period, half: half, sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: aid, test: test, purpose: clean_(req.purpose, 40) || 'Makeup test',
-      fmt: /^(paper|digital)$/i.test(req.fmt) ? req.fmt : '', status: 'Scheduled', conflict: conflict, source: staff ? 'Staff' : 'Student', req: clean_(req.reqId, 60), created: iso_(), by: w.email, notes: staff && tooSoon_(s, campus) ? 'Booked after the cutoff by ' + w.email : '' };
+      fmt: /^(paper|digital)$/i.test(req.fmt) ? req.fmt : '', status: 'Scheduled', conflict: conflict, source: staff ? 'Staff' : 'Student', req: clean_(req.reqId, 60), created: iso_(), by: w.email, notes: [staff && tooSoon_(s, campus) ? 'Booked after the cutoff by ' + w.email : '', over].filter(String).join(' · ') };
     insert_('Appointments', appt);
     if (req.rq) reqBooked_(sid, str_(req.rq), appt);
     audit_('Booked', appt.id, { sid: sid, date: d, period: period, half: half, by: staff ? 'staff' : 'student' });
@@ -1641,12 +1749,64 @@ function bookRoom_(w, sid, stu, req, cls, test, aid, staff) {          // a test
   return locked_(function () {
     if (req.reqId) { var dup = rows_('Appointments').filter(function (a) { return str_(a.req) === str_(req.reqId); })[0]; if (dup) return { booked: str_(dup.id), home: staff ? null : studentHome_(who_()) }; }
     if (roomUsed_(slot.room, d, period) >= slot.seats) return { full: true };
+    var over = retakeCheck_(w, sid, cls, test, d, req.purpose, staff);
     if (rows_('Appointments').some(function (a) { return str_(a.sid) === sid && day_(a.date) === d && str_(a.period) === period && ACTIVE_APPT.test(a.status); })) throw new Error('You already have an appointment then.');
-    var appt = { id: uid_('ap'), campus: campus, date: d, period: period, half: '', sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: aid, test: test, purpose: clean_(req.purpose, 40) || 'Makeup test', fmt: /^(paper|digital)$/i.test(req.fmt) ? req.fmt : '', status: 'Scheduled', conflict: '', source: staff ? 'Staff' : 'Student', req: clean_(req.reqId, 60), created: iso_(), by: w.email, loc: slot.room };
+    var appt = { id: uid_('ap'), campus: campus, date: d, period: period, half: '', sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: aid, test: test, purpose: clean_(req.purpose, 40) || 'Makeup test', fmt: /^(paper|digital)$/i.test(req.fmt) ? req.fmt : '', status: 'Scheduled', conflict: '', source: staff ? 'Staff' : 'Student', req: clean_(req.reqId, 60), created: iso_(), by: w.email, loc: slot.room, notes: over };
     insert_('Appointments', appt);
     audit_('Booked (testing room)', appt.id, { sid: sid, room: slot.room, date: d, period: period });
     teacherNotice_('booked', appt);
     return { booked: appt.id, home: staff ? null : studentHome_(who_()) };
+  });
+}
+// The teacher's "last day to take it" (the Assessments deadline): students can't book or wait for a day after it; staff can.
+function lateMsg_(A, d) {
+  var dl = day_(A && A.deadline); if (!dl || !d || d <= dl) return '';
+  return dl < today_() ? str_(A.name) + ' closed on ' + niceDate_(dl) + '. Ask your teacher if you can still take it.' : 'The last day to take ' + str_(A.name) + ' is ' + niceDate_(dl) + '. Pick a day on or before then.';
+}
+// ---------- the 50% retake rule (0.37): in a semester, a student may retake at most half of a class's summative tests (6 tests → 3).
+// The number comes from the teacher (Semester Tests: how many, or the list of titles). Canceled appointments and no-shows don't count,
+// and booking the same test again doesn't count twice. Over the limit, the student is stopped and the teacher is asked (Retake
+// Overrides); each "allow" is one more retake. Staff can book over it (noted on the appointment).
+function semNo_(d) { return (d || today_()) < sem2Start_() ? 1 : 2; }
+function semRange_(n) { var y = +schoolYear_().slice(0, 4), s2 = sem2Start_(); return n === 1 ? [y + '-07-01', addDays_(s2, -1)] : [s2, (y + 1) + '-06-30']; }
+function semTestsFor_(cls, sem) {          // the class teacher's number of summative tests this semester (0 = not given)
+  var tids = cls.secid ? secTeachers_(cls.secid).map(function (t) { return t.tid; }) : [];
+  var r = rows_('Semester Tests').filter(function (x) { return str_(x.year) === schoolYear_() && String(x.sem) === String(sem) && low_(x.course) === low_(cls.course) && tids.indexOf(str_(x.tid)) >= 0; })[0];
+  if (!r) return 0;
+  return parseInt(r.count, 10) || list_(String(r.titles).replace(/\n/g, ',')).length;
+}
+function retakeInfo_(sid, cls, d) {
+  var sem = semNo_(d), n = semTestsFor_(cls, sem); if (!n) return null;
+  var rg = semRange_(sem), used = {};
+  rows_('Appointments').forEach(function (a) {
+    if (str_(a.sid) !== str_(sid) || low_(a.course) !== low_(cls.course) || !/retake/i.test(a.purpose) || /^(canceled|no-show)/i.test(a.status)) return;
+    var dd = day_(a.date); if (dd < rg[0] || dd > rg[1]) return;
+    used[testKey_(a.test)] = str_(a.test);
+  });
+  var extra = rows_('Retake Overrides').filter(function (o) { return str_(o.sid) === str_(sid) && low_(o.course) === low_(cls.course) && str_(o.year) === schoolYear_() && String(o.sem) === String(sem) && /^allowed/i.test(o.status); }).length;
+  return { sem: sem, tests: n, limit: Math.floor(n / 2), extra: extra, used: used };
+}
+// inside locked_(): '' = fine; a note for the appointment when it goes over with permission; throws when a student is over the limit
+function retakeCheck_(w, sid, cls, test, d, purpose, staff) {
+  if (!/retake/i.test(purpose || '') || !cls.course) return '';
+  var R = retakeInfo_(sid, cls, d); if (!R) return '';
+  var k = testKey_(test), n = Object.keys(R.used).length; if (R.used[k]) return '';          // the same test again: already counted
+  if (n < R.limit) return '';
+  if (n < R.limit + R.extra) return 'Over the 50% retake limit (' + (n + 1) + ' of ' + R.tests + ' tests): allowed by the teacher';
+  if (staff) return 'Over the 50% retake limit (' + (n + 1) + ' of ' + R.tests + ' tests): booked by the Testing Center';
+  retakeAsk_(sid, cls, test, R);
+  throw new Error('This would be your ' + ordinal_(n + 1) + ' retake in ' + cls.course + ' this semester. Students may retake up to half of the summative tests (' + R.limit + ' of ' + R.tests + '). We let your teacher know; if they allow it, you can book it.');
+}
+function ordinal_(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+function retakeAsk_(sid, cls, test, R) {          // one open question per student and class; the teacher gets an email right away
+  var have = rows_('Retake Overrides').filter(function (o) { return str_(o.sid) === str_(sid) && low_(o.course) === low_(cls.course) && str_(o.year) === schoolYear_() && String(o.sem) === String(R.sem) && /^asked/i.test(o.status); })[0];
+  if (have) return;
+  var tid = (secTeachers_(cls.secid)[0] || {}).tid || '', o = { id: uid_('ro'), year: schoolYear_(), sem: R.sem, sid: str_(sid), course: cls.course, tid: tid, test: test, status: 'Asked', asked: iso_() };
+  insert_('Retake Overrides', o);
+  var stu = student_(sid), rc = recipients_({ secid: cls.secid, campus: str_(stu && stu.campus) || 'S' }), c = campusConf_(str_(stu && stu.campus) === 'N' ? 'N' : 'S'), who = studentName_(stu) || 'A student';
+  rc.to.forEach(function (to) {
+    mail_('t-retake', 't-retake:' + o.id + ':' + to, to, 'Testing Center — ' + who + ' asked for a ' + ordinal_(Object.keys(R.used).length + 1) + ' retake in ' + cls.course,
+      'Hello,\n\n' + who + ' tried to book a retake of “' + test + '” in ' + cls.course + '. It would be their ' + ordinal_(Object.keys(R.used).length + 1) + ' retake this semester, and the school allows retakes on up to half of the summative tests (' + R.limit + ' of ' + R.tests + ').\n\nRetakes this semester: ' + Object.keys(R.used).map(function (k) { return R.used[k]; }).join(', ') + '\n\nThe booking was stopped. If you want to allow it, answer here and the student can book it (the Testing Center will see that you allowed it): ' + appUrl_() + '?retake=' + o.id + '\n\nThank you,\n' + c.name + ' Testing Center', '', true, str_(stu && stu.campus));
   });
 }
 function pickClass_(sid, req) {          // the class from the student's schedule (never typed when it's there), or "my class isn't listed"
@@ -1689,16 +1849,19 @@ function api_joinWaitlist(req) {
   var w = need_('student'), conf = campusConf_(w.campus);
   if (!conf.waitlist) throw new Error('There is no waitlist right now.');
   var cls = pickClass_(w.sid, req), d = day_(req.date), period = String(req.period || ''), test = clean_(req.test, 120);
-  if (req.aid) { var A = find_('Assessments', 'id', req.aid); if (A) test = str_(A.name); }
+  var aid = str_(req.aid);
+  if (!aid && test && cls.secid) { var M = matchAssessment_({ secid: cls.secid, course: cls.course, test: test }); if (M) aid = str_(M.id); }
+  if (aid) { var A = find_('Assessments', 'id', aid); if (A) { test = str_(A.name); var late = lateMsg_(A, d); if (late) throw new Error(late); } }
   if (!cls.course || !test) throw new Error('Pick the class and the test first.');
   return locked_(function () {
     var s = slot_(w.campus, d, period), half = normHalf_(s, req.half);
     if (!s.open) throw new Error('The Testing Center is closed then.');
     if (fits_(s, half)) throw new Error('A seat is open now. Book it instead.');
     if (rows_('Waitlist').some(function (x) { return str_(x.sid) === w.sid && day_(x.date) === d && str_(x.period) === period && /^(waiting|offered)/i.test(x.status); })) throw new Error('You’re already on that waitlist.');
+    retakeCheck_(w, w.sid, cls, test, d, req.purpose, false);
     var cf = conflictFor_(w.sid, period, half, d).conflict;
     if (cf && !req.ack) return { conflict: cf };
-    insert_('Waitlist', { id: uid_('wl'), campus: w.campus, date: d, period: period, half: half, sid: w.sid, details: { secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: str_(req.aid), test: test, purpose: clean_(req.purpose, 40), fmt: req.fmt || '', ack: cf ? { course: cf.course, teacher: cf.teacher, note: clean_((req.ack || {}).note, 300), at: iso_() } : null }, joined: iso_(), status: 'Waiting', changed: iso_() });
+    insert_('Waitlist', { id: uid_('wl'), campus: w.campus, date: d, period: period, half: half, sid: w.sid, details: { secid: cls.secid, course: cls.course, teacher: cls.teacher, aid: aid, test: test, purpose: clean_(req.purpose, 40), fmt: req.fmt || '', ack: cf ? { course: cf.course, teacher: cf.teacher, note: clean_((req.ack || {}).note, 300), at: iso_() } : null }, joined: iso_(), status: 'Waiting', changed: iso_() });
     audit_('Joined waitlist', w.sid, { date: d, period: period, half: half });
     return { home: studentHome_(who_()) };
   });
@@ -1852,7 +2015,7 @@ function studentHome_(w) {
     if (isFree_(r.type)) return;
     var tids = (r.teachers || []).map(function (x) { return x.tid; });
     var key = r.secid || r.period + '|' + r.course, names = {};
-    var list = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && low_(A.course) === low_(r.course) && (tids.indexOf(str_(A.tid)) >= 0 || list_(A.secids).indexOf(r.secid) >= 0); }).map(function (A) { names[low_(A.name)] = 1; return { id: str_(A.id), name: str_(A.name) }; });
+    var list = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && low_(A.course) === low_(r.course) && (tids.indexOf(str_(A.tid)) >= 0 || list_(A.secids).indexOf(r.secid) >= 0); }).map(function (A) { names[low_(A.name)] = 1; return { id: str_(A.id), name: str_(A.name), deadline: day_(A.deadline) }; });
     var since = addDays_(t, -21);          // what classmates in this class booked lately (same section, or same course and teacher)
     rows_('Appointments').forEach(function (a) { if (str_(a.sid) === sid || day_(a.date) < since || /^canceled/i.test(a.status) || !str_(a.test)) return; if (!((r.secid && str_(a.secid) === r.secid) || (low_(a.course) === low_(r.course) && r.teacher && low_(a.teacher) === low_(r.teacher)))) return; if (!names[low_(a.test)]) { names[low_(a.test)] = 1; list.push({ id: '', name: str_(a.test), fromClass: true }); } });
     tests[key] = list.slice(0, 6);
@@ -1865,7 +2028,7 @@ function studentHome_(w) {
     offers: offers, waits: waits,
     schedule: { rows: sch.rows.map(function (r) { return { period: r.period, half: r.half, course: r.course, teacher: r.teacher, type: r.type, secid: r.secid || '', room: r.room || '', raw: r.raw || '' }; }), source: sch.source, at: sch.at },
     classes: sch.rows.filter(function (r) { return !isFree_(r.type); }).map(function (r) { return { key: r.secid || r.period + '|' + r.course, label: r.course + (r.teacher ? ' — ' + r.teacher.split(' / ')[0].split(' ').pop() : '') + ' — Period ' + r.period + (r.half || ''), course: r.course }; }),
-    requests: studentRequests_(sid), tests: tests, askSchedule: !lastLook || ms_(lastLook) < now_().getTime() - 30 * 86400000
+    requests: studentRequests_(sid), tests: tests, askSchedule: !lastLook || ms_(lastLook) < now_().getTime() - 30 * 86400000 || lastLook.slice(0, 10) < semRange_(semNo_())[0]
   };
 }
 function api_studentHome() { return studentHome_(need_('student')); }
@@ -1892,7 +2055,7 @@ function api_platformGuideSave(platform, title, steps) {
   locked_(function () { var r = find_('Platform Guides', 'platform', platform), v = { platform: platform, title: clean_(title, 120), steps: clean_(steps, 4000), updated: iso_(), by: w.email }; if (r) update_('Platform Guides', r, v); else insert_('Platform Guides', v); audit_('Platform guide saved', platform, w.email); });
   return api_platformGuides();
 }
-var FORM_KEYS = ['extended', 'extSpec', 'writeOn', 'ownCalc', 'centerCalc', 'scratch', 'openBook', 'openNotes', 'answerForm', 'notes', 'useRules'];
+var FORM_KEYS = ['extended', 'extSpec', 'writeOn', 'ownCalc', 'centerCalc', 'scratch', 'openBook', 'openNotes', 'answerForm', 'notes', 'useRules', 'twoPart', 'securly'];          // twoPart, securly: 0.37
 // "Rules for all my tests" (Colleen 2026-10-28): what a teacher allows on every test (calculator, scratch paper…), set once. A test
 // follows them unless the teacher changed them for that test; changing the rules later changes every test that follows them.
 var RULE_BOXES = ['writeOn', 'ownCalc', 'centerCalc', 'scratch', 'openBook', 'openNotes'];
@@ -1958,9 +2121,10 @@ function readiness_(a) {
 function teacherHome_(w) {
   var appts = rows_('Appointments').filter(function (a) { return teachesAppt_(w, a) && day_(a.date) >= addDays_(today_(), -14) && !/^canceled/i.test(a.status); })
     .sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
+  studentsLoad_(appts.map(function (a) { return str_(a.sid); }));
   return {
     courses: myCourses_(w), platforms: PLATFORMS, tcAccount: setting_('Testing Center Google account', 'S'), lastName: String(str_((find_('Teachers', 'tid', w.tid) || {}).name).split(' ').pop()), codeTemplate: setting_('Access-code template link', 'S'), codeGuide: setting_('Access-code guide link', 'S'),
-    emailPref: str_((find_('Teachers', 'tid', w.tid) || {}).emailPref),
+    emailPref: str_((find_('Teachers', 'tid', w.tid) || {}).emailPref), unlisted: unlisted_(w), reqs: api_reqListIn_(w), semTests: mySemTests_(w), retakeAsks: retakeAsks_(w),          // the test requests come with the page (0.36)
     appts: appts.map(function (a) { var s = student_(a.sid), r = readiness_(a), where = str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { where: where, inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: rows_('Assessments').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
     resources: rows_('Resources').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && !/^(no|false)$/i.test(str_(r.active)); }).map(function (r) { return { id: str_(r.id), type: str_(r.type), title: str_(r.title), link: str_(r.link), courses: list_(r.courses), expires: day_(r.expires) }; }),
@@ -1968,6 +2132,197 @@ function teacherHome_(w) {
     defaults: rows_('Teacher Defaults').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.course) !== '*'; }).map(function (r) { return { course: str_(r.course), format: str_(r.format), platform: str_(r.platform), form: json_(r.form, {}) }; }),
     suggest: myCourses_(w).map(function (c) { var f = resolveFormat_({ course: c, secid: (mySections_(w).filter(function (s) { return low_(s.course) === low_(c); })[0] || {}).secid }); return { course: c, format: f.value, text: f.text, source: f.source }; }).filter(function (x) { return x.source === 'prediction' && x.format; })
   };
+}
+// ---------- accommodations (0.37): per student and class, set by the class teacher; the Testing Center sees them on every appointment.
+// The IEP / 504 hint comes from the Infinite Campus flags (planFrom_): it only reminds the teacher to ask; it never sets anything.
+var ACCOM_ITEMS = ['1.5x time', '2x time', 'Unlimited time'];
+function planFrom_(flags, cmgr) {
+  var f = (flags || []).map(low_).join(' | ');
+  if (/\b504\b/.test(f)) return '504';
+  if (/\biep\b|special ed|sped|\bise\b/.test(f) || str_(cmgr)) return 'IEP';
+  return '';
+}
+function accomFor_(sid, course) {
+  var r = rows_('Accommodations').filter(function (x) { return str_(x.sid) === str_(sid) && low_(x.course) === low_(course); })[0];
+  return r ? { items: list_(r.items).filter(function (x) { return ACCOM_ITEMS.indexOf(x) >= 0; }), other: str_(r.other), updated: day_(r.updated) } : null;
+}
+function accomText_(ac) { return ac ? ac.items.concat(ac.other ? [ac.other] : []).join(' · ') : ''; }
+function accomSave_(w, sid, course, data) {          // inside locked_()
+  var items = (data.items || []).filter(function (x) { return ACCOM_ITEMS.indexOf(x) >= 0; }), other = clean_(data.other, 300);
+  var r = rows_('Accommodations').filter(function (x) { return str_(x.sid) === str_(sid) && low_(x.course) === low_(course); })[0], v = { sid: str_(sid), course: course, tid: w.tid || '', items: items.join(', '), other: other, updated: iso_(), by: w.email };
+  if (r) update_('Accommodations', r, v); else if (items.length || other) { v.id = uid_('ac'); insert_('Accommodations', v); }
+  audit_('Accommodations saved', str_(sid), { course: course, items: items, other: other ? 'yes' : '', by: w.email });
+}
+function api_accomSave(sid, course, data) {
+  var w = need_('teacher'), s = myStudent_(sid);
+  if (!schedule_(str_(s.sid)).rows.some(function (r) { return low_(r.course) === low_(course) && r.secid && secTeachers_(r.secid).some(function (t) { return t.tid === w.tid; }); })) throw new Error('You can set accommodations for your own class.');
+  locked_(function () { accomSave_(w, str_(s.sid), course, data || {}); });
+  return accomFor_(sid, course);
+}
+// ---------- this semester's summative tests (0.37), for the 50% retake rule: how many, the titles, or both (both optional).
+// Titles also become tests on file, so students pick them from a list.
+function mySemTests_(w) {
+  var sem = semNo_(), y = schoolYear_(), rows = rows_('Semester Tests').filter(function (r) { return str_(r.tid) === w.tid && str_(r.year) === y && String(r.sem) === String(sem); });
+  return { sem: sem, list: myCourses_(w).map(function (c) { var r = rows.filter(function (x) { return low_(x.course) === low_(c); })[0]; return { course: c, count: r ? str_(r.count) : '', titles: r ? String(r.titles).split('\n').filter(String) : [] }; }) };
+}
+function api_semTestsSave(list) {
+  var w = need_('teacher'), sem = semNo_(), y = schoolYear_();
+  locked_(function () {
+    (list || []).forEach(function (x) {
+      var course = clean_(x.course, 80); if (!course || !teachesCourse_(w, course)) return;
+      var titles = String(x.titles || '').split('\n').map(function (t) { return clean_(t, 120); }).filter(String), count = parseInt(x.count, 10) || '';
+      var r = rows_('Semester Tests').filter(function (q) { return str_(q.tid) === w.tid && str_(q.year) === y && String(q.sem) === String(sem) && low_(q.course) === low_(course); })[0];
+      var v = { year: y, sem: sem, tid: w.tid, course: course, count: count, titles: titles.join('\n'), updated: iso_(), by: w.email };
+      if (r) update_('Semester Tests', r, v); else if (count || titles.length) { v.id = uid_('st'); insert_('Semester Tests', v); }
+      var have = {}; rows_('Assessments').forEach(function (A) { if (str_(A.year) === y && str_(A.tid) === w.tid && low_(A.course) === low_(course)) have[testKey_(A.name)] = 1; });
+      titles.forEach(function (t) { if (have[testKey_(t)]) return; have[testKey_(t)] = 1; insert_('Assessments', { id: uid_('as'), year: y, campus: '', tid: w.tid, secids: mySections_(w).filter(function (s) { return low_(s.course) === low_(course); }).map(function (s) { return str_(s.secid); }).join(','), course: course, name: t, form: {}, updated: iso_(), by: w.email }); });
+    });
+    audit_('Semester tests saved', w.tid, { sem: sem, by: w.email });
+  });
+  return teacherHome_(w);
+}
+// the teacher's answer to "may this student retake one more?"
+function api_retakeAnswer(id, allow) {
+  var w = need_('teacher');
+  locked_(function () {
+    var o = find_('Retake Overrides', 'id', id); if (!o) throw new Error('That question isn’t there any more.');
+    if (!(str_(o.tid) === w.tid || myCourses_(w).some(function (c) { return low_(c) === low_(o.course); }) && myStudents_(w)[str_(o.sid)])) throw new Error('That student isn’t in your class.');
+    if (!/^asked/i.test(o.status)) return;
+    update_('Retake Overrides', o, { status: allow ? 'Allowed' : 'Not allowed', answered: iso_(), by: w.email });
+    audit_(allow ? 'Extra retake allowed' : 'Extra retake not allowed', str_(o.sid), { course: str_(o.course), by: w.email });
+    var stu = student_(o.sid);
+    if (allow && stu && stu.email) mail_('s-retake', 's-retake:' + str_(o.id), low_(stu.email), 'Testing Center — your retake in ' + str_(o.course) + ' is allowed', 'Hi ' + str_(stu.alias || stu.first) + ',\n\nYour teacher allowed one more retake in ' + str_(o.course) + ' this semester. You can book it now in the Testing Center app: ' + appUrl_() + '\n\nTesting Center', '', true, str_(stu.campus));
+  });
+  return teacherHome_(w);
+}
+function retakeAsks_(w) {
+  var mine = myCourses_(w).map(low_);
+  return rows_('Retake Overrides').filter(function (o) { return /^asked/i.test(o.status) && (str_(o.tid) === w.tid) && mine.indexOf(low_(o.course)) >= 0; }).map(function (o) {
+    var st = student_(o.sid), R = retakeInfo_(str_(o.sid), { secid: (schedule_(str_(o.sid)).rows.filter(function (r) { return low_(r.course) === low_(o.course) && r.secid; })[0] || {}).secid || '', course: str_(o.course) });
+    return { id: str_(o.id), student: studentName_(st), course: str_(o.course), test: str_(o.test), asked: str_(o.asked), used: R ? Object.keys(R.used).map(function (k) { return R.used[k]; }) : [], limit: R ? R.limit : 0, tests: R ? R.tests : 0 };
+  });
+}
+// ---------- semester 1 → semester 2 (0.37): runs by itself the first time anyone opens the app in the new semester.
+// Students' own schedule corrections end (their classes changed), so booking uses the new district schedule and each student is asked
+// to check it; retake counts start over (they're per semester); the coordinators' Needs attention says to import the new schedules
+// until an import after the semester starts; teachers see "Add them" for this semester's summative tests.
+function semRoll_() {
+  var P = PropertiesService.getDocumentProperties(), key = schoolYear_() + '-S' + semNo_(), was = P.getProperty('semKey');
+  if (was === key) return;
+  locked_(function () {
+    if (P.getProperty('semKey') === key) return;
+    var n = 0;
+    if (was) rows_('Student Schedules').forEach(function (r) { if (/^using/i.test(r.status)) { update_('Student Schedules', r, { status: 'Ended (new semester)' }); n++; } });
+    var closed = 0;
+    if (was && semNo_() === 2) {          // 0.40 (Colleen): semester 1 tests close when semester 2 starts (only those with no last day of their own)
+      var s2 = sem2Start_(), last = addDays_(s2, -1), s2titles = {};
+      rows_('Semester Tests').forEach(function (r) { if (str_(r.year) === schoolYear_() && String(r.sem) === '2') String(r.titles).split('\n').forEach(function (t) { if (t) s2titles[str_(r.tid) + '|' + testKey_(t)] = 1; }); });
+      rows_('Assessments').forEach(function (A) {
+        if (str_(A.year) !== schoolYear_() || day_(A.deadline) || isCarried_(A) || s2titles[str_(A.tid) + '|' + testKey_(A.name)]) return;
+        if (str_(A.updated) && str_(A.updated).slice(0, 10) >= s2) return;          // made or changed in semester 2
+        update_('Assessments', A, { deadline: last }); closed++;
+      });
+    }
+    P.setProperty('semKey', key);
+    if (was) audit_('New semester', key, n + ' student schedule corrections ended' + (closed ? ', ' + closed + ' semester 1 tests closed' : ''));
+  });
+}
+// ---------- the new school year (0.35): last year's tests carry over by NAME (and how they're given), so students still pick from them.
+// Year-specific things are cleared (codes, dates, last day, paper status, sections). A carried test is marked form.carried = the old year
+// until the teacher confirms it: the first booking asks them (askTeacher_) to check the name and set this year's last day. Teachers can
+// rename or delete them on My classes › My tests on file. Runs once a year, the first time anyone opens the app after July 1.
+function prevYear_(y) { var a = +y.slice(0, 4); return (a - 1) + '-' + String(a).slice(2); }
+function isCarried_(A) { return !!(A && json_(A.form, {}).carried); }
+function rollTests_() {
+  var P = PropertiesService.getDocumentProperties(), y = schoolYear_();
+  if (P.getProperty('testsYear') === y) return;
+  locked_(function () {
+    if (P.getProperty('testsYear') === y) return;
+    var old = prevYear_(y), have = {}, n = 0;
+    rows_('Assessments').forEach(function (A) { if (str_(A.year) === y) have[str_(A.tid) + '|' + low_(A.course) + '|' + testKey_(A.name)] = 1; });
+    rows_('Assessments').forEach(function (A) {
+      var k = str_(A.tid) + '|' + low_(A.course) + '|' + testKey_(A.name);
+      if (str_(A.year) !== old || !str_(A.tid) || have[k]) return;
+      have[k] = 1; n++;
+      var f = json_(A.form, {}); f.carried = old;
+      insert_('Assessments', { id: uid_('as'), year: y, campus: str_(A.campus), tid: str_(A.tid), secids: '', course: str_(A.course), name: str_(A.name), format: str_(A.format), platform: str_(A.platform), minutes: str_(A.minutes), form: f, code: '', rcode: '', tdate: '', deadline: '', paper: '', updated: iso_(), by: 'new school year' });
+    });
+    P.setProperty('testsYear', y);
+    if (n) audit_('New school year', y, n + ' tests carried over from ' + old);
+  });
+}
+function api_testRename(id, name) {
+  var w = need_('teacher'); name = clean_(name, 120); if (!name) throw new Error('Type the test’s name.');
+  locked_(function () {
+    var A = find_('Assessments', 'id', id); if (!A || myTids_(w).indexOf(str_(A.tid)) < 0) throw new Error('That isn’t one of your tests.');
+    var was = str_(A.name), f = json_(A.form, {}); delete f.carried;
+    update_('Assessments', A, { name: name, form: f, updated: iso_(), by: w.email });
+    rows_('Appointments').forEach(function (a) { if (str_(a.aid) === str_(A.id) && ACTIVE_APPT.test(a.status)) update_('Appointments', a, { test: name }); });
+    audit_('Test renamed', str_(A.id), { from: was, to: name, by: w.email });
+  });
+  return teacherHome_(w);
+}
+function api_testDelete(id) {          // kept in the sheet for the record (its year is marked deleted), gone from every list
+  var w = need_('teacher');
+  locked_(function () {
+    var A = find_('Assessments', 'id', id); if (!A || myTids_(w).indexOf(str_(A.tid)) < 0) throw new Error('That isn’t one of your tests.');
+    if (rows_('Appointments').some(function (a) { return str_(a.aid) === str_(A.id) && ACTIVE_APPT.test(a.status) && day_(a.date) >= today_(); })) throw new Error('Students are booked for this test. Rename it instead, or delete it after their appointments.');
+    update_('Assessments', A, { year: str_(A.year) + ' (deleted)', updated: iso_(), by: w.email });
+    audit_('Test deleted', str_(A.id), { name: str_(A.name), by: w.email });
+  });
+  return teacherHome_(w);
+}
+// ---------- ask once per test (0.33): students booked a test the teacher hasn't added → one question to the teacher, "What's the last day?"
+// The answer makes the test (Assessments, through reqInfo_), links every booking of it, and from then on students see its last day.
+var testKey_ = function (x) { return low_(x).replace(/[^a-z0-9]/g, ''); };
+function unlisted_(w) {
+  var t = today_(), groups = {}, order = [];
+  rows_('Appointments').forEach(function (a) {
+    if (!teachesAppt_(w, a) || day_(a.date) < t || !/^(scheduled|awaiting|ready)/i.test(a.status) || !str_(a.test)) return;
+    var on = matchAssessment_(a); if (on && !isCarried_(on)) return;
+    var k = low_(a.course) + '|' + testKey_(a.test), g = groups[k];
+    if (!g) { g = groups[k] = { course: str_(a.course), test: str_(a.test), ids: [], who: [], carried: on ? json_(on.form, {}).carried : '' }; order.push(k); }
+    g.ids.push(str_(a.id)); g.who.push({ student: studentName_(student_(a.sid)), date: day_(a.date) });
+  });
+  return order.map(function (k) { return groups[k]; });
+}
+// answer: 'date' (with deadline), 'closed' (the last day was yesterday), 'open' (no last day), 'mine' (it's my test aid, typed differently)
+function api_testLastDay(data) {
+  var w = need_('teacher'); data = data || {};
+  return locked_(function () {
+    var appts = (data.ids || []).map(function (id) { return find_('Appointments', 'id', id); }).filter(function (a) { if (!a || !teachesAppt_(w, a)) return false; var on = matchAssessment_(a); return !on || isCarried_(on); });
+    if (!appts.length) throw new Error('Those bookings changed. Reload the page.');
+    var first = appts[0], cls = { secid: str_(first.secid), course: str_(first.course) }, A, name = clean_(data.name, 120) || str_(first.test);
+    if (data.answer === 'mine') { A = find_('Assessments', 'id', data.aid); if (!A || myTids_(w).indexOf(str_(A.tid)) < 0) throw new Error('Pick one of your tests.'); }
+    else {
+      var dl = data.answer === 'closed' ? addDays_(today_(), -1) : data.answer === 'date' ? day_(data.deadline) : '';
+      if (data.answer === 'date' && !dl) throw new Error('Pick the last day.');
+      var C = matchAssessment_(first);
+      if (C && isCarried_(C)) { var cf = json_(C.form, {}); delete cf.carried; update_('Assessments', C, { name: name, deadline: dl, form: cf, updated: iso_(), by: w.email }); A = find_('Assessments', 'id', C.id); }          // last year's test: confirmed for this year
+      else A = reqInfo_(w, cls, name, dl ? { deadline: dl } : {});          // the teacher's name for it (fixed if the student typed it wrong); the same name as a test on file → that test
+    }
+    var k = testKey_(first.test), late = [];
+    rows_('Appointments').forEach(function (a) {          // every booking of this test by your students (not just the ones on screen)
+      if ((str_(a.aid) && str_(a.aid) !== str_(A.id) && !isCarried_(find_('Assessments', 'id', a.aid))) || !teachesAppt_(w, a) || low_(a.course) !== low_(first.course) || (testKey_(a.test) !== k && (data.ids || []).indexOf(str_(a.id)) < 0) || !/^(scheduled|awaiting|ready)/i.test(a.status) || day_(a.date) < today_()) return;
+      update_('Appointments', a, { aid: str_(A.id), test: str_(A.name) });
+      if (lateMsg_(A, day_(a.date))) late.push({ id: str_(a.id), student: studentName_(student_(a.sid)), date: day_(a.date) });
+    });
+    audit_('Teacher set the last day', str_(A.id), { test: str_(A.name), answer: data.answer, deadline: day_(A.deadline), by: w.email });
+    return { home: teacherHome_(w), late: late, name: str_(A.name), deadline: day_(A.deadline) };
+  });
+}
+// Students already booked after the last day: the teacher can cancel those (the student is told why; their seat goes to the waitlist)
+function api_cancelLate(ids) {
+  var w = need_('teacher');
+  locked_(function () {
+    (ids || []).forEach(function (id) {
+      var a = find_('Appointments', 'id', id), A = a && str_(a.aid) && find_('Assessments', 'id', a.aid);
+      if (!a || !A || !teachesAppt_(w, a) || !/^(scheduled|awaiting|ready)/i.test(a.status) || !lateMsg_(A, day_(a.date))) return;
+      cancelAppt_(a, 'Your teacher says the last day to take ' + str_(A.name) + ' was ' + niceDate_(day_(A.deadline)) + '.', true, w);
+      offerOpenSeats_(str_(a.campus), day_(a.date), str_(a.period));
+    });
+  });
+  return teacherHome_(w);
 }
 function assessOut_(r) {
   var form = json_(r.form, {}), rules = rulesFor_(r.tid), use = !!rules && followsRules_(form);
@@ -1985,8 +2340,10 @@ function api_teacherPrefs(pref, quick) {          // quick: the page already sho
 }
 function myStudents_(w) {          // students currently in this teacher's sections: sid → {sid, name, classes}
   var secs = {}; mySections_(w).forEach(function (s) { secs[str_(s.secid)] = s; });
-  var out = {}, t = today_();
-  rows_('Enrollments').forEach(function (e) {
+  var out = {}, t = today_(), bySec = slices_('Enrollments', 'secid', Object.keys(secs)), list = [];
+  Object.keys(bySec).forEach(function (k) { list = list.concat(bySec[k]); });
+  studentsLoad_(list.map(function (e) { return str_(e.sid); }));
+  list.forEach(function (e) {
     var s = secs[str_(e.secid)]; if (!s || /drop/i.test(e.status) || !enrActive_(e, t)) return;
     var st = student_(e.sid); if (!st || !/^active$/i.test(str_(st.status) || 'active')) return;
     var o = out[str_(e.sid)] || (out[str_(e.sid)] = { sid: str_(e.sid), name: studentName_(st), classes: [] });
@@ -2011,7 +2368,8 @@ function api_teacherAppt(id) {
   var w = need_('teacher'), a = find_('Appointments', 'id', id);
   if (!a || !teachesAppt_(w, a)) throw new Error('That appointment isn’t for one of your classes.');
   var A = str_(a.aid) && find_('Assessments', 'id', a.aid), d = rows_('Teacher Defaults').filter(function (r) { return str_(r.tid) === w.tid && low_(r.course) === low_(a.course); })[0];
-  return { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), student: studentName_(student_(a.sid)), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), ready: readiness_(a), test0: A ? assessOut_(A) : null, dflt: d ? { format: str_(d.format), platform: str_(d.platform), form: json_(d.form, {}) } : null, resources: resourcesFor_(a) };
+  var stA = student_(a.sid);
+  return { sid: str_(a.sid), plan: stA ? str_(stA.plan) : '', accom: accomFor_(a.sid, a.course), accomItems: ACCOM_ITEMS, id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), student: studentName_(stA), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), ready: readiness_(a), test0: A ? assessOut_(A) : null, dflt: d ? { format: str_(d.format), platform: str_(d.platform), form: json_(d.form, {}) } : null, resources: resourcesFor_(a) };
 }
 
 // The digital Make-Up Testing Procedure Form. Saved as a test for the course (all of this teacher's sections), linked to the appointment
@@ -2037,6 +2395,7 @@ function api_saveTest(data, apptId) {
       if ((a && str_(x.id) === str_(a.id)) || (low_(x.course) === low_(course) && key(x.test) === key(name) && secTeachers_(x.secid).some(function (t) { return t.tid === tid; }))) update_('Appointments', x, { aid: str_(A.id) });
     });
     if (data.saveDefault && tid) saveDefault_(tid, course, patch);
+    if (a && data.accom && teachesAppt_(w, a)) accomSave_(w, str_(a.sid), str_(a.course), data.accom);          // this student's accommodations in this class
     audit_('Test instructions saved', str_(A.id), { course: course, name: name, by: who_().email });
     return a ? api_teacherApptSafe_(a.id) : teacherHome_(w);
   });
@@ -2139,6 +2498,7 @@ function morningRun_() {          // daily: reminders for appointments on the sc
 }
 // Short notes to the class's teacher(s) (the co-teaching rule decides who; only confirmed addresses; once per appointment and kind)
 function teacherNotice_(kind, a, extra) {
+  if (kind === 'booked') askTeacher_(a);
   var c = campusConf_(str_(a.campus)), on = { booked: c.tBook, noshow: c.tNoShow, canceled: c.tCancel }[kind];
   if (!on || !str_(a.secid)) return;
   var rc = recipients_(a); if (!rc.to.length) return;
@@ -2152,6 +2512,23 @@ function teacherNotice_(kind, a, extra) {
     var p = pref[to] || 'each'; if (p === 'none') return;
     if (p === 'summary') insert_('Outbox', { id: uid_('em'), created: iso_(), kind: 'summary-item', key: 't-' + kind + ':' + str_(a.id) + ':' + to, to: to, subject: subj, body: body, appt: str_(a.id), status: 'Queued for summary', by: 'automatic' });
     else mail_('t-' + kind, 't-' + kind + ':' + str_(a.id) + ':' + to, to, subj, 'Hello,\n\n' + body + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
+  });
+}
+// A booking for a test that isn't in the app → its own email to the class teacher, right away, ONCE per test (teachers only open the app
+// from emails, so the link opens the question itself). It doesn't follow the booking-email choice or the teacher's summary/none choice:
+// like missing materials, it needs an answer. Still nothing is sent while Send emails is Off (mail_ → sendRow_).
+function askTeacher_(a) {
+  if (!str_(a.test) || !str_(a.secid)) return;
+  var on = matchAssessment_(a); if (on && !isCarried_(on)) return;          // on file and confirmed: nothing to ask
+  var rc = recipients_(a); if (!rc.to.length) return;
+  var c = campusConf_(str_(a.campus)), who = studentName_(student_(a.sid)) || 'A student', link = appUrl_() + '?lastday=' + str_(a.id);
+  rc.to.forEach(function (to) {
+    var key = 't-ask:' + schoolYear_() + ':' + to + ':' + low_(a.course) + ':' + testKey_(a.test);
+    if (rows_('Outbox').some(function (r) { return str_(r.key) === key && !/^failed/i.test(r.status); })) return;          // asked already (even a held or skipped one)
+    mail_('t-ask', key, to, 'Testing Center — what’s the last day for ' + str_(a.test) + '? (' + str_(a.course) + ')',
+      'Hello,\n\n' + who + ' booked the ' + c.name + ' Testing Center for “' + str_(a.test) + '” (' + str_(a.course) + ') on ' + niceDate_(day_(a.date)) + '. ' + (on ? 'That test carried over from last school year, so it needs this year’s last day.' : 'That test isn’t in the Testing Center app yet.') + '\n\n' +
+      'Please take one minute to:\n• check the test’s name (students pick it from a list by this name), and\n• tell us the last day students can take it, or that it has no last day.\n\n' +
+      'You answer once for this test, and it counts for every student. After the last day, students can’t book it (you and the Testing Center still can).\n\nAnswer here: ' + link + '\n\nThank you,\n' + c.name + ' Testing Center', str_(a.id), true, str_(a.campus));
   });
 }
 function teacherSummaries_() {          // at 3:30: one email per teacher with the day's Testing Center news
@@ -2328,7 +2705,7 @@ function apptRow_(a, withRes) {
   var s = student_(a.sid), r = readiness_(a), ses = rows_('Sessions').filter(function (x) { return str_(x.appt) === str_(a.id); }).pop();
   var o = { id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), sid: str_(a.sid), student: s ? studentName_(s) : (str_(a.notes).replace(/^Not matched to a student: /, '') || '(not matched)'), email: s ? low_(s.email) : '', grade: s ? str_(s.grade) : '',
     course: str_(a.course), teacher: str_(a.teacher), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), source: str_(a.source), loc: str_(a.loc), locName: str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', notes: str_(a.notes), unmatched: !s, noClass: !str_(a.secid),
-    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), snotes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '', mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy) };
+    conflict: json_(a.conflict, null), ready: r, desk: ses && !str_(ses.end) ? str_(ses.desk) : (ses ? str_(ses.desk) : ''), snotes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), inAt: ses ? str_(ses.inAt) : '', start: ses ? str_(ses.start) : '', end: ses ? str_(ses.end) : '', outcome: ses ? str_(ses.outcome) : '', mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy), accom: accomText_(accomFor_(a.sid, a.course)), noTest: !r.aid && str_(a.source) !== 'Staff' };
   if (withRes) { o.resources = resourcesFor_(a); var A = r.aid && find_('Assessments', 'id', r.aid); o.testInfo = A ? codeFor_(assessOut_(A), a.purpose) : null; }
   return o;
 }
@@ -2341,13 +2718,14 @@ function api_dash(campus, d, lite) {
   if (rows_('Offers').some(function (o) { return /^active/i.test(o.status) && ms_(o.expires) <= nowMs; })) { locked_(function () { expireOffers_(); }); MEMO_ = {}; }
   var info = dayInfo_(campus, d), bells = info.school ? bells_(campus, info.sched) : {};
   var allDay = rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && day_(a.date) === d && !/^canceled/i.test(a.status); }), appts = allDay.filter(function (a) { return !str_(a.loc); });
+  studentsLoad_(allDay.map(function (a) { return str_(a.sid); }));
   var roomsToday = troomRows_().filter(function (r) { return str_(r.campus) === campus; }).map(function (r) { var l = allDay.filter(function (a) { return str_(a.loc) === str_(r.id); }); return { id: str_(r.id), name: str_(r.name), n: l.length, here: l.filter(function (a) { return /^(checked|testing|paused)/i.test(a.status); }).length, done: l.filter(function (a) { return /^(completed|partial)/i.test(a.status); }).length, needs: l.filter(function (a) { return ACTIVE_APPT.test(a.status) && readiness_(a).state === 'Needs info'; }).length }; }).filter(function (r) { return r.n; });
   var periods = offeredPeriods_(campus).map(function (p) {
     var s = slot_(campus, d, p);
     return { period: p, label: s.label, open: s.open, why: s.why, start: s.start, end: s.end, ab: s.ab, cap: s.cap, free: s.free, used: s.used, held: s.held,
       appts: appts.filter(function (a) { return str_(a.period) === p; }).sort(function (a, b) { return (str_(a.half) || 'Z').localeCompare(str_(b.half) || 'Z') || studentName_(student_(a.sid)).localeCompare(studentName_(student_(b.sid))); }).map(function (a) { return apptRow_(a, true); }),
       waiting: waitQueue_(campus, d, p).filter(function (x) { return /^(waiting|offered)/i.test(x.status); }).length };
-  });
+  }).filter(function (x) { return /^\d/.test(x.period) || x.open || x.appts.length || !/^Not on the/.test(x.why); });          // the final exam Make-up block only on its day
   var count = function (re) { return appts.filter(function (a) { return re.test(a.status); }).length; };
   return {
     campus: campus, edit: w.campuses[campus] === 'edit', date: d, roomsToday: roomsToday, info: info, bells: bells, periods: periods,
@@ -2361,6 +2739,9 @@ function api_dash(campus, d, lite) {
 function attention_(campus) {
   var t = today_(), soon = [t, nextSchoolDay_(campus, t), nextSchoolDay_(campus, t, 2), nextSchoolDay_(campus, t, 3)], out = [], now = now_().getTime();
   var add = function (sev, kind, text, ref) { out.push({ sev: sev, kind: kind, text: text, ref: ref || {} }); };
+  studentsLoad_(rows_('Appointments').filter(function (a) { return str_(a.campus) === campus && soon.indexOf(day_(a.date)) >= 0; }).map(function (a) { return str_(a.sid); }));
+  var semStart = semRange_(semNo_())[0], li = lastImport_();          // 0.37: a new semester needs the new schedules
+  if (!li || li.slice(0, 10) < semStart) add(1, 'semester', 'Semester ' + semNo_() + ' started ' + niceDate_(semStart).split(',')[0] + ' ' + semStart.slice(5).replace('-', '/') + ': import the new schedules from Infinite Campus (Student list & imports), so students’ classes are right.', {});
   rows_('Appointments').forEach(function (a) {
     if (str_(a.campus) !== campus || soon.indexOf(day_(a.date)) < 0 || !/^(scheduled|awaiting|ready)/i.test(a.status)) return;
     var who = studentName_(student_(a.sid)) || 'A student', when = day_(a.date) === t ? 'today' : niceDate_(day_(a.date)).split(',')[0], sev = day_(a.date) === t ? 1 : day_(a.date) === soon[1] ? 2 : 3;
@@ -2728,7 +3109,7 @@ function api_setPeriods(campus, d, periods, open, cancel, reason) {
 // ---------- Settings in the app: plain switches for the everyday settings (the sheet's Settings tab stays the store)
 var SETTING_GROUPS = [
   ['Emails (whole app)', ['Send emails']],
-  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Booking purposes', 'No walk-ins during periods']],
+  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Booking purposes']],
   ['Waitlist', ['Waitlist', 'Waitlist offers', 'Hours to answer a waitlist offer', 'Quiet hours']],
   ['Arriving and no-shows', ['Start the test clock when a student arrives', 'Mark students who never arrived as no-shows', 'Email the counselor at this many no-shows']],
   ['Emails to students', ['Student confirmation emails', 'Student reminder the school day before', 'Student reminder the morning of', 'No-show email to students']],
@@ -3209,6 +3590,7 @@ function icWrite_(M, P, id, stamp, year, endMissing) {
     s.first = n.first; s.last = n.last; s.alias = n.alias; s.grade = n.grade; s.campus = n.campus; s.icActive = n.active; s.calendar = n.calendar; s.syear = n.syear;
     if (n.cname || n.cemail) { s.counselor = n.cname; s.cemail = n.cemail; }          // only when the export has the counselor
     if (M.hasCmgr) s.cmgr = caseManagers_(n.cmgrs || [], M.tch).join(', ');          // only flags that are a staff member's name
+    if (M.hasCmgr) s.plan = planFrom_(n.cmgrs || [], s.cmgr);          // 0.37: an IEP / 504 flag, so the teacher is reminded about accommodations
     if (!s.email && n.last) s.email = low_(n.last.replace(/[^A-Za-z]/g, '').slice(0, 3)) + sid + '@' + domain_();
     s.status = icStatus_(n); s.year = year; s.updated = stamp; s.imp = id;
   });
@@ -3588,10 +3970,20 @@ function placesFor_(sid, campus) {
 }
 
 // Find (or refresh) the rooms from the sections: a teacher's sections of a matching course in one room become one testing room.
-function api_roomsDetect() {
-  var w = anyStaff_(), words = troomWords_(), y = schoolYear_(), groups = {};
+function api_roomsDetect() { var w = anyStaff_(); roomsDetect_(w.email, true); return api_roomsList(); }
+// 0.37: the app also finds them by itself whenever the classes change (a new import), so BASE / support classes show up for teachers
+// without anyone pressing Find classes. Checked when a teacher starts a test request, when a student sees open periods, and on the list.
+function autoRooms_() {
+  try {
+    var sig = lastImport_() + '|' + rows_('Sections').length + '|' + setting_('Testing rooms: class names containing', 'S'), P = PropertiesService.getDocumentProperties();
+    if (P.getProperty('roomsSig') === sig) return;
+    roomsDetect_('automatic', false); P.setProperty('roomsSig', sig); MEMO_ = {};
+  } catch (e) {}
+}
+function roomsDetect_(by, loud) {
+  var words = troomWords_(), y = schoolYear_(), groups = {};
   var codes = list_(setting_('Testing rooms: course numbers starting with', 'S')).map(function (x) { return x.toUpperCase().replace(/\s/g, ''); }).filter(String);
-  if (!words.length && !codes.length) throw new Error('Add class names or course numbers on Settings › Testing locations first.');
+  if (!words.length && !codes.length) { if (loud) throw new Error('Add class names or course numbers on Settings › Testing locations first.'); return; }
   rows_('Sections').forEach(function (s) {
     if (str_(s.year) && str_(s.year) !== y) return;
     var c = low_(s.course), num = str_(s.cnum).toUpperCase().replace(/\s/g, ''), flat = ' ' + c.replace(/[^a-z0-9]+/g, ' ') + ' ';
@@ -3612,12 +4004,11 @@ function api_roomsDetect() {
       if (r) { update_('Testing Rooms', r, v); updated++; }          // a room someone turned off stays off
       else { v.id = uid_('tr'); v.seats = 8; v.status = 'Active'; v.src = 'Found automatically (' + g.courses.join(', ') + ')'; insert_('Testing Rooms', v); added++; }
     });
-    audit_('Testing rooms found', '', { added: added, updated: updated, by: w.email });
+    if (added || updated || loud) audit_('Testing rooms found', '', { added: added, updated: updated, by: by });
   });
-  return api_roomsList();
 }
 function api_roomsList() {
-  var w = need_('staff');
+  var w = need_('staff'); autoRooms_();
   return troomRows_().map(function (r) { return { id: str_(r.id), campus: str_(r.campus), name: str_(r.name), teachers: list_(r.tids).map(function (t) { var x = find_('Teachers', 'tid', t); return x ? str_(x.name) : t; }).join(' / ') || str_(r.runby), periods: str_(r.periods), room: str_(r.room), seats: str_(r.seats), status: str_(r.status), src: str_(r.src), notified: str_(r.notified), kind: str_(r.kind) || 'Class', runby: str_(r.runby), notes: str_(r.notes), manual: /^added by/i.test(str_(r.src)), open: str_(r.open), students: list_(r.sids).map(function (sid) { var s = student_(sid); return { sid: sid, name: s ? studentName_(s) : sid }; }) }; })
     .filter(function (r) { return w.campuses[r.campus]; }).sort(function (a, b) { return a.campus.localeCompare(b.campus) || a.name.localeCompare(b.name); });
 }
@@ -3733,13 +4124,15 @@ function caseManagers_(labels, newTeachers) {
 }
 function myCaseload_(w) {
   var t = w.tid && find_('Teachers', 'tid', w.tid); if (!t) return [];
-  return rows_('Students').filter(function (s) { return str_(s.cmgr) && /^active$/i.test(str_(s.status) || 'active') && list_(s.cmgr).some(function (l) { return cmMatch_(l, t.name); }); });
+  var sids = withField_('Students', 'cmgr', ['sid', 'cmgr', 'status']).filter(function (s) { return /^active$/i.test(str_(s.status) || 'active') && list_(s.cmgr).some(function (l) { return cmMatch_(l, t.name); }); }).map(function (s) { return str_(s.sid); });
+  studentsLoad_(sids); return sids.map(student_).filter(Boolean);
 }
 function watchSids_(w) {          // sid → why ("B.A.S.E. II · P3", "Caseload")
   var out = {}, tday = today_();
   myRooms_(w).filter(function (r) { return !isPlace_(r); }).forEach(function (r) {
-    var secs = list_(r.secids), S = sectionsById_();
-    rows_('Enrollments').forEach(function (e) {
+    var secs = list_(r.secids), S = sectionsById_(), bySec = slices_('Enrollments', 'secid', secs), list = [];
+    Object.keys(bySec).forEach(function (k) { list = list.concat(bySec[k]); });
+    list.forEach(function (e) {
       if (secs.indexOf(str_(e.secid)) < 0 || /drop/i.test(e.status) || !enrActive_(e, tday)) return;
       var sec = S[str_(e.secid)] || {}, why = str_(sec.course) + (str_(sec.period) ? ' · P' + str_(sec.period) : '');
       (out[str_(e.sid)] = out[str_(e.sid)] || []).indexOf(why) < 0 && out[str_(e.sid)].push(why);
@@ -3750,6 +4143,7 @@ function watchSids_(w) {          // sid → why ("B.A.S.E. II · P3", "Caseload
 }
 function api_watch() {
   var w = needRoomUser_(), by = watchSids_(w), t = today_(), y0 = yearStart_(), A = apptsAll_(), R = rows_('Test Requests');
+  studentsLoad_(Object.keys(by));
   return Object.keys(by).map(function (sid) {
     var s = student_(sid); if (!s) return null;
     var mine = A.filter(function (a) { return str_(a.sid) === sid; }).sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
@@ -3786,11 +4180,12 @@ function reqOut_(r, w) {
   var A = str_(r.aid) && find_('Assessments', 'id', r.aid), room = str_(r.where) && troom_(r.where), a = str_(r.appt) && find_('Appointments', 'id', r.appt);
   var mineClass = !!(w && str_(r.secid) && secTeachers_(r.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; }));
   return { id: str_(r.id), sid: str_(r.sid), student: studentName_(student_(r.sid)), course: str_(r.course), teacher: str_(r.teacher), test: str_(r.test), note: str_(r.note),
-    where: str_(r.where), whereName: room ? str_(room.name) : 'Testing Center', status: str_(r.status), created: str_(r.created), byName: str_(r.byName), byMe: !!(w && str_(r.by) === w.email),
+    where: str_(r.where), tcToo: /^yes/i.test(str_(r.tcToo)), whereName: room ? str_(room.name) + (/^yes/i.test(str_(r.tcToo)) ? ' or the Testing Center' : '') : 'Testing Center', status: str_(r.status), created: str_(r.created), byName: str_(r.byName), byMe: !!(w && str_(r.by) === w.email),
     myClass: mineClass, info: A ? assessOut_(A) : null, mailbox: str_(r.mailbox), mailboxBy: str_(r.mailboxBy), appt: a ? { date: day_(a.date), period: str_(a.period), half: str_(a.half), status: str_(a.status) } : null };
 }
 // What the teacher picks from: the student's classes, their testing locations, and the tests this teacher already set up
 function api_reqPrep(sid) {
+  autoRooms_();
   var s = myStudent_(sid), w = who_(), campus = str_(s.campus) === 'N' ? 'N' : 'S';
   var classes = schedule_(str_(s.sid)).rows.filter(function (r) { return r.course && !isFree_(r.type); }).map(function (r) {
     var mine = !!(r.secid && secTeachers_(r.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; }));
@@ -3799,14 +4194,15 @@ function api_reqPrep(sid) {
   var rooms = myRoomSlots_(str_(s.sid), campus).map(function (x) { return { id: x.room, name: x.label, period: x.period }; })
     .concat(placesFor_(str_(s.sid), campus).map(function (p) { return { id: p.id, name: p.name, period: '', place: true, open: p.open }; }));
   var tests = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && myTids_(w).indexOf(str_(A.tid)) >= 0; }).map(function (A) { return { id: str_(A.id), course: str_(A.course), name: str_(A.name) }; });
-  return { sid: str_(s.sid), name: studentName_(s), classes: classes, rooms: rooms, tests: tests };
+  var accom = {}; classes.forEach(function (c) { if (c.mine) accom[c.course] = accomFor_(s.sid, c.course); });
+  return { sid: str_(s.sid), name: studentName_(s), classes: classes, rooms: rooms, tests: tests, plan: str_(s.plan), accom: accom, accomItems: ACCOM_ITEMS };
 }
 // data = {sid, secid, test, aid, where ('' = Testing Center, or a testing location id), note, info:{format, platform, minutes, code, instructions}}
 function api_reqSave(data) {
   data = data || {}; var s = myStudent_(data.sid), w = who_(), sid = str_(s.sid), campus = str_(s.campus) === 'N' ? 'N' : 'S';
   var cls = schedule_(sid).rows.filter(function (r) { return r.secid && r.secid === String(data.secid || ''); })[0];
   if (!cls) throw new Error('Pick the class this test is for.');
-  var where = str_(data.where);
+  var where = str_(data.where), tcToo = /^either:/.test(where); if (tcToo) where = where.slice(7);          // 0.37: BASE or the Testing Center, the student's choice
   if (where && !myRoomSlots_(sid, campus).some(function (x) { return x.room === where; }) && !placesFor_(sid, campus).some(function (p) { return p.id === where; })) throw new Error('That student can’t be sent to that testing location.');
   var mine = secTeachers_(cls.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; });
   var A = str_(data.aid) ? find_('Assessments', 'id', data.aid) : null;
@@ -3818,9 +4214,10 @@ function api_reqSave(data) {
     if (reqRows_().some(function (r) { return str_(r.sid) === sid && str_(r.secid) === cls.secid && low_(r.test) === low_(test) && REQ_OPEN.test(r.status); })) throw new Error('There’s already an open request for ' + test + ' for this student.');
     if (!A && mine) A = reqInfo_(w, cls, test, data.info);          // the course's own teacher: the test info is saved with the request
     else if (!A) A = findTest_(cls, test);          // the BASE teacher: link the content teacher's test if it's already set up
-    var r = { id: uid_('rq'), campus: campus, sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher || '', aid: A ? str_(A.id) : '', test: test, where: where, status: 'Open', note: clean_(data.note, 500),
+    var r = { id: uid_('rq'), campus: campus, sid: sid, secid: cls.secid, course: cls.course, teacher: cls.teacher || '', aid: A ? str_(A.id) : '', test: test, where: where, tcToo: tcToo && where ? 'Yes' : '', status: 'Open', note: clean_(data.note, 500),
       created: iso_(), by: w.email, byName: w.name || w.email, reqId: clean_(data.reqId, 60) };
     insert_('Test Requests', r);
+    if (mine && data.accom) accomSave_(w, sid, cls.course, data.accom);
     audit_('Test request', r.id, { sid: sid, test: test, where: where || 'Testing Center', by: w.email });
     return api_reqListIn_(w);
   });
@@ -3882,12 +4279,12 @@ function api_reqMailbox(id) {          // a finished paper test from a testing l
 // ---------- the student: invitations to book (Testing Center), and tests waiting for them in a testing location
 function studentRequests_(sid) {
   return reqRows_().filter(function (r) { return str_(r.sid) === sid && /^open/i.test(r.status); }).map(function (r) {
-    var room = str_(r.where) && troom_(r.where);
-    return { id: str_(r.id), secid: str_(r.secid), aid: str_(r.aid), course: str_(r.course), test: str_(r.test), by: str_(r.byName), note: str_(r.note), where: str_(r.where), whereName: room ? str_(room.name) : '', place: !!(room && isPlace_(room)) };
+    var room = str_(r.where) && troom_(r.where), A = str_(r.aid) && find_('Assessments', 'id', r.aid);
+    return { id: str_(r.id), secid: str_(r.secid), aid: str_(r.aid), deadline: A ? day_(A.deadline) : '', tcToo: /^yes/i.test(str_(r.tcToo)), course: str_(r.course), test: str_(r.test), by: str_(r.byName), note: str_(r.note), where: str_(r.where), whereName: room ? str_(room.name) : '', place: !!(room && isPlace_(room)) };
   });
 }
 function reqBooked_(sid, rqid, appt) {          // inside the booking's locked_()
-  var r = req_(rqid); if (!r || str_(r.sid) !== sid || !/^open/i.test(r.status) || str_(r.where)) return;
+  var r = req_(rqid); if (!r || str_(r.sid) !== sid || !/^open/i.test(r.status) || (str_(r.where) && !/^yes/i.test(str_(r.tcToo)))) return;
   update_('Test Requests', r, { status: 'Booked', appt: str_(appt.id), changed: iso_() });
 }
 function reqUnbooked_(apptId) {          // the appointment was canceled: the invitation is open again
@@ -4153,6 +4550,13 @@ function relD(d) { if (d === B.today) return 'Today'; var t = dObj(B.today); t.s
 function hm(t) { if (!t) return ''; var p = t.split(':'), h = +p[0]; return (h % 12 || 12) + ':' + p[1] + (h < 12 ? ' AM' : ' PM'); }
 function timeOf(iso) { if (!iso) return ''; var x = new Date(iso); return x.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
 function halfTxt(h) { return h === 'A' ? 'A half' : h === 'B' ? 'B half' : h === 'AB' ? 'Whole period' : ''; }
+// time limits are "2 periods" or "45 minutes" (0.37); an older plain number is minutes
+function tlText(v) { v = String(v || '').trim(); if (!v) return ''; return /^\d+(\.\d+)?$/.test(v) ? v + ' min' : v; }
+function tlFields(id, v) {
+  v = String(v || '').trim(); var m = /^(\d+(?:\.\d+)?)\s*(p|min)?/i.exec(v), n = m ? m[1] : '', u = m && (m[2] || '').toLowerCase() === 'p' ? 'periods' : m ? 'minutes' : 'periods';
+  return '<div class="row" style="gap:6px;flex-wrap:nowrap"><input type="number" min="0" step="0.5" id="' + id + '" value="' + esc(n) + '" style="width:90px" placeholder="1"><select id="' + id + 'U" style="width:auto"><option value="periods"' + (u === 'periods' ? ' selected' : '') + '>period(s)</option><option value="minutes"' + (u === 'minutes' ? ' selected' : '') + '>minutes</option></select></div>';
+}
+function tlVal(id) { var n = ($(id).value || '').trim(); if (!n) return ''; var u = $(id + 'U').value; return u === 'periods' ? n + (n === '1' ? ' period' : ' periods') : n + ' minutes'; }
 function perTxt(p, h) { return 'Period ' + p + (h && h !== '' ? ' · ' + halfTxt(h) : ''); }
 function untilTxt(iso) { var m = Math.round((new Date(iso).getTime() - Date.now()) / 60000); if (m <= 0) return 'ending now'; if (m < 60) return m + ' min left'; return Math.floor(m / 60) + ' h ' + (m % 60) + ' min left'; }
 function statusChip(s) { var c = /complete/i.test(s) && !/partial/i.test(s) ? 'ok' : /testing/i.test(s) ? 'blue' : /checked/i.test(s) ? 'warn' : /no-show|missed/i.test(s) ? 'bad' : /partial|paused/i.test(s) ? 'warn' : /waiting|offer/i.test(s) ? 'info' : ''; return '<span class="chip ' + c + '">' + esc(/^checked/i.test(s) ? 'Arrived' : s) + '</span>'; }
@@ -4194,6 +4598,7 @@ function drawModes(want) {
   var ids = modes.map(function (m) { return m[0]; });
   // coordinators open on the teacher dashboard too; the coordinator tools are one button away (top right)
   if (!want && START.room && ids.indexOf('myroom') >= 0) want = 'myroom';
+  if (!want && (START.lastday || START.retake) && ids.indexOf('teacher') >= 0) want = 'teacher';          // the link in the "what's the last day?" email
   MODE = want === 'staff' && b.staff ? 'staff' : want && ids.indexOf(want) >= 0 ? want : modes[0][0];
   $('modes').innerHTML = (modes.length > 1 ? '<div class="seg">' + modes.map(function (m) { return '<button id="mode-' + m[0] + '" onclick="setMode(\'' + m[0] + '\')">' + m[1] + '</button>'; }).join('') + '</div>' : '') +
     (showLogin ? '<span id="hubBtn"></span>' : '') + (b.sim ? '<a class="btn sm" style="margin-left:8px" target="_blank" href="' + esc(b.url) + '?view=sim" title="Try the app with made-up students, and suggest changes">🧪 Simulator</a>' : '') + '<span class="mute small" style="margin-left:10px" title="' + esc(b.email) + '">' + esc(b.name || b.email) + ' · <a href="' + switchUrl() + '" target="_top">Wrong account?</a></span>';
@@ -4263,8 +4668,8 @@ function drawStu() {
   });
   if ((h.requests || []).length) out += '<div class="card" style="border-color:var(--brand)"><h2>📝 Tests your teachers asked you to take</h2>' + h.requests.map(function (r) {
     return '<div class="slot"><div class="grow"><b>' + esc(r.test) + '</b> <span class="mute">· ' + esc(r.course) + '</span><div class="small mute">From ' + esc(r.by) + (r.note ? ' · “' + esc(r.note) + '”' : '') + '</div>' +
-      (r.where ? '<div class="small">🏫 ' + (r.place ? 'If you’re in <b>' + esc(r.whereName) + '</b>, ask for it there.' : 'Take it in <b>' + esc(r.whereName) + '</b>, during that class. No appointment needed.') + '</div>' : '') + '</div>' +
-      (r.where || pv ? '' : h.booking ? '<button class="btn pri sm" onclick="rqPick(\'' + r.id + '\')">Book a time</button>' : '<span class="small mute">Book it in SignUpGenius for now.</span>') + '</div>';
+      (r.where ? '<div class="small">🏫 ' + (r.place ? 'If you’re in <b>' + esc(r.whereName) + '</b>, ask for it there.' : 'Take it in <b>' + esc(r.whereName) + '</b>, during that class. No appointment needed.') + (r.tcToo ? ' <b>Or</b> book a time in the Testing Center.' : '') + '</div>' : '') + '</div>' +
+      ((r.where && !r.tcToo) || pv ? '' : h.booking ? '<button class="btn pri sm" onclick="rqPick(\'' + r.id + '\')">Book a time</button>' : '<span class="small mute">Book it in SignUpGenius for now.</span>') + '</div>';
   }).join('') + '</div>';
   if (h.askSchedule && h.schedule.rows.length) out += '<div class="banner info"><b>Is your class schedule right?</b><div class="small mute" style="margin:2px 0 8px">We use it to fill in your classes and warn you about missing a class.</div><div class="row"><button class="btn sm" onclick="stuLooksRight(this)">My schedule looks correct</button><button class="btn sm" onclick="stuSchedule()">Edit my schedule</button><button class="btn sm" onclick="stuSchedule(true)">Paste my updated schedule from Infinite Campus</button></div></div>';
   out += pv ? '<div class="card" style="text-align:center"><span class="mute small">Students make and cancel appointments here.</span></div>' : h.booking ? '<div class="card" id="avail"><h2>Book a Testing Center appointment</h2><p class="small mute" style="margin:0 0 10px"><b>1.</b> Pick a day. <b>2.</b> Pick a time that’s open. <b>3.</b> Tell us the class and the test.</p><div id="availBody"><div class="spin">Finding open periods…</div></div></div>' : '<div class="card" style="text-align:center;padding:22px"><b>Sign up in SignUpGenius for now.</b><div class="mute small">The Testing Center is moving to this app soon.</div></div>';
@@ -4304,18 +4709,21 @@ function stuOffer(id, yes, btn, ack) {
 // ---------- booking, time first: the open periods are on the first page → pick one → class, test, purpose → confirm
 var AV = null;          // { slots, day }
 function availLoad(keepDay) {
+  if (!keepDay && SH && SH.slots && !SH.slotsUsed) { SH.slotsUsed = 1; var sl = SH.slots; AV = { slots: sl, day: (sl.days[0] || {}).date }; setTimeout(availDraw, 0); return; }          // came with the page
   call('api_slots').then(function (sl) { AV = { slots: sl, day: keepDay && sl.days.some(function (d) { return d.date === keepDay; }) ? keepDay : (sl.days[0] || {}).date }; availDraw(); })
     .catch(function (e) { var el = $('availBody'); if (el) el.innerHTML = '<div class="small" style="color:var(--bad)">' + esc(e.message || e) + '</div>'; });
 }
 function availDraw() {
   var el = $('availBody'); if (!el || !AV) return;
   if (!AV.slots.days.length) { el.innerHTML = '<div class="empty">No open periods right now.</div>'; return; }
-  var day = AV.slots.days.filter(function (d) { return d.date === AV.day; })[0] || AV.slots.days[0];
-  el.innerHTML = '<div class="daytabs">' + AV.slots.days.map(function (d) { var n = d.periods.filter(function (p) { return p.open && !p.soon; }).length; return '<button class="daytab' + (d.date === day.date ? ' on' : '') + '" onclick="AV.day=\'' + d.date + '\';availDraw()"><b>' + (d.date === B.today ? 'Today' : DAYS[dObj(d.date).getDay()]) + '</b><div class="small">' + MONTHS[dObj(d.date).getMonth()] + ' ' + dObj(d.date).getDate() + '</div><div class="tiny mute">' + n + ' open</div></button>'; }).join('') + '</div>' +
+  var days = RQP && RQP.deadline ? AV.slots.days.filter(function (d) { return d.date <= RQP.deadline; }) : AV.slots.days;
+  if (!days.length) { el.innerHTML = '<div class="empty">' + esc(RQP.test) + (RQP.deadline < B.today ? ' closed on ' : ': the last day is ') + esc(niceD(RQP.deadline)) + ', and there are no open times before then. Ask your teacher.</div>'; return; }
+  var day = days.filter(function (d) { return d.date === AV.day; })[0] || days[0];
+  el.innerHTML = (RQP && RQP.deadline ? '<p class="small" style="margin:0 0 8px">Showing days up to <b>' + esc(niceD(RQP.deadline)) + '</b>, the last day to take ' + esc(RQP.test) + '.</p>' : '') + '<div class="daytabs">' + days.map(function (d) { var n = d.periods.filter(function (p) { return p.open && !p.soon; }).length; return '<button class="daytab' + (d.date === day.date ? ' on' : '') + '" onclick="AV.day=\'' + d.date + '\';availDraw()"><b>' + (d.date === B.today ? 'Today' : DAYS[dObj(d.date).getDay()]) + '</b><div class="small">' + MONTHS[dObj(d.date).getMonth()] + ' ' + dObj(d.date).getDate() + '</div><div class="tiny mute">' + n + ' open</div></button>'; }).join('') + '</div>' +
     '<h3 style="margin:14px 0 4px">Open times on ' + esc(longD(day.date)) + '</h3>' + (day.sched && day.sched !== 'Regular' ? '<p class="small mute" style="margin:0">' + esc(day.sched) + ' schedule' + (day.note ? ' · ' + esc(day.note) : '') + '</p>' : '') +
     day.periods.filter(function (p) { return p.open && !p.soon; }).map(function (p) { return bkSlot(day, p); }).join('') +
     (day.rooms && day.rooms.length ? '<h3 style="margin:16px 0 4px">Or in your own classroom</h3><p class="tiny mute" style="margin:0">Your support class is also a testing room, during your class with them.</p>' + day.rooms.map(function (r) { return '<div class="slot"><div style="min-width:120px"><b>Period ' + esc(r.period) + '</b><div class="small mute">' + hm(r.start) + '–' + hm(r.end) + '</div></div><div class="grow small">🏫 ' + esc(r.label) + '</div><div class="row">' + (r.free > 0 ? '<button class="btn sm pri" onclick="bkPickRoom(\'' + day.date + '\',\'' + r.room + '\',\'' + r.period + '\')">Book here</button><span class="tiny mute">' + r.free + ' seats left</span>' : '<span class="chip">Full</span>') + '</div></div>'; }).join('') : '') +
-    (function () { var started = day.periods.filter(function (p) { return p.open && p.soon; }).length, closed = day.periods.filter(function (p) { return !p.open; }).map(function (p) { return p.label.replace('Period ', 'P'); }); return (started ? '<p class="tiny mute">' + started + ' earlier period' + (started > 1 ? 's have' : ' has') + ' already started.</p>' : '') + (closed.length ? '<p class="tiny mute">Closed: ' + closed.join(', ') + '.</p>' : ''); })();
+    (function () { var started = day.periods.filter(function (p) { return p.open && p.soon; }).length, closed = day.periods.filter(function (p) { return !p.open && (/^\d/.test(p.period) || !/^Not on the/.test(p.why || '')); }).map(function (p) { return p.label.replace('Period ', 'P'); }); return (started ? '<p class="tiny mute">' + started + ' earlier period' + (started > 1 ? 's have' : ' has') + ' already started.</p>' : '') + (closed.length ? '<p class="tiny mute">Closed: ' + closed.join(', ') + '.</p>' : ''); })();
 }
 function bkSlot(day, p) {
   if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
@@ -4343,7 +4751,7 @@ function bkPickRoom(d, room, p) {
 }
 // booking from a teacher's test request: pick a time; the class and test come from the request
 var RQP = null;
-function rqPick(id) { RQP = (SH.requests || []).filter(function (r) { return r.id === id; })[0] || null; if (!RQP) return; toast('Now pick a time for ' + RQP.test); var el = $('avail'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
+function rqPick(id) { RQP = (SH.requests || []).filter(function (r) { return r.id === id; })[0] || null; if (!RQP) return; availDraw(); toast('Now pick a time for ' + RQP.test); var el = $('avail'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
 function rqApply() { if (!RQP || BK.loc || BK.wait) return; BK.rq = RQP.id; BK.secid = RQP.secid; BK.aid = ''; BK.test = RQP.test; BK.rqTest = RQP; }
 function bkDraw() {
   var h = SH, when = esc(longD(BK.date)) + ', ' + esc(perTxt(BK.period, BK.half)) + ' · ' + hm(BK.slot.start) + '–' + hm(BK.slot.end);
@@ -4358,7 +4766,7 @@ function bkDraw() {
     if (BK.other) out += '<div class="grid2"><div><label class="f">Class</label><input type="text" value="' + esc(BK.other.course) + '" oninput="BK.other.course=this.value"></div><div><label class="f">Teacher</label><input type="text" value="' + esc(BK.other.teacher) + '" oninput="BK.other.teacher=this.value"></div></div><p class="small mute">If your schedule changed, you can also <button class="link" onclick="stuSchedule()">fix your schedule</button>.</p>';
     if (BK.secid || BK.other) {
       var tests = (BK.secid && h.tests[BK.secid]) || [];
-      out += '<label class="f">Which test?</label>' + tests.map(function (t, i) { var on = t.id ? BK.aid === t.id : (!BK.aid && BK.test === t.name); return '<button class="opt' + (on ? ' on' : '') + '" onclick="bkTestPick(' + i + ')">' + esc(t.name) + (t.fromClass ? ' <span class="tiny mute">(a classmate booked this)</span>' : '') + '</button>'; }).join('') +
+      out += '<label class="f">Which test? <span class="tiny" style="color:var(--bad)">(required)</span></label>' + tests.map(function (t, i) { var on = t.id ? BK.aid === t.id : (!BK.aid && BK.test === t.name), late = bkLate(t); return late ? '<div class="opt" style="opacity:.6;cursor:default">' + esc(t.name) + ' <span class="tiny" style="color:var(--bad)">' + esc(late) + '</span></div>' : '<button class="opt' + (on ? ' on' : '') + '" onclick="bkTestPick(' + i + ')">' + esc(t.name) + (t.deadline ? ' <span class="tiny mute">(last day ' + esc(niceD(t.deadline)) + ')</span>' : '') + (t.fromClass ? ' <span class="tiny mute">(a classmate booked this)</span>' : '') + '</button>'; }).join('') +
         '<input type="text" placeholder="' + (tests.length ? 'Or type the test name' : 'Type the test name (for example: Unit 3 Test)') + '" value="' + esc(BK.test || '') + '" oninput="BK.test=this.value;BK.aid=\'\'">' +
         '<label class="f">This is a…</label><div class="row">' + h.purposes.map(function (p) { return '<button class="btn' + (BK.purpose === p ? ' pri' : '') + '" onclick="BK.purpose=\'' + esc(p) + '\';bkDraw()">' + esc(p) + '</button>'; }).join('') + '</div>' +
         '<label class="f">Is the test online or on paper?</label><div class="row">' + ['Digital', 'Paper', ''].map(function (f) { return '<button class="btn' + (BK.fmt === f && BK.fmtSet ? ' pri' : '') + '" onclick="BK.fmt=\'' + f + '\';BK.fmtSet=1;bkDraw()">' + (f === 'Digital' ? 'Online' : f || 'Not sure') + '</button>'; }).join('') + '</div>' +
@@ -4373,6 +4781,12 @@ function bkDraw() {
   }
   $('main').innerHTML = out + '</div>';
 }
+// the teacher's last day to take a test: closed already, or after the day picked → a note, and it can't be picked
+function bkLate(t) {
+  if (!t || !t.deadline || !BK || BK.date <= t.deadline) return '';
+  return t.deadline < B.today ? 'Closed on ' + niceD(t.deadline) + ': ask your teacher' : 'Last day is ' + niceD(t.deadline) + ': pick an earlier day';
+}
+function bkKey(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 function bkTestPick(i) { var t = (SH.tests[BK.secid] || [])[i]; if (!t) return; if (t.id) { BK.aid = t.id; BK.test = ''; } else { BK.aid = ''; BK.test = t.name; } bkDraw(); }
 // a Google Calendar link for one appointment (opens Google Calendar with it filled in; the student presses Save)
 function gcalUrl(date, start, end, title, where) { var f = function (t) { return date.replace(/-/g, '') + 'T' + t.replace(':', '') + '00'; }; return 'https:' + '/' + '/calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) + '&dates=' + f(start) + '/' + f(end) + '&ctz=America/Chicago&location=' + encodeURIComponent(where) + '&details=' + encodeURIComponent('Bring your student ID. Cancel in the Testing Center app if you can’t come.'); }
@@ -4382,7 +4796,10 @@ function bkNext() {
   if (!BK.secid && !BK.other) return toast('Pick the class.');
   if (BK.other && !BK.other.course.trim()) return toast('Type the class name.');
   var t = BK.rq ? BK.rqTest.test : BK.aid ? ((SH.tests[BK.secid] || []).filter(function (x) { return x.id === BK.aid; })[0] || {}).name : (BK.test || '').trim();
-  if (!t) return toast('Pick or type the test.');
+  if (!t) return toast('Pick or type the name of the test. It can’t be left blank.');
+  if (!BK.rq && !BK.aid && BK.secid) { var m = (SH.tests[BK.secid] || []).filter(function (x) { return x.id && bkKey(x.name) === bkKey(t); })[0]; if (m) { BK.aid = m.id; BK.test = ''; t = m.name; } }          // a typed name that matches the teacher's test
+  var picked = BK.rq ? BK.rqTest : BK.aid ? (SH.tests[BK.secid] || []).filter(function (x) { return x.id === BK.aid; })[0] : null, late = bkLate(picked);
+  if (late) { modal('<h2>' + esc(t) + '</h2><p>' + (picked.deadline < B.today ? 'This test closed on <b>' + esc(niceD(picked.deadline)) + '</b>. Ask your teacher if you can still take it.' : 'The last day to take it is <b>' + esc(niceD(picked.deadline)) + '</b>. Pick a day on or before then.') + '</p><p class="small mute">Your teacher set the last day to take this test. Only your teacher or the Testing Center can book it after that.</p><div class="row"><button class="btn pri" onclick="closeModal();BK=null;drawStu()">← Pick another day</button><button class="btn" onclick="closeModal()">Close</button></div>'); return; }
   if (!BK.purpose) return toast('Choose makeup, retake or finishing a test.');
   BK.testName = t;
   var slot = BK.slot, half = BK.half;          // a class during this time? warn before going on
@@ -4472,8 +4889,10 @@ function parseICSchedule(text) {
 var TH = null;
 function tchStart() {
   TH = B.teacher;
-  if (B.setup && !START.appt && !window.__suLater) { drawTch(); suOpen(); return; }
+  if (B.setup && !START.appt && !START.lastday && !START.retake && !window.__suLater) { drawTch(); suOpen(); return; }
   if (START.appt) { var id = START.appt; START.appt = ''; drawTch(); tchForm(id); return; }
+  if (START.retake) { var ro = START.retake; START.retake = ''; drawTch(); if ((TH.retakeAsks || []).some(function (x) { return x.id === ro; })) roAsk(ro); else toast('Thanks! This one already has its answer.'); return; }
+  if (START.lastday) { var la = START.lastday, gi = -1; START.lastday = ''; drawTch(); (TH.unlisted || []).forEach(function (g, i) { if (g.ids.indexOf(la) >= 0) gi = i; }); if (gi >= 0) ulAsk(gi); else toast('Thanks! This test already has its answer.'); return; }
   drawTch();
 }
 function drawTch() {
@@ -4481,6 +4900,8 @@ function drawTch() {
   var need = up.filter(function (a) { return a.ready.state === 'Needs info'; }).length;
   var out = '<div class="wrap"><h1>My classes · Testing Center</h1><p class="mute" style="margin-top:0">Your students’ makeup tests and retakes. Fill in the testing form once per test; it’s used for every student taking it.</p>';
   if (need) out += '<div class="banner warn"><b>' + need + ' appointment' + (need > 1 ? 's need' : ' needs') + ' testing information.</b> Open one and fill in what’s missing.</div>';
+  if (h.retakeAsks && h.retakeAsks.length) out += '<div class="card" style="border-color:var(--warn)"><h2>🔁 Students asking for one more retake</h2><p class="small mute" style="margin-top:0">Students may retake up to half of a class’s summative tests in a semester. These students are over that. If you allow it, they can book it, and the Testing Center sees you allowed it.</p>' + h.retakeAsks.map(roRow).join('') + '</div>';
+  if (h.unlisted && h.unlisted.length) out += '<div class="card" style="border-color:var(--warn)"><h2>❓ What’s the last day for these tests?</h2><p class="small mute" style="margin-top:0">Your students booked tests that aren’t in the app yet. Answer once per test: it counts for every student, and after the last day students can’t book it (you and the Testing Center still can).</p>' + h.unlisted.map(ulRow).join('') + '</div>';
   if (!h.emailPref) out += '<div class="card" style="border-color:var(--brand)"><h2>How do you want Testing Center emails?</h2><p class="small mute" style="margin-top:0">When your students book, finish, miss or cancel a test. (Requests for missing tests always come right away.) You can change this anytime in My settings.</p><div class="row">' + tchPrefBtns('') + '</div></div>';
   out += '<div class="card"><div class="row"><h2 class="grow" style="margin:0">📝 Test requests</h2><button class="btn pri sm" onclick="rqNew()">＋ New test request</button></div><p class="small mute">Ask a student to take a test, with no appointment time. They’re invited to book a time in the Testing Center, or, in their BASE / support class, that teacher gets your test info and codes (no appointment needed). The content teacher or the BASE teacher can start one.</p><div id="rqList"><div class="spin">Loading…</div></div></div>';
   out += '<div class="card"><div class="row"><h2 class="grow" style="margin:0">Your tests out</h2><button class="btn sm" onclick="suOpen()">🗓️ Set up my year</button> <button class="btn sm" onclick="tchSettings()">⚙️ My settings</button></div><p class="small mute">Each test, step by step, like a delivery tracker.</p>' + (up.length ? up.map(tchTrack).join('') : '<div class="empty">None of your students are scheduled right now.</div>') + '</div>';
@@ -4493,13 +4914,80 @@ function drawTch() {
   out += h.courses.length ? '<table class="t"><tr><th>Course</th><th>Usually</th><th></th></tr>' + h.courses.map(function (c) { var d = h.defaults.filter(function (x) { return x.course === c; })[0]; return '<tr><td>' + esc(c) + '</td><td>' + (d && d.format ? esc(d.format) + (d.platform ? ' · ' + esc(d.platform) : '') : '<span class="mute">Not set</span>') + '</td><td><select onchange="if(this.value)tchDefault(\'' + esc(c) + '\',this.value)"><option value="">Set…</option><option>Digital</option><option>Paper</option></select></td></tr>'; }).join('') + '</table>' : '<div class="empty">No classes on file.</div>';
   out += '</div></div>';
   if (past.length) out += '<details class="card"><summary><b>Last two weeks</b> (' + past.length + ')</summary>' + past.reverse().map(tchTrack).join('') + '</details>';
-  out += '<div class="card"><h2>My tests on file</h2>' + (h.tests.length ? '<table class="t"><tr><th>Course</th><th>Test</th><th>Format</th><th>Paper</th><th></th></tr>' + h.tests.map(function (t) { return '<tr><td>' + esc(t.course) + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.format) + (t.platform ? ' · ' + esc(t.platform) : '') + '</td><td>' + esc(t.paper) + '</td><td><button class="btn sm" onclick="tchForm(null,\'' + t.id + '\')">Edit</button></td></tr>'; }).join('') + '</table>' : '<div class="empty">None yet. They’re added when you fill in a testing form.</div>') + '</div>';
+  if (h.semTests) { var stDone = h.semTests.list.filter(function (c) { return c.count || c.titles.length; }); out += '<div class="card"><div class="row"><h2 class="grow" style="margin:0">📋 My summative tests, semester ' + h.semTests.sem + '</h2><button class="btn sm' + (stDone.length ? '' : ' pri') + '" onclick="semTestsOpen()">' + (stDone.length ? 'Edit' : 'Add them') + '</button></div><p class="small mute">' + (stDone.length ? stDone.map(function (c) { var n = parseInt(c.count, 10) || c.titles.length; return esc(c.course) + ': ' + n + ' tests, so up to ' + Math.floor(n / 2) + ' retakes per student'; }).join('<br>') : 'Optional: how many summative tests each class has this semester, for the 50% retake rule.') + '</p></div>'; }
+  var carried = h.tests.filter(function (t) { return t.form && t.form.carried; }).length;
+  out += '<div class="card"><h2>My tests on file</h2>' + (carried ? '<p class="small mute" style="margin-top:0">🔁 ' + carried + ' test name' + (carried > 1 ? 's' : '') + ' carried over from last school year, so students can pick them again. Rename or delete any you don’t use. The codes and dates start empty; you’ll be asked for the last day when a student books one.</p>' : '') + (h.tests.length ? '<table class="t"><tr><th>Course</th><th>Test</th><th>Format</th><th>Paper</th><th></th></tr>' + h.tests.map(function (t) { return '<tr><td>' + esc(t.course) + '</td><td>' + esc(t.name) + (t.form && t.form.carried ? ' <span class="chip">🔁 from ' + esc(t.form.carried) + '</span>' : '') + (t.deadline ? '<div class="tiny mute">Last day ' + esc(niceD(t.deadline)) + '</div>' : '') + '</td><td>' + esc(t.format) + (t.platform ? ' · ' + esc(t.platform) : '') + '</td><td>' + esc(t.paper) + '</td><td style="white-space:nowrap"><button class="btn sm" onclick="tchForm(null,\'' + t.id + '\')">Edit</button> <button class="btn sm" onclick="tchRename(\'' + t.id + '\')">Rename</button> <button class="btn sm bad" onclick="tchDelTest(\'' + t.id + '\')">Delete</button></td></tr>'; }).join('') + '</table>' : '<div class="empty">None yet. They’re added when you fill in a testing form.</div>') + '</div>';
   $('main').innerHTML = out + '</div>';
   rqLoad();
 }
+// ---------- the 50% retake rule: answer a student's request for one more; list this semester's summative tests
+function roRow(x) { return '<div class="slot"><div class="grow"><b>' + esc(x.student) + '</b> · ' + esc(x.course) + '<div class="small mute">Wants to retake “' + esc(x.test) + '”. Retakes so far: ' + (x.used.length ? esc(x.used.join(', ')) : 'none') + ' (limit ' + x.limit + ' of ' + x.tests + ')</div></div><button class="btn sm pri" onclick="roGo(\'' + x.id + '\',true,this)">Allow it</button> <button class="btn sm" onclick="roGo(\'' + x.id + '\',false,this)">Don’t allow</button></div>'; }
+function roAsk(id) { var x = TH.retakeAsks.filter(function (r) { return r.id === id; })[0]; if (!x) return; modal('<h2>One more retake?</h2>' + roRow(x) + '<div class="row" style="margin-top:10px"><button class="btn" onclick="closeModal()">Later</button></div>'); }
+function roGo(id, allow, btn) { busy(btn, true); call('api_retakeAnswer', id, allow).then(function (h) { TH = h; closeModal(); drawTch(); toast(allow ? 'Allowed: the student can book it now' : 'Not allowed'); }).catch(function (e) { busy(btn, false); fail(e); }); }
+function semTestsHtml(st) {
+  return '<p class="small mute" style="margin-top:0">For the school’s retake rule (students may retake up to half of a class’s summative tests each semester), and so students can pick your tests by name. Fill in the number, the titles, or both. Everything here is optional.</p>' +
+    st.list.map(function (c, i) { return '<div class="card" style="margin:8px 0;padding:12px"><b>' + esc(c.course) + '</b><div class="grid2"><div><label class="f">How many summative tests this semester?</label><input type="number" min="0" id="stN' + i + '" value="' + esc(c.count) + '" placeholder="6" style="width:100px"></div><div><label class="f">Their titles (one per line)</label><textarea id="stT' + i + '" style="min-height:70px" placeholder="Unit 1 Test&#10;Unit 2 Test">' + esc(c.titles.join('\n')) + '</textarea></div></div></div>'; }).join('');
+}
+function semTestsVal(st) { return st.list.map(function (c, i) { return { course: c.course, count: $('stN' + i).value, titles: $('stT' + i).value }; }); }
+function semTestsOpen() {
+  var st = TH.semTests;
+  modal('<h2>📋 My summative tests, semester ' + st.sem + '</h2>' + semTestsHtml(st) + '<div class="row" style="margin-top:10px"><button class="btn pri" id="stGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
+  $('stGo').onclick = function () { var b = this; busy(b, true); call('api_semTestsSave', semTestsVal(st)).then(function (h) { TH = h; closeModal(); drawTch(); toast('Saved'); }).catch(function (e) { busy(b, false); fail(e); }); };
+}
+// ---------- accommodations for one student in my class (0.37): the IEP / 504 flag from Infinite Campus is only a reminder
+function accomBox(name, plan, ac, items) {
+  ac = ac || { items: [], other: '' };
+  return '<div class="card" style="margin:12px 0 0;padding:12px;background:var(--bg)"><b>Accommodations for ' + esc(name) + '</b>' +
+    (plan ? '<div class="banner info small" style="margin:6px 0">ℹ️ Infinite Campus shows this student has ' + (plan === '504' ? 'a <b>504 plan</b>' : 'an <b>IEP</b>') + '. Are there testing accommodations to include?</div>' : '<div class="tiny mute">Only if this student has testing accommodations. They’re saved for your class, for every test.</div>') +
+    '<div class="row" style="gap:12px;flex-wrap:wrap;margin-top:6px">' + items.map(function (x) { return '<label class="check" style="margin:0"><input type="checkbox" class="acI" value="' + esc(x) + '"' + (ac.items.indexOf(x) >= 0 ? ' checked' : '') + '> ' + esc(x) + '</label>'; }).join('') + '</div>' +
+    '<label class="f">Other</label><input type="text" id="acOther" value="' + esc(ac.other || '') + '" placeholder="For example: give them one page at a time"></div>';
+}
+function accomVal() { if (!$('acOther')) return null; return { items: [].filter.call(document.querySelectorAll('.acI'), function (x) { return x.checked; }).map(function (x) { return x.value; }), other: $('acOther').value }; }
+// ---------- rename or delete a test on file (names carry over each school year)
+function tchRename(id) {
+  var t = TH.tests.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+  modal('<h2>Rename this test</h2><p class="small mute" style="margin-top:0">' + esc(t.course) + '. Students in your class pick tests from a list by this name.</p><input type="text" id="trName" value="' + esc(t.name) + '"><div class="row" style="margin-top:12px"><button class="btn pri" id="trGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
+  $('trGo').onclick = function () { var b = this, n = $('trName').value.trim(); if (!n) return toast('Type the test’s name.'); busy(b, true); call('api_testRename', id, n).then(function (h) { TH = h; closeModal(); drawTch(); toast('Renamed'); }).catch(function (e) { busy(b, false); fail(e); }); };
+}
+function tchDelTest(id) {
+  var t = TH.tests.filter(function (x) { return x.id === id; })[0]; if (!t) return;
+  modal('<h2>Delete ' + esc(t.name) + '?</h2><p>Students won’t see it in the list any more. Past appointments keep their record.</p><div class="row"><button class="btn pri" onclick="closeModal()">Keep it</button><button class="btn bad" id="tdGo">Delete it</button></div>');
+  $('tdGo').onclick = function () { var b = this; busy(b, true); call('api_testDelete', id).then(function (h) { TH = h; closeModal(); drawTch(); toast('Deleted'); }).catch(function (e) { busy(b, false); fail(e); }); };
+}
+// ---------- ask once per test: the teacher's name and last day for a test students typed in (opened from the email link ?lastday=<appt>)
+function ulRow(g, i) {
+  return '<div class="slot"><div class="grow"><b>' + esc(g.test) + '</b> <span class="mute small">· ' + esc(g.course) + '</span><div class="small mute">' + g.who.length + ' booked: ' + g.who.map(function (x) { return esc(x.student) + ' (' + esc(niceD(x.date)) + ')'; }).join(', ') + '</div></div><button class="btn sm pri" onclick="ulAsk(' + i + ')">Answer</button></div>';
+}
+function ulAsk(i) {
+  var g = TH.unlisted[i], mine = g.carried ? [] : TH.tests.filter(function (t) { return t.course.toLowerCase() === g.course.toLowerCase() && !(t.form && t.form.carried); });
+  modal('<h2>What’s the last day for this test?</h2><p class="small mute" style="margin-top:0">' + esc(g.course) + ' · ' + g.who.length + ' booked: ' + g.who.map(function (x) { return esc(x.student) + ' (' + esc(niceD(x.date)) + ')'; }).join(', ') + '</p>' +
+    '<label class="f">1. The test’s name</label><input type="text" id="ulName" value="' + esc(g.test) + '"><p class="tiny mute" style="margin:2px 0 0">' + (g.carried ? 'This name carried over from ' + esc(g.carried) + '. Change it if it’s different this year.' : 'The student typed “' + esc(g.test) + '”. Please fix it if needed: students in your class pick tests from a list by this name.') + '</p>' +
+    (mine.length ? '<p class="small" style="margin:8px 0 0">Or is it a test you already added? <select id="ulMine" style="width:auto"><option value="">No, it’s a new one</option>' + mine.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + (t.deadline ? ' (last day ' + esc(niceD(t.deadline)) + ')' : '') + '</option>'; }).join('') + '</select></p>' : '') +
+    '<label class="f">2. The last day students can take it</label><div class="row" style="gap:6px;flex-wrap:wrap"><input type="date" id="ulD" style="width:auto"><button class="btn pri" id="ulSave">Save</button></div>' +
+    '<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn" id="ulClosed">It’s already closed</button><button class="btn" id="ulOpen">No last day</button><button class="btn" onclick="closeModal()">Later</button></div>' +
+    '<p class="tiny mute">Your answer counts for every student. After the last day, students can’t book it; you and the Testing Center still can.</p>');
+  var go = function (answer, btn) {
+    var aid = $('ulMine') ? $('ulMine').value : '', name = $('ulName').value.trim(), d = $('ulD').value;
+    if (!aid && !name) return toast('Type the test’s name.');
+    if (answer === 'date' && !aid && !d) return toast('Pick the last day first.');
+    ulGo(g, aid ? 'mine' : answer, btn, { name: name, deadline: d, aid: aid });
+  };
+  $('ulSave').onclick = function () { go('date', this); }; $('ulClosed').onclick = function () { go('closed', this); }; $('ulOpen').onclick = function () { go('open', this); };
+}
+function ulGo(g, answer, btn, o) {
+  busy(btn, true);
+  call('api_testLastDay', { ids: g.ids, answer: answer, name: o.name, deadline: o.deadline, aid: o.aid }).then(function (r) {
+    TH = r.home; closeModal(); drawTch();
+    if (!r.late.length) return toast(r.deadline ? 'Saved: the last day for ' + r.name + ' is ' + niceD(r.deadline) : 'Saved: ' + r.name + ' stays open');
+    window.__late = r.late.map(function (x) { return x.id; });
+    modal('<h2>' + esc(r.name) + (r.deadline < B.today ? ' is closed' : ': last day ' + esc(niceD(r.deadline))) + '</h2><p>These students are already booked after that day:</p><ul>' + r.late.map(function (x) { return '<li>' + esc(x.student) + ', ' + esc(niceD(x.date)) + '</li>'; }).join('') + '</ul><p class="small mute">If you cancel, each student is told your last day for this test, and their seat goes to the next student waiting.</p>' +
+      '<div class="row"><button class="btn bad" id="ulCx">Cancel their appointments</button><button class="btn pri" onclick="closeModal()">Let them keep it</button></div>');
+    $('ulCx').onclick = function () { var b = this; busy(b, true); call('api_cancelLate', window.__late).then(function (h) { TH = h; closeModal(); drawTch(); toast('Canceled'); }).catch(function (e) { busy(b, false); fail(e); }); };
+  }).catch(function (e) { busy(btn, false); fail(e); });
+}
 // ---------- test requests (no time): content teacher or BASE teacher → student invitation, or the BASE room gets the test info
 var RQ = null;
-function rqLoad() { call('api_reqList').then(function (l) { RQ = l; rqDraw(); }).catch(function (e) { var el = $('rqList'); if (el) el.innerHTML = '<div class="small" style="color:var(--bad)">' + esc(e.message || e) + '</div>'; }); }
+function rqLoad() { if (TH && TH.reqs && !TH.reqsUsed) { TH.reqsUsed = 1; RQ = TH.reqs; rqDraw(); return; } call('api_reqList').then(function (l) { RQ = l; rqDraw(); }).catch(function (e) { var el = $('rqList'); if (el) el.innerHTML = '<div class="small" style="color:var(--bad)">' + esc(e.message || e) + '</div>'; }); }
 function rqChip(r) { var s = r.status; if (r.mailbox) return '<span class="chip ok">📬 In your mailbox</span>';
   return /^open/i.test(s) ? (r.where ? '<span class="chip info">Waiting in ' + esc(r.whereName) + '</span>' : '<span class="chip info">Invited to book</span>') : /^booked/i.test(s) ? '<span class="chip ok">Booked' + (r.appt ? ' · ' + esc(niceD(r.appt.date)) + ' P' + esc(r.appt.period) : '') + '</span>' : /^done/i.test(s) ? '<span class="chip ok">Done</span>' : '<span class="chip">' + esc(s) + '</span>'; }
 function rqDraw() {
@@ -4513,10 +5001,10 @@ function rqDraw() {
 }
 function rqInfoFields(t) {
   t = t || {}; var f = t.form || {};
-  return '<div class="grid2"><div><label class="f">Format</label><select id="rqFmt"><option value="">Not sure yet</option><option' + (t.format === 'Digital' ? ' selected' : '') + '>Digital</option><option' + (t.format === 'Paper' ? ' selected' : '') + '>Paper</option></select></div><div><label class="f">Time limit (minutes)</label><input type="text" id="rqMin" value="' + esc(t.minutes || '') + '"></div></div>' +
-    '<label class="f">Access code</label><input type="text" id="rqCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="The same code for the test and the retake"><p class="tiny mute" style="margin:2px 0 0">Only the Testing Center and the testing teacher see codes.</p><label class="f">Instructions</label><textarea id="rqIns" style="min-height:60px">' + esc(f.notes || '') + '</textarea>';
+  return '<div class="grid2"><div><label class="f">Format</label><select id="rqFmt"><option value="">Not sure yet</option><option' + (t.format === 'Digital' ? ' selected' : '') + '>Digital</option><option' + (t.format === 'Paper' ? ' selected' : '') + '>Paper</option></select></div><div><label class="f">Time limit</label>' + tlFields('rqMin', t.minutes) + '</div></div>' +
+    '<label class="f">Access code</label><input type="text" id="rqCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="aK7xQ2"><p class="tiny mute" style="margin:2px 0 0">One code for the test and the retake. Only the Testing Center and the testing teacher see codes.</p><label class="f">Instructions</label><textarea id="rqIns" style="min-height:60px">' + esc(f.notes || '') + '</textarea>';
 }
-function rqInfoVal() { return { format: $('rqFmt').value, minutes: $('rqMin').value, code: $('rqCode').value, instructions: $('rqIns').value }; }
+function rqInfoVal() { return { format: $('rqFmt').value, minutes: tlVal('rqMin'), code: $('rqCode').value, instructions: $('rqIns').value }; }
 function rqInfo(i) {
   var r = RQ[i];
   modal('<h2>Test info: ' + esc(r.test) + '</h2><p class="small mute">' + esc(r.student) + ' · ' + esc(r.course) + ' · ' + esc(r.whereName) + '. Saved with your test, so other students taking it get it too.</p>' + rqInfoFields(r.info) + '<div class="row" style="margin-top:12px"><button class="btn pri" id="rqGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>');
@@ -4536,15 +5024,20 @@ function rqFind() {
 var RQF = null;
 function rqStudent(sid) { call('api_reqPrep', sid).then(function (p) { RQF = { p: p, reqId: uid() }; rqForm(); }).catch(fail); }
 function rqForm() {
-  var p = RQF.p, c = p.classes.filter(function (x) { return x.secid === RQF.secid; })[0], mine = c && c.mine, tests = c ? p.tests.filter(function (t) { return t.course.toLowerCase() === c.course.toLowerCase(); }) : [];
-  var out = '<h2>Test request for ' + esc(p.name) + '</h2><label class="f">Class</label><select id="rqSec" onchange="RQF.secid=this.value;RQF.aid=\'\';rqForm()"><option value="">Choose the class…</option>' + p.classes.map(function (x) { return '<option value="' + esc(x.secid) + '"' + (x.secid === RQF.secid ? ' selected' : '') + '>' + esc(x.course) + ' · P' + esc(x.period) + (x.teacher ? ' · ' + esc(x.teacher) : '') + (x.mine ? ' (yours)' : '') + '</option>'; }).join('') + '</select>';
+  var p = RQF.p, own = p.classes.filter(function (x) { return x.mine; });
+  if (!RQF.secid && own.length === 1 && !RQF.allClasses) RQF.secid = own[0].secid;          // the class you teach them in, picked for you
+  var shown = own.length && !RQF.allClasses ? own : p.classes;
+  var c = p.classes.filter(function (x) { return x.secid === RQF.secid; })[0], mine = c && c.mine, tests = c ? p.tests.filter(function (t) { return t.course.toLowerCase() === c.course.toLowerCase(); }) : [];
+  var out = '<h2>Test request for ' + esc(p.name) + '</h2><label class="f">Class</label>' + (own.length === 1 && !RQF.allClasses ? '<div><b>' + esc(own[0].course) + ' · P' + esc(own[0].period) + '</b> <span class="small mute">(your class)</span> <button class="link small" onclick="RQF.allClasses=1;rqForm()">a different class</button></div>' : '<select id="rqSec" onchange="if(this.value===\'__all\'){RQF.allClasses=1;RQF.secid=\'\'}else RQF.secid=this.value;RQF.aid=\'\';rqForm()"><option value="">Choose the class…</option>' + shown.map(function (x) { return '<option value="' + esc(x.secid) + '"' + (x.secid === RQF.secid ? ' selected' : '') + '>' + esc(x.course) + ' · P' + esc(x.period) + (x.teacher ? ' · ' + esc(x.teacher) : '') + (x.mine ? ' (yours)' : '') + '</option>'; }).join('') + (shown !== p.classes ? '<option value="__all">Another class…</option>' : '') + '</select>');
   if (c) {
     out += '<label class="f">Test</label>' + (tests.length ? '<select id="rqAid" onchange="RQF.aid=this.value;rqForm()"><option value="">A new test (type its name)</option>' + tests.map(function (t) { return '<option value="' + esc(t.id) + '"' + (t.id === RQF.aid ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select>' : '') +
       (RQF.aid ? '' : '<input type="text" id="rqTest" placeholder="For example: Unit 3 Test" value="' + esc(RQF.test || '') + '" oninput="RQF.test=this.value">');
     out += '<label class="f">Where</label><label class="check"><input type="radio" name="rqW" value=""' + (!RQF.where ? ' checked' : '') + ' onchange="RQF.where=\'\'"> Testing Center: the student is invited to book a time</label>' +
-      p.rooms.map(function (r) { return '<label class="check"><input type="radio" name="rqW" value="' + esc(r.id) + '"' + (RQF.where === r.id ? ' checked' : '') + ' onchange="RQF.where=this.value"> ' + esc(r.name) + (r.place ? ' (' + (r.open === 'Everyone' ? 'any student can be sent there' : 'this student is on its list') + '): no appointment; the staff there get the test info if the student comes' : ', period ' + esc(r.period) + ': no appointment needed; that teacher gets the test info') + '</label>'; }).join('') +
+      p.rooms.map(function (r) { return '<label class="check"><input type="radio" name="rqW" value="' + esc(r.id) + '"' + (RQF.where === r.id ? ' checked' : '') + ' onchange="RQF.where=this.value"> ' + esc(r.name) + (r.place ? ' (' + (r.open === 'Everyone' ? 'any student can be sent there' : 'this student is on its list') + '): no appointment; the staff there get the test info if the student comes' : ', period ' + esc(r.period) + ': no appointment needed; that teacher gets the test info') + '</label>' +
+        (r.place ? '' : '<label class="check"><input type="radio" name="rqW" value="either:' + esc(r.id) + '"' + (RQF.where === 'either:' + r.id ? ' checked' : '') + ' onchange="RQF.where=this.value"> <b>Either</b> ' + esc(r.name) + ' (period ' + esc(r.period) + ') <b>or</b> the Testing Center: the student chooses</label>'); }).join('') +
       (p.rooms.length ? '' : '<p class="tiny mute">This student isn’t in a BASE / support class that’s a testing location.</p>');
     out += '<label class="f">Note (optional)</label><input type="text" id="rqNote" value="' + esc(RQF.note || '') + '" oninput="RQF.note=this.value">';
+    if (mine) out += accomBox(p.name, p.plan, (p.accom || {})[c.course], p.accomItems || []);
     if (mine && !RQF.aid) out += '<h3 style="margin-top:14px">Test info</h3><p class="tiny mute" style="margin-top:0">You teach this class, so you can add the test info now (or later).</p>' + rqInfoFields();
     if (!mine) out += '<p class="small mute">You don’t teach this class, so its teacher adds the test info and code. They’ll see your request on their page.</p>';
   }
@@ -4552,7 +5045,7 @@ function rqForm() {
   modal(out);
   if ($('rqGo')) $('rqGo').onclick = function () {
     var b = this; busy(b, true);
-    call('api_reqSave', { sid: p.sid, secid: RQF.secid, aid: RQF.aid || '', test: RQF.test || '', where: RQF.where || '', note: RQF.note || '', info: $('rqFmt') ? rqInfoVal() : null, reqId: RQF.reqId })
+    call('api_reqSave', { sid: p.sid, secid: RQF.secid, aid: RQF.aid || '', test: RQF.test || '', where: RQF.where || '', note: RQF.note || '', info: $('rqFmt') ? rqInfoVal() : null, accom: accomVal(), reqId: RQF.reqId })
       .then(function (l) { RQ = l; closeModal(); rqDraw(); toast('Request sent'); }).catch(function (e) { busy(b, false); fail(e); });
   };
 }
@@ -4603,7 +5096,7 @@ function tchRules() {
 var SU = null;
 function suOpen() { call('api_setupInfo').then(function (d) { SU = { d: d, i: 0 }; SU.steps = suSteps(d); suDraw(); }).catch(fail); }
 function suSteps(d) {
-  var st = ['welcome', 'emails', 'doc', 'rules', 'formats'];
+  var st = ['welcome', 'emails', 'doc', 'rules', 'formats', 'semtests'];
   if (d.rooms.length) st.push('room');
   if (d.watch) st.push('watch');
   return st.concat(['done']);
@@ -4617,6 +5110,7 @@ function suDraw() {
     '<input type="text" id="suLink" placeholder="https://docs.google.com/…" value="' + esc(d.doc ? d.doc.link : '') + '"><div class="row" style="margin-top:8px"><button class="btn" onclick="suDoc(this)">Save the link</button></div>';
   if (step === 'rules') { var r = h.rules || {}; out += '<h2>📏 Rules for all my tests</h2><p class="small mute" style="margin-top:0">What you allow on every test. A single test can still be different.</p><div class="grid2">' + FORM_LABELS.map(function (x) { return '<label class="check"><input type="checkbox" id="sk-' + x[0] + '"' + (r[x[0]] ? ' checked' : '') + '> ' + x[1] + '</label>'; }).join('') + '</div><label class="f">Always tell the Testing Center</label><textarea id="skNotes" style="min-height:60px" placeholder="For example: Please monitor on Securly. No notes or other resources.">' + esc(r.notes || '') + '</textarea>'; }
   if (step === 'formats') out += '<h2>💻 Paper or online?</h2><p class="small mute" style="margin-top:0">What your tests usually are, class by class, so the Testing Center can get ready before you fill anything in.</p>' + (h.courses.length ? '<table class="t small">' + h.courses.map(function (c, i) { var df = h.defaults.filter(function (x) { return x.course === c; })[0] || {}; return '<tr><td>' + esc(c) + '</td><td><div class="seg">' + ['Digital', 'Paper'].map(function (f) { return '<button class="' + (df.format === f ? 'on' : '') + '" onclick="suFmt(' + i + ',\'' + f + '\')">' + (f === 'Digital' ? 'Online' : 'Paper') + '</button>'; }).join('') + '</div></td></tr>'; }).join('') + '</table>' : '<div class="empty">No classes found for you yet.</div>');
+  if (step === 'semtests') out += '<h2>📋 My summative tests this semester (optional)</h2>' + semTestsHtml(h.semTests);
   if (step === 'room') out += '<h2>🏫 My class is a testing location</h2><p class="small">Students in these classes can take makeup tests and retakes in your room during your class, and teachers can send you their test info and codes. You’ll run them from <b>My testing room</b>.</p>' + d.rooms.map(function (r) { return '<div class="slot"><div class="grow"><b>' + esc(r.name) + '</b><div class="tiny mute">Period ' + esc(r.periods) + ' · up to ' + esc(r.seats) + ' students at a time</div></div><button class="btn sm" onclick="suOptOut(\'' + r.id + '\',this)">Not my room</button></div>'; }).join('');
   if (step === 'watch') out += '<h2>📋 My students’ testing</h2><p>' + (d.caseload ? 'Your caseload (' + d.caseload + ' students) ' : '') + (d.caseload && d.rooms.length ? 'and ' : '') + (d.rooms.length ? 'the students in your support classes ' : '') + '— ' + d.watch + ' students in all — are on <b>My students’ testing</b>: what’s coming up, what happened, and who keeps missing.</p><p class="small mute">Nothing to set; it fills in by itself.</p>';
   if (step === 'done') out += '<h2>✅ You’re set for ' + esc(d.year) + '</h2><p>The Testing Center has your codes doc, your rules and your usual formats. When a student books one of your tests, you’ll only hear from the app if something is missing.</p><p class="small mute">To change anything later: My classes › 🗓️ Set up my year, or the cards on that page.</p>';
@@ -4627,6 +5121,7 @@ function suDraw() {
 function suGo(k) {
   var step = SU.steps[SU.i];
   if (step === 'rules' && k > 0) { var dd = { notes: $('skNotes').value, extSpec: (SU.d.home.rules || {}).extSpec || '' }; FORM_LABELS.forEach(function (x) { dd[x[0]] = $('sk-' + x[0]).checked; }); busy($('suNext'), true); call('api_saveRules', dd).then(function (h) { TH = h; SU.d.home = h; SU.i += k; suDraw(); }).catch(function (e) { busy($('suNext'), false); fail(e); }); return; }
+  if (step === 'semtests' && k > 0) { busy($('suNext'), true); call('api_semTestsSave', semTestsVal(SU.d.home.semTests)).then(function (h) { TH = h; SU.d.home = h; SU.i += k; suDraw(); }).catch(function (e) { busy($('suNext'), false); fail(e); }); return; }
   if (step === 'doc' && k > 0 && $('suLink').value.trim() && !(SU.d.doc && SU.d.doc.link === $('suLink').value.trim())) { suDoc($('suNext'), function () { SU.i += k; suDraw(); }); return; }
   SU.i += k; suDraw();
 }
@@ -4653,21 +5148,23 @@ function formDraw(a, t0) {
   modal('<h2>Testing form</h2>' + head + notesHtml + res +
     '<div class="grid2"><div><label class="f">Course</label><input type="text" id="fCourse" value="' + esc(t.course || (a && a.course) || '') + '"' + (a ? ' disabled' : '') + '></div><div><label class="f">Test name</label><input type="text" id="fName" value="' + esc(t.name || (a && a.test) || '') + '"></div></div>' +
     '<label class="f">Paper or online?</label><div class="seg" id="fFmt">' + ['Digital', 'Paper'].map(function (x) { return '<button type="button" class="' + (fmt === x ? 'on' : '') + '" onclick="fSet(\'' + x + '\')">' + (x === 'Digital' ? 'Online' : 'Paper') + '</button>'; }).join('') + '</div>' +
-    '<div id="fDig"' + (fmt === 'Digital' ? '' : ' hidden') + '><div class="grid2"><div><label class="f">Platform</label><select id="fPlat"><option value="">Not specified</option>' + TH.platforms.filter(function (p) { return p !== 'Not specified'; }).map(function (p) { return '<option' + (plat === p ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div><div><label class="f">Access code (staff only)</label><input type="text" id="fCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="' + (a && a.resources.length ? 'In my standing doc' : 'The same code for the test and the retake') + '"></div></div></div>' +
-    '<div class="grid2"><div><label class="f">Original test date</label><input type="date" id="fTdate" value="' + esc(t.tdate || '') + '"></div><div><label class="f">Retake deadline</label><input type="date" id="fDead" value="' + esc(t.deadline || '') + '"></div></div>' +
+    '<div id="fDig"' + (fmt === 'Digital' ? '' : ' hidden') + '><div class="grid2"><div><label class="f">Platform</label><select id="fPlat"><option value="">Not specified</option>' + TH.platforms.filter(function (p) { return p !== 'Not specified'; }).map(function (p) { return '<option' + (plat === p ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div><div><label class="f">Access code (staff only)</label><input type="text" id="fCode" value="' + esc(t.code || t.rcode || '') + '" placeholder="' + (a && a.resources.length ? 'In my standing doc' : 'aK7xQ2') + '"></div></div></div>' +
+    '<div class="grid2"><div><label class="f">Original test date</label><input type="date" id="fTdate" value="' + esc(t.tdate || '') + '"></div><div><label class="f">Last day to take it</label><input type="date" id="fDead" value="' + esc(t.deadline || '') + '"></div></div><p class="tiny mute" style="margin:2px 0 0">Students can’t book this test for a day after the last day (makeups and retakes). You and the Testing Center still can. Leave it blank to keep it open.</p>' +
     '<div id="fPap"' + (fmt === 'Paper' ? '' : ' hidden') + '><label class="f">Paper test</label><select id="fPaper"><option value="">—</option><option' + (t.paper === 'Awaiting delivery' ? ' selected' : '') + ' value="Awaiting delivery">I’ll drop it off</option><option' + (t.paper === 'In the drop box' ? ' selected' : '') + ' value="In the drop box">It’s in the Testing Center drop box</option><option' + (t.paper === 'Expected' ? ' selected' : '') + '>Expected</option></select><p class="tiny mute">The Testing Center marks it Received when it arrives.</p></div>' +
-    '<div class="grid2"><div><label class="f">Time limit (minutes)</label><input type="text" id="fMin" value="' + esc(t.minutes || '') + '"></div><div><label class="f">Extended time</label><input type="text" id="fExt" value="' + esc(f.extSpec || '') + '" placeholder="Only if this student has it (for example: 1.5x)"></div></div>' +
+    '<label class="f">Time limit</label>' + tlFields('fMin', t.minutes) +
+    '<label class="f">How to give it</label><label class="check"><input type="checkbox" id="fTwo"' + (f.twoPart ? ' checked' : '') + '> The test has 2 parts: one with a calculator, one without</label><label class="check"><input type="checkbox" id="fSec"' + (f.securly ? ' checked' : '') + '> Please have the Testing Center watch the student’s screen on Securly</label>' +
     '<label class="f">Allowed</label>' + (TH.rules ? '<div id="fRulesOn"' + (useR ? '' : ' hidden') + ' class="banner info small" style="margin:0">Uses your <b>Rules for all my tests</b>: ' + esc(rulesText(TH.rules)) + ' <button type="button" class="link" onclick="$(\'fRulesOn\').hidden=true;$(\'fBoxes\').hidden=false">Change for this test</button></div>' : '') +
     '<div id="fBoxes"' + (useR ? ' hidden' : '') + '>' + (TH.rules ? '<div class="tiny mute">Only for this test. <button type="button" class="link" onclick="$(\'fRulesOn\').hidden=false;$(\'fBoxes\').hidden=true">Go back to my rules</button></div>' : '') + '<div class="grid2">' + FORM_LABELS.map(function (x) { return '<label class="check"><input type="checkbox" id="fk-' + x[0] + '"' + (f[x[0]] ? ' checked' : '') + '> ' + x[1] + '</label>'; }).join('') + '</div></div>' +
     '<label class="f">Answer form / enclosed instructions</label><input type="text" id="fAns" value="' + esc(f.answerForm || '') + '">' +
+    (a && a.accomItems ? accomBox(a.student, a.plan, a.accom, a.accomItems) : '') +
     '<label class="f">Other instructions or notes</label><textarea id="fNotes">' + esc(f.notes || '') + '</textarea>' +
     '<label class="check"><input type="checkbox" id="fDef"> Use these as my usual instructions for this course</label>' +
     '<div class="row" style="margin-top:12px"><button class="btn pri" id="fGo">Save</button><button class="btn" onclick="closeModal()">Cancel</button><div class="grow"></div>' + (a ? '' : '') + '</div>', true);
   window.__fFmt = fmt;
   $('fGo').onclick = function () {
-    var form = { extSpec: $('fExt').value, answerForm: $('fAns').value, notes: $('fNotes').value }; FORM_LABELS.forEach(function (x) { form[x[0]] = $('fk-' + x[0]).checked; });
+    var form = { extSpec: f.extSpec || '', twoPart: $('fTwo').checked, securly: $('fSec').checked, answerForm: $('fAns').value, notes: $('fNotes').value }; FORM_LABELS.forEach(function (x) { form[x[0]] = $('fk-' + x[0]).checked; });
     form.useRules = !!TH.rules && $('fBoxes').hidden;          // following my rules, or changed for this test
-    var data = { id: t.id || '', course: $('fCourse').value, name: $('fName').value, format: window.__fFmt, platform: $('fPlat').value, code: $('fCode').value, tdate: $('fTdate').value, deadline: $('fDead').value, paper: $('fPaper').value, minutes: $('fMin').value, form: form, saveDefault: $('fDef').checked };
+    var data = { id: t.id || '', course: $('fCourse').value, name: $('fName').value, format: window.__fFmt, platform: $('fPlat').value, code: $('fCode').value, tdate: $('fTdate').value, deadline: $('fDead').value, paper: $('fPaper').value, minutes: tlVal('fMin'), form: form, accom: accomVal(), saveDefault: $('fDef').checked };
     var btn = this; busy(btn, true);
     call('api_saveTest', data, a ? a.id : null).then(function () { closeModal(); toast('Saved. The Testing Center sees it now.'); return call('api_teacherHome'); }).then(function (h) { TH = h; drawTch(); }).catch(function (e) { busy(btn, false); fail(e); });
   };
@@ -4733,7 +5230,7 @@ function rmDraw() {
     out += '<div class="card"><h2 style="margin:0">🏫 ' + esc(r.name) + '</h2><div class="small mute" style="margin-top:4px">' + (r.place ? 'Teachers send tests here for students who are with you. When one arrives, the test info and code are below.' : 'Students can sign up during: <b>Period' + (String(r.periods).indexOf(',') >= 0 ? 's ' : ' ') + esc(r.periods) + '</b> · up to <b>' + esc(r.seats) + '</b> students per period') + '</div>' +
       ((r.requests || []).length ? '<h3 style="margin-top:14px">Tests waiting here (no appointment needed)</h3><table class="t small">' + r.requests.map(function (q) {
         var i = q.info || {};
-        return '<tr><td><b>' + esc(q.student) + '</b><div class="tiny mute">from ' + esc(q.byName) + '</div></td><td>' + esc(q.test) + '<div class="tiny mute">' + esc(q.course) + (q.teacher ? ' · ' + esc(q.teacher) : '') + '</div>' + (q.note ? '<div class="tiny">“' + esc(q.note) + '”</div>' : '') + '</td><td class="small">' + (q.info ? esc(i.format || '') + (i.minutes ? ' · ' + esc(i.minutes) + ' min' : '') + (i.form && i.form.notes ? '<div class="tiny">' + esc(i.form.notes) + '</div>' : '') + guideBtn(i.platform) + (i.code || i.rcode ? ' <button class="btn sm" data-c="' + esc(i.code || i.rcode) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">🔑 Show code</button>' : '') : '<span class="chip bad">Waiting for the teacher’s test info</span>') + '</td><td>' + (/^done/i.test(q.status) ? '<span class="chip ok">Done</span> <button class="btn sm pri" onclick="rqMailbox(\'' + q.id + '\')">📬 Back in teacher’s mailbox</button>' : '<button class="btn sm pri" onclick="rqDone(\'' + q.id + '\')">Done</button>') + '</td></tr>';
+        return '<tr><td><b>' + esc(q.student) + '</b><div class="tiny mute">from ' + esc(q.byName) + '</div></td><td>' + esc(q.test) + '<div class="tiny mute">' + esc(q.course) + (q.teacher ? ' · ' + esc(q.teacher) : '') + '</div>' + (q.note ? '<div class="tiny">“' + esc(q.note) + '”</div>' : '') + '</td><td class="small">' + (q.info ? esc(i.format || '') + (i.minutes ? ' · ' + esc(tlText(i.minutes)) + ' min' : '') + (i.form && i.form.notes ? '<div class="tiny">' + esc(i.form.notes) + '</div>' : '') + guideBtn(i.platform) + (i.code || i.rcode ? ' <button class="btn sm" data-c="' + esc(i.code || i.rcode) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">🔑 Show code</button>' : '') : '<span class="chip bad">Waiting for the teacher’s test info</span>') + '</td><td>' + (/^done/i.test(q.status) ? '<span class="chip ok">Done</span> <button class="btn sm pri" onclick="rqMailbox(\'' + q.id + '\')">📬 Back in teacher’s mailbox</button>' : '<button class="btn sm pri" onclick="rqDone(\'' + q.id + '\')">Done</button>') + '</td></tr>';
       }).join('') + '</table>' : '') +
       '<h3 style="margin-top:14px">Coming today</h3>' + (today.length ? '<table class="t small">' + today.map(row).join('') + '</table>' : '<div class="small mute">No students have signed up to test in your room today.</div>') +
       (later.length ? '<h3 style="margin-top:14px">Coming later</h3><table class="t small">' + later.map(row).join('') + '</table>' : '') +
@@ -4866,7 +5363,7 @@ function coRow(a) {
     else if (/^(testing|paused)/i.test(s)) act = '<button class="btn sm ok" onclick="event.stopPropagation();coDone(\'' + a.id + '\')">Check out</button>';
     else act = mailBtn(a, 'coStep');
   }
-  var flags = (a.conflict && !a.conflict.verified ? ' <span class="chip warn" title="Will miss ' + esc(a.conflict.course) + '">pass?</span>' : '') + (a.unmatched ? ' <span class="chip bad">not matched</span>' : '') + (a.resources && a.resources.length ? ' <span class="chip info" title="Standing resource">doc</span>' : '');
+  var flags = (a.conflict && !a.conflict.verified ? ' <span class="chip warn" title="Will miss ' + esc(a.conflict.course) + '">pass?</span>' : '') + (a.unmatched ? ' <span class="chip bad">not matched</span>' : '') + (a.accom ? ' <span class="chip info" title="Accommodations: ' + esc(a.accom) + '">⏱ ' + esc(a.accom.split(' · ')[0]) + '</span>' : '') + (a.noTest ? ' <span class="chip warn" title="The student typed a test the teacher hasn’t added, so the app couldn’t check its last day. The teacher is asked on My classes.">no deadline on file</span>' : '') + (a.resources && a.resources.length ? ' <span class="chip info" title="Standing resource">doc</span>' : '');
   return '<tr class="click' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(s) ? ' needs' : '') + '" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.start ? ' · started ' + timeOf(a.start) : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td><td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td><td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td><td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td><td>' + fmtChip(a.ready) + '</td><td>' + readyChip(a.ready) + '</td><td>' + statusChip(s) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
 }
 function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', start: 'Started', done: 'Checked out', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one', mailbox: 'Marked: back in the teacher’s mailbox', unmailbox: 'Not in the mailbox after all' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
@@ -4890,13 +5387,15 @@ function coAppt(id) {
 }
 function coApptHtml(a) {
   var ed = CO.dash.edit, r = a.ready, t = a.testInfo, out = '<div class="row"><h2 class="grow" style="margin:0">' + esc(a.student) + '</h2><button class="btn sm" onclick="closeDrawer()">✕</button></div><div class="small mute">' + esc(a.sid) + (a.grade ? ' · grade ' + esc(a.grade) : '') + (a.email ? ' · ' + esc(a.email) : '') + '</div>';
+  if (a.accom) out += '<div class="banner warn small" style="margin-top:10px">⏱ <b>Accommodations:</b> ' + esc(a.accom) + '</div>';
+  if (/50% retake/.test(a.notes || '')) out += '<div class="banner info small" style="margin-top:10px">🔁 ' + esc((a.notes.match(/[^·]*50% retake[^·]*/) || [''])[0].trim()) + '</div>';
   out += '<div class="kv" style="margin-top:12px"><div>When</div><div>' + esc(longD(a.date)) + ', ' + esc(perTxt(a.period, a.half)) + '</div><div>Class</div><div>' + esc(a.course) + ' · ' + esc(a.teacher) + (a.noClass ? ' <span class="chip warn">not on their schedule</span>' : '') + '</div><div>Test</div><div>' + esc(a.test) + ' · ' + esc(a.purpose) + '</div><div>Status</div><div>' + statusChip(a.status) + (a.outcome ? ' ' + esc(a.outcome) : '') + '</div>' + (a.desk ? '<div>Desk</div><div><b>Desk ' + esc(a.desk) + '</b>' + (ed && /^(checked|testing|paused)/i.test(a.status) ? ' <button class="btn sm" onclick="coCheckIn(\'' + a.id + '\', true)">Move</button>' : '') + '</div>' : '') + '<div>Booked by</div><div>' + esc(a.source) + '</div></div>';
   if (a.conflict) out += '<div class="banner ' + (a.conflict.verified ? 'ok' : 'warn') + ' small" style="margin-top:12px"><b>Will miss ' + esc(a.conflict.course) + '</b>' + (a.conflict.teacher ? ' (' + esc(a.conflict.teacher) + ')' : '') + '. ' + esc(a.conflict.ack) + (a.conflict.note ? ': “' + esc(a.conflict.note) + '”' : '') + '. ' + (a.conflict.verified ? 'Pass checked by ' + esc(a.conflict.verifiedBy) + '.' : 'This is not a teacher’s approval: check the written pass.') + (ed && !a.conflict.verified ? ' <button class="btn sm" onclick="coStep(\'' + a.id + '\',\'verify\')">Pass seen</button>' : '') + '</div>';
   out += '<h3 style="margin-top:16px">Access the test</h3><div class="card" style="padding:12px">';
   out += '<div class="row">' + readyChip(r) + fmtChip(r) + '<span class="small mute">' + esc(r.ftext) + '</span></div>' + (r.missing.length ? '<div class="small" style="color:var(--bad);margin-top:6px">' + esc(r.missing.join('; ')) + '</div>' : '');
   a.resources.forEach(function (x) { out += '<div class="slot" style="margin:8px 0 0"><div class="grow"><b>' + esc(x.title) + '</b><div class="tiny mute">' + esc(x.type) + '</div></div>' + (x.link ? '<a class="btn sm pri" href="' + esc(x.link) + '" target="_blank">Open</a>' : '') + '</div>'; });
   if (t) {
-    out += '<div class="kv small" style="margin-top:10px">' + (t.platform ? '<div>Platform</div><div>' + esc(t.platform) + guideBtn(t.platform) + '</div>' : '') + (t.useCode || t.code ? '<div>' + esc(t.useLabel || 'Access code') + '</div><div><button class="link" data-c="' + esc(t.useCode || t.code) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">Show code</button></div>' : '') + (t.deadline ? '<div>Retake deadline</div><div>' + esc(niceD(t.deadline)) + '</div>' : '') + (t.useRules && t.rulesNotes ? '<div>Teacher’s rules</div><div>' + esc(t.rulesNotes) + '</div>' : '') + (t.minutes ? '<div>Time limit</div><div>' + esc(t.minutes) + ' min' + (t.form.extSpec ? ' · extended: ' + esc(t.form.extSpec) : '') + '</div>' : '') +
+    out += '<div class="kv small" style="margin-top:10px">' + (t.platform ? '<div>Platform</div><div>' + esc(t.platform) + guideBtn(t.platform) + '</div>' : '') + (t.useCode || t.code ? '<div>' + esc(t.useLabel || 'Access code') + '</div><div><button class="link" data-c="' + esc(t.useCode || t.code) + '" onclick="this.outerHTML=\'<b>\'+esc(this.dataset.c)+\'</b>\'">Show code</button></div>' : '') + (t.deadline ? '<div>Retake deadline</div><div>' + esc(niceD(t.deadline)) + '</div>' : '') + (t.useRules && t.rulesNotes ? '<div>Teacher’s rules</div><div>' + esc(t.rulesNotes) + '</div>' : '') + (t.minutes ? '<div>Time limit</div><div>' + esc(tlText(t.minutes)) + (t.form.extSpec ? ' · extended: ' + esc(t.form.extSpec) : '') + '</div>' : '') + (t.form.twoPart ? '<div>2 parts</div><div><b>One part with a calculator, one without.</b> Give the calculator only for its part.</div>' : '') + (t.form.securly ? '<div>Securly</div><div><b>The teacher asks you to watch the student’s screen on Securly.</b></div>' : '') +
       '<div>Allowed</div><div>' + (FORM_LABELS.filter(function (x) { return t.form[x[0]]; }).map(function (x) { return x[1]; }).join(', ') || 'Nothing extra') + '</div>' + (t.form.answerForm ? '<div>Answer form</div><div>' + esc(t.form.answerForm) + '</div>' : '') + (t.form.notes ? '<div>Notes</div><div>' + esc(t.form.notes) + '</div>' : '') + '</div>';
     if (t.format === 'Paper') out += '<label class="f">Paper test</label><select ' + (ed ? '' : 'disabled ') + 'onchange="call(\'api_setPaper\',\'' + t.id + '\',this.value).then(function(){toast(\'Saved\');coLoad();coAppt(\'' + a.id + '\')}).catch(fail)">' + a.paperSteps.map(function (s) { return '<option' + (t.paper === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>';
   } else out += '<p class="small mute">The teacher hasn’t filled in a testing form for this test.</p>';
@@ -5144,10 +5643,21 @@ function coSeats() { var V0 = CO.view;
       var can = st.edit[c];
       return '<div class="card"><h2>' + esc(st.names[c]) + ': the usual week</h2><table class="t small"><tr><th>Period</th><th>Seats</th>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(function (d) { return '<th>' + d + '</th>'; }).join('') + '<th>A/B halves</th><th>Walk-ins</th></tr>' +
         st.periods[c].map(function (p, i) { var cb = function (k) { return '<input type="checkbox"' + (p[k] ? ' checked' : '') + (can ? '' : ' disabled') + ' onchange="__seats.' + c + '[' + i + '].' + k + '=this.checked">'; }; return '<tr><td><b>' + esc(p.label || 'Period ' + p.period) + '</b></td><td><input type="number" style="width:80px" value="' + esc(p.cap) + '"' + (can ? '' : ' disabled') + ' onchange="__seats.' + c + '[' + i + '].cap=this.value"></td>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(function (d) { return '<td>' + cb(d) + '</td>'; }).join('') + '<td>' + cb('ab') + '</td><td>' + cb('walkin') + '</td></tr>'; }).join('') + '</table>' +
-        (can ? '<button class="btn pri" style="margin-top:10px" onclick="busy(this,true);call(\'api_periodsSave\',\'' + c + '\',__seats.' + c + ').then(function(){toast(\'Saved\');coLoad()}).catch(fail)">Save ' + esc(st.names[c]) + '</button>' : '') + '<p class="tiny mute">Checked = open that weekday. To close a single day or leave early, use Schedule › Open periods.</p></div>';
-    }).join(''));
+        (can ? '<button class="btn pri" style="margin-top:10px" onclick="busy(this,true);call(\'api_periodsSave\',\'' + c + '\',__seats.' + c + ').then(function(){toast(\'Saved\');coLoad()}).catch(fail)">Save ' + esc(st.names[c]) + '</button>' : '') + '<p class="tiny mute">Checked = open that weekday. <b>Seats</b> = how many students can book that period. <b>Walk-ins</b> unchecked = the Walk-in button warns before adding a student then. To change seats or close for one day only, use the <b>Change</b> button on that day’s period (Today).</p></div>';
+    }).join('') + '<div class="card" id="finals"><div class="spin">Final exams…</div></div>');
+    coFinals();
   }).catch(fail);
   return null;
+}
+// final exam days: the same three schedules every semester; an administrator picks the dates
+function coFinals() {
+  call('api_finalsGet').then(function (f) {
+    var el = $('finals'); if (!el) return;
+    el.innerHTML = '<h2>📝 Final exams</h2><p class="small mute" style="margin-top:0">Three final exam days with the same periods every semester. Pick the dates; the app uses these times for booking and check-in on those days (both campuses).</p>' +
+      '<div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">' + f.scheds.map(function (sc, i) { return '<div class="card" style="margin:0;padding:12px"><b>Day ' + (i + 1) + '</b><input type="date" id="fin' + i + '" value="' + esc(f.next[i]) + '"' + (f.edit ? '' : ' disabled') + ' style="margin:6px 0">' + f.bells[i].map(function (p) { return '<div class="small">' + (/^\d+$/.test(p.period) ? 'Period ' + esc(p.period) : esc(p.period)) + ': ' + hm(p.start) + '–' + hm(p.end) + '</div>'; }).join('') + (f.last[i] ? '<div class="tiny mute">Last time: ' + esc(niceD(f.last[i])) + '</div>' : '') + '</div>'; }).join('') + '</div>' +
+      (f.edit ? '<button class="btn pri" style="margin-top:10px" id="finGo">Save the final exam days</button>' : '<p class="tiny mute">An administrator sets these.</p>');
+    if ($('finGo')) $('finGo').onclick = function () { var b = this; busy(b, true); call('api_finalsSave', [0, 1, 2].map(function (i) { return $('fin' + i).value; })).then(function () { toast('Saved: final exam days'); coFinals(); }).catch(function (e) { busy(b, false); fail(e); }); };
+  }).catch(fail);
 }
 
 // ---------- B. Needs attention
