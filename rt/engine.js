@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.226';
+var VERSION = '4.231';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -518,6 +518,22 @@ var SHOP_HEAD = ['ID', 'Type', 'Name', 'Description', 'Price', 'Rarity', 'Min le
 var BACKDROP_COL = 12, BACKDROP_HEAD = 'Backdrop image';   // optional extra column on the Shop tab: a Drive file ID for a theme's background picture
 var LEDGER_HEAD = ['When', 'Batch', 'Email', 'Name', 'Class', 'Kind', 'Amount', 'Reason', 'Status', 'Reversed when'];
 var REDEEM_HEAD = ['When', 'Email', 'Name', 'Class', 'Item ID', 'Item', 'Price', 'Status', 'Notes'];
+/* 4.227 Pawtopia Creators: every character a student designs (Prize Counter: Design and Name a Pawtopia Character), who made it and when.
+   Teacher-only (names never go into the game). Never cleared, not even by Start a new school year, so each design stays credited for the classes after. */
+var CREATORS_TAB = 'Pawtopia Creators', CREATORS_HEAD = ['Requested', 'Character', 'Description', 'Inspired by', 'Pictures', 'Created by', 'Class', 'School year', 'Status', 'In the game as', 'Request row', 'Rarity', 'Email'];      // Email: so the creator gets their character the day it is in the game
+function creatorsSheet_() { var t = ensureTab_(CREATORS_TAB, CREATORS_HEAD, [110, 150, 380, 220, 200, 160, 110, 100, 120, 140, 90, 100, 200]); ensureHead_(t.sheet, CREATORS_HEAD); return t.sheet; }
+/* a student's pictures for their design (shrunk in their browser): saved in Drive, ASL Study reports > Pawtopia designs; returns the links */
+function designPics_(pics, label) {
+  var out = []; (pics instanceof Array ? pics : []).slice(0, 3).forEach(function (d, k) {
+    var m = /^data:(image\/(jpeg|png|webp));base64,(.+)$/.exec(String(d || '')); if (!m || m[3].length > 3000000) return;
+    try { var f = reportsFolder_('Pawtopia designs').createFile(Utilities.newBlob(Utilities.base64Decode(m[3]), m[1], (label + ' ' + (k + 1)).replace(/[\\\/:*?"<>|]+/g, '-').slice(0, 80) + '.' + m[2].replace('jpeg', 'jpg')));
+      out.push('https://drive.google.com/file/d/' + f.getId() + '/view'); } catch (e) {}
+  });
+  return out;
+}
+function creatorName_(name) { var w = str_(name).replace(/\./g, '').split(/\s+/).filter(String); return w.length > 1 ? w[0] + ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.' : (w[0] || ''); }      // 4.228 the Creators tab shows First L.
+function schoolYearLabel_(d) { var m = /^(\d{4})-(\d\d)/.exec(d || dayStr_()), y = +m[1], start = +m[2] >= 8 ? y : y - 1; return start + '\u2013' + String(start + 1).slice(2); }      // August starts a new school year: 2026–27
+function creatorStatus_(reqRow, status) { var sh = creatorsSheet_(); rows_(sh, 2, CREATORS_HEAD.length).forEach(function (r, i) { if (num_(r[10]) === reqRow && str_(r[9]) === '') sh.getRange(i + 2, 9).setValue(status); }); }
 // one row each time a student gives Tickets toward a class reward. Status: Open (counting), Unlocked (goal reached), Done (teacher delivered)
 var POOL_HEAD = ['When', 'Email', 'Name', 'Class', 'Item ID', 'Item', 'Tickets', 'Status'];
 
@@ -2402,7 +2418,7 @@ function letterPos_(st, l) {
   return 0;
 }
 
-function api_buy(auth, itemId) {
+function api_buy(auth, itemId, design) {
   var st = static_(), id = who_(auth), S = st.settings;
   if (!id) throw new Error('Your sign-in ran out. Reload the page.');
   var item = findItem_(st, itemId);
@@ -2427,6 +2443,13 @@ function api_buy(auth, itemId) {
     if (item.type === 'freeze' && o.Freezes >= S.maxFreeze) throw new Error('You can hold ' + S.maxFreeze + ' streak freezes at a time.');
 
     var rsh = ss_().getSheetByName(TABS.redeem);
+    var note = '';      // 4.227 Design and Name a Pawtopia Character: the student's name for it and description go to the Prize queue
+    if (item.id === 'a-pawpet') { var dz = design || {}, clean = function (v, n) { return str_(v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, n); };
+      var nm = clean(dz.name, 30), desc = clean(dz.desc, 1500), insp = clean(dz.inspired, 400), rar = ['Ordinary', 'Special', 'Precious', 'Epic', 'Legendary', 'Mythic'].filter(function (r) { return r === str_(dz.rarity); })[0];
+      if (!nm) throw new Error('Give your character a name.'); if (desc.length < 15) throw new Error('Describe your character in as much detail as you can, so your teacher can make it.');
+      if (!insp) throw new Error('Tell your teacher what inspired your design.'); if (!rar) throw new Error('Choose how rare your character is.');
+      var picLinks = designPics_(dz.pics, nm + ' - ' + o.Name);
+      note = 'Pawtopia character "' + nm + '" (' + rar + '): ' + desc + ' | Inspired by: ' + insp + (picLinks.length ? ' | Pictures: ' + picLinks.join(' ') : ''); }
     if (item.type === 'reward' && (item.stock > 0 || item.perMonth > 0)) {
       var usedWeek = 0, usedMonth = 0;
       rows_(rsh, 2, REDEEM_HEAD.length).forEach(function (x) {
@@ -2445,7 +2468,8 @@ function api_buy(auth, itemId) {
     // a new character goes straight on
     if (item.type === 'char') { var mm = /^ch:([^|]+)\|(.+)$/.exec(item.id), eq = o.Equipped || {}; eq.ch = eq.ch || {}; eq.ch[mm[1]] = mm[2]; eq.av = letterPos_(st, mm[1]); o.Equipped = eq; }
     writeStu_(sh, o);
-    if (item.type === 'reward') rsh.appendRow([new Date(), id.key, o.Name, o.Class, item.id, item.name, item.price, item.kind === 'acad' ? 'Requested' : 'Available', '']);
+    if (item.type === 'reward') rsh.appendRow([new Date(), id.key, o.Name, o.Class, item.id, item.name, item.price, item.kind === 'acad' ? 'Requested' : 'Available', note]);
+    if (item.id === 'a-pawpet') creatorsSheet_().appendRow([new Date(), nm, desc, insp, picLinks.join('\n'), creatorName_(o.Name), o.Class, schoolYearLabel_(), 'Waiting for approval', '', rsh.getLastRow(), rar, id.key]);
     cacheDrop_('boards');
     return { me: publicMe_(o, st), redemptions: myRedemptions_(id.key) };
   });
@@ -2641,7 +2665,7 @@ function api_prizes(auth) {
   st.shop.forEach(function (i) { kinds[i.id] = i.kind; });
   rows_(ss_().getSheetByName(TABS.redeem), 2, REDEEM_HEAD.length).forEach(function (x, i) {
     var s = prizeStatus_(x[7]), state = s === 'Available' ? 'ready' : s === 'Waiting for approval' ? 'ask' : s === 'Unlocked' ? 'class' : '';
-    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys']);
+    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys', /^Pawtopia character/.test(str_(x[8])) ? str_(x[8]) : '']);
   });
   var items = st.shop.filter(function (i) { return i.type === 'class'; }), pools = [];
   if (items.length) {
@@ -2667,7 +2691,8 @@ function api_prizeAction(auth, row, email, action) {
     var x = rsh.getRange(row, 1, 1, REDEEM_HEAD.length).getValues()[0], s = prizeStatus_(x[7]);
     var handled = new Error('That prize was already handled. Refresh and try again.');
     if (str_(x[1]).toLowerCase() !== email) throw handled;
-    function set(status) { rsh.getRange(row, 8, 1, 2).setValues([[status, status + ' ' + dayStr_()]]); }
+    var design = str_(x[4]) === 'a-pawpet';      // a Pawtopia design keeps its description in Notes, and its Creators row follows along
+    function set(status) { if (design) { rsh.getRange(row, 8).setValue(status); creatorStatus_(row, status === 'Available' ? 'Approved: to make' : status === 'Used' ? 'Made' : status); } else rsh.getRange(row, 8, 1, 2).setValues([[status, status + ' ' + dayStr_()]]); }
     function giveBack() {
       var sh = stuSheet_(), srow = findRow_(sh, email);
       if (!srow) throw new Error('That student is no longer on the Students tab.');
@@ -4774,6 +4799,8 @@ function setupSheet() {
   if (t.fresh) {
     var items = SAMPLE_SHOP_();
     t.sheet.getRange(2, 1, items.length, SHOP_HEAD.length).setValues(items);
+  } else if (!rows_(t.sheet, 2, 1).some(function (r) { return str_(r[0]) === 'a-pawpet'; })) {      // 4.227 the Pawtopia character request joins sheets made before
+    var pp = SAMPLE_SHOP_().filter(function (r) { return r[0] === 'a-pawpet'; })[0]; if (pp) t.sheet.appendRow(pp);
   }
 
   if (!TRIAL.letters) {                                                // trial edition: a plain list of avatar pictures
@@ -6131,6 +6158,7 @@ function SAMPLE_SHOP_ALL_() {
     ['p-charm', 'Physical prize', 'Jibbitz / Croc Charm', '', 400, 'Rare', '', '', '', 'Yes', ''],
     ['p-mystery', 'Physical prize', 'Mystery Bag', '', 500, 'Rare', '', '', '', 'Yes', ''],
     ['p-duck', 'Physical prize', 'ILY Rubber Duck', 'The top prize on the shelf.', 1000, 'Legendary', '', '', '', 'Yes', ''],
+    ['a-pawpet', 'Academic reward', 'Design and Name a Pawtopia Character', 'Create your own character for Pawtopia: your real pet, or any animal or creature you can imagine. You name it and describe it, and your teacher adds it to the game for everyone to hatch.', 600, 'Rare', '', '', 1, 'Yes', ''],      // 4.227
     ['a-game', 'Academic reward', 'Choose Our Next Game', 'You choose the next classroom review game.', 200, 'Common', '', '', '', 'Yes', ''],
     ['a-news', 'Academic reward', 'Send Some Good News', 'Your teacher sends a personal positive email with your practice report to a parent or guardian, coach or counselor you choose.', 200, 'Common', '', '', '', 'Yes', ''],
     ['a-tardy', 'Academic reward', 'Tardy Pass', 'Excuses one tardy of up to 5 minutes, if school policy allows.', 400, 'Common', '', '', '', 'Yes', ''],
@@ -6236,7 +6264,7 @@ function loadRewardList() {
   requireTeacher_();
   var ui = SpreadsheetApp.getUi();
   var ok = ui.alert('Load the new reward list and prices?',
-    'This replaces every Ticket reward on the Shop tab with the 19 new rewards (7 physical, 9 academic, 3 class), sets the built-in themes, titles and other extras to the new lower Token prices, and sets characters to 40 and accents to 20 Tokens.\n\nPrizes students already bought are not affected. You can edit any price afterwards.', ui.ButtonSet.OK_CANCEL);
+    'This replaces every Ticket reward on the Shop tab with the 20 new rewards (7 physical, 10 academic, 3 class), sets the built-in themes, titles and other extras to the new lower Token prices, and sets characters to 40 and accents to 20 Tokens.\n\nPrizes students already bought are not affected. You can edit any price afterwards.', ui.ButtonSet.OK_CANCEL);
   if (ok !== ui.Button.OK) return;
   var sample = SAMPLE_SHOP_(), priceOf = {}, seen = {};
   sample.forEach(function (r) { priceOf[r[0]] = r[4]; });
@@ -7418,7 +7446,7 @@ function newSchoolYear() {
     if (all.length) sh.getRange(2, 1, all.length, H.n).setValues(all);
   });
   cacheDrop_('boards');
-  ui.alert(n + ' students are ready for the new year. The copy from before is "' + backup + '" in the Drive folder "' + BACKUP_FOLDER + '".');
+  ui.alert(n + ' students are ready for the new year. The copy from before is "' + backup + '" in the Drive folder "' + BACKUP_FOLDER + '".' + (ss_().getSheetByName(CREATORS_TAB) ? ' Every Pawtopia character students designed stays in the game, and the Pawtopia Creators tab keeps who made each one.' : ''));
 }
 
 /** Makes a new unit tab with its headers and lists it on the Units tab. */
