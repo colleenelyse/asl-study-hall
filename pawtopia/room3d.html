@@ -38,7 +38,7 @@
     <div id="cmp" hidden><div class="cmpt">The painting</div><img id="cmpimg" alt="The grown-up painting of this pet"></div></div>
   <div class="row acts">
     <button data-act="walk" class="on">🐾 Walk around</button><button data-act="sit">Sit</button><button data-act="wave">👋 Wave</button><button data-act="eat">🥣 Eat</button>
-    <button data-act="play">⚽ Play ball</button><button data-act="happy">💖 Happy</button><button data-act="bath">🫧 Bath</button><button data-act="drink">💧 Drink</button><button data-act="sleep">💤 Sleep</button>
+    <button data-act="play">⚽ Play ball</button><button data-act="happy">💖 Happy</button><button data-act="bath">🫧 Bath</button><button data-act="drink">💧 Drink</button><button data-act="sleep">💤 Sleep</button><button data-act="ride">🐎 Ride</button><button data-act="fly">✨ Fly</button><button data-act="land">🪂 Land</button>
   </div>
   <div class="row stages"><span style="font-weight:700;align-self:center">Growth:</span></div>
   <div class="row tools"><button id="formbtn">✨ Normal</button><select id="accsel" aria-label="Outfit"><option value="">👕 No outfit</option><option value="collar">Blue Collar</option><option value="bow">Pink Bow</option><option value="bandana">Red Bandana</option><option value="bowtie">Blue Bowtie</option><option value="crown">Flower Crown</option><option value="harness">Pink Bow Harness</option><option value="raincoat">Yellow Raincoat</option><option value="scarf">Plaid Scarf</option><option value="medal">Gold Medal</option><option value="cape">Purple Cape</option><option value="wizard_hat">Wizard Hat</option><option value="party_hat">Party Hat</option><option value="tiara">Tiara</option><option value="pirate_hat">Pirate Hat</option><option value="fire_helmet">Firefighter Helmet</option><option value="detective_hat">Detective Hat</option><option value="chef_hat">Chef Hat</option><option value="rain_hat">Rain Hat</option><option value="ball_cap">Ball Cap</option><option value="santa_hat">Santa Hat</option><option value="unicorn_horn">Unicorn Horn</option><option value="bee_antennae">Bee Antennae</option><option value="sunglasses">Sunglasses</option><option value="star_glasses">Star Glasses</option><option value="heart_glasses">Heart Glasses</option><option value="goggles">Goggles</option></select><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
@@ -269,8 +269,8 @@
       if (inside !== S.inPool) { S.inPool = inside; puff('splash', 2, 0.4); }
       pool.userData.water.material.opacity = 0.7 + Math.sin(t * 2) * 0.04; }
     const y = S.carry ? null : S.inPool ? 0.03 + Math.sin(t * 2.2) * 0.012 : 0.24 + Math.sin(t * 1.8) * 0.04;
-    if (y !== null && S.hop <= 0) pet.position.y = lerp(pet.position.y, y, 0.12);
-    SWU.t.value = t; SWU.spd.value = walking ? 9 : 4; SWU.amp.value = walking ? 0.07 : S.pose === 'sleep' ? 0.015 : 0.035; SWU.flip.value = S.act === 'wave' ? 1.6 : walking ? 0.5 : 0.25;
+    if (y !== null && S.hop <= 0 && !S.mount && !(S.alt > 0)) pet.position.y = lerp(pet.position.y, y, 0.12);
+    SWU.t.value = t; SWU.spd.value = walking ? (S.mount ? 12 : 9) : S.mount === 'fly' ? 6 : 4; SWU.amp.value = walking ? 0.07 : S.pose === 'sleep' ? 0.015 : 0.035; SWU.flip.value = S.act === 'wave' ? 1.6 : walking ? 0.5 : 0.25;
     if (!S.inPool && walking) { S.bub = (S.bub || 0) - dt; if (S.bub < 0) { puff('bubbles', 1, 0.22); S.bub = 0.45; } }
     const r = G.root; r.rotation.z = lerp(r.rotation.z, S.pose === 'sleep' ? Math.PI : 0, 0.05); r.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : S.pose === 'sit' ? -0.12 : Math.sin(t * 1.5) * 0.04;      /* asleep: floats belly-up */
     r.position.y = G.base.y + (S.pose === 'sleep' ? 0.35 * (r.rotation.z / Math.PI) * G.swimH : 0);
@@ -371,9 +371,39 @@
     { const hipZ = rig.pivot ? rig.pivot.z : chest.z - Hh * 0.45, len = Math.max(Hh * 0.22, (chest.z - hipZ) * 0.9), g = new THREE.Group();
       const cp = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), omat(0x7b3fc4, { side: THREE.DoubleSide, roughness: 0.5 })); cp.scale.set(body.r * 1.2, body.r * 1.05, len); g.add(cp);
       g.position.set(body.c.x, body.c.y - body.r * 0.35, (chest.z + hipZ) / 2 - Hh * 0.06); add('cape', g, rig.chest || rig.top); const c2 = collar(0x7b3fc4, 1.04, 0.1); add('cape2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
+    /* ───── 4.275 Riding Saddle and Sky Wings: fitted like the outfits, but shown only while riding / flying (frame(), not ACC).
+       The saddle sits on the middle of the back (four legs), on the back of a two-legged pet (a small pad), or on top of a swimmer (a little seat);
+       the wings go on the shoulders (two-legged pets fly with their own wings, so they get none). Built in a frame where +y is out of the body. ───── */
+    { const lz = c => c && c[0] && rig.P && rig.P.get(c[0]) ? rig.P.get(c[0]).z : null, fz = [lz(rig.legs && rig.legs.fl), lz(rig.legs && rig.legs.fr)].filter(x => x !== null), bz = [lz(rig.legs && rig.legs.bl), lz(rig.legs && rig.legs.br)].filter(x => x !== null);
+      const four = !rig.biped && !rig.swim && fz.length && bz.length, shZ = four ? (fz[0] + fz[fz.length - 1]) / 2 : chest.z, hipZ = four ? (bz[0] + bz[bz.length - 1]) / 2 : rig.pivot ? rig.pivot.z : chest.z - Hh * 0.45, BR = 0x8a4b22, gs = new THREE.Group();      /* the back runs from the hip joints to the shoulders (some rigs have no chest bone) */
+      const topAt = (z, dz) => { const ys2 = V.filter(p => Math.abs(p.x - cx) < Hh * 0.08 && Math.abs(p.z - z) < dz).map(p => p.y).sort((a, b) => a - b); return ys2.length ? ys2[Math.floor(ys2.length * 0.94)] : body.c.y + body.r; };      /* nearly the top (a stray tuft or the tail does not lift it) */
+      const halfW = (z, dz) => { const pts = V.filter(p => Math.abs(p.z - z) < dz && p.y > floor0 + Hh * 0.4); return pts.length ? pts.map(p => Math.abs(p.x - cx)).sort((a, b) => a - b)[Math.floor(pts.length * 0.9)] : body.r; };
+      let at, w, sz;
+      if (rig.biped) { const y = chest.y - Hh * 0.04, pts = V.filter(p => Math.abs(p.x - cx) < Hh * 0.1 && Math.abs(p.y - y) < Hh * 0.05); at = new THREE.Vector3(cx, y, pts.length ? Math.min(...pts.map(p => p.z)) : chest.z - body.r); w = Hh * 0.13; }
+      else { sz = rig.swim ? chest.z - Hh * 0.08 : hipZ + (shZ - hipZ) * 0.5; at = new THREE.Vector3(cx, topAt(sz, Hh * 0.05), sz); w = Math.min(halfW(sz, Hh * 0.05), Hh * 0.28) * (rig.swim ? 0.6 : 0.95); }
+      const sm = (c, o) => omat(c, Object.assign({ roughness: 0.55 }, o || {}));
+      const blanket = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI * 0.36), sm(0x2f6fe0, { side: THREE.DoubleSide })); blanket.scale.set(w * 1.55, w * 1.15, w * 1.5); blanket.position.y = -w * 1.12; gs.add(blanket);
+      const trim = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, Math.PI * 0.34, Math.PI * 0.03), sm(0xffc93c, { side: THREE.DoubleSide, metalness: 0.3 })); trim.scale.copy(blanket.scale).multiplyScalar(1.01); trim.position.y = blanket.position.y; gs.add(trim);
+      const seat = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), sm(BR, { roughness: 0.4 })); seat.scale.set(w * 0.62, w * 0.3, w * 0.85); seat.position.y = w * 0.01; gs.add(seat);
+      const pommel = new THREE.Mesh(new THREE.SphereGeometry(w * 0.15, 12, 10), sm(0x6b3515, { roughness: 0.4 })); pommel.scale.y = 1.1; pommel.position.set(0, w * 0.2, w * 0.68); gs.add(pommel);
+      const cantle = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), sm(0x6b3515, { roughness: 0.4 })); cantle.scale.set(w * 0.55, w * 0.2, w * 0.15); cantle.position.set(0, w * 0.16, -w * 0.66); gs.add(cantle);
+      if (!rig.biped && !rig.swim) { [-1, 1].forEach(sg => { const st = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.05, w * 0.05, w * 0.75, 6), sm(0x6b3515)); st.scale.y = 0.6; st.position.set(sg * w * 1.08, -w * 0.45, w * 0.1); st.rotation.z = sg * 0.15; gs.add(st);
+          const rg = new THREE.Mesh(new THREE.TorusGeometry(w * 0.13, w * 0.035, 6, 16), sm(0xd8dde6, { metalness: 0.6, roughness: 0.3 })); rg.position.set(sg * w * 1.13, -w * 0.72, w * 0.1); gs.add(rg); });
+      }
+      if (rig.biped) gs.rotation.x = -Math.PI / 2;      /* on a penguin's back: "out of the body" is backward */
+      gs.position.copy(at); add('gear_saddle', gs, rig.chest || rig.top);
+      if (!rig.biped) {      /* Sky Wings: feathers fanned back from each shoulder, softly glowing; frame() flaps them */
+        const wz = rig.swim ? chest.z + Hh * 0.02 : hipZ + (shZ - hipZ) * 0.88, wy = topAt(wz, Hh * 0.05), span = Hh * (rig.swim ? 0.8 : 0.78), gw = new THREE.Group(), cols = [0xffffff, 0xe6f1ff, 0xcfe6ff, 0xffd9ee, 0xffeab8], piv = [];
+        [-1, 1].forEach(sg => { const pv = new THREE.Group(); pv.position.set(cx + sg * Math.max(w, Hh * 0.08) * 0.3, wy - Hh * 0.01, wz); pv.rotation.x = 0.65; gw.add(pv);      /* the fan tips back and up, so the wing faces the camera */
+          [1, 0.9, 0.78, 0.64, 0.5].forEach((L, i) => { const a = 0.1 + i * 0.24, f = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), omat(cols[i], { emissive: col(0x9fd0ff), emissiveIntensity: 0.1, roughness: 0.5 }));
+            f.scale.set(span * L * 0.5, span * 0.05, span * 0.13); f.rotation.y = sg * a; f.position.set(sg * Math.cos(a) * span * L * 0.5, -i * span * 0.012, -Math.sin(a) * span * L * 0.5); pv.add(f); });
+          const cov = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), omat(0xffffff, { emissive: col(0xffe7a8), emissiveIntensity: 0.25, roughness: 0.35 })); cov.scale.set(span * 0.36, span * 0.06, span * 0.14); cov.position.set(sg * span * 0.32, span * 0.02, span * 0.02); pv.add(cov);
+          piv.push([pv, sg]); });
+        gw.userData.wings = piv; add('gear_wings', gw, rig.chest || rig.top); }
+    }
     if (own) { own.outfits = OUT; showOutfit(OUT, own.acc); } else showOutfit();
   }
-  function showOutfit(O, acc) { O = O || OUTFITS; const on = String((acc === undefined ? ACC : acc) || '').split(',').filter(Boolean); Object.keys(O).forEach(k => O[k].visible = on.some(a => k === a || k === a + '2')); }      /* 4.256 up to one per slot */
+  function showOutfit(O, acc) { O = O || OUTFITS; const on = String((acc === undefined ? ACC : acc) || '').split(',').filter(Boolean); Object.keys(O).forEach(k => { if (k.indexOf('gear_') !== 0) O[k].visible = on.some(a => k === a || k === a + '2'); }); }      /* 4.256 up to one per slot */
   /* ───── 2026-11-01 two-legged rigs (Tripo "Humanoid", Mixamo bone names): birds and other pets that stand up. Wings are the arms. ───── */
   function findBiped(root) {
     const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); }); const by = n => bones.find(b => b.name.replace(/^mixamorig\d*[:_]?/i, '') === n);
@@ -397,13 +427,14 @@
     sleep: { drop: -0.2, lean: 0.2, knee: 1.25, open: -0.05, nP: 0.55, hP: 0.35 },
     eat: { drop: -0.02, lean: 0.5, knee: 0.2, open: 0.1, nP: 0.35, hP: 0.3 },
     carry: { drop: 0, lean: 0, knee: 0.35, open: 0.9, nP: -0.1, hP: 0 },
-    bow: { drop: -0.05, lean: 0.4, knee: 0.4, open: 0.5, nP: -0.3, hP: -0.1 }
+    bow: { drop: -0.05, lean: 0.4, knee: 0.4, open: 0.5, nP: -0.3, hP: -0.1 },
+    fly: { drop: 0, lean: 0.55, knee: 0.9, open: 0.6, nP: -0.35, hP: -0.15 }      /* 4.275 flying: leaning forward, feet tucked, wings beating */
   };
   const BPm = Object.assign({}, BIPOSE.stand), STAGEm = () => STAGE;
   function poseBiped(dt, doing, walking, X) {      /* X: a buddy (4.274); without it, the main pet (G, S, BP, STAGE) */
     const g = X || G, BP = X ? X.BP : BPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, want = BIPOSE[doing === 'wave' || doing === 'beg' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in BP) BP[key] += (want[key] - BP[key]) * k;
-    g.gait = (g.gait || 0) + dt * (walking ? 8 : 0); const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));
+    g.gait = (g.gait || 0) + dt * (walking ? 8 * (!X && S.mount === 'ride' ? 1.5 : 1) : 0); const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));
     rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); });
     /* the body: drops, leans forward or back around the feet, and rolls side to side as it waddles */
     const roll = Math.sin(ph) * 0.16 * wk, r0 = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
@@ -414,7 +445,7 @@
     [['bl', 1], ['br', -1]].forEach(([s, sg]) => { const c = rig.legs[s], sw = Math.sin(ph) * sg * 0.32 * wk, up = Math.max(0, Math.cos(ph) * sg) * 0.45 * wk;
       bendBone(rig, c[1], -BP.lean - BP.knee * 0.55 - sw, 0, -roll); bendBone(rig, c[2], BP.knee + up, 0, 0); if (c[3]) bendBone(rig, c[3], -BP.knee * 0.45 - up * 0.6, 0, 0); });
     /* wings: folded down against the sides, a little out while waddling, flapping when happy or carried; the right one waves */
-    const happy = doing === 'happy' || doing === 'carry' ? 0.55 + Math.sin(t * 18) * 0.45 : 0, waddle = (0.18 + Math.sin(ph * 2) * 0.08) * wk;
+    const happy = doing === 'fly' ? 0.75 + Math.sin(t * 13) * 0.85 : doing === 'happy' || doing === 'carry' ? 0.55 + Math.sin(t * 18) * 0.45 : 0, waddle = (0.18 + Math.sin(ph * 2) * 0.08) * wk;
     [['l', -1], ['r', 1]].forEach(([s, sg]) => { const a = rig.arms[s]; if (a.length < 2) return; const fold = 1.35 - rig.droop[s], wave = (doing === 'wave' && s === 'r') || doing === 'beg';      /* beg: both wings up */
       const out = BP.open + waddle + happy, z = wave ? -(rig.droop[s] + 1.2) + Math.sin(t * 9) * 0.35 : fold - out;
       bendBone(rig, a[1], 0, 0, sg * z); if (a[2]) bendBone(rig, a[2], 0, 0, sg * (wave ? 0.3 : happy * 0.3)); });
@@ -473,7 +504,8 @@
     eat: { pitch: 0.08, drop: 0, roll: 0, fU: -0.08, fL: 0, hU: 0, hK: 0, hH: 0, nP: 0.6, nY: 0, hP: 0.35, tY: 0, tP: -0.1 },
     carry: { pitch: 0, drop: 0, roll: 0, fU: 0.35, fL: 0.25, hU: 0.45, hK: 0.35, hH: 0.1, nP: -0.15, nY: 0, hP: -0.1, tY: 0, tP: -0.3 },      // held up: legs dangle
     beg: { pitch: -0.95, drop: 0.0, roll: 0, fU: -0.4, fL: 1.1, hU: -1.25, hK: 1.85, hH: -0.65, nP: -0.15, nY: 0, hP: 0.2, tY: 0, tP: 0.6 },      /* 4.272 sitting up tall on the back legs, front paws tucked up */
-    bow: { pitch: 0.35, drop: -0.02, roll: 0, fU: -0.9, fL: 0.35, hU: 0.1, hK: 0, hH: 0, nP: -0.35, nY: 0, hP: -0.1, tY: 0, tP: -0.5 }
+    bow: { pitch: 0.35, drop: -0.02, roll: 0, fU: -0.9, fL: 0.35, hU: 0.1, hK: 0, hH: 0, nP: -0.35, nY: 0, hP: -0.1, tY: 0, tP: -0.5 },
+    fly: { pitch: -0.08, drop: 0, roll: 0, fU: -0.95, fL: 0.25, hU: 0.95, hK: 0.25, hH: 0.35, nP: -0.25, nY: 0, hP: -0.15, tY: 0, tP: -0.7 }      /* 4.275 flying: front paws reaching forward, back legs stretched behind */
   };
   const RPm = Object.assign({}, RIGPOSE.stand);
   function poseRig(dt, doing, walking, X) {      /* X: a buddy (4.274) with its own rig, pose, clock and stage; without it, the main pet */
@@ -481,7 +513,7 @@
     const RP = X ? X.RP : RPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in RP) RP[key] += (want[key] - RP[key]) * k;
     const clip = walking && g.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
-    const hop = g.gaitType === 'hop'; g.gait = (g.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) : 0); const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
+    const hop = g.gaitType === 'hop', gal = !X && S.mount === 'ride'; g.gait = (g.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) * (gal ? 1.45 : 1) : 0);      /* 4.275 riding: a quicker gallop */ const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
     if (!clip) {
       /* the whole body tips around the back paws (sitting, play bow), drops (sleeping) and leans */
       const r = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
@@ -496,8 +528,9 @@
       if (hop && wk > 0.01) { const push = hp < 0.55 ? Math.sin(hp / 0.55 * Math.PI) : 0;
         rig.top.position.y += air * 0.32 * rig.height * wk; bendBone(rig, rig.top, -RP.pitch * 0 + RP.pitch + (hp < 0.3 ? -0.18 : 0.15) * push * wk, 0, RP.roll); }
       const sw = hop ? { fl: Math.cos(hp * Math.PI * 2), fr: Math.cos(hp * Math.PI * 2), bl: -Math.cos(hp * Math.PI * 2) * 1.3, br: -Math.cos(hp * Math.PI * 2) * 1.3 }
-        : { fl: Math.sin(ph), br: Math.sin(ph), fr: Math.sin(ph + Math.PI), bl: Math.sin(ph + Math.PI) }, lift = v => Math.max(0, -Math.cos(Math.asin(Math.max(-1, Math.min(1, v)))) ) ;
-      const up = s => hop ? air * (s[0] === 'b' ? 0.6 : 0.3) : Math.max(0, Math.cos(s === 'fl' || s === 'br' ? ph : ph + Math.PI));      // the part of the stride when the paw is in the air
+        : gal ? { fl: Math.sin(ph), fr: Math.sin(ph + 0.5), bl: Math.sin(ph + Math.PI), br: Math.sin(ph + Math.PI + 0.5) } : { fl: Math.sin(ph), br: Math.sin(ph), fr: Math.sin(ph + Math.PI), bl: Math.sin(ph + Math.PI) }, lift = v => Math.max(0, -Math.cos(Math.asin(Math.max(-1, Math.min(1, v)))) ) ;
+      const up = s => hop ? air * (s[0] === 'b' ? 0.6 : 0.3) : gal ? Math.max(0, Math.cos(ph + { fl: 0, fr: 0.5, bl: Math.PI, br: Math.PI + 0.5 }[s])) : Math.max(0, Math.cos(s === 'fl' || s === 'br' ? ph : ph + Math.PI));
+      if (gal && !hop && wk > 0.01) bendBone(rig, rig.top, RP.pitch + Math.sin(ph) * 0.13 * wk, 0, RP.roll);      /* the gallop rocks the body nose-up, nose-down */      // the part of the stride when the paw is in the air
       ['fl', 'fr'].forEach(s => { const c = L[s], waving = doing === 'wave' && s === 'fr';
         bendBone(rig, c[1], -RP.pitch + RP.fU + (waving ? -1.9 + Math.sin(t * 9) * 0.35 : 0) - sw[s] * 0.42 * wk, 0, 0); bendBone(rig, c[2], RP.fL + (waving ? 0.6 : 0) + up(s) * 0.7 * wk, 0, 0); });
       ['bl', 'br'].forEach(s => { const c = L[s]; bendBone(rig, c[1], RP.hU - sw[s] * 0.38 * wk, 0, 0); bendBone(rig, c[2], RP.hK + up(s) * 0.55 * wk, 0, 0); bendBone(rig, c[3], RP.hH - up(s) * 0.35 * wk, 0, 0); });
@@ -609,6 +642,10 @@
   };
   const S = { pose: 'stand', cur: Object.assign({}, POSE.stand), act: 'walk', t: 0, target: new THREE.Vector3(), moving: false, wag: 1, blink: 2, sleepT: 0, hop: 0, fx: [] };
   function act(a) {
+    /* 4.275 ride / fly / land. Not while asleep, eating, in the bath or being carried; any other behavior (care, tricks, fetch) ends a ride or flight first */
+    if ((a === 'ride' || a === 'fly') && (S.pose === 'sleep' || S.act === 'sleep' || S.act === 'eat' || S.act === 'bath' || S.carry)) { say(S.pose === 'sleep' || S.act === 'sleep' ? 'Shh… ' + P.look.name + ' is sleeping. 💤' : P.look.name + ' is busy right now. Try again in a moment!'); tell({ t: 'mount', m: '' }); return; }
+    if (a === 'land' && !S.mount) return;
+    const was = S.mount; S.mount = null;
     S.act = a; S.trick = null; S.moving = false; bowl.visible = false; ball.visible = false; propBox.visible = false; S.fly = null; S.fstep = null; if (a !== 'fetch' && a !== 'huh') fetchT.visible = false; P.tongue.visible = false; S.hop = 0;
     document.querySelectorAll('[data-act]').forEach(b => b.classList.toggle('on', b.dataset.act === a));
     const n = P.look.name;
@@ -633,7 +670,15 @@
     if (a === 'beg') { S.pose = 'sit'; say(n + ' sits up and begs!'); }
     if (a === 'highfive') { S.pose = 'sit'; S.act = 'wave'; say('High five, ' + n + '!'); }
     if (a === 'happy') { S.pose = 'stand'; S.hop = 3; P.tongue.visible = true; hearts(6); puff('star_burst', 1, 0.5); say(n + ' is SO happy!'); }
+    if (a === 'ride' || a === 'fly') { S.mount = a; S.pose = 'stand'; S.mwait = 0.4; S.steer = false; if (a === 'fly') { puff('star_burst', 1, 0.5); fx('✨', 3); } else puff('dust_puff', 1, 0.45); say(a === 'ride' ? 'Giddy-up, ' + n + '! Tap the floor to steer.' : n + ' takes off! Tap the floor to steer.'); }
+    if (a === 'land') { S.act = 'stay'; S.pose = 'stand'; say(was === 'fly' ? n + ' lands softly. ✨' : 'Whoa! Good ride, ' + n + '!'); if (was === 'ride') puff('dust_puff', 1, 0.45); }
+    if (S.mount !== was) tell({ t: 'mount', m: S.mount || '' });
   }
+  /* 4.275 riding and flying: where to go next (a far spot anywhere in the room), and how high to fly (above the furniture, still in view) */
+  const mountPick = () => { const A = AREA(); let best = null, bd = -1; for (let i = 0; i < 8; i++) { const v = new THREE.Vector3(A[0] + Math.random() * (A[1] - A[0]), 0, A[2] + Math.random() * (A[3] - A[2])), d = v.distanceTo(pet.position.clone().setY(0)); if (d > bd && d < 3.2) { bd = d; best = v; } }
+    S.target.copy(clampArea(best || new THREE.Vector3())); if (S.mount === 'ride') outOfPools(S.target); S.moving = true; };
+  const flyH = () => { const hs = furnGroup.children.filter(o => o.userData.furn).map(o => FURN_H[o.userData.furn] || 0.6); const A = AREA(), back0 = Math.max(0, Math.min(1, (A[3] - pet.position.z) / ((A[3] - A[2]) || 1))); return Math.max(0.62, Math.min(0.92, Math.max(0, ...hs) * 0.7 + 0.15)) - back0 * 0.12; };      /* lower toward the back of the room, so the wings stay in the picture */
+  window.__mount = () => ({ mount: S.mount || '', alt: +(S.alt || 0).toFixed(2), x: +pet.position.x.toFixed(2), y: +pet.position.y.toFixed(2), z: +pet.position.z.toFixed(2), moving: S.moving, area: AREA(), saddle: !!(OUTFITS.gear_saddle && OUTFITS.gear_saddle.visible), wings: !!(OUTFITS.gear_wings && OUTFITS.gear_wings.visible) });
   const pick = () => { if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
   const outOfPools = v => { if (allWater()) return; COMPS.forEach(c => { if (!c.poolPos || c.gone) return; const dx = v.x - c.poolPos.x, dz = v.z - c.poolPos.z, d = Math.hypot(dx, dz) || 1e-3, R = c.pool.userData.R + 0.4; if (d < R) { v.x = c.poolPos.x + dx / d * R; v.z = c.poolPos.z + dz / d * R; clampArea(v); } }); };      /* 4.274 the main pet's strolls stay out of a buddy's pool */      // a short stroll to somewhere nearby
   const fetchT = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); fetchT.scale.setScalar(0.3); fetchT.visible = false; scene.add(fetchT);
@@ -718,7 +763,7 @@
         else { c.moving = false; c.lastD = undefined; c.wait = 2.5 + Math.random() * 4.5; } }
       else { c.wait -= dt; if (c.wait < 0) compPick(c); }
       /* never on the main pet: step aside when it comes close */
-      if (pet && !(c.swim && !sea)) { const dx = h.position.x - pet.position.x, dz = h.position.z - pet.position.z, dd = Math.hypot(dx, dz), near = 0.5 * Math.max(0.6, pet.scale.x);
+      if (pet && !(c.swim && !sea) && pet.position.y < 0.4) { const dx = h.position.x - pet.position.x, dz = h.position.z - pet.position.z, dd = Math.hypot(dx, dz), near = 0.5 * Math.max(0.6, pet.scale.x);
         if (dd < near && dd > 1e-4) { h.position.x += dx / dd * (near - dd) * Math.min(1, dt * 6); h.position.z += dz / dd * (near - dd) * Math.min(1, dt * 6); clampArea(h.position); if (!c.moving) c.wait = Math.min(c.wait, 0.4); } }
       const gr = growOf(c.stage); h.scale.setScalar(gr.size);
       let y = 0; if (c.swim) { if (!sea) { c.pool.visible = !lineup; c.pool.userData.water.material.opacity = 0.7 + Math.sin(t * 2) * 0.04; } else c.pool.visible = false;
@@ -749,10 +794,10 @@
     if (S.moving) {      // turn toward the target and trot there
       const d = new THREE.Vector3().subVectors(S.target, pet.position); d.y = 0; const dist = d.length();
       const stop = S.act === 'eat' ? 0.05 : S.act === 'play' ? 0.42 : S.act === 'fetch' && S.fstep === 'out' ? 0.22 * pet.scale.x : 0.05;
-      if (dist > stop) { const want = Math.atan2(d.x, d.z); let dy = want - pet.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; pet.rotation.y += dy * Math.min(1, dt * 6);
+      if (dist > stop + 0.002) { const want = Math.atan2(d.x, d.z); let dy = want - pet.rotation.y;      /* 4.275 +0.002: never stuck a hair away from the spot */ while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; pet.rotation.y += dy * Math.min(1, dt * 6);
         const hopNow = G && G.gaitType === 'hop' && G.rig && OWNWALK, hf = hopNow ? Math.max(0, Math.sin(Math.min(1, ((G.gait || 0) % (Math.PI * 2)) / (Math.PI * 2) / 0.55) * Math.PI)) * 2.2 : 1;
-        const sp = (S.act === 'play' || S.act === 'fetch' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? 0.3 : 1) * hf; pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
-      else { S.moving = false;
+        S.turn = dy; const sp = (S.mount === 'ride' ? 2.7 : S.mount === 'fly' ? 1.7 : S.act === 'play' || S.act === 'fetch' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? (S.mount ? 0.45 : 0.3) : 1) * (S.mount ? 1 : hf); pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
+      else { S.moving = false; if (S.mount) { S.mwait = S.steer ? 3 : S.mount === 'fly' ? 0.9 : 0.5; S.steer = false; }
         if (S.act === 'walk') setTimeout(() => { if (S.act === 'walk' && !S.moving && !S.carry) pick(); }, 2500 + Math.random() * 4000);      // a good rest between strolls
         if (S.act === 'go') { S.act = 'stay'; }
         if (S.act === 'sleep') { S.pose = 'sleep'; if (!back) pet.rotation.y = 0.6; say('Shh… ' + P.look.name + ' is asleep.'); }
@@ -790,17 +835,25 @@
     const inBed = S.pose === 'sleep' && !back && pet.position.distanceTo(bed.position) < 0.3; S.bedY = lerp(S.bedY || 0, inBed ? C.lift : 0, 0.1);
     if (G && G.swim) swimFrame(dt, walking);
     if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (G && G.swim && !S.inPool ? 0.24 : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY, 0.3);
+    /* 4.275 riding: a bouncy gallop; flying: up above the furniture, bobbing, banking into turns; landing comes back down smoothly */
+    if (S.mount && !S.moving && !S.carry) { S.mwait -= dt; if (S.mwait < 0) mountPick(); }
+    { const up = S.mount === 'fly' && !S.carry ? flyH() : 0; S.alt = lerp(S.alt || 0, up, Math.min(1, dt * (up ? 1.6 : 2.2))); if (S.alt < 0.004 && !up) S.alt = 0;
+      if (S.alt > 0 && !S.carry) { pet.position.y = S.alt + (S.mount === 'fly' ? Math.sin(t * 2.2) * 0.05 : 0); pet.rotation.z = lerp(pet.rotation.z, S.mount === 'fly' && S.moving ? Math.max(-0.45, Math.min(0.45, -(S.turn || 0) * 0.5)) : 0, Math.min(1, dt * 4)); }
+      if (S.mount === 'ride' && !S.carry && S.hop <= 0) { pet.position.y = (G && G.swim ? 0.24 : 0) + (walking ? Math.abs(Math.sin(t * 13)) * 0.07 : 0); if (walking) { S.dust = (S.dust || 0) - dt; if (S.dust < 0) { puff('dust_puff', 1, 0.2); S.dust = 0.5; } } }
+      if (S.mount === 'fly' && walking) { S.spk = (S.spk || 0) - dt; if (S.spk < 0) { fx('✨', 1); S.spk = 0.3; } }
+      if (OUTFITS.gear_saddle) OUTFITS.gear_saddle.visible = S.mount === 'ride';
+      if (OUTFITS.gear_wings) { const W = OUTFITS.gear_wings, on = S.mount === 'fly' || S.alt > 0.03; W.visible = on; if (on) W.userData.wings.forEach(([pv, sg]) => { pv.rotation.z = sg * (0.45 + Math.sin(t * (S.alt < up - 0.05 ? 13 : S.moving ? 8 : 5)) * 0.5); }); } }
     const T2 = S.trick; if (T2) { T2.t += dt; const k = Math.min(1, T2.t / T2.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       if (T2.k === 'spin') { pet.rotation.y = (T2.y0 === undefined ? (T2.y0 = pet.rotation.y) : T2.y0) + e * Math.PI * 4; pet.position.y = Math.sin(k * Math.PI) * 0.12; }      /* two full turns with a little hop */
       if (T2.k === 'roll') { pet.rotation.z = e * Math.PI * 2; pet.position.y = Math.sin(k * Math.PI) * 0.08; }      /* over onto its back and up the other side */
       if (T2.k === 'dance') { pet.position.y = Math.abs(Math.sin(T2.t * 8)) * 0.1; pet.rotation.z = Math.sin(T2.t * 4) * 0.25; pet.rotation.y += Math.sin(T2.t * 4) * dt * 2.5; }      /* bouncing and swaying side to side */
       if (T2.k === 'dead') pet.rotation.z = Math.min(1, T2.t / 0.4) * Math.PI / 2 * (T2.t < T2.dur - 0.4 ? 1 : Math.max(0, (T2.dur - T2.t) / 0.4));      /* tips onto its side, stays, gets back up */
       if (T2.t >= T2.dur) { S.trick = null; pet.rotation.z = 0; if (T2.k === 'dead') { S.pose = 'stand'; S.hop = 1; hearts(2); } S.act = 'stay'; } }
-    else if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else pet.rotation.z *= 0.8;
+    else if (S.carry) { pet.position.y = lerp(pet.position.y, 0.32 + Math.sin(t * 6) * 0.025, 0.35); pet.rotation.z = Math.sin(t * 3.2) * 0.08; } else if (!(S.alt > 0)) pet.rotation.z *= 0.8;
     if (S.pose === 'sleep') { S.sleepT -= dt; if (S.sleepT < 0) { fx('fx:sleep_z', 1); S.sleepT = 2.2; } }
     for (let i = S.fx.length - 1; i >= 0; i--) { const s = S.fx[i]; s.userData.life -= dt; s.position.y += s.userData.vy * dt; s.material.opacity = Math.min(1, s.userData.life); if (s.userData.life <= 0) { scene.remove(s); S.fx.splice(i, 1); } }
     stageFrame(dt); formFrame(dt); compFrame(dt);
-    if (G) driveModel(dt, S.carry ? 'carry' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking);
+    if (G) driveModel(dt, S.carry ? 'carry' : S.mount === 'fly' || S.alt > 0.15 ? 'fly' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking && !(S.alt > 0.15));
     R.render(scene, cam); requestAnimationFrame(frame);
   }
   function size() { const w = view.clientWidth, h = view.clientHeight; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
@@ -820,7 +873,7 @@
     drag = { x: e.clientX, y: e.clientY, a: camAng, moved: false, pet: onPet, comp, furn: fh, t: Date.now() }; if (onPet || fh || comp) R.domElement.setPointerCapture(e.pointerId); });
   addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy2 = e.clientY - drag.y; if (Math.hypot(dx, dy2) > 6) drag.moved = true;
     if (drag.furn && drag.moved) { at(e); const v = floorPt(); if (v) { const z = FZONE(), m = drag.furn; m.position.x = Math.max(z[0], Math.min(z[1], v.x)); m.position.z = Math.max(z[2], Math.min(z[3], v.z)); m.lookAt(cam.position.x, m.position.y, cam.position.z); if (m.userData.sh) m.userData.sh.position.set(m.position.x, 0.006, m.position.z + 0.02); } return; }
-    if (drag.pet && drag.moved) { if (!S.carry) { S.carry = true; S.moving = false; S.hop = 0; S.pose = 'stand'; say('Wheee!'); } at(e); const v = floorPt(); if (v) { clampArea(v); pet.position.x = v.x; pet.position.z = v.z; pet.rotation.y += (Math.atan2(cam.position.x - v.x, cam.position.z - v.z) - pet.rotation.y) * 0.15; } return; }
+    if (drag.pet && drag.moved) { if (!S.carry) { if (S.mount) { S.mount = null; tell({ t: 'mount', m: '' }); } S.carry = true; S.moving = false; S.hop = 0; S.pose = 'stand'; say('Wheee!'); } at(e); const v = floorPt(); if (v) { clampArea(v); pet.position.x = v.x; pet.position.z = v.z; pet.rotation.y += (Math.atan2(cam.position.x - v.x, cam.position.z - v.z) - pet.rotation.y) * 0.15; } return; }
     if (drag.comp) return;
     if (!drag.pet && !back) { camAng = Math.max(-0.9, Math.min(0.9, drag.a - dx * 0.006)); camAt(); } });
   addEventListener('pointerup', e => { if (!drag) return; const d = drag; drag = null;
@@ -831,6 +884,7 @@
     if (S.carry) { S.carry = false; S.act = 'stay'; S.pose = 'stand'; S.hop = 1; puff('dust_puff', 1, 0.45); fx('💖', 1); say(P.look.name + ' likes it here!'); document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); return; }
     if (d.moved) return; at(e);
     if (d.pet) { hearts(3); if (S.pose !== 'sleep') { S.hop = Math.max(S.hop, 1); P.tongue.visible = true; setTimeout(() => { if (S.act !== 'happy') P.tongue.visible = false; }, 1500); } else say('Shh… ' + P.look.name + ' is sleeping. 💤'); return; }
+    const v0 = floorPt(); if (v0 && S.mount) { clampArea(v0); if (S.mount === 'ride') outOfPools(v0); S.target.copy(v0); S.moving = true; S.steer = true; puff('star_burst', 1, 0.3); say(S.mount === 'fly' ? 'Flying over there!' : 'This way, ' + P.look.name + '!'); return; }      /* 4.275 steering a ride or flight */
     const v = floorPt(); if (v && S.pose !== 'sleep') { clampArea(v); S.act = 'go'; S.pose = 'stand'; S.target.copy(v); S.moving = true; bowl.visible = false; ball.visible = false; document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); say(P.look.name + ' is on the way!'); } });
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
   document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x === b)); const pos = pet.position.clone(), ry = pet.rotation.y; G = null; document.getElementById('report').hidden = true; document.getElementById('phbtn').hidden = true; build(b.dataset.who); pet.position.copy(pos); pet.rotation.y = ry; act(S.act); });
