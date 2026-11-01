@@ -453,7 +453,7 @@
   };
   const S = { pose: 'stand', cur: Object.assign({}, POSE.stand), act: 'walk', t: 0, target: new THREE.Vector3(), moving: false, wag: 1, blink: 2, sleepT: 0, hop: 0, fx: [] };
   function act(a) {
-    S.act = a; S.moving = false; bowl.visible = false; ball.visible = false; propBox.visible = false; P.tongue.visible = false; S.hop = 0;
+    S.act = a; S.moving = false; bowl.visible = false; ball.visible = false; propBox.visible = false; S.fly = null; S.fstep = null; if (a !== 'fetch' && a !== 'huh') fetchT.visible = false; P.tongue.visible = false; S.hop = 0;
     document.querySelectorAll('[data-act]').forEach(b => b.classList.toggle('on', b.dataset.act === a));
     const n = P.look.name;
     if (a === 'walk') { S.pose = 'stand'; pick(); say(n + ' is exploring!'); }
@@ -463,9 +463,14 @@
     if (a === 'eat' || a === 'drink') { S.pose = 'stand'; const f = pet.position.clone().setY(0); clampArea(f); bowl.position.set(f.x, 0, f.z + 0.55); prop(bowl, a === 'drink' ? 'water_bowl' : 'food_bowl', 0.32); bowl.visible = true; S.target.copy(f); S.moving = true; S.act = 'eat'; if (a === 'drink') setTimeout(() => puff('splash', 1, 0.35), 900); say(a === 'drink' ? 'Slurp!' : 'Dinner time!'); }
     if (a === 'bath') { S.pose = 'stand'; S.act = 'bath'; propBox.position.set(pet.position.x + 0.55, 0, pet.position.z + 0.15); prop(propBox, 'shampoo', 0.42); propBox.visible = true; for (let k = 0; k < 6; k++) setTimeout(() => { if (S.act === 'bath') puff('bubbles', 1, 0.45); }, k * 450); setTimeout(() => { propBox.visible = false; if (S.act === 'bath') { puff('star_burst', 1, 0.5); S.hop = 1; } }, 3000); say('Bath time! 🫧'); }
     if (a === 'play') { S.pose = 'stand'; ball.visible = true; throwBall(); say('Fetch!'); }
+    /* 4.242 Sign to Fetch: the toy flies to a far spot, the pet runs, grabs it and brings it back (tells Pawtopia 'fetched'); a wrong sign: the pet sits, puzzled */
+    if (a === 'fetch') { S.pose = 'stand'; const A = AREA(), to = new THREE.Vector3(A[0] + 0.2 + Math.random() * (A[1] - A[0] - 0.4), 0.12, A[2] + Math.random() * 0.45 * (A[3] - A[2]));
+      fetchT.material.map = tex('care:' + (S.toy || 'tennis_ball')); fetchT.material.needsUpdate = true; fetchT.visible = true; S.fly = { from: new THREE.Vector3(pet.position.x * 0.5, 0.4, A[3] + 0.5), to, t: 0 }; S.fstep = 'fly'; say('Fetch!'); }
+    if (a === 'huh') { S.pose = 'sit'; fx('❓', 1); say(n + ' is puzzled. Try the next one!'); }
     if (a === 'happy') { S.pose = 'stand'; S.hop = 3; P.tongue.visible = true; hearts(6); puff('star_burst', 1, 0.5); say(n + ' is SO happy!'); }
   }
   const pick = () => { const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); S.moving = true; };      // a short stroll to somewhere nearby
+  const fetchT = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); fetchT.scale.setScalar(0.3); fetchT.visible = false; scene.add(fetchT);
   const throwBall = () => { const a = AREA(); ball.position.set(a[0] + Math.random() * (a[1] - a[0]), 0.15, a[2] + Math.random() * (a[3] - a[2])); S.target.copy(ball.position).setY(0); S.moving = true; };
   /* little floating hearts and Zzz, drawn as sprites */
   const spriteTex = {}; const tex = ch => spriteTex[ch] || (spriteTex[ch] = /^(fx|care):/.test(ch) ? (() => { const t = furnLoader.load(ART + ch.replace(':', '/') + '.webp'); t.encoding = THREE.sRGBEncoding; return t; })() : (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.font = '96px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 64, 70); const t = new THREE.CanvasTexture(c); return t; })());
@@ -486,20 +491,24 @@
     let walking = false;
     if (S.moving) {      // turn toward the target and trot there
       const d = new THREE.Vector3().subVectors(S.target, pet.position); d.y = 0; const dist = d.length();
-      const stop = S.act === 'eat' ? 0.05 : S.act === 'play' ? 0.42 : 0.05;
+      const stop = S.act === 'eat' ? 0.05 : S.act === 'play' ? 0.42 : S.act === 'fetch' && S.fstep === 'out' ? 0.22 * pet.scale.x : 0.05;
       if (dist > stop) { const want = Math.atan2(d.x, d.z); let dy = want - pet.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; pet.rotation.y += dy * Math.min(1, dt * 6);
         const hopNow = G && G.gaitType === 'hop' && G.rig && OWNWALK, hf = hopNow ? Math.max(0, Math.sin(Math.min(1, ((G.gait || 0) % (Math.PI * 2)) / (Math.PI * 2) / 0.55) * Math.PI)) * 2.2 : 1;
-        const sp = (S.act === 'play' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? 0.3 : 1) * hf; pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
+        const sp = (S.act === 'play' || S.act === 'fetch' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? 0.3 : 1) * hf; pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
       else { S.moving = false;
         if (S.act === 'walk') setTimeout(() => { if (S.act === 'walk' && !S.moving && !S.carry) pick(); }, 2500 + Math.random() * 4000);      // a good rest between strolls
         if (S.act === 'go') { S.act = 'stay'; }
         if (S.act === 'sleep') { S.pose = 'sleep'; if (!back) pet.rotation.y = 0.6; say('Shh… ' + P.look.name + ' is asleep.'); }
         if (S.act === 'eat') { S.pose = 'eat'; pet.rotation.y = 0; }
+        if (S.act === 'fetch' && S.fstep === 'out') { S.fstep = 'back'; S.hop = 1; const A = AREA(); S.target.set(Math.max(A[0], Math.min(A[1], 0)), 0, A[3] - 0.05); setTimeout(() => { if (S.act === 'fetch') S.moving = true; }, 450); }      /* 4.242 Sign to Fetch: got it, bring it back */
+        else if (S.act === 'fetch' && S.fstep === 'back') { S.fstep = 'done'; S.act = 'stay'; S.pose = 'sit'; const f = new THREE.Vector3(Math.sin(pet.rotation.y), 0, Math.cos(pet.rotation.y)); fetchT.position.copy(pet.position).addScaledVector(f, 0.38 * pet.scale.x).setY(0.1); hearts(3); say('Good fetch!'); tell({ t: 'fetched' }); }
         if (S.act === 'play') { const kick = new THREE.Vector3().subVectors(ball.position, pet.position).setY(0).normalize(); S.ballV = kick.multiplyScalar(3.2); S.hop = 1; setTimeout(() => { if (S.act === 'play') { S.target.copy(ball.position).setY(0); S.moving = true; } }, 1400); }
       } }
     if (!walking && !S.moving && !window.__noface && (S.pose === 'sit' || S.act === 'happy')) {      // sitting, waving, happy: turn to face the student
       const want = Math.atan2(cam.position.x - pet.position.x, cam.position.z - pet.position.z); let dy = want - pet.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
       if (S.act !== 'happy') pet.rotation.y += dy * Math.min(1, dt * 4); }
+    if (S.fly) { S.fly.t += dt / 0.8; const k = Math.min(1, S.fly.t); fetchT.position.lerpVectors(S.fly.from, S.fly.to, k); fetchT.position.y = 0.12 + Math.sin(k * Math.PI) * 0.9; if (k >= 1) { S.fly = null; S.fstep = 'out'; S.target.copy(fetchT.position).setY(0); S.moving = true; } }
+    if (S.act === 'fetch' && S.fstep === 'back') { const f = new THREE.Vector3(Math.sin(pet.rotation.y), 0, Math.cos(pet.rotation.y)); fetchT.position.copy(pet.position).addScaledVector(f, 0.3 * pet.scale.x).setY(0.32 * pet.scale.x); }      /* carried in the mouth */
     if (S.ballV) { ball.position.addScaledVector(S.ballV, dt); ball.rotation.x += S.ballV.z * dt * 6; ball.rotation.z -= S.ballV.x * dt * 6; S.ballV.multiplyScalar(1 - dt * 1.6);
       const A = AREA(); if (ball.position.x < A[0] || ball.position.x > A[1]) { S.ballV.x *= -1; ball.position.x = Math.max(A[0], Math.min(A[1], ball.position.x)); } if (ball.position.z < A[2] || ball.position.z > A[3]) { S.ballV.z *= -1; ball.position.z = Math.max(A[2], Math.min(A[3], ball.position.z)); }
       if (S.ballV.length() < 0.05) S.ballV = null; }
@@ -595,6 +604,7 @@
     if (m.form) FORM = m.form;
     if (m.acc !== undefined) { ACC = m.acc || ''; showOutfit(); }
     if (m.pet && WHO[m.pet]) { const b = document.querySelector('[data-who="' + WHO[m.pet] + '"]'); if (b && !b.classList.contains('on')) b.click(); }
+    if (m.toy) S.toy = String(m.toy).replace(/[^a-z_]/g, '');
     if (m.act) act(m.act);
     if (m.fx) fx(m.fx, 4); });
   /* speed check: frames in the first seconds after the pet appears; Pawtopia switches to pictures when it is too slow */
