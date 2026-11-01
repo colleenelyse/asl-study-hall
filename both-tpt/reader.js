@@ -646,11 +646,12 @@ const NGAMES = [
   ['years', '📜', 'When Did It Happen?', 'See the event, pick the year, then sign the year.'],
   ['guessage', '🎂', 'Guess My Age', 'Type your best guess of Charlie\u2019s age, then sign it. Closer guesses score more.'],
   ['hilo', '🔼', 'Higher or Lower', 'Find the secret number from 1 to 100. Sign each guess.'],
-  ['price', '🏷️', 'Price Is Right', 'Guess the price, then sign it. Closest without going over!']];
+  ['price', '🏷️', 'Price Is Right', 'Guess the price, then sign it. Closest without going over!'],
+  ['cases', '💼', 'Cash or Crash', 'Sign a case number to open it, then read the dollars the hand signs. Cash out before an Ink Splat!']];
 function drawGames() {
   const L = NUMS ? NGAMES : LGAMES;
   $('#rd-mlevel').hidden = !NUMS; $$('#rd-mlevel button').forEach(b => b.classList.toggle('on', b.dataset.v === MLEVEL));
-  $('#rd-gamelist').innerHTML = partyBar() + L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : b) + '.' : '') + '</small></button>'; }).join('');
+  $('#rd-gamelist').innerHTML = partyBar() + L.map(g => { const b = best(g[0]).old; return '<button class="rd-gcard" data-g="' + g[0] + '"><span aria-hidden="true">' + g[1] + '</span><b>' + g[2] + '</b><small>' + g[3] + (b !== undefined ? ' Best: ' + (g[0] === 'count' ? b + ' s' : g[0] === 'cases' ? '$' + Number(b).toLocaleString('en-US') : b) + '.' : '') + '</small></button>'; }).join('');
 }
 function gameUI(on) {
   if (!on) { gpic(''); gchoose(''); }
@@ -776,6 +777,18 @@ function gsay(html, ms, next) { gchoose('<div class="rd-gsay">' + html + '</div>
 const PRICES = [['🍕', 'A large pizza', 14], ['🚲', 'A new bike', 250], ['🎮', 'A video game', 60], ['🍦', 'An ice cream cone', 4], ['👟', 'Brand-name sneakers', 120], ['📱', 'A new phone', 800],
   ['🎟️', 'A movie ticket', 13], ['🎧', 'Wireless earbuds', 150], ['🧸', 'A teddy bear', 20], ['🚗', 'A new car', 28000], ['🏀', 'A basketball', 30], ['🎸', 'A beginner guitar', 150],
   ['📚', 'A paperback book', 12], ['🥤', 'A large soda', 3], ['🛹', 'A skateboard', 80], ['💻', 'A laptop', 700], ['🐶', 'A dog from a shelter (adoption fee)', 150], ['⌚', 'A smartwatch', 300]];      /* about what they cost; a game, not a store */
+/* MONEY (for now, 2026-11-01): the hand signs the plain number and the screen calls it dollars. When Colleen teaches DOLLAR (and the decimal point
+   and cents), the money signs replace this one function. Same rules as "Show me the number": 250 = 2 HUNDRED, 50; 1,000 = 1 THOUSAND. */
+async function signAmount(n) { await refHand.ready; if (partsFor(n).length > 1) await refHand.signParts(tokensFor(n).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]), {}); else await refHand.sign(n, {}); }
+const CASE_AMTS = [1, 5, 10, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000];      /* the money amounts (repeated to fill the bigger boards) */
+const CASE_COUNTS = [20, 50, 100];      /* how many cases to choose from (Colleen): bigger boards = bigger case numbers to sign */      /* the 13 money cases; the other 2 of the 15 are Ink Splats (Colleen: students should win more than they lose) */
+const dollars = v => '$' + Number(v).toLocaleString('en-US');
+function lookAlikes(n) {      /* 3 wrong amounts that look close when signed: the digits swapped first, then neighbors (one more ten, ten times as much...) */
+  const s = String(n), swaps = new Set(), near = new Set(), ok = v => Number.isInteger(v) && v > 0 && v <= 9999 && v !== n;
+  for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) { const a = s.split(''); [a[i], a[j]] = [a[j], a[i]]; if (a[0] !== '0' && ok(+a.join(''))) swaps.add(+a.join('')); }
+  (n >= 100 ? [n + 100, n - 100, n + 50, n - 50, n * 10, n / 10] : [n + 10, n - 10, n + 5, n - 5, n + 1, n - 1, n * 10]).forEach(v => { if (ok(v) && !swaps.has(v)) near.add(v); });
+  return shuffleA([...swaps]).concat(shuffleA([...near])).slice(0, 3);
+}
 const PICKGAMES = {
   charlie(G, k) {      /* Charlie's picture; four ages, each from a different time of life; sign the one you pick as an AGE */
     const C = window.CHARLIE; if (!C) return endGame('<p>Charlie did not load. Reload the page.</p>', k);
@@ -829,6 +842,45 @@ const PICKGAMES = {
     G.numDone = () => { const p = G.it[2], v = G.pick, over = v > p, pts = over ? 0 : Math.max(0, Math.round(100 - 100 * (p - v) / p)); G.score += pts;
       gsay((over ? '💥 Over! ' : pts >= 90 ? '🎯 Wow! ' : pts >= 60 ? '👍 Close! ' : '🤔 ') + 'About <b>$' + p.toLocaleString('en-US') + '</b>. <b>+' + pts + '</b>', 2400, G.next); };
     G.skip = G.next; G.next();
+  },
+  cases(G, k) {      /* Cash or Crash (Colleen, 2026-11-01): 20, 50 or 100 cases (the student picks); about 1 in 8 is an Ink Splat, the rest hide $1-$1,000 (the first case opened is always money). Tap or type a case number, then sign it to open
+                        the case (the camera can only check a number it expects). The hand signs the amount, no digits: right = all of it in the bank,
+                        typed right = 10% more, wrong = half. An Ink Splat wipes out the bank. Before each pick: open another case, or cash out. 5 picks. */
+    if (!G.n) { bar('Cash or Crash', []); gpic('<div class="rd-hilo">💼 <b>Cash or Crash</b><small>How many cases?</small></div>'); ghead('Choose a board');
+      return gchoose('<div class="rd-gpicks">' + CASE_COUNTS.map(m => '<button class="btn ghost" data-n="' + m + '">' + m + ' cases</button>').join('') + '</div>', e => { e.querySelector('.rd-gpicks').onclick = ev => { const b = ev.target.closest('[data-n]'); if (b) { G.n = +b.dataset.n; PICKGAMES.cases(G, k); } }; }); }
+    const inks = Math.max(2, Math.round(G.n * 0.13)), money = [];      /* about 1 case in 8 is an Ink Splat on every board */
+    while (money.length < G.n - inks) money.push(...shuffleA(CASE_AMTS.slice())); money.length = G.n - inks;
+    G.cases = shuffleA(money.concat(Array(inks).fill('ink'))); G.open = {}; G.picks = 0; G.bank = 0; G.total = 0; G.amt = null; bar('Cash or Crash · ' + G.n + ' cases', []);
+    G.board = () => { gpic('<div class="rd-cases' + (G.n > 20 ? ' many' : '') + '">' + G.cases.map((c, i) => { const o = G.open[i + 1], n = i + 1;      /* o: '?' = open but not read yet, 1 = shown */
+      return '<button class="rd-case' + (o ? ' open' + (c === 'ink' ? ' ink' : '') : '') + (G.picking && G.pick === n ? ' pick' : '') + '" data-case="' + n + '"' + (o ? ' disabled' : '') + '>' + (!o ? n : c === 'ink' ? '🐙' : o === '?' ? '$?' : dollars(c)) + '</button>'; }).join('') + '</div>');
+      ghead('Pick <b>' + Math.min(5, G.picks + 1) + '</b> of 5 · Bank <b>' + dollars(G.bank) + '</b> · Saved <b>' + dollars(G.total) + '</b>'); };
+    $('#rd-gpic').onclick = ev => { const b = ev.target.closest('[data-case]'); if (b && GAME === G && G.picking) G.choose(+b.dataset.case); };      /* tapping a case picks it (it still has to be signed) */
+    G.ask = () => { G.pick = 0; G.board(); $('#rd-letter').textContent = '?';
+      if (G.picks >= 5) { if (!G.bank) return G.finish(); return gchoose('<button class="btn" id="rd-clast">🏁 Cash out ' + dollars(G.bank) + ' and finish</button>', e => { $('#rd-clast').onclick = () => { G.total += G.bank; G.bank = 0; G.finish(); }; }); }      /* no more cases: the last bank is cashed out with one tap */
+      if (!G.bank) return G.pickCase();
+      gchoose('<button class="btn" id="rd-cgo">💼 Open another case</button><button class="btn ghost" id="rd-ccash">💰 Cash out ' + dollars(G.bank) + '</button><p class="rd-small">' + (G.picks === 4 ? '⚠️ Last case! ' : '') + 'An Ink Splat wipes out money you have not cashed out.</p>', e => { $('#rd-cgo').onclick = G.pickCase; $('#rd-ccash').onclick = G.cash; }); };
+    G.cash = () => { const b = G.bank; G.total += b; G.bank = 0; G.board(); gsay('💰 Saved ' + dollars(b) + '!', 1300, G.pickCase); };
+    G.pickCase = () => { G.picking = true; G.board(); gtype('Case number', 1, G.n, G.choose); $('#rd-gmsg').textContent = 'Tap a case or type its number, then sign it to open it.'; };
+    G.choose = v => { if (G.open[v]) { gtype('Case number', 1, G.n, G.choose); $('#rd-gmsg').textContent = 'Case ' + v + ' is already open. Pick another one.'; return; }
+      G.pick = v; G.board(); gsign(String(v), 'Sign ' + v + ' to open case ' + v); };      /* tapping another case before signing changes the pick */
+    G.numDone = () => { G.picking = false; const v = G.pick;
+      if (!G.picks && G.cases[v - 1] === 'ink') { const sw = G.cases.findIndex((x, i) => x !== 'ink' && !G.open[i + 1]); [G.cases[v - 1], G.cases[sw]] = [G.cases[sw], G.cases[v - 1]]; }      /* the first case is always money */
+      const c = G.cases[v - 1]; G.open[v] = c === 'ink' ? 1 : '?'; $('#rd-letter').textContent = '$?';
+      if (c === 'ink') { const lost = G.bank; G.bank = 0; G.picks++; G.board(); return gsay('🐙 Ink Splat! ' + (lost ? 'The <b>' + dollars(lost) + '</b> you had not cashed out is gone.' : 'Lucky: your bank was empty.'), 2600, G.ask); }
+      G.amt = c; G.shown = false; G.board(); bar('Cash or Crash', [['watch', '▶ Watch again']]); gchoose('<p class="rd-small">Watch the hand. How many dollars?</p>'); G.watch(); };
+    G.watch = async () => { if (G.busy || G.amt === null) return; G.busy = true; const box = $('#rd-gmodel'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false;
+      try { await signAmount(G.amt); } catch (e) {} G.busy = false; if (GAME === G && G.amt !== null && !G.shown) G.offer(); };
+    G.offer = () => { G.shown = true; const opts = shuffleA([G.amt].concat(lookAlikes(G.amt)));      /* 4 choices, or type it for 10% more */
+      gchoose('<div class="rd-gpicks">' + opts.map(v => '<button class="btn ghost" data-v="' + v + '">' + dollars(v) + '</button>').join('') + '</div><label class="rd-gtype">or type it (+10%): $ <input type="number" inputmode="numeric" min="1" max="9999" id="rd-gin"></label><button class="btn" id="rd-ggo">Check</button><p class="rd-small" id="rd-gmsg"></p>', e => {
+        e.querySelector('.rd-gpicks').onclick = ev => { const b = ev.target.closest('[data-v]'); if (b) G.answer(+b.dataset.v, false); };
+        const typed = () => { const t = $('#rd-gin').value; if (t === '' || !(+t > 0)) { $('#rd-gmsg').textContent = 'Type the number of dollars.'; return; } G.answer(Math.round(+t), true); };
+        $('#rd-ggo').onclick = typed; $('#rd-gin').onkeydown = ev => { if (ev.key === 'Enter') typed(); }; }); };
+    G.answer = (v, typed) => { if (G.amt === null) return; const a = G.amt, ok = v === a, got = ok ? (typed ? Math.round(a * 1.1) : a) : Math.floor(a / 2);
+      G.bank += got; G.picks++; G.open[G.pick] = 1; G.amt = null; $('#rd-gmodel').hidden = true; bar('Cash or Crash', []); G.board(); $('#rd-letter').textContent = dollars(a);
+      gsay((ok ? (typed ? '🎯 Typed it! ' : '✅ Yes! ') + 'It was <b>' + dollars(a) + '</b>.' : '❌ The hand signed <b>' + dollars(a) + '</b>. Half goes in the bank.') + ' <b>+' + dollars(got) + '</b>', 2600, G.ask); };
+    G.finish = () => { G.bank = 0; const b = best(G.n === 20 ? 'cases' : 'cases' + G.n, G.total), t = G.total, rank = t >= 1000 ? '🏆 HIGH ROLLER!' : t >= 400 ? '💰 BIG CASH!' : t > 0 ? '💵 CASH!' : '🐙 CRASH!';      /* each board keeps its own best */
+      endGame('<h3>' + rank + '</h3><div class="big">' + dollars(t) + '</div><p class="rd-small">saved' + (t ? '' : '. The Ink Splats got you this time. Cash out sooner next game!') + (b.isNew ? ' A new best!' : b.old !== undefined ? ' Best: ' + dollars(b.old) + '.' : '') + '</p>', k); };
+    G.ask();
   }
 };
 /* ---------- take turns (Colleen, 2026-10-17: "any group game that can have a solo mode, should. and vice versa"): every camera game can be played

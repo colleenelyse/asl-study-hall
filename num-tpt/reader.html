@@ -76,6 +76,12 @@
   .rd-hilo { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 26px var(--display); } .rd-hilo small { font: 600 15px var(--body, inherit); color: var(--muted); }
   .rd-gchoose { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; } .rd-gpicks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
   .rd-gpicks .btn { font-size: 22px; min-width: 120px; } .rd-gtype { font: 700 18px var(--display); display: flex; align-items: center; gap: 8px; } .rd-gtype input { font: 700 24px var(--display); width: 130px; padding: 6px 10px; border-radius: 12px; border: 2px solid var(--line, #ccc); }
+  .rd-cases { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 460px; }      /* Cash or Crash: the board */
+  .rd-case { position: relative; aspect-ratio: 4 / 3; margin-top: 7px; border-radius: 10px; border: 3px solid #6B4A1F; background: linear-gradient(#D19A45, #A8742C); color: #fff; font: 700 clamp(18px, 4vw, 26px) var(--display); text-shadow: 0 1px 2px rgba(0,0,0,.4); cursor: pointer; padding: 0; }
+  .rd-cases.many { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-width: 520px; } .rd-cases.many .rd-case { font-size: 13px; border-width: 2px; margin-top: 4px; border-radius: 6px; } .rd-cases.many .rd-case::before { display: none; }      /* 50 and 100 cases: smaller cases, 10 across */
+  .rd-case::before { content: ''; position: absolute; left: 34%; right: 34%; top: -9px; height: 7px; border: 3px solid #6B4A1F; border-bottom: 0; border-radius: 6px 6px 0 0; }      /* the handle */
+  .rd-case:hover:not([disabled]) { filter: brightness(1.1); } .rd-case.pick { outline: 4px solid var(--accent); outline-offset: 2px; }
+  .rd-case.open { background: var(--surface2); color: var(--ink); border-color: var(--line); text-shadow: none; font-size: clamp(13px, 2.6vw, 16px); cursor: default; } .rd-case.open::before { border-color: var(--line); } .rd-case.ink { font-size: 26px; }
   .rd-gsay { font: 700 22px var(--display); text-align: center; padding: 6px 10px; } .rd-gchoose .rd-small { flex-basis: 100%; text-align: center; margin: 0; }
   /* the letter games (2026-10-17) */
   .rd-scram { display: flex; gap: 8px; } .rd-scram i { font: 700 40px var(--display); font-style: normal; width: 56px; height: 64px; display: grid; place-items: center; border-radius: 12px; background: var(--surface2, #eef); box-shadow: 0 3px 0 rgba(0,0,0,.12); }
@@ -176,6 +182,6 @@
 <script src="hand.js?v=147"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=63"></script>
+<script type="module" src="reader.js?v=66"></script>
 </body>
 </html>
