@@ -33,7 +33,7 @@
   #say { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: #fff; border-radius: 999px; padding: 6px 16px; font-weight: 700; box-shadow: 0 4px 0 #ecd2e3; pointer-events: none }
 </style></head><body>
 <div class="wrap">
-  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="gus">Gus</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
+  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="gus">Gus</button><button data-who="penguin">Penguin</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
   <div class="stage"><div id="view"><div id="say">Hi! I'm Jaq.</div><div id="drop">Drop a .glb model here</div></div>
     <div id="cmp" hidden><div class="cmpt">The painting</div><img id="cmpimg" alt="The grown-up painting of this pet"></div></div>
   <div class="row acts">
@@ -143,6 +143,7 @@
     pony: { paint: 'pets/pony_adult', name: 'Pony', fur: 0xd99a5b, saddle: null, belly: 0xf3e3c8, ear: 0xd99a5b, inner: 0xf2b7a0, nose: 0xf3e3c8, ears: 'up', earSize: 0.9, bow: false, fluff: 0 },
     fox: { paint: 'pets/fox_adult', name: 'Fox', fur: 0xf07a2a, saddle: null, belly: 0xfff3e6, ear: 0xf07a2a, inner: 0x3a2a22, nose: 0x1d1d22, ears: 'up', earSize: 1.3, bow: false, fluff: 1 },
     bunny: { paint: 'pets/bunny_adult', name: 'Bunny', fur: 0xf4ece4, saddle: null, belly: 0xffffff, ear: 0xf4ece4, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.8, bow: false, fluff: 0 },
+    penguin: { paint: 'pets/penguin_adult', name: 'Penguin', fur: 0x2a2f3a, saddle: null, belly: 0xffffff, ear: 0x2a2f3a, inner: 0x2a2f3a, nose: 0xffa83a, ears: 'up', earSize: 0.2, bow: false, fluff: 0 },      /* 2026-11-01 the first two-legged pet (Tripo Humanoid, Mixamo) */
     gus: { paint: 'pets/gus_adult', name: 'Gus', fur: 0x8f97a3, saddle: null, belly: 0xffffff, ear: 0x8f97a3, inner: 0xf5a5b5, nose: 0x3a3a44, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },      /* 2026-11-01 Colleen's cat Gus (replaced the Kitten in the eggs) */
     kitten: { paint: 'pets/kitten_adult', name: 'Kitten', fur: 0xb9b2aa, saddle: 0x6f6862, belly: 0xf3ece6, ear: 0xb9b2aa, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },
     golden: { paint: 'pets/retriever_adult', name: 'Golden Pup', fur: 0xe8b25c, saddle: null, belly: 0xf4d08f, ear: 0xd99a45, inner: 0xd99a45, nose: 0x2a1d18, ears: 'flop', earSize: 1.2, bow: false, collar: 0x3b8bff, fluff: 1 }
@@ -217,7 +218,7 @@
     const ghost = () => new THREE.Object3D(); P = { look: { name: label.replace(/\.(glb|gltf)$/i, ''), paint: P && P.look.paint }, hips: ghost(), body: ghost(), neck: ghost(), head: ghost(), tail: ghost(), tongue: ghost(), eyes: [], ears: [],
       legs: { fl: ghost(), fr: ghost(), bl: ghost(), br: ghost() } };
     root.add(P.head); P.head.position.set(0, size.y * k * 0.9 / k, 0);      // where hearts and Zzz float from
-    const rig = findRig(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
+    const rig = rigOf(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
     G = { gaitType: GAIT[who && who.who] || 'trot', root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
     if (rig) fitOutfits(root, rig);
     report(); tell({ t: 'pet' }); document.getElementById('phbtn').hidden = false; document.getElementById('walkbtn').hidden = !(rig && acts.walk); document.getElementById('hopbtn').hidden = !rig; say('Hi! I\'m ' + P.look.name + '.'); act(S.act);
@@ -237,9 +238,10 @@
     const hp = V.filter(p => p.z > zmax - zlen * 0.24 && p.y > floor0 + Hh * 0.45), hb = L(rig.head), head = hp.length > 20 ? hp.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(hp.length) : hb;      /* the head found from the model's shape (some rigs put the "head" bone low) */
     if (hb.y > head.y) head.copy(hb);
     const nax = head.clone().sub(chest).normalize(), neck = [0.15, 0.22, 0.3, 0.38, 0.46, 0.54].map(t => ring(head.clone().lerp(chest, t), nax, band, Hh * 0.22)).filter(Boolean).reduce((m, x) => !m || x.r < m.r ? x : m, null) || { c: head.clone().lerp(chest, 0.35), r: Hh * 0.08 };      /* the narrowest place between the head and the chest */
+    if (rig.biped && rig.neck[0]) { const nb = L(rig.neck[0]), nr = ring(nb, new THREE.Vector3(0, 1, 0), band, Hh * 0.45); if (nr) { neck.c = nr.c; neck.r = nr.r * 0.86; } }      /* a two-legged pet (a penguin has no real neck): the collar goes at the neck bone, around the body there */
     neck.r = Math.max(neck.r * 1.08, Hh * 0.085);      /* never thinner than a sensible neck, so outfits stay visible on slim pets */ 
-    const hr = (ring(head.clone().add(nax.clone().multiplyScalar(Hh * 0.08)), nax, band, Hh * 0.3) || { r: neck.r * 1.3 }).r;
-    const cx = V.reduce((a, p) => a + p.x, 0) / V.length, top = V.filter(p => Math.abs(p.x - cx) < hr * 0.2 && p.z > head.z - hr * 0.3 && p.z < head.z + hr && p.y > head.y).reduce((m, p) => p.y > m.y ? p : m, head.clone().add(new THREE.Vector3(0, hr, 0)));
+    let hr = (ring(head.clone().add(nax.clone().multiplyScalar(Hh * 0.08)), nax, band, Hh * 0.3) || { r: neck.r * 1.3 }).r; if (rig.biped) hr = Math.max(hr, Hh * 0.19);      /* a bird's round head is wider than the slice through its crest */
+    const cx = V.reduce((a, p) => a + p.x, 0) / V.length, top = V.filter(p => Math.abs(p.x - cx) < hr * 0.2 && (rig.biped || (p.z > head.z - hr * 0.3 && p.z < head.z + hr)) && p.y > head.y).reduce((m, p) => p.y > m.y ? p : m, head.clone().add(new THREE.Vector3(0, hr, 0)));
     const floorY = Math.min(...ys), body = ring(chest.clone().add(new THREE.Vector3(0, 0, -Hh * 0.08)), new THREE.Vector3(0, 0, 1), band * 1.5, Hh * 0.35, p => p.y > floorY + Hh * 0.28, 0.88) || { c: chest.clone(), r: Hh * 0.18 };      /* the chest without the legs */
     const fwd = new THREE.Vector3(0, 0, 1), down = nax.clone().cross(new THREE.Vector3(1, 0, 0)).normalize(); if (down.y > 0) down.negate();      /* the front-bottom of the neck */
     const atNeck = (grp, rr) => { const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), nax); grp.position.copy(neck.c); grp.quaternion.copy(q); return grp; };
@@ -269,7 +271,7 @@
       g.position.set(body.c.x, body.c.y - body.r * 0.4, (chest.z + hipZ) / 2 - Hh * 0.04); add('raincoat', g, rig.chest || rig.top);
       const c2 = collar(0xffd02e, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
     /* ───── 4.256 more dress-up: hats sit on top of the head, glasses in front of the eyes, more neck and body pieces ───── */
-    const hat = (id, build) => { const g = new THREE.Group(); build(g); g.position.copy(top).add(new THREE.Vector3(0, -hr * 0.08, 0)); g.rotation.x = -0.15; add(id, g); };
+    const hat = (id, build) => { const g = new THREE.Group(); build(g); g.position.copy(top).add(new THREE.Vector3(0, -hr * (rig.biped ? 0.3 : 0.08), 0)); g.rotation.x = -0.15; add(id, g); };
     const cone = (r, h, c, seg) => new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 24), omat(c));
     const disc = (r, h, c) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 28), omat(c));
     const dome = (r, c, o) => new THREE.Mesh(new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), omat(c, o));
@@ -289,7 +291,7 @@
       const pom = ball(R * 0.2, 0xff9ecb); pom.position.y = R * 1.45; g.add(pom); const fr = new THREE.Mesh(new THREE.TorusGeometry(R * 0.55, R * 0.1, 8, 24), omat(0xff9ecb)); fr.rotation.x = Math.PI / 2; g.add(fr); });
     hat('bee_antennae', g => { [-1, 1].forEach(sx => { const st = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.035, R * 0.035, R * 0.9, 8), omat(0x1d1d24)); st.position.set(sx * R * 0.35, R * 0.4, 0); st.rotation.z = -sx * 0.35; g.add(st); const b = ball(R * 0.14, 0xffd02e); b.position.set(sx * R * 0.52, R * 0.85, 0); g.add(b); }); });
     /* glasses: in front of the eyes, found from the front of the head a little above its middle */
-    const nose = V.filter(p => Math.abs(p.x - cx) < hr * 0.3 && Math.abs(p.y - head.y) < hr * 1.2).reduce((m, p) => p.z > m.z ? p : m, head.clone()), eyeY = nose.y + (top.y - nose.y) * 0.38,      /* eyes: a little over a third of the way from the nose tip to the top of the head */ facePts = V.filter(p => Math.abs(p.x - cx) < hr * 0.45 && Math.abs(p.y - eyeY) < hr * 0.12 && p.z > head.z - hr * 0.2), eyeZ = facePts.length ? facePts.map(p => p.z).sort((a, b) => a - b)[Math.floor(facePts.length * 0.7)] : head.z + hr * 0.6;
+    const nose = V.filter(p => Math.abs(p.x - cx) < hr * 0.3 && Math.abs(p.y - head.y) < hr * 1.2).reduce((m, p) => p.z > m.z ? p : m, head.clone()), eyeY = nose.y + (top.y - nose.y) * (rig.biped ? 0.28 : 0.38),      /* eyes: a little over a third of the way from the nose tip to the top of the head */ facePts = V.filter(p => Math.abs(p.x - cx) < hr * 0.45 && Math.abs(p.y - eyeY) < hr * 0.12 && p.z > head.z - hr * 0.2), eyeZ = facePts.length ? facePts.map(p => p.z).sort((a, b) => a - b)[Math.floor(facePts.length * 0.7)] : head.z + hr * 0.6;
     const glasses = (id, lens, frameC, shape) => { const g = new THREE.Group(), w = hr * 0.52, r = hr * 0.23;
       [-1, 1].forEach(sx => { let L; if (shape) { L = new THREE.Mesh(new THREE.ShapeGeometry(shape(r)), omat(lens, { side: THREE.DoubleSide, roughness: 0.25 })); } else { L = new THREE.Mesh(new THREE.CircleGeometry(r, 24), omat(lens, { side: THREE.DoubleSide, roughness: 0.2, metalness: 0.2 })); const f = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.13, 8, 24), omat(frameC)); f.position.x = sx * w; g.add(f); } L.position.x = sx * w; g.add(L); });
       const br = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.08, r * 0.08, w * 0.9, 6), omat(frameC)); br.rotation.z = Math.PI / 2; g.add(br);
@@ -310,6 +312,56 @@
     showOutfit();
   }
   function showOutfit() { const on = String(ACC || '').split(',').filter(Boolean); Object.keys(OUTFITS).forEach(k => OUTFITS[k].visible = on.some(a => k === a || k === a + '2')); }      /* 4.256 up to one per slot */
+  /* ───── 2026-11-01 two-legged rigs (Tripo "Humanoid", Mixamo bone names): birds and other pets that stand up. Wings are the arms. ───── */
+  function findBiped(root) {
+    const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); }); const by = n => bones.find(b => b.name.replace(/^mixamorig\d*[:_]?/i, '') === n);
+    const hips = by('Hips'), head = by('Head'); if (!hips || !head || !by('LeftUpLeg') || !by('RightUpLeg')) return null;
+    root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), P = new Map();
+    bones.forEach(b => P.set(b, new THREE.Vector3().setFromMatrixPosition(b.matrixWorld).applyMatrix4(inv)));
+    const leg = s => [hips].concat(['UpLeg', 'Leg', 'Foot', 'ToeBase'].map(n => by(s + n)).filter(Boolean)), arm = s => ['Shoulder', 'Arm', 'ForeArm', 'Hand'].map(n => by(s + n)).filter(Boolean);
+    const L = leg('Left'), R = leg('Right'), AL = arm('Left'), AR = arm('Right'), spine = ['Spine', 'Spine1', 'Spine2'].map(by).filter(Boolean), neck = [by('Neck')].filter(Boolean);
+    const ys = bones.map(b => P.get(b).y), floor = Math.min(...ys), height = Math.max(...ys) - floor;
+    const rest = new Map(); bones.forEach(b => { const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw); const rw = new THREE.Quaternion(); root.getWorldQuaternion(rw);
+      rest.set(b, { s: b.scale.clone(), q: b.quaternion.clone(), p: b.position.clone(), pw: rw.clone().invert().multiply(pw), pwm: new THREE.Matrix4().copy(inv).multiply(b.parent.matrixWorld) }); });
+    const fl = P.get(L[L.length - 1]), fr = P.get(R[R.length - 1]), pivot = new THREE.Vector3((fl.x + fr.x) / 2, floor, (fl.z + fr.z) / 2);
+    const droop = a => { if (a.length < 3) return 0; const u = P.get(a[1]), h = P.get(a[a.length - 1]); return Math.atan2(u.y - h.y, Math.abs(h.x - u.x)); };      /* how far each wing already hangs down (A-pose) */
+    return { biped: true, chest: spine[spine.length - 1] || hips, top: hips, legs: { bl: L, br: R }, arms: { l: AL, r: AR }, droop: { l: droop(AL), r: droop(AR) }, spine, tail: [], neck, head, ears: [], rest, P, height, pivot };
+  }
+  const rigOf = root => findBiped(root) || findRig(root);
+  /* the penguin's poses: the body drops and leans (around the feet), knees bend, wings fold to the sides (fold), neck and head nod */
+  const BIPOSE = {
+    stand: { drop: 0, lean: 0, knee: 0, open: 0, nP: 0, hP: 0 },
+    sit: { drop: -0.16, lean: -0.12, knee: 1.1, open: 0, nP: 0.1, hP: 0.15 },
+    sleep: { drop: -0.2, lean: 0.2, knee: 1.25, open: -0.05, nP: 0.55, hP: 0.35 },
+    eat: { drop: -0.02, lean: 0.5, knee: 0.2, open: 0.1, nP: 0.35, hP: 0.3 },
+    carry: { drop: 0, lean: 0, knee: 0.35, open: 0.9, nP: -0.1, hP: 0 },
+    bow: { drop: -0.05, lean: 0.4, knee: 0.4, open: 0.5, nP: -0.3, hP: -0.1 }
+  };
+  const BP = Object.assign({}, BIPOSE.stand);
+  function poseBiped(dt, doing, walking) {
+    const rig = G.rig, t = S.t, want = BIPOSE[doing === 'wave' ? 'stand' : doing === 'play' ? 'bow' : doing] || BIPOSE.stand, k = Math.min(1, dt * 4);
+    for (const key in BP) BP[key] += (want[key] - BP[key]) * k;
+    G.gait = (G.gait || 0) + dt * (walking ? 8 : 0); const ph = G.gait, wk = (G.wk = (G.wk || 0) + ((walking ? 1 : 0) - (G.wk || 0)) * Math.min(1, dt * 6));
+    rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); });
+    /* the body: drops, leans forward or back around the feet, and rolls side to side as it waddles */
+    const roll = Math.sin(ph) * 0.16 * wk, r0 = rig.rest.get(rig.top), p0 = rig.P.get(rig.top), piv = rig.pivot;
+    _q.setFromEuler(_e.set(BP.lean, 0, roll, 'YXZ')); const np = p0.clone().sub(piv).applyQuaternion(_q).add(piv); np.y += BP.drop * rig.height - growRig(rig, STAGE);
+    np.y += Math.abs(Math.sin(ph)) * 0.02 * rig.height * wk;      /* a little bounce on each step */
+    rig.top.position.copy(r0.p).add(np.sub(p0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r0.pwm.clone().invert()))); bendBone(rig, rig.top, BP.lean, Math.sin(ph) * 0.08 * wk, roll);
+    /* legs: short steps, the knee bends as a foot swings forward; they lean back against the body so the feet stay flat */
+    [['bl', 1], ['br', -1]].forEach(([s, sg]) => { const c = rig.legs[s], sw = Math.sin(ph) * sg * 0.32 * wk, up = Math.max(0, Math.cos(ph) * sg) * 0.45 * wk;
+      bendBone(rig, c[1], -BP.lean - BP.knee * 0.55 - sw, 0, -roll); bendBone(rig, c[2], BP.knee + up, 0, 0); if (c[3]) bendBone(rig, c[3], -BP.knee * 0.45 - up * 0.6, 0, 0); });
+    /* wings: folded down against the sides, a little out while waddling, flapping when happy or carried; the right one waves */
+    const happy = doing === 'happy' || doing === 'carry' ? 0.55 + Math.sin(t * 18) * 0.45 : 0, waddle = (0.18 + Math.sin(ph * 2) * 0.08) * wk;
+    [['l', -1], ['r', 1]].forEach(([s, sg]) => { const a = rig.arms[s]; if (a.length < 2) return; const fold = 1.35 - rig.droop[s], wave = doing === 'wave' && s === 'r';
+      const out = BP.open + waddle + happy, z = wave ? -(rig.droop[s] + 1.2) + Math.sin(t * 9) * 0.35 : fold - out;
+      bendBone(rig, a[1], 0, 0, sg * z); if (a[2]) bendBone(rig, a[2], 0, 0, sg * (wave ? 0.3 : happy * 0.3)); });
+    /* the head: steady against the waddle, looks around while idle, nods to eat */
+    const look = doing === 'idle' ? Math.sin(t * 0.7) * 0.4 : 0, chew = doing === 'eat' ? Math.sin(t * 9) * 0.12 : 0, tilt = doing === 'sit' ? Math.sin(t * 1.3) * 0.2 : 0, breathe = Math.sin(t * (doing === 'sleep' ? 1.6 : 3)) * (doing === 'sleep' ? 0.03 : 0.012);
+    rig.spine.forEach(b => bendBone(rig, b, breathe, 0, -roll * 0.4));
+    rig.neck.forEach(b => bendBone(rig, b, BP.nP + chew, look * 0.5, -roll * 0.5));
+    bendBone(rig, rig.head, BP.hP + chew, look * 0.5, tilt);
+  }
   /* ───── four-legged rigs (Tripo "Other"): find each part by WHERE it is, since the bone names are unreliable ─────
      Model space: +Z is where the nose points, +Y is up. Returns { root, legs: {fl, fr, bl, br: [bones top→paw]}, tail: [...], neck: [...], head, ears: [l, r], rest } */
   function findRig(root) {
@@ -362,6 +414,7 @@
   };
   const RP = Object.assign({}, RIGPOSE.stand);
   function poseRig(dt, doing, walking) {
+    if (G.rig.biped) return poseBiped(dt, doing, walking);
     const rig = G.rig, t = S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in RP) RP[key] += (want[key] - RP[key]) * k;
     const clip = walking && G.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
@@ -429,7 +482,7 @@
   function showLineup(on) {
     if (lineup) { lineup.forEach(o => scene.remove(o)); lineup = null; }
     if (pet) pet.visible = !on; stageRing.visible = false; if (!on || !G || !THREE.SkeletonUtils) return;
-    lineup = STAGES.map((nm, st) => { const c = THREE.SkeletonUtils.clone(G.root), holder = new THREE.Group(); holder.add(c); const rig = findRig(c);
+    lineup = STAGES.map((nm, st) => { const c = THREE.SkeletonUtils.clone(G.root), holder = new THREE.Group(); holder.add(c); const rig = rigOf(c);
       if (rig) { rig.rest.forEach((r, b) => { b.quaternion.copy(r.q); b.position.copy(r.p); }); const drop = growRig(rig, st); const r = rig.rest.get(rig.top);
         rig.top.position.copy(r.p).add(new THREE.Vector3(0, -drop, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.pwm.clone().invert()))); }
       holder.scale.setScalar(growOf(st).size); holder.position.set((st - 3) * 0.78, 0, 0.3); holder.rotation.y = 0; scene.add(holder);
@@ -629,11 +682,11 @@
   /* a model listed here loads by itself for that pet (once Colleen's GLB files exist) */
   /* how each kind travels: 'trot' (dogs, cats, horses) or 'hop' (bunnies; later frogs) */
   const GAIT = { bunny: 'hop', frog: 'hop' };
-  const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
+  const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
-  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
+  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', penguin: 'penguin', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
   const setRoom = (r, toys) => { if (r && r.bg && BACK['bg_' + r.bg]) MINE = { bg: r.bg, items: (r.items || []).slice(0, 12) }; if (toys) TOYS = toys.filter(n => /^[a-z_]+$/.test(n) && n !== 'brush'); };
   addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
     if (m.edit !== undefined) EDIT = !!m.edit;
