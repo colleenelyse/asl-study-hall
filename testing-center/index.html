@@ -12,10 +12,10 @@
 <style>
 /* A briefing for administrators: what it replaces, the three views (student, teacher, coordinator) told screen by screen, then
    privacy and where the project stands. Same look as the Resource Check-In showcase. Made-up students only. */
-:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #1f5fbf; --mark: #ffe066; --shot-bg: #e9edf6; --ok: #1a7f4b;
+:root { --bg: #f3f5fa; --card: #fff; --ink: #18203a; --soft: #55607a; --line: #dde2ee; --brand: #003366; --mark: rgba(222, 185, 70, .55); --shot-bg: #e9edf6; --ok: #1a7f4b;
   --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, -apple-system, sans-serif; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
-:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #9db8ff; --mark: rgba(255, 216, 77, .3); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #deb946; --mark: rgba(222, 185, 70, .35); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1424; --card: #171e33; --ink: #eef1fb; --soft: #aab3cc; --line: #2a3352; --brand: #deb946; --mark: rgba(222, 185, 70, .35); --shot-bg: #1d2540; --ok: #6fd6a0; color-scheme: dark }
 * { box-sizing: border-box }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16.5px/1.6 var(--body); }
 img { max-width: 100%; display: block; }
@@ -167,6 +167,38 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   </div>
 </section>
 
+<section id="printing">
+  <div class="wrap">
+    <div class="intro"><p class="eyebrow">Paper tests</p><h2>Printed where the test is taken, so no paper is delivered</h2><p>Teachers attach the test once. The Testing Center or the support room prints it when the student comes, with the teacher's name on it. This is why the proposal asks for a printer in the Testing Center and in each support room.</p></div>
+    <div class="screen">
+      <figure><img src="img/day-sheet.jpg" alt="A printed day sheet listing every appointment by period and what is still missing" loading="lazy"></figure>
+      <div class="txt"><h3>Print tomorrow's tests</h3><ul><li>One button each afternoon makes one PDF: a <b>day sheet</b> first (every appointment by period, accommodations, timing, and a list of what is still missing, so the coordinator knows what to look for), then every attached test in period order.</li><li>Each test gets the teacher's last name at the top right and is marked printed, so nothing is printed twice. A test that needs color says so.</li><li>Teachers can attach a PDF, a Google Doc link, or both. Students can never open them.</li></ul></div>
+    </div>
+    <div class="screen flip">
+      <figure><img src="img/p2-map.jpg" alt="The question mapper: a box drawn around each question of a test" loading="lazy"></figure>
+      <div class="txt"><h3>Part 2: only the questions that are left</h3><ul><li>For students who start a test in class and finish with extended time: the teacher ticks the questions already done, and the printed copy covers them.</li><li>The app finds the questions by itself (numbered lines, two columns, maps that go with several questions), even on scanned tests, which it reads on the teacher's own computer. The teacher only checks the boxes.</li><li>Everything else stays in place, so the pages match the classroom copy.</li></ul></div>
+    </div>
+    <div class="screen">
+      <figure><img src="img/p2-print.jpg" alt="A printed part 2 page: finished questions covered, labeled PART 2 with the student's name" loading="lazy"></figure>
+      <div class="txt"><h3>Clearly labeled</h3><ul><li>Every page says <b>PART 2: match with the classroom copy</b>, with the student's name and the date, so it can't be mixed up.</li><li>The student can't see the questions they already answered, step away, look them up, and come back.</li></ul></div>
+    </div>
+    <div class="two">
+      <div class="box"><h3>Finished tests back</h3><ul><li>Paper back in the teacher's mailbox, with a time stamp, is the default.</li><li>Teachers who prefer it get a scan instead: the proctor photographs the pages and the teacher opens it from their page.</li></ul></div>
+      <div class="box"><h3>Timing, per student</h3><ul><li>Default: the whole Testing Center period. Or the teacher writes "they have 30 minutes remaining", with a 1.5x helper.</li><li>The proctor sees the exact end time once the student starts.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="clarity">
+  <div class="wrap">
+    <div class="intro"><p class="eyebrow">Communication and transparency</p><h2>Everyone knows what's happening, without chasing anyone</h2></div>
+    <div class="two">
+      <div class="box"><h3>For students</h3><ul><li>Big numbered steps to book, and a message they must close if they skip something.</li><li>"My schedule is wrong" right on the booking page; teachers and classes are picked from the school's lists.</li><li>Reminder emails start with "BRING YOUR STUDENT ID" and list exactly what the teacher allows.</li><li>The day before, if the teacher hasn't sent the test, the student is asked to remind them.</li><li>My testing history: past tests, retakes used under the 50% rule, no-shows.</li></ul></div>
+      <div class="box"><h3>For teachers and the Testing Center</h3><ul><li>A Friday email to each teacher with next week's students and anything missing.</li><li>A history line on every appointment: booked, test attached, printed, arrived, finished, back in the mailbox.</li><li>Notes in both directions on a student's test.</li><li>A two-week "busy days" view of seats by period.</li><li>Accommodations set once a year for IEP and 504 students (1.5x to start), and paras who can run a support room.</li><li>A Feedback button on every page.</li></ul></div>
+    </div>
+  </div>
+</section>
+
 <section id="locations">
   <div class="wrap">
     <div class="intro"><p class="eyebrow">Support classes, RIR and case managers</p><h2>Every place a test is taken, in one system</h2><p>Testing outside a student's own classroom isn't only the Testing Center. The app knows the support classes, RIR and places like Tapestry, and the people who follow those students.</p></div>
@@ -233,7 +265,7 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   <div class="wrap">
     <div class="intro"><p class="eyebrow">Where it stands</p><h2>Built and tested; ready for a pilot</h2></div>
     <div class="two">
-      <div class="box"><h3>Working now</h3><ul><li class="ok">Student booking, A/B seats, conflicts, cancel, waitlist offers</li><li class="ok">Teacher page, digital testing form, Access Codes doc, rules for all tests, set up my year</li><li class="ok">Test requests; support classes, RIR and Tapestry; case managers' view</li><li class="ok">Coordinator hub: today, room and desks, needs attention, emails, waitlist, reports, repeat no-shows</li><li class="ok">Infinite Campus import (68,000-row export) and SignUpGenius matching</li><li class="ok">Over 380 automatic tests of the rules</li></ul></div>
+      <div class="box"><h3>Working now</h3><ul><li class="ok">Student booking, A/B seats, conflicts, cancel, waitlist offers</li><li class="ok">Teacher page, digital testing form, Access Codes doc, rules for all tests, set up my year</li><li class="ok">Test requests; support classes, RIR and Tapestry; case managers' view</li><li class="ok">Coordinator hub: today, room and desks, needs attention, emails, waitlist, reports, repeat no-shows</li><li class="ok">Infinite Campus import (68,000-row export) and SignUpGenius matching</li><li class="ok">Printing from the app: attached tests, the teacher's name, Part 2, tomorrow's print pile, scans back</li><li class="ok">Accommodations and per-student timing; paras; the student schedule fixer</li><li class="ok">Weekly teacher email, what to bring, history lines, busy days, feedback</li><li class="ok">Over 500 automatic tests of the rules</li></ul></div>
       <div class="box"><h3>Next</h3><ul><li>District approval for real student data and the hosting account</li><li>A pilot alongside SignUpGenius, then turning student booking on</li><li>Coordinators try it in the simulator and send suggestions</li><li>A start-of-year checklist for coordinators, full annual reports</li><li>Confirm Securly Classroom's import format</li></ul></div>
     </div>
   </div>
