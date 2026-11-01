@@ -172,6 +172,7 @@
     const tail = new THREE.Group(); tail.position.set(0, 0.12, -0.52); body.add(tail); P.tail = tail;
     const tg = new THREE.CylinderGeometry(0.05, 0.08, 0.34, 12); tg.translate(0, 0.17, 0); add(tail, tg, M.sad, 0, 0, 0); add(tail, SPH, M.sad, 0, 0.34, 0, 0.06, 0.07, 0.06);
     pet.traverse(o => { if (o.isMesh) o.userData.pet = 1; });
+    if (typeof EMBED !== 'undefined' && EMBED && MODELS[look]) pet.visible = false;      // in Pawtopia, only the real model is shown (the painting covers the wait)
     say("Hi! I'm " + L.name + '.');
   }
 
