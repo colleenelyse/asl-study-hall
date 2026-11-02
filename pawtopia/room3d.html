@@ -33,7 +33,7 @@
   #say { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: #fff; border-radius: 999px; padding: 6px 16px; font-weight: 700; box-shadow: 0 4px 0 #ecd2e3; pointer-events: none }
 </style></head><body>
 <div class="wrap">
-  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="gus">Gus</button><button data-who="penguin">Penguin</button><button data-who="owl">Owl</button><button data-who="dolphin">Dolphin</button><button data-who="whale">Galaxy Shark</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
+  <div class="top"><h1>Pawtopia 3D test</h1><div class="row bg"><button data-bg="plain" class="on">Plain room</button><select id="bgsel" aria-label="Backdrop"><option value="">Choose a backdrop…</option></select></div><div class="row who"><button data-who="jaq" class="on">Jaq</button><button data-who="joey">Joey</button><button data-who="golden">Golden Pup</button><button data-who="kitten">Kitten</button><button data-who="gus">Gus</button><button data-who="penguin">Penguin</button><button data-who="owl">Owl</button><button data-who="dolphin">Dolphin</button><button data-who="whale">Galaxy Shark</button><button data-who="turtle">Sea Turtle</button><button data-who="bunny">Bunny</button><button data-who="fox">Fox</button><button data-who="pony">Pony</button><button data-who="hamster">Mochi</button><button data-who="raccoon">Raccoon</button></div></div>
   <div class="stage"><div id="view"><div id="say">Hi! I'm Jaq.</div><div id="drop">Drop a .glb model here</div></div>
     <div id="cmp" hidden><div class="cmpt">The painting</div><img id="cmpimg" alt="The grown-up painting of this pet"></div></div>
   <div class="row acts">
@@ -149,6 +149,7 @@
     penguin: { paint: 'pets/penguin_adult', name: 'Penguin', fur: 0x2a2f3a, saddle: null, belly: 0xffffff, ear: 0x2a2f3a, inner: 0x2a2f3a, nose: 0xffa83a, ears: 'up', earSize: 0.2, bow: false, fluff: 0 },      /* 2026-11-01 the first two-legged pet (Tripo Humanoid, Mixamo) */
     owl: { paint: 'pets/owl_adult', name: 'Owl', fur: 0x9a7350, saddle: null, belly: 0xf3e3c8, ear: 0x9a7350, inner: 0x9a7350, nose: 0xffb13a, ears: 'up', earSize: 0.4, bow: false, fluff: 0 },
     dolphin: { paint: 'pets/dolphin_adult', name: 'Dolphin', fur: 0x5b8fd6, saddle: null, belly: 0xffffff, ear: 0x5b8fd6, inner: 0x5b8fd6, nose: 0x5b8fd6, ears: 'up', earSize: 0.2, bow: false, fluff: 0 },
+    turtle: { paint: 'pets/turtle_adult', name: 'Sea Turtle', fur: 0x5a9a6a, saddle: null, belly: 0xe8dcb0, ear: 0x5a9a6a, inner: 0x5a9a6a, nose: 0x5a9a6a, ears: 'up', earSize: 0.2, bow: false, fluff: 0 },
     whale: { paint: 'pets/whale_adult', name: 'Galaxy Shark', fur: 0x4a3fd6, saddle: null, belly: 0xf3e6ff, ear: 0x4a3fd6, inner: 0x4a3fd6, nose: 0x4a3fd6, ears: 'up', earSize: 0.2, bow: false, fluff: 0 },
     gus: { paint: 'pets/gus_adult', name: 'Gus', fur: 0x8f97a3, saddle: null, belly: 0xffffff, ear: 0x8f97a3, inner: 0xf5a5b5, nose: 0x3a3a44, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },      /* 2026-11-01 Colleen's cat Gus (replaced the Kitten in the eggs) */
     kitten: { paint: 'pets/kitten_adult', name: 'Kitten', fur: 0xb9b2aa, saddle: 0x6f6862, belly: 0xf3ece6, ear: 0xb9b2aa, inner: 0xf5a5b5, nose: 0xe88a9a, ears: 'up', earSize: 1.1, bow: false, fluff: 0 },
@@ -228,15 +229,16 @@
     const rig = rigOf(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
     G = { gaitType: GAIT[who && who.who] || 'trot', settle: !!SETTLE[who && who.who], posefix: POSEFIX[who && who.who], root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
     if (rig) { rig.fit = FITFIX[who && who.who] || null; fitOutfits(root, rig); }
+    G.flip = swim && !rig ? flipRig(root) : null; if (!swim) { G.bubble = makeBubble(root); pet.add(G.bubble); }
     G.swim = swim && !rig; if (G.swim) { G.swimH = size.y * k; swimSetup(root, size.z * k); fitOutfits(root, swimRig(root)); } else pool.visible = false;
     report(); tell({ t: 'pet' }); document.getElementById('phbtn').hidden = false; document.getElementById('walkbtn').hidden = !(rig && acts.walk); document.getElementById('hopbtn').hidden = !rig; say('Hi! I\'m ' + P.look.name + '.'); act(S.act);
   }
   /* ───── 2026-11-01 swimmers (no skeleton): the tail and flippers wiggle in the shader (the farther back, the more it sways); they rest in their own kiddie
      pool and float-swim a little above the floor when a behavior takes them out of it. In the Underwater room the whole room is water: no pool. ───── */
-  const SWIM = { dolphin: 1, whale: 1 };      /* whale: the Galaxy Shark (its id stayed 'whale' when Colleen renamed the Star Whale) */
+  const SWIM = { dolphin: 1, whale: 1, turtle: 1 };      /* whale: the Galaxy Shark (its id stayed 'whale' when Colleen renamed the Star Whale) */
   const SWU = { t: { value: 0 }, amp: { value: 0.05 }, flip: { value: 0.3 }, spd: { value: 6 } };
   function swimSetup(root, len) {
-    swimShader(root, SWU);
+    if (!G.flip) swimShader(root, SWU);
     if (!S.pool) S.pool = new THREE.Vector3(); if (!S.poolSet) poolSpot(); pool.position.copy(S.pool); S.inPool = true; pet.position.copy(S.pool);
   }
   function swimShader(root, SWU) {      /* 4.274 each swimmer has its own wiggle (SWU: its uniforms) */
@@ -272,7 +274,8 @@
     if (y !== null && S.hop <= 0 && !S.mount && !(S.alt > 0)) pet.position.y = lerp(pet.position.y, y, 0.12);
     SWU.t.value = t; SWU.spd.value = walking ? (S.mount ? 12 : 9) : S.mount === 'fly' ? 6 : 4; SWU.amp.value = walking ? 0.07 : S.pose === 'sleep' ? 0.015 : 0.035; SWU.flip.value = S.act === 'wave' ? 1.6 : walking ? 0.5 : 0.25;
     if (!S.inPool && walking) { S.bub = (S.bub || 0) - dt; if (S.bub < 0) { puff('bubbles', 1, 0.22); S.bub = 0.45; } }
-    const r = G.root; r.rotation.z = lerp(r.rotation.z, S.pose === 'sleep' ? Math.PI : 0, 0.05); r.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : S.pose === 'sit' ? -0.12 : Math.sin(t * 1.5) * 0.04;      /* asleep: floats belly-up */
+    if (G.flip) paddle(G.flip, dt, t, walking, walking ? 'walk' : S.pose === 'sleep' ? 'sleep' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act);
+    const r = G.root; r.rotation.z = lerp(r.rotation.z, S.pose === 'sleep' && !G.flip ? Math.PI : 0, 0.05);      /* a turtle sleeps right side up */ r.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : S.pose === 'sit' ? -0.12 : Math.sin(t * 1.5) * 0.04;      /* asleep: floats belly-up */
     r.position.y = G.base.y + (S.pose === 'sleep' ? 0.35 * (r.rotation.z / Math.PI) * G.swimH : 0);
   }
   /* outfits on swimmers (no skeleton): markers placed on the body stand in for the head, neck and chest bones, so the same fitting works;
@@ -284,6 +287,42 @@
     const head = mark(mid(V.filter(p => p.z > z1 - L * 0.22))), neck = mark(mid(V.filter(p => p.z > z1 - L * 0.36 && p.z < z1 - L * 0.26))), chest = mark(mid(V.filter(p => p.z > z1 - L * 0.55 && p.z < z1 - L * 0.4)));
     return { head, neck: [neck], chest, top: chest, swim: true };
   }
+  /* 2026-11-02 (4.311) swimmers WITH a skeleton (the Sea Turtle, rigged by Colleen with no clips): the flippers are found by where they are
+     (chains that branch off the middle of the body; in front of the middle = front flippers) and paddle by bending their bones, no shader wiggle.
+     Front flippers: held out nearly level, then a slow up-and-down "flying" stroke that sweeps back on the way down; back flippers: small steering paddles. */
+  function flipRig(root) {
+    const bones = []; root.traverse(o => { if (o.isBone) bones.push(o); }); if (bones.length < 6) return null;
+    root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), P = new Map(), kids = b => b.children.filter(c => c.isBone);
+    bones.forEach(b => P.set(b, new THREE.Vector3().setFromMatrixPosition(b.matrixWorld).applyMatrix4(inv)));
+    const xs = bones.map(b => P.get(b).x), mx = (Math.max(...xs) + Math.min(...xs)) / 2, W = Math.max(...xs) - Math.min(...xs), off = b => P.get(b).x - mx;
+    const starts = bones.filter(b => b.parent && b.parent.isBone && Math.abs(off(b)) > W * 0.08 && Math.abs(off(b.parent)) <= W * 0.08 && kids(b).length);
+    const chains = starts.map(b => { const c = [b]; let x = b; while (kids(x).length) { x = kids(x)[0]; c.push(x); } return c; });
+    const front = chains.filter(c => P.get(c[0]).z > 0), back = chains.filter(c => P.get(c[0]).z <= 0); if (front.length < 2) return null;
+    const head = bones.filter(b => Math.abs(off(b)) <= W * 0.08 && kids(b).length).sort((a, b) => P.get(b).z - P.get(a).z)[0];
+    const rest = new Map(); bones.forEach(b => { const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw); const rw = new THREE.Quaternion(); root.getWorldQuaternion(rw);
+      rest.set(b, { q: b.quaternion.clone(), p: b.position.clone(), pw: rw.clone().invert().multiply(pw) }); });
+    const sg = c => Math.sign(P.get(c[c.length - 1]).x - mx) || 1, droop = c => { const a = P.get(c[0]), e = P.get(c[c.length - 1]); return Math.atan2(a.y - e.y, Math.abs(e.x - a.x)); };
+    return { front: front.map(c => ({ c, sg: sg(c), droop: droop(c) })), back: back.map(c => ({ c, sg: sg(c) })), head, rest, ph: 0 };
+  }
+  function paddle(F, dt, t, walking, doing) {      /* doing: idle, walk, sleep, wave, happy, eat, sit */
+    F.rest.forEach((r, b) => b.quaternion.copy(r.q));
+    const sleep = doing === 'sleep', spd = walking ? 4.2 : doing === 'happy' ? 6 : sleep ? 0.9 : 1.8, amp = walking ? 0.55 : doing === 'happy' ? 0.6 : sleep ? 0.06 : 0.22;
+    F.ph += dt * spd; const ph = F.ph, lift = sleep ? F.front[0].droop * 0.35 : F.front[0].droop * 0.85;      /* lift: how far up toward level the front flippers are held */
+    F.front.forEach((f, i) => { const wave = doing === 'wave' && i === 0, up = wave ? lift + 1.0 + Math.sin(t * 9) * 0.35 : lift + Math.sin(ph) * amp, sweep = wave ? 0 : Math.cos(ph) * amp * 0.7;
+      bendBone(F, f.c[0], 0, -f.sg * sweep, f.sg * up); if (f.c[1]) bendBone(F, f.c[1], 0, 0, f.sg * (wave ? 0.3 : Math.sin(ph - 0.8) * amp * 0.5)); });
+    F.back.forEach(f => bendBone(F, f.c[0], 0, f.sg * Math.sin(ph + 1.6) * amp * 0.9, f.sg * Math.sin(ph + 1.6) * amp * 0.5));
+    const chew = doing === 'eat' ? Math.sin(t * 8) * 0.12 : 0;
+    bendBone(F, F.head, (sleep ? 0.25 : Math.sin(t * 1.3) * 0.06) + chew, !walking && !sleep ? Math.sin(t * 0.6) * 0.3 : 0, 0);
+  }
+  /* 2026-11-02 (4.311) a land pet in the Underwater room floats in a clear bubble (as a swimmer in a dry room has its kiddie pool).
+     It is a child of the pet's holder, so it moves and grows with the pet. */
+  function makeBubble(root) {
+    const sz = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z) * 0.56, g = new THREE.Group();
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), new THREE.MeshPhysicalMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.2, roughness: 0.05, metalness: 0, clearcoat: 1, depthWrite: false }));
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(R * 0.12, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
+    shine.scale.set(1, 0.6, 0.4); shine.position.set(-R * 0.45, R * 0.5, R * 0.6); g.add(ball, shine); g.position.y = sz.y / 2; g.userData.R = R; g.renderOrder = 2; g.visible = false; return g;
+  }
+  const bubbleY = t => 0.32 + Math.sin(t * 1.6) * 0.06;      /* how high a bubble floats */
   const swimPick = () => { if (allWater()) return false; const ang = Math.random() * Math.PI * 2, rr = Math.random() * pool.userData.R * 0.4; S.target.set(S.pool.x + Math.cos(ang) * rr, 0, S.pool.z + Math.sin(ang) * rr); S.moving = true; return true; };      /* paddling around its pool */
   /* ───── 2026-11-01 (Pawtopia 4.240) outfits in 3D: made of simple shapes and fitted to each pet when it loads (measured around its neck, head and chest),
      then attached to the head or chest bone so they move with it and grow with it. All are built once, hidden; ACC picks the one that shows. ───── */
@@ -335,7 +374,7 @@
        The old coat was placed around the chest bone, which the new Jaq and Joey do not have (it then sat at the floor, under the belly). */
     { const V = coatPts(), floor0 = Math.min(...V.map(p => p.y)), lz = c => c && c[0] && rig.P && rig.P.get(c[0]) ? rig.P.get(c[0]).z : null, fz = [lz(rig.legs && rig.legs.fl), lz(rig.legs && rig.legs.fr)].filter(x => x !== null), bz = [lz(rig.legs && rig.legs.bl), lz(rig.legs && rig.legs.br)].filter(x => x !== null);
       const four = !rig.biped && !rig.swim && fz.length && bz.length, NS = 16, NA = 22, pct = (a, q, d) => { if (!a.length) return d; a.sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
-      const Y = 0xffd02e, HEM = 0xf0a818, pad = Hh * 0.026;
+      const Y = 0xffd02e, HEM = 0xf0a818, pad = Hh * (rig.fit && rig.fit.coatPad || 0.026);      /* coatPad (4.310): a fluffier coat of fur needs more room */
       /* where the coat goes: four legs = the flat stretch of back between the rising neck and the tail (found from the shape, near the legs);
          two legs = the body between the feet and the head; swimmers = the front half behind the head. Measured at 5 places, then evened out, so stray fur, a tail or a fin cannot make spikes. */
       let a0, a1, s0, s1, sect, cap = Infinity;
@@ -383,7 +422,10 @@
       if (rig.biped) { hood.scale.set(hw * 0.9, hw * 0.5, hw * 0.4); hood.rotation.x = -Math.PI / 2 - 0.2; hood.position.set(cx, sl[e].s - Hh * 0.02, C[e] - RY[e] - pad * 0.5); }
       else { hood.scale.set(hw * 0.8, hw * 0.22, hw * 0.6); hood.rotation.x = -0.12; hood.position.set(cx, C[e] + RY[e] + pad * 0.4, sl[e].s); }
       let hold = rig.top; if (four) { const up = new Set(); for (let x = rig.legs.fl[0]; x && x.isBone; x = x.parent) up.add(x); for (let x = rig.legs.bl[0]; x && x.isBone; x = x.parent) if (up.has(x)) { hold = x; break; } }      /* four legs: the bone both front and back legs hang from (the body moves with it) */
-      g.add(hood); add('raincoat', g, rig.biped ? rig.chest || rig.top : hold);
+      g.add(hood);
+      /* 4.310 sitting or lying, the coat shortens toward the shoulders (the body folds there; a stiff coat would stick out past the rump): the shell sits in a group whose origin is its front edge, and frame() eases its length */
+      const fold = new THREE.Group(); if (!rig.biped && !rig.swim) { const fy = C[NS - 1]; fold.position.set(cx, fy, z1); g.position.set(-cx, -fy, -z1); }
+      fold.add(g); fold.userData.fold = !rig.biped && !rig.swim; add('raincoat', fold, rig.biped ? rig.chest || rig.top : hold);
       const c2 = collar(Y, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
     /* ───── 4.256 more dress-up: hats sit on top of the head, glasses in front of the eyes, more neck and body pieces ───── */
     const FX = rig.fit || {}, hat = (id, build) => { const g = new THREE.Group(); build(g); if (FX.hatK) g.scale.setScalar(FX.hatK); g.position.copy(top).add(new THREE.Vector3(0, -hr * (rig.biped ? 0.3 : 0.08) + hr * (FX.hatUp || 0), 0)); g.rotation.x = -0.15; add(id, g); };
@@ -433,7 +475,7 @@
       const halfW = (z, dz) => { const pts = V.filter(p => Math.abs(p.z - z) < dz && p.y > floor0 + Hh * 0.4); return pts.length ? pts.map(p => Math.abs(p.x - cx)).sort((a, b) => a - b)[Math.floor(pts.length * 0.9)] : body.r; };
       let at, w, sz;
       if (rig.biped) { const y = chest.y - Hh * 0.04, pts = V.filter(p => Math.abs(p.x - cx) < Hh * 0.1 && Math.abs(p.y - y) < Hh * 0.05); at = new THREE.Vector3(cx, y, pts.length ? Math.min(...pts.map(p => p.z)) : chest.z - body.r); w = Hh * 0.13; }
-      else { sz = rig.swim ? chest.z - Hh * 0.08 : hipZ + (shZ - hipZ) * 0.5; at = new THREE.Vector3(cx, topAt(sz, Hh * 0.05), sz); w = Math.min(halfW(sz, Hh * 0.05), Hh * 0.28) * (rig.swim ? 0.6 : 0.95); }
+      else { sz = rig.swim ? chest.z - Hh * 0.08 : hipZ + (shZ - hipZ) * (rig.fit && rig.fit.saddleAt != null ? rig.fit.saddleAt : 0.5); at = new THREE.Vector3(cx, topAt(sz, Hh * 0.05), sz); w = Math.min(halfW(sz, Hh * 0.05), Hh * 0.28) * (rig.swim ? 0.6 : 0.95); }
       const sm = (c, o) => omat(c, Object.assign({ roughness: 0.55 }, o || {}));
       const blanket = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI * 0.36), sm(0x2f6fe0, { side: THREE.DoubleSide })); blanket.scale.set(w * 1.55, w * 1.15, w * 1.5); blanket.position.y = -w * 1.12; gs.add(blanket);
       const trim = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, Math.PI * 0.34, Math.PI * 0.03), sm(0xffc93c, { side: THREE.DoubleSide, metalness: 0.3 })); trim.scale.copy(blanket.scale).multiplyScalar(1.01); trim.position.y = blanket.position.y; gs.add(trim);
@@ -800,7 +842,8 @@
     const rig = swim ? null : rigOf(root);
     Object.assign(c, { root, holder, head, mixer, acts, rig, swim: swim && !rig, base: root.position.clone(), gaitType: GAIT[c.who] || 'trot', settle: !!SETTLE[c.who], posefix: POSEFIX[c.who], gait: 0, wk: 0 });
     if (rig) { rig.fit = FITFIX[c.who] || null; fitOutfits(root, rig, c); }
-    if (c.swim) { c.swimH = size.y * k; c.U = { t: { value: 0 }, amp: { value: 0.035 }, flip: { value: 0.25 }, spd: { value: 4 } }; swimShader(root, c.U); fitOutfits(root, swimRig(root), c);
+    if (!c.swim) { c.bubble = makeBubble(root); holder.add(c.bubble); }
+    if (c.swim) { c.swimH = size.y * k; c.U = { t: { value: 0 }, amp: { value: 0.035 }, flip: { value: 0.25 }, spd: { value: 4 } }; c.flip = flipRig(root); if (!c.flip) swimShader(root, c.U); fitOutfits(root, swimRig(root), c);
       c.pool = makePool(); c.poolPos = new THREE.Vector3(); poolSpot(c.poolPos); c.pool.position.copy(c.poolPos); }
     else if (!rig && acts.idle) acts.idle.play();
     c.ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.5, 40), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }));
@@ -831,7 +874,8 @@
       const gr = growOf(c.stage); h.scale.setScalar(gr.size);
       let y = 0; if (c.swim) { if (!sea) { c.pool.visible = !lineup; c.pool.userData.water.material.opacity = 0.7 + Math.sin(t * 2) * 0.04; } else c.pool.visible = false;
         y = sea ? 0.24 + Math.sin(t * 1.8) * 0.04 : 0.03 + Math.sin(t * 2.2) * 0.012; c.U.t.value = t; c.U.spd.value = walking ? 9 : 4; c.U.amp.value = walking ? 0.07 : 0.035; c.U.flip.value = walking ? 0.5 : 0.25;
-        c.root.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : Math.sin(t * 1.5) * 0.04; }
+        c.root.rotation.x = walking ? Math.sin(t * 4.5) * 0.06 : Math.sin(t * 1.5) * 0.04; if (c.flip) paddle(c.flip, dt, t, walking, walking ? 'walk' : 'idle'); }
+      else if (c.bubble) { c.bubble.visible = sea && !lineup; if (sea) y = bubbleY(t); }
       if (c.hop > 0) { const hh = Math.abs(Math.sin(t * 7)); y += hh * 0.3; if (hh < 0.05 && (c._lh || 0) >= 0.05) c.hop--; c._lh = hh; }
       h.position.y = lerp(h.position.y, y, c.hop > 0 ? 1 : 0.15);
       /* the glow under it: Shimmer / Radiant ring, or the grown-up glow (Young Adult, Adult) */
@@ -897,7 +941,8 @@
     P.eyes.forEach(e => { e.scale.y = lerp(e.scale.y, ey, 0.5); });      // (a model blinks only if it has a blink clip)
     const inBed = S.pose === 'sleep' && !back && pet.position.distanceTo(bed.position) < 0.3; S.bedY = lerp(S.bedY || 0, inBed ? C.lift : 0, 0.1);
     if (G && G.swim) swimFrame(dt, walking);
-    if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (G && G.swim && !S.inPool ? 0.24 : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY, 0.3);
+    if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (G && G.swim && !S.inPool ? 0.24 : G && G.bubble && allWater() ? bubbleY(t) : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY + (G && G.bubble && allWater() ? bubbleY(t) : 0), 0.3);
+    if (G && G.bubble) G.bubble.visible = allWater() && !lineup && !S.alt;
     /* 4.275 riding: a bouncy gallop; flying: up above the furniture, bobbing, banking into turns; landing comes back down smoothly */
     if (S.mount && !S.moving && !S.carry) { S.mwait -= dt; if (S.mwait < 0) mountPick(); }
     { const up = S.mount === 'fly' && !S.carry ? flyH() : 0; S.alt = lerp(S.alt || 0, up, Math.min(1, dt * (up ? 1.6 : 2.2))); if (S.alt < 0.004 && !up) S.alt = 0;
@@ -905,6 +950,7 @@
       if (S.mount === 'ride' && !S.carry && S.hop <= 0) { pet.position.y = (G && G.swim ? 0.24 : 0) + (walking ? Math.abs(Math.sin(t * 13)) * 0.07 : 0); if (walking) { S.dust = (S.dust || 0) - dt; if (S.dust < 0) { puff('dust_puff', 1, 0.2); S.dust = 0.5; } } }
       if (S.mount === 'fly' && walking) { S.spk = (S.spk || 0) - dt; if (S.spk < 0) { fx('✨', 1); S.spk = 0.3; } }
       if (OUTFITS.gear_saddle) OUTFITS.gear_saddle.visible = S.mount === 'ride';
+      if (OUTFITS.raincoat && OUTFITS.raincoat.userData.fold) { const R = OUTFITS.raincoat, k = S.pose === 'sit' || S.pose === 'sleep' ? 0.62 : 1; R.scale.z = lerp(R.scale.z, k, Math.min(1, dt * 6)); }      /* 4.310 */
       if (OUTFITS.gear_wings) { const W = OUTFITS.gear_wings, on = S.mount === 'fly' || S.alt > 0.03; W.visible = on; if (on) W.userData.wings.forEach(([pv, sg]) => { pv.rotation.z = sg * (0.45 + Math.sin(t * (S.alt < up - 0.05 ? 13 : S.moving ? 8 : 5)) * 0.5); }); } }
     const T2 = S.trick; if (T2) { T2.t += dt; const k = Math.min(1, T2.t / T2.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       if (T2.k === 'spin') { pet.rotation.y = (T2.y0 === undefined ? (T2.y0 = pet.rotation.y) : T2.y0) + e * Math.PI * 4; pet.position.y = Math.sin(k * Math.PI) * 0.12; }      /* two full turns with a little hop */
@@ -979,13 +1025,13 @@
   /* 2026-11-01 outfit fitting for pets whose shape fools the general rules. Joey (long snout, head bone at the top of the skull, wide-set eyes, tall ears):
      neck: skip a "neck" slice whose middle is off the head-to-chest line (a slice through his muzzle looked narrowest, so collars sat on his nose);
      eyes: glasses go on the front of the face at eye height (eyeZ), bigger (eyeK); hats: bigger (hatK) and raised (hatUp, in head sizes) so they show between the ears */
-  const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 }, raccoon: { coatZ0: -0.24 } };      /* 2026-11-02 raccoon: its rig takes the tail (which reaches the floor) for a back leg, so the raincoat is told where the body ends */
+  const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 }, raccoon: { coatZ0: -0.24, saddleAt: 0.85 }, jaq: { coatPad: 0.05 } };      /* 2026-11-02 raccoon: its rig takes the tail (which reaches the floor) for a back leg, so the raincoat is told where the body ends; saddleAt (4.310): where the saddle sits from the hips (0) to the shoulders (1), 0.5 when not set */
   const POSEFIX = { joey: { sit: { pitch: -0.6, drop: 0, roll: 0, fU: 0.55, fL: 0, hU: -1.4, hK: 0.9, hH: -0.45, nP: 0.05, nY: 0, hP: 0.3, tY: 0, tP: 0.6 } } };      /* 2026-11-01 per-pet changes to RIGPOSE (Joey's long legs need a lower, more upright sit) */
-  const MODELS = { jaq: 'models/jaq.glb?v=2', joey: 'models/joey.glb?v=2', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
+  const MODELS = { jaq: 'models/jaq.glb?v=2', joey: 'models/joey.glb?v=2', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb', turtle: 'models/turtle.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; getBuf(who).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
-  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', penguin: 'penguin', owl: 'owl', dolphin: 'dolphin', whale: 'whale', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon' };
+  const WHO = { yorkie: 'jaq', jaq: 'jaq', joey: 'joey', retriever: 'golden', golden: 'golden', kitten: 'kitten', gus: 'gus', penguin: 'penguin', owl: 'owl', dolphin: 'dolphin', whale: 'whale', bunny: 'bunny', fox: 'fox', pony: 'pony', raccoon: 'raccoon', turtle: 'turtle' };
   const setRoom = (r, toys) => { if (r && r.bg && BACK['bg_' + r.bg]) MINE = { bg: r.bg, items: (r.items || []).slice(0, 12) }; if (toys) TOYS = toys.filter(n => /^[a-z_]+$/.test(n) && n !== 'brush'); };
   addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
     if (m.edit !== undefined) EDIT = !!m.edit;
