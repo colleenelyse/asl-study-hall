@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.282';
+var VERSION = '4.284';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -3096,7 +3096,7 @@ function api_liveControl(auth, code, action) {
   if (g.mode === 'mob' && action !== 'clear') { var mo = mobControl_(auth, g, action); if (action === 'start') { var g3 = liveGet_(g.id); if (g3 && !g3.rte && !g3.rteTried) { engineSetup_(g3); livePut_(g3); mo = api_liveBoard(auth, g3.id); } } return mo; }      // 4.145 1 vs. The Mob goes to its engine room at Start
   if (action === 'start' && !g.ends) { var dupStart = lock_(function () { var k0 = 'lstart:' + g.id; if (cache.get(k0)) return true; cache.put(k0, '1', 21600); return false; }); if (dupStart) return api_liveBoard(auth, g.id); }      /* 4.142 a second press of Start (the screen was slow) must never deal the teams again: students "bounced all around to different teams" */
   if (action === 'clear') { mobForget_(g.id); var won = []; var practiceOnly = !!(g.breach && g.breach.practice);      /* 4.93 a Breach practice round counts toward nothing */
-    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, bonus: bonus }; }
+    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } try { wallLogoSave_(g); } catch (e) {}      /* 4.283 the logo leaderboards */ var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, bonus: bonus }; }
   if (action === 'start' && !g.ends && g.teams && !g.tmap) { lock_(function () {      /* 4.103 teams are made only now, with everyone who joined: even by strength (4.102). 4.98: Breach's automatic crews also pick how many */
       var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
       var none = who.filter(function (e) { return !(joined[e][2] >= 0 && joined[e][2] < n); });      /* only players without a team (in class: everyone) */
@@ -8843,7 +8843,11 @@ function wallPts_(W, teams) { var pts = []; for (var t = 0; t < teams; t++) pts.
 function wallDist_(a, w) { var m = a.length, n = w.length, prev = [], row = [], i, j; prev[0] = 0; for (j = 1; j <= n; j++) prev[j] = prev[j - 1] + (/[JZ]/.test(w[j - 1]) ? 0 : 1);
   for (i = 1; i <= m; i++) { row = [i]; for (j = 1; j <= n; j++) { var wild = /[JZ]/.test(w[j - 1]); row[j] = Math.min(prev[j] + 1, row[j - 1] + (wild ? 0 : 1), prev[j - 1] + (wild || a[i - 1] === w[j - 1] ? 0 : 1)); } prev = row; }
   return prev[n]; }
-function wallScore_(cur, w) { cur = str_(cur).toUpperCase().replace(/[^A-Z]/g, '').slice(-24); w = str_(w); if (!w || !cur) return 99;
+function wallScore_(cur, w) { return wallMatch_(cur, w)[0]; }
+/** 4.283 a logo can have other spellings after a | (BUFFALOWILDWINGS|BWW): [how far off the closest one is (99 = none), how long that spelling is].
+    Spaces, capitals, hyphens and apostrophes never matter. */
+function wallMatch_(cur, w) { var best = [99, 0]; str_(w).split('|').forEach(function (x) { x = str_(x).toUpperCase().replace(/[^A-Z]/g, ''); if (!x) return; var d = wallScore1_(cur, x); if (d < best[0] || (d < 99 && d === best[0] && x.length > best[1])) best = [d, x.length]; }); return best; }
+function wallScore1_(cur, w) { cur = str_(cur).toUpperCase().replace(/[^A-Z]/g, '').slice(-24); w = str_(w); if (!w || !cur) return 99;
   var core = w.replace(/[JZ]/g, '').length, slack = core >= 6 ? 1 : 0, best = 99;
   for (var st = Math.max(0, cur.length - w.length - 1 - slack); st <= cur.length - Math.max(1, core - slack); st++) best = Math.min(best, wallDist_(cur.slice(st), w));
   return best <= slack ? best : 99; }      // how far off the closest reading is (99 = not this logo)
@@ -8868,7 +8872,7 @@ function wallTake_(g, key, team, x, now) { var W = g.wall, no = wallCan_(W, x, t
   if (no) return { none: true, why: no, wait: x.t < 0 && x.a !== team ? Math.ceil(wallOpenIn_(W, x, now) / 1000) : 0 };
   var kind = x.t < 0 ? (x.gold && now < x.gold ? 'gold' : 'claim') : 'steal', from = x.t;
   if (kind === 'gold') { x.pts = WALL.goldPts; x.lock = 1; x.gold = 0; } else if (kind === 'steal') x.lock = 1;      // gold: the first team keeps it; a steal locks it for good
-  x.t = team; x.c++; W.by[key] = (W.by[key] || 0) + 1; wallEv_(W, now, kind, x, team, from);
+  x.t = team; x.c++; W.by[key] = (W.by[key] || 0) + 1; W.who = W.who || {}; (W.who[key] = W.who[key] || []).push(x.i); wallEv_(W, now, kind, x, team, from);      /* 4.283 W.who: which logos each player spelled (the logo leaderboards) */
   Object.keys(W.tap).forEach(function (k) { if (W.tap[k] === x.i) delete W.tap[k]; });      // tap mode: anyone asked for this logo gets a new one
   var slid = wallRefresh_(W, now);
   return { ok: true, kind: kind, logo: x.i, pts: x.pts, slid: slid }; }
@@ -8881,9 +8885,9 @@ function api_wallClaim(auth, code, word) {
   return lock_(function () { var g = liveGet_(code); if (!g || !g.wall || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
     var W = g.wall, me = wallMe_(g, id.key), now = Date.now(); if (me < 0) return { none: true, why: 'You are not on a team yet.' };
     wallTick_(g, now);
-    var hit = W.tiles.filter(function (x) { x.d = wallScore_(word, x.s); return x.d < 99; }), clean = function () { W.old.concat(W.tiles).forEach(function (x) { delete x.d; }); }; if (!hit.length) { clean(); livePut_(g); return { none: true, why: 'That isn\'t a logo on the wall.', wall: wallView_(g, me, id.key) }; }
-    var can = hit.filter(function (x) { return !wallCan_(W, x, me, now); }); var rank = function (x) { return x.d * 10 - (x.gold ? 2 : 0) - (x.t < 0 ? 1 : 0); }; can.sort(function (a, b) { return rank(a) - rank(b) || b.s.length - a.s.length; }); hit.sort(function (a, b) { return a.d - b.d; });      // the closest spelling (TWITCH is not SWITCH), then gold, then a free logo, then a steal
-    var out = can.length && can[0].d <= hit[0].d ? wallTake_(g, id.key, me, can[0], now) : wallTake_(g, id.key, me, hit[0], now); clean();
+    var hit = W.tiles.filter(function (x) { var m = wallMatch_(word, x.s); x.d = m[0]; x.m = m[1]; return x.d < 99; }), clean = function () { W.old.concat(W.tiles).forEach(function (x) { delete x.d; delete x.m; }); }; if (!hit.length) { clean(); livePut_(g); return { none: true, why: 'That isn\'t a logo on the wall.', wall: wallView_(g, me, id.key) }; }
+    var can = hit.filter(function (x) { return !wallCan_(W, x, me, now); }); var rank = function (x) { return x.d * 1000 - x.m * 10 - (x.gold ? 2 : 0) - (x.t < 0 ? 1 : 0); }; can.sort(function (a, b) { return rank(a) - rank(b); }); hit.sort(function (a, b) { return a.d - b.d || b.m - a.m; });      // the closest spelling (TWITCH is not SWITCH), then gold, then a free logo, then a steal; 4.283 a tie: the longer spelling
+    var out = can.length && (can[0].d < hit[0].d || (can[0].d === hit[0].d && can[0].m >= hit[0].m)) ? wallTake_(g, id.key, me, can[0], now) : wallTake_(g, id.key, me, hit[0], now); clean();
     livePut_(g); out.wall = wallView_(g, me, id.key); return out; }); }
 /** Student, tap mode (the camera doesn't work): pick < 0 asks for a logo for the hand to spell; pick = the logo I tapped. Only the logo the hand spelled counts. */
 function api_wallTap(auth, code, pick) {
@@ -8929,6 +8933,87 @@ function wallPay_(g) {
   if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
   cacheDrop_('boards');
   return { teams: win, amt: amt, names: paid };
+}
+/* ───────── 4.283 Logo leaderboards (Colleen 2026-11-01) ─────────
+   One row per student on the Logo Scores tab (made by itself the first time a logo result is saved): this week's logos (Name That Logo + Logo Wall),
+   this week's Logo Wall logos (for the class-period board), the best Read the hand % and the best camera round, and every logo ever spelled or read right.
+   Boards: class periods this week (Logo Wall totals, no names), the top 10 students this week (First name + last initial, or how they chose to show on
+   the arcade boards: Initials / Anonymous), and each student's own bests. Teachers are never saved or shown. A week = Monday to Sunday (weekKey_). */
+var LOGO_TAB = 'Logo Scores', LOGO_HEAD = ['Email', 'Name', 'Class', 'Week', 'Logos this week', 'Logo Wall this week', 'Best Read the hand %', 'Best camera', 'Logos spelled', 'Last played'], LOGO_TOP = 10, LOGO_MAX = 80;
+function logoTab_() { return ensureTab_(LOGO_TAB, LOGO_HEAD, [200, 140, 160, 80, 110, 120, 140, 100, 420, 150]).sheet; }
+function logoKnown_() { var k = {}; WALL_LOGOS.forEach(function (r) { k[r[2]] = 1; }); return k; }
+function logoSet_(cell) { var k = logoKnown_(), out = []; str_(cell).split(/[\s,]+/).forEach(function (x) { if (k[x] && out.indexOf(x) < 0) out.push(x); }); return out; }
+/** How a student shows on the logo boards: their arcade choice if they made one (Initials or Anonymous), otherwise First name + last initial. */
+function logoShows_() { var m = {}, sh = ss_().getSheetByName(ARC_TAB); (sh ? arcRows_(sh) : []).forEach(function (r) { if (str_(r[7])) m[str_(r[0]).toLowerCase()] = [str_(r[7]), str_(r[8])]; }); return m; }
+function logoLabel_(name, show) { var s = show ? str_(show[0]).toLowerCase() : ''; if (s === 'anonymous') return 'Anonymous'; if (s === 'initials') return arcLabel_(show[0], show[1], name); return liveShort_(name); }
+/** extra: { class: logos } from a Logo Wall game that is not saved yet (its end screen) */
+function logoBoard_(rows, me, extra) {
+  var wk = weekKey_(dayNum_(dayStr_())), teachers = teacherEmails_() || {}, shows = logoShows_(), mine = null, per = {};
+  var list = rows.filter(function (r) { var e = str_(r[0]).toLowerCase(); return e && !teachers[e]; });
+  list.forEach(function (r) { if (str_(r[0]).toLowerCase() === me) mine = r; if (str_(r[3]) === wk && num_(r[5]) > 0 && str_(r[2])) per[str_(r[2])] = (per[str_(r[2])] || 0) + num_(r[5]); });
+  Object.keys(extra || {}).forEach(function (c) { if (c && extra[c] > 0) per[c] = (per[c] || 0) + extra[c]; });
+  var top = list.filter(function (r) { return str_(r[3]) === wk && num_(r[4]) > 0; }).sort(function (a, b) { return num_(b[4]) - num_(a[4]); }).slice(0, LOGO_TOP)
+    .map(function (r) { var e = str_(r[0]).toLowerCase(); return [logoLabel_(r[1], shows[e]), str_(r[2]), num_(r[4]), e === me ? 1 : 0]; });
+  var periods = Object.keys(per).map(function (c) { return [c, per[c]]; }).sort(function (a, b) { return b[1] - a[1] || (a[0] < b[0] ? -1 : 1); });
+  return { top: top, periods: periods, of: WALL_LOGOS.length, week: wk,
+    me: { week: mine && str_(mine[3]) === wk ? num_(mine[4]) : 0, pct: mine ? num_(mine[6]) : 0, cam: mine ? num_(mine[7]) : 0, got: mine ? logoSet_(mine[8]).length : 0 } };
+}
+/** One student's result added to their row (rows in memory; the caller writes them). add = { n, wall, keys, pct, cam } */
+function logoAdd_(rows, key, name, cls, add, wk) {
+  var at = -1; rows.forEach(function (r, i) { if (str_(r[0]).toLowerCase() === key) at = i; });
+  var r = at >= 0 ? rows[at] : [key, name, cls, wk, 0, 0, 0, 0, '', ''], fresh = str_(r[3]) !== wk, before = { pct: num_(r[6]), cam: num_(r[7]), got: logoSet_(r[8]) };
+  if (fresh) { r[3] = wk; r[4] = 0; r[5] = 0; }
+  r[1] = name || r[1]; r[2] = cls || r[2]; r[4] = num_(r[4]) + Math.max(0, Math.min(LOGO_MAX, Math.floor(num_(add.n)))); r[5] = num_(r[5]) + Math.max(0, Math.min(LOGO_MAX, Math.floor(num_(add.wall))));
+  r[6] = Math.max(before.pct, Math.max(0, Math.min(100, Math.round(num_(add.pct))))); r[7] = Math.max(before.cam, Math.max(0, Math.min(LOGO_MAX, Math.floor(num_(add.cam)))));
+  var got = before.got.slice(), k = logoKnown_(); (add.keys || []).forEach(function (x) { x = str_(x); if (k[x] && got.indexOf(x) < 0) got.push(x); }); r[8] = got.join(' '); r[9] = new Date();
+  if (at < 0) rows.push(r);
+  return { newPct: r[6] > before.pct, newCam: r[7] > before.cam, newLogos: got.length - before.got.length };
+}
+function logoWrite_(sh, rows) { if (rows.length) sh.getRange(2, 1, rows.length, LOGO_HEAD.length).setValues(rows); }
+/** The class-period counts of a Logo Wall game that is not saved yet (its end screen shows them with the week's totals). */
+function logoGameExtra_(g) {
+  if (!g || g.mode !== 'wall' || !g.wall || !g.wall.started || g.rte) return null;      /* a game on asl.cool: its counts come home at Save and close */
+  if (PropertiesService.getDocumentProperties().getProperty('wallogo:' + g.id + ':' + g.made)) return null;
+  var by = g.wall.by || {}, teach = teacherEmails_() || {}, out = {}, sh = stuSheet_(), H = stuHead_(sh);
+  rows_(sh, 2, H.n).forEach(function (v) { var e = str_(v[H.Email]).toLowerCase(), c = str_(v[H.Class]); if (by[e] > 0 && !teach[e] && c) out[c] = (out[c] || 0) + num_(by[e]); });
+  return out;
+}
+/** Anyone: the logo boards. code = a Logo Wall game (its projector): that game's logos count before it is saved. */
+function api_logoBoard(auth, code) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  var extra = null, g = null; if (code) try { g = liveGet_(str_(code)); extra = logoGameExtra_(g); } catch (e) { extra = null; }
+  var b = logoBoard_(logoRows_(), id.key, extra); b.teacher = !!(teacherEmails_() || {})[id.key];
+  b.added = !!extra; b.pending = !extra && !!(g && g.mode === 'wall' && g.wall && g.wall.started && !PropertiesService.getDocumentProperties().getProperty('wallogo:' + g.id + ':' + g.made)); return b;
+}
+function logoRows_() { var sh = ss_().getSheetByName(LOGO_TAB); return sh ? rows_(sh, 2, LOGO_HEAD.length) : []; }
+/** Student: a finished Name That Logo round. res = { mode: 'read' | 'cam', keys: [logo keys right], n: logos right, pct: Read the hand % }. */
+function api_logoSave(auth, res) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  res = res || {}; var cam = str_(res.mode) === 'cam', n = Math.max(0, Math.min(LOGO_MAX, Math.floor(num_(res.n)))), keys = (res.keys instanceof Array ? res.keys : []).slice(0, LOGO_MAX).map(str_);
+  var add = { n: n, wall: 0, keys: keys, pct: cam ? 0 : num_(res.pct), cam: cam ? n : 0 };
+  if ((teacherEmails_() || {})[id.key]) { var b0 = logoBoard_(logoRows_(), id.key, null); b0.teacher = true; b0.saved = false; return b0; }
+  var stu = stuSheet_(), row = findRow_(stu, id.key), o = row ? readStu_(stu, row) : null;
+  if (!o) throw new Error('Your account was not found.');
+  return lock_(function () {
+    var sh = logoTab_(), rows = rows_(sh, 2, LOGO_HEAD.length), wk = weekKey_(dayNum_(dayStr_()));
+    var d = logoAdd_(rows, id.key, str_(o.Name), str_(o.Class), add, wk); logoWrite_(sh, rows);
+    var b = logoBoard_(rows, id.key, null); b.saved = true; b.teacher = false; return Object.assign(b, d);
+  });
+}
+/** Save and close of a Logo Wall game: each player's logos (the server's own count) go on their row, once. Teachers are never saved. */
+function wallLogoSave_(g) {
+  if (g.mode !== 'wall' || !g.wall || !g.wall.started) return null;
+  var W = g.wall, by = W.by || {}, who = W.who || {}, guard = 'wallogo:' + g.id + ':' + g.made, props = PropertiesService.getDocumentProperties();
+  if (props.getProperty(guard)) return null;
+  var teach = teacherEmails_() || {}, keyOf = WALL_LOGOS.map(function (r) { return r[2]; }), sh0 = stuSheet_(), H = stuHead_(sh0), people = {};
+  rows_(sh0, 2, H.n).forEach(function (v) { var e = str_(v[H.Email]).toLowerCase(); if (num_(by[e]) > 0 && !teach[e]) people[e] = [str_(v[H.Name]), str_(v[H.Class])]; });
+  if (!Object.keys(people).length) { props.setProperty(guard, String(Date.now())); return { saved: 0 }; }
+  return lock_(function () {
+    if (props.getProperty(guard)) return null; props.setProperty(guard, String(Date.now()));
+    var sh = logoTab_(), rows = rows_(sh, 2, LOGO_HEAD.length), wk = weekKey_(dayNum_(dayStr_())), n = 0;
+    Object.keys(people).forEach(function (e) { var c = num_(by[e]); logoAdd_(rows, e, people[e][0], people[e][1], { n: c, wall: c, keys: (who[e] || []).map(function (i) { return keyOf[i]; }).filter(String) }, wk); n++; });
+    logoWrite_(sh, rows); return { saved: n };
+  });
 }
 /* 4.52 (Colleen): solo Treasure Island best hauls are saved to each student's account (tab Treasure Island Scores), with a class leaderboard
    for each game length (3, 5 or 10 minutes, the student picks). */
@@ -13858,4 +13943,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
