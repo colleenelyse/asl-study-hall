@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.301';
+var VERSION = '4.309';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2016,10 +2016,11 @@ function api_dayReport(auth, cls, day) {
     if (x[0] < r.start) r.start = x[0]; if (x[0] > r.end) r.end = x[0];
   });
   var prog = {}; rows_(progSheet_(), 2, 2 + PROGRESS_CHUNKS).forEach(function (v) { var e = str_(v[0]).toLowerCase(); if (stu[e]) prog[e] = joinChunks_(v); });
+  var paw = typeof pawDayTimes_ === 'function' && feat_(st, 'pawtopia') ? pawDayTimes_(day, stu) : {};      // 4.302 Pawtopia time, kept apart from practice
   var hhmm = function (t) { return isDate_(t) ? Utilities.formatDate(t, tz_(), 'h:mm a') : ''; };
   Object.keys(stu).forEach(function (e) {
     var o = stu[e], r = rec[e], data = prog[e] || {}, days = o.Bests && o.Bests.days || {}, dn = days[day] || {};
-    out.push({ name: o.Name, e: e, mins: r ? Math.round(r.s / 6) / 10 : 0, q: r ? r.q : 0, c: r ? r.c : 0,
+    out.push({ name: o.Name, e: e, mins: r ? Math.round(r.s / 6) / 10 : 0, q: r ? r.q : 0, c: r ? r.c : 0, paw: paw[e] ? Math.round(paw[e] / 6) / 10 : 0,
       acts: r ? Object.keys(r.acts).map(function (k) { var a = r.acts[k]; return [k, a[0], a[1], a[2], Math.round(a[3] / 6) / 10]; }) : [],
       sets: r ? Object.keys(r.sets).slice(0, 12) : [], from: r ? hhmm(r.start) : '', to: r ? hhmm(r.end) : '',
       tried: r ? Object.keys(r.acts).filter(function (k) { return first[e + '|' + k] === day; }) : [],
@@ -10438,6 +10439,9 @@ function whosChars_() { if (WHOS_MEMO_) return WHOS_MEMO_; var out = {};
   return (WHOS_MEMO_ = out); }
 function whosColors_(c) { var o = {}; if (c.hat) o[c.hat] = 1; if (c.tc === 'rainbow') { o.rainbow = 1; WHOS_RAIN.forEach(function (x) { o[x] = 1; }); } else if (c.tc) o[c.tc] = 1; if (c.pa) o[c.pa] = 1; if (c.sh) o[c.sh] = 1; return o; }
 /** Every question: id, group, the English for after the round, the signs (each sign = the English words it can be on her unit tabs). */
+/* 4.307 (Colleen: "allow students to sequence signs ... like hat red"): clothes + color questions, the clothing sign first, then the color.
+   [id, its signs, plural (no "a")]. A rainbow top counts for each of its colors, as in "Anything red?". */
+var WHOS_WEAR = [['hat', ['hat']], ['shirt', ['shirt', 't-shirt']], ['jacket', ['jacket', 'coat']], ['dress', ['dress']], ['pants', ['pants'], 1], ['shoes', ['shoes', 'shoe'], 1]];
 var WHOS_Q_ = null;
 function whosQs_() { if (WHOS_Q_) return WHOS_Q_; var q = [], add = function (id, cat, en, w) { q.push({ id: id, cat: cat, en: en, w: w }); };
   add('man', 'who', 'Is it a man?', [['man']]); add('woman', 'who', 'Is it a woman?', [['woman']]);
@@ -10449,6 +10453,9 @@ function whosQs_() { if (WHOS_Q_) return WHOS_Q_; var q = [], add = function (id
   WHOS_COLORS.forEach(function (c) { add('col:' + c, 'color', 'Anything ' + c + '? (hat, top, pants or shoes)', [c === 'gray' ? ['gray', 'grey'] : [c]]); });
   WHOS_FEEL.forEach(function (f) { add('feel:' + f, 'feel', f.charAt(0).toUpperCase() + f.slice(1) + '?', [f === 'fine' ? ['fine', 'calm', 'okay'] : [f]]); });
   WHOS_ACT.forEach(function (a) { add('act:' + a[0], 'act', a[1].charAt(0).toUpperCase() + a[1].slice(1) + '?', [a[2]]); });
+  var M = whosChars_(), ppl = Object.keys(M).map(function (k) { return M[k]; });
+  WHOS_WEAR.forEach(function (w) { WHOS_COLORS.forEach(function (c) { var cw = c === 'gray' ? ['gray', 'grey'] : [c], id = 'wc:' + w[0] + ':' + c;      /* 4.307 two signs in ASL order: HAT RED (only pairs someone has) */
+    if (!ppl.some(function (x) { return whosTrue_(x, id); })) return; add('wc:' + w[0] + ':' + c, 'combo', (w[2] ? c.charAt(0).toUpperCase() + c.slice(1) + ' ' + w[0] : 'A ' + c + ' ' + w[0]).replace(/^A ([aeiou])/, 'An $1') + '?', [w[1], cw]); }); });
   return (WHOS_Q_ = q); }
 function whosQ_(id) { var q = whosQs_(); for (var i = 0; i < q.length; i++) if (q[i].id === id) return q[i]; return null; }
 /** The honest answer: is this question true about this person? */
@@ -10459,7 +10466,9 @@ function whosTrue_(c, id) { if (!c) return false; var p = String(id).split(':'),
     case 'long': return c.hl === 'long'; case 'curly': return !!c.cu; case 'hair': return c.hc === v;
     case 'beard': return c.fh === 'beard'; case 'mustache': return c.fh === 'mustache'; case 'glasses': return !!c.gl;
     case 'hat': return !!c.hat; case 'shirt': return c.top === 'shirt'; case 'jacket': return c.top === 'jacket'; case 'dress': return c.top === 'dress';
-    case 'col': return !!whosColors_(c)[v]; case 'feel': return c.fe === v; case 'act': return c.ac === v; }
+    case 'col': return !!whosColors_(c)[v]; case 'feel': return c.fe === v; case 'act': return c.ac === v;
+    case 'wc': var col = p[2], top = function () { return c.top === v && (c.tc === col || (c.tc === 'rainbow' && WHOS_RAIN.indexOf(col) >= 0)); };
+      return v === 'hat' ? c.hat === col : v === 'pants' ? c.pa === col : v === 'shoes' ? c.sh === col : top(); }
   return false; }
 /** What a person looks like, in English (after the round). */
 function whosSay_(c) { if (!c) return ''; var bits = [(c.h === 'medium' ? 'medium height' : c.h) + ', ' + (c.b === 'medium' ? 'medium build' : c.b) + ' ' + (c.p === 'm' ? 'man' : 'woman'),
@@ -10486,7 +10495,7 @@ function whosBoard_(rnd) { rnd = rnd || Math.random; var M = whosChars_(), C = O
 /** The computer's question: from the questions that split its people left closest to half, one of the better ones at random (so it is beatable). */
 function whosBotQ_(left, used, rnd) { rnd = rnd || Math.random; var M = whosChars_(), sc = [];
   whosQs_().forEach(function (q) { if (used.indexOf(q.id) >= 0 || q.id === 'woman') return; var y = left.filter(function (n) { return whosTrue_(M[n], q.id); }).length; if (!y || y === left.length) return; sc.push([Math.abs(left.length / 2 - y), q.id]); });
-  if (!sc.length) return ''; sc.sort(function (a, b) { return a[0] - b[0]; }); var top = sc.slice(0, Math.max(1, Math.ceil(sc.length / 3))); return top[Math.floor(rnd() * top.length)][1]; }
+  if (!sc.length) return ''; sc.sort(function (a, b) { return a[0] - b[0]; }); var top = sc.slice(0, Math.max(1, Math.ceil(sc.filter(function (x) { return x[1].indexOf('wc:') !== 0; }).length / 3))); return top[Math.floor(rnd() * top.length)][1]; }
 /* ── the class game ── */
 function whosNew_(opt) { return { cls: str_(opt && opt.wwCls), pairs: [], byE: {}, me: {}, started: 0, paused: 0, final: 0 }; }
 function whosMeOf_(W, k) { return W.me[k] || (W.me[k] = { wins: 0, ans: 0, ok: 0, guess: 0, rounds: 0 }); }
