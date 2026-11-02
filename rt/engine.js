@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.289';
+var VERSION = '4.295';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -549,6 +549,8 @@ var FEATURES = [
   ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Treats and moves eggs toward hatching.'],
   ['wagon', 'Wagon West', 'Practice', 'An 1800s wagon-trail adventure: students lead five travelers west, choosing pace, rations, river crossings and shortcuts. Rounds of signs (at trading posts, rivers, repairs, hunts) earn supplies, and the score sets their quality. Illness, disasters and graves; a Hall of Fame.'],
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
+  ['wwsolo', 'Who\'s Who (solo)', 'Practice', 'The face-guessing game against the computer (4.291): the computer signs yes/no questions about your secret person (her unit GIFs, else the 3D hand) and you answer; you ask it by picking a sign. Pays like the other skill games.'],
+  ['family', 'Family Tree', 'Practice', 'Students build their family (real or made up) with photos, the sign for each relationship and details to present in ASL, shown ten ways: tree, pedigree, family chart, fan, photo wall, poster, two sides, bubble web, printable worksheet (4.293). Photos are shrunk and saved in the tree on the Family Trees tab.'],
   ['fuzzy', 'Fuzzy Crossing', 'Practice', 'A solo logic puzzle (4.289): little fuzzy creatures that differ by color, eyes, feet and hat must cross by a rule. The rule is signed (her color GIFs when the units have them, else the 3D hand); some levels hide the rule and Gatekeepers nod or shake their heads. 12 levels, new creatures every time. Pays like the other skill games (a few Tokens and Treats).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
   ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
@@ -566,7 +568,7 @@ var FEATURES = [
   ['ws', 'Sign of the Day', 'Student pages', 'The daily sentence with one new sign, its rewards and weekly quiz.'],
   ['dict', 'Dictionary', 'Student pages', 'The searchable list of every sign.'],
   ['audio', 'Read aloud', 'Student pages', 'Speaker buttons that read terms and definitions aloud, each side in its own language (Settings and Units tabs).'],
-  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['wall', 'Logo Wall', 'Class games', ''], ['asst', 'The Assistants', 'Class games', ''], ['spin', 'Spin & Spell', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
+  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['wall', 'Logo Wall', 'Class games', ''], ['asst', 'The Assistants', 'Class games', ''], ['spin', 'Spin & Spell', 'Class games', ''], ['whos', 'Who\'s Who', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
   ['push', 'Push to students', 'Teacher tools', 'Messages, links and polls that pop up on student screens.'],
   ['gift', 'Gift page', 'Teacher tools', 'Giving themes, characters, Tickets or Tokens from the Gift page.'],
   ['focus', 'Study Sidekick', 'Teacher tools', 'On-task time: a sidekick floats over ASL Study while students focus, and focused minutes earn the reward you choose.'],
@@ -700,6 +702,7 @@ var DEFAULTS = [
   ['Sea Battle power-shot speed', 'Auto', 'Sea Battle: signing a square this fast earns a power shot. Auto = your class\'s typical expressive speed from the Fingerspelling Stats tab (camera seconds per letter and per number); or type seconds per letter, like 1.5.'],
   ['Wagon Train winning team Tokens', 25, 'Wagon Train (class game): bonus Tokens for each student on the winning wagon, paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['The Assistants winning team Tokens', 25, 'The Assistants (class game): bonus Tokens for each student on the winning team (the most calendar points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
+  ['Who\'s Who Tokens per win', 5, 'Who\'s Who (class game): Tokens for each round a student wins (guessing their partner\'s person), up to 10 rounds a game, paid when you press Save and close. Teachers get none. 0 = no Tokens.'],
   ['Spin & Spell winning team Tokens', 25, 'Spin & Spell (class game): bonus Tokens for each student on the winning team (the most points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['Logo Wall winning team Tokens', 25, 'Logo Wall (class game): bonus Tokens for each student on the winning team (the most logos points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['Sea Battle captain bonus', 25, 'Sea Battle: extra Tickets for the captain of the winning team, on top of the team prize (everyone on the winning team keeps their game character). 0 = no captain bonus.'],
@@ -970,6 +973,7 @@ function buildStatic_(locked) {
     brSounds: (function () { try { var o = JSON.parse(str_(g('Breach sounds')) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),      // 4.119
     stuHost: !/^n/i.test(str_(g('Students can host class games'))), seaAim: (function (v) { var w = ['tap', 'square', 'words'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['tap']; })(str_(g('Sea Battle aiming') || 'tap, square, words').toLowerCase()), seaFast: /^\s*\d/.test(str_(g('Sea Battle power-shot speed'))) ? Math.max(0.3, Math.min(10, num_(g('Sea Battle power-shot speed')))) : 0, seaNums: /^h/i.test(str_(g('Sea Battle numbers'))) ? 99 : /^m/i.test(str_(g('Sea Battle numbers'))) ? 50 : 24,
     trainTok: str_(g('Wagon Train winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Wagon Train winning team Tokens'))))),      // 4.270
+    whosTok: str_(g('Who\'s Who Tokens per win')) === '' ? 5 : Math.max(0, Math.min(200, Math.floor(num_(g('Who\'s Who Tokens per win'))))),      // 4.291
     spinTok: str_(g('Spin & Spell winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Spin & Spell winning team Tokens'))))),      // 4.288
     asstTok: str_(g('The Assistants winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('The Assistants winning team Tokens'))))),      // 4.287
     wallTok: str_(g('Logo Wall winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Logo Wall winning team Tokens'))))),      // 4.279
@@ -1584,7 +1588,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['logos', 'wall', 'asst', 'spin', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1617,6 +1621,7 @@ function api_bootstrap(auth) {
   out.gifts = newGifts_(id.key);
   if (o.Bests && o.Bests.inbox && o.Bests.inbox.length) out.gifts = out.gifts.concat(lock_(function () { var o2 = readStu_(sh, row), box = takeInbox_(o2); if (box.length) writeStu_(sh, o2); return box; }));     // points the teacher awarded since the last visit
   out.pawGift = todayPaw_(st, id.key);      /* 4.286 the Today card */
+  try { out.exam = exBoot_(id.key, o.Class); } catch (e) { out.exam = null; }      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
   if (!out.teacher) seenMark_(id.key);
   CacheService.getScriptCache().put('at:' + id.key, String(Date.now()), 21600);
   return wire_(out);
@@ -1903,7 +1908,7 @@ function hardList_(data, tn, n, ok) {
    Gift Calendar only for a round of SKILL.giftMin answers or more. No XP (XP is for signs). One Activity Log row a round. ───────── */
 var SKILL = { perRight: 1, roundMax: 15, dayCap: 40, giftMin: 5,
   kinds: { logos: ['logos', 'Name That Logo'], toast: ['toast', 'Neon Flying Toasters: letters'], party: ['party', 'Dinner Party'], manners: ['manners', 'Mind Your Manners'],
-    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'], fuzzy: ['fuzzy', 'Fuzzy Crossing'] } };      // 4.289 Fuzzy Crossing
+    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'], fuzzy: ['fuzzy', 'Fuzzy Crossing'], whoswho: ['wwsolo', 'Who\'s Who (solo)'] } };      // 4.289 Fuzzy Crossing; 4.291 Who's Who
 function api_skillRound(auth, r) {
   var st = static_(), id = who_(auth), S = st.settings; if (!id) throw new Error('Your sign-in ran out. Reload the page.');
   r = r || {}; var kind = str_(r.kind), K = SKILL.kinds[kind]; if (!K) throw new Error('Unknown activity.');
@@ -3089,7 +3094,7 @@ function liveHostOk_(auth, g) {
 }
 /** Teacher (or a student, when the teacher allows it): open a lobby. ids = the signs to use; minutes = how long the game runs once started. Returns the board, with the join code. */
 function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
-  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train', 'wall', 'asst', 'spin'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
+  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train', 'wall', 'asst', 'spin', 'whos'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
   var camMode = mode === 'camrace' || mode === 'jar', seaNoSigns = (mode === 'sea' || mode === 'isle') && opt && opt.seaWays && opt.seaWays.indexOf('signs') < 0;      // 4.27: camera games count fingerspelled words (or signed numbers), not vocabulary answers
   var st = static_(), cache = CacheService.getScriptCache(), teacher = isTeacher_(), me = who_(auth);
   if (!teacher) {                                                      // a student hosting for classmates
@@ -3100,23 +3105,23 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   st.cards.forEach(function (c) { if (face_(c)) withGif[c[0]] = 1; });
   ids = (ids instanceof Array ? ids : []).map(str_).filter(function (x) { return withGif[x]; }).slice(0, 300);
         // 4.53: the items are the teacher's signs
-  if ((camMode || seaNoSigns || mode === 'vault' || mode === 'wall' || mode === 'asst' || mode === 'spin') && mode !== 'case') ids = [];      /* 4.288 Spin & Spell: puzzles from the unit tabs, not questions */      /* 4.287 The Assistants: its own Unit 5 signs */      /* 4.279 Logo Wall: logos, not signs */      // 4.105 The Vault has its own things to sign
+  if ((camMode || seaNoSigns || mode === 'vault' || mode === 'wall' || mode === 'asst' || mode === 'spin' || mode === 'whos') && mode !== 'case') ids = [];      /* 4.291 Who's Who: its own people and questions */      /* 4.288 Spin & Spell: puzzles from the unit tabs, not questions */      /* 4.287 The Assistants: its own Unit 5 signs */      /* 4.279 Logo Wall: logos, not signs */      // 4.105 The Vault has its own things to sign
   else if (ids.length < 4) throw new Error('Pick at least 4 signs that have GIFs under "What to study" first.');
-  minutes = mode === 'spin' ? spinMins_(opt, teacher) : mode === 'asst' ? asstMins_(opt, teacher) : mode === 'train' ? trainMins_(minutes, teacher) : Math.max(1, Math.min(teacher ? 45 : 15, Math.floor(num_(minutes)) || 5));      // 4.270 Wagon Train: 30 minutes unless the teacher picks (the trip paces itself to it)
+  minutes = mode === 'whos' && !Math.floor(num_(minutes)) ? Math.min(teacher ? 45 : 15, WHOS.mins) : mode === 'spin' ? spinMins_(opt, teacher) : mode === 'asst' ? asstMins_(opt, teacher) : mode === 'train' ? trainMins_(minutes, teacher) : Math.max(1, Math.min(teacher ? 45 : 15, Math.floor(num_(minutes)) || 5));      // 4.270 Wagon Train: 30 minutes unless the teacher picks (the trip paces itself to it)
   bank = str_(bank);
   var seenName = {}, chars = charFiles_().filter(function (f) { return !bank || f.set.toLowerCase() === bank.toLowerCase(); }).slice(0, 150).map(function (f) {
     var nm = charName_(f.name) || 'Character', k = nm.toLowerCase(); seenName[k] = (seenName[k] || 0) + 1;
     return [seenName[k] > 1 ? nm + ' ' + seenName[k] : nm, f.id];
   });
-  if (['vault', 'escape', 'breach', 'case', 'train', 'wall', 'asst', 'spin'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
+  if (['vault', 'escape', 'breach', 'case', 'train', 'wall', 'asst', 'spin', 'whos'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
   var keep = opt && liveCode_(opt.keep) ? liveGet_(liveCode_(opt.keep)) : null;      /* 4.134 (Colleen): the teacher changes the settings while students are still joining: same code, same players */
   if (keep && (keep.host !== (teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key) || livePhase_(keep) !== 'lobby')) throw new Error('That game has already started, so its settings can\'t change now.');
   if (keep) chars = keep.chars;      // characters stay as they were: students may have picked one already
   var code = keep ? keep.id : '';
   for (var i = 0; !keep && i < 20 && (!code || cache.get('live:' + code)); i++) code = String(10000 + Math.floor(Math.random() * 90000));
   teams = Math.floor(num_(teams)); teams = teams >= 2 && teams <= (mode === 'breach' ? 6 : mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin' ? 6 : 4) ? teams : 0; if ((mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin') && !teams) teams = mode === 'wall' ? 3 : 2;      // Sea Battle always has teams
-  if (mode === 'mob' || mode === 'vault') teams = 0;                                       // 1 vs. The Mob has no teams
-  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
+  if (mode === 'mob' || mode === 'vault' || mode === 'whos') teams = 0;      /* 4.291 Who's Who: partners, made at Start */                                       // 1 vs. The Mob has no teams
+  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin' || mode === 'whos' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
     rand: !!(opt && opt.rand) && chars.length > 0, label: opt && (opt.label === 'char' || opt.label === 'both') ? opt.label : 'name' };      // rand: the game hands out characters; label: what the board shows under each avatar
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
@@ -3131,6 +3136,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   if (g.mode === 'isle') { g.isle = isleNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.47 Treasure Island (the ways to earn share Sea Battle's field)
   if (g.mode === 'train') { g.train = trainNew_(teams, minutes); g.seaWays = ['signs']; }      // 4.270 Wagon Train
   if (g.mode === 'spin') { g.spin = spinNew_(opt, st, teacher); if (!g.spin.deck.length) throw new Error('Spin & Spell found no words to use. Pick a unit with English words, or type your own puzzles.'); }      // 4.288 Spin & Spell (the teams are made at Start)
+  if (g.mode === 'whos') g.whos = whosNew_(opt);      // 4.291 Who's Who (partners are made at Start; late joiners play the computer)
   if (g.mode === 'asst') g.asst = asstNew_(opt, st, teacher ? 45 : 15);      // 4.287 The Assistants (the teams and the first week are made at Start)
   if (g.mode === 'wall') g.wall = wallNew_(opt);      // 4.279 Logo Wall: the logo group (the teams are made at Start)
   if (g.mode === 'sea') { g.sea = seaNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }
@@ -3175,10 +3181,11 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && wallTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }      // 4.279 gold logos come and go
   if (g.mode === 'spin' && phase === 'on' && g.spin && spinDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && spinTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.288 Spin & Spell moves along
   if (g.mode === 'asst' && phase === 'on' && g.asst && asstDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && asstTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.287 rounds, mind changes
+  if (g.mode === 'whos' && phase === 'on' && g.whos && whosDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && whosTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }      // 4.291 Who's Who: the computer's moves, next rounds, late joiners
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, asst: g.mode === 'asst' ? asstView_(g, -1, '') : null, spin: g.mode === 'spin' ? spinView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu, bonus: liveBonusView_(g, static_()) },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, asst: g.mode === 'asst' ? asstView_(g, -1, '') : null, spin: g.mode === 'spin' ? spinView_(g, -1, '') : null, whos: g.mode === 'whos' ? whosBoardView_(g) : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu, bonus: liveBonusView_(g, static_()) },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3199,7 +3206,7 @@ function api_liveControl(auth, code, action) {
   if (g.mode === 'mob' && action !== 'clear') { var mo = mobControl_(auth, g, action); if (action === 'start') { var g3 = liveGet_(g.id); if (g3 && !g3.rte && !g3.rteTried) { engineSetup_(g3); livePut_(g3); mo = api_liveBoard(auth, g3.id); } } return mo; }      // 4.145 1 vs. The Mob goes to its engine room at Start
   if (action === 'start' && !g.ends) { var dupStart = lock_(function () { var k0 = 'lstart:' + g.id; if (cache.get(k0)) return true; cache.put(k0, '1', 21600); return false; }); if (dupStart) return api_liveBoard(auth, g.id); }      /* 4.142 a second press of Start (the screen was slow) must never deal the teams again: students "bounced all around to different teams" */
   if (action === 'clear') { mobForget_(g.id); var won = []; var practiceOnly = !!(g.breach && g.breach.practice);      /* 4.93 a Breach practice round counts toward nothing */
-    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } var asstBonus = null; try { asstBonus = asstPay_(g); } catch (e) { asstBonus = null; } var spinBonus = null; try { spinBonus = spinPay_(g); } catch (e) { spinBonus = null; } try { wallLogoSave_(g); } catch (e) {}      /* 4.283 the logo leaderboards */ var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, asstBonus: asstBonus, spinBonus: spinBonus, bonus: bonus }; }
+    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } var asstBonus = null; try { asstBonus = asstPay_(g); } catch (e) { asstBonus = null; } var spinBonus = null; try { spinBonus = spinPay_(g); } catch (e) { spinBonus = null; } var whosBonus = null; try { whosBonus = whosPay_(g); } catch (e) { whosBonus = null; } try { wallLogoSave_(g); } catch (e) {}      /* 4.283 the logo leaderboards */ var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, asstBonus: asstBonus, spinBonus: spinBonus, whosBonus: whosBonus, bonus: bonus }; }
   if (action === 'start' && !g.ends && g.teams && !g.tmap) { lock_(function () {      /* 4.103 teams are made only now, with everyone who joined: even by strength (4.102). 4.98: Breach's automatic crews also pick how many */
       var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.asst ? asstTeams_(who.length) : g.spin ? spinTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
       var none = who.filter(function (e) { return !(joined[e][2] >= 0 && joined[e][2] < n); });      /* only players without a team (in class: everyone) */
@@ -3211,7 +3218,8 @@ function api_liveControl(auth, code, action) {
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); }
       if (g.train) { g.teams = n; g.train = trainNew_(n, g.minutes); }
       if (g.wall || g.asst || g.spin) g.teams = n; }); }
-  if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
+  if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);
+  if (action === 'start' && !g.ends && g.whos) whosStart_(g);      // 4.291 Who's Who: partners (the seating chart, across from each other) and each pair's first board      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
   if (action === 'start' && !g.ends) liveBonusLock_(g);      // 4.282 the winner bonus is locked from now on
   if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.wall) wallStart_(g); if (g.asst) { g.ends += 20 * 60000; asstStart_(g); } if (g.spin) spinStart_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
@@ -3252,8 +3260,9 @@ function api_liveControl(auth, code, action) {
     if (action === 'trainskip' && !T.paused && T.ph.k !== 'done') { T.ph.ends = now - TRAIN.grace - 1; trainTick_(g2); }
     livePut_(g2); g = g2; });
   if (g.spin && /^spin(pause|pass|cap|reveal)$/.test(action) && livePhase_(g) === 'on') lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.spin) return; spinControl_(g2, action); livePut_(g2); g = g2; });      // 4.288 Spin & Spell: Pause / Pass the turn / New captain / Reveal
+  if (g.whos && (action === 'wwpause' || /^wwskip:\d+$/.test(action) || /^wwpick:\d+:\d+$/.test(action)) && livePhase_(g) === 'on') lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.whos) return; whosControl_(g2, action); livePut_(g2); g = g2; });      // 4.291 Who's Who: Pause / skip a pair's turn
   if (g.asst && (action === 'asstpause' || action === 'asstnext' || /^asstcli:\d$/.test(action)) && livePhase_(g) === 'on') lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.asst) return; asstControl_(g2, action); livePut_(g2); g = g2; });      // 4.287 Pause / Next / a new client
-  if (action === 'end') { g.ends = Math.min(g.ends || Date.now(), Date.now()); if (g.train && !g.train.final) { var g4 = liveGet_(g.id) || g; trainFinal_(g4); g4.ends = g.ends; g = g4; } if (g.asst && !g.asst.final) { var g5 = liveGet_(g.id) || g; asstFinal_(g5, Date.now()); g5.ends = g.ends; g = g5; } if (g.spin && !g.spin.final) { var g6 = liveGet_(g.id) || g; spinFinal_(g6, Date.now()); g6.ends = g.ends; g = g6; } livePut_(g); if (g.vault && g.vault.rt) try { rtPost_(g.vault.rt, 'stop'); } catch (e) {} if (g.breach && g.breach.rt) try { rtPost_(g.breach.rt, 'stop'); } catch (e) {} }
+  if (action === 'end') { g.ends = Math.min(g.ends || Date.now(), Date.now()); if (g.train && !g.train.final) { var g4 = liveGet_(g.id) || g; trainFinal_(g4); g4.ends = g.ends; g = g4; } if (g.asst && !g.asst.final) { var g5 = liveGet_(g.id) || g; asstFinal_(g5, Date.now()); g5.ends = g.ends; g = g5; } if (g.spin && !g.spin.final) { var g6 = liveGet_(g.id) || g; spinFinal_(g6, Date.now()); g6.ends = g.ends; g = g6; } if (g.whos && !g.whos.final) { var g7 = liveGet_(g.id) || g; whosFinal_(g7); g7.ends = g.ends; g = g7; } livePut_(g); if (g.vault && g.vault.rt) try { rtPost_(g.vault.rt, 'stop'); } catch (e) {} if (g.breach && g.breach.rt) try { rtPost_(g.breach.rt, 'stop'); } catch (e) {} }
   return api_liveBoard(auth, g.id);
 }
 /** Student: look up a game by its code. Returns the characters and which are taken, or says there is no such game. */
@@ -3337,6 +3346,7 @@ function api_livePing(auth, code, p) {
   if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && wallTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; }      // 4.279 gold logos come and go
   if (g.mode === 'spin' && phase === 'on' && g.spin && spinDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && spinTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; phase = livePhase_(g); }      // 4.288
   if (g.mode === 'asst' && phase === 'on' && g.asst && asstDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && asstTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; phase = livePhase_(g); }      // 4.287 The Assistants moves along
+  if (g.mode === 'whos' && phase === 'on' && g.whos && whosDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && whosTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; }      // 4.291 Who's Who
   if (g.mode === 'isle' && phase === 'on' && (isleDue_(g) || !g.isle.started)) { var tki = false; try { tki = lock_(function () { var g2 = liveGet_(code); if (g2 && isleTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tki) g = liveGet_(code) || g; }      // 4.47 the island's Gold Rush
   if (g.mode === 'sea' && phase === 'on' && seaDue_(g)) { var tk = false; try { tk = lock_(function () { var g2 = liveGet_(code); if (g2 && seaTick_(g2)) { livePut_(g2); g = g2; return true; } return false; }); } catch (e) {} if (tk) g = liveGet_(code) || g; }      // move the rounds along       // this game keeps its own score on the server
   p = p || {};
@@ -3348,6 +3358,7 @@ function api_livePing(auth, code, p) {
   var score = Math.max(0, Math.min(Math.max(right * 450, (right * 5 + grant) * 100 + right * 200), Math.floor(num_(p.score))));
   if (g.mode === 'wall' && g.wall) { right = total = score = num_(g.wall.by[id.key]); steps = 0; }
   if (g.mode === 'spin' && g.spin) { var sm = g.spin.me[id.key] || { pts: 0, hits: 0, calls: 0, solves: 0 }; right = sm.hits + sm.solves; total = Math.max(right, sm.calls + sm.solves); score = sm.pts; steps = 0; }      // 4.288 the server counts my letters and solves
+  if (g.mode === 'whos' && g.whos) { var wm = g.whos.me[id.key] || { wins: 0, ans: 0, ok: 0, guess: 0 }; right = wm.ok + wm.wins; total = Math.max(right, wm.ans + wm.guess); score = wm.wins * 100 + wm.ok * 10; steps = 0; }      // 4.291 the server counts my answers and wins
   if (g.mode === 'asst' && g.asst) { var am = g.asst.me[id.key] || { pts: 0, n: 0 }; right = score = Math.round(am.pts); total = Math.max(right, am.n); steps = 0; }      // 4.287 the server counts my calendar points (no signs answered)      // 4.279 Logo Wall: the server counts my logos (no signs answered)
   var hits = [];
   if (extra['lx:' + g.id + ':' + id.key]) hits = lock_(function () { var k = 'lx:' + g.id + ':' + id.key, v = parse_(cache0.get(k), []); cache0.remove(k); return v instanceof Array ? v : []; });
@@ -3362,13 +3373,13 @@ function api_livePing(auth, code, p) {
   var all = livePlayers_(g), rank = 0, myTeam = -1, trank = 0, tn = 0;
   all.forEach(function (x, i) { if (x[5] === id.key) { rank = i + 1; myTeam = x[8]; } });
   if (myTeam >= 0) all.forEach(function (x) { if (x[8] === myTeam) { tn++; if (x[5] === id.key) trank = tn; } });      // my place among my own team
-  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, wall: g.mode === 'wall' ? wallView_(g, myTeam, id.key) : undefined, asst: g.mode === 'asst' ? asstView_(g, myTeam, id.key) : undefined, spin: g.mode === 'spin' ? spinView_(g, myTeam, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
+  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, wall: g.mode === 'wall' ? wallView_(g, myTeam, id.key) : undefined, asst: g.mode === 'asst' ? asstView_(g, myTeam, id.key) : undefined, spin: g.mode === 'spin' ? spinView_(g, myTeam, id.key) : undefined, whos: g.mode === 'whos' ? whosView_(g, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
     sea: g.mode === 'sea' ? (function () { var v = seaView_(g, myTeam, ''); if (!v) return v; var j = liveJoined_(g.id), mm = myTeam >= 0 ? seaMates_(j, myTeam) : [], sea = g.sea;
       v.captain = myTeam >= 0 && sea.captains[myTeam] === id.key; v.myVote = mm.indexOf(myTeam >= 0 ? (sea.votes[myTeam] || {})[id.key] || '' : ''); v.mates = mm.map(function (e) { return seaLabel_(g, j, e); }); var ord = myTeam >= 0 && sea.phase === 'battle' ? seaOrder_(g, myTeam, j, Date.now()) : mm; v.order = ord.map(function (e) { return seaFirst_(j, e); }); v.me = ord.indexOf(id.key); v.voteMe = mm.indexOf(id.key);
       v.ars = sea.ars[id.key] || {}; v.right = seaRight_(g, [id.key])[id.key] || 0; var gu = myTeam >= 0 ? seaGunner_(g, myTeam, Date.now(), j) : null;
       if (gu) { var r2 = seaRight_(g, [gu.email]); v.gun = { mine: gu.email === id.key, name: seaFirst_(j, gu.email), next: seaFirst_(j, gu.next), nextMine: gu.next === id.key, bal: seaBal_(sea, gu.email, r2[gu.email] || 0), left: gu.ends - (sea.paused || Date.now()) }; }
       return v; })() : undefined,
-    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' || g.mode === 'asst' || g.mode === 'spin' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
+    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' || g.mode === 'asst' || g.mode === 'spin' || g.mode === 'whos' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
 }
 
 /* ───── 4.282 WINNER BONUS and LATE JOINERS (Colleen, 2026-11-01) ─────
@@ -3419,6 +3430,7 @@ function liveBonusText_(b, st) {
 function liveAutoPrize_(g, st) {
   if (!g || g.byStu) return ['', '']; var S = st.settings, out = [], sh = [];
   if (g.mode === 'train' && S.trainTok) { out.push('Winning wagon: ' + S.trainTok + ' ' + S.tok + ' each (Settings: Wagon Train winning team Tokens)'); sh.push(S.trainTok + ' ' + S.tok); }
+  if (g.mode === 'whos' && S.whosTok) { out.push('Each round won: ' + S.whosTok + ' ' + S.tok + ' (Settings: Who\'s Who Tokens per win)'); sh.push(S.whosTok + ' ' + S.tok + ' a win'); }
   if (g.mode === 'spin' && S.spinTok) { out.push('Winning team: ' + S.spinTok + ' ' + S.tok + ' each (Settings: Spin & Spell winning team Tokens)'); sh.push(S.spinTok + ' ' + S.tok); }
   if (g.mode === 'asst' && S.asstTok) { out.push('Winning team: ' + S.asstTok + ' ' + S.tok + ' each (Settings: The Assistants winning team Tokens)'); sh.push(S.asstTok + ' ' + S.tok); }
   if (g.mode === 'wall' && S.wallTok) { out.push('Winning team: ' + S.wallTok + ' ' + S.tok + ' each (Settings: Logo Wall winning team Tokens)'); sh.push(S.wallTok + ' ' + S.tok); }
@@ -3502,7 +3514,7 @@ function liveBonusPay_(g) {
     return out;
   });
 }
-function liveGameName_(g) { return ({ tower: 'Tower Climb', race: 'Race Day', path: 'Candy Path', camrace: 'Camera Race', jar: 'Fill the Jar', sea: 'Sea Battle', isle: 'Treasure Island', 'case': 'Case Closed', escape: 'the class escape room', breach: 'Breach', train: 'Wagon Train', wall: 'Logo Wall', asst: 'The Assistants', spin: 'Spin & Spell' })[g.mode] || 'the class game'; }
+function liveGameName_(g) { return ({ tower: 'Tower Climb', race: 'Race Day', path: 'Candy Path', camrace: 'Camera Race', jar: 'Fill the Jar', sea: 'Sea Battle', isle: 'Treasure Island', 'case': 'Case Closed', escape: 'the class escape room', breach: 'Breach', train: 'Wagon Train', wall: 'Logo Wall', asst: 'The Assistants', spin: 'Spin & Spell', whos: 'Who\'s Who' })[g.mode] || 'the class game'; }
 /* ── late joiners ── */
 function liveLateQ_(code) { var q = parse_(CacheService.getScriptCache().get('llq:' + code), []); return q instanceof Array ? q : []; }
 function liveLateSave_(code, q) { CacheService.getScriptCache().put('llq:' + code, JSON.stringify(q.slice(-60)), LIVE_TTL); }
@@ -8075,7 +8087,7 @@ function vaultPlayed_() { var got = cacheGet_('vaultPlayed'); if (got) return go
     (the projector asks every few seconds anyway), so pressing Start only deals and hands off */
 function liveWarm_(g) { var c = CacheService.getScriptCache(), k = 'warm:' + g.id; if (c.get(k)) return; c.put(k, '1', 1500);
   try { if (g.teams || g.vault) strengthMap_(); } catch (e) {} try { if (g.vault) vaultPlayed_(); } catch (e) {} try { static_(); } catch (e) {}
-  try { if (g.vOpt && g.vOpt.cls) seatChartCached_(g.vOpt.cls); } catch (e) {} }      /* 4.167 the seating chart, before Start */
+  try { if (g.vOpt && g.vOpt.cls) seatChartCached_(g.vOpt.cls); } catch (e) {} try { if (g.whos) { strengthMap_(); if (g.whos.cls) seatChartCached_(g.whos.cls); } } catch (e) {} }      /* 4.291 Who's Who too */      /* 4.167 the seating chart, before Start */
 /** Deals players into n teams with close total strength: strongest first, back and forth (1-2-3-3-2-1…). Returns { email: team }. */
 function evenTeams_(emails, n, apart) {
   var st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, list = shuffle_(emails.slice()).sort(function (a, b) { return sw(b) - sw(a); }), out = {};
@@ -10317,15 +10329,323 @@ function spinPay_(g) {
   cacheDrop_('boards');
   return { teams: win, amt: amt, names: paid };
 }
+/* ───────── 4.291 WHO'S WHO (Colleen approved the design 2026-11-01): a face-guessing PARTNER game in the genre of the classic flip-board guessing game,
+   with our own name, people and look. 72 people she had drawn (art/whos-who/characters.csv = what each one looks like; her pictures:
+   asl-study-hall-site/img/whoswho/<num>.webp, cut by dev/build-whoswho-art.py). Unit 1 vocabulary: MAN, WOMAN, height, body, HAIR (long, curly, colors),
+   BEARD, MUSTACHE, EYEGLASSES, HAT, SHIRT, JACKET, DRESS, every color, 12 feelings and 6 actions.
+   Every round deals a 24-card board BUILT by her rules (art/whos-who/BOARD-RULES.md, whosBoard_): the broad questions (MAN, LONG hair, CURLY, EYEGLASSES,
+   HAT) split it 8 to 16 of 24; every specific feature on the board is on at least 3 people; each color (anything RED? = hat, top, pants or shoes) is worn by
+   3 to 16. Partners share the board; each has a secret person on it. They take turns: the asker picks a question on their screen (sign pictures, never
+   English words) and SIGNS it across the room; the answerer taps YES or NO about their own person (the server checks it: a wrong tap is never sent, the
+   screen says "Check again" with the sign and their person). The asker flips faces down themselves (never automatic), then Done (the partner's turn) or
+   "I know who it is!": right wins the round, wrong just passes the turn (nobody is ever out). Then a new board. A trio: each asks the next one around.
+   One student alone (or a late joiner) plays the computer. Partners come from the seating chart, across from each other (vaultSeatPairs_, as in The Vault).
+   Each round won pays Settings: Who's Who Tokens per win at Save and close (whosPay_). Runs in the asl.cool engine room like the other class games. ── */
+var WHOS = { n: 24, broadMin: 8, broadMax: 16, featMin: 3, colMin: 3, colMax: 16, recapMs: 15000, botMs: 2600, maxWins: 10, mins: 20 };
+var WHOS_RAIN = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];      /* a rainbow top counts for each of its colors (and for RAINBOW) */
+var WHOS_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white', 'black', 'brown', 'gray', 'gold', 'silver', 'rainbow'];
+var WHOS_HAIR = ['black', 'brown', 'blonde', 'red', 'gray', 'white', 'blue', 'pink'];
+var WHOS_FEEL = ['happy', 'sad', 'angry', 'tired', 'sick', 'fine', 'surprised', 'excited', 'scared', 'bored', 'nervous', 'confused'];
+var WHOS_ACT = [['stand', 'standing', ['stand']], ['sit', 'sitting', ['sit']], ['dance', 'dancing', ['dance']], ['jump', 'jumping', ['jump']], ['turn', 'turning around', ['turn around', 'turn-around', 'turn']], ['walk', 'walking', ['walk']]];
+/* WHOS-CHARS-BEGIN (written by dev/build-whoswho-art.py from art/whos-who/characters.csv: edit the csv, then run the script)
+   [num, man/woman, height, body, hair color, hair length, curly, beard/mustache, eyeglasses, hat color, top, top color, pants color, shoes color, feeling, action] */
+var WHOS_CHARS = [
+  [1, 'w', 'tall', 'medium', 'red', 'short', 0, '', 0, '', 'dress', 'brown', '', 'red', 'nervous', 'sit'],
+  [2, 'w', 'tall', 'heavy', 'pink', 'long', 0, '', 0, 'orange', 'dress', 'red', '', 'silver', 'excited', 'stand'],
+  [3, 'w', 'tall', 'heavy', 'blue', 'long', 1, '', 1, '', 'dress', 'yellow', '', 'black', 'sad', 'dance'],
+  [4, 'm', 'medium', 'medium', 'black', 'long', 1, '', 0, 'brown', 'jacket', 'pink', 'white', 'pink', 'confused', 'sit'],
+  [5, 'm', 'tall', 'heavy', 'blonde', 'long', 1, '', 0, '', 'jacket', 'purple', 'green', 'yellow', 'confused', 'walk'],
+  [6, 'w', 'tall', 'medium', 'gray', 'long', 1, '', 1, 'black', 'dress', 'red', '', 'blue', 'tired', 'dance'],
+  [7, 'w', 'medium', 'thin', 'blue', 'long', 0, '', 1, 'white', 'dress', 'black', '', 'blue', 'nervous', 'stand'],
+  [8, 'w', 'short', 'medium', 'black', 'long', 0, '', 0, '', 'shirt', 'gray', 'purple', 'black', 'angry', 'turn'],
+  [9, 'm', 'medium', 'medium', 'gray', 'long', 0, '', 0, '', 'jacket', 'green', 'green', 'white', 'scared', 'walk'],
+  [10, 'w', 'medium', 'heavy', 'pink', 'long', 0, '', 1, 'red', 'jacket', 'brown', 'blue', 'green', 'happy', 'jump'],
+  [11, 'w', 'tall', 'heavy', 'red', 'short', 0, '', 1, '', 'dress', 'green', '', 'pink', 'excited', 'walk'],
+  [12, 'w', 'short', 'thin', 'white', 'short', 1, '', 1, '', 'jacket', 'black', 'gray', 'pink', 'tired', 'stand'],
+  [13, 'w', 'medium', 'medium', 'blue', 'long', 1, '', 0, 'white', 'dress', 'pink', '', 'gold', 'confused', 'jump'],
+  [14, 'w', 'short', 'thin', 'red', 'long', 1, '', 1, '', 'shirt', 'white', 'green', 'silver', 'bored', 'walk'],
+  [15, 'm', 'tall', 'heavy', 'brown', 'long', 1, 'beard', 0, 'pink', 'shirt', 'black', 'black', 'brown', 'sick', 'dance'],
+  [16, 'w', 'tall', 'medium', 'white', 'short', 0, '', 0, 'green', 'dress', 'black', '', 'purple', 'happy', 'dance'],
+  [17, 'm', 'medium', 'heavy', 'brown', 'short', 1, '', 1, '', 'shirt', 'white', 'green', 'gold', 'sick', 'stand'],
+  [18, 'w', 'short', 'medium', 'red', 'short', 1, '', 0, '', 'jacket', 'purple', 'black', 'purple', 'sick', 'dance'],
+  [19, 'w', 'short', 'heavy', 'blonde', 'long', 0, '', 1, 'silver', 'shirt', 'rainbow', 'black', 'brown', 'scared', 'sit'],
+  [20, 'w', 'medium', 'thin', 'blue', 'short', 1, '', 1, '', 'dress', 'rainbow', '', 'silver', 'surprised', 'sit'],
+  [21, 'm', 'medium', 'heavy', 'brown', 'short', 0, 'mustache', 0, 'purple', 'jacket', 'gray', 'black', 'white', 'scared', 'jump'],
+  [22, 'w', 'tall', 'heavy', 'blue', 'short', 0, '', 1, '', 'shirt', 'red', 'red', 'pink', 'nervous', 'dance'],
+  [23, 'm', 'medium', 'medium', 'red', 'long', 1, '', 0, '', 'jacket', 'purple', 'white', 'red', 'angry', 'turn'],
+  [24, 'm', 'short', 'heavy', 'blonde', 'short', 0, 'beard', 1, 'red', 'shirt', 'green', 'purple', 'purple', 'sick', 'turn'],
+  [25, 'm', 'medium', 'heavy', 'red', 'long', 1, 'beard', 0, '', 'jacket', 'gray', 'red', 'pink', 'sad', 'dance'],
+  [26, 'm', 'short', 'thin', 'red', 'long', 0, '', 0, 'yellow', 'jacket', 'blue', 'brown', 'brown', 'surprised', 'jump'],
+  [27, 'm', 'medium', 'medium', 'white', 'short', 1, 'beard', 1, '', 'shirt', 'yellow', 'blue', 'white', 'fine', 'sit'],
+  [28, 'm', 'tall', 'thin', 'pink', 'short', 1, 'mustache', 1, 'blue', 'shirt', 'brown', 'red', 'blue', 'fine', 'stand'],
+  [29, 'w', 'short', 'thin', 'blonde', 'short', 0, '', 0, 'gold', 'dress', 'white', '', 'silver', 'nervous', 'turn'],
+  [30, 'm', 'tall', 'thin', 'gray', 'long', 1, 'beard', 0, 'purple', 'shirt', 'gray', 'brown', 'orange', 'sad', 'dance'],
+  [31, 'm', 'medium', 'heavy', 'brown', 'short', 1, 'mustache', 0, '', 'shirt', 'green', 'purple', 'yellow', 'surprised', 'jump'],
+  [32, 'w', 'medium', 'thin', 'gray', 'short', 0, '', 0, 'blue', 'dress', 'brown', '', 'black', 'surprised', 'turn'],
+  [33, 'w', 'medium', 'medium', 'pink', 'long', 1, '', 0, '', 'dress', 'pink', '', 'red', 'tired', 'walk'],
+  [34, 'm', 'short', 'medium', 'white', 'short', 1, 'mustache', 0, 'silver', 'jacket', 'green', 'white', 'purple', 'sad', 'walk'],
+  [35, 'm', 'tall', 'heavy', 'gray', 'long', 1, 'mustache', 1, '', 'shirt', 'brown', 'gray', 'orange', 'scared', 'walk'],
+  [36, 'm', 'tall', 'thin', 'brown', 'long', 1, 'beard', 0, 'green', 'shirt', 'blue', 'white', 'black', 'sad', 'jump'],
+  [37, 'w', 'tall', 'thin', 'black', 'short', 0, '', 0, 'blue', 'dress', 'white', '', 'white', 'scared', 'dance'],
+  [38, 'm', 'tall', 'thin', 'white', 'short', 1, 'beard', 1, '', 'shirt', 'purple', 'blue', 'yellow', 'excited', 'stand'],
+  [39, 'm', 'short', 'heavy', 'brown', 'short', 0, 'beard', 0, '', 'shirt', 'orange', 'white', 'red', 'scared', 'dance'],
+  [40, 'm', 'tall', 'medium', 'blonde', 'short', 0, '', 1, 'orange', 'shirt', 'rainbow', 'red', 'brown', 'angry', 'turn'],
+  [41, 'w', 'short', 'medium', 'blonde', 'short', 1, '', 1, '', 'shirt', 'orange', 'black', 'yellow', 'tired', 'sit'],
+  [42, 'w', 'short', 'thin', 'blue', 'short', 0, '', 1, '', 'dress', 'orange', '', 'green', 'surprised', 'jump'],
+  [43, 'w', 'medium', 'thin', 'blue', 'long', 1, '', 1, 'brown', 'dress', 'rainbow', '', 'red', 'fine', 'turn'],
+  [44, 'm', 'medium', 'thin', 'red', 'short', 0, 'beard', 0, 'red', 'shirt', 'gray', 'blue', 'gold', 'happy', 'sit'],
+  [45, 'w', 'short', 'medium', 'pink', 'short', 0, '', 1, 'yellow', 'jacket', 'pink', 'black', 'gold', 'angry', 'stand'],
+  [46, 'm', 'medium', 'thin', 'white', 'long', 1, 'mustache', 0, '', 'jacket', 'brown', 'gray', 'black', 'surprised', 'turn'],
+  [47, 'w', 'short', 'thin', 'black', 'long', 1, '', 1, '', 'dress', 'yellow', '', 'orange', 'sad', 'walk'],
+  [48, 'w', 'tall', 'thin', 'black', 'short', 1, '', 0, 'purple', 'shirt', 'rainbow', 'brown', 'blue', 'nervous', 'jump'],
+  [49, 'm', 'tall', 'thin', 'blonde', 'long', 0, '', 0, '', 'jacket', 'blue', 'blue', 'white', 'happy', 'stand'],
+  [50, 'w', 'medium', 'heavy', 'white', 'long', 1, '', 1, '', 'dress', 'white', '', 'purple', 'angry', 'jump'],
+  [51, 'w', 'short', 'medium', 'black', 'long', 0, '', 0, 'yellow', 'dress', 'rainbow', '', 'orange', 'bored', 'sit'],
+  [52, 'm', 'medium', 'heavy', 'blue', 'short', 1, 'beard', 1, '', 'jacket', 'red', 'green', 'brown', 'confused', 'jump'],
+  [53, 'w', 'short', 'medium', 'pink', 'short', 1, '', 1, '', 'dress', 'red', '', 'silver', 'excited', 'stand'],
+  [54, 'w', 'tall', 'heavy', 'black', 'short', 0, '', 1, '', 'dress', 'yellow', '', 'pink', 'fine', 'stand'],
+  [55, 'm', 'medium', 'heavy', 'blue', 'long', 1, '', 1, 'white', 'jacket', 'green', 'purple', 'purple', 'sick', 'jump'],
+  [56, 'm', 'tall', 'thin', 'blonde', 'short', 0, 'beard', 0, '', 'shirt', 'gray', 'red', 'red', 'happy', 'jump'],
+  [57, 'm', 'short', 'medium', 'white', 'short', 1, '', 0, '', 'jacket', 'red', 'brown', 'black', 'confused', 'walk'],
+  [58, 'w', 'short', 'medium', 'pink', 'short', 0, '', 0, '', 'jacket', 'white', 'green', 'blue', 'sick', 'walk'],
+  [59, 'm', 'tall', 'heavy', 'blonde', 'short', 0, '', 1, 'silver', 'shirt', 'blue', 'gray', 'white', 'tired', 'dance'],
+  [60, 'm', 'medium', 'thin', 'pink', 'long', 0, 'beard', 1, 'pink', 'shirt', 'yellow', 'purple', 'green', 'tired', 'sit'],
+  [61, 'w', 'medium', 'heavy', 'black', 'long', 0, '', 1, 'orange', 'dress', 'black', '', 'orange', 'bored', 'sit'],
+  [62, 'w', 'short', 'medium', 'brown', 'short', 0, '', 1, 'pink', 'dress', 'pink', '', 'green', 'excited', 'turn'],
+  [63, 'w', 'short', 'heavy', 'brown', 'long', 1, '', 1, 'green', 'dress', 'blue', '', 'green', 'fine', 'turn'],
+  [64, 'm', 'short', 'medium', 'red', 'short', 1, '', 1, '', 'jacket', 'yellow', 'brown', 'silver', 'fine', 'walk'],
+  [65, 'm', 'tall', 'medium', 'pink', 'long', 0, 'mustache', 1, 'gold', 'shirt', 'purple', 'purple', 'yellow', 'confused', 'walk'],
+  [66, 'w', 'medium', 'thin', 'brown', 'long', 0, '', 1, '', 'jacket', 'orange', 'blue', 'yellow', 'excited', 'stand'],
+  [67, 'w', 'short', 'medium', 'gray', 'short', 1, '', 1, 'gold', 'dress', 'blue', '', 'green', 'angry', 'stand'],
+  [68, 'm', 'short', 'thin', 'gray', 'long', 0, 'mustache', 0, 'black', 'jacket', 'pink', 'white', 'orange', 'bored', 'sit'],
+  [69, 'm', 'tall', 'heavy', 'white', 'long', 0, 'mustache', 0, 'brown', 'jacket', 'orange', 'brown', 'gold', 'happy', 'sit'],
+  [70, 'm', 'short', 'medium', 'gray', 'long', 0, 'mustache', 0, '', 'jacket', 'black', 'red', 'blue', 'nervous', 'turn'],
+  [71, 'm', 'tall', 'thin', 'gray', 'short', 0, 'mustache', 0, 'black', 'shirt', 'purple', 'gray', 'gold', 'bored', 'dance'],
+  [72, 'm', 'medium', 'heavy', 'black', 'long', 1, 'mustache', 0, '', 'jacket', 'orange', 'gray', 'brown', 'bored', 'turn']];
+/* WHOS-CHARS-END */
+var WHOS_FIX = { 20: { b: 'medium' }, 60: { b: 'medium' } };      /* her notes (2026-11-01): #20 (sheet 3 card 2) and #60 (sheet 7 card 6) are drawn MEDIUM BUILD, not thin */
+var WHOS_OUT = [17];      /* #17 (sheet 2 card 8): the green ice bag on his head reads as a hat; left out of every board until her new picture (then re-run the art script and take 17 out) */
+var WHOS_MEMO_ = null;
+function whosChars_() { if (WHOS_MEMO_) return WHOS_MEMO_; var out = {};
+  WHOS_CHARS.forEach(function (r) { if (WHOS_OUT.indexOf(r[0]) >= 0) return;
+    var c = { n: r[0], p: r[1], h: r[2], b: r[3], hc: r[4], hl: r[5], cu: r[6], fh: r[7], gl: r[8], hat: r[9], top: r[10], tc: r[11], pa: r[12], sh: r[13], fe: r[14], ac: r[15] };
+    var fx = WHOS_FIX[r[0]]; if (fx) Object.keys(fx).forEach(function (k) { c[k] = fx[k]; }); out[c.n] = c; });
+  return (WHOS_MEMO_ = out); }
+function whosColors_(c) { var o = {}; if (c.hat) o[c.hat] = 1; if (c.tc === 'rainbow') { o.rainbow = 1; WHOS_RAIN.forEach(function (x) { o[x] = 1; }); } else if (c.tc) o[c.tc] = 1; if (c.pa) o[c.pa] = 1; if (c.sh) o[c.sh] = 1; return o; }
+/** Every question: id, group, the English for after the round, the signs (each sign = the English words it can be on her unit tabs). */
+var WHOS_Q_ = null;
+function whosQs_() { if (WHOS_Q_) return WHOS_Q_; var q = [], add = function (id, cat, en, w) { q.push({ id: id, cat: cat, en: en, w: w }); };
+  add('man', 'who', 'Is it a man?', [['man']]); add('woman', 'who', 'Is it a woman?', [['woman']]);
+  add('tall', 'body', 'Is the person tall?', [['tall']]); add('short', 'body', 'Is the person short?', [['short']]); add('thin', 'body', 'Is the person thin?', [['thin', 'skinny']]); add('heavy', 'body', 'Is the person heavy?', [['heavy', 'fat']]);
+  add('long', 'hair', 'Long hair?', [['hair'], ['long']]); add('curly', 'hair', 'Curly hair?', [['hair'], ['curly']]);
+  WHOS_HAIR.forEach(function (h) { add('hair:' + h, 'hair', (h === 'blonde' ? 'Blond' : h.charAt(0).toUpperCase() + h.slice(1)) + ' hair?', [['hair'], h === 'gray' ? ['gray', 'grey'] : h === 'blonde' ? ['blonde', 'blond', 'yellow'] : [h]]); });
+  add('beard', 'face', 'A beard?', [['beard']]); add('mustache', 'face', 'A mustache?', [['mustache', 'moustache']]); add('glasses', 'face', 'Eyeglasses?', [['eyeglasses', 'glasses']]);
+  add('hat', 'wear', 'A hat?', [['hat']]); add('shirt', 'wear', 'A shirt?', [['shirt', 't-shirt']]); add('jacket', 'wear', 'A jacket?', [['jacket', 'coat']]); add('dress', 'wear', 'A dress?', [['dress']]);
+  WHOS_COLORS.forEach(function (c) { add('col:' + c, 'color', 'Anything ' + c + '? (hat, top, pants or shoes)', [c === 'gray' ? ['gray', 'grey'] : [c]]); });
+  WHOS_FEEL.forEach(function (f) { add('feel:' + f, 'feel', f.charAt(0).toUpperCase() + f.slice(1) + '?', [f === 'fine' ? ['fine', 'calm', 'okay'] : [f]]); });
+  WHOS_ACT.forEach(function (a) { add('act:' + a[0], 'act', a[1].charAt(0).toUpperCase() + a[1].slice(1) + '?', [a[2]]); });
+  return (WHOS_Q_ = q); }
+function whosQ_(id) { var q = whosQs_(); for (var i = 0; i < q.length; i++) if (q[i].id === id) return q[i]; return null; }
+/** The honest answer: is this question true about this person? */
+function whosTrue_(c, id) { if (!c) return false; var p = String(id).split(':'), k = p[0], v = p[1];
+  switch (k) {
+    case 'man': return c.p === 'm'; case 'woman': return c.p === 'w';
+    case 'tall': return c.h === 'tall'; case 'short': return c.h === 'short'; case 'thin': return c.b === 'thin'; case 'heavy': return c.b === 'heavy';
+    case 'long': return c.hl === 'long'; case 'curly': return !!c.cu; case 'hair': return c.hc === v;
+    case 'beard': return c.fh === 'beard'; case 'mustache': return c.fh === 'mustache'; case 'glasses': return !!c.gl;
+    case 'hat': return !!c.hat; case 'shirt': return c.top === 'shirt'; case 'jacket': return c.top === 'jacket'; case 'dress': return c.top === 'dress';
+    case 'col': return !!whosColors_(c)[v]; case 'feel': return c.fe === v; case 'act': return c.ac === v; }
+  return false; }
+/** What a person looks like, in English (after the round). */
+function whosSay_(c) { if (!c) return ''; var bits = [(c.h === 'medium' ? 'medium height' : c.h) + ', ' + (c.b === 'medium' ? 'medium build' : c.b) + ' ' + (c.p === 'm' ? 'man' : 'woman'),
+    (c.hl + (c.cu ? ' curly ' : ' straight ') + (c.hc === 'blonde' ? 'blond' : c.hc) + ' hair') + (c.fh ? ', a ' + c.fh : '') + (c.gl ? ', eyeglasses' : ''),
+    (c.hat ? 'a ' + c.hat + ' hat, ' : '') + 'a ' + c.tc + ' ' + c.top + (c.pa ? ', ' + c.pa + ' pants' : '') + ', ' + c.sh + ' shoes', c.fe + ', ' + (WHOS_ACT.filter(function (a) { return a[0] === c.ac; })[0] || ['', c.ac])[1]];
+  return bits.join('; '); }
+/* ── the board builder (her rules; hill climb with restarts: tested 0 misses in 200 boards) ── */
+function whosFeats_(c) { var s = ['h:' + c.h, 'b:' + c.b, 'hc:' + c.hc, 'top:' + c.top, 'fe:' + c.fe, 'ac:' + c.ac]; if (c.fh) s.push('fh:' + c.fh);
+  return { b: [c.p === 'm', c.hl === 'long', !!c.cu, !!c.gl, !!c.hat], s: s, c: Object.keys(whosColors_(c)) }; }
+/** How far a board is from her rules (0 = obeys every rule). */
+function whosPen_(F, idx) { var bc = [0, 0, 0, 0, 0], sc = {}, cc = {}, p = 0;
+  idx.forEach(function (i) { var f = F[i]; for (var k = 0; k < 5; k++) if (f.b[k]) bc[k]++; f.s.forEach(function (x) { sc[x] = (sc[x] || 0) + 1; }); f.c.forEach(function (x) { cc[x] = (cc[x] || 0) + 1; }); });
+  bc.forEach(function (n) { p += Math.max(0, WHOS.broadMin - n) + Math.max(0, n - WHOS.broadMax); });
+  Object.keys(sc).forEach(function (x) { p += Math.max(0, WHOS.featMin - sc[x]); });
+  Object.keys(cc).forEach(function (x) { p += Math.max(0, WHOS.colMin - cc[x]) + Math.max(0, cc[x] - WHOS.colMax); });
+  return p; }
+/** A new 24-card board (character numbers), built to her rules; rnd = a random function (Math.random if none). */
+function whosBoard_(rnd) { rnd = rnd || Math.random; var M = whosChars_(), C = Object.keys(M).map(function (k) { return M[k]; }), F = C.map(whosFeats_), n = C.length, best = null, bp = 1e9;
+  for (var rs = 0; rs < 40 && bp > 0; rs++) { var all = C.map(function (c, i) { return i; }); for (var i = n - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = all[i]; all[i] = all[j]; all[j] = t; }
+    var on = all.slice(0, WHOS.n), off = all.slice(WHOS.n), p = whosPen_(F, on);
+    for (var it = 0; it < 4000 && p > 0; it++) { var a = Math.floor(rnd() * WHOS.n), b = Math.floor(rnd() * off.length), x = on[a]; on[a] = off[b]; var q = whosPen_(F, on); if (q <= p) { off[b] = x; p = q; } else on[a] = x; }
+    if (p < bp) { bp = p; best = on.slice(); } }
+  return best.map(function (i) { return C[i].n; }); }
+/** The computer's question: from the questions that split its people left closest to half, one of the better ones at random (so it is beatable). */
+function whosBotQ_(left, used, rnd) { rnd = rnd || Math.random; var M = whosChars_(), sc = [];
+  whosQs_().forEach(function (q) { if (used.indexOf(q.id) >= 0 || q.id === 'woman') return; var y = left.filter(function (n) { return whosTrue_(M[n], q.id); }).length; if (!y || y === left.length) return; sc.push([Math.abs(left.length / 2 - y), q.id]); });
+  if (!sc.length) return ''; sc.sort(function (a, b) { return a[0] - b[0]; }); var top = sc.slice(0, Math.max(1, Math.ceil(sc.length / 3))); return top[Math.floor(rnd() * top.length)][1]; }
+/* ── the class game ── */
+function whosNew_(opt) { return { cls: str_(opt && opt.wwCls), pairs: [], byE: {}, me: {}, started: 0, paused: 0, final: 0 }; }
+function whosMeOf_(W, k) { return W.me[k] || (W.me[k] = { wins: 0, ans: 0, ok: 0, guess: 0, rounds: 0 }); }
+/** A new round for a pair (or trio): a new board (one board, the same people in the same order on every partner's screen), then 4.295 each player
+    PICKS their own secret person (phase 'pick'; the computer picks its own at once). The round starts when everyone has picked (whosPicked_). */
+function whosRound_(P, now) { P.board = whosBoard_(); P.mark = whosMark_(P.board);
+  P.sec = {}; P.flip = {}; P.m.forEach(function (k) { P.flip[k] = []; if (k === 'bot') P.sec[k] = P.board[Math.floor(Math.random() * P.board.length)]; });
+  P.rnd = (P.rnd || 0) + 1; P.first = P.rnd === 1 ? Math.floor(Math.random() * P.m.length) : (P.first + 1) % P.m.length; P.turn = P.first;
+  P.ph = 'pick'; P.q = ''; P.ans = ''; P.chk = false; P.note = ''; P.log = []; P.win = null; P.at = now; P.ends = 0; P.seq = (P.seq || 0) + 1; whosPicked_(P, now); }
+/* 4.295 (Colleen: "ask the student to choose their character and ensure that the students playing have matching cards"): the board's check mark,
+   a colored shape and a number made from the board itself (its people in order), so partners across the room can see their boards match. */
+var WHOS_MARKS = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⭐', '❤️'];
+function whosMark_(board) { var h = 7; (board || []).forEach(function (n, i) { h = (h * 31 + n * (i + 3)) % 1000003; }); return WHOS_MARKS[h % WHOS_MARKS.length] + ' ' + (10 + Math.floor(h / WHOS_MARKS.length) % 90); }
+/** Everyone has picked: the round begins (the starter asks first; the computer in a moment). */
+function whosPicked_(P, now) { if (P.ph !== 'pick' || !P.m.every(function (k) { return !!P.sec[k]; })) return false;
+  P.ph = 'ask'; P.at = now; P.ends = P.m[P.turn] === 'bot' ? now + WHOS.botMs : 0; P.seq++; return true; }
+/** 4.295 Lock in a secret person: only a person on this board (never one left out, like #17), only once a round. */
+function whosPickSet_(P, k, num, now) { if (P.ph !== 'pick') return 'The round has already started.'; if (P.m.indexOf(k) < 0) return 'You are not in this game.';
+  if (P.sec[k]) return 'You already picked your person.'; var n = Math.floor(num_(num));
+  if (P.board.indexOf(n) < 0 || !whosChars_()[n] || WHOS_OUT.indexOf(n) >= 0) return 'Pick someone on the board.';
+  P.sec[k] = n; P.seq++; whosPicked_(P, now); return ''; }
+function whosAddPair_(W, m, now) { var P = { m: m, bot: m.indexOf('bot') >= 0, wins: {}, rnd: 0, seq: 0 }; m.forEach(function (k) { P.wins[k] = 0; if (k !== 'bot') W.byE[k] = W.pairs.length; });
+  W.pairs.push(P); whosRound_(P, now); return P; }
+/** Partners at Start: the seating chart (across from each other, as in The Vault), else a stronger student with a newer one; an odd one out makes a trio; one student alone plays the computer. */
+function whosStart_(g) { var W = g.whos; if (!W || W.started) return; var now = Date.now(); W.started = now;
+  var joined = liveJoinedSure_(g.id), who = Object.keys(joined).filter(function (e) { return whosPlays_(g, e); }), st = strengthMap_(), sw = function (e) { return st[e] == null ? 0.5 : st[e]; }, pairs = [], used = {}, apart = seatApart_(who), away = function (a, b) { return !!(apart[a] && apart[a][b]); };
+  var chart = W.cls ? seatChartCached_(W.cls) : null;
+  if (chart && chart.seats) { var only = {}; who.forEach(function (e) { only[e] = joined[e]; }); var sp = vaultSeatPairs_(chart, only, sw, away); sp.pairs.forEach(function (p) { used[p[0]] = used[p[1]] = 1; pairs.push(p); }); W.seatNote = { cls: W.cls, paired: sp.pairs.length * 2, onChart: Object.keys(sp.pos).length, joined: who.length }; }
+  else if (W.cls) W.seatNote = { cls: W.cls, paired: 0, onChart: 0, joined: who.length, none: true };
+  var rest = who.filter(function (e) { return !used[e]; }).sort(function (a, b) { return sw(b) - sw(a); }), guard = 0;
+  while (rest.length >= 2 && guard++ < 500) { var top = rest.shift(), pi = rest.length - 1; while (pi > 0 && away(top, rest[pi])) pi--; if (away(top, rest[pi])) { rest.push(top); if (rest.every(function (x, i) { return i === 0 || away(rest[0], x); })) break; continue; } pairs.push([top, rest.splice(pi, 1)[0]]); }
+  rest.forEach(function (x) { var ok = pairs.filter(function (p) { return p.length < 3 && !p.some(function (y) { return away(x, y); }); }); if (ok.length) ok[0].push(x); else pairs.push([x, 'bot']); });      /* odd one out: a trio; nobody to pair with: the computer */
+  pairs.forEach(function (m) { whosAddPair_(W, m, now); }); }
+/** Who plays: everyone who joined, except the teacher who hosts (a student host plays). */
+function whosPlays_(g, e) { return !(e === g.host && !g.byStu); }
+/** Whose turn it is to answer: the next player around (a pair: the partner). */
+function whosTgt_(P, i) { return (i + 1) % P.m.length; }
+function whosLeft_(P, k) { var f = P.flip[k] || []; return P.board.filter(function (n) { return f.indexOf(n) < 0; }); }
+function whosNext_(P, now) { P.turn = whosTgt_(P, P.turn); P.ph = 'ask'; P.q = ''; P.ans = ''; P.chk = false; P.note = ''; P.at = now; P.ends = P.m[P.turn] === 'bot' ? now + WHOS.botMs : 0; P.seq++; }
+function whosWin_(W, P, i, now) { var k = P.m[i]; P.wins[k] = (P.wins[k] || 0) + 1; if (k !== 'bot') whosMeOf_(W, k).wins++; P.m.forEach(function (x) { if (x !== 'bot') whosMeOf_(W, x).rounds++; });
+  P.win = { i: i, n: P.sec[P.m[whosTgt_(P, i)]] }; P.ph = 'recap'; P.at = now; P.ends = now + WHOS.recapMs; P.seq++; }
+/** One step for the computer, or the next round after the recap. */
+function whosStep_(W, P, now) { var bi = P.m.indexOf('bot');
+  if (P.ph === 'recap') { whosRound_(P, now); return; }
+  if (P.ph === 'pick') { P.ends = 0; return; }      /* 4.295 picking: nothing moves until everyone has picked */
+  if (bi < 0) { P.ends = 0; return; }
+  var M = whosChars_(), ti = whosTgt_(P, P.turn);
+  if (P.turn === bi && P.ph === 'ask') { var left = whosLeft_(P, 'bot'), tgt = P.m[ti];
+    if (left.length === 1) { if (left[0] === P.sec[tgt]) return whosWin_(W, P, bi, now); P.flip.bot.push(left[0]); return whosNext_(P, now); }
+    var q = whosBotQ_(left, P.log.filter(function (x) { return x[0] === bi; }).map(function (x) { return x[1]; }));
+    if (!q) { var g1 = left[Math.floor(Math.random() * left.length)]; if (g1 === P.sec[tgt]) return whosWin_(W, P, bi, now); P.flip.bot.push(g1); P.log.push([bi, 'guess:' + g1, 'n']); return whosNext_(P, now); }
+    P.q = q; P.ph = 'answer'; P.chk = false; P.at = now; P.ends = 0; P.seq++; return; }
+  if (P.turn === bi && P.ph === 'flip') { var yes = P.ans === 'y'; P.flip.bot = P.flip.bot.concat(P.board.filter(function (n) { return P.flip.bot.indexOf(n) < 0 && whosTrue_(M[n], P.q) !== yes; })); return whosNext_(P, now); }
+  if (ti === bi && P.ph === 'answer') { P.ans = whosTrue_(M[P.sec.bot], P.q) ? 'y' : 'n'; P.log.push([P.turn, P.q, P.ans]); P.ph = 'flip'; P.at = now; P.ends = 0; P.seq++; return; }
+  P.ends = 0; }
+/** Time moves the game along: the computer's moves, the next round after a recap, late joiners (they play the computer). */
+function whosTick_(g, now) { var W = g.whos; if (!W || !W.started || W.paused || W.final || livePhase_(g) !== 'on') return false; now = now || Date.now(); var ch = false;
+  var j = liveJoined_(g.id); Object.keys(j).forEach(function (e) { if (!whosPlays_(g, e) || W.byE[e] != null) return; whosAddPair_(W, [e, 'bot'], now); ch = true; });
+  W.pairs.forEach(function (P) { if (P.ends && now >= P.ends) { whosStep_(W, P, now); ch = true; } });
+  return ch; }
+function whosDue_(g) { var W = g.whos; if (!W || !W.started || W.paused || W.final || livePhase_(g) !== 'on') return false; var now = Date.now();
+  if (W.pairs.some(function (P) { return P.ends && now >= P.ends; })) return true; var j = liveJoined_(g.id); return Object.keys(j).some(function (e) { return whosPlays_(g, e) && W.byE[e] == null; }); }
+function whosControl_(g, action) { var W = g.whos, now = Date.now(); if (!W || !W.started || W.final) return;
+  if (action === 'wwpause') { if (!W.paused) W.paused = now; else { var dt = now - W.paused; W.pairs.forEach(function (P) { if (P.ends) P.ends += dt; }); g.ends += dt; W.paused = 0; } return; }
+  var pf = /^wwpick:(\d+):(\d+)$/.exec(action); if (pf) { var Q = W.pairs[+pf[1]], pk = Q && Q.m[+pf[2]]; if (!Q || W.paused || !pk || pk === 'bot' || Q.ph !== 'pick' || Q.sec[pk]) return;      /* 4.295 the teacher's "Pick for them" (a student who is away): a random person on the board */
+    whosPickSet_(Q, pk, Q.board[Math.floor(Math.random() * Q.board.length)], now); Q.note = Q.ph === 'pick' ? 'pickfor' : 'skip'; return; }
+  var m = /^wwskip:(\d+)$/.exec(action), P = m && W.pairs[+m[1]]; if (!P || W.paused) return;
+  if (P.ph === 'pick') { P.m.forEach(function (k) { if (P.ph === 'pick' && !P.sec[k]) whosPickSet_(P, k, P.board[Math.floor(Math.random() * P.board.length)], now); }); P.note = 'skip'; return; }      /* 4.295 Next turn while picking: picks for whoever hasn't */
+  if (P.ph === 'recap') whosRound_(P, now); else whosNext_(P, now); P.note = 'skip'; }
+function whosFinal_(g) { var W = g.whos; if (W && !W.final) W.final = Date.now(); }
+/** Every student call: the game, their pair, and their place in it (index i); answers with their view. */
+function whosCall_(auth, code, fn) { var me = who_(auth); if (!me) throw new Error('Your sign-in ran out. Reload the page.');
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.whos || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var W = g.whos, now = Date.now(); whosTick_(g, now); var pi = W.byE[me.key], P = pi == null ? null : W.pairs[pi];
+    if (!P) { livePut_(g); return { none: true, why: 'Your partner is on the way. One moment!', whos: whosView_(g, me.key) }; }
+    if (W.paused) return { none: true, why: 'The game is paused.', whos: whosView_(g, me.key) };
+    var out = fn(g, W, P, P.m.indexOf(me.key), me.key, now) || {}; livePut_(g); out.whos = whosView_(g, me.key); return out; }); }
+/** 4.295 I pick my own secret person (once a round, from this board); the round starts when my partner(s) have picked too. */
+function api_whosPick(auth, code, num) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k, now) { var why = whosPickSet_(P, k, num, now); return why ? { none: true, why: why } : { ok: true }; }); }
+/** The asker picks a question (and signs it to their partner). */
+function api_whosAsk(auth, code, qid) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k, now) { if (P.turn !== i) return { none: true, why: 'It is not your turn to ask.' };
+    if (P.ph !== 'ask' && P.ph !== 'answer') return { none: true, why: 'Wait a moment.' }; var q = whosQ_(str_(qid)); if (!q) return { none: true, why: 'Pick a question.' };
+    P.q = q.id; P.ph = 'answer'; P.chk = false; P.note = ''; P.at = now; P.seq++; if (P.m[whosTgt_(P, i)] === 'bot') P.ends = now + WHOS.botMs; return { ok: true }; }); }
+/** The answerer taps YES or NO about their own person; a tap that isn't true about them is never sent ("Check again"). 'redo' = "that's not what my partner signed". */
+function api_whosAnswer(auth, code, yn) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k, now) { if (P.ph !== 'answer' || whosTgt_(P, P.turn) !== i) return { none: true, why: 'Nobody is asking you right now.' };
+    if (yn === 'redo') { P.ph = 'ask'; P.q = ''; P.chk = false; P.note = 'redo'; P.at = now; P.seq++; return { ok: true }; }
+    var ans = yn === 'y' ? 'y' : 'n', truth = whosTrue_(whosChars_()[P.sec[k]], P.q) ? 'y' : 'n', m = whosMeOf_(W, k);
+    if (ans !== truth) { P.chk = true; return { check: true, q: P.q }; }
+    m.ans++; if (!P.chk) m.ok++; P.ans = ans; P.log.push([P.turn, P.q, ans]); P.ph = 'flip'; P.note = ''; P.at = now; P.seq++;
+    if (P.m[P.turn] === 'bot') P.ends = now + WHOS.botMs; return { ok: true, ans: ans }; }); }
+/** My flipped-down faces (the whole list; flipping is always the player's own choice). */
+function api_whosFlip(auth, code, list) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k) { if (P.ph === 'recap') return { none: true, why: 'This round is over.' }; if (P.ph === 'pick') return { none: true, why: 'Pick your person first.' };
+    var on = {}; P.board.forEach(function (n) { on[n] = 1; }); P.flip[k] = (list instanceof Array ? list : []).map(function (n) { return Math.floor(num_(n)); }).filter(function (n, x, a) { return on[n] && a.indexOf(n) === x; }); return { ok: true }; }); }
+/** The asker is done flipping: the next player's turn. */
+function api_whosDone(auth, code) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k, now) { if (P.turn !== i || P.ph !== 'flip') return { none: true, why: 'Wait for the answer first.' }; whosNext_(P, now); return { ok: true }; }); }
+/** "I know who it is!": right wins the round; wrong just passes the turn. */
+function api_whosGuess(auth, code, num) {
+  var r = rteRedirect_(auth, code); if (r) return r;
+  return whosCall_(auth, code, function (g, W, P, i, k, now) { if (P.turn !== i || (P.ph !== 'ask' && P.ph !== 'flip')) return { none: true, why: 'Guess on your own turn.' };
+    var n = Math.floor(num_(num)); if (P.board.indexOf(n) < 0) return { none: true, why: 'Pick someone on the board.' };
+    var m = whosMeOf_(W, k); m.guess++; P.log.push([i, 'guess:' + n, n === P.sec[P.m[whosTgt_(P, i)]] ? 'y' : 'n']);
+    if (n === P.sec[P.m[whosTgt_(P, i)]]) { whosWin_(W, P, i, now); return { ok: true, right: true }; }
+    whosNext_(P, now); P.note = 'miss'; return { ok: true, right: false }; }); }
+/** What one student sees: their board, their own person, whose turn, the question only for the asker (and for the answerer once answered),
+    first names only. The partners' people only in the recap. */
+function whosView_(g, key) { var W = g.whos; if (!W) return null; var now = W.paused || Date.now(), j = liveJoined_(g.id), over = livePhase_(g) === 'over' || !!W.final;
+  var v = { left: Math.max(0, g.ends - now), paused: !!W.paused, over: over, started: !!W.started }, pi = W.byE[key], P = pi == null ? null : W.pairs[pi];
+  if (!P) return v; var i = P.m.indexOf(key), ti = whosTgt_(P, P.turn), recap = P.ph === 'recap' || over, M = whosChars_();
+  v.p = { i: i, names: P.m.map(function (x) { return x === 'bot' ? '' : seaFirst_(j, x); }), bot: P.bot, n: P.m.length, rnd: P.rnd, seq: P.seq, board: P.board.slice(), sec: P.sec[key] || 0, flip: (P.flip[key] || []).slice(),
+    wins: P.m.map(function (x) { return P.wins[x] || 0; }), turn: P.turn, tgt: ti, ph: P.ph, mark: P.mark || whosMark_(P.board), picked: P.m.map(function (x) { return !!P.sec[x]; }), ans: P.ph === 'flip' ? P.ans : '', note: P.note, chk: false,
+    q: P.ph === 'answer' && P.turn === i || P.ph === 'flip' && (P.turn === i || ti === i) ? P.q : '', since: now - P.at, recapLeft: P.ph === 'recap' ? Math.max(0, P.ends - now) : 0,
+    mine: P.log.filter(function (x) { return x[0] === i && x[1].indexOf('guess:') < 0; }).map(function (x) { return [x[1], x[2]]; }) };
+  if (P.bot && P.turn === P.m.indexOf('bot')) v.p.botLeft = whosLeft_(P, 'bot').length;
+  if (recap) { v.p.secs = P.m.map(function (x) { return P.sec[x]; }); v.p.win = P.win; v.p.log = P.log.map(function (x) { var q = whosQ_(x[1]); return [x[0], x[1], x[2], q ? q.en : 'A guess']; });
+    v.p.say = {}; P.m.forEach(function (x) { v.p.say[P.sec[x]] = whosSay_(M[P.sec[x]]); }); }
+  var me = W.me[key]; if (me) v.me = { wins: me.wins, ans: me.ans, ok: me.ok, rounds: me.rounds };
+  return v; }
+/** The projector: every pair's progress (first names, round, whose turn, faces left, wins); never anyone's person. */
+function whosBoardView_(g) { var W = g.whos; if (!W) return null; var now = W.paused || Date.now(), j = liveJoined_(g.id);
+  return { left: Math.max(0, g.ends - now), paused: !!W.paused, over: livePhase_(g) === 'over' || !!W.final, started: !!W.started, note: W.seatNote || null, tok: g.byStu ? 0 : static_().settings.whosTok,
+    pairs: W.pairs.map(function (P, x) { return { x: x, names: P.m.map(function (k) { return k === 'bot' ? '' : seaFirst_(j, k); }), bot: P.bot, rnd: P.rnd, turn: P.turn, tgt: whosTgt_(P, P.turn), ph: P.ph,
+      left: P.m.map(function (k) { return whosLeft_(P, k).length; }), wins: P.m.map(function (k) { return P.wins[k] || 0; }), since: now - P.at, win: P.ph === 'recap' && P.win ? P.win.i : -1,
+      mark: P.mark || whosMark_(P.board), picked: P.m.map(function (k) { return !!P.sec[k]; }) }; }) }; }      /* 4.295 the board's check mark, and who has picked (never whom) */
+/** Save and close: each student gets Settings: Who's Who Tokens per win for every round they won (at most WHOS.maxWins), once. Teachers get none; a game a student hosted pays none. */
+function whosPay_(g) {
+  if (g.mode !== 'whos' || !g.whos || g.byStu || !g.ends) return null;
+  var st = static_(), amt = st.settings.whosTok, W = g.whos; if (!amt) return null;
+  var want = {}; Object.keys(W.me || {}).forEach(function (k) { var w = Math.min(WHOS.maxWins, num_(W.me[k].wins)); if (w > 0) want[str_(k).toLowerCase()] = w; }); if (!Object.keys(want).length) return null;
+  var props = PropertiesService.getDocumentProperties(), guard = 'whospaid:' + g.id + ':' + g.made; if (props.getProperty(guard)) return null;
+  props.setProperty(guard, String(Date.now()));                          // set first: a retry can never pay twice
+  var teach = {}; try { Object.keys(teacherEmails_() || {}).forEach(function (e) { teach[str_(e).toLowerCase()] = 1; }); } catch (e) {} teach[str_(g.host).toLowerCase()] = 1;
+  var sh = stuSheet_(), H = stuHead_(sh), when = new Date(), led = [], hist = [], paid = [], batch = 'whos-' + g.id + '-' + String(g.made).slice(-6);
+  rows_(sh, 2, H.n).forEach(function (v, i) { var key = str_(v[H.Email]).toLowerCase(); if (!want[key] || teach[key]) return; var tk = want[key] * amt;
+    var o = stuObj_(H, v, i + 2); o.Tokens = num_(o.Tokens) + tk; writeStu_(sh, o); paid.push(str_(o.Name).split(' ')[0]);
+    led.push([when, batch, key, o.Name, o.Class, 'Tokens', tk, 'Who\'s Who: ' + want[key] + (want[key] === 1 ? ' round' : ' rounds') + ' won', '', '']);
+    hist.push([when, key, o.Name, o.Class, 'whos', tk + ' ' + st.settings.tok + ': Who\'s Who, ' + want[key] + (want[key] === 1 ? ' round' : ' rounds') + ' won', 0, 'Gift', 'new: 🕵️ You won ' + want[key] + (want[key] === 1 ? ' round' : ' rounds') + ' of Who\'s Who! +' + tk + ' ' + st.settings.tok + '.']); });
+  if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
+  cacheDrop_('boards');
+  return { amt: amt, names: paid, n: led.length }; }
+/** Solo (Games): a fresh board built to her rules, with what each person looks like and which questions are true about them, and the question list. */
+function api_wwSolo(auth) { var st = static_(); if (!feat_(st, 'wwsolo')) throw new Error('Your teacher has turned off this activity.');
+  var M = whosChars_(), Q = whosQs_(); return { board: whosBoard_().map(function (n) { var c = M[n]; return { n: n, t: Q.filter(function (q) { return whosTrue_(c, q.id); }).map(function (q) { return q.id; }), say: whosSay_(c) }; }), qs: Q }; }
+/** The question list for a class game's screens (the same for everyone). */
+function api_wwData(auth) { return { qs: whosQs_() }; }
+
 /* ───────── 4.145 EVERY LIVE CLASS GAME ON asl.cool (Colleen 2026-10-21: "yes move all of it for optimization"). At Start, the whole game (the game, who joined,
    the scores so far, 1 vs. The Mob's record, the sign list and settings) goes to an engine room on asl.cool that runs THIS code (dev/build-rt.py -> rt/engine.js,
    with stand-ins for Google's services: rt/gas-env.js). Emails and names are swapped for player numbers (ⓟ1, ⓟ2… and ⓣ for the teacher) first. The students'
    screens and the projector then send their game calls there (Index.html call()), and the screens put the names back in (they come from here, never the room).
    Start, late joins and Save and close stay here: at Save and close the room's game comes back (numbers swapped back) and is saved as before.
    The Vault and Breach have their own rooms (4.139, 4.142). If the room can't be made, the game runs here as before. ── */
-var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train', 'wall', 'asst', 'spin'];
+var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train', 'wall', 'asst', 'spin', 'whos'];
 var RTE_KEYS = ['lp', 'ls', 'lx', 'lgr', 'lcam'];
-var RTE_NEED = { train: 'api_trainVote', wall: 'api_wallClaim', asst: 'api_asstPlace', spin: 'api_spinCall' };      // 4.270: the room must have this call (its engine.js is live) before a game moves there
+var RTE_NEED = { train: 'api_trainVote', wall: 'api_wallClaim', asst: 'api_asstPlace', spin: 'api_spinCall', whos: 'api_whosPick' };      /* 4.295 Who's Who: the room needs the new picking */      // 4.270: the room must have this call (its engine.js is live) before a game moves there
 function rteKeyIn_(key, map) { var p = key.split(':'); if (p.length === 3 && map[p[2]]) p[2] = map[p[2]]; return p.join(':'); }
 function rteNames_(g, map) { var j = liveJoined_(g.id), first = {}, names = {}, seen = {};
   Object.keys(map).forEach(function (e) { var full = str_(j[e] && j[e][0]), f = full.split(' ')[0] || 'Player'; first[e] = [f, full]; seen[f] = (seen[f] || 0) + 1; });
@@ -14458,4 +14778,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
