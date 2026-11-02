@@ -226,8 +226,8 @@
       legs: { fl: ghost(), fr: ghost(), bl: ghost(), br: ghost() } };
     root.add(P.head); P.head.position.set(0, size.y * k * 0.9 / k, 0);      // where hearts and Zzz float from
     const rig = rigOf(root), who = (document.querySelector('[data-who].on') || {}).dataset; 
-    G = { gaitType: GAIT[who && who.who] || 'trot', root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
-    if (rig) fitOutfits(root, rig);
+    G = { gaitType: GAIT[who && who.who] || 'trot', settle: !!SETTLE[who && who.who], posefix: POSEFIX[who && who.who], root, mixer, acts, now: null, bones, rig, base: root.position.clone(), info: { label, bytes, tris: Math.round(tris), tex, mats: mats.size, skinned, clips: gltf.animations.map(a => a.name), matched } };
+    if (rig) { rig.fit = FITFIX[who && who.who] || null; fitOutfits(root, rig); }
     G.swim = swim && !rig; if (G.swim) { G.swimH = size.y * k; swimSetup(root, size.z * k); fitOutfits(root, swimRig(root)); } else pool.visible = false;
     report(); tell({ t: 'pet' }); document.getElementById('phbtn').hidden = false; document.getElementById('walkbtn').hidden = !(rig && acts.walk); document.getElementById('hopbtn').hidden = !rig; say('Hi! I\'m ' + P.look.name + '.'); act(S.act);
   }
@@ -299,7 +299,7 @@
     const ys = V.map(p => p.y), Hh = Math.max(...ys) - Math.min(...ys), band = Hh * 0.025, chest = L(rig.chest || rig.top), zs = V.map(p => p.z), zmax = Math.max(...zs), zlen = zmax - Math.min(...zs), floor0 = Math.min(...ys);
     const hp = V.filter(p => p.z > zmax - zlen * 0.24 && p.y > floor0 + Hh * 0.45), hb = L(rig.head), head = hp.length > 20 ? hp.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(hp.length) : hb;      /* the head found from the model's shape (some rigs put the "head" bone low) */
     if (hb.y > head.y) head.copy(hb);
-    const nax = head.clone().sub(chest).normalize(), neck = [0.15, 0.22, 0.3, 0.38, 0.46, 0.54].map(t => ring(head.clone().lerp(chest, t), nax, band, Hh * 0.22)).filter(Boolean).reduce((m, x) => !m || x.r < m.r ? x : m, null) || { c: head.clone().lerp(chest, 0.35), r: Hh * 0.08 };      /* the narrowest place between the head and the chest */
+    const nax = head.clone().sub(chest).normalize(), neck = [0.15, 0.22, 0.3, 0.38, 0.46, 0.54].map(t => { const at = head.clone().lerp(chest, t), r = ring(at, nax, band, Hh * 0.22); return r && rig.fit && rig.fit.neck && r.c.distanceTo(at) > Hh * 0.07 ? null : r; }).filter(Boolean).reduce((m, x) => !m || x.r < m.r ? x : m, null) || { c: head.clone().lerp(chest, 0.35), r: Hh * 0.08 };      /* the narrowest place between the head and the chest */
     if (rig.biped && rig.neck[0]) { const nb = L(rig.neck[0]), nr = ring(nb, new THREE.Vector3(0, 1, 0), band, Hh * 0.45); if (nr) { neck.c = nr.c; neck.r = nr.r * 0.86; } }      /* a two-legged pet (a penguin has no real neck): the collar goes at the neck bone, around the body there */
     neck.r = Math.max(neck.r * 1.08, Hh * 0.085);      /* never thinner than a sensible neck, so outfits stay visible on slim pets */ 
     let hr = (ring(head.clone().add(nax.clone().multiplyScalar(Hh * 0.08)), nax, band, Hh * 0.3) || { r: neck.r * 1.3 }).r; if (rig.biped) hr = Math.max(hr, Hh * 0.19); if (rig.swim) hr = Math.max(hr, Hh * 0.3);      /* a bird's round head is wider than the slice through its crest */
@@ -333,7 +333,7 @@
       g.position.set(body.c.x, body.c.y - body.r * 0.4, (chest.z + hipZ) / 2 - Hh * 0.04); add('raincoat', g, rig.chest || rig.top);
       const c2 = collar(0xffd02e, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
     /* ───── 4.256 more dress-up: hats sit on top of the head, glasses in front of the eyes, more neck and body pieces ───── */
-    const hat = (id, build) => { const g = new THREE.Group(); build(g); g.position.copy(top).add(new THREE.Vector3(0, -hr * (rig.biped ? 0.3 : 0.08), 0)); g.rotation.x = -0.15; add(id, g); };
+    const FX = rig.fit || {}, hat = (id, build) => { const g = new THREE.Group(); build(g); if (FX.hatK) g.scale.setScalar(FX.hatK); g.position.copy(top).add(new THREE.Vector3(0, -hr * (rig.biped ? 0.3 : 0.08) + hr * (FX.hatUp || 0), 0)); g.rotation.x = -0.15; add(id, g); };
     const cone = (r, h, c, seg) => new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 24), omat(c));
     const disc = (r, h, c) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 28), omat(c));
     const dome = (r, c, o) => new THREE.Mesh(new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), omat(c, o));
@@ -353,8 +353,8 @@
       const pom = ball(R * 0.2, 0xff9ecb); pom.position.y = R * 1.45; g.add(pom); const fr = new THREE.Mesh(new THREE.TorusGeometry(R * 0.55, R * 0.1, 8, 24), omat(0xff9ecb)); fr.rotation.x = Math.PI / 2; g.add(fr); });
     hat('bee_antennae', g => { [-1, 1].forEach(sx => { const st = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.035, R * 0.035, R * 0.9, 8), omat(0x1d1d24)); st.position.set(sx * R * 0.35, R * 0.4, 0); st.rotation.z = -sx * 0.35; g.add(st); const b = ball(R * 0.14, 0xffd02e); b.position.set(sx * R * 0.52, R * 0.85, 0); g.add(b); }); });
     /* glasses: in front of the eyes, found from the front of the head a little above its middle */
-    const nose = V.filter(p => Math.abs(p.x - cx) < hr * 0.3 && Math.abs(p.y - head.y) < hr * 1.2).reduce((m, p) => p.z > m.z ? p : m, head.clone()), eyeY = nose.y + (top.y - nose.y) * (rig.biped ? 0.28 : rig.swim ? 0.42 : 0.38),      /* eyes: a little over a third of the way from the nose tip to the top of the head */ facePts = V.filter(p => Math.abs(p.x - cx) < hr * 0.45 && Math.abs(p.y - eyeY) < hr * 0.12 && p.z > head.z - hr * 0.2), eyeZ = facePts.length ? facePts.map(p => p.z).sort((a, b) => a - b)[Math.floor(facePts.length * 0.7)] : head.z + hr * 0.6;
-    const glasses = (id, lens, frameC, shape) => { const g = new THREE.Group(), w = hr * 0.52, r = hr * 0.23;
+    const nose = V.filter(p => Math.abs(p.x - cx) < hr * 0.3 && Math.abs(p.y - head.y) < hr * 1.2).reduce((m, p) => p.z > m.z ? p : m, head.clone()), eyeY = nose.y + (top.y - nose.y) * (rig.biped ? 0.28 : rig.swim ? 0.42 : 0.38),      /* eyes: a little over a third of the way from the nose tip to the top of the head */ facePts = V.filter(p => Math.abs(p.x - cx) < hr * 0.45 && Math.abs(p.y - eyeY) < hr * 0.12 && p.z > head.z - hr * 0.2), eyeZ = facePts.length ? facePts.map(p => p.z).sort((a, b) => a - b)[Math.floor(facePts.length * (FX.eyeFront ? 0.97 : 0.7))] : head.z + hr * 0.6;
+    const glasses = (id, lens, frameC, shape) => { const g = new THREE.Group(), w = hr * 0.52 * (FX.eyeK || 1), r = hr * 0.23 * (FX.eyeK || 1);
       [-1, 1].forEach(sx => { let L; if (shape) { L = new THREE.Mesh(new THREE.ShapeGeometry(shape(r)), omat(lens, { side: THREE.DoubleSide, roughness: 0.25 })); } else { L = new THREE.Mesh(new THREE.CircleGeometry(r, 24), omat(lens, { side: THREE.DoubleSide, roughness: 0.2, metalness: 0.2 })); const f = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.13, 8, 24), omat(frameC)); f.position.x = sx * w; g.add(f); } L.position.x = sx * w; g.add(L); });
       const br = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.08, r * 0.08, w * 0.9, 6), omat(frameC)); br.rotation.z = Math.PI / 2; g.add(br);
       g.position.set(cx, eyeY, eyeZ + hr * 0.06); add(id, g); };
@@ -510,7 +510,7 @@
   const RPm = Object.assign({}, RIGPOSE.stand);
   function poseRig(dt, doing, walking, X) {      /* X: a buddy (4.274) with its own rig, pose, clock and stage; without it, the main pet */
     const g = X || G; if (g.rig.biped) return poseBiped(dt, doing, walking, X);
-    const RP = X ? X.RP : RPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, want = RIGPOSE[doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing] || RIGPOSE.stand, k = Math.min(1, dt * 4);
+    const RP = X ? X.RP : RPm, STAGE = X ? X.stage : STAGEm(), rig = g.rig, t = X ? X.t : S.t, pn = doing === 'wave' ? 'sit' : doing === 'play' ? 'bow' : doing, want = (g.posefix && g.posefix[pn]) || RIGPOSE[pn] || RIGPOSE.stand, k = Math.min(1, dt * 4);
     for (const key in RP) RP[key] += (want[key] - RP[key]) * k;
     const clip = walking && g.acts.walk && !OWNWALK;      // Tripo's walk moves the body and legs; we only add life on top
     const hop = g.gaitType === 'hop', gal = !X && S.mount === 'ride'; g.gait = (g.gait || 0) + dt * (walking ? (hop ? 7 : 9.5) * (gal ? 1.45 : 1) : 0);      /* 4.275 riding: a quicker gallop */ const ph = g.gait, wk = (g.wk = (g.wk || 0) + ((walking ? 1 : 0) - (g.wk || 0)) * Math.min(1, dt * 6));      // eases in and out of the walk
@@ -541,6 +541,7 @@
       const bob = Math.sin(ph * 2) * 0.05 * wk;
       rig.neck.forEach((b, i) => bendBone(rig, b, (RP.nP + chew + bob) / rig.neck.length * (i ? 1 : 0.6) - (i ? 0 : breathe), (RP.nY + look) / rig.neck.length, 0));
       bendBone(rig, rig.head, RP.hP + chew, look * 0.5, tilt);
+      if (g.settle && !hop && wk < 0.05) settleRig(g);      /* long-legged pets (SETTLE): bring the body down until the lowest paw is back on the floor */
     }
     /* always: the tail wags, the ears twitch and flop */
     const wag = doing === 'sleep' ? 0 : doing === 'happy' || doing === 'play' || doing === 'carry' ? 20 : walking ? 12 : 7, amp = doing === 'sleep' ? 0 : 0.45;
@@ -552,6 +553,15 @@
       rig.neck.forEach(b => bendBone(rig, b, Math.sin(t * 9.5 * 2) * 0.04, 0, 0, b.quaternion.clone()));
       if (rig.chest) bendBone(rig, rig.chest, 0, Math.sin(t * 9.5) * 0.05, 0, rig.chest.quaternion.clone());
     }
+  }
+  /* 2026-11-01 Joey's new model has long legs: when he sits, begs or sleeps, his folded back legs lifted his paws (and him) off the floor.
+     After the pose is bent, measure how far the lowest paw is above where it rests standing, and move the whole body down (or up) by that much. */
+  const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+  function settleRig(g) {
+    const rig = g.rig, r = rig.rest.get(rig.top); g.root.updateMatrixWorld(true); _m.copy(g.root.matrixWorld).invert();
+    let d = Infinity; Object.values(rig.legs).forEach(c => { const paw = c[c.length - 1]; d = Math.min(d, _v.setFromMatrixPosition(paw.matrixWorld).applyMatrix4(_m).y - rig.P.get(paw).y); });
+    if (!(Math.abs(d) > 0.002)) return;
+    rig.top.position.add(new THREE.Vector3(0, -d, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(r.pwm.clone().invert())));
   }
   /* ───── growing up (2026-11-01): one model, seven stages. Smaller, with a bigger head and shorter legs while young (bones scaled),
      bouncier steps; a soft glow under a Young Adult and a glow with sparkles under an Adult, so classmates can see how far a pet has been raised. ───── */
@@ -735,8 +745,8 @@
     const holder = new THREE.Group(); holder.add(root); scene.add(holder);
     const head = new THREE.Object3D(); head.position.set(0, size.y * 0.9, 0); root.add(head);      /* where its hearts float from */
     const rig = swim ? null : rigOf(root);
-    Object.assign(c, { root, holder, head, mixer, acts, rig, swim: swim && !rig, base: root.position.clone(), gaitType: GAIT[c.who] || 'trot', gait: 0, wk: 0 });
-    if (rig) fitOutfits(root, rig, c);
+    Object.assign(c, { root, holder, head, mixer, acts, rig, swim: swim && !rig, base: root.position.clone(), gaitType: GAIT[c.who] || 'trot', settle: !!SETTLE[c.who], posefix: POSEFIX[c.who], gait: 0, wk: 0 });
+    if (rig) { rig.fit = FITFIX[c.who] || null; fitOutfits(root, rig, c); }
     if (c.swim) { c.swimH = size.y * k; c.U = { t: { value: 0 }, amp: { value: 0.035 }, flip: { value: 0.25 }, spd: { value: 4 } }; swimShader(root, c.U); fitOutfits(root, swimRig(root), c);
       c.pool = makePool(); c.poolPos = new THREE.Vector3(); poolSpot(c.poolPos); c.pool.position.copy(c.poolPos); }
     else if (!rig && acts.idle) acts.idle.play();
@@ -912,6 +922,12 @@
   /* a model listed here loads by itself for that pet (once Colleen's GLB files exist) */
   /* how each kind travels: 'trot' (dogs, cats, horses) or 'hop' (bunnies; later frogs) */
   const GAIT = { bunny: 'hop', frog: 'hop' };
+  const SETTLE = { joey: true, jaq: true };      /* 2026-11-01 pets whose sit/beg/sleep would float: settleRig keeps their paws on the floor */
+  /* 2026-11-01 outfit fitting for pets whose shape fools the general rules. Joey (long snout, head bone at the top of the skull, wide-set eyes, tall ears):
+     neck: skip a "neck" slice whose middle is off the head-to-chest line (a slice through his muzzle looked narrowest, so collars sat on his nose);
+     eyes: glasses go on the front of the face at eye height (eyeZ), bigger (eyeK); hats: bigger (hatK) and raised (hatUp, in head sizes) so they show between the ears */
+  const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 } };
+  const POSEFIX = { joey: { sit: { pitch: -0.6, drop: 0, roll: 0, fU: 0.55, fL: 0, hU: -1.4, hK: 0.9, hH: -0.45, nP: 0.05, nY: 0, hP: 0.3, tY: 0, tP: 0.6 } } };      /* 2026-11-01 per-pet changes to RIGPOSE (Joey's long legs need a lower, more upright sit) */
   const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; getBuf(who).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
