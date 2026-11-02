@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.284';
+var VERSION = '4.286';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1579,7 +1579,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['logos', 'wall', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['logos', 'wall', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1611,6 +1611,8 @@ function api_bootstrap(auth) {
   out.pool = poolState_(st, o.Class);
   out.gifts = newGifts_(id.key);
   if (o.Bests && o.Bests.inbox && o.Bests.inbox.length) out.gifts = out.gifts.concat(lock_(function () { var o2 = readStu_(sh, row), box = takeInbox_(o2); if (box.length) writeStu_(sh, o2); return box; }));     // points the teacher awarded since the last visit
+  out.pawGift = todayPaw_(st, id.key);      /* 4.286 the Today card */
+  if (!out.teacher) seenMark_(id.key);
   CacheService.getScriptCache().put('at:' + id.key, String(Date.now()), 21600);
   return wire_(out);
 }
@@ -1755,6 +1757,7 @@ function api_submitRound(auth, r) {
         if (a[1]) { weight += S.repeat[Math.min(p[5], S.repeat.length - 1)]; p[5] += 1; }
         if (game !== 'memory') {                     // Memory tests where the tiles are, not whether you know the sign
           var was = p[0];
+          hardStep_(p, !!a[1], tn);                  // 4.286 the hardest-signs list: a miss adds, a right answer takes away
           if (a[1]) { p[1] += 1; p[7] = Math.min(EVIDENCE.mastered, p[7] + (a[2] === 'h' ? EVIDENCE.half : a[2] === 't' ? EVIDENCE.typed : EVIDENCE.pick)); if (a[3] >= 0 && a[3] < (versions[a[0]] || 0)) p[12] = num_(p[12]) | Math.pow(2, a[3]); holdBack(p, a[0], was); }
           else {                                     // a miss: Mastered falls to Familiar; anything else loses one step but never below Learning
             p[2] += 1;
@@ -1869,6 +1872,95 @@ function api_submitRound(auth, r) {
   }, 60000);      // a whole class may finish at once: wait up to a minute for a turn (3.68)
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only: never lose the round over it */ } }
   return out;
+}
+
+/* ───────── 4.286 HARDEST SIGNS (Colleen: "every game feeds one per-student missed-signs list; Daily Review and Today serve them first").
+   Kept in each sign's Progress entry, so every activity that saves right/wrong per sign (api_submitRound) feeds it with no new tab:
+   p[14] = how hard the sign is for this student right now (a miss adds HARD.miss, a right answer takes away HARD.right, 0 to HARD.max),
+   p[15] = the day of the last miss. It also fades by itself: 1 point for every HARD.fadeDays days since the last miss.
+   Entries saved before 4.286 have no p[14]: a sign missed before and not mastered starts at min(HARD.seed, misses). ───────── */
+var HARD = { miss: 2, right: 1, max: 8, seed: 3, fadeDays: 14, list: 5 };
+function hardOf_(p) { if (!(p instanceof Array)) return 0; if (p.length > 14 && typeof p[14] === 'number') return p[14]; return num_(p[2]) > 0 && num_(p[0]) < MASTERED_BOX ? Math.min(HARD.seed, num_(p[2])) : 0; }
+function hardStep_(p, ok, tn) { var h = hardOf_(p), last = num_(p[15]) || num_(p[3]); while (p.length < 16) p.push(0); if (!(p[13] instanceof Array)) p[13] = 0;
+  if (ok) p[14] = Math.max(0, h - HARD.right); else { p[14] = Math.min(HARD.max, h + HARD.miss); p[15] = tn; } if (ok && !p[15]) p[15] = last; }
+/** How hard a sign is today (after the fade). */
+function hardNow_(p, tn) { var h = hardOf_(p); if (!h) return 0; var last = num_(p[15]) || num_(p[3]); return Math.max(0, h - Math.floor(Math.max(0, tn - last) / HARD.fadeDays)); }
+/** The ids of a student's hardest signs: hardest first, then the most recent miss. ok(id) can leave signs out (no GIF, another course). */
+function hardList_(data, tn, n, ok) {
+  return Object.keys(data || {}).map(function (id) { var p = data[id]; return [id, hardNow_(p, tn), num_(p && p[15])]; })
+    .filter(function (x) { return x[1] > 0 && (!ok || ok(x[0])); }).sort(function (a, b) { return b[1] - a[1] || b[2] - a[2] || (a[0] < b[0] ? -1 : 1); }).slice(0, n || HARD.list).map(function (x) { return x[0]; });
+}
+
+/* ───────── 4.286 SKILL ROUNDS (Colleen: "every game pays into Tokens, Treats and the Gift Calendar"): games whose answers are not vocab
+   signs (logos, letters, seating puzzles, locks) send how many answers and how many were right. Small, checked and capped:
+   SKILL.perRight Tokens a right answer, at most SKILL.roundMax right answers paid a round and SKILL.dayCap Tokens a day from all of them
+   (o.Bests.sk = [day, Tokens paid]); time counted like any round (no faster than one answer a second); Pawtopia Treats (pawSkill_) and the
+   Gift Calendar only for a round of SKILL.giftMin answers or more. No XP (XP is for signs). One Activity Log row a round. ───────── */
+var SKILL = { perRight: 1, roundMax: 15, dayCap: 40, giftMin: 5,
+  kinds: { logos: ['logos', 'Name That Logo'], toast: ['toast', 'Neon Flying Toasters: letters'], party: ['party', 'Dinner Party'], manners: ['manners', 'Mind Your Manners'],
+    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'] } };
+function api_skillRound(auth, r) {
+  var st = static_(), id = who_(auth), S = st.settings; if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  r = r || {}; var kind = str_(r.kind), K = SKILL.kinds[kind]; if (!K) throw new Error('Unknown activity.');
+  if (!feat_(st, K[0])) throw new Error('Your teacher has turned off this activity.');
+  var cache = CacheService.getScriptCache(), now = Date.now(), lastAt = Number(cache.get('at:' + id.key)) || 0, elapsed = lastAt ? (now - lastAt) / 1000 : 1200;
+  var secs = Math.max(0, Math.min(num_(r.seconds), elapsed + 5, 3600)), n = Math.max(0, Math.min(Math.floor(num_(r.n)), Math.floor(secs) + 2, 300)), right = Math.max(0, Math.min(Math.floor(num_(r.right)), n));
+  var rid = str_(r.rid).replace(/[^\w-]/g, '').slice(0, 40), doneKey = rid ? 'skr:' + id.key + ':' + rid : '', logRow = null;
+  var out = lock_(function () {
+    var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
+    var o = readStu_(sh, row);
+    if (doneKey) { var saved = parse_(cache.get(doneKey), null); if (saved) return { me: publicMe_(o, st), res: saved, again: true }; }
+    var today = dayStr_(); rollDay_(o, today, weekKey_(dayNum_(today)));
+    o.Bests = o.Bests || {}; var sk = o.Bests.sk instanceof Array && o.Bests.sk[0] === today ? o.Bests.sk : [today, 0];
+    var want = Math.min(right, SKILL.roundMax) * SKILL.perRight, tokens = Math.max(0, Math.min(want, SKILL.dayCap - num_(sk[1])));
+    sk[1] = num_(sk[1]) + tokens; o.Bests.sk = sk; o.Tokens += tokens;
+    o.Minutes = Math.round((o.Minutes + secs / 60) * 10) / 10; o['Week minutes'] = Math.round((o['Week minutes'] + secs / 60) * 10) / 10;
+    var res = { kind: kind, n: n, right: right, tokens: tokens, capped: tokens < want, left: Math.max(0, SKILL.dayCap - sk[1]), gift: n >= SKILL.giftMin };
+    try { if (typeof pawSkill_ === 'function' && feat_(st, 'pawtopia') && n) res.paw = pawSkill_(id.key, n, right); } catch (e) {}
+    if (n || secs >= 20) logRow = [new Date(), id.key, o.Name, o.Class, o.Level, K[0], K[1], n, right, Math.round(secs), 0];
+    writeStu_(sh, o); cacheDrop_('boards'); cache.put('at:' + id.key, String(now), 21600);
+    if (doneKey) try { cache.put(doneKey, JSON.stringify(res), 21600); } catch (e) {}
+    return { me: publicMe_(o, st), res: res };
+  }, 60000);
+  if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) {} }
+  return out;
+}
+
+/* ───────── 4.286 TODAY card and last seen. seen:<email> (Document property) = the last day the student opened the app, written at most once a
+   day (the cache remembers it), so the teacher's Quick view can say who has not logged in. ───────── */
+function seenMark_(key) { try { var c = CacheService.getScriptCache(), d = dayStr_(); if (c.get('seen:' + key) === d) return; PropertiesService.getDocumentProperties().setProperty('seen:' + key, d); c.put('seen:' + key, d, 21600); } catch (e) {} }
+function seenAll_() { var out = {}; try { var P = PropertiesService.getDocumentProperties().getProperties(); Object.keys(P).forEach(function (k) { if (k.indexOf('seen:') === 0) out[k.slice(5)] = P[k]; }); } catch (e) {} return out; }
+/** What the Today card needs from the server: the Pawtopia gift (null when Pawtopia is off or never opened). */
+function todayPaw_(st, key) { if (!feat_(st, 'pawtopia') || typeof pawGiftView_ !== 'function') return null; try { var g = pawRead_(key).g; if (!g || !g.started) return { started: false }; var v = pawGiftView_(g); return { started: true, ready: v.ready, opened: v.opened, min: v.min }; } catch (e) { return null; } }
+
+/* ───────── 4.286 TEACHER QUICK VIEW (Colleen: "one screen per class period: who practiced this week, the class's hardest signs, who
+   hasn't logged in"). First name + last initial only. Week = Monday to today. Nothing here goes to any AI service. ───────── */
+var QUICK = { away: 7, signs: 8 };
+function api_quickView(auth, cls) {
+  requireTeacher_();
+  var st = static_(), classes = st.classes.map(function (c) { return c.name; }), tch = teacherEmails_() || {};
+  cls = str_(cls); if (classes.indexOf(cls) < 0) cls = classes[0] || '';
+  var today = dayStr_(), tn = dayNum_(today), wk = weekKey_(tn), mon = Number(wk.slice(1)), seen = seenAll_();
+  var sh = stuSheet_(), H = stuHead_(sh), stu = {};
+  rows_(sh, 2, H.n).forEach(function (v, i) { var o = stuObj_(H, v, i + 2), e = str_(o.Email).toLowerCase(); if (e && o.Name && o.Class === cls && !tch[e]) stu[e] = { o: o, r: 0, s: 0, q: 0, c: 0, last: '' }; });
+  rows_(ss_().getSheetByName(TABS.log), 2, LOG_HEAD.length).forEach(function (x) {
+    var e = str_(x[1]).toLowerCase(), s = stu[e]; if (!s) return; var d = cellDay_(x[0]); if (!d) return;
+    if (d > s.last) s.last = d;
+    if (dayNum_(d) >= mon && dayNum_(d) <= tn) { s.r++; s.s += num_(x[9]); s.q += num_(x[7]); s.c += num_(x[8]); }
+  });
+  var signs = {}, cards = {}; st.cards.forEach(function (c) { cards[c[0]] = c; });
+  rows_(progSheet_(), 2, 2 + PROGRESS_CHUNKS).forEach(function (v) {
+    var e = str_(v[0]).toLowerCase(); if (!stu[e]) return; var data = joinChunks_(v);
+    Object.keys(data).forEach(function (id) { var p = data[id]; if (!cards[id] || !(p instanceof Array) || num_(p[15]) < mon) return; var h = hardNow_(p, tn); if (!h) return;
+      var x = signs[id] || (signs[id] = { id: id, h: 0, who: 0 }); x.h += h; x.who++; });
+  });
+  var rows = Object.keys(stu).map(function (e) { var s = stu[e], o = s.o, last = [s.last, seen[e] || '', cellDay_(o['Last practice']) || ''].sort().pop();
+    return { name: liveShort_(o.Name), rounds: s.r, mins: Math.round(s.s / 60), q: s.q, pct: s.q ? Math.round(100 * s.c / s.q) : null, last: last, away: last ? tn - dayNum_(last) : null }; })
+    .sort(function (a, b) { return b.mins - a.mins || b.rounds - a.rounds || (a.name < b.name ? -1 : 1); });
+  var hard = Object.keys(signs).map(function (k) { return signs[k]; }).sort(function (a, b) { return b.who - a.who || b.h - a.h; }).slice(0, QUICK.signs)
+    .map(function (x) { var c = cards[x.id]; return { id: x.id, en: str_(c[3]), unit: str_(c[1]), who: x.who, g: str_(c[5]) }; });
+  return { classes: classes, cls: cls, week: mon, today: today, n: rows.length, practiced: rows.filter(function (r) { return r.rounds > 0; }), none: rows.filter(function (r) { return !r.rounds; }),
+    away: rows.filter(function (r) { return r.away === null || r.away >= QUICK.away; }).sort(function (a, b) { return (b.away === null ? 1e9 : b.away) - (a.away === null ? 1e9 : a.away); }), hard: hard, days: QUICK.away };
 }
 
 /* ───────── 4.86 Daily report (Colleen: "a teacher report for the day: who did what, who didn't, accomplishments, new things tried",
@@ -8820,7 +8912,7 @@ var WALL = { openDef: 20, openMin: 5, openMax: 120, size: 20, full: 0.85, goldMs
 /** How many color teams: 3 to 6, about 5 students each (fewer than 3 players: 2 teams). */
 function wallTeams_(n) { n = Math.max(0, Math.floor(num_(n))); return n < 3 ? 2 : Math.max(3, Math.min(6, Math.round(n / 5))); }
 function wallNew_(opt) { var grp = WALL.groups.indexOf(str_(opt && opt.wallGroup)) >= 0 ? str_(opt.wallGroup) : 'mix', deck = [];
-  WALL_LOGOS.forEach(function (r, i) { if (grp === 'mix' || r[1] === grp) deck.push([i, r[0]]); });
+  WALL_LOGOS.forEach(function (r, i) { if ((grp === 'mix' || r[1] === grp) && WALL_HIDE.indexOf(r[2]) < 0) deck.push([i, r[0]]); });
   deck = shuffle_(deck); var size = Math.min(WALL.size, deck.length), tiles = deck.splice(0, size).map(function (x) { return wallTile_(x); });
   return { grp: grp, size: size, deck: deck, tiles: tiles, old: [], n: 1, by: {}, ev: [], tap: {}, gold: 0, nextGold: 0, started: 0, evN: 0, open: wallOpenSecs_(opt && opt.wallOpen), deal: 0 }; }
 function wallTile_(x) { return { i: x[0], s: x[1], t: -1, c: 0, lock: 0, pts: 1, gold: 0, a: -1, at: 0 }; }      // c: how many times it was claimed (2 = stolen once, locked); a: the team it is assigned to; at: when it appeared
@@ -13943,4 +14035,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
