@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.281';
+var VERSION = '4.282';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2974,10 +2974,10 @@ function liveSweep_() {
   Object.keys(all).forEach(function (k) {
     var wk = /^ws[cp]:.*:w(\d+)$/.exec(k); if (wk) { if (tn - Number(wk[1]) > 35) props.deleteProperty(k); return; }      // Sign of the Day class counts, kept five weeks
     if (/^clw[e]?:/.test(k)) { if (k.indexOf(k.slice(0, k.indexOf(':') + 1) + dayStr_() + ':') !== 0) props.deleteProperty(k); return; }      // Lucky Claw play counts: only today's matter
-    var m = /^(live|mob|lj|mobpaid):(\d+)/.exec(k); if (!m) return;
+    var m = /^(live|mob|lj|mobpaid|lbonus|lbonuspaid):(\d+)/.exec(k); if (!m) return;      // 4.282 the winner bonus copy and its "paid" mark
     var code = m[2], g = parse_(all['live:' + code], null) || parse_(cache.get('live:' + code), null);
     var old = !g || (g.ends && now - g.ends > 6 * 3600000) || (!g.ends && g.made && now - g.made > 12 * 3600000);
-    if (m[1] === 'mobpaid') old = now - num_(all[k]) > 7 * 86400000;      // the "already paid" mark is kept for a week
+    if (m[1] === 'mobpaid' || m[1] === 'lbonuspaid') old = now - num_(all[k]) > 7 * 86400000;      // the "already paid" mark is kept for a week
     if (old) props.deleteProperty(k);
   });
 }
@@ -3022,7 +3022,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
   g.vocab = opt && opt.vocab === 'set' ? 'set' : 'mine';      /* 4.170 (Colleen: "each of these games play with the student's selected vocab by default and allow the teacher to override"): 'mine' = each student's own signs; 'set' = everyone the host's */
-  if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; }
+  if (keep) { if (keep.mode !== g.mode) throw new Error('To play a different game, cancel this lobby and open a new one.'); g.rand = !!keep.rand; g.made = keep.made || g.made; g.bonus = keep.bonus || null; }      // 4.282 the winner bonus stays
   if (g.mode === 'escape') g.escr = escrNew_(teams, opt, ids, minutes);
   if (g.mode === 'vault') { if (teacher && opt) opt.vPrac = opt.vPrac !== false;      /* 4.171 a class Vault starts with a practice lock unless the teacher turns it off */ g.vault = vaultNew_(opt); if (!teacher) g.vault.duo = true; if (!teacher && opt && opt.vVersus) g.vault.versus = true;      /* 4.151 Vault duo versus */ g.vOpt = { cls: str_(opt && opt.vCls) }; g.late = false; }      // 4.106 opt.vLen short/full, opt.vCam      // 4.105 The Vault: partners are made at Start, so nobody joins after
   if (g.mode === 'breach' && !teacher && opt && opt.brDuo) { g.brDuo = true; g.teams = teams = 2; opt.brAuto = 0; g.late = false; }      /* 4.149 (Colleen: "breach and vault to have duo host modes too where each person plays for themselves against the other"): two crews of one */
@@ -3075,7 +3075,7 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu, bonus: liveBonusView_(g, static_()) },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3096,7 +3096,7 @@ function api_liveControl(auth, code, action) {
   if (g.mode === 'mob' && action !== 'clear') { var mo = mobControl_(auth, g, action); if (action === 'start') { var g3 = liveGet_(g.id); if (g3 && !g3.rte && !g3.rteTried) { engineSetup_(g3); livePut_(g3); mo = api_liveBoard(auth, g3.id); } } return mo; }      // 4.145 1 vs. The Mob goes to its engine room at Start
   if (action === 'start' && !g.ends) { var dupStart = lock_(function () { var k0 = 'lstart:' + g.id; if (cache.get(k0)) return true; cache.put(k0, '1', 21600); return false; }); if (dupStart) return api_liveBoard(auth, g.id); }      /* 4.142 a second press of Start (the screen was slow) must never deal the teams again: students "bounced all around to different teams" */
   if (action === 'clear') { mobForget_(g.id); var won = []; var practiceOnly = !!(g.breach && g.breach.practice);      /* 4.93 a Breach practice round counts toward nothing */
-    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus }; }
+    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, bonus: bonus }; }
   if (action === 'start' && !g.ends && g.teams && !g.tmap) { lock_(function () {      /* 4.103 teams are made only now, with everyone who joined: even by strength (4.102). 4.98: Breach's automatic crews also pick how many */
       var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
       var none = who.filter(function (e) { return !(joined[e][2] >= 0 && joined[e][2] < n); });      /* only players without a team (in class: everyone) */
@@ -3110,6 +3110,7 @@ function api_liveControl(auth, code, action) {
       if (g.wall) g.teams = n; }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
+  if (action === 'start' && !g.ends) liveBonusLock_(g);      // 4.282 the winner bonus is locked from now on
   if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.wall) wallStart_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
@@ -3161,7 +3162,7 @@ function api_liveJoin(auth, code) {
   var joined = liveJoinedSure_(g.id), mine = joined[id.key];
   if (phase === 'on' && g.late === false && !mine) throw new Error('This game has already started, and your teacher closed it to new players. You can join the next one!');
   var sh = stuSheet_(), row = findRow_(sh, id.key), kept = keptChars_(row ? readStu_(sh, row) : null);
-  return { game: { id: g.id, vocab: g.vocab || 'set', brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key),
+  return { game: { id: g.id, vocab: g.vocab || 'set', brPat: g.breach ? brPat_(g.breach.pat) : '', brColors: g.breach && !g.brAuto ? g.breach.colors || null : null, brAuto: g.brAuto || 0, phase: phase, left: phase === 'on' ? g.ends - Date.now() : g.minutes * 60000, ids: g.ids, chars: liveChars_(g, joined), bank: g.chars.length, own: Object.keys(kept).map(function (n) { return [n, kept[n]]; }), dist: g.dist || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, seaWays: g.seaWays || null, seaAim: g.sea ? g.sea.aim : '', teams: g.teams || 0, pvp: g.pvp !== false, rand: !!g.rand, late: g.late !== false, byStu: !!g.byStu, hostName: g.hostName || '', host: !!(g.byStu && g.host === id.key), bonus: (function (v) { return v ? { txt: v.txt, auto: v.auto, autoS: v.autoS } : null; })(liveBonusView_(g, static_())),
     taken: Object.keys(joined).filter(function (e) { return e !== id.key; }).map(function (e) { return joined[e][1]; }), mine: mine ? mine[1] : '' } };
 }
 /** Student: join with a character. Nobody else can have the same one while any are still free. */
@@ -3195,7 +3196,8 @@ function api_liveClaim(auth, code, name) {
       if (team < 0 && g.tmap && typeof g.tmap[id.key] === 'number') team = g.tmap[id.key];      // the seating chart decides (students without a seat join the smallest team)
       if (team < 0) { var size = [], pow = [], stg = {}; try { stg = strengthMap_(); } catch (sx) {} for (var ti = 0; ti < g.teams; ti++) { size.push(0); pow.push(0); } Object.keys(joined).forEach(function (e) { var x = joined[e][2]; if (e !== id.key && size[x] !== undefined) { size[x]++; pow[x] += stg[e] == null ? 0.5 : stg[e]; } });
         var bad = function (t2) { return seatApartHit_(g.apart, id.key, Object.keys(joined).filter(function (e) { return e !== id.key && joined[e][2] === t2; })) ? 1 : 0; }, best = -1;
-        size.forEach(function (n2, t2) { if (best < 0 || bad(t2) < bad(best) || (bad(t2) === bad(best) && (n2 < size[best] || (n2 === size[best] && pow[t2] < pow[best])))) best = t2; }); team = best; }      // 4.102: one of the smallest teams, the weakest so far (even teams); 4.129 never with someone to keep away from
+        size.forEach(function (n2, t2) { if (best < 0 || bad(t2) < bad(best) || (bad(t2) === bad(best) && (n2 < size[best] || (n2 === size[best] && pow[t2] < pow[best])))) best = t2; }); team = best;      // 4.102: one of the smallest teams, the weakest so far (even teams); 4.129 never with someone to keep away from
+        if (g.ends && !g.byStu && livePhase_(g) === 'on') { var lc = liveLateClaim_(g, joined, id.key, who); if (lc.wait) return { ok: true, pending: true, wait: lc.wait, name: who, char: name, team: -1, phase: 'on' }; team = lc.team; } }      /* 4.282 late joiners: the fewest players at once; the teacher picks when every team is the same size */
     }
     joined[id.key] = names.indexOf(name) < 0 && kept[name] ? [who, name, team, kept[name]] : [who, name, team];
     liveJoinedSave_(g.id, joined);
@@ -3217,7 +3219,7 @@ function api_livePing(auth, code, p) {
   if (!g) return { gone: true };
   var phase = livePhase_(g);
   if (phase === 'lobby' && p && p.cam) CacheService.getScriptCache().put('lcam:' + g.id + ':' + id.key, '1', LIVE_TTL);      // 4.46: this student's camera is on
-  if (phase === 'lobby') return { phase: phase, left: g.minutes * 60000, n: Object.keys(liveJoined_(g.id)).length };
+  if (phase === 'lobby') return { phase: phase, left: g.minutes * 60000, n: Object.keys(liveJoined_(g.id)).length, bonus: (function (v) { return v ? { txt: v.txt, auto: v.auto, autoS: v.autoS } : null; })(liveBonusView_(g, static_())) };      // 4.282 the winner bonus, as it changes
   if (phase === 'on') CacheService.getScriptCache().put('ls:' + g.id + ':' + id.key, String(Date.now()), LIVE_TTL);      // 4.73: when this device last checked in (the projector's "reconnecting" line)
   if (g.rte && phase !== 'lobby' && g.rte.map[id.key]) return { phase: phase, left: 0, over: false, rank: 0, n: 0, teams: [], rte: enginePass_(g, g.rte.map[id.key]) };      // 4.145 the screen sends its calls to the engine room from now on
   if (g.mode === 'mob') return { phase: phase, left: 0, over: phase === 'over', mob: true };
@@ -3258,6 +3260,183 @@ function api_livePing(auth, code, p) {
       if (gu) { var r2 = seaRight_(g, [gu.email]); v.gun = { mine: gu.email === id.key, name: seaFirst_(j, gu.email), next: seaFirst_(j, gu.next), nextMine: gu.next === id.key, bal: seaBal_(sea, gu.email, r2[gu.email] || 0), left: gu.ends - (sea.paused || Date.now()) }; }
       return v; })() : undefined,
     board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
+}
+
+/* ───── 4.282 WINNER BONUS and LATE JOINERS (Colleen, 2026-11-01) ─────
+   WINNER BONUS: "allow teachers to set bonuses for the winners at the end of the game ... declared before the game starts". While the join code is up,
+   the teacher adds ONE extra prize for the winners (api_liveBonus): Tokens or Tickets, a Shop extra (a background, title or effect), a new game
+   character, a Pawtopia item (food, an accessory, a toy, or Treats), or something real the teacher types ("Homework pass"; only announced and listed).
+   It shows on the projector and on the students' waiting screens, and it locks at Start (g.bonusLock; a copy is kept in lbonus:<code>). At Save and
+   close the winners (the top team, ties too, or the top player) get it once (liveBonusPay_, guard lbonuspaid:<code>:<made>), on top of the game's
+   own reward (liveAutoPrize_). Never in a game a student hosts, never to a teacher. The room on asl.cool only ever sees the bonus's own words.
+   LATE JOINERS: a student who joins after Start with teams of DIFFERENT sizes goes to the team with the fewest players at once (ties: the weaker
+   team, as before) and the teacher's screen shows a small "Ava R. joined Blue". When EVERY team has the same number of players, the teacher's screen
+   asks (api_liveLate / api_liveLateSet): team buttons with the strength-balanced suggestion marked; after 15 seconds the suggestion is used. The
+   student waits on a "Your teacher is picking your team" screen meanwhile (api_liveClaim answers pending and the screen asks again). Queue: llq:<code>. */
+var LIVE_BONUS = { modes: ['tower', 'race', 'path', 'camrace', 'jar', 'sea', 'isle', 'case', 'escape', 'breach', 'train', 'wall'], maxAmt: 500, maxQty: 10, maxTreats: 500, charTok: 20, lateWait: 15000 };
+function liveBonusOk_(g) { return !!(g && !g.byStu && !g.brDuo && LIVE_BONUS.modes.indexOf(g.mode) >= 0); }
+function liveShort_(full) { var w = str_(full).split(/\s+/).filter(String); return w.length ? w[0] + (w.length > 1 ? ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.' : '') : 'A student'; }
+/** The Shop extras a teacher can give: backgrounds (with a picture), titles and effects (the same kind the Lucky Claw gives). */
+function liveBonusShop_(st) { return (st.shop || []).filter(function (i) { return !i.kind && ['theme', 'title', 'effect'].indexOf(i.type) >= 0 && (i.type !== 'theme' || i.bg) && !i.needs; }); }
+function liveBonusPaw_(id) { var m = /^(food|acc|toy):([a-z0-9_]+)$/.exec(str_(id)); if (!m || typeof PAW === 'undefined') return null;
+  var L = m[1] === 'food' ? PAW.food : m[1] === 'acc' ? PAW.acc : PAW.toys, it = (L || []).filter(function (x) { return x[0] === m[2]; })[0];
+  return it ? { kind: m[1], id: it[0], name: it[1], price: num_(it[2]), icon: m[1] === 'food' ? it[5] : m[1] === 'acc' ? it[5] : '🧸' } : null; }
+/** A bonus from the host screen, checked: { k, n, id, name, txt } or null (none). Throws a plain message when something is wrong. */
+function liveBonusClean_(b, st) {
+  b = b && typeof b === 'object' ? b : {}; var k = str_(b.k), n = Math.floor(num_(b.n));
+  if (!k || k === 'none') return null;
+  if (k === 'tok' || k === 'tix') { if (k === 'tix' && !feat_(st, 'tickets')) throw new Error('Tickets are turned off in App settings.'); if (!(n >= 1 && n <= LIVE_BONUS.maxAmt)) throw new Error('Type an amount from 1 to ' + LIVE_BONUS.maxAmt + '.'); return { k: k, n: n }; }
+  if (k === 'shop') { var it = liveBonusShop_(st).filter(function (i) { return i.id === str_(b.id); })[0]; if (!it) throw new Error('Pick a Shop prize.'); return { k: k, id: it.id, name: it.name, type: it.type }; }
+  if (k === 'char') return { k: k };
+  if (k === 'paw') { if (!feat_(st, 'pawtopia')) throw new Error('Pawtopia is turned off in App settings.');
+    if (str_(b.id) === 'treats') { if (!(n >= 1 && n <= LIVE_BONUS.maxTreats)) throw new Error('Type how many Treats, from 1 to ' + LIVE_BONUS.maxTreats + '.'); return { k: k, id: 'treats', n: n, name: 'Treats' }; }
+    var p = liveBonusPaw_(b.id); if (!p) throw new Error('Pick a Pawtopia item.');
+    return { k: k, id: p.kind + ':' + p.id, n: p.kind === 'food' ? Math.max(1, Math.min(LIVE_BONUS.maxQty, n || 1)) : 1, name: p.name }; }
+  if (k === 'custom') { var t = str_(b.txt).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60); if (!t) throw new Error('Type the prize, for example Homework pass.'); return { k: k, txt: t }; }
+  throw new Error('Pick a kind of prize.');
+}
+/** What the bonus says on the screens. */
+function liveBonusText_(b, st) {
+  if (!b || !b.k) return ''; var S = st.settings;
+  if (b.k === 'tok') return b.n + ' ' + S.tok;
+  if (b.k === 'tix') return b.n + ' ' + S.cur;
+  if (b.k === 'shop') return '🎁 ' + b.name + ' (' + ({ theme: 'background', title: 'title', effect: 'effect' }[b.type] || 'Shop prize') + ')';
+  if (b.k === 'char') return '🎭 A new game character';
+  if (b.k === 'paw') { var p = b.id === 'treats' ? null : liveBonusPaw_(b.id); return '🐾 ' + (b.id === 'treats' ? b.n + ' Pawtopia Treats' : (b.n > 1 ? b.n + ' ' : '') + (p ? p.name : b.name) + ' for Pawtopia'); }
+  if (b.k === 'custom') return '🎟️ ' + b.txt;
+  return '';
+}
+/** The prize the game already gives its winners (its own Settings rows): [the teacher's words, the projector's short words], '' when none. */
+function liveAutoPrize_(g, st) {
+  if (!g || g.byStu) return ['', '']; var S = st.settings, out = [], sh = [];
+  if (g.mode === 'train' && S.trainTok) { out.push('Winning wagon: ' + S.trainTok + ' ' + S.tok + ' each (Settings: Wagon Train winning team Tokens)'); sh.push(S.trainTok + ' ' + S.tok); }
+  if (g.mode === 'wall' && S.wallTok) { out.push('Winning team: ' + S.wallTok + ' ' + S.tok + ' each (Settings: Logo Wall winning team Tokens)'); sh.push(S.wallTok + ' ' + S.tok); }
+  if (g.mode !== 'mob' && S.winners && g.chars && g.chars.length) { out.push(g.teams ? 'Everyone on the winning team keeps their game character' : 'The top ' + S.winners + ' keep their game character'); sh.push(g.teams ? 'their game characters' : 'the top ' + S.winners + ' keep their character'); }
+  if (g.mode === 'sea' && S.seaCapBonus) { out.push('Winning captain: ' + S.seaCapBonus + ' ' + S.cur); sh.push('⚓ ' + S.seaCapBonus + ' ' + S.cur + ' for the captain'); }
+  return [out.join(' · '), sh.join(' + ')];
+}
+function liveBonusView_(g, st) { if (!liveBonusOk_(g)) return null; var a = liveAutoPrize_(g, st); return { txt: liveBonusText_(g.bonus, st), b: g.bonus || null, auto: a[0], autoS: a[1], locked: !!(g.ends || g.bonusLock) }; }
+/** Teacher: what the winner bonus can be (the Shop extras, the Pawtopia items). */
+function api_liveBonusOpts(auth) {
+  requireTeacher_(); var st = static_(), S = st.settings, paw = typeof PAW !== 'undefined' && feat_(st, 'pawtopia');
+  var nChars = 0; try { nChars = charFiles_().length; } catch (e) {}
+  return { tok: S.tok, cur: S.cur, tix: feat_(st, 'tickets'), chars: nChars, max: LIVE_BONUS.maxAmt, maxQty: LIVE_BONUS.maxQty,
+    shop: liveBonusShop_(st).map(function (i) { return [i.id, i.name, i.type]; }),
+    paw: paw ? { food: PAW.food.map(function (f) { return [f[0], f[1], f[5]]; }), acc: PAW.acc.map(function (a) { return [a[0], a[1], a[5]]; }), toy: (PAW.toys || []).map(function (t) { return [t[0], t[1]]; }) } : null };
+}
+/** Teacher: set (or clear, k 'none') the winner bonus while the join code is up. Locked once the game starts. */
+function api_liveBonus(auth, code, b) {
+  requireTeacher_(); var st = static_(), clean = liveBonusClean_(b, st);
+  lock_(function () {
+    var g = liveGet_(code); if (!g) throw new Error('That game is closed.');
+    if (!liveBonusOk_(g)) throw new Error('This game has no winner bonus.');
+    if (livePhase_(g) !== 'lobby' || g.bonusLock) throw new Error('The game has started, so the winner bonus is locked.');
+    g.bonus = clean; livePut_(g);
+  });
+  return api_liveBoard(auth, code);
+}
+/** At Start: the bonus can't change any more; a copy is kept in case the cache is cleared during the game. */
+function liveBonusLock_(g) { g.bonusLock = true; if (!g.bonus) return; try { PropertiesService.getDocumentProperties().setProperty('lbonus:' + g.id, JSON.stringify({ b: g.bonus, made: g.made })); } catch (e) {} }
+/** Who won, as emails: every team tied for the top (Sea Battle: the last fleet afloat), or the top player(s). */
+function liveBonusWinners_(g) {
+  var P = livePlayers_(g), j = liveJoinedSure_(g.id), emails = [], teams = [];
+  if (g.teams) { var tm = liveTeams_(g, P), lead = tm[0];
+    if (lead && lead[1] > 0) teams = g.sea && g.sea.winner >= 0 ? [g.sea.winner] : tm.filter(function (x) { return x[1] === lead[1]; }).map(function (x) { return x[3]; });
+    teams.forEach(function (t) { seaMates_(j, t).forEach(function (e) { emails.push(e); }); });
+  } else { var act = P.filter(function (p) { return p[4] > 0; }), far = liveByFloor_(g), best = act[0];
+    if (best && (far ? best[7] > 0 || best[2] > 0 : best[2] > 0)) act.forEach(function (p) { if (p[2] === best[2] && (!far || p[7] === best[7])) emails.push(p[5]); }); }
+  return { emails: emails, teams: teams };
+}
+/** Save and close: each winner gets the bonus once. Returns { txt, k, teams, names, notes, custom } for the teacher's screen, or null. */
+function liveBonusPay_(g) {
+  if (!g || !g.ends || !liveBonusOk_(g) || (g.breach && g.breach.practice)) return null;
+  var pp = PropertiesService.getDocumentProperties(), saved = parse_(pp.getProperty('lbonus:' + g.id), null);
+  var b = g.bonus || (saved && saved.made === g.made ? saved.b : null); if (!b || !b.k) return null;
+  var guard = 'lbonuspaid:' + g.id + ':' + g.made; if (pp.getProperty(guard)) return null;
+  pp.setProperty(guard, String(Date.now()));                          // set first: a retry can never pay twice
+  try { pp.deleteProperty('lbonus:' + g.id); } catch (e) {}
+  var st = static_(), S = st.settings, win = liveBonusWinners_(g), want = {}, teach = {}, out = { txt: liveBonusText_(b, st), k: b.k, teams: win.teams, names: [], notes: [], custom: b.k === 'custom' };
+  try { Object.keys(teacherEmails_() || {}).forEach(function (e) { teach[str_(e).toLowerCase()] = 1; }); } catch (e) {} teach[str_(g.host).toLowerCase()] = 1;
+  win.emails.forEach(function (e) { if (!teach[str_(e).toLowerCase()]) want[str_(e).toLowerCase()] = 1; });
+  if (!Object.keys(want).length) return out;
+  var chars = b.k === 'char' ? (function () { try { return charFiles_(); } catch (e) { return []; } })() : [];
+  return lock_(function () {
+    var sh = stuSheet_(), H = stuHead_(sh), when = new Date(), led = [], hist = [], batch = 'bonus-' + g.id + '-' + String(g.made).slice(-6), gname = liveGameName_(g);
+    rows_(sh, 2, H.n).forEach(function (v, i) { var key = str_(v[H.Email]).toLowerCase(); if (!want[key]) return;
+      var o = stuObj_(H, v, i + 2), nm = liveShort_(o.Name), got = out.txt, note = '', tok = 0, owned = ownedList_(o);
+      out.names.push(nm);
+      if (b.k === 'custom') { hist.push([when, key, o.Name, o.Class, 'lbonus', b.txt + ' (class game prize from your teacher)', 0, 'Gift', 'new: 🏆 You won ' + gname + '! Your teacher has a prize for you: ' + b.txt + '.']); return; }
+      if (b.k === 'tok') { o.Tokens = num_(o.Tokens) + b.n; led.push([when, batch, key, o.Name, o.Class, 'Tokens', b.n, gname + ': winner bonus', '', '']); }
+      else if (b.k === 'tix') { o.Wallet = num_(o.Wallet) + b.n; led.push([when, batch, key, o.Name, o.Class, 'Tickets', b.n, gname + ': winner bonus', '', '']); }
+      else if (b.k === 'shop') { var it = liveBonusShop_(st).filter(function (x) { return x.id === b.id; })[0];
+        if (it && owned.indexOf(it.id) < 0) { owned.push(it.id); o.Owned = owned.join(','); }
+        else { tok = Math.max(10, it ? it.price : 20); note = nm + ' already had ' + b.name + ', so they got ' + tok + ' ' + S.tok + ' instead.'; got = tok + ' ' + S.tok + ' (you already had ' + b.name + ')'; } }
+      else if (b.k === 'char') { var have = keptChars_(o), ids = {}; Object.keys(have).forEach(function (n2) { ids[have[n2]] = 1; });
+        var pool = chars.filter(function (f) { return !ids[f.id]; });
+        if (pool.length) { var f = pool[Math.floor(Math.random() * pool.length)], cn = (charName_(f.name) || 'Character').replace(/[,|]/g, ' '); owned.push('gc:' + f.id + '|' + cn); o.Owned = owned.join(','); got = cn + ' (game character)'; }
+        else { tok = LIVE_BONUS.charTok; note = nm + ' already has every game character, so they got ' + tok + ' ' + S.tok + ' instead.'; got = tok + ' ' + S.tok + ' (you have every game character)'; } }
+      else if (b.k === 'paw') { var PR = pawRead_(key); if (!PR.g) PR.g = pawNew_(); var G = PR.g, p = b.id === 'treats' ? null : liveBonusPaw_(b.id);
+        if (b.id === 'treats') { G.coins += b.n; G.unseen = (G.unseen || 0) + b.n; }
+        else if (p && p.kind === 'food') { G.inv = G.inv || {}; G.inv[p.id] = (G.inv[p.id] || 0) + b.n; }
+        else if (p && p.kind === 'acc') { G.acc = G.acc || []; if (G.acc.indexOf(p.id) < 0) G.acc.push(p.id); else { G.coins += p.price; G.unseen = (G.unseen || 0) + p.price; note = nm + ' already had the ' + p.name + ', so they got ' + p.price + ' Treats instead.'; got = p.price + ' Pawtopia Treats (you already had the ' + p.name + ')'; } }
+        else if (p && p.kind === 'toy') { G.toys = G.toys || {}; if (!G.toys[p.id]) G.toys[p.id] = 1; else { G.coins += p.price; G.unseen = (G.unseen || 0) + p.price; note = nm + ' already had the ' + p.name + ', so they got ' + p.price + ' Treats instead.'; got = p.price + ' Pawtopia Treats (you already had the ' + p.name + ')'; } }
+        pawLog_(G, 'Won ' + gname + ': ' + got.replace(/^🐾 /, ''), 0); pawWrite_(PR, key); }
+      if (tok) { o.Tokens = num_(o.Tokens) + tok; led.push([when, batch, key, o.Name, o.Class, 'Tokens', tok, gname + ': winner bonus (already owned)', '', '']); }
+      if (note) out.notes.push(note);
+      writeStu_(sh, o);
+      hist.push([when, key, o.Name, o.Class, 'lbonus', got.replace(/^[^\w\d]+ /, '') + ': ' + gname + ' winner bonus', 0, 'Gift', 'new: 🏆 You won ' + gname + '! Your winner bonus: ' + got.replace(/^[^\w\d]+ /, '') + '.']); });
+    if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); }
+    if (hist.length) { var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
+    cacheDrop_('boards');
+    return out;
+  });
+}
+function liveGameName_(g) { return ({ tower: 'Tower Climb', race: 'Race Day', path: 'Candy Path', camrace: 'Camera Race', jar: 'Fill the Jar', sea: 'Sea Battle', isle: 'Treasure Island', 'case': 'Case Closed', escape: 'the class escape room', breach: 'Breach', train: 'Wagon Train', wall: 'Logo Wall' })[g.mode] || 'the class game'; }
+/* ── late joiners ── */
+function liveLateQ_(code) { var q = parse_(CacheService.getScriptCache().get('llq:' + code), []); return q instanceof Array ? q : []; }
+function liveLateSave_(code, q) { CacheService.getScriptCache().put('llq:' + code, JSON.stringify(q.slice(-60)), LIVE_TTL); }
+/** A team's color number (Sea Battle teams are named for their captain's color; Breach crews keep theirs). */
+function liveTeamColor_(g, t) { if (g.sea) { var c = seaColors_(g.sea)[t]; return typeof c === 'number' ? c : t; } if (g.breach && g.breach.colors && typeof g.breach.colors[t] === 'number' && g.breach.colors[t] >= 0) return g.breach.colors[t]; return t; }
+/** Where a late joiner should go: team sizes count everyone in, plus late joiners already placed but not in the list yet.
+    best = never with a keep-away (4.129), then the fewest players, then the weakest (4.102); equal = every team has the same number of players. */
+function liveLatePick_(g, joined, e, q) {
+  var size = [], pow = [], stg = {}, mates = []; try { stg = strengthMap_(); } catch (sx) {}
+  for (var ti = 0; ti < g.teams; ti++) { size.push(0); pow.push(0); mates.push([]); }
+  var add = function (x, t) { if (x === e || size[t] === undefined) return; size[t]++; pow[t] += stg[x] == null ? 0.5 : stg[x]; mates[t].push(x); };
+  Object.keys(joined).forEach(function (x) { add(x, joined[x][2]); });
+  (q || []).forEach(function (y) { if (!y.pend && y.team >= 0 && !joined[y.e]) add(y.e, y.team); });
+  var bad = function (t2) { return seatApartHit_(g.apart, e, mates[t2]) ? 1 : 0; }, best = -1;
+  size.forEach(function (n2, t2) { if (best < 0 || bad(t2) < bad(best) || (bad(t2) === bad(best) && (n2 < size[best] || (n2 === size[best] && pow[t2] < pow[best])))) best = t2; });
+  return { best: best, equal: size.every(function (n2) { return n2 === size[0]; }), size: size };
+}
+/** In api_liveClaim's lock: a late joiner's team now ({ team }), or { wait: ms } while the teacher picks. */
+function liveLateClaim_(g, joined, e, who) {
+  var q = liveLateQ_(g.id), now = Date.now(), x = null; q.forEach(function (y) { if (y.e === e) x = y; });
+  if (x && !x.pend && x.team >= 0 && x.team < g.teams) return { team: x.team };
+  var pk = liveLatePick_(g, joined, e, q);
+  if (!x) { x = { i: q.reduce(function (m, y) { return Math.max(m, y.i); }, 0) + 1, e: e, n: liveShort_(who), at: now, pend: pk.equal ? 1 : 0, team: pk.equal ? -1 : pk.best, by: pk.equal ? '' : 'auto' }; q.push(x); liveLateSave_(g.id, q); return x.pend ? { wait: LIVE_BONUS.lateWait } : { team: x.team }; }
+  if (!pk.equal || now - x.at >= LIVE_BONUS.lateWait) { x.pend = 0; x.team = pk.best; x.by = pk.equal ? 'time' : 'auto'; x.done = now; liveLateSave_(g.id, q); return { team: x.team }; }
+  return { wait: LIVE_BONUS.lateWait - (now - x.at) };
+}
+/** Teacher: the late joiners (waiting ones first) and each team's size, for the pop-up on the projector. Every few seconds while a team game runs. */
+function api_liveLate(auth, code) {
+  requireTeacher_(); var g = liveGet_(code);
+  if (!g || !g.teams || g.byStu || livePhase_(g) !== 'on') return { on: false };
+  return lock_(function () {
+    var q = liveLateQ_(g.id), joined = liveJoinedSure_(g.id), now = Date.now(), ch = false, pk = null;
+    q.forEach(function (x) { if (!x.pend) return; pk = liveLatePick_(g, joined, x.e, q); x.sug = pk.best;
+      if (!pk.equal || now - x.at >= LIVE_BONUS.lateWait) { x.pend = 0; x.team = pk.best; x.by = pk.equal ? 'time' : 'auto'; x.done = now; } ch = true; });
+    if (ch) liveLateSave_(g.id, q);
+    var size = liveLatePick_(g, joined, '', q).size, teams = size.map(function (n2, t) { var c = liveTeamColor_(g, t); return [t, TEAM_NAMES[c] || 'Team ' + (t + 1), c, n2]; });
+    return { on: true, teams: teams, q: q.filter(function (x) { return x.pend || now - (x.done || x.at) < 30000; }).map(function (x) { return { i: x.i, n: x.n, pend: !!x.pend, team: x.team, by: x.by, sug: typeof x.sug === 'number' ? x.sug : -1, left: x.pend ? Math.max(0, LIVE_BONUS.lateWait - (now - x.at)) : 0 }; }) };
+  });
+}
+/** Teacher: put a waiting late joiner on a team (their screen joins it at its next check, within 3 seconds). */
+function api_liveLateSet(auth, code, i, team) {
+  requireTeacher_(); var g = liveGet_(code); if (!g || !g.teams) throw new Error('That game is closed.');
+  team = Math.floor(num_(team)); if (!(team >= 0 && team < g.teams)) throw new Error('Pick a team.');
+  lock_(function () { var q = liveLateQ_(g.id); q.forEach(function (x) { if (x.i === num_(i) && x.pend) { x.pend = 0; x.team = team; x.by = 'teacher'; x.done = Date.now(); } }); liveLateSave_(g.id, q); });
+  return api_liveLate(auth, code);
 }
 
 /* ───────── 1 vs. The Mob ─────────
@@ -13679,4 +13858,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
