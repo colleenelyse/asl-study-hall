@@ -605,6 +605,27 @@ if (IN_SHEET) window.addEventListener('message', e => {
     step(); return;
   }
   if (d.type === 'fsp-cam-aim' && d.stop) { AIMID = null; if (GAME && GAME.k === 'aim') { GAME = null; WORD = null; } liveBanner(''); return; }
+  /* FREE LETTERS FOR AN ASL STUDY GAME (2026-11-01): { type: 'fsp-cam-free', on: true, title } turns this tab into a plain letter reader: every letter it reads
+     goes back as { type: 'fsp-cam-letter', c, cur } (cur = the letters so far). The game decides what counts; nothing about the game is sent here.
+     { ok: true } = it counted (clear the letters, show a check); { clear: true } clears; { on: false } stops. Repeats of { on: true } change nothing. */
+  if (d.type === 'fsp-cam-free') {
+    const FG = GAME && GAME.k === 'free' ? GAME : null;
+    if (d.on === false) { if (FG) quitGame(); liveBanner(''); return; }
+    if (d.ok || d.clear) { if (FG) { FG.cur = ''; if (d.ok) flash('\u2713'); FG.paint(); } return; }
+    if (!d.on || FG) return;
+    if (GAME) quitGame();
+    const kb = document.querySelector('#rd-kind [data-v="games"]'); if (kb && !kb.classList.contains('on')) kb.click();
+    const mb = document.querySelector('#rd-mode [data-v="words"]'); if (mb && !mb.classList.contains('on')) mb.click();
+    const title = String(d.title || 'Fingerspell').replace(/[<>&]/g, '').slice(0, 90);
+    gameUI(true); $('#rd-results').hidden = true;
+    const G = { k: 'free', free: true, cur: '' }; GAME = G; WORD = null;
+    const tell = c => { try { window.opener.postMessage({ type: 'fsp-cam-letter', c: c || '', cur: G.cur }, '*'); } catch (e) {} };
+    freeBar(G, title); const undo = G.undo, clr = G.gb_clr;
+    G.paint = () => { $('#rd-prompt').hidden = false; $('#rd-word').hidden = false; $('#rd-word').innerHTML = (G.cur || '\u2026').split('').map(x => '<span class="d">' + x + '</span>').join(''); };
+    G.undo = () => { undo(); tell(''); }; G.gb_clr = () => { clr(); tell(''); };
+    G.letter = c => { G.cur = (G.cur + c).slice(-24); flash(c); G.paint(); tell(c); };
+    liveBanner(title); G.paint(); $('#rd-tip').textContent = landmarker ? 'Sign a letter' : 'Choose your hand to turn on the camera.'; return;
+  }
   if (d.type === 'fsp-cam-target' && d.stop) { TARGETW = ''; if (GAME && GAME.k === 'live') { GAME = null; WORD = null; } }
 });
 if (FROM_STUDY) window.addEventListener('message', e => { if (e.data && e.data.type === 'fsp-cam-saved') camSaved(e.data.rid); });      /* 4.89 */
