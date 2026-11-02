@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.275';
+var VERSION = '4.280';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -545,6 +545,7 @@ var FEATURES = [
   ['tokens', 'Tokens and the character shop', 'Rewards', 'Tokens for every correct answer, spent on characters, themes and extras.'],
   ['seasolo', 'Sea Battle (solo)', 'Practice', 'Students answer to earn cannonballs and battle the computer\'s hidden fleet.'],
   ['toast', 'Neon Flying Toasters', 'Practice', 'An arcade game: students fly a winged toaster into the toast with the right sign (or letters and pictures), dodging forks and neon pipes. A right toast counts half toward mastery (it is already a 50/50); a wrong toast costs a heart in the game but never counts against a student (it may be poor flying). Weekly and all-time arcade leaderboards.'],
+  ['logos', 'Name That Logo', 'Practice', 'A solo game with wordless brand logos (Colleen\'s own classes only): pick a logo\'s first letter from handshapes, watch the 3D hand spell three brand names and pick the right one, match logos to first letters, or fingerspell the logos they know to the camera. Practice only: not saved as a round (logos are not vocabulary signs).'],
   ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Treats and moves eggs toward hatching.'],
   ['wagon', 'Wagon West', 'Practice', 'An 1800s wagon-trail adventure: students lead five travelers west, choosing pace, rations, river crossings and shortcuts. Rounds of signs (at trading posts, rivers, repairs, hunts) earn supplies, and the score sets their quality. Illness, disasters and graves; a Hall of Fame.'],
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
@@ -564,7 +565,7 @@ var FEATURES = [
   ['ws', 'Sign of the Day', 'Student pages', 'The daily sentence with one new sign, its rewards and weekly quiz.'],
   ['dict', 'Dictionary', 'Student pages', 'The searchable list of every sign.'],
   ['audio', 'Read aloud', 'Student pages', 'Speaker buttons that read terms and definitions aloud, each side in its own language (Settings and Units tabs).'],
-  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
+  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['wall', 'Logo Wall', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
   ['push', 'Push to students', 'Teacher tools', 'Messages, links and polls that pop up on student screens.'],
   ['gift', 'Gift page', 'Teacher tools', 'Giving themes, characters, Tickets or Tokens from the Gift page.'],
   ['focus', 'Study Sidekick', 'Teacher tools', 'On-task time: a sidekick floats over ASL Study while students focus, and focused minutes earn the reward you choose.'],
@@ -697,6 +698,7 @@ var DEFAULTS = [
   ['Sea Battle numbers', 'Easy', 'Sea Battle, Square aiming: how high the row numbers go. Easy (up to 24), Medium (up to 50) or Hard (up to 99).'],
   ['Sea Battle power-shot speed', 'Auto', 'Sea Battle: signing a square this fast earns a power shot. Auto = your class\'s typical expressive speed from the Fingerspelling Stats tab (camera seconds per letter and per number); or type seconds per letter, like 1.5.'],
   ['Wagon Train winning team Tokens', 25, 'Wagon Train (class game): bonus Tokens for each student on the winning wagon, paid when you press Save and close. Teachers get none. 0 = no bonus.'],
+  ['Logo Wall winning team Tokens', 25, 'Logo Wall (class game): bonus Tokens for each student on the winning team (the most logos points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['Sea Battle captain bonus', 25, 'Sea Battle: extra Tickets for the captain of the winning team, on top of the team prize (everyone on the winning team keeps their game character). 0 = no captain bonus.'],
   ['Sea Battle word length', 4, 'Sea Battle, Words aiming: the length of the words students fingerspell to aim, taken from your Fingerspelling Words and Everyday Words tabs. One number (4) or a range (4-6).'],
   ['Sea Battle ship names: Red', 'Kraken\'s Fury, Fire Galleon, Red Raven, Ember Eel, Scarlet Parrot', 'Sea Battle: the Red team\'s five ship names, separated by commas, in this order: Carrier (5 squares), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2).'],
@@ -965,6 +967,7 @@ function buildStatic_(locked) {
     brSounds: (function () { try { var o = JSON.parse(str_(g('Breach sounds')) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),      // 4.119
     stuHost: !/^n/i.test(str_(g('Students can host class games'))), seaAim: (function (v) { var w = ['tap', 'square', 'words'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['tap']; })(str_(g('Sea Battle aiming') || 'tap, square, words').toLowerCase()), seaFast: /^\s*\d/.test(str_(g('Sea Battle power-shot speed'))) ? Math.max(0.3, Math.min(10, num_(g('Sea Battle power-shot speed')))) : 0, seaNums: /^h/i.test(str_(g('Sea Battle numbers'))) ? 99 : /^m/i.test(str_(g('Sea Battle numbers'))) ? 50 : 24,
     trainTok: str_(g('Wagon Train winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Wagon Train winning team Tokens'))))),      // 4.270
+    wallTok: str_(g('Logo Wall winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Logo Wall winning team Tokens'))))),      // 4.279
     seaCapBonus: str_(g('Sea Battle captain bonus')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Sea Battle captain bonus'))))),
     seaNames: SEA_TEAMS.map(function (t, i) { var v = str_(g('Sea Battle ship names: ' + t)).split(',').map(function (x) { return x.trim().slice(0, 30); }); return SEA_DEF_NAMES[i].map(function (d, k) { return v[k] || d; }); }),      // 4.38 (Colleen): each team's pirate ship names
     seaLen: (function (v) { var m = /(\d+)\s*(?:-|to)?\s*(\d+)?/.exec(v) || []; var lo = Math.max(2, Math.min(12, +m[1] || 4)), hi = Math.max(lo, Math.min(12, +m[2] || lo)); return [lo, hi]; })(str_(g('Sea Battle word length'))),
@@ -1576,7 +1579,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['logos', 'wall', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia'];      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -2900,6 +2903,7 @@ function liveTeams_(g, players) {
   if (g.mode === 'escape' && g.escr) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = escrPts_(g.escr, x[3]); }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.58 team escape room
   if (g.mode === 'case' && g.casec) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.casec.pts[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // Case Closed: case points
   if (g.mode === 'train' && g.train) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = trainScore_(g.train, x[3]).total; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.270 Wagon Train: health + supplies
+  if (g.mode === 'wall' && g.wall) { var wp = wallPts_(g.wall, g.teams); players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = wp[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.279 Logo Wall: logo points
   if (g.mode === 'isle' && g.isle) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.isle.gold[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // Treasure Island: banked gold
   if (g.mode === 'sea' && g.sea) { var st2 = t.map(function (x) { return x; }); players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.sea.hits[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); if (g.sea.winner >= 0) t.sort(function (a, b) { return (b[3] === g.sea.winner) - (a[3] === g.sea.winner); }); return t; }      // Sea Battle: hits (the last team afloat wins Defeat)
   players.forEach(function (p) { if (t[p[8]]) { t[p[8]][2]++; t[p[8]][4] += jar ? p[3] : far ? p[7] * 100 : p[2]; } });      // Tower and Race teams: the average floor or distance (x100); Fill the Jar: every marble counts (the total)
@@ -2986,7 +2990,7 @@ function liveHostOk_(auth, g) {
 }
 /** Teacher (or a student, when the teacher allows it): open a lobby. ids = the signs to use; minutes = how long the game runs once started. Returns the board, with the join code. */
 function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
-  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
+  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train', 'wall'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
   var camMode = mode === 'camrace' || mode === 'jar', seaNoSigns = (mode === 'sea' || mode === 'isle') && opt && opt.seaWays && opt.seaWays.indexOf('signs') < 0;      // 4.27: camera games count fingerspelled words (or signed numbers), not vocabulary answers
   var st = static_(), cache = CacheService.getScriptCache(), teacher = isTeacher_(), me = who_(auth);
   if (!teacher) {                                                      // a student hosting for classmates
@@ -2997,7 +3001,7 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   st.cards.forEach(function (c) { if (face_(c)) withGif[c[0]] = 1; });
   ids = (ids instanceof Array ? ids : []).map(str_).filter(function (x) { return withGif[x]; }).slice(0, 300);
         // 4.53: the items are the teacher's signs
-  if ((camMode || seaNoSigns || mode === 'vault') && mode !== 'case') ids = [];      // 4.105 The Vault has its own things to sign
+  if ((camMode || seaNoSigns || mode === 'vault' || mode === 'wall') && mode !== 'case') ids = [];      /* 4.279 Logo Wall: logos, not signs */      // 4.105 The Vault has its own things to sign
   else if (ids.length < 4) throw new Error('Pick at least 4 signs that have GIFs under "What to study" first.');
   minutes = mode === 'train' ? trainMins_(minutes, teacher) : Math.max(1, Math.min(teacher ? 45 : 15, Math.floor(num_(minutes)) || 5));      // 4.270 Wagon Train: 30 minutes unless the teacher picks (the trip paces itself to it)
   bank = str_(bank);
@@ -3005,15 +3009,15 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
     var nm = charName_(f.name) || 'Character', k = nm.toLowerCase(); seenName[k] = (seenName[k] || 0) + 1;
     return [seenName[k] > 1 ? nm + ' ' + seenName[k] : nm, f.id];
   });
-  if (['vault', 'escape', 'breach', 'case', 'train'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
+  if (['vault', 'escape', 'breach', 'case', 'train', 'wall'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
   var keep = opt && liveCode_(opt.keep) ? liveGet_(liveCode_(opt.keep)) : null;      /* 4.134 (Colleen): the teacher changes the settings while students are still joining: same code, same players */
   if (keep && (keep.host !== (teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key) || livePhase_(keep) !== 'lobby')) throw new Error('That game has already started, so its settings can\'t change now.');
   if (keep) chars = keep.chars;      // characters stay as they were: students may have picked one already
   var code = keep ? keep.id : '';
   for (var i = 0; !keep && i < 20 && (!code || cache.get('live:' + code)); i++) code = String(10000 + Math.floor(Math.random() * 90000));
-  teams = Math.floor(num_(teams)); teams = teams >= 2 && teams <= (mode === 'breach' ? 6 : mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'train' ? 6 : 4) ? teams : 0; if ((mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'train') && !teams) teams = 2;      // Sea Battle always has teams
+  teams = Math.floor(num_(teams)); teams = teams >= 2 && teams <= (mode === 'breach' ? 6 : mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'train' || mode === 'wall' ? 6 : 4) ? teams : 0; if ((mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'train' || mode === 'wall') && !teams) teams = mode === 'wall' ? 3 : 2;      // Sea Battle always has teams
   if (mode === 'mob' || mode === 'vault') teams = 0;                                       // 1 vs. The Mob has no teams
-  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
+  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || mode === 'wall' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
     rand: !!(opt && opt.rand) && chars.length > 0, label: opt && (opt.label === 'char' || opt.label === 'both') ? opt.label : 'name' };      // rand: the game hands out characters; label: what the board shows under each avatar
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
@@ -3027,10 +3031,11 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   if (g.mode === 'case') { g.casec = caseNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.53 Case Closed
   if (g.mode === 'isle') { g.isle = isleNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.47 Treasure Island (the ways to earn share Sea Battle's field)
   if (g.mode === 'train') { g.train = trainNew_(teams, minutes); g.seaWays = ['signs']; }      // 4.270 Wagon Train
+  if (g.mode === 'wall') g.wall = wallNew_(opt);      // 4.279 Logo Wall: the logo group (the teams are made at Start)
   if (g.mode === 'sea') { g.sea = seaNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }
   if (camMode) g.cam = { kind: opt && opt.camKind === 'numbers' ? 'numbers' : 'letters', goal: 50 };
   else if (g.mode !== 'mob' && opt && opt.camAns) g.camAns = true;      // camera answers: see the sign, fingerspell its English word to the camera
-  if (g.teams && opt && opt.teamBy && opt.teamBy !== 'join' && g.mode !== 'train') { try { g.tmap = seatTeams_(str_(opt.cls), str_(opt.teamBy), g.teams); g.teamBy = str_(opt.teamBy); } catch (e) { g.tmap = null; } }      // teams from the seating chart
+  if (g.teams && opt && opt.teamBy && opt.teamBy !== 'join' && g.mode !== 'train' && g.mode !== 'wall') { try { g.tmap = seatTeams_(str_(opt.cls), str_(opt.teamBy), g.teams); g.teamBy = str_(opt.teamBy); } catch (e) { g.tmap = null; } }      // teams from the seating chart
   if (g.byStu) { var hsh = stuSheet_(), hr = findRow_(hsh, me.key); g.hostName = hr ? str_(readStu_(hsh, hr).Name).split(' ')[0] : 'a classmate'; }
   try { liveSweep_(); } catch (e) {}
   var before = cache.get('livehost:' + g.host);
@@ -3066,10 +3071,11 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'isle' && phase === 'on' && (isleDue_(g) || !g.isle.started)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'case' && phase === 'on' && caseDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && caseTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'train' && phase === 'on' && trainDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && trainTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.270
+  if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && wallTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }      // 4.279 gold logos come and go
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3090,9 +3096,9 @@ function api_liveControl(auth, code, action) {
   if (g.mode === 'mob' && action !== 'clear') { var mo = mobControl_(auth, g, action); if (action === 'start') { var g3 = liveGet_(g.id); if (g3 && !g3.rte && !g3.rteTried) { engineSetup_(g3); livePut_(g3); mo = api_liveBoard(auth, g3.id); } } return mo; }      // 4.145 1 vs. The Mob goes to its engine room at Start
   if (action === 'start' && !g.ends) { var dupStart = lock_(function () { var k0 = 'lstart:' + g.id; if (cache.get(k0)) return true; cache.put(k0, '1', 21600); return false; }); if (dupStart) return api_liveBoard(auth, g.id); }      /* 4.142 a second press of Start (the screen was slow) must never deal the teams again: students "bounced all around to different teams" */
   if (action === 'clear') { mobForget_(g.id); var won = []; var practiceOnly = !!(g.breach && g.breach.practice);      /* 4.93 a Breach practice round counts toward nothing */
-    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus }; }
+    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus }; }
   if (action === 'start' && !g.ends && g.teams && !g.tmap) { lock_(function () {      /* 4.103 teams are made only now, with everyone who joined: even by strength (4.102). 4.98: Breach's automatic crews also pick how many */
-      var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6 */
+      var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
       var none = who.filter(function (e) { return !(joined[e][2] >= 0 && joined[e][2] < n); });      /* only players without a team (in class: everyone) */
       g.apart = seatApart_(who);      /* 4.129 keep-aways, also for anyone who joins later */
       if (none.length === who.length) { var deal = evenTeams_(who, n, g.apart); who.forEach(function (e) { joined[e][2] = deal[e]; }); }
@@ -3100,10 +3106,11 @@ function api_liveControl(auth, code, action) {
         none.forEach(function (e) { var bad = function (t2) { return seatApartHit_(g.apart, e, who.filter(function (o) { return o !== e && joined[o][2] === t2; })) ? 1 : 0; }, best = -1; size.forEach(function (n2, t2) { if (best < 0 || bad(t2) < bad(best) || (bad(t2) === bad(best) && (n2 < size[best] || (n2 === size[best] && pow[t2] < pow[best])))) best = t2; }); joined[e][2] = best; size[best]++; pow[best] += stg[e] == null ? 0.5 : stg[e]; }); }      /* 4.129 never next to a keep-away */
       liveJoinedSave_(g.id, joined);
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); }
-      if (g.train) { g.teams = n; g.train = trainNew_(n, g.minutes); } }); }
+      if (g.train) { g.teams = n; g.train = trainNew_(n, g.minutes); }
+      if (g.wall) g.teams = n; }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
-  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
+  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.wall) wallStart_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
   if (engNew) { engineSetup_(g); livePut_(g); }      // 4.145 every other live class game runs in an engine room on asl.cool
@@ -3220,6 +3227,7 @@ function api_livePing(auth, code, p) {
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && breachTick_(g2)) livePut_(g2); }); g = liveGet_(code) || g; } catch (e) {} }      // 4.68 Breach
   if (g.mode === 'case' && phase === 'on' && caseDue_(g)) { var tkc = false; try { tkc = lock_(function () { var g2 = liveGet_(code); if (g2 && caseTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tkc) g = liveGet_(code) || g; }      // 4.53 cases open and close
   if (g.mode === 'train' && phase === 'on' && trainDue_(g)) { var tkt = false; try { tkt = lock_(function () { var g2 = liveGet_(code); if (g2 && trainTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tkt) { g = liveGet_(code) || g; phase = livePhase_(g); } }      // 4.270 Wagon Train moves along
+  if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && wallTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; }      // 4.279 gold logos come and go
   if (g.mode === 'isle' && phase === 'on' && (isleDue_(g) || !g.isle.started)) { var tki = false; try { tki = lock_(function () { var g2 = liveGet_(code); if (g2 && isleTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tki) g = liveGet_(code) || g; }      // 4.47 the island's Gold Rush
   if (g.mode === 'sea' && phase === 'on' && seaDue_(g)) { var tk = false; try { tk = lock_(function () { var g2 = liveGet_(code); if (g2 && seaTick_(g2)) { livePut_(g2); g = g2; return true; } return false; }); } catch (e) {} if (tk) g = liveGet_(code) || g; }      // move the rounds along       // this game keeps its own score on the server
   p = p || {};
@@ -3229,6 +3237,7 @@ function api_livePing(auth, code, p) {
   var grant = Math.max(0, num_(extra['lgr:' + g.id + ':' + id.key]));                     // floors gained by swapping with the leader
   var steps = Math.max(0, Math.min(right * 5 + grant, Math.floor(num_(p.steps))));       // one space a correct answer, plus shortcuts
   var score = Math.max(0, Math.min(Math.max(right * 450, (right * 5 + grant) * 100 + right * 200), Math.floor(num_(p.score))));
+  if (g.mode === 'wall' && g.wall) { right = total = score = num_(g.wall.by[id.key]); steps = 0; }      // 4.279 Logo Wall: the server counts my logos (no signs answered)
   var hits = [];
   if (extra['lx:' + g.id + ':' + id.key]) hits = lock_(function () { var k = 'lx:' + g.id + ':' + id.key, v = parse_(cache0.get(k), []); cache0.remove(k); return v instanceof Array ? v : []; });
   var tally = {}, okId = {}, kept = 0;
@@ -3242,13 +3251,13 @@ function api_livePing(auth, code, p) {
   var all = livePlayers_(g), rank = 0, myTeam = -1, trank = 0, tn = 0;
   all.forEach(function (x, i) { if (x[5] === id.key) { rank = i + 1; myTeam = x[8]; } });
   if (myTeam >= 0) all.forEach(function (x) { if (x[8] === myTeam) { tn++; if (x[5] === id.key) trank = tn; } });      // my place among my own team
-  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
+  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, wall: g.mode === 'wall' ? wallView_(g, myTeam, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
     sea: g.mode === 'sea' ? (function () { var v = seaView_(g, myTeam, ''); if (!v) return v; var j = liveJoined_(g.id), mm = myTeam >= 0 ? seaMates_(j, myTeam) : [], sea = g.sea;
       v.captain = myTeam >= 0 && sea.captains[myTeam] === id.key; v.myVote = mm.indexOf(myTeam >= 0 ? (sea.votes[myTeam] || {})[id.key] || '' : ''); v.mates = mm.map(function (e) { return seaLabel_(g, j, e); }); var ord = myTeam >= 0 && sea.phase === 'battle' ? seaOrder_(g, myTeam, j, Date.now()) : mm; v.order = ord.map(function (e) { return seaFirst_(j, e); }); v.me = ord.indexOf(id.key); v.voteMe = mm.indexOf(id.key);
       v.ars = sea.ars[id.key] || {}; v.right = seaRight_(g, [id.key])[id.key] || 0; var gu = myTeam >= 0 ? seaGunner_(g, myTeam, Date.now(), j) : null;
       if (gu) { var r2 = seaRight_(g, [gu.email]); v.gun = { mine: gu.email === id.key, name: seaFirst_(j, gu.email), next: seaFirst_(j, gu.next), nextMine: gu.next === id.key, bal: seaBal_(sea, gu.email, r2[gu.email] || 0), left: gu.ends - (sea.paused || Date.now()) }; }
       return v; })() : undefined,
-    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
+    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
 }
 
 /* ───────── 1 vs. The Mob ─────────
@@ -8613,6 +8622,124 @@ function trainPay_(g) {
   cacheDrop_('boards');
   return { team: lead[3], amt: amt, names: paid };
 }
+/* ───────── 4.279 LOGO WALL (Colleen approved the design 2026-11-01): a whole-class live game built on Name That Logo (chunk_logos.html).
+   The teacher picks a logo group and the minutes (default 5). At Start the class is split into 3 to 6 color teams (wallTeams_, balanced with evenTeams_ like
+   the other team games). Everyone sees the same wall of about 20 logos (the projector and each Chromebook) and fingerspells ANY brand they know into their
+   own camera window; when the camera's letters spell a logo on the wall, the student's screen sends those letters here and the SERVER checks them against
+   the wall (wallHeard_, as forgiving as the solo camera mode) and applies the rules in one step (inside lock_):
+     - an unclaimed logo goes to the team (1 point);
+     - another team can STEAL a claimed logo by spelling it too, but only ONCE: then it is locked for good;
+     - now and then a logo turns GOLD for 30 seconds: the first team to spell it gets 3 points, and it locks at once;
+     - when the wall is nearly full (85% claimed), a fresh wall slides in (the logos nobody spelled stay on it); claimed logos keep counting;
+     - a wrong spelling just doesn't count: nobody can ever lose a logo for their team except by a steal.
+   Camera-fail backup (tap mode): the 3D hand spells a logo from the wall on the student's screen (the server picks it: W.tap) and the student taps it.
+   No names or emails in the game (players are keys; the engine room swaps them for numbers) and NO PICTURES: only logo numbers (the row in LOGOS in
+   chunk_logos.html, which WALL_LOGOS below must match: a test checks). The winning team's students get bonus Tokens at Save and close (wallPay_;
+   Settings: Logo Wall winning team Tokens). ── */
+var WALL_LOGOS = [];      /* left out of the public copy (dev/build-rt.py) */
+var WALL = { size: 20, full: 0.85, goldMs: 30000, goldPts: 3, goldFirst: 45000, goldGap: [40000, 70000], minsDef: 5, ev: 12000, groups: ['mix', 'food', 'apps', 'games', 'stores', 'tech'] };
+/** How many color teams: 3 to 6, about 5 students each (fewer than 3 players: 2 teams). */
+function wallTeams_(n) { n = Math.max(0, Math.floor(num_(n))); return n < 3 ? 2 : Math.max(3, Math.min(6, Math.round(n / 5))); }
+function wallNew_(opt) { var grp = WALL.groups.indexOf(str_(opt && opt.wallGroup)) >= 0 ? str_(opt.wallGroup) : 'mix', deck = [];
+  WALL_LOGOS.forEach(function (r, i) { if (grp === 'mix' || r[1] === grp) deck.push([i, r[0]]); });
+  deck = shuffle_(deck); var size = Math.min(WALL.size, deck.length), tiles = deck.splice(0, size).map(function (x) { return wallTile_(x); });
+  return { grp: grp, size: size, deck: deck, tiles: tiles, old: [], n: 1, by: {}, ev: [], tap: {}, gold: 0, nextGold: 0, started: 0, evN: 0 }; }
+function wallTile_(x) { return { i: x[0], s: x[1], t: -1, c: 0, lock: 0, pts: 1, gold: 0 }; }      // c: how many times it was claimed (2 = stolen once, locked)
+function wallStart_(g) { var W = g.wall, now = Date.now(); if (!W || W.started) return; W.started = now; W.nextGold = now + WALL.goldFirst; }
+/** Points for each team: every logo it holds, on this wall and the earlier ones. */
+function wallPts_(W, teams) { var pts = []; for (var t = 0; t < teams; t++) pts.push(0); W.old.concat(W.tiles).forEach(function (x) { if (x.t >= 0 && x.t < teams) pts[x.t] += x.pts; }); return pts; }
+/* the camera matching, the same as the solo camera mode (lgHeard in chunk_logos.html): stray letters before the name are ignored, J and Z may be any
+   letter or missing (the free-letter reader skips motion), and a name of 6 or more letters may have one letter off */
+function wallDist_(a, w) { var m = a.length, n = w.length, prev = [], row = [], i, j; prev[0] = 0; for (j = 1; j <= n; j++) prev[j] = prev[j - 1] + (/[JZ]/.test(w[j - 1]) ? 0 : 1);
+  for (i = 1; i <= m; i++) { row = [i]; for (j = 1; j <= n; j++) { var wild = /[JZ]/.test(w[j - 1]); row[j] = Math.min(prev[j] + 1, row[j - 1] + (wild ? 0 : 1), prev[j - 1] + (wild || a[i - 1] === w[j - 1] ? 0 : 1)); } prev = row; }
+  return prev[n]; }
+function wallScore_(cur, w) { cur = str_(cur).toUpperCase().replace(/[^A-Z]/g, '').slice(-24); w = str_(w); if (!w || !cur) return 99;
+  var core = w.replace(/[JZ]/g, '').length, slack = core >= 6 ? 1 : 0, best = 99;
+  for (var st = Math.max(0, cur.length - w.length - 1 - slack); st <= cur.length - Math.max(1, core - slack); st++) best = Math.min(best, wallDist_(cur.slice(st), w));
+  return best <= slack ? best : 99; }      // how far off the closest reading is (99 = not this logo)
+function wallHeard_(cur, w) { return wallScore_(cur, w) < 99; }
+/** Time moves the wall along: a gold logo runs out, a new one turns gold. Returns true when something changed. */
+function wallTick_(g, now) { var W = g.wall; if (!W || !W.started || livePhase_(g) !== 'on') return false; now = now || Date.now(); var ch = false;
+  W.tiles.forEach(function (x) { if (x.gold && now >= x.gold) { x.gold = 0; ch = true; } });
+  if (!W.tiles.some(function (x) { return x.gold; }) && now >= W.nextGold) { var open = W.tiles.filter(function (x) { return x.t < 0; });
+    if (open.length) { var x = open[Math.floor(Math.random() * open.length)]; x.gold = now + WALL.goldMs; wallEv_(W, now, 'goldon', x, -1, -1); W.nextGold = x.gold + WALL.goldGap[0] + Math.floor(Math.random() * (WALL.goldGap[1] - WALL.goldGap[0])); }
+    else W.nextGold = now + 10000; ch = true; }
+  return ch; }
+function wallDue_(g) { var W = g.wall, now = Date.now(); return !!W && !!W.started && livePhase_(g) === 'on' && (W.tiles.some(function (x) { return x.gold && now >= x.gold; }) || (!W.tiles.some(function (x) { return x.gold; }) && now >= W.nextGold)); }
+function wallEv_(W, now, kind, x, team, from) { W.evN = (W.evN || 0) + 1; W.ev.push([now, kind, x.i, team, from, W.evN]); W.ev = W.ev.filter(function (e) { return now - e[0] < WALL.ev; }).slice(-12); }
+/** A fresh wall slides in when this one is nearly full: the logos nobody spelled stay, new ones fill the rest. Not when there are no new logos left. */
+function wallRefresh_(W, now) { var taken = W.tiles.filter(function (x) { return x.t >= 0; }); if (taken.length < Math.ceil(W.size * WALL.full) || !W.deck.length) return false;
+  var left = W.tiles.filter(function (x) { return x.t < 0; }); left.forEach(function (x) { x.gold = 0; });
+  W.old = W.old.concat(taken); W.tiles = shuffle_(left.concat(W.deck.splice(0, W.size - left.length).map(wallTile_))); W.n++; W.tap = {}; W.slide = now;
+  wallEv_(W, now, 'wall', { i: -1 }, -1, -1); return true; }
+/** The rules for one claim (the caller holds the lock). x = the logo on the wall. Returns what happened, or why it didn't count. */
+function wallTake_(g, key, team, x, now) { var W = g.wall;
+  if (x.lock) return { none: true, why: x.t === team ? 'Your team already has that one.' : 'That logo is locked: it was stolen once already.' };
+  if (x.t === team) return { none: true, why: 'Your team already has that one.' };
+  var kind = x.t < 0 ? (x.gold && now < x.gold ? 'gold' : 'claim') : 'steal', from = x.t;
+  if (kind === 'gold') { x.pts = WALL.goldPts; x.lock = 1; x.gold = 0; } else if (kind === 'steal') x.lock = 1;      // gold: the first team keeps it; a steal locks it for good
+  x.t = team; x.c++; W.by[key] = (W.by[key] || 0) + 1; wallEv_(W, now, kind, x, team, from);
+  Object.keys(W.tap).forEach(function (k) { if (W.tap[k] === x.i) delete W.tap[k]; });      // tap mode: anyone asked for this logo gets a new one
+  var slid = wallRefresh_(W, now);
+  return { ok: true, kind: kind, logo: x.i, pts: x.pts, slid: slid }; }
+function wallMe_(g, key) { var j = liveJoined_(g.id), m = j[key]; return m && typeof m[2] === 'number' && m[2] >= 0 && m[2] < g.teams ? m[2] : -1; }
+/** Student: the camera read these letters. If they spell a logo on the wall that my team can take, my team takes it. */
+function api_wallClaim(auth, code, word) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }      // the game is on asl.cool
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  word = str_(word).toUpperCase().replace(/[^A-Z]/g, '').slice(-24); if (!word) return { none: true, why: 'No letters yet.' };
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.wall || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var W = g.wall, me = wallMe_(g, id.key), now = Date.now(); if (me < 0) return { none: true, why: 'You are not on a team yet.' };
+    wallTick_(g, now);
+    var hit = W.tiles.filter(function (x) { x.d = wallScore_(word, x.s); return x.d < 99; }), clean = function () { W.old.concat(W.tiles).forEach(function (x) { delete x.d; }); }; if (!hit.length) { clean(); livePut_(g); return { none: true, why: 'That isn\'t a logo on the wall.', wall: wallView_(g, me, id.key) }; }
+    var can = hit.filter(function (x) { return !x.lock && x.t !== me; }); var rank = function (x) { return x.d * 10 - (x.gold ? 2 : 0) - (x.t < 0 ? 1 : 0); }; can.sort(function (a, b) { return rank(a) - rank(b) || b.s.length - a.s.length; }); hit.sort(function (a, b) { return a.d - b.d; });      // the closest spelling (TWITCH is not SWITCH), then gold, then a free logo, then a steal
+    var out = can.length && can[0].d <= hit[0].d ? wallTake_(g, id.key, me, can[0], now) : wallTake_(g, id.key, me, hit[0], now); clean();
+    livePut_(g); out.wall = wallView_(g, me, id.key); return out; }); }
+/** Student, tap mode (the camera doesn't work): pick < 0 asks for a logo for the hand to spell; pick = the logo I tapped. Only the logo the hand spelled counts. */
+function api_wallTap(auth, code, pick) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  pick = Math.floor(num_(pick)); if (!(pick >= 0)) pick = -1;
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.wall || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var W = g.wall, me = wallMe_(g, id.key), now = Date.now(); if (me < 0) return { none: true, why: 'You are not on a team yet.' };
+    wallTick_(g, now); var out = { ok: true };
+    var want = W.tap[id.key], x = W.tiles.filter(function (y) { return y.i === want; })[0];
+    if (pick >= 0 && x && pick === want) out = wallTake_(g, id.key, me, x, now);
+    else if (pick >= 0) out = { none: true, wrong: true, why: x ? 'Not that one. Watch the hand again.' : 'That logo is gone. Here is a new one.' };
+    if (pick < 0 || out.ok || !x) { var open = W.tiles.filter(function (y) { return !y.lock && y.t !== me && y.i !== want; }); if (!open.length) open = W.tiles.filter(function (y) { return !y.lock && y.t !== me; });
+      var gold = open.filter(function (y) { return y.gold; }), free = open.filter(function (y) { return y.t < 0; }), from = gold.length && Math.random() < 0.6 ? gold : free.length && Math.random() < 0.8 ? free : open;
+      if (from.length) W.tap[id.key] = from[Math.floor(Math.random() * from.length)].i; else delete W.tap[id.key]; }
+    livePut_(g); out.wall = wallView_(g, me, id.key); return out; }); }
+/** What a screen sees: logo numbers, team numbers and counts only (never names, emails or pictures). myTeam -1 = the projector. */
+function wallView_(g, myTeam, key) { var W = g.wall; if (!W) return null; var now = Date.now(), over = livePhase_(g) === 'over', teams = Math.max(2, g.teams || 2);
+  var v = { grp: W.grp, n: W.n, size: W.size, teams: teams, slid: W.slide ? now - W.slide : -1, deck: W.deck.length,
+    tiles: W.tiles.map(function (x) { return [x.i, x.t, x.c, x.lock, x.gold ? Math.max(0, x.gold - now) : 0, x.pts]; }),
+    pts: wallPts_(W, teams), held: (function () { var h = []; for (var t = 0; t < teams; t++) h.push(0); W.old.concat(W.tiles).forEach(function (x) { if (x.t >= 0 && x.t < teams) h[x.t]++; }); return h; })(),
+    ev: W.ev.filter(function (e) { return now - e[0] < WALL.ev; }).map(function (e) { return [now - e[0], e[1], e[2], e[3], e[4], e[5]]; }), left: Math.max(0, g.ends - now), over: over };
+  if (myTeam >= 0) { v.me = { team: myTeam, mine: num_(W.by[key]), tap: W.tap[key] >= 0 ? W.tap[key] : -1 }; }
+  if (over) { var seen = {}; v.miss = W.old.concat(W.tiles).filter(function (x) { if (x.t >= 0 || seen[x.i]) return false; seen[x.i] = 1; return true; }).map(function (x) { return x.i; });
+    v.spelled = W.old.concat(W.tiles).filter(function (x) { return x.t >= 0; }).length; }
+  return v; }
+/** Save and close: everyone on the team with the most points gets the bonus Tokens (Settings: Logo Wall winning team Tokens), once. Teachers get none,
+    and a game a student hosted pays no bonus. A tie for first pays every tied team. */
+function wallPay_(g) {
+  if (g.mode !== 'wall' || !g.wall || g.byStu || !g.ends) return null;
+  var st = static_(), amt = st.settings.wallTok; if (!amt) return null;
+  var tm = liveTeams_(g, livePlayers_(g)), lead = tm[0]; if (!lead || lead[1] <= 0) return null;
+  var win = tm.filter(function (x) { return x[1] === lead[1]; }).map(function (x) { return x[3]; });
+  var props = PropertiesService.getDocumentProperties(), guard = 'wallpaid:' + g.id + ':' + g.made; if (props.getProperty(guard)) return null;
+  props.setProperty(guard, String(Date.now()));                          // set first: a retry can never pay twice
+  var j = liveJoinedSure_(g.id), want = {}, teach = {}; win.forEach(function (t) { seaMates_(j, t).forEach(function (e) { want[e] = 1; }); });
+  try { Object.keys(teacherEmails_() || {}).forEach(function (e) { teach[str_(e).toLowerCase()] = 1; }); } catch (e) {} teach[str_(g.host).toLowerCase()] = 1;
+  var sh = stuSheet_(), H = stuHead_(sh), when = new Date(), led = [], hist = [], paid = [], batch = 'wall-' + g.id + '-' + String(g.made).slice(-6), team = win.map(function (t) { return TEAM_NAMES[t] || ''; }).join(' and ');
+  rows_(sh, 2, H.n).forEach(function (v, i) { var key = str_(v[H.Email]).toLowerCase(); if (!want[key] || teach[key]) return;
+    var o = stuObj_(H, v, i + 2); o.Tokens = num_(o.Tokens) + amt; writeStu_(sh, o); paid.push(str_(o.Name).split(' ')[0]);
+    led.push([when, batch, key, o.Name, o.Class, 'Tokens', amt, 'Logo Wall: the winning team', '', '']);
+    hist.push([when, key, o.Name, o.Class, 'wall', amt + ' ' + st.settings.tok + ': Logo Wall, the winning team', 0, 'Gift', 'new: 🧱 Your team (' + team + ') won Logo Wall! +' + amt + ' ' + st.settings.tok + '.']); });
+  if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
+  cacheDrop_('boards');
+  return { teams: win, amt: amt, names: paid };
+}
 /* 4.52 (Colleen): solo Treasure Island best hauls are saved to each student's account (tab Treasure Island Scores), with a class leaderboard
    for each game length (3, 5 or 10 minutes, the student picks). */
 var ISLE_TAB = 'Treasure Island Scores', ISLE_HEAD = ['Email', 'Name', 'Class', 'Best 3 min', 'Best 5 min', 'Best 10 min', 'Last played'], ISLE_LENS = [3, 5, 10];
@@ -9406,9 +9533,9 @@ function breachRtFinish_(g) { var R = g.breach && g.breach.rt; if (!R) return; t
    screens and the projector then send their game calls there (Index.html call()), and the screens put the names back in (they come from here, never the room).
    Start, late joins and Save and close stay here: at Save and close the room's game comes back (numbers swapped back) and is saved as before.
    The Vault and Breach have their own rooms (4.139, 4.142). If the room can't be made, the game runs here as before. ── */
-var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train'];
+var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train', 'wall'];
 var RTE_KEYS = ['lp', 'ls', 'lx', 'lgr', 'lcam'];
-var RTE_NEED = { train: 'api_trainVote' };      // 4.270: the room must have this call (its engine.js is live) before a game moves there
+var RTE_NEED = { train: 'api_trainVote', wall: 'api_wallClaim' };      // 4.270: the room must have this call (its engine.js is live) before a game moves there
 function rteKeyIn_(key, map) { var p = key.split(':'); if (p.length === 3 && map[p[2]]) p[2] = map[p[2]]; return p.join(':'); }
 function rteNames_(g, map) { var j = liveJoined_(g.id), first = {}, names = {}, seen = {};
   Object.keys(map).forEach(function (e) { var full = str_(j[e] && j[e][0]), f = full.split(' ')[0] || 'Player'; first[e] = [f, full]; seen[f] = (seen[f] || 0) + 1; });
@@ -13541,4 +13668,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_livePing, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
