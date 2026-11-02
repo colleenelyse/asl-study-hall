@@ -21,7 +21,7 @@ import { rtUse, breachView_, breachTick_, breachDue_, breachControl_, api_breach
 
 const TICK_MS = { vault: 2000, breach: 1000, engine: 5000 };      // engine: how often its memory is saved (the game itself moves on with each call, as on Google)
 /* 4.145 the engine runs these of ASL Study's own calls for a live game (never Start or Save and close: those stay with ASL Study) */
-const ENGINE_CALL = /^api_(livePing|liveAct|liveBoard|liveControl|sea|isle|escr|mob|case|train|wall)/;      // 4.270 Wagon Train; ASL Study 4.279 Logo Wall
+const ENGINE_CALL = /^api_(livePing|liveAct|liveBoard|liveControl|sea|isle|escr|mob|case|train|wall|asst|spin)/;      // 4.270 Wagon Train; ASL Study 4.279 Logo Wall; 4.287 The Assistants; 4.288 Spin & Spell
 const wsUser = id => id === 'teacher' ? 'ⓣ' : 'ⓟ' + id.slice(1);      // the socket's id (u3, teacher) -> the player's number inside the game (ⓟ3, ⓣ)      // between clicks the room still moves time along (Vault: the meeting minute, the guards; Breach: the vote, attempts, Color Scans)
 const BR_CALLS = { api_breachVote, api_breachMove, api_breachNote, api_breachBox, api_breachTool, api_breachTry };
 const json = (o, s) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

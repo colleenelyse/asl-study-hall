@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.286';
+var VERSION = '4.289';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -549,6 +549,7 @@ var FEATURES = [
   ['pawtopia', 'Pawtopia', 'Practice', 'A long-term virtual pet world: students raise pets through seven stages, hatch eggs and collect rarities. Every practice round anywhere in the app pays Treats and moves eggs toward hatching.'],
   ['wagon', 'Wagon West', 'Practice', 'An 1800s wagon-trail adventure: students lead five travelers west, choosing pace, rations, river crossings and shortcuts. Rounds of signs (at trading posts, rivers, repairs, hunts) earn supplies, and the score sets their quality. Illness, disasters and graves; a Hall of Fame.'],
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
+  ['fuzzy', 'Fuzzy Crossing', 'Practice', 'A solo logic puzzle (4.289): little fuzzy creatures that differ by color, eyes, feet and hat must cross by a rule. The rule is signed (her color GIFs when the units have them, else the 3D hand); some levels hide the rule and Gatekeepers nod or shake their heads. 12 levels, new creatures every time. Pays like the other skill games (a few Tokens and Treats).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
   ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
   ['claw', 'Lucky Claw', 'Practice', 'A claw machine game: students answer signs to earn Claw Coins, then grab mystery eggs; prizes (Tokens, Tickets, game characters, shop extras) go straight to their account.'],
@@ -565,7 +566,7 @@ var FEATURES = [
   ['ws', 'Sign of the Day', 'Student pages', 'The daily sentence with one new sign, its rewards and weekly quiz.'],
   ['dict', 'Dictionary', 'Student pages', 'The searchable list of every sign.'],
   ['audio', 'Read aloud', 'Student pages', 'Speaker buttons that read terms and definitions aloud, each side in its own language (Settings and Units tabs).'],
-  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['wall', 'Logo Wall', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
+  ['tower', 'Tower Climb', 'Class games', ''], ['race', 'Race Day', 'Class games', ''], ['path', 'Candy Path', 'Class games', ''], ['mob', '1 vs. The Mob', 'Class games', ''], ['camrace', 'Camera Race to 50', 'Class games', ''], ['sea', 'Sea Battle', 'Class games', ''], ['isle', 'Treasure Island', 'Class games', ''], ['train', 'Wagon Train', 'Class games', ''], ['wall', 'Logo Wall', 'Class games', ''], ['asst', 'The Assistants', 'Class games', ''], ['spin', 'Spin & Spell', 'Class games', ''], ['case', 'Case Closed', 'Class games', ''], ['breach', 'Breach', 'Class games', ''], ['vault', 'The Vault', 'Class games', ''], ['jar', 'Fill the Jar', 'Class games', ''],
   ['push', 'Push to students', 'Teacher tools', 'Messages, links and polls that pop up on student screens.'],
   ['gift', 'Gift page', 'Teacher tools', 'Giving themes, characters, Tickets or Tokens from the Gift page.'],
   ['focus', 'Study Sidekick', 'Teacher tools', 'On-task time: a sidekick floats over ASL Study while students focus, and focused minutes earn the reward you choose.'],
@@ -698,6 +699,8 @@ var DEFAULTS = [
   ['Sea Battle numbers', 'Easy', 'Sea Battle, Square aiming: how high the row numbers go. Easy (up to 24), Medium (up to 50) or Hard (up to 99).'],
   ['Sea Battle power-shot speed', 'Auto', 'Sea Battle: signing a square this fast earns a power shot. Auto = your class\'s typical expressive speed from the Fingerspelling Stats tab (camera seconds per letter and per number); or type seconds per letter, like 1.5.'],
   ['Wagon Train winning team Tokens', 25, 'Wagon Train (class game): bonus Tokens for each student on the winning wagon, paid when you press Save and close. Teachers get none. 0 = no bonus.'],
+  ['The Assistants winning team Tokens', 25, 'The Assistants (class game): bonus Tokens for each student on the winning team (the most calendar points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
+  ['Spin & Spell winning team Tokens', 25, 'Spin & Spell (class game): bonus Tokens for each student on the winning team (the most points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['Logo Wall winning team Tokens', 25, 'Logo Wall (class game): bonus Tokens for each student on the winning team (the most logos points), paid when you press Save and close. Teachers get none. 0 = no bonus.'],
   ['Sea Battle captain bonus', 25, 'Sea Battle: extra Tickets for the captain of the winning team, on top of the team prize (everyone on the winning team keeps their game character). 0 = no captain bonus.'],
   ['Sea Battle word length', 4, 'Sea Battle, Words aiming: the length of the words students fingerspell to aim, taken from your Fingerspelling Words and Everyday Words tabs. One number (4) or a range (4-6).'],
@@ -967,6 +970,8 @@ function buildStatic_(locked) {
     brSounds: (function () { try { var o = JSON.parse(str_(g('Breach sounds')) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),      // 4.119
     stuHost: !/^n/i.test(str_(g('Students can host class games'))), seaAim: (function (v) { var w = ['tap', 'square', 'words'].filter(function (k) { return v.indexOf(k) >= 0; }); return w.length ? w : ['tap']; })(str_(g('Sea Battle aiming') || 'tap, square, words').toLowerCase()), seaFast: /^\s*\d/.test(str_(g('Sea Battle power-shot speed'))) ? Math.max(0.3, Math.min(10, num_(g('Sea Battle power-shot speed')))) : 0, seaNums: /^h/i.test(str_(g('Sea Battle numbers'))) ? 99 : /^m/i.test(str_(g('Sea Battle numbers'))) ? 50 : 24,
     trainTok: str_(g('Wagon Train winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Wagon Train winning team Tokens'))))),      // 4.270
+    spinTok: str_(g('Spin & Spell winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Spin & Spell winning team Tokens'))))),      // 4.288
+    asstTok: str_(g('The Assistants winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('The Assistants winning team Tokens'))))),      // 4.287
     wallTok: str_(g('Logo Wall winning team Tokens')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Logo Wall winning team Tokens'))))),      // 4.279
     seaCapBonus: str_(g('Sea Battle captain bonus')) === '' ? 25 : Math.max(0, Math.min(1000, Math.floor(num_(g('Sea Battle captain bonus'))))),
     seaNames: SEA_TEAMS.map(function (t, i) { var v = str_(g('Sea Battle ship names: ' + t)).split(',').map(function (x) { return x.trim().slice(0, 30); }); return SEA_DEF_NAMES[i].map(function (d, k) { return v[k] || d; }); }),      // 4.38 (Colleen): each team's pirate ship names
@@ -1579,7 +1584,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['logos', 'wall', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['logos', 'wall', 'asst', 'spin', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1898,7 +1903,7 @@ function hardList_(data, tn, n, ok) {
    Gift Calendar only for a round of SKILL.giftMin answers or more. No XP (XP is for signs). One Activity Log row a round. ───────── */
 var SKILL = { perRight: 1, roundMax: 15, dayCap: 40, giftMin: 5,
   kinds: { logos: ['logos', 'Name That Logo'], toast: ['toast', 'Neon Flying Toasters: letters'], party: ['party', 'Dinner Party'], manners: ['manners', 'Mind Your Manners'],
-    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'] } };
+    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'], fuzzy: ['fuzzy', 'Fuzzy Crossing'] } };      // 4.289 Fuzzy Crossing
 function api_skillRound(auth, r) {
   var st = static_(), id = who_(auth), S = st.settings; if (!id) throw new Error('Your sign-in ran out. Reload the page.');
   r = r || {}; var kind = str_(r.kind), K = SKILL.kinds[kind]; if (!K) throw new Error('Unknown activity.');
@@ -2995,6 +3000,8 @@ function liveTeams_(g, players) {
   if (g.mode === 'escape' && g.escr) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = escrPts_(g.escr, x[3]); }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.58 team escape room
   if (g.mode === 'case' && g.casec) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.casec.pts[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // Case Closed: case points
   if (g.mode === 'train' && g.train) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = trainScore_(g.train, x[3]).total; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.270 Wagon Train: health + supplies
+  if (g.mode === 'spin' && g.spin) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.spin.tot[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.288 Spin & Spell: the teams' points
+  if (g.mode === 'asst' && g.asst) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = asstR1_(g.asst.tot[x[3]] || 0); }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.287 The Assistants: calendar points
   if (g.mode === 'wall' && g.wall) { var wp = wallPts_(g.wall, g.teams); players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = wp[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // 4.279 Logo Wall: logo points
   if (g.mode === 'isle' && g.isle) { players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.isle.gold[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); return t; }      // Treasure Island: banked gold
   if (g.mode === 'sea' && g.sea) { var st2 = t.map(function (x) { return x; }); players.forEach(function (p) { if (t[p[8]]) t[p[8]][2]++; }); t.forEach(function (x) { x[1] = g.sea.hits[x[3]] || 0; }); t.sort(function (a, b) { return (b[1] - a[1]) || (a[3] - b[3]); }); if (g.sea.winner >= 0) t.sort(function (a, b) { return (b[3] === g.sea.winner) - (a[3] === g.sea.winner); }); return t; }      // Sea Battle: hits (the last team afloat wins Defeat)
@@ -3082,7 +3089,7 @@ function liveHostOk_(auth, g) {
 }
 /** Teacher (or a student, when the teacher allows it): open a lobby. ids = the signs to use; minutes = how long the game runs once started. Returns the board, with the join code. */
 function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
-  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train', 'wall'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
+  if (!feat_(null, ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'case', 'breach', 'vault', 'train', 'wall', 'asst', 'spin'].indexOf(mode) >= 0 ? mode : 'tower')) throw new Error('That class game is turned off in App settings.');
   var camMode = mode === 'camrace' || mode === 'jar', seaNoSigns = (mode === 'sea' || mode === 'isle') && opt && opt.seaWays && opt.seaWays.indexOf('signs') < 0;      // 4.27: camera games count fingerspelled words (or signed numbers), not vocabulary answers
   var st = static_(), cache = CacheService.getScriptCache(), teacher = isTeacher_(), me = who_(auth);
   if (!teacher) {                                                      // a student hosting for classmates
@@ -3093,23 +3100,23 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   st.cards.forEach(function (c) { if (face_(c)) withGif[c[0]] = 1; });
   ids = (ids instanceof Array ? ids : []).map(str_).filter(function (x) { return withGif[x]; }).slice(0, 300);
         // 4.53: the items are the teacher's signs
-  if ((camMode || seaNoSigns || mode === 'vault' || mode === 'wall') && mode !== 'case') ids = [];      /* 4.279 Logo Wall: logos, not signs */      // 4.105 The Vault has its own things to sign
+  if ((camMode || seaNoSigns || mode === 'vault' || mode === 'wall' || mode === 'asst' || mode === 'spin') && mode !== 'case') ids = [];      /* 4.288 Spin & Spell: puzzles from the unit tabs, not questions */      /* 4.287 The Assistants: its own Unit 5 signs */      /* 4.279 Logo Wall: logos, not signs */      // 4.105 The Vault has its own things to sign
   else if (ids.length < 4) throw new Error('Pick at least 4 signs that have GIFs under "What to study" first.');
-  minutes = mode === 'train' ? trainMins_(minutes, teacher) : Math.max(1, Math.min(teacher ? 45 : 15, Math.floor(num_(minutes)) || 5));      // 4.270 Wagon Train: 30 minutes unless the teacher picks (the trip paces itself to it)
+  minutes = mode === 'spin' ? spinMins_(opt, teacher) : mode === 'asst' ? asstMins_(opt, teacher) : mode === 'train' ? trainMins_(minutes, teacher) : Math.max(1, Math.min(teacher ? 45 : 15, Math.floor(num_(minutes)) || 5));      // 4.270 Wagon Train: 30 minutes unless the teacher picks (the trip paces itself to it)
   bank = str_(bank);
   var seenName = {}, chars = charFiles_().filter(function (f) { return !bank || f.set.toLowerCase() === bank.toLowerCase(); }).slice(0, 150).map(function (f) {
     var nm = charName_(f.name) || 'Character', k = nm.toLowerCase(); seenName[k] = (seenName[k] || 0) + 1;
     return [seenName[k] > 1 ? nm + ' ' + seenName[k] : nm, f.id];
   });
-  if (['vault', 'escape', 'breach', 'case', 'train', 'wall'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
+  if (['vault', 'escape', 'breach', 'case', 'train', 'wall', 'asst', 'spin'].indexOf(mode) >= 0) chars = [];      /* 4.133 (Colleen: "in most of the games that aren't modeled after blooket, the people are just themselves"): no game characters, students play by their first name */
   var keep = opt && liveCode_(opt.keep) ? liveGet_(liveCode_(opt.keep)) : null;      /* 4.134 (Colleen): the teacher changes the settings while students are still joining: same code, same players */
   if (keep && (keep.host !== (teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key) || livePhase_(keep) !== 'lobby')) throw new Error('That game has already started, so its settings can\'t change now.');
   if (keep) chars = keep.chars;      // characters stay as they were: students may have picked one already
   var code = keep ? keep.id : '';
   for (var i = 0; !keep && i < 20 && (!code || cache.get('live:' + code)); i++) code = String(10000 + Math.floor(Math.random() * 90000));
-  teams = Math.floor(num_(teams)); teams = teams >= 2 && teams <= (mode === 'breach' ? 6 : mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'train' || mode === 'wall' ? 6 : 4) ? teams : 0; if ((mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'train' || mode === 'wall') && !teams) teams = mode === 'wall' ? 3 : 2;      // Sea Battle always has teams
+  teams = Math.floor(num_(teams)); teams = teams >= 2 && teams <= (mode === 'breach' ? 6 : mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin' ? 6 : 4) ? teams : 0; if ((mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin') && !teams) teams = mode === 'wall' ? 3 : 2;      // Sea Battle always has teams
   if (mode === 'mob' || mode === 'vault') teams = 0;                                       // 1 vs. The Mob has no teams
-  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || mode === 'wall' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
+  var g = { id: code, mode: mode === 'tower' || mode === 'race' || mode === 'mob' || mode === 'sea' || mode === 'isle' || mode === 'case' || mode === 'escape' || mode === 'breach' || mode === 'vault' || mode === 'train' || mode === 'wall' || mode === 'asst' || mode === 'spin' || camMode ? mode : TRIAL.path ? 'path' : 'tower', teams: teams, pvp: pvp !== false, ids: ids, minutes: minutes, dist: dist === 'unit' || dist === 'all' ? dist : 'set', ends: 0, chars: chars, host: teacher ? str_(Session.getActiveUser().getEmail()).toLowerCase() : me.key, byStu: !teacher, late: !(opt && opt.late === false),      // late: students may still join once the game is on
     rand: !!(opt && opt.rand) && chars.length > 0, label: opt && (opt.label === 'char' || opt.label === 'both') ? opt.label : 'name' };      // rand: the game hands out characters; label: what the board shows under each avatar
   if (g.mode === 'mob') { var fm = ((opt && opt.fmts instanceof Array) ? opt.fmts : []).map(str_).filter(function (f, i, a) { return (f === 'word' || f === 'sign' || f === 'type') && a.indexOf(f) === i; }); var sx = Math.floor(num_(opt && opt.secs)); g.mob = { fmts: fm.length ? fm : ['word'], secs: [10, 15, 20, 30].indexOf(sx) >= 0 ? sx : MOB.secs }; }
   g.made = Date.now();
@@ -3123,11 +3130,13 @@ function api_liveHost(auth, ids, minutes, dist, bank, mode, teams, pvp, opt) {
   if (g.mode === 'case') { g.casec = caseNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.53 Case Closed
   if (g.mode === 'isle') { g.isle = isleNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }      // 4.47 Treasure Island (the ways to earn share Sea Battle's field)
   if (g.mode === 'train') { g.train = trainNew_(teams, minutes); g.seaWays = ['signs']; }      // 4.270 Wagon Train
+  if (g.mode === 'spin') { g.spin = spinNew_(opt, st, teacher); if (!g.spin.deck.length) throw new Error('Spin & Spell found no words to use. Pick a unit with English words, or type your own puzzles.'); }      // 4.288 Spin & Spell (the teams are made at Start)
+  if (g.mode === 'asst') g.asst = asstNew_(opt, st, teacher ? 45 : 15);      // 4.287 The Assistants (the teams and the first week are made at Start)
   if (g.mode === 'wall') g.wall = wallNew_(opt);      // 4.279 Logo Wall: the logo group (the teams are made at Start)
   if (g.mode === 'sea') { g.sea = seaNew_(teams, opt); g.seaWays = (opt && opt.seaWays instanceof Array ? opt.seaWays : ['signs']).map(str_).filter(function (w) { return ['signs', 'fingerspelling', 'numbers', 'camera'].indexOf(w) >= 0; }); if (!g.seaWays.length) g.seaWays = ['signs']; }
   if (camMode) g.cam = { kind: opt && opt.camKind === 'numbers' ? 'numbers' : 'letters', goal: 50 };
   else if (g.mode !== 'mob' && opt && opt.camAns) g.camAns = true;      // camera answers: see the sign, fingerspell its English word to the camera
-  if (g.teams && opt && opt.teamBy && opt.teamBy !== 'join' && g.mode !== 'train' && g.mode !== 'wall') { try { g.tmap = seatTeams_(str_(opt.cls), str_(opt.teamBy), g.teams); g.teamBy = str_(opt.teamBy); } catch (e) { g.tmap = null; } }      // teams from the seating chart
+  if (g.teams && opt && opt.teamBy && opt.teamBy !== 'join' && g.mode !== 'train' && g.mode !== 'wall' && g.mode !== 'asst' && g.mode !== 'spin') { try { g.tmap = seatTeams_(str_(opt.cls), str_(opt.teamBy), g.teams); g.teamBy = str_(opt.teamBy); } catch (e) { g.tmap = null; } }      // teams from the seating chart
   if (g.byStu) { var hsh = stuSheet_(), hr = findRow_(hsh, me.key); g.hostName = hr ? str_(readStu_(hsh, hr).Name).split(' ')[0] : 'a classmate'; }
   try { liveSweep_(); } catch (e) {}
   var before = cache.get('livehost:' + g.host);
@@ -3156,7 +3165,7 @@ function api_liveBoard(auth, code) {
   liveHostOk_(auth, g);
   if (g.rte) { var tk = teacher ? 'ⓣ' : g.rte.map[me.key]; if (tk) return { game: { id: g.id, mode: g.mode, phase: 'on' }, rte: enginePass_(g, tk) }; }      // 4.145 the projector talks to the engine room from now on
   if (!g.ends) try { liveWarm_(g); } catch (e) {}      // 4.146 while the lobby is open
-  var phase = livePhase_(g), left = phase === 'on' ? (g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.train ? 0 : g.ends - Date.now()) : phase === 'lobby' ? g.minutes * 60000 : 0, P;
+  var phase = livePhase_(g), left = phase === 'on' ? (g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.train || g.asst ? 0 : g.ends - Date.now()) : phase === 'lobby' ? g.minutes * 60000 : 0, P;
   P = livePlayers_(g);
   var feed = parse_(CacheService.getScriptCache().get('lf:' + g.id), []);
   if (g.mode === 'sea' && phase === 'on' && seaDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && seaTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
@@ -3164,10 +3173,12 @@ function api_liveBoard(auth, code) {
   if (g.mode === 'case' && phase === 'on' && caseDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && caseTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'train' && phase === 'on' && trainDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && trainTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.270
   if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && wallTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }      // 4.279 gold logos come and go
+  if (g.mode === 'spin' && phase === 'on' && g.spin && spinDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && spinTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.288 Spin & Spell moves along
+  if (g.mode === 'asst' && phase === 'on' && g.asst && asstDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && asstTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} phase = livePhase_(g); }      // 4.287 rounds, mind changes
   if (g.mode === 'escape' && phase === 'on' && escrDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && escrTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'breach' && phase === 'on' && breachDue_(g)) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && breachTick_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} }
   if (g.mode === 'isle' && phase === 'over' && g.isle && !g.isle.final) { try { lock_(function () { var g2 = liveGet_(g.id); if (g2 && isleFinal_(g2)) livePut_(g2); g = liveGet_(g.id) || g; }); } catch (e) {} P = livePlayers_(g); }
-  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu, bonus: liveBonusView_(g, static_()) },
+  return { game: { id: g.id, vocab: g.vocab || 'set', mode: g.mode || 'path', cam: g.cam || null, camAns: !!g.camAns, teamBy: g.teamBy || '', sea: g.mode === 'sea' ? seaView_(g, -1, '') : null, isle: g.mode === 'isle' ? isleView_(g, -1, '') : null, train: g.mode === 'train' ? trainView_(g, -1, '') : null, wall: g.mode === 'wall' ? wallView_(g, -1, '') : null, asst: g.mode === 'asst' ? asstView_(g, -1, '') : null, spin: g.mode === 'spin' ? spinView_(g, -1, '') : null, casec: g.mode === 'case' ? caseView_(g, -1, '') : null, escr: g.mode === 'escape' ? escrView_(g, -1, '') : null, breach: g.mode === 'breach' ? (g.breach && g.breach.rt ? breachRtBoard_(g) : breachView_(g, -1, '')) : null, vault: g.mode === 'vault' ? (g.vault && g.vault.rt ? vaultRtBoard_(g) : vaultBoard_(g)) : null, seaWays: g.seaWays || null, camReady: phase === 'lobby' ? (function () { var e = Object.keys(liveJoined_(g.id)), got = e.length ? CacheService.getScriptCache().getAll(e.map(function (x) { return 'lcam:' + g.id + ':' + x; })) : {}; return e.filter(function (x) { return got['lcam:' + g.id + ':' + x]; }).length; })() : 0, teams: g.teams || 0, phase: phase, left: left, minutes: g.minutes, signs: g.ids.length, chars: g.chars.length, late: g.late !== false, label: g.label || 'name', rand: !!g.rand, byStu: !!g.byStu, bonus: liveBonusView_(g, static_()) },
     chars: liveChars_(g, liveJoined_(g.id)), players: P.map(function (p) { return p.slice(0, 5).concat([p[7], p[8]]); }), teams: liveTeams_(g, P), win: phase === 'over' ? liveWinners_(g, P) : null,
     feed: (feed instanceof Array ? feed : []).filter(function (f) { return Date.now() - f[0] < 25000; }).map(function (f) { return f[1]; }), summary: phase === 'over' ? liveSummary_(g, P) : null, health: phase === 'on' && g.mode !== 'mob' ? liveHealth_(g) : null };
 }
@@ -3188,9 +3199,9 @@ function api_liveControl(auth, code, action) {
   if (g.mode === 'mob' && action !== 'clear') { var mo = mobControl_(auth, g, action); if (action === 'start') { var g3 = liveGet_(g.id); if (g3 && !g3.rte && !g3.rteTried) { engineSetup_(g3); livePut_(g3); mo = api_liveBoard(auth, g3.id); } } return mo; }      // 4.145 1 vs. The Mob goes to its engine room at Start
   if (action === 'start' && !g.ends) { var dupStart = lock_(function () { var k0 = 'lstart:' + g.id; if (cache.get(k0)) return true; cache.put(k0, '1', 21600); return false; }); if (dupStart) return api_liveBoard(auth, g.id); }      /* 4.142 a second press of Start (the screen was slow) must never deal the teams again: students "bounced all around to different teams" */
   if (action === 'clear') { mobForget_(g.id); var won = []; var practiceOnly = !!(g.breach && g.breach.practice);      /* 4.93 a Breach practice round counts toward nothing */
-    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } try { wallLogoSave_(g); } catch (e) {}      /* 4.283 the logo leaderboards */ var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, bonus: bonus }; }
+    try { if (g.vault && g.vault.rt) vaultRtFinish_(g); } catch (e) {} try { if (g.breach && g.breach.rt) breachRtFinish_(g); } catch (e) {} try { if (!practiceOnly) liveRecord_(g); } catch (e) {} try { won = practiceOnly ? [] : liveAward_(g); } catch (e) { won = []; } var cap = null; try { cap = seaCaptainBonus_(g); } catch (e) { cap = null; } var trainBonus = null; try { trainBonus = trainPay_(g); } catch (e) { trainBonus = null; } var wallBonus = null; try { wallBonus = wallPay_(g); } catch (e) { wallBonus = null; } var asstBonus = null; try { asstBonus = asstPay_(g); } catch (e) { asstBonus = null; } var spinBonus = null; try { spinBonus = spinPay_(g); } catch (e) { spinBonus = null; } try { wallLogoSave_(g); } catch (e) {}      /* 4.283 the logo leaderboards */ var bonus = null; try { bonus = practiceOnly ? null : liveBonusPay_(g); } catch (e) { bonus = null; } cache.remove('llq:' + g.id); cache.remove('live:' + g.id); cache.remove('livehost:' + g.host); cache.remove('lj:' + g.id); try { PropertiesService.getDocumentProperties().deleteProperty('lj:' + g.id); } catch (e) {} return { game: null, won: won, capBonus: cap, trainBonus: trainBonus, wallBonus: wallBonus, asstBonus: asstBonus, spinBonus: spinBonus, bonus: bonus }; }
   if (action === 'start' && !g.ends && g.teams && !g.tmap) { lock_(function () {      /* 4.103 teams are made only now, with everyone who joined: even by strength (4.102). 4.98: Breach's automatic crews also pick how many */
-      var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
+      var joined = liveJoinedSure_(g.id), who = Object.keys(joined), n = g.breach && g.brAuto ? Math.max(2, Math.min(6, Math.floor(who.length / g.brAuto))) : g.train ? trainWagons_(who.length) : g.wall ? wallTeams_(who.length) : g.asst ? asstTeams_(who.length) : g.spin ? spinTeams_(who.length) : g.teams;      /* 4.270 Wagon Train: families of 4 to 6; 4.279 Logo Wall: 3 to 6 teams */
       var none = who.filter(function (e) { return !(joined[e][2] >= 0 && joined[e][2] < n); });      /* only players without a team (in class: everyone) */
       g.apart = seatApart_(who);      /* 4.129 keep-aways, also for anyone who joins later */
       if (none.length === who.length) { var deal = evenTeams_(who, n, g.apart); who.forEach(function (e) { joined[e][2] = deal[e]; }); }
@@ -3199,11 +3210,11 @@ function api_liveControl(auth, code, action) {
       liveJoinedSave_(g.id, joined);
       if (g.breach && g.brAuto) { g.teams = n; g.breach = breachNew_(n, g.brOpt || {}); }
       if (g.train) { g.teams = n; g.train = trainNew_(n, g.minutes); }
-      if (g.wall) g.teams = n; }); }
+      if (g.wall || g.asst || g.spin) g.teams = n; }); }
   if (action === 'start' && !g.ends && g.vault) vaultStart_(g, g.vOpt);      // 4.105 The Vault: partners and each pair's locks
   var rtNew = action === 'start' && !g.ends && !!g.vault, brNew = action === 'start' && !g.ends && !!g.breach, engNew = action === 'start' && !g.ends && RTE_MODES.indexOf(g.mode) >= 0;
   if (action === 'start' && !g.ends) liveBonusLock_(g);      // 4.282 the winner bonus is locked from now on
-  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.wall) wallStart_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
+  if (action === 'start' && !g.ends) { g.ends = Date.now() + (g.untimed ? BR_UNTIMED : g.minutes * 60000) + (g.sea ? 300000 : 0); if (g.sea) seaTick_(g); if (g.isle) isleTick_(g); if (g.train) { g.ends += 20 * 60000; trainStart_(g); } if (g.wall) wallStart_(g); if (g.asst) { g.ends += 20 * 60000; asstStart_(g); } if (g.spin) spinStart_(g); if (g.casec) caseTick_(g); if (g.escr) g.escr.ev.next = Date.now() + ESCR_EVERY; if (g.breach) { g.ends += 120000; breachTick_(g); } if (g.vault && !g.vault.versus && !g.vault.duo) g.ends += VAULT_MEET_MS; if (g.vault && g.vault.hold) g.ends = Date.now() + 3 * 3600000; livePut_(g); }      /* 4.171 the clock waits for the teacher */      /* 4.167 (Colleen: "there needs to be a pause before the countdown starts for students to identify each other"): the partner-finding minute is on top of the game's minutes */      // Sea Battle: room for voting and placing; the real clock starts with the battle (seaTick_)
   if (rtNew && g.vault) { vaultRtSetup_(g); livePut_(g); }      // 4.139 The Vault runs on asl.cool from here
   if (brNew && g.breach) { breachRtSetup_(g); livePut_(g); }      // 4.142 so does Breach
   if (engNew) { engineSetup_(g); livePut_(g); }      // 4.145 every other live class game runs in an engine room on asl.cool
@@ -3240,7 +3251,9 @@ function api_liveControl(auth, code, action) {
     if (action === 'trainpause') { if (!T.paused) T.paused = now; else { var dt = now - T.paused; T.target += dt; if (T.ph.ends) T.ph.ends += dt; T.trades.forEach(function (x) { if (x.until) x.until += dt; }); g2.ends += dt; T.paused = 0; } }
     if (action === 'trainskip' && !T.paused && T.ph.k !== 'done') { T.ph.ends = now - TRAIN.grace - 1; trainTick_(g2); }
     livePut_(g2); g = g2; });
-  if (action === 'end') { g.ends = Math.min(g.ends || Date.now(), Date.now()); if (g.train && !g.train.final) { var g4 = liveGet_(g.id) || g; trainFinal_(g4); g4.ends = g.ends; g = g4; } livePut_(g); if (g.vault && g.vault.rt) try { rtPost_(g.vault.rt, 'stop'); } catch (e) {} if (g.breach && g.breach.rt) try { rtPost_(g.breach.rt, 'stop'); } catch (e) {} }
+  if (g.spin && /^spin(pause|pass|cap|reveal)$/.test(action) && livePhase_(g) === 'on') lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.spin) return; spinControl_(g2, action); livePut_(g2); g = g2; });      // 4.288 Spin & Spell: Pause / Pass the turn / New captain / Reveal
+  if (g.asst && (action === 'asstpause' || action === 'asstnext' || /^asstcli:\d$/.test(action)) && livePhase_(g) === 'on') lock_(function () { var g2 = liveGet_(g.id); if (!g2 || !g2.asst) return; asstControl_(g2, action); livePut_(g2); g = g2; });      // 4.287 Pause / Next / a new client
+  if (action === 'end') { g.ends = Math.min(g.ends || Date.now(), Date.now()); if (g.train && !g.train.final) { var g4 = liveGet_(g.id) || g; trainFinal_(g4); g4.ends = g.ends; g = g4; } if (g.asst && !g.asst.final) { var g5 = liveGet_(g.id) || g; asstFinal_(g5, Date.now()); g5.ends = g.ends; g = g5; } if (g.spin && !g.spin.final) { var g6 = liveGet_(g.id) || g; spinFinal_(g6, Date.now()); g6.ends = g.ends; g = g6; } livePut_(g); if (g.vault && g.vault.rt) try { rtPost_(g.vault.rt, 'stop'); } catch (e) {} if (g.breach && g.breach.rt) try { rtPost_(g.breach.rt, 'stop'); } catch (e) {} }
   return api_liveBoard(auth, g.id);
 }
 /** Student: look up a game by its code. Returns the characters and which are taken, or says there is no such game. */
@@ -3322,6 +3335,8 @@ function api_livePing(auth, code, p) {
   if (g.mode === 'case' && phase === 'on' && caseDue_(g)) { var tkc = false; try { tkc = lock_(function () { var g2 = liveGet_(code); if (g2 && caseTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tkc) g = liveGet_(code) || g; }      // 4.53 cases open and close
   if (g.mode === 'train' && phase === 'on' && trainDue_(g)) { var tkt = false; try { tkt = lock_(function () { var g2 = liveGet_(code); if (g2 && trainTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tkt) { g = liveGet_(code) || g; phase = livePhase_(g); } }      // 4.270 Wagon Train moves along
   if (g.mode === 'wall' && phase === 'on' && g.wall && wallDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && wallTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; }      // 4.279 gold logos come and go
+  if (g.mode === 'spin' && phase === 'on' && g.spin && spinDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && spinTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; phase = livePhase_(g); }      // 4.288
+  if (g.mode === 'asst' && phase === 'on' && g.asst && asstDue_(g)) { try { lock_(function () { var g2 = liveGet_(code); if (g2 && asstTick_(g2)) livePut_(g2); }); } catch (e) {} g = liveGet_(code) || g; phase = livePhase_(g); }      // 4.287 The Assistants moves along
   if (g.mode === 'isle' && phase === 'on' && (isleDue_(g) || !g.isle.started)) { var tki = false; try { tki = lock_(function () { var g2 = liveGet_(code); if (g2 && isleTick_(g2)) { livePut_(g2); return true; } return false; }); } catch (e) {} if (tki) g = liveGet_(code) || g; }      // 4.47 the island's Gold Rush
   if (g.mode === 'sea' && phase === 'on' && seaDue_(g)) { var tk = false; try { tk = lock_(function () { var g2 = liveGet_(code); if (g2 && seaTick_(g2)) { livePut_(g2); g = g2; return true; } return false; }); } catch (e) {} if (tk) g = liveGet_(code) || g; }      // move the rounds along       // this game keeps its own score on the server
   p = p || {};
@@ -3331,7 +3346,9 @@ function api_livePing(auth, code, p) {
   var grant = Math.max(0, num_(extra['lgr:' + g.id + ':' + id.key]));                     // floors gained by swapping with the leader
   var steps = Math.max(0, Math.min(right * 5 + grant, Math.floor(num_(p.steps))));       // one space a correct answer, plus shortcuts
   var score = Math.max(0, Math.min(Math.max(right * 450, (right * 5 + grant) * 100 + right * 200), Math.floor(num_(p.score))));
-  if (g.mode === 'wall' && g.wall) { right = total = score = num_(g.wall.by[id.key]); steps = 0; }      // 4.279 Logo Wall: the server counts my logos (no signs answered)
+  if (g.mode === 'wall' && g.wall) { right = total = score = num_(g.wall.by[id.key]); steps = 0; }
+  if (g.mode === 'spin' && g.spin) { var sm = g.spin.me[id.key] || { pts: 0, hits: 0, calls: 0, solves: 0 }; right = sm.hits + sm.solves; total = Math.max(right, sm.calls + sm.solves); score = sm.pts; steps = 0; }      // 4.288 the server counts my letters and solves
+  if (g.mode === 'asst' && g.asst) { var am = g.asst.me[id.key] || { pts: 0, n: 0 }; right = score = Math.round(am.pts); total = Math.max(right, am.n); steps = 0; }      // 4.287 the server counts my calendar points (no signs answered)      // 4.279 Logo Wall: the server counts my logos (no signs answered)
   var hits = [];
   if (extra['lx:' + g.id + ':' + id.key]) hits = lock_(function () { var k = 'lx:' + g.id + ':' + id.key, v = parse_(cache0.get(k), []); cache0.remove(k); return v instanceof Array ? v : []; });
   var tally = {}, okId = {}, kept = 0;
@@ -3345,13 +3362,13 @@ function api_livePing(auth, code, p) {
   var all = livePlayers_(g), rank = 0, myTeam = -1, trank = 0, tn = 0;
   all.forEach(function (x, i) { if (x[5] === id.key) { rank = i + 1; myTeam = x[8]; } });
   if (myTeam >= 0) all.forEach(function (x) { if (x[8] === myTeam) { tn++; if (x[5] === id.key) trank = tn; } });      // my place among my own team
-  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, wall: g.mode === 'wall' ? wallView_(g, myTeam, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
+  return { phase: phase, team: myTeam, breach: g.mode === 'breach' ? breachView_(g, myTeam, id.key) : undefined, vault: g.mode === 'vault' ? vaultView_(g, id.key) : undefined, left: g.breach && g.breach.phase !== 'play' ? g.minutes * 60000 : g.breach && g.breach.paused ? g.breach.pausedLeft : g.sea && seaSetup_(g.sea) ? g.minutes * 60000 : g.sea && g.sea.paused ? g.sea.pausedLeft : g.isle && g.isle.paused ? g.isle.pausedLeft : g.casec && g.casec.paused ? g.casec.pausedLeft : g.escr && g.escr.paused ? g.escr.pausedLeft : Math.max(0, g.ends - Date.now()), over: phase === 'over', escr: g.mode === 'escape' ? escrView_(g, myTeam, id.key) : undefined, isle: g.mode === 'isle' ? isleView_(g, myTeam, id.key) : undefined, train: g.mode === 'train' ? trainView_(g, myTeam, id.key) : undefined, wall: g.mode === 'wall' ? wallView_(g, myTeam, id.key) : undefined, asst: g.mode === 'asst' ? asstView_(g, myTeam, id.key) : undefined, spin: g.mode === 'spin' ? spinView_(g, myTeam, id.key) : undefined, casec: g.mode === 'case' ? caseView_(g, myTeam, id.key) : undefined, rank: rank, n: all.length, top: all.slice(0, 5).map(function (x) { return x.slice(0, 3); }),
     sea: g.mode === 'sea' ? (function () { var v = seaView_(g, myTeam, ''); if (!v) return v; var j = liveJoined_(g.id), mm = myTeam >= 0 ? seaMates_(j, myTeam) : [], sea = g.sea;
       v.captain = myTeam >= 0 && sea.captains[myTeam] === id.key; v.myVote = mm.indexOf(myTeam >= 0 ? (sea.votes[myTeam] || {})[id.key] || '' : ''); v.mates = mm.map(function (e) { return seaLabel_(g, j, e); }); var ord = myTeam >= 0 && sea.phase === 'battle' ? seaOrder_(g, myTeam, j, Date.now()) : mm; v.order = ord.map(function (e) { return seaFirst_(j, e); }); v.me = ord.indexOf(id.key); v.voteMe = mm.indexOf(id.key);
       v.ars = sea.ars[id.key] || {}; v.right = seaRight_(g, [id.key])[id.key] || 0; var gu = myTeam >= 0 ? seaGunner_(g, myTeam, Date.now(), j) : null;
       if (gu) { var r2 = seaRight_(g, [gu.email]); v.gun = { mine: gu.email === id.key, name: seaFirst_(j, gu.email), next: seaFirst_(j, gu.next), nextMine: gu.next === id.key, bal: seaBal_(sea, gu.email, r2[gu.email] || 0), left: gu.ends - (sea.paused || Date.now()) }; }
       return v; })() : undefined,
-    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
+    board: g.mode === 'sea' || g.mode === 'isle' || g.mode === 'case' || g.mode === 'escape' || g.mode === 'breach' || g.mode === 'train' || g.mode === 'wall' || g.mode === 'asst' || g.mode === 'spin' ? [] /* Sea Battle and Treasure Island don't use the board: smaller replies */ : all.slice(0, 60).map(function (x) { return [x[1], x[7], x[5] === id.key ? 1 : 0, x[8]]; }), hits: hits, teams: liveTeams_(g, all).map(function (t) { return [t[0], t[1], t[3]]; }), trank: trank, tn: tn, win: phase === 'over' ? liveWinners_(g, all) : null };
 }
 
 /* ───── 4.282 WINNER BONUS and LATE JOINERS (Colleen, 2026-11-01) ─────
@@ -3365,7 +3382,7 @@ function api_livePing(auth, code, p) {
    team, as before) and the teacher's screen shows a small "Ava R. joined Blue". When EVERY team has the same number of players, the teacher's screen
    asks (api_liveLate / api_liveLateSet): team buttons with the strength-balanced suggestion marked; after 15 seconds the suggestion is used. The
    student waits on a "Your teacher is picking your team" screen meanwhile (api_liveClaim answers pending and the screen asks again). Queue: llq:<code>. */
-var LIVE_BONUS = { modes: ['tower', 'race', 'path', 'camrace', 'jar', 'sea', 'isle', 'case', 'escape', 'breach', 'train', 'wall'], maxAmt: 500, maxQty: 10, maxTreats: 500, charTok: 20, lateWait: 15000 };
+var LIVE_BONUS = { modes: ['tower', 'race', 'path', 'camrace', 'jar', 'sea', 'isle', 'case', 'escape', 'breach', 'train', 'wall', 'asst', 'spin'], maxAmt: 500, maxQty: 10, maxTreats: 500, charTok: 20, lateWait: 15000 };
 function liveBonusOk_(g) { return !!(g && !g.byStu && !g.brDuo && LIVE_BONUS.modes.indexOf(g.mode) >= 0); }
 function liveShort_(full) { var w = str_(full).split(/\s+/).filter(String); return w.length ? w[0] + (w.length > 1 ? ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.' : '') : 'A student'; }
 /** The Shop extras a teacher can give: backgrounds (with a picture), titles and effects (the same kind the Lucky Claw gives). */
@@ -3402,6 +3419,8 @@ function liveBonusText_(b, st) {
 function liveAutoPrize_(g, st) {
   if (!g || g.byStu) return ['', '']; var S = st.settings, out = [], sh = [];
   if (g.mode === 'train' && S.trainTok) { out.push('Winning wagon: ' + S.trainTok + ' ' + S.tok + ' each (Settings: Wagon Train winning team Tokens)'); sh.push(S.trainTok + ' ' + S.tok); }
+  if (g.mode === 'spin' && S.spinTok) { out.push('Winning team: ' + S.spinTok + ' ' + S.tok + ' each (Settings: Spin & Spell winning team Tokens)'); sh.push(S.spinTok + ' ' + S.tok); }
+  if (g.mode === 'asst' && S.asstTok) { out.push('Winning team: ' + S.asstTok + ' ' + S.tok + ' each (Settings: The Assistants winning team Tokens)'); sh.push(S.asstTok + ' ' + S.tok); }
   if (g.mode === 'wall' && S.wallTok) { out.push('Winning team: ' + S.wallTok + ' ' + S.tok + ' each (Settings: Logo Wall winning team Tokens)'); sh.push(S.wallTok + ' ' + S.tok); }
   if (g.mode !== 'mob' && S.winners && g.chars && g.chars.length) { out.push(g.teams ? 'Everyone on the winning team keeps their game character' : 'The top ' + S.winners + ' keep their game character'); sh.push(g.teams ? 'their game characters' : 'the top ' + S.winners + ' keep their character'); }
   if (g.mode === 'sea' && S.seaCapBonus) { out.push('Winning captain: ' + S.seaCapBonus + ' ' + S.cur); sh.push('⚓ ' + S.seaCapBonus + ' ' + S.cur + ' for the captain'); }
@@ -3483,7 +3502,7 @@ function liveBonusPay_(g) {
     return out;
   });
 }
-function liveGameName_(g) { return ({ tower: 'Tower Climb', race: 'Race Day', path: 'Candy Path', camrace: 'Camera Race', jar: 'Fill the Jar', sea: 'Sea Battle', isle: 'Treasure Island', 'case': 'Case Closed', escape: 'the class escape room', breach: 'Breach', train: 'Wagon Train', wall: 'Logo Wall' })[g.mode] || 'the class game'; }
+function liveGameName_(g) { return ({ tower: 'Tower Climb', race: 'Race Day', path: 'Candy Path', camrace: 'Camera Race', jar: 'Fill the Jar', sea: 'Sea Battle', isle: 'Treasure Island', 'case': 'Case Closed', escape: 'the class escape room', breach: 'Breach', train: 'Wagon Train', wall: 'Logo Wall', asst: 'The Assistants', spin: 'Spin & Spell' })[g.mode] || 'the class game'; }
 /* ── late joiners ── */
 function liveLateQ_(code) { var q = parse_(CacheService.getScriptCache().get('llq:' + code), []); return q instanceof Array ? q : []; }
 function liveLateSave_(code, q) { CacheService.getScriptCache().put('llq:' + code, JSON.stringify(q.slice(-60)), LIVE_TTL); }
@@ -9894,15 +9913,419 @@ function breachRtBoard_(g) { var R = g.breach.rt; return { rt: { url: RT_WS + R.
 function breachRtFinish_(g) { var R = g.breach && g.breach.rt; if (!R) return; try { var back = {}; Object.keys(R.map).forEach(function (e) { back[R.map[e]] = e; });
     var res = rtPost_(R, 'results'); if (res && res.g && res.g.breach) { var b2 = rtSwap_(res.g.breach, back, true); b2.rt = R; g.breach = b2; }
     rtPost_(R, 'end'); } catch (e) {} }
+/* ───────── 4.287 THE ASSISTANTS (Colleen accepted the design 2026-11-01): a team class game for Unit 5 (True+Way ASL: the calendar, time and numeral
+   incorporation, plans, conflicts, excuses, frequency, daily routines). At Start the class is split into teams of 3 to 5 (asstTeams_, balanced with
+   evenTeams_ like the other team games). Each team works as personal assistants for a made-up celebrity client (ASST_STARS; no real people).
+   Every round one teammate is the CLIENT (it rotates: asstPickCli_). The client's screen lists the week's requests ("Dentist · Tuesday · 3:00") with her
+   Unit 5 sign GIFs (asstSigns_ looks every idea up on the unit tab; other tabs next; else a picture and the word) and the client SIGNS them. The other
+   teammates are ASSISTANTS: each one fills their OWN week calendar from the signing alone (api_asstPlace: the event from picture cards, how often, the day,
+   the time). Assistants never see the requests during the week (asstView_). Already-booked events are on every calendar; a request can clash with one
+   (A.clash): putting anything on a booked time opens a CONFLICT: the assistants sign back an excuse (the server picks it), the client taps the excuse they
+   understood (api_asstExcuse: +2 for the team when right) and picks a new time to sign (api_asstMove). Chance: "The client changed their mind!" moves one
+   request in the middle of the week (asstMind_). Scoring at the end of the week (asstScoreRound_): for each request, when the event is right, 1 point each
+   for the right day(s), time and how often. A team's round score is the AVERAGE of its assistants' points (nobody can sink the team; nothing is ever
+   taken away), plus the excuse bonus. Then the Week review (30 seconds: the right week next to each assistant's), a new client and a new week.
+   The winning team gets bonus Tokens at Save and close (asstPay_; Settings: The Assistants winning team Tokens). Screens get first names and numbers
+   only. It runs in the asl.cool engine room like the other live games (RTE_NEED: api_asstPlace). ── */
+var ASST = { roundsDef: 4, roundsMin: 2, roundsMax: 6, minsDef: 4, minsMin: 2, minsMax: 8, reqDef: 5, reqMin: 3, reqMax: 7, reviewMs: 30000, deck: 14, clashP: 0.8, excusePts: 2, maxEnt: 14, first: 14, last: 41 };
+/* [key, picture, words, the English the unit tab may use for its sign] */
+var ASST_EV = [
+  ['dentist', '🦷', 'Dentist', ['dentist', 'dentist appointment']], ['doctor', '🩺', 'Doctor', ['doctor', 'doctor appointment', 'doctor s appointment']], ['haircut', '💇', 'Haircut', ['haircut', 'hair cut', 'get a haircut']],
+  ['shop', '🛒', 'Grocery shopping', ['grocery shopping', 'grocery store', 'go shopping', 'shopping', 'shop', 'store']], ['bank', '🏦', 'Bank', ['bank', 'go to the bank']], ['laundry', '🧺', 'Laundry', ['laundry', 'do laundry', 'wash clothes']],
+  ['library', '📚', 'Library', ['library']], ['movie', '🎬', 'Movie', ['movie', 'movies', 'film', 'go to the movies']], ['party', '🎉', 'Party', ['party']], ['birthday', '🎂', 'Birthday party', ['birthday party', 'birthday']],
+  ['lunch', '🥪', 'Lunch', ['lunch', 'eat lunch']], ['dinner', '🍽️', 'Dinner', ['dinner', 'supper', 'eat dinner']], ['breakfast', '🥞', 'Breakfast', ['breakfast', 'eat breakfast']], ['meeting', '💼', 'Meeting', ['meeting', 'meet']],
+  ['class', '🏫', 'Class', ['class', 'go to class', 'school']], ['test', '📝', 'Test', ['test', 'exam', 'quiz']], ['game', '🏈', 'Ball game', ['game', 'ball game', 'football game', 'basketball game']], ['practice', '🏃', 'Practice', ['practice', 'team practice']],
+  ['gym', '🏋️', 'Gym', ['gym', 'work out', 'workout', 'exercise']], ['work', '👔', 'Work', ['work', 'go to work', 'job']], ['babysit', '👶', 'Babysit', ['babysit', 'babysitting']], ['church', '⛪', 'Church', ['church', 'go to church']],
+  ['volunteer', '🤝', 'Volunteer', ['volunteer']], ['dog', '🐕', 'Walk the dog', ['walk the dog', 'walk dog', 'dog']], ['cook', '🍳', 'Cook', ['cook', 'cooking']], ['clean', '🧹', 'Clean the house', ['clean the house', 'clean up', 'clean']],
+  ['homework', '📖', 'Homework', ['homework', 'do homework']], ['car', '🚗', 'Wash the car', ['wash the car', 'car wash', 'wash car']], ['concert', '🎤', 'Concert', ['concert']], ['interview', '🎙️', 'Interview', ['interview']],
+  ['photo', '📸', 'Photo shoot', ['photo shoot', 'take pictures', 'photograph', 'picture']], ['flight', '✈️', 'Flight', ['flight', 'airplane', 'airport', 'fly']], ['nap', '😴', 'Nap', ['nap', 'take a nap']], ['bed', '🛏️', 'Go to bed', ['go to bed', 'bed', 'bedtime']]];
+var ASST_EX = [
+  ['sick', '🤒', 'I am sick.', ['sick', 'i am sick']], ['busy', '📅', 'I am busy.', ['busy', 'i am busy']], ['work', '👔', 'I have to work.', ['have to work', 'must work', 'work']], ['homework', '📖', 'I have homework.', ['homework', 'have homework']],
+  ['tired', '🥱', 'I am too tired.', ['tired', 'exhausted']], ['family', '👨‍👩‍👧', 'My family is visiting.', ['family visiting', 'family', 'visit']], ['away', '🧳', 'I will be out of town.', ['out of town', 'travel', 'trip', 'leave town']],
+  ['car', '🚗', 'My car broke down.', ['car broke down', 'broke down', 'car broken']], ['babysit', '👶', 'I have to babysit.', ['babysit', 'babysitting']], ['appt', '📋', 'I have an appointment.', ['appointment', 'have an appointment']],
+  ['plans', '🗓️', 'I already have plans.', ['already have plans', 'have plans', 'plans', 'plan']], ['forgot', '🤦', 'I forgot.', ['forgot', 'forget']], ['late', '⏰', 'I will be late.', ['late', 'running late']]];
+var ASST_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+var ASST_FREQ = [['once', 'Just this once', []], ['week', 'Every week', ['every week', 'weekly']], ['daily', 'Every day', ['every day', 'daily', 'everyday']], ['wkdy', 'Monday to Friday', ['monday through friday', 'monday to friday', 'every weekday', 'weekdays']], ['wknd', 'Every weekend', ['every weekend', 'weekends', 'weekend']]];
+var ASST_PART = [['am', 'Morning', ['morning', 'every morning']], ['noon', 'Noon', ['noon']], ['pm', 'Afternoon', ['afternoon', 'every afternoon']], ['night', 'Night', ['night', 'evening', 'tonight', 'every night']]];
+var ASST_STARS = [['Rex Starling', '🎸', 'rock star'], ['Luna Vale', '🎬', 'movie star'], ['Max Thunder', '🏈', 'football star'], ['Nova Bright', '🎧', 'DJ'], ['Remy Gold', '👨‍🍳', 'TV chef'], ['Skye Bellamy', '🎤', 'pop singer'],
+  ['Zara Quill', '📚', 'famous author'], ['Kai Rivers', '🏄', 'pro surfer'], ['Coco Lark', '👗', 'fashion designer'], ['Ace Comet', '🚀', 'astronaut'], ['Penny Pop', '📱', 'video star'], ['Dot Marlow', '🎨', 'painter']];
+function asstR1_(x) { return Math.round(num_(x) * 10) / 10; }
+function asstNorm_(s) { return str_(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function asstTeams_(n) { n = Math.max(0, Math.floor(num_(n))); return n <= 5 ? 1 : Math.min(6, Math.ceil(n / 5)); }      // teams of 3 to 5 (6 teams at most: a big class has teams of 6)
+/** The rounds, minutes a week and requests a week the teacher picked, fitted into the longest game allowed (45 minutes; 15 when a student hosts). */
+function asstPlan_(opt, maxM) { opt = opt || {}; var cl = function (v, a, b, d) { var x = Math.floor(num_(v)); return x ? Math.max(a, Math.min(b, x)) : d; };
+  var r = cl(opt.asstRounds, ASST.roundsMin, ASST.roundsMax, ASST.roundsDef), m = cl(opt.asstMins, ASST.minsMin, ASST.minsMax, ASST.minsDef), q = cl(opt.asstReq, ASST.reqMin, ASST.reqMax, ASST.reqDef), rv = ASST.reviewMs / 60000;
+  while (r * (m + rv) > maxM && m > ASST.minsMin) m--; while (r * (m + rv) > maxM && r > ASST.roundsMin) r--;
+  return { rounds: r, mins: m, nreq: q, total: Math.ceil(r * (m + rv)) }; }
+function asstMins_(opt, teacher) { return asstPlan_(opt, teacher ? 45 : 15).total; }
+/** The unit tabs to take the signs from: the one the teacher picked, or every tab named Unit 5 (Unit 5, Unit 5.1, TWA Unit 5...). */
+function asstUnits_(st, want) { var keys = ((st && st.units) || []).map(function (u) { return u.key; }); want = str_(want); if (want && keys.indexOf(want) >= 0) return [want]; return keys.filter(function (k) { return /unit\s*0*5(\D|$)/i.test(k); }); }
+/** Every idea a screen may show a sign for: [key, the English it can be called on a unit tab]. */
+function asstIdeas_() { var o = [];
+  ASST_EV.forEach(function (e) { o.push(['e:' + e[0], e[3]]); }); ASST_EX.forEach(function (x) { o.push(['x:' + x[0], x[3]]); });
+  ASST_DAYS.forEach(function (d, i) { var l = d.toLowerCase(); o.push(['d:' + i, [l]]); o.push(['w:' + i, ['every ' + l, l + 's']]); });
+  ASST_FREQ.forEach(function (f) { if (f[2].length) o.push(['f:' + f[0], f[2]]); }); ASST_PART.forEach(function (p) { o.push(['p:' + p[0], p[2]]); }); o.push(['t:time', ['time', 'what time', 'time clock']]);
+  for (var h = 1; h <= 12; h++) o.push(['h:' + h, [h + ' o clock', h + ' oclock', 'time ' + h, h + ' 00']]);      // numeral incorporation (TIME-3), when her tab has it
+  return o; }
+/** Her signs for the ideas: a GIF from the unit tabs first, then from any other tab. Returns { sg: { idea: GIF }, su: { idea: 1 } (from the unit), n, nu, of }. */
+function asstSigns_(cards, units) { var inU = {}, any = {}; units = units || [];
+  (cards || []).forEach(function (c) { var g = str_(c && c[5]); if (!g) return; var u = units.indexOf(c[1]) >= 0;
+    str_(c[3]).split(/[\/;,]/).concat(str_(c[4]).split(/[,;]/)).map(asstNorm_).filter(String).forEach(function (k) { if (u) { if (!inU[k]) inU[k] = g; } else if (!any[k]) any[k] = g; }); });
+  var sg = {}, su = {}, n = 0, nu = 0, ideas = asstIdeas_();
+  ideas.forEach(function (x) { var hit = '', fromU = false; x[1].some(function (a) { var k = asstNorm_(a); if (inU[k]) { hit = inU[k]; fromU = true; return true; } return false; });
+    if (!hit) x[1].some(function (a) { var k = asstNorm_(a); if (any[k]) { hit = any[k]; return true; } return false; });
+    if (hit) { sg[x[0]] = hit; n++; if (fromU) { su[x[0]] = 1; nu++; } } });
+  return { sg: sg, su: su, n: n, nu: nu, of: ideas.length }; }
+/** The lobby: the plan, the unit's signs and the event deck for this game (events with her unit signs first). */
+function asstNew_(opt, st, maxM) { opt = opt || {}; var P = asstPlan_(opt, maxM || 45), units = asstUnits_(st, opt.asstUnit), S = asstSigns_(st && st.cards, units), a = [], b = [], c = [];
+  ASST_EV.forEach(function (e) { var k = 'e:' + e[0]; (S.su[k] ? a : S.sg[k] ? b : c).push(e[0]); });
+  var deck = shuffle_(a).concat(shuffle_(b), shuffle_(c)).slice(0, ASST.deck), stars = []; for (var i = 0; i < ASST_STARS.length; i++) stars.push(i);
+  return { units: units, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false,
+    ph: { k: 'wait', n: 0 }, r: 0, T: [], was: {}, last: [], tot: [], me: {}, hist: [], stars: shuffle_(stars), paused: 0, started: 0, final: false }; }
+function asstMe_(A, e) { return A.me[e] || (A.me[e] = { pts: 0, n: 0 }); }
+/** The calendar cells an event fills (day * 48 + half hour). */
+function asstCells_(f, d, t) { var days = f === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : f === 'wkdy' ? [0, 1, 2, 3, 4] : f === 'wknd' ? [5, 6] : [d]; return days.map(function (x) { return x * 48 + t; }); }
+function asstFreeAt_(occ, f, d, t) { return asstCells_(f, d, t).every(function (c) { return !occ[c]; }); }
+function asstTimeR_() { return (7 + Math.floor(Math.random() * 14)) * 2 + (Math.random() < 0.3 ? 1 : 0); }      // 7:00 in the morning to 8:30 at night, whole and half hours
+function asstSlot_(occ, f, avoid) { for (var k = 0; k < 300; k++) { var d = f === 'daily' || f === 'wkdy' ? 0 : f === 'wknd' ? 5 : Math.floor(Math.random() * 7), t = asstTimeR_();
+    if (avoid && avoid.d === d && avoid.t === t) continue; if (asstFreeAt_(occ, f, d, t)) return { d: d, t: t }; } return null; }
+function asstOcc_(T, skip) { var occ = {}; T.busy.forEach(function (b) { asstCells_('once', b.d, b.t).forEach(function (c) { occ[c] = 1; }); });
+  T.reqs.forEach(function (r, i) { if (i !== skip) asstCells_(r.f, r.d, r.t).forEach(function (c) { occ[c] = 1; }); }); return occ; }
+function asstFreq_(multi) { var x = Math.random(); if (x < 0.45 || (multi && x < 0.75)) return 'once'; if (x < 0.65 || multi) return 'week'; return x < 0.8 ? 'daily' : x < 0.9 ? 'wkdy' : 'wknd'; }      // at most one every-day kind of request a week
+/** A new week for one team: 1 or 2 already-booked events, the client's requests (none overlapping), and maybe one request that clashes with a booked event. */
+function asstWeek_(A, cli, star) { var deck = shuffle_(A.deck.slice()), occ = {}, T = { cli: cli, star: star, reqs: [], busy: [], ent: {}, done: {}, cf: null, mind: null, res: null, bonus: 0, eid: 0 };
+  for (var b = 0, nb = A.nreq >= 5 ? 2 : 1; b < nb && deck.length > A.nreq; b++) { var s = asstSlot_(occ, 'once'); if (!s) break; T.busy.push({ ev: deck.pop(), d: s.d, t: s.t }); asstCells_('once', s.d, s.t).forEach(function (c) { occ[c] = 1; }); }
+  var multi = 0;
+  for (var i = 0; i < A.nreq && deck.length; i++) { var f = asstFreq_(multi), s2 = asstSlot_(occ, f); if (!s2) { f = 'once'; s2 = asstSlot_(occ, f); } if (!s2) break; if (f !== 'once' && f !== 'week') multi++;
+    var r = { ev: deck.pop(), f: f, d: s2.d, t: s2.t }; T.reqs.push(r); asstCells_(f, r.d, r.t).forEach(function (c) { occ[c] = 1; }); }
+  if (A.clash && T.busy.length && T.reqs.length > 1 && Math.random() < ASST.clashP) { var can = []; T.reqs.forEach(function (r2, k) { if (k > 0 && (r2.f === 'once' || r2.f === 'week')) can.push(k); });
+    if (can.length) { var k = can[Math.floor(Math.random() * can.length)]; T.reqs[k].d = T.busy[0].d; T.reqs[k].t = T.busy[0].t; T.reqs[k].clash = 1; } }      // never the first request: the assistants get going first
+  return T; }
+/** The next client: whoever has been the client the fewest times, then the next teammate in order after the last client. */
+function asstPickCli_(A, t, mates) { if (!mates.length) return ''; var n = mates.length, li = mates.indexOf(A.last[t] || ''), rank = function (e) { return (A.was[e] || 0) * 100 + ((mates.indexOf(e) - li - 1 + n) % n); };
+  return mates.slice().sort(function (a, b) { return rank(a) - rank(b); })[0]; }
+function asstRound_(g, now) { var A = g.asst, j = liveJoined_(g.id); A.ph = { k: 'play', n: A.r, ends: now + A.mins * 60000, at: now }; A.T = [];
+  for (var t = 0; t < (g.teams || 1); t++) { var mates = seaMates_(j, t), cli = asstPickCli_(A, t, mates), T = asstWeek_(A, cli, A.stars[(A.r * (g.teams || 1) + t) % A.stars.length]);
+    T.mind = A.mind ? { at: now + Math.round(A.mins * 60000 * (0.35 + Math.random() * 0.3)), i: -1 } : null;
+    if (cli) { A.was[cli] = (A.was[cli] || 0) + 1; A.last[t] = cli; asstMe_(A, cli).n++; } A.T.push(T); } }
+function asstStart_(g) { var A = g.asst, now = Date.now(); if (!A || A.started) return; A.started = now; A.tot = []; for (var t = 0; t < (g.teams || 1); t++) A.tot.push(0); A.r = 0; asstRound_(g, now); }
+/** "The client changed their mind!": one request (never the clashing one) moves to another free time. */
+function asstMind_(T, now) { var can = []; T.reqs.forEach(function (r, i) { if (!r.clash) can.push(i); }); if (!can.length) { T.mind.no = 1; return false; }
+  var i = can[Math.floor(Math.random() * can.length)], r = T.reqs[i], occ = asstOcc_(T, i), s = null;
+  if (r.f === 'once' || r.f === 'week') s = asstSlot_(occ, r.f, r); else for (var k = 0; k < 80 && !s; k++) { var t2 = asstTimeR_(); if (t2 !== r.t && asstFreeAt_(occ, r.f, r.d, t2)) s = { d: r.d, t: t2 }; }
+  if (!s) { T.mind.no = 1; return false; }
+  T.mind = { at: T.mind.at, i: i, old: { d: r.d, t: r.t }, when: now }; r.d = s.d; r.t = s.t; r.mv = 1; return true; }
+/** One request against one entry: nothing unless the event is right; then a point each for the right day(s), time and how often. */
+function asstPts_(r, e) { if (!r || !e || e.ev !== r.ev) return 0; var p = 0; if (asstCells_(r.f, r.d, 0).join() === asstCells_(e.f, e.d, 0).join()) p++; if (e.t === r.t) p++; if (e.f === r.f) p++; return p; }
+/** The best way to match an assistant's entries to the requests (each entry counts once). Returns { tot, per: [points per request], ent: [entry id per request] }. */
+function asstMatch_(reqs, ents) { var pairs = [], usedR = {}, usedE = {}, per = reqs.map(function () { return 0; }), eid = reqs.map(function () { return 0; }), tot = 0;
+  reqs.forEach(function (r, i) { (ents || []).forEach(function (e, k) { var p = asstPts_(r, e); if (p) pairs.push([p, i, k]); }); });
+  pairs.sort(function (a, b) { return b[0] - a[0] || a[1] - b[1] || a[2] - b[2]; });
+  pairs.forEach(function (x) { if (usedR[x[1]] || usedE[x[2]]) return; usedR[x[1]] = usedE[x[2]] = 1; per[x[1]] = x[0]; eid[x[1]] = ents[x[2]].id; tot += x[0]; });
+  return { tot: tot, per: per, ent: eid }; }
+/** The end of a week: every assistant's points; the team's round score is their average plus the excuse bonus. */
+function asstScoreRound_(g, now) { var A = g.asst, j = liveJoined_(g.id);
+  A.T.forEach(function (T, t) { if (T.res) return; var mates = seaMates_(j, t).filter(function (e) { return e !== T.cli; }), per = {}, sum = 0, n = 0;
+    mates.forEach(function (e) { var ents = T.ent[e] || []; if (!ents.length) return; var m = asstMatch_(T.reqs, ents); per[e] = m.tot; sum += m.tot; n++; asstMe_(A, e).pts += m.tot; });
+    var avg = n ? asstR1_(sum / n) : 0, max = T.reqs.length * 3 + (T.reqs.some(function (r) { return r.clash; }) ? ASST.excusePts : 0);
+    T.res = { avg: avg, bonus: T.bonus, max: max, n: n, per: per }; A.tot[t] = asstR1_((A.tot[t] || 0) + avg + T.bonus); if (T.cli) asstMe_(A, T.cli).pts += T.bonus;
+    (A.hist[A.r] = A.hist[A.r] || [])[t] = [avg, T.bonus, max, T.star]; });
+  for (var t2 = 0; t2 < A.tot.length; t2++) { A.hist[A.r] = A.hist[A.r] || []; if (!A.hist[A.r][t2]) A.hist[A.r][t2] = [0, 0, 0, -1]; } }
+function asstAllDone_(g) { var A = g.asst, j = liveJoined_(g.id), any = false;
+  var all = A.T.every(function (T, t) { return seaMates_(j, t).filter(function (e) { return e !== T.cli; }).every(function (e) { any = true; return !!T.done[e]; }); }); return any && all; }
+function asstFinal_(g, now) { var A = g.asst; if (!A || A.final) return; if (A.ph.k === 'play') asstScoreRound_(g, now); A.ph = { k: 'done', n: A.r }; A.final = true; g.ends = Math.min(g.ends || now, now); }
+/** Time moves the game along: the mind-change cards, the end of a week (or everyone pressed Done), the Week review, the next week, the end. */
+function asstTick_(g, now) { var A = g.asst; if (!A || !A.started || A.paused || A.final || livePhase_(g) !== 'on') return false; now = now || Date.now(); var ch = false, P = A.ph;
+  if (P.k === 'play') { A.T.forEach(function (T) { if (T.mind && T.mind.i < 0 && !T.mind.no && now >= T.mind.at) { asstMind_(T, now); ch = true; } });
+    if (now >= P.ends || asstAllDone_(g)) { asstScoreRound_(g, now); A.ph = { k: 'review', n: A.r, ends: now + ASST.reviewMs, at: now }; ch = true; } }
+  else if (P.k === 'review' && now >= P.ends) { if (A.r + 1 < A.rounds) { A.r++; asstRound_(g, now); } else asstFinal_(g, now); ch = true; }
+  return ch; }
+function asstDue_(g) { var A = g.asst; if (!A || !A.started || A.paused || A.final || livePhase_(g) !== 'on') return false; var now = Date.now();
+  return now >= (A.ph.ends || 0) || (A.ph.k === 'play' && (A.T.some(function (T) { return T.mind && T.mind.i < 0 && !T.mind.no && now >= T.mind.at; }) || asstAllDone_(g))); }
+/** The teacher's buttons: Pause / Resume, Next (end the week now, or skip the review), and a new client for a team whose client is away. */
+function asstControl_(g, action) { var A = g.asst, now = Date.now(); if (!A || !A.started || A.final) return;
+  if (action === 'asstpause') { if (!A.paused) A.paused = now; else { var dt = now - A.paused; if (A.ph.ends) A.ph.ends += dt; A.T.forEach(function (T) { if (T.mind && T.mind.i < 0) T.mind.at += dt; }); g.ends += dt; A.paused = 0; } return; }
+  if (A.paused) return;
+  if (action === 'asstnext') { A.ph.ends = now; asstTick_(g, now); return; }
+  var t = Number(action.split(':')[1]), T = A.T[t]; if (!T || A.ph.k !== 'play') return; var mates = seaMates_(liveJoined_(g.id), t); if (mates.length < 2) return;
+  var nx = mates[(mates.indexOf(T.cli) + 1) % mates.length]; T.cli = nx; delete T.ent[nx]; delete T.done[nx]; A.was[nx] = (A.was[nx] || 0) + 1; A.last[t] = nx; asstMe_(A, nx).n++; }
+function asstClashIdx_(T) { for (var i = 0; i < T.reqs.length; i++) if (T.reqs[i].clash) return i; return -1; }
+function asstExPick_(A) { var w = ASST_EX.filter(function (x) { return A.sg['x:' + x[0]]; }); if (w.length < 4) w = ASST_EX; return w[Math.floor(Math.random() * w.length)][0]; }
+function asstExOpts_(ex) { return shuffle_([ex].concat(shuffle_(ASST_EX.map(function (x) { return x[0]; }).filter(function (k) { return k !== ex; })).slice(0, 3))); }
+/** An assistant's choice turned into a calendar entry (or why it can't be one yet). e = { ev, f, d, h 1-12, m 0/30, p am|noon|pm|night } */
+function asstEntry_(e) { e = e || {}; var ev = str_(e.ev), f = str_(e.f), d = Math.floor(num_(e.d)), h = Math.floor(num_(e.h)), m = num_(e.m) >= 30 ? 1 : 0, p = str_(e.p);
+  if (!ev) return 'Pick the event first.'; if (!ASST_FREQ.some(function (x) { return x[0] === f; })) return 'Pick how often.';
+  if ((f === 'once' || f === 'week') && !(d >= 0 && d <= 6)) return 'Pick the day.'; if (p === 'noon') { h = 12; m = 0; } if (!(h >= 1 && h <= 12)) return 'Pick the hour.';
+  if (['am', 'noon', 'pm', 'night'].indexOf(p) < 0) return 'Pick morning, afternoon or night.';
+  var h24 = p === 'am' ? h % 12 : p === 'noon' ? 12 : h % 12 + 12; return { ev: ev, f: f, d: f === 'daily' || f === 'wkdy' ? 0 : f === 'wknd' ? 5 : d, t: h24 * 2 + m }; }
+/* the calls. Every one: the game on asl.cool answers there; inside lock_; never a name or email in what comes back (first names only) */
+function asstCall_(auth, code, fn) { var me = who_(auth); if (!me) throw new Error('Your sign-in ran out. Reload the page.');
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.asst || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var A = g.asst, now = Date.now(); asstTick_(g, now); var t = wallMe_(g, me.key), T = t >= 0 ? A.T[t] : null;
+    if (!T) { livePut_(g); return { none: true, why: 'You are not on a team yet.' }; }
+    var out = A.paused ? { none: true, why: 'The game is paused. Eyes up front!' } : A.ph.k !== 'play' ? { none: true, why: 'This week is over. The next one starts soon.' } : fn(g, A, T, t, me.key, now);
+    livePut_(g); out.asst = asstView_(g, t, me.key); return out; }); }
+/** Assistant: put an event on my calendar (id = one of mine to move it). Anything on an already-booked time opens the conflict (the first time). */
+function api_asstPlace(auth, code, e, id) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return asstCall_(auth, code, function (g, A, T, t, key, now) {
+    if (T.cli === key) return { none: true, why: 'You are the client this week: sign the requests to your assistants.' };
+    var x = asstEntry_(e); if (typeof x === 'string') return { none: true, why: x }; if (A.deck.indexOf(x.ev) < 0) return { none: true, why: 'Pick one of the event cards.' };
+    var mine = T.ent[key] = T.ent[key] || [], old = -1; id = Math.floor(num_(id)); mine.forEach(function (y, k) { if (id > 0 && y.id === id) old = k; });
+    if (old < 0 && mine.length >= ASST.maxEnt) return { none: true, why: 'Your calendar is full. Move or remove an event first.' };
+    var bc = {}, hit = 0; T.busy.forEach(function (b, k) { asstCells_('once', b.d, b.t).forEach(function (c) { bc[c] = k + 1; }); }); asstCells_(x.f, x.d, x.t).forEach(function (c) { if (bc[c] && !hit) hit = bc[c]; });
+    if (hit) { var ci = asstClashIdx_(T);
+      if (ci >= 0 && !T.cf) { T.cf = { by: key, i: ci, b: hit - 1, ex: asstExPick_(A), ph: 'sign', at: now }; T.cf.opts = asstExOpts_(T.cf.ex); asstMe_(A, key).n++; return { conflict: true }; }
+      if (T.cf && T.cf.ph !== 'done') return { none: true, conflict: true, why: 'There is a conflict right now: sign the excuse, then watch your client sign a new time.' };
+      return { none: true, booked: true, why: 'That time is already booked.' }; }
+    var ent = { id: old >= 0 ? mine[old].id : (T.eid = (T.eid || 0) + 1), ev: x.ev, f: x.f, d: x.d, t: x.t }; if (old >= 0) mine[old] = ent; else mine.push(ent);
+    delete T.done[key]; asstMe_(A, key).n++; return { ok: true, id: ent.id }; }); }
+/** Assistant: take one of my events off my calendar. */
+function api_asstRemove(auth, code, id) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return asstCall_(auth, code, function (g, A, T, t, key) { id = Math.floor(num_(id)); var mine = T.ent[key] || [], k = -1; mine.forEach(function (y, i) { if (y.id === id) k = i; });
+    if (k < 0) return { none: true, why: 'That event is not on your calendar.' }; mine.splice(k, 1); delete T.done[key]; return { ok: true }; }); }
+/** Assistant: I'm done with this week (or not, again). When every assistant in the class is done, the week ends early. */
+function api_asstDone(auth, code, on) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return asstCall_(auth, code, function (g, A, T, t, key, now) { if (T.cli === key) return { none: true, why: 'Only assistants press Done.' }; if (on === false) delete T.done[key]; else T.done[key] = 1; asstTick_(g, now); return { ok: true }; }); }
+/** Client: the excuse I understood from my assistants' signing. Right = +2 for the team. Then three free times to pick from. */
+function api_asstExcuse(auth, code, k) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return asstCall_(auth, code, function (g, A, T, t, key) { var C = T.cf; if (T.cli !== key) return { none: true, why: 'Only the client picks the excuse.' }; if (!C || C.ph !== 'sign') return { none: true, why: 'There is no excuse to read right now.' };
+    k = str_(k); if (C.opts.indexOf(k) < 0) return { none: true, why: 'Pick one of the excuses.' };
+    C.pick = k; C.ok = k === C.ex; if (C.ok) T.bonus = ASST.excusePts; C.ph = 'move'; asstMe_(A, key).n++;
+    var occ = asstOcc_(T, C.i), r = T.reqs[C.i], sl = [], seen = {}; for (var n = 0; n < 40 && sl.length < 3; n++) { var s = asstSlot_(occ, r.f, r); if (s && !seen[s.d * 48 + s.t]) { seen[s.d * 48 + s.t] = 1; sl.push(s); } }
+    C.slots = sl.sort(function (a, b) { return a.d - b.d || a.t - b.t; }); return { ok: true, right: C.ok }; }); }
+/** Client: the new time for the clashing request (then the client signs it to the assistants). */
+function api_asstMove(auth, code, s) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return asstCall_(auth, code, function (g, A, T, t, key) { var C = T.cf; if (T.cli !== key) return { none: true, why: 'Only the client picks the new time.' }; if (!C || C.ph !== 'move') return { none: true, why: 'Pick the excuse first.' };
+    var sl = (C.slots || [])[Math.floor(num_(s))]; if (!sl) return { none: true, why: 'Pick one of the times.' }; var r = T.reqs[C.i]; r.d = sl.d; r.t = sl.t; r.moved = 1; C.ph = 'done'; C.nw = { d: sl.d, t: sl.t }; return { ok: true }; }); }
+var ASST_LEX_ = null;
+function asstLex_() { return ASST_LEX_ || (ASST_LEX_ = { e: ASST_EV.map(function (e) { return [e[0], e[1], e[2]]; }), x: ASST_EX.map(function (x) { return [x[0], x[1], x[2]]; }), d: ASST_DAYS, f: ASST_FREQ.map(function (f) { return [f[0], f[1]]; }), p: ASST_PART.map(function (p) { return [p[0], p[1]]; }), stars: ASST_STARS }); }
+function asstReqOut_(r) { return [r.ev, r.f, r.d, r.t, r.clash ? 1 : 0, r.mv ? 1 : 0, r.moved ? 1 : 0]; }
+function asstEntOut_(e) { return [e.id, e.ev, e.f, e.d, e.t]; }
+/** What a screen sees. The projector (myTeam -1): progress only during a week (how many events each assistant placed), the right weeks only in the review.
+    The client: the requests, the conflict's excuse choices (never which one is right until they pick). An assistant: their own calendar, the booked events,
+    the excuse to sign back; the requests only in the Week review. First names only, never emails. */
+function asstView_(g, myTeam, key) { var A = g.asst; if (!A) return null; var now = A.paused || Date.now(), j = liveJoined_(g.id), P = A.ph, over = livePhase_(g) === 'over' || P.k === 'done', ans = over || P.k === 'review';
+  var v = { ph: { k: over ? 'done' : P.k, n: P.n || 0, of: A.rounds, left: P.ends ? Math.max(0, P.ends - now) : 0, mins: A.mins }, paused: !!A.paused, nreq: A.nreq, deck: A.deck, sg: A.sg, lex: asstLex_(), found: A.found, tot: A.tot.slice(), hist: A.hist, clash: A.clash, mind: A.mind };
+  v.teams = A.T.map(function (T, t) { var mates = seaMates_(j, t), asst = mates.filter(function (e) { return e !== T.cli; });
+    var o = { cli: T.cli ? seaFirst_(j, T.cli) : '', star: T.star, n: mates.length, nreq: T.reqs.length, busy: T.busy.map(function (b) { return [b.ev, b.d, b.t]; }), cf: T.cf ? T.cf.ph : '', mind: !!(T.mind && T.mind.i >= 0),
+      asst: asst.map(function (e) { return [seaFirst_(j, e), (T.ent[e] || []).length, T.done[e] ? 1 : 0]; }) };
+    if (ans) { o.reqs = T.reqs.map(asstReqOut_); o.res = T.res ? { avg: T.res.avg, bonus: T.res.bonus, max: T.res.max, n: T.res.n } : null; if (T.cf) { o.ex = T.cf.ex; o.exOk = !!T.cf.ok; } }
+    return o; });
+  if (myTeam >= 0 && A.T[myTeam]) { var T = A.T[myTeam], cli = T.cli === key, C = T.cf, me = { role: cli ? 'client' : 'asst', team: myTeam, cliName: T.cli ? seaFirst_(j, T.cli) : '', star: T.star, busy: T.busy.map(function (b) { return [b.ev, b.d, b.t]; }), mine: asstR1_((A.me[key] || {}).pts || 0) };
+    if (C) me.cf = { ph: C.ph, by: C.by === key ? '' : seaFirst_(j, C.by), mineBy: C.by === key, b: C.b, opts: cli || C.ph !== 'sign' ? C.opts : null, ex: !cli || C.ph !== 'sign' ? C.ex : '', pick: C.pick || '', ok: C.ph !== 'sign' ? !!C.ok : null,
+      slots: cli && C.ph === 'move' ? C.slots : null, nw: cli || ans ? C.nw || null : null, ev: cli || ans ? T.reqs[C.i].ev : '' };
+    if (cli) { me.reqs = T.reqs.map(asstReqOut_); me.asst = v.teams[myTeam].asst; if (T.mind && T.mind.i >= 0) me.mindC = { i: T.mind.i, old: T.mind.old, ago: now - T.mind.when }; }
+    else { me.ent = (T.ent[key] || []).map(asstEntOut_); me.done = !!T.done[key]; if (T.mind && T.mind.i >= 0) me.mindC = { ago: now - T.mind.when }; }
+    if (ans) { me.reqs = T.reqs.map(asstReqOut_); if (!cli) { var m = asstMatch_(T.reqs, T.ent[key] || []); me.score = { tot: m.tot, per: m.per, ent: m.ent }; } else me.per = T.res ? Object.keys(T.res.per).map(function (e) { return [seaFirst_(j, e), T.res.per[e]]; }) : []; }
+    v.me = me; }
+  return v; }
+/** Save and close: everyone on the team with the most calendar points gets the bonus Tokens (Settings: The Assistants winning team Tokens), once.
+    Teachers get none; a game a student hosted pays no bonus; a tie for first pays every tied team. */
+function asstPay_(g) {
+  if (g.mode !== 'asst' || !g.asst || g.byStu || !g.ends) return null;
+  var st = static_(), amt = st.settings.asstTok; if (!amt) return null;
+  var tm = liveTeams_(g, livePlayers_(g)), lead = tm[0]; if (!lead || lead[1] <= 0) return null;
+  var win = tm.filter(function (x) { return x[1] === lead[1]; }).map(function (x) { return x[3]; });
+  var props = PropertiesService.getDocumentProperties(), guard = 'asstpaid:' + g.id + ':' + g.made; if (props.getProperty(guard)) return null;
+  props.setProperty(guard, String(Date.now()));                          // set first: a retry can never pay twice
+  var j = liveJoinedSure_(g.id), want = {}, teach = {}; win.forEach(function (t) { seaMates_(j, t).forEach(function (e) { want[e] = 1; }); });
+  try { Object.keys(teacherEmails_() || {}).forEach(function (e) { teach[str_(e).toLowerCase()] = 1; }); } catch (e) {} teach[str_(g.host).toLowerCase()] = 1;
+  var sh = stuSheet_(), H = stuHead_(sh), when = new Date(), led = [], hist = [], paid = [], batch = 'asst-' + g.id + '-' + String(g.made).slice(-6), team = win.map(function (t) { return TEAM_NAMES[t] || ''; }).join(' and ');
+  rows_(sh, 2, H.n).forEach(function (v, i) { var key = str_(v[H.Email]).toLowerCase(); if (!want[key] || teach[key]) return;
+    var o = stuObj_(H, v, i + 2); o.Tokens = num_(o.Tokens) + amt; writeStu_(sh, o); paid.push(str_(o.Name).split(' ')[0]);
+    led.push([when, batch, key, o.Name, o.Class, 'Tokens', amt, 'The Assistants: the winning team', '', '']);
+    hist.push([when, key, o.Name, o.Class, 'asst', amt + ' ' + st.settings.tok + ': The Assistants, the winning team', 0, 'Gift', 'new: 📅 Your team (' + team + ') won The Assistants! +' + amt + ' ' + st.settings.tok + '.']); });
+  if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
+  cacheDrop_('boards');
+  return { teams: win, amt: amt, names: paid };
+}
+/* ───────── 4.288 SPIN & SPELL (Colleen approved the design 2026-11-01): a team class game with a hidden word or phrase from her unit vocabulary
+   (the English side of her unit tabs, or puzzles she types), inspired by the classic wheel-and-letters TV puzzle show but our own name, look and wording.
+   At Start the class is split into 2 to 4 teams (spinTeams_, balanced with evenTeams_ like the other team games). The teams take turns. On a team's turn its
+   CAPTAIN (a different teammate every turn: spinTurn_) taps Spin; the wheel (SPIN.segs: points, Double, Lose a turn, Free letter) is spun HERE (api_spinSpin).
+   Then the captain calls a letter by fingerspelling it to the camera (or taps a handshape: the camera-fail backup): api_spinCall. Every tile with that letter
+   flips over; points = the wheel's value x how many. A letter already called is refused politely (the turn stays). A hit keeps the turn (spin again or solve);
+   a miss passes it (a Free letter never passes). Lose a turn only skips the turn: points are never taken away. Solve (api_spinSolve): fingerspell the whole
+   answer to the camera (forgiving like Logo Wall: spaces and capitals never matter, 6+ letters may have one letter off) for the solve bonus, or pick from 4
+   answers (the backup) for half the bonus. A wrong solve passes the turn; the team keeps its points. Puzzles: the teacher's number (5 unless she picks) or
+   minutes. The winning team gets bonus Tokens at Save and close (spinPay_; Settings: Spin & Spell winning team Tokens) plus the 4.282 winner bonus.
+   The answer never goes to a screen before it is solved (only the captain's 4 choices when they ask for them). First names and numbers only. It runs in the
+   asl.cool engine room like the other live games (RTE_NEED: api_spinCall). ── */
+var SPIN = { segs: [25, 10, 'lose', 30, 15, 'dbl', 20, 50, 10, 'free', 40, 15, 25, 'free', 20, 30], freePts: 25, dblMin: 20, solvePts: 50, tapPts: 25,
+  animMs: 4500, spinMs: 20000, callMs: 30000, loseMs: 3000, revealMs: 8000, puzzles: [3, 4, 5, 6, 8, 10], puzzlesDef: 5, mins: [10, 15, 20, 30], ev: 15000, maxLetters: 22, maxCustom: 40 };
+/** How many teams: 2 to 4 (a turn comes around often enough: about 7 students a team at most). */
+function spinTeams_(n) { n = Math.max(0, Math.floor(num_(n))); return n < 8 ? 2 : n < 15 ? 3 : 4; }
+/** The game's length: 'p5' = 5 puzzles (the clock is only a safety limit), 'm15' = 15 minutes (as many puzzles as fit). */
+function spinPlan_(opt, teacher) { var by = str_(opt && opt.spinBy), mx = teacher ? 45 : 15, m = /^([pm])(\d+)$/.exec(by);
+  var k = m ? m[1] : 'p', n = m ? Math.floor(num_(m[2])) : SPIN.puzzlesDef;
+  if (k === 'm') { n = SPIN.mins.indexOf(n) >= 0 ? n : 15; return { by: 'm', np: 30, mins: Math.min(mx, n) }; }
+  n = SPIN.puzzles.indexOf(n) >= 0 ? n : SPIN.puzzlesDef; return { by: 'p', np: n, mins: Math.min(mx, Math.max(10, n * 7)) }; }
+function spinMins_(opt, teacher) { return spinPlan_(opt, teacher).mins; }
+/** A word or phrase as a puzzle: capitals, the first of several meanings (Mom / Mother), no notes in parentheses; '' when it can't be one. */
+function spinClean_(s) { var x = str_(s).split(/\s*[;\/]\s*|,\s+/)[0].replace(/\([^)]*\)/g, ' ').replace(/[‘’]/g, '\'').replace(/\s+/g, ' ').trim().toUpperCase();
+  if (!x || /[^A-Z '\-!?.&]/.test(x)) return ''; var letters = x.replace(/[^A-Z]/g, ''), words = x.split(' ');
+  if (letters.length < 3 || letters.length > SPIN.maxLetters || words.length > 4 || words.some(function (w) { return w.replace(/[^A-Z]/g, '').length > 13; })) return '';
+  return x; }
+/** Her unit tabs' English words and phrases: [answer, category]. The category is the word's group (column P), else the unit's title, else the tab name. */
+function spinPool_(st, units) { var out = [], seen = {}, keys = {}, title = {}; (st && st.units || []).forEach(function (u) { title[u.key] = str_(u.title) || u.key; });
+  (units || []).forEach(function (k) { keys[k] = 1; });
+  (st && st.cards || []).forEach(function (c) { if (!keys[c[1]]) return; var a = spinClean_(c[3]); if (!a || seen[a]) return; seen[a] = 1;
+    var grp = str_(c[14]).split(',')[0].trim(); out.push([a, grp || title[c[1]] || c[1]]); });
+  return out; }
+/** The teacher's own puzzles, one a line: "Category: answer" (or just the answer). */
+function spinCustom_(text) { var out = [], seen = {};
+  str_(text).split(/\r?\n/).slice(0, SPIN.maxCustom * 2).forEach(function (line) { var m = /^\s*([^:]{1,40}):\s*(.+)$/.exec(line), a = spinClean_(m ? m[2] : line);
+    if (!a || seen[a] || out.length >= SPIN.maxCustom) return; seen[a] = 1; out.push([a, m ? str_(m[1]).trim() : 'Our class']); });
+  return out; }
+/** The units the teacher picked (none picked, or 'mix' = every unit tab). */
+function spinUnits_(st, want) { var keys = (st && st.units || []).map(function (u) { return u.key; }), w = want instanceof Array ? want : str_(want) ? [str_(want)] : [];
+  w = w.filter(function (k) { return keys.indexOf(k) >= 0; }); return w.length ? w : keys; }
+function spinNew_(opt, st, teacher) { opt = opt || {}; var P = spinPlan_(opt, teacher), custom = spinCustom_(opt.spinCustom), only = !!opt.spinOnly && custom.length > 0;
+  var units = only ? [] : spinUnits_(st, opt.spinUnits), pool = only ? [] : spinPool_(st, units);
+  var long = pool.filter(function (x) { return x[0].replace(/[^A-Z]/g, '').length >= 4; }); if (long.length >= P.np) pool = long;      // 4 letters or more when there are enough
+  var deck = shuffle_(custom).concat(shuffle_(pool).filter(function (x) { return !custom.some(function (c) { return c[0] === x[0]; }); }));
+  var alt = deck.map(function (x) { return x[0]; }); if (alt.length < 8) alt = alt.concat(spinPool_(st, spinUnits_(st, '')).map(function (x) { return x[0]; }));
+  return { by: P.by, np: Math.min(P.np, deck.length), units: units, nCustom: custom.length, nPool: pool.length, deck: deck.slice(0, P.by === 'm' ? 30 : P.np), alt: alt.slice(0, 120),
+    i: 0, started: 0, final: false, paused: 0, turn: 0, cap: '', capN: [], ph: { k: 'wait' }, spun: null, mult: null, cur: null, tot: [], rp: [], hist: [], ev: [], evN: 0, me: {}, ask: '' }; }
+function spinLet_(a) { return str_(a).replace(/[^A-Z]/g, ''); }
+/** 4 answers for the captain's backup (the right one and 3 others, as close in length as can be). */
+function spinOpts_(S, a) { var n = spinLet_(a).length, w = a.split(' ').length, seen = {}; seen[a] = 1;
+  var others = shuffle_(S.alt.filter(function (x) { if (seen[x]) return false; seen[x] = 1; return true; })).sort(function (x, y) {
+    var dx = Math.abs(spinLet_(x).length - n) + (x.split(' ').length === w ? 0 : 2), dy = Math.abs(spinLet_(y).length - n) + (y.split(' ').length === w ? 0 : 2); return dx - dy; });
+  return shuffle_([a].concat(others.slice(0, 3))); }
+function spinEv_(S, now, kind, t, x, n, pts) { S.evN = (S.evN || 0) + 1; S.ev.push([now, kind, t, x || '', n || 0, pts || 0, S.evN]); S.ev = S.ev.filter(function (e) { return now - e[0] < SPIN.ev; }).slice(-10); }
+function spinMeOf_(S, k) { return S.me[k] || (S.me[k] = { pts: 0, hits: 0, calls: 0, solves: 0 }); }
+/** A new puzzle: every letter hidden (spaces and marks show), nothing called yet. */
+function spinPuzzle_(g, now) { var S = g.spin, x = S.deck[S.i]; S.cur = { a: x[0], cat: x[1], shown: {}, called: [], opts: spinOpts_(S, x[0]), by: -1, how: '' }; S.rp = S.tot.map(function () { return 0; }); S.ask = ''; }
+/** A team's turn: its next captain (everyone gets a go, in order; late joiners too), then the Spin button. Teams with nobody are skipped. */
+function spinTurn_(g, t, now) { var S = g.spin, mates = seaMates_(liveJoined_(g.id), t); S.turn = t; S.mult = null; S.ask = '';
+  S.cap = mates.length ? mates[(S.capN[t] || 0) % mates.length] : ''; S.capN[t] = (S.capN[t] || 0) + 1;
+  S.ph = { k: 'spin', at: now, ends: now + SPIN.spinMs }; }
+function spinNext_(g, now) { var S = g.spin, n = g.teams || 2, j = liveJoined_(g.id);
+  for (var k = 1; k <= n; k++) { var t = (S.turn + k) % n; if (seaMates_(j, t).length) return spinTurn_(g, t, now); }
+  spinTurn_(g, (S.turn + 1) % n, now); }
+function spinStart_(g) { var S = g.spin, now = Date.now(); if (!S || S.started) return; S.started = now; var n = g.teams || 2, j = liveJoined_(g.id);
+  S.tot = []; S.capN = []; for (var t = 0; t < n; t++) { S.tot.push(0); S.capN.push(0); }
+  if (!S.deck.length) { S.final = true; S.ph = { k: 'done' }; return; }
+  spinPuzzle_(g, now); var ok = []; for (var t2 = 0; t2 < n; t2++) if (seaMates_(j, t2).length) ok.push(t2);
+  S.turn = ok.length ? ok[Math.floor(Math.random() * ok.length)] : 0; spinTurn_(g, S.turn, now); }
+/** The wheel: where it stops is decided here. Lose a turn skips this turn (after the wheel stops); anything else: call a letter. */
+function spinDoSpin_(g, now, auto) { var S = g.spin, k = Math.floor(Math.random() * SPIN.segs.length), v = SPIN.segs[k];
+  S.spun = { n: ((S.spun && S.spun.n) || 0) + 1, seg: k, at: now, t: S.turn, auto: !!auto }; S.mult = v;
+  if (v === 'lose') { S.ph = { k: 'lose', at: now, ends: now + SPIN.animMs + SPIN.loseMs }; spinEv_(S, now, 'lose', S.turn); }
+  else S.ph = { k: 'call', at: now, ends: now + SPIN.animMs + SPIN.callMs };
+  return v; }
+/** The puzzle is solved (or every letter is showing): the team's bonus, then the next puzzle after a moment. */
+function spinSolved_(g, t, how, pts, now) { var S = g.spin, C = S.cur; C.by = t; C.how = how; spinLet_(C.a).split('').forEach(function (L) { C.shown[L] = 1; });
+  if (pts) { S.tot[t] += pts; S.rp[t] += pts; } S.hist.push([C.a, C.cat, t, how]); S.ph = { k: 'reveal', at: now, ends: now + SPIN.revealMs }; spinEv_(S, now, 'solve', t, how, 0, pts); }
+function spinFinal_(g, now) { var S = g.spin; if (!S || S.final) return; if (S.cur && S.ph.k !== 'reveal' && S.cur.by < 0) S.hist.push([S.cur.a, S.cur.cat, -1, '']);
+  S.ph = { k: 'done', at: now }; S.final = true; g.ends = Math.min(g.ends || now, now); }
+/** Time moves the game along: the server spins for a captain who didn't, a turn runs out, a Lose a turn passes, the next puzzle comes in. */
+function spinTick_(g, now) { var S = g.spin; if (!S || !S.started || S.paused || S.final || livePhase_(g) !== 'on') return false; now = now || Date.now(); var P = S.ph;
+  if (!(now >= (P.ends || 0))) return false;
+  if (P.k === 'spin') spinDoSpin_(g, now, true);
+  else if (P.k === 'call') { spinEv_(S, now, 'time', S.turn); spinNext_(g, now); }
+  else if (P.k === 'lose') spinNext_(g, now);
+  else if (P.k === 'reveal') { if (S.i + 1 < S.deck.length && (S.by === 'm' || S.i + 1 < S.np)) { S.i++; spinPuzzle_(g, now); spinNext_(g, now); } else spinFinal_(g, now); }
+  return true; }
+function spinDue_(g) { var S = g.spin; return !!S && !!S.started && !S.paused && !S.final && livePhase_(g) === 'on' && Date.now() >= (S.ph.ends || 0); }
+/** Teacher: Pause, Pass the turn, a new captain, Reveal (nobody scores) and go on. */
+function spinControl_(g, action) { var S = g.spin, now = Date.now(); if (!S || !S.started || S.final) return;
+  if (action === 'spinpause') { if (!S.paused) S.paused = now; else { var dt = now - S.paused; if (S.ph.ends) S.ph.ends += dt; g.ends += dt; S.paused = 0; } return; }
+  if (S.paused) return;
+  if (action === 'spinpass' && (S.ph.k === 'spin' || S.ph.k === 'call')) { spinEv_(S, now, 'pass', S.turn); spinNext_(g, now); return; }
+  if (action === 'spincap' && (S.ph.k === 'spin' || S.ph.k === 'call')) { var mates = seaMates_(liveJoined_(g.id), S.turn); if (mates.length > 1) { S.cap = mates[(S.capN[S.turn] || 0) % mates.length]; S.capN[S.turn]++; S.ask = ''; S.ph.ends = Math.max(S.ph.ends, now + 15000); } return; }
+  if (action === 'spinreveal' && S.ph.k !== 'reveal') { spinSolved_(g, -1, 'shown', 0, now); return; } }
+function spinCall_(auth, code, fn) { var me = who_(auth); if (!me) throw new Error('Your sign-in ran out. Reload the page.');
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.spin || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var S = g.spin, now = Date.now(); spinTick_(g, now); var t = wallMe_(g, me.key);
+    if (S.final || !S.cur) return { none: true, why: 'The game is over.' };
+    if (S.paused) return { none: true, why: 'The game is paused.', spin: spinView_(g, t, me.key) };
+    if (t !== S.turn || S.cap !== me.key) return { none: true, why: t === S.turn ? 'Your captain does that this turn. Sign your idea to them!' : 'It is not your team\'s turn.', spin: spinView_(g, t, me.key) };
+    var out = fn(g, S, t, me.key, now) || {}; livePut_(g); out.spin = spinView_(g, t, me.key); return out; }); }
+/** The captain taps Spin. */
+function api_spinSpin(auth, code) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  return spinCall_(auth, code, function (g, S, t, key, now) { if (S.ph.k !== 'spin') return { none: true, why: S.ph.k === 'call' ? 'Call a letter first.' : 'Wait a moment.' };
+    var v = spinDoSpin_(g, now, false); return { ok: true, seg: S.spun.seg, v: v }; }); }
+/** The captain calls a letter (signed to the camera, or tapped). */
+function api_spinCall(auth, code, letter) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  var L = str_(letter).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1); if (!L) return { none: true, why: 'Sign or tap one letter.' };
+  return spinCall_(auth, code, function (g, S, t, key, now) { var C = S.cur, m = spinMeOf_(S, key);
+    if (S.ph.k !== 'call') return { none: true, why: S.ph.k === 'spin' ? 'Spin the wheel first (or solve).' : 'Wait a moment.' };
+    if (C.called.indexOf(L) >= 0) return { none: true, again: true, why: L + ' was already called. Pick another letter!' };
+    C.called.push(L); m.calls++; var n = spinLet_(C.a).split('').filter(function (x) { return x === L; }).length, v = S.mult, pts = 0;
+    if (n) { C.shown[L] = 1; pts = v === 'free' ? SPIN.freePts * n : v === 'dbl' ? Math.max(S.rp[t], SPIN.dblMin * n) : num_(v) * n; S.tot[t] += pts; S.rp[t] += pts; m.pts += pts; m.hits++;
+      spinEv_(S, now, 'hit', t, L, n, pts);
+      if (spinLet_(C.a).split('').every(function (x) { return C.shown[x]; })) { spinSolved_(g, t, 'all', 0, now); return { ok: true, n: n, pts: pts, done: true }; }
+      S.ph = { k: 'spin', at: now, ends: now + SPIN.spinMs }; S.mult = null; return { ok: true, n: n, pts: pts }; }
+    spinEv_(S, now, 'miss', t, L, 0, 0);
+    if (v === 'free') { S.ph = { k: 'spin', at: now, ends: now + SPIN.spinMs }; S.mult = null; return { ok: true, n: 0, free: true }; }      // a Free letter never passes the turn
+    spinNext_(g, now); return { ok: true, n: 0 }; }); }
+/** Is this the answer? Spaces, capitals and marks never matter; stray letters before it are skipped; 6+ letters may have one letter off (like Logo Wall). */
+function spinFits_(word, a) { return wallScore1_(word, spinLet_(a)) < 99; }
+/** The captain solves: { word } fingerspelled to the camera (the full bonus), { ask: true } shows the 4 answers, { pick: i } picks one of them (half the bonus). */
+function api_spinSolve(auth, code, o) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  o = o || {};
+  return spinCall_(auth, code, function (g, S, t, key, now) { var C = S.cur, m = spinMeOf_(S, key);
+    if (S.ph.k !== 'spin' && S.ph.k !== 'call') return { none: true, why: 'Wait a moment.' };
+    if (o.ask) { S.ask = key; S.ph.ends = Math.max(S.ph.ends, now + 20000); return { ok: true, asked: true }; }
+    var right, how;
+    if (o.pick != null && o.pick !== '') { if (S.ask !== key) return { none: true, why: 'Tap Solve first.' }; var i = Math.floor(num_(o.pick)); right = C.opts[i] === C.a; how = 'tap'; }
+    else { var w = str_(o.word).toUpperCase().replace(/[^A-Z]/g, '').slice(-30); if (!w) return { none: true, why: 'Fingerspell the answer first.' }; right = spinFits_(w, C.a); how = 'cam'; }
+    if (right) { var pts = how === 'cam' ? SPIN.solvePts : SPIN.tapPts; m.solves++; m.pts += pts; spinSolved_(g, t, how, pts, now); return { ok: true, right: true, pts: pts }; }
+    spinEv_(S, now, 'wrong', t, how); spinNext_(g, now); return { ok: true, right: false }; }); }
+/** What a screen sees. Never the answer before it is solved: hidden letters are '' (only the captain who asked to solve sees the 4 choices).
+    myTeam -1 = the projector. First names only, never emails. */
+function spinView_(g, myTeam, key) { var S = g.spin; if (!S) return null; var now = S.paused || Date.now(), j = liveJoined_(g.id), C = S.cur, P = S.ph,
+    over = livePhase_(g) === 'over' || S.final, open = over || P.k === 'reveal' || P.k === 'done', n = Math.max(2, g.teams || 2);
+  var v = { ph: { k: over ? 'done' : P.k, left: P.ends ? Math.max(0, P.ends - now) : 0, i: S.i, of: S.by === 'm' ? 0 : S.np }, mode: S.by, paused: !!S.paused, segs: SPIN.segs, anim: SPIN.animMs,
+    spun: S.spun ? { n: S.spun.n, seg: S.spun.seg, ago: now - S.spun.at, t: S.spun.t, auto: S.spun.auto } : null, turn: S.turn, cap: S.cap ? seaFirst_(j, S.cap) : '', mult: S.mult,
+    tot: S.tot.slice(), rp: S.rp.slice(), left: Math.max(0, g.ends - now), over: over, units: S.units, nCustom: S.nCustom, nPool: S.nPool, np: S.np,
+    teams: (function () { var o = []; for (var t = 0; t < n; t++) o.push(seaMates_(j, t).length); return o; })(),
+    ev: S.ev.filter(function (e) { return now - e[0] < SPIN.ev; }).map(function (e) { return [now - e[0], e[1], e[2], e[3], e[4], e[5], e[6]]; }),
+    hist: S.hist.map(function (h) { return [h[0], h[1], h[2], h[3]]; }) };
+  if (C) { v.cat = C.cat; v.called = C.called.slice(); v.tiles = C.a.split('').map(function (ch) { return /[A-Z]/.test(ch) ? (open || C.shown[ch] ? ch : '') : ch; }); v.solver = C.by; v.how = C.how; if (open) v.a = C.a; }
+  if (myTeam >= 0) { var me = { team: myTeam, cap: S.cap === key && myTeam === S.turn, mine: (S.me[key] || {}).pts || 0, hits: (S.me[key] || {}).hits || 0 };
+    if (me.cap && S.ask === key && C && !open) me.opts = C.opts.slice();
+    v.me = me; }
+  return v; }
+/** Save and close: everyone on the team with the most points gets the bonus Tokens (Settings: Spin & Spell winning team Tokens), once.
+    Teachers get none; a game a student hosted pays no bonus; a tie for first pays every tied team. */
+function spinPay_(g) {
+  if (g.mode !== 'spin' || !g.spin || g.byStu || !g.ends) return null;
+  var st = static_(), amt = st.settings.spinTok; if (!amt) return null;
+  var tm = liveTeams_(g, livePlayers_(g)), lead = tm[0]; if (!lead || lead[1] <= 0) return null;
+  var win = tm.filter(function (x) { return x[1] === lead[1]; }).map(function (x) { return x[3]; });
+  var props = PropertiesService.getDocumentProperties(), guard = 'spinpaid:' + g.id + ':' + g.made; if (props.getProperty(guard)) return null;
+  props.setProperty(guard, String(Date.now()));                          // set first: a retry can never pay twice
+  var j = liveJoinedSure_(g.id), want = {}, teach = {}; win.forEach(function (t) { seaMates_(j, t).forEach(function (e) { want[e] = 1; }); });
+  try { Object.keys(teacherEmails_() || {}).forEach(function (e) { teach[str_(e).toLowerCase()] = 1; }); } catch (e) {} teach[str_(g.host).toLowerCase()] = 1;
+  var sh = stuSheet_(), H = stuHead_(sh), when = new Date(), led = [], hist = [], paid = [], batch = 'spin-' + g.id + '-' + String(g.made).slice(-6), team = win.map(function (t) { return TEAM_NAMES[t] || ''; }).join(' and ');
+  rows_(sh, 2, H.n).forEach(function (v, i) { var key = str_(v[H.Email]).toLowerCase(); if (!want[key] || teach[key]) return;
+    var o = stuObj_(H, v, i + 2); o.Tokens = num_(o.Tokens) + amt; writeStu_(sh, o); paid.push(str_(o.Name).split(' ')[0]);
+    led.push([when, batch, key, o.Name, o.Class, 'Tokens', amt, 'Spin & Spell: the winning team', '', '']);
+    hist.push([when, key, o.Name, o.Class, 'spin', amt + ' ' + st.settings.tok + ': Spin & Spell, the winning team', 0, 'Gift', 'new: 🎡 Your team (' + team + ') won Spin & Spell! +' + amt + ' ' + st.settings.tok + '.']); });
+  if (led.length) { var lsh = ledgerSheet_(); lsh.getRange(lsh.getLastRow() + 1, 1, led.length, LEDGER_HEAD.length).setValues(led); var rsh = ss_().getSheetByName(TABS.redeem); rsh.getRange(rsh.getLastRow() + 1, 1, hist.length, REDEEM_HEAD.length).setValues(hist); giftFlag_(Object.keys(want)); }
+  cacheDrop_('boards');
+  return { teams: win, amt: amt, names: paid };
+}
 /* ───────── 4.145 EVERY LIVE CLASS GAME ON asl.cool (Colleen 2026-10-21: "yes move all of it for optimization"). At Start, the whole game (the game, who joined,
    the scores so far, 1 vs. The Mob's record, the sign list and settings) goes to an engine room on asl.cool that runs THIS code (dev/build-rt.py -> rt/engine.js,
    with stand-ins for Google's services: rt/gas-env.js). Emails and names are swapped for player numbers (ⓟ1, ⓟ2… and ⓣ for the teacher) first. The students'
    screens and the projector then send their game calls there (Index.html call()), and the screens put the names back in (they come from here, never the room).
    Start, late joins and Save and close stay here: at Save and close the room's game comes back (numbers swapped back) and is saved as before.
    The Vault and Breach have their own rooms (4.139, 4.142). If the room can't be made, the game runs here as before. ── */
-var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train', 'wall'];
+var RTE_MODES = ['tower', 'race', 'path', 'mob', 'camrace', 'jar', 'sea', 'isle', 'escape', 'case', 'train', 'wall', 'asst', 'spin'];
 var RTE_KEYS = ['lp', 'ls', 'lx', 'lgr', 'lcam'];
-var RTE_NEED = { train: 'api_trainVote', wall: 'api_wallClaim' };      // 4.270: the room must have this call (its engine.js is live) before a game moves there
+var RTE_NEED = { train: 'api_trainVote', wall: 'api_wallClaim', asst: 'api_asstPlace', spin: 'api_spinCall' };      // 4.270: the room must have this call (its engine.js is live) before a game moves there
 function rteKeyIn_(key, map) { var p = key.split(':'); if (p.length === 3 && map[p[2]]) p[2] = map[p[2]]; return p.join(':'); }
 function rteNames_(g, map) { var j = liveJoined_(g.id), first = {}, names = {}, seen = {};
   Object.keys(map).forEach(function (e) { var full = str_(j[e] && j[e][0]), f = full.split(' ')[0] || 'Player'; first[e] = [f, full]; seen[f] = (seen[f] || 0) + 1; });
@@ -14035,4 +14458,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone };
