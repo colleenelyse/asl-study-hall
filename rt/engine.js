@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.280';
+var VERSION = '4.281';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -8637,15 +8637,26 @@ function trainPay_(g) {
    chunk_logos.html, which WALL_LOGOS below must match: a test checks). The winning team's students get bonus Tokens at Save and close (wallPay_;
    Settings: Logo Wall winning team Tokens). ── */
 var WALL_LOGOS = [];      /* left out of the public copy (dev/build-rt.py) */
-var WALL = { size: 20, full: 0.85, goldMs: 30000, goldPts: 3, goldFirst: 45000, goldGap: [40000, 70000], minsDef: 5, ev: 12000, groups: ['mix', 'food', 'apps', 'games', 'stores', 'tech'] };
+var WALL = { openDef: 20, openMin: 5, openMax: 120, size: 20, full: 0.85, goldMs: 30000, goldPts: 3, goldFirst: 45000, goldGap: [40000, 70000], minsDef: 5, ev: 12000, groups: ['mix', 'food', 'apps', 'games', 'stores', 'tech'] };
 /** How many color teams: 3 to 6, about 5 students each (fewer than 3 players: 2 teams). */
 function wallTeams_(n) { n = Math.max(0, Math.floor(num_(n))); return n < 3 ? 2 : Math.max(3, Math.min(6, Math.round(n / 5))); }
 function wallNew_(opt) { var grp = WALL.groups.indexOf(str_(opt && opt.wallGroup)) >= 0 ? str_(opt.wallGroup) : 'mix', deck = [];
   WALL_LOGOS.forEach(function (r, i) { if (grp === 'mix' || r[1] === grp) deck.push([i, r[0]]); });
   deck = shuffle_(deck); var size = Math.min(WALL.size, deck.length), tiles = deck.splice(0, size).map(function (x) { return wallTile_(x); });
-  return { grp: grp, size: size, deck: deck, tiles: tiles, old: [], n: 1, by: {}, ev: [], tap: {}, gold: 0, nextGold: 0, started: 0, evN: 0 }; }
-function wallTile_(x) { return { i: x[0], s: x[1], t: -1, c: 0, lock: 0, pts: 1, gold: 0 }; }      // c: how many times it was claimed (2 = stolen once, locked)
-function wallStart_(g) { var W = g.wall, now = Date.now(); if (!W || W.started) return; W.started = now; W.nextGold = now + WALL.goldFirst; }
+  return { grp: grp, size: size, deck: deck, tiles: tiles, old: [], n: 1, by: {}, ev: [], tap: {}, gold: 0, nextGold: 0, started: 0, evN: 0, open: wallOpenSecs_(opt && opt.wallOpen), deal: 0 }; }
+function wallTile_(x) { return { i: x[0], s: x[1], t: -1, c: 0, lock: 0, pts: 1, gold: 0, a: -1, at: 0 }; }      // c: how many times it was claimed (2 = stolen once, locked); a: the team it is assigned to; at: when it appeared
+/** 4.281 the teacher's "Seconds before a logo opens to everyone" (5 to 120, 20 unless picked) */
+function wallOpenSecs_(v) { var x = Math.floor(num_(v)); return x ? Math.max(WALL.openMin, Math.min(WALL.openMax, x)) : WALL.openDef; }
+/** 4.281 (Colleen: "a logo should be available for grabs if it sits up for the assigned team for more than x seconds"): every logo on the wall is dealt to
+    one team, in turn (Red, Blue, Green, Red...), so each team gets the same share; it opens to every team (the assigned one too) after W.open seconds. */
+function wallAssign_(W, x, teams, now) { x.a = (W.deal || 0) % Math.max(1, teams); W.deal = (W.deal || 0) + 1; x.at = now; }
+function wallOpenIn_(W, x, now) { if (x.t >= 0 || !(x.a >= 0) || (x.gold && now < x.gold)) return 0; return Math.max(0, x.at + (W.open || WALL.openDef) * 1000 - now); }      // ms until it opens (0 = open: claimed logos follow the steal rule, gold is open at once)
+/** Why my team can't take this logo now ('' = it can). */
+function wallCan_(W, x, team, now) { if (x.lock) return x.t === team ? 'Your team already has that one.' : 'That logo is locked: it was stolen once already.';
+  if (x.t === team) return 'Your team already has that one.';
+  var wait = x.t < 0 && x.a !== team ? wallOpenIn_(W, x, now) : 0; if (wait > 0) return 'That one is ' + (TEAM_NAMES[x.a] || 'another team') + '\'s for now. It opens in ' + Math.ceil(wait / 1000) + ' s.';
+  return ''; }
+function wallStart_(g) { var W = g.wall, now = Date.now(); if (!W || W.started) return; W.started = now; W.teams = g.teams || 2; W.nextGold = now + WALL.goldFirst; W.open = W.open || WALL.openDef; W.deal = Math.floor(Math.random() * Math.max(1, g.teams || 2)); W.tiles.forEach(function (x) { wallAssign_(W, x, g.teams || 2, now); }); }
 /** Points for each team: every logo it holds, on this wall and the earlier ones. */
 function wallPts_(W, teams) { var pts = []; for (var t = 0; t < teams; t++) pts.push(0); W.old.concat(W.tiles).forEach(function (x) { if (x.t >= 0 && x.t < teams) pts[x.t] += x.pts; }); return pts; }
 /* the camera matching, the same as the solo camera mode (lgHeard in chunk_logos.html): stray letters before the name are ignored, J and Z may be any
@@ -8670,12 +8681,12 @@ function wallEv_(W, now, kind, x, team, from) { W.evN = (W.evN || 0) + 1; W.ev.p
 /** A fresh wall slides in when this one is nearly full: the logos nobody spelled stay, new ones fill the rest. Not when there are no new logos left. */
 function wallRefresh_(W, now) { var taken = W.tiles.filter(function (x) { return x.t >= 0; }); if (taken.length < Math.ceil(W.size * WALL.full) || !W.deck.length) return false;
   var left = W.tiles.filter(function (x) { return x.t < 0; }); left.forEach(function (x) { x.gold = 0; });
-  W.old = W.old.concat(taken); W.tiles = shuffle_(left.concat(W.deck.splice(0, W.size - left.length).map(wallTile_))); W.n++; W.tap = {}; W.slide = now;
+  var fresh = W.deck.splice(0, W.size - left.length).map(wallTile_); fresh.forEach(function (x) { wallAssign_(W, x, W.teams || 2, now); });      /* 4.281 new logos are dealt to the teams in turn; the ones that stay keep their team and clock */
+  W.old = W.old.concat(taken); W.tiles = shuffle_(left.concat(fresh)); W.n++; W.tap = {}; W.slide = now;
   wallEv_(W, now, 'wall', { i: -1 }, -1, -1); return true; }
 /** The rules for one claim (the caller holds the lock). x = the logo on the wall. Returns what happened, or why it didn't count. */
-function wallTake_(g, key, team, x, now) { var W = g.wall;
-  if (x.lock) return { none: true, why: x.t === team ? 'Your team already has that one.' : 'That logo is locked: it was stolen once already.' };
-  if (x.t === team) return { none: true, why: 'Your team already has that one.' };
+function wallTake_(g, key, team, x, now) { var W = g.wall, no = wallCan_(W, x, team, now);
+  if (no) return { none: true, why: no, wait: x.t < 0 && x.a !== team ? Math.ceil(wallOpenIn_(W, x, now) / 1000) : 0 };
   var kind = x.t < 0 ? (x.gold && now < x.gold ? 'gold' : 'claim') : 'steal', from = x.t;
   if (kind === 'gold') { x.pts = WALL.goldPts; x.lock = 1; x.gold = 0; } else if (kind === 'steal') x.lock = 1;      // gold: the first team keeps it; a steal locks it for good
   x.t = team; x.c++; W.by[key] = (W.by[key] || 0) + 1; wallEv_(W, now, kind, x, team, from);
@@ -8692,7 +8703,7 @@ function api_wallClaim(auth, code, word) {
     var W = g.wall, me = wallMe_(g, id.key), now = Date.now(); if (me < 0) return { none: true, why: 'You are not on a team yet.' };
     wallTick_(g, now);
     var hit = W.tiles.filter(function (x) { x.d = wallScore_(word, x.s); return x.d < 99; }), clean = function () { W.old.concat(W.tiles).forEach(function (x) { delete x.d; }); }; if (!hit.length) { clean(); livePut_(g); return { none: true, why: 'That isn\'t a logo on the wall.', wall: wallView_(g, me, id.key) }; }
-    var can = hit.filter(function (x) { return !x.lock && x.t !== me; }); var rank = function (x) { return x.d * 10 - (x.gold ? 2 : 0) - (x.t < 0 ? 1 : 0); }; can.sort(function (a, b) { return rank(a) - rank(b) || b.s.length - a.s.length; }); hit.sort(function (a, b) { return a.d - b.d; });      // the closest spelling (TWITCH is not SWITCH), then gold, then a free logo, then a steal
+    var can = hit.filter(function (x) { return !wallCan_(W, x, me, now); }); var rank = function (x) { return x.d * 10 - (x.gold ? 2 : 0) - (x.t < 0 ? 1 : 0); }; can.sort(function (a, b) { return rank(a) - rank(b) || b.s.length - a.s.length; }); hit.sort(function (a, b) { return a.d - b.d; });      // the closest spelling (TWITCH is not SWITCH), then gold, then a free logo, then a steal
     var out = can.length && can[0].d <= hit[0].d ? wallTake_(g, id.key, me, can[0], now) : wallTake_(g, id.key, me, hit[0], now); clean();
     livePut_(g); out.wall = wallView_(g, me, id.key); return out; }); }
 /** Student, tap mode (the camera doesn't work): pick < 0 asks for a logo for the hand to spell; pick = the logo I tapped. Only the logo the hand spelled counts. */
@@ -8706,14 +8717,14 @@ function api_wallTap(auth, code, pick) {
     var want = W.tap[id.key], x = W.tiles.filter(function (y) { return y.i === want; })[0];
     if (pick >= 0 && x && pick === want) out = wallTake_(g, id.key, me, x, now);
     else if (pick >= 0) out = { none: true, wrong: true, why: x ? 'Not that one. Watch the hand again.' : 'That logo is gone. Here is a new one.' };
-    if (pick < 0 || out.ok || !x) { var open = W.tiles.filter(function (y) { return !y.lock && y.t !== me && y.i !== want; }); if (!open.length) open = W.tiles.filter(function (y) { return !y.lock && y.t !== me; });
+    if (pick < 0 || out.ok || !x) { var open = W.tiles.filter(function (y) { return !wallCan_(W, y, me, now) && y.i !== want; }); if (!open.length) open = W.tiles.filter(function (y) { return !wallCan_(W, y, me, now); });      /* 4.281 only logos my team can take right now */
       var gold = open.filter(function (y) { return y.gold; }), free = open.filter(function (y) { return y.t < 0; }), from = gold.length && Math.random() < 0.6 ? gold : free.length && Math.random() < 0.8 ? free : open;
       if (from.length) W.tap[id.key] = from[Math.floor(Math.random() * from.length)].i; else delete W.tap[id.key]; }
     livePut_(g); out.wall = wallView_(g, me, id.key); return out; }); }
 /** What a screen sees: logo numbers, team numbers and counts only (never names, emails or pictures). myTeam -1 = the projector. */
 function wallView_(g, myTeam, key) { var W = g.wall; if (!W) return null; var now = Date.now(), over = livePhase_(g) === 'over', teams = Math.max(2, g.teams || 2);
   var v = { grp: W.grp, n: W.n, size: W.size, teams: teams, slid: W.slide ? now - W.slide : -1, deck: W.deck.length,
-    tiles: W.tiles.map(function (x) { return [x.i, x.t, x.c, x.lock, x.gold ? Math.max(0, x.gold - now) : 0, x.pts]; }),
+    tiles: W.tiles.map(function (x) { return [x.i, x.t, x.c, x.lock, x.gold ? Math.max(0, x.gold - now) : 0, x.pts, x.a, wallOpenIn_(W, x, now)]; }), open: W.open || WALL.openDef,      /* 4.281 [6] the assigned team, [7] ms until it opens to everyone */
     pts: wallPts_(W, teams), held: (function () { var h = []; for (var t = 0; t < teams; t++) h.push(0); W.old.concat(W.tiles).forEach(function (x) { if (x.t >= 0 && x.t < teams) h[x.t]++; }); return h; })(),
     ev: W.ev.filter(function (e) { return now - e[0] < WALL.ev; }).map(function (e) { return [now - e[0], e[1], e[2], e[3], e[4], e[5]]; }), left: Math.max(0, g.ends - now), over: over };
   if (myTeam >= 0) { v.me = { team: myTeam, mine: num_(W.by[key]), tap: W.tap[key] >= 0 ? W.tap[key] : -1 }; }
