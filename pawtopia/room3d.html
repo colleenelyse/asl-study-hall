@@ -293,6 +293,8 @@
     const OUT = {}; if (!own) OUTFITS = OUT; root.updateMatrixWorld(true);
     const V = []; root.traverse(o => { if (!o.isMesh) return; const pa = o.geometry.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < pa.count; i += 2) { v.fromBufferAttribute(pa, i); o.localToWorld(v); V.push(root.worldToLocal(v.clone())); } });
     const L = b => root.worldToLocal(b.getWorldPosition(new THREE.Vector3()));
+    const SK = []; root.traverse(o => { if (o.isSkinnedMesh && o.geometry.attributes.skinIndex) SK.push(o); });      /* 2026-11-02 the raincoat measures the body as it really shows: some models' stored shape is not their resting pose (the Raccoon) */
+    const coatPts = () => { if (!SK.length) return V; const out = [], v = new THREE.Vector3(); SK.forEach(o => { const n = o.geometry.attributes.position.count; for (let i = 0; i < n; i += 2) { o.boneTransform(i, v); out.push(root.worldToLocal(o.localToWorld(v.clone()))); } }); return out.length > 50 ? out : V; };
     const ring = (c, ax, band, maxR, keep, pc) => { const pts = V.filter(p => Math.abs(p.clone().sub(c).dot(ax)) < band && p.distanceTo(c) < maxR && (!keep || keep(p))); if (pts.length < 6) return null;
       const m = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length), ds = pts.map(p => { const d = p.clone().sub(m); return d.sub(ax.clone().multiplyScalar(d.dot(ax))).length(); }).sort((x, y) => x - y);
       return { c: m, r: ds[Math.floor(ds.length * (pc || 0.65))] }; };      /* a low-ish middle distance: fluffy cheeks and stray fur do not make the collar too big */
@@ -327,11 +329,62 @@
     /* Pink Bow Harness: a band around the chest and a bow on the back */
     { const g = new THREE.Group(), t = new THREE.Mesh(new THREE.TorusGeometry(body.r * 1.04, body.r * 0.2, 10, 40), omat(0xff6fae)); g.add(t); const b = bowShape(0xff3f8e, body.r * 0.5); b.position.set(0, body.r * 1.2, 0); b.rotation.x = -Math.PI / 2; g.add(b);
       g.position.copy(body.c); add('harness', g, rig.chest || rig.top); }
-    /* Yellow Raincoat: a coat over the back from the shoulders to the hips (half a stretched ball) and a collar */
-    { const hipZ = rig.pivot ? rig.pivot.z : chest.z - Hh * 0.45, len = Math.max(Hh * 0.2, (chest.z - hipZ) * 0.78), g = new THREE.Group();
-      const coat = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), omat(0xffd02e, { side: THREE.DoubleSide, roughness: 0.35 })); coat.scale.set(body.r * 1.15, body.r * 0.95, len); g.add(coat);
-      g.position.set(body.c.x, body.c.y - body.r * 0.4, (chest.z + hipZ) / 2 - Hh * 0.04); add('raincoat', g, rig.chest || rig.top);
-      const c2 = collar(0xffd02e, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
+    /* Yellow Raincoat (rebuilt 2026-11-02): a shell shaped from the pet's own body, so it hugs the back and sides like a dog raincoat (hem in a deeper yellow).
+       Four legs: over the back from behind the neck to the hips, down the sides, open underneath, legs free. Two legs: round the back and sides from the
+       feet to the head, open in front. Swimmers: over the front half, behind the head. A flat folded hood lies behind the neck; the yellow collar stays.
+       The old coat was placed around the chest bone, which the new Jaq and Joey do not have (it then sat at the floor, under the belly). */
+    { const V = coatPts(), floor0 = Math.min(...V.map(p => p.y)), lz = c => c && c[0] && rig.P && rig.P.get(c[0]) ? rig.P.get(c[0]).z : null, fz = [lz(rig.legs && rig.legs.fl), lz(rig.legs && rig.legs.fr)].filter(x => x !== null), bz = [lz(rig.legs && rig.legs.bl), lz(rig.legs && rig.legs.br)].filter(x => x !== null);
+      const four = !rig.biped && !rig.swim && fz.length && bz.length, NS = 16, NA = 22, pct = (a, q, d) => { if (!a.length) return d; a.sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
+      const Y = 0xffd02e, HEM = 0xf0a818, pad = Hh * 0.026;
+      /* where the coat goes: four legs = the flat stretch of back between the rising neck and the tail (found from the shape, near the legs);
+         two legs = the body between the feet and the head; swimmers = the front half behind the head. Measured at 5 places, then evened out, so stray fur, a tail or a fin cannot make spikes. */
+      let a0, a1, s0, s1, sect, cap = Infinity;
+      const prof = z => { const m = V.filter(p => Math.abs(p.z - z) < Hh * 0.04 && Math.abs(p.x - cx) < Hh * 0.1 && p.y > floor0 + Hh * 0.12).map(p => p.y); return m.length < 12 ? null : pct(m, 0.9, null); };      /* how high the back is here */
+      if (rig.biped) {      /* sections up the body (y), each an ellipse in x/z; the coat goes round the back (-z), open in front */
+        s0 = floor0 + Hh * 0.18; s1 = Math.max(s0 + Hh * 0.2, head.y - hr * 0.75);
+        sect = (y, bd) => { const pts = V.filter(p => Math.abs(p.y - y) < bd), core = pts.filter(p => Math.abs(p.x - cx) < Hh * 0.12), zf = pct(core.map(p => p.z), 0.96, chest.z + Hh * 0.1), zb = pct(core.map(p => p.z), 0.04, chest.z - Hh * 0.1), zc = (zf + zb) / 2;
+          return { c: zc, ry: (zf - zb) / 2, rx: pct(pts.filter(p => Math.abs(p.z - zc) < (zf - zb) * 0.25).map(p => Math.abs(p.x - cx)), 0.85, Hh * 0.15) }; };      /* the width through the middle of the body (not out at the flippers) */
+        a0 = -Math.PI / 2 - 1.95; a1 = -Math.PI / 2 + 1.95;
+      } else {      /* sections along the body (z), each an ellipse in x/y; the coat goes over the top, open underneath */
+        if (four) { const pz = c => rig.P.get(c[c.length - 1]).z, F = Math.max(pz(rig.legs.fl), pz(rig.legs.fr), (fz[0] + fz[fz.length - 1]) / 2), B = Math.min(pz(rig.legs.bl), pz(rig.legs.br), (bz[0] + bz[bz.length - 1]) / 2), span = F - B, st = Hh * 0.02;
+          const zs2 = V.map(p => p.z), zlo = Math.min(...zs2) + Hh * 0.03, zhi = Math.max(...zs2) - Hh * 0.03, wide = z => { const w = V.filter(p => Math.abs(p.z - z) < Hh * 0.04 && p.y > floor0 + Hh * 0.2).map(p => Math.abs(p.x - cx)); return w.length < 12 ? null : pct(w, 0.9, null); };
+          const bins = [...Array(13)].map((_, i) => { const z = B + span * (-0.3 + 1.15 * i / 12); return { z, t: z > zlo && z < zhi ? prof(z) : null }; }).filter(b => b.t !== null && b.t > floor0 + Hh * 0.3);
+          let ref = bins.length ? pct(bins.map(b => b.t), 0.3, 0) : body.c.y + body.r, zr = bins.length ? bins.reduce((m, b) => Math.abs(b.t - ref) < Math.abs(m.t - ref) ? b : m).z : (F + B) / 2;      /* the low part of the back near the legs (a big head over the front legs is higher) */
+          const w0 = wide(zr) || Hh * 0.2, ok = z => { const t = prof(z), w = wide(z); return z > zlo && z < zhi && (t === null || t <= ref + Hh * 0.07) && (w === null || w > w0 * 0.6); };      /* stops where the body rises (neck, head, tail), gets thin (a tail) or ends */
+          s1 = zr; while (s1 < F + span * 0.15 && ok(s1 + st)) s1 += st;      /* forward until the neck rises */
+          s0 = zr; while (s0 > B - span * 0.22 && ok(s0 - st)) s0 -= st;      /* back until the tail, the rump's end or a little past the hips */
+          if (s1 - s0 < span * 0.5) s0 = Math.max(zlo, s1 - span * 0.5); if (rig.fit && rig.fit.coatZ0 != null) s0 = Math.max(s0, rig.fit.coatZ0); cap = ref + Hh * 0.05;      /* coatZ0: where the coat must end at the back (FITFIX) */
+        } else { const shZ = rig.swim ? L(rig.neck[0]).z : chest.z; s1 = shZ; s0 = rig.swim ? chest.z - Hh * 0.3 : shZ - Hh * 0.6; }
+        sect = (z, bd) => { const pts = V.filter(p => Math.abs(p.z - z) < bd && p.y > floor0 + Hh * 0.12), mid = pts.filter(p => Math.abs(p.x - cx) < Hh * 0.08);
+          const yt = Math.min(cap, pct(mid.map(p => p.y), rig.swim ? 0.75 : 0.88, body.c.y + body.r)), my = pts.length ? pts.reduce((a, p) => a + p.y, 0) / pts.length : yt - Hh * 0.15,      /* a swimmer's middle: the average of its slice (its underside is thin and its fin is tall) */
+            yb = rig.swim ? Math.min(yt - Hh * 0.08, 2 * my - yt) : Math.min(yt - Hh * 0.08, pct(mid.map(p => p.y), 0.05, yt - Hh * 0.3)), cy = (yt + yb) / 2;
+          const rx = rig.swim ? Math.max((yt - yb) * 0.35, pct(pts.filter(p => Math.abs(p.y - cy) < (yt - yb) * 0.25).map(p => Math.abs(p.x - cx)), 0.75, Hh * 0.15))      /* a swimmer: the width halfway up (its flippers stick out lower down) */
+            : Math.max((yt - yb) * 0.38, pct(pts.filter(p => p.y > cy - (yt - yb) * 0.1 && p.y < yt + Hh * 0.02).map(p => Math.abs(p.x - cx)), 0.9, Hh * 0.15));      /* never narrower than a round-ish body */
+          return { c: cy, ry: (yt - yb) / 2, rx }; };
+        a0 = -0.5; a1 = Math.PI + 0.5;
+      }
+      const bd = Math.max(Hh * 0.04, (s1 - s0) * 0.08), S5 = [0.1, 0.3, 0.5, 0.7, 0.9].map(t => sect(s0 + (s1 - s0) * t, bd)), med = k => pct(S5.map(s => s[k]), 0.5, 0);
+      { const mr = med('ry'), mx = med('rx'), mc = med('c'); S5.forEach(s => { s.ry = Math.max(mr * 0.75, Math.min(mr * 1.25, s.ry)); s.rx = Math.max(mx * 0.85, Math.min(mx * 1.15, s.rx)); s.c = Math.max(mc - mr * 0.25, Math.min(mc + mr * 0.25, s.c)); }); }      /* no section far off the others */
+      if (!rig.biped) { const T = S5.map(s => Math.min(cap, s.c + s.ry)), tm = T.reduce((a, b) => a + b, 0) / 5, sl0 = T.reduce((a, t, i) => a + t * (i - 2), 0) / 10;      /* the back's top as one straight line (a coat does not dip and rise) */
+        S5.forEach((s, i) => { const tp = tm + sl0 * (i - 2), b0 = Math.min(s.c - s.ry, tp - Hh * 0.1); s.c = (tp + b0) / 2; s.ry = (tp - b0) / 2; }); }
+      const at = (k, t) => { const u = Math.max(0, Math.min(4, (t - 0.1) / 0.2)), i = Math.min(3, Math.floor(u)), f = u - i; return S5[i][k] * (1 - f) + S5[i + 1][k] * f; };
+      const t0 = rig.biped ? 0 : -0.06, t1 = rig.biped ? 1 : 1.06, sl = [], C = [], RY = [], RX = [];
+      for (let i = 0; i < NS; i++) { const t = t0 + (t1 - t0) * i / (NS - 1), taper = rig.biped ? 1 : 1 - Math.max(0, Math.abs(t - 0.5) - 0.42) * 1.3;      /* a little smaller at the very ends, so the edges tuck in */
+        sl.push({ s: s0 + (s1 - s0) * t }); C.push(at('c', t)); RY.push(Math.max(Hh * 0.04, at('ry', t)) * taper); RX.push(Math.max(Hh * 0.04, at('rx', t)) * taper); }
+      const z0 = s0, z1 = s1, pos = [], colr = [], idx = [], cY = col(Y), cH = col(HEM);
+      for (let i = 0; i < NS; i++) for (let j = 0; j < NA; j++) { const a = a0 + (a1 - a0) * j / (NA - 1), rx = RX[i] + pad, ry = RY[i] + pad, u = Math.cos(a) * rx, v = Math.sin(a) * ry;
+        if (rig.biped) pos.push(cx + u, sl[i].s, C[i] + v); else pos.push(cx + u, C[i] + v, sl[i].s);
+        const hem = j < 2 || j > NA - 3 || i === 0 || i === NS - 1, c = hem ? cH : cY; colr.push(c.r, c.g, c.b);
+        if (i < NS - 1 && j < NA - 1) { const k = i * NA + j; idx.push(k, k + 1, k + NA, k + 1, k + NA + 1, k + NA); } }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+      const g = new THREE.Group(), coat = new THREE.Mesh(geo, omat(0xffffff, { vertexColors: true, side: THREE.DoubleSide, roughness: 0.35 })); coat.castShadow = true; g.add(coat);
+      /* the folded hood: a soft half ball lying on the coat just behind the neck */
+      const e = Math.round((NS - 1) * 0.86), hw = Math.min(RX[e], neck.r * 1.6), hood = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), omat(Y, { side: THREE.DoubleSide, roughness: 0.35 }));
+      if (rig.biped) { hood.scale.set(hw * 0.9, hw * 0.5, hw * 0.4); hood.rotation.x = -Math.PI / 2 - 0.2; hood.position.set(cx, sl[e].s - Hh * 0.02, C[e] - RY[e] - pad * 0.5); }
+      else { hood.scale.set(hw * 0.8, hw * 0.22, hw * 0.6); hood.rotation.x = -0.12; hood.position.set(cx, C[e] + RY[e] + pad * 0.4, sl[e].s); }
+      let hold = rig.top; if (four) { const up = new Set(); for (let x = rig.legs.fl[0]; x && x.isBone; x = x.parent) up.add(x); for (let x = rig.legs.bl[0]; x && x.isBone; x = x.parent) if (up.has(x)) { hold = x; break; } }      /* four legs: the bone both front and back legs hang from (the body moves with it) */
+      g.add(hood); add('raincoat', g, rig.biped ? rig.chest || rig.top : hold);
+      const c2 = collar(Y, 1.04, 0.12); add('raincoat2', c2, rig.neck[rig.neck.length - 1] || rig.head); }
     /* ───── 4.256 more dress-up: hats sit on top of the head, glasses in front of the eyes, more neck and body pieces ───── */
     const FX = rig.fit || {}, hat = (id, build) => { const g = new THREE.Group(); build(g); if (FX.hatK) g.scale.setScalar(FX.hatK); g.position.copy(top).add(new THREE.Vector3(0, -hr * (rig.biped ? 0.3 : 0.08) + hr * (FX.hatUp || 0), 0)); g.rotation.x = -0.15; add(id, g); };
     const cone = (r, h, c, seg) => new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 24), omat(c));
@@ -926,7 +979,7 @@
   /* 2026-11-01 outfit fitting for pets whose shape fools the general rules. Joey (long snout, head bone at the top of the skull, wide-set eyes, tall ears):
      neck: skip a "neck" slice whose middle is off the head-to-chest line (a slice through his muzzle looked narrowest, so collars sat on his nose);
      eyes: glasses go on the front of the face at eye height (eyeZ), bigger (eyeK); hats: bigger (hatK) and raised (hatUp, in head sizes) so they show between the ears */
-  const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 } };
+  const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 }, raccoon: { coatZ0: -0.24 } };      /* 2026-11-02 raccoon: its rig takes the tail (which reaches the floor) for a back leg, so the raincoat is told where the body ends */
   const POSEFIX = { joey: { sit: { pitch: -0.6, drop: 0, roll: 0, fU: 0.55, fL: 0, hU: -1.4, hK: 0.9, hH: -0.45, nP: 0.05, nY: 0, hP: 0.3, tY: 0, tP: 0.6 } } };      /* 2026-11-01 per-pet changes to RIGPOSE (Joey's long legs need a lower, more upright sit) */
   const MODELS = { jaq: 'models/jaq.glb', joey: 'models/joey.glb', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; getBuf(who).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
