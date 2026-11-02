@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.296';
+var VERSION = '4.301';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -565,6 +565,7 @@ var FEATURES = [
   ['type', 'Type It', 'Practice', ''], ['listen', 'Listen and Type', 'Practice', 'Hear the term and type what it means. Needs Read aloud on.'], ['hear', 'Hear the Definition', 'Practice', 'Hear the definition and type the term. Needs Read aloud on.'], ['yesno', 'Yes or No', 'Practice', ''], ['match', 'Matching', 'Practice', ''], ['memory', 'Memory', 'Practice', ''],
   ['sayit', 'Say It', 'Practice', 'Students say each word out loud and get instant feedback, on the Say It page (needs the Say It page link on the Settings tab).'], ['fspell', 'Fingerspelling, numbers & pronouns', 'Practice', 'The fingerspelling games, where a 3D hand spells words, on their own page (needs the Fingerspelling page link on the Settings tab).'], ['speed', 'Speed Round', 'Practice', ''], ['mobsolo', '1 vs. The Mob (solo)', 'Practice', ''], ['test', 'Practice Test', 'Practice', ''],
   ['feed', 'Class feed', 'Student pages', 'A card on Home about the student\u2019s own class this week: how many practiced today, questions and signs mastered (numbers only), this week\u2019s leaders and big accomplishments (with names).'],
+  ['feedback', 'Student feedback button', 'Student pages', 'A 💬 Feedback tab on every student screen: students tell you what is not working, a wrong sign or word, an idea or confusing instructions, right where they found it (4.300). It lands on Class › Student feedback (and the Student Feedback tab); when you mark it fixed, the student gets a thank-you message.'],
   ['ws', 'Sign of the Day', 'Student pages', 'The daily sentence with one new sign, its rewards and weekly quiz.'],
   ['dict', 'Dictionary', 'Student pages', 'The searchable list of every sign.'],
   ['audio', 'Read aloud', 'Student pages', 'Speaker buttons that read terms and definitions aloud, each side in its own language (Settings and Units tabs).'],
@@ -1621,7 +1622,8 @@ function api_bootstrap(auth) {
   out.gifts = newGifts_(id.key);
   if (o.Bests && o.Bests.inbox && o.Bests.inbox.length) out.gifts = out.gifts.concat(lock_(function () { var o2 = readStu_(sh, row), box = takeInbox_(o2); if (box.length) writeStu_(sh, o2); return box; }));     // points the teacher awarded since the last visit
   out.pawGift = todayPaw_(st, id.key);      /* 4.286 the Today card */
-  try { out.exam = exBoot_(id.key, o.Class); } catch (e) { out.exam = null; }      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
+  try { out.exam = exBoot_(id.key, o.Class); } catch (e) { out.exam = null; }
+  try { out.fbNote = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (out.teacher) out.fbNew = fbNewCount_(); } catch (e) { out.fbNote = null; }      /* 4.300 Student feedback (Feedback.gs): fixed / won't fix messages; the teacher's New count */      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
   if (!out.teacher) seenMark_(id.key);
   CacheService.getScriptCache().put('at:' + id.key, String(Date.now()), 21600);
   return wire_(out);
@@ -1809,6 +1811,7 @@ function api_submitRound(auth, r) {
         if (lists.length) ticket(lists.length === 1 ? 'List ' + lists[0].s + ' mastered' : lists.length + ' lists mastered', lists.length * S.tList);
         if (units.length) ticket(units.length === 1 ? units[0].u + ' mastered' : units.length + ' units mastered', units.length * S.tUnit);
       }
+      try { if (typeof masteryLogRound_ === 'function') masteryLogRound_(st, o, data, delta); } catch (e) {}      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
     }
 
     // XP (never spent, drives letters) and Tokens (play currency). No daily limit unless the teacher sets one for XP.
@@ -7051,6 +7054,7 @@ function api_pushCheck(auth, beat) {
     var fs = focusFor_(cls), qs = quietFor_(cls); if (qs) cache.put('qp:' + qs.id + ':' + id.key, '1', 21600);      /* in ASL Study during quiet time */
     if (fs) { var tot = beat && beat.id === fs.id ? focusBeat_(fs, id.key, beat.secs) : (focusTally_(fs.id, [id.key])[id.key] || [0])[0]; out.focus = { id: fs.id, start: fs.start, end: fs.end, mins: fs.mins, secs: tot, cfg: focusCfg_(static_().settings) }; }
   }
+  try { var fbn = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (fbn) out.fb = fbn; } catch (e) {}      /* 4.300 a fixed message shows right away if the app is open */
   if (cache.get('gift:' + id.key)) {       /* the teacher awarded or gave something: hand it over now, with the new balances */
     cache.remove('gift:' + id.key);
     var st = static_(), got = lock_(function () { var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) return null; var o = readStu_(sh, row), box = takeInbox_(o); if (box.length) writeStu_(sh, o); return { box: box, o: o }; });
@@ -7902,6 +7906,7 @@ function api_teacherAlerts(auth) {
   if (gsh && gsh.getLastRow() >= 2) gsh.getRange(2, 1, gsh.getLastRow() - 1, 10).getValues().forEach(function (r) { if (r[0] && !str_(r[9])) out.reports++; });      // 4.73: sign reports not marked fixed
   if (rsh && rsh.getLastRow() >= 2) rsh.getRange(2, 8, rsh.getLastRow() - 1, 1).getValues().forEach(function (r) { var s = prizeStatus_(r[0]); if (s === 'Available' || s === 'Waiting for approval' || s === 'Unlocked') out.prizes++; });
   if (psh && psh.getLastRow() >= 2) psh.getRange(2, 1, psh.getLastRow() - 1, 5).getValues().forEach(function (r) { if (str_(r[0]) && !/^(approved|not|reject)/i.test(str_(r[4]))) out.pics++; });
+  try { out.fb = typeof fbNewCount_ === 'function' ? fbNewCount_() : 0; } catch (e) { out.fb = 0; }      /* 4.300 New student feedback */
   return out;
 }
 /* 4.73 (Colleen): students can flag a sign that looks wrong; reports go to the Sign Reports tab, and the teacher's dashboard badge counts the ones not yet fixed */
@@ -10423,8 +10428,8 @@ var WHOS_CHARS = [
   [71, 'm', 'tall', 'thin', 'gray', 'short', 0, 'mustache', 0, 'black', 'shirt', 'purple', 'gray', 'gold', 'bored', 'dance'],
   [72, 'm', 'medium', 'heavy', 'black', 'long', 1, 'mustache', 0, '', 'jacket', 'orange', 'gray', 'brown', 'bored', 'turn']];
 /* WHOS-CHARS-END */
-var WHOS_FIX = { 20: { b: 'medium' }, 60: { b: 'medium' } };      /* her notes (2026-11-01): #20 (sheet 3 card 2) and #60 (sheet 7 card 6) are drawn MEDIUM BUILD, not thin */
-var WHOS_OUT = [17];      /* #17 (sheet 2 card 8): the green ice bag on his head reads as a hat; left out of every board until her new picture (then re-run the art script and take 17 out) */
+var WHOS_FIX = { 20: { b: 'medium' }, 60: { b: 'medium' }, 17: { hat: 'green' } };      /* 4.297 Colleen: keep #17's green ice bag; it counts as a GREEN HAT so HAT? and GREEN? answers match the picture */      /* her notes (2026-11-01): #20 (sheet 3 card 2) and #60 (sheet 7 card 6) are drawn MEDIUM BUILD, not thin */
+var WHOS_OUT = [];      /* #17 (sheet 2 card 8): the green ice bag on his head reads as a hat; left out of every board until her new picture (then re-run the art script and take 17 out) */
 var WHOS_MEMO_ = null;
 function whosChars_() { if (WHOS_MEMO_) return WHOS_MEMO_; var out = {};
   WHOS_CHARS.forEach(function (r) { if (WHOS_OUT.indexOf(r[0]) >= 0) return;
