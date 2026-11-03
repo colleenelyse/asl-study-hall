@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.337';
+var VERSION = '4.340';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -551,6 +551,8 @@ var FEATURES = [
   ['munch', 'Sign Munchers', 'Practice', 'A grid of signs and a rule (a group like "a fruit", or a first letter): students move a muncher and munch every sign that fits, dodging troggles. A wrong munch shows that sign with its word and counts as a miss. Groups come from the Groups column (ASL Study > Suggest groups).'],
   ['wwsolo', 'Who\'s Who (solo)', 'Practice', 'The face-guessing game against the computer (4.291): the computer signs yes/no questions about your secret person (her unit GIFs, else the 3D hand) and you answer; you ask it by picking a sign. Pays like the other skill games.'],
   ['family', 'Family Tree', 'Practice', 'Students build their family (real or made up) with photos, the sign for each relationship and details to present in ASL, shown ten ways: tree, pedigree, family chart, fan, photo wall, poster, two sides, bubble web, printable worksheet (4.293). Photos are shrunk and saved in the tree on the Family Trees tab.'],
+  ['convo', 'Conversation Studio', 'Practice', 'Students record one role of a scripted conversation, one turn at a time, video only (4.339); later the teacher pairs any two students into a video-call conversation. Scripts are on the Conversation Scripts and Conversation Turns tabs.'],
+  ['switch', 'Syntax Switch', 'Practice', 'A visual ASL grammar game (4.338): students move, discard and change English word tiles into an ASL sentence (Stage 1: ME/MY, YOU/YOUR, YOU\'RE). Check names each real mistake once. Sentences are on the Syntax Switch tab.'],
   ['fuzzy', 'Fuzzy Crossing', 'Practice', 'A solo logic puzzle (4.289): little fuzzy creatures that differ by color, eyes, feet and hat must cross by a rule. The rule is signed (her color GIFs when the units have them, else the 3D hand); some levels hide the rule and Gatekeepers nod or shake their heads. 12 levels, new creatures every time. Pays like the other skill games (a few Tokens and Treats).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
   ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
@@ -1589,7 +1591,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['convo', 'switch', 'family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1911,7 +1913,7 @@ function hardList_(data, tn, n, ok) {
    Gift Calendar only for a round of SKILL.giftMin answers or more. No XP (XP is for signs). One Activity Log row a round. ───────── */
 var SKILL = { perRight: 1, roundMax: 15, dayCap: 40, giftMin: 5,
   kinds: { logos: ['logos', 'Name That Logo'], toast: ['toast', 'Neon Flying Toasters: letters'], party: ['party', 'Dinner Party'], manners: ['manners', 'Mind Your Manners'],
-    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'], fuzzy: ['fuzzy', 'Fuzzy Crossing'], whoswho: ['wwsolo', 'Who\'s Who (solo)'] } };      // 4.289 Fuzzy Crossing; 4.291 Who's Who
+    vault: ['vasolo', 'The Vault (solo)'], sea: ['seasolo', 'Sea Battle: fingerspelling'], claw: ['claw', 'Lucky Claw: fingerspelling'], escape: ['escape', 'The Carnival After Dark: locks'], switch: ['switch', 'Syntax Switch'], fuzzy: ['fuzzy', 'Fuzzy Crossing'], whoswho: ['wwsolo', 'Who\'s Who (solo)'] } };      // 4.289 Fuzzy Crossing; 4.291 Who's Who
 function api_skillRound(auth, r) {
   var st = static_(), id = who_(auth), S = st.settings; if (!id) throw new Error('Your sign-in ran out. Reload the page.');
   r = r || {}; var kind = str_(r.kind), K = SKILL.kinds[kind]; if (!K) throw new Error('Unknown activity.');
