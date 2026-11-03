@@ -41,7 +41,7 @@
     <button data-act="play">⚽ Play ball</button><button data-act="happy">💖 Happy</button><button data-act="bath">🫧 Bath</button><button data-act="drink">💧 Drink</button><button data-act="sleep">💤 Sleep</button><button data-act="ride">🐎 Ride</button><button data-act="fly">✨ Fly</button><button data-act="land">🪂 Land</button>
   </div>
   <div class="row stages"><span style="font-weight:700;align-self:center">Growth:</span></div>
-  <div class="row tools"><button id="formbtn">✨ Normal</button><select id="accsel" aria-label="Outfit"><option value="">👕 No outfit</option><option value="collar">Blue Collar</option><option value="bow">Pink Bow</option><option value="bandana">Red Bandana</option><option value="bowtie">Blue Bowtie</option><option value="crown">Flower Crown</option><option value="harness">Pink Bow Harness</option><option value="raincoat">Yellow Raincoat</option><option value="scarf">Plaid Scarf</option><option value="medal">Gold Medal</option><option value="cape">Purple Cape</option><option value="wizard_hat">Wizard Hat</option><option value="party_hat">Party Hat</option><option value="tiara">Tiara</option><option value="pirate_hat">Pirate Hat</option><option value="fire_helmet">Firefighter Helmet</option><option value="detective_hat">Detective Hat</option><option value="chef_hat">Chef Hat</option><option value="rain_hat">Rain Hat</option><option value="ball_cap">Ball Cap</option><option value="santa_hat">Santa Hat</option><option value="unicorn_horn">Unicorn Horn</option><option value="bee_antennae">Bee Antennae</option><option value="sunglasses">Sunglasses</option><option value="star_glasses">Star Glasses</option><option value="heart_glasses">Heart Glasses</option><option value="goggles">Goggles</option></select><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
+  <div class="row tools"><button id="avbtn">🧍 Person</button><button id="avwave" hidden>👋 Person waves</button><button id="avsit" hidden>🪑 Person sits</button><button id="avhair" hidden>💇 Long hair</button><button id="avhood" hidden>🧥 Hoodie</button><button id="avskirt" hidden>👗 Skirt</button><button id="formbtn">✨ Normal</button><select id="accsel" aria-label="Outfit"><option value="">👕 No outfit</option><option value="collar">Blue Collar</option><option value="bow">Pink Bow</option><option value="bandana">Red Bandana</option><option value="bowtie">Blue Bowtie</option><option value="crown">Flower Crown</option><option value="harness">Pink Bow Harness</option><option value="raincoat">Yellow Raincoat</option><option value="scarf">Plaid Scarf</option><option value="medal">Gold Medal</option><option value="cape">Purple Cape</option><option value="wizard_hat">Wizard Hat</option><option value="party_hat">Party Hat</option><option value="tiara">Tiara</option><option value="pirate_hat">Pirate Hat</option><option value="fire_helmet">Firefighter Helmet</option><option value="detective_hat">Detective Hat</option><option value="chef_hat">Chef Hat</option><option value="rain_hat">Rain Hat</option><option value="ball_cap">Ball Cap</option><option value="santa_hat">Santa Hat</option><option value="unicorn_horn">Unicorn Horn</option><option value="bee_antennae">Bee Antennae</option><option value="sunglasses">Sunglasses</option><option value="star_glasses">Star Glasses</option><option value="heart_glasses">Heart Glasses</option><option value="goggles">Goggles</option></select><button id="furnbtn" class="on">🛋️ Furniture</button><button id="cmpbtn">🖼️ Side by side with the painting</button><label class="filebtn">📦 Load a 3D model (.glb)<input type="file" id="glbin" accept=".glb,.gltf" hidden></label><button id="walkbtn" hidden>🐾 Walk: Pawtopia's</button><button id="hopbtn" hidden>🐰 Try hopping</button><button id="phbtn" hidden>↩ Back to the placeholder</button></div>
   <div id="report" hidden></div>
   <p class="note">Tap the pet to pet it. <b>Press and drag the pet to pick it up and move it.</b> Tap the floor to send it there. In the plain room, drag empty space to turn the room. The Joey and Golden Pup buttons are the same model with different colors, ears and fur.</p>
 </div>
@@ -53,12 +53,13 @@
   const view = document.getElementById('view'), say = t => { document.getElementById('say').textContent = t; };
   let back = null, pet = null, P = null;      // the painted backdrop in use (null = the plain 3D room)
   const col = c => new THREE.Color(c).convertSRGBToLinear();      // colors are picked as normal web colors
-  const Q = new URLSearchParams(location.search), EMBED = Q.has('embed'); if (EMBED) document.body.classList.add('embed');
+  const Q = new URLSearchParams(location.search), EMBED = Q.has('embed'), MAKER = Q.get('maker') === '1'; if (EMBED) document.body.classList.add('embed');      /* MAKER (4.312): the avatar maker shows only the person, turning slowly */
   const tell = m => { try { parent.postMessage(Object.assign({ pt3d: 1 }, m), '*'); } catch (e) {} };      /* to Pawtopia */
   let R; try { R = new THREE.WebGLRenderer({ antialias: !EMBED || (devicePixelRatio || 1) < 1.5, alpha: true }); } catch (e) { tell({ t: 'nogl' }); throw e; } R.setPixelRatio(EMBED ? Math.min(devicePixelRatio || 1, 1) : Math.min(devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
   R.outputEncoding = THREE.sRGBEncoding; view.appendChild(R.domElement);
   const scene = new THREE.Scene(); scene.background = col(0xffe7f1);
-  const cam = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100); let camAng = 0, camD = 4.6; window.__cam = (a, d) => { camAng = a; camD = d || 4.6; camAt(); }; const camAt = () => { if (back) { cam.position.set(...back.cam); cam.lookAt(...back.at); return; } const px = pet ? pet.position.x : 0, pz = pet ? pet.position.z : -0.2; cam.position.set(px + Math.sin(camAng) * camD, camD * 0.5, pz + Math.cos(camAng) * camD); cam.lookAt(px, 0.4, pz); }; camAt();
+  const AV = { on: false, holder: null, mixer: null, acts: {}, cur: '', target: new THREE.Vector3(), moving: false, keys: {}, H: 1.6, busy: 0 };      /* 2026-11-02 (4.312) the student's person: see avLoad */
+  const cam = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100); let camAng = 0, camD = 4.6; window.__cam = (a, d) => { camAng = a; camD = d || 4.6; camAt(); }; const camAt = () => { if (back) { cam.position.set(...back.cam); cam.lookAt(...back.at); return; } const F = AV.on && AV.holder ? AV.holder : pet, px = F ? F.position.x : 0, pz = F ? F.position.z : -0.2; if (MAKER) { cam.position.set(Math.sin(camAng) * 4.2, 1.15, Math.cos(camAng) * 4.2); cam.lookAt(0, 0.8, 0); return; } cam.position.set(px + Math.sin(camAng) * camD, camD * 0.5, pz + Math.cos(camAng) * camD); cam.lookAt(px, 0.4, pz); }; camAt();
   scene.add(new THREE.HemisphereLight(0xffffff, 0xf3c2d8, 0.6));
   const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(3, 6, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 }); scene.add(sun);
@@ -128,7 +129,7 @@
       const m = new THREE.Mesh(new THREE.PlaneGeometry(h, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.35 })); m.position.set(x, h * 0.42, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.toy = n; toyGroup.add(m); }); }
   function placeFurniture(k) {
     furnGroup.clear(); placeToys(); if (!FURN_ON) return; (MINE && k === 'bg_' + MINE.bg ? myLayout() : LAYOUT[k] || []).forEach(([n, x, z, hh], idx) => {
-      const h = hh || FURN_H[n] || 0.6, tex = furnLoader.load(ART + 'furniture/' + n + '.webp'); tex.encoding = THREE.sRGBEncoding;
+      const h = (hh || FURN_H[n] || 0.6) * (AV.on && /_bed$/.test(n) ? 0.6 : 1), tex = furnLoader.load(ART + 'furniture/' + n + '.webp'); tex.encoding = THREE.sRGBEncoding;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(h / 0.9, h / 0.9), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.35 }));      // the picture is a square with the piece 90% tall, feet at 88%
       m.position.set(x, h / 0.9 * 0.5 - h / 0.9 * 0.12, z); m.lookAt(cam.position.x, m.position.y, cam.position.z); m.userData.furn = n; m.userData.idx = idx; furnGroup.add(m);
       if (hh) return;      // a piece laid over the painting's own uses the painted shadow
@@ -207,7 +208,7 @@
   function useModel(gltf, label, bytes) {
     const root = gltf.scene, box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
     const swim = !!SWIM[(document.querySelector('[data-who].on') || {}).dataset ? document.querySelector('[data-who].on').dataset.who : ''];
-    const k = swim ? 0.85 / (size.z || 1) : 0.95 / (size.y || 1); root.scale.multiplyScalar(k);      // swimmers: by length (a dolphin is long, not tall)      // grown-up height in the room, feet on the floor, centered
+    const whoNow = (document.querySelector('[data-who].on') || { dataset: {} }).dataset.who, k = petH(whoNow, swim) / ((swim ? size.z : size.y) || 1); root.scale.multiplyScalar(k);      // swimmers: by length (a dolphin is long, not tall)      // grown-up height in the room, feet on the floor, centered
     const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3()); root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
     let tris = 0, tex = 0, mats = new Set(), skinned = 0;
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; if (o.isSkinnedMesh) skinned++;
@@ -833,7 +834,7 @@
   }
   function useComp(c, gltf) {      /* like useModel for the main pet, kept to what a buddy needs */
     const root = gltf.scene, size = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()), swim = !!SWIM[c.who];
-    const k = swim ? 0.85 / (size.z || 1) : 0.95 / (size.y || 1); root.scale.multiplyScalar(k);
+    const k = petH(c.who, swim) / ((swim ? size.z : size.y) || 1); root.scale.multiplyScalar(k);
     const b2 = new THREE.Box3().setFromObject(root), ctr = b2.getCenter(new THREE.Vector3()); root.position.x -= ctr.x; root.position.z -= ctr.z; root.position.y -= b2.min.y;
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.userData.comp = c.id; } });
     const mixer = new THREE.AnimationMixer(root), acts = {}; gltf.animations.forEach(a => { if (!acts.idle && CLIPS.idle.test(a.name)) acts.idle = mixer.clipAction(a); });
@@ -891,7 +892,227 @@
   }
   const compHit = () => { let best = null; COMPS.forEach(c => { if (!c.ready || c.gone || !c.holder.visible) return; const h = ray.intersectObject(c.holder, true); if (h.length && (!best || h[0].distance < best.d)) best = { c, d: h[0].distance }; }); return best; };
   /* the model files: fetched once per kind, shared by the main pet and the buddies (each still gets its own copy to wear and move) */
-  const BUF = {}; const getBuf = who => BUF[who] || (BUF[who] = fetch(MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null));
+  /* ───── 2026-11-02 (4.312) Pawtopia avatars (dev/pawtopia/AVATAR-PLAN.md): the student is a person who walks the room; the pet follows.
+     The person is Colleen's Tripo model (human rig, its own clips: idle, walk, run, wave, sit, jump). Click or tap the floor to walk there
+     (far = run), or use the arrow keys / WASD. Clips walk in place: the hips' forward drift is taken out so the game moves the person. ───── */
+  /* sizes with a person in the room (in room units; 1 unit is about a meter: a desk is 0.8, a sofa 0.95, the person 1.6): real sizes, small pets
+     nudged up so they are easy to see and tap. Grown-up height (swimmers: length). Without a person every pet is 0.95 tall, as before. */
+  const PET_H = { jaq: 0.36, joey: 0.46, golden: 0.66, kitten: 0.36, gus: 0.38, penguin: 0.5, owl: 0.42, bunny: 0.38, fox: 0.46, pony: 1.15, hamster: 0.2, raccoon: 0.42 };
+  const PET_L = { dolphin: 1.4, whale: 1.4, turtle: 0.8 };
+  const petH = (who, swim) => !AV.on ? (swim ? 0.85 : 0.95) : swim ? PET_L[who] || 1 : PET_H[who] || 0.45;
+  const AV_CLIPS = { idle: /idle/i, walk: /walk/i, run: /run/i, wave: /wave/i, sit: /sit/i, jump: /jump/i };
+  function avLoad() {
+    if (AV.holder) { AV.holder.visible = true; return; }
+    getBuf('person').then(buf => { if (!buf) return say('The person would not load.'); loader.parse(buf, '', g => {
+      const root = g.scene, sz = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()); root.scale.multiplyScalar(AV.H / (sz.y || 1));
+      const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3()); root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
+      root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } if (o.isSkinnedMesh && o.material.map) { avShader(o); avLook(); } });
+      g.animations.forEach(a => a.tracks.forEach(tr => { if (!/Hips\.position$/.test(tr.name)) return; const v = tr.values; for (let i = 3; i < v.length; i += 3) { v[i] = v[0]; v[i + 2] = v[2]; } }));
+      AV.mixer = new THREE.AnimationMixer(root); for (const n in AV_CLIPS) { const clip = g.animations.find(a => AV_CLIPS[n].test(a.name)); if (clip) AV.acts[n] = AV.mixer.clipAction(clip); }
+      ['wave', 'jump'].forEach(n => { if (AV.acts[n]) { AV.acts[n].setLoop(THREE.LoopOnce); AV.acts[n].clampWhenFinished = true; } });
+      if (AV.acts.sit) { AV.acts.sit.setLoop(THREE.LoopOnce); AV.acts.sit.clampWhenFinished = true; }
+      AV.holder = new THREE.Group(); AV.holder.add(root); scene.add(AV.holder);
+      const p = pet ? pet.position.clone() : new THREE.Vector3(); AV.holder.position.set(p.x - 0.6, 0, p.z + 0.3); clampArea(AV.holder.position); AV.target.copy(AV.holder.position); avPlay('idle'); avWearSync();
+    }, e => { say('The person would not load.'); console.error(e); }); });
+  }
+  /* ───── 2026-11-02 the avatar maker's colors. avMask paints a part map over the person's texture (skin, hair, shirt, pants, shoes), found from
+     which bone moves each triangle, whether a head triangle is scalp or face, and the pixel's own color (the same rules as dev/pawtopia/avatar-mask.html).
+     The shader then gives each part its chosen color and keeps the shading (it compares each pixel to the part's average brightness). ───── */
+  const AV_PART = { skin: 1, hair: 2, shirt: 3, pants: 4, shoes: 5 };
+  /* 4.314 shirt prints (Colleen: "one for my school and another for asl"): a picture on the chest of the shirt or the top being worn, projected straight
+     from the front in the person's bind space and shaded like the cloth. PRINTS: id -> picture in img/pawtopia/prints/. */
+  /* each print: img (a picture in img/pawtopia/prints/, its own colors); size: its width as a share of the shoulders. School and designer art (school logos,
+     designer art) is never on this public page: the school-only app draws it in the student's colors and sends it (m.printArt), kept in PRINT_EXT. */
+  const PRINTS = { asl: { img: 'prints/asl.png', size: 0.95 } }, PRINT_EXT = {};      /* asl: Colleen's colorful line hand (her logo without the words) */
+  const PRINT_U = { avPrint: { value: null }, avPrintOn: { value: 0 }, avPrintBox: { value: new THREE.Vector4(0, 0.6, 0.2, 0.14) } };      /* box: center x, center y, width, height */
+  const printTex = {};
+  function avPrint(id) {
+    const P = PRINTS[id] || PRINT_EXT[id]; if (!id || !P) { PRINT_U.avPrintOn.value = 0; return; }
+    const key = id + (P.url ? ':' + P.url.length + P.url.slice(-32) : '');
+    const use = t => { const im = t.image, ar = im && im.width ? im.height / im.width : 0.7, B = PRINT_U.avPrintBox.value; B.z = AV.shoulders * P.size; B.w = B.z * ar; PRINT_U.avPrint.value = t; PRINT_U.avPrintOn.value = 1; };
+    if (printTex[key]) return use(printTex[key]); const got = t => { t.encoding = THREE.sRGBEncoding; printTex[key] = t; const P2 = PRINTS[id] || PRINT_EXT[id]; if ((AV.look || {}).print === id && P2 === P) use(t); };
+    new THREE.TextureLoader().load(P.url || ART + P.img, got);
+  }
+  const PRINT_VS = ['varying vec3 vPrP; varying vec3 vPrN;\n', '  vPrP = position; vPrN = normal;'];
+  const PRINT_FS = 'uniform sampler2D avPrint; uniform float avPrintOn; uniform vec4 avPrintBox; varying vec3 vPrP; varying vec3 vPrN;\n';
+  const printMix = shade => 'if (avPrintOn > 0.5 && vPrN.z > 0.25 && vPrP.z > 0.0) { vec2 avQ = (vPrP.xy - avPrintBox.xy) / avPrintBox.zw + 0.5; if (avQ.x > 0.0 && avQ.x < 1.0 && avQ.y > 0.0 && avQ.y < 1.0) { vec4 avD = texture2D(avPrint, avQ); diffuseColor.rgb = mix(diffuseColor.rgb, avD.rgb * ' + shade + ', avD.a); } }';
+  const AV_LOOK0 = { skin: '#c68c6c', hair: '#3b2a20', shirt: '#ffffff', pants: '#77777c', shoes: '#222226' };      /* the model's own colors (nothing changes) */
+  function avMask(mesh) {
+    const geo = mesh.geometry, P = geo.attributes.position, UV = geo.attributes.uv, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, I = geo.index, bones = mesh.skeleton.bones;
+    const C4 = (a, i, k) => [a.getX, a.getY, a.getZ, a.getW][k].call(a, i), GROUP = n => /Head|Neck/.test(n) ? 1 : /Foot|Toe/.test(n) ? 2 : /UpLeg|Leg/.test(n) ? 3 : /Hips/.test(n) ? 4 : /Hand/.test(n) ? 5 : 6;      /* 1 head, 2 foot, 3 leg, 4 hip, 5 hand, 6 upper body, 7 scalp */
+    const top = i => { let b = 0, w = -1; for (let k = 0; k < 4; k++) if (C4(SW, i, k) > w) { w = C4(SW, i, k); b = C4(SI, i, k); } return GROUP(bones[b].name); };
+    const hb = new THREE.Box3(), v = new THREE.Vector3(); for (let i = 0; i < P.count; i++) if (top(i) === 1) hb.expandByPoint(v.fromBufferAttribute(P, i));
+    const N = 512, gc = document.createElement('canvas'); gc.width = gc.height = N; const gx = gc.getContext('2d'); gx.fillStyle = '#000'; gx.fillRect(0, 0, N, N); gx.lineWidth = 1.5;
+    for (let t = 0; t < I.count; t += 3) {
+      const vs = [I.getX(t), I.getX(t + 1), I.getX(t + 2)], acc = {};
+      vs.forEach(i => { for (let k = 0; k < 4; k++) { const n = GROUP(bones[C4(SI, i, k)].name); acc[n] = (acc[n] || 0) + C4(SW, i, k); } });
+      let grp = +Object.keys(acc).reduce((a, b) => acc[a] > acc[b] ? a : b);
+      if (grp === 1) { const c = vs.reduce((m, i) => m.add(v.fromBufferAttribute(P, i).clone()), new THREE.Vector3()).divideScalar(3), up = (c.y - hb.min.y) / (hb.max.y - hb.min.y), fwd = (c.z - hb.min.z) / (hb.max.z - hb.min.z);
+        if (up > 0.78 || fwd < 0.45 || (up > 0.62 && fwd < 0.8)) grp = 7; }
+      gx.fillStyle = gx.strokeStyle = `rgb(${grp * 30},0,0)`; gx.beginPath(); vs.forEach((i, j) => { const x = UV.getX(i) * N, y = UV.getY(i) * N; j ? gx.lineTo(x, y) : gx.moveTo(x, y); }); gx.closePath(); gx.fill(); gx.stroke();
+    }
+    const G = gx.getImageData(0, 0, N, N).data, tc = document.createElement('canvas'); tc.width = tc.height = N; const tx = tc.getContext('2d'); tx.drawImage(mesh.material.map.image, 0, 0, N, N); const T = tx.getImageData(0, 0, N, N).data;
+    const out = gx.createImageData(N, N), sum = {}, cnt = {};
+    for (let p = 0; p < N * N; p++) {
+      const o = p * 4, r = T[o], g = T[o + 1], b = T[o + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255, grp = Math.round(G[o] / 30);
+      const skin = r > g && g >= b * 0.95 && sat > 0.18 && sat < 0.7 && lum > 0.25; let part = 0;
+      if (grp === 5) part = 1; else if (grp === 7) part = skin && lum > 0.45 ? 1 : 2; else if (grp === 1) part = skin ? 1 : 0; else if (grp === 2) part = lum < 0.45 ? 5 : 0;
+      else if (grp === 3 || grp === 4) part = skin ? 1 : lum > 0.68 && sat < 0.2 ? 3 : 4; else if (grp === 6) part = skin ? 6 : sat < 0.2 ? 3 : 0;      /* 6: arm and chest skin (colored as skin; hidden under a top) */
+      out.data[o] = part * 40; out.data[o + 3] = 255; if (part) { sum[part] = (sum[part] || 0) + Math.pow(lum, 2.2); cnt[part] = (cnt[part] || 0) + 1; }
+    }
+    gx.putImageData(out, 0, 0); const tex = new THREE.CanvasTexture(gc); tex.flipY = false; tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+    const avg = [0, 1, 2, 3, 4, 5].map(k => cnt[k] ? sum[k] / cnt[k] : 0.5); if (cnt[6]) avg[1] = (sum[1] + sum[6]) / (cnt[1] + cnt[6]); return { tex, avg };
+  }
+  function avSlimLegs(mesh) {      /* 4.313 bare legs under a skirt: each leg point pulled toward the line from the hip joint to the ankle (Colleen: "the pants underneath are too baggy") */
+    const geo = mesh.geometry, P = geo.attributes.position, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, bones = mesh.skeleton.bones, C4 = (a, i, k) => [a.getX, a.getY, a.getZ, a.getW][k].call(a, i);
+    const bp = n => { const i = bones.findIndex(b => new RegExp(n + '$').test(b.name)); return new THREE.Vector3().setFromMatrixPosition(mesh.skeleton.boneInverses[i].clone().invert()).applyMatrix4(mesh.bindMatrix.clone().invert()); };
+    const legs = { Left: [bp('LeftUpLeg'), bp('LeftFoot')], Right: [bp('RightUpLeg'), bp('RightFoot')] }, out = new Float32Array(P.count * 3), v = new THREE.Vector3(), ln = new THREE.Line3(), q = new THREE.Vector3();
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); let bi = 0, bw = -1; for (let k = 0; k < 4; k++) if (C4(SW, i, k) > bw) { bw = C4(SW, i, k); bi = C4(SI, i, k); }
+      const m = /(Left|Right)(UpLeg|Leg)$/.exec(bones[bi].name); if (m) { const L = legs[m[1]]; ln.set(L[0], L[1]); ln.closestPointToPoint(v, true, q); v.sub(q).multiplyScalar(0.6).add(q); }
+      out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+    geo.setAttribute('avSlim', new THREE.BufferAttribute(out, 3));
+  }
+  function avPrintFit(mesh) {
+    const bones = mesh.skeleton.bones, bp = n => { const i = bones.findIndex(b => new RegExp(n + '$').test(b.name)); return i < 0 ? null : new THREE.Vector3().setFromMatrixPosition(mesh.skeleton.boneInverses[i].clone().invert()).applyMatrix4(mesh.bindMatrix.clone().invert()); };
+    const ch = bp('Spine2') || bp('Spine1'), L = bp('LeftArm'), R = bp('RightArm'), sh = L && R ? Math.abs(L.x - R.x) : 0.2, w = sh * 0.62, B = PRINT_U.avPrintBox.value; AV.shoulders = sh;
+    B.set(ch ? ch.x : 0, ch ? ch.y - sh * 0.3 : 0.6, w, w * 0.7);      /* a little below the chest bone: the middle of the chest */
+  }
+  function avShader(mesh) {      /* the recolor (uniforms in AV.U; avLook sets them) */
+    avSlimLegs(mesh); avPrintFit(mesh); const M = avMask(mesh), U = AV.U = { avMask: { value: M.tex }, avAvg: { value: M.avg.slice(1) }, avTop: { value: 0 }, avHem: { value: -1 }, avSlim: { value: 0 } }; for (const k in AV_PART) U['av_' + k] = { value: new THREE.Color(AV_LOOK0[k]).convertSRGBToLinear() };
+    mesh.material.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
+      sh.vertexShader = PRINT_VS[0] + 'attribute vec3 avSlim; uniform float avSlimOn; varying float vAvY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vAvY = position.y; transformed = mix(position, avSlim, avSlimOn);\n' + PRINT_VS[1]);
+      Object.assign(sh.uniforms, PRINT_U);
+      sh.uniforms.avSlimOn = U.avSlim;
+      sh.fragmentShader = PRINT_FS + 'varying float vAvY; uniform float avHem; uniform sampler2D avMask; uniform float avAvg[5], avTop; uniform vec3 av_skin, av_hair, av_shirt, av_pants, av_shoes;\n' + sh.fragmentShader.replace('#include <map_fragment>', ['#include <map_fragment>',
+        'float avP = floor(texture2D(avMask, vUv).r * 255.0 / 40.0 + 0.5);',
+        'if (avTop > 0.5 && (abs(avP - 3.0) < 0.5 || abs(avP - 6.0) < 0.5)) discard;',      /* a top is worn: the shirt and the skin it covers are not drawn, so nothing pokes through */
+        'if (avHem > 0.0 && abs(avP - 4.0) < 0.5 && vAvY > avHem) discard;',      /* a skirt is worn: the pants under it are not drawn */
+        'if (avP > 5.5) avP = 1.0;',
+        'float avBare = avHem > 0.0 && abs(avP - 4.0) < 0.5 ? 1.0 : 0.0;',      /* under a skirt: bare legs (skin color, the pants' own shading) */
+        'if (avP > 0.5) { vec3 avC = av_skin; float avB = avAvg[0];',
+        '  if (avP > 1.5) { avC = av_hair; avB = avAvg[1]; } if (avP > 2.5) { avC = av_shirt; avB = avAvg[2]; } if (avP > 3.5) { avC = av_pants; avB = avAvg[3]; } if (avP > 4.5) { avC = av_shoes; avB = avAvg[4]; } if (avBare > 0.5) avC = av_skin;',
+        '  float avL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
+        '  diffuseColor.rgb = avC * clamp(avL / max(avB, 0.01), 0.3, 1.45);',
+        '  if (abs(avP - 3.0) < 0.5) { ' + printMix('clamp(avL / max(avB, 0.01), 0.3, 1.2)') + ' } }'].join('\n')); };
+    mesh.material.needsUpdate = true;
+  }
+  function avLook(L) {      /* { skin, hair, shirt, pants, shoes } as '#rrggbb' */
+    AV.look = Object.assign({}, AV_LOOK0, AV.look || {}, L || {}); if (!AV.U) return;
+    for (const k in AV_PART) if (/^#[0-9a-f]{6}$/i.test(AV.look[k])) AV.U['av_' + k].value.set(AV.look[k]).convertSRGBToLinear();
+    if (AV.wear) avWearShow(); avPrint(AV.look.print); avWearSync();
+  }
+  function avWearSync() {      /* 4.314 wear what the look names: style (hair), top, bottom */
+    if (!AV.holder || !AV.look) return; const want = [AV.look.style, AV.look.top, AV.look.bottom];
+    for (const id in WEAR) { const on = want.indexOf(id) >= 0; if (on !== !!AV.wearOn[id]) { AV.wearOn[id] = on; if (on) avWear(id); } } avWearShow();
+  }
+  window.__avLook = avLook;
+  /* ───── 2026-11-02 (4.313) hair and clothes as separate pieces (Colleen's Tripo models, made around the same A-pose person, no rig of their own).
+     Each becomes a skinned mesh on the person's own skeleton: hair moves only with the head bone; clothes copy the skin weights of the nearest body
+     point, so sleeves bend with the arms. Fitted in the person's own (bind) space: hair by its mannequin head (the gray head is cut away), a top by
+     its cuffs at the wrists. Recolored like the body (each pixel against the piece's average brightness). ───── */
+  const WEAR = { hair_long: { kind: 'hair', url: 'models/wear/hair_long.glb' }, hoodie: { kind: 'top', url: 'models/wear/hoodie.glb' }, skirt_pleated: { kind: 'skirt', url: 'models/wear/skirt_pleated.glb' }, sweatshirt: { kind: 'top', url: 'models/wear/sweatshirt.glb' }, hair_curly: { kind: 'hair', url: 'models/wear/hair_curly.glb' } };
+  AV.wear = {}; AV.wearOn = {};
+  function avBody() {      /* the person's mesh, its vertices and bone positions in bind space (from bindMatrix: three.js keeps bindMatrixInverse following the turning body) */
+    let m = null; AV.holder.traverse(o => { if (o.isSkinnedMesh && !m && !o.userData.wear) m = o; }); if (!m) return null;      /* the body, not a piece already worn */
+    const bones = m.skeleton.bones, bp = bones.map((b, i) => new THREE.Vector3().setFromMatrixPosition(m.skeleton.boneInverses[i].clone().invert()).applyMatrix4(m.bindMatrix.clone().invert()));
+    const by = re => bp[bones.findIndex(b => re.test(b.name))];
+    return { m, bones, bp, by, P: m.geometry.attributes.position, SI: m.geometry.attributes.skinIndex, SW: m.geometry.attributes.skinWeight };
+  }
+  function texData(map, N) { const c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'); x.drawImage(map.image, 0, 0, N, N); return x.getImageData(0, 0, N, N).data; }
+  function avWear(id) {
+    const W = WEAR[id]; if (!W || !AV.holder) return; if (AV.wear[id]) return avWearShow();
+    getBuf('wear:' + id).then(buf => { if (!buf) return; loader.parse(buf, '', g => {
+      let src = null; g.scene.traverse(o => { if (o.isMesh && !src) src = o; }); if (!src) return; const B = avBody(); if (!B) return;
+      const geo = src.geometry.index ? src.geometry.toNonIndexed() : src.geometry.clone(), P = geo.attributes.position, UV = geo.attributes.uv || new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2), N = 256, bare = !src.material.map, T = bare ? null : texData(src.material.map, N);      /* bare: a piece made without Tripo's Texture step (saves credits): plain color, its folds come from its shape */
+      const px = (u, v) => { if (bare) return [180, 180, 180]; const o = (Math.min(N - 1, Math.floor(v * N)) * N + Math.min(N - 1, Math.floor(u * N))) * 4; return [T[o], T[o + 1], T[o + 2]]; };
+      const gray = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx > 70 && ((mx - mn) < 14 || (mx >= 200 && (mx - mn) < 25)); };      /* the mannequin head: gray, including its light highlights (curly hair's face kept them) */
+      const v = new THREE.Vector3(), keep = [], mann = new THREE.Box3();
+      for (let t = 0; t < P.count; t += 3) { const u = (UV.getX(t) + UV.getX(t + 1) + UV.getX(t + 2)) / 3, w = (UV.getY(t) + UV.getY(t + 1) + UV.getY(t + 2)) / 3;
+        if (W.kind === 'hair' && gray(px(u, w))) { for (let k = 0; k < 3; k++) mann.expandByPoint(v.fromBufferAttribute(P, t + k)); continue; } keep.push(t); }
+      /* the fit: scale s and offset in the person's bind space */
+      let s = 1, off = new THREE.Vector3();
+      if (W.kind === 'hair') {
+        const hb = new THREE.Box3(); for (let i = 0; i < B.P.count; i++) { let bi = 0, bw = -1; for (let k = 0; k < 4; k++) { const ww = [B.SW.getX, B.SW.getY, B.SW.getZ, B.SW.getW][k].call(B.SW, i); if (ww > bw) { bw = ww; bi = [B.SI.getX, B.SI.getY, B.SI.getZ, B.SI.getW][k].call(B.SI, i); } } if (/Head/.test(B.bones[bi].name)) hb.expandByPoint(v.fromBufferAttribute(B.P, i)); }
+        const ms = mann.getSize(new THREE.Vector3()), ps = hb.getSize(new THREE.Vector3()); s = (ps.x / ms.x) * 1.04;
+        const mc = mann.getCenter(new THREE.Vector3()), pc = hb.getCenter(new THREE.Vector3()); off.set(pc.x - mc.x * s, hb.max.y - ps.y * (W.drop != null ? W.drop : 0.05) - mann.max.y * s, pc.z - mc.z * s);      /* drop: how far below the top of the head the mannequin's top sits (Colleen: the wig sat too tall) */
+      } else if (W.kind === 'skirt') {      /* 4.313 a skirt: its waistband just above the hips bone, a little wider than the body there */
+        const hip = B.by(/Hips$/), sp = B.by(/Spine$/), wy = hip.y + (sp.y - hip.y) * 0.55, band = []; const C4 = (at, i, k) => [at.getX, at.getY, at.getZ, at.getW][k].call(at, i), body = i => { let bi = 0, bw2 = -1; for (let k = 0; k < 4; k++) if (C4(B.SW, i, k) > bw2) { bw2 = C4(B.SW, i, k); bi = C4(B.SI, i, k); } return /Hips|Spine|UpLeg/.test(B.bones[bi].name); };
+        for (let i = 0; i < B.P.count; i++) { v.fromBufferAttribute(B.P, i); if (Math.abs(v.y - wy) < 0.02 && body(i)) band.push(v.clone()); }      /* the body only (the hands hang at waist height) */
+        const bw = Math.max(...band.map(p => p.x)) - Math.min(...band.map(p => p.x)), bz = (Math.max(...band.map(p => p.z)) + Math.min(...band.map(p => p.z))) / 2, bx = (Math.max(...band.map(p => p.x)) + Math.min(...band.map(p => p.x))) / 2;
+        const sb = new THREE.Box3(); for (let i = 0; i < P.count; i++) sb.expandByPoint(v.fromBufferAttribute(P, i)); const top = []; for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); if (v.y > sb.max.y - (sb.max.y - sb.min.y) * 0.12) top.push(v.x); }
+        const tw = Math.max(...top) - Math.min(...top), sc = sb.getCenter(new THREE.Vector3()); s = bw / tw * 1.08; off.set(bx - sc.x * s, wy - sb.max.y * s, bz - sc.z * s); W.hem = wy - (sb.max.y - sb.min.y) * s; W.waist = wy; W.cx = bx; W.cz = bz;
+      } else {
+        const L = B.by(/LeftHand$/), R = B.by(/RightHand$/), pts = []; for (let i = 0; i < P.count; i++) pts.push(new THREE.Vector3().fromBufferAttribute(P, i));
+        const xs = pts.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs), cuff = sg => { const e = pts.filter(p => sg > 0 ? p.x > x1 - (x1 - x0) * 0.05 : p.x < x0 + (x1 - x0) * 0.05); return e.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(e.length); };
+        const cR = cuff(1), cL = cuff(-1), hx = Math.max(L.x, R.x), lx = Math.min(L.x, R.x); s = (hx - lx) / (cR.x - cL.x) * 0.97;
+        const sp = B.by(/Spine1$/) || B.by(/Spine$/), zc = pts.reduce((a, p) => a + p.z, 0) / pts.length; off.set(-(cR.x + cL.x) / 2 * s, (L.y + R.y) / 2 - (cR.y + cL.y) / 2 * s, sp.z - zc * s);
+      }
+      /* the new mesh: kept triangles, moved into bind space, pushed out a little along their normals (clothes) so the body does not poke through */
+      const n = keep.length * 3, pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), nor = new Float32Array(n * 3); if (!geo.attributes.normal) geo.computeVertexNormals(); const NM = geo.attributes.normal;      /* the model's own smooth normals (recomputing them here would make every triangle flat and speckled) */
+      const grid = new Map(), G = 0.03, key = (x, y, z) => Math.floor(x / G) + ',' + Math.floor(y / G) + ',' + Math.floor(z / G);
+      if (W.kind === 'top') for (let i = 0; i < B.P.count; i++) { v.fromBufferAttribute(B.P, i); const k = key(v.x, v.y, v.z); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); }
+      const headI = B.bones.findIndex(b => /Head$/.test(b.name));
+      let j = 0; keep.forEach(t => { for (let k = 0; k < 3; k++, j++) { v.fromBufferAttribute(P, t + k).multiplyScalar(s).add(off);
+        if (W.kind === 'top') v.addScaledVector(new THREE.Vector3().fromBufferAttribute(NM, t + k), 0.006);
+        if (W.kind === 'skirt') { const tq = Math.max(0, Math.min(1, (W.waist - v.y) / ((W.waist - W.hem) || 1))), kq = 1 - (W.pinch != null ? W.pinch : 0.12) * Math.pow(1 - tq, 1.5); v.x = W.cx + (v.x - W.cx) * kq; v.z = W.cz + (v.z - W.cz) * kq; }      /* Colleen: "a bit narrower at the waist" (the hem keeps its flare) */
+        pos.set([v.x, v.y, v.z], j * 3); nor.set([NM.getX(t + k), NM.getY(t + k), NM.getZ(t + k)], j * 3); uv.set([UV.getX(t + k), UV.getY(t + k)], j * 2);
+        if (W.kind === 'hair') { si.set([headI, 0, 0, 0], j * 4); sw.set([1, 0, 0, 0], j * 4); continue; }
+        if (W.kind === 'skirt') { const tt = Math.max(0, Math.min(1, (W.waist - v.y) / ((W.waist - W.hem) || 1))), hI = B.bones.findIndex(b => /Hips$/.test(b.name)), lI = B.bones.findIndex(b => /LeftUpLeg$/.test(b.name)), rI = B.bones.findIndex(b => /RightUpLeg$/.test(b.name));
+          si.set([hI, lI, rI, 0], j * 4); sw.set([1 - 0.7 * tt, 0.35 * tt, 0.35 * tt, 0], j * 4); continue; }
+        let best = -1, bd = 1e9; for (let r = 1; r <= 4 && best < 0; r++) { const cx = Math.floor(v.x / G), cy = Math.floor(v.y / G), cz = Math.floor(v.z / G);
+          for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) for (let c = -r; c <= r; c++) { const L2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (L2) L2.forEach(i => { const d = (B.P.getX(i) - v.x) ** 2 + (B.P.getY(i) - v.y) ** 2 + (B.P.getZ(i) - v.z) ** 2; if (d < bd) { bd = d; best = i; } }); } }
+        if (best < 0) best = 0; si.set([B.SI.getX(best), B.SI.getY(best), B.SI.getZ(best), B.SI.getW(best)], j * 4); sw.set([B.SW.getX(best), B.SW.getY(best), B.SW.getZ(best), B.SW.getW(best)], j * 4); } });
+      const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.BufferAttribute(pos, 3)); ng.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); ng.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); ng.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); ng.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      const mat = src.material.clone(); mat.skinning = true; const mesh = new THREE.SkinnedMesh(ng, mat);      /* three r128: skinning is a material switch */ mesh.castShadow = true; mesh.frustumCulled = false; mesh.userData.wear = id;
+      mesh.position.copy(B.m.position); mesh.quaternion.copy(B.m.quaternion); mesh.scale.copy(B.m.scale); B.m.parent.add(mesh); mesh.bind(B.m.skeleton, B.m.bindMatrix);
+      /* recolor: the piece's average brightness, then each pixel against it */
+      let sum = 0, cnt = 0; for (let i = 0; i < uv.length; i += 6) { const c = px(uv[i], uv[i + 1]); sum += Math.pow((0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255, 2.2); cnt++; }
+      const U = { wCol: { value: new THREE.Color(1, 1, 1) }, wAvg: { value: cnt ? sum / cnt : 0.5 } };
+      if (bare) { mat.color.set(0xffffff); U.wAvg.value = 1; }
+      const top = W.kind === 'top';
+      mat.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); if (top) { Object.assign(sh.uniforms, PRINT_U); sh.vertexShader = PRINT_VS[0] + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + PRINT_VS[1]); }
+        sh.fragmentShader = (top ? PRINT_FS : '') + 'uniform vec3 wCol; uniform float wAvg;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  float wSh = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / max(wAvg, 0.01), 0.3, 1.45); diffuseColor.rgb = wCol * wSh;\n  ' + (top ? printMix('min(wSh, 1.2)') : '')); };
+      mat.needsUpdate = true; AV.wear[id] = { mesh, U, kind: W.kind, hem: W.hem }; avWearShow();
+    }, e => console.error(e)); });
+  }
+  function avWearShow() {      /* which pieces show, in which colors (hair: the hair color; a top: the shirt color) */
+    if (AV.U) { AV.U.avTop.value = Object.keys(AV.wear).some(id => AV.wear[id].kind === 'top' && AV.wearOn[id]) ? 1 : 0; const sk = Object.keys(AV.wear).find(id => AV.wear[id].kind === 'skirt' && AV.wearOn[id]); AV.U.avHem.value = sk ? AV.wear[sk].hem + 0.01 : -1; AV.U.avSlim.value = sk ? 1 : 0; }
+    for (const id in AV.wear) { const w = AV.wear[id]; w.mesh.visible = !!AV.wearOn[id]; const c = AV.look && AV.look[w.kind === 'hair' ? 'hair' : w.kind === 'skirt' ? 'pants' : 'shirt']; if (c) w.U.wCol.value.set(c).convertSRGBToLinear(); }
+  }
+  window.__AV = AV; window.__avDo = n => avDo(n); window.__PR = () => ({ on: PRINT_U.avPrintOn.value, box: PRINT_U.avPrintBox.value.toArray(), ext: Object.keys(PRINT_EXT), tex: !!PRINT_U.avPrint.value });
+  window.__avWear = (id, on) => { AV.wearOn[id] = on; if (on) avWear(id); else avWearShow(); };
+  function avPlay(n, fade) {      /* cross-fade to one clip */
+    const a = AV.acts[n]; if (!a || AV.cur === n) return; const old = AV.acts[AV.cur]; a.reset().setEffectiveWeight(1).play(); if (old) a.crossFadeFrom(old, fade || 0.25, false); AV.cur = n;
+  }
+  function avSet(on) { AV.on = on; if (on) avLoad(); else if (AV.holder) AV.holder.visible = false; const w = document.querySelector('[data-who].on'); if (w && MODELS[w.dataset.who] && !MAKER) loadFor(w.dataset.who); if (back) placeFurniture(Object.keys(BACK).find(x => BACK[x] === back)); ['avwave', 'avsit', 'avhair', 'avhood', 'avskirt'].forEach(id => { const b = document.getElementById(id); if (b) b.hidden = !on; }); const b = document.getElementById('avbtn'); if (b) b.classList.toggle('on', on); camAt(); }
+  function avGo(v) { if (!AV.holder) return; clampArea(v); AV.target.copy(v); AV.moving = true; AV.busy = 0; AV.run = AV.holder.position.distanceTo(v) > 2.2; }
+  function avDo(n) { if (!AV.holder || !AV.acts[n]) return; AV.moving = false; AV.busy = n === 'sit' ? 1e9 : AV.acts[n].getClip().duration; AV.cur = ''; avPlay(n, 0.2); }
+  const AV_KEYS = { ArrowUp: [0, 1], KeyW: [0, 1], ArrowDown: [0, -1], KeyS: [0, -1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] };
+  addEventListener('keydown', e => { if (!AV.on || !AV_KEYS[e.code] || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return; e.preventDefault(); AV.keys[e.code] = 1; AV.moving = false; AV.busy = 0; });
+  addEventListener('keyup', e => { delete AV.keys[e.code]; });
+  addEventListener('blur', () => { AV.keys = {}; });
+  function avFrame(dt) {
+    if (!AV.holder) return; const h = AV.holder; h.visible = !lineup; AV.mixer.update(dt);
+    let dir = null, sp = 0; const k = Object.keys(AV.keys).reduce((m, c) => [m[0] + AV_KEYS[c][0], m[1] + AV_KEYS[c][1]], [0, 0]);
+    if (k[0] || k[1]) { const f = new THREE.Vector3(); cam.getWorldDirection(f); f.y = 0; f.normalize(); const rt = new THREE.Vector3(-f.z, 0, f.x); dir = f.multiplyScalar(k[1]).add(rt.multiplyScalar(k[0])).normalize(); sp = 1.4; }
+    else if (AV.moving) { const d = new THREE.Vector3().subVectors(AV.target, h.position); d.y = 0; const dist = d.length(); if (dist < 0.04) AV.moving = false; else { dir = d.normalize(); sp = Math.min(AV.run ? 2.8 : 1.4, dist / dt); } }
+    if (dir) { let dy = Math.atan2(dir.x, dir.z) - h.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; h.rotation.y += dy * Math.min(1, dt * 10);
+      h.position.addScaledVector(dir, sp * dt * (Math.abs(dy) > 1.5 ? 0.4 : 1)); clampArea(h.position); avPlay(sp > 2 ? 'run' : 'walk'); }
+    else if (AV.busy > 0) { AV.busy -= dt; if (AV.busy <= 0) avPlay('idle', 0.35); }
+    else avPlay('idle', 0.3);
+    if (!back) camAt();
+    /* the pet follows: when it is free (not asleep, carried, ridden or busy with a care action) and the person is more than a step away */
+    if (pet && !S.carry && !S.mount && S.pose !== 'sleep' && (S.act === 'walk' || S.act === 'stay' || S.act === 'go' || S.act === 'idle')) {
+      const d = pet.position.distanceTo(h.position), near = 0.55 * Math.max(0.6, pet.scale.x);
+      if (d > near * 1.5 || (S.follow && d > near)) { const side = new THREE.Vector3(pet.position.x - h.position.x, 0, pet.position.z - h.position.z).normalize();
+        S.target.copy(h.position).addScaledVector(side, near); clampArea(S.target); S.act = 'go'; S.moving = true; S.follow = d > near * 2.2 || S.follow; }
+    }
+  }
+  document.getElementById('avbtn') && (document.getElementById('avbtn').onclick = () => avSet(!AV.on));
+  document.getElementById('avwave') && (document.getElementById('avwave').onclick = () => avDo('wave'));
+  document.getElementById('avsit') && (document.getElementById('avsit').onclick = () => avDo('sit'));
+  [['avhair', 'hair_long'], ['avhood', 'hoodie'], ['avskirt', 'skirt_pleated']].forEach(([b, id]) => { const el = document.getElementById(b); if (el) el.onclick = () => { const on = !AV.wearOn[id]; el.classList.toggle('on', on); window.__avWear(id, on); }; });
+  const BUF = {}; const getBuf = who => BUF[who] || (BUF[who] = fetch(/^wear:/.test(who) ? WEAR[who.slice(5)].url : MODELS[who]).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null));
 
   const lerp = (a, b, k) => a + (b - a) * k;
   const clock = new THREE.Clock();
@@ -903,10 +1124,10 @@
       const stop = S.act === 'eat' ? 0.05 : S.act === 'play' ? 0.42 : S.act === 'fetch' && S.fstep === 'out' ? 0.22 * pet.scale.x : 0.05;
       if (dist > stop + 0.002) { const want = Math.atan2(d.x, d.z); let dy = want - pet.rotation.y;      /* 4.275 +0.002: never stuck a hair away from the spot */ while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; pet.rotation.y += dy * Math.min(1, dt * 6);
         const hopNow = G && G.gaitType === 'hop' && G.rig && OWNWALK, hf = hopNow ? Math.max(0, Math.sin(Math.min(1, ((G.gait || 0) % (Math.PI * 2)) / (Math.PI * 2) / 0.55) * Math.PI)) * 2.2 : 1;
-        S.turn = dy; const sp = (S.mount === 'ride' ? 2.7 : S.mount === 'fly' ? 1.7 : S.act === 'play' || S.act === 'fetch' ? 2.2 : 1.1) * (Math.abs(dy) > 1.2 ? (S.mount ? 0.45 : 0.3) : 1) * (S.mount ? 1 : hf); pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
+        S.turn = dy; const sp = (S.mount === 'ride' ? 2.7 : S.mount === 'fly' ? 1.7 : S.act === 'play' || S.act === 'fetch' ? 2.2 : S.follow ? 2.0 : 1.1) * (Math.abs(dy) > 1.2 ? (S.mount ? 0.45 : 0.3) : 1) * (S.mount ? 1 : hf); pet.position.addScaledVector(d.normalize(), Math.min(dist - stop, sp * dt)); walking = true; }
       else { S.moving = false; if (S.mount) { S.mwait = S.steer ? 3 : S.mount === 'fly' ? 0.9 : 0.5; S.steer = false; }
         if (S.act === 'walk') setTimeout(() => { if (S.act === 'walk' && !S.moving && !S.carry) pick(); }, 2500 + Math.random() * 4000);      // a good rest between strolls
-        if (S.act === 'go') { S.act = 'stay'; }
+        if (S.act === 'go') { S.act = 'stay'; S.follow = false; }
         if (S.act === 'sleep') { S.pose = 'sleep'; if (!back) pet.rotation.y = 0.6; say('Shh… ' + P.look.name + ' is asleep.'); }
         if (S.act === 'eat') { S.pose = 'eat'; pet.rotation.y = 0; }
         if (S.act === 'fetch' && S.fstep === 'out') { S.fstep = 'back'; S.hop = 1; const A = AREA(); S.target.set(Math.max(A[0], Math.min(A[1], 0)), 0, A[3] - 0.05); setTimeout(() => { if (S.act === 'fetch') S.moving = true; }, 450); }      /* 4.242 Sign to Fetch: got it, bring it back */
@@ -963,6 +1184,8 @@
     for (let i = S.fx.length - 1; i >= 0; i--) { const s = S.fx[i]; s.userData.life -= dt; s.position.y += s.userData.vy * dt; s.material.opacity = Math.min(1, s.userData.life); if (s.userData.life <= 0) { scene.remove(s); S.fx.splice(i, 1); } }
     stageFrame(dt); formFrame(dt); compFrame(dt);
     if (G) driveModel(dt, S.carry ? 'carry' : S.mount === 'fly' || S.alt > 0.15 ? 'fly' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking && !(S.alt > 0.15));
+    if (AV.on) avFrame(dt);
+    if (MAKER) { furnGroup.visible = false; toyGroup.visible = false; if (AV.holder) AV.holder.position.set(0, 0, 0); if (pet) pet.visible = false; COMPS.forEach(c => { if (c.holder) c.holder.visible = false; }); if (AV.holder && !drag) AV.holder.rotation.y += dt * 0.5; }
     R.render(scene, cam); requestAnimationFrame(frame);
   }
   function size() { const w = view.clientWidth, h = view.clientHeight; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
@@ -994,6 +1217,8 @@
     if (d.moved) return; at(e);
     if (d.pet) { hearts(3); if (S.pose !== 'sleep') { S.hop = Math.max(S.hop, 1); P.tongue.visible = true; setTimeout(() => { if (S.act !== 'happy') P.tongue.visible = false; }, 1500); } else say('Shh… ' + P.look.name + ' is sleeping. 💤'); return; }
     const v0 = floorPt(); if (v0 && S.mount) { clampArea(v0); if (S.mount === 'ride') outOfPools(v0); S.target.copy(v0); S.moving = true; S.steer = true; puff('star_burst', 1, 0.3); say(S.mount === 'fly' ? 'Flying over there!' : 'This way, ' + P.look.name + '!'); return; }      /* 4.275 steering a ride or flight */
+    if (MAKER) return;
+    if (AV.on && AV.holder) { const v = floorPt(); if (v) { avGo(v); puff('star_burst', 1, 0.25); } return; }      /* 4.312 with a person: the person walks there and the pet follows */
     const v = floorPt(); if (v && S.pose !== 'sleep') { clampArea(v); S.act = 'go'; S.pose = 'stand'; S.target.copy(v); S.moving = true; bowl.visible = false; ball.visible = false; document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); say(P.look.name + ' is on the way!'); } });
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
   document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x === b)); const pos = pet.position.clone(), ry = pet.rotation.y; G = null; document.getElementById('report').hidden = true; document.getElementById('phbtn').hidden = true; build(b.dataset.who); pet.position.copy(pos); pet.rotation.y = ry; act(S.act); });
@@ -1027,7 +1252,7 @@
      eyes: glasses go on the front of the face at eye height (eyeZ), bigger (eyeK); hats: bigger (hatK) and raised (hatUp, in head sizes) so they show between the ears */
   const FITFIX = { joey: { neck: true, eyeFront: true, eyeK: 1.4, hatK: 1.3, hatUp: 0.1 }, raccoon: { coatZ0: -0.24, saddleAt: 0.85 }, jaq: { coatPad: 0.05 } };      /* 2026-11-02 raccoon: its rig takes the tail (which reaches the floor) for a back leg, so the raincoat is told where the body ends; saddleAt (4.310): where the saddle sits from the hips (0) to the shoulders (1), 0.5 when not set */
   const POSEFIX = { joey: { sit: { pitch: -0.6, drop: 0, roll: 0, fU: 0.55, fL: 0, hU: -1.4, hK: 0.9, hH: -0.45, nP: 0.05, nY: 0, hP: 0.3, tY: 0, tP: 0.6 } } };      /* 2026-11-01 per-pet changes to RIGPOSE (Joey's long legs need a lower, more upright sit) */
-  const MODELS = { jaq: 'models/jaq.glb?v=2', joey: 'models/joey.glb?v=2', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb', turtle: 'models/turtle.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
+  const MODELS = { jaq: 'models/jaq.glb?v=2', joey: 'models/joey.glb?v=2', kitten: 'models/kitten.glb', gus: 'models/gus.glb', penguin: 'models/penguin.glb', owl: 'models/owl.glb', dolphin: 'models/dolphin.glb', whale: 'models/whale.glb', bunny: 'models/bunny.glb', fox: 'models/fox.glb', golden: 'models/golden.glb', pony: 'models/pony.glb', hamster: 'models/hamster.glb', raccoon: 'models/raccoon.glb', turtle: 'models/turtle.glb', person: 'models/person.glb' };      // 2026-10-31: Jaq's real model (Tripo: image → model, texture, four-legged rig, walk)
   const loadFor = who => { if (!MODELS[who]) return; getBuf(who).then(buf => { if (buf && document.querySelector('[data-who].on').dataset.who === who) loadBuffer(buf, LOOKS[who].name + '.glb'); }).catch(() => {}); };
   document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setTimeout(() => loadFor(b.dataset.who), 0)));
   /* 2026-11-01 Pawtopia drives the room: { pet: 'jaq', stage: 0-6, bg: 'pet_bedroom', act: 'eat' | 'sleep' | 'sit' | 'wave' | 'play' | 'happy' | 'walk' | 'drink', fx: '💖' } */
@@ -1035,6 +1260,8 @@
   const setRoom = (r, toys) => { if (r && r.bg && BACK['bg_' + r.bg]) MINE = { bg: r.bg, items: (r.items || []).slice(0, 12) }; if (toys) TOYS = toys.filter(n => /^[a-z_]+$/.test(n) && n !== 'brush'); };
   addEventListener('message', e => { const m = e.data || {}; if (!m.pt3d) return;
     if (m.edit !== undefined) EDIT = !!m.edit;
+    if (m.printArt && /^[a-z0-9_]{1,20}$/.test(m.printArt.id) && /^data:image\/png;base64,/.test(m.printArt.url || '')) { PRINT_EXT[m.printArt.id] = { url: m.printArt.url, size: Math.min(1.6, Math.max(0.2, +m.printArt.size || 0.6)) }; avPrint((AV.look || {}).print); }      /* 4.314 a school or designer print from the app */
+    if (m.avatar) { avLook(m.avatar); if (!AV.on) avSet(true); }      /* 4.312 the student's person (the maker sends each change) */
     if (m.room || m.toys) { setRoom(m.room, m.toys); const k = MINE ? 'bg_' + MINE.bg : (back ? Object.keys(BACK).find(x => BACK[x] === back) : 'plain'); if (back === BACK[k]) placeFurniture(k); else setBack(k); }
     if (m.bg && BACK['bg_' + m.bg]) setBack('bg_' + m.bg);
     if (m.stage !== undefined) STAGE = Math.max(0, Math.min(6, +m.stage || 0));
@@ -1054,6 +1281,7 @@
     tell({ t: 'perf', fps }); };
   build(WHO[Q.get('pet')] || 'jaq'); if (Q.get('stage')) STAGE = +Q.get('stage'); if (Q.get('form')) FORM = Q.get('form'); size();
   if (EMBED && Q.get('room')) { const [b0, ...its] = Q.get('room').split(';'); setRoom({ bg: b0, items: its.filter(String).map(x => { const a = x.split(','); return [a[0], +a[1], +a[2]]; }) }, (Q.get('toys') || '').split(',').filter(String)); EDIT = Q.has('edit'); }
+  if (MAKER) { try { avLook(JSON.parse(Q.get('avatar') || '{}')); } catch (e) {} avSet(true); }      /* 4.312 */
   if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
   act('walk'); setComps(parseComp(Q.get('comp'))); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
   if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }

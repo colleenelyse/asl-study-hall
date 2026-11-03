@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.311';
+var VERSION = '4.323';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -2529,6 +2529,10 @@ function letterPos_(st, l) {
   return 0;
 }
 
+/* 4.313 avatar closet requests (Prize Counter): Design a Closet Item and Add a Feature That Matches Me share the 3-a-month limit */
+var AVP_IDS = ['a-closet', 'a-mefeat'];
+var AVP_CLOSET = ['Hair', 'Top', 'Bottom', 'Skirt or dress', 'Shoes', 'Hat or head covering', 'Accessory'];
+var AVP_FEAT = ['Hairstyle', 'Glasses', 'Hearing aids or cochlear implant', 'Head covering', 'Face (freckles, birthmark, dimples…)', 'Mobility (wheelchair, crutches…)', 'Something else'];
 function api_buy(auth, itemId, design) {
   var st = static_(), id = who_(auth), S = st.settings;
   if (!id) throw new Error('Your sign-in ran out. Reload the page.');
@@ -2561,16 +2565,22 @@ function api_buy(auth, itemId, design) {
       if (!insp) throw new Error('Tell your teacher what inspired your design.'); if (!rar) throw new Error('Choose how rare your character is.');
       var picLinks = designPics_(dz.pics, nm + ' - ' + o.Name);
       note = 'Pawtopia character "' + nm + '" (' + rar + '): ' + desc + ' | Inspired by: ' + insp + (picLinks.length ? ' | Pictures: ' + picLinks.join(' ') : ''); }
+    if (AVP_IDS.indexOf(item.id) >= 0) { var az = design || {}, cl2 = function (v, n) { return str_(v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, n); };      /* 4.313 the avatar closet requests */
+      var kinds = item.id === 'a-closet' ? AVP_CLOSET : AVP_FEAT, kind = kinds.filter(function (k) { return k === str_(az.kind); })[0], inm = cl2(az.name, 40), ides = cl2(az.desc, 1000);
+      if (!kind) throw new Error('Choose what kind of thing it is.'); if (item.id === 'a-closet' && !inm) throw new Error('Give your design a name.');
+      if (ides.length < 15) throw new Error('Describe it in as much detail as you can, so your teacher can make it.');
+      var apics = item.id === 'a-closet' ? designPics_(az.pics, (inm || kind) + ' - ' + o.Name) : [];      /* pictures only for a design (a drawing); never photos of the student */
+      note = (item.id === 'a-closet' ? 'Closet design "' + inm + '" (' + kind + '): ' : 'Feature that matches me (' + kind + '): ') + ides + (apics.length ? ' | Pictures: ' + apics.join(' ') : ''); }
     if (item.type === 'reward' && (item.stock > 0 || item.perMonth > 0)) {
-      var usedWeek = 0, usedMonth = 0;
+      var usedWeek = 0, usedMonth = 0, grpIds = AVP_IDS.indexOf(item.id) >= 0 ? AVP_IDS : [item.id];      /* 4.313 the two closet requests share one limit */
       rows_(rsh, 2, REDEEM_HEAD.length).forEach(function (x) {
-        if (str_(x[4]) !== item.id || /^(cancel|refund|declin)/i.test(str_(x[7]))) return;
+        if (grpIds.indexOf(str_(x[4])) < 0 || /^(cancel|refund|declin)/i.test(str_(x[7]))) return;
         var dn = dayNum_(cellDay_(x[0]));
         if (str_(x[3]) === o.Class && weekKey_(dn) === wk) usedWeek++;
         if (str_(x[1]).toLowerCase() === id.key && tn - dn < 30) usedMonth++;
       });
       if (item.stock > 0 && usedWeek >= item.stock) throw new Error('Sold out for your class this week. Check back Monday.');
-      if (item.perMonth > 0 && usedMonth >= item.perMonth) throw new Error('You have reached the limit for this prize this month.');
+      if (item.perMonth > 0 && usedMonth >= item.perMonth) throw new Error(grpIds.length > 1 ? 'You can ask for ' + item.perMonth + ' avatar closet items a month in all. Check back later!' : 'You have reached the limit for this prize this month.');
     }
 
     o[purse] -= item.price;
@@ -2776,7 +2786,7 @@ function api_prizes(auth) {
   st.shop.forEach(function (i) { kinds[i.id] = i.kind; });
   rows_(ss_().getSheetByName(TABS.redeem), 2, REDEEM_HEAD.length).forEach(function (x, i) {
     var s = prizeStatus_(x[7]), state = s === 'Available' ? 'ready' : s === 'Waiting for approval' ? 'ask' : s === 'Unlocked' ? 'class' : '';
-    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys', /^Pawtopia character/.test(str_(x[8])) ? str_(x[8]) : '']);
+    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys', /^(Pawtopia character|Closet design|Feature that matches me)/.test(str_(x[8])) ? str_(x[8]) : '']);
   });
   var items = st.shop.filter(function (i) { return i.type === 'class'; }), pools = [];
   if (items.length) {
@@ -2802,8 +2812,8 @@ function api_prizeAction(auth, row, email, action) {
     var x = rsh.getRange(row, 1, 1, REDEEM_HEAD.length).getValues()[0], s = prizeStatus_(x[7]);
     var handled = new Error('That prize was already handled. Refresh and try again.');
     if (str_(x[1]).toLowerCase() !== email) throw handled;
-    var design = str_(x[4]) === 'a-pawpet';      // a Pawtopia design keeps its description in Notes, and its Creators row follows along
-    function set(status) { if (design) { rsh.getRange(row, 8).setValue(status); creatorStatus_(row, status === 'Available' ? 'Approved: to make' : status === 'Used' ? 'Made' : status); } else rsh.getRange(row, 8, 1, 2).setValues([[status, status + ' ' + dayStr_()]]); }
+    var design = str_(x[4]) === 'a-pawpet' || AVP_IDS.indexOf(str_(x[4])) >= 0, pawDesign = str_(x[4]) === 'a-pawpet';      // a Pawtopia design (4.313: and an avatar closet request) keeps its description in Notes; a character's Creators row follows along
+    function set(status) { if (design) { rsh.getRange(row, 8).setValue(status); if (pawDesign) creatorStatus_(row, status === 'Available' ? 'Approved: to make' : status === 'Used' ? 'Made' : status); } else rsh.getRange(row, 8, 1, 2).setValues([[status, status + ' ' + dayStr_()]]); }
     function giveBack() {
       var sh = stuSheet_(), srow = findRow_(sh, email);
       if (!srow) throw new Error('That student is no longer on the Students tab.');
@@ -5125,9 +5135,10 @@ function setupSheet() {
   if (t.fresh) {
     var items = SAMPLE_SHOP_();
     t.sheet.getRange(2, 1, items.length, SHOP_HEAD.length).setValues(items);
-  } else if (!rows_(t.sheet, 2, 1).some(function (r) { return str_(r[0]) === 'a-pawpet'; })) {      // 4.227 the Pawtopia character request joins sheets made before
-    var pp = SAMPLE_SHOP_().filter(function (r) { return r[0] === 'a-pawpet'; })[0]; if (pp) t.sheet.appendRow(pp);
-  }
+  } else ['a-pawpet', 'a-closet', 'a-mefeat'].forEach(function (pid) {      // 4.227 the Pawtopia character request (4.313: and the two avatar closet requests) join sheets made before
+    if (rows_(t.sheet, 2, 1).some(function (r) { return str_(r[0]) === pid; })) return;
+    var pp = SAMPLE_SHOP_().filter(function (r) { return r[0] === pid; })[0]; if (pp) t.sheet.appendRow(pp);
+  });
 
   if (!TRIAL.letters) {                                                // trial edition: a plain list of avatar pictures
     t = ensureTab_(TABS.avatars, AV_FLAT_HEAD, [200, 360, 150]);
@@ -6485,6 +6496,8 @@ function SAMPLE_SHOP_ALL_() {
     ['p-mystery', 'Physical prize', 'Mystery Bag', '', 500, 'Rare', '', '', '', 'Yes', ''],
     ['p-duck', 'Physical prize', 'ILY Rubber Duck', 'The top prize on the shelf.', 1000, 'Legendary', '', '', '', 'Yes', ''],
     ['a-pawpet', 'Academic reward', 'Design and Name a Pawtopia Character', 'Create your own character for Pawtopia: your real pet, or any animal or creature you can imagine. You name it and describe it, and your teacher adds it to the game for everyone to hatch.', 600, 'Rare', '', '', 1, 'Yes', ''],      // 4.227
+    ['a-closet', 'Academic reward', 'Design a Closet Item', 'Design a piece of clothing, a hairstyle or an accessory for the avatar closet. Your teacher makes it, you get it first, and then everyone can wear it.', 300, 'Rare', '', '', 3, 'Yes', ''],      // 4.313 (Colleen: 300 each, 3 a month in all: each one costs her Tripo credits)
+    ['a-mefeat', 'Academic reward', 'Add a Feature That Matches Me', 'Ask for one thing that looks like you: a hairstyle, glasses, hearing aids, a head covering, freckles… Your teacher adds it to the avatar closet for anyone to use.', 300, 'Rare', '', '', 3, 'Yes', ''],
     ['a-game', 'Academic reward', 'Choose Our Next Game', 'You choose the next classroom review game.', 200, 'Common', '', '', '', 'Yes', ''],
     ['a-news', 'Academic reward', 'Send Some Good News', 'Your teacher sends a personal positive email with your practice report to a parent or guardian, coach or counselor you choose.', 200, 'Common', '', '', '', 'Yes', ''],
     ['a-tardy', 'Academic reward', 'Tardy Pass', 'Excuses one tardy of up to 5 minutes, if school policy allows.', 400, 'Common', '', '', '', 'Yes', ''],
