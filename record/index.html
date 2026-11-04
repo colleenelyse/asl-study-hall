@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Recorder</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#11132A;color:#F0F2FF;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;gap:10px;padding:12px;min-height:100vh}
+h1{font-size:1.05rem;margin:0;color:#A6ACCD;font-weight:600}.lab{display:inline-block;background:#FFC53D;color:#1B1E3C;font-weight:800;border-radius:8px;padding:1px 10px;margin-right:8px}
+#line{font-size:1.25rem;font-weight:700;margin:0}#gloss{font-weight:800;letter-spacing:.5px;opacity:.85;margin:0}
+.stage{position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:14px;overflow:hidden}video{width:100%;height:100%;object-fit:contain;display:block;background:#000}.mirror{transform:scaleX(-1)}
+.guide{position:absolute;inset:8% 14% 0;border:2px dashed rgba(255,255,255,.55);border-bottom:0;border-radius:45% 45% 0 0;pointer-events:none}.guide span{position:absolute;top:-28px;left:0;right:0;text-align:center;font-size:.8rem}
+.count{position:absolute;inset:0;display:grid;place-items:center;font-size:7rem;font-weight:800;background:rgba(0,0,0,.35);text-align:center}.msg{font-size:1.05rem;font-weight:600;padding:20px}
+.clock{position:absolute;top:10px;left:10px;background:#D92D20;color:#fff;font-weight:800;border-radius:8px;padding:2px 10px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}button{font:800 1.15rem system-ui,sans-serif;border:0;border-radius:14px;padding:14px 26px;cursor:pointer}button:disabled{opacity:.45;cursor:default}
+.go{background:#D92D20;color:#fff}.stop{background:#fff;color:#B42318}.alt{background:#2B3170;color:#fff}.note{font-size:.9rem;color:#A6ACCD;margin:0;text-align:center}.ok{color:#7CE3A3}
+</style></head><body>
+<h1>Recorder</h1>
+<div id="prompt" hidden><p id="line"></p><p id="gloss"></p></div>
+<div class="stage"><video id="v" class="mirror" autoplay muted playsinline></video><div class="guide" id="guide"><span>Keep your face, hands and signing space inside</span></div><div class="count" id="cover"><div class="msg">Starting the camera&hellip; If it asks, tap Allow.</div></div><span class="clock" id="clock" hidden>0:00</span></div>
+<div class="bar" id="bar"></div>
+<p class="note" id="note">Video only: no sound is ever recorded. Nothing is saved on this page.</p>
+<script>
+/* Colleen's recorder window. Apps Script frames can't use the camera, so the app opens this page in its own window. It only records (picture, never sound) and hands
+   the clip straight back to the window that opened it. Nothing is uploaded or stored here, and nothing about the student is in the address. */
+var $ = function (id) { return document.getElementById(id); }, stream = null, H = null, peer = '', state = 'off', mr = null, parts = [], t0 = 0, tick = 0, cd = 0, hold = null, holdT = 0, seq = 0;
+var opener0 = window.opener;
+function send(m) { if (!opener0 || opener0.closed) return false; try { opener0.postMessage(m, peer && peer !== 'null' ? peer : '*'); return true; } catch (e) { return false; } }
+function btn(t, c, f) { var b = document.createElement('button'); b.textContent = t; b.className = c; b.onclick = f; return b; }
+function cover(html) { var c = $('cover'); if (html === null) { c.hidden = true; return; } c.hidden = false; c.innerHTML = html; }
+function clock(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+function paint() {
+  var b = $('bar'); b.innerHTML = ''; var who = H && H.label ? H.label : '';
+  if (H) { $('prompt').hidden = false; $('line').innerHTML = ''; if (who) { var l = document.createElement('span'); l.className = 'lab'; l.textContent = who; $('line').appendChild(l); } $('line').appendChild(document.createTextNode(H.line || '')); $('gloss').textContent = H.gloss || ''; }
+  $('guide').hidden = state === 'rec'; $('clock').hidden = state !== 'rec';
+  if (state === 'blocked') return;
+  if (!opener0) { $('note').textContent = stream ? 'The camera works on this computer. Close this window; recording starts from inside the app.' : 'Checking the camera.'; if (stream) cover(null); return; }
+  if (state === 'ready') { cover(H && H.done ? '<div class="msg ok">Every turn is recorded. You can close this window.</div>' : null); if (H && !H.done) b.appendChild(btn('Start Recording' + (who ? ' ' + who : ''), 'go', begin)); else if (!H) cover('<div class="msg">Connecting to the app&hellip;</div>'); b.appendChild(btn('Close', 'alt', function () { window.close(); })); }
+  else if (state === 'count') b.appendChild(btn('Cancel', 'alt', cancel));
+  else if (state === 'rec') b.appendChild(btn('Stop Recording', 'stop', finish));
+  else if (state === 'send') cover('<div class="msg">Saving your video to the app&hellip; Keep this window open.</div>');
+}
+function camOn() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { state = 'blocked'; cover('<div class="msg">This browser can’t record video. Use Upload in the app, or tell your teacher.</div>'); return paint(); }
+  navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false }).then(function (s) {
+    s.getAudioTracks().forEach(function (a) { a.stop(); s.removeTrack(a); }); stream = s; $('v').srcObject = s; state = 'ready'; send({ type: 'rec-cam', ok: true }); paint();
+  }).catch(function (e) { state = 'blocked'; send({ type: 'rec-cam', ok: false, why: e && e.name || 'error' });
+    cover('<div class="msg">The camera is blocked.<br><br>Look for a camera icon in the address bar, choose Allow, then reload this window. If there is no icon, your school may have turned off cameras here: tell your teacher.</div>'); paint(); });
+}
+function begin() { if (state !== 'ready' || !stream) return; state = 'count'; var n = 3; cover(String(n)); paint(); send({ type: 'rec-count' });
+  var step = function () { n--; if (n > 0) { cover(String(n)); cd = setTimeout(step, 1000); } else start(); }; cd = setTimeout(step, 1000); }
+function cancel() { clearTimeout(cd); state = 'ready'; paint(); }
+function start() {
+  var types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'], mt = types.filter(function (t) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || '', rate = H && H.vbr || 500000, only = new MediaStream(stream.getVideoTracks());
+  try { mr = new MediaRecorder(only, mt ? { mimeType: mt, videoBitsPerSecond: rate } : { videoBitsPerSecond: rate }); } catch (e) { state = 'ready'; alertMsg('Recording did not start. Try again.'); return paint(); }
+  parts = []; mr.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); }; mr.onstop = stopped;
+  mr.start(1000); t0 = Date.now(); state = 'rec'; cover(null); send({ type: 'rec-started', tid: H && H.tid }); paint(); var cap = (H && H.max || 600) * 1000;
+  tick = setInterval(function () { var t = Date.now() - t0; $('clock').textContent = clock(t) + (H && H.max ? ' of ' + clock(H.max * 1000) : ''); if (t >= cap) finish(); }, 250);
+}
+function alertMsg(t) { $('note').textContent = t; }
+function finish() { clearInterval(tick); if (mr && mr.state === 'recording') mr.stop(); }
+function stopped() {
+  var mime = (mr.mimeType || 'video/webm'), blob = new Blob(parts, { type: mime.split(';')[0] }), secs = (Date.now() - t0) / 1000;
+  if (blob.size < 2000 || secs < 0.7) { send({ type: 'rec-fail', tid: H && H.tid }); state = 'ready'; alertMsg('The recording didn’t work. Try again.'); return paint(); }
+  state = 'send'; paint(); blob.arrayBuffer().then(function (buf) { hold = { type: 'rec-clip', id: 'c' + Date.now() + (seq++), tid: H && H.tid, mime: mime, secs: secs, buf: buf }; push(); });
+}
+/* the clip stays here, and is offered again, until the app says it has it */
+function push() { clearTimeout(holdT); if (!hold) return; if (!send(hold)) { cover('<div class="msg">The app window closed, so this video could not be saved. Open the app again and record it again.</div>'); return; } holdT = setTimeout(push, 4000); }
+window.addEventListener('message', function (e) {
+  if (e.source !== opener0 || !e.data || !/^rec-/.test(String(e.data.type))) return;
+  if (!(e.origin === 'null' || /^https:\/\/[-a-z0-9.]+\.(googleusercontent|google)\.com$/.test(e.origin) || /^https?:\/\/localhost(:\d+)?$/.test(e.origin))) return;
+  peer = e.origin; var d = e.data;
+  if (d.type === 'rec-hello') { H = d; send({ type: 'rec-ready' }); if (state !== 'rec' && state !== 'count' && state !== 'send') paint(); else if (state === 'rec' || state === 'count') { /* the turn being recorded keeps its words */ } }
+  else if (d.type === 'rec-got' && hold && d.id === hold.id) { hold = null; clearTimeout(holdT); state = 'ready'; alertMsg('Saved. Video only: no sound is ever recorded.'); paint(); }
+});
+/* the student left the recorder for something other than the test: the app counts that as leaving */
+function away() { send({ type: 'rec-away' }); } function back() { send({ type: 'rec-back' }); }
+document.addEventListener('visibilitychange', function () { if (document.hidden) away(); else back(); });
+window.addEventListener('blur', function () { setTimeout(function () { if (!document.hasFocus()) away(); }, 120); }); window.addEventListener('focus', back);
+window.addEventListener('beforeunload', function (e) { if (hold || state === 'rec') { e.preventDefault(); e.returnValue = ''; } send({ type: 'rec-bye' }); });
+camOn(); paint();
+</script></body></html>
