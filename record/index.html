@@ -20,8 +20,8 @@ h1{font-size:1.05rem;margin:0;color:#A6ACCD;font-weight:600}.lab{display:inline-
 /* Colleen's recorder window. Apps Script frames can't use the camera, so the app opens this page in its own window. It only records (picture, never sound) and hands
    the clip straight back to the window that opened it. Nothing is uploaded or stored here, and nothing about the student is in the address. */
 var $ = function (id) { return document.getElementById(id); }, stream = null, H = null, peer = '', state = 'off', mr = null, parts = [], t0 = 0, tick = 0, cd = 0, hold = null, holdT = 0, seq = 0;
-var opener0 = window.opener;
-function send(m) { if (!opener0 || opener0.closed) return false; try { opener0.postMessage(m, peer && peer !== 'null' ? peer : '*'); return true; } catch (e) { return false; } }
+var opener0 = window.opener, camSaid = null;
+function send(m) { if (!opener0 || opener0.closed || !peer) return false; try { opener0.postMessage(m, peer); return true; } catch (e) { return false; } }      /* only ever to the app's own address, learned from its first message */
 function btn(t, c, f) { var b = document.createElement('button'); b.textContent = t; b.className = c; b.onclick = f; return b; }
 function cover(html) { var c = $('cover'); if (html === null) { c.hidden = true; return; } c.hidden = false; c.innerHTML = html; }
 function clock(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
@@ -39,8 +39,8 @@ function paint() {
 function camOn() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { state = 'blocked'; cover('<div class="msg">This browser can’t record video. Use Upload in the app, or tell your teacher.</div>'); return paint(); }
   navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false }).then(function (s) {
-    s.getAudioTracks().forEach(function (a) { a.stop(); s.removeTrack(a); }); stream = s; $('v').srcObject = s; state = 'ready'; send({ type: 'rec-cam', ok: true }); paint();
-  }).catch(function (e) { state = 'blocked'; send({ type: 'rec-cam', ok: false, why: e && e.name || 'error' });
+    s.getAudioTracks().forEach(function (a) { a.stop(); s.removeTrack(a); }); stream = s; $('v').srcObject = s; state = 'ready'; camSaid = { type: 'rec-cam', ok: true }; paint();
+  }).catch(function (e) { state = 'blocked'; camSaid = { type: 'rec-cam', ok: false, why: e && e.name || 'error' };
     cover('<div class="msg">The camera is blocked.<br><br>Look for a camera icon in the address bar, choose Allow, then reload this window. If there is no icon, your school may have turned off cameras here: tell your teacher.</div>'); paint(); });
 }
 function begin() { if (state !== 'ready' || !stream) return; state = 'count'; var n = 3; cover(String(n)); paint(); send({ type: 'rec-count' });
@@ -64,9 +64,9 @@ function stopped() {
 function push() { clearTimeout(holdT); if (!hold) return; if (!send(hold)) { cover('<div class="msg">The app window closed, so this video could not be saved. Open the app again and record it again.</div>'); return; } holdT = setTimeout(push, 4000); }
 window.addEventListener('message', function (e) {
   if (e.source !== opener0 || !e.data || !/^rec-/.test(String(e.data.type))) return;
-  if (!(e.origin === 'null' || /^https:\/\/[-a-z0-9.]+\.(googleusercontent|google)\.com$/.test(e.origin) || /^https?:\/\/localhost(:\d+)?$/.test(e.origin))) return;
+  if (!(/^https:\/\/[-a-z0-9.]+\.(googleusercontent|google)\.com$/.test(e.origin) || /^https?:\/\/localhost(:\d+)?$/.test(e.origin))) return;
   peer = e.origin; var d = e.data;
-  if (d.type === 'rec-hello') { H = d; send({ type: 'rec-ready' }); if (state !== 'rec' && state !== 'count' && state !== 'send') paint(); else if (state === 'rec' || state === 'count') { /* the turn being recorded keeps its words */ } }
+  if (d.type === 'rec-hello') { H = d; send({ type: 'rec-ready' }); if (camSaid) { send(camSaid); camSaid = null; } if (state !== 'rec' && state !== 'count' && state !== 'send') paint(); else if (state === 'rec' || state === 'count') { /* the turn being recorded keeps its words */ } }
   else if (d.type === 'rec-got' && hold && d.id === hold.id) { hold = null; clearTimeout(holdT); state = 'ready'; alertMsg('Saved. Video only: no sound is ever recorded.'); paint(); }
 });
 /* the student left the recorder for something other than the test: the app counts that as leaving */
