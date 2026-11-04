@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.352';
+var VERSION = '4.353';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1657,9 +1657,10 @@ function api_join(auth, d) {
     throw new Error('Please sign in with your @' + S.domain + ' account.');
   }
   var name = str_(d.name).replace(/[^A-Za-zÀ-ɏ .'\-]/g, '').replace(/\s+/g, ' ').slice(0, 24).trim();
-  var cls = str_(d.cls), level = str_(d.level);
-  if (!st.classes.some(function (c) { return c.name === cls; })) throw new Error('Pick your class from the list.');
-  if (S.groups.length && S.groups.indexOf(level) < 0) throw new Error('Pick one of: ' + S.groups.join(', ') + '.');
+  var cls = str_(d.cls), cl0 = st.classes.filter(function (c) { return c.name === cls; })[0];
+  if (!cl0) throw new Error('Pick your class from the list.');
+  /* 4.353 (Colleen): students never choose Prep or Accel. It comes from the roster (the Level already on their Students row) or the class's Course on the Classes tab; otherwise it stays blank for her to set on Students: versions and accommodations. */
+  var level = cl0.course && (!S.groups.length || S.groups.indexOf(cl0.course) >= 0) ? cl0.course : '';
   var A = st.avatars[0], avName = str_(d.av), pics = S.flat && A ? A.opts.filter(function (o) { return o.p; }).map(function (o) { return o.name; }) : [];
   return lock_(function () {
     var sh = stuSheet_(), H = stuHead_(sh), row = findRow_(sh, id.key), o;
