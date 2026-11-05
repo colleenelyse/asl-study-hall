@@ -527,7 +527,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.88'
+var VERSION = '2.89'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -6769,47 +6769,95 @@ function schClean() {
 // A split lunch period ("SO Study A/Lunch B") becomes two rows, 5A and 5B. Teacher emails: first initial + last name @ the school domain.
 var LEVELS = { LIII: 'Prep', LIV: 'Accel', LV: 'Honors/AP', SC: '' };
 function parseICSchedule(text, domain) {
-  // Tolerant of how the page was copied: a class's parts may be split over several lines (the last 1–4 lines are tried together),
-  // the "Period 05" line may come after the class (usual) or before it, and may say "Per 5", "Pd 5" or "5th Period" with times after.
-  var out = [], open = [], buf = [], pending = '';
+  // 2.89: each class belongs to ITS OWN period line, so one class the reader can't place never moves the others. Handles the day and week views
+  // (class, then "Period 05", sometimes on one line) and the agenda view (time, class and room, "Period 05", then the teacher).
+  // "Period Stu Team", "Period Acad Extra" and "Period Activity" aren't classes. A class's parts may be split over several lines (up to 4 are tried
+  // together), and the period line may come before the classes and may say "Per 5", "Pd 5" or "5th Period" with times after.
+  var out = [], ROOM = '(?:\\s+[A-Z]{1,3}-[A-Z0-9]+)?$';
   var perRe = /^(?:period|per\.?|pd\.?)\s*0*(\d+)\s*([AB])?(?![\w])|^0*(\d+)(?:st|nd|rd|th)\s+period\b/i;
-  var classRe = [/^(.+?)\s+(L(?:IV|V|I{1,3}))\s+(.+?,.+?)(?:\s+([A-Z]{1,3}-[A-Z0-9]+))?$/, /^(.+?)\s+([A-Z]{2,3})\s+(.+?,.+?)(?:\s+([A-Z]{1,3}-[A-Z0-9]+))?$/];
-  var close = function (per) { open.forEach(function (r) { r.period = per + (r.half || ''); delete r.half; out.push(r); }); open = []; };
-  var tryClass = function () {
-    for (var k = 1; k <= Math.min(4, buf.length); k++) {
-      var line = buf.slice(buf.length - k).join(' '), m = classRe[0].exec(line) || classRe[1].exec(line);
-      if (m && !/^\d{1,2}:\d\d/.test(m[1])) { buf = []; return m; }
+  var endPerRe = /^(.*\S)\s+((?:period|per\.?|pd\.?)\s*0*\d+\s*[AB]?|\d+(?:st|nd|rd|th)\s+period)$/i;
+  var otherPerRe = /(^|\s)period\s+[a-z][a-z ]*$/i, rangeRe = /^\d{1,2}:\d\d\s*([AP]M)?\s*[-–]\s*\d{1,2}:\d\d/i;
+  var noiseRe = /^\d{1,2}:\d\d\s*([AP]M)?$|^SEM\d|^(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?(\s+\d.*)?$|^[A-Z][a-z]{2,8}\s+\d{4}$|^\d{1,2}$|^(date|time|event)$/i;
+  var nameRe = /^[^\d,\/]+,[^,\/]*(\/[^\d,\/]+,[^,\/]*)*$/, roomRe = /^[A-Z]{1,3}-[A-Z0-9]+$/;
+  var classRe = [new RegExp('^(.+?)\\s+(L(?:IV|V|I{1,3}))\\s+(.+?,.+?)' + ROOM), new RegExp('^(.+?)\\s+([A-Z]{2,3})\\s+(.+?,.+?)' + ROOM)];
+  var noTeacherRe = [new RegExp('^(.+?)\\s+(L(?:IV|V|I{1,3})|SC)()' + ROOM), /^(.+?)\s+([A-Z]{2,3})()\s+[A-Z]{1,3}-[A-Z0-9]+$/];
+  var noLevelRe = new RegExp('^([^,]+?)\\s+()([^\\s,]+,.*?)' + ROOM), plainRe = new RegExp('^(.+?)()()' + ROOM);
+  var items = [];
+  String(text || '').replace(/ /g, ' ').split(/\r?\n|\t+/).forEach(function (raw) {
+    var line = raw.replace(/\s+/g, ' ').trim(), m;
+    if (!line || noiseRe.test(line)) return;
+    if (perRe.test(line)) { m = perRe.exec(line); items.push({ per: (m[1] || m[3]) + (m[2] ? m[2].toUpperCase() : '') }); return; }
+    if (otherPerRe.test(line)) { items.push({ other: 1 }); return; }
+    if (rangeRe.test(line)) { items.push({ range: 1 }); return; }
+    if ((m = endPerRe.exec(line))) {
+      var pm = perRe.exec(m[2]);
+      items.push({ line: m[1] }); items.push({ per: (pm[1] || pm[3]) + (pm[2] ? pm[2].toUpperCase() : '') }); return;
     }
-    return null;
+    items.push({ line: line });
+  });
+  // the part of a block that is the class: try the lines nearest its period line first (anything else copied from the page stays out)
+  var pick = function (block, fromEnd) {
+    var tries = function (res, most) {
+      for (var k = 1; k <= Math.min(most, block.length); k++) {
+        var line = (fromEnd ? block.slice(block.length - k) : block.slice(0, k)).join(' ');
+        for (var c = 0; c < res.length; c++) { var m = res[c].exec(line); if (m) return m; }
+      }
+      return null;
+    };
+    var found = tries(classRe, 4) || tries(noTeacherRe, 4) || tries([noLevelRe], 2);
+    if (found) return found;
+    var one = block.length ? block[fromEnd ? block.length - 1 : 0] : '';
+    return one && !nameRe.test(one) && !roomRe.test(one) ? plainRe.exec(one) : null;
   };
-  String(text || '').replace(/\u00a0/g, ' ').split(/\r?\n/).forEach(function (raw) {
-    var line = raw.replace(/\t+/g, ' ').trim(), m;
-    if (!line) return;
-    if ((m = perRe.exec(line))) {
-      var per = (m[1] || m[3]) + (m[2] ? m[2].toUpperCase() : '');
-      buf = [];
-      if (open.length) close(per); else pending = per;          // the period line came first: it belongs to the next class
-      return;
-    }
-    buf.push(line);
-    m = tryClass();
-    if (!m) return;
-    var people = m[3].split('/').map(function (n) {
-      var parts = n.split(','), last = parts[0].trim(), first = (parts[1] || '').trim().split(/\s+/)[0] || '', name = (first ? first + ' ' : '') + last;
+  var people = function (t) {
+    return String(t || '').split('/').map(function (n) {
+      var parts = n.replace(/\*\d+/g, '').split(','), last = parts[0].trim(), first = (parts[1] || '').trim().split(/\s+/)[0] || '', name = (first ? first + ' ' : '') + last;
       return { name: name, email: guessEmail(name, domain) };
-    });
-    var row = { name: m[1].trim(), level: m[2] in LEVELS ? LEVELS[m[2]] : /^L/.test(m[2]) ? m[2] : '', teacher: people.map(function (p) { return p.name; }).join(' / '),
-      temail: people.map(function (p) { return p.email; }).filter(String).join(', '), resource: false, nograde: false };
+    }).filter(function (x) { return x.name; });
+  };
+  var teach = function (row, t) { var who = people(t); row.teacher = who.map(function (x) { return x.name; }).join(' / '); row.temail = who.map(function (x) { return x.email; }).filter(String).join(', '); };
+  var add = function (m, per) {
+    if (!m || !m[1].trim()) return [];
+    var row = { name: m[1].trim(), level: m[2] in LEVELS ? LEVELS[m[2]] : /^L/.test(m[2]) ? m[2] : '', teacher: '', temail: '', resource: false, nograde: false }, rows = [];
+    teach(row, m[3]);
     var split = /^(.+?)\s+A\s*\/\s*(.+?)\s+B$/.exec(row.name);
     if (split) {          // one half each: study hall in A, lunch in B (or the other way around)
       [[split[1], 'A'], [split[2], 'B']].forEach(function (h) {
-        var r = JSON.parse(JSON.stringify(row)); r.name = h[0]; r.half = h[1];
+        var r = JSON.parse(JSON.stringify(row)); r.name = h[0]; r.period = per + h[1];
         if (/lunch/i.test(h[0])) { r.teacher = ''; r.temail = ''; }
-        open.push(r);
+        rows.push(r);
       });
-    } else open.push(row);
-    if (pending) { close(pending); pending = ''; }
+    } else { row.period = per; rows.push(row); }
+    out = out.concat(rows);
+    return rows;
+  };
+  // do period lines come after their classes (usual) or before them? Count which side looks more like classes (a tie means after)
+  var classish = /\s(L(?:IV|V|I{1,3})|SC)(\s|$)|,|\s[A-Z]{1,3}-[A-Z0-9]+$|^[A-Z]{1,3}-[A-Z0-9]+$|lunch|study/i, prevN = 0, nextN = 0, firstPer = -1;
+  items.forEach(function (x, n) {
+    if (!x.per) return;
+    if (firstPer < 0) firstPer = n;
+    if (n > 0 && items[n - 1].line && classish.test(items[n - 1].line)) prevN++;
+    if (n + 1 < items.length && items[n + 1].line && classish.test(items[n + 1].line)) nextN++;
   });
+  var after = firstPer > 0 && prevN >= nextN;
+  var block = [], last = null, cur = '';
+  var flush = function () { if (cur) add(pick(block, false), cur); cur = ''; block = []; };
+  items.forEach(function (x) {
+    if (after) {
+      if (x.range || x.other) { block = []; last = null; return; }
+      if (x.per) { last = add(pick(block, true), x.per); block = []; return; }
+      if (last && last.length && nameRe.test(x.line) && !/\s(L(?:IV|V|I{1,3})|SC)\s|\s[A-Z]{1,3}-[A-Z0-9]+$/.test(x.line) && last.every(function (r) { return !r.teacher; })) {          // agenda view: the teacher comes after the period
+        last.forEach(function (r) { if (!/lunch/i.test(r.name)) teach(r, x.line); }); last = null; return;
+      }
+      last = null; block.push(x.line);
+      return;
+    }
+    if (x.range) return;
+    if (x.other) return flush();
+    if (x.per) { flush(); cur = x.per; return; }
+    block.push(x.line);
+  });
+  if (!after) flush();
   out.forEach(function (r) { var t = guessType(r.name, r.level); r.resource = t === 'resource'; r.nograde = t === 'nograde'; });
   return out;
 }
