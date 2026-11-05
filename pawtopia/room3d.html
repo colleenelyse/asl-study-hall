@@ -96,12 +96,89 @@
    ['beach_alternate', 'Beach 2', 0xf0fbff, 0xf1d79c, 0xfff4dc, 1.3], ['town_plaza', 'Town Plaza', 0xfff8ee, 0xe8b98f, 0xfff0dc, 1.2], ['autumn_harvest', 'Autumn', 0xfff1dc, 0xe7a35a, 0xffd9a0, 1.2],
    ['winter_wonderland', 'Winter', 0xf2f7ff, 0xe9eefb, 0xf4f8ff, 1.15], ['stargazing_terrace', 'Stargazing', 0xb9b6ff, 0x8a7cc0, 0xcfd4ff, 0.95], ['crystal_cavern', 'Crystal Cavern', 0xd9c6ff, 0x9a7ae0, 0xc8b8ff, 1.0], ['library', 'Library', 0xfff3e0, 0xd99a5a, 0xffe2b8, 1.15], ['carnival', 'Carnival', 0xfff6ee, 0xe2a86a, 0xffeedc, 1.2], ['craft', 'Craft Workshop', 0xfff4f6, 0xe2b27a, 0xffeedc, 1.15], ['music', 'Music Studio', 0xf6f0ff, 0xc9a0e0, 0xffeedc, 1.15], ['underwater', 'Underwater', 0xe6f6ff, 0x8fb8d8, 0xeaf6ff, 1.1], ['royal', 'Royal Castle', 0xf8f0ff, 0xc8b0e0, 0xfff2dc, 1.15], ['theater', 'Performing Arts', 0xf4ecff, 0xb88a7a, 0xffe6d0, 1.1], ['science', 'Science Lab', 0xf0f6ff, 0xa8b8d0, 0xf4f8ff, 1.15], ['movie', 'Movie Theater', 0xfff0f0, 0xc06a6a, 0xffe6d6, 1.1], ['sports', 'Sports Club', 0xf3f8ff, 0xd9b07a, 0xfff4e0, 1.2]]
     .forEach(([id, name, sky, ground, sun, light, area]) => { BACK['bg_' + id] = Object.assign({ img: 'bg/' + id + '.webp', name, sky, ground, sun, light }, SET, area ? { area } : {}); });
+  BACK.w_swim = { world: 'swim', cam: [0, 2.75, 7.4], at: [0, 0.35, -1.1], fov: 31, area: [-2.7, 2.7, -1.25, 1.85], light: 1.25, sky: 0xeaf7ff, ground: 0xb7e39a, sun: 0xfff1d4 };      /* 4.357 no name: it is not a room style students can pick */
   const roomBits = [floor, wall, base, win, glass, rug, bed]; const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.28 }));
   shadowFloor.rotation.x = -Math.PI / 2; shadowFloor.receiveShadow = true; shadowFloor.visible = false; scene.add(shadowFloor);
   const hemi = scene.children.find(o => o.isHemisphereLight);
+  /* ───── 2026-11-05 (4.357) the Swimming Hole: a real 3D place instead of a painting, so the pet and the person stand in it and walk into the water.
+     Everything here is drawn in code (no pictures). The water hides whatever is under it, so anyone who walks in sinks to the chest. POND: the water's shape. ───── */
+  const POND = { cz: -0.45, rx: 2.75, rz: 1.35, y: -0.1 }, pondE = (x, z) => (x / POND.rx) * (x / POND.rx) + ((z - POND.cz) / POND.rz) * ((z - POND.cz) / POND.rz), wadeK = (x, z) => { const e = pondE(x, z); return e >= 1 ? 0 : Math.min(1, (1 - e) / 0.3); };
+  let WORLD = null;
+  function worldBuild() {
+    const g = new THREE.Group(); scene.add(g); let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const std = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: col(c), roughness: 0.85, metalness: 0 }, o || {}));
+    const put = (geo, m, x, y, z, sx, sy, sz, shadow) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); if (sx) o.scale.set(sx, sy || sx, sz || sx); o.castShadow = shadow !== false; o.receiveShadow = true; g.add(o); return o; };
+    /* the sky and the far-off hills (fog makes them fade, which is most of the sense of distance) */
+    const sc = document.createElement('canvas'); sc.width = 8; sc.height = 256; const sx = sc.getContext('2d'), sg = sx.createLinearGradient(0, 0, 0, 256); sg.addColorStop(0, '#5cb8f2'); sg.addColorStop(0.62, '#bfe6fb'); sg.addColorStop(1, '#fdf3dc'); sx.fillStyle = sg; sx.fillRect(0, 0, 8, 256); const sky = new THREE.CanvasTexture(sc); sky.encoding = THREE.sRGBEncoding;
+    const far = put(new THREE.PlaneGeometry(160, 100), std(0x8fc873), 0, -0.04, -56, 0, 0, 0, false); far.scale.set(1, 1, 1); far.rotation.x = -Math.PI / 2;
+    [[-13, -22, 9, 2.2, 0x6fa98c], [-3, -28, 13, 3.4, 0x7fb7a3], [9, -25, 10, 2.6, 0x6fa98c], [19, -21, 9, 2, 0x79b08a], [-23, -19, 8, 1.8, 0x7cb37d]].forEach(([x, z, w, h, c]) => put(SPH, std(c), x, 0, z, w, h, 5, false));
+    /* the ground: sand around the water and a wide beach in front, grass beyond, all painted once into one picture */
+    const GW = 8, GZ0 = -6, GZ1 = 5, cv = document.createElement('canvas'); cv.width = 1536; cv.height = 1056; const c2 = cv.getContext('2d'), PX = 96, px = x => (x + GW) * PX, pz = z => (z - GZ0) * PX;
+    c2.fillStyle = '#8ccb68'; c2.fillRect(0, 0, cv.width, cv.height); for (let i = 0; i < 500; i++) { c2.fillStyle = ['#7fc05e', '#9ad676', '#86c763', '#a4dc7f'][i % 4]; c2.beginPath(); c2.ellipse(rnd() * cv.width, rnd() * cv.height, 14 + rnd() * 50, 7 + rnd() * 20, 0, 0, 7); c2.fill(); }
+    const soft = (x, z, rx, rz, stops) => { c2.save(); c2.translate(px(x), pz(z)); c2.scale(rx * PX, rz * PX); const r = c2.createRadialGradient(0, 0, 0, 0, 0, 1); stops.forEach(s => r.addColorStop(s[0], s[1])); c2.fillStyle = r; c2.fillRect(-1, -1, 2, 2); c2.restore(); };
+    soft(0, 1.4, 6.6, 3.1, [[0, '#f6e0ab'], [0.78, '#f4dca4'], [1, 'rgba(244,220,164,0)']]); soft(0, POND.cz, POND.rx + 0.75, POND.rz + 0.75, [[0, '#f4dca4'], [0.8, '#f4dca4'], [1, 'rgba(244,220,164,0)']]); soft(0, POND.cz, POND.rx + 0.32, POND.rz + 0.32, [[0, '#c9a974'], [0.86, '#c9a974'], [1, 'rgba(201,169,116,0)']]);
+    for (let i = 0; i < 2600; i++) { const x = rnd() * cv.width, y = rnd() * cv.height; if ((y / PX + GZ0) > 0.2) { c2.fillStyle = rnd() > 0.5 ? 'rgba(180,140,90,.28)' : 'rgba(255,250,230,.4)'; c2.fillRect(x, y, 2, 2); } }
+    for (let i = 0; i < 90; i++) { const a = rnd() * 6.28, x = Math.cos(a) * (POND.rx + 1.2 + rnd() * 3), z = POND.cz + Math.sin(a) * (POND.rz + 1 + rnd() * 2); if (z > 0.8) continue; c2.fillStyle = ['#ff8fc0', '#fff', '#ffd34d', '#c98bff'][i % 4]; c2.beginPath(); c2.arc(px(x), pz(z), 4, 0, 7); c2.fill(); }
+    const gt = new THREE.CanvasTexture(cv); gt.encoding = THREE.sRGBEncoding; gt.anisotropy = Math.min(4, R.capabilities.getMaxAnisotropy());
+    const sh = new THREE.Shape(); sh.moveTo(-GW, GZ0); sh.lineTo(GW, GZ0); sh.lineTo(GW, GZ1); sh.lineTo(-GW, GZ1); sh.closePath(); const hole = new THREE.Path(); hole.absellipse(0, POND.cz, POND.rx, POND.rz, 0, Math.PI * 2, false, 0); sh.holes.push(hole);
+    const gg = new THREE.ShapeGeometry(sh, 64), pa = gg.attributes.position, uv = gg.attributes.uv; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getY(i); uv.setXY(i, (x + GW) / (2 * GW), 1 - (z - GZ0) / (GZ1 - GZ0)); pa.setXYZ(i, x, 0, z); } gg.computeVertexNormals(); const nr = gg.attributes.normal; for (let i = 0; i < nr.count; i++) nr.setXYZ(i, 0, 1, 0); { const ix = gg.index; for (let i = 0; i < ix.count; i += 3) { const a = ix.getX(i); ix.setX(i, ix.getX(i + 1)); ix.setX(i + 1, a); } }      /* flipped to lie flat, so it has to face up */
+    put(gg, new THREE.MeshStandardMaterial({ map: gt, roughness: 1 }), 0, 0, 0, 0, 0, 0, false);
+    /* the pond: a sandy bowl under moving water, pale at the shore and deep blue in the middle */
+    const bowl = put(new THREE.SphereGeometry(1, 40, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), std(0x4fb0c8, { side: THREE.BackSide }), 0, 0, POND.cz, POND.rx, 1.1, POND.rz, false); bowl.castShadow = false;
+    const WU = { t: { value: 0 } }, water = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.ShaderMaterial({ transparent: true, uniforms: WU, depthWrite: false,
+      vertexShader: 'varying vec2 vP; void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying vec2 vP; uniform float t; void main() { float r = length(vP), a = atan(vP.y, vP.x); vec2 p = vP * vec2(' + POND.rx.toFixed(2) + ', ' + POND.rz.toFixed(2) + '); float n = sin(p.x * 7.0 + t * 1.1 + sin(p.y * 6.0 + t)) * sin(p.y * 11.0 - t * 0.9 + sin(p.x * 5.0 - t * 0.7)), c = smoothstep(0.42, 0.95, n) * 0.28 * (1.0 - r * 0.4); vec3 col = mix(vec3(0.05, 0.47, 0.86), vec3(0.42, 0.90, 0.95), smoothstep(0.25, 1.0, r * r)); col += c; float f = smoothstep(0.93, 0.985, r + sin(a * 17.0 + t * 1.4) * 0.012); col = mix(col, vec3(1.0), f * 0.85); gl_FragColor = vec4(col, mix(0.80, 0.58, r * r) + f * 0.3); }' }));
+    water.rotation.x = -Math.PI / 2; water.position.set(0, POND.y, POND.cz); water.scale.set(POND.rx * 1.015, POND.rz * 1.015, 1); water.renderOrder = 2; g.add(water);
+    /* rocks: one lumpy stone, turned and sized differently each time; they ring the back and sides of the water and leave the beach open */
+    const rg = new THREE.IcosahedronGeometry(1, 2), rp = rg.attributes.position, seen = {}; for (let i = 0; i < rp.count; i++) { const k = [rp.getX(i), rp.getY(i), rp.getZ(i)].map(v => v.toFixed(3)).join(), s = seen[k] || (seen[k] = 0.88 + rnd() * 0.2), n = rg.attributes.normal; n.setXYZ(i, rp.getX(i), rp.getY(i), rp.getZ(i)); rp.setXYZ(i, rp.getX(i) * s, rp.getY(i) * s, rp.getZ(i) * s); }      /* normals from the plain ball: soft, rounded stones like the pets */
+    const rm = [0xb1a48d, 0x9f927c, 0xc0b39b, 0x8f8470].map(c => std(c)), rock = (x, z, s, h) => { const o = put(rg, rm[Math.floor(rnd() * 4)], x, (h || s) * 0.35, z, s * (0.9 + rnd() * 0.5), h || s, s * (0.8 + rnd() * 0.4)); o.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3); return o; };
+    for (let i = 0; i < 26; i++) { const a = Math.PI * (-0.13 + 1.26 * i / 25) + (rnd() - 0.5) * 0.07, big = 0.18 + rnd() * 0.2, rx = Math.cos(a) * (POND.rx + 0.14); if (Math.abs(rx) > 0.72) rock(rx, POND.cz - Math.sin(a) * (POND.rz + 0.14), big); }
+    /* the waterfall: rocks stacked behind the water with a sheet of falling water on them, and foam where it lands */
+    [[-1.1, -2.2, 0.42, 1.1], [1.1, -2.2, 0.42, 1.15], [-1.65, -2.3, 0.45, 0.72], [1.65, -2.3, 0.45, 0.78], [-0.85, -2.85, 0.55, 1.7], [0.85, -2.85, 0.55, 1.75], [0, -3.25, 1, 1.95], [-2.05, -2.25, 0.32, 0.42], [2.05, -2.25, 0.32, 0.42]].forEach(r => rock(r[0], r[1], r[2], r[3]));
+    const FU = { t: WU.t }, fall = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 1.8, 1, 1), new THREE.ShaderMaterial({ transparent: true, uniforms: FU, depthWrite: false, vertexShader: 'varying vec2 vU; void main() { vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying vec2 vU; uniform float t; void main() { float s = sin(vU.x * 38.0 + sin(vU.x * 9.0) * 3.0) * 0.5 + 0.5, m = sin((vU.y + t * 1.5) * 24.0 + s * 1.2) * 0.5 + 0.5; vec3 col = mix(vec3(0.55, 0.88, 0.98), vec3(1.0), m * s * 0.9 + 0.2); float e = smoothstep(0.0, 0.1, vU.x) * smoothstep(1.0, 0.9, vU.x); gl_FragColor = vec4(col, e * 0.95); }' }));
+    fall.position.set(0, 0.72, -2.02); fall.rotation.x = -0.06; fall.renderOrder = 1; g.add(fall);
+    const foam = []; for (let i = 0; i < 12; i++) { const f = put(SPH, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }), (i / 11 - 0.5) * 1.1, POND.y + 0.03, -1.74 + rnd() * 0.14, 0.1, 0.06, 0.1, false); f.renderOrder = 3; f.userData.ph = rnd() * 6; foam.push(f); }
+    /* palm trees, the wooden dock, the slide, an umbrella and the pink float */
+    const leafG = new THREE.PlaneGeometry(1.25, 0.34, 8, 2), lp = leafG.attributes.position; for (let i = 0; i < lp.count; i++) { const x = lp.getX(i) + 0.625, y = lp.getY(i), w = 1 - Math.pow(x / 1.25, 2.2); lp.setXYZ(i, x, -x * x * 0.42, y * w); } leafG.computeVertexNormals(); const leafM = [0x3fa650, 0x56b95a, 0x2f9a56].map(c => std(c, { side: THREE.DoubleSide })), trunkM = std(0x9a7650);
+    const palm = (x, z, h, lean) => { const top = new THREE.Vector3(x + lean, h, z), tr = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(x, 0, z), new THREE.Vector3(x + lean * 0.25, h * 0.5, z), top]), 8, 0.075, 7); put(tr, trunkM); for (let i = 0; i < 9; i++) { const l = put(leafG, leafM[i % 3], top.x, top.y, top.z, 1, 1, 1); l.rotation.y = i * 0.7 + rnd() * 0.3; l.rotation.z = 0.25 - (i % 2) * 0.15; } };
+    [[-3.7, -0.9, 2.5, 0.35], [-3.3, -2.3, 2.9, -0.3], [3.75, -0.6, 2.7, -0.4], [3.2, -2.5, 2.4, 0.25], [-4.7, 1.6, 2.9, 0.5], [4.9, 1.4, 3.0, -0.5], [-2.35, -3.1, 2.2, 0.15], [2.1, -3.2, 2.3, -0.15]].forEach(p => palm(p[0], p[1], p[2], p[3]));
+    for (let i = 0; i < 22; i++) { const x = (rnd() - 0.5) * 15, z = -3.5 - rnd() * 2.3, s = 0.3 + rnd() * 0.32; put(SPH, leafM[i % 3], x, s * 0.75, z, s * 1.1, s, s * 1.05); }
+    const wood = std(0xb5854f), woodD = std(0x8d6236); for (let i = 0; i < 8; i++) put(new THREE.BoxGeometry(0.14, 0.04, 0.62), i % 2 ? wood : woodD, -3.25 + i * 0.15, 0.17, -0.82); [[-2.2, -1.08], [-2.2, -0.56], [-2.75, -1.08], [-2.75, -0.56]].forEach(p => put(new THREE.CylinderGeometry(0.035, 0.035, 0.62, 8), woodD, p[0], -0.12, p[1]));
+    [[2.45, -1.75], [3.05, -1.75], [2.45, -2.25], [3.05, -2.25]].forEach(p => put(new THREE.CylinderGeometry(0.045, 0.045, 1.25, 8), woodD, p[0], 0.62, p[1])); put(new THREE.BoxGeometry(0.8, 0.07, 0.72), wood, 2.75, 1.25, -2); put(new THREE.ConeGeometry(0.62, 0.42, 4), std(0xe7a53b), 2.75, 1.9, -2).rotation.y = Math.PI / 4; [[2.42, -2.32], [3.08, -1.68]].forEach(p => put(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 6), woodD, p[0], 1.5, p[1]));
+    put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(2.6, 1.27, -1.75), new THREE.Vector3(2.35, 0.95, -1.45), new THREE.Vector3(2.0, 0.5, -1.15), new THREE.Vector3(1.68, 0.14, -0.9)]), 18, 0.13, 9), std(0xf28a2e, { roughness: 0.4 }));
+    const umb = document.createElement('canvas'); umb.width = 256; umb.height = 16; const ux = umb.getContext('2d'); for (let i = 0; i < 8; i++) { ux.fillStyle = i % 2 ? '#fff4d6' : '#ff6f7d'; ux.fillRect(i * 32, 0, 32, 16); } const ut = new THREE.CanvasTexture(umb); ut.encoding = THREE.sRGBEncoding;
+    put(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8), std(0xffffff), -3.05, 0.75, 1.15); put(new THREE.ConeGeometry(0.85, 0.36, 16, 1, true), new THREE.MeshStandardMaterial({ map: ut, side: THREE.DoubleSide, roughness: 0.7 }), -3.05, 1.55, 1.15); put(new THREE.BoxGeometry(0.42, 0.06, 1), std(0x57b7e8), -3.2, 0.2, 1.75);
+    [[-3.38, 1.35], [-3.02, 1.35], [-3.38, 2.15], [-3.02, 2.15]].forEach(p => put(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 6), std(0xffffff), p[0], 0.1, p[1]));
+    const floaty = put(new THREE.TorusGeometry(0.3, 0.13, 12, 28), std(0xff7ab8, { roughness: 0.35 }), 1.15, POND.y + 0.05, -0.55); floaty.rotation.x = Math.PI / 2; const ball2 = put(new THREE.SphereGeometry(0.17, 16, 12), std(0xffd34d, { roughness: 0.4 }), 2.9, 0.17, 1.35);
+    /* clouds, and rings on the water around whoever is in it */
+    const cm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92, fog: false }), clouds = [[-9, 8.2, -24, 1], [6, 9.4, -26, 1.3], [17, 7.6, -22, 0.9]].map(c => { const o = new THREE.Group(); [[0, 0, 1.6, 0.6], [1.5, 0.1, 1.2, 0.5], [-1.5, 0.05, 1.1, 0.45], [0.5, 0.45, 1, 0.5]].forEach(b => { const m = new THREE.Mesh(SPH, cm); m.position.set(b[0], b[1], 0); m.scale.set(b[2], b[3], 0.7); o.add(m); }); o.position.set(c[0], c[1], c[2]); o.scale.setScalar(c[3]); g.add(o); return o; });
+    const rings = []; for (let i = 0; i < 8; i++) { const r = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); r.rotation.x = -Math.PI / 2; r.position.y = POND.y + 0.012; r.renderOrder = 3; r.visible = false; g.add(r); rings.push(r); }
+    return { g, sky, WU, foam, floaty, ball2, clouds, rings, mx: 0, my: 0 };
+  }
+  function worldShow(on) { if (on && !WORLD) WORLD = worldBuild(); if (WORLD) WORLD.g.visible = !!on; scene.background = on ? WORLD.sky : back ? null : col(0xffe7f1); scene.fog = on ? new THREE.Fog(0xcdeafb, 11, 44) : null; shadowFloor.visible = !on && !!back; const b = on ? 7 : 4; Object.assign(sun.shadow.camera, { left: -b, right: b, top: b, bottom: -b, far: on ? 30 : 500 }); sun.shadow.camera.updateProjectionMatrix(); sun.position.set(on ? 4 : 3, on ? 8 : 6, on ? 6 : 4); }
+  const worldRing = (x, z, s) => { const r = WORLD.rings.find(o => !o.visible); if (!r) return; r.visible = true; r.position.x = x; r.position.z = z; r.userData = { life: 1, s: s || 0.3 }; };
+  function worldPick() { const inWater = G && G.swim || Math.random() < 0.55; let x, z; if (inWater) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 0.72; x = Math.cos(a) * r * POND.rx; z = POND.cz + Math.sin(a) * r * POND.rz; } else { x = (Math.random() - 0.5) * 4.6; z = 1.1 + Math.random() * 0.6; } S.target.set(x, 0, z); clampArea(S.target); S.moving = true; }
+  /* the app's Go swimming button: everyone heads for the middle of the water */
+  function worldSwim() { const x = (Math.random() - 0.5) * 1.6, z = POND.cz + 0.1; S.mount = null; S.pose = 'stand'; S.act = 'go'; S.follow = false; S.target.set(x + 0.4, 0, z + 0.1); S.moving = true; if (AV.on && AV.holder) avGo(new THREE.Vector3(x, 0, z)); clearTimeout(S.swimT); S.swimT = setTimeout(() => { if (!back || !back.world) return; S.hop = 2; puff('splash', 3, 0.5); hearts(2); setTimeout(() => { if (S.act === 'stay' || S.act === 'go') { S.act = 'walk'; if (!S.moving) pick(); } }, 4000); }, 2600); }
+  function worldFrame(dt, walking) {
+    const W = WORLD, t = S.t; W.WU.t.value = t; W.foam.forEach(f => { const s = 0.08 + Math.abs(Math.sin(t * 3.2 + f.userData.ph)) * 0.09; f.scale.set(s * 1.3, s * 0.6, s * 1.3); });
+    W.floaty.position.y = POND.y + 0.05 + Math.sin(t * 1.4) * 0.018; W.floaty.rotation.z = t * 0.05; W.floaty.position.x = 1.15 + Math.sin(t * 0.13) * 0.28; W.clouds.forEach((c, i) => { c.position.x += dt * (0.1 + i * 0.03); if (c.position.x > 28) c.position.x = -28; });
+    W.rings.forEach(r => { if (!r.visible) return; r.userData.life -= dt * 0.9; if (r.userData.life <= 0) { r.visible = false; return; } const s = r.userData.s * (1.9 - r.userData.life); r.scale.set(s, s, 1); r.material.opacity = r.userData.life * 0.55; });
+    /* the camera drifts a little and follows the pointer: near things slide past far things, which is what makes it look deep */
+    const dx = Math.sin(t * 0.17) * 0.3 + W.mx * 0.55, dy = Math.sin(t * 0.11) * 0.07 + W.my * 0.18; cam.position.set(back.cam[0] + dx, back.cam[1] + dy, back.cam[2]); cam.lookAt(back.at[0] + dx * 0.25, back.at[1], back.at[2]);
+    if (pet) { S.wNext = (S.wNext || 0) - dt; if (G && S.wNext < 0) { S.wH = new THREE.Box3().setFromObject(pet).getSize(new THREE.Vector3()).y || 0.5; S.wNext = 1; }      /* its height: it grows */
+      const k = S.carry ? 0 : wadeK(pet.position.x, pet.position.z); S.wY = G && G.swim ? 0 : -k * ((S.wH || 0.5) * 0.35 - POND.y);      /* a third under the water line, so a baby's face still shows */
+      if (k > 0.3 && walking) { S.rg = (S.rg || 0) - dt; if (S.rg < 0) { worldRing(pet.position.x, pet.position.z, 0.32); S.rg = 0.42; } }
+      if (k > 0.3 && !walking) { S.rg = (S.rg || 0) - dt; if (S.rg < 0) { worldRing(pet.position.x, pet.position.z, 0.26); S.rg = 1.5; } }
+      if (G && G.swim && !S.moving && !S.carry && pondE(pet.position.x, pet.position.z) > 0.75) worldPick(); }
+    if (AV.on && AV.holder) { const h = AV.holder, k = wadeK(h.position.x, h.position.z); h.position.y = -k * (AV.H * 0.5 - POND.y); if (k > 0.3 && !AV.moving) { let dy = Math.atan2(cam.position.x - h.position.x, cam.position.z - h.position.z) - h.rotation.y; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI; h.rotation.y += dy * Math.min(1, dt * 2); }      /* in the water: turns to face you */
+      if (k > 0.3 && (AV.moving || Object.keys(AV.keys).length)) { S.rh = (S.rh || 0) - dt; if (S.rh < 0) { worldRing(h.position.x, h.position.z, 0.42); S.rh = 0.5; } } }
+  }
+  addEventListener('pointermove', e => { if (!WORLD) return; const r = view.getBoundingClientRect(); WORLD.mx = (e.clientX - r.left) / r.width * 2 - 1; WORLD.my = (e.clientY - r.top) / r.height * 2 - 1; });
   function setBack(k) {
     back = BACK[k]; roomBits.forEach(o => o.visible = !back); shadowFloor.visible = !!back; scene.background = back ? null : col(0xffe7f1);
-    view.classList.toggle('paint', !!back); view.style.backgroundImage = back ? `url('${ART}${back.img}')` : '';
+    view.classList.toggle('paint', !!back); view.style.backgroundImage = back && back.img ? `url('${ART}${back.img}')` : ''; worldShow(!!(back && back.world));
     hemi.color = col(back ? back.sky : 0xffffff); hemi.groundColor = col(back ? back.ground : 0xf3c2d8); sun.color = col(back ? back.sun : 0xffffff); hemi.intensity = 0.6 * (back ? back.light : 1); sun.intensity = 0.75 * (back ? back.light : 1);
     cam.fov = back ? back.fov : 38; cam.updateProjectionMatrix(); camAng = 0; camAt();
     document.querySelectorAll('[data-bg]').forEach(b => b.classList.toggle('on', b.dataset.bg === k)); const sel = document.getElementById('bgsel'); if (sel) sel.value = BACK[k] && BACK[k].name ? k : '';
@@ -266,12 +343,12 @@
   const HOME_ACTS = { walk: 1, stay: 1, idle: 1, sit: 1, wave: 1, happy: 1, sleep: 1, huh: 1, bath: 1 };      /* the behaviors a swimmer does in its pool */
   const allWater = () => back === BACK.bg_underwater;
   function swimFrame(dt, walking) {      /* each frame for a swimmer: the pool, coming home, how high it floats, bubbles and splashes */
-    const t = S.t, home = HOME_ACTS[S.act] && !S.carry, sea = allWater(); pool.visible = !sea && !lineup && !!pet; if (sea) S.inPool = false;
+    const t = S.t, home = HOME_ACTS[S.act] && !S.carry, sea = allWater() || !!(back && back.world); pool.visible = !sea && !lineup && !!pet; if (sea) S.inPool = false;
     if (!sea) { pool.position.copy(S.pool); const d = pet.position.clone().setY(0).distanceTo(S.pool), inside = d < pool.userData.R * 0.75;
       if (home && !inside && !S.moving) { S.target.copy(S.pool); S.moving = true; }      /* done out there: swim home */
       if (inside !== S.inPool) { S.inPool = inside; puff('splash', 2, 0.4); }
       pool.userData.water.material.opacity = 0.7 + Math.sin(t * 2) * 0.04; }
-    const y = S.carry ? null : S.inPool ? 0.03 + Math.sin(t * 2.2) * 0.012 : 0.24 + Math.sin(t * 1.8) * 0.04;
+    const y = S.carry ? null : S.inPool ? 0.03 + Math.sin(t * 2.2) * 0.012 : back && back.world ? POND.y - 0.04 + Math.sin(t * 1.8) * 0.025 : 0.24 + Math.sin(t * 1.8) * 0.04;
     if (y !== null && S.hop <= 0 && !S.mount && !(S.alt > 0)) pet.position.y = lerp(pet.position.y, y, 0.12);
     SWU.t.value = t; SWU.spd.value = walking ? (S.mount ? 12 : 9) : S.mount === 'fly' ? 6 : 4; SWU.amp.value = walking ? 0.07 : S.pose === 'sleep' ? 0.015 : 0.035; SWU.flip.value = S.act === 'wave' ? 1.6 : walking ? 0.5 : 0.25;
     if (!S.inPool && walking) { S.bub = (S.bub || 0) - dt; if (S.bub < 0) { puff('bubbles', 1, 0.22); S.bub = 0.45; } }
@@ -785,7 +862,7 @@
     S.target.copy(clampArea(best || new THREE.Vector3())); if (S.mount === 'ride') outOfPools(S.target); S.moving = true; };
   const flyH = () => { const hs = furnGroup.children.filter(o => o.userData.furn).map(o => FURN_H[o.userData.furn] || 0.6); const A = AREA(), back0 = Math.max(0, Math.min(1, (A[3] - pet.position.z) / ((A[3] - A[2]) || 1))); return Math.max(0.62, Math.min(0.92, Math.max(0, ...hs) * 0.7 + 0.15)) - back0 * 0.12; };      /* lower toward the back of the room, so the wings stay in the picture */
   window.__mount = () => ({ mount: S.mount || '', alt: +(S.alt || 0).toFixed(2), x: +pet.position.x.toFixed(2), y: +pet.position.y.toFixed(2), z: +pet.position.z.toFixed(2), moving: S.moving, area: AREA(), saddle: !!(OUTFITS.gear_saddle && OUTFITS.gear_saddle.visible), wings: !!(OUTFITS.gear_wings && OUTFITS.gear_wings.visible) });
-  const pick = () => { if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
+  const pick = () => { if (back && back.world) return worldPick(); if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
   const outOfPools = v => { if (allWater()) return; COMPS.forEach(c => { if (!c.poolPos || c.gone) return; const dx = v.x - c.poolPos.x, dz = v.z - c.poolPos.z, d = Math.hypot(dx, dz) || 1e-3, R = c.pool.userData.R + 0.4; if (d < R) { v.x = c.poolPos.x + dx / d * R; v.z = c.poolPos.z + dz / d * R; clampArea(v); } }); };      /* 4.274 the main pet's strolls stay out of a buddy's pool */      // a short stroll to somewhere nearby
   const fetchT = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); fetchT.scale.setScalar(0.3); fetchT.visible = false; scene.add(fetchT);
   const throwBall = () => { const a = AREA(); ball.position.set(a[0] + Math.random() * (a[1] - a[0]), 0.15, a[2] + Math.random() * (a[3] - a[2])); S.target.copy(ball.position).setY(0); S.moving = true; };
@@ -1162,7 +1239,7 @@
     P.eyes.forEach(e => { e.scale.y = lerp(e.scale.y, ey, 0.5); });      // (a model blinks only if it has a blink clip)
     const inBed = S.pose === 'sleep' && !back && pet.position.distanceTo(bed.position) < 0.3; S.bedY = lerp(S.bedY || 0, inBed ? C.lift : 0, 0.1);
     if (G && G.swim) swimFrame(dt, walking);
-    if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (G && G.swim && !S.inPool ? 0.24 : G && G.bubble && allWater() ? bubbleY(t) : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY + (G && G.bubble && allWater() ? bubbleY(t) : 0), 0.3);
+    if (S.hop > 0) { const h = Math.abs(Math.sin(t * 7)); pet.position.y = h * 0.35 + (S.wY || 0) + (G && G.swim && !S.inPool ? (back && back.world ? 0 : 0.24) : G && G.bubble && allWater() ? bubbleY(t) : 0); if (h < 0.05 && (S._lastH || 0) >= 0.05) S.hop--; S._lastH = h; if (S.act === 'happy') pet.rotation.y += dt * 4; } else if (!(G && G.swim)) pet.position.y = lerp(pet.position.y, S.bedY + (S.wY || 0) + (G && G.bubble && allWater() ? bubbleY(t) : 0), 0.3);
     if (G && G.bubble) G.bubble.visible = allWater() && !lineup && !S.alt;
     /* 4.275 riding: a bouncy gallop; flying: up above the furniture, bobbing, banking into turns; landing comes back down smoothly */
     if (S.mount && !S.moving && !S.carry) { S.mwait -= dt; if (S.mwait < 0) mountPick(); }
@@ -1185,6 +1262,7 @@
     stageFrame(dt); formFrame(dt); compFrame(dt);
     if (G) driveModel(dt, S.carry ? 'carry' : S.mount === 'fly' || S.alt > 0.15 ? 'fly' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking && !(S.alt > 0.15));
     if (AV.on) avFrame(dt);
+    if (back && back.world) worldFrame(dt, walking);
     if (MAKER) { furnGroup.visible = false; toyGroup.visible = false; if (AV.holder) AV.holder.position.set(0, 0, 0); if (pet) pet.visible = false; COMPS.forEach(c => { if (c.holder) c.holder.visible = false; }); if (AV.holder && !drag) AV.holder.rotation.y += dt * 0.5; }
     R.render(scene, cam); requestAnimationFrame(frame);
   }
@@ -1271,6 +1349,7 @@
     if (m.toy) S.toy = String(m.toy).replace(/[^a-z_]/g, '');
     if (m.act) act(m.act);
     if (m.fx) fx(m.fx, 4);
+    if (m.swimGo && back && back.world) worldSwim();      /* 4.357 */
     if (m.comp !== undefined) setComps(parseComp(m.comp)); });
   /* speed check: frames in the first seconds after the pet appears; Pawtopia switches to pictures when it is too slow */
   /* 4.274 with a buddy: wait until it has loaded too; if it is slow (under 24 frames a second), the buddy leaves first ('comphide': Pawtopia shows its
@@ -1281,8 +1360,8 @@
     tell({ t: 'perf', fps }); };
   build(WHO[Q.get('pet')] || 'jaq'); if (Q.get('stage')) STAGE = +Q.get('stage'); if (Q.get('form')) FORM = Q.get('form'); size();
   if (EMBED && Q.get('room')) { const [b0, ...its] = Q.get('room').split(';'); setRoom({ bg: b0, items: its.filter(String).map(x => { const a = x.split(','); return [a[0], +a[1], +a[2]]; }) }, (Q.get('toys') || '').split(',').filter(String)); EDIT = Q.has('edit'); }
-  if (MAKER) { try { avLook(JSON.parse(Q.get('avatar') || '{}')); } catch (e) {} avSet(true); }      /* 4.312 */
-  if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
+  if (MAKER || (EMBED && Q.get('avatar'))) { try { avLook(JSON.parse(Q.get('avatar') || '{}')); } catch (e) {} avSet(true); }      /* 4.312; 4.357 the person can also come along to a place */
+  if (EMBED && Q.get('world') === 'swim') setBack('w_swim'); else if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
   act('walk'); setComps(parseComp(Q.get('comp'))); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
   if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }
 })();
