@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.360';
+var VERSION = '4.361';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -5985,7 +5985,7 @@ function fsClean_(r) {
     mix: kind === 'letters' ? fsMixClean_(r.mix) : [], nums: kind === 'numbers' ? fsNumsClean_(r.nums) : [],      // 3.90 Class Problem Spots
     exp: kind === 'numbers' && r.exp && Array.isArray(r.exp.items) ? { words: 0, hand: r.exp.hand === 'left' ? 'left' : 'right', items: r.exp.items.slice(0, 200).filter(function (q) { return Array.isArray(q) && /^[ya]?\d{1,10}$/.test(str_(q[0])); }).map(function (q) { return [str_(q[0]), q[1] ? 1 : 0, clamp(q[2], 0, 120), /^[ya]?\d{1,10}$/.test(str_(q[3])) ? str_(q[3]) : '']; }) }      // 4.15 Sign Numbers to the Camera: [number, signed, seconds, quick mix-up]
       : kind === 'letters' && r.exp && Array.isArray(r.exp.items) ? { words: r.exp.words ? 1 : 0, hand: r.exp.hand === 'left' ? 'left' : 'right', items: r.exp.items.slice(0, 200).filter(function (q) { return Array.isArray(q) && /^[A-Z]$/.test(str_(q[0])); }).map(function (q) { return [str_(q[0]), q[1] ? 1 : 0, clamp(q[2], 0, 120), /^[A-Z]{1,2}$/.test(str_(q[3])) ? str_(q[3]) : '']; }) } : null,      // Fingerspell to the Camera: [letter, signed, seconds, quick mix-up]
-    pacer: kind === 'letters' && r.pacer && typeof r.pacer === 'object' ? { lps: [0.5, 1, 1.5, 2, 3, 4].indexOf(Number(r.pacer.lps)) >= 0 ? Number(r.pacer.lps) : 1, pct: Math.round(clamp(r.pacer.pct, 0, 100)), hits: Math.floor(clamp(r.pacer.hits, 0, 999)), total: Math.floor(clamp(r.pacer.total, 0, 999)), len: str_(r.pacer.len).replace(/[^A-Za-z +]/g, '').slice(0, 30), hand: r.pacer.hand === 'left' ? 'left' : 'right' } : null,      // 4.61 Speed Pacer
+    pacer: kind === 'letters' && r.pacer && typeof r.pacer === 'object' ? { lps: [0.5, 1, 1.5, 2, 3, 4].indexOf(Number(r.pacer.lps)) >= 0 ? Number(r.pacer.lps) : 1, pct: Math.round(clamp(r.pacer.pct, 0, 100)), hits: Math.floor(clamp(r.pacer.hits, 0, 999)), total: Math.floor(clamp(r.pacer.total, 0, 999)), len: str_(r.pacer.len).replace(/[^A-Za-z0-9 +]/g, '').slice(0, 30), hand: r.pacer.hand === 'left' ? 'left' : 'right' } : null,      // 4.61 Speed Pacer
     spd: Array.isArray(r.spd) ? r.spd.slice(0, 300).filter(function (q) { return Array.isArray(q) && Number(q[0]) > 0; }).map(function (q) { return [clamp(q[0], 0.3, 12), q[1] ? 1 : 0]; }) : [],      // 4.89 [letters/sec shown, right first time]
     xprac: kind === 'letters' && r.xprac && typeof r.xprac === 'object' ? (function (x) { var L = Math.floor(clamp(x.letters, 0, 2000)); return { letters: L, words: Math.floor(clamp(x.words, 0, L)), secs: clamp(x.secs, 0, L * 60) }; })(r.xprac) : null,      // 4.89 camera practice: letters signed, words signed, seconds forming the letters
     order: kind === 'letters' ? fsOrderClean_(r.order) : [], orderN: kind === 'letters' ? Math.floor(clamp(r.orderN === undefined || r.orderN === null ? (Array.isArray(r.order) ? r.order.length : 0) : r.orderN, 0, n)) : 0 };

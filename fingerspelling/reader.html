@@ -143,12 +143,9 @@
         <p class="rd-small" style="margin:4px 0 0">1 to 5 on their own face you; 6 to 9 face out. Moving numbers count every way you sign them: both 23s and 25s, 16 to 19 either way, hundreds into a C or a curl. The palm has to face the right way.</p>
       </details>
       <p class="rd-pacerow" id="rd-pacerow"><button class="btn ghost" id="rd-pacebtn" type="button">🎵 Speed Pacer (training)</button> <span class="rd-small">Pick a speed; the words move on at that pace, ready or not. More forgiving than the games.</span></p>
-      <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the words</b></summary>
-        <p class="rd-small" style="margin:4px 0 2px"><b>Word length</b> (shorter is easier)</p>
-        <div class="chips rd-chips" id="rd-lens"></div>
-        <p class="rd-small" style="margin:8px 0 2px"><b>Word lists</b></p>
+      <p class="rd-small" id="rd-maxrow" hidden style="margin:8px 0 4px"><label for="rd-max"><b>Longest word:</b></label> <select id="rd-max" style="font:inherit;padding:4px 8px;border-radius:8px"></select> <span id="rd-count"></span></p>
+      <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the word lists</b></summary>
         <div class="chips rd-chips" id="rd-cats"></div>
-        <p class="rd-small" id="rd-count"></p>
       </details>
       <p class="lab" style="margin:6px 0 0" id="rd-ask">Sign this letter</p>
       <div class="rd-word" id="rd-word" hidden></div>
@@ -183,6 +180,6 @@
 <script src="hand.js?v=150"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=70"></script>
+<script type="module" src="reader.js?v=71"></script>
 </body>
 </html>

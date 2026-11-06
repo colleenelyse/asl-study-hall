@@ -207,21 +207,24 @@ function finishTeach() {      /* SAFEGUARD (Colleen: new learners could teach it
 
 /* ---------- word mode (Colleen): shorter words easier, longer harder; the student chooses the lengths and the word lists; after a word, Show me ---------- */
 let WORD = null, wi = 0, lastD = 1;
-const LENS = [['short', 'Short (3–4)', 3, 4], ['medium', 'Medium (5–6)', 5, 6], ['long', 'Long (7+)', 7, 99]];
+/* Colleen (2026-11-06): the words were always the short ones. The student picks the longest word (3 letters up to that); the old Short / Medium / Long choice carries over. */
+const MAX_LETTERS = 13, MAX_START = 6;
 const CATS = Object.keys(window.FS_WORDS || {});
 const nice = k => k.charAt(0) + k.slice(1).toLowerCase().replace(/_/g, ' ');
-let WS = { lens: ['short'], cats: CATS.slice() }; try { Object.assign(WS, JSON.parse(localStorage.getItem('fs-reader-words') || '{}')); } catch (e) {}
+let WS = { maxLen: MAX_START, cats: CATS.slice() }; try { Object.assign(WS, JSON.parse(localStorage.getItem('fs-reader-words') || '{}')); } catch (e) {}
+if (Array.isArray(WS.lens)) { if (WS.lens.includes('long')) WS.maxLen = MAX_LETTERS; delete WS.lens; }
+WS.maxLen = Math.max(3, Math.min(MAX_LETTERS, +WS.maxLen || MAX_START));
 const saveWS = () => { try { localStorage.setItem('fs-reader-words', JSON.stringify(WS)); } catch (e) {} };
 function pool() {
-  const lens = LENS.filter(l => WS.lens.includes(l[0])), out = new Set();
-  WS.cats.forEach(k => (window.FS_WORDS[k] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && lens.some(l => w.length >= l[2] && w.length <= l[3])) out.add(w); }));
+  const out = new Set();
+  WS.cats.forEach(k => (window.FS_WORDS[k] || []).forEach(w => { w = String(w).toUpperCase(); if (/^[A-Z]+$/.test(w) && w.length >= 3 && w.length <= WS.maxLen) out.add(w); }));
   return [...out];
 }
 function chips(el, items, key) {
   el.innerHTML = items.map(([v, label]) => '<button class="' + (WS[key].includes(v) ? 'on' : '') + '" data-v="' + v + '">' + label + '</button>').join('');
   el.onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = WS[key], i = a.indexOf(b.dataset.v); if (i >= 0) { if (a.length > 1) a.splice(i, 1); } else a.push(b.dataset.v); saveWS(); chips(el, items, key); count(); };
 }
-const count = () => { const n = pool().length; $('#rd-count').textContent = n ? n + ' words' : 'No words fit. Choose another length or list.'; };
+const count = () => { const n = pool().length; $('#rd-count').textContent = n ? n + ' words' : 'No words fit. Choose a longer word or another list.'; };
 /* ---------- NUMBERS THAT MOVE (2026-10-17): 10 and up, read as the hand's key moments in order, from Colleen's locked animations in hand.js.
    Every way she signs a number counts (23 and 25 both ways, 16-19 both ways, hundreds into a C or a curl). Rocking numbers must rock the
    right way: 67 rocks up into the 7, 76 rocks down into the 6. ---------- */
@@ -432,7 +435,7 @@ const shuffleA = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { 
 function ckStart() {
   const words = !!WORD || $('#rd-mode .on').dataset.v === 'words';
   CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: words ? shuffleA(pool()).slice(0, 8) : NUMS ? shuffleA(onlyDigits() ? DIGITS : nPool()).slice(0, 10) : shuffleA(SET) };
-  if (!CK.queue.length) { CK = null; $('#rd-status').textContent = 'No words fit. Choose another length or list.'; return; }
+  if (!CK.queue.length) { CK = null; $('#rd-status').textContent = 'No words fit. Choose a longer word or another list.'; return; }
   document.body.classList.add('checking'); $('#rd-results').hidden = true; $('#rd-checkgo').hidden = true; $('#rd-ckbar').hidden = false; $('#rd-hint').checked = false;
   if (NUMS) SET = CK.queue.slice();
   if (words) { CK.qi = 0; WORD = CK.queue[0]; wi = 0; showWord(); } else { CK.qi = 0; go(SET.indexOf(CK.queue[0])); }
@@ -543,7 +546,7 @@ function showRef(c) {      /* the handshape picture: only when "Show the handsha
   if (on && refHand && refHand.chartImage) { try { $('#rd-ref').src = NUMS ? refHand.numberImage(+c) : refHand.chartImage(c); } catch (e) {} }
 }
 $('#rd-mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b));
-  setNums(b.dataset.v === 'numbers'); const words = b.dataset.v === 'words'; if (!words) $('#rd-def').hidden = true; $('#rd-prompt').hidden = !words; (words ? $('#rd-prompt') : $('.rd-target')).insertBefore($('#rd-word'), words ? null : $('#rd-letter')); $('#rd-letter').hidden = words; $('#rd-ask').hidden = words; $('#rd-word').hidden = !words;      /* the word sits right above the camera (Colleen) */ $('#rd-wordset').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
+  setNums(b.dataset.v === 'numbers'); const words = b.dataset.v === 'words'; if (!words) $('#rd-def').hidden = true; $('#rd-prompt').hidden = !words; (words ? $('#rd-prompt') : $('.rd-target')).insertBefore($('#rd-word'), words ? null : $('#rd-letter')); $('#rd-letter').hidden = words; $('#rd-ask').hidden = words; $('#rd-word').hidden = !words;      /* the word sits right above the camera (Colleen) */ $('#rd-wordset').hidden = !words; $('#rd-maxrow').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
   $('#rd-ask').textContent = words ? 'Spell this word' : 'Sign this ' + UNIT(); ckAbout(); if (words) newWord(); else { WORD = null; go(NUMS ? 0 : cur); } };
 function setNums(on) {      /* letters <-> numbers: what is asked, the templates in the running, the page title */
   { const pr = document.getElementById('rd-pacerow'); if (pr) pr.hidden = !!on; }      /* the Speed Pacer is for letters */
@@ -554,7 +557,8 @@ function setNums(on) {      /* letters <-> numbers: what is asked, the templates
   $('#rd-numset').hidden = !on; drawMix(); const sn = $('#rd-shownum'); if (sn && !on) sn.hidden = true;
   const sm = $('#rd-safe-more'); if (sm) sm.textContent = sm.textContent.replace(on ? /letters/g : /numbers/g, on ? 'numbers' : 'letters');
 }
-chips($('#rd-lens'), LENS.map(l => [l[0], l[1]]), 'lens'); chips($('#rd-cats'), CATS.map(k => [k, nice(k)]), 'cats'); count();
+{ const m = $('#rd-max'); for (let n = 3; n <= MAX_LETTERS; n++) m.add(new Option(n + ' letters', n)); m.value = WS.maxLen; m.onchange = () => { WS.maxLen = +m.value; saveWS(); count(); if (WORD && !GAME && !(CK && CK.on)) newWord(); }; }
+chips($('#rd-cats'), CATS.map(k => [k, nice(k)]), 'cats'); count();
 $('#rd-showme').onclick = showMe; numChips(); { const sn = $('#rd-shownum'); if (sn) sn.onclick = showNum; }
 try { $('#rd-hint').checked = localStorage.getItem('fs-reader-hint') === '1'; } catch (e) {}
 $('#rd-hint').onchange = () => { try { localStorage.setItem('fs-reader-hint', $('#rd-hint').checked ? '1' : '0'); } catch (e) {} showRef(WORD ? WORD[wi] || 'A' : SET[cur]); };
@@ -971,7 +975,7 @@ const PACE_ALIKE = { J: ['J', 'I'], Z: ['Z', 'D', 'G'] };
 /* 4.61 (Colleen: "will I get a report?"): opened from ASL Study, a finished Speed Pacer run is saved to the student's Fingerspelling Stats:
    the speed, the % of letters signed in time, and the word lengths chosen. */
 function paceSend(P, lps, pct) {
-  if (!FROM_STUDY) return; const lens = LENS.filter(l => WS.lens.includes(l[0])).map(l => l[1].replace(/ \(.*\)/, '')).join(' + ') || 'any';
+  if (!FROM_STUDY) return; const lens = 'up to ' + WS.maxLen + ' letter';
   const round = { type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-pacer', name: 'Speed Pacer', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: P.n, right: P.full, secs: Math.round((Date.now() - P.t0) / 1000), speed: 1, lps: null, top: null, letters: P.hits, items: [],
     pacer: { lps, pct, hits: P.hits, total: P.total, len: lens, hand: LEFT ? 'left' : 'right' } };
   camPost(round);      /* 4.89 */
