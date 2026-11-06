@@ -1977,26 +1977,39 @@ async function mtRun(which) {
 }
 const mtPlay = () => mtRun();
 function mtNew() {
-  if (MT.busy) { MT.queued = true; return; } const [ops, max] = mtSet(); MT.cur = mtMake(ops, max); MT.answered = false;
-  const inp = $('#mt-in'); inp.value = ''; inp.className = ''; inp.disabled = false; $('#mt-check').disabled = false; $('#mt-check2').disabled = false; $('#mt-msg').textContent = '';
+  if (MT.busy) { MT.queued = true; return; } const [ops, max] = mtSet(); MT.cur = mtMake(ops, max); MT.answered = false; MT.tried = false;
+  const inp = $('#mt-in'); inp.value = ''; inp.className = ''; inp.disabled = false; $('#mt-check').disabled = false; $('#mt-check2').disabled = false; mtSay('');
   if (!MT.tone) MT.tone = hand.dealTone(); mtBuild(); mtBank();      /* math: one tone for the whole visit */
   $('#mt-picks').innerHTML = S.mtStyle === 'pick' ? mtChoices(MT.cur).map(x => '<button class="btn ghost" data-v="' + x + '">' + x + '</button>').join('') : '';
   $$('#mt-picks button').forEach(b => b.onclick = () => mtAnswer(b.dataset.v, b));
   const R = MT.cur; Promise.all(MT.hands.filter(Boolean).map(H => H.hand.ready)).then(smooth).then(() => { if (MT.cur === R) mtPlay(); });
   if (S.mtStyle === 'write') setTimeout(() => inp.focus(), 50);
 }
+/* Colleen (2026-11-06): the result line is green or red, and a wrong answer can be changed and checked again; the answer only shows when it is right or asked for. Only the first check counts toward the score. */
+function mtSay(text, kind) { const m = $('#mt-msg'); m.textContent = text; m.classList.toggle('mt-good', kind === 'good'); m.classList.toggle('mt-bad', kind === 'bad' || kind === 'retry'); $('#mt-reveal').hidden = kind !== 'retry'; }
+function mtCount(good) { if (MT.tried) return; MT.tried = true; MT.tries++; if (good) MT.right++; $('#mt-score').textContent = MT.right + ' of ' + MT.tries + ' right so far.'; }
+const MT_RETRY = '✖ Not quite. Change your answer and check again.';
+function mtFinish(good) {      /* the problem is over: right, or the answer was asked for */
+  const p = MT.cur, last = $$('#mt-row .mt-tile'), mark = good ? 'ok' : 'no'; MT.answered = true; $('#mt-check2').disabled = true;
+  if (S.mtStyle === 'build') { $$('#mt-row .mt-drop input').forEach(i => { i.disabled = true; }); mtSay((good ? '✔ Right! ' : 'Here is the answer. ') + 'The hand signed ' + MT.spots.map(sp => sp.op ? (sp.op === '=' ? '=' : MT_SYM[sp.op]) : sp.num).join(' ') + '.', good ? 'good' : 'bad'); }
+  else {
+    if (S.mtStyle === 'insert') [1, 3].forEach(k => { last[k].classList.remove('sel', 'ok', 'no'); last[k].classList.add(mark); });
+    if (S.mtStyle === 'solve') { last[4].classList.remove('ok', 'no'); last[4].classList.add(mark); const bx = $('#mt-box'); if (bx) bx.disabled = true; }
+    if (S.mtStyle === 'pick') { const t = last[last.length - 1]; t.classList.remove('ok', 'no'); t.classList.add(mark); t.textContent = p.r; $$('#mt-picks button').forEach(b => { b.disabled = true; if (+b.dataset.v === p.r) { b.classList.remove('no'); b.classList.add('ok'); } }); }
+    else { const inp = $('#mt-in'); inp.classList.remove('ok', 'no'); inp.classList.add(mark); inp.disabled = true; $('#mt-check').disabled = true; }
+    mtSay((good ? '✔ Right! ' : 'Here is the answer. ') + (S.mtStyle === 'insert' ? 'The hand signed ' + mtOrder(p).join(', ') + ': ' + (p.eqFirst ? p.r + ' = ' + p.a + ' ' + MT_SYM[p.op] + ' ' + p.b : p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + ' = ' + p.r) + '.' : 'The hand signed ' + mtText(p) + '.' + (S.mtStyle === 'write' ? '' : ' The answer is ' + p.r + '.')), good ? 'good' : 'bad');
+  }
+  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+}
 function mtAnswer(v, btn) {
   const p = MT.cur; if (!p || MT.answered) return;
-  if (S.mtStyle === 'insert') { const t = $$('#mt-row .mt-tile'); if (t[1].textContent === '' || t[3].textContent === '') { $('#mt-msg').textContent = 'Fill both blanks first.'; return; } v = MT.spots.map((sp, k) => sp.blank ? t[k].textContent : sp.num).join(''); }
+  if (S.mtStyle === 'insert') { const t = $$('#mt-row .mt-tile'); if (t[1].textContent === '' || t[3].textContent === '') { mtSay('Fill both blanks first.'); return; } v = MT.spots.map((sp, k) => sp.blank ? t[k].textContent : sp.num).join(''); }
   if (S.mtStyle === 'solve' && v === undefined) v = ($('#mt-box') || {}).value || '';
   if (S.mtStyle === 'build') {
-    const ds = $$('#mt-row .mt-drop'); if (ds.some(d => d.classList.contains('op') ? d.textContent === '' : d.querySelector('input').value.trim() === '')) { $('#mt-msg').textContent = 'Fill every box first.'; return; }
-    let all = true; MT.answered = true; MT.tries++;
-    ds.forEach((d, k) => { const sp = MT.spots[k], ok = sp.op ? ({ '+': '+', '−': '-', '×': 'x', '÷': '/', '=': '=' })[d.textContent] === sp.op : +d.querySelector('input').value.replace(/[^\d]/g, '') === sp.num; d.classList.add(ok ? 'ok' : 'no'); if (!ok) all = false; if (!sp.op) d.querySelector('input').disabled = true; });
-    if (all) MT.right++; const p2 = MT.cur;
-    $('#mt-msg').textContent = (all ? 'Right! ' : 'Not quite. ') + 'The hand signed ' + MT.spots.map(sp => sp.op ? (sp.op === '=' ? '=' : MT_SYM[sp.op]) : sp.num).join(' ') + '.';
-    $('#mt-score').textContent = MT.right + ' of ' + MT.tries + ' right so far.'; $('#mt-check2').disabled = true;
-    if (all && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } }); return;
+    const ds = $$('#mt-row .mt-drop'); if (ds.some(d => d.classList.contains('op') ? d.textContent === '' : d.querySelector('input').value.trim() === '')) { mtSay('Fill every box first.'); return; }
+    let all = true;
+    ds.forEach((d, k) => { const sp = MT.spots[k], ok = sp.op ? ({ '+': '+', '−': '-', '×': 'x', '÷': '/', '=': '=' })[d.textContent] === sp.op : +d.querySelector('input').value.replace(/[^\d]/g, '') === sp.num; d.classList.remove('ok', 'no'); d.classList.add(ok ? 'ok' : 'no'); if (!ok) all = false; });
+    mtCount(all); if (all) mtFinish(true); else mtSay(MT_RETRY, 'retry'); return;
   }
   if (String(v).trim() === '') return;
   let good;
@@ -2004,13 +2017,13 @@ function mtAnswer(v, btn) {
     good = !!m && +m[1] === p.a && m[2] === p.op && +m[3] === p.b && (m[4] === undefined || m[4] === '' || m[4] === '?' || +m[4] === p.r); }
   else if (S.mtStyle === 'insert') good = mtTrue(v, p);
   else good = +String(v).replace(/[^\d]/g, '') === p.r && /\d/.test(v);
-  MT.answered = true; MT.tries++; if (good) MT.right++;
-  const last = $$('#mt-row .mt-tile'); if (S.mtStyle === 'insert') [1, 3].forEach(k => { last[k].classList.remove('sel'); last[k].classList.add(good ? 'ok' : 'no'); }); if (S.mtStyle === 'solve') { last[4].classList.add(good ? 'ok' : 'no'); const bx = $('#mt-box'); if (bx) bx.disabled = true; } if (S.mtStyle === 'pick' || S.mtStyle === 'solve') { last[last.length - 1].classList.add(good ? 'ok' : 'no'); if (S.mtStyle === 'pick') last[last.length - 1].textContent = p.r; }
-  $('#mt-check2').disabled = true;
-  const inp = $('#mt-in'); if (S.mtStyle === 'pick') { $$('#mt-picks button').forEach(b => { b.disabled = true; if (+b.dataset.v === p.r) b.classList.add('ok'); }); if (!good && btn) btn.classList.add('no'); } else { inp.classList.add(good ? 'ok' : 'no'); inp.disabled = true; $('#mt-check').disabled = true; }
-  $('#mt-msg').textContent = S.mtStyle === 'insert' ? (good ? 'Right! ' : 'Not this time. ') + 'The hand signed ' + mtOrder(p).join(', ') + ': ' + (p.eqFirst ? p.r + ' = ' + p.a + ' ' + MT_SYM[p.op] + ' ' + p.b : p.a + ' ' + MT_SYM[p.op] + ' ' + p.b + ' = ' + p.r) + '.' : (good ? 'Right! ' : 'Not this time. ') + 'The hand signed ' + mtText(p) + '.' + (S.mtStyle === 'write' ? '' : ' The answer is ' + p.r + '.');
-  $('#mt-score').textContent = MT.right + ' of ' + MT.tries + ' right so far.';
-  if (good && window.confetti) window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+  mtCount(good);
+  if (good) return mtFinish(true);
+  const last = $$('#mt-row .mt-tile');
+  if (S.mtStyle === 'insert') [1, 3].forEach(k => last[k].classList.add('no'));
+  if (S.mtStyle === 'solve') last[4].classList.add('no');
+  if (S.mtStyle === 'pick') { if (btn) { btn.classList.add('no'); btn.disabled = true; } } else $('#mt-in').classList.add('no');
+  mtSay(MT_RETRY, 'retry');
 }
 function mtDraw() {
   const lv = S.mtLevel, [ops, max] = mtSet();
@@ -2027,7 +2040,7 @@ function mathInit() {
   $('#mt-go').onclick = mtNew; $('#mt-again').onclick = mtPlay; $('#mt-check').onclick = () => mtAnswer($('#mt-in').value);
   $('#mt-in').onkeydown = e => { if (e.key === 'Enter') mtAnswer($('#mt-in').value); };
   $('#mt-keys').onclick = e => { const b = e.target.closest('button'); if (!b || !b.dataset.k) return;
-    if (S.mtStyle === 'insert') { if (MT.answered) return; const t = $$('#mt-row .mt-tile'), k = MT.sel; if (!t[k] || !MT.spots[k].blank) return; t[k].textContent = b.dataset.k; const other = k === 1 ? 3 : 1; if (t[other].textContent === '') { MT.sel = other; $$('#mt-row .blank').forEach(x => x.classList.toggle('sel', x === t[other])); } return; }
+    if (S.mtStyle === 'insert') { if (MT.answered) return; const t = $$('#mt-row .mt-tile'), k = MT.sel; if (!t[k] || !MT.spots[k].blank) return; t[k].textContent = b.dataset.k; t[k].classList.remove('no'); const other = k === 1 ? 3 : 1; if (t[other].textContent === '') { MT.sel = other; $$('#mt-row .blank').forEach(x => x.classList.toggle('sel', x === t[other])); } return; }
     const i = $('#mt-in'); i.value += b.dataset.k; i.focus(); };
   $('#mt-check2').onclick = () => mtAnswer();
   const mtClear = () => {      /* Colleen: a way to clear selections before checking */
@@ -2036,9 +2049,12 @@ function mathInit() {
     else if (S.mtStyle === 'build') { $$('#mt-row .mt-drop').forEach(d => { if (d.classList.contains('op')) d.textContent = ''; else d.querySelector('input').value = ''; }); MT.pick = null; $$('#mt-bank .chip-op').forEach(c => c.classList.remove('sel')); }
     else if (S.mtStyle === 'solve') { const b = $('#mt-box'); if (b) { b.value = ''; b.focus(); } }
     else { const i = $('#mt-in'); i.value = ''; i.focus(); }
-    $('#mt-msg').textContent = '';
+    $$('#mt-row .no, #mt-in.no').forEach(x => x.classList.remove('no')); mtSay('');
   };
   $('#mt-clear').onclick = mtClear; $('#mt-clear2').onclick = mtClear;
+  $('#mt-reveal').onclick = () => { if (MT.cur && !MT.answered) mtFinish(false); };
+  const mtEdited = e => { const x = e.target.closest('.mt-drop, .mt-tile') || e.target; x.classList.remove('no'); e.target.classList.remove('no'); };      /* changing a wrong answer takes the red off it */
+  $('#mt-row').addEventListener('input', mtEdited); $('#mt-in').addEventListener('input', mtEdited);
   $('#mt-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
 }
 
