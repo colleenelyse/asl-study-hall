@@ -7,6 +7,7 @@
 <style>
   body.embed .wrap > :not(.stage), body.embed #cmp, body.embed #say { display: none !important } body.embed .wrap { padding: 0; max-width: none }
   body.embed #view { position: fixed; inset: 0; aspect-ratio: auto; border-radius: 0; box-shadow: none }
+  body.pop, body.pop #view { background: transparent }
   body { margin: 0; background: #fff1f8; font-family: 'Fredoka', system-ui, sans-serif; color: #3b2a5c }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px }
   h1 { margin: 0; font-size: 28px; color: #fff; text-shadow: 0 3px 0 #ff5fa2 }
@@ -53,7 +54,8 @@
   const view = document.getElementById('view'), say = t => { document.getElementById('say').textContent = t; };
   let back = null, pet = null, P = null;      // the painted backdrop in use (null = the plain 3D room)
   const col = c => new THREE.Color(c).convertSRGBToLinear();      // colors are picked as normal web colors
-  const Q = new URLSearchParams(location.search), EMBED = Q.has('embed'), MAKER = Q.get('maker') === '1'; if (EMBED) document.body.classList.add('embed');      /* MAKER (4.312): the avatar maker shows only the person, turning slowly */
+  const Q = new URLSearchParams(location.search), EMBED = Q.has('embed'), MAKER = Q.get('maker') === '1', POP = Q.get('pop') === '1'; if (EMBED) document.body.classList.add('embed'); if (POP) document.body.classList.add('pop');      /* POP (4.362): just the pet on nothing, for a popup */
+       /* MAKER (4.312): the avatar maker shows only the person, turning slowly */
   const tell = m => { try { parent.postMessage(Object.assign({ pt3d: 1 }, m), '*'); } catch (e) {} };      /* to Pawtopia */
   let R; try { R = new THREE.WebGLRenderer({ antialias: !EMBED || (devicePixelRatio || 1) < 1.5, alpha: true }); } catch (e) { tell({ t: 'nogl' }); throw e; } R.setPixelRatio(EMBED ? Math.min(devicePixelRatio || 1, 1) : Math.min(devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
   R.outputEncoding = THREE.sRGBEncoding; view.appendChild(R.domElement);
@@ -445,7 +447,7 @@
   const HOME_ACTS = { walk: 1, stay: 1, idle: 1, sit: 1, wave: 1, happy: 1, sleep: 1, huh: 1, bath: 1 };      /* the behaviors a swimmer does in its pool */
   const allWater = () => back === BACK.bg_underwater;
   function swimFrame(dt, walking) {      /* each frame for a swimmer: the pool, coming home, how high it floats, bubbles and splashes */
-    const t = S.t, home = HOME_ACTS[S.act] && !S.carry, sea = allWater() || worldWet(); pool.visible = !sea && !lineup && !!pet; if (sea) S.inPool = false;
+    const t = S.t, home = HOME_ACTS[S.act] && !S.carry, sea = allWater() || worldWet() || POP; pool.visible = !sea && !lineup && !!pet; if (sea) S.inPool = false;
     if (!sea) { pool.position.copy(S.pool); const d = pet.position.clone().setY(0).distanceTo(S.pool), inside = d < pool.userData.R * 0.75;
       if (home && !inside && !S.moving) { S.target.copy(S.pool); S.moving = true; }      /* done out there: swim home */
       if (inside !== S.inPool) { S.inPool = inside; puff('splash', 2, 0.4); }
@@ -964,7 +966,7 @@
     S.target.copy(clampArea(best || new THREE.Vector3())); if (S.mount === 'ride') outOfPools(S.target); S.moving = true; };
   const flyH = () => { const hs = furnGroup.children.filter(o => o.userData.furn).map(o => FURN_H[o.userData.furn] || 0.6); const A = AREA(), back0 = Math.max(0, Math.min(1, (A[3] - pet.position.z) / ((A[3] - A[2]) || 1))); return Math.max(0.62, Math.min(0.92, Math.max(0, ...hs) * 0.7 + 0.15)) - back0 * 0.12; };      /* lower toward the back of the room, so the wings stay in the picture */
   window.__mount = () => ({ mount: S.mount || '', alt: +(S.alt || 0).toFixed(2), x: +pet.position.x.toFixed(2), y: +pet.position.y.toFixed(2), z: +pet.position.z.toFixed(2), moving: S.moving, area: AREA(), saddle: !!(OUTFITS.gear_saddle && OUTFITS.gear_saddle.visible), wings: !!(OUTFITS.gear_wings && OUTFITS.gear_wings.visible) });
-  const pick = () => { if (back && back.world && (worldWet() || !(G && G.swim))) return worldPick(); if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
+  const pick = () => { if (POP) return; if (back && back.world && (worldWet() || !(G && G.swim))) return worldPick(); if (G && G.swim && swimPick()) return; const a = AREA(), ang = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.1; S.target.set(pet.position.x + Math.cos(ang) * r, 0, pet.position.z + Math.sin(ang) * r); clampArea(S.target); outOfPools(S.target); S.moving = true; };
   const outOfPools = v => { if (allWater()) return; COMPS.forEach(c => { if (!c.poolPos || c.gone) return; const dx = v.x - c.poolPos.x, dz = v.z - c.poolPos.z, d = Math.hypot(dx, dz) || 1e-3, R = c.pool.userData.R + 0.4; if (d < R) { v.x = c.poolPos.x + dx / d * R; v.z = c.poolPos.z + dz / d * R; clampArea(v); } }); };      /* 4.274 the main pet's strolls stay out of a buddy's pool */      // a short stroll to somewhere nearby
   const fetchT = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); fetchT.scale.setScalar(0.3); fetchT.visible = false; scene.add(fetchT);
   const throwBall = () => { const a = AREA(); ball.position.set(a[0] + Math.random() * (a[1] - a[0]), 0.15, a[2] + Math.random() * (a[3] - a[2])); S.target.copy(ball.position).setY(0); S.moving = true; };
@@ -1365,6 +1367,8 @@
     if (G) driveModel(dt, S.carry ? 'carry' : S.mount === 'fly' || S.alt > 0.15 ? 'fly' : S.pose === 'sleep' ? 'sleep' : S.act === 'wave' ? 'wave' : S.act === 'beg' ? 'beg' : S.pose === 'sit' ? 'sit' : S.pose === 'eat' ? 'eat' : S.act === 'happy' && S.hop > 0 ? 'happy' : S.act === 'play' && !walking ? 'play' : walking ? 'walk' : 'idle', walking && !(S.alt > 0.15));
     if (AV.on) avFrame(dt);
     if (back && back.world) worldFrame(dt, walking);
+    if (POP && pet) { furnGroup.visible = false; toyGroup.visible = false; roomBits.forEach(o => { o.visible = false; }); shadowFloor.visible = true; scene.background = null; S.moving = false; pet.position.x = 0; pet.position.z = 0;
+      S.wNext = (S.wNext || 0) - dt; if (G && S.wNext < 0) { const sz = new THREE.Box3().setFromObject(pet).getSize(new THREE.Vector3()); S.wH = sz.y || 0.5; S.wW = Math.max(sz.x, sz.z, sz.y) || 0.5; S.wNext = 1; } const H = S.wH || 0.5, W = S.wW || 0.5, d = W * 1.75 + 0.1; cam.position.set(0, H * 0.7 + W * 0.15, d); cam.lookAt(0, H * 0.5, 0); if (S.act === 'stay' || S.pose === 'sit') pet.rotation.y = 0.3; }
     if (MAKER) { furnGroup.visible = false; toyGroup.visible = false; if (AV.holder) AV.holder.position.set(0, 0, 0); if (pet) pet.visible = false; COMPS.forEach(c => { if (c.holder) c.holder.visible = false; }); if (AV.holder && !drag) AV.holder.rotation.y += dt * 0.5; }
     R.render(scene, cam); requestAnimationFrame(frame);
   }
@@ -1397,7 +1401,7 @@
     if (d.moved) return; at(e);
     if (d.pet) { hearts(3); if (S.pose !== 'sleep') { S.hop = Math.max(S.hop, 1); P.tongue.visible = true; setTimeout(() => { if (S.act !== 'happy') P.tongue.visible = false; }, 1500); } else say('Shh… ' + P.look.name + ' is sleeping. 💤'); return; }
     const v0 = floorPt(); if (v0 && S.mount) { clampArea(v0); if (S.mount === 'ride') outOfPools(v0); S.target.copy(v0); S.moving = true; S.steer = true; puff('star_burst', 1, 0.3); say(S.mount === 'fly' ? 'Flying over there!' : 'This way, ' + P.look.name + '!'); return; }      /* 4.275 steering a ride or flight */
-    if (MAKER) return;
+    if (MAKER || POP) return;
     if (AV.on && AV.holder) { const v = floorPt(); if (v) { avGo(v); puff('star_burst', 1, 0.25); } return; }      /* 4.312 with a person: the person walks there and the pet follows */
     const v = floorPt(); if (v && S.pose !== 'sleep') { clampArea(v); S.act = 'go'; S.pose = 'stand'; S.target.copy(v); S.moving = true; bowl.visible = false; ball.visible = false; document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('on')); say(P.look.name + ' is on the way!'); } });
   document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
@@ -1464,7 +1468,7 @@
   if (EMBED && Q.get('room')) { const [b0, ...its] = Q.get('room').split(';'); setRoom({ bg: b0, items: its.filter(String).map(x => { const a = x.split(','); return [a[0], +a[1], +a[2]]; }) }, (Q.get('toys') || '').split(',').filter(String)); EDIT = Q.has('edit'); }
   if (MAKER || (EMBED && Q.get('avatar'))) { try { avLook(JSON.parse(Q.get('avatar') || '{}')); } catch (e) {} avSet(true); }      /* 4.312; 4.357 the person can also come along to a place */
   if (EMBED && BACK['w_' + Q.get('world')]) setBack('w_' + Q.get('world')); else if (EMBED && MINE) setBack('bg_' + MINE.bg); else if (EMBED && Q.get('bg') && BACK['bg_' + Q.get('bg')]) setBack('bg_' + Q.get('bg')); else placeFurniture('plain'); bed.visible = false;
-  act('walk'); setComps(parseComp(Q.get('comp'))); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
+  { const a0 = POP ? (Q.get('act') || 'stay') : 'walk'; act(a0); if (POP && a0 !== 'stay') setInterval(() => act(a0), 3500); } setComps(parseComp(Q.get('comp'))); frame(); { const w0 = WHO[Q.get('pet')] || 'jaq'; document.querySelectorAll('[data-who]').forEach(x => x.classList.toggle('on', x.dataset.who === w0)); loadFor(w0); }
   if (EMBED) { requestAnimationFrame(perfTick); tell({ t: 'ready' }); }
 })();
 </script>
