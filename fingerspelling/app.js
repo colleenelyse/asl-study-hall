@@ -1532,7 +1532,7 @@ document.addEventListener('input', e => { if (e.target && e.target.id === 'cq-sp
 
 /* ---------- THE SIGNER (2026-10-18): ASL Study's Case Closed puts this page (#/signer) in a frame on each student's screen and on the
    projector. It shows only the hand. ASL Study sends { type: 'fsp-sign', id, item, speed } and gets { type: 'fsp-signed', id } back when
-   the hand is done. item: { kind: 'spell', text } | { kind: 'day', code, thu } | { kind: 'season', code } | { kind: 'time', h, m } | { kind: 'number', n } | { kind: 'digits', ds }. ---------- */
+   the hand is done. item: { kind: 'spell', text } | { kind: 'math', a, op, b } (2026-11-09) | { kind: 'day', code, thu } | { kind: 'season', code } | { kind: 'time', h, m } | { kind: 'number', n } | { kind: 'digits', ds }. ---------- */
 const SIGNER = { busy: false };
 async function signerSign(d) {
   await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
@@ -1547,7 +1547,10 @@ async function signerSign(d) {
     numSign: n => n < 100 ? hand.sign(n, { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) : hand.signParts(bdBlocksFor(n), { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) });      /* Breach: one set at its listing finger */      /* the password game: five listed sets */
   else if (it.kind === 'age') spelling = (async () => { brow('face'); await new Promise(r => setTimeout(r, 400)); await hand.signAge(+it.n, { per }); })();      /* Mind Your Manners: a doll's age, at the chin */
   else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
-  else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag });
+  else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag, plain: !!it.plain });      /* plain: the Summative Stacker's wrong way (hand.js) */
+  else if (it.kind === 'math') spelling = (async () => { const nm = n => n < 100 ? hand.sign(n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag }) : hand.signParts(bdBlocksFor(n), { per });      /* the Summative Stacker (2026-11-09): a problem as in Math in ASL */
+    const op = x => hand.signOp(x, { per, wide: true });      /* both hands in the picture for the operation */
+    await nm(+it.a); if (stopFlag) return; await op(String(it.op)); if (stopFlag) return; await nm(+it.b); if (stopFlag) return; await op('='); })();
   else if (it.kind === 'digits') spelling = (async () => { const ds = (it.ds || []).map(Number); for (let i = 0; i < ds.length; i++) { if (stopFlag) break; await hand.sign(ds[i], { per, series: i > 0, stay: i < ds.length - 1, teens: teensFor(), form: formFor(), stop: () => stopFlag }); } })();      /* a padlock code: one digit at a time (escape room) */
   else spelling = hand.spell(String(it.text || '').toUpperCase(), { speed: () => sp, stop: () => stopFlag });
   try { await spelling; } finally { spelling = null; brow(''); try { window.parent.postMessage({ type: 'fsp-signed', id: d.id }, '*'); } catch (e) {} }

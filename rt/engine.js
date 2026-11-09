@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.367';
+var VERSION = '4.374';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1591,7 +1591,7 @@ function doGet() {
 }
 
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['convo', 'switch', 'family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['chal', 'convo', 'switch', 'family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -1625,7 +1625,7 @@ function api_bootstrap(auth) {
   if (o.Bests && o.Bests.inbox && o.Bests.inbox.length) out.gifts = out.gifts.concat(lock_(function () { var o2 = readStu_(sh, row), box = takeInbox_(o2); if (box.length) writeStu_(sh, o2); return box; }));     // points the teacher awarded since the last visit
   out.pawGift = todayPaw_(st, id.key);      /* 4.286 the Today card */
   try { out.exam = exBoot_(id.key, o.Class); } catch (e) { out.exam = null; }
-  try { out.fbNote = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (out.teacher) out.fbNew = fbNewCount_(); } catch (e) { out.fbNote = null; }      /* 4.300 Student feedback (Feedback.gs): fixed / won't fix messages; the teacher's New count */      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
+  try { out.fbNote = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (out.teacher) { out.fbNew = fbNewCount_(); out.gifBad = gifBrokenCount_(); } } catch (e) { out.fbNote = null; } try { if (typeof chBoot_ === 'function') { if (out.teacher) out.chNew = chTeacherBoot_(); else out.chal = chBoot_(st, o); } } catch (e) {}      /* 4.371 Mastery Challenge */      /* 4.300 Student feedback (Feedback.gs): fixed / won't fix messages; the teacher's New count */      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
   if (!out.teacher) seenMark_(id.key);
   CacheService.getScriptCache().put('at:' + id.key, String(Date.now()), 21600);
   return wire_(out);
@@ -1814,7 +1814,8 @@ function api_submitRound(auth, r) {
         if (lists.length) ticket(lists.length === 1 ? 'List ' + lists[0].s + ' mastered' : lists.length + ' lists mastered', lists.length * S.tList);
         if (units.length) ticket(units.length === 1 ? units[0].u + ' mastered' : units.length + ' units mastered', units.length * S.tUnit);
       }
-      try { if (typeof masteryLogRound_ === 'function') masteryLogRound_(st, o, data, delta); } catch (e) {}      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
+      try { if (typeof masteryLogRound_ === 'function') masteryLogRound_(st, o, data, delta); } catch (e) {}
+      try { if (typeof chRound_ === 'function') chRound_(st, o, delta, data); } catch (e) {}      /* 4.371 Mastery Challenge practice days (Challenge.gs) */      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
     }
 
     // XP (never spent, drives letters) and Tokens (play currency). No daily limit unless the teacher sets one for XP.
@@ -4958,6 +4959,7 @@ function buildMenu_() {
     .addItem('Add a unit', 'addUnit')
     .addItem('Build word list from GIF folder (this tab)', 'buildListFromFolder')
     .addItem('Match GIFs to words (this tab)', 'matchGifs')
+    .addItem('Check GIF links (every unit)', 'checkGifLinks')
     .addItem('Tidy word list from file names (this tab)', 'tidyWordList')
     .addItem('Choose our class\u2019s sign versions (this tab)', 'chooseSignVersions')
     .addItem('Make cards from a spreadsheet', 'makeCards')
@@ -6457,6 +6459,7 @@ function backupNow_(why) {
 }
 /** The weekly trigger calls this; a backup that fails emails the teacher. */
 function weeklyBackup() {
+  try { gifCheck_(); } catch (e) {}      /* 4.370 the GIF link check, every week */
   try { backupNow_('weekly'); }
   catch (e) { try { MailApp.sendEmail(Session.getEffectiveUser().getEmail(), 'ASL Study: the weekly backup did not work', 'The weekly copy of your ASL Study sheet could not be made: ' + String(e && e.message || e) + '\n\nOpen the sheet and choose ASL Study > Back up this sheet now.'); } catch (e2) {} }
 }
@@ -7924,8 +7927,125 @@ function api_teacherAlerts(auth) {
   if (rsh && rsh.getLastRow() >= 2) rsh.getRange(2, 8, rsh.getLastRow() - 1, 1).getValues().forEach(function (r) { var s = prizeStatus_(r[0]); if (s === 'Available' || s === 'Waiting for approval' || s === 'Unlocked') out.prizes++; });
   if (psh && psh.getLastRow() >= 2) psh.getRange(2, 1, psh.getLastRow() - 1, 5).getValues().forEach(function (r) { if (str_(r[0]) && !/^(approved|not|reject)/i.test(str_(r[4]))) out.pics++; });
   try { out.fb = typeof fbNewCount_ === 'function' ? fbNewCount_() : 0; } catch (e) { out.fb = 0; }      /* 4.300 New student feedback */
+  try { out.gifs = gifBrokenCount_(); } catch (e) { out.gifs = 0; }      /* 4.370 broken GIF links at the last check */
   return out;
 }
+/* ───── 4.370 GIF link checker (Colleen 2026-11-09, after the 74 Unit 5.2 GIFs broke: "how can we prevent this in the future?" … "do all of it") ─────
+   1. ASL Study › Check GIF links: looks up every unit row's GIF in Drive. It only reports: broken rows get a red Match status cell, and the GIF Check tab
+      lists each one with the same-named file in that unit's folder when there is exactly one. A GIF in Drive's Trash counts as broken: it still shows
+      until Drive empties the Trash 30 days later, which is how the 5.2 GIFs broke without anyone noticing.
+   2. Fix these (in the same window): only rows on the list, only when the row still has the broken GIF and the new file is really there. It changes the
+      GIF ID and Match status cells of those rows and nothing else; it never adds or removes rows. "Match GIFs to words" is not used for this: it groups
+      numbered files (birthday 1, birthday 2) as versions of one sign.
+   3. The weekly backup (Sunday night) runs the check too, and Home shows the teacher how many are broken.
+   4. When a GIF does not load for a student, the app adds one line a day for that GIF to Student Feedback: the sign and unit, never who saw it, and
+      only when Drive confirms the file is missing or in the Trash (a school web filter blocking a GIF is not her problem to fix). */
+var GIFCHK_TAB = 'GIF Check', GIFCHK_HEAD = ['Unit', 'Row', 'Sign', 'GIF file', 'Problem', 'Same-named file in the unit folder', 'Old GIF ID', 'New GIF ID', 'Checked'];
+var GIFCHK_RED = '#f8d0d0', GIFCHK_GREEN = '#d9f2d9', GIFCHK_ID = /^[\w-]{20,}$/;
+/** A unit tab's columns found by header name, read-only (unitCols_ would add missing headers). */
+function gifCols_(sh) {
+  var head = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(function (h) { return str_(h).toLowerCase(); });
+  var at = function (names) { for (var i = 0; i < names.length; i++) { var k = head.indexOf(names[i].toLowerCase()); if (k >= 0) return k + 1; } return 0; };
+  return { en: at(UNIT_NAMES[1]), file: at(UNIT_NAMES[3]), id: at(UNIT_NAMES[4]), st: at(UNIT_NAMES[5]) };
+}
+/** 'gone' (no such file, or no access), 'trash' (in Drive's Trash), or '' (fine). */
+function gifFileState_(id) {
+  try { var f = DriveApp.getFileById(id); return f.isTrashed && f.isTrashed() ? 'trash' : ''; } catch (e) { return 'gone'; }
+}
+/** The unit tabs on the Units tab: [{ tab, folder }]. */
+function gifUnits_() {
+  var ush = ss_().getSheetByName(TABS.units); if (!ush) return [];
+  return rows_(ush, 2, 4).filter(function (r) { return str_(r[0]) && ss_().getSheetByName(str_(r[0])); }).map(function (r) { return { tab: str_(r[0]), folder: str_(r[3]) }; });
+}
+/** Checks every unit row. Writes the GIF Check tab and colors broken Match status cells red (and a red one that works again green). Returns { checked, broken: [...] }. */
+function gifCheck_() {
+  var out = { checked: 0, broken: [], when: new Date() };
+  gifUnits_().forEach(function (u) {
+    var sh = ss_().getSheetByName(u.tab), C = gifCols_(sh), last = sh.getLastRow(); if (!C.id || last < 2) return;
+    var ids = sh.getRange(2, C.id, last - 1, 1).getDisplayValues(), en = C.en ? sh.getRange(2, C.en, last - 1, 1).getDisplayValues() : [], files = C.file ? sh.getRange(2, C.file, last - 1, 1).getDisplayValues() : [];
+    var bg = C.st ? sh.getRange(2, C.st, last - 1, 1).getBackgrounds() : [], byName = null;
+    ids.forEach(function (r, i) {
+      var id = str_(r[0]); if (!GIFCHK_ID.test(id)) return;
+      out.checked++;
+      var why = gifFileState_(id), row = i + 2;
+      if (!why) { if (C.st && String(bg[i][0]).toLowerCase() === GIFCHK_RED) sh.getRange(row, C.st).setBackground(GIFCHK_GREEN); return; }
+      if (byName === null) {      // the unit folder's files by name, only when something in this unit is broken
+        byName = {};
+        try { folderIds_(u.folder).forEach(function (fid) { var it = DriveApp.getFolderById(fid).getFiles(); while (it.hasNext()) { var f = it.next(); if (f.isTrashed && f.isTrashed()) continue; var k = str_(f.getName()).toLowerCase(); (byName[k] = byName[k] || []).push(f.getId()); } }); } catch (e) {}
+      }
+      var name = str_(files[i] && files[i][0]), hits = (byName[name.toLowerCase()] || []).filter(function (x) { return x !== id; });
+      out.broken.push({ tab: u.tab, row: row, en: str_(en[i] && en[i][0]), file: name, why: why, old: id, fix: hits.length === 1 ? hits[0] : '', many: hits.length > 1 });
+      if (C.st) sh.getRange(row, C.st).setBackground(GIFCHK_RED);
+    });
+  });
+  var t = ensureTab_(GIFCHK_TAB, GIFCHK_HEAD, [110, 50, 180, 220, 230, 230, 120, 120, 140]).sheet;
+  if (t.getLastRow() > 1) t.getRange(2, 1, t.getLastRow() - 1, GIFCHK_HEAD.length).clearContent();
+  var lines = out.broken.map(function (b) { return [b.tab, b.row, b.en, b.file, b.why === 'trash' ? 'In Drive’s Trash: stops working when the Trash is emptied' : 'The file is gone from Drive',
+    b.fix ? 'Yes: ' + b.file : b.many ? 'More than one: choose by hand' : 'No', b.old, b.fix, out.when]; });
+  if (!lines.length) lines = [['All ' + out.checked + ' GIF links work.', '', '', '', '', '', '', '', out.when]];
+  t.getRange(2, 1, lines.length, GIFCHK_HEAD.length).setValues(lines);
+  PropertiesService.getDocumentProperties().setProperty('gifCheck', JSON.stringify({ t: out.when.getTime(), n: out.broken.length, c: out.checked }));
+  return out;
+}
+/** How many GIF links the last check found broken (Home shows it to the teacher). */
+function gifBrokenCount_() { var p = parse_(PropertiesService.getDocumentProperties().getProperty('gifCheck'), {}); return Number(p.n) || 0; }
+/** Menu: ASL Study › Check GIF links. */
+function checkGifLinks() {
+  requireTeacher_();
+  var r = gifCheck_();
+  function esc(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  var canFix = r.broken.filter(function (b) { return b.fix; });
+  var html = '<style>body{font:14px Arial,sans-serif;margin:16px;color:#202124}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid #e0e0e0;padding:5px;text-align:left;vertical-align:top}' +
+    '.ok{background:#e6f4ea;border-radius:8px;padding:12px}.bad{background:#fce8e6;border-radius:8px;padding:12px}#go{margin-top:14px;padding:12px 20px;font-size:15px;font-weight:bold;border:0;border-radius:8px;background:#1a73e8;color:#fff;cursor:pointer;width:100%}#go:disabled{opacity:.5}#out{margin-top:10px;white-space:pre-wrap}</style>';
+  if (!r.broken.length) html += '<div class="ok"><b>All ' + r.checked + ' GIF links work.</b> Nothing was changed.</div>';
+  else {
+    html += '<div class="bad"><b>' + r.broken.length + ' of ' + r.checked + ' GIF links are broken.</b> Their Match status cells are red, and the list is on the GIF Check tab. Nothing else was changed.</div>' +
+      '<table><tr><th>Unit</th><th>Row</th><th>Sign</th><th>Problem</th><th>What Fix these does</th></tr>' + r.broken.map(function (b) {
+        return '<tr><td>' + esc(b.tab) + '</td><td>' + b.row + '</td><td>' + esc(b.en) + '</td><td>' + (b.why === 'trash' ? 'In Drive’s Trash' : 'Gone from Drive') + '</td><td>' +
+          (b.fix ? 'Links it to <b>' + esc(b.file) + '</b> in the unit folder' : b.many ? 'Nothing: more than one file has that name' : 'Nothing: no file with that name in the unit folder') + '</td></tr>'; }).join('') + '</table>';
+    if (canFix.length) html += '<button id="go">Fix these ' + canFix.length + '</button><div id="out"></div><script>' + DIALOG_ERR_JS + ';var G=document.getElementById("go"),O=document.getElementById("out");' +
+      'G.onclick=function(){G.disabled=true;O.textContent="Fixing…";google.script.run.withSuccessHandler(function(m){O.textContent=m;G.textContent="Done"}).withFailureHandler(function(e){O.textContent="Could not fix: "+errMsg(e);G.disabled=false}).gifRelink()}' + '<\/script>';
+    else html += '<p>None of these can be fixed automatically. Add the missing GIFs to the unit folder, then check again.</p>';
+  }
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(760).setHeight(560), 'GIF links');
+}
+/** Fix these: relinks the rows on the GIF Check tab that have a New GIF ID, only when the row still holds the broken old ID and the new file is fine. */
+function gifRelink() {
+  requireTeacher_();
+  var t = ss_().getSheetByName(GIFCHK_TAB); if (!t || t.getLastRow() < 2) return 'Run Check GIF links first.';
+  var list = t.getRange(2, 1, t.getLastRow() - 1, GIFCHK_HEAD.length).getValues(), n = 0, skipped = 0;
+  lock_(function () {
+    list.forEach(function (r) {
+      var tab = str_(r[0]), row = Number(r[1]), old = str_(r[6]), nu = str_(r[7]); if (!nu || !row) return;
+      var sh = ss_().getSheetByName(tab), C = sh ? gifCols_(sh) : {};
+      if (!sh || !C.id || str_(sh.getRange(row, C.id).getDisplayValues()[0][0]) !== old || !gifFileState_(old) || gifFileState_(nu)) { skipped++; return; }
+      sh.getRange(row, C.id).setValue(nu);
+      if (C.st) sh.getRange(row, C.st).setValue('Matched').setBackground(GIFCHK_GREEN);
+      n++;
+    });
+  });
+  if (n) { cacheDrop_('static'); STATIC_ = null; }
+  var again = gifCheck_();
+  return n + ' fixed.' + (skipped ? ' ' + skipped + ' skipped because the row or the file changed since the check.' : '') + (again.broken.length ? ' ' + again.broken.length + ' still broken: see the GIF Check tab.' : ' Every GIF link works now.');
+}
+/** The app: a GIF did not load for a student. One Student Feedback line a day per GIF, with the sign and unit only, and only when Drive says the file is missing. */
+function api_gifMiss(auth, gid) {
+  if (!who_(auth)) return { ok: false };
+  gid = str_(gid); if (!GIFCHK_ID.test(gid)) return { ok: false };
+  var card = null; static_().cards.some(function (c) { if (c[5] === gid || (c[7] || []).some(function (g) { return g[0] === gid; })) { card = c; return true; } return false; });
+  if (!card) return { ok: false };
+  var P = PropertiesService.getDocumentProperties(), k = 'gifMiss:' + gid, today = dayStr_();
+  if (P.getProperty(k) === today) return { ok: true, known: true };
+  P.setProperty(k, today);
+  var why = gifFileState_(gid); if (!why) return { ok: true, fine: true };
+  return lock_(function () {
+    var sh = fbTab_(), fid = 'F' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase();
+    var text = 'The GIF for "' + str_(card[3]) + '" (' + str_(card[1]) + ') did not load for a student: ' + (why === 'trash' ? 'the file is in Drive’s Trash.' : 'the file is gone from Drive.') + ' Open the sheet and choose ASL Study › Check GIF links.';
+    sh.getRange(sh.getLastRow() + 1, 1, 1, FB_HEAD.length).setValues([[fid, new Date(), '', 'ASL Study (automatic)', '', FB_TYPES[0][1] + ' ' + FB_TYPES[0][2], 'GIF not loading', JSON.stringify({ sign: card[0], en: str_(card[3]), unit: str_(card[1]) }), text, 'New', '', '', '']]);
+    return { ok: true, logged: true };
+  });
+}
+
 /* 4.73 (Colleen): students can flag a sign that looks wrong; reports go to the Sign Reports tab, and the teacher's dashboard badge counts the ones not yet fixed */
 var REPORT_TAB = 'Sign Reports', REPORT_HEAD = ['When', 'Student', 'Class', 'Unit', 'Word', 'Card ID', 'GIF', 'What is wrong', 'Note', 'Fixed?'];
 var REPORT_WHY = { gif: 'The GIF shows a different sign', word: 'The English word is wrong or misspelled', load: 'The GIF does not load', other: 'Something else' };
@@ -11915,6 +12035,7 @@ function makeLoginCodes() {
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
+
 /* The built-in word descriptions (made by dev/make-defs-gs.py from fingerspelling-site/defs.js; do not edit here).
    Set up or repair copies them into the Description column of the word tabs, only where a cell is empty. */
 var FS_DEFS_ = {"kiwi":"A kiwi is a small, fuzzy brown fruit with bright green flesh inside.",
@@ -14808,4 +14929,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };

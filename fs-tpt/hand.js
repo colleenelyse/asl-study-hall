@@ -710,6 +710,7 @@ async function sign(n, o) {
   let use = (o.teens !== 'twist' && N.ten) ? N.ten : N;      /* 10 + number unless the twist is asked for (Colleen: 10 + number is the default) */
   if (N.alt && (o.form === 'alt' || (o.form !== 'main' && Math.random() < 0.5))) use = N.alt;      /* 23, 25: either way, mixed unless asked (Colleen) */
   if (N.hund) use = N.hund[o.hund === 'c' || o.hund === 'curl' ? o.hund : (Math.random() < 0.5 ? 'c' : 'curl')];      /* HUNDRED: the C or the curl, mixed unless asked */
+  if (o.plain && n >= 20 && n <= 99 && n % 10 && n % 11) { const a = Math.floor(n / 10), b = n % 10; use = { start: DIGIT_OUT(a), steps: [[DIGIT_OUT(a), 0.3], [Object.assign({}, DIGIT_OUT(b), { p: [SLIDE20 * 1.5, 0] }), 0.55]] }; }      /* 2026-11-09 a WRONG way, only for the Summative Stacker's wrong choices (Colleen): the two digits one after the other, so 68 without the rock and 24 with a 2 instead of the L. The locked forms above are unchanged. */
   if (o.series && n >= 1 && n <= 5) use = { start: DIGIT_OUT(n), steps: [] };      /* inside a longer number, 1-5 face palm out (Colleen) */
   if (o.onLetter) o.onLetter(String(n));
   if (o.series && !o.enter) {      /* the same handshape twice in a row (the 7 of 17 and the 7 of 76 in 1776, Colleen): the touching fingers open a little and tap closed again */
@@ -1088,6 +1089,7 @@ async function signTime(h, m, o) {
 async function signOp(op, o) {
   o = o || {}; const per = o.per || 500, wait = ms => new Promise(r => setTimeout(r, ms));
   if (!helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) await wait(100); }
+  if (o.wide) wideCam(true);      /* 2026-11-09 the Summative Stacker's one-hand frame: widen so both hands are in the picture */
   if (o.onLetter) o.onLetter(op);
   if (op === '+') {
     helperMove(PLUS_L, per * 0.5); moveTo(PLUS_BACK, per * 0.5); await wait(per * 0.6);
