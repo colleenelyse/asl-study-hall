@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.374';
+var VERSION = '4.398';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -598,7 +598,7 @@ var FEATURE_ROWS = [
 var PRACTICE_KEYS = ['review', 'learn', 'flashcards', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'mobsolo', 'test'];
 function feat_(st, k) { var f = (st || static_()).settings.feat; return !f || f[k] !== false; }
 function needFeat_(k, what) { if (!feat_(null, k)) throw new Error('Your teacher has turned off ' + what + '.'); }
-var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast', 'munch', 'wagon', 'pawtopia'];      // 4.191 Neon Flying Toasters; 4.193 Sign Munchers      // 4.74: the Silent House saves its answers like a round
+var GAMES = ['flashcards', 'learn', 'word', 'sign', 'type', 'listen', 'hear', 'article', 'yesno', 'match', 'memory', 'speed', 'test', 'review', 'house', 'toast', 'munch', 'wagon', 'pawtopia', 'stacker'];      // 4.191 Neon Flying Toasters; 4.193 Sign Munchers      // 4.74: the Silent House saves its answers like a round
 // Mastery: a sign is New (0), Learning (1), Familiar (2) or Mastered (3), from the evidence a student has shown.
 // Multiple choice and matching are worth 1.0, typing 1.5, and 3.0 masters a sign. It can happen in one session.
 var MASTERED_BOX = 3;
@@ -1332,6 +1332,7 @@ function wsClassReward_(st, cls, wk, size, days) {
     var classOf = poolClassOf_(st);
     rows_(psh, 2, POOL_HEAD.length).forEach(function (x, i) { if (str_(x[4]) === best.it.id && str_(x[7]) === 'Open' && classOf(x[1], x[2], x[3]) === cls) psh.getRange(i + 2, 8).setValue('Unlocked'); });
     ss_().getSheetByName(TABS.redeem).appendRow([new Date(), '', 'Whole class', cls, best.it.id, best.it.name, best.it.price, 'Unlocked', '']);
+    if (st.settings.tixMail) classRewardMail_(st, cls, best.it, 'The Sign of the Day class goal');      /* 4.391 */
   }
   return gave;
 }
@@ -1625,7 +1626,7 @@ function api_bootstrap(auth) {
   if (o.Bests && o.Bests.inbox && o.Bests.inbox.length) out.gifts = out.gifts.concat(lock_(function () { var o2 = readStu_(sh, row), box = takeInbox_(o2); if (box.length) writeStu_(sh, o2); return box; }));     // points the teacher awarded since the last visit
   out.pawGift = todayPaw_(st, id.key);      /* 4.286 the Today card */
   try { out.exam = exBoot_(id.key, o.Class); } catch (e) { out.exam = null; }
-  try { out.fbNote = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (out.teacher) { out.fbNew = fbNewCount_(); out.gifBad = gifBrokenCount_(); } } catch (e) { out.fbNote = null; } try { if (typeof chBoot_ === 'function') { if (out.teacher) out.chNew = chTeacherBoot_(); else out.chal = chBoot_(st, o); } } catch (e) {}      /* 4.371 Mastery Challenge */      /* 4.300 Student feedback (Feedback.gs): fixed / won't fix messages; the teacher's New count */      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
+  try { out.fbNote = typeof fbNotices_ === 'function' ? fbNotices_(id.key) : null; if (out.teacher) { out.fbNew = fbNewCount_(); out.gifBad = gifBrokenCount_(); } } catch (e) { out.fbNote = null; } try { if (typeof chBoot_ === 'function') { if (out.teacher) { out.chNew = chTeacherBoot_(); out.chal = chBoot_(st, o, true); } else out.chal = chBoot_(st, o);      /* 4.378 the teacher sees her sample's card */ } } catch (e) {}      /* 4.371 Mastery Challenge */      /* 4.300 Student feedback (Feedback.gs): fixed / won't fix messages; the teacher's New count */      /* 4.290 tests in ASL Study (Exams.gs): open tests, and the one they are in the middle of */
   if (!out.teacher) seenMark_(id.key);
   CacheService.getScriptCache().put('at:' + id.key, String(Date.now()), 21600);
   return wire_(out);
@@ -1815,7 +1816,7 @@ function api_submitRound(auth, r) {
         if (units.length) ticket(units.length === 1 ? units[0].u + ' mastered' : units.length + ' units mastered', units.length * S.tUnit);
       }
       try { if (typeof masteryLogRound_ === 'function') masteryLogRound_(st, o, data, delta); } catch (e) {}
-      try { if (typeof chRound_ === 'function') chRound_(st, o, delta, data); } catch (e) {}      /* 4.371 Mastery Challenge practice days (Challenge.gs) */      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
+      try { if (typeof chRound_ === 'function') chRound_(st, o, delta, data, { game: game, opp: r.opp, ans: ans }); } catch (e) {}      /* 4.371 Mastery Challenge practice days (Challenge.gs) */      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
     }
 
     // XP (never spent, drives letters) and Tokens (play currency). No daily limit unless the teacher sets one for XP.
@@ -2760,7 +2761,7 @@ function api_give(auth, itemId, amount) {
   if (!item || item.type !== 'class') throw new Error('That class reward is no longer offered.');
   amount = Math.floor(num_(amount));
   if (amount < 1) throw new Error('Type how many ' + S.cur + ' to give.');
-  return lock_(function () {
+  var res = lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key);
     if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row);
@@ -2779,8 +2780,23 @@ function api_give(auth, itemId, amount) {
       mine.forEach(function (r) { psh.getRange(r, 8).setValue('Unlocked'); });
       ss_().getSheetByName(TABS.redeem).appendRow([new Date(), '', 'Whole class', cls, item.id, item.name, item.price, 'Unlocked', '']);
     }
-    return { me: publicMe_(o, st), pool: poolState_(st, cls), redemptions: myRedemptions_(id.key), gave: gave, unlocked: unlocked };
+    return { me: publicMe_(o, st), pool: poolState_(st, cls), redemptions: myRedemptions_(id.key), gave: gave, unlocked: unlocked, _cls: cls, _by: o.Name };
   });
+  if (res.unlocked && S.tixMail) classRewardMail_(st, res._cls, item, res._by);      /* 4.391 Colleen: a class reached Food Day and no email came */
+  delete res._cls; delete res._by; return res;
+}
+/** 4.391 Tells the teacher a whole class unlocked a class reward (same switch as prize emails). A failed email is ignored. */
+function classRewardMail_(st, cls, item, by) {
+  try {
+    if (MailApp.getRemainingDailyQuota() < 1) return;
+    var S = st.settings, to = /@/.test(S.wkTo) ? S.wkTo : Session.getEffectiveUser().getEmail(), url = '';
+    try { url = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+    var what = wkEsc_(cls) + ' unlocked <b>' + wkEsc_(item.name) + '</b> (' + item.price + ' ' + wkEsc_(S.cur) + ' together)' + (by ? '. ' + wkEsc_(by) + ' gave the last ' + wkEsc_(S.cur) + '.' : '.');
+    var next = 'It is in Teacher dashboard > Prize queue. Mark it used when the class has it.';
+    var text = what.replace(/<\/?b>/g, '') + '\n\n' + next + (url ? '\n\nOpen ' + S.app + ': ' + url : '') + '\n\nTo stop these emails, set Email me when a student buys a prize to No on the Settings tab.';
+    var html = '<p>🎉 ' + what + '</p><p>' + wkEsc_(next) + '</p>' + (url ? '<p><a href="' + url + '">Open ' + wkEsc_(S.app) + '</a></p>' : '') + '<p style="color:#777;font-size:12px">To stop these emails, set Email me when a student buys a prize to No on the Settings tab.</p>';
+    MailApp.sendEmail(to, S.app + ': ' + cls + ' unlocked ' + item.name + '!', text, { htmlBody: html });
+  } catch (e) {}
 }
 
 /** Teacher only: everything waiting on the teacher. Rows: [row, day, name, class, item, Tickets, email, state, kind]. state is ask, ready or class. */
@@ -8039,9 +8055,8 @@ function api_gifMiss(auth, gid) {
   P.setProperty(k, today);
   var why = gifFileState_(gid); if (!why) return { ok: true, fine: true };
   return lock_(function () {
-    var sh = fbTab_(), fid = 'F' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1296).toString(36).toUpperCase();
     var text = 'The GIF for "' + str_(card[3]) + '" (' + str_(card[1]) + ') did not load for a student: ' + (why === 'trash' ? 'the file is in Drive’s Trash.' : 'the file is gone from Drive.') + ' Open the sheet and choose ASL Study › Check GIF links.';
-    sh.getRange(sh.getLastRow() + 1, 1, 1, FB_HEAD.length).setValues([[fid, new Date(), '', 'ASL Study (automatic)', '', FB_TYPES[0][1] + ' ' + FB_TYPES[0][2], 'GIF not loading', JSON.stringify({ sign: card[0], en: str_(card[3]), unit: str_(card[1]) }), text, 'New', '', '', '']]);
+    fbWrite_('', 'ASL Study (automatic)', '', 'tech', 'A GIF or image won’t load', 'GIF not loading', { sign: card[0], en: str_(card[3]), unit: str_(card[1]), from: 'auto' }, text);      /* 4.375 the feedback system's own row writer */
     return { ok: true, logged: true };
   });
 }
