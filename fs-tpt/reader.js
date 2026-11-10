@@ -423,7 +423,18 @@ function xFlush() {
   camPost({ type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-practice', name: 'Camera practice and games', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: x.letters, right: x.letters, secs: Math.max(1, Math.round(x.secs)), speed: 1, lps: null, top: null, letters: x.letters, items: [], xprac: { letters: x.letters, words: Math.min(x.words, x.letters), secs: Math.round(x.secs * 10) / 10 } });
 }
-addEventListener('visibilitychange', () => { if (document.hidden) xFlush(); });
+/* ASL Study 4.423 (Colleen: "natalie has done 50 problems twice now and it's not saving her progress"): numbers signed right in the number camera games
+   (Math Answer, Count Up, Beat the Clock) are sent as practice too, every 10 numbers and when the tab is left or the game ends, so they count toward
+   a Numbers Stacker's practice day. Before this only the Check was sent. */
+let NX = { n: 0, t0: 0 };
+const nxOn = () => FROM_STUDY && NUMS && !!GAME && /^(math|count|clock)$/.test(GAME.k);
+function nxCount() { if (!nxOn()) return; if (!NX.n) NX.t0 = Date.now(); NX.n++; if (NX.n >= 10) nxFlush(); }
+function nxFlush() {
+  if (!NX.n) return; const x = NX; NX = { n: 0, t0: 0 };
+  camPost({ type: 'fsp-cam-round', v: 1, kind: 'numbers', game: 'camera-num-games', name: 'Number camera games', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    n: x.n, right: x.n, secs: Math.max(1, Math.round((Date.now() - x.t0) / 1000)), speed: 1, lps: null, top: null, letters: 0, items: [] });
+}
+addEventListener('visibilitychange', () => { if (document.hidden) { xFlush(); nxFlush(); } });
 addEventListener('pagehide', xFlush);
 const ONLY = /^(letters|numbers)$/.test(QS.get('only') || '') ? QS.get('only') : '';      /* the TpT editions: only the half the sheet has */
 { const numPage = ONLY === 'numbers' || QS.get('kind') === 'numbers'; $$('#rd-mode button').forEach(b => { if (numPage !== (b.dataset.v === 'numbers')) b.remove(); }); if ($$('#rd-mode button').length < 2) $('#rd-mode').hidden = true; }      /* two separate pages (Colleen): the letters camera never links to the numbers camera or back, since a buyer may have only one */
@@ -460,7 +471,7 @@ function quickCheck(R, target, f, dTgt) {      /* quick and confident (Colleen):
 }
 function nextLetter() {
   if (LIVEON && !GAME) liveDone(SET[cur]);      /* a class game: this number counts */
-  if (GAME && GAME.numDone) return GAME.numDone(SET[cur]);
+  if (GAME && GAME.numDone) { nxCount(); return GAME.numDone(SET[cur]); }      /* 4.423 */
   if (!CK || !CK.on) return go(cur + 1);
   CK.qi++; if (CK.qi >= CK.queue.length) return ckFinish(); go(SET.indexOf(CK.queue[CK.qi])); ckBar();
 }
@@ -685,13 +696,14 @@ function gameUI(on) {
 }
 function endGame(html, again) {
   if (PARTY.on && PARTY.names.length && again !== 'bee' && again !== 'pacer' && partyTurnOver(html, again)) return;
+  nxFlush();      /* 4.423 */
   const G = GAME; clearInterval(G && G.timer); GAME = null; WORD = null; done = true;
   gameUI(false); $('#rd-gamelist').hidden = true; $('#rd-def').hidden = true; $('#rd-word').innerHTML = ''; $('#rd-prompt').hidden = true;
   $('#rd-results').innerHTML = html + '<div class="rd-row"><button class="btn" id="rd-again">Play again</button><button class="btn ghost" id="rd-other">Other games</button></div>'; $('#rd-results').hidden = false;
   $('#rd-again').onclick = () => startGame(again); $('#rd-other').onclick = () => { $('#rd-results').hidden = true; $('#rd-gamelist').hidden = false; drawGames(); };
   if (again === 'pacer') { $('#rd-again').textContent = 'Train again'; $('#rd-other').textContent = 'Back to practice'; $('#rd-other').onclick = () => { $('#rd-results').hidden = true; const b = document.querySelector('#rd-kind [data-v="practice"]'); if (b) b.click(); }; }      /* the Speed Pacer is training, not a game (Colleen) */
 }
-function quitGame() { const G = GAME; if (!G) return; clearInterval(G.timer); GAME = null; WORD = null; gameUI(false); $('#rd-def').hidden = true; $('#rd-prompt').hidden = true; drawGames(); }
+function quitGame() { nxFlush(); const G = GAME; if (!G) return; clearInterval(G.timer); GAME = null; WORD = null; gameUI(false); $('#rd-def').hidden = true; $('#rd-prompt').hidden = true; drawGames(); }
 const wordGame = (G, w) => { GAME = G; WORD = w; wi = 0; done = false; $('#rd-prompt').hidden = false; showWord(); };
 const bar = (txt, buttons) => { $('#rd-gtitle').textContent = txt; $('#rd-gbtns').innerHTML = (buttons || []).map(b => '<button class="btn ghost" data-gb="' + b[0] + '">' + b[1] + '</button>').join('') + '<button class="btn ghost" data-gb="quit">Quit</button>'; };
 function startGame(k) {
