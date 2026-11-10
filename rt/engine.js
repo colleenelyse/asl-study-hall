@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.398';
+var VERSION = '4.409';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1530,7 +1530,7 @@ function publicMe_(o, st) {
     badges: o.Badges ? o.Badges.split(',').map(str_).filter(String) : [], rice: o.Freerice,
     double: dbl, tokens: o.Tokens, dayCorrect: o['Day correct'],
     buddy: o.Bests.buddy || {}, bday: o.Birthday, bdayShow: feat_(st, 'birthday') ? bdayShow_(st, o.Birthday, o.Bests.bday, dayNum_(today)) : null,
-    rid: o._row, name: o.Name, cls: o.Class, level: o.Level, course: course,
+    rid: o._row, name: o.Name, cls: o.Class, level: o.Level, course: course, lvlAsk: lvlAskable_(st, o) ? lvlChoices_(st) : null,
     life: o.Lifetime, wallet: o.Wallet, q: o.Questions, correct: o.Correct, min: Math.round(o.Minutes),
     streak: o.Streak, best: o['Best streak'], last: o['Last practice'],
     dayPts: o['Day points'], flags: o['Day flags'], freezes: o.Freezes,
@@ -1649,6 +1649,19 @@ function api_viewAs(auth, cls) {      // 3.85: the teacher switches the class th
   });
 }
 
+/** 4.403 Colleen: "the next time asl 2 opens the app, ask them to add whether they're prep or accel since i don't think we got that data".
+    The one exception to 4.353 (students never choose): an ASL 2 student whose Level is still blank (no Prep / Accel) picks once; after that only she changes it. */
+function lvlChoices_(st) { var g = st.settings.groups.filter(function (x) { return /prep|accel|honor/i.test(x); }); return g.length ? g : ['Prep', 'Accel']; }
+function lvlAskable_(st, o) { var course = courseOf_(st, o.Class); return (/\b(2|ii)\b/i.test(course) || /asl\s*2/i.test(course)) && !/prep|accel|honor/i.test(str_(o.Level)); }
+function api_myLevel(auth, pick) {
+  var st = static_(), id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  pick = str_(pick); if (lvlChoices_(st).indexOf(pick) < 0) throw new Error('Pick one.');
+  return lock_(function () {
+    var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
+    var o = readStu_(sh, row); if (!lvlAskable_(st, o)) return { level: o.Level, already: true };
+    o.Level = pick; writeStu_(sh, o); return { level: o.Level };
+  });
+}
 function api_join(auth, d) {
   var st = static_(), id = who_(auth);
   if (!id) throw new Error('We could not tell who you are. Sign in with your school Google account and reload.');
@@ -1816,7 +1829,7 @@ function api_submitRound(auth, r) {
         if (units.length) ticket(units.length === 1 ? units[0].u + ' mastered' : units.length + ' units mastered', units.length * S.tUnit);
       }
       try { if (typeof masteryLogRound_ === 'function') masteryLogRound_(st, o, data, delta); } catch (e) {}
-      try { if (typeof chRound_ === 'function') chRound_(st, o, delta, data, { game: game, opp: r.opp, ans: ans }); } catch (e) {}      /* 4.371 Mastery Challenge practice days (Challenge.gs) */      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
+      try { if (typeof chRound_ === 'function') chRound_(st, o, delta, data, { game: game, opp: r.opp, ans: ans, res: res }); } catch (e) {}      /* 4.371 Mastery Challenge practice days (Challenge.gs) */      /* 4.299 Mastery Log (Exams.gs): the time each subunit first reached 100% mastered */
     }
 
     // XP (never spent, drives letters) and Tokens (play currency). No daily limit unless the teacher sets one for XP.
@@ -6053,6 +6066,7 @@ function api_fsRound(auth, raw) {
     if (f.at) fs.getRange(f.at, 1, 1, FSS_HEAD.length).setValues([srow]); else fs.appendRow(srow);
     if (r.items.length) fsBank_(r.items);
     logRow = [new Date(), id.key, o.Name, o.Class, o.Level, 'fspell', r.name, r.n, r.right, r.secs, xp];
+    try { if (typeof chFsPrac_ === 'function') chFsPrac_(st, o, r); } catch (e) {}      /* 4.408 Fingerspelling and Numbers Stackers: practice days */
     writeStu_(sh, o);
     cacheDrop_('boards');
     cache.put('at:' + id.key, String(now), 21600);
@@ -14944,4 +14958,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };

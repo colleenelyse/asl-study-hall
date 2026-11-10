@@ -1532,7 +1532,7 @@ document.addEventListener('input', e => { if (e.target && e.target.id === 'cq-sp
 
 /* ---------- THE SIGNER (2026-10-18): ASL Study's Case Closed puts this page (#/signer) in a frame on each student's screen and on the
    projector. It shows only the hand. ASL Study sends { type: 'fsp-sign', id, item, speed } and gets { type: 'fsp-signed', id } back when
-   the hand is done. item: { kind: 'spell', text } | { kind: 'math', a, op, b } (2026-11-09) | { kind: 'day', code, thu } | { kind: 'season', code } | { kind: 'time', h, m } | { kind: 'number', n } | { kind: 'digits', ds }. ---------- */
+   the hand is done. item: { kind: 'spell', text } | { kind: 'math', a, op, b } (2026-11-09) | { kind: 'day', code, thu } | { kind: 'season', code } | { kind: 'time', h, m } | { kind: 'number', n } | { kind: 'digits', ds } | { kind: 'age', n } | { kind: 'year', n } (2026-11-09). ---------- */
 const SIGNER = { busy: false };
 async function signerSign(d) {
   await hand.ready; stopFlag = true; while (spelling) await spelling; stopFlag = false;
@@ -1546,6 +1546,7 @@ async function signerSign(d) {
   else if (it.kind === 'piece') spelling = hand.signCode(String(it.set || ''), { per, at: +it.k || 0, stop: () => stopFlag, whole: !!it.whole,      /* Breach 4.91: the number part as one whole number */
     numSign: n => n < 100 ? hand.sign(n, { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) : hand.signParts(bdBlocksFor(n), { per: per * 0.8, stay: true, teens: 'ten', form: 'main' }) });      /* Breach: one set at its listing finger */      /* the password game: five listed sets */
   else if (it.kind === 'age') spelling = (async () => { brow('face'); await new Promise(r => setTimeout(r, 400)); await hand.signAge(+it.n, { per }); })();      /* Mind Your Manners: a doll's age, at the chin */
+  else if (it.kind === 'year') spelling = hand.signYear(+it.n, { per, form: formFor(), stop: () => stopFlag });      /* 2026-11-09 the Numbers Stacker test: a year, signed as a year */
   else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
   else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag, plain: !!it.plain });      /* plain: the Summative Stacker's wrong way (hand.js) */
   else if (it.kind === 'math') spelling = (async () => { const nm = n => n < 100 ? hand.sign(n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag }) : hand.signParts(bdBlocksFor(n), { per });      /* the Summative Stacker (2026-11-09): a problem as in Math in ASL */
