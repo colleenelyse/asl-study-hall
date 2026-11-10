@@ -9,6 +9,7 @@ let readyOk, readyErr; const ready = new Promise((a, b) => { readyOk = a; readyE
 /* LIGHT: school Chromebooks and other low-power devices get a lighter hand (Colleen: 25 Chromebooks froze): a simpler model, no shadows,
    lighter skin detail, no planning in the middle of a word. Same shapes and movements. ?light=1 / ?light=0 in the address forces it either way. */
 const LIGHT = /[?&]light=1\b/.test(location.search) || (!/[?&]light=0\b/.test(location.search) && (/\bCrOS\b/.test(navigator.userAgent) || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || !!opts.light || !!opts.tile));      /* tile hands are always light */
+canvas.addEventListener('webglcontextlost', () => { window.__glLost = true; });      /* ASL Study 4.428: a Chromebook can drop the graphics; the signer reports it */
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !LIGHT, alpha: true, preserveDrawingBuffer: true, powerPreference: LIGHT ? 'low-power' : 'default' });
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;      /* film-like light, for a photo look */

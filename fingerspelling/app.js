@@ -1554,13 +1554,19 @@ async function signerSign(d) {
   else if (it.kind === 'age') spelling = (async () => { brow('face'); await new Promise(r => setTimeout(r, 400)); await hand.signAge(+it.n, { per }); })();      /* Mind Your Manners: a doll's age, at the chin */
   else if (it.kind === 'year') spelling = hand.signYear(+it.n, { per, form: formFor(), stop: () => stopFlag });      /* 2026-11-09 the Numbers Stacker test: a year, signed as a year */
   else if (it.kind === 'time') spelling = hand.signTime(+it.h, +it.m, { per, teens: teensFor(), form: formFor() });
-  else if (it.kind === 'number') spelling = hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag, plain: !!it.plain });      /* plain: the Summative Stacker's wrong way (hand.js) */
+  else if (it.kind === 'number') spelling = +it.n < 100 || it.plain ? hand.sign(+it.n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag, plain: !!it.plain })
+    : hand.signParts(bdBlocksFor(+it.n), { per, teens: teensFor(), form: formFor(), stop: () => stopFlag });      /* ASL Study 4.428: 100 and up in parts (HUNDRED, THOUSAND), as the games do; before, the Stacker test's 3-digit numbers ended at once without moving */      /* plain: the Summative Stacker's wrong way (hand.js) */
   else if (it.kind === 'math') spelling = (async () => { const nm = n => n < 100 ? hand.sign(n, { per, teens: teensFor(), form: formFor(), stop: () => stopFlag }) : hand.signParts(bdBlocksFor(n), { per });      /* the Summative Stacker (2026-11-09): a problem as in Math in ASL */
     const op = x => hand.signOp(x, { per, wide: true });      /* both hands in the picture for the operation */
     await nm(+it.a); if (stopFlag) return; await op(String(it.op)); if (stopFlag) return; await nm(+it.b); if (stopFlag) return; await op('='); })();
   else if (it.kind === 'digits') spelling = (async () => { const ds = (it.ds || []).map(Number); for (let i = 0; i < ds.length; i++) { if (stopFlag) break; await hand.sign(ds[i], { per, series: i > 0, stay: i < ds.length - 1, teens: teensFor(), form: formFor(), stop: () => stopFlag }); } })();      /* a padlock code: one digit at a time (escape room) */
   else spelling = hand.spell(String(it.text || '').toUpperCase(), { speed: () => sp, stop: () => stopFlag });
-  try { await spelling; } finally { spelling = null; brow(''); try { window.parent.postMessage({ type: 'fsp-signed', id: d.id }, '*'); } catch (e) {} }
+  /* ASL Study 4.428 (Colleen: "it used up all his plays on a question but never played"): the answer says whether the hand really signed (ok), so
+     ASL Study only counts a play that was seen; an error, a stop, or lost graphics is ok: false with why */
+  let ok = true, err = ''; const t0 = Date.now();
+  try { await spelling; } catch (e) { ok = false; err = String(e && e.message || e).slice(0, 80); } finally {
+    if (window.__glLost) { ok = false; err = 'graphics lost'; } if (stopFlag && ok) { ok = false; err = 'stopped'; }
+    spelling = null; brow(''); try { window.parent.postMessage({ type: 'fsp-signed', id: d.id, ok, err, ms: Date.now() - t0 }, '*'); } catch (e) {} }
 }
 window.addEventListener('message', e => { const d = e.data; if (!d || e.source !== window.parent) return; if (d.type === 'fsp-sign') signerSign(d); if (d.type === 'fsp-stop') stopFlag = true; });
 function signerShow() { putStage('signer-slot'); assist.className = 'assist small'; document.body.classList.add('signer-only'); try { window.parent.postMessage({ type: 'fsp-signer-ready' }, '*'); } catch (e) {} }
