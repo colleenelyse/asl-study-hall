@@ -280,6 +280,9 @@ function seqStart(n) {
       P.forEach(p => { const forms = refHand.numberKeys(p.v, p.o).map(F => squash(F.map(feat))).filter(K => K.length); combos = combos.flatMap(c => forms.map(F => c.concat(c.length && dist(c[c.length - 1], F[0]) < SQ ? F.slice(1) : F))).slice(0, 16); });
       KEYS[n] = combos; }
   }
+  if (+n >= 13 && +n <= 15 && KEYS[n] && !KEYS[n].oneBend) {      /* ASL Study 4.425 (Colleen: "the app isn't recognizing 13 on the camera when i do it"): with the palm toward
+       you, the bending fingers fold away from the camera and are hard to see twice; the start shape, one bend, and back up is enough */
+    const one = KEYS[n].filter(K => K.length >= 4).map(K => K.slice(0, 3)); KEYS[n] = KEYS[n].concat(one); KEYS[n].oneBend = true; }
   const twin = +n >= 11 && +n <= 15 ? +n - 10 : -1;      /* 11-15 start like 1-5 (fingers together, or held by the thumb): that plain digit is not a look-alike to beat (Colleen: 14 struggled) */
   if (!DECOY[n] && refHand && refHand.numberDecoys) DECOY[n] = [].concat(...P.map(p => refHand.numberDecoys(p.v, p.o).filter(([d]) => d !== twin).map(([d, J]) => feat(J))));
   SEQ = { n, forms: (KEYS[n] || []).map(K => ({ K, i: -1, run: 0, r0: null, noSkip: multi })) };      /* a part can't be skipped */
