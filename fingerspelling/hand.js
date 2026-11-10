@@ -23,9 +23,13 @@ function fitRes() {
   if (canvas.width !== px) { renderer.setSize(px, px, false); dirty = true; }
 }
 function slowCheck(ms) {      /* the first 30 drawings: if they average over 25 ms, draw smaller and with softer shadows */
-  if (quality < 1 || slowN >= 30) return; slowN++; slowT += ms;
-  if (slowN === 30 && slowT / 30 > 25) { quality = 0.7; key.shadow.mapSize.set(1024, 1024); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } fitRes(); }
+  if (quality >= 1 && slowN < 30) { slowN++; slowT += ms;
+    if (slowN === 30 && slowT / 30 > 25) { quality = 0.7; key.shadow.mapSize.set(1024, 1024); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } fitRes(); } return; }
+  /* ASL Study 4.431 (Brycen: "they were lagging really bad and jumped around"): keep watching; every 30 drawings averaging over 40 ms step down again (to half size at most) */
+  slowW.push(ms); if (slowW.length < 30) return; const avg = slowW.reduce((a, b) => a + b, 0) / slowW.length; slowW = [];
+  if (avg > 40 && quality > 0.5) { quality = Math.max(0.5, Math.round((quality - 0.15) * 100) / 100); renderer.shadowMap.enabled = false; fitRes(); }
 }
+let slowW = [];
 const scene = new THREE.Scene();
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture;      /* soft room light all around, for natural reflections on the skin */
 const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
