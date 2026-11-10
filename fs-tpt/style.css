@@ -677,3 +677,10 @@ body.signer-only .assist { display: none; }
 .gamegrid .gcard .gi .gbadge { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 15px; line-height: 1; box-shadow: 0 0 0 2px var(--c), 0 2px 6px rgba(0, 0, 0, .2); }
 .gamegrid .gcard .tag { background: #F72585; color: #fff; }
 #mt-msg.mt-good, #mt-msg.mt-bad { color: #fff; font-size: 17px; font-weight: 800; padding: 10px 14px; border-radius: 12px; } #mt-msg.mt-good { background: var(--good, #14804D); } #mt-msg.mt-bad { background: var(--bad, #C7362E); }      /* Colleen: right or wrong has to be plain at a glance */
+
+/* ASL Study 4.421: which games count toward a Fingerspelling or Numbers Stacker (only inside ASL Study) */
+.gcard .stk { align-self: flex-start; background: #FFD34D; color: #3A2A00; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 2px 8px; margin-top: 4px; }
+.stknote { background: #FFF5D6; color: #3A2A00; border: 2px solid #FFC83D; border-radius: 12px; padding: 8px 12px; margin: 0 0 10px; font-size: 14px; }
+
+/* 2026-11-10: hidden settings, except the number, year and age ranges (.keep) */
+#s-fields > .folded { display: none !important; }

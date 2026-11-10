@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.419';
+var VERSION = '4.422';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -759,6 +759,8 @@ var HEAD_ = null;
 /* ───────────────────────── small helpers ───────────────────────── */
 
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
+/** 4.422 (Colleen: "I want the progress bars to update more accurately"): after every round the app gets the Stacker card fresh (undefined = leave it). */
+function chalNow_(st, o) { try { return typeof chBoot_ === 'function' && !teacherEmails_()[str_(o.Email).toLowerCase()] ? chBoot_(st, o) : undefined; } catch (e) { return undefined; } }
 function tz_() { return ss_().getSpreadsheetTimeZone() || 'America/Chicago'; }
 function isDate_(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
 function dayStr_(d) { return Utilities.formatDate(d || new Date(), tz_(), 'yyyy-MM-dd'); }
@@ -1899,7 +1901,7 @@ function api_submitRound(auth, r) {
     var gifts = []; try { gifts = newGifts_(id.key); } catch (e) {}
     if (gifts.length) o = readStu_(sh, row);                     // a gift may have arrived while this round was being played
     if (doneKey) { try { cache.put(doneKey, JSON.stringify({ res: res, delta: delta }), 21600); } catch (e) { try { cache.put(doneKey, JSON.stringify({ res: res }), 21600); } catch (e2) {} } }
-    return { me: publicMe_(o, st), res: res, delta: delta, gifts: gifts.concat(awarded) };
+    return { me: publicMe_(o, st), res: res, delta: delta, gifts: gifts.concat(awarded), chal: chalNow_(st, o) };      /* 4.422 the Stacker card as it is now */
   }, 60000);      // a whole class may finish at once: wait up to a minute for a turn (3.68)
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only: never lose the round over it */ } }
   return out;
@@ -6072,7 +6074,7 @@ function api_fsRound(auth, raw) {
     cache.put('at:' + id.key, String(now), 21600);
     cache.put('fsCmpGen', String(now) + Math.random().toString(36).slice(2, 6), 21600);      // 3.82: the program comparison is worked out fresh after a new round
     if (doneKey) { try { cache.put(doneKey, JSON.stringify({ res: res }), 21600); } catch (e) {} }
-    return { saved: 1, me: publicMe_(o, st), res: res, stats: fsStatsObj_(srow) };
+    return { saved: 1, me: publicMe_(o, st), res: res, stats: fsStatsObj_(srow), chal: chalNow_(st, o) };      /* 4.422 */
   }, 60000);
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only */ } }
   return wire_(out);
