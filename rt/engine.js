@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.474';
+var VERSION = '4.475';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1766,7 +1766,7 @@ function api_bootstrap(auth) {
   if (GUEST_APP) out.guestApp = true;
   try { out.bcr = bothRight_(); } catch (e) {}
   try { if (row && !out.teacher) out.todo = todoFor_(readStu_(sh, row)); } catch (e) {}      /* 4.466 To do */
-  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: camsHave_(o9.Bests.cams).length, of: CAMS_ITEMS.length }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
+  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: camsHave_(o9.Bests.cams).length, of: CAMS_ITEMS.length, d: camsHave_(o9.Bests.cams).join(',') }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
   if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
   if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
@@ -12287,17 +12287,17 @@ function api_camSamples(auth, list) {
     if (!ok) return null; var sid = str_(s.sid).replace(/[^a-z0-9]/gi, '').slice(0, 20); if (!sid) return null;
     return { sid: sid, item: str_(s.item), left: s.left ? 'yes' : '', guess: (s.guess instanceof Array ? s.guess : []).slice(0, 3).map(str_).join(' '), z: (s.z instanceof Array ? s.z : []).slice(0, 20).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), dots: JSON.stringify(s.frames) };
   }).filter(Boolean);
-  var saved = [], done = 0;
+  var saved = [], done = 0, haveOut = '';
   if (model) { var ssm = camsBook_(true), nowm = new Date(); clean.forEach(function (s) { var t = camsTab_(ssm, s.item); if (!cacheGet_('cams:' + s.sid)) { t.appendRow([s.sid, nowm, CAMS_MODEL, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); });
     (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0) saved.push(x); }); return { ok: saved, done: 0, of: CAMS_ITEMS.length, model: true }; }
   lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row), cls = str_(o.Class), have = camsHave_(o.Bests.cams), ss = camsBook_(true), now = new Date();
     clean.forEach(function (s) { var t = camsTab_(ss, s.item), seen = cacheGet_('cams:' + s.sid); if (!seen) { t.appendRow([s.sid, now, cls, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); if (have.indexOf(s.item) < 0) have.push(s.item); });
-    o.Bests.cams = { d: have.join(','), at: dayStr_(), r2: 1 }; writeStu_(sh, o); done = have.length;
+    o.Bests.cams = { d: have.join(','), at: dayStr_(), r2: 1 }; writeStu_(sh, o); done = have.length; haveOut = have.join(',');
   });
   (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0 && !clean.some(function (c) { return c.sid === x; })) saved.push(x); });      /* a broken sample is let go too, so the tab stops resending it */
-  return { ok: saved, done: done, of: CAMS_ITEMS.length };
+  return { ok: saved, done: done, of: CAMS_ITEMS.length, have: haveOut };
 }
 /* 4.474 (Colleen 2026-11-11): the G, H, P and Q samples made before the H palm fix are not real ("disregard all of those and ask those students for
    those letters again"). A student's finished list drops them once (cams.r2 marks a list made after the fix), and those samples count as bad. */
