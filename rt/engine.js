@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.466';
+var VERSION = '4.471';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -3807,11 +3807,13 @@ function mobNorm_(s) { return String(s === null || s === undefined ? '' : s).toL
 function mobAccepts_(card) {
   var acc = {};
   [card[3]].concat(splitAnswers_(card[3], true), splitAnswers_(card[4], true)).forEach(function (s) { s = mobNorm_(s); if (s) acc[s] = 1; });
+  try { var bcr = typeof bothRight_ === 'function' ? bothRight_() : {}, me = chTypNorm_(card[3]) + '|'; Object.keys(bcr).forEach(function (k) { if (k.indexOf(me) === 0) acc[mobNorm_(k.slice(me.length))] = 1; }); } catch (e) {}      /* 4.471 Both Could Be Right partners count when typed */
+  Object.keys(acc).forEach(function (k) { var n = k.replace(/ s( |$)/g, 's$1'); if (n !== k) acc[n] = 1; });      /* veterans day = veteran's day (the apostrophe became a space) */
   return Object.keys(acc);
 }
 /** Typed answers are judged the same way as everywhere else in the app: any accepted meaning, with one slip forgiven on longer words. */
 function mobTyped_(card, text) {
-  var x = mobNorm_(text); if (!x) return false;
+  var x = mobNorm_(String(text === null || text === undefined ? '' : text).replace(/['’]/g, '')); if (!x) return false;      /* 4.471 veteran's = veterans */
   var st0 = static_(), un0 = st0.units.filter(function (u) { return u.key === card[1]; })[0];
   if (un0 ? un0.acc : st0.settings.accents) {                             // Accents in typed answers (the unit's, else Settings): Required, as in practice: the accents must match, a slip in another letter is still forgiven
     var keep = function (s) { return String(s === null || s === undefined ? '' : s).toLowerCase().normalize('NFC').replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim(); };
@@ -4878,6 +4880,26 @@ function api_signStar(auth, id, gif, on) {
   writeUnitCol_(sh, C, 8, vals);
   cacheDrop_('static');
   return { label: starLabel_('', !!on) };
+}
+
+/** 4.470 (Colleen: "when i'm marking signs as our class version, i also want the ability to check 2 and say that they're a duplicate"): keep one version
+    of a sign and remove the repeats from its unit tab. The kept one gets the ★ if a removed one had it. Rows are found by the sign's id and GIF, never by
+    row number alone; at least one version always stays. (Undo: File > Version history in the sheet.) */
+function api_signDup(auth, id, keepGif, dropGifs) {
+  requireTeacher_(); keepGif = str_(keepGif); dropGifs = (dropGifs instanceof Array ? dropGifs : []).map(str_).filter(function (g) { return g && g !== keepGif; });
+  if (!dropGifs.length) throw new Error('Tick at least two versions.');
+  var card = (static_().cards || []).filter(function (c) { return c[0] === id; })[0]; if (!card) throw new Error('That sign is not in the sheet anymore.');
+  var sh = ss_().getSheetByName(card[1]); if (!sh) throw new Error('The tab ' + card[1] + ' is gone.');
+  return lock_(function () {
+    var C = unitCols_(sh), vals = unitRows_(sh, C), keepRow = -1, drop = [], star = false;
+    vals.forEach(function (v, i) { if (str_(v[6]) !== id) return; var g = str_(v[4]) || media_(v[3]); if (g === keepGif && keepRow < 0) keepRow = i; else if (dropGifs.indexOf(g) >= 0) { drop.push(i); if (isStar_(v[8])) star = true; } });
+    if (keepRow < 0) throw new Error('The version to keep is not on the ' + card[1] + ' tab anymore.');
+    if (!drop.length) throw new Error('Those versions are not on the ' + card[1] + ' tab anymore.');
+    if (star && !isStar_(vals[keepRow][8])) { vals[keepRow][8] = starLabel_(vals[keepRow][8], true); writeUnitCol_(sh, C, 8, vals); }
+    drop.sort(function (a, b) { return b - a; }).forEach(function (i) { sh.deleteRow(i + 2); });
+    cacheDrop_('static');
+    return { removed: drop.length, starred: star };
+  });
 }
 
 function matchGifs() {
@@ -12230,6 +12252,7 @@ function makeLoginCodes() {
    their own spreadsheet, "ASL Study Camera Samples", one tab per sign, with the class period and a random sample id, never a name. The student's
    own row keeps which signs they finished (completion credit). Her review page (chunk_teach.html VIEW.camsamp) marks bad samples (the Bad column). ── */
 var CAMS_ITEMS = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16t 16p 17t 17p 18t 18p 19t 19p 20 21 22 23f 23s 24 25f 25s 26 27 28 29 30'.split(' ');
+var CAMS_MODEL = 'Teacher model';
 var CAMS_HEAD = ['Sample', 'Time', 'Class', 'Left hand', 'Camera read', 'Palm', 'Bad', 'Dots'];
 function camsBook_(make) {
   var props = PropertiesService.getDocumentProperties(), id = props.getProperty('camsBook'), ss = null;
@@ -12241,7 +12264,8 @@ function camsTab_(ss, item) { var sh = ss.getSheetByName(item); if (!sh) { sh = 
 /** Student: up to 6 samples at once -> { ok: [sample ids saved], done: how many signs finished } */
 function api_camSamples(auth, list) {
   var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
-  if (teacherEmails_()[id.key] || GUEST_APP) return { ok: (list || []).map(function (s) { return str_(s && s.sid); }), teacher: true };      /* her own tries are not samples */
+  if (GUEST_APP) return { ok: (list || []).map(function (s) { return str_(s && s.sid); }), teacher: true };
+  var model = !!teacherEmails_()[id.key];      /* 4.467 Colleen: "i can record a set too": her recordings are the model every student sample is compared with */
   var clean = (list instanceof Array ? list : []).slice(0, 6).map(function (s) {
     if (!s || CAMS_ITEMS.indexOf(str_(s.item)) < 0 || !(s.frames instanceof Array) || !s.frames.length || s.frames.length > 20) return null;
     var ok = s.frames.every(function (fr) { return fr instanceof Array && fr.length === 21 && fr.every(function (p) { return p instanceof Array && p.length === 3 && p.every(function (v) { return typeof v === 'number' && isFinite(v) && Math.abs(v) < 100000; }); }); });
@@ -12249,6 +12273,8 @@ function api_camSamples(auth, list) {
     return { sid: sid, item: str_(s.item), left: s.left ? 'yes' : '', guess: (s.guess instanceof Array ? s.guess : []).slice(0, 3).map(str_).join(' '), z: (s.z instanceof Array ? s.z : []).slice(0, 20).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), dots: JSON.stringify(s.frames) };
   }).filter(Boolean);
   var saved = [], done = 0;
+  if (model) { var ssm = camsBook_(true), nowm = new Date(); clean.forEach(function (s) { var t = camsTab_(ssm, s.item); if (!cacheGet_('cams:' + s.sid)) { t.appendRow([s.sid, nowm, CAMS_MODEL, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); });
+    (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0) saved.push(x); }); return { ok: saved, done: 0, of: CAMS_ITEMS.length, model: true }; }
   lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row), cls = str_(o.Class), have = str_((o.Bests.cams || {}).d).split(',').filter(String), ss = camsBook_(true), now = new Date();
@@ -15246,4 +15272,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
