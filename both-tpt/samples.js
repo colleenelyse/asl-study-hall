@@ -52,7 +52,8 @@
   function keep(it, frames, zs, guess) {
     const why = palmOK(it, zs); if (why) { if (st.msg.indexOf(why) < 0) { st.msg = '⚠️ ' + why + ', then try again.'; setTimeout(paint, 0); } return false; }
     const sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    st.pend.push({ sid, item: it.id, mv: it.mv ? 1 : 0, left: window.READER_LEFT ? 1 : 0, frames, z: zs.map(z => Math.round(z * 100) / 100), guess: guess || [] });
+    st.pend.push({ sid, item: it.id, mv: it.mv ? 1 : 0, left: window.READER_LEFT ? 1 : 0, frames, z: zs.map(z => Math.round(z * 100) / 100), guess: guess || [], redo: st.done[it.id] ? 1 : 0 });
+    st.last = ITEMS.indexOf(it);
     st.done[it.id] = 1; save(); send(); setTimeout(paint, 0); st.msg = '✓ Saved ' + it.show + (it.how ? ' (' + it.how.split(':')[0] + ')' : '') + '. Next one!'; st.i = nextI(st.i + 1); st.phase = 'wait'; st.hold = 0; st.prev = null; return true;
   }
   window.SAMP = {
@@ -93,6 +94,8 @@
   const h1 = document.querySelector('h1'); if (h1) h1.textContent = 'Teach the Camera'; document.title = 'Teach the Camera';
   const intro = document.getElementById('rd-intro'); if (intro) intro.textContent = 'Sign each letter and number so the camera can learn from real hands. Do your best signing: these help the camera read everyone better.';
   function bar(p) { const b = document.getElementById('sp-p'); if (b) b.style.width = Math.round(100 * Math.max(0, Math.min(1, p || 0))) + '%'; }
+  /* redo (Colleen 2026-11-11: "allow students to redo a teach the camera letter if they click if they want to"): Redo the last one, or pick any sign */
+  function goTo(i) { if (i < 0 || i >= ITEMS.length) return; st.i = i; st.phase = 'wait'; st.hold = 0; st.rec = []; st.prev = null; st.seen = 0; st.cool = performance.now() + 800; st.msg = st.done[ITEMS[i].id] ? '↺ Sign ' + ITEMS[i].show + ' again: the new one is saved too.' : ''; paint(); }
   function paint() {
     const n = ITEMS.filter(x => st.done[x.id]).length, it = ITEMS[st.i];
     if (!it) { el.innerHTML = `<div class="big">🎉</div><p class="how">All ${ITEMS.length} done. Thank you!</p><p class="msg">${st.pend.length ? 'Saving the last ones… keep this tab open a moment.' : '✓ Everything is saved. You can close this tab.'}</p>`; return; }
@@ -102,10 +105,13 @@
       ${it.mv ? (st.phase === 'count' ? `<div class="cnt">${cnt}</div>` : st.phase === 'rec' ? `<p class="how">● Sign it now!</p><div class="bar"><i id="sp-p" style="width:0"></i></div>` : `<p class="how" style="opacity:.8">Raise your hand: it counts 3, 2, 1 and records by itself.</p>`)
         : `<p style="margin:0">Make the sign and hold it still until the bar fills.</p><div class="bar"><i id="sp-p" style="width:0"></i></div>`}
       <p class="msg" aria-live="polite">${st.msg}</p>
-      <div class="row"><button class="btn ghost" id="sp-skip" type="button">Skip for now</button></div>
+      <div class="row"><button class="btn ghost" id="sp-skip" type="button">Skip for now</button>${st.last != null && ITEMS[st.last] && st.last !== st.i ? `<button class="btn ghost" id="sp-redo" type="button">↺ Redo ${ITEMS[st.last].show}</button>` : ''}</div>
+      <details id="sp-pick"${st.pickOpen ? ' open' : ''} style="width:100%"><summary style="cursor:pointer;font-weight:800">Redo a sign</summary><div class="row" style="margin-top:6px">${ITEMS.map((x, j) => `<button class="btn ghost" data-go="${j}" type="button" style="min-width:2.6em;padding:4px 8px${j === st.i ? ';outline:3px solid #FFC83D' : ''}" title="${x.how ? x.how.replace(/"/g, '') : ''}">${st.done[x.id] ? '✓ ' : ''}${x.show}${x.id !== x.show ? '<small style="opacity:.7"> ' + ({ t: 'twist', p: '10 + ', f: 'formal', s: 'slang' }[x.id.replace(/^\d+/, '')] || '') + '</small>' : ''}</button>`).join('')}</div></details>
       <p class="safe" style="margin:0">Signing with your <b>${window.READER_LEFT ? 'left' : 'right'}</b> hand. <button class="link" id="sp-hand" type="button" style="background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Switch hands</button></p>
       <p class="safe">🔒 No picture or video is kept: only the positions of 21 dots on your hand. Your teacher sees which signs you finished.${st.pend.length ? ' · Saving ' + st.pend.length + '…' : ''}</p>`;
     document.getElementById('sp-hand').onclick = () => { const b = document.getElementById('rd-switch'); if (b) b.click(); window.READER_LEFT = !window.READER_LEFT; paint(); };
+    const rd = document.getElementById('sp-redo'); if (rd) rd.onclick = () => goTo(st.last);
+    const pk = document.getElementById('sp-pick'); if (pk) { pk.ontoggle = () => { st.pickOpen = pk.open; }; pk.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTo(+b.dataset.go)); }
     document.getElementById('sp-skip').onclick = () => { st.msg = ''; st.phase = 'wait'; st.hold = 0; st.i = nextI(st.i + 1); paint(); };
   }
   addEventListener('keydown', e => { const it = ITEMS[st.i]; if (e.code === 'Space' && it && it.mv && st.phase === 'wait') { e.preventDefault(); st.phase = 'count'; st.cd = performance.now() + 3000; st.msg = ''; paint(); } });
