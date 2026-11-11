@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.458';
+var VERSION = '4.463';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -811,8 +811,16 @@ function rows_(sh, firstRow, nCols, display) {
   if (last < firstRow) return [];
   var cols = nCols || sh.getLastColumn();
   if (cols < 1) return [];
-  var r = sh.getRange(firstRow, 1, last - firstRow + 1, cols);
-  return display ? r.getDisplayValues() : r.getValues();
+  var r = sh.getRange(firstRow, 1, last - firstRow + 1, cols), v = display ? r.getDisplayValues() : r.getValues();
+  if (GUEST_APP && firstRow === 2) v = guestHideStaff_(sh, v);
+  return v;
+}
+/** 4.436 Guest copy (Colleen 2026-11-10: "i don't want adult users to have any indication that i can see what they do"): teacher rows on the Students tab
+    read as empty rows (same row numbers, so nothing shifts), so no teacher page lists a guest teacher, their points or their activity. Each teacher's own
+    account still works (it is read by its row, not through here); only Colleen, in the sheet, sees them (ASL Study › Guest copy: who has tried it). */
+function guestHideStaff_(sh, v) {
+  try { if (sh.getName() !== TABS.students) return v; var e = stuHead_(sh).Email; if (e === undefined || !v.length || v[0].length <= e) return v;
+    return v.map(function (row) { return staffEmail_(row[e]) ? row.map(function () { return ''; }) : row; }); } catch (err) { return v; }
 }
 function driveId_(s) {
   s = String(s || '');
@@ -1470,6 +1478,7 @@ function guestWho() {
   if (last >= 2) sh.getRange(2, 1, last - 1, H.n).getValues().forEach(function (r) { if (staffEmail_(r[H.Email])) staff.push(r); });
   var acts = {}, lg = ss_().getSheetByName(TABS.log);
   if (lg && lg.getLastRow() >= 2) lg.getRange(2, 1, lg.getLastRow() - 1, LOG_HEAD.length).getValues().forEach(function (r) { var e = str_(r[1]).toLowerCase(); if (!staffEmail_(e)) return; var a = str_(r[5]) || 'practice'; (acts[e] = acts[e] || {})[a] = (acts[e][a] || 0) + 1; });
+  var vis = ss_().getSheetByName(GUEST_VISIT_TAB); if (vis && vis.getLastRow() >= 2) vis.getRange(2, 1, vis.getLastRow() - 1, 5).getValues().forEach(function (r) { var e = str_(r[1]).toLowerCase(); if (!staffEmail_(e)) return; var a = 'opened ' + str_(r[4]); (acts[e] = acts[e] || {})[a] = (acts[e][a] || 0) + 1; });
   var d = function (v) { return v instanceof Date ? Utilities.formatDate(v, tz_(), 'yyyy-MM-dd') : str_(v); }, esc = function (t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
   staff.sort(function (a, b) { return (b[H.Joined] instanceof Date ? b[H.Joined].getTime() : 0) - (a[H.Joined] instanceof Date ? a[H.Joined].getTime() : 0); });
   var rows = staff.map(function (r) { var e = str_(r[H.Email]).toLowerCase(), a = acts[e] || {}, did = Object.keys(a).sort(function (x, y) { return a[y] - a[x]; }).map(function (k) { return k + ' ×' + a[k]; }).join(', ');
@@ -1478,6 +1487,18 @@ function guestWho() {
     '<p><b>' + staff.length + '</b> LT staff ' + (staff.length === 1 ? 'has' : 'have') + ' opened ASL Study Guest.</p>' +
     (staff.length ? '<table><tr><th>Who</th><th>First came</th><th>Last practiced</th><th>Questions</th><th>Points</th><th>What they did</th></tr>' + rows + '</table>' : '<p>Nobody yet.</p>');
   ui.showModalDialog(HtmlService.createHtmlOutput(html).setWidth(860).setHeight(520), 'Who has tried ASL Study Guest');
+}
+/* 4.436 Guest copy (Colleen 2026-11-10: "i do want a log of what they visit"): each screen a guest teacher opens (at most once a minute per screen), on the
+   Guest Visits tab of the guest sheet. Nothing in the app shows it; ASL Study › Guest copy: who has tried it sums it up. */
+var GUEST_VISIT_TAB = 'Guest Visits', GUEST_VISIT_HEAD = ['When', 'Email', 'Name', 'Class they were in', 'Screen'];
+function api_guestVisit(auth, view, door) {
+  if (!GUEST_APP || !isTeacher_()) return null; var id = who_(auth); if (!id) return null;
+  view = str_(view).replace(/[^\w-]/g, '').slice(0, 30); door = str_(door).replace(/[^\w-]/g, '').slice(0, 20); if (!view) return null;
+  try { var t = ensureTab_(GUEST_VISIT_TAB, GUEST_VISIT_HEAD, [160, 220, 140, 160, 160]), sh = stuSheet_(), row = findRow_(sh, id.key), o = row ? readStu_(sh, row) : {};
+    t.sheet.appendRow([new Date(), id.key, str_(o.Name), str_(o.Class), view + (view === 'home' && door ? ' › ' + door : '')]); } catch (e) {}
+  try { var hx = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'gv|' + id.key).slice(0, 6).map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');      /* the weekly numbers on /colleen: no name or email, a one-way hash */
+    UrlFetchApp.fetch('https:' + '/' + '/asl.cool/demo/visit', { method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify({ view: 'guest', screen: view + (view === 'home' && door ? ' › ' + door : ''), who: hx }) }); } catch (e) {}
+  return null;
 }
 function guestSetup() {
   var ui = SpreadsheetApp.getUi();
@@ -1743,6 +1764,7 @@ function api_bootstrap(auth) {
   if (out.teacher) out.sheetUrl = ss_().getUrl();
   var sh = stuSheet_(), row = findRow_(sh, id.key);
   if (GUEST_APP) out.guestApp = true;
+  try { out.bcr = bothRight_(); } catch (e) {}      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
   if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
   if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
@@ -8281,7 +8303,7 @@ function api_photos(auth) {
   requireTeacher_();
   var stu = stuSheet_(), H = stuHead_(stu), last = stu.getLastRow(), ph = photoMap_(), rows = [], cls = {};
   if (last >= 2) stu.getRange(2, 1, last - 1, H.n).getValues().forEach(function (r) {
-    var e = str_(r[H.Email]).toLowerCase(), n = str_(r[H.Name]), c = str_(r[H.Class]); if (!e || !n) return;
+    var e = str_(r[H.Email]).toLowerCase(), n = str_(r[H.Name]), c = str_(r[H.Class]); if (!e || !n || (GUEST_APP && staffEmail_(e))) return;
     rows.push([e, n, c, ph[e] ? ph[e][1] : '']); if (c) cls[c] = 1;
   });
   rows.sort(function (a, b) { return a[1].toLowerCase() < b[1].toLowerCase() ? -1 : 1; });
@@ -8320,6 +8342,7 @@ function ensureSeatTab_() {
 function rosterClasses_() {
   var stu = stuSheet_(), H = stuHead_(stu), last = stu.getLastRow(), cls = {};
   if (last >= 2) stu.getRange(2, H.Class + 1, last - 1, 1).getValues().forEach(function (r) { var c = str_(r[0]); if (c) cls[c] = 1; });
+  if (GUEST_APP) delete cls[GUEST_CLASS];      /* 4.436 the teachers' own class is never a roster */
   return Object.keys(cls).sort();
 }
 /* ───────── 4.101 Seating charts shared with the Hall Pass Kiosk (Colleen: "i want these to be universal and when changed in one place it
@@ -8450,7 +8473,7 @@ function api_seating(auth, cls) {
   var classes = rosterClasses_(); cls = str_(cls); if (classes.indexOf(cls) < 0) cls = classes[0] || '';
   var stu = stuSheet_(), H = stuHead_(stu), last = stu.getLastRow(), ph = photoMap_(), students = [], counts = {};
   if (last >= 2) stu.getRange(2, 1, last - 1, H.n).getValues().forEach(function (r) {
-    var e = str_(r[H.Email]).toLowerCase(), n = str_(r[H.Name]), k = str_(r[H.Class]); if (e && n && k) counts[k] = (counts[k] || 0) + 1;      // how many students each class has
+    var e = str_(r[H.Email]).toLowerCase(), n = str_(r[H.Name]), k = str_(r[H.Class]); if (GUEST_APP && staffEmail_(e)) return; if (e && n && k) counts[k] = (counts[k] || 0) + 1;      // how many students each class has
     if (!e || !n || k !== cls) return;
     students.push([e, n, ph[e] ? ph[e][1] : '', str_(r[H.Level])]);      // [3] the student's level (Prep, Accel...), for the Group maker's Mix levels evenly
   });
@@ -15100,4 +15123,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
