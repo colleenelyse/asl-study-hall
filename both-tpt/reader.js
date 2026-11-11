@@ -115,6 +115,7 @@ function loop() {
   ctx.clearRect(0, 0, draw.width, draw.height);
   const nowT = clock(); if (!r.worldLandmarks || !r.worldLandmarks.length) { if (CK) CK.lastT = 0; $('#rd-guess').innerHTML = '<span>No hand</span>'; held = 0; $('#rd-hold').style.width = '0'; lastF = null; $('#rd-pct').hidden = true; $('#rd-tip').textContent = 'Hold your hand up where the camera can see it'; return; }
   const f = lastF = feat(camHand(r.worldLandmarks[0]));
+  if (window.SAMP && window.SAMP.tick(camHand(r.worldLandmarks[0]), f, nowT, rank, LEFT)) return;      /* ASL Study 4.465 Teach the Camera (samples.js): only the 21 dots, no picture */
   xTick(nowT);      /* 4.89 time to form each letter, hand in view */
   if (teaching) { teachBuf.push(f); if (--teaching === 0) finishTeach(); return; }
   if (CK && CK.on && !done) { if (CK.lastT) CK.t += nowT - CK.lastT; CK.lastT = nowT; ckTick(); if (!CK.on) return; }      /* the check's clock runs only while a hand is in view */

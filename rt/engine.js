@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.463';
+var VERSION = '4.466';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1764,7 +1764,9 @@ function api_bootstrap(auth) {
   if (out.teacher) out.sheetUrl = ss_().getUrl();
   var sh = stuSheet_(), row = findRow_(sh, id.key);
   if (GUEST_APP) out.guestApp = true;
-  try { out.bcr = bothRight_(); } catch (e) {}      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
+  try { out.bcr = bothRight_(); } catch (e) {}
+  try { if (row && !out.teacher) out.todo = todoFor_(readStu_(sh, row)); } catch (e) {}      /* 4.466 To do */
+  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: str_((o9.Bests.cams || {}).d).split(',').filter(String).length, of: CAMS_ITEMS.length }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
   if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
   if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
@@ -2053,13 +2055,15 @@ function api_submitRound(auth, r) {
     if (res.unlocked.length && TRIAL.letters) wins.push('reached the letter ' + st.avatars[a1].l);
     dayWin_(o, newlyMastered, typeof grew === 'number' ? grew : 0, wins);
     var awarded = takeInbox_(o);
+    try { todoTick_(o, game, nQ, secs); } catch (e) {}      /* 4.466 To do */
     writeStu_(sh, o);
     cacheDrop_('boards');
     cache.put('at:' + id.key, String(now), 21600);
     var gifts = []; try { gifts = newGifts_(id.key); } catch (e) {}
     if (gifts.length) o = readStu_(sh, row);                     // a gift may have arrived while this round was being played
     if (doneKey) { try { cache.put(doneKey, JSON.stringify({ res: res, delta: delta }), 21600); } catch (e) { try { cache.put(doneKey, JSON.stringify({ res: res }), 21600); } catch (e2) {} } }
-    return { me: publicMe_(o, st), res: res, delta: delta, gifts: gifts.concat(awarded), chal: chalNow_(st, o) };      /* 4.422 the Stacker card as it is now */
+    var tdo = null; try { tdo = todoFor_(o); } catch (e) {}
+    return { me: publicMe_(o, st), res: res, delta: delta, gifts: gifts.concat(awarded), chal: chalNow_(st, o), todo: tdo };      /* 4.466 To do, as it is now */      /* 4.422 the Stacker card as it is now */
   }, 60000);      // a whole class may finish at once: wait up to a minute for a turn (3.68)
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only: never lose the round over it */ } }
   return out;
@@ -6231,12 +6235,14 @@ function api_fsRound(auth, raw) {
     logRow = [new Date(), id.key, o.Name, o.Class, o.Level, 'fspell', r.name, r.n, r.right, r.secs, xp];
     try { if (typeof chFsPrac_ === 'function') chFsPrac_(st, o, r); } catch (e) {}      /* 4.408 Fingerspelling and Numbers Stackers: practice days */
     if (r.stkMult) res.stkx = r.stkMult;      /* 4.444 fast practice counted 1.5x or 2x */
+    try { todoTick_(o, 'fs:' + (r.kind || '') + ':' + (r.game || ''), r.n, r.secs); } catch (e) {}      /* 4.466 To do */
     writeStu_(sh, o);
     cacheDrop_('boards');
     cache.put('at:' + id.key, String(now), 21600);
     cache.put('fsCmpGen', String(now) + Math.random().toString(36).slice(2, 6), 21600);      // 3.82: the program comparison is worked out fresh after a new round
     if (doneKey) { try { cache.put(doneKey, JSON.stringify({ res: res }), 21600); } catch (e) {} }
-    return { saved: 1, me: publicMe_(o, st), res: res, stats: fsStatsObj_(srow), chal: chalNow_(st, o) };      /* 4.422 */
+    var tdo = null; try { tdo = todoFor_(o); } catch (e) {}
+    return { saved: 1, me: publicMe_(o, st), res: res, stats: fsStatsObj_(srow), chal: chalNow_(st, o), todo: tdo };      /* 4.466 */      /* 4.422 */
   }, 60000);
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only */ } }
   return wire_(out);
@@ -12218,6 +12224,123 @@ function makeLoginCodes() {
   ss_().toast('Made ' + n + ' login codes. They are only needed if the app cannot see students’ school accounts.', 'ASL Study', 8);
 }
 
+/* ───────── 4.465 TEACH THE CAMERA: camera samples (Colleen 2026-11-10: "an assignment for students, to spell and count into the camera so you can use it
+   for reference ... 0-30, and a-z completion credit ... both versions of 23 and 25 ... both versions of 16-19"; "be very sensitive to outliers";
+   "be strict about palm facing"). The camera tab (fingerspelling-site/samples.js) sends only the 21 hand dots of each sign (no picture). They go to
+   their own spreadsheet, "ASL Study Camera Samples", one tab per sign, with the class period and a random sample id, never a name. The student's
+   own row keeps which signs they finished (completion credit). Her review page (chunk_teach.html VIEW.camsamp) marks bad samples (the Bad column). ── */
+var CAMS_ITEMS = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16t 16p 17t 17p 18t 18p 19t 19p 20 21 22 23f 23s 24 25f 25s 26 27 28 29 30'.split(' ');
+var CAMS_HEAD = ['Sample', 'Time', 'Class', 'Left hand', 'Camera read', 'Palm', 'Bad', 'Dots'];
+function camsBook_(make) {
+  var props = PropertiesService.getDocumentProperties(), id = props.getProperty('camsBook'), ss = null;
+  if (id) try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; }
+  if (!ss && make) { ss = SpreadsheetApp.create('ASL Study Camera Samples'); props.setProperty('camsBook', ss.getId()); var f = ss.getSheets()[0]; f.setName('About'); f.getRange(1, 1, 3, 1).setValues([['Teach the Camera samples from ASL Study (one tab per sign).'], ['Only the 21 hand dots of each sign are kept: no pictures or video, no names (the class period only).'], ['Mark bad samples on the Camera samples page in ASL Study (Students menu), not here.']]); }
+  return ss;
+}
+function camsTab_(ss, item) { var sh = ss.getSheetByName(item); if (!sh) { sh = ss.insertSheet(item); sh.getRange(1, 1, 1, CAMS_HEAD.length).setValues([CAMS_HEAD]).setFontWeight('bold'); sh.setFrozenRows(1); } return sh; }
+/** Student: up to 6 samples at once -> { ok: [sample ids saved], done: how many signs finished } */
+function api_camSamples(auth, list) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  if (teacherEmails_()[id.key] || GUEST_APP) return { ok: (list || []).map(function (s) { return str_(s && s.sid); }), teacher: true };      /* her own tries are not samples */
+  var clean = (list instanceof Array ? list : []).slice(0, 6).map(function (s) {
+    if (!s || CAMS_ITEMS.indexOf(str_(s.item)) < 0 || !(s.frames instanceof Array) || !s.frames.length || s.frames.length > 20) return null;
+    var ok = s.frames.every(function (fr) { return fr instanceof Array && fr.length === 21 && fr.every(function (p) { return p instanceof Array && p.length === 3 && p.every(function (v) { return typeof v === 'number' && isFinite(v) && Math.abs(v) < 100000; }); }); });
+    if (!ok) return null; var sid = str_(s.sid).replace(/[^a-z0-9]/gi, '').slice(0, 20); if (!sid) return null;
+    return { sid: sid, item: str_(s.item), left: s.left ? 'yes' : '', guess: (s.guess instanceof Array ? s.guess : []).slice(0, 3).map(str_).join(' '), z: (s.z instanceof Array ? s.z : []).slice(0, 20).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), dots: JSON.stringify(s.frames) };
+  }).filter(Boolean);
+  var saved = [], done = 0;
+  lock_(function () {
+    var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
+    var o = readStu_(sh, row), cls = str_(o.Class), have = str_((o.Bests.cams || {}).d).split(',').filter(String), ss = camsBook_(true), now = new Date();
+    clean.forEach(function (s) { var t = camsTab_(ss, s.item), seen = cacheGet_('cams:' + s.sid); if (!seen) { t.appendRow([s.sid, now, cls, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); if (have.indexOf(s.item) < 0) have.push(s.item); });
+    o.Bests.cams = { d: have.join(','), at: dayStr_() }; writeStu_(sh, o); done = have.length;
+  });
+  (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0 && !clean.some(function (c) { return c.sid === x; })) saved.push(x); });      /* a broken sample is let go too, so the tab stops resending it */
+  return { ok: saved, done: done, of: CAMS_ITEMS.length };
+}
+/** Teacher: who finished, by class -> { items, classes: [{ name, students: [{ name, n }] }], book } */
+function api_camSampList(auth) {
+  requireTeacher_(); var st = static_(), sh = stuSheet_(), vals = sh.getRange(1, 1, Math.max(1, sh.getLastRow()), sh.getLastColumn()).getValues(), h = vals[0].map(str_), ci = h.indexOf('Class'), ni = h.indexOf('Name'), bi = h.indexOf('Bests'), by = {};
+  vals.slice(1).forEach(function (r) { var cls = str_(r[ci]), nm = str_(r[ni]); if (!cls || !nm) return; var b = parse_(r[bi], {}), d = str_((b.cams || {}).d).split(',').filter(String); (by[cls] = by[cls] || []).push({ name: nm, n: d.length }); });
+  var ss = camsBook_(false);
+  return { items: CAMS_ITEMS, of: CAMS_ITEMS.length, book: ss ? ss.getUrl() : '', classes: st.classes.filter(function (c) { return by[c.name]; }).map(function (c) { return { name: c.name, students: by[c.name].sort(function (a, b) { return a.name < b.name ? -1 : 1; }) }; }) };
+}
+/** Teacher: every sample of one sign -> [{ sid, cls, left, guess, z, bad, dots }] */
+function api_camSampItem(auth, item) {
+  requireTeacher_(); item = str_(item); if (CAMS_ITEMS.indexOf(item) < 0) throw new Error('No such sign.');
+  var ss = camsBook_(false), sh = ss && ss.getSheetByName(item); if (!sh || sh.getLastRow() < 2) return { item: item, list: [] };
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, CAMS_HEAD.length).getValues();
+  return { item: item, list: v.map(function (r) { var d = []; try { d = JSON.parse(str_(r[7])); } catch (e) {} return { sid: str_(r[0]), cls: str_(r[2]), left: !!str_(r[3]), guess: str_(r[4]), z: str_(r[5]), bad: !!str_(r[6]), dots: d }; }) };
+}
+/** Teacher: which classes have Teach the Camera on Home. */
+function api_camSampAssign(auth, list) { requireTeacher_(); var names = static_().classes.map(function (c) { return c.name; }), v = (list instanceof Array ? list : []).map(str_).filter(function (x) { return names.indexOf(x) >= 0; }); PropertiesService.getDocumentProperties().setProperty('camsAssign', JSON.stringify(v)); return { ok: true, list: v }; }
+function camsAssigned_() { return parse_(PropertiesService.getDocumentProperties().getProperty('camsAssign'), []) || []; }
+/** Teacher: mark a sample bad (left out of every average) or good again. */
+function api_camSampBad(auth, item, sid, bad) {
+  requireTeacher_(); item = str_(item); sid = str_(sid); var ss = camsBook_(false), sh = ss && ss.getSheetByName(item); if (!sh) throw new Error('No samples for that sign.');
+  var ids = sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), 1).getValues().map(function (r) { return str_(r[0]); }), k = ids.indexOf(sid); if (k < 0) throw new Error('That sample is gone.');
+  sh.getRange(k + 2, 7).setValue(bad ? 'bad' : ''); return { ok: true };
+}
+
+/* ───────── 4.466 TO DO (Colleen 2026-11-10: "a 'to do today' section that i can push to all students in a class so they don't need to know where to find
+   things in the app"; "add an activity to their to do list but also ... a pop up"; "prominent on the home page and have an all caught up message";
+   "next to each activity the date it was sent with __ days ago so they can see when they're overdue"; "push a number of questions, a time spent, a
+   combination, or a game ... the stacker test ... this model the alphabet and numbers activity"). Her To Do tab: one row per item she sends.
+   Kinds: work (questions and/or minutes, in any activity or one activity), stacker (take a Stacker's test), cams (Teach the Camera), note (a message only).
+   Each student's progress since the item was sent is on their row (Bests.todo[id] = { q, s, done, seen }). Daily Review / Stacker Practice and the
+   Stacker test once it is unlocked are added by the app itself (Index.html). ── */
+var TODO_TAB = 'To Do', TODO_HEAD = ['ID', 'Class', 'Sent', 'Kind', 'Questions', 'Minutes', 'Activity', 'Stacker', 'Note', 'Pop-up', 'Active'];
+function todoRows_() {
+  var sh = ss_().getSheetByName(TODO_TAB); if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, TODO_HEAD.length).getValues().map(function (r, i) { return { row: i + 2, id: str_(r[0]), cls: str_(r[1]), sent: isDate_(r[2]) ? r[2].getTime() : Number(r[2]) || 0, kind: str_(r[3]), q: num_(r[4]), m: num_(r[5]), act: str_(r[6]), opp: str_(r[7]), note: str_(r[8]), pop: /^y/i.test(str_(r[9])), on: !/^no/i.test(str_(r[10])) }; }).filter(function (x) { return x.id && x.on; });
+}
+/** A student's open items (their class or every class), with their progress. */
+function todoFor_(o) {
+  var mine = (o.Bests && o.Bests.todo) || {}, cls = str_(o.Class);
+  return { items: todoRows_().filter(function (x) { return !x.cls || x.cls === cls; }).map(function (x) { var p = mine[x.id] || {}; return { id: x.id, sent: x.sent, kind: x.kind, q: x.q, m: x.m, act: x.act, opp: x.opp, note: x.note, pop: x.pop, did: { q: p.q || 0, s: p.s || 0 }, done: !!p.done, seen: !!p.seen }; }), last: (o.Bests && o.Bests.lastP) || {} };      /* last: the day letters / numbers were last practiced (refreshers) */
+}
+/** After a round: questions and seconds count toward every open work item (one activity's items only for that activity). */
+function todoTick_(o, game, nQ, secs) {
+  if (!o || !o.Bests) return; var cls = str_(o.Class), mine = o.Bests.todo = o.Bests.todo || {}, now = Date.now();
+  var fk = /^fs:(letters|numbers)/.exec(str_(game)); if (fk && nQ) { o.Bests.lastP = o.Bests.lastP || {}; o.Bests.lastP[fk[1]] = dayStr_(); }      /* for the refreshers */
+  todoRows_().forEach(function (x) {
+    if (x.kind !== 'work' || (x.cls && x.cls !== cls) || now < x.sent) return; if (x.act && x.act !== game && !(x.act === 'fspell' && /^fs/.test(game))) return;
+    var p = mine[x.id] = mine[x.id] || {}; if (p.done) return; p.q = (p.q || 0) + (nQ || 0); p.s = (p.s || 0) + Math.round(secs || 0);
+    if ((!x.q || p.q >= x.q) && (!x.m || p.s >= x.m * 60) && (x.q || x.m || nQ)) p.done = dayStr_();
+  });
+  Object.keys(mine).forEach(function (k) { if (mine[k] && mine[k].done && mine[k].done < dayStr_(new Date(now - 60 * 864e5))) delete mine[k]; });      /* old finished items are let go */
+}
+/** Teacher: everything sent, with how many in the class finished. */
+function api_todoList(auth) {
+  requireTeacher_(); var st = static_(), rows = todoRows_(), sh = stuSheet_(), vals = sh.getLastRow() > 1 ? sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues() : [[]], h = vals[0].map(str_), ci = h.indexOf('Class'), bi = h.indexOf('Bests');
+  var studs = vals.slice(1).filter(function (r) { return str_(r[ci]); }).map(function (r) { return { cls: str_(r[ci]), b: parse_(r[bi], {}) }; });
+  return { classes: st.classes.map(function (c) { return c.name; }).filter(function (n) { return n !== 'Staff'; }), opps: (typeof chOpps_ === 'function' ? chOpps_() : []).filter(function (x) { return typeof chLive_ !== 'function' || chLive_(x); }).map(function (x) { return { id: x.id, title: x.title, course: x.course || '' }; }),
+    items: rows.map(function (x) { var who = studs.filter(function (s) { return !x.cls || s.cls === x.cls; }); return { id: x.id, cls: x.cls, sent: x.sent, kind: x.kind, q: x.q, m: x.m, act: x.act, opp: x.opp, note: x.note, pop: x.pop, n: who.length, done: who.filter(function (s) { var p = ((s.b.todo || {})[x.id]) || {}; return !!p.done; }).length }; }) };
+}
+/** Teacher: send an item to one class or several. */
+function api_todoAdd(auth, it) {
+  requireTeacher_(); it = it || {}; var kind = str_(it.kind); if (['work', 'stacker', 'cams', 'note'].indexOf(kind) < 0) throw new Error('Pick what to send.');
+  var names = static_().classes.map(function (c) { return c.name; }), cls = (it.classes instanceof Array ? it.classes : []).map(str_).filter(function (c) { return names.indexOf(c) >= 0; });
+  if (!cls.length) throw new Error('Pick at least one class.');
+  var q = Math.max(0, Math.min(500, Math.round(num_(it.q)))), m = Math.max(0, Math.min(180, Math.round(num_(it.m)))), note = str_(it.note).slice(0, 300);
+  if (kind === 'work' && !q && !m && !str_(it.act)) throw new Error('Give a number of questions, minutes, or an activity.');
+  if (kind === 'stacker' && !str_(it.opp)) throw new Error('Pick the Stacker.'); if (kind === 'note' && !note) throw new Error('Write the message.');
+  if (kind === 'cams' && typeof camsAssigned_ === 'function') { var ca = camsAssigned_(); cls.forEach(function (c) { if (ca.indexOf(c) < 0) ca.push(c); }); PropertiesService.getDocumentProperties().setProperty('camsAssign', JSON.stringify(ca)); }      /* Teach the Camera shows on Home too */
+  var t = ensureTab_(TODO_TAB, TODO_HEAD, [110, 130, 140, 80, 80, 70, 110, 120, 300, 70, 60]).sheet, now = new Date();
+  cls.forEach(function (c) { t.appendRow([Utilities.getUuid().slice(0, 8), c, now, kind, q || '', m || '', str_(it.act).slice(0, 30), str_(it.opp).slice(0, 30), note, it.pop ? 'yes' : '', 'yes']); });
+  return api_todoList(auth);
+}
+/** Teacher: take an item off (it stays on the tab, Active = no). */
+function api_todoOff(auth, id) { requireTeacher_(); todoRows_().forEach(function (x) { if (x.id === str_(id)) ss_().getSheetByName(TODO_TAB).getRange(x.row, 11).setValue('no'); }); return api_todoList(auth); }
+/** Student: a pop-up was seen (Got it), or a note was read. */
+function api_todoSeen(auth, ids) {
+  var id = who_(auth); if (!id || teacherEmails_()[id.key]) return { ok: true };
+  lock_(function () { var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) return; var o = readStu_(sh, row), mine = o.Bests.todo = o.Bests.todo || {}, rows = todoRows_();
+    (ids instanceof Array ? ids : []).slice(0, 20).map(str_).forEach(function (k) { var x = rows.filter(function (r) { return r.id === k; })[0]; if (!x) return; var p = mine[k] = mine[k] || {}; p.seen = 1; if (x.kind === 'note') p.done = dayStr_(); });
+    writeStu_(sh, o); });
+  return { ok: true };
+}
+
 /* Every reply to the app goes through wire_, whichever function produced it. */
 (function (g) {
   ['api_bootstrap', 'api_join', 'api_picUpload', 'api_pics', 'api_picQueue', 'api_picDecide', 'api_submitRound', 'api_appSettings', 'api_appSettingsSave', 'api_pushCheck', 'api_pushAnswer', 'api_pushList', 'api_pushSend', 'api_pushControl', 'api_ws', 'api_wsPreview', 'api_wsCheck', 'api_wsQuiz', 'api_wsQuizDone', 'api_board', 'api_setRice', 'api_report', 'api_buy', 'api_equip',
@@ -15123,4 +15246,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
