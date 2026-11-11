@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.472';
+var VERSION = '4.473';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -12267,16 +12267,17 @@ function api_camSamples(auth, list) {
   if (GUEST_APP) return { ok: (list || []).map(function (s) { return str_(s && s.sid); }), teacher: true };
   var model = !!teacherEmails_()[id.key];      /* 4.467 Colleen: "i can record a set too": her recordings are the model every student sample is compared with */
   /* 4.472 her fingerspelled WORDS (teacher only): whole words with the moves between letters, to the Words tab: [Sample, Saved, Word, Left hand, Palm (z), Times (ms), Dots] */
-  var words = (list instanceof Array ? list : []).filter(function (s) { return s && /^w:[A-Z]{1,12}(_[A-Z]{1,12}){0,2}$/.test(str_(s.item)) && str_(s.item).length >= 4; });      /* a word, or a 2-3 word phrase (NEW_YORK) */
+  var words = (list instanceof Array ? list : []).filter(function (s) { var it = str_(s && s.item); return s && ((/^w:[A-Z]{1,12}(_[A-Z]{1,12}){0,2}$/.test(it) && it.length >= 4) || /^n:(NUM|AGE|YEAR|MONEY|CENTS|DEC)_\d{1,6}(\.\d{1,2})?$/.test(it)); });      /* a word, a 2-3 word phrase (NEW_YORK), or 4.473 a number: n:AGE_16, n:YEAR_1985, n:MONEY_12.50 ... */
   if (words.length) {
     if (!model) return { ok: words.map(function (s) { return str_(s.sid); }), done: 0, of: CAMS_ITEMS.length };      /* students never send these; let them go */
-    var ssw = camsBook_(true), tw = ssw.getSheetByName('Words'); if (!tw) { tw = ssw.insertSheet('Words'); tw.getRange(1, 1, 1, 7).setValues([['Sample', 'Saved', 'Word', 'Left hand', 'Palm (z)', 'Times (ms)', 'Dots (21 points per moment, tenths of a mm)']]).setFontWeight('bold'); tw.setFrozenRows(1); }
+    var ssw = camsBook_(true), wTab = function (nums) { var nm = nums ? 'Numbers' : 'Words', t = ssw.getSheetByName(nm); if (!t) { t = ssw.insertSheet(nm); t.getRange(1, 1, 1, 7).setValues([['Sample', 'Saved', nums ? 'Number (kind)' : 'Word', 'Left hand', 'Palm (z)', 'Times (ms)', 'Dots (21 points per moment, tenths of a mm)']]).setFontWeight('bold'); t.setFrozenRows(1); } return t; };
     var okw = [];
     words.slice(0, 3).forEach(function (s) { var sid = str_(s.sid).replace(/[^a-z0-9]/gi, '').slice(0, 20); if (!sid) return; okw.push(str_(s.sid));
       var fr = s.frames instanceof Array ? s.frames.slice(0, 140) : []; if (fr.length < 6 || !fr.every(function (f) { return f instanceof Array && f.length === 21 && f.every(function (p) { return p instanceof Array && p.length === 3 && p.every(function (v) { return typeof v === 'number' && isFinite(v) && Math.abs(v) < 100000; }); }); })) return;
       var dots = JSON.stringify(fr); while (dots.length > 49000 && fr.length > 20) { fr = fr.filter(function (_, j) { return j % 5 !== 4; }); dots = JSON.stringify(fr); }      /* one cell holds 50,000 characters */
       if (cacheGet_('cams:' + sid)) return; cachePut_('cams:' + sid, { y: 1 }, 21600);
-      tw.appendRow([sid, new Date(), str_(s.item).slice(2).replace(/_/g, ' '), s.left ? 'yes' : '', (s.z instanceof Array ? s.z : []).slice(0, 140).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), (s.t instanceof Array ? s.t : []).slice(0, 140).map(function (v) { return Math.round(num_(v)); }).join(' '), dots]); });
+      var isN = /^n:/.test(str_(s.item)), lab = isN ? str_(s.item).slice(2).replace(/^([A-Z]+)_(.*)$/, function (_, k, v) { return (k === 'MONEY' ? '$' + v : k === 'CENTS' ? v + '¢' : v) + ' (' + k.toLowerCase() + ')'; }) : str_(s.item).slice(2).replace(/_/g, ' ');
+      wTab(isN).appendRow([sid, new Date(), lab, s.left ? 'yes' : '', (s.z instanceof Array ? s.z : []).slice(0, 140).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), (s.t instanceof Array ? s.t : []).slice(0, 140).map(function (v) { return Math.round(num_(v)); }).join(' '), dots]); });
     var rest = (list || []).filter(function (s) { return words.indexOf(s) < 0; }); if (!rest.length) return { ok: okw, done: 0, of: CAMS_ITEMS.length, model: true };
     var r2 = api_camSamples(auth, rest); r2.ok = (r2.ok || []).concat(okw); return r2;
   }
