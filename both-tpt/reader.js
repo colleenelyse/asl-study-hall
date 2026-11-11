@@ -144,8 +144,8 @@ function loop() {
   held = right ? held + dt : Math.max(0, held - dt);      /* a one-frame misread only takes a little off (not a restart) */      /* SAFEGUARD inside `right`: a letter the student taught still has to look close to the real handshape */ $('#rd-hold').style.width = Math.min(100, 100 * held / HOLD) + '%';
   if (held >= HOLD && WORD && !DBL && bouncy()) { done = true; return stopBounce(); }
   if (held >= HOLD) { done = true; $('#rd-letter').classList.add('ok'); flash(target); ckRecord(target, true, 1);
-    if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); }
-    else setTimeout(nextLetter, 1100); }
+    if (WORD) { setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, MATCH ? 250 : 700); }
+    else setTimeout(nextLetter, MATCH ? 300 : 1100); }      /* 4.462 Match the Hand (Colleen: "their work should set the pace"): the model moves on the moment the camera reads their letter */
 }
 /* the hand outline (drawn in dots()) */
 const FING = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
@@ -318,7 +318,7 @@ function seqRead(n, f, L, opt) {
   $('#rd-guess').innerHTML = SEQ.forms.map(F => '<span class="' + (F === win ? 'top' : '') + '">' + (F.i + 1) + '/' + F.K.length + '<small>key moments</small></span>').join('');
   $('#rd-hold').style.width = (win ? 100 : prog * 100) + '%';
   }
-  if (win && !done && (!opt.gate || opt.gate())) { done = true; SEQ = null; $('#rd-letter').classList.add('ok'); flash(numText(opt.as || n)); ckRecord(opt.as || n, true, 1); setTimeout(nextLetter, 1300); }
+  if (win && !done && (!opt.gate || opt.gate())) { done = true; SEQ = null; $('#rd-letter').classList.add('ok'); flash(numText(opt.as || n)); ckRecord(opt.as || n, true, 1); setTimeout(nextLetter, MATCH ? 300 : 1300); }
   return !!win;
 }
 /* AGES (2026-10-17): the face finder (MediaPipe, on this computer only, loaded only for ages) finds the mouth and nose; the chin is just below.
@@ -366,7 +366,7 @@ function ageRead(t, f, L, now) {
   if (face && (AGE.phase === 'push' || AGE.phase === 'num')) {
     if (!AGE.pushed && (near > 0.75 || size > AGE.s0 * 1.12) && tip.y >= AGE.y0 - 0.02) AGE.pushed = true;      /* away from the chin: down, or forward (bigger) */
     if (a <= 9) { tipTxt = AGE.pushed ? 'Yes!' : 'Push down and forward'; prog = AGE.pushed ? 1 : 0.5;
-      if (AGE.pushed && shapeOK && !done) { AGE.phase = 'done'; done = true; $('#rd-letter').classList.add('ok'); flash(numText(t)); ckRecord(t, true, 1); setTimeout(nextLetter, 1300); } }
+      if (AGE.pushed && shapeOK && !done) { AGE.phase = 'done'; done = true; $('#rd-letter').classList.add('ok'); flash(numText(t)); ckRecord(t, true, 1); setTimeout(nextLetter, MATCH ? 300 : 1300); } }
     else { AGE.phase = 'num'; const won = seqRead(String(a), f, L, { as: t, gate: () => AGE.pushed, quiet: true }); tipTxt = won && AGE.pushed ? 'Yes!' : AGE.pushed ? 'Now sign ' + a : 'Push forward into the ' + a; prog = 0.5 + (AGE.pushed ? 0.25 : 0) + (won ? 0.25 : 0); if (done) AGE.phase = 'done'; }
   }
   $('#rd-tip').textContent = tipTxt; $('#rd-hold').style.width = Math.round(prog * 100) + '%';
@@ -398,7 +398,7 @@ function readMotion(c, P, L, f) {
   $('#rd-tip').textContent = ok ? 'Yes!' : !shapeOK ? (J ? 'Make an I (pinky up), then draw a J' : zz ? 'Draw two Z\u2019s, or one Z with a bent V' : 'Point your pointer finger, then draw a Z') : (J ? 'Draw a J: down, then hook' : 'Draw a Z in the air');
   if (ok && !done) { done = true; MOT = []; $('#rd-letter').classList.add('ok'); flash(c); $('#rd-hold').style.width = '100%';
     const step = bentV ? 2 : 1; if (bentV) flash('ZZ'); ckRecord(c, true, step);
-    if (WORD) setTimeout(() => { wi += step; if (wi >= WORD.length) wordDone(); else showWord(); }, 700); else setTimeout(nextLetter, 1100); }
+    if (WORD) setTimeout(() => { wi += step; if (wi >= WORD.length) wordDone(); else showWord(); }, MATCH ? 250 : 700); else setTimeout(nextLetter, MATCH ? 300 : 1100); }      /* J and Z: the same pace rule */
   else $('#rd-hold').style.width = (prog * 100) + '%';
 }
 /* ---------- CHECK (the diagnostic, Colleen): a fixed set, no hints, a time limit per letter (only while the hand is in view); every letter is
@@ -411,6 +411,11 @@ const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 
    or Letters / Words / Numbers switches. No act (old links, ASL Study's class games, the game cards' ?g=) keeps the full page. */
 const TMS_N = QS.get('tms') === '1' ? Math.max(1, Math.min(10, +QS.get('n') || 5)) : 0;      /* 4.460 Test My Skills Part 2: a few to the camera, like the test (short words; numbers mostly 2 digits) */
 const tmsNums = () => [2, 2, 1, 2, 3, 2, 2, 1, 2, 3].slice(0, TMS_N).map(d => { const lo = d === 1 ? 0 : Math.pow(10, d - 1); return String(lo + Math.floor(Math.random() * (Math.pow(10, d) - lo))); });
+const TMSCAM = QS.get('tmscam') === '1'; let TMSQ = null;      /* 4.462 the camera tab of the site's Test My Skills: questions come from the test tab */
+function tmsTake(raw) { let q = null; try { q = JSON.parse(raw || 'null'); } catch (e) {} if (!q || !q.id || (TMSQ && TMSQ.id === q.id) || Date.now() - (q.at || 0) > 36e5) return;
+  if (CK && CK.on) { CK.on = false; document.body.classList.remove('checking'); }
+  TMSQ = q; $('#rd-results').hidden = true; $('#rd-status').textContent = ''; ckStart(); try { focus(); } catch (e) {} }
+addEventListener('storage', e => { if (TMSCAM && e.key === 'fsp-tms-q') tmsTake(e.newValue); });
 const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') || '') ? QS.get('act') : '', MATCH = ACT === 'match';
 /* ASL Study 4.89 (Colleen: a whole class's camera practice never reached the sheet): every round is kept on this device (fsp-cam-pending) and
    sent both to the page that opened this tab and to the ASL Study page around it; it is forgotten once ASL Study says it is saved. Anything still
@@ -458,8 +463,8 @@ const TL_FIXED = QS.has('tl') ? Math.max(0, Math.min(60, +QS.get('tl') || 0)) : 
 const tlNow = () => TL_FIXED !== null ? TL_FIXED : +($('#rd-tl').value || 8);
 const shuffleA = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function ckStart() {
-  const words = !!WORD || $('#rd-mode .on').dataset.v === 'words';
-  CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: words ? shuffleA(TMS_N ? pool().filter(w => w.length >= 3 && w.length <= 7) : pool()).slice(0, TMS_N || 8) : NUMS ? (TMS_N ? tmsNums() : shuffleA(onlyDigits() ? DIGITS : nPool()).slice(0, 10)) : shuffleA(SET).slice(0, TMS_N || 26) };
+  const words = TMSCAM && TMSQ ? !NUMS : !!WORD || $('#rd-mode .on').dataset.v === 'words';
+  CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: TMSCAM && TMSQ ? [String(TMSQ.w).toUpperCase()] : words ? shuffleA(TMS_N ? pool().filter(w => w.length >= 3 && w.length <= 7) : pool()).slice(0, TMS_N || 8) : NUMS ? (TMS_N ? tmsNums() : shuffleA(onlyDigits() ? DIGITS : nPool()).slice(0, 10)) : shuffleA(SET).slice(0, TMS_N || 26) };
   if (!CK.queue.length) { CK = null; $('#rd-status').textContent = 'No words fit. Choose a longer word or another list.'; return; }
   document.body.classList.add('checking'); $('#rd-results').hidden = true; $('#rd-checkgo').hidden = true; $('#rd-ckbar').hidden = false; $('#rd-hint').checked = false;
   if (NUMS) SET = CK.queue.slice();
@@ -492,6 +497,9 @@ function nextLetter() {
 }
 function ckNextWord() { CK.qi++; if (CK.qi >= CK.queue.length) return ckFinish(); WORD = CK.queue[CK.qi]; wi = 0; showWord(); ckBar(); }
 function ckFinish() {
+  if (TMSCAM && TMSQ && !TMSQ.done) { TMSQ.done = 1; const okAll = CK.items.length > 0 && CK.items.every(x => x.ok);      /* 4.462 the answer goes back to the test tab */
+    try { localStorage.setItem('fsp-tms-a', JSON.stringify({ id: TMSQ.id, ok: okAll, at: Date.now() })); } catch (e) {}
+    $('#rd-status').textContent = (okAll ? '✓ Signed! ' : 'Not this time. ') + 'Go back to your test tab for the next question. Keep this tab open.'; }
   const C = CK, U = UNIT(); C.on = false; document.body.classList.remove('checking'); $('#rd-ckbar').hidden = true; $('#rd-checkgo').hidden = false; $('#rd-checkgo').textContent = 'Check again';
   const it = C.items, signed = it.filter(x => x.ok), slow = signed.filter(x => x.secs > 4), notYet = it.filter(x => !x.ok), quick = it.filter(x => x.quick);
   const avg = signed.length ? Math.round(signed.reduce((a, x) => a + x.secs, 0) / signed.length * 10) / 10 : 0;
@@ -549,7 +557,7 @@ function showWord() {
   $('#rd-word').innerHTML = WORD.split('').map((x, i) => (i === POSS ? '<span class="' + (i <= wi ? 'd' : 'n') + '">\u2019</span>' : '') + '<span class="' + (i < wi ? 'd' : i === wi ? 'c' : 'n') + '">' + (GAME && GAME.hide && i >= wi ? '_' : x) + '</span>').join('');
   if (POSS >= 0 && wi === POSS && !GAME && !(CK && CK.on)) setTimeout(() => { if (WORD && wi === POSS && !done) $('#rd-status').textContent = 'For \u2019S: sign S, then twist it toward you. (A plain S counts too.)'; }, 0);      /* games that hide the word show blanks until each letter is signed */
   if (wi === 0) showDef(WORD);
-  showRef(c); if (MATCH) matchShow(c, false, wi === 0 ? wordText(WORD) : '');      /* 4.461 Match the Hand: Words: the whole word first, then each letter held */
+  showRef(c); if (MATCH) matchShow(c);      /* Match the Hand: Words: the hand holds each letter and moves on only when the camera reads theirs (4.462: their hand sets the pace; the whole word plays only on Show me again) */
 }
 function showDef(w) {      /* what the word means, right under the word, from the moment it appears (Colleen) */
   const D = window.FS_DEFS || {}, k = Object.keys(D).find(x => x.toUpperCase().replace(/[^A-Z]/g, '') === w), dv = $('#rd-def');
@@ -1255,18 +1263,25 @@ if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]');
    left hand"), as a right hand for a right-handed student and mirrored into a left hand for a left-handed one. The student copies it; when the camera
    reads it, it turns green and the next one comes. "Show me again" models it (J, Z and the moving numbers show their movement). ---------- */
 let MSEQ = 0;
-async function matchShow(c, again, whole) {
+async function matchShow(c, again, whole, slow) {      /* 4.462 slow: the slow-motion button (half speed or slower) */
   const my = ++MSEQ, t = String(c); if (!refHand) return; await refHand.ready; if (my !== MSEQ) return;
-  const lab = $('#rd-matchlab'), stop = () => my !== MSEQ;
+  const lab = $('#rd-matchlab'), stop = () => my !== MSEQ, spd = () => slow ? -0.6 : 0.1, per = slow ? 1100 : 500;
   try {
-    if (whole) { if (lab) lab.textContent = whole; await refHand.spell(whole, { speed: () => 0.1, stop }); if (stop()) return; }      /* 4.461 words: watch the whole word, then copy it letter by letter */
+    if (whole) { if (lab) lab.textContent = whole; await refHand.spell(whole, { speed: spd, stop }); if (stop()) return; }      /* 4.461 words: watch the whole word, then copy it letter by letter */
     if (lab) lab.textContent = NUMS ? numText(t) : t;
-    if (NUMS) { if (again || +t >= 10) await refHand.sign(+t, {}); if (!stop()) refHand.hold(+t); }
-    else { if (again || MOVING[t]) await refHand.spell(t, { speed: () => 0.1, stop }); if (!stop()) refHand.hold(t); }
+    if (NUMS) {      /* 4.462 any number set: the hand shows the movement, then stays on the last shape (ages and years show the movement; "Show me again" repeats it) */
+      const o = { per, stay: true, hold: true, stop };
+      if (t[0] === 'a') await refHand.signAge(+t.slice(1), o);
+      else if (t[0] === 'y') await refHand.signYear(+t.slice(1), o);
+      else if (partsFor(t).length > 1) await refHand.signParts(tokensFor(+t).flatMap(v => v >= 100 && v < 1000 ? [v / 100, 'H'] : [v]), o);
+      else if (again || slow || +t >= 10) await refHand.sign(+t, o);
+      if (!stop() && /^\d$/.test(t)) refHand.hold(+t);
+    }
+    else { if (again || slow || MOVING[t]) await refHand.spell(t, { speed: spd, stop }); if (!stop()) refHand.hold(t); }
   } catch (e) {}
 }
 const ACTS = {      /* title, the line under it, what the card asks */
-  match: () => WORD ? ['Match the Hand: Words', 'Watch the hand spell the word beside your camera. Then copy it one letter at a time: the hand holds each letter until the camera reads yours.', 'Copy the hand: spell this word'] : [NUMS ? 'Match the Hand: Numbers' : 'Match the Hand: Letters', 'Copy the hand. It shows the ' + UNIT() + ' beside your camera, on your signing side. When the camera reads your hand, the ' + UNIT() + ' turns green and the next one comes.', 'Copy the hand: sign this ' + UNIT()],
+  match: () => WORD ? ['Match the Hand: Words', 'Copy the hand one letter at a time. It holds each letter and moves on only when the camera reads yours, so you set the pace. Tap Show me again to watch the whole word.', 'Copy the hand: spell this word'] : [NUMS ? 'Match the Hand: Numbers' : 'Match the Hand: Letters', 'Copy the hand. It shows the ' + UNIT() + ' beside your camera, on your signing side. When the camera reads your hand, the ' + UNIT() + ' turns green and the next one comes.', 'Copy the hand: sign this ' + UNIT()],
   letter: () => ['Sign the Letter', 'You see a letter. Sign it to your camera. When the camera reads it, the letter turns green.', 'Sign this letter'],
   word: () => ['Spell the Word', 'You see a word. Fingerspell it to your camera, one letter at a time. Tap Show me to watch the hand spell it.', 'Spell this word'],
   number: () => ['Sign the Number', 'You see a number. Sign it to your camera. When the camera reads it, the number turns green.', 'Sign this number'],
@@ -1279,15 +1294,16 @@ if (ACT) {
   if (ACT === 'word') { const b = document.querySelector('#rd-mode [data-v="words"]'); if (b) b.click(); }
   if ((ACT === 'check' || ACT === 'match') && QS.get('words') === '1') { const b = document.querySelector('#rd-mode [data-v="words"]'); if (b) b.click(); }
   if (ACT === 'check') { const b = document.querySelector('#rd-kind [data-v="check"]'); if (b) b.click(); }
-  if (MATCH && NUMS) { SET = DIGITS; cur = 0; }      /* the beginner numbers: 0 to 9 */
   if (MATCH) {
     const cam = $('.rd-cam'), pair = document.createElement('div'), mb = $('#rd-modelbox'); pair.className = 'rd-pair'; cam.parentNode.insertBefore(pair, cam);
     pair.appendChild(mb); pair.appendChild(cam); mb.appendChild($('#rd-model')); mb.hidden = false;
     mb.insertAdjacentHTML('afterbegin', '<p class="rd-matchlab" id="rd-matchlab" aria-live="polite"></p>');
-    mb.insertAdjacentHTML('beforeend', '<button class="btn" id="rd-matchagain" type="button">▶ Show me again</button>');
+    mb.insertAdjacentHTML('beforeend', '<div class="rd-row" style="margin:0"><button class="btn" id="rd-matchagain" type="button">▶ Show me again</button><button class="btn ghost" id="rd-matchslow" type="button">🐢 Slow motion</button></div>');
     $('#rd-matchagain').onclick = () => WORD ? matchShow(WORD[wi], false, wordText(WORD)) : matchShow(SET[cur], true);
+    $('#rd-matchslow').onclick = () => WORD ? matchShow(WORD[wi], false, wordText(WORD), true) : matchShow(SET[cur], true, '', true);      /* 4.462 (Colleen: "do 5"): the same, much slower */
     setTimeout(() => dispatchEvent(new Event('resize')), 0);      /* the hand draws at its new, bigger size */
   }
-  let [t, intro, ask] = ACTS[ACT](); if (TMS_N) { t = 'Test My Skills: Part 2'; intro = 'Sign ' + TMS_N + ' ' + (NUMS ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test. No hints.'; if (!NUMS) $('#rd-mode').hidden = true; } $('h1').textContent = t; document.title = t; $('#rd-intro').textContent = intro; if (ACT !== 'word' && ACT !== 'pacer' && !(MATCH && WORD)) $('#rd-ask').textContent = ask;
+  let [t, intro, ask] = ACTS[ACT](); if (TMSCAM) { document.body.classList.add('tmscam'); t = 'Test My Skills: camera'; intro = 'Keep this tab open. Each camera question in your test shows up here. Sign it, then go back to your test tab.'; $('#rd-mode').hidden = true; $('#rd-checkgo').hidden = true; setTimeout(() => { try { tmsTake(localStorage.getItem('fsp-tms-q')); } catch (e) {} }, 0); }
+  if (TMS_N) { t = 'Test My Skills: Part 2'; intro = 'Sign ' + TMS_N + ' ' + (NUMS ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test. No hints.'; if (!NUMS) $('#rd-mode').hidden = true; } $('h1').textContent = t; document.title = t; $('#rd-intro').textContent = intro; if (ACT !== 'word' && ACT !== 'pacer' && !(MATCH && WORD)) $('#rd-ask').textContent = ask;
 }
 window.READER = { ageArea, setFaceDemo: v => { FACE = v; }, ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */

@@ -518,7 +518,28 @@ let R = null;      // the round being played
    take the stacker test. these also count for daily work but are modeled off the authentic test"): the look-alike of ASL Study's Stacker test for every
    edition. Fingerspelling: 25 real words (short, medium, long), about 4 in 10 typed, the rest picked from four look-alikes. Numbers: mostly 2-digit,
    one year, one age, one 4-digit, the rest 1- and 3-digit, typed or picked. Then Part 2: 5 to the camera (reader.html?act=check&n=5). 80% = ready. */
-const TMS_READY = 80;
+const TMS_READY = 80, TMS_CAM = 5;
+/* 4.462 (Colleen: "do 4"): the camera questions are mixed in like the real test: among questions 2 to 12, never first. Each one is signed in the camera
+   tab (reader.html?act=check&tmscam=1), which gets the word through localStorage 'fsp-tms-q' and answers with 'fsp-tms-a'. "My camera won't work" swaps the
+   camera questions for watching questions, so the test stays the same length (as in ASL Study). */
+function tmsMixCam(L, cam) { const spots = shuffle(Array.from({ length: Math.min(11, L.length) }, (_, j) => j + 1)).slice(0, cam.length).sort((a, b) => a - b), out = L.slice();
+  spots.forEach((at, k) => out.splice(at, 0, Object.assign(cam[k], { id: 'c' + Date.now().toString(36) + k }))); return out; }
+let TMSWIN = null;
+function tmsCamAsk() { const it = R && R.list[R.i]; if (!it || it.g !== 'xcam') return; const num = R.tms === 'num';
+  try { localStorage.setItem('fsp-tms-q', JSON.stringify({ id: it.id, w: String(it.w), at: Date.now() })); } catch (e) {}
+  if (!TMSWIN || TMSWIN.closed) TMSWIN = window.open('reader.html?act=check&tmscam=1' + (num ? '&kind=numbers' : '&words=1') + (STUDY && STUDY.camtl !== undefined ? '&tl=' + STUDY.camtl : ''), 'fstmscam');
+  else try { TMSWIN.focus(); } catch (e) {}
+  $('#p-camqmsg').textContent = TMSWIN ? 'Sign it in the camera tab. Your answer comes back here by itself.' : 'Your browser blocked the camera tab. Allow pop-ups for this page, then tap again.'; }
+function tmsNoCam() {      /* every camera question left becomes a watching question */
+  if (!R || !R.tms) return; const fs = R.tms === 'fs', P = fs ? R.pool.filter(x => letters(x.w).length >= 3) : null, used = new Set(R.list.map(x => letters(String(x.w))));
+  for (let j = R.i; j < R.list.length; j++) if (R.list[j].g === 'xcam') { let nw;
+    if (fs) { const x = shuffle(P.filter(y => !used.has(letters(y.w))))[0] || P[0]; used.add(letters(x.w)); nw = Object.assign({}, x, { g: j % 2 ? 'type' : 'pick' }); }
+    else { const lo = 10, v = String(lo + Math.floor(Math.random() * 90)); nw = { w: v, n: 1, teens: teensFor(), form: formFor(), g: j % 2 ? 'numbers' : 'npick' }; }
+    R.list[j] = nw; }
+  R.nocam = true; R.i--; nextWord(); }
+addEventListener('storage', e => { if (e.key !== 'fsp-tms-a' || !R || !R.tms) return; let a = null; try { a = JSON.parse(e.newValue || 'null'); } catch (x) {}
+  const it = R.list[R.i]; if (!a || !it || it.g !== 'xcam' || a.id !== it.id || R.answered === R.i) return;
+  R.answered = R.i; record(!!a.ok, a.ok ? 'signed' : ''); showFeedback(!!a.ok, !a.ok, String(it.w)); $('#p-camq').hidden = true; afterAnswer(); try { focus(); } catch (x) {} });
 const wordCats = w => { const k = letters(w), out = new Set(); [window.FS_WORDS || {}, window.FAMILIAR || {}].forEach(B => Object.keys(B).forEach(c => { if ((B[c] || []).some(x => letters(x) === k)) out.add(c); })); return out; };      /* every list a word is in */
 const catChoices = it => { const mine = wordCats(it.w); return shuffle([it.c].concat(shuffle((it.cats || []).filter(c => c !== it.c && !mine.has(c))).slice(0, 3))); };
 function tmsList(kind, pool) {
@@ -529,22 +550,24 @@ function tmsList(kind, pool) {
     /* 4.461 (Colleen: "do 2"): about 1 in 6 a category question, like the real test, when the words come from 4 or more categories; only words in one category */
     const cats = [...new Set(P.map(x => x.c).filter(c => c && !/LEVEL|VOCAB|GRADE/i.test(c)))];      /* real topics only, not grade-level lists */
     if (cats.length >= 4) { let k = 0; L.forEach(x => { if (k < 4 && x.g === 'pick' && cats.indexOf(x.c) >= 0 && [...wordCats(x.w)].filter(c => !/LEVEL|VOCAB|GRADE/i.test(c)).length === 1) { x.g = 'pcat'; x.cats = cats; k++; } }); }
-    return shuffle(L);
+    const used = new Set(L.map(x => letters(x.w))), cam = shuffle(P.filter(x => !used.has(letters(x.w)) && letters(x.w).length <= 7 && !/\s/.test(x.w.trim()))).slice(0, TMS_CAM).map(x => ({ w: x.w, n: x.n, g: 'xcam' }));
+    return tmsMixCam(shuffle(L), cam);
   }
   const L = [], num = d => { const lo = d === 1 ? 0 : Math.pow(10, d - 1); return String(lo + Math.floor(Math.random() * (Math.pow(10, d) - lo))); };
   const it = (w, g) => ({ w, n: 1, teens: teensFor(), form: formFor(), g });
   L.push(Object.assign(yearItem(L), { g: Math.random() < 0.5 ? 'ypick' : 'yread' }));
   L.push(Object.assign(ageItem(L), { g: Math.random() < 0.5 ? 'apick' : 'aread' }));
   L.push(it(num(4), 'nquiz'));
-  for (let i = 0; i < 14; i++) L.push(it(num(2), i % 2 ? 'numbers' : 'npick'));
+  for (let i = 0; i < 15; i++) L.push(it(num(2), i % 2 ? 'numbers' : 'npick'));      /* 25 watching + 5 camera = 30, like the real test */
   for (let i = 0; i < 4; i++) L.push(it(num(1), i % 2 ? 'numbers' : 'npick'));
   for (let i = 0; i < 3; i++) L.push(it(num(3), 'nquiz'));
-  return shuffle(L);
+  return tmsMixCam(shuffle(L), [2, 2, 1, 2, 3].slice(0, TMS_CAM).map(d => ({ w: num(d), n: 1, g: 'xcam' })));
 }
 function startRound(fixedWords) {
   const g = S.game, pool = poolFor(g).filter(x => !STKRUN || letters(x.w).length >= 3);      /* 4.441 Stacker practice: real words, 3+ letters */
   let list;
   if (fixedWords) list = shuffle(fixedWords);
+  else if (TMS) list = tmsList(TMS, pool);      /* 4.460; 4.462 before the number games' own lists (it was cut to their 20) */
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
   else if (g === 'nquiz') { list = []; for (let i = 0; i < S.qcount; i++) list.push(quizItem(list)); }
   else if (isYear(g)) { list = []; for (let i = 0; i < S.ncount; i++) list.push(yearItem(list)); }
@@ -552,7 +575,6 @@ function startRound(fixedWords) {
   else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
-  else if (TMS) list = tmsList(TMS, pool);
   else if (STKRUN) {      /* 4.443 (Colleen: "an even distribution of short, medium, and long words"): 3-4, 5-6 and 7+ letters, a third each */
     const band = x => { const n = letters(x.w).length; return n <= 4 ? 0 : n <= 6 ? 1 : 2; }, B = [0, 1, 2].map(b => shuffle(pool.filter(x => band(x) === b))), want = [8, 8, 9];
     list = []; [0, 1, 2].forEach(b => { list = list.concat(B[b].slice(0, want[b])); });
@@ -636,6 +658,7 @@ function drawWord() {
   const clue = clueOn(g, it);
   $('#p-clue').hidden = !clue;
   if (clue) $('#p-clue-box').innerHTML = clueHtml(it.c);      // the category's sign: its GIF once Colleen sends it (CAT_GIFS in words.js), its name until then
+  const cq = $('#p-camq'), xc = g === 'xcam'; if (cq) { cq.hidden = !xc; if (xc) { $('#p-typebox').hidden = true; $('#p-choicebox').hidden = true; $('#p-camqw').textContent = isNumGame(R.tms === 'num' ? 'ntms' : 'tms') ? String(it.w) : String(it.w).toUpperCase(); $('#p-camqask').textContent = R.tms === 'num' ? 'Sign this number to your camera.' : 'Fingerspell this word to your camera.'; $('#p-camqmsg').textContent = ''; if (R.tms === 'num') $('#p-count').textContent = $('#p-count').textContent.replace(/^Word /, 'Number '); } }      /* 4.462 */
 }
 async function nextWord() {
   R.i++;
@@ -646,7 +669,7 @@ async function nextWord() {
   drawWord();
   if (!isChoice(R.game)) setTimeout(answerFocus, 50);
   if (clueOn(R.game, it)) await new Promise(r => setTimeout(r, 1400));      // the category first, then the word
-  if (location.hash === '#/play' && R) { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
+  if (location.hash === '#/play' && R && it.g !== 'xcam') { R.cur.shownAt = Date.now(); spellWord(it.w, R.cur.blur, it.teens, it.form); }
 }
 function letterDiff(right, chosen) {      // { mix: [right letter + letter chosen, ...], swaps: how many pairs of letters were exchanged }
   const a = letters(right), b = letters(chosen);
@@ -748,6 +771,7 @@ function finishRound() {
   R = null; location.hash = '#/results';
 }
 $('#p-check').onclick = () => answerTyped(false);
+$('#p-camqgo').onclick = tmsCamAsk; $('#p-camqno').onclick = tmsNoCam;      /* 4.462 Test My Skills camera questions */
 /* Fill in the Blanks boxes: one letter each, the cursor moves on by itself; what is typed goes into the answer (first + boxes + last) */
 const fboxes = () => $$('#p-blanks .fbox');
 const answerFocus = () => { const b = R && R.game === 'fill' ? fboxes().find(x => !x.value) || fboxes()[0] : null; (b || $('#p-answer')).focus(); };      // the first empty box in Fill in the blanks
@@ -883,10 +907,10 @@ function resultsShow() {
   const g = r.game || 'type';
   $('#r-title').textContent = GAMES[g].name + ': results';
   { const box = $('#r-tms'); if (box) { const tms = g === 'tms' || g === 'ntms', ready = r.pct >= TMS_READY; box.hidden = !tms;      /* 4.460 Test My Skills */
-    if (tms) { const num = g === 'ntms'; box.innerHTML = '<div class="tmsres ' + (ready ? 'ok' : '') + '"><h3>' + (ready ? '✅ Part 1: you look ready!' : '📚 Part 1: not quite yet') + '</h3><p>' + r.pct + '% right. Ready means ' + TMS_READY + '% or better' + (ready ? '.' : '. Keep practicing with the games, then try again.') + '</p>'
-      + '<p><b>Part 2:</b> sign 5 ' + (num ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test.</p><a class="btn" data-cam' + (num ? ' data-camnum' : '') + ' href="reader.html?' + (num ? 'kind=numbers&' : '') + 'act=check&n=5&tms=1' + (num ? '' : '&words=1') + '" data-q="' + (num ? 'kind=numbers&' : '') + 'act=check&n=5&tms=1' + (num ? '' : '&words=1') + '">📷 Part 2: to the camera</a>'
+    if (tms) { const num = g === 'ntms'; box.innerHTML = '<div class="tmsres ' + (ready ? 'ok' : '') + '"><h3>' + (ready ? '✅ You look ready!' : '📚 Not quite yet') + '</h3><p>' + r.pct + '% right. Ready means ' + TMS_READY + '% or better' + (ready ? '.' : '. Keep practicing with the games, then try again.') + '</p>'
+
       + '<p class="hint">This is practice: it counts toward your practice like the games, and nothing is sent as a test score.</p></div>';
-      const a = box.querySelector('[data-cam]'); if (a) a.onclick = openCamera; } } }
+      } } }
   $('#r-again').href = g === 'tms' ? '#/tms/fs' : g === 'ntms' ? '#/tms/num' : STKRUN ? '#/stk/' + STKRUN : '#/setup/' + g; if (STKRUN) $('#r-again').textContent = '▶ Practice again (counts for your Stacker)';
   const mm = Math.floor(r.secs / 60), ss = r.secs % 60, time = mm + ':' + String(ss).padStart(2, '0');
   if (g === 'ladder') {

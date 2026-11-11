@@ -6,7 +6,7 @@
 <title>Fingerspell to the Camera</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=126">
+<link rel="stylesheet" href="style.css?v=127">
 <style>
   /* Fingerspell to the Camera (2026-10-17): the student fingerspells; the camera reads the hand. Nothing leaves the computer. */
   body { padding: 0 0 40px; }
@@ -117,6 +117,7 @@
   body.act-match.lefty #rd-modelbox { order: 2; } body.act-match.lefty .rd-pair #rd-model { transform: scaleX(-1); }
   .rd-matchlab { margin: 0; font: 700 44px/1 var(--display); color: var(--accent); min-height: 44px; }
   body.act-match #rd-teachbtn, body.act-match #rd-forget { display: none; }
+  body.tmscam #rd-checkgo, body.tmscam #rd-checkset .rd-row { display: none !important; }      /* 4.462 the test tab sends each question */
 </style>
 </head>
 <body>
@@ -190,6 +191,6 @@
 <script src="hand.js?v=153"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=74"></script>
+<script type="module" src="reader.js?v=76"></script>
 </body>
 </html>
