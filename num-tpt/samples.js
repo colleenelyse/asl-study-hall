@@ -24,7 +24,12 @@
       N.push({ id: n + 's', show: String(n), how: 'slang: ' + (n - 20) + ' with the middle finger wiggling', mv: true, palm: 'endout' }); }
     else N.push({ id: String(n), show: String(n), how: '', mv: true, palm: 'endout' });
   }
-  const ITEMS = L.concat(N);      /* 26 + 37 = 63 */
+  /* J (Colleen 2026-11-11, from a student: "j should end at the bottom of the j, not come back up to an i shape"): a J that ends at the bottom of the hook
+     ends with the palm turned in, so 'endout' sent it back until students came back up to an I. J has no palm rule now; Z keeps 'endout'. */
+  L[9].palm = '';
+  /* a second sample of the letters the camera read worst on day one (Colleen 2026-11-11: "let's start with 2 and 3"), after the numbers; saved with the first */
+  const X2 = 'QHPSNRX'.split('').map(c => Object.assign({}, L.find(x => x.id === c), { id: c + '2', how: 'one more time: the camera needs extra help with this one' }));
+  const ITEMS = L.concat(N, X2);      /* 26 + 37 + 7 = 70 */
   window.SAMP_ITEMS = ITEMS.map(x => ({ id: x.id, show: x.show, how: x.how, mv: x.mv, palm: x.palm }));
   const KEY = 'fsp-samp-v1', had = (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } })();
   const st = { done: had.done || {}, pend: had.pend || [], i: 0, phase: 'wait', hold: 0, prev: null, lastT: 0, rec: [], recT0: 0, msg: '', cd: 0 };
@@ -112,7 +117,7 @@
         : `<p style="margin:0">Make the sign and hold it still until the bar fills.</p><div class="bar"><i id="sp-p" style="width:0"></i></div>`}
       <p class="msg" aria-live="polite">${st.msg}</p>
       <div class="row"><button class="btn ghost" id="sp-skip" type="button">Skip for now</button>${st.last != null && ITEMS[st.last] && st.last !== st.i ? `<button class="btn ghost" id="sp-redo" type="button">↺ Redo ${ITEMS[st.last].show}</button>` : ''}</div>
-      <details id="sp-pick"${st.pickOpen ? ' open' : ''} style="width:100%"><summary style="cursor:pointer;font-weight:800">Redo a sign</summary><div class="row" style="margin-top:6px">${ITEMS.map((x, j) => `<button class="btn ghost" data-go="${j}" type="button" style="min-width:2.6em;padding:4px 8px${j === st.i ? ';outline:3px solid #FFC83D' : ''}" title="${x.how ? x.how.replace(/"/g, '') : ''}">${st.done[x.id] ? '✓ ' : ''}${x.show}${x.id !== x.show ? '<small style="opacity:.7"> ' + ({ t: 'twist', p: '10 + ', f: 'formal', s: 'slang' }[x.id.replace(/^\d+/, '')] || '') + '</small>' : ''}</button>`).join('')}</div></details>
+      <details id="sp-pick"${st.pickOpen ? ' open' : ''} style="width:100%"><summary style="cursor:pointer;font-weight:800">Redo a sign</summary><div class="row" style="margin-top:6px">${ITEMS.map((x, j) => `<button class="btn ghost" data-go="${j}" type="button" style="min-width:2.6em;padding:4px 8px${j === st.i ? ';outline:3px solid #FFC83D' : ''}" title="${x.how ? x.how.replace(/"/g, '') : ''}">${st.done[x.id] ? '✓ ' : ''}${x.show}${x.id !== x.show ? '<small style="opacity:.7"> ' + (/^[A-Z]2$/.test(x.id) ? 'again' : { t: 'twist', p: '10 + ', f: 'formal', s: 'slang' }[x.id.replace(/^\d+/, '')] || '') + '</small>' : ''}</button>`).join('')}</div></details>
       <p class="safe" style="margin:0">Signing with your <b>${window.READER_LEFT ? 'left' : 'right'}</b> hand. <button class="link" id="sp-hand" type="button" style="background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Switch hands</button></p>
       <p class="safe">🔒 No picture or video is kept: only the positions of 21 dots on your hand. Your teacher sees which signs you finished.${st.pend.length ? ' · Saving ' + st.pend.length + '…' : ''}</p>`;
     document.getElementById('sp-hand').onclick = () => { const b = document.getElementById('rd-switch'); if (b) b.click(); window.READER_LEFT = !window.READER_LEFT; paint(); };

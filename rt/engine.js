@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.475';
+var VERSION = '4.476';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1766,7 +1766,7 @@ function api_bootstrap(auth) {
   if (GUEST_APP) out.guestApp = true;
   try { out.bcr = bothRight_(); } catch (e) {}
   try { if (row && !out.teacher) out.todo = todoFor_(readStu_(sh, row)); } catch (e) {}      /* 4.466 To do */
-  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: camsHave_(o9.Bests.cams).length, of: CAMS_ITEMS.length, d: camsHave_(o9.Bests.cams).join(',') }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
+  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: camsHave_(o9.Bests.cams).length, of: CAMS_ALL.length, d: camsHave_(o9.Bests.cams).join(',') }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
   if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
   if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
@@ -12252,6 +12252,10 @@ function makeLoginCodes() {
    their own spreadsheet, "ASL Study Camera Samples", one tab per sign, with the class period and a random sample id, never a name. The student's
    own row keeps which signs they finished (completion credit). Her review page (chunk_teach.html VIEW.camsamp) marks bad samples (the Bad column). ── */
 var CAMS_ITEMS = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16t 16p 17t 17p 18t 18p 19t 19p 20 21 22 23f 23s 24 25f 25s 26 27 28 29 30'.split(' ');
+/* 4.476 (Colleen 2026-11-11, idea 3: "ask for more of the hard letters"): the letters the camera read worst on day one get a second sample from each student.
+   Q2 is saved to the Q tab like any Q. CAMS_ALL = what a student finishes (the To do count); CAMS_ITEMS = the tabs. */
+var CAMS_EXTRA = ['Q2', 'H2', 'P2', 'S2', 'N2', 'R2', 'X2'], CAMS_ALL = CAMS_ITEMS.concat(CAMS_EXTRA);
+function camsTabOf_(item) { return /^[A-Z]2$/.test(item) ? item.charAt(0) : item; }
 var CAMS_MODEL = 'Teacher model';
 var CAMS_HEAD = ['Sample', 'Time', 'Class', 'Left hand', 'Camera read', 'Palm', 'Bad', 'Dots'];
 function camsBook_(make) {
@@ -12269,7 +12273,7 @@ function api_camSamples(auth, list) {
   /* 4.472 her fingerspelled WORDS (teacher only): whole words with the moves between letters, to the Words tab: [Sample, Saved, Word, Left hand, Palm (z), Times (ms), Dots] */
   var words = (list instanceof Array ? list : []).filter(function (s) { var it = str_(s && s.item); return s && ((/^w:[A-Z]{1,12}(_[A-Z]{1,12}){0,2}$/.test(it) && it.length >= 4) || /^n:(NUM|AGE|YEAR|MONEY|CENTS|DEC)_\d{1,6}(\.\d{1,2})?$/.test(it)); });      /* a word, a 2-3 word phrase (NEW_YORK), or 4.473 a number: n:AGE_16, n:YEAR_1985, n:MONEY_12.50 ... */
   if (words.length) {
-    if (!model) return { ok: words.map(function (s) { return str_(s.sid); }), done: 0, of: CAMS_ITEMS.length };      /* students never send these; let them go */
+    if (!model) return { ok: words.map(function (s) { return str_(s.sid); }), done: 0, of: CAMS_ALL.length };      /* students never send these; let them go */
     var ssw = camsBook_(true), wTab = function (nums) { var nm = nums ? 'Numbers' : 'Words', t = ssw.getSheetByName(nm); if (!t) { t = ssw.insertSheet(nm); t.getRange(1, 1, 1, 7).setValues([['Sample', 'Saved', nums ? 'Number (kind)' : 'Word', 'Left hand', 'Palm (z)', 'Times (ms)', 'Dots (21 points per moment, tenths of a mm)']]).setFontWeight('bold'); t.setFrozenRows(1); } return t; };
     var okw = [];
     words.slice(0, 3).forEach(function (s) { var sid = str_(s.sid).replace(/[^a-z0-9]/gi, '').slice(0, 20); if (!sid) return; okw.push(str_(s.sid));
@@ -12278,26 +12282,26 @@ function api_camSamples(auth, list) {
       if (cacheGet_('cams:' + sid)) return; cachePut_('cams:' + sid, { y: 1 }, 21600);
       var isN = /^n:/.test(str_(s.item)), lab = isN ? str_(s.item).slice(2).replace(/^([A-Z]+)_(.*)$/, function (_, k, v) { return (k === 'MONEY' ? '$' + v : k === 'CENTS' ? v + '¢' : v) + ' (' + k.toLowerCase() + ')'; }) : str_(s.item).slice(2).replace(/_/g, ' ');
       wTab(isN).appendRow([sid, new Date(), lab, s.left ? 'yes' : '', (s.z instanceof Array ? s.z : []).slice(0, 140).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), (s.t instanceof Array ? s.t : []).slice(0, 140).map(function (v) { return Math.round(num_(v)); }).join(' '), dots]); });
-    var rest = (list || []).filter(function (s) { return words.indexOf(s) < 0; }); if (!rest.length) return { ok: okw, done: 0, of: CAMS_ITEMS.length, model: true };
+    var rest = (list || []).filter(function (s) { return words.indexOf(s) < 0; }); if (!rest.length) return { ok: okw, done: 0, of: CAMS_ALL.length, model: true };
     var r2 = api_camSamples(auth, rest); r2.ok = (r2.ok || []).concat(okw); return r2;
   }
   var clean = (list instanceof Array ? list : []).slice(0, 6).map(function (s) {
-    if (!s || CAMS_ITEMS.indexOf(str_(s.item)) < 0 || !(s.frames instanceof Array) || !s.frames.length || s.frames.length > 20) return null;
+    if (!s || CAMS_ALL.indexOf(str_(s.item)) < 0 || !(s.frames instanceof Array) || !s.frames.length || s.frames.length > 20) return null;
     var ok = s.frames.every(function (fr) { return fr instanceof Array && fr.length === 21 && fr.every(function (p) { return p instanceof Array && p.length === 3 && p.every(function (v) { return typeof v === 'number' && isFinite(v) && Math.abs(v) < 100000; }); }); });
     if (!ok) return null; var sid = str_(s.sid).replace(/[^a-z0-9]/gi, '').slice(0, 20); if (!sid) return null;
     return { sid: sid, item: str_(s.item), left: s.left ? 'yes' : '', guess: (s.guess instanceof Array ? s.guess : []).slice(0, 3).map(str_).join(' '), z: (s.z instanceof Array ? s.z : []).slice(0, 20).map(function (v) { return Math.round(num_(v) * 100) / 100; }).join(' '), dots: JSON.stringify(s.frames) };
   }).filter(Boolean);
   var saved = [], done = 0, haveOut = '';
-  if (model) { var ssm = camsBook_(true), nowm = new Date(); clean.forEach(function (s) { var t = camsTab_(ssm, s.item); if (!cacheGet_('cams:' + s.sid)) { t.appendRow([s.sid, nowm, CAMS_MODEL, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); });
-    (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0) saved.push(x); }); return { ok: saved, done: 0, of: CAMS_ITEMS.length, model: true }; }
+  if (model) { var ssm = camsBook_(true), nowm = new Date(); clean.forEach(function (s) { var t = camsTab_(ssm, camsTabOf_(s.item)); if (!cacheGet_('cams:' + s.sid)) { t.appendRow([s.sid, nowm, CAMS_MODEL, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); });
+    (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0) saved.push(x); }); return { ok: saved, done: 0, of: CAMS_ALL.length, model: true }; }
   lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
     var o = readStu_(sh, row), cls = str_(o.Class), have = camsHave_(o.Bests.cams), ss = camsBook_(true), now = new Date();
-    clean.forEach(function (s) { var t = camsTab_(ss, s.item), seen = cacheGet_('cams:' + s.sid); if (!seen) { t.appendRow([s.sid, now, cls, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); if (have.indexOf(s.item) < 0) have.push(s.item); });
+    clean.forEach(function (s) { var t = camsTab_(ss, camsTabOf_(s.item)), seen = cacheGet_('cams:' + s.sid); if (!seen) { t.appendRow([s.sid, now, cls, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); if (have.indexOf(s.item) < 0) have.push(s.item); });
     o.Bests.cams = { d: have.join(','), at: dayStr_(), r2: 1 }; writeStu_(sh, o); done = have.length; haveOut = have.join(',');
   });
   (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0 && !clean.some(function (c) { return c.sid === x; })) saved.push(x); });      /* a broken sample is let go too, so the tab stops resending it */
-  return { ok: saved, done: done, of: CAMS_ITEMS.length, have: haveOut };
+  return { ok: saved, done: done, of: CAMS_ALL.length, have: haveOut };
 }
 /* 4.474 (Colleen 2026-11-11): the G, H, P and Q samples made before the H palm fix are not real ("disregard all of those and ask those students for
    those letters again"). A student's finished list drops them once (cams.r2 marks a list made after the fix), and those samples count as bad. */
@@ -12308,7 +12312,7 @@ function api_camSampList(auth) {
   requireTeacher_(); var st = static_(), sh = stuSheet_(), vals = sh.getRange(1, 1, Math.max(1, sh.getLastRow()), sh.getLastColumn()).getValues(), h = vals[0].map(str_), ci = h.indexOf('Class'), ni = h.indexOf('Name'), bi = h.indexOf('Bests'), by = {};
   vals.slice(1).forEach(function (r) { var cls = str_(r[ci]), nm = str_(r[ni]); if (!cls || !nm) return; var b = parse_(r[bi], {}), d = camsHave_(b.cams); (by[cls] = by[cls] || []).push({ name: nm, n: d.length }); });
   var ss = camsBook_(false);
-  return { items: CAMS_ITEMS, of: CAMS_ITEMS.length, book: ss ? ss.getUrl() : '', classes: st.classes.filter(function (c) { return by[c.name]; }).map(function (c) { return { name: c.name, students: by[c.name].sort(function (a, b) { return a.name < b.name ? -1 : 1; }) }; }) };
+  return { items: CAMS_ITEMS, of: CAMS_ALL.length, book: ss ? ss.getUrl() : '', classes: st.classes.filter(function (c) { return by[c.name]; }).map(function (c) { return { name: c.name, students: by[c.name].sort(function (a, b) { return a.name < b.name ? -1 : 1; }) }; }) };
 }
 /** Teacher: every sample of one sign -> [{ sid, cls, left, guess, z, bad, dots }] */
 function api_camSampItem(auth, item) {
