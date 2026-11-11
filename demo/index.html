@@ -26,6 +26,8 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
 .card ul { color: var(--soft); margin: 0 0 14px; padding-left: 1.1em; flex: 1 } .card li { margin: 3px 0 }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 800; text-decoration: none; background: var(--gold); color: #1c1f3a; box-shadow: 0 4px 0 #b97f0f; text-align: center }
 .btn.blue { background: var(--blue); color: #fff; box-shadow: 0 4px 0 #1a3fa8 }
+.try { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow); margin: 28px 0 0 }
+.try h2 { margin-bottom: 10px } .try ol { margin: 0; padding-left: 1.3em } .try li { margin: 8px 0; color: var(--soft) } .try li b { color: var(--ink) }
 .note { color: var(--soft); font-size: .95rem; margin: 28px 0 48px }
 .note b { color: var(--ink) }
 </style>
@@ -48,7 +50,17 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
       <p>LT staff: sign in with your school Google account to get a teacher account that saves your progress, with the same sample classes. No real students are in it.</p>
       <a class="btn blue" id="guestLink" href="#">Open ASL Study Guest</a></div>
   </div>
-  <p class="note"><b>Good to know:</b> the camera games (fingerspelling and numbers to the webcam) work best in Chrome. The sample class is made up; no real student names or data are in this demo.</p>
+  <section class="try">
+    <h2>Try these in about 5 minutes</h2>
+    <ol>
+      <li><b>Teacher view › Teacher dashboard.</b> Tap two or three students, then <b>+5</b> Tickets: this is how students are rewarded for signing in class. They see it the next time they open the app.</li>
+      <li><b>Teacher view › Teach › Host a game › 1 vs. The Mob › Open the lobby › Start the game.</b> The sample class joins and answers on the projector screen, just like a real class.</li>
+      <li><b>Teacher view › Students › Problem spots</b> (the signs each class misses most), then <b>Seating chart</b> or <b>Group maker</b> for any class.</li>
+      <li><b>Student view › Study.</b> Practice the Unit 2 signs with real ASL videos. Back on Home, the <b>Summative Stacker</b> card shows how practice adds up to a test score.</li>
+      <li><b>Student view › Games.</b> Try a solo story game, then <b>Fingerspelling &amp; Numbers</b> for the 3D signing hand and the webcam reader.</li>
+    </ol>
+  </section>
+  <p class="note"><b>Good to know:</b> the camera games (fingerspelling and numbers to the webcam) work best in Chrome. The sample classes are made up; no real student names or data are in this demo.</p>
 </main>
 <script>
   var GUEST = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbyQEgeyx-OlrHI9CYSyvYr-Oaj6YNzvFldfDNa7rM6zj2oJX7RhG0Z8NdC6Xp_Nwz91bA/exec';      /* the ASL Study Guest web app link (school accounts only); empty = the card stays hidden */
