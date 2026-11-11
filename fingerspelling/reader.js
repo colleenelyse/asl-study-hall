@@ -282,7 +282,11 @@ function seqStart(n) {
   }
   if (+n >= 13 && +n <= 15 && KEYS[n] && !KEYS[n].oneBend) {      /* ASL Study 4.425 (Colleen: "the app isn't recognizing 13 on the camera when i do it"): with the palm toward
        you, the bending fingers fold away from the camera and are hard to see twice; the start shape, one bend, and back up is enough */
-    const one = KEYS[n].filter(K => K.length >= 4).map(K => K.slice(0, 3)); KEYS[n] = KEYS[n].concat(one); KEYS[n].oneBend = true; }
+    const one = KEYS[n].filter(K => K.length >= 4).map(K => K.slice(0, 3));
+    /* 4.445 (Colleen: "it was stuck at 60%"): 13 was 3 key moments and the last (back up, held, at the hand model's extra palm turn) never came. The 13 shape and one
+       clear bend is enough, with no hold at the end. */
+    const bend = KEYS[n].filter(K => K.length >= 3).map(K => { const k2 = K.slice(0, 2); k2.noHold = true; return k2; });
+    KEYS[n] = KEYS[n].concat(one, bend); KEYS[n].oneBend = true; }
   const twin = +n >= 11 && +n <= 15 ? +n - 10 : -1;      /* 11-15 start like 1-5 (fingers together, or held by the thumb): that plain digit is not a look-alike to beat (Colleen: 14 struggled) */
   if (!DECOY[n] && refHand && refHand.numberDecoys) DECOY[n] = [].concat(...P.map(p => refHand.numberDecoys(p.v, p.o).filter(([d]) => d !== twin).map(([d, J]) => feat(J))));
   SEQ = { n, forms: (KEYS[n] || []).map(K => ({ K, i: -1, run: 0, r0: null, noSkip: multi })) };      /* a part can't be skipped */
@@ -297,7 +301,7 @@ function seqRead(n, f, L, opt) {
   SEQ.forms.forEach(F => {
     let j = -1; for (let t = F.i + 1; t <= Math.min(F.i >= 0 && F.K.length >= 4 && !F.noSkip ? F.i + 2 : F.i + 1, F.K.length - 1); t++) if (ok(F.K[t]) && (F.i < 0 || dist(f, F.K[t]) < dist(f, F.K[F.i]))) j = t;      /* the next key moment (one in between may be skipped) */
     const last = j === F.K.length - 1, t = clock();
-    if (j >= 0 && last) { if (F.at === undefined || F.at === null) F.at = t; F.miss = 0; if (t - F.at >= HOLD) { F.i = j; F.run = 0; } }      /* the last shape is held on purpose for half a second (Colleen) */
+    if (j >= 0 && last) { if (F.at === undefined || F.at === null) F.at = t; F.miss = 0; if (t - F.at >= (F.K.noHold ? 0 : HOLD)) { F.i = j; F.run = 0; } }      /* the last shape is held on purpose for half a second (Colleen) */
     else if (j >= 0) { F.miss = 0; if (++F.run >= 2) { F.i = j; F.run = 0; if (j === 0 || F.r0 === null) F.r0 = roll(f); } }
     else { F.run = Math.max(0, F.run - 1); if (++F.miss > 2) F.at = null; }
     if (F.i === F.K.length - 1 && F.K.length > 1) {

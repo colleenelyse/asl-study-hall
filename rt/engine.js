@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.441';
+var VERSION = '4.445';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1433,7 +1433,12 @@ function guestSetup() {
         var pic = GUEST_PHOTOS[ci + '|' + r[H.Name]]; return pic ? [r[H.Email], r[H.Name], r[H.Class], pic, new Date()] : null; }).filter(Boolean));
       if (prow.length) ph.getRange(2, 1, prow.length, PHOTOS_HEAD.length).setValues(prow); } });
   STATIC_ = null; HEAD_ = null; cacheDrop_('tchrs'); cacheDrop_('boards');
-  ui.alert('Done: ' + n + ' units copied, ' + cls.length + ' classes and ' + cast.length + ' sample students.\n\nNext: ASL Study > Set up or repair this sheet.');
+  /* a sample Summative Stacker for each course (Colleen 2026-11-10: the guest copy "doesn't have summative stacker at all"): the last unit shown to
+     students in that course, deadline in three weeks; only when there are none yet */
+  var stk = 0; try { if (typeof api_chOppSave === 'function' && !chOpps_().length) { var due = Utilities.formatDate(new Date(Date.now() + 21 * 864e5), tz_(), 'yyyy-MM-dd'), last = {};
+    rows_(me.getSheetByName(TABS.units), 2, 3).forEach(function (r) { var u = str_(r[0]), c = str_(r[1]); if (u && c && !/^no$/i.test(str_(r[2]))) last[c] = u; });
+    Object.keys(last).forEach(function (c) { try { api_chOppSave('', { course: c, unit: last[c], subs: '', title: last[c], due: due, open: true, nq: 30 }); stk++; } catch (e) {} }); } } catch (e) {}
+  ui.alert('Done: ' + n + ' units copied, ' + cls.length + ' classes and ' + cast.length + ' sample students' + (stk ? ', ' + stk + ' sample Summative Stacker' + (stk > 1 ? 's' : '') : '') + '.\n\nNext: ASL Study > Set up or repair this sheet.');
 }
 /** Guest copy: a staff member's first visit makes their Students row in the Staff class (no class or level question). */
 function guestJoin_(st, key) {
@@ -6087,6 +6092,7 @@ function fsClean_(r) {
     n: n, right: Math.floor(clamp(r.right, 0, n)), secs: clamp(r.secs, 0, 3600), speed: clamp(r.speed, 1, 10), lps: kind === 'letters' ? clamp(r.lps, 0, 12) : 0,
     top: kind === 'letters' ? top : null, letters: kind === 'letters' ? Math.floor(clamp(r.letters, 0, 10000)) : 0,
     items: kind === 'letters' && Array.isArray(r.items) ? r.items.slice(0, 300) : [],
+    lens: kind === 'letters' && Array.isArray(r.lens) ? r.lens.slice(0, 300).map(function (x) { return Math.max(0, Math.min(60, Math.round(Number(x) || 0))); }) : null,      // 4.443 word lengths
     mix: kind === 'letters' ? fsMixClean_(r.mix) : [], nums: kind === 'numbers' ? fsNumsClean_(r.nums) : [],      // 3.90 Class Problem Spots
     exp: kind === 'numbers' && r.exp && Array.isArray(r.exp.items) ? { words: 0, hand: r.exp.hand === 'left' ? 'left' : 'right', items: r.exp.items.slice(0, 200).filter(function (q) { return Array.isArray(q) && /^[ya]?\d{1,10}$/.test(str_(q[0])); }).map(function (q) { return [str_(q[0]), q[1] ? 1 : 0, clamp(q[2], 0, 120), /^[ya]?\d{1,10}$/.test(str_(q[3])) ? str_(q[3]) : '']; }) }      // 4.15 Sign Numbers to the Camera: [number, signed, seconds, quick mix-up]
       : kind === 'letters' && r.exp && Array.isArray(r.exp.items) ? { words: r.exp.words ? 1 : 0, hand: r.exp.hand === 'left' ? 'left' : 'right', items: r.exp.items.slice(0, 200).filter(function (q) { return Array.isArray(q) && /^[A-Z]$/.test(str_(q[0])); }).map(function (q) { return [str_(q[0]), q[1] ? 1 : 0, clamp(q[2], 0, 120), /^[A-Z]{1,2}$/.test(str_(q[3])) ? str_(q[3]) : '']; }) } : null,      // Fingerspell to the Camera: [letter, signed, seconds, quick mix-up]
@@ -6141,6 +6147,7 @@ function api_fsRound(auth, raw) {
     if (r.items.length) fsBank_(r.items);
     logRow = [new Date(), id.key, o.Name, o.Class, o.Level, 'fspell', r.name, r.n, r.right, r.secs, xp];
     try { if (typeof chFsPrac_ === 'function') chFsPrac_(st, o, r); } catch (e) {}      /* 4.408 Fingerspelling and Numbers Stackers: practice days */
+    if (r.stkMult) res.stkx = r.stkMult;      /* 4.444 fast practice counted 1.5x or 2x */
     writeStu_(sh, o);
     cacheDrop_('boards');
     cache.put('at:' + id.key, String(now), 21600);

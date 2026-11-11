@@ -15,6 +15,8 @@ const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== 
    Counting = a finished round of these games (sendToStudy), the letter camera practice and camera games (reader.js xprac: not Hangman or Wordle), and the Check. */
 let STKRUN = '', STKN = 0;      /* 4.441 the one-tap Stacker practice (#/stk/fs): a counting round of 25 real words, Pick the Word then Read the Word */
 const STKONLY = /[?&]stkonly=1\b/.test(location.search);      /* 4.441 opened from the Stacker's Choose a game: only the games that count */
+const STKT = +((/[?&]stkt=([\d.]+)/.exec(location.search) || [])[1] || 0);      /* 4.444 the 1x speed for this student's Fingerspelling Stacker */
+const stkW = l => { const r = l / (STKT || 1); return !(r > 1) ? 1 : r <= 2 ? 1 + 0.5 * (r - 1) : Math.min(2, 1.5 + (r - 2)); };      /* = Challenge.gs chPracW_ */
 const STK = EMBED && /[?&]stk=1\b/.test(location.search), STK_GAMES = ['sound', 'pick', 'type', 'fill', 'ladder', 'tricky', 'numbers', 'npick', 'nquiz', 'yread', 'ypick', 'aread', 'apick'], STK_CAM = ['def', 'echo', 'speed', 'ladder', 'names'];
 const stkBadge = t => STK ? '<span class="stk">🏆 ' + (t || 'Counts for your Stacker') + '</span>' : '';
 const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
@@ -419,7 +421,8 @@ function setupInit() {
   $('#s-scount').onchange = e => { S.scount = +e.target.value || 10; saveS(); drawPool(); };
   $('#s-flcount').onchange = e => { S.flcount = +e.target.value || 20; saveS(); drawPool(); };
   $('#s-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); $('#p-speed').value = e.target.value; };
-  $('#p-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); $('#s-speed').value = e.target.value; };      // the speed by the question (Colleen) and the setup slider stay together
+  $('#p-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); $('#s-speed').value = e.target.value; stkSay(); };
+  stkSay();      // the speed by the question (Colleen) and the setup slider stay together
   $('#s-one').onchange = e => { S.one = e.target.checked; saveS(); drawPool(); };
   S.countSeg = S.showCount ? 'on' : 'off'; segInit('s-countseg', 'countSeg', () => { S.showCount = S.countSeg === 'on'; saveS(); drawPool(); });      // letter count: a switch you can see (Colleen)
   $('#s-bank').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.banks = S.banks || {}; S.banks[S.game] = b.dataset.v; saveS(); setupShow(); };
@@ -504,6 +507,11 @@ function startRound(fixedWords) {
   else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
+  else if (STKRUN) {      /* 4.443 (Colleen: "an even distribution of short, medium, and long words"): 3-4, 5-6 and 7+ letters, a third each */
+    const band = x => { const n = letters(x.w).length; return n <= 4 ? 0 : n <= 6 ? 1 : 2; }, B = [0, 1, 2].map(b => shuffle(pool.filter(x => band(x) === b))), want = [8, 8, 9];
+    list = []; [0, 1, 2].forEach(b => { list = list.concat(B[b].slice(0, want[b])); });
+    if (list.length < S.count) list = list.concat(shuffle(pool.filter(x => list.indexOf(x) < 0)).slice(0, S.count - list.length));
+    list = shuffle(list).slice(0, S.count); }
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
   if (!list.length) return;
   R = { game: g, list, i: -1, items: [], started: Date.now(), settings: JSON.parse(JSON.stringify(S)), review: !!fixedWords, pool };
@@ -528,6 +536,7 @@ function refreshRound() {
   if (R.i >= 0 && R.answered !== R.i) drawBlanks(R.list[R.i]);
 }
 function playShow() {
+  try { stkSay(); } catch (e) {}      /* 4.444 */
   if (!R) { location.hash = '#/games'; return; }
   const first = $('#game-area').hidden;
   $('#game-area').hidden = false; $('#s-live').hidden = false; $('#s-go').textContent = 'Start over with these settings';
@@ -717,6 +726,10 @@ $('#p-answer').addEventListener('input', e => {      // Letter flash: one key is
 /* ---------- ASL Study (Colleen): opened inside the ASL Study app (?embed=aslstudy), each finished round is sent to the app, which saves
    it under the student's school sign-in (running totals, points). Nothing is sent when the site is used on its own. ---------- */
 if (EMBED) document.documentElement.classList.add('embedded');
+/* 4.444 by the speed slider, in a Fingerspelling Stacker: how much each word counts at this speed */
+function stkSay() { if (!STK || !STKT || isNumGame(S.game || '')) return; let el = $('#p-stkx'); const f = $('#p-speedf'); if (!f) return;
+  if (!el) { el = document.createElement('div'); el.id = 'p-stkx'; el.className = 'small'; el.style.cssText = 'margin-top:6px;font-weight:800'; f.appendChild(el); }
+  const l = lps(S.speed), w = Math.round(stkW(l) * 10) / 10; el.innerHTML = '⚡ ' + l + ' letters a second: each word counts <b>' + w + '×</b> for your Stacker' + (w < 2 ? ' (faster = more, up to 2×)' : ' (the most!)'); }
 function sendToStudy(res, round) {
   if (!EMBED || !res.items.length) return;
   const num = isNumGame(res.game), k = res.speed;      // k: the speed slider, 0 Beginner .. 1 Deaf
@@ -728,7 +741,8 @@ function sendToStudy(res, round) {
     items: num ? [] : res.items.filter(x => x.c && !/^LEVEL/.test(x.c)).map(x => ({ w: x.w, c: x.c, ok: !!x.ok })).slice(0, 300),
     spd: res.items.slice(0, 300).map(x => [lps(x.speed !== undefined ? x.speed : k), x.ok && !x.replays ? 1 : 0]) };      // ASL Study 4.89: each answer's speed (letters a second), right without watching again
   if (num) msg.nums = res.items.slice(0, 60).map(x => [String(x.w), x.ok ? 1 : 0, String(x.typed || '').slice(0, 13)]);      // ASL Study 3.90 Class Problem Spots: each number, right or not, and the answer given
-  else { msg.mix = mixList(res.items).slice(0, 30).map(x => [x.right, x.saw, x.times]);      // 3.90: the round's letter mix-ups [right, saw, times]
+  else { msg.lens = res.items.slice(0, 300).map(x => letters(String(x.w || '')).length);      // 4.443 each word's length, for the Fingerspelling Stacker's mix rule
+    msg.mix = mixList(res.items).slice(0, 30).map(x => [x.right, x.saw, x.times]);      // 3.90: the round's letter mix-ups [right, saw, times]
     const ord = orderList(res.items); msg.orderN = ord.length; msg.order = ord.slice(0, 20).map(x => [String(x.w).slice(0, 40), String(x.typed).slice(0, 40)]); }      // 3.90: letter order slips
   try { window.parent.postMessage(msg, '*'); } catch (e) {}
 }
