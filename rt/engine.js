@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.432';
+var VERSION = '4.436';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1376,8 +1376,66 @@ function who_(auth) {
 function isTeacher_() {
   try {
     var a = Session.getActiveUser().getEmail(), e = Session.getEffectiveUser().getEmail();
-    return !!a && a === e;
+    return !!a && (a === e || (GUEST_APP && staffEmail_(a)));      /* 4.436 in the guest copy every LT staff member is a teacher */
   } catch (err) { return false; }
+}
+/* ───────── 4.436 ASL STUDY GUEST (Colleen 2026-11-10: "an lt teacher demo with their email addresses that are formatted like mine so that the teacher can
+   have a real account"; "i want teacher progress to be saved"; "can we make an n/a option that students don't see"). A SEPARATE Apps Script project + Sheet
+   (~/Downloads/ASL Study Guest, made by dev/build-guest.py from these same files with GUEST_APP = true) holding only the made-up Grease class: real student data is never in it.
+   There: any staff email (letters only before @d204.lths.net, like hers; students are letters + digits, e.g. gib510385@) is a teacher, is put in the Staff
+   class without a sign-up form, and stays off the leaderboards; student emails are turned away; no email is ever sent (build-guest swaps MailApp.sendEmail).
+   In the REAL app (GUEST_APP false): a staff email that is not her and has no Students row gets a note with the guest link instead of the join form. ── */
+var GUEST_APP = false;      // true only in the guest copy (dev/build-guest.py)
+var GUEST_LINK = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbyQEgeyx-OlrHI9CYSyvYr-Oaj6YNzvFldfDNa7rM6zj2oJX7RhG0Z8NdC6Xp_Nwz91bA/exec';        // the guest copy's web app link, shown to staff who open the real app
+var STAFF_DOMAIN = 'd204.lths.net';
+function staffEmail_(e) { e = str_(e).toLowerCase(); var at = e.lastIndexOf('@'); return at > 0 && e.slice(at + 1) === STAFF_DOMAIN && /^[a-z][a-z.'\-]*$/.test(e.slice(0, at)); }
+function guestName_(e) { var u = str_(e).split('@')[0].replace(/[^a-z]/gi, ''); return u.length > 1 ? u.charAt(0).toUpperCase() + '. ' + u.charAt(1).toUpperCase() + u.slice(2).toLowerCase() : 'Guest'; }      // jsmith -> J. Smith
+var GUEST_CLASS = 'Staff';
+/* 4.436 Guest copy only (menu: ASL Study > Guest copy: fill in the sample class). Copies her units, GIF links, Avatars, Shop and Settings (no student data:
+   never Students, Progress, logs or any other tab) from the real sheet she pastes, then makes the classes and the made-up Grease students (Colleen's list).
+   Run it again any time to start the sample class over: teacher rows (staff emails) are kept. */
+var GUEST_CAST = ['Danny Z.', 'Sandy D.', 'Rizzo', 'Frenchy', 'Marty', 'Jan', 'Kenickie', 'Sonny L.', 'Doody', 'Roger', 'Patty S.', 'Eugene F.', 'Charlene D.'];
+function guestSetup() {
+  var ui = SpreadsheetApp.getUi();
+  if (!GUEST_APP) { ui.alert('This only runs in the ASL Study Guest copy, never in your real sheet.'); return; }
+  var ans = ui.prompt('Fill in the sample class', 'Paste the link of your REAL ASL Study sheet. Only its units, GIF links, avatars, shop and settings are copied. No students or student data are copied.', ui.ButtonSet.OK_CANCEL);
+  if (ans.getSelectedButton() !== ui.Button.OK) return;
+  var real; try { real = SpreadsheetApp.openByUrl(str_(ans.getResponseText())); } catch (e) { ui.alert('Could not open that sheet. Copy the link from the address bar of your ASL Study sheet.'); return; }
+  var me = ss_(); if (real.getId() === me.getId()) { ui.alert('That is this sheet. Paste the link of your real ASL Study sheet.'); return; }
+  var copyTab = function (name) { var src = real.getSheetByName(name); if (!src) return false; var old = me.getSheetByName(name); if (old) { old.setName(name + ' (old)'); }
+    var c = src.copyTo(me); c.setName(name); if (old) me.deleteSheet(old); return true; };
+  var unitsSrc = real.getSheetByName(TABS.units), uv = unitsSrc ? unitsSrc.getDataRange().getValues() : [], n = 0;
+  [TABS.units, TABS.avatars, TABS.shop].forEach(copyTab);
+  uv.slice(1).forEach(function (r) { if (str_(r[0]) && copyTab(str_(r[0]))) n++; });
+  var sv = real.getSheetByName(TABS.settings), mine = me.getSheetByName(TABS.settings);
+  if (sv && mine) { var want = {}; sv.getDataRange().getValues().slice(1).forEach(function (r) { var k = str_(r[0]); if (k && !/mail|code|password|key|token|backup|link|folder|domain|birthday/i.test(k)) want[k] = r[1]; });
+    var mv = mine.getDataRange().getValues(); for (var i = 1; i < mv.length; i++) { var k2 = str_(mv[i][0]); if (k2 === 'App name') mine.getRange(i + 1, 2).setValue('ASL Study Guest'); else if (want.hasOwnProperty(k2)) mine.getRange(i + 1, 2).setValue(want[k2]); } }
+  var courses = []; uv.slice(1).forEach(function (r) { var c = str_(r[1]); if (c && courses.indexOf(c) < 0) courses.push(c); }); if (!courses.length) courses = ['ASL 1'];
+  var cls = [[GUEST_CLASS, courses[0]], ['1st Period ' + courses[0], courses[0]]]; if (courses[1]) cls.push(['5th Period ' + courses[1], courses[1]]);
+  var csh = me.getSheetByName(TABS.classes); if (csh.getLastRow() > 1) csh.getRange(2, 1, csh.getLastRow() - 1, csh.getLastColumn()).clearContent(); csh.getRange(2, 1, cls.length, 2).setValues(cls);
+  lock_(function () { var sh = stuSheet_(), H = stuHead_(sh), last = sh.getLastRow(), keep = last > 1 ? sh.getRange(2, 1, last - 1, H.n).getValues().filter(function (r) { return staffEmail_(r[H.Email]); }) : [];
+    if (last > 1) sh.getRange(2, 1, last - 1, H.n).clearContent();
+    var seed = 11, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }, wk = weekKey_(dayNum_(dayStr_()));
+    var rows = keep.concat(GUEST_CAST.map(function (nm, i) { var v = []; for (var j = 0; j < H.n; j++) v.push(''); STU_NUM.forEach(function (k) { v[H[k]] = 0; });
+      var life = 200 + Math.round(rnd() * 2200), q = Math.round(life * (1.1 + rnd() * .5)), wq = Math.round(rnd() * 240);
+      v[H.Email] = nm.toLowerCase().replace(/[^a-z]/g, '') + '.sample@example.com'; v[H.Name] = nm; v[H.Class] = cls[1 + (cls.length > 2 ? i % 2 : 0)][0];
+      v[H.Lifetime] = life; v[H.Wallet] = Math.round(life * rnd() / 5); v[H.Questions] = q; v[H.Correct] = Math.round(q * (.7 + rnd() * .25)); v[H.Minutes] = Math.round(q / 6);
+      v[H.Streak] = Math.floor(rnd() * 8); v[H['Best streak']] = 9; if (H.Week !== undefined) { v[H.Week] = wk; v[H['Week points']] = Math.round(wq * .8); v[H['Week questions']] = wq; v[H['Week minutes']] = Math.round(wq / 6); }
+      v[H.Joined] = new Date(); return v; }));
+    sh.getRange(2, 1, rows.length, H.n).setValues(rows); });
+  STATIC_ = null; HEAD_ = null; cacheDrop_('tchrs'); cacheDrop_('boards');
+  ui.alert('Done: ' + n + ' units copied, ' + cls.length + ' classes and ' + GUEST_CAST.length + ' sample students (the cast of Grease).\n\nNext: ASL Study > Set up or repair this sheet.');
+}
+/** Guest copy: a staff member's first visit makes their Students row in the Staff class (no class or level question). */
+function guestJoin_(st, key) {
+  var cls = st.classes.filter(function (c) { return c.name === GUEST_CLASS; })[0] || st.classes[0]; if (!cls) throw new Error('The guest sheet has no classes. Run ASL Study > Set up or repair this sheet.');
+  return lock_(function () { var sh = stuSheet_(), H = stuHead_(sh), row = findRow_(sh, key); if (row) return row;
+    var v = []; for (var i = 0; i < H.n; i++) v.push('');
+    v[H.Email] = key; v[H.Name] = guestName_(key); v[H.Class] = cls.name; v[H.Level] = '';
+    STU_NUM.forEach(function (k) { v[H[k]] = 0; }); v[H.Joined] = new Date();
+    row = sh.getLastRow() + 1; sh.getRange(row, 1, 1, H.n).setValues([v]);
+    CacheService.getScriptCache().put('row:' + key, String(row), 21600); cacheDrop_('tchrs'); cacheDrop_('boards');
+    return row; });
 }
 function requireTeacherOrStudent_(auth) { if (!isTeacher_() && !who_(auth)) throw new Error('Your sign-in ran out. Reload the page.'); }
 function requireTeacher_() {
@@ -1605,11 +1663,14 @@ function api_bootstrap(auth) {
   var out = { ok: true, v: VERSION, today: dayStr_(), settings: st.settings };
   if (str_(auth).length >= 5 && (!id || id.via !== 'code')) out.codeBad = true;          // a code was typed but it is not anyone's
   if (!id) { out.signin = true; return wire_(out); }
+  if (GUEST_APP && !isTeacher_()) { out.guestOnly = true; return wire_(out); }      /* 4.436 the guest copy is for LT staff only */
   out.via = id.via;
   out.classes = st.classes; out.units = st.units; out.cards = st.cards;
   out.avatars = st.avatars; out.shop = st.shop; out.teacher = isTeacher_(); out.badges = st.badges;
   if (out.teacher) out.sheetUrl = ss_().getUrl();
   var sh = stuSheet_(), row = findRow_(sh, id.key);
+  if (!row && GUEST_APP && out.teacher) row = guestJoin_(st, id.key);      /* 4.436 guest copy: straight in, Staff class */
+  if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
   if (st.settings.flat) {                                              // avatars already worn, by class, so the sign-up screen and Me tab grey them out
     var tk = avTaken_(st); out.avTaken = {};
     Object.keys(tk).forEach(function (c) { out.avTaken[c] = Object.keys(tk[c]).filter(function (n) { return tk[c][n] !== id.key; }); });
@@ -4391,6 +4452,7 @@ function teacherEmails_() {
   try { add(Session.getEffectiveUser()); } catch (e) {}
   try { add(ss_().getOwner()); } catch (e) {}
   try { ss_().getEditors().forEach(add); } catch (e) {}
+  if (GUEST_APP) try { var gsh = stuSheet_(), gH = stuHead_(gsh), gl = gsh.getLastRow(); if (gl > 1) gsh.getRange(2, gH.Email + 1, gl - 1, 1).getValues().forEach(function (r) { if (staffEmail_(r[0])) add(r[0]); }); } catch (e) {}      /* 4.436 guest copy: every staff member is a teacher (never on a leaderboard) */
   cachePut_('tchrs', out, 21600);
   return out;
 }
@@ -5018,6 +5080,7 @@ function buildMenu_() {
     .addSeparator()
     .addItem('Back up this sheet now', 'backupNow')
     .addItem('Start a new school year', 'newSchoolYear');
+  if (GUEST_APP) menu.addSeparator().addItem('Guest copy: fill in the sample class', 'guestSetup');      /* 4.436 */
   menu.addToUi();
 }
 
