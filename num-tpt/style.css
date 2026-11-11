@@ -688,3 +688,10 @@ body.signer-only .assist { display: none; }
 /* 4.441 opened from a Stacker's Choose a game: only the cards that count show */
 body.stkonly .gamegrid .gcard:not(:has(.stk)) { display: none !important; }
 body.stkonly .ln-focus, body.stkonly #g-learngrid, body.stkonly #g-learnfs, body.stkonly #g-showgrid, body.stkonly #g-showfs { display: none !important; }
+
+/* 4.447 what counts for a Stacker, at a glance: a gold frame and banner on the cards that count; everything else faded, with a small note */
+body.stkmode .gamegrid .gcard.stkyes { outline: 4px solid #FFC83D; outline-offset: -2px; box-shadow: 0 0 0 6px rgba(255, 200, 61, .35), 0 8px 18px rgba(0,0,0,.12); }
+body.stkmode .gamegrid .gcard.stkyes .stk { order: -1; align-self: stretch; text-align: center; font-size: 15px; padding: 6px 10px; border-radius: 10px; background: #FFC83D; color: #2A1A00; margin: 0 0 6px; }
+body.stkmode .gamegrid .gcard:not(.stkyes) { opacity: .45; filter: grayscale(.6); }
+body.stkmode .gamegrid .gcard:not(.stkyes)::after { content: "Doesn\2019t count for your Stacker"; display: block; font-size: 12px; font-weight: 800; color: #8a4b00; margin-top: 4px; }
+body.stkmode .stknote { font-size: 16px; padding: 12px 14px; border-width: 3px; }

@@ -434,7 +434,7 @@ function xFlush() {
    (Math Answer, Count Up, Beat the Clock) are sent as practice too, every 10 numbers and when the tab is left or the game ends, so they count toward
    a Numbers Stacker's practice day. Before this only the Check was sent. */
 let NX = { n: 0, t0: 0 };
-const nxOn = () => FROM_STUDY && NUMS && !!GAME && /^(math|count|clock)$/.test(GAME.k);
+const nxOn = () => FROM_STUDY && NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.test(GAME.k));      /* 4.447 (Colleen: "i always want camera questions to count toward practice"): plain number practice too */
 function nxCount() { if (!nxOn()) return; if (!NX.n) NX.t0 = Date.now(); NX.n++; if (NX.n >= 10) nxFlush(); }
 function nxFlush() {
   if (!NX.n) return; const x = NX; NX = { n: 0, t0: 0 };
@@ -467,6 +467,7 @@ function ckTick() {
   if (WORD) setTimeout(() => { wi++; if (wi >= WORD.length) wordDone(); else showWord(); }, 600); else setTimeout(nextLetter, 600);
 }
 function ckRecord(c, ok, step) {
+  if (ok && !(GAME && GAME.numDone)) nxCount();      /* 4.447 a number signed right in plain practice counts (the camera games count in numDone) */
   if (!CK || !CK.on) return; const secs = Math.round(CK.t / 100) / 10;
   for (let k = 0; k < step; k++) CK.items.push({ c: k ? c : c, ok, secs: k ? 0 : secs, quick: k ? '' : CK.quick });
   CK.t = 0; CK.lastT = 0; CK.quick = ''; CK.quickN = 0; CK.quickL = '';
