@@ -159,9 +159,11 @@ export default {
     if (p === '/admin/save') return req.method === 'POST' ? save(req, env) : json({ error: 'POST only' }, 405);
     if (p.startsWith('/_private/') || p.startsWith('/_colleen/')) return new Response('Not found', { status: 404 });      // never served directly (an underscore folder is also left out of the github.io copy)
     if (p === '/q-unlock') return req.method === 'POST' ? qUnlock(req, env) : json({ error: 'POST only' }, 405);
+    if (p === '/demo/feedback') return req.method === 'POST' ? demoFeedback(req, env) : json({ error: 'POST only' }, 405);      // 2026-11-10 the ASL Study demo's Feedback button
     if (p === '/colleen' || p.startsWith('/colleen/')) {      // her quick links page (files in _colleen/): her password, remembered on the device for a year
       if (!(await qOk(req, env))) return qGate();
       if (p === '/colleen') return Response.redirect(url.origin + '/colleen/' + url.search, 301);
+      if (p === '/colleen/demo-feedback.json') return demoFeedbackList(req, env);      // 2026-11-10 what demo visitors sent (her password only)
       const r = await env.ASSETS.fetch(new Request(new URL('/_colleen/' + p.slice('/colleen/'.length) + url.search, req.url), req)); const h = new Headers(r.headers); h.set('cache-control', 'no-store');
       return new Response(r.body, { status: r.status, headers: h }); }
     if (p === '/admin/quicklinks') return req.method === 'POST' ? quicklinks(req, env) : json({ error: 'POST only' }, 405);      // admin only, with her password's proof
@@ -188,4 +190,26 @@ async function numbers(req, env, url, p) {
   const loc = res.headers.get('location');
   if (res.status >= 300 && res.status < 400 && loc) { const L = new URL(loc, url.origin); if (L.pathname.startsWith('/fingerspelling/')) { L.pathname = '/numbers/' + L.pathname.slice('/fingerspelling/'.length); const h = new Headers(res.headers); h.set('location', L.pathname + L.search); return new Response(null, { status: res.status, headers: h }); } }
   return shopSwitch(req, env, res, '/fingerspelling/' + rest);
+}
+
+/* 2026-11-10 (Colleen: "i want others to see that i'm accepting feedback always to improve the app"): the ASL Study demo (asl.cool/demo, no sign-in, no
+   server of its own) sends its Feedback button here. Kept 1 year in KV under dfb:; at most 20 a day from one visitor (a one-way hash of their address, never
+   the address); no names or emails are asked for. She reads them on /colleen (Demo sites › Demo feedback), behind her password, and can delete one. */
+async function demoFeedback(req, env) {
+  let b = {}; try { b = await req.json(); } catch (e) { return json({ error: 'bad' }, 400); }
+  const s = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, n);
+  const text = s(b.text, 2000); if (text.length < 3) return json({ error: 'Write a few words.' }, 400);
+  const ip = req.headers.get('cf-connecting-ip') || '', d = new Date().toISOString().slice(0, 10);
+  const hb = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('dfb|' + ip + '|' + d)), who = [...new Uint8Array(hb)].slice(0, 6).map(x => x.toString(16).padStart(2, '0')).join('');
+  const rk = 'dfbn:' + who, n = Number(await env.LOCKS.get(rk) || 0); if (n >= 20) return json({ error: 'Thanks! That is a lot of feedback for one day. Try again tomorrow.' }, 429);
+  await env.LOCKS.put(rk, String(n + 1), { expirationTtl: 86400 });
+  const item = { at: new Date().toISOString(), view: s(b.view, 20), screen: s(b.screen, 40), cat: s(b.cat, 60), prob: s(b.prob, 80), text, who };
+  await env.LOCKS.put('dfb:' + Date.now() + ':' + who, JSON.stringify(item), { expirationTtl: 365 * 86400 });
+  return json({ ok: true });
+}
+async function demoFeedbackList(req, env) {
+  if (req.method === 'POST') { let b = {}; try { b = await req.json(); } catch (e) {} if (b && /^dfb:\d+:[0-9a-f]+$/.test(String(b.del || ''))) await env.LOCKS.delete(String(b.del)); }
+  const keys = []; let cur; do { const r = await env.LOCKS.list({ prefix: 'dfb:', cursor: cur }); keys.push(...r.keys.map(k => k.name)); cur = r.list_complete ? null : r.cursor; } while (cur && keys.length < 500);
+  const items = (await Promise.all(keys.slice(-300).map(async k => { try { return Object.assign({ key: k }, JSON.parse(await env.LOCKS.get(k))); } catch (e) { return null; } }))).filter(Boolean).reverse();
+  const r = json({ items }); r.headers.set('cache-control', 'no-store'); return r;
 }

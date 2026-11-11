@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Demo Feedback</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
+<!-- 2026-11-10: what visitors sent with the Feedback button in the ASL Study demo (asl.cool/demo). Served at /colleen/demo-feedback.html, behind her
+     password like the rest of /colleen; the list comes from /colleen/demo-feedback.json (worker.js demoFeedbackList). -->
+<style>
+:root { --ink: #1c1f3a; --soft: #555b7a; --bg: #fbf7ef; --card: #fff; --line: #e6dfcf; --blue: #2f6bff }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; color-scheme: dark } }
+:root[data-theme="dark"] { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif }
+main { max-width: 820px; margin: 0 auto; padding: 28px 16px 60px }
+h1 { margin: 0 0 4px; font-size: 1.8rem } .sub { color: var(--soft); margin: 0 0 20px }
+.item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 0 0 12px }
+.meta { color: var(--soft); font-size: .88rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+.tag { background: #e9e0ff; color: #42248e; border-radius: 999px; padding: 1px 9px; font-weight: 700; font-size: .8rem }
+.text { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere }
+button { margin-left: auto; border: 1px solid var(--line); background: transparent; color: var(--soft); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .85rem; cursor: pointer }
+a { color: var(--blue); font-weight: 700 }
+</style>
+</head>
+<body><main>
+  <p><a href="./">← Quick links</a></p>
+  <h1>💬 Demo feedback</h1>
+  <p class="sub">What people sent with the Feedback button in the ASL Study demo (asl.cool/demo) and in ASL Study Guest. No names or emails are collected. Messages are kept for a year.</p>
+  <div id="list"><p class="sub">Loading…</p></div>
+</main>
+<script>
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  function paint(d) {
+    var items = (d && d.items) || [], box = document.getElementById('list');
+    if (!items.length) { box.innerHTML = '<p class="sub">Nothing yet. When someone taps Feedback in the demo, it shows up here.</p>'; return; }
+    box.innerHTML = items.map(function (it) {
+      var when = new Date(it.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return '<div class="item"><div class="meta"><b>' + esc(when) + '</b><span class="tag">' + esc(it.view === 'student' ? 'Demo: student view' : it.view === 'guest copy' ? 'ASL Study Guest' : 'Demo: teacher view') + '</span>' +
+        (it.prob ? '<span>' + esc(it.prob) + '</span>' : '') + (it.screen ? '<span>· on ' + esc(it.screen) + '</span>' : '') +
+        '<button data-del="' + esc(it.key) + '">Delete</button></div><p class="text">' + esc(it.text) + '</p></div>';
+    }).join('');
+  }
+  function load(body) { fetch('demo-feedback.json', body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}).then(function (r) { return r.json(); }).then(paint).catch(function () { document.getElementById('list').innerHTML = '<p class="sub">Could not load the feedback. Reload the page.</p>'; }); }
+  document.getElementById('list').onclick = function (e) { var b = e.target.closest('[data-del]'); if (b && confirm('Delete this message? It cannot be brought back.')) load({ del: b.dataset.del }); };
+  load();
+</script>
+</body>
+</html>
