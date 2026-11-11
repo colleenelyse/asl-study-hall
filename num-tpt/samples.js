@@ -10,7 +10,10 @@
   /* palm rules, from the palm's facing (f.orient[5]: about +1 toward the camera, about -1 toward the signer):
      out = facing out (reject anything below -0.15) · side = sideways or out, never in (reject below -0.35) · in = facing the signer (needs below -0.3)
      twist = starts in, ends out · endout = the last moment never palm in · '' = no rule (10's thumb) */
-  const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(c => ({ id: c, show: c, how: c === 'J' ? 'with the movement' : c === 'Z' ? 'draw the Z' : '', mv: c === 'J' || c === 'Z', palm: /[GHPQ]/.test(c) ? 'side' : c === 'J' || c === 'Z' ? 'endout' : 'out' }));
+  /* G, H and Q (Colleen 2026-11-11, a student: "it's telling us to do H backwards"): their palm faces the signer, so the old 'side' rule (never palm in)
+     turned a correct G or H away. Now: notout = palm toward you or sideways, never out. P (from K, palm to the side, tipped down) has no palm rule. */
+  const HOW = { G: 'pointing to the side, palm toward you', H: 'pointing to the side, palm toward you', P: 'pointing down', Q: 'pointing down, palm toward you' };
+  const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(c => ({ id: c, show: c, how: c === 'J' ? 'with the movement' : c === 'Z' ? 'draw the Z' : HOW[c] || '', mv: c === 'J' || c === 'Z', palm: /[GHQ]/.test(c) ? 'notout' : c === 'P' ? '' : c === 'J' || c === 'Z' ? 'endout' : 'out' }));
   const N = [];
   for (let n = 0; n <= 30; n++) {
     if (n === 0) N.push({ id: '0', show: '0', how: '', mv: false, palm: 'side' });
@@ -28,8 +31,9 @@
   window.SAMP_ITEMS = ITEMS.map(x => ({ id: x.id, show: x.show, how: x.how, mv: x.mv, palm: x.palm }));
   const KEY = 'fsp-samp-v1', had = (() => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } })();
   const st = { done: had.done || {}, pend: had.pend || [], i: 0, phase: 'wait', hold: 0, prev: null, lastT: 0, rec: [], recT0: 0, msg: '', cd: 0 };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ done: st.done, pend: st.pend.slice(-80) })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ done: st.done, pend: st.pend.slice(-80), fixGH: 1 })); } catch (e) {} };
   const nextI = from => { for (let k = 0; k < ITEMS.length; k++) { const j = (from + k) % ITEMS.length; if (!st.done[ITEMS[j].id]) return j; } return -1; };
+  if (!had.fixGH) { ['G', 'H', 'Q', 'P'].forEach(c => { delete st.done[c]; }); st.fixGH = 1; }      /* anyone who did these before the fix signs them once more */
   st.i = nextI(0);
   /* sending: kept on this computer until ASL Study says it is saved */
   function send() { const o = window.opener; if (!o || !st.pend.length) return; const msg = { type: 'fsp-cam-samples', v: 1, list: st.pend.slice(0, 6) };
@@ -44,6 +48,7 @@
     const avg = zs.reduce((a, b) => a + b, 0) / zs.length;
     if (it.palm === 'out' && Math.min.apply(null, last) < -0.15) return 'Turn your palm out (toward the camera)';
     if (it.palm === 'side' && min < -0.35) return 'Don’t turn your palm toward you';
+    if (it.palm === 'notout' && avg > 0.35) return 'Turn your palm toward you, not toward the camera';
     if (it.palm === 'in' && avg > -0.3) return 'Turn your palm toward you';
     if (it.palm === 'twist' && (Math.min.apply(null, first) > -0.3 || avgLast < 0.15)) return 'Start palm toward you, then twist to palm out';
     if (it.palm === 'endout' && avgLast < -0.15) return 'End with your palm out (toward the camera)';
