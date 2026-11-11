@@ -101,7 +101,7 @@
   document.body.classList.add('samp');
   const css = document.createElement('style');
   css.textContent = 'body.samp .rd-target>*:not(#sp),body.samp #rd-prompt,body.samp .rd-safe,body.samp #rd-pct,body.samp #rd-tip{display:none!important}' +
-    '#sp{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}#sp .big{font:900 64px/1.05 var(--display,inherit);letter-spacing:.06em;overflow-wrap:anywhere}#sp .how{font-weight:800;font-size:18px;max-width:30ch}' +
+    '#sp{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}#sp .big{font:900 64px/1.05 var(--display,inherit);letter-spacing:.04em;overflow-wrap:normal;word-break:keep-all;max-width:100%}#sp .big span.w{white-space:nowrap}#sp .how{font-weight:800;font-size:18px;max-width:30ch}' +
     '#sp .bar{width:100%;height:12px;border-radius:8px;background:rgba(127,127,127,.25);overflow:hidden}#sp .bar i{display:block;height:100%;background:#FFC83D;width:0}' +
     '#sp .msg{font-weight:800;min-height:1.4em}#sp .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}#sp .cnt{font:900 64px/1 inherit;color:#FFC83D}#sp .safe{font-size:13px;opacity:.85;max-width:44ch}';
   document.head.appendChild(css);
@@ -109,14 +109,14 @@
   const h1 = document.querySelector('h1'); if (h1) h1.textContent = NUMS ? 'Teach the Camera: numbers' : 'Teach the Camera: words'; document.title = h1 ? h1.textContent : 'Teach the Camera';
   const intro = document.getElementById('rd-intro'); if (intro) intro.textContent = NUMS ? 'Your model: sign each number the way you would in a sentence: plain numbers, ages, years, money, cents and decimals. The moves between digits teach the camera (and the 3D signer) how numbers flow.' : 'Your model: fingerspell each word at your natural speed. The moves between letters teach the camera (and the 3D signer) how letters blend.';
   function bar(p) { const b = document.getElementById('sp-p'); if (b) b.style.width = Math.round(100 * Math.max(0, Math.min(1, p || 0))) + '%'; }
-  const covered = () => Object.keys(st.pairs).length;
+  const bigSize = w => { const longest = Math.max.apply(null, w.split(' ').map(x => x.length)), room = Math.max(220, (el.clientWidth || 300) - 24); return Math.max(26, Math.min(64, Math.floor(room / (longest * 0.78)))); };      /* each word fits on one line; a phrase may break only between words */
   function paint() {
     if (!st.w) st.w = pick();
     const cnt = st.phase === 'count' ? Math.max(1, Math.ceil((st.cd - performance.now()) / 1000)) : 0;
     const head = NUMS ? `${st.n} modeled · ${Object.keys(st.pairs).length} digit moves` : `${st.n} modeled · ${Object.keys(st.pairs).filter(k => k.indexOf('_') < 0).length} letter pairs · ${Object.keys(st.pairs).filter(k => k.indexOf('_') > 0).length} word breaks`;
     const sub = NUMS ? `<p class="how" style="margin:0">Sign it as ${NKIND[nKind(st.w)]}${nKind(st.w) === 'AGE' ? ' (the age sign, the way you teach it)' : nKind(st.w) === 'YEAR' ? ' (the way you sign years)' : ''}.</p>` : st.w.indexOf(' ') > 0 && st.phase !== 'rec' ? '<p class="how" style="margin:0">A phrase: show the break between words your usual way.</p>' : '';
     el.innerHTML = `<p style="margin:0;font-weight:800">${head}</p>
-      <div class="big">${NUMS ? st.w : st.w.split(' ').join('<span style="opacity:.35"> · </span>')}</div>${sub}
+      <div class="big" style="font-size:${bigSize(st.w)}px">${NUMS ? '<span class="w">' + st.w + '</span>' : st.w.split(' ').map(x => '<span class="w">' + x + '</span>').join('<span style="opacity:.35"> · </span>')}</div>${sub}
       ${st.phase === 'count' ? `<div class="cnt">${cnt}</div>` : st.phase === 'rec' ? `<p class="how">● ${NUMS ? 'Sign it now' : 'Fingerspell it now'}${!NUMS && st.w.indexOf(' ') > 0 ? ', showing where each word ends and the next begins the way you naturally do' : ''}. Hold the last ${NUMS ? 'sign' : 'letter'} still (or drop your hand) to finish.</p><div class="bar"><i id="sp-p" style="width:0"></i></div>` : `<p class="how" style="opacity:.8">Raise your hand: it counts 3, 2, 1 and records by itself.</p>`}
       <p class="msg" aria-live="polite">${st.msg}</p>
       <div class="row"><button class="btn ghost" id="sp-skip" type="button">${NUMS ? 'Another one' : 'Another word'}</button>${st.last ? `<button class="btn ghost" id="sp-redo" type="button">↺ Redo ${st.last}</button>` : ''}${st.phase === 'rec' ? '<button class="btn" id="sp-stop" type="button">Done with this one</button>' : ''}</div>
