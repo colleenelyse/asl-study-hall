@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.440';
+var VERSION = '4.441';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1425,7 +1425,13 @@ function guestSetup() {
       v[H.Lifetime] = life; v[H.Wallet] = Math.round(life * rnd() / 5); v[H.Questions] = q; v[H.Correct] = Math.round(q * (.7 + rnd() * .25)); v[H.Minutes] = Math.round(q / 6);
       v[H.Streak] = Math.floor(rnd() * 8); v[H['Best streak']] = 9; if (H.Week !== undefined) { v[H.Week] = wk; v[H['Week points']] = Math.round(wq * .8); v[H['Week questions']] = wq; v[H['Week minutes']] = Math.round(wq / 6); }
       v[H.Joined] = new Date(); return v; }));
-    sh.getRange(2, 1, rows.length, H.n).setValues(rows); });
+    sh.getRange(2, 1, rows.length, H.n).setValues(rows);
+    if (typeof GUEST_PHOTOS !== 'undefined') {      /* the sample students' photos (guest copy only: GuestPhotos.gs) for seating charts, groups and the name picker */
+      var ph = ensurePhotosTab_(), pl = ph.getLastRow(), pkeep = pl > 1 ? ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).getValues().filter(function (r) { return staffEmail_(r[0]); }) : [];
+      if (pl > 1) ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).clearContent();
+      var prow = pkeep.concat(rows.filter(function (r) { return !staffEmail_(r[H.Email]); }).map(function (r) { var ci = -1; GUEST_CLASSES.forEach(function (c, i) { if (c[0] === r[H.Class]) ci = i; });
+        var pic = GUEST_PHOTOS[ci + '|' + r[H.Name]]; return pic ? [r[H.Email], r[H.Name], r[H.Class], pic, new Date()] : null; }).filter(Boolean));
+      if (prow.length) ph.getRange(2, 1, prow.length, PHOTOS_HEAD.length).setValues(prow); } });
   STATIC_ = null; HEAD_ = null; cacheDrop_('tchrs'); cacheDrop_('boards');
   ui.alert('Done: ' + n + ' units copied, ' + cls.length + ' classes and ' + cast.length + ' sample students.\n\nNext: ASL Study > Set up or repair this sheet.');
 }

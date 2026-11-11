@@ -684,3 +684,7 @@ body.signer-only .assist { display: none; }
 
 /* 2026-11-10: hidden settings, except the number, year and age ranges (.keep) */
 #s-fields > .folded { display: none !important; }
+
+/* 4.441 opened from a Stacker's Choose a game: only the cards that count show */
+body.stkonly .gamegrid .gcard:not(:has(.stk)) { display: none !important; }
+body.stkonly .ln-focus, body.stkonly #g-learngrid, body.stkonly #g-learnfs, body.stkonly #g-showgrid, body.stkonly #g-showfs { display: none !important; }

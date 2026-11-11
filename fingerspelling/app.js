@@ -13,7 +13,9 @@ const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== 
 /* ASL Study 4.421 (Colleen: "we need to label which ones count for stackers in fingerspeling and numbers so studnet's dont spoend time on things that
    don't count"): inside ASL Study, when the student has a Fingerspelling or Numbers Stacker (ASL Study adds &stk=1), the games that count get a badge.
    Counting = a finished round of these games (sendToStudy), the letter camera practice and camera games (reader.js xprac: not Hangman or Wordle), and the Check. */
-const STK = EMBED && /[?&]stk=1\b/.test(location.search), STK_GAMES = ['pairs', 'sound', 'pick', 'type', 'fill', 'ladder', 'tricky', 'numbers', 'npick', 'nquiz', 'yread', 'ypick', 'aread', 'apick'], STK_CAM = ['def', 'echo', 'speed', 'ladder', 'names'];
+let STKRUN = '', STKN = 0;      /* 4.441 the one-tap Stacker practice (#/stk/fs): a counting round of 25 real words, Pick the Word then Read the Word */
+const STKONLY = /[?&]stkonly=1\b/.test(location.search);      /* 4.441 opened from the Stacker's Choose a game: only the games that count */
+const STK = EMBED && /[?&]stk=1\b/.test(location.search), STK_GAMES = ['sound', 'pick', 'type', 'fill', 'ladder', 'tricky', 'numbers', 'npick', 'nquiz', 'yread', 'ypick', 'aread', 'apick'], STK_CAM = ['def', 'echo', 'speed', 'ladder', 'names'];
 const stkBadge = t => STK ? '<span class="stk">🏆 ' + (t || 'Counts for your Stacker') + '</span>' : '';
 const goodLists = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length > 0 &&
   Object.keys(o).every(k => Array.isArray(o[k]) && o[k].length > 0 && o[k].every(w => typeof w === 'string' && w.trim() !== ''));
@@ -308,7 +310,7 @@ function gamesInit() {
   const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span>' + (STK_GAMES.indexOf(k) >= 0 ? stkBadge() : '') + '</a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') + '<a class="gcard" href="#/mail"><span class="gi" aria-hidden="true">📮</span><b>Return to Sender</b><span>Watch the name, then drop the letter in the right mailbox. The names look alike!</span></a>';
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
-  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span>' + stkBadge('Practice and the Check count') + '</a>';      /* expressive (Colleen) */
+  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span>' + stkBadge('Words count (not single letters)') + '</a>';      /* expressive (Colleen) */
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + ((!kind && STK_CAM.indexOf(g) >= 0) || (kind && /^(math|count|clock)$/.test(g)) ? stkBadge() : '') + '</a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
   $('#g-exprfs').innerHTML += camGames('', [['def', '📖', 'Definition to Word', 'Read what it means, then fingerspell the word.'], ['echo', '🔁', 'Echo', 'The hand spells a word. Spell it back.'], ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'], ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'], ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'], ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'], ['names', '🙋', 'Name Game', 'Fingerspell names. In your class app: your classmates\u2019 names.']]);
   $('#g-exprfs').innerHTML += '<a class="gcard" data-cam href="pronouns.html" data-page="pronouns.html"><span class="gi" aria-hidden="true">👉</span><b>Pronoun Signs: ME, MY, YOU, YOUR</b><span>Sign the right pronoun at the right word: point or flat hand, toward you or toward them.</span></a>';      /* the pronoun drills (Colleen, 2026-10-17) */
@@ -316,6 +318,7 @@ function gamesInit() {
   $('#g-exprnum').innerHTML = '<a class="gcard" data-cam data-camnum href="reader.html?kind=numbers" id="camnumcard"><span class="gi" aria-hidden="true">📷</span><b>Sign Numbers to the Camera</b><span>Sign numbers to your camera: 0 to 9, moving numbers, rocking numbers, hundreds. It reads your hand and helps you fix it.</span>' + stkBadge('Only the Check counts') + '</a>';      /* expressive: the camera reads the student's hand (Colleen, 2026-10-17: the sign-it-then-check-yourself games are gone now that the camera can check) */
   $('#g-exprnum').innerHTML += camGames('n', [['math', '➗', 'Math Answer', 'Solve the problem (easy to hard), then sign the answer.'], ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'], ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out.']]);
   $$('#g-exprnum .gcard').forEach(a => { a.onclick = openCamera; });
+  if (STK && STKONLY) document.body.classList.add('stkonly');      /* 4.441 only the cards that count */
   if (STK) [['#g-grid', 'Fingerspelling'], ['#g-numgrid', 'Numbers']].forEach(([sel, what]) => { const g = $(sel), prev = g && g.previousElementSibling; if (g && !(prev && prev.classList.contains('stknote'))) g.insertAdjacentHTML('beforebegin', '<p class="stknote">🏆 For your ' + what + ' Stacker, only the games marked <b>Counts for your Stacker</b> count, and only when you finish the round (you see your results).</p>'); });
   $('#g-showgrid').innerHTML =      /* the Show Me tools together, between Learn and the games (Colleen) */
     '<a class="gcard" href="#/shownum"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me Numbers</b><span>Type any number, even 1,250,000. The hand signs it.</span></a>' +
@@ -491,7 +494,7 @@ function blurSet(w) {      /* never two blurred letters in a row (Colleen) */
 /* ---------- a round ---------- */
 let R = null;      // the round being played
 function startRound(fixedWords) {
-  const g = S.game, pool = poolFor(g);
+  const g = S.game, pool = poolFor(g).filter(x => !STKRUN || letters(x.w).length >= 3);      /* 4.441 Stacker practice: real words, 3+ letters */
   let list;
   if (fixedWords) list = shuffle(fixedWords);
   else if (g === 'flash') { list = []; for (let i = 0; i < S.flcount; i++) { let L; do { L = pick1(S.flash); } while (S.flash.length > 1 && list.length && list[list.length - 1].w === L); list.push({ w: L, n: 1 }); } }
@@ -817,7 +820,7 @@ function resultsShow() {
   if (!r) { $('#r-score').textContent = 'No round yet'; $('#r-stats').innerHTML = ''; $('#r-words').innerHTML = ''; $('#r-extra').innerHTML = ''; return; }
   const g = r.game || 'type';
   $('#r-title').textContent = GAMES[g].name + ': results';
-  $('#r-again').href = '#/setup/' + g;
+  $('#r-again').href = STKRUN ? '#/stk/' + STKRUN : '#/setup/' + g; if (STKRUN) $('#r-again').textContent = '▶ Practice again (counts for your Stacker)';
   const mm = Math.floor(r.secs / 60), ss = r.secs % 60, time = mm + ':' + String(ss).padStart(2, '0');
   if (g === 'ladder') {
     $('#r-score').textContent = r.top === null ? 'Keep climbing!' : r.topLps + ' letters a second';
@@ -2612,6 +2615,7 @@ function route() {
     $('#v-list').innerHTML = '<button class="on">' + esc(parts[1] || '') + '</button> <a class="link" href="#/chart">Back to the alphabet</a>';
     $('#v-list').onclick = e => { if (e.target.closest('button')) spellWord(parts[1] || 'A'); }; spellWord(parts[1] || 'A'); return;
   }
+  if (name === 'stk') { STKRUN = 'fs'; S.game = STKN++ % 2 ? 'type' : 'pick'; S.count = 25; startRound(); return; }      /* 4.441 */
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
   NOPICK = !/^(play|setup|show|review|results|report|card|home|games)$/.test(name);      /* these pages have (or follow) the Skin Tone picker */
   if (NOPICK && h !== TONE_PAGE) hand.ready.then(() => hand.setTone(hand.dealTone()));      /* one new tone per visit (a new lesson counts as a new visit) */
