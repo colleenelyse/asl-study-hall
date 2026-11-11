@@ -160,10 +160,14 @@ export default {
     if (p.startsWith('/_private/') || p.startsWith('/_colleen/')) return new Response('Not found', { status: 404 });      // never served directly (an underscore folder is also left out of the github.io copy)
     if (p === '/q-unlock') return req.method === 'POST' ? qUnlock(req, env) : json({ error: 'POST only' }, 405);
     if (p === '/demo/feedback') return req.method === 'POST' ? demoFeedback(req, env) : json({ error: 'POST only' }, 405);      // 2026-11-10 the ASL Study demo's Feedback button
+    if (p === '/demo/visit') return req.method === 'POST' ? demoVisit(req, env) : json({ error: 'POST only' }, 405);      // 2026-11-10 screen counts, no names
+    if (p === '/demo/built.json') { const r = json({ items: JSON.parse(await env.LOCKS.get('dbuilt') || '[]') }); r.headers.set('cache-control', 'public, max-age=300'); return r; }      // "You asked, I built it"
     if (p === '/colleen' || p.startsWith('/colleen/')) {      // her quick links page (files in _colleen/): her password, remembered on the device for a year
       if (!(await qOk(req, env))) return qGate();
       if (p === '/colleen') return Response.redirect(url.origin + '/colleen/' + url.search, 301);
       if (p === '/colleen/demo-feedback.json') return demoFeedbackList(req, env);      // 2026-11-10 what demo visitors sent (her password only)
+      if (p === '/colleen/demo-visits.json') return demoVisitList(env);      // 2026-11-10 screens opened in the demo and the guest copy, by day (no names)
+      if (p === '/colleen/demo-built.json') return demoBuiltEdit(req, env);      // her "You asked, I built it" list
       const r = await env.ASSETS.fetch(new Request(new URL('/_colleen/' + p.slice('/colleen/'.length) + url.search, req.url), req)); const h = new Headers(r.headers); h.set('cache-control', 'no-store');
       return new Response(r.body, { status: r.status, headers: h }); }
     if (p === '/admin/quicklinks') return req.method === 'POST' ? quicklinks(req, env) : json({ error: 'POST only' }, 405);      // admin only, with her password's proof
@@ -212,4 +216,35 @@ async function demoFeedbackList(req, env) {
   const keys = []; let cur; do { const r = await env.LOCKS.list({ prefix: 'dfb:', cursor: cur }); keys.push(...r.keys.map(k => k.name)); cur = r.list_complete ? null : r.cursor; } while (cur && keys.length < 500);
   const items = (await Promise.all(keys.slice(-300).map(async k => { try { return Object.assign({ key: k }, JSON.parse(await env.LOCKS.get(k))); } catch (e) { return null; } }))).filter(Boolean).reverse();
   const r = json({ items }); r.headers.set('cache-control', 'no-store'); return r;
+}
+
+/* 2026-11-10 (Colleen: a visit log for the demo with no names; a weekly summary): each screen opened in the demo (asl.cool/demo, anonymous) or in ASL Study
+   Guest (sent by the guest copy with a one-way hash of the teacher, never a name or email) adds to that day's counts, kept 120 days under dvis:YYYY-MM-DD.
+   who = how many different visitors that day (hashes only). */
+async function demoVisit(req, env) {
+  let b = {}; try { b = await req.json(); } catch (e) { return json({ ok: false }, 400); }
+  const view = ['teacher', 'student', 'guest'].includes(b.view) ? b.view : 'teacher', screen = String(b.screen || '').replace(/[^\w ›-]/g, '').slice(0, 40); if (!screen) return json({ ok: false }, 400);
+  const d = new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10);      // the school day in Central time (close enough)
+  let who = String(b.who || '').replace(/[^0-9a-f]/g, '').slice(0, 16);
+  if (!who) { const ip = req.headers.get('cf-connecting-ip') || '', hb = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('dvis|' + ip + '|' + d)); who = [...new Uint8Array(hb)].slice(0, 6).map(x => x.toString(16).padStart(2, '0')).join(''); }
+  const k = 'dvis:' + d, cur = JSON.parse(await env.LOCKS.get(k) || '{"v":{},"who":{}}');
+  const box = cur.v[view] = cur.v[view] || {}; if (Object.keys(box).length < 200 || box[screen]) box[screen] = (box[screen] || 0) + 1;
+  const w = cur.who[view] = cur.who[view] || []; if (w.length < 500 && !w.includes(who)) w.push(who);
+  await env.LOCKS.put(k, JSON.stringify(cur), { expirationTtl: 120 * 86400 });
+  return json({ ok: true });
+}
+async function demoVisitList(env) {
+  const days = []; for (let i = 0; i < 28; i++) days.push(new Date(Date.now() - 6 * 3600e3 - i * 864e5).toISOString().slice(0, 10));
+  const out = await Promise.all(days.map(async d => { const v = JSON.parse(await env.LOCKS.get('dvis:' + d) || 'null'); return v ? { day: d, v: v.v, who: Object.fromEntries(Object.entries(v.who || {}).map(([k, a]) => [k, a.length])) } : { day: d, v: {}, who: {} }; }));
+  const fb = []; let cur; do { const r = await env.LOCKS.list({ prefix: 'dfb:', cursor: cur }); fb.push(...r.keys.map(k => Number(k.name.split(':')[1]) || 0)); cur = r.list_complete ? null : r.cursor; } while (cur && fb.length < 2000);
+  return json({ days: out, feedbackTimes: fb });
+}
+/* "You asked, I built it" (Colleen 2026-11-10): her short list of improvements that came from feedback, shown on the demo page. */
+async function demoBuiltEdit(req, env) {
+  let list = JSON.parse(await env.LOCKS.get('dbuilt') || '[]');
+  if (req.method === 'POST') { let b = {}; try { b = await req.json(); } catch (e) {}
+    if (b.add && String(b.add.text || '').trim()) list.unshift({ id: Date.now().toString(36), at: new Date().toISOString().slice(0, 10), text: String(b.add.text).trim().slice(0, 240), asked: String(b.add.asked || '').trim().slice(0, 240) });
+    if (b.del) list = list.filter(x => x.id !== String(b.del));
+    list = list.slice(0, 40); await env.LOCKS.put('dbuilt', JSON.stringify(list)); }
+  return json({ items: list });
 }

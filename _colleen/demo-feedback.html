@@ -5,45 +5,109 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Demo Feedback</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
-<!-- 2026-11-10: what visitors sent with the Feedback button in the ASL Study demo (asl.cool/demo). Served at /colleen/demo-feedback.html, behind her
-     password like the rest of /colleen; the list comes from /colleen/demo-feedback.json (worker.js demoFeedbackList). -->
+<!-- 2026-11-10: the ASL Study demo (asl.cool/demo) and ASL Study Guest, for Colleen only (served at /colleen/demo-feedback.html, behind her password).
+     This week (feedback, visitors, top screens), visits by day (no names), her "You asked, I built it" list (shown on the demo page), and the feedback.
+     Data: /colleen/demo-feedback.json, /colleen/demo-visits.json, /colleen/demo-built.json (worker.js). Names of guest teachers are only in the guest
+     sheet (ASL Study › Guest copy: who has tried it). -->
 <style>
-:root { --ink: #1c1f3a; --soft: #555b7a; --bg: #fbf7ef; --card: #fff; --line: #e6dfcf; --blue: #2f6bff }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; color-scheme: dark } }
-:root[data-theme="dark"] { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; color-scheme: dark }
+:root { --ink: #1c1f3a; --soft: #555b7a; --bg: #fbf7ef; --card: #fff; --line: #e6dfcf; --blue: #2f6bff; --tint: #f4f1ea }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; --tint: #22264a; color-scheme: dark } }
+:root[data-theme="dark"] { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; --tint: #22264a; color-scheme: dark }
 * { box-sizing: border-box }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif }
-main { max-width: 820px; margin: 0 auto; padding: 28px 16px 60px }
-h1 { margin: 0 0 4px; font-size: 1.8rem } .sub { color: var(--soft); margin: 0 0 20px }
-.item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 0 0 12px }
+main { max-width: 880px; margin: 0 auto; padding: 28px 16px 60px }
+h1 { margin: 0 0 4px; font-size: 1.8rem } h2 { font-size: 1.25rem; margin: 30px 0 10px } .sub { color: var(--soft); margin: 0 0 14px }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px } .stat b { display: block; font-size: 1.9rem; line-height: 1.1 } .stat span { color: var(--soft); font-size: .9rem }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 0 0 12px }
 .meta { color: var(--soft); font-size: .88rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
 .tag { background: #e9e0ff; color: #42248e; border-radius: 999px; padding: 1px 9px; font-weight: 700; font-size: .8rem }
 .text { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere }
-button { margin-left: auto; border: 1px solid var(--line); background: transparent; color: var(--soft); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .85rem; cursor: pointer }
+button { border: 1px solid var(--line); background: transparent; color: var(--soft); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .85rem; cursor: pointer }
+button.main { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 700; padding: 6px 14px }
+.meta .r { margin-left: auto; display: flex; gap: 6px }
+table { width: 100%; border-collapse: collapse; font-size: .92rem } td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top } th { background: var(--tint) }
+.tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px }
+textarea, input { width: 100%; font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink) }
+label { display: block; font-weight: 700; margin: 8px 0 4px; font-size: .95rem }
 a { color: var(--blue); font-weight: 700 }
 </style>
 </head>
 <body><main>
   <p><a href="./">← Quick links</a></p>
-  <h1>💬 Demo feedback</h1>
-  <p class="sub">What people sent with the Feedback button in the ASL Study demo (asl.cool/demo) and in ASL Study Guest. No names or emails are collected. Messages are kept for a year.</p>
+  <h1>💬 ASL Study demo: feedback and visits</h1>
+  <p class="sub">From the demo (asl.cool/demo, no sign-in) and ASL Study Guest. No names or emails are kept here; guest teachers' names are only in the guest sheet (ASL Study › Guest copy: who has tried it).</p>
+
+  <h2>This week</h2>
+  <div class="stats" id="week"><div class="stat"><b>…</b><span>Loading</span></div></div>
+  <p class="sub" id="top" style="margin-top:10px"></p>
+
+  <h2>✅ You asked, I built it</h2>
+  <p class="sub">Shown on the demo page, newest first, so visitors see their ideas turn into changes. Tap <b>Built it</b> on a message below to start one from it.</p>
+  <div class="card">
+    <label for="asked">What someone asked for (optional)</label><input id="asked" maxlength="240" placeholder="e.g. More class games the whole class can play">
+    <label for="built">What you built</label><textarea id="built" rows="2" maxlength="240" placeholder="e.g. Tower Climb and Race Day now play with the sample class"></textarea>
+    <p style="margin:10px 0 0"><button class="main" id="addBuilt">Add to the list</button></p>
+  </div>
+  <div id="builtList"></div>
+
+  <h2>Feedback</h2>
   <div id="list"><p class="sub">Loading…</p></div>
+
+  <h2>Visits by day</h2>
+  <p class="sub">Different visitors and the screens they opened. Teacher and student = the demo; Guest = ASL Study Guest.</p>
+  <div class="tablewrap"><table id="days"><tr><td>Loading…</td></tr></table></div>
 </main>
 <script>
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var NAMES = { dash: 'Teacher dashboard', livehost: 'Host a game', liveboard: 'Class game (projector)', qres: 'Vocab stats', spots: 'Problem spots', seats: 'Seating chart', groups: 'Group maker', chal: 'Summative Stacker', chteach: 'Stacker (teacher)', home: 'Home', games: 'Games', dict: 'Dictionary', shop: 'Shop', me: 'Me', ranks: 'Ranks', quick: 'Quick view', today: 'Daily report', reports: 'Student reports', tests: 'Test maker', exams: 'Tests', pics: 'Student pictures', prizes: 'Prize queue', appset: 'App settings' };
+  var nice = function (k) { var p = String(k).split(' › '); return (NAMES[p[0]] || p[0]) + (p[1] ? ' › ' + (p[1] === 'fs' ? 'Fingerspelling & Numbers' : p[1].charAt(0).toUpperCase() + p[1].slice(1)) : ''); };
+  var post = function (url, body) { return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }); };
+  var get = function (url) { return fetch(url).then(function (r) { return r.json(); }); };
+
+  function paintVisits(d) {
+    var days = (d && d.days) || [], wk = days.slice(0, 7), sum = function (list, kind) { return list.reduce(function (n, x) { return n + ((x.who || {})[kind] || 0); }, 0); };
+    var since = Date.now() - 7 * 864e5, fbWeek = ((d && d.feedbackTimes) || []).filter(function (t) { return t >= since; }).length, screens = {};
+    wk.forEach(function (x) { Object.keys(x.v || {}).forEach(function (k) { Object.keys(x.v[k]).forEach(function (s) { screens[s] = (screens[s] || 0) + x.v[k][s]; }); }); });
+    document.getElementById('week').innerHTML = [[fbWeek, 'new feedback messages'], [sum(wk, 'teacher') + sum(wk, 'student'), 'demo visits (a visitor a day)'], [sum(wk, 'guest'), 'guest teacher visits (a teacher a day)'], [Object.keys(screens).reduce(function (n, k) { return n + screens[k]; }, 0), 'screens opened']]
+      .map(function (s) { return '<div class="stat"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join('');
+    var top = Object.keys(screens).sort(function (a, b) { return screens[b] - screens[a]; }).slice(0, 6);
+    document.getElementById('top').innerHTML = top.length ? '<b>Opened most this week:</b> ' + top.map(function (k) { return esc(nice(k)) + ' (' + screens[k] + ')'; }).join(' · ') : 'No visits yet this week.';
+    var rows = days.filter(function (x) { return Object.keys(x.v || {}).length; });
+    document.getElementById('days').innerHTML = rows.length ? '<tr><th>Day</th><th>Visitors</th><th>Screens opened</th></tr>' + rows.map(function (x) {
+      var who = x.who || {}, parts = [['teacher', 'Teacher'], ['student', 'Student'], ['guest', 'Guest']].filter(function (p) { return who[p[0]]; }).map(function (p) { return p[1] + ' ' + who[p[0]]; }).join(', ');
+      var sc = {}; Object.keys(x.v).forEach(function (k) { Object.keys(x.v[k]).forEach(function (s) { sc[s] = (sc[s] || 0) + x.v[k][s]; }); });
+      return '<tr><td>' + esc(new Date(x.day + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })) + '</td><td>' + esc(parts) + '</td><td>' + Object.keys(sc).sort(function (a, b) { return sc[b] - sc[a]; }).map(function (k) { return esc(nice(k)) + ' ' + sc[k]; }).join(' · ') + '</td></tr>';
+    }).join('') : '<tr><td>No visits in the last four weeks yet.</td></tr>';
+  }
+  function paintBuilt(d) {
+    var items = (d && d.items) || [];
+    document.getElementById('builtList').innerHTML = items.map(function (it) { return '<div class="card"><div class="meta"><b>' + esc(it.at) + '</b><span class="r"><button data-bdel="' + esc(it.id) + '">Remove</button></span></div>' +
+      (it.asked ? '<p class="text"><span class="tag">You asked</span> ' + esc(it.asked) + '</p>' : '') + '<p class="text"><span class="tag" style="background:#d9f6ec;color:#0e5c45">I built it</span> ' + esc(it.text) + '</p></div>'; }).join('') || '<p class="sub">Nothing on the list yet.</p>';
+  }
   function paint(d) {
     var items = (d && d.items) || [], box = document.getElementById('list');
-    if (!items.length) { box.innerHTML = '<p class="sub">Nothing yet. When someone taps Feedback in the demo, it shows up here.</p>'; return; }
+    if (!items.length) { box.innerHTML = '<p class="sub">Nothing yet. When someone taps Feedback in the demo or the guest copy, it shows up here.</p>'; return; }
     box.innerHTML = items.map(function (it) {
       var when = new Date(it.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-      return '<div class="item"><div class="meta"><b>' + esc(when) + '</b><span class="tag">' + esc(it.view === 'student' ? 'Demo: student view' : it.view === 'guest copy' ? 'ASL Study Guest' : 'Demo: teacher view') + '</span>' +
-        (it.prob ? '<span>' + esc(it.prob) + '</span>' : '') + (it.screen ? '<span>· on ' + esc(it.screen) + '</span>' : '') +
-        '<button data-del="' + esc(it.key) + '">Delete</button></div><p class="text">' + esc(it.text) + '</p></div>';
+      return '<div class="card"><div class="meta"><b>' + esc(when) + '</b><span class="tag">' + esc(it.view === 'student' ? 'Demo: student view' : it.view === 'guest copy' ? 'ASL Study Guest' : 'Demo: teacher view') + '</span>' +
+        (it.prob ? '<span>' + esc(it.prob) + '</span>' : '') + (it.screen ? '<span>· on ' + esc(nice(it.screen)) + '</span>' : '') +
+        '<span class="r"><button data-built="' + esc(it.text) + '">✅ Built it</button><button data-del="' + esc(it.key) + '">Delete</button></span></div><p class="text">' + esc(it.text) + '</p></div>';
     }).join('');
   }
-  function load(body) { fetch('demo-feedback.json', body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}).then(function (r) { return r.json(); }).then(paint).catch(function () { document.getElementById('list').innerHTML = '<p class="sub">Could not load the feedback. Reload the page.</p>'; }); }
-  document.getElementById('list').onclick = function (e) { var b = e.target.closest('[data-del]'); if (b && confirm('Delete this message? It cannot be brought back.')) load({ del: b.dataset.del }); };
-  load();
+  var fail = function (id) { return function () { document.getElementById(id).innerHTML = '<p class="sub">Could not load this. Reload the page.</p>'; }; };
+  get('demo-feedback.json').then(paint).catch(fail('list'));
+  get('demo-built.json').then(paintBuilt).catch(fail('builtList'));
+  get('demo-visits.json').then(paintVisits).catch(function () { document.getElementById('week').innerHTML = '<p class="sub">Could not load the visits. Reload the page.</p>'; });
+  document.getElementById('list').onclick = function (e) {
+    var d = e.target.closest('[data-del]'); if (d && confirm('Delete this message? It cannot be brought back.')) post('demo-feedback.json', { del: d.dataset.del }).then(paint);
+    var b = e.target.closest('[data-built]'); if (b) { document.getElementById('asked').value = b.dataset.built.slice(0, 240); var t = document.getElementById('built'); t.value = ''; t.focus(); t.scrollIntoView({ block: 'center' }); }
+  };
+  document.getElementById('builtList').onclick = function (e) { var b = e.target.closest('[data-bdel]'); if (b && confirm('Take this off the list on the demo page?')) post('demo-built.json', { del: b.dataset.bdel }).then(paintBuilt); };
+  document.getElementById('addBuilt').onclick = function () {
+    var t = document.getElementById('built').value.trim(), a = document.getElementById('asked').value.trim(); if (!t) { document.getElementById('built').focus(); return; }
+    post('demo-built.json', { add: { text: t, asked: a } }).then(function (d) { document.getElementById('built').value = ''; document.getElementById('asked').value = ''; paintBuilt(d); });
+  };
 </script>
 </body>
 </html>

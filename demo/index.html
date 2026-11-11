@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>ASL Study Demo</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
 <!-- The ASL Study demo (Colleen 2026-11-10, for LT staff and her principal): the real app on made-up sample classes in the browser.
-     app.html is built by dev/build-demo.py. No sign-in, cookies, analytics or ads. The guest link (a real saved account for LT staff) is GUEST below. -->
+     app.html is built by dev/build-demo.py. No sign-in, cookies or ads; screens opened are counted on asl.cool with no names (worker.js /demo/visit). The guest link (a real saved account for LT staff) is GUEST below. -->
 <style>
 :root { --ink: #1c1f3a; --soft: #555b7a; --bg: #fbf7ef; --card: #fff; --line: #e6dfcf; --gold: #f2b134; --blue: #2f6bff; --shadow: 0 10px 28px rgba(28,31,58,.12) }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --soft: #b4b9d8; --bg: #10122b; --card: #1a1d3d; --line: #2c3060; --shadow: 0 10px 28px rgba(0,0,0,.4); color-scheme: dark } }
@@ -35,6 +35,9 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
 .try a.go { display: inline-block; margin: 6px 6px 0 0; padding: 5px 12px; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 800; font-size: .88rem; text-decoration: none; white-space: nowrap } .try a.go:hover { filter: brightness(1.1) }
 .note { color: var(--soft); font-size: .95rem; margin: 28px 0 48px }
 .note b { color: var(--ink) }
+.built { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; box-shadow: var(--shadow); margin: 28px 0 0 } .built h2 { margin-bottom: 2px } .sub2 { color: var(--soft); margin: 0 0 10px }
+.built ul { list-style: none; margin: 0; padding: 0 } .built li { padding: 10px 0; border-top: 1px solid var(--line) } .built li:first-child { border-top: 0 }
+.built .asked { color: var(--soft); font-size: .95rem; display: block } .built .when { color: var(--soft); font-size: .82rem }
 .note.feedback { background: #fff4d6; color: #5a4300; border-radius: 14px; padding: 12px 16px; margin: 24px 0 0 } .note.feedback b { color: #3d2d00 }
 </style>
 </head>
@@ -73,12 +76,22 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
       <li><b>Play.</b> Try a solo story game, then the 3D signing hand and the webcam reader. <a class="go" href="app.html?as=student#go=home&act=hdoor&d=games">Games →</a> <a class="go" href="app.html?as=student#go=home&act=hdoor&d=fs">Fingerspelling &amp; Numbers →</a></li>
     </ol>
   </section>
+  <section class="built" id="built" hidden aria-label="You asked, I built it">
+    <h2>✅ You asked, I built it</h2>
+    <p class="sub2">Recent changes that came from feedback.</p>
+    <ul id="builtList"></ul>
+  </section>
   <p class="note feedback">💬 <b>Ideas or problems?</b> Tap the yellow <b>Feedback</b> tab on any screen of the demo. Every message goes straight to the teacher who builds ASL Study and is used to keep improving it. No names or emails are collected.</p>
   <p class="note"><b>Good to know:</b> the camera games (fingerspelling and numbers to the webcam) work best in Chrome. The sample classes are made up; no real student names or data are in this demo.</p>
 </main>
 <script>
   var GUEST = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbyQEgeyx-OlrHI9CYSyvYr-Oaj6YNzvFldfDNa7rM6zj2oJX7RhG0Z8NdC6Xp_Nwz91bA/exec';      /* the ASL Study Guest web app link (school accounts only); empty = the card stays hidden */
   if (GUEST) { document.getElementById('guest').hidden = false; document.getElementById('guestLink').href = GUEST; }
+  /* "You asked, I built it" (Colleen 2026-11-10): her list from /colleen, shown when it has something */
+  var escB = function (t) { return String(t || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  fetch('/demo/built.json').then(function (r) { return r.json(); }).then(function (d) { var it = (d && d.items) || []; if (!it.length) return;
+    document.getElementById('builtList').innerHTML = it.slice(0, 8).map(function (x) { return '<li>' + (x.asked ? '<span class="asked">💬 You asked: ' + escB(x.asked) + '</span>' : '') + '<b>✅ ' + escB(x.text) + '</b> <span class="when">' + escB(x.at) + '</span></li>'; }).join('');
+    document.getElementById('built').hidden = false; }).catch(function () {});
 </script>
 </body>
 </html>
