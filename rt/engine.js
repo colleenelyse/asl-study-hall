@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.450';
+var VERSION = '4.457';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1391,11 +1391,66 @@ var STAFF_DOMAIN = 'd204.lths.net';
 function staffEmail_(e) { e = str_(e).toLowerCase(); var at = e.lastIndexOf('@'); return at > 0 && e.slice(at + 1) === STAFF_DOMAIN && /^[a-z][a-z.'\-]*$/.test(e.slice(0, at)); }
 function guestName_(e) { var u = str_(e).split('@')[0].replace(/[^a-z]/gi, ''); return u.length > 1 ? u.charAt(0).toUpperCase() + '. ' + u.charAt(1).toUpperCase() + u.slice(2).toLowerCase() : 'Guest'; }      // jsmith -> J. Smith
 var GUEST_CLASS = 'Staff';
+/** 4.436 Guest copy (Colleen 2026-11-10: "allow the demo to have access to a good assortment of backgrounds without having to earn them"): every theme in
+    the Shop is already owned by each guest teacher and sample student. Adds only the missing ones; returns the Owned text. */
+function guestThemeIds_(st) { return (st.shop || []).filter(function (it) { return /^th-/.test(str_(it.id)); }).map(function (it) { return str_(it.id); }); }
+function guestThemes_(st, sh, row) { var o = readStu_(sh, row), own = ownedList_(o), add = guestThemeIds_(st).filter(function (t) { return own.indexOf(t) < 0; });
+  if (!add.length) return; lock_(function () { var o2 = readStu_(sh, row), own2 = ownedList_(o2); add.forEach(function (t) { if (own2.indexOf(t) < 0) own2.push(t); }); o2.Owned = own2.join(','); writeStu_(sh, o2); }); }
 /* 4.436 Guest copy only (menu: ASL Study > Guest copy: fill in the sample classes). Copies her units, GIF links, Avatars, Shop and Settings (no student data:
    never Students, Progress, logs or any other tab) from the real sheet she pastes, then makes the five sample classes and their made-up students (Colleen's list, 2026-11-10).
    Run it again any time to start the sample class over: teacher rows (staff emails) are kept. */
 var GUEST_CLASSES = [['1st Period ASL 1', 1], ['2nd Period ASL 1', 1], ['4th Period ASL 1', 1], ['7th Period ASL 2', 2], ['8th Period ASL 2', 2]];      // [class, ASL level]
 var GUEST_CAST = 'Zack M.,Kelly K.,Jessie S.,Lisa T.,A.C. S.,Screech P.,Tori S.,Violet B.,Stacey C.,Eric T.|Cory M.,Shawn H.,Topanga L.,Angela M.,Eric M.,Jack H.,Rachel M.,Stuart M.,Harley K.,Frankie S.|Rachel B.,Finn H.,Kurt H.,Mercedes J.,Quinn F.,Santana L.,Brittany P.,Artie A.,Tina C.,Mike C.|Danny Z.,Sandy O.,Betty R.,Kenickie M.,Frenchy F.,Marty M.,Jan R.,Doody J.,Sonny L.,Putzie T.|Cady H.,Regina G.,Gretchen W.,Karen S.,Aaron S.,Janis I.,Damian L.,Kevin N.,Glen C.,Shane O.';      // one | per class, in GUEST_CLASSES order (dev/build-demo.py reads these too)
+/** 4.436 Guest copy: the five sample classes + Staff, their made-up students (staff rows kept), their photos and a sample Stacker per course. Used by
+    guestSetup (menu) and Reset the sample classes (api_guestReset). courses = the course names from the Units tab. */
+function guestSample_(me, courses) {
+  var lvl = function (n) { return courses.filter(function (c) { return new RegExp('\\b' + n + '\\b|\\b' + (n === 1 ? 'i' : 'ii') + '\\b', 'i').test(c); })[0] || courses[n - 1] || courses[0]; };
+  var cls = [[GUEST_CLASS, lvl(1)]].concat(GUEST_CLASSES.map(function (c) { return [c[0], lvl(c[1])]; }));
+  var csh = me.getSheetByName(TABS.classes); if (csh.getLastRow() > 1) csh.getRange(2, 1, csh.getLastRow() - 1, csh.getLastColumn()).clearContent(); csh.getRange(2, 1, cls.length, 2).setValues(cls);
+  var themes = ''; try { STATIC_ = null; themes = guestThemeIds_(static_()).join(','); } catch (e) {}
+  var cast = []; GUEST_CAST.split('|').forEach(function (grp, ci) { grp.split(',').forEach(function (nm) { cast.push([nm, ci]); }); });
+  lock_(function () { var sh = stuSheet_(), H = stuHead_(sh), last = sh.getLastRow(), keep = last > 1 ? sh.getRange(2, 1, last - 1, H.n).getValues().filter(function (r) { return staffEmail_(r[H.Email]); }) : [];
+    if (last > 1) sh.getRange(2, 1, last - 1, H.n).clearContent();
+    var seed = 11, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }, wk = weekKey_(dayNum_(dayStr_()));
+    var rows = keep.concat(cast.map(function (x, i) { var nm = x[0]; var v = []; for (var j = 0; j < H.n; j++) v.push(''); STU_NUM.forEach(function (k) { v[H[k]] = 0; });
+      var life = 200 + Math.round(rnd() * 2200), q = Math.round(life * (1.1 + rnd() * .5)), wq = Math.round(rnd() * 240);
+      v[H.Email] = nm.toLowerCase().replace(/[^a-z]/g, '') + (x[1] + 1) + '.sample@example.com'; v[H.Name] = nm; v[H.Class] = cls[1 + x[1]][0];
+      v[H.Lifetime] = life; v[H.Wallet] = Math.round(life * rnd() / 5); v[H.Questions] = q; v[H.Correct] = Math.round(q * (.7 + rnd() * .25)); v[H.Minutes] = Math.round(q / 6);
+      v[H.Streak] = Math.floor(rnd() * 8); v[H['Best streak']] = 9; if (H.Week !== undefined) { v[H.Week] = wk; v[H['Week points']] = Math.round(wq * .8); v[H['Week questions']] = wq; v[H['Week minutes']] = Math.round(wq / 6); }
+      v[H.Joined] = new Date(); if (H.Owned !== undefined) v[H.Owned] = themes; return v; }));
+    sh.getRange(2, 1, rows.length, H.n).setValues(rows);
+    if (typeof GUEST_PHOTOS !== 'undefined') {      /* the sample students' photos (guest copy only: GuestPhotos.gs) for seating charts, groups and the name picker */
+      var ph = ensurePhotosTab_(), pl = ph.getLastRow(), pkeep = pl > 1 ? ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).getValues().filter(function (r) { return staffEmail_(r[0]); }) : [];
+      if (pl > 1) ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).clearContent();
+      var prow = pkeep.concat(rows.filter(function (r) { return !staffEmail_(r[H.Email]); }).map(function (r) { var ci = -1; GUEST_CLASSES.forEach(function (c, i) { if (c[0] === r[H.Class]) ci = i; });
+        var pic = GUEST_PHOTOS[ci + '|' + r[H.Name]]; return pic ? [r[H.Email], r[H.Name], r[H.Class], pic, new Date()] : null; }).filter(Boolean));
+      if (prow.length) ph.getRange(2, 1, prow.length, PHOTOS_HEAD.length).setValues(prow); } });
+  STATIC_ = null; HEAD_ = null; cacheDrop_('tchrs'); cacheDrop_('boards');
+  /* a sample Summative Stacker for each course (Colleen 2026-11-10: the guest copy "doesn't have summative stacker at all"): the last unit shown to
+     students in that course, deadline in three weeks; only when there are none yet */
+  var stk = 0; try { if (typeof api_chOppSave === 'function' && !chOpps_().length) { var due = Utilities.formatDate(new Date(Date.now() + 21 * 864e5), tz_(), 'yyyy-MM-dd'), last = {};
+    rows_(me.getSheetByName(TABS.units), 2, 3).forEach(function (r) { var u = str_(r[0]), c = str_(r[1]); if (u && c && !/^no$/i.test(str_(r[2]))) last[c] = u; });
+    Object.keys(last).forEach(function (c) { try { api_chOppSave('', { course: c, unit: last[c], subs: '', title: last[c], due: due, open: true, nq: 30 }); stk++; } catch (e) {} }); } } catch (e) {}
+  return { cls: cls, cast: cast, stk: stk };
+}
+/* 4.436 Reset the sample classes (Colleen 2026-11-10: "2" = a one-click reset, so the next guest teacher sees a clean demo). Guest copy only, any guest teacher.
+   Puts back the sample students, photos and settings (as they were after the fill-in step); clears points awarded, prizes, class rewards, seating charts, the
+   activity log and the sample students' progress and Stacker work. Every teacher's own row, progress and work are kept. */
+function api_guestReset(auth) {
+  if (!GUEST_APP) throw new Error('This is only in the guest copy.');
+  requireTeacher_();
+  var me = ss_(), keepRow = function (r) { return r.some(function (c) { return staffEmail_(c); }); };
+  var clear = function (name, all) { var sh = me.getSheetByName(name); if (!sh || sh.getLastRow() < 2) return; var n = sh.getLastRow() - 1, w = sh.getLastColumn(), v = sh.getRange(2, 1, n, w).getValues(), keep = all ? [] : v.filter(keepRow);
+    sh.getRange(2, 1, n, w).clearContent(); if (keep.length) sh.getRange(2, 1, keep.length, w).setValues(keep); };
+  lock_(function () { [TABS.ledger, TABS.redeem, TABS.pool, TABS.log, TABS.progress].forEach(function (t) { clear(t, false); }); clear(TABS.seating, true);
+    try { if (typeof CHW_TAB !== 'undefined') clear(CHW_TAB, false); } catch (e) {} });
+  var snap = {}; try { snap = JSON.parse(PropertiesService.getDocumentProperties().getProperty('guestSettings') || '{}'); } catch (e) {}
+  var set = me.getSheetByName(TABS.settings); if (set && Object.keys(snap).length) { var sv = set.getDataRange().getValues(); for (var i = 1; i < sv.length; i++) { var k = str_(sv[i][0]); if (snap.hasOwnProperty(k) && sv[i][1] !== snap[k]) set.getRange(i + 1, 2).setValue(snap[k]); } }
+  var courses = []; rows_(me.getSheetByName(TABS.units), 2, 2).forEach(function (r) { var c = str_(r[1]); if (c && courses.indexOf(c) < 0) courses.push(c); }); if (!courses.length) courses = ['ASL 1'];
+  var got = guestSample_(me, courses);
+  cacheDrop_('static'); cacheDrop_('tchrs'); cacheDrop_('boards'); STATIC_ = null; HEAD_ = null;
+  return { ok: true, students: got.cast.length, classes: got.cls.length - 1 };
+}
 function guestSetup() {
   var ui = SpreadsheetApp.getUi();
   if (!GUEST_APP) { ui.alert('This only runs in the ASL Study Guest copy, never in your real sheet.'); return; }
@@ -1412,32 +1467,8 @@ function guestSetup() {
   if (sv && mine) { var want = {}; sv.getDataRange().getValues().slice(1).forEach(function (r) { var k = str_(r[0]); if (k && !/mail|code|password|key|token|backup|link|folder|domain|birthday/i.test(k)) want[k] = r[1]; });
     var mv = mine.getDataRange().getValues(); for (var i = 1; i < mv.length; i++) { var k2 = str_(mv[i][0]); if (k2 === 'App name') mine.getRange(i + 1, 2).setValue('ASL Study Guest'); else if (want.hasOwnProperty(k2)) mine.getRange(i + 1, 2).setValue(want[k2]); } }
   var courses = []; uv.slice(1).forEach(function (r) { var c = str_(r[1]); if (c && courses.indexOf(c) < 0) courses.push(c); }); if (!courses.length) courses = ['ASL 1'];
-  var lvl = function (n) { return courses.filter(function (c) { return new RegExp('\\b' + n + '\\b|\\b' + (n === 1 ? 'i' : 'ii') + '\\b', 'i').test(c); })[0] || courses[n - 1] || courses[0]; };
-  var cls = [[GUEST_CLASS, lvl(1)]].concat(GUEST_CLASSES.map(function (c) { return [c[0], lvl(c[1])]; }));
-  var csh = me.getSheetByName(TABS.classes); if (csh.getLastRow() > 1) csh.getRange(2, 1, csh.getLastRow() - 1, csh.getLastColumn()).clearContent(); csh.getRange(2, 1, cls.length, 2).setValues(cls);
-  var cast = []; GUEST_CAST.split('|').forEach(function (grp, ci) { grp.split(',').forEach(function (nm) { cast.push([nm, ci]); }); });
-  lock_(function () { var sh = stuSheet_(), H = stuHead_(sh), last = sh.getLastRow(), keep = last > 1 ? sh.getRange(2, 1, last - 1, H.n).getValues().filter(function (r) { return staffEmail_(r[H.Email]); }) : [];
-    if (last > 1) sh.getRange(2, 1, last - 1, H.n).clearContent();
-    var seed = 11, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }, wk = weekKey_(dayNum_(dayStr_()));
-    var rows = keep.concat(cast.map(function (x, i) { var nm = x[0]; var v = []; for (var j = 0; j < H.n; j++) v.push(''); STU_NUM.forEach(function (k) { v[H[k]] = 0; });
-      var life = 200 + Math.round(rnd() * 2200), q = Math.round(life * (1.1 + rnd() * .5)), wq = Math.round(rnd() * 240);
-      v[H.Email] = nm.toLowerCase().replace(/[^a-z]/g, '') + (x[1] + 1) + '.sample@example.com'; v[H.Name] = nm; v[H.Class] = cls[1 + x[1]][0];
-      v[H.Lifetime] = life; v[H.Wallet] = Math.round(life * rnd() / 5); v[H.Questions] = q; v[H.Correct] = Math.round(q * (.7 + rnd() * .25)); v[H.Minutes] = Math.round(q / 6);
-      v[H.Streak] = Math.floor(rnd() * 8); v[H['Best streak']] = 9; if (H.Week !== undefined) { v[H.Week] = wk; v[H['Week points']] = Math.round(wq * .8); v[H['Week questions']] = wq; v[H['Week minutes']] = Math.round(wq / 6); }
-      v[H.Joined] = new Date(); return v; }));
-    sh.getRange(2, 1, rows.length, H.n).setValues(rows);
-    if (typeof GUEST_PHOTOS !== 'undefined') {      /* the sample students' photos (guest copy only: GuestPhotos.gs) for seating charts, groups and the name picker */
-      var ph = ensurePhotosTab_(), pl = ph.getLastRow(), pkeep = pl > 1 ? ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).getValues().filter(function (r) { return staffEmail_(r[0]); }) : [];
-      if (pl > 1) ph.getRange(2, 1, pl - 1, PHOTOS_HEAD.length).clearContent();
-      var prow = pkeep.concat(rows.filter(function (r) { return !staffEmail_(r[H.Email]); }).map(function (r) { var ci = -1; GUEST_CLASSES.forEach(function (c, i) { if (c[0] === r[H.Class]) ci = i; });
-        var pic = GUEST_PHOTOS[ci + '|' + r[H.Name]]; return pic ? [r[H.Email], r[H.Name], r[H.Class], pic, new Date()] : null; }).filter(Boolean));
-      if (prow.length) ph.getRange(2, 1, prow.length, PHOTOS_HEAD.length).setValues(prow); } });
-  STATIC_ = null; HEAD_ = null; cacheDrop_('tchrs'); cacheDrop_('boards');
-  /* a sample Summative Stacker for each course (Colleen 2026-11-10: the guest copy "doesn't have summative stacker at all"): the last unit shown to
-     students in that course, deadline in three weeks; only when there are none yet */
-  var stk = 0; try { if (typeof api_chOppSave === 'function' && !chOpps_().length) { var due = Utilities.formatDate(new Date(Date.now() + 21 * 864e5), tz_(), 'yyyy-MM-dd'), last = {};
-    rows_(me.getSheetByName(TABS.units), 2, 3).forEach(function (r) { var u = str_(r[0]), c = str_(r[1]); if (u && c && !/^no$/i.test(str_(r[2]))) last[c] = u; });
-    Object.keys(last).forEach(function (c) { try { api_chOppSave('', { course: c, unit: last[c], subs: '', title: last[c], due: due, open: true, nq: 30 }); stk++; } catch (e) {} }); } } catch (e) {}
+  if (mine) try { var snap = {}; mine.getDataRange().getValues().slice(1).forEach(function (r) { if (str_(r[0])) snap[str_(r[0])] = r[1]; }); PropertiesService.getDocumentProperties().setProperty('guestSettings', JSON.stringify(snap)); } catch (e) {}      /* for Reset */
+  var got = guestSample_(me, courses), cls = got.cls, cast = got.cast, stk = got.stk;
   ui.alert('Done: ' + n + ' units copied, ' + cls.length + ' classes and ' + cast.length + ' sample students' + (stk ? ', ' + stk + ' sample Summative Stacker' + (stk > 1 ? 's' : '') : '') + '.\n\nNext: ASL Study > Set up or repair this sheet.');
 }
 /** Guest copy: a staff member's first visit makes their Students row in the Staff class (no class or level question). */
@@ -1683,7 +1714,9 @@ function api_bootstrap(auth) {
   out.avatars = st.avatars; out.shop = st.shop; out.teacher = isTeacher_(); out.badges = st.badges;
   if (out.teacher) out.sheetUrl = ss_().getUrl();
   var sh = stuSheet_(), row = findRow_(sh, id.key);
-  if (!row && GUEST_APP && out.teacher) row = guestJoin_(st, id.key);      /* 4.436 guest copy: straight in, Staff class */
+  if (GUEST_APP) out.guestApp = true;
+  if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
+  if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
   if (st.settings.flat) {                                              // avatars already worn, by class, so the sign-up screen and Me tab grey them out
     var tk = avTaken_(st); out.avTaken = {};
@@ -15039,4 +15072,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
