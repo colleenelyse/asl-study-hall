@@ -66,11 +66,16 @@
         if (st.hold >= 800 && st.rec.length >= 3) { const r3 = st.rec.slice(-3), g = rank ? rank(f).slice(0, 3).map(x => x[0]) : []; if (!keep(it, r3.map(x => x.P), r3.map(x => x.z), g)) { st.hold = 0; st.rec = []; } }
         bar(Math.min(1, st.hold / 800)); return true;
       }
+      /* moving signs start by themselves (Colleen 2026-11-11: "progress automatically ... don't make them press record every time"): once the hand has been in view
+         for 0.7 s (and a moment after the last one), a 3-2-1 countdown starts, then it records */
+      if (st.phase === 'wait') { if (nowT < (st.cool || 0)) return true; if (gap > 300 || !st.seen) st.seen = nowT;
+        if (nowT - st.seen >= 700) { st.phase = 'count'; st.cd = nowT + 3000; st.msg = ''; st.seen = 0; paint(); } return true; }
       if (st.phase === 'count') { if (nowT >= st.cd) { st.phase = 'rec'; st.recT0 = nowT; st.rec = []; paint(); } return true; }
       if (st.phase === 'rec') {      /* moving signs: 2.5 s after the countdown, every frame with a hand */
         if (gap < 300) st.rec.push({ P: enc(P), z: f.orient[5] });
         if (nowT - st.recT0 >= 2500) { const r = st.rec; st.phase = 'wait';
-          if (r.length < 8) { st.msg = '⚠️ The camera lost your hand. Tap Record and try again.'; paint(); }
+          st.cool = nowT + 1500; st.seen = 0;      /* a short breath before the next one (or the retry) starts by itself */
+          if (r.length < 8) { st.msg = '⚠️ The camera lost your hand. Keep it in view: it will try again.'; paint(); }
           else { const k = 16, pick = Array.from({ length: Math.min(k, r.length) }, (_, j) => r[Math.round(j * (r.length - 1) / (Math.min(k, r.length) - 1 || 1))]); keep(it, pick.map(x => x.P), pick.map(x => x.z), []); } }
         if (st.phase === 'rec') bar((nowT - st.recT0) / 2500); else paint(); return true; }
       return true;
@@ -94,13 +99,12 @@
     const cnt = st.phase === 'count' ? Math.max(1, Math.ceil((st.cd - performance.now()) / 1000)) : 0;
     el.innerHTML = `<p style="margin:0;font-weight:800">${n} of ${ITEMS.length} done</p><div class="bar"><i style="width:${Math.round(100 * n / ITEMS.length)}%"></i></div>
       <div class="big">${it.show}</div><p class="how">${it.how ? it.how[0].toUpperCase() + it.how.slice(1) : it.mv ? 'With its movement' : 'Hold it still'}</p>
-      ${it.mv ? (st.phase === 'count' ? `<div class="cnt">${cnt}</div>` : st.phase === 'rec' ? `<p class="how">● Sign it now</p><div class="bar"><i id="sp-p" style="width:0"></i></div>` : `<button class="btn" id="sp-rec" type="button">● Record (3, 2, 1, then sign it)</button>`)
+      ${it.mv ? (st.phase === 'count' ? `<div class="cnt">${cnt}</div>` : st.phase === 'rec' ? `<p class="how">● Sign it now!</p><div class="bar"><i id="sp-p" style="width:0"></i></div>` : `<p class="how" style="opacity:.8">Raise your hand: it counts 3, 2, 1 and records by itself.</p>`)
         : `<p style="margin:0">Make the sign and hold it still until the bar fills.</p><div class="bar"><i id="sp-p" style="width:0"></i></div>`}
       <p class="msg" aria-live="polite">${st.msg}</p>
       <div class="row"><button class="btn ghost" id="sp-skip" type="button">Skip for now</button></div>
       <p class="safe" style="margin:0">Signing with your <b>${window.READER_LEFT ? 'left' : 'right'}</b> hand. <button class="link" id="sp-hand" type="button" style="background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Switch hands</button></p>
       <p class="safe">🔒 No picture or video is kept: only the positions of 21 dots on your hand. Your teacher sees which signs you finished.${st.pend.length ? ' · Saving ' + st.pend.length + '…' : ''}</p>`;
-    const r = document.getElementById('sp-rec'); if (r) r.onclick = () => { st.phase = 'count'; st.cd = performance.now() + 3000; st.msg = ''; paint(); };
     document.getElementById('sp-hand').onclick = () => { const b = document.getElementById('rd-switch'); if (b) b.click(); window.READER_LEFT = !window.READER_LEFT; paint(); };
     document.getElementById('sp-skip').onclick = () => { st.msg = ''; st.phase = 'wait'; st.hold = 0; st.i = nextI(st.i + 1); paint(); };
   }
