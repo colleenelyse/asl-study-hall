@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.473';
+var VERSION = '4.474';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1766,7 +1766,7 @@ function api_bootstrap(auth) {
   if (GUEST_APP) out.guestApp = true;
   try { out.bcr = bothRight_(); } catch (e) {}
   try { if (row && !out.teacher) out.todo = todoFor_(readStu_(sh, row)); } catch (e) {}      /* 4.466 To do */
-  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: str_((o9.Bests.cams || {}).d).split(',').filter(String).length, of: CAMS_ITEMS.length }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
+  try { var ca = camsAssigned_(); if (out.teacher) out.camsAssign = ca; else if (row) { var o9 = readStu_(sh, row); if (ca.indexOf(str_(o9.Class)) >= 0) out.cams = { n: camsHave_(o9.Bests.cams).length, of: CAMS_ITEMS.length }; } } catch (e) {}      /* 4.465 Teach the Camera */      /* 4.463 Both Could Be Right pairs, for practice's wrong choices */
   if (!row && GUEST_APP && out.teacher) { row = guestJoin_(st, id.key); out.guestNew = true; }      /* the welcome card */
   if (row && GUEST_APP && out.teacher) try { guestThemes_(st, sh, row); } catch (e) {}      /* every background, without earning them (Colleen 2026-11-10) */      /* 4.436 guest copy: straight in, Staff class */
   if (!row && !GUEST_APP && id.via === 'google' && !out.teacher && staffEmail_(id.key) && !teacherEmails_()[id.key]) { out.staffGuest = GUEST_LINK || true; return wire_(out); }      /* 4.436 real app: LT staff get the guest link, not her classes */
@@ -12292,17 +12292,21 @@ function api_camSamples(auth, list) {
     (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0) saved.push(x); }); return { ok: saved, done: 0, of: CAMS_ITEMS.length, model: true }; }
   lock_(function () {
     var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) throw new Error('We could not find your account. Reload the page.');
-    var o = readStu_(sh, row), cls = str_(o.Class), have = str_((o.Bests.cams || {}).d).split(',').filter(String), ss = camsBook_(true), now = new Date();
+    var o = readStu_(sh, row), cls = str_(o.Class), have = camsHave_(o.Bests.cams), ss = camsBook_(true), now = new Date();
     clean.forEach(function (s) { var t = camsTab_(ss, s.item), seen = cacheGet_('cams:' + s.sid); if (!seen) { t.appendRow([s.sid, now, cls, s.left, s.guess, s.z, '', s.dots]); cachePut_('cams:' + s.sid, { y: 1 }, 21600); } saved.push(s.sid); if (have.indexOf(s.item) < 0) have.push(s.item); });
-    o.Bests.cams = { d: have.join(','), at: dayStr_() }; writeStu_(sh, o); done = have.length;
+    o.Bests.cams = { d: have.join(','), at: dayStr_(), r2: 1 }; writeStu_(sh, o); done = have.length;
   });
   (list || []).forEach(function (s) { var x = str_(s && s.sid); if (x && saved.indexOf(x) < 0 && !clean.some(function (c) { return c.sid === x; })) saved.push(x); });      /* a broken sample is let go too, so the tab stops resending it */
   return { ok: saved, done: done, of: CAMS_ITEMS.length };
 }
+/* 4.474 (Colleen 2026-11-11): the G, H, P and Q samples made before the H palm fix are not real ("disregard all of those and ask those students for
+   those letters again"). A student's finished list drops them once (cams.r2 marks a list made after the fix), and those samples count as bad. */
+var CAMS_REDO = ['G', 'H', 'P', 'Q'], CAMS_REDO_AT = new Date('2026-11-11T11:30:00-06:00').getTime();
+function camsHave_(c) { var d = str_((c || {}).d).split(',').filter(String); return c && c.r2 ? d : d.filter(function (x) { return CAMS_REDO.indexOf(x) < 0; }); }
 /** Teacher: who finished, by class -> { items, classes: [{ name, students: [{ name, n }] }], book } */
 function api_camSampList(auth) {
   requireTeacher_(); var st = static_(), sh = stuSheet_(), vals = sh.getRange(1, 1, Math.max(1, sh.getLastRow()), sh.getLastColumn()).getValues(), h = vals[0].map(str_), ci = h.indexOf('Class'), ni = h.indexOf('Name'), bi = h.indexOf('Bests'), by = {};
-  vals.slice(1).forEach(function (r) { var cls = str_(r[ci]), nm = str_(r[ni]); if (!cls || !nm) return; var b = parse_(r[bi], {}), d = str_((b.cams || {}).d).split(',').filter(String); (by[cls] = by[cls] || []).push({ name: nm, n: d.length }); });
+  vals.slice(1).forEach(function (r) { var cls = str_(r[ci]), nm = str_(r[ni]); if (!cls || !nm) return; var b = parse_(r[bi], {}), d = camsHave_(b.cams); (by[cls] = by[cls] || []).push({ name: nm, n: d.length }); });
   var ss = camsBook_(false);
   return { items: CAMS_ITEMS, of: CAMS_ITEMS.length, book: ss ? ss.getUrl() : '', classes: st.classes.filter(function (c) { return by[c.name]; }).map(function (c) { return { name: c.name, students: by[c.name].sort(function (a, b) { return a.name < b.name ? -1 : 1; }) }; }) };
 }
@@ -12311,7 +12315,7 @@ function api_camSampItem(auth, item) {
   requireTeacher_(); item = str_(item); if (CAMS_ITEMS.indexOf(item) < 0) throw new Error('No such sign.');
   var ss = camsBook_(false), sh = ss && ss.getSheetByName(item); if (!sh || sh.getLastRow() < 2) return { item: item, list: [] };
   var v = sh.getRange(2, 1, sh.getLastRow() - 1, CAMS_HEAD.length).getValues();
-  return { item: item, list: v.map(function (r) { var d = []; try { d = JSON.parse(str_(r[7])); } catch (e) {} return { sid: str_(r[0]), cls: str_(r[2]), left: !!str_(r[3]), guess: str_(r[4]), z: str_(r[5]), bad: !!str_(r[6]), dots: d }; }) };
+  return { item: item, list: v.map(function (r) { var d = []; try { d = JSON.parse(str_(r[7])); } catch (e) {} return { sid: str_(r[0]), cls: str_(r[2]), left: !!str_(r[3]), guess: str_(r[4]), z: str_(r[5]), bad: !!str_(r[6]) || (CAMS_REDO.indexOf(item) >= 0 && str_(r[2]) !== CAMS_MODEL && r[1] instanceof Date && r[1].getTime() < CAMS_REDO_AT), dots: d }; }) };
 }
 /** Teacher: which classes have Teach the Camera on Home. */
 function api_camSampAssign(auth, list) { requireTeacher_(); var names = static_().classes.map(function (c) { return c.name; }), v = (list instanceof Array ? list : []).map(str_).filter(function (x) { return names.indexOf(x) >= 0; }); PropertiesService.getDocumentProperties().setProperty('camsAssign', JSON.stringify(v)); return { ok: true, list: v }; }
