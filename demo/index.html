@@ -26,8 +26,13 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
 .card ul { color: var(--soft); margin: 0 0 14px; padding-left: 1.1em; flex: 1 } .card li { margin: 3px 0 }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 800; text-decoration: none; background: var(--gold); color: #1c1f3a; box-shadow: 0 4px 0 #b97f0f; text-align: center }
 .btn.blue { background: var(--blue); color: #fff; box-shadow: 0 4px 0 #1a3fa8 }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 28px 0 0 }
+.shots figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow) }
+.shots img { display: block; width: 100%; height: auto; aspect-ratio: 1100 / 739; object-fit: cover; background: #0d0f26 }
+.shots figcaption { padding: 8px 12px; font-size: .9rem; color: var(--soft); font-weight: 600 }
 .try { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow); margin: 28px 0 0 }
 .try h2 { margin-bottom: 10px } .try ol { margin: 0; padding-left: 1.3em } .try li { margin: 8px 0; color: var(--soft) } .try li b { color: var(--ink) }
+.try a.go { display: inline-block; margin: 6px 6px 0 0; padding: 5px 12px; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 800; font-size: .88rem; text-decoration: none; white-space: nowrap } .try a.go:hover { filter: brightness(1.1) }
 .note { color: var(--soft); font-size: .95rem; margin: 28px 0 48px }
 .note b { color: var(--ink) }
 </style>
@@ -50,14 +55,21 @@ h2 { font-size: 1.35rem; margin: 0 0 6px }
       <p>LT staff: sign in with your school Google account to get a teacher account that saves your progress, with the same sample classes. No real students are in it.</p>
       <a class="btn blue" id="guestLink" href="#">Open ASL Study Guest</a></div>
   </div>
+  <section class="shots" aria-label="Pictures of the app">
+    <figure><img src="shots/dash.jpg" alt="The teacher dashboard: every student in five classes, with buttons to give Tickets for signing in class" loading="lazy"><figcaption>The teacher dashboard: give Tickets for signing in class</figcaption></figure>
+    <figure><img src="shots/games.jpg" alt="Tower Climb on the projector: the sample class climbing floors as they answer" loading="lazy"><figcaption>A class game on the projector</figcaption></figure>
+    <figure><img src="shots/qres.jpg" alt="Vocab stats: which signs each class gets right and wrong" loading="lazy"><figcaption>Vocab stats: what each class finds hard</figcaption></figure>
+    <figure><img src="shots/home.jpg" alt="A student's Home: today's goals, the Summative Stacker and the doors to study and games" loading="lazy"><figcaption>A student's Home</figcaption></figure>
+    <figure><img src="shots/stacker.jpg" alt="The Summative Stacker: practice days and mastered signs add up to a test score" loading="lazy"><figcaption>The Summative Stacker: practice adds up to a test score</figcaption></figure>
+  </section>
   <section class="try">
     <h2>Try these in about 5 minutes</h2>
     <ol>
-      <li><b>Teacher view › Teacher dashboard.</b> Tap two or three students, then <b>+5</b> Tickets: this is how students are rewarded for signing in class. They see it the next time they open the app.</li>
-      <li><b>Teacher view › Teach › Host a game › 1 vs. The Mob › Open the lobby › Start the game.</b> The sample class joins and answers on the projector screen, just like a real class.</li>
-      <li><b>Teacher view › Students › Problem spots</b> (the signs each class misses most), then <b>Seating chart</b> or <b>Group maker</b> for any class.</li>
-      <li><b>Student view › Study.</b> Practice the Unit 2 signs with real ASL videos. Back on Home, the <b>Summative Stacker</b> card shows how practice adds up to a test score.</li>
-      <li><b>Student view › Games.</b> Try a solo story game, then <b>Fingerspelling &amp; Numbers</b> for the 3D signing hand and the webcam reader.</li>
+      <li><b>Give points from the Teacher dashboard.</b> Tap two or three students, then <b>+5</b> Tickets: this is how students are rewarded for signing in class. They see it the next time they open the app. <a class="go" href="app.html?as=teacher#go=dash">Open the dashboard →</a></li>
+      <li><b>Host a class game.</b> 1 vs. The Mob is picked for you: tap <b>Open the lobby</b>, then <b>Start the game</b>. The sample class joins and answers on the projector screen, just like a real class. Tower Climb and Race Day play with the class too. <a class="go" href="app.html?as=teacher#go=livehost&mode=mob">Open Host a game →</a></li>
+      <li><b>See what the class finds hard.</b> Vocab stats shows which signs each class gets right and wrong; the seating chart and group maker use the same classes. <a class="go" href="app.html?as=teacher#go=qres">Vocab stats →</a> <a class="go" href="app.html?as=teacher#go=seats">Seating chart →</a> <a class="go" href="app.html?as=teacher#go=groups">Group maker →</a></li>
+      <li><b>Study as a student.</b> Practice the Unit 2 signs with real ASL videos, then see how practice adds up to a test score on the Summative Stacker. <a class="go" href="app.html?as=student#go=home&act=play&g=learn">Start studying →</a> <a class="go" href="app.html?as=student#go=chal">Summative Stacker →</a></li>
+      <li><b>Play.</b> Try a solo story game, then the 3D signing hand and the webcam reader. <a class="go" href="app.html?as=student#go=home&act=hdoor&d=games">Games →</a> <a class="go" href="app.html?as=student#go=home&act=hdoor&d=fs">Fingerspelling &amp; Numbers →</a></li>
     </ol>
   </section>
   <p class="note"><b>Good to know:</b> the camera games (fingerspelling and numbers to the webcam) work best in Chrome. The sample classes are made up; no real student names or data are in this demo.</p>
