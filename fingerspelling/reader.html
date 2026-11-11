@@ -6,7 +6,7 @@
 <title>Fingerspell to the Camera</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=116">
+<link rel="stylesheet" href="style.css?v=126">
 <style>
   /* Fingerspell to the Camera (2026-10-17): the student fingerspells; the camera reads the hand. Nothing leaves the computer. */
   body { padding: 0 0 40px; }
@@ -107,6 +107,16 @@
   .jar .fill { position: absolute; left: 0; right: 0; bottom: 0; background: repeating-radial-gradient(circle at 8px 8px, #3D7BE0 0 6px, transparent 7px) 0 0 / 16px 16px, #d7e7fb; transition: height .4s; } .jar b { font: 700 26px var(--display); }
   .camtrack { width: min(420px, 80vw); height: 20px; border-radius: 999px; background: var(--surface2, #eee); overflow: hidden; } .camtrack i { display: block; height: 100%; background: linear-gradient(90deg, #3D7BE0, #2EC27E); transition: width .3s; }
   .rd-pacerow { margin: 8px 0; } body.gamestab .rd-pacerow, body.gaming .rd-pacerow, body.nums .rd-pacerow { display: none; }
+  /* ONE ACTIVITY PER LINK (2026-11-10): reader.html?act=... shows only that activity */
+  body.act #rd-kind, body.act #rd-gamelist, body.act:not(.act-check) #rd-mode, body.act:not(.act-teach) .rd-teach, body.act #rd-pacerow { display: none !important; }
+  /* MATCH THE HAND: the 3D hand beside the camera, on the signing side (a right-handed student: on the left, in front of the face; left-handed: on the right, mirrored into a left hand) */
+  body.act-match .rd-grid { grid-template-columns: 1fr; } body.act-match .rd-target { max-width: 620px; margin: 0 auto; width: 100%; }
+  .rd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+  body.act-match #rd-modelbox { display: flex !important; flex-direction: column; align-items: center; gap: 6px; margin: 0; background: var(--surface2); border-radius: 18px; padding: 8px; }
+  body.act-match .rd-pair #rd-model { position: static; display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; margin: 0; background: transparent; }
+  body.act-match.lefty #rd-modelbox { order: 2; } body.act-match.lefty .rd-pair #rd-model { transform: scaleX(-1); }
+  .rd-matchlab { margin: 0; font: 700 44px/1 var(--display); color: var(--accent); min-height: 44px; }
+  body.act-match #rd-teachbtn, body.act-match #rd-forget { display: none; }
 </style>
 </head>
 <body>
@@ -177,9 +187,9 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script src="words.js?v=40"></script>
 <script src="defs.js?v=2"></script>
-<script src="hand.js?v=152"></script>
+<script src="hand.js?v=153"></script>
 <script src="people.js?v=4"></script>
 <script src="themes.js?v=43"></script>
-<script type="module" src="reader.js?v=71"></script>
+<script type="module" src="reader.js?v=73"></script>
 </body>
 </html>

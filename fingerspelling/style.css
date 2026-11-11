@@ -695,3 +695,10 @@ body.stkmode .gamegrid .gcard.stkyes .stk { order: -1; align-self: stretch; text
 body.stkmode .gamegrid .gcard:not(.stkyes) { opacity: .45; filter: grayscale(.6); }
 body.stkmode .gamegrid .gcard:not(.stkyes)::after { content: "Doesn\2019t count for your Stacker"; display: block; font-size: 12px; font-weight: 800; color: #8a4b00; margin-top: 4px; }
 body.stkmode .stknote { font-size: 16px; padding: 12px 14px; border-width: 3px; }
+
+/* 2026-11-10 camera card groups */
+.gamegrid .camsub { grid-column: 1 / -1; margin: 10px 0 0; font: 700 18px var(--display); }
+.gamegrid .camsub small { font: 500 14px var(--body, inherit); color: var(--muted, #667); margin-left: 6px; }
+.gamegrid .camsub:first-child { margin-top: 0; }
+.tmsgrid { margin-bottom: 6px; } .gcard.tmscard { border: 3px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }      /* 4.460 Test My Skills */
+.tmsres { border: 3px solid var(--accent); border-radius: 16px; padding: 12px 14px; margin: 8px 0; } .tmsres.ok { border-color: var(--good, #14804D); } .tmsres h3 { margin: 0 0 4px; }

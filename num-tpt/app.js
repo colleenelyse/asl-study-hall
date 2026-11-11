@@ -13,7 +13,8 @@ const EMBED = /[?&]embed=aslstudy\b/.test(location.search) && window.parent !== 
 /* ASL Study 4.421 (Colleen: "we need to label which ones count for stackers in fingerspeling and numbers so studnet's dont spoend time on things that
    don't count"): inside ASL Study, when the student has a Fingerspelling or Numbers Stacker (ASL Study adds &stk=1), the games that count get a badge.
    Counting = a finished round of these games (sendToStudy), the letter camera practice and camera games (reader.js xprac: not Hangman or Wordle), and the Check. */
-let STKRUN = '', STKN = 0;      /* 4.441 the one-tap Stacker practice (#/stk/fs): a counting round of 25 real words, Pick the Word then Read the Word */
+let STKRUN = '', STKN = 0, TMS = '';      /* 4.460 TMS: Test My Skills (#/tms/fs, #/tms/num), set for one startRound */
+      /* 4.441 the one-tap Stacker practice (#/stk/fs): a counting round of 25 real words, Pick the Word then Read the Word */
 const STKONLY = /[?&]stkonly=1\b/.test(location.search);      /* 4.441 opened from the Stacker's Choose a game: only the games that count */
 const STKT = +((/[?&]stkt=([\d.]+)/.exec(location.search) || [])[1] || 0);      /* 4.444 the 1x speed for this student's Fingerspelling Stacker */
 const stkW = l => { const r = l / (STKT || 1); return !(r > 1) ? 1 : r <= 2 ? 1 + 0.5 * (r - 1) : Math.min(2, 1.5 + (r - 2)); };      /* = Challenge.gs chPracW_ */
@@ -88,6 +89,8 @@ const GAMES = {      /* basics first, extras later (Colleen): letters, look-alik
   type: { name: 'Read the Word', icon: '⌨️', about: 'The hand spells a word. Type what you saw.' },
   fill: { name: 'Fill in the Blanks', icon: '🌫️', about: 'Catch the first and last letters! A few letters in the middle are blurred. Put the word together.' },
   ladder: { name: 'Speed Ladder', icon: '🪜', about: 'Every right answer speeds the hand up; a miss slows it down. With hearts on, the game ends when you run out of hearts. How fast can you read?' },
+  tms: { section: 'tms', name: 'Test My Skills: Fingerspelling', icon: '🎯', about: 'A practice copy of the Fingerspelling test: watch and pick, watch and type, then a few words to the camera.' },      /* 4.460 */
+  ntms: { section: 'tms', name: 'Test My Skills: Numbers', icon: '🎯', about: 'A practice copy of the Numbers test: numbers, a year, an age and a big number, then a few to the camera.' },
   tricky: { name: 'Silent Letters & Strange Spellings', icon: '🤯', about: 'The opposite of Sound it out: words with ridiculous spellings, like pterodactyl. Four levels, from A Little Sneaky to English Has Lost Its Mind.' }
 };
 const CHOICE_GAMES = ['pick', 'pairs'];
@@ -95,7 +98,7 @@ const CHOICE_GAMES = ['pick', 'pairs'];
 const CLUE_GAMES = ['type', 'pick', 'fill', 'ladder'];
 const clueOn = (g, it) => CLUE_GAMES.indexOf(g) >= 0 && S.mode === 'clue' && !!(it && it.c) && !/^LEVEL/.test(it.c);
 const clueHtml = c => { const gif = (window.CAT_GIFS || {})[c]; return gif ? '<img src="' + esc(gif) + '" alt="' + esc(niceCat(c)) + ' (sign)">' : esc(niceCat(c)); };
-const isNumGame = g => g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick' || g === 'aread' || g === 'apick';
+const isNumGame = g => g === 'ntms' || g === 'numbers' || g === 'npick' || g === 'nquiz' || g === 'yread' || g === 'ypick' || g === 'aread' || g === 'apick';
 const isYear = g => g === 'yread' || g === 'ypick';
 const isAge = g => g === 'aread' || g === 'apick';      // Read the Age and Pick the Age (signed with hand.signAge, the face behind the hand)      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
 const isNums = g => g === 'numbers' || g === 'npick';      // Read the Number (typed) and Pick the Number (picked): the same numbers and settings
@@ -307,17 +310,31 @@ function chipsInit(el, items, arr, label, after) {
   el.onclick = e => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k, i = S[arr].indexOf(k); if (i >= 0) S[arr].splice(i, 1); else S[arr].push(k); saveS(); draw(); };
   draw(); return draw;
 }
+const CARD_TITLE = { pick: 'Watch and Pick', type: 'Watch and Type' };      /* 2026-11-10 (Colleen): each title says what the student does; rounds still save under the old names, so reports don't split */
 function gamesInit() {
   const BLURB = {"flash": "A quick warm-up: the hand shows one letter, you type it.", "pairs": "M or N? Learn to tell apart the letters that look alike.", "sound": "Short words that sound the way they’re spelled. A great first word game.", "pick": "Watch a word, then pick it from four that look alike.", "type": "The hand spells a word. Type what you saw.", "fill": "The middle letters blur. Catch the first and last, then put the word together.", "ladder": "Every right answer speeds the hand up. How fast can you read?", "tricky": "Words with wild spellings, like pterodactyl. Four levels of sneaky.", "numbers": "The hand signs a number. Type it. You choose which groups.", "npick": "The hand signs a number. Pick it from four that look alike.", "nquiz": "Big numbers with HUNDRED, THOUSAND and MILLION. Type or pick.", "yread": "The hand signs a year. Type it.", "ypick": "The hand signs a year. Pick it from look-alikes like 1969 and 1996.", "aread": "The hand signs an age from the chin. Type it.", "apick": "The hand signs an age. Pick it from four that look alike."};      /* short card lines (Colleen: make the descriptions better); the full text stays on each setup screen */
-  const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span>' + (STK_GAMES.indexOf(k) >= 0 ? stkBadge() : '') + '</a>'; };
+  const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }, CARD_TITLE[k] ? { name: CARD_TITLE[k] } : {}); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span>' + (STK_GAMES.indexOf(k) >= 0 ? stkBadge() : '') + '</a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') + '<a class="gcard" href="#/mail"><span class="gi" aria-hidden="true">📮</span><b>Return to Sender</b><span>Watch the name, then drop the letter in the right mailbox. The names look alike!</span></a>';
+  { const tc = (k, t, d) => '<a class="gcard tmscard" href="#/tms/' + k + '"><span class="gi" aria-hidden="true">🎯</span><span class="tag">Am I ready?</span><b>' + t + '</b><span>' + d + '</span></a>'; const fsb = $('#g-tmsfs'), nb = $('#g-tmsnum');      /* 4.460 Test My Skills, at the top */
+    if (STK) { if (fsb) fsb.remove(); if (nb) nb.remove(); }      /* inside ASL Study with Stackers on: its own exact copy of the test is on the Fingerspelling & Numbers page */
+    else if (fsb) fsb.innerHTML = tc('fs', 'Test My Skills: Fingerspelling', 'Am I ready for the test? A practice copy: watch and pick, watch and type, then 5 words to the camera. Counts as practice.');
+    if (!STK && nb) nb.innerHTML = tc('num', 'Test My Skills: Numbers', 'Am I ready for the test? A practice copy: numbers, a year, an age, a big number, then 5 to the camera. Counts as practice.'); }
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
-  $('#g-exprfs').innerHTML = '<a class="gcard" href="reader.html" id="camcard"><span class="gi" aria-hidden="true">📷</span><b>Fingerspell to the Camera</b><span>Sign letters and words to your camera. It reads your hand and helps you fix it.</span>' + stkBadge() + '</a>';      /* expressive (Colleen) */
+  const camAct = (num, L) => L.map(([a, em, t, d, stk]) => '<a class="gcard" data-cam' + (num ? ' data-camnum' : '') + ' href="reader.html?' + (num ? 'kind=numbers&' : '') + 'act=' + a + '" data-q="' + (num ? 'kind=numbers&' : '') + 'act=' + a + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + (stk ? stkBadge(stk === 1 ? undefined : stk) : '') + '</a>').join('');      /* 2026-11-10 (Colleen: "right now the camera is confusing because it does lots of different things inside one link"): one card, one link, one activity */
+  const camSub = (t, d) => '<h3 class="camsub">' + t + ' <small>' + d + '</small></h3>';      /* 2026-11-10 (Colleen: "separate out all the activities into logical types"): the camera cards in groups */
+  $('#g-exprfs').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each letter beside your camera.') + camAct(false, [['match', '🤝', 'Match the Hand: Letters', 'Beginners: the hand shows each letter beside your camera. Copy it with your hand.', 1]])
+    + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(false, [['letter', '🔤', 'Sign the Letter', 'See a letter, sign it to your camera.', 1], ['word', '📝', 'Spell the Word', 'See a word, fingerspell it to your camera. Tap Show me to watch the hand spell it.', 1], ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The words move on at that pace, ready or not.'], ['teach', '🛠️', 'Teach the Camera My Hand', 'If the camera has trouble reading one of your letters, teach it your way.']])
+    + camSub('Check yourself', 'No hints, timed.') + camAct(false, [['check', '✅', 'The Check: Letters', 'A timed check of all 26 letters (or words). No hints.', 1]])
+    + camSub('Camera games', 'Fingerspell to play.');
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + ((!kind && STK_CAM.indexOf(g) >= 0) || (kind && /^(math|count|clock)$/.test(g)) ? stkBadge() : '') + '</a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
   $('#g-exprfs').innerHTML += camGames('', [['def', '📖', 'Definition to Word', 'Read what it means, then fingerspell the word.'], ['echo', '🔁', 'Echo', 'The hand spells a word. Spell it back.'], ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'], ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'], ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'], ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'], ['names', '🙋', 'Name Game', 'Fingerspell names. In your class app: your classmates\u2019 names.']]);
+  $('#g-exprfs').innerHTML += camSub('Pronouns', 'Point or flat hand, toward you or toward them.');
   $('#g-exprfs').innerHTML += '<a class="gcard" data-cam href="pronouns.html" data-page="pronouns.html"><span class="gi" aria-hidden="true">👉</span><b>Pronoun Signs: ME, MY, YOU, YOUR</b><span>Sign the right pronoun at the right word: point or flat hand, toward you or toward them.</span></a>';      /* the pronoun drills (Colleen, 2026-10-17) */
   $$('#g-exprfs .gcard').forEach(a => { a.onclick = openCamera; });
-  $('#g-exprnum').innerHTML = '<a class="gcard" data-cam data-camnum href="reader.html?kind=numbers" id="camnumcard"><span class="gi" aria-hidden="true">📷</span><b>Sign Numbers to the Camera</b><span>Sign numbers to your camera: 0 to 9, moving numbers, rocking numbers, hundreds. It reads your hand and helps you fix it.</span>' + stkBadge('Counts: practice and the Check') + '</a>';      /* expressive: the camera reads the student's hand (Colleen, 2026-10-17: the sign-it-then-check-yourself games are gone now that the camera can check) */
+  $('#g-exprnum').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each number beside your camera.') + camAct(true, [['match', '🤝', 'Match the Hand: Numbers', 'Beginners: the hand shows each number beside your camera. Copy it with your hand.', 1]])
+    + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(true, [['number', '🔢', 'Sign the Number', 'See a number, sign it to your camera: 0 to 9, moving numbers, rocking numbers, hundreds.', 1]])
+    + camSub('Check yourself', 'No hints, timed.') + camAct(true, [['check', '✅', 'The Check: Numbers', 'A timed check of 10 numbers. No hints.', 1]])
+    + camSub('Camera games', 'Sign numbers to play.');
   $('#g-exprnum').innerHTML += camGames('n', [['math', '➗', 'Math Answer', 'Solve the problem (easy to hard), then sign the answer.'], ['count', '🔢', 'Count Up', 'Sign 1 to 20 in order, as fast as you can.'], ['clock', '⏰', 'Beat the Clock', 'Sign each number before time runs out.']]);
   $$('#g-exprnum .gcard').forEach(a => { a.onclick = openCamera; });
   if (STK && STKONLY) document.body.classList.add('stkonly');      /* 4.441 only the cards that count */
@@ -348,7 +365,7 @@ const CARD_FAM = { show: '🖐️', watch: '👁️', sign: '📷', class: '📽
 const CARD_ART = { '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
   '#/showtime/days': ['show-days', 'show'], '#/showtime/seasons': ['show-seasons', 'show'], '#/mail': ['mail', 'watch'], '#/build': ['build', 'watch'], '#/math': ['math', 'watch'],
   '#/agepics': ['charlie', 'watch'], '#/eventyear': ['eventyear', 'watch'], '#/timeline': ['timeline', 'watch'], '#/class': ['projector', 'class'], '#/bingo': ['bingo', 'class'],
-  'reader.html': ['camera', 'sign'], 'reader.html?kind=numbers': ['camnumbers', 'sign'], 'pronouns.html': ['pronouns', 'sign'] };
+  'reader.html': ['camera', 'sign'], 'reader.html?kind=numbers': ['camnumbers', 'sign'], 'reader.html?act=match': ['camera', 'sign'], 'reader.html?act=letter': ['camera', 'sign'], 'reader.html?act=word': ['camera', 'sign'], 'reader.html?act=check': ['camera', 'sign'], 'reader.html?act=pacer': ['camera', 'sign'], 'reader.html?act=teach': ['camera', 'sign'], 'reader.html?kind=numbers&act=match': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=number': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=check': ['camnumbers', 'sign'], 'pronouns.html': ['pronouns', 'sign'] };
 const CARD_CAM = { def: 'def', echo: 'echo', speed: 'speed', ladder: 'camladder', hang: 'hang', wordle: 'wordle', names: 'names', math: 'cammath', count: 'count', clock: 'clock' };
 function cardFor(href) { if (!href) return null; if (CARD_ART[href]) return CARD_ART[href];
   const st = /^#\/setup\/(\w+)$/.exec(href); if (st) return [st[1], 'watch'];
@@ -497,6 +514,27 @@ function blurSet(w) {      /* never two blurred letters in a row (Colleen) */
 
 /* ---------- a round ---------- */
 let R = null;      // the round being played
+/* 4.460 TEST MY SKILLS (Colleen, 2026-11-10: "highlight a 'test my skills' mode that mimics the test and label it as a check to see if they're ready to
+   take the stacker test. these also count for daily work but are modeled off the authentic test"): the look-alike of ASL Study's Stacker test for every
+   edition. Fingerspelling: 25 real words (short, medium, long), about 4 in 10 typed, the rest picked from four look-alikes. Numbers: mostly 2-digit,
+   one year, one age, one 4-digit, the rest 1- and 3-digit, typed or picked. Then Part 2: 5 to the camera (reader.html?act=check&n=5). 80% = ready. */
+const TMS_READY = 80;
+function tmsList(kind, pool) {
+  if (kind === 'fs') {
+    const band = x => { const n = letters(x.w).length; return n <= 4 ? 0 : n <= 6 ? 1 : 2; }, P = pool.filter(x => letters(x.w).length >= 3), B = [0, 1, 2].map(b => shuffle(P.filter(x => band(x) === b)));
+    let L = []; [8, 8, 9].forEach((k, b) => { L = L.concat(B[b].slice(0, k)); }); if (L.length < 25) L = L.concat(shuffle(P.filter(x => L.indexOf(x) < 0)).slice(0, 25 - L.length));
+    return shuffle(L.slice(0, 25).map((x, i) => Object.assign({}, x, { g: i % 5 < 2 ? 'type' : 'pick' })));
+  }
+  const L = [], num = d => { const lo = d === 1 ? 0 : Math.pow(10, d - 1); return String(lo + Math.floor(Math.random() * (Math.pow(10, d) - lo))); };
+  const it = (w, g) => ({ w, n: 1, teens: teensFor(), form: formFor(), g });
+  L.push(Object.assign(yearItem(L), { g: Math.random() < 0.5 ? 'ypick' : 'yread' }));
+  L.push(Object.assign(ageItem(L), { g: Math.random() < 0.5 ? 'apick' : 'aread' }));
+  L.push(it(num(4), 'nquiz'));
+  for (let i = 0; i < 14; i++) L.push(it(num(2), i % 2 ? 'numbers' : 'npick'));
+  for (let i = 0; i < 4; i++) L.push(it(num(1), i % 2 ? 'numbers' : 'npick'));
+  for (let i = 0; i < 3; i++) L.push(it(num(3), 'nquiz'));
+  return shuffle(L);
+}
 function startRound(fixedWords) {
   const g = S.game, pool = poolFor(g).filter(x => !STKRUN || letters(x.w).length >= 3);      /* 4.441 Stacker practice: real words, 3+ letters */
   let list;
@@ -508,6 +546,7 @@ function startRound(fixedWords) {
   else if (isNums(g)) { list = []; for (let i = 0; i < S.ncount; i++) { let x; do { x = pick1(S.nums); } while (S.nums.length > 1 && list.length && list[list.length - 1].w === x); list.push({ w: x, n: 1, teens: teensFor(), form: formFor() }); } }
   else if (g === 'pairs') { list = []; for (let i = 0; i < S.count; i++) { let t; do { t = pairTrial(); } while (list.length && list[list.length - 1].w === t.w && S.pairs.length + 1 > 1 && Math.random() < 0.9); list.push(t); } }
   else if (g === 'ladder') list = shuffle(pool);
+  else if (TMS) list = tmsList(TMS, pool);
   else if (STKRUN) {      /* 4.443 (Colleen: "an even distribution of short, medium, and long words"): 3-4, 5-6 and 7+ letters, a third each */
     const band = x => { const n = letters(x.w).length; return n <= 4 ? 0 : n <= 6 ? 1 : 2; }, B = [0, 1, 2].map(b => shuffle(pool.filter(x => band(x) === b))), want = [8, 8, 9];
     list = []; [0, 1, 2].forEach(b => { list = list.concat(B[b].slice(0, want[b])); });
@@ -515,13 +554,14 @@ function startRound(fixedWords) {
     list = shuffle(list).slice(0, S.count); }
   else list = shuffle(pool).slice(0, g === 'sound' ? S.scount : g === 'tricky' ? S.tcount : S.count);
   if (!list.length) return;
-  R = { game: g, list, i: -1, items: [], started: Date.now(), settings: JSON.parse(JSON.stringify(S)), review: !!fixedWords, pool };
+  R = { game: g, list, i: -1, items: [], started: Date.now(), settings: JSON.parse(JSON.stringify(S)), review: !!fixedWords, pool }; if (TMS) { R.tms = TMS; TMS = ''; }
   if (g === 'ladder') { R.lspeed = S.speed; R.top = null; R.hearts = S.hearts === 'off' ? 0 : +S.hearts || 0; R.lives = R.hearts || Infinity; }      /* Hearts: 1, 3 or 5, or off (no game over; End round finishes) (Colleen) */
   track('round_start', { game: g, speed: speedName(S.speed), words: list.length });
   if (location.hash === '#/play') { setupShow(g); playShow(); } else location.hash = '#/play';
 }
 /* the settings stay above the game (Colleen): a change while playing reshapes the words still to come; words already answered stay */
 function refreshRound() {
+  if (R && R.tms) return;      /* 4.460 Test My Skills keeps its own questions */
   const g = R.game, done = R.list.slice(0, R.i + 1), used = new Set(done.map(x => letters(x.w)));
   R.pool = poolFor(g);
   if (g === 'ladder') R.list = done.concat(shuffle(R.pool.filter(x => !used.has(letters(x.w)))));
@@ -594,7 +634,7 @@ async function nextWord() {
   R.i++;
   if (R.game === 'ladder' && R.i >= R.list.length) R.list = R.list.concat(shuffle(R.pool));      // the ladder goes on until the hearts run out (or forever with hearts off)
   if (R.i >= R.list.length) return finishRound();
-  const it = R.list[R.i];
+  const it = R.list[R.i]; if (R.tms && it.g) R.game = it.g;      /* 4.460 Test My Skills: each question is its own kind */
   R.cur = { replays: 0, shownAt: Date.now(), blur: R.game === 'fill' ? blurSet(it.w) : null };
   drawWord();
   if (!isChoice(R.game)) setTimeout(answerFocus, 50);
@@ -684,7 +724,7 @@ function answerChoice(o) {
   afterAnswer();
 }
 function finishRound() {
-  stopFlag = true;
+  stopFlag = true; if (R.tms) R.game = R.tms === 'num' ? 'ntms' : 'tms';
   const g = R.game, items = R.items, right = items.filter(x => x.ok).length, secs = Math.max(1, Math.round((Date.now() - R.started) / 1000));
   const avgLen = items.length ? Math.round(items.reduce((a, x) => a + x.n, 0) / items.length * 10) / 10 : 0;
   const res = { at: new Date().toISOString(), game: g, n: items.length, right, pct: items.length ? Math.round(right / items.length * 100) : 0, secs, wpm: Math.round(right / (secs / 60) * 10) / 10, avgLen,
@@ -835,7 +875,12 @@ function resultsShow() {
   if (!r) { $('#r-score').textContent = 'No round yet'; $('#r-stats').innerHTML = ''; $('#r-words').innerHTML = ''; $('#r-extra').innerHTML = ''; return; }
   const g = r.game || 'type';
   $('#r-title').textContent = GAMES[g].name + ': results';
-  $('#r-again').href = STKRUN ? '#/stk/' + STKRUN : '#/setup/' + g; if (STKRUN) $('#r-again').textContent = '▶ Practice again (counts for your Stacker)';
+  { const box = $('#r-tms'); if (box) { const tms = g === 'tms' || g === 'ntms', ready = r.pct >= TMS_READY; box.hidden = !tms;      /* 4.460 Test My Skills */
+    if (tms) { const num = g === 'ntms'; box.innerHTML = '<div class="tmsres ' + (ready ? 'ok' : '') + '"><h3>' + (ready ? '✅ Part 1: you look ready!' : '📚 Part 1: not quite yet') + '</h3><p>' + r.pct + '% right. Ready means ' + TMS_READY + '% or better' + (ready ? '.' : '. Keep practicing with the games, then try again.') + '</p>'
+      + '<p><b>Part 2:</b> sign 5 ' + (num ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test.</p><a class="btn" data-cam' + (num ? ' data-camnum' : '') + ' href="reader.html?' + (num ? 'kind=numbers&' : '') + 'act=check&n=5&tms=1' + (num ? '' : '&words=1') + '" data-q="' + (num ? 'kind=numbers&' : '') + 'act=check&n=5&tms=1' + (num ? '' : '&words=1') + '">📷 Part 2: to the camera</a>'
+      + '<p class="hint">This is practice: it counts toward your practice like the games, and nothing is sent as a test score.</p></div>';
+      const a = box.querySelector('[data-cam]'); if (a) a.onclick = openCamera; } } }
+  $('#r-again').href = g === 'tms' ? '#/tms/fs' : g === 'ntms' ? '#/tms/num' : STKRUN ? '#/stk/' + STKRUN : '#/setup/' + g; if (STKRUN) $('#r-again').textContent = '▶ Practice again (counts for your Stacker)';
   const mm = Math.floor(r.secs / 60), ss = r.secs % 60, time = mm + ':' + String(ss).padStart(2, '0');
   if (g === 'ladder') {
     $('#r-score').textContent = r.top === null ? 'Keep climbing!' : r.topLps + ' letters a second';
@@ -2630,6 +2675,7 @@ function route() {
     $('#v-list').innerHTML = '<button class="on">' + esc(parts[1] || '') + '</button> <a class="link" href="#/chart">Back to the alphabet</a>';
     $('#v-list').onclick = e => { if (e.target.closest('button')) spellWord(parts[1] || 'A'); }; spellWord(parts[1] || 'A'); return;
   }
+  if (name === 'tms') { TMS = parts[1] === 'num' ? 'num' : 'fs'; STKRUN = ''; S.game = TMS === 'num' ? 'npick' : 'pick'; startRound(); return; }      /* 4.460 Test My Skills */
   if (name === 'stk') { STKRUN = 'fs'; S.game = STKN++ % 2 ? 'type' : 'pick'; S.count = 25; startRound(); return; }      /* 4.441 */
   if (!SHOW.hasOwnProperty(name)) { location.hash = '#/'; return; }
   NOPICK = !/^(play|setup|show|review|results|report|card|home|games)$/.test(name);      /* these pages have (or follow) the Skin Tone picker */

@@ -104,6 +104,7 @@ async function start() {
     try { landmarker = await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { landmarker = await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; camTellOpener('fsp-cam-fail', 'reader'); return; }
   $('#rd-camsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; requestAnimationFrame(loop); camTellOpener('fsp-cam-ready');
+  if (ACT === 'pacer' && !NUMS) refHand.ready.then(() => startGame('pacer'));
   if (WANT_GAME && (NUMS ? NGAMES : LGAMES).some(g => g[0] === WANT_GAME)) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) gb.click(); refHand.ready.then(() => startGame(WANT_GAME)); }
 }
 function loop() {
@@ -195,7 +196,7 @@ function go(k) {
   AGE = null;
   const c = SET[cur]; $('#rd-letter').textContent = GAME && GAME.mask ? '?' : NUMS ? numText(c) : c; $('#rd-letter').classList.toggle('long', NUMS && numText(c).length > 4); $('#rd-letter').classList.remove('ok'); SEQ = null;
   const sn = $('#rd-shownum'); if (sn) sn.hidden = !NUMS || c.length < 2; $('#rd-modelbox').hidden = true;
-  showRef(c); drawAlpha();
+  showRef(c); drawAlpha(); if (MATCH) matchShow(c);
 }
 function drawAlpha() { $('#rd-alpha').innerHTML = SET.map((c, i) => '<button class="' + (MINE[c] && MINE[c].length ? 'has ' : '') + (i === cur ? 'cur' : '') + '" data-i="' + i + '">' + c + '</button>').join(''); }
 function finishTeach() {      /* SAFEGUARD (Colleen: new learners could teach it a mistake): only frames that already look close to Colleen's letter are kept */
@@ -405,6 +406,12 @@ function readMotion(c, P, L, f) {
    Inside ASL Study / the TpT sheet the results go to the student's Fingerspelling Stats as EXPRESSIVE. Nothing but these results is kept. ---------- */
 try { const got = JSON.parse(sessionStorage.getItem('fsp.sheetWords') || 'null'); if (got && got.defs && typeof got.defs === 'object') window.FS_DEFS = Object.assign({}, window.FS_DEFS || {}, got.defs); } catch (e) {}      /* the teacher's own descriptions, when opened from the sheet */
 const QS = new URLSearchParams(location.search), IN_SHEET = QS.get('embed') === 'aslstudy' && !!window.opener, FROM_STUDY = QS.get('embed') === 'aslstudy';
+/* ONE ACTIVITY PER LINK (Colleen, 2026-11-10: "the camera is confusing because it does lots of different things inside one link"): reader.html?act=
+   match (Match the Hand, the beginner mode) | letter | word | number | check | pacer | teach opens just that activity, with no Practice / Check / Games
+   or Letters / Words / Numbers switches. No act (old links, ASL Study's class games, the game cards' ?g=) keeps the full page. */
+const TMS_N = QS.get('tms') === '1' ? Math.max(1, Math.min(10, +QS.get('n') || 5)) : 0;      /* 4.460 Test My Skills Part 2: a few to the camera, like the test (short words; numbers mostly 2 digits) */
+const tmsNums = () => [2, 2, 1, 2, 3, 2, 2, 1, 2, 3].slice(0, TMS_N).map(d => { const lo = d === 1 ? 0 : Math.pow(10, d - 1); return String(lo + Math.floor(Math.random() * (Math.pow(10, d) - lo))); });
+const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') || '') ? QS.get('act') : '', MATCH = ACT === 'match';
 /* ASL Study 4.89 (Colleen: a whole class's camera practice never reached the sheet): every round is kept on this device (fsp-cam-pending) and
    sent both to the page that opened this tab and to the ASL Study page around it; it is forgotten once ASL Study says it is saved. Anything still
    waiting is sent the next time the games open inside ASL Study. The app never counts the same round (rid) twice. */
@@ -452,7 +459,7 @@ const tlNow = () => TL_FIXED !== null ? TL_FIXED : +($('#rd-tl').value || 8);
 const shuffleA = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function ckStart() {
   const words = !!WORD || $('#rd-mode .on').dataset.v === 'words';
-  CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: words ? shuffleA(pool()).slice(0, 8) : NUMS ? shuffleA(onlyDigits() ? DIGITS : nPool()).slice(0, 10) : shuffleA(SET) };
+  CK = { on: true, words, items: [], t: 0, lastT: 0, quickN: 0, quickL: '', quick: '', start: Date.now(), queue: words ? shuffleA(TMS_N ? pool().filter(w => w.length >= 3 && w.length <= 7) : pool()).slice(0, TMS_N || 8) : NUMS ? (TMS_N ? tmsNums() : shuffleA(onlyDigits() ? DIGITS : nPool()).slice(0, 10)) : shuffleA(SET).slice(0, TMS_N || 26) };
   if (!CK.queue.length) { CK = null; $('#rd-status').textContent = 'No words fit. Choose a longer word or another list.'; return; }
   document.body.classList.add('checking'); $('#rd-results').hidden = true; $('#rd-checkgo').hidden = true; $('#rd-ckbar').hidden = false; $('#rd-hint').checked = false;
   if (NUMS) SET = CK.queue.slice();
@@ -539,7 +546,8 @@ function showWord() {
   if (wi === 0) { BRUN = 0; BOUNCE = []; }      /* the samples run on between letters, so the move from one letter to the next is in them */
   if (GAME && GAME.onLetter && wi > 0) GAME.onLetter(wi);
   const c = WORD[wi]; DBL = wi > 0 && WORD[wi - 1] === c ? { x0: null, d0: lastD, moved: false } : null; done = false; held = 0; $('#rd-hold').style.width = '0'; $('#rd-letter').textContent = GAME && GAME.hideLetter ? '?' : c; $('#rd-letter').classList.remove('ok'); $('#rd-word').classList.remove('alldone');
-  $('#rd-word').innerHTML = WORD.split('').map((x, i) => '<span class="' + (i < wi ? 'd' : i === wi ? 'c' : 'n') + '">' + (GAME && GAME.hide && i >= wi ? '_' : x) + '</span>').join('');      /* games that hide the word show blanks until each letter is signed */
+  $('#rd-word').innerHTML = WORD.split('').map((x, i) => (i === POSS ? '<span class="' + (i <= wi ? 'd' : 'n') + '">\u2019</span>' : '') + '<span class="' + (i < wi ? 'd' : i === wi ? 'c' : 'n') + '">' + (GAME && GAME.hide && i >= wi ? '_' : x) + '</span>').join('');
+  if (POSS >= 0 && wi === POSS && !GAME && !(CK && CK.on)) setTimeout(() => { if (WORD && wi === POSS && !done) $('#rd-status').textContent = 'For \u2019S: sign S, then twist it toward you. (A plain S counts too.)'; }, 0);      /* games that hide the word show blanks until each letter is signed */
   if (wi === 0) showDef(WORD);
   showRef(c);
 }
@@ -547,14 +555,21 @@ function showDef(w) {      /* what the word means, right under the word, from th
   const D = window.FS_DEFS || {}, k = Object.keys(D).find(x => x.toUpperCase().replace(/[^A-Z]/g, '') === w), dv = $('#rd-def');
   if (!WORD || (CK && CK.on && !k)) { dv.hidden = true; return; } $('#rd-prompt').appendChild(dv); dv.hidden = !k; if (k) dv.textContent = '📖 ' + (GAME && GAME.hide ? maskWord(D[k], k) : D[k]);
 }
-function newWord() { const P = pool(); WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
+/* 's (Colleen, 2026-11-10: "dont' require the 's twist in the camera version of the test. encourage it in the practice rounds"): plain practice
+   (Spell the Word) sometimes asks for a possessive like MOM'S. The last S counts as a plain S; the tip asks for the twist. The Check and the games never
+   ask for 's. POSS is the index of that S, or -1. */
+const FROM_STUDY_CHECK = () => ACT === 'check';      /* never in the Check */
+const POSS_WORDS = ['MOMS', 'DADS', 'TOMS', 'KIMS', 'BOBS', 'AMYS', 'SAMS', 'JENS', 'MAXS', 'SUES'];
+let POSS = -1;
+function newWord() { const P = pool(); POSS = -1; if (!GAME && !(CK && CK.on) && !LIVEON && !FROM_STUDY_CHECK() && Math.random() < 0.15) { WORD = POSS_WORDS[Math.floor(Math.random() * POSS_WORDS.length)]; POSS = WORD.length - 1; } else WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
+const wordText = w => POSS >= 0 && w === WORD ? w.slice(0, POSS) + '\u2019' + w.slice(POSS) : w;      /* MOMS -> MOM'S, for showing and for Show me */
 let LAST = '';
 function wordDone() {      /* all green, then straight on to the next word (Colleen); "Show me" stays for the word just spelled */
-  done = true; LAST = WORD; xWord(); const w = $('#rd-word'); w.innerHTML = WORD.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
+  done = true; LAST = wordText(WORD); xWord(); const w = $('#rd-word'); w.innerHTML = LAST.split('').map(x => '<span class="d">' + x + '</span>').join(''); w.classList.add('alldone');
   $('#rd-showbox').hidden = true; $('#rd-after').hidden = false; $('#rd-showme').textContent = '▶ Show me ' + LAST; $('#rd-status').textContent = 'You spelled ' + LAST + '!';
   if (GAME && GAME.wordDone) { $('#rd-after').hidden = true; return GAME.wordDone(LAST); }
   if (LIVEON) liveDone(LAST);      /* a class game: this word counts */
-  setTimeout(() => { if (WORD === LAST && done) { if (CK && CK.on) ckNextWord(); else newWord(); } }, 1500);
+  setTimeout(() => { if (wordText(WORD) === LAST && done) { if (CK && CK.on) ckNextWord(); else newWord(); } }, 1500);
 }
 async function showMe() {      /* the hand spells the word back, for clarity (Colleen) */
   if (!refHand || !LAST) return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-showme').disabled = true;
@@ -1235,4 +1250,43 @@ refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c);
   go(0); $('#rd-status').textContent = NUMS ? 'Ready: numbers.' : 'Ready: all 26 letters.'; });
 if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]'); if (gb) setTimeout(() => gb.click(), 0); }      /* show the game list until the camera is on */
 { const want = ONLY === 'numbers' || QS.get('kind') === 'numbers' ? 'numbers' : ''; const b = want && document.querySelector('#rd-mode [data-v="numbers"]'); if (b) { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b)); setNums(true); $('#rd-ask').textContent = 'Sign this number'; ckAbout(); } }
+/* ---------- MATCH THE HAND (Colleen, 2026-11-10): the very beginner mode. The 3D hand shows the letter (or number) right beside the camera, on the
+   student's signing side ("if they're right handed the sample letter should be on their left so it's in front of their face. do the opposite for the
+   left hand"), as a right hand for a right-handed student and mirrored into a left hand for a left-handed one. The student copies it; when the camera
+   reads it, it turns green and the next one comes. "Show me again" models it (J, Z and the moving numbers show their movement). ---------- */
+let MSEQ = 0;
+async function matchShow(c, again) {
+  const my = ++MSEQ, t = String(c); if (!refHand) return; await refHand.ready; if (my !== MSEQ) return;
+  const lab = $('#rd-matchlab'); if (lab) lab.textContent = NUMS ? numText(t) : t;
+  const stop = () => my !== MSEQ;
+  try {
+    if (NUMS) { if (again || +t >= 10) await refHand.sign(+t, {}); if (!stop()) refHand.hold(+t); }
+    else { if (again || MOVING[t]) await refHand.spell(t, { speed: () => 0.1, stop }); if (!stop()) refHand.hold(t); }
+  } catch (e) {}
+}
+const ACTS = {      /* title, the line under it, what the card asks */
+  match: () => [NUMS ? 'Match the Hand: Numbers' : 'Match the Hand: Letters', 'Copy the hand. It shows the ' + UNIT() + ' beside your camera, on your signing side. When the camera reads your hand, the ' + UNIT() + ' turns green and the next one comes.', 'Copy the hand: sign this ' + UNIT()],
+  letter: () => ['Sign the Letter', 'You see a letter. Sign it to your camera. When the camera reads it, the letter turns green.', 'Sign this letter'],
+  word: () => ['Spell the Word', 'You see a word. Fingerspell it to your camera, one letter at a time. Tap Show me to watch the hand spell it.', 'Spell this word'],
+  number: () => ['Sign the Number', 'You see a number. Sign it to your camera. When the camera reads it, the number turns green.', 'Sign this number'],
+  check: () => [NUMS ? 'The Check: Numbers' : 'The Check: Letters', 'A timed check with no hints. Your score shows at the end' + (FROM_STUDY ? ' and goes to your teacher.' : '.'), NUMS ? 'Sign this number' : 'Sign this letter'],
+  pacer: () => ['Speed Pacer', 'Pick a speed. The words move on at that pace, ready or not. Fingerspell each word to your camera.', 'Spell this word'],
+  teach: () => ['Teach the Camera My Hand', 'Hands are all a little different. Make the sign, hold it steady and tap Teach. The camera remembers your way of making it, on this computer only.', 'Teach this ' + UNIT()] };
+{ const h = $('#rd-hint'); if (h) { h.checked = false; const l = h.closest('label'); if (l) l.hidden = true; } }      /* the old handshape-picture checkbox is gone: Match the Hand does that job (Colleen) */
+if (ACT) {
+  document.body.classList.add('act', 'act-' + ACT);
+  if (ACT === 'word') { const b = document.querySelector('#rd-mode [data-v="words"]'); if (b) b.click(); }
+  if (ACT === 'check' && QS.get('words') === '1') { const b = document.querySelector('#rd-mode [data-v="words"]'); if (b) b.click(); }
+  if (ACT === 'check') { const b = document.querySelector('#rd-kind [data-v="check"]'); if (b) b.click(); }
+  if (MATCH && NUMS) { SET = DIGITS; cur = 0; }      /* the beginner numbers: 0 to 9 */
+  if (MATCH) {
+    const cam = $('.rd-cam'), pair = document.createElement('div'), mb = $('#rd-modelbox'); pair.className = 'rd-pair'; cam.parentNode.insertBefore(pair, cam);
+    pair.appendChild(mb); pair.appendChild(cam); mb.appendChild($('#rd-model')); mb.hidden = false;
+    mb.insertAdjacentHTML('afterbegin', '<p class="rd-matchlab" id="rd-matchlab" aria-live="polite"></p>');
+    mb.insertAdjacentHTML('beforeend', '<button class="btn" id="rd-matchagain" type="button">▶ Show me again</button>');
+    $('#rd-matchagain').onclick = () => matchShow(WORD ? WORD[wi] : SET[cur], true);
+    setTimeout(() => dispatchEvent(new Event('resize')), 0);      /* the hand draws at its new, bigger size */
+  }
+  let [t, intro, ask] = ACTS[ACT](); if (TMS_N) { t = 'Test My Skills: Part 2'; intro = 'Sign ' + TMS_N + ' ' + (NUMS ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test. No hints.'; if (!NUMS) $('#rd-mode').hidden = true; } $('h1').textContent = t; document.title = t; $('#rd-intro').textContent = intro; if (ACT !== 'word' && ACT !== 'pacer') $('#rd-ask').textContent = ask;
+}
 window.READER = { ageArea, setFaceDemo: v => { FACE = v; }, ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
