@@ -102,7 +102,7 @@ const isNumGame = g => g === 'ntms' || g === 'numbers' || g === 'npick' || g ===
 const isYear = g => g === 'yread' || g === 'ypick';
 const isAge = g => g === 'aread' || g === 'apick';      // Read the Age and Pick the Age (signed with hand.signAge, the face behind the hand)      // Read the Year and Pick the Year (signed with hand.signYear)      // the number games: answers are numbers
 const isNums = g => g === 'numbers' || g === 'npick';      // Read the Number (typed) and Pick the Number (picked): the same numbers and settings
-const isChoice = g => CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || g === 'ypick' || g === 'apick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
+const isChoice = g => g === 'pcat' || CHOICE_GAMES.indexOf(g) >= 0 || g === 'npick' || g === 'ypick' || g === 'apick' || (g === 'nquiz' && S.nkind === 'pick');      // Numbers: typed or picked, the student's choice
 const NUM_GROUPS = [      /* the numbers the hand can sign, in groups for the setup screen (Colleen: 22-99 and the rocking numbers added 2026-10-13) */
   ['0–20', Array.from({ length: 21 }, (_, i) => String(i))],
   ['The 20s', ['21', '22', '23', '24', '25', '26', '27', '28', '29']],
@@ -322,7 +322,7 @@ function gamesInit() {
   $('#g-showfs').innerHTML = '<a class="gcard" href="#/show"><span class="gi" aria-hidden="true">🖐️</span><b>Show Me How to Spell</b><span>Type any word or name. The hand spells it.</span></a>';
   const camAct = (num, L) => L.map(([a, em, t, d, stk]) => '<a class="gcard" data-cam' + (num ? ' data-camnum' : '') + ' href="reader.html?' + (num ? 'kind=numbers&' : '') + 'act=' + a + '" data-q="' + (num ? 'kind=numbers&' : '') + 'act=' + a + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + (stk ? stkBadge(stk === 1 ? undefined : stk) : '') + '</a>').join('');      /* 2026-11-10 (Colleen: "right now the camera is confusing because it does lots of different things inside one link"): one card, one link, one activity */
   const camSub = (t, d) => '<h3 class="camsub">' + t + ' <small>' + d + '</small></h3>';      /* 2026-11-10 (Colleen: "separate out all the activities into logical types"): the camera cards in groups */
-  $('#g-exprfs').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each letter beside your camera.') + camAct(false, [['match', '🤝', 'Match the Hand: Letters', 'Beginners: the hand shows each letter beside your camera. Copy it with your hand.', 1]])
+  $('#g-exprfs').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each letter beside your camera.') + camAct(false, [['match', '🤝', 'Match the Hand: Letters', 'Beginners: the hand shows each letter beside your camera. Copy it with your hand.', 1], ['match&words=1', '🤝', 'Match the Hand: Words', 'The hand spells a word beside your camera, then holds each letter while you copy it.', 1]])
     + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(false, [['letter', '🔤', 'Sign the Letter', 'See a letter, sign it to your camera.', 1], ['word', '📝', 'Spell the Word', 'See a word, fingerspell it to your camera. Tap Show me to watch the hand spell it.', 1], ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The words move on at that pace, ready or not.'], ['teach', '🛠️', 'Teach the Camera My Hand', 'If the camera has trouble reading one of your letters, teach it your way.']])
     + camSub('Check yourself', 'No hints, timed.') + camAct(false, [['check', '✅', 'The Check: Letters', 'A timed check of all 26 letters (or words). No hints.', 1]])
     + camSub('Camera games', 'Fingerspell to play.');
@@ -365,7 +365,7 @@ const CARD_FAM = { show: '🖐️', watch: '👁️', sign: '📷', class: '📽
 const CARD_ART = { '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
   '#/showtime/days': ['show-days', 'show'], '#/showtime/seasons': ['show-seasons', 'show'], '#/mail': ['mail', 'watch'], '#/build': ['build', 'watch'], '#/math': ['math', 'watch'],
   '#/agepics': ['charlie', 'watch'], '#/eventyear': ['eventyear', 'watch'], '#/timeline': ['timeline', 'watch'], '#/class': ['projector', 'class'], '#/bingo': ['bingo', 'class'],
-  'reader.html': ['camera', 'sign'], 'reader.html?kind=numbers': ['camnumbers', 'sign'], 'reader.html?act=match': ['camera', 'sign'], 'reader.html?act=letter': ['camera', 'sign'], 'reader.html?act=word': ['camera', 'sign'], 'reader.html?act=check': ['camera', 'sign'], 'reader.html?act=pacer': ['camera', 'sign'], 'reader.html?act=teach': ['camera', 'sign'], 'reader.html?kind=numbers&act=match': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=number': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=check': ['camnumbers', 'sign'], 'pronouns.html': ['pronouns', 'sign'] };
+  'reader.html': ['camera', 'sign'], 'reader.html?kind=numbers': ['camnumbers', 'sign'], 'reader.html?act=match': ['camera', 'sign'], 'reader.html?act=match&words=1': ['camera', 'sign'], 'reader.html?act=letter': ['camera', 'sign'], 'reader.html?act=word': ['camera', 'sign'], 'reader.html?act=check': ['camera', 'sign'], 'reader.html?act=pacer': ['camera', 'sign'], 'reader.html?act=teach': ['camera', 'sign'], 'reader.html?kind=numbers&act=match': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=number': ['camnumbers', 'sign'], 'reader.html?kind=numbers&act=check': ['camnumbers', 'sign'], 'pronouns.html': ['pronouns', 'sign'] };
 const CARD_CAM = { def: 'def', echo: 'echo', speed: 'speed', ladder: 'camladder', hang: 'hang', wordle: 'wordle', names: 'names', math: 'cammath', count: 'count', clock: 'clock' };
 function cardFor(href) { if (!href) return null; if (CARD_ART[href]) return CARD_ART[href];
   const st = /^#\/setup\/(\w+)$/.exec(href); if (st) return [st[1], 'watch'];
@@ -519,11 +519,17 @@ let R = null;      // the round being played
    edition. Fingerspelling: 25 real words (short, medium, long), about 4 in 10 typed, the rest picked from four look-alikes. Numbers: mostly 2-digit,
    one year, one age, one 4-digit, the rest 1- and 3-digit, typed or picked. Then Part 2: 5 to the camera (reader.html?act=check&n=5). 80% = ready. */
 const TMS_READY = 80;
+const wordCats = w => { const k = letters(w), out = new Set(); [window.FS_WORDS || {}, window.FAMILIAR || {}].forEach(B => Object.keys(B).forEach(c => { if ((B[c] || []).some(x => letters(x) === k)) out.add(c); })); return out; };      /* every list a word is in */
+const catChoices = it => { const mine = wordCats(it.w); return shuffle([it.c].concat(shuffle((it.cats || []).filter(c => c !== it.c && !mine.has(c))).slice(0, 3))); };
 function tmsList(kind, pool) {
   if (kind === 'fs') {
     const band = x => { const n = letters(x.w).length; return n <= 4 ? 0 : n <= 6 ? 1 : 2; }, P = pool.filter(x => letters(x.w).length >= 3), B = [0, 1, 2].map(b => shuffle(P.filter(x => band(x) === b)));
     let L = []; [8, 8, 9].forEach((k, b) => { L = L.concat(B[b].slice(0, k)); }); if (L.length < 25) L = L.concat(shuffle(P.filter(x => L.indexOf(x) < 0)).slice(0, 25 - L.length));
-    return shuffle(L.slice(0, 25).map((x, i) => Object.assign({}, x, { g: i % 5 < 2 ? 'type' : 'pick' })));
+    L = L.slice(0, 25).map((x, i) => Object.assign({}, x, { g: i % 5 < 2 ? 'type' : 'pick' }));
+    /* 4.461 (Colleen: "do 2"): about 1 in 6 a category question, like the real test, when the words come from 4 or more categories; only words in one category */
+    const cats = [...new Set(P.map(x => x.c).filter(c => c && !/LEVEL|VOCAB|GRADE/i.test(c)))];      /* real topics only, not grade-level lists */
+    if (cats.length >= 4) { let k = 0; L.forEach(x => { if (k < 4 && x.g === 'pick' && cats.indexOf(x.c) >= 0 && [...wordCats(x.w)].filter(c => !/LEVEL|VOCAB|GRADE/i.test(c)).length === 1) { x.g = 'pcat'; x.cats = cats; k++; } }); }
+    return shuffle(L);
   }
   const L = [], num = d => { const lo = d === 1 ? 0 : Math.pow(10, d - 1); return String(lo + Math.floor(Math.random() * (Math.pow(10, d) - lo))); };
   const it = (w, g) => ({ w, n: 1, teens: teensFor(), form: formFor(), g });
@@ -617,8 +623,9 @@ function drawWord() {
     if (g === 'nquiz' && !it.shown) it.shown = bigChoices(it.w);
     if (g === 'ypick' && !it.shown) it.shown = yearChoices(it.w);
     if (g === 'apick' && !it.shown) it.shown = ageChoices(it.w);
-    const opts = g === 'pick' || isNumGame(g) ? it.shown : it.opts;
-    $('#p-cask').textContent = isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : isAge(g) ? 'Which age did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
+    if (g === 'pcat' && !it.shown) it.shown = catChoices(it);      /* 4.461 Test My Skills: which category? */
+    const opts = g === 'pick' || g === 'pcat' || isNumGame(g) ? it.shown : it.opts;
+    $('#p-cask').textContent = g === 'pcat' ? 'Which category is the word in?' : isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : isAge(g) ? 'Which age did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
     const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) || isAge(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
@@ -717,7 +724,7 @@ function answerTyped(skip) {
 function answerChoice(o) {
   if (!R || R.answered === R.i) return;
   R.answered = R.i;
-  const num = isNumGame(R.game), it = R.list[R.i], right = R.game === 'pairs' ? it.target : it.w, ok = answerKey(o, num) === answerKey(right, num);
+  const num = isNumGame(R.game), it = R.list[R.i], right = R.game === 'pairs' ? it.target : R.game === 'pcat' ? it.c : it.w, ok = answerKey(o, num) === answerKey(right, num);
   record(ok, o, { w: right, pair: it.pair, picked: true });
   $$('#p-choices button').forEach(b => { b.disabled = true; if (answerKey(b.dataset.o, num) === answerKey(right, num)) b.classList.add('right'); else if (b.dataset.o === o) b.classList.add('wrong'); });
   showFeedback(ok, false, right); showDef(right);
