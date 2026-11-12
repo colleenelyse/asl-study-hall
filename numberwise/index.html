@@ -3,13 +3,13 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="ASL Numberwise"><meta name="application-name" content="ASL Numberwise">
+<meta name="apple-mobile-web-app-title" content="ASL NumberWise"><meta name="application-name" content="ASL NumberWise">
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#012052">
 <link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="manifest" href="manifest.json">
 <script>document.documentElement.classList.add('papp'); { const m = /^#claim=(\d{6})$/.exec(location.hash); if (m) { window.__paClaim = m[1]; history.replaceState(null, '', '#/games'); } } if (!location.hash || location.hash === '#' || location.hash === '#/') history.replaceState(null, '', '#/games');</script>
-<style>:root{--app-navy:#012052}</style><link rel="stylesheet" href="shell.css?v=717aeb6e">
+<style>:root{--app-navy:#012052}</style><link rel="stylesheet" href="shell.css?v=4be647bc">
 <meta charset="utf-8">
-<meta name="robots" content="noindex"><title>ASL Numberwise</title>
+<meta name="robots" content="noindex"><title>ASL NumberWise</title>
 <meta name="description" content="Read ASL numbers from a 3D hand, then sign numbers to your camera.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
@@ -814,7 +814,7 @@
 #appsteps .stripes { display: flex; gap: 6px; justify-content: center } #appsteps .stripes i { width: 34px; height: 6px; border-radius: 9px }
 </style>
 <div id="appsteps" hidden><main>
-  <div class="top"><img src="icon-180.png" alt="" width="72" height="72"><div><h1>ASL Numberwise</h1><p class="sub">Put it on your phone’s home screen</p></div></div>
+  <div class="top"><img src="icon-180.png" alt="" width="72" height="72"><div><h1>ASL NumberWise</h1><p class="sub">Put it on your phone’s home screen</p></div></div>
   <section class="card2">
     <h2>Add the icon (one time)</h2>
     <div class="tabs" role="group" aria-label="Your phone"><button type="button" data-p="ios" aria-pressed="false">iPhone</button><button type="button" data-p="android" aria-pressed="false">Android</button></div>
@@ -823,15 +823,15 @@
       <li><span>Tap <b class="k">Share</b> <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. Don’t see it? Tap <span class="ic">•••</span> first.</span></li>
       <li><span>Tap <b class="k">Add to Home Screen</b>. Don’t see it? Scroll down, or tap <b class="k">More</b> <span class="ic">•••</span>.</span></li>
       <li><span>If you see <b class="k">Open as Web App</b>, leave it turned on.</span></li>
-      <li><span>Tap <b class="k">Add</b>. The ASL Numberwise icon is now on your home screen.</span></li>
+      <li><span>Tap <b class="k">Add</b>. The ASL NumberWise icon is now on your home screen.</span></li>
     </ol></div>
     <div data-for="android" hidden><button class="go" type="button" id="appstepsinst" hidden style="margin-bottom:12px" onclick="var e = window.__bip; if (!e) return; e.prompt(); e.userChoice.then(function () { window.__bip = null; document.getElementById('appstepsinst').hidden = true; });">📲 Install now</button><ol>
       <li><span>Open this page in <b class="k">Chrome</b>.</span></li>
       <li><span>Tap the menu <span class="ic" aria-label="menu">⋮</span> at the top right.</span></li>
       <li><span>Tap <b class="k">Install app</b> (it may say <b class="k">Add to Home screen</b>).</span></li>
-      <li><span>Tap <b class="k">Install</b> (or <b class="k">Add</b>). The ASL Numberwise icon is now on your home screen.</span></li>
+      <li><span>Tap <b class="k">Install</b> (or <b class="k">Add</b>). The ASL NumberWise icon is now on your home screen.</span></li>
     </ol></div>
-    <p class="note">Then open ASL Numberwise from the icon. No sign-in: your progress stays on your phone.</p>
+    <p class="note">Then open ASL NumberWise from the icon. No sign-in: your progress stays on your phone.</p>
   </section>
   <button class="go" type="button" id="appstepsgo">Start practicing</button>
   <div class="stripes" aria-hidden="true"><i style="background:#F2766A"></i><i style="background:#F6C24B"></i><i style="background:#6FCB9F"></i><i style="background:#A884E0"></i><i style="background:#5DB6F2"></i></div>
@@ -858,8 +858,8 @@ window.paSteps = function (force) {
 paSteps(false);
 </script>
 <script>window.PALINK = {"door": "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", "main": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", "back": "numberwise"};</script>
-<script src="link.js?v=99bf014d"></script>
-<script>window.PAPP = {"name": "ASL Numberwise", "tabs": [["#/games/learn", "📘", "Learn"], ["#/games/practice", "🔁", "Practice"], ["#/games/games", "🎮", "Games"], ["#/games/check", "🎯", "Check"], ["#/progress", "📈", "Progress"]], "ver": "version 717aeb6e"};</script>
-<script src="shell.js?v=717aeb6e"></script>
+<script src="link.js?v=d40d929f"></script>
+<script>window.PAPP = {"name": "ASL NumberWise", "tabs": [["#/games/learn", "📘", "Learn"], ["#/games/practice", "🔁", "Practice"], ["#/games/games", "🎮", "Games"], ["#/games/check", "🎯", "Check"], ["#/progress", "📈", "Progress"]], "ver": "version 4be647bc"};</script>
+<script src="shell.js?v=4be647bc"></script>
 </body>
 </html>

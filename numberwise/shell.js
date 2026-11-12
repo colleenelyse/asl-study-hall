@@ -1,4 +1,4 @@
-/* Phone app shell for ASL Spellbound / ASL Numberwise (dev/build-phone-apps.py, 2026-11-12).
+/* Phone app shell for ASL Spellbound / ASL NumberWise (dev/build-phone-apps.py, 2026-11-12).
    PAPP = { name, tabs: [[hash, icon, label]], ver } is written by the builder before this file. Progress stays in this phone's storage (no sign-in). */
 (function () {
   var P = window.PAPP || {}, H = document.documentElement, $ = function (s) { return document.querySelector(s); };
@@ -44,7 +44,7 @@
     '<section id="pa-acct" hidden></section>' +
     '<div id="pa-look-slot"></div>' +
     '<div class="links"><button type="button" id="pa-help">📲 How to put this app on your home screen</button><a href="privacy.html">🔒 Privacy</a></div>' +
-    (window.paLinkOn && window.paLinkOn() ? '<div class="links"><b>Our ASL apps</b><a href="/app/">ASL Study Hall</a><a href="/spellbound/">ASL Spellbound</a><a href="/numberwise/">ASL Numberwise</a><a href="/apps/">See all three</a></div>' : '') +      /* 2026-11-12 the app collection (asl.cool only: buyers never see asl.cool) */
+    (window.paLinkOn && window.paLinkOn() ? '<div class="links"><b>Our ASL apps</b><a href="/app/">ASL Study Hall</a><a href="/spellbound/">ASL Spellbound</a><a href="/numberwise/">ASL NumberWise</a><a href="/apps/">See all three</a></div>' : '') +      /* 2026-11-12 the app collection (asl.cool only: buyers never see asl.cool) */
     '<p class="ver">' + P.name + ' · your progress is saved on this phone' + (window.paLinkOn && window.paLinkOn() ? ', and in ASL Study when you are signed in' : '') + '.' + (P.ver ? ' · ' + P.ver : '') + '</p></div>';      /* buyers' copies have no sign-in: just "on this phone" */
   document.body.appendChild(sheet);
   var look = $('#look'); if (look) $('#pa-look-slot').appendChild(look);

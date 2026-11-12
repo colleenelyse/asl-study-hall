@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.485';
+var VERSION = '4.486';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1451,7 +1451,7 @@ function api_appClaim(code) {
   return { tok: appToken_(em, 'google') };
 }
 /* ?app=signin on the usual link: Google already knows who this is, so make a one-time code and send them back to the app */
-var APP_BACK = { spellbound: ['https:' + '/' + '/asl.cool/spellbound/', 'ASL Spellbound'], numberwise: ['https:' + '/' + '/asl.cool/numberwise/', 'ASL Numberwise'] };      /* 4.482 the small phone apps sign in the same way */
+var APP_BACK = { spellbound: ['https:' + '/' + '/asl.cool/spellbound/', 'ASL Spellbound'], numberwise: ['https:' + '/' + '/asl.cool/numberwise/', 'ASL NumberWise']      /* 2026-11-12 renamed (Colleen: "rename it to NumberWise") */ };      /* 4.482 the small phone apps sign in the same way */
 function appSigninPage_(back) {
   var dest = APP_BACK[str_(back)] || [APP_URL, 'ASL Study Hall'];
   var em = ''; try { em = str_(Session.getActiveUser().getEmail()).toLowerCase(); } catch (e) {}

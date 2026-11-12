@@ -1,4 +1,4 @@
-/* ASL Study link for ASL Spellbound / ASL Numberwise (dev/build-phone-apps.py, 2026-11-12, ASL Study 4.482).
+/* ASL Study link for ASL Spellbound / ASL NumberWise (dev/build-phone-apps.py, 2026-11-12, ASL Study 4.482).
    Colleen: "i want students to be able to use the app as a logged in ASL student ... so their interaction can count toward their study hall account's progress".
    Only on asl.cool (her students); the copies for buyers never show it. A student signs in once (Google, school email, or a code), the same way as
    asl.cool/app, and keeps the same sign-in (localStorage asl-app-tok, shared with asl.cool/app in the same browser). Every finished round is sent to

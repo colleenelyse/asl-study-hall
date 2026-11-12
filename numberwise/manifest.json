@@ -1,6 +1,6 @@
 {
-  "name": "ASL Numberwise",
-  "short_name": "ASL Numberwise",
+  "name": "ASL NumberWise",
+  "short_name": "ASL NumberWise",
   "description": "Read ASL numbers from a 3D hand, then sign numbers to your camera.",
   "id": "./",
   "start_url": "./#/games",

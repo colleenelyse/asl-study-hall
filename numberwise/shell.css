@@ -1,4 +1,4 @@
-/* Phone app shell for ASL Spellbound / ASL Numberwise (dev/build-phone-apps.py, 2026-11-12).
+/* Phone app shell for ASL Spellbound / ASL NumberWise (dev/build-phone-apps.py, 2026-11-12).
    The games site underneath is unchanged; this adds an app bar, a tab bar and a Settings sheet. */
 html.papp { --pa-navy: var(--app-navy, #011B5C); -webkit-tap-highlight-color: transparent; }
 html.papp body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
