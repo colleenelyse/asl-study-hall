@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ASL Study Hall</title>
+<meta name="robots" content="noindex">
+<!-- Phone app, step 0 (2026-11-11, dev/phone-app-plan.md): the home-screen icon. For now the icon opens the usual ASL Study link (with the browser bar);
+     step 1 turns this into the full-screen app. Colleen: name "ASL Study Hall" (if a phone cuts it off, "ASL Study"); icon = the ILY hand on dark blue. -->
+<meta name="apple-mobile-web-app-title" content="ASL Study Hall">
+<meta name="application-name" content="ASL Study Hall">
+<meta name="theme-color" content="#0B2A4E">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
+<script>
+/* Opened from the home-screen icon (or any visit after the first): go straight to ASL Study Hall. ?help always shows the steps. */
+(function () {
+  var STUDY = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec';
+  window.STUDY = STUDY;
+  var q = location.search, seen = false;
+  try { seen = localStorage.getItem('ash-app-seen') === '1'; } catch (e) {}
+  if (/[?&]home=1/.test(q) || (seen && !/[?&]help/.test(q))) { location.replace(STUDY); return; }
+  try { localStorage.setItem('ash-app-seen', '1'); } catch (e) {}
+})();
+</script>
+<style>
+:root { --bg: #0B2A4E; --card: #12365F; --ink: #fff; --soft: #C9D6EA; --line: rgba(255,255,255,.18);
+  --red: #F2766A; --yel: #F6C24B; --grn: #6FCB9F; --pur: #A884E0; --blu: #5DB6F2; color-scheme: dark; }
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 500 17px/1.5 "Nunito", system-ui, sans-serif; -webkit-text-size-adjust: 100%;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(16px, env(safe-area-inset-left, 0px)) }
+main { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px }
+.top { display: flex; align-items: center; gap: 14px }
+.top img { width: 72px; height: 72px; border-radius: 17px; box-shadow: 0 4px 14px rgba(0,0,0,.35) }
+h1 { font: 700 28px/1.1 "Fredoka", system-ui, sans-serif; margin: 0 }
+.sub { margin: 2px 0 0; color: var(--soft); font-size: 15px }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px }
+.card h2 { font: 600 20px/1.2 "Fredoka", system-ui, sans-serif; margin: 0 0 10px }
+ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px }
+ol li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start }
+ol li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 17px "Fredoka", sans-serif; color: #0B2A4E; background: var(--yel) }
+ol li:nth-child(2)::before { background: var(--grn) } ol li:nth-child(3)::before { background: var(--pur) } ol li:nth-child(4)::before { background: var(--blu) }
+.ic { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; background: rgba(255,255,255,.14); border: 1px solid var(--line); font-weight: 800; vertical-align: middle }
+.ic svg { width: 18px; height: 18px }
+b.k { color: var(--yel) }
+.note { color: var(--soft); font-size: 15px; margin: 10px 0 0 }
+.go { display: block; text-align: center; text-decoration: none; background: var(--blu); color: #0B2A4E; font: 700 20px "Fredoka", sans-serif; padding: 15px 18px; border-radius: 999px; box-shadow: 0 4px 0 #2F86C4 }
+.go:active { transform: translateY(2px); box-shadow: 0 2px 0 #2F86C4 }
+.alt { text-align: center; color: var(--soft); font-size: 15px; margin: 0 }
+.alt a { color: var(--blu) }
+.tabs { display: flex; gap: 8px; margin-bottom: 12px }
+.tabs button { flex: 1; font: 700 15px "Nunito", sans-serif; padding: 9px 6px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer }
+.tabs button[aria-pressed="true"] { background: #fff; color: #0B2A4E }
+[hidden] { display: none !important }
+.stripes { display: flex; gap: 6px; justify-content: center } .stripes i { width: 34px; height: 6px; border-radius: 9px }
+</style></head>
+<body><main>
+  <div class="top"><img src="icon-180.png" alt="" width="72" height="72"><div><h1>ASL Study Hall</h1><p class="sub">Put it on your phone’s home screen</p></div></div>
+
+  <section class="card" id="steps">
+    <h2>Add the icon (one time)</h2>
+    <div class="tabs" role="group" aria-label="Your phone">
+      <button type="button" data-p="ios" aria-pressed="false">iPhone</button>
+      <button type="button" data-p="android" aria-pressed="false">Android</button>
+    </div>
+
+    <div data-for="ios" hidden>
+      <ol>
+        <li><span>Open this page in <b class="k">Safari</b>. (In Chrome, tap <span class="ic" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> in the address bar instead and skip to step 3.)</span></li>
+        <li><span>Tap <b class="k">Share</b> <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. Don’t see it? Tap <span class="ic">•••</span> first.</span></li>
+        <li><span>Scroll down and tap <b class="k">Add to Home Screen</b>.</span></li>
+        <li><span>Tap <b class="k">Add</b>. The ASL Study Hall icon is now on your home screen.</span></li>
+      </ol>
+    </div>
+
+    <div data-for="android" hidden>
+      <ol>
+        <li><span>Open this page in <b class="k">Chrome</b>.</span></li>
+        <li><span>Tap the menu <span class="ic" aria-label="menu">⋮</span> at the top right.</span></li>
+        <li><span>Tap <b class="k">Add to Home screen</b> (it may say <b class="k">Install app</b>).</span></li>
+        <li><span>Tap <b class="k">Add</b>. The ASL Study Hall icon is now on your home screen.</span></li>
+      </ol>
+    </div>
+
+    <p class="note">Tap the icon any time to open ASL Study Hall. Sign in with your school Google account the first time.</p>
+  </section>
+
+  <a class="go" id="go" href="#">Open ASL Study Hall now</a>
+  <p class="alt" id="pc" hidden>On a computer? Just use <a href="/study">asl.cool/study</a>.</p>
+  <div class="stripes" aria-hidden="true"><i style="background:var(--red)"></i><i style="background:var(--yel)"></i><i style="background:var(--grn)"></i><i style="background:var(--pur)"></i><i style="background:var(--blu)"></i></div>
+</main>
+<script>
+(function () {
+  var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
+  var go = document.getElementById('go'); go.href = window.STUDY || '/study';
+  function pick(p) {
+    document.querySelectorAll('[data-for]').forEach(function (d) { d.hidden = d.getAttribute('data-for') !== p; });
+    document.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-p') === p)); });
+  }
+  document.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { pick(b.getAttribute('data-p')); }; });
+  pick(android ? 'android' : 'ios');
+  if (!ios && !android) document.getElementById('pc').hidden = false;
+})();
+</script>
+</body></html>
