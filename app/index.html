@@ -1220,6 +1220,11 @@ div.sts { cursor: default }
   .lc-quiz .seg { flex: 1 1 100%; min-width: 0; flex-wrap: wrap } .lc-quiz .seg button { flex: 1 1 40% }
   .lc-panel.lc-under { position: static; width: auto; inset: auto; padding: 12px 14px; margin-top: -6px; border-radius: 16px; font-size: 15px; background: #1b1340; max-height: none }
 }
+/* 4.481 the question picker (Lucky Claw, Sea Battle, Treasure Island) */
+.qk-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.qk-chip { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.qk-chip b { color: var(--ink); } .qk-chip small { color: var(--muted); font-size: .82rem; } .qk-chip.on { border-color: var(--good); background: var(--good-soft); }
+.qk-chip.on b::before { content: '✓ '; color: var(--good); }
 </style>
 </head>
 <body>
@@ -1286,8 +1291,8 @@ div.sts { cursor: default }
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.480) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.480" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.481) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.481" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -3756,6 +3761,7 @@ const lcFloor = z => lcBase(z) - LC_EGG_H * lcScale(z);      /* the egg's top */
 ACT.clawgo = () => go('claw');
 const LC_NARROW = () => matchMedia('(max-width: 600px)').matches;      /* 4.478 phones: the coin panel goes under the machine */
 VIEW.claw = () => {
+  S.qkOk = '';      /* 4.481 asks which kinds of questions each time the game opens */
   setTimeout(lcLoad, 0);
   return `<div class="stack"><div class="row"><button class="btn alt sm" data-a="tab" data-t="home">← Games</button><span class="grow"></span></div>
     <div class="lc" id="lc"><img class="lc-bg" src="${LC_ART}machine.webp${LC_V}" alt="The Lucky Claw machine">
@@ -3879,6 +3885,11 @@ function lcNextQ() {
   const box = $('#lcq'); if (!box) return; let pool = sxClass() && L.pool && L.pool.length >= 4 ? L.pool : selected().filter(c => c.ok); if (pool.length < 4) pool = S.cards.filter(c => c.ok);
   if (pool.length < 4) { box.innerHTML = '<p class="muted">There are not enough signs with GIFs to ask questions yet.</p>'; return; }
   let c; for (let i = 0; i < 6; i++) { c = pool[Math.floor(Math.random() * pool.length)]; if (!LC.q || c !== LC.q.card) break; }
+  if (qkSolo()) {      /* 4.481 (Colleen: the Wagon West question picker in Lucky Claw, Sea Battle and Treasure Island): the student picks the kinds first, then a kind is dealt each question */
+    if (S.qkOk !== S.view) { box.innerHTML = qkPickHtml(true); return; }
+    const kinds = qkSaved(), k = qkDeal(kinds);
+    if (k !== 'word') { const q2 = qkBuild(c, k, pool, kinds); if (q2.type !== 'word') { LC.q = q2; LC.pre = null; return qkPaint(box, q2); } }
+  }
   const pre = LC.pre && pool.indexOf(LC.pre.card) >= 0 && (!LC.q || LC.pre.card !== LC.q.card) ? LC.pre : null;      /* 4.73: the question picked (and its GIF loaded) while the last one was answered */
   const q = LC.q = pre || makeQ(c, 'word', pool);
   { let n2; for (let i = 0; i < 6; i++) { n2 = pool[Math.floor(Math.random() * pool.length)]; if (n2 !== q.card) break; } LC.pre = makeQ(n2, 'word', pool); preloadQs([LC.pre]); }
@@ -3888,6 +3899,9 @@ function lcNextQ() {
 ACT.clawans = el => {
   const q = LC.q; if (!q || q.done) return; if (sxClass() && liveV() && (liveV().paused || (liveV().rush && liveV().rush.on) || (L.train && liveV().ph && liveV().ph.k !== 'earn'))) return;      /* 4.270 Wagon Train: answers count while the wagons are earning supplies */ q.done = true; const ok = q.opts[+el.dataset.k] === q.card;
   el.classList.add(ok ? 'right' : 'wrong'); if (!ok) document.querySelectorAll('#lcq .opt').forEach((b, k) => { if (q.opts[k] === q.card) b.classList.add('right'); });
+  lcAfter(q, ok);
+};
+function lcAfter(q, ok) {      /* after any answer in the earn box (4.481: shared with the picked kinds of questions) */
   if (sxClass()) { if (!ok) L.total++; L.ans.push([q.card.id, ok ? 1 : 0, '']); }
   if (S.view === 'islesolo' && TS) TS.ans.push([q.card.id, ok ? 1 : 0, '']);
   if (REC && REC.view === S.view && !sxClass()) REC.ans.push([q.card.id, ok ? 1 : 0, '']);      /* 4.286 Lucky Claw and solo Sea Battle: the signs count like any round */
@@ -3896,7 +3910,53 @@ ACT.clawans = el => {
   const studyPause = !ok && (sxClass() || S.view === 'islesolo');      /* the 4-second look at the right answer (class games and solo Treasure Island) */
   if (studyPause && !sxClass()) { const n3 = document.createElement('p'); n3.className = 'sx-wait'; n3.textContent = 'Study the right answer. Next question in 4 seconds…'; $('#lcq').appendChild(n3); }
   setTimeout(mixMode() ? sxMixNext : lcNextQ, ok ? 600 : studyPause ? 4000 : 1500);
-};
+}
+/* ---- 4.481 the question picker for the solo games (Lucky Claw, Sea Battle, Treasure Island), like Wagon West's (Colleen: "add the question picker to those games").
+   The kinds are remembered on the device (sh-q-kinds). Class versions keep the teacher's way (Pick the Word). ---- */
+const QK_KINDS = [['word', 'Pick the Word', 'See the sign, choose the word'], ['sign', 'Pick the Sign', 'See the word, choose the sign'], ['type', 'Type It', 'See the sign, type the word'],
+  ['yn', 'Yes or No', 'Does the sign match the word?'], ['cat', 'Which Category?', 'See the sign, choose its category'], ['catsign', 'Category to Sign', 'See a category, choose the sign that belongs'],
+  ['odd', 'Odd One Out', 'Three signs share a category: find the one that does not']];
+const qkSolo = () => !sxClass() && (S.view === 'claw' || S.view === 'seasolo' || S.view === 'islesolo');
+function qkSaved() { let k = []; try { k = JSON.parse(localStorage.getItem('sh-q-kinds') || '[]'); } catch (e) {} k = (Array.isArray(k) ? k : []).filter(x => QK_KINDS.some(w => w[0] === x)); return k.length ? k : QK_KINDS.map(w => w[0]); }
+function qkDeal(kinds) { S.qkBag = (S.qkBag || []).filter(k => kinds.indexOf(k) >= 0); if (!S.qkBag.length) S.qkBag = shuffle(kinds.slice()); return S.qkBag.pop(); }      /* every kind comes up before any repeats */
+function qkChips() { const on = new Set(qkSaved()); return QK_KINDS.map(w => `<button class="qk-chip${on.has(w[0]) ? ' on' : ''}" data-a="qkt" data-k="${w[0]}" aria-pressed="${on.has(w[0])}"><b>${esc(w[1])}</b><small>${esc(w[2])}</small></button>`).join(''); }
+function qkPickHtml(withGo) { return `<div class="stack qk-pick" style="gap:8px"><p style="margin:0;font:700 1.15rem var(--display)">Which kinds of questions do you want?</p><p class="small muted" style="margin:0">Pick as many as you like.</p>
+  <div class="qk-chips" id="qkchips">${qkChips()}</div><div class="row" style="gap:8px;flex-wrap:wrap">${withGo ? '<button class="btn sun" data-a="qkgo">Start the questions</button>' : ''}<button class="btn alt sm" data-a="qkall">All of them</button></div></div>`; }
+ACT.qkt = el => { const k = el.dataset.k, on = qkSaved(), i = on.indexOf(k); if (i >= 0) { if (on.length === 1) return toast('Keep at least one kind of question.'); on.splice(i, 1); } else on.push(k);
+  try { localStorage.setItem('sh-q-kinds', JSON.stringify(on)); } catch (e) {} const c = $('#qkchips'); if (c) c.innerHTML = qkChips(); };
+ACT.qkall = () => { try { localStorage.setItem('sh-q-kinds', JSON.stringify(QK_KINDS.map(w => w[0]))); } catch (e) {} const c = $('#qkchips'); if (c) c.innerHTML = qkChips(); };
+ACT.qkgo = () => { S.qkOk = S.view; S.qkBag = []; lcNextQ(); };
+function qkBuild(c, k, pool, kinds) {      /* one question of a kind; a card that can't make it (no category yet) becomes Type It or Pick the Word */
+  const fall = () => kinds.indexOf('type') >= 0 && k !== 'type' ? qkBuild(c, 'type', pool, kinds) : makeQ(c, 'word', pool);
+  if (k === 'type') return Object.assign(makeQ(c, 'word', pool), { type: 'type' });
+  if (k === 'catsign') { const gs = (c.gr || []).filter(Boolean), g = gs.length ? rand(gs) : '', seen = new Set([String(c.en).toLowerCase()]);
+    const others = g ? shuffle(pool.concat(S.cards.filter(x => x.ok && x.g && pool.indexOf(x) < 0)).filter(x => x !== c && x.g && (x.gr || []).indexOf(g) < 0)).filter(x => { const w = String(x.en).toLowerCase(); return !seen.has(w) && seen.add(w); }).slice(0, 3) : [];
+    if (others.length < 3) return fall(); const q = makeQ(c, 'word', pool); return Object.assign(q, { type: 'catsign', cg: g, opts: shuffle(others.concat(c)) }); }
+  const m = makeQ(c, k, pool); return m.type === k ? m : fall();
+}
+function qkPaint(box, q) {
+  const signOpts = () => `<div class="opts signs">${q.opts.map((x, k) => `<button class="opt pic" data-a="qkans" data-k="${k}" aria-label="Sign ${k + 1}">${sign(x, '', x === q.card ? q.g : undefined)}</button>`).join('')}</div>`;
+  let b = '';
+  if (q.type === 'sign') b = `<p class="ask">${ASK.sign}</p><h2 class="prompt">${esc(lab(q, q.card))}</h2>` + signOpts();
+  else if (q.type === 'catsign') b = `<p class="ask">Which sign belongs in <b>${esc(catName(q.cg))}</b>?</p>` + signOpts();
+  else if (q.type === 'odd') b = `<p class="ask">Three of these signs belong in the same category. Which one doesn’t fit?</p>` + signOpts();
+  else if (q.type === 'cat') b = sign(q.card, 'big', q.g) + `<p class="ask">Which category does this sign belong to?</p><div class="opts">${q.copts.map((g, k) => `<button class="opt" data-a="qkans" data-k="${k}"><kbd>${k + 1}</kbd>${esc(catName(g))}</button>`).join('')}</div>`;
+  else if (q.type === 'yn') b = sign(q.card, 'big', q.g) + `<p class="ask">${ASK.yn}</p><h2 class="prompt">${esc(lab(q, q.shown))}?</h2><div class="opts two"><button class="opt" data-a="qkans" data-k="1">Yes</button><button class="opt" data-a="qkans" data-k="0">No</button></div>`;
+  else if (q.type === 'type') b = sign(q.card, 'big', q.g) + `<form class="typeform" data-f="qktype"><label class="ask" for="qktyped">${ASK.type}</label><div class="typerow"><input type="text" id="qktyped" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="btn">Check</button></div></form>`;
+  box.innerHTML = `<div class="q liveq">${b}</div>`; hydrate(box);
+  if (q.type === 'type') { const i = $('#qktyped'); if (i) i.focus({ preventScroll: true }); }
+}
+function qkMark(q, ok, el) {      /* show the right answer when it was wrong */
+  if (el) el.classList.add(ok ? 'right' : 'wrong'); if (ok) return;
+  const btns = [...document.querySelectorAll('#lcq [data-a="qkans"]')];
+  btns.forEach(b => { const k = +b.dataset.k; if ((q.type === 'cat' && q.copts[k] === q.right) || (q.type === 'yn' && (k === 1) === q.truth) || (q.opts && q.type !== 'yn' && q.type !== 'cat' && q.opts[k] === q.card)) b.classList.add('right'); });
+  if (q.type === 'type') { const f = document.querySelector('#lcq .typeform'); if (f) f.insertAdjacentHTML('afterend', `<p class="sx-wait">It means <b>${esc(q.card.en)}</b>.</p>`); }
+}
+ACT.qkans = el => { const q = LC.q; if (!q || q.done) return; q.done = true; const k = +el.dataset.k;
+  const ok = q.type === 'cat' ? q.copts[k] === q.right : q.type === 'yn' ? (k === 1) === q.truth : q.opts[k] === q.card;
+  document.querySelectorAll('#lcq [data-a="qkans"]').forEach(b => { b.disabled = true; }); qkMark(q, ok, el); lcAfter(q, ok); };
+FORM.qktype = () => { const q = LC.q, i = $('#qktyped'); if (!q || q.done || !i || !i.value.trim()) return; q.done = true; i.disabled = true;
+  const ok = typedRight(typedOk(q.card, i.value)); i.classList.add(ok ? 'right' : 'wrong'); qkMark(q, ok, null); lcAfter(q, ok); };
 ACT.clawplay = () => {
   const d = LC.info; if (!d || LC.play || LC.busy) return; LC.busy = true; lcPanel('Inserting ' + d.cost + ' Claw Coins…');
   call('api_clawStart', AUTH).then(r => { LC.busy = false; LC.play = r.play; LC.layout = r.layout; d.coins = r.coins; d.left = r.left; LC.x = 0.5; LC.z = 0.5; lcPaintClaw(); lcPrizes(); lcAim(); lcPanel('Move the claw with the joystick (left, right, back, forward), then press the green button.');

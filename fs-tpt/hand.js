@@ -680,6 +680,9 @@ const twoBends = (P, share) => { const up = pull(P, 22, share), down = pull(P, 6
 const SLIDE20 = -0.02;
 const fromL = P => ({ start: L2, steps: [[L2, 0.3], [Object.assign({}, P, { p: [SLIDE20 * 1.5, 0] }), 0.55]] });      /* show the L, then slide and change in one move, landing in the second digit (Colleen) */
 NUM[21] = { start: L21, steps: rep(L21, L21b, 2, 0.45) };      /* no slide; soft and even, not a snap (Colleen) */
+/* 2026-11-12 (Colleen: "21 ... can be palm forward or palm backward ... both are acceptable"): the camera also takes 21 with the palm toward the signer.
+   camAlt is only for reading (formsOf); the hand still signs 21 palm out, as she locked it. */
+NUM[21].camAlt = (() => { const a = Object.assign({}, L21, { w: IN }), b = Object.assign({}, L21b, { w: IN }); return { start: a, steps: rep(a, b, 2, 0.45) }; })();
 NUM[23] = Object.assign(twoBends(OUT3, [0.35, 1, 0, 0]), { alt: fromL(OUT3) });      /* the bending 23 and 25 do not slide; the L versions do (Colleen) */
 NUM[24] = fromL(OUT4);
 NUM[25] = Object.assign(twoBends(OUT5, [0.35, 1, 0.5, 0.25]), { alt: fromL(OUT5) });
@@ -1268,7 +1271,7 @@ function formsOf(n, o) {
   if (n >= 1 && n <= 9 && o.series) return [[DIGIT_OUT(n)]];      /* 0 keeps its own shape and turn */
   if (N.hund) return [seq(N.hund.c), seq(N.hund.curl)];
   if (N.ten && o.tenOnly) return [seq(N.ten)];
-  return [seq(N)].concat(N.alt ? [seq(N.alt)] : [], N.ten ? [seq(N.ten)] : []);
+  return [seq(N)].concat(N.alt ? [seq(N.alt)] : [], N.camAlt ? [seq(N.camAlt)] : [], N.ten ? [seq(N.ten)] : []);
 }
 function numberKeys(n, o) {
   const forms = formsOf(n, o);

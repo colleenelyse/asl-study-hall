@@ -91,6 +91,18 @@ let LEFT = false;
 const camHand = P => P.map(p => [LEFT ? -p.x : p.x, -p.y, -p.z]);      /* the tracker's y points down; ours up. A left hand is mirrored so it matches the right-hand letters */
 let landmarker = null, video = $('#rd-video'), draw = $('#rd-draw'), ctx = draw.getContext('2d'), lastT = -1, held = 0, cur = 0, done = false, lastF = null, teaching = 0, teachBuf = [];
 const WANT_GAME = (new URLSearchParams(location.search).get('g') || '').replace(/[^a-z]/g, '');      /* a camera game card on the games page opens straight into it */
+/* 2026-11-12 (Colleen: "it takes a long time for the camera to load"): the hand reader (Google's files, several MB) starts downloading as soon as the
+   page opens, while the student picks the numbers and the hand, instead of after the tap. start() then only waits for whatever is left. */
+let READER = null;
+function prepReader() {
+  if (!READER) { READER = (async () => {
+    const files = VFILES = await FilesetResolver.forVisionTasks(WASM);
+    const opts = d => ({ baseOptions: { modelAssetPath: MODEL, delegate: d }, runningMode: 'VIDEO', numHands: 1 });
+    try { return await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { return await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
+  })(); READER.catch(() => { READER = null; }); }      /* a failed download is tried again on the tap */
+  return READER;
+}
+setTimeout(() => { prepReader().catch(() => {}); }, 300);
 async function start() {
   $('#rd-camsg').innerHTML = '<p>Starting the camera…</p>';
   try {
@@ -99,9 +111,7 @@ async function start() {
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The camera did not turn on. Check that this computer has a camera and that the browser is allowed to use it. Some school computers turn the camera off.</p>'; camTellOpener('fsp-cam-fail', 'camera'); return; }
   $('#rd-camsg').innerHTML = '<p>Getting the hand reader ready…</p>';
   try {
-    const files = VFILES = await FilesetResolver.forVisionTasks(WASM);
-    const opts = d => ({ baseOptions: { modelAssetPath: MODEL, delegate: d }, runningMode: 'VIDEO', numHands: 1 });
-    try { landmarker = await HandLandmarker.createFromOptions(files, opts('GPU')); } catch (g) { landmarker = await HandLandmarker.createFromOptions(files, opts('CPU')); }      /* SPEED (a class of Chromebooks at once): the graphics chip when there is one, else the processor */
+    landmarker = await prepReader();
   } catch (e) { $('#rd-camsg').innerHTML = '<p>The hand reader could not load. Your school may block it; try again at home or ask your tech team.</p>'; camTellOpener('fsp-cam-fail', 'reader'); return; }
   $('#rd-camsg').hidden = true; draw.width = video.videoWidth; draw.height = video.videoHeight; requestAnimationFrame(loop); camTellOpener('fsp-cam-ready');
   if (ACT === 'pacer' && !NUMS) refHand.ready.then(() => startGame('pacer'));
@@ -252,7 +262,7 @@ function nHint(n) {      /* one short reminder of the movement */
   if (String(n)[0] === 'a') { const a = +String(n).slice(1); return a <= 9 ? a + ' palm out, pointer finger on your chin, then push down and forward' : '1 on your chin, then push forward into the ' + a; }
   { const P = partsFor(n); if (P.length > 1) return 'In parts: ' + P.map(p => p.v === 'T' ? 'THOUSAND' : p.v === 'M' ? 'MILLION' : p.v).join(', '); }
   n = +n; if (n === 10) return 'Thumb up, then twist it'; if (n <= 12) return 'Flick ' + (n === 11 ? 'the finger' : 'the fingers') + ' up from the thumb'; if (n <= 15) return 'Bend the fingers down, twice';
-  if (n <= 19) return '10, then flick into the ' + (n - 10) + ' (or twist the ' + (n - 10) + ')'; if (n === 20) return 'Pinch: thumb and pointer, twice'; if (n === 21) return 'L, then bend the thumb';
+  if (n <= 19) return '10, then flick into the ' + (n - 10) + ' (or twist the ' + (n - 10) + ')'; if (n === 20) return 'Pinch: thumb and pointer, twice'; if (n === 21) return 'L, then bend the thumb (palm out or toward you)';
   if (n === 23 || n === 25) return 'Bend the middle finger twice, or L into the ' + (n - 20); if (n < 30 && n !== 22) return 'L, then slide into the ' + (n - 20);
   if (n % 11 === 0 && n < 100) return 'Place it, lift, place it again'; if (n >= 100) return n / 100 + ', then pull back into a C (or curl the fingers)'; if (n % 10 === 0) return n / 10 + ', then close into a 0';
   if (ROCK.has(n)) { const a = Math.floor(n / 10), b = n % 10; return 'Rock ' + (b > a ? 'up' : 'down') + ' into the ' + b; }
