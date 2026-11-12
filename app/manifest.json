@@ -1,14 +1,30 @@
 {
   "name": "ASL Study Hall",
   "short_name": "ASL Study Hall",
-  "start_url": "/app/?home=1",
+  "id": "/app/",
+  "start_url": "/app/",
   "scope": "/app/",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "#0B2A4E",
   "theme_color": "#0B2A4E",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

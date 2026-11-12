@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.476';
+var VERSION = '4.479';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1374,6 +1374,7 @@ function codeUser_(auth) {
   return '';
 }
 function who_(auth) {
+  var ap = appUser_(auth); if (ap) return { key: ap.key, via: ap.via === 'google' ? 'google' : 'code' };      /* 4.477 the phone app's sign-in */
   var byCode = codeUser_(auth);
   if (byCode) return { key: byCode, via: 'code' };
   var email = '';
@@ -1382,10 +1383,88 @@ function who_(auth) {
   return null;
 }
 function isTeacher_() {
+  if (APP_REQ) { try { var me = str_(Session.getEffectiveUser().getEmail()).toLowerCase(); return APP_REQ.via === 'google' && (APP_REQ.key === me || (GUEST_APP && staffEmail_(APP_REQ.key))); } catch (e0) { return false; } }      /* 4.477 through the app door: only a Google sign-in can be the teacher */
   try {
     var a = Session.getActiveUser().getEmail(), e = Session.getEffectiveUser().getEmail();
     return !!a && (a === e || (GUEST_APP && staffEmail_(a)));      /* 4.436 in the guest copy every LT staff member is a teacher */
   } catch (err) { return false; }
+}
+/* ───────── 4.477 PHONE APP (asl.cool/app). Colleen 2026-11-11: ASL Study Hall on students' home screens, full screen (plan: dev/phone-app-plan.md).
+   The app's pages are on asl.cool; they reach this script through a SECOND deployment of this same project (the "app door", access: anyone, so a phone
+   needs no Google frame). The student link (DOMAIN) is unchanged. Through the app door every request carries a signed app token as its first
+   argument (the place the login code already goes), so who_() knows the student without Google's session. Signing in:
+   - Google: the app opens THIS app's usual link with ?app=signin; Google knows the student there; it hands back a one-time 6-digit code (api_appClaim).
+   - School email alone (Colleen: "there is nothing for students to gain by going into another student's account"; she was told the risk): only for
+     students already in the Students tab, never the teacher or LT staff.
+   - A login code from the teacher.
+   Every app sign-in is written to the App Sign-ins tab. Changing the appSecret script property signs everyone out of the app. ── */
+var APP_REQ = null;      // the person behind this one request through the app door ({ key, via: 'google' | 'email' }); null on the usual link
+var APP_URL = 'https:' + '/' + '/asl.cool/app/';
+var APP_OPEN = ['api_appSignIn', 'api_appClaim', 'api_chunk'];      // the only things the app door does for someone who is not signed in
+function appSecret_() {
+  var p = PropertiesService.getScriptProperties(), k = p.getProperty('appSecret');
+  if (!k) { k = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('appSecret', k); }
+  return k;
+}
+function appSign_(b) { return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(b, appSecret_())).replace(/=+$/, ''); }
+function appToken_(email, via) { var b = 'A1~' + (via === 'google' ? 'g' : 'e') + '~' + str_(email).toLowerCase(); return b + '~' + appSign_(b); }
+function appUser_(auth) {
+  var a = str_(auth); if (a.indexOf('A1~') !== 0) return null;
+  var i = a.lastIndexOf('~'), b = a.slice(0, i), p = b.split('~');
+  if (p.length !== 3 || !p[2] || appSign_(b) !== a.slice(i + 1)) return null;
+  return { key: p[2], via: p[1] === 'g' ? 'google' : 'email' };
+}
+function appLog_(email, via) {
+  try { var ss = ss_(), sh = ss.getSheetByName('App Sign-ins'); if (!sh) { sh = ss.insertSheet('App Sign-ins'); sh.appendRow(['When', 'Email', 'How']); sh.setFrozenRows(1); }
+    sh.appendRow([new Date(), email, via]); } catch (e) {}
+}
+/** The app door: { fn, args } in, { r } or { e } out (JSON). */
+function doPost(e) {
+  var out;
+  try {
+    var body = JSON.parse((e && e.postData && e.postData.contents) || '{}'), fn = str_(body.fn), args = Array.isArray(body.args) ? body.args : [];
+    var f = /^api_\w+$/.test(fn) ? globalThis[fn] : null;
+    if (typeof f !== 'function') throw new Error('That is not part of the app.');
+    APP_REQ = appUser_(args[0]);
+    if (!APP_REQ && APP_OPEN.indexOf(fn) < 0) throw new Error('APPSIGNIN: Please sign in again.');
+    out = { r: f.apply(null, args) };
+  } catch (err) { out = { e: String((err && err.message) || err) }; }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+/** Signing in on the app with a school email or a login code. Returns { tok }. */
+function api_appSignIn(o) {
+  o = o || {};
+  if (o.code) { var k = codeUser_(o.code); if (!k) throw new Error('That code did not work. Check it and try again.'); appLog_(k, 'login code'); return { tok: appToken_(k, 'email') }; }
+  var em = str_(o.email).toLowerCase().replace(/\s+/g, '');
+  if (em && em.indexOf('@') < 0) em += '@' + STAFF_DOMAIN;
+  if (!/^[^@]+@[^@]+$/.test(em) || em.split('@')[1] !== STAFF_DOMAIN) throw new Error('Type your school email (it ends in @' + STAFF_DOMAIN + ').');
+  if (staffEmail_(em) || teacherEmails_()[em]) throw new Error('Teachers: use the Sign in with Google button.');
+  if (!findRow_(stuSheet_(), em)) throw new Error('We could not find that email in ASL Study Hall. Check it, or use Sign in with Google.');
+  appLog_(em, 'email');
+  return { tok: appToken_(em, 'email') };
+}
+/** The one-time code from the Google sign-in page. Returns { tok }. */
+function api_appClaim(code) {
+  var c = str_(code).replace(/\D/g, ''), ca = CacheService.getScriptCache(), em = c.length === 6 ? ca.get('appclaim:' + c) : null;
+  if (!em) throw new Error('That code did not work or is too old. Tap Sign in with Google again.');
+  ca.remove('appclaim:' + c); appLog_(em, 'Google');
+  return { tok: appToken_(em, 'google') };
+}
+/* ?app=signin on the usual link: Google already knows who this is, so make a one-time code and send them back to the app */
+function appSigninPage_() {
+  var em = ''; try { em = str_(Session.getActiveUser().getEmail()).toLowerCase(); } catch (e) {}
+  var body;
+  if (!em) body = '<h1>Sign in with your school Google account first.</h1>';
+  else {
+    var ca = CacheService.getScriptCache(), c = '';
+    for (var i = 0; i < 5 && !c; i++) { var t = String(100000 + Math.floor(Math.random() * 900000)); if (!ca.get('appclaim:' + t)) c = t; }
+    ca.put('appclaim:' + c, em, 600);
+    body = '<p style="margin:0 0 6px;color:#C9D6EA">Signed in as ' + em.replace(/[<>&"']/g, '') + '</p><h1>Back to the app</h1>' +
+      '<a class="go" href="' + APP_URL + '#claim=' + c + '" target="_top">Open ASL Study Hall</a>' +
+      '<p style="color:#C9D6EA;margin-top:22px">If the app asks for a code, type:</p><p class="code">' + c + '</p><p style="color:#C9D6EA">It works for 10 minutes.</p>';
+  }
+  return HtmlService.createHtmlOutput('<style>body{margin:0;background:#0B2A4E;color:#fff;font:600 18px/1.4 system-ui,sans-serif;text-align:center;padding:48px 18px}h1{font-size:26px;margin:0 0 22px}.go{display:inline-block;background:#5DB6F2;color:#0B2A4E;text-decoration:none;font-weight:800;font-size:21px;padding:15px 28px;border-radius:999px}.code{font-size:44px;letter-spacing:.12em;font-weight:800;margin:4px 0}</style>' + body)
+    .setTitle('ASL Study Hall').addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 /* ───────── 4.436 ASL STUDY GUEST (Colleen 2026-11-10: "an lt teacher demo with their email addresses that are formatted like mine so that the teacher can
    have a real account"; "i want teacher progress to be saved"; "can we make an n/a option that students don't see"). A SEPARATE Apps Script project + Sheet
@@ -1736,7 +1815,8 @@ function writeProgress_(key, row, data) {
 
 /* ───────────────────────── web app ───────────────────────── */
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.app === 'signin') return appSigninPage_();      /* 4.477 the phone app's Google sign-in */
   var name = 'ASL Study';      /* 4.69 (Colleen: slow first load): only the remembered app name, so the page starts loading at once instead of waiting for every unit tab to be read */
   try { name = CacheService.getScriptCache().get('appName') || PropertiesService.getScriptProperties().getProperty('appName') || name; } catch (e) {}
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -1755,7 +1835,7 @@ function api_chunk(name) {
 function api_bootstrap(auth) {
   var st = static_(), id = who_(auth);
   var out = { ok: true, v: VERSION, today: dayStr_(), settings: st.settings };
-  if (str_(auth).length >= 5 && (!id || id.via !== 'code')) out.codeBad = true;          // a code was typed but it is not anyone's
+  if (str_(auth).length >= 5 && (!id || id.via !== 'code') && !appUser_(auth)) out.codeBad = true;          // a code was typed but it is not anyone's
   if (!id) { out.signin = true; return wire_(out); }
   if (GUEST_APP && !isTeacher_()) { out.guestOnly = true; return wire_(out); }      /* 4.436 the guest copy is for LT staff only */
   out.via = id.via;
@@ -15295,4 +15375,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appSettings, api_appSettingsSave, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appClaim, api_appSettings, api_appSettingsSave, api_appSignIn, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
