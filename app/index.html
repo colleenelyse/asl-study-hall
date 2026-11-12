@@ -1271,9 +1271,9 @@ div.sts { cursor: default }
       <li><span>Tap <b class="k">Install app</b> (it may say <b class="k">Add to Home screen</b>).</span></li>
       <li><span>Tap <b class="k">Install</b> (or <b class="k">Add</b>). The ASL Study Hall icon is now on your home screen.</span></li>
     </ol></div>
-    <p class="note">Then open ASL Study Hall from the icon and sign in once.</p>
+    <p class="note">Then open ASL Study Hall from the icon. Students in the app creator’s classes sign in once with their school account.</p>
   </section>
-  <button class="go" type="button" id="appstepsgo">Open ASL Study Hall now</button>
+  <section class="card2"><h2>Not in the class?</h2><p style="margin:0 0 10px">ASL Study Hall needs a school sign-in. Anyone can use these two apps, free:</p><p style="margin:0;display:flex;flex-direction:column;gap:8px"><a href="/spellbound/" style="color:#fff;font-weight:800">🖐️ ASL Spellbound: fingerspelling →</a><a href="/numberwise/" style="color:#fff;font-weight:800">🔢 ASL NumberWise: numbers →</a><a href="/apps/" style="color:#C9D6EA">See all the apps</a></p></section><button class="go" type="button" id="appstepsgo">I’m a student: sign in</button>
   <div class="stripes" aria-hidden="true"><i style="background:#F2766A"></i><i style="background:#F6C24B"></i><i style="background:#6FCB9F"></i><i style="background:#A884E0"></i><i style="background:#5DB6F2"></i></div>
 </main></div>
 <script>      /* 2026-11-12 (Colleen's ecosystem plan: "show an installation button only when installation can actually be initiated"): Chrome on Android says when it can install; then the steps get an Install now button */
@@ -1285,10 +1285,10 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 (function () {
   var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
   var installed = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
-  var seen = false; try { seen = localStorage.getItem('ash-app-seen2') === '1'; } catch (e) {}
+  var seen = false; try { seen = sessionStorage.getItem('ash-app-seen3') === '1'; } catch (e) {}
   var help = /[?&]help/.test(location.search);
   if (installed || (!help && (seen || !(ios || android)))) return;
-  try { localStorage.setItem('ash-app-seen2', '1'); } catch (e) {}
+  try { sessionStorage.setItem('ash-app-seen3', '1'); } catch (e) {}
   var box = document.getElementById('appsteps'); box.hidden = false;
   function pick(p) { box.querySelectorAll('[data-for]').forEach(function (d) { d.hidden = d.getAttribute('data-for') !== p; }); box.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-p') === p)); }); }
   box.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { pick(b.getAttribute('data-p')); }; });

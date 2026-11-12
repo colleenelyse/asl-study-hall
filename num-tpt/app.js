@@ -1089,7 +1089,7 @@ function resultsShow() {
   }
   const mix = mixList(r.items);
   $('#r-extra').innerHTML = (mix.length ? '<h3>Letters You Mixed Up</h3><p>' + mix.slice(0, 8).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b>' + (m.times > 1 ? ' (' + m.times + '×)' : '')).join(' · ') + '</p>' : '') +
-    (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '');
+    (orderList(r.items).length ? '<p>' + orderLine(r.items, true) + '</p>' : '') + tipsHtml(1);      /* 2026-11-12 a tip from recent rounds */
   $('#r-review').textContent = isNumGame(g) ? (isYear(g) ? 'Review missed years' : isAge(g) ? 'Review missed ages' : 'Review missed numbers') : 'Review missed words';      // Colleen: number games say number, not word
   $('#r-words').innerHTML = r.items.map(x => '<li><span class="' + (x.ok ? 'ok' : 'no') + '">' + (x.ok ? '✓' : '✗') + '</span> ' + esc(showW(x.w)) + (x.ok ? '' : ' <span class="typed">' + (x.typed ? '(you ' + (CHOICE_GAMES.indexOf(g) >= 0 || x.picked ? 'picked ' : 'typed ') + esc(x.typed) + ')' : '(skipped)') + '</span>') + '</li>').join('');
   $('#r-review').hidden = !r.items.some(x => !x.ok) || g === 'flash' || g === 'pairs';      // Numbers: missed numbers can be watched again too
@@ -1430,6 +1430,33 @@ async function viewShow() {
 }
 
 /* ---------- progress ---------- */
+/* ---------- TIPS (2026-11-12, Colleen: "give students tips for improvement like. you mix up g and h sometimes, give these some extra attention. or don't
+   forget that 68 is a rocking number!"). Worked out on this device from the last 30 rounds: letters read as each other at least twice (either way round),
+   and number rules missed at least twice (rocking, doubles, the 20s, the teens, tens). Each tip has a button to the tutorial for it. */
+const NUM_RULES = [
+  [n => n >= 67 && n <= 98 && Math.floor(n / 10) >= 6 && n % 10 >= 6 && Math.floor(n / 10) !== n % 10, 'nrocking', n => 'Don\u2019t forget that ' + n + ' is a rocking number! The wrist rocks between the two digits.'],
+  [n => n >= 22 && n <= 99 && n % 11 === 0, 'ndoubles', n => n + ' is a double: one handshape, placed twice.'],
+  [n => n >= 20 && n <= 29, 'n20s', n => 'The 20s have their own signs. Give ' + n + ' some extra attention.'],
+  [n => n >= 11 && n <= 19, 'nteens', n => 'The teens each have their own movement. Watch ' + n + ' closely.'],
+  [n => n >= 30 && n <= 90 && n % 10 === 0, 'ntens', n => n + ' is a ten: the first digit, then 0.']
+];
+function tipsList() {
+  const all = store.get('sessions', []).filter(s => !s.review).slice(-30), out = [];
+  const pairs = {}; mixList(all.flatMap(s => s.items || [])).forEach(m => { const k = [m.right, m.saw].sort().join(''); pairs[k] = (pairs[k] || 0) + m.times; });
+  Object.keys(pairs).filter(k => pairs[k] >= 2).sort((a, b) => pairs[b] - pairs[a]).slice(0, 2).forEach(k => out.push({ w: pairs[k],
+    text: 'You mix up <b>' + k[0] + '</b> and <b>' + k[1] + '</b> sometimes. Give these some extra attention.', href: '#/learn/flook', btn: '👀 Look-alike letters tutorial' }));
+  const miss = {}; all.filter(s => isNums(s.game) || s.game === 'nquiz').flatMap(s => s.items || []).forEach(x => {
+    const n = Number(x.w); if (!isFinite(n)) return; const last2 = n >= 100 ? n % 100 : n, rule = NUM_RULES.find(R => R[0](last2)); if (!rule) return;
+    const m = miss[rule[1]] = miss[rule[1]] || { tries: 0, wrong: 0, ex: {} }; m.tries++; if (!x.ok) { m.wrong++; m.ex[last2] = (m.ex[last2] || 0) + 1; } });
+  Object.keys(miss).filter(k => miss[k].wrong >= 2 && miss[k].wrong / miss[k].tries >= 0.2).sort((a, b) => miss[b].wrong - miss[a].wrong).slice(0, 2).forEach(k => {
+    const ex = Object.keys(miss[k].ex).sort((a, b) => miss[k].ex[b] - miss[k].ex[a])[0], rule = NUM_RULES.find(R => R[1] === k), L = LESSONS.find(x => x.id === k);
+    out.push({ w: miss[k].wrong, text: rule[2](ex), href: '#/learn/' + k, btn: (L ? L.icon + ' ' + L.name : 'Tutorial') + ' tutorial' }); });
+  return out.sort((a, b) => b.w - a.w);
+}
+function tipsHtml(max) {
+  const T = tipsList().filter(t => !(ONLY === 'letters' && /#\/learn\/n/.test(t.href)) && !(ONLY === 'numbers' && /#\/learn\/f/.test(t.href))).slice(0, max || 3);
+  return T.length ? '<div class="tips"><h3>💡 ' + (T.length > 1 ? 'Tips for you' : 'A tip for you') + '</h3>' + T.map(t => '<p>' + t.text + ' <a class="btn ghost tipgo" href="' + t.href + '">' + esc(t.btn) + ' →</a></p>').join('') + '</div>' : '';
+}
 function progressShow() {
   const all = store.get('sessions', []).filter(s => !s.review);
   if (!all.length) { $('#g-body').innerHTML = '<p>No rounds yet. <a href="#/games">Play one</a> and your totals show up here.</p>'; return; }
@@ -1444,7 +1471,7 @@ function progressShow() {
   const ladders = all.filter(s => s.game === 'ladder' && s.top !== null && s.top !== undefined), best = ladders.reduce((m, s) => Math.max(m, s.topLps), 0);
   const games = {}; all.forEach(s => { const k = GAMES[s.game || 'type'].name; games[k] = (games[k] || 0) + 1; });
   const mix = mixList(all.flatMap(s => s.items));
-  $('#g-body').innerHTML = '<div class="stats">' + (tot ? statBox(Math.round(right / tot * 100) + '%', 'words right overall') + statBox(tot, 'words read') : '') + statBox(all.length, 'rounds') + (best ? statBox(best, 'top speed (letters a second)') : '') + '</div>' +
+  $('#g-body').innerHTML = tipsHtml(3) + '<div class="stats">' + (tot ? statBox(Math.round(right / tot * 100) + '%', 'words right overall') + statBox(tot, 'words read') : '') + statBox(all.length, 'rounds') + (best ? statBox(best, 'top speed (letters a second)') : '') + '</div>' +
     (mix.length ? '<h3>Letters You Mix Up Most</h3><p>' + mix.slice(0, 10).map(m => '<b>' + m.right + '</b> read as <b>' + m.saw + '</b> (' + m.times + '×)').join(' · ') + '</p>' : '') +
     (ladders.length ? '<h3>Speed Ladder</h3><table class="t"><tr><th>Date</th><th>Top speed</th><th>Letters a second</th></tr>' + ladders.slice(-10).reverse().map(s => '<tr><td>' + esc(new Date(s.at).toLocaleDateString()) + '</td><td>' + esc(s.topName) + '</td><td>' + s.topLps + '</td></tr>').join('') + '</table>' : '') +
     table('By word length', words, x => lenGroup(x.n) + ' letters', LEN_GROUPS.map(g => (g[1] === 99 ? g[0] + '+' : g[0] + '–' + g[1]) + ' letters')) +
