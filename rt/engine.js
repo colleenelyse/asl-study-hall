@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.483';
+var VERSION = '4.485';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -6338,6 +6338,7 @@ function api_fsRound(auth, raw) {
   var st = static_(), id = who_(auth), S = st.settings;
   if (!id) throw new Error('Your sign-in ran out. Reload the page.');
   if (teacherEmails_()[id.key]) return { saved: 0, teacher: true };
+  if (staffEmail_(id.key) && !findRow_(stuSheet_(), id.key)) return { saved: 0, teacher: true };      /* 4.485 (Colleen: "allow teachers @d204.lths.net to also log in with google"): another LT teacher signed in to Spellbound / Numberwise: a preview, nothing saved */
   if (!feat_(st, 'fspell')) throw new Error('Your teacher has turned off this activity.');
   var r = fsClean_(raw);
   if (r.game === 'flash') return { saved: 0, warmup: true };      // Letter flash is a warm-up: not in the totals or rewards (Colleen)

@@ -316,7 +316,7 @@ function gamesInit() {
   const BLURB = {"flash": "A quick warm-up: the hand shows one letter, you type it.", "pairs": "M or N? Learn to tell apart the letters that look alike.", "sound": "Short words that sound the way they’re spelled. A great first word game.", "pick": "Watch a word, then pick it from four that look alike.", "type": "The hand spells a word. Type what you saw.", "fill": "The middle letters blur. Catch the first and last, then put the word together.", "ladder": "Every right answer speeds the hand up. How fast can you read?", "tricky": "Words with wild spellings, like pterodactyl. Four levels of sneaky.", "numbers": "The hand signs a number. Type it. You choose which groups.", "npick": "The hand signs a number. Pick it from four that look alike.", "nquiz": "Big numbers with HUNDRED, THOUSAND and MILLION. Type or pick.", "yread": "The hand signs a year. Type it.", "ypick": "The hand signs a year. Pick it from look-alikes like 1969 and 1996.", "aread": "The hand signs an age from the chin. Type it.", "apick": "The hand signs an age. Pick it from four that look alike."};      /* short card lines (Colleen: make the descriptions better); the full text stays on each setup screen */
   const card = k => { const g = Object.assign({}, GAMES[k], { about: BLURB[k] || GAMES[k].about }, CARD_TITLE[k] ? { name: CARD_TITLE[k] } : {}); return '<a class="gcard" href="#/setup/' + k + '"><span class="gi" aria-hidden="true">' + g.icon + '</span>' + (g.tag ? '<span class="tag">' + esc(g.tag) + '</span>' : '') + '<b>' + esc(g.name) + '</b><span>' + esc(g.about) + '</span>' + (STK_GAMES.indexOf(k) >= 0 ? stkBadge() : '') + '</a>'; };
   $('#g-grid').innerHTML = Object.keys(GAMES).filter(k => !GAMES[k].section).map(card).join('') + '<a class="gcard" href="#/mail"><span class="gi" aria-hidden="true">📮</span><b>Return to Sender</b><span>Watch the name, then drop the letter in the right mailbox. The names look alike!</span></a>';
-  { const tc = (k, t, d) => '<a class="gcard tmscard" href="#/tms/' + k + '"><span class="gi" aria-hidden="true">🎯</span><span class="tag">Am I ready?</span><b>' + t + '</b><span>' + d + '</span></a>'; const fsb = $('#g-tmsfs'), nb = $('#g-tmsnum');      /* 4.460 Test My Skills, at the top */
+  { const tc = (k, t, d) => '<a class="gcard tmscard" href="#/tms/' + k + '"><span class="gi" aria-hidden="true">🎯</span><span class="tag">Final challenge</span><b>' + t + '</b><span>' + d + '</span></a>'; const fsb = $('#g-tmsfs'), nb = $('#g-tmsnum');      /* 4.460 Test My Skills, at the top */
     if (STK) { if (fsb) fsb.remove(); if (nb) nb.remove(); }      /* inside ASL Study with Stackers on: its own exact copy of the test is on the Fingerspelling & Numbers page */
     else if (fsb) fsb.innerHTML = tc('fs', 'Test My Skills: Fingerspelling', 'Am I ready for the test? A practice copy: watch and pick, watch and type, then 5 words to the camera. Counts as practice.');
     if (!STK && nb) nb.innerHTML = tc('num', 'Test My Skills: Numbers', 'Am I ready for the test? A practice copy: numbers, a year, an age, a big number, then 5 to the camera. Counts as practice.'); }
@@ -324,7 +324,7 @@ function gamesInit() {
   const camAct = (num, L) => L.map(([a, em, t, d, stk]) => '<a class="gcard" data-cam' + (num ? ' data-camnum' : '') + ' href="reader.html?' + (num ? 'kind=numbers&' : '') + 'act=' + a + '" data-q="' + (num ? 'kind=numbers&' : '') + 'act=' + a + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + (stk ? stkBadge(stk === 1 ? undefined : stk) : '') + '</a>').join('');      /* 2026-11-10 (Colleen: "right now the camera is confusing because it does lots of different things inside one link"): one card, one link, one activity */
   const camSub = (t, d) => '<h3 class="camsub">' + t + ' <small>' + d + '</small></h3>';      /* 2026-11-10 (Colleen: "separate out all the activities into logical types"): the camera cards in groups */
   $('#g-exprfs').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each letter beside your camera.') + camAct(false, [['match', '🤝', 'Match the Hand: Letters', 'Beginners: the hand shows each letter beside your camera. Copy it with your hand.', 1], ['match&words=1', '🤝', 'Match the Hand: Words', 'The hand spells a word beside your camera, then holds each letter while you copy it.', 1]])
-    + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(false, [['letter', '🔤', 'Sign the Letter', 'See a letter, sign it to your camera.', 1], ['word', '📝', 'Spell the Word', 'See a word, fingerspell it to your camera. Tap Show me to watch the hand spell it.', 1], ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The words move on at that pace, ready or not.'], ['teach', '🛠️', 'Teach the Camera My Hand', 'If the camera has trouble reading one of your letters, teach it your way.']])
+    + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(false, [['letter', '🔤', 'Sign the Letter', 'See a letter, sign it to your camera.', 1], ['word', '📝', 'Spell the Word', 'See a word, fingerspell it to your camera. Tap Show me to watch the hand spell it.', 1], ['pacer', '🎵', 'Speed Pacer', 'Pick a speed. The words move on at that pace, ready or not.']].concat(EMBED ? [['teach', '🛠️', 'Teach the Camera My Hand', 'If the camera has trouble reading one of your letters, teach it your way.']] : []))
     + camSub('Check yourself', 'No hints, timed.') + camAct(false, [['check', '✅', 'The Check: Letters', 'A timed check of all 26 letters (or words). No hints.', 1]])
     + camSub('Camera games', 'Fingerspell to play.');
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + ((!kind && STK_CAM.indexOf(g) >= 0) || (kind && /^(math|count|clock)$/.test(g)) ? stkBadge() : '') + '</a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
@@ -358,7 +358,63 @@ function gamesInit() {
   $('#g-clockgrid').innerHTML = CLOCKS_READY ? '<a class="gcard" href="#/clocks"><span class="gi" aria-hidden="true">🕒</span><b>Clock Reading</b><span>The hand signs a time. Pick the digital clock, set the hands of a clock, or find the hand that matches.</span></a>' : '';      /* clock times (Colleen, 2026-10-18): hidden until she approves the signed times */
   if (!CLOCKS_READY) { const h = $('.sec-clock'); if (h) h.hidden = true; }
   $('#g-yeargrid').innerHTML += '<a class="gcard" href="#/timeline"><span class="gi" aria-hidden="true">🧭</span><b>Timeline</b><span>Put five signed years in order, then match each event to its year.</span></a>';
+  sortGames();
   cardArt();
+}
+/* 2026-11-12 (Colleen: "it's not clear what's a learning mode and what's a practice mode/game mode. reconsider how these things are sorted" ...
+   "yes do that sorting everywhere"): four groups by what the student does, each split into 👁️ watch the hand / 📷 sign to the camera.
+   The cards are built as before in the hidden #g-stage; each one is moved here by what it is (grpOf). The phone apps show one group per tab
+   (#/games/learn, /practice, /games, /check); the web page shows all four with a jump bar. ASL Study's own list (Index.html FS_ACTS) uses the same groups. */
+const GRPS = [      /* in order: start at the top; the checks are the final challenge at the bottom (Colleen: "make it clear that they are the final challenges") */
+  ['learn', '📘', 'Learn', 'Start here. Nothing is scored. Look things up, watch the hand, and copy it.', 1],
+  ['practice', '🔁', 'Practice', 'At your own pace, with hints. Read the hand, or sign to your camera.', 2],
+  ['games', '🎮', 'Games', 'Points, speed and challenges.', 3],
+  ['check', '🎯', 'Check yourself', 'The final challenge. Do Learn and Practice first, then come back here to see if you are ready. No hints.', 4]
+];
+function grpOf(a) {
+  const h = a.getAttribute('href') || '', q = a.dataset.q || '';
+  if (/^#\/tms\//.test(h) || /(^|&)act=check\b/.test(q)) return 'check';
+  if (/^#\/(show|shownum|showtime|chart)\b/.test(h) || /(^|&)act=match\b/.test(q)) return 'learn';
+  if (/^#\/setup\/(flash|pairs|sound|pick|type|numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(h) || /(^|&)act=(letter|word|number|teach)\b/.test(q) || /pronouns\.html/.test(h)) return 'practice';
+  return 'games';
+}
+const NUM_CARD = /kind=numbers|#\/(setup\/(numbers|npick|nquiz|yread|ypick|aread|apick)|shownum|showtime|build|math|agepics|eventyear|timeline|clocks|tms\/num)\b/;
+function sortGames() {
+  const box = $('#g-groups'), stage = $('#g-stage'); if (!box || !stage) return;
+  const kinds = [['letters', 'Fingerspelling'], ['numbers', 'Numbers']].filter(k => !ONLY || ONLY === k[0]), both = kinds.length > 1;
+  const blk = (g, cam, k) => '<div class="grpkind"' + (cam && k[0] === 'numbers' ? ' data-camnum' : '') + '>' + (both ? '<h4 class="grpk">' + k[1] + '</h4>' : '') + '<div class="gamegrid" id="gg-' + g + '-' + (cam ? 'c' : 'w') + '-' + k[0] + '"></div></div>';
+  box.innerHTML = GRPS.map(([g, em, t, d]) => '<section class="grp" id="grp-' + g + '" data-grp="' + g + '"><div class="modehead pad"><h2><span class="grpstep">Step ' + (GRPS.findIndex(x => x[0] === g) + 1) + '</span> ' + em + ' ' + t + '</h2><p>' + d + '</p></div>' +
+    (g === 'learn' ? kinds.map(k => '<div class="grplearn" id="gl-learn-' + k[0] + '"></div>').join('') : '') +
+    (g === 'check' ? '<div class="panels"><div class="pcol">' + kinds.map(k => blk(g, false, k)).join('') + '</div></div></section>'      /* the checks mix watching and signing: one list */
+      : '<div class="panels"><div class="pcol"><h3 class="grpsub">👁️ Watch the hand</h3>' + kinds.map(k => blk(g, false, k)).join('') + '</div>' +
+      '<div class="pcol" data-cam><h3 class="grpsub">📷 Sign to your camera</h3>' + kinds.map(k => blk(g, true, k)).join('') + '</div></div></section>')).join('');
+  kinds.forEach(k => {      /* the tutorial buttons go on top of Learn */
+    const into = $('#gl-learn-' + k[0]), bar = $(k[0] === 'letters' ? '#g-learnfs' : '#g-learngrid'), intro = bar && bar.previousElementSibling;
+    if (into && bar) { if (both) into.insertAdjacentHTML('beforeend', '<h4 class="grpk pad">' + k[1] + '</h4>'); if (intro && intro.classList.contains('learn-intro')) into.appendChild(intro); into.appendChild(bar); }
+  });
+  const sf = $('#g-showfs'); if (sf && (!ONLY || ONLY === 'letters')) sf.insertAdjacentHTML('beforeend', '<a class="gcard" href="#/chart"><span class="gi" aria-hidden="true">🔤</span><b>The Alphabet</b><span>All 26 letters. Tap one to see the hand sign it.</span></a>');
+  $$('#g-stage .gcard').forEach(a => {
+    const own = a.closest('[data-only]'), k = own ? own.dataset.only : (NUM_CARD.test((a.getAttribute('href') || '') + ' ' + (a.dataset.q || '')) ? 'numbers' : 'letters');
+    if (ONLY && k !== ONLY) return;
+    const gr = grpOf(a), to = $('#gg-' + gr + '-' + (a.hasAttribute('data-cam') && gr !== 'check' ? 'c' : 'w') + '-' + k); if (to) to.appendChild(a);
+  });
+  if (STK) $$('#grp-practice, #grp-games').forEach(s => s.querySelector('.modehead').insertAdjacentHTML('afterend', '<p class="stknote">🏆 For your Stacker, only the games marked <b>Counts for your Stacker</b> count, and only when you finish the round (you see your results).</p>'));
+  const fit = () => {      /* hide what has nothing in it (in a Stacker's "only what counts" view too, and where the camera is off) */
+    const B = document.body.classList, on = c => !(STKONLY && !c.querySelector('.stk')) && !(B.contains('nocam') && c.hasAttribute('data-cam')) && !(B.contains('nocamnum') && c.hasAttribute('data-camnum'));
+    $$('#g-groups .grpkind').forEach(d => { d.hidden = !$$('.gcard', d).some(on); });
+    $$('#g-groups .pcol').forEach(c => { c.hidden = !$$('.grpkind', c).some(d => !d.hidden); });
+    $$('#g-groups .grp').forEach(s => { s.hidden = !$$('.pcol', s).some(c => !c.hidden) && !(!STKONLY && $$('.grplearn .ln-btn', s).length); });
+    const nav = $('#grpnav'); if (nav) nav.innerHTML = GRPS.filter(([g]) => !$('#grp-' + g).hidden).map(([g, em, t], i) => '<a href="#/games/' + g + '" data-g="' + g + '">' + (i + 1) + '. ' + em + ' ' + t + '</a>').join('');
+    show(true);
+  };
+  const show = quiet => {
+    const m = location.hash.match(/^#\/games\/(learn|practice|games|check)$/), g = m && m[1];
+    document.body.dataset.grp = g || '';
+    $$('#grpnav a').forEach(x => x.classList.toggle('on', x.dataset.g === g));
+    if (!quiet && g && !document.documentElement.classList.contains('papp')) { const s = $('#grp-' + g); if (s) setTimeout(() => s.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); }
+  };
+  fit(); setTimeout(fit, 0); setTimeout(fit, 1500); addEventListener('message', () => setTimeout(fit, 0));      /* the tutorial buttons are drawn a moment later; ASL Study's hello can turn the camera off */
+  window.addEventListener('hashchange', () => show(false)); show(true); setTimeout(() => show(false), 400);
 }
 /* 4.69 (Colleen): her pictures on the activity buttons, in four families with her colors (Show Me, Watch, Sign It, Class); a corner badge for each family */
 const CARD_V = '?v=5';      /* raise this whenever the button pictures are replaced, so browsers fetch the new ones */

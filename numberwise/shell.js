@@ -3,21 +3,25 @@
 (function () {
   var P = window.PAPP || {}, H = document.documentElement, $ = function (s) { return document.querySelector(s); };
   H.classList.add('papp');
-  if (!location.hash || location.hash === '#' || location.hash === '#/') location.hash = '#/games';      // the app opens on its games, not the web site's welcome page (the page's head already does this before the games load)
+  if (!location.hash || location.hash === '#' || location.hash === '#/') location.hash = '#/games';      // (mark() then picks the group) the app opens on its games, not the web site's welcome page (the page's head already does this before the games load)
 
   var top = $('header.top'), brand = top && top.querySelector('.brand');
   if (brand) brand.innerHTML = '<img class="pa-ic" src="icon-180.png" alt=""> <span>' + P.name + '</span>';
-  if (brand) brand.setAttribute('href', '#/games');
+  if (brand) brand.setAttribute('href', '#/games');      // mark() sends it to the student's group
   if (top) top.insertAdjacentHTML('beforeend', '<button id="pa-gear" type="button" aria-label="Settings">⚙️</button>');
 
   var tabs = document.createElement('nav'); tabs.id = 'pa-tabs'; tabs.setAttribute('aria-label', P.name);
   tabs.innerHTML = P.tabs.map(function (t) { return '<a href="' + t[0] + '"><span class="i" aria-hidden="true">' + t[1] + '</span>' + t[2] + '</a>'; }).join('');
   document.body.appendChild(tabs);
+  /* 2026-11-12 (Colleen: sort by Learn / Practice / Games / Check yourself): each tab is one group of the games page (#/games/learn ...);
+     plain #/games (every Back button) returns to the group the student was in */
+  var last = 'learn'; try { last = localStorage.getItem('pa-grp') || 'learn'; } catch (e) {}
   function mark() {
-    if (!location.hash || location.hash === '#' || location.hash === '#/') { location.replace('#/games'); return; }      // any link back to the welcome page goes to Games
-    var h = location.hash, best = null;
+    if (!location.hash || location.hash === '#' || location.hash === '#/' || location.hash === '#/games') { location.replace('#/games/' + last); return; }      // any link back to the welcome page or to Games goes to the student's group
+    var h = location.hash, best = null, g = /^#\/games\/(\w+)/.exec(h);
+    if (g) { last = g[1]; try { localStorage.setItem('pa-grp', last); } catch (e) {} }
     P.tabs.forEach(function (t, i) { if (h === t[0] || h.indexOf(t[0] + '/') === 0) best = i; });
-    if (best === null && /^#\/(setup|results|review|report|learn|math|signnum|eventyear|agepics|clocks|timeline|build|card|mail|clawq|bingo|letter)/.test(h)) best = 0;      // inside a game: Games stays lit
+    if (best === null && !/^#\/progress/.test(h)) P.tabs.forEach(function (t, i) { if (t[0] === '#/games/' + last) best = i; });      // inside an activity: its group stays lit
     [].forEach.call(tabs.children, function (a, i) { a.classList.toggle('on', i === best); });
     H.classList.toggle('pa-play', /^#\/play/.test(h));      // playing: the whole screen for the game
     setTimeout(function () { if (document.title !== P.name) document.title = P.name; }, 0);      // the games set their own title
@@ -64,13 +68,14 @@
     if (!(window.paLinkOn && window.paLinkOn())) { if (acct) acct.hidden = true; if (card) card.remove(); return; }
     var inn = window.paLink.signedIn(), later = false; try { later = localStorage.getItem('pa-link-later') === '1'; } catch (e) {}
     acct.hidden = false;
-    acct.innerHTML = '<h3>ASL Study</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. Your practice here counts in ASL Study.</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
+    var staff = inn && /^[a-z][a-z.'\-]*@d204\.lths\.net$/i.test(window.paLink.email());      /* 4.485 an LT teacher (letters only before the @, like Colleen; students have digits) */
+    acct.innerHTML = '<h3>ASL Study</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
       : '<p>In an ASL class that uses ASL Study? Sign in so your practice here counts toward your ASL Study progress.</p>' + signForm('pa-acct'));
     wire(acct, 'pa-acct');
     var games = document.querySelector('[data-screen="games"]');
     if (inn || later) { if (card) card.remove(); return; }
     if (!card && games) { card = document.createElement('div'); card.id = 'pa-linkcard'; games.insertBefore(card, games.firstChild); }
-    if (card) { card.innerHTML = '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study.</p>' + signForm('pa-card') + '<button class="pa-link" type="button" data-pa="later">No thanks, just practice</button>'; wire(card, 'pa-card'); }
+    if (card) { card.innerHTML = '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study.</p>' + signForm('pa-card') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>' + '<button class="pa-link" type="button" data-pa="later">No thanks, just practice</button>'; wire(card, 'pa-card'); }
   }
   window.addEventListener('pa-link', paintAcct); paintAcct();
 

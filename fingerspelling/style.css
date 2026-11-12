@@ -707,3 +707,19 @@ body.stkmode .stknote { font-size: 16px; padding: 12px 14px; border-width: 3px; 
 #p-mic.listening { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); animation: micpulse 1.1s ease-in-out infinite; }
 @keyframes micpulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 25%, transparent); } }
 #p-heard { margin: 6px 0 0; }
+/* 2026-11-12 Learn / Practice / Games / Check yourself (sortGames in app.js) */
+.grpnav { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 2px; position: sticky; top: 0; z-index: 5; padding-block: 8px; background: var(--bg); }
+.grpnav a { padding: 8px 14px; border-radius: 999px; background: var(--surface2); color: var(--ink); text-decoration: none; font-weight: 700; }
+.grpnav a.on { background: var(--accent); color: var(--accent-ink, #fff); }
+.grp { scroll-margin-top: 130px; }
+.grp .modehead h2 { font-size: 26px; }
+.grpsub { margin: 10px 0 6px; font: 700 19px var(--display); }
+.grpk { margin: 10px 0 4px; font: 700 15px var(--body, inherit); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.grplearn { margin: 4px 0 8px; }
+html.papp .grpnav { display: none; }
+html.papp body[data-grp]:not([data-grp=""]) .grp:not([data-grp]) { display: none; }
+html.papp body[data-grp="learn"] .grp:not(#grp-learn), html.papp body[data-grp="practice"] .grp:not(#grp-practice),
+html.papp body[data-grp="games"] .grp:not(#grp-games), html.papp body[data-grp="check"] .grp:not(#grp-check) { display: none; }
+html.papp body:not([data-grp="games"]) .sec-tools { display: none !important; }      /* the teacher tools sit under the Games tab in the phone apps */
+.grpstep { display: inline-block; font: 800 13px var(--body, inherit); text-transform: uppercase; letter-spacing: .06em; padding: 3px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-ink, #fff); vertical-align: middle; margin-right: 4px; }
+#grp-check .modehead { border: 2px solid var(--accent); }      /* the final challenge */

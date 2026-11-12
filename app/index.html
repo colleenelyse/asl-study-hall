@@ -1291,8 +1291,8 @@ div.sts { cursor: default }
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.482) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.482" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.485) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.485" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -2224,10 +2224,15 @@ const doorPic = d => { const base = cardBase(); if (d[0] === 'stack') return `<s
 const fsGrid = list => !list.length ? '' : `<section class="games tight" style="--cn:2;--cw:${gridCols(list.length, [4, 3, 5, 2])}">${list.map(a => `<button class="game" data-a="fsopen" data-h="${a[0]}">${fsPic(a)}<span><b>${esc(a[1])}</b><br><span>${esc(a[2])}</span></span></button>`).join('')}</section>`;
 /* 4.460 (Colleen: "separate out all the activities into logical types of activities to allow students maximum choice"): Learn and watch it shown /
    Watch the hand (read it) / Sign to the camera, each its own little heading */
-const fsGroups = list => [['Learn: watch it shown', a => /^#\/(learn|show)/.test(a[0])], ['Watch the hand: read it', a => !/^#\/(learn|show)/.test(a[0]) && !/^cam:/.test(a[0])], ['Sign it to the camera', a => /^cam:/.test(a[0])]]
-  .map(([t, f]) => { const L = list.filter(f); return L.length ? `<p class="fssub2">${t}</p>` + fsGrid(L) : ''; }).join('');
+const fsGroups = list => fsSort(list);
+/* 4.484 (Colleen: "it's not clear what's a learning mode and what's a practice mode/game mode" ... "do that sorting everywhere"): the same groups as the
+   games site (fingerspelling-site/app.js grpOf): Learn, Practice, Games, Check yourself */
+const fsGrpOf = a => { const h = a[0]; if (/^cam:\w+:check/.test(h)) return 'check'; if (/^#\/(learn|show)/.test(h) || /^cam:\w+:match/.test(h)) return 'learn';
+  if (/^#\/setup\/(flash|pairs|sound|pick|type|numbers|npick|nquiz|yread|ypick|aread|apick)$/.test(h) || /^cam:(letters:(letter|word|teach)|numbers:number|pronouns)/.test(h)) return 'practice'; return 'games'; };
+const FS_GRPS = [['learn', '📘 Learn', 'nothing is scored'], ['practice', '🔁 Practice', 'your own pace, with hints'], ['games', '🎮 Games', 'points, speed, challenges'], ['check', '🎯 Check yourself', 'no hints']];
+const fsSort = list => FS_GRPS.map(([g, t, d]) => { const L = list.filter(a => fsGrpOf(a) === g); return L.length ? `<p class="fssub2">${t} <span class="small muted">· ${d}</span></p>` + fsGrid(L.filter(a => !/^cam:/.test(a[0])).concat(L.filter(a => /^cam:/.test(a[0])))) : ''; }).join('');
 /* 4.460 TEST MY SKILLS: a practice copy of the Fingerspelling / Numbers Stacker test (chunk_chal.html ACT.chpracgo); counts as practice */
-const tmsHtml = () => !partOn('chal') ? '' : `<div class="tms card"><b>🎯 Test My Skills</b><span class="small">Am I ready for the Stacker test? A practice copy of the real test. It counts as practice, not as your test.</span><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sun" data-a="tmsgo" data-k="fs">🎯 Fingerspelling</button><button class="btn sun" data-a="tmsgo" data-k="num">🎯 Numbers</button></div></div>`;
+const tmsHtml = () => !partOn('chal') ? '' : `<div class="tms card"><b>🎯 Test My Skills</b><span class="small">The final challenge: do Learn and Practice first. Am I ready for the Stacker test? A practice copy of the real test. It counts as practice, not as your test.</span><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sun" data-a="tmsgo" data-k="fs">🎯 Fingerspelling</button><button class="btn sun" data-a="tmsgo" data-k="num">🎯 Numbers</button></div></div>`;
 ACT.tmsgo = el => { S.chPracGo = el.dataset.k === 'num' ? 'num' : 'fs'; ACT.tab({ dataset: { t: 'chal' } }); };
 /* 4.286 the Study page starts with today's review and the student's hardest signs */
 function studyTop() { const rq = partOn('review') ? reviewQueue() : [], hard = hardList(HARD.list), done = S.me.flags.indexOf('R') >= 0;
@@ -2238,7 +2243,7 @@ function doorPage(k) { if (k === 'num') k = 'fs'; const d = doorList().find(x =>
   const nums = FS_ACTS.filter(a => a[4] === 'n');
   const body = k === 'study' ? unit + studyTop() + distHtml() + gameGrid(studyList(), true)
     : k === 'games' ? gamesPage(unit)
-    : k === 'fs' ? rep + tmsHtml() + '<p class="fssub">Fingerspelling</p>' + fsGroups(FS_ACTS.filter(a => a[4] === 'l')) + (FS_ACTS.some(a => a[4] === 'p') ? '<p class="fssub">Pronouns</p>' + fsGrid(FS_ACTS.filter(a => a[4] === 'p')) : '') + '<p class="fssub">Numbers</p>' + fsGroups(nums.filter(a => !FS_YEAR.test(a[0]) && !FS_AGE.test(a[0]))) + '<p class="fssub">Years</p>' + fsGrid(nums.filter(a => FS_YEAR.test(a[0]))) + '<p class="fssub">Ages</p>' + fsGrid(nums.filter(a => FS_AGE.test(a[0])))
+    : k === 'fs' ? rep + '<p class="small muted" style="margin:0">Start with 📘 Learn, then 🔁 Practice and 🎮 Games. 🎯 Test My Skills, at the bottom, is the final challenge.</p>' + '<p class="fssub">Fingerspelling</p>' + fsGroups(FS_ACTS.filter(a => a[4] === 'l' || a[4] === 'p')) + '<p class="fssub">Numbers</p>' + fsGroups(nums) + (tmsHtml() ? '<p class="fssub">🎯 Final challenge</p>' + tmsHtml() : '')
     : classBits() + `<div id="homefeed">${feedHtml()}</div>` + (S.set.boards ? '<button class="btn alt wide" data-a="tab" data-t="ranks">🏆 See the ranks</button>' : '') + (!classBits() && !(S.feed && S.feed.n) ? '<p class="muted">Nothing here yet this week. Check back after your class practices!</p>' : '');
   return `<div class="stack doorpage"><div class="row"><button class="btn alt sm" data-a="doorback">← Home</button></div><h1>${d[1]} ${esc(d[2])}</h1>${body}</div>`; }
 ACT.hdoor = el => { if (el.dataset.d === 'paw') return startGame('pawtopia'); if (el.dataset.d === 'stack') return ACT.tab({ dataset: { t: 'chal' } }); S.door = el.dataset.d; go('home'); };

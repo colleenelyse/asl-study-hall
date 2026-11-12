@@ -427,7 +427,9 @@ function tmsTake(raw) { let q = null; try { q = JSON.parse(raw || 'null'); } cat
   if (CK && CK.on) { CK.on = false; document.body.classList.remove('checking'); }
   TMSQ = q; $('#rd-results').hidden = true; $('#rd-status').textContent = ''; ckStart(); try { focus(); } catch (e) {} }
 addEventListener('storage', e => { if (TMSCAM && e.key === 'fsp-tms-q') tmsTake(e.newValue); });
-const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') || '') ? QS.get('act') : '', MATCH = ACT === 'match';
+const TEACH_OK = QS.get('embed') === 'aslstudy';      /* 2026-11-12 (Colleen: "remove the teach the camera my hand from the app version. we'll keep that only in study hall for my students"): only inside ASL Study */
+if (!TEACH_OK) document.body.classList.add('noteach');
+const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') || '') && (QS.get('act') !== 'teach' || TEACH_OK) ? QS.get('act') : (QS.get('act') === 'teach' ? 'letter' : ''), MATCH = ACT === 'match';
 /* ASL Study 4.89 (Colleen: a whole class's camera practice never reached the sheet): every round is kept on this device (fsp-cam-pending) and
    sent both to the page that opened this tab and to the ASL Study page around it; it is forgotten once ASL Study says it is saved. Anything still
    waiting is sent the next time the games open inside ASL Study. The app never counts the same round (rid) twice. */

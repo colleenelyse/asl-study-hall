@@ -44,6 +44,7 @@
   .rd-small { font-size: 14px; color: var(--muted); }
   .rd-teach { margin-top: 12px; padding: 12px; border-radius: 14px; background: var(--surface2); }
   .rd-teach h3 { margin: 0 0 4px; font-size: 17px; }
+  body.noteach .rd-teach { display: none !important; }      /* Teach the Camera: only inside ASL Study (2026-11-12) */
   .rd-alpha { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
   .rd-alpha button { width: 30px; height: 30px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); font: 700 14px var(--display); cursor: pointer; color: var(--ink); }
   #rd-model { position: absolute; left: -9999px; top: 0; width: 220px; height: 220px; } .rd-model #rd-model { position: static; display: block; margin: 8px auto 0; border-radius: 14px; background: var(--surface2); }
@@ -306,7 +307,7 @@
 <script src="themes.js?v=43"></script>
 <script src="samples.js?v=11"></script>
 <script src="wordsamp.js?v=7"></script>
-<script type="module" src="reader.js?v=81"></script>
+<script type="module" src="reader.js?v=82"></script>
 <script>window.PALINK = {"door": "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", "main": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", "back": "numberwise"};</script>
 <script src="link.js?v=99bf014d"></script>
 <script>if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register('sw.js').catch(function () {});</script>

@@ -45,3 +45,4 @@ html.papp #pa-linkcard { margin-left: 14px; margin-right: 14px; } @media (min-wi
 .pa-btn.pa-g { align-self: stretch; padding: 10px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: #1F1F1F; border: 1px solid #747775; font-family: Roboto, system-ui, sans-serif; font-weight: 600; }      /* Google's own button look: white, gray outline, the G */
 .pa-glogo { flex: none; }
 .pa-btn:disabled { opacity: .6; } .pa-err { color: var(--bad, #C7362E); font-weight: 700; } .pa-link { align-self: center; background: none; border: 0; color: var(--muted, #5A6185); text-decoration: underline; font: inherit; cursor: pointer; }
+.pa-note { margin: 0; font-size: 14px; color: var(--muted, #5A6185); text-align: center; }
