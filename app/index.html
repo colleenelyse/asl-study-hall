@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>(function () { var home = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches), tok = ''; try { tok = localStorage.getItem('asl-app-tok') || ''; } catch (e) {} if (!home && !tok && !/^#claim=/.test(location.hash)) location.replace('/apps/'); })();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1297,8 +1298,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.487) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.487" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.488) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.488" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -6510,15 +6511,20 @@ function paintAppSignin(err) {
   const name = (S.set && S.set.app) || 'ASL Study Hall';
   view.innerHTML = `<div class="splash"><div class="card stack" style="max-width:400px;text-align:left">
     <h1>${esc(name)}</h1>
-    <p class="muted">Sign in once on this phone. It remembers you after that.</p>
+    <p style="margin:0">Practice ASL vocabulary, play games, and track your progress.</p>
+    <a class="btn wide" href="?help" style="text-align:center;text-decoration:none">📲 Put this app on your phone</a>
+    <h2 style="margin:10px 0 0;font-size:19px">Students in the app creator\u2019s classes</h2>
+    <p class="muted" style="margin:0">Sign in once with your school account. It remembers you after that.</p>
     ${err ? `<p class="pill bad" style="text-transform:none">${esc(err)}</p>` : ''}
-    <button class="btn wide" type="button" data-a="appgoogle">Sign in with Google</button>
+    <button class="btn wide alt" type="button" data-a="appgoogle">Sign in with Google</button>
     <form class="stack" data-f="appemail" style="margin-top:6px"><label class="field" for="appem">Or type your school email<input type="text" id="appem" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@${esc(window.ASL_APP.domain || 'school.org')}"></label>
       <button class="btn wide alt" type="submit">Sign in with my email</button></form>
     <details style="margin-top:4px"><summary class="small muted" style="cursor:pointer">I have a code</summary>
       <form class="stack" data-f="appcode" style="margin-top:8px"><label class="field" for="appcd">The code from the Google page, or a login code from my teacher<input type="text" id="appcd" autocomplete="one-time-code" autocapitalize="characters" maxlength="12"></label>
       <button class="btn wide alt" type="submit">Sign in</button></form></details>
-  </div></div>`;
+    <div class="stack" style="gap:6px;margin-top:6px;padding-top:12px;border-top:1px solid var(--line)"><b>Not in the class?</b><span class="small muted">Anyone can use these two apps, free. No sign-in needed.</span>
+      <a href="/spellbound/" style="font-weight:800">🖐️ ASL Spellbound: fingerspelling →</a><a href="/numberwise/" style="font-weight:800">🔢 ASL NumberWise: numbers →</a><a href="/apps/" class="small">See all the apps</a></div>
+  </div></div>`;      /* 2026-11-12 (Colleen: "asl.cool/app still looks like its for my students only"): who it is for, the install steps for anyone, and the two open apps */
   hydrate(view);
 }
 function appSign(o) {

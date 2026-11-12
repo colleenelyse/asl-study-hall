@@ -9,7 +9,8 @@
 <link rel="icon" type="image/png" href="/app/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800&display=swap">
-<!-- 2026-11-12 (Colleen's ecosystem plan, "add cards to current page but it needs a url slug, it can't be asl.cool alone"): the three apps in one place,
+<!-- 2026-11-12 later (Colleen: "asl.cool/app should be for outsiders"): asl.cool/app sends visitors here; Spellbound and NumberWise first, Study Hall (asl.cool/study) last.
+     2026-11-12 (Colleen's ecosystem plan, "add cards to current page but it needs a url slug, it can't be asl.cool alone"): the three apps in one place,
      at asl.cool/apps (a button on the asl.cool home page opens it). No sign-in and no student data on this page. -->
 <style>
 :root { --bg1: #6B4FD8; --bg2: #2F9BEA; --ink: #1B1E3C; --muted: #5A6185; --card: #fff; --line: #E5E1F5; --accent: #5B3FD0; --accent-ink: #fff; --soft: #F3F0FF; color-scheme: light; }
@@ -38,15 +39,9 @@ header p { margin: 0; font-size: 18px; opacity: .92; }
 <main>
   <header>
     <h1>ASL Apps</h1>
-    <p>Three apps that work together. Put all three on your phone.</p>
+    <p>Learn ASL fingerspelling and numbers on your phone. Free, and no sign-in needed.</p>
   </header>
   <section class="apps">
-    <article class="app">
-      <div class="top"><img src="/app/icon-512.png" alt="" width="84" height="84"><div><h2>ASL Study Hall</h2><p class="tag">For students in the app creator&rsquo;s classes</p></div></div>
-      <p class="d">Practice vocabulary, build mastery, play games, and track your ASL learning progress.</p>
-      <a class="go" href="/app/">Open ASL Study Hall</a>
-      <a class="how" href="/app/?help">📲 How to put it on your phone</a>
-    </article>
     <article class="app">
       <div class="top"><img src="/spellbound/icon-512.png" alt="" width="84" height="84"><div><h2>ASL Spellbound</h2><p class="tag">Fingerspelling</p></div></div>
       <p class="d">Learn the ASL manual alphabet and strengthen your receptive and expressive fingerspelling skills.</p>
@@ -59,8 +54,14 @@ header p { margin: 0; font-size: 18px; opacity: .92; }
       <a class="go" href="/numberwise/">Open ASL NumberWise</a>
       <a class="how" href="/numberwise/?help">📲 How to put it on your phone</a>
     </article>
+    <article class="app">
+      <div class="top"><img src="/app/icon-512.png" alt="" width="84" height="84"><div><h2>ASL Study Hall</h2><p class="tag">For students in the app creator&rsquo;s classes</p></div></div>
+      <p class="d">Practice vocabulary, build mastery, play games, and track your ASL learning progress.</p>
+      <a class="go" href="/study/">Open ASL Study Hall</a>
+      <a class="how" href="/study/?help">📲 How to put it on your phone</a>
+    </article>
   </section>
-  <p class="note">Sign in with your <b>school Google account</b> in each app. Your practice in ASL Spellbound and ASL NumberWise counts in ASL Study Hall too.</p>
+  <p class="note">ASL Spellbound and ASL NumberWise are free for <b>anyone</b>. Students in the app creator’s classes can sign in with their school account so their practice counts in ASL Study Hall too.</p>
 </main>
 </body>
 </html>

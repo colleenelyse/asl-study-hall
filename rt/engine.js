@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.487';
+var VERSION = '4.488';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1399,7 +1399,7 @@ function isTeacher_() {
    - A login code from the teacher.
    Every app sign-in is written to the App Sign-ins tab. Changing the appSecret script property signs everyone out of the app. ── */
 var APP_REQ = null;      // the person behind this one request through the app door ({ key, via: 'google' | 'email' }); null on the usual link
-var APP_URL = 'https:' + '/' + '/asl.cool/app/';
+var APP_URL = 'https:' + '/' + '/asl.cool/study/';      // 4.488 moved from /app (Colleen: asl.cool/app is for outsiders now)
 var APP_OPEN = ['api_appSignIn', 'api_appClaim', 'api_chunk'];      // the only things the app door does for someone who is not signed in
 function appSecret_() {
   var p = PropertiesService.getScriptProperties(), k = p.getProperty('appSecret');
