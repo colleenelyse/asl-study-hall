@@ -1286,8 +1286,8 @@ div.sts { cursor: default }
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.479) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.479" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.480) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.480" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -1447,7 +1447,7 @@ function boot() {
     if (window.__demo && window.__race && S.set.racePic) bgOk[S.set.racePic] = window.__race;
     if (window.__demo && window.__mobpic && S.set.mobPic) bgOk[S.set.mobPic] = window.__mobpic;
     if (d.needsJoin) return paintJoin();
-    S.me = d.me; initSel(); applySkin(); { const g = escSaved(); const mg = mmSaved(); if (g && Date.now() - g.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('escape'); escResume(); }, () => go('home')); else if (mg && Date.now() - mg.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('manners'); mmResume(); }, () => go('home')); else if (partOn('house') && houseSavedCore()) chunkLoad('house').then(() => { go('house'); houseResume(); }, () => go('home')); else { go('home'); escrRejoin(); if (d.teacher) try { google.script.url.getLocation(loc => { const v = loc && loc.parameter && loc.parameter.view; if (/^(brsounds|picker|passboard|groups|seats|toasttest)$/.test(v || '')) go(v); }); } catch (e) {} } }      /* 4.61: a refresh mid-escape goes straight back into the game; 4.119 ?view=brsounds opens the Breach sounds page (asl.cool/colleen); 4.186 also ?view=picker, passboard, groups, seats; 4.187 ?view=toasttest (the Phaser test) */ setTimeout(pushCheck, 1200); if (d.teacher) setTimeout(() => chunkLoad('ls').catch(() => {}), 4000);      /* 4.286: Living Screensavers (teachers only) loads in the background, so its 🐠 chip and projector link work as before */ setTimeout(() => { if (!bdayAsk()) bdayMaybe(); }, 700);
+    S.me = d.me; initSel(); applySkin(); { const g = escSaved(); const mg = mmSaved(); if (g && Date.now() - g.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('escape'); escResume(); }, () => go('home')); else if (mg && Date.now() - mg.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('manners'); mmResume(); }, () => go('home')); else if (partOn('house') && houseSavedCore()) chunkLoad('house').then(() => { go('house'); houseResume(); }, () => go('home')); else { go('home'); escrRejoin(); if (d.teacher) try { google.script.url.getLocation(loc => { const v = loc && loc.parameter && loc.parameter.view; if (/^(brsounds|picker|passboard|groups|seats|toasttest)$/.test(v || '')) go(v); }); } catch (e) {} } }      /* 4.61: a refresh mid-escape goes straight back into the game; 4.119 ?view=brsounds opens the Breach sounds page (asl.cool/colleen); 4.186 also ?view=picker, passboard, groups, seats; 4.187 ?view=toasttest (the Phaser test) */ setTimeout(pushCheck, 1200); if (d.teacher) setTimeout(() => chunkLoad('ls').catch(() => {}), 4000);      /* 4.286: Living Screensavers (teachers only) loads in the background, so its 🐠 chip and projector link work as before */ setTimeout(() => { if (!bdayAsk()) bdayMaybe(); setTimeout(() => cbdMaybe(), 2500); }, 700);
     if (d.guestNew) setTimeout(guestHello, 600);      /* 4.436 guest copy: the welcome card, the first time */
     if (d.gifts && d.gifts.length) giftModal(d.gifts);
     if (d.teacher && (() => { try { return localStorage.getItem('asl-ex-preview'); } catch (e) { return null; } })()) chunkLoad('exam').then(() => exPrevRestore(), () => {});      /* 4.352 a reload in a preview */
@@ -4186,16 +4186,33 @@ function bdayMaybe(force) {
 }
 /* confetti and sound start by themselves (Colleen). The video is muted, so it may always play; a browser that blocks the sound
    until the page has been tapped plays it at the first tap or click instead, while the confetti is still going. */
-function bdPlay(el) {
-  const v = el.querySelector('video'), end = () => setTimeout(() => ACT.bdx(), 2500);
+function bdPlay(el, stay) {      /* stay (4.480 classmates): the confetti plays, then the card stays until Close so the names can be read */
+  const v = el.querySelector('video'), end = () => stay ? (v && v.remove()) : setTimeout(() => ACT.bdx(), 2500);
   if (S.set.bdaySound) { try { const a = new Audio(S.set.bdaySound), later = () => { document.removeEventListener('pointerdown', later, true); if ($('#bday')) a.play().catch(() => {}); };
     a.play().catch(() => document.addEventListener('pointerdown', later, true)); } catch (e) {} }
-  if (!v) return void setTimeout(() => ACT.bdx(), 8000);
+  if (!v) return void (stay || setTimeout(() => ACT.bdx(), 8000));
   v.muted = true; v.onended = end; const go2 = () => v.play().catch(() => {});
   v.play().catch(() => v.addEventListener('canplay', go2, { once: true }));      // still loading: start as soon as it can
-  setTimeout(() => { if ($('#bday') && v.paused && !v.currentTime) ACT.bdx(); }, 15000);      // it never played: the card closes by itself
+  setTimeout(() => { if ($('#bday') && v.paused && !v.currentTime) { if (stay) v.remove(); else ACT.bdx(); } }, 15000);      // it never played: the card closes by itself
 }
 ACT.bdx = () => { const el = $('#bday'); if (!el) return; el.classList.add('out'); setTimeout(() => el.remove(), 400); };
+/* 4.480 classmates' birthdays (Colleen 2026-11-11): every student in the class sees it, on the birthday or the last school day before a no-school one;
+   missed ones show at the next log on (the server keeps which were seen). Confetti, the class can sign HAPPY BIRTHDAY (her sign, when the sheet has it). */
+function cbdMaybe(tries) {
+  const L = (S.me && S.me.cbd) || []; if (!L.length || !partOn('birthday') || S.d.teacher) return;
+  if ($('#bday') || $('#modal:not([hidden])') || document.querySelector('.bday')) { if ((tries || 0) < 20) setTimeout(() => cbdMaybe((tries || 0) + 1), 3000); return; }      /* after their own birthday card, or a question, closes */
+  S.me.cbd = []; call('api_cbdSeen', AUTH, L.map(x => x.key)).catch(() => {});
+  const day = b => { const d = new Date(Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10))); return d.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' }) + ', ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate(); };
+  const line = x => x.k === 'day' ? `Today is <b>${esc(x.n)}</b>’s birthday!` : x.k === 'early' ? `<b>${esc(x.n)}</b>’s birthday is ${esc(day(x.b))}, so we’re celebrating today!` : `<b>${esc(x.n)}</b> had a birthday on ${esc(day(x.b))}.`;
+  const hb = S.cards && (S.cards.find(c => c.g && /^happy birthday$/i.test(String(c.en).trim())) || S.cards.find(c => c.g && /^birthday$/i.test(String(c.en).trim())));
+  const el = document.createElement('div'); el.className = 'bday'; el.id = 'bday';
+  el.innerHTML = `${S.set.bdayVideo ? `<video muted autoplay playsinline preload="auto" src="${esc(S.set.bdayVideo)}"></video>` : ''}
+    <div class="bdcard card"><div class="bdcake" aria-hidden="true">🎉</div><h2>${L.length > 1 ? 'Birthdays in Your Class!' : 'A Birthday in Your Class!'}</h2>
+      ${L.map(x => `<p style="font-size:1.1rem;margin:6px 0">🎂 ${line(x)}</p>`).join('')}
+      ${hb ? `<div style="max-width:220px;margin:10px auto 4px">${sign(hb, 'sm')}</div><p class="muted" style="margin:0 0 6px">Sign <b>${esc(String(hb.en).toUpperCase())}</b> to them next time you see them!</p>` : `<p class="muted">Wish them a happy birthday in ASL next time you see them!</p>`}
+      <div class="row" style="justify-content:center"><button class="btn alt" data-a="bdx">Close</button></div></div>`;
+  document.body.appendChild(el); hydrate(el); bdPlay(el, true);
+}
 VIEW.me = () => {
   const me = S.me, L = S.av[me.letter], cur = myAv(), mine = S.cards.filter(c => !me.course || !unitCourse(c.u) || unitCourse(c.u) === me.course), k = counts(mine);
   return `<div class="stack me2">

@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.479';
+var VERSION = '4.480';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1734,6 +1734,44 @@ function api_bdaySeen(auth) {
     return true;
   });
 }
+/* ───────── 4.480 CLASSMATES' BIRTHDAYS (Colleen 2026-11-11: "I want all students to see a message on their screen when it's someone in their class's birthday ...
+   either on their birthday or the last day we're in school on their birthday. if they don't open it on the day it arrived, they see it the next time they open").
+   Same days as a student's own card (bdayNow_: the birthday, or the last school day before a no-school birthday). A classmate's birthday that went by in the last
+   14 days and was not seen yet shows at the next log on. Each student keeps the ones they have seen (Bests.cbd: 'email|yyyy-MM-dd'). Only the name shows: no age, no year. */
+var CBD_LATE = 14;
+function classBdays_(st, o, today) {
+  var cls = str_(o.Class); if (!cls) return [];
+  var ck = 'cbd:' + cls + ':' + today, list = cacheGet_(ck);
+  if (!list) {
+    list = [];
+    var sh = stuSheet_(), H = stuHead_(sh), all = rows_(sh, 2, H.n), tch = teacherEmails_();
+    all.forEach(function (r) {
+      var em = str_(r[H.Email]).toLowerCase(); if (!em || tch[em] || str_(r[H.Class]) !== cls) return;
+      var bd = H.Birthday != null ? bdayCell_(r[H.Birthday]) : ''; if (!bd) return;
+      var mmdd = bd.slice(-5), y = +dayOf_(today).slice(0, 4), mo = +mmdd.slice(0, 2), d = +mmdd.slice(3, 5);
+      var at = function (yy) { var dd = mo === 2 && d === 29 && !(yy % 4 === 0 && (yy % 100 !== 0 || yy % 400 === 0)) ? 28 : d; return Math.round(Date.UTC(yy, mo - 1, dd) / 864e5); };
+      var next = at(y); if (next < today) next = at(y + 1);
+      var prev = at(y); if (prev > today) prev = at(y - 1);
+      var name = str_(r[H.Name]) || 'A classmate';
+      if (next === today) list.push({ e: em, n: name, b: dayOf_(next), k: 'day' });
+      else if (bdayNow_(st, mmdd, today)) list.push({ e: em, n: name, b: dayOf_(next), k: 'early' });
+      else if (prev < today && today - prev <= CBD_LATE) list.push({ e: em, n: name, b: dayOf_(prev), k: 'late' });
+    });
+    cachePut_(ck, list, 3 * 3600);
+  }
+  var me = str_(o.Email).toLowerCase(), seen = o.Bests && o.Bests.cbd instanceof Array ? o.Bests.cbd : [];
+  return list.filter(function (x) { return x.e !== me && seen.indexOf(x.e + '|' + x.b) < 0; }).map(function (x) { return { key: x.e + '|' + x.b, n: x.n, b: x.b, k: x.k }; });
+}
+/** Student: these classmates' birthday messages were shown. */
+function api_cbdSeen(auth, keys) {
+  var id = who_(auth); if (!id || !(keys instanceof Array)) return false;
+  return lock_(function () {
+    var sh = stuSheet_(), row = findRow_(sh, id.key); if (!row) return false;
+    var o = readStu_(sh, row), seen = o.Bests.cbd instanceof Array ? o.Bests.cbd : [];
+    keys.slice(0, 40).forEach(function (k) { k = str_(k).slice(0, 120); if (k && seen.indexOf(k) < 0) seen.push(k); });
+    o.Bests.cbd = seen.slice(-80); writeStu_(sh, o); return true;
+  });
+}
 /** Writes a Birthday cell as plain text (so Sheets keeps 03-14, not a date), adding the column if the tab does not have it yet. */
 function bdayWrite_(sh, row, v) {
   var H = stuHead_(sh);
@@ -1763,6 +1801,7 @@ function publicMe_(o, st) {
     badges: o.Badges ? o.Badges.split(',').map(str_).filter(String) : [], rice: o.Freerice,
     double: dbl, tokens: o.Tokens, dayCorrect: o['Day correct'],
     buddy: o.Bests.buddy || {}, bday: o.Birthday, bdayShow: feat_(st, 'birthday') ? bdayShow_(st, o.Birthday, o.Bests.bday, dayNum_(today)) : null,
+    cbd: feat_(st, 'birthday') ? classBdays_(st, o, dayNum_(today)) : [],      /* 4.480 classmates' birthdays */
     rid: o._row, name: o.Name, cls: o.Class, level: o.Level, course: course, lvlAsk: lvlAskable_(st, o) ? lvlChoices_(st) : null,
     life: o.Lifetime, wallet: o.Wallet, q: o.Questions, correct: o.Correct, min: Math.round(o.Minutes),
     streak: o.Streak, best: o['Best streak'], last: o['Last practice'],
@@ -15375,4 +15414,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appClaim, api_appSettings, api_appSettingsSave, api_appSignIn, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appClaim, api_appSettings, api_appSettingsSave, api_appSignIn, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
