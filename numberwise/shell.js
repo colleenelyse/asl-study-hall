@@ -45,7 +45,7 @@
     '<div id="pa-look-slot"></div>' +
     '<div class="links"><button type="button" id="pa-help">📲 How to put this app on your home screen</button><a href="privacy.html">🔒 Privacy</a></div>' +
     (window.paLinkOn && window.paLinkOn() ? '<div class="links"><b>Our ASL apps</b><a href="/app/">ASL Study Hall</a><a href="/spellbound/">ASL Spellbound</a><a href="/numberwise/">ASL NumberWise</a><a href="/apps/">See all three</a></div>' : '') +      /* 2026-11-12 the app collection (asl.cool only: buyers never see asl.cool) */
-    '<p class="ver">' + P.name + ' · your progress is saved on this phone' + (window.paLinkOn && window.paLinkOn() ? ', and in ASL Study when you are signed in' : '') + '.' + (P.ver ? ' · ' + P.ver : '') + '</p></div>';      /* buyers' copies have no sign-in: just "on this phone" */
+    '<p class="ver">' + P.name + ' · your progress is saved on this phone' + (window.paLinkOn && window.paLinkOn() ? ', and in ASL Study Hall when you are signed in' : '') + '.' + (P.ver ? ' · ' + P.ver : '') + '</p></div>';      /* buyers' copies have no sign-in: just "on this phone" */
   document.body.appendChild(sheet);
   var look = $('#look'); if (look) $('#pa-look-slot').appendChild(look);
   function close() { sheet.hidden = true; }
@@ -81,13 +81,13 @@
     var inn = window.paLink.signedIn(), later = false; try { later = localStorage.getItem('pa-link-later') === '1'; } catch (e) {}
     acct.hidden = false;
     var staff = inn && /^[a-z][a-z.'\-]*@d204\.lths\.net$/i.test(window.paLink.email());      /* 4.485 an LT teacher (letters only before the @, like Colleen; students have digits) */
-    acct.innerHTML = '<h3>ASL Study</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
-      : '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study.</p>' + signForm('pa-acct') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>');      /* the same words as the card on Games (Colleen, 2026-11-12) */
+    acct.innerHTML = '<h3>ASL Study Hall</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study Hall.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
+      : '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study Hall.</p>' + signForm('pa-acct') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>');      /* the same words as the card on Games (Colleen, 2026-11-12) */
     wire(acct, 'pa-acct');
     var games = document.querySelector('[data-screen="games"]');
     if (inn || later) { if (card) card.remove(); return; }
     if (!card && games) { card = document.createElement('div'); card.id = 'pa-linkcard'; games.insertBefore(card, games.firstChild); }
-    if (card) { card.innerHTML = '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study.</p>' + signForm('pa-card') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>' + '<button class="pa-link" type="button" data-pa="later">No thanks, just practice</button>'; wire(card, 'pa-card'); }
+    if (card) { card.innerHTML = '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study Hall.</p>' + signForm('pa-card') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>' + '<button class="pa-link" type="button" data-pa="later">No thanks, just practice</button>'; wire(card, 'pa-card'); }
   }
   window.addEventListener('pa-link', paintAcct); paintAcct();
 

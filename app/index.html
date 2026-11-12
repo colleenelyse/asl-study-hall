@@ -1297,8 +1297,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.486) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.486" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.487) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.487" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -1307,7 +1307,7 @@ window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwY
       return function () {
         var args = Array.prototype.slice.call(arguments), tries = 0;
         (function send() {
-          fetch(window.ASL_APP.door, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: String(k), args: args }) })
+          fetch(window.ASL_APP.door, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: String(k), args: args, app: 'studyhall', home: (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) ? 1 : 0 }) })
             .then(function (r) { return r.json(); })
             .then(function (j) { if (j && 'e' in j) { if (fail) fail(new Error(j.e)); } else if (ok) ok(j ? j.r : null); })
             .catch(function () { if (++tries < 2) return setTimeout(send, 1200); if (fail) fail(new Error('No internet connection right now. Check your Wi-Fi or data and try again.')); });

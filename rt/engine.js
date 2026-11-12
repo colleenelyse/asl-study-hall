@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.486';
+var VERSION = '4.487';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1418,6 +1418,33 @@ function appLog_(email, via) {
   try { var ss = ss_(), sh = ss.getSheetByName('App Sign-ins'); if (!sh) { sh = ss.insertSheet('App Sign-ins'); sh.appendRow(['When', 'Email', 'How']); sh.setFrozenRows(1); }
     sh.appendRow([new Date(), email, via]); } catch (e) {}
 }
+/* ───────── 4.487 APP USE (Colleen's app collection plan: "Account Connected / App Used / Standalone Launch Observed ... do not report an installation as
+   confirmed simply because a student visited"). One row per student and app on the App Use tab: when the app was first and last used signed in, how many
+   finished rounds it sent (Spellbound / NumberWise), and when it was last opened from the Home Screen (the app reports display-mode standalone; a browser
+   cannot tell us whether an app is installed). Written at most once an hour per student and app unless a round finished. Teachers and staff: never. ── */
+var APP_IDS = { studyhall: 'ASL Study Hall', spellbound: 'ASL Spellbound', numberwise: 'ASL NumberWise' };
+var APPUSE_TAB = 'App Use', APPUSE_HEAD = ['Email', 'Name', 'Class', 'App', 'First used', 'Last used', 'Rounds', 'Last opened from Home Screen', 'Rounds from Home Screen'];
+function appUse_(key, app, home, round) {
+  try {
+    key = str_(key).toLowerCase(); if (!key || !APP_IDS[app] || teacherEmails_()[key]) return;
+    var ca = CacheService.getScriptCache(), ck = 'appuse:' + key + ':' + app + (home ? ':h' : '');
+    if (!round && ca.get(ck)) return;
+    var stu = stuSheet_(), srow = findRow_(stu, key); if (!srow) return;      // only students on the roster
+    var o = readStu_(stu, srow);
+    lock_(function () {
+      var ss = ss_(), sh = ss.getSheetByName(APPUSE_TAB);
+      if (!sh) { sh = ss.insertSheet(APPUSE_TAB); sh.appendRow(APPUSE_HEAD); sh.setFrozenRows(1); }
+      var now = new Date(), last = sh.getLastRow(), vals = last > 1 ? sh.getRange(2, 1, last - 1, APPUSE_HEAD.length).getValues() : [], at = -1;
+      for (var i = 0; i < vals.length; i++) if (str_(vals[i][0]).toLowerCase() === key && str_(vals[i][3]) === APP_IDS[app]) { at = i; break; }
+      var row = at >= 0 ? vals[at] : [key, '', '', APP_IDS[app], now, now, 0, '', 0];
+      row[1] = o.Name; row[2] = o.Class; row[5] = now;
+      if (round) { row[6] = (Number(row[6]) || 0) + 1; if (home) row[8] = (Number(row[8]) || 0) + 1; }
+      if (home) row[7] = now;
+      if (at >= 0) sh.getRange(at + 2, 1, 1, APPUSE_HEAD.length).setValues([row]); else sh.appendRow(row);
+    }, 10000);
+    ca.put(ck, '1', 3600);
+  } catch (e) { /* a record only: never stops the app */ }
+}
 /** The app door: { fn, args } in, { r } or { e } out (JSON). */
 function doPost(e) {
   var out;
@@ -1427,8 +1454,11 @@ function doPost(e) {
     if (typeof f !== 'function') throw new Error('That is not part of the app.');
     APP_REQ = appUser_(args[0]);
     if (!APP_REQ && APP_OPEN.indexOf(fn) < 0) throw new Error('APPSIGNIN: Please sign in again.');
+    if (APP_REQ) { APP_REQ.app = APP_IDS[str_(body.app)] ? str_(body.app) : 'studyhall'; APP_REQ.home = !!body.home; }      /* 4.487 which app, and whether it was opened from the Home Screen */
     out = { r: f.apply(null, args) };
+    if (APP_REQ) appUse_(APP_REQ.key, APP_REQ.app, APP_REQ.home, false);
   } catch (err) { out = { e: String((err && err.message) || err) }; }
+  APP_REQ = null;      // one request only
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 /** Signing in on the app with a school email or a login code. Returns { tok }. */
@@ -6389,6 +6419,7 @@ function api_fsRound(auth, raw) {
     return { saved: 1, me: publicMe_(o, st), res: res, stats: fsStatsObj_(srow), chal: chalNow_(st, o), todo: tdo };      /* 4.466 */      /* 4.422 */
   }, 60000);
   if (logRow) { try { ss_().getSheetByName(TABS.log).appendRow(logRow); } catch (e) { /* the log is a record only */ } }
+  if (logRow && APP_REQ && APP_REQ.app !== 'studyhall') appUse_(id.key, APP_REQ.app, APP_REQ.home, true);      /* 4.487 a finished round from ASL Spellbound / NumberWise (a repeat of a saved round never counts: logRow is only set the first time) */
   return wire_(out);
 }
 /* 4.20 MILESTONES (Colleen: "an increase in speed, and other accomplishments should get special recognition"). Worked out from the stats

@@ -11,12 +11,13 @@
   window.paLinkOn = function () { return on; };
   if (!on) { window.paLinked = function () { return false; }; return; }
   var TK = 'asl-app-tok', QK = 'pa-door-q', busy = false;
+  var HOME = navigator.standalone === true || (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches));
   function get(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
   function put(k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function tok() { return get(TK, ''); }
   function email() { var p = tok().split('~'); return p.length >= 4 ? p[2] : ''; }
   function call(fn, args) {
-    return fetch(C.door, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args }) })
+    return fetch(C.door, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args, app: C.back || '', home: HOME ? 1 : 0 }) })      /* 4.487 which app; opened from the Home Screen? */
       .then(function (r) { return r.json(); })
       .then(function (j) { if (j && 'e' in j) throw new Error(j.e); return j ? j.r : null; });
   }
@@ -45,7 +46,7 @@
       busy = false; put(QK, JSON.stringify(queue().filter(function (x) { return x.rid !== m.rid; })));
       var sent = document.getElementById('rd-sent');
       if (r && r.teacher) toast('Teacher preview: not saved');
-      else if (r && r.saved) { toast('✓ Saved to ASL Study'); if (sent) sent.textContent = '✓ Saved to ASL Study.'; }
+      else if (r && r.saved) { toast('✓ Saved to ASL Study Hall'); if (sent) sent.textContent = '✓ Saved to ASL Study Hall.'; }
       flush();
     }).catch(function (e) {
       busy = false; var msg = String((e && e.message) || e);
@@ -63,7 +64,7 @@
   window.paLink = {
     email: email, signedIn: function () { return !!tok(); },
     google: function () { location.href = C.main + '?app=signin&back=' + encodeURIComponent(C.back || ''); },
-    signIn: function (o) { return (o.claim ? call('api_appClaim', [o.claim]) : call('api_appSignIn', [o])).then(function (r) { put(TK, r.tok); changed(); toast('✓ Signed in. Your practice now counts in ASL Study.'); flush(); return r; }); },
+    signIn: function (o) { return (o.claim ? call('api_appClaim', [o.claim]) : call('api_appSignIn', [o])).then(function (r) { put(TK, r.tok); changed(); toast('✓ Signed in. Your practice now counts in ASL Study Hall.'); flush(); return r; }); },
     signOut: function () { put(TK, null); changed(); toast('Signed out. Practice stays on this phone only.'); }
   };
   if (window.__paClaim) { var c = window.__paClaim; window.__paClaim = ''; window.paLink.signIn({ claim: c }).catch(function (e) { toast(String(e.message || e)); }); }      /* back from the Google sign-in */
