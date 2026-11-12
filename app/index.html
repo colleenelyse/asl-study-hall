@@ -1298,8 +1298,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.489) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.489" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.490) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.490" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -2154,7 +2154,7 @@ const gameTabList = k => { const t = GAME_TABS.find(x => x[0] === k); if (!t || 
   return funList().filter(g => t[3].indexOf(g[0]) >= 0 || (k === 'quick' && !GAME_TABS.some(x => x[3].indexOf(g[0]) >= 0))).sort((a, b) => at(a) - at(b)); };      /* a game not sorted yet shows under Quick games */
 const gameTabsOn = () => GAME_TABS.filter(t => t[0] === 'class' ? liveModes().length > 0 : gameTabList(t[0]).length > 0);
 /* the class games, as cards: a student joins with the code; a teacher (or a student when student hosting is on) can host */
-const LIVE_JEWEL = { whos: 'wwsolo', mob: 'mobsolo', sea: 'seasolo', isle: 'islesolo', train: 'wagon', escape: 'escape', vault: 'vasolo', breach: 'brsolo', wall: 'logos' };
+const LIVE_JEWEL = { tower: 'tower', race: 'race', camrace: 'camrace', jar: 'jar', asst: 'asst', spin: 'spin', whos: 'wwsolo', mob: 'mobsolo', sea: 'seasolo', isle: 'islesolo', train: 'wagon', escape: 'escape', vault: 'vasolo', breach: 'brsolo', wall: 'logos' };
 function classTab() { const host = S.d.teacher || S.set.stuHost;
   return `<div class="row" style="flex-wrap:wrap"><button class="btn sun grow" data-a="livejoin">🎮 Join a class game</button>${host ? '<button class="btn alt grow" data-a="tab" data-t="livehost">📣 Host a game</button>' : ''}</div>
     <p class="small muted" style="margin:0">${host ? 'Tap a game to host it, or join one with the code on the projector.' : 'Your teacher starts these on the projector. Tap one and type the game code.'}</p>
@@ -2192,8 +2192,12 @@ const chUnitOn = () => partOn('chal') && !!(S.d && S.d.chal && (S.d.chal.items |
 /* her game-card pictures from the website, in the four families (Show Me, Watch, Sign It, Class); the emoji if a picture does not load */
 const FS_FAM = { show: '🖐️', watch: '👁️', sign: '📷', study: '📚', play: '🎮' }, FS_PICS = { '#/learn/fa-i': ['learn-fs', 'show'], '#/learn/n0-20': ['learn-num', 'show'], '#/show': ['show-spell', 'show'], '#/shownum': ['show-numbers', 'show'], '#/shownum/year': ['show-years', 'show'], '#/shownum/age': ['show-ages', 'show'],
   '#/build': ['build', 'watch'], '#/math': ['math', 'watch'], '#/agepics': ['charlie', 'watch'], '#/eventyear': ['eventyear', 'watch'], '#/timeline': ['timeline', 'watch'],
-  'cam:letters': ['camera', 'sign'], 'cam:numbers': ['camnumbers', 'sign'], 'cam:pronouns': ['pronouns', 'sign'] };
-const CARD_V = '?v=5';      /* 4.81: raise this whenever Colleen's button pictures are replaced, so browsers fetch the new ones (same file names) */
+  'cam:letters': ['camera', 'sign'], 'cam:numbers': ['camnumbers', 'sign'], 'cam:pronouns': ['pronouns', 'sign'],
+  /* 2026-11-12 her set 3: each camera activity its own picture */
+  'cam:letters:match': ['cam-match', 'sign'], 'cam:letters:match&words=1': ['cam-match', 'sign'], 'cam:letters:letter': ['cam-letter', 'sign'], 'cam:letters:word': ['cam-word', 'sign'],
+  'cam:letters:check': ['cam-check', 'sign'], 'cam:letters:pacer': ['cam-pacer', 'sign'], 'cam:letters:teach': ['cam-teach', 'sign'],
+  'cam:numbers:match': ['cam-match', 'sign'], 'cam:numbers:number': ['cam-number', 'sign'], 'cam:numbers:check': ['camnum-check', 'sign'] };
+const CARD_V = '?v=6';      /* 4.81: raise this whenever Colleen's button pictures are replaced, so browsers fetch the new ones (same file names) */
 const cardBase = () => (S.set.fspell || '').replace(/[?#].*$/, '').replace(/[^\/]*$/, '');      /* her button pictures live on the fingerspelling site (cards/) */
 function cardPic(m, emoji) { const base = cardBase(); if (!m || !base) return `<span class="em">${emoji}</span>`;
   return `<span class="em fsart fam-${m[1]}"><span class="gbadge">${FS_FAM[m[1]]}</span><img src="${esc(base + 'cards/' + m[0] + '.webp' + CARD_V)}" alt="" loading="lazy" data-em="${esc(emoji)}" onerror="this.parentNode.outerHTML='<span class=em>'+this.dataset.em+'</span>'"></span>`; }
@@ -2212,7 +2216,11 @@ const JEWEL_V = '?v=1', JEWEL_PICS = { mobsolo: ['mob', 'A purple throne with a 
   brsolo: ['breach', 'A laptop with a glowing padlock on the screen'], toast: ['neon_flying_toasters_game', 'The winged pixel toaster flying toward toast'],
   logos: ['name_that_logo', 'A burger, fries and a soda'], pawtopia: ['pawtopia_pets', 'Pawtopia pets: a fox, an axolotl and a unicorn in a backyard'],
   wagon: ['wagon_west', 'A covered wagon on a trail at sunset'], munch: ['sign_munchers_game', 'The green Signer and three troggles on the game board'],
-  party: ['dinner_party', 'A place setting with a purple bow tie napkin and flowers'] };
+  party: ['dinner_party', 'A place setting with a purple bow tie napkin and flowers'],
+  /* 2026-11-12 her set 3: the class games */
+  tower: ['tower_climb', 'A tall stone tower with glowing doors at twilight'], race: ['race_day', 'Two race cars speeding toward a checkered flag'],
+  camrace: ['camera_race', 'A webcam at a finish line with a gold trophy'], jar: ['fill_the_jar', 'A glass jar filling with glowing marbles'],
+  spin: ['spin_spell', 'A prize wheel on a game-show stage with letter tiles'], asst: ['the_assistants', 'An office desk with a calendar, a planner and a ringing phone'] };
 /* 4.291 Who's Who: her 72 people and the Games card live on the public site (img/whoswho/), like the claw machine's art; the preview points this at local copies */
 const WW_BASE = () => window.__wwBase || ('https:' + '/' + '/colleenelyse.github.io/asl-study-hall/img/whoswho/');
 const jewelBase = () => window.__jewelBase || (cardBase() ? cardBase() + 'cards/jewel/' : '');
