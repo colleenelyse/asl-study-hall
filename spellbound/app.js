@@ -916,32 +916,37 @@ const MIC_APP = !!(navigator.standalone || (window.matchMedia && matchMedia('(di
 const MIC_KEY = 'fs-mic-fails-' + (MIC_APP ? 'app' : 'web');      // two failed starts in a row hide it (one could be the student taking a while on the "allow the microphone" question)
 function micFails(n) { try { if (n === undefined) return +localStorage.getItem(MIC_KEY) || 0; localStorage.setItem(MIC_KEY, String(n)); } catch (e) {} return 0; }
 function micBroken() { return micFails() >= 2; }
+/* 2026-11-12 (Colleen: "when i use the microphone ... i want it to show the letters in the box where i could also choose to type them" and "i don't want to have
+   to click check when the person stops talking, that indicates that they have stated their answer"): what is heard goes into the answer box as they speak,
+   and when they stop, the answer is checked by itself. */
+function micText(t) { const num = isNumGame(R.game), flash = R.game === 'flash'; t = String(t || '').trim(); if (!t) return '';
+  if (num) return sayNumber(t) || t; const L = sayLetters(t); if (flash) return L.length === 1 ? L : (letters(t).length === 1 ? letters(t) : L.slice(0, 1)); return L || t; }
 function micHeard(list) {
   if (!R || R.answered === R.i) return;
   const it = R.list[R.i], num = isNumGame(R.game), flash = R.game === 'flash', target = answerKey(it.w, num);
   const tries = [];
   list.forEach(t => { t = String(t).trim(); if (!t) return;
-    if (num) tries.push(sayNumber(t) || t); else if (flash) tries.push(sayLetters(t) || (letters(t).length === 1 ? letters(t) : t)); else tries.push(t, sayLetters(t)); });
-  const good = tries.find(x => x && answerKey(x, num) === target), shown = good || (num && tries.find(x => /^\d+$/.test(x))) || tries.find(Boolean) || '';
+    if (num) tries.push(sayNumber(t) || t); else if (flash) tries.push(micText(t)); else tries.push(t, sayLetters(t)); });
+  const good = tries.find(x => x && answerKey(x, num) === target), shown = good || (num && tries.find(x => /^\d+$/.test(x))) || micText(list[0]) || tries.find(Boolean) || '';
   const a = $('#p-answer'), h = $('#p-heard');
-  if (!shown) { h.hidden = false; h.textContent = 'I didn’t catch that. Tap 🎤 and try again.'; return; }
-  a.value = flash ? (good || '') : shown;
-  if (good) { h.hidden = true; if (flash) a.dispatchEvent(new Event('input')); else answerTyped(false); return; }
-  h.hidden = false; h.textContent = 'I heard “' + shown + '”. Say it again, fix it, or tap Check.';
-  if (flash) { a.value = ''; h.textContent = 'I heard “' + shown + '”. Tap 🎤 and say just the letter, like “bee”.'; }
+  if (!shown || (num && !/\d/.test(shown)) || (!num && !letters(shown))) { a.value = ''; h.hidden = false; h.textContent = 'I didn\u2019t catch that. Tap 🎤 and try again, or type it.'; return; }
+  a.value = shown; h.hidden = true;
+  if (flash) a.dispatchEvent(new Event('input')); else answerTyped(false);      // they stopped talking: that is their answer
 }
 if ($('#p-mic')) $('#p-mic').onclick = () => {
   if (!SAY_OK || !R || R.answered === R.i) return;
   if (micRec) { micStop(false); return; }      // a second tap stops listening
   const b = $('#p-mic'), h = $('#p-heard');
   let rec; try { rec = new SR(); } catch (e) { b.hidden = true; return; }
-  micRec = rec; rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 5; rec.continuous = false;
-  b.classList.add('listening'); b.textContent = '👂 Listening… (tap to stop)'; h.hidden = true;
-  rec.onresult = e => { const r = e.results[0], list = []; for (let i = 0; i < r.length; i++) list.push(r[i].transcript); micStop(false); micHeard(list); };
+  micRec = rec; rec.lang = 'en-US'; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = false;
+  b.classList.add('listening'); b.textContent = '👂 Listening… (tap to stop)'; h.hidden = true; $('#p-answer').value = '';
+  rec.onresult = e => { const r = e.results[e.results.length - 1], list = []; for (let i = 0; i < r.length; i++) list.push(r[i].transcript);
+    if (!r.isFinal) { const v = micText(list[0]); if (v && R.game !== 'flash') $('#p-answer').value = v; return; }      // as they speak: into the box
+    micStop(false); micHeard(list); };
   rec.onerror = e => { micStop(false); h.hidden = false;
     h.textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? '🎤 The microphone is blocked. Allow it for this site (or use your keyboard’s 🎤), then try again.'
       : e.error === 'no-speech' ? 'I didn’t hear anything. Tap 🎤 and try again.' : e.error === 'network' ? 'Saying answers needs the internet. Type your answer instead.' : 'That didn’t work. Tap 🎤 and try again, or type your answer.'; };
-  rec.onend = () => { if (micRec !== rec) return; micStop(false); h.hidden = false; h.textContent = heardSound ? 'I didn’t catch that. Tap 🎤 and try again.' : 'I didn’t hear anything. Tap 🎤 and try again.'; };
+  rec.onend = () => { if (micRec !== rec) return; micStop(false); const sofar = $('#p-answer').value.trim(); if (sofar && R.game !== 'flash') { micHeard([sofar]); return; } h.hidden = false; h.textContent = heardSound ? 'I didn’t catch that. Tap 🎤 and try again.' : 'I didn’t hear anything. Tap 🎤 and try again.'; };
   let started = false, heardSound = false;
   rec.onstart = rec.onaudiostart = () => { if (!started) micFails(0); started = true; };
   rec.onsoundstart = rec.onspeechstart = () => { if (!started) micFails(0); started = heardSound = true; };
