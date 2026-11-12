@@ -7,13 +7,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#011B5C">
 <link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="manifest" href="manifest.json">
 <script>document.documentElement.classList.add('papp'); if (!location.hash || location.hash === '#' || location.hash === '#/') history.replaceState(null, '', '#/games');</script>
-<style>:root{--app-navy:#011B5C}</style><link rel="stylesheet" href="shell.css?v=7bc1283c">
+<style>:root{--app-navy:#011B5C}</style><link rel="stylesheet" href="shell.css?v=1b27c3a7">
 <meta charset="utf-8">
 <meta name="robots" content="noindex"><title>ASL Spellbound</title>
 <meta name="description" content="Read fingerspelling from a 3D hand at real speeds, then fingerspell to your camera.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=127">
+<link rel="stylesheet" href="style.css?v=128">
 </head>
 <body>
 <header class="top">
@@ -542,7 +542,9 @@
         <div id="p-typebox">
           <label class="lab" for="p-answer" id="p-ask">What did the hand spell?</label>
           <input id="p-answer" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <p class="hint" id="p-heard" hidden></p>
           <div class="row" id="p-typebtns">
+            <button class="btn ghost" id="p-mic" type="button" hidden>🎤 Say it</button>
             <button class="btn" id="p-check">Check</button>
             <button class="btn ghost" id="p-replay">Watch again</button>
             <button class="btn ghost" id="p-skip">I don't know</button>
@@ -782,9 +784,9 @@
 <script src="defs.js?v=2"></script>
 <script src="themes.js?v=43"></script>
 <script src="people.js?v=4"></script>
-<script src="hand.js?v=153"></script>
+<script src="hand.js?v=154"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=203"></script>
+<script src="app.js?v=204"></script>
 <style>
 #appsteps { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #011B5C; color: #fff; font: 500 17px/1.5 "Nunito", system-ui, sans-serif;
   padding: calc(env(safe-area-inset-top, 0px) + 24px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(16px, env(safe-area-inset-left, 0px)) }
@@ -843,7 +845,7 @@ window.paSteps = function (force) {
 };
 paSteps(false);
 </script>
-<script>window.PAPP = {"name": "ASL Spellbound", "tabs": [["#/games", "🎮", "Games"], ["#/show", "👀", "Watch"], ["#/chart", "🔤", "Alphabet"], ["#/progress", "📈", "Progress"]], "ver": "version 7bc1283c"};</script>
-<script src="shell.js?v=7bc1283c"></script>
+<script>window.PAPP = {"name": "ASL Spellbound", "tabs": [["#/games", "🎮", "Games"], ["#/show", "👀", "Watch"], ["#/chart", "🔤", "Alphabet"], ["#/progress", "📈", "Progress"]], "ver": "version 1b27c3a7"};</script>
+<script src="shell.js?v=1b27c3a7"></script>
 </body>
 </html>

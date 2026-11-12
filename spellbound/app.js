@@ -346,7 +346,7 @@ function gamesInit() {
     '<a class="gcard" href="#/shownum/year"><span class="gi" aria-hidden="true">🕰️</span><b>Show Me Years</b><span>Type any year from 1000 to 2099. The hand signs it as a year.</span></a>' +
     '<a class="gcard" href="#/shownum/age"><span class="gi" aria-hidden="true">🎈</span><b>Show Me Ages</b><span>Type any age from 1 to 99. The hand signs it from the chin.</span></a>' +
     '<a class="gcard" href="#/showtime/days"><span class="gi" aria-hidden="true">📆</span><b>Show Me Days of the Week</b><span>Tap a day. The hand signs it, Monday to Sunday.</span></a>' +
-    '<a class="gcard" href="#/showtime/seasons"><span class="gi" aria-hidden="true">🍂</span><b>Show Me Seasons</b><span>Tap a season. The hand signs winter, spring, summer or fall.</span></a>';      /* days and seasons (Colleen, 2026-10-18) */
+    (ONLY === 'numbers' ? '' : '<a class="gcard" href="#/showtime/seasons"><span class="gi" aria-hidden="true">🍂</span><b>Show Me Seasons</b><span>Tap a season. The hand signs winter, spring, summer or fall.</span></a>');      /* days and seasons (Colleen, 2026-10-18); 2026-11-12 (Colleen: "seasons should not be in numberwise"): not in the numbers-only editions */
   $('#g-numgrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'numbers').map(card).join('') +      // numbers in their own section (Colleen)
     '<a class="gcard" href="#/build"><span class="gi" aria-hidden="true">🧱</span><b>Build a Number</b><span>Snap number signs together, like 3 + HUNDRED + 45, then watch.</span></a>';
   $('#g-yeargrid').innerHTML = Object.keys(GAMES).filter(k => GAMES[k].section === 'years').map(card).join('') +      // years in their own section (Colleen)
@@ -651,7 +651,7 @@ function drawWord() {
     $('#p-cask').textContent = g === 'pcat' ? 'Which category is the word in?' : isNumGame(g) ? (isYear(g) ? 'Which year did the hand sign?' : isAge(g) ? 'Which age did the hand sign?' : 'Which number did the hand sign?') : g === 'pairs' && it.letter ? 'Which letter did the hand spell?' : 'Which word did the hand spell?';      // Look-alike letters: four choices
     $('#p-choices').innerHTML = opts.map(o => '<button data-o="' + esc(o) + '">' + esc(showW(o).toUpperCase()) + '</button>').join('');
   } else {
-    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill';      // Fill in the blanks: the boxes only, no typing line (Colleen) a.maxLength = g === 'flash' ? 1 : isNums(g) || isAge(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200; a.inputMode = isNumGame(g) ? 'numeric' : 'text';
+    const a = $('#p-answer'); a.value = ''; a.disabled = false; a.hidden = g === 'fill'; micReset(g); a.inputMode = isNumGame(g) ? 'numeric' : 'text'; a.setAttribute('pattern', isNumGame(g) ? '[0-9]*' : '.*');      // Fill in the blanks: the boxes only, no typing line (Colleen). 2026-11-12 (Colleen: number answers get the number keypad): inputMode was stuck behind this comment and never ran; the length limits that were also here stay off (a.maxLength = g === 'flash' ? 1 : isNums(g) || isAge(g) ? 2 : isYear(g) ? 4 : g === 'nquiz' ? 13 : 200)
     $('#p-ask').textContent = g === 'flash' ? 'Which letter? (just press the key)' : isNumGame(g) ? isYear(g) ? 'What year did the hand sign?' : isAge(g) ? 'What age did the hand sign?' : 'What number did the hand sign?' : g === 'fill' ? 'Type the missing letters. A ? box was blurred.' : 'What did the hand spell?';
     $('#p-check').hidden = g === 'flash'; $('#p-skip').hidden = false; $('#p-replay').hidden = false; $('#p-check').disabled = false;
   }
@@ -742,7 +742,7 @@ function answerTyped(skip) {
   record(ok, skip ? '' : typed);
   showFeedback(ok, skip, it.w);
   if (R.game === 'tricky') showMeaning(it); else showDef(it.w);
-  fboxes().forEach(b => { b.disabled = true; }); $('#p-answer').disabled = true; $('#p-check').hidden = true; $('#p-skip').hidden = true; $('#p-replay').hidden = R.game === 'flash';
+  fboxes().forEach(b => { b.disabled = true; }); $('#p-answer').disabled = true; micStop(true); $('#p-check').hidden = true; $('#p-skip').hidden = true; $('#p-replay').hidden = R.game === 'flash';
   afterAnswer();
 }
 function answerChoice(o) {
@@ -795,6 +795,80 @@ $('#p-answer').addEventListener('input', e => {      // Letter flash: one key is
   R.answered = R.i; const it = R.list[R.i], ok = v === it.w;
   record(ok, v); showFeedback(ok, false, it.w); e.target.disabled = true; afterAnswer();
 });
+
+/* ---------- Say it (2026-11-12, Colleen: "i want the students to be able to speak their answers instead of type them") ----------
+   🎤 next to the answer box: the browser's own speech recognition (Chrome, Edge, Safari) turns what they say into the answer. A word, the word
+   spelled out ("M A R Y"), a letter's name ("bee" = B) or a number in words ("nineteen eighty-four") all count. When one of the browser's guesses
+   is the right answer it is checked at once; otherwise what was heard goes in the box, so they can say it again, fix it or tap Check.
+   Nothing is recorded or kept by the games. Not inside ASL Study (its frame has no microphone). */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SAY_OK = !!SR && !EMBED;
+let micRec = null;
+const LETTER_NAMES = { A: 'a ay eh hey', B: 'b bee be', C: 'c see sea si', D: 'd dee', E: 'e ee', F: 'f ef eff', G: 'g gee jee', H: 'h aitch ach eight', I: 'i eye aye', J: 'j jay', K: 'k kay ok okay', L: 'l el elle ell', M: 'm em', N: 'n en and in', O: 'o oh owe', P: 'p pee pea', Q: 'q queue cue que', R: 'r are our ar', S: 's es ess yes', T: 't tee tea', U: 'u you yoo', V: 'v vee', W: 'w double-u doubleyou', X: 'x ex', Y: 'y why wye', Z: 'z zee zed' };
+const LETTER_OF = {}; Object.keys(LETTER_NAMES).forEach(L => LETTER_NAMES[L].split(' ').forEach(w => { LETTER_OF[w] = L; }));
+function sayLetters(t) {      /* "M A R Y", "em ay are why", "letter bee" -> MARY / B */
+  const w = String(t).toLowerCase().replace(/double\s+(u|you)/g, 'double-u').replace(/[^a-z\s-]/g, ' ').split(/\s+/).filter(x => x && !/^(letter|the|capital|its|it's|is)$/.test(x));
+  if (!w.length || w.some(x => !(x in LETTER_OF))) return '';
+  return w.map(x => LETTER_OF[x]).join('');
+}
+function sayNumber(t) {      /* "twenty-five", "one hundred two", "nineteen eighty four", "two thousand five", "1,250,000", "19 84" -> digits */
+  const ONES = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ');
+  const TENS = { twenty: 20, thirty: 30, forty: 40, fourty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  const tok = String(t).toLowerCase().replace(/(\d),(?=\d{3})/g, '$1').replace(/-/g, ' ').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(x => x && x !== 'and');
+  if (!tok.length) return '';
+  let total = 0, cur = 0, lastTens = false, any = false;
+  for (const x of tok) {
+    let n = null, tens = false;
+    if (/^\d+$/.test(x)) n = parseInt(x, 10); else if (ONES.indexOf(x) >= 0) n = ONES.indexOf(x); else if (x in TENS) { n = TENS[x]; tens = true; }
+    else if (x === 'oh' || x === 'o') { cur = cur * 100; lastTens = false; any = true; continue; }      // nineteen oh five
+    else if (x === 'hundred') { cur = (cur || 1) * 100; lastTens = false; any = true; continue; }
+    else if (x === 'thousand' || x === 'million') { total += (cur || 1) * (x === 'thousand' ? 1000 : 1000000); cur = 0; lastTens = false; any = true; continue; }
+    else if ((n = { to: 2, too: 2, for: 4, fore: 4, won: 1, ate: 8, tree: 3, sicks: 6, nein: 9 }[x]) !== undefined) {}      // what speech recognition often hears for a number word
+    else if (x === 'a') continue; else return '';
+    any = true;
+    if (!cur) cur = n;
+    else if (cur % 100 === 0 && n < 100) cur += n;      // one hundred TWO, nineteen hundred FIVE
+    else if (lastTens && n < 10) cur += n;      // twenty FIVE
+    else if (/^\d+$/.test(x)) cur = cur * Math.pow(10, x.length) + n;      // "19 84"
+    else cur = cur * 100 + n;      // nineteen EIGHTY (a year said in two parts)
+    lastTens = tens;
+  }
+  return any ? String(total + cur) : '';
+}
+function micReset(g) {
+  micStop(false);
+  const b = $('#p-mic'), h = $('#p-heard'); if (!b) return;
+  b.hidden = !SAY_OK || g === 'fill'; b.disabled = false; b.textContent = '🎤 Say it'; h.hidden = true; h.textContent = '';
+}
+function micStop(hide) { if (micRec) { try { micRec.abort(); } catch (e) {} micRec = null; } const b = $('#p-mic'); if (b) { b.classList.remove('listening'); b.textContent = '🎤 Say it'; if (hide) b.hidden = true; } }
+function micHeard(list) {
+  if (!R || R.answered === R.i) return;
+  const it = R.list[R.i], num = isNumGame(R.game), flash = R.game === 'flash', target = answerKey(it.w, num);
+  const tries = [];
+  list.forEach(t => { t = String(t).trim(); if (!t) return;
+    if (num) tries.push(sayNumber(t) || t); else if (flash) tries.push(sayLetters(t) || (letters(t).length === 1 ? letters(t) : t)); else tries.push(t, sayLetters(t)); });
+  const good = tries.find(x => x && answerKey(x, num) === target), shown = good || (num && tries.find(x => /^\d+$/.test(x))) || tries.find(Boolean) || '';
+  const a = $('#p-answer'), h = $('#p-heard');
+  if (!shown) { h.hidden = false; h.textContent = 'I didn’t catch that. Tap 🎤 and try again.'; return; }
+  a.value = flash ? (good || '') : shown;
+  if (good) { h.hidden = true; if (flash) a.dispatchEvent(new Event('input')); else answerTyped(false); return; }
+  h.hidden = false; h.textContent = 'I heard “' + shown + '”. Say it again, fix it, or tap Check.';
+  if (flash) { a.value = ''; h.textContent = 'I heard “' + shown + '”. Tap 🎤 and say just the letter, like “bee”.'; }
+}
+if ($('#p-mic')) $('#p-mic').onclick = () => {
+  if (!SAY_OK || !R || R.answered === R.i) return;
+  if (micRec) { micStop(false); return; }      // a second tap stops listening
+  const b = $('#p-mic'), h = $('#p-heard');
+  let rec; try { rec = new SR(); } catch (e) { b.hidden = true; return; }
+  micRec = rec; rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 5; rec.continuous = false;
+  b.classList.add('listening'); b.textContent = '👂 Listening… (tap to stop)'; h.hidden = true;
+  rec.onresult = e => { const r = e.results[0], list = []; for (let i = 0; i < r.length; i++) list.push(r[i].transcript); micStop(false); micHeard(list); };
+  rec.onerror = e => { micStop(false); h.hidden = false;
+    h.textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? '🎤 The microphone is blocked. Allow it for this site (or use your keyboard’s 🎤), then try again.'
+      : e.error === 'no-speech' ? 'I didn’t hear anything. Tap 🎤 and try again.' : e.error === 'network' ? 'Saying answers needs the internet. Type your answer instead.' : 'That didn’t work. Tap 🎤 and try again, or type your answer.'; };
+  rec.onend = () => { if (micRec === rec) micStop(false); };
+  try { rec.start(); } catch (e) { micStop(false); }
+};
 
 /* ---------- ASL Study (Colleen): opened inside the ASL Study app (?embed=aslstudy), each finished round is sent to the app, which saves
    it under the student's school sign-in (running totals, points). Nothing is sent when the site is used on its own. ---------- */

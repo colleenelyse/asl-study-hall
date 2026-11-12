@@ -244,9 +244,9 @@ let NS = ['d']; try { const v = JSON.parse(localStorage.getItem('fs-reader-nsets
 const nPool = () => { const out = []; NSETS.forEach(x => { if (NS.includes(x[0])) x[2].forEach(n => out.push(String(n))); }); return out; };
 const onlyDigits = () => NS.length === 1 && NS[0] === 'd';
 function numChips() {
-  const el = $('#rd-nsets'); if (!el) return;
+  ['#rd-nsets', '#rd-nsets0'].forEach(sel => { const el = $(sel); if (!el) return;      /* 2026-11-12 (Colleen: "make it clear where they set their ranges ... ask them explicitly"): the same choices in the start box too (#rd-nsets0) */
   el.innerHTML = NSETS.map(([k, label]) => '<button class="' + (NS.includes(k) ? 'on' : '') + '" data-v="' + k + '">' + label + '</button>').join('');
-  el.onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; const i = NS.indexOf(b.dataset.v); if (i >= 0) { if (NS.length > 1) NS.splice(i, 1); } else NS.push(b.dataset.v); try { localStorage.setItem('fs-reader-nsets', JSON.stringify(NS)); } catch (x) {} numChips(); if (NUMS) { SET = onlyDigits() ? DIGITS : shuffleA(nPool()); go(0); ckAbout(); } };
+  el.onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; const i = NS.indexOf(b.dataset.v); if (i >= 0) { if (NS.length > 1) NS.splice(i, 1); } else NS.push(b.dataset.v); try { localStorage.setItem('fs-reader-nsets', JSON.stringify(NS)); } catch (x) {} numChips(); if (NUMS) { SET = onlyDigits() ? DIGITS : shuffleA(nPool()); go(0); ckAbout(); } }; });
 }
 function nHint(n) {      /* one short reminder of the movement */
   if (String(n)[0] === 'a') { const a = +String(n).slice(1); return a <= 9 ? a + ' palm out, pointer finger on your chin, then push down and forward' : '1 on your chin, then push forward into the ' + a; }
@@ -1329,3 +1329,7 @@ if (ACT) {
   if (TMS_N) { t = 'Test My Skills: Part 2'; intro = 'Sign ' + TMS_N + ' ' + (NUMS ? 'numbers' : 'words') + ' to your camera, like the camera questions on the real test. No hints.'; if (!NUMS) $('#rd-mode').hidden = true; } $('h1').textContent = t; document.title = t; $('#rd-intro').textContent = intro; if (ACT !== 'word' && ACT !== 'pacer' && !(MATCH && WORD)) $('#rd-ask').textContent = ask;
 }
 window.READER = { ageArea, setFaceDemo: v => { FACE = v; }, ageRead, face: () => FACE, setFace: v => { FACE = v; }, startGame, game: () => GAME, freeRead, maskWord, bouncy, setB: v => { BOUNCE = v; }, NOTNUM, go, isDone: () => done, ckStart, setNums, seqRead, seqStart, KEYS, DECOY, SEQ: () => SEQ, NSETS, nPool, roll, squash, setNS: v => { NS = v; }, DIGITS, ALT, SET: () => SET, ckRecord, ckFinish, ck: () => CK, setWord: (w, i) => { WORD = w; wi = i; showWord(); }, at: () => [WORD, wi], TPL, MINE, feat, rank, dist, LETTERS, readMotion, MOT: () => MOT, setMOT: v => { MOT = v; }, pool, oopsCheck, MIX: () => MIX };      /* for testing */
+/* 2026-11-12 (Colleen: "make it clear where they set their ranges, maybe before the game starts, ask them explicitly"): number practice asks which numbers
+   first, in the same box as "Which hand do you sign with?", before the camera turns on. Not in the class games (their own settings) or Test My Skills. */
+if (NUMS && !QS.get('g') && !TMSCAM && !TMS_N) { const box = $('#rd-camsg > div');
+  if (box) { box.insertAdjacentHTML('afterbegin', '<p>Which numbers do you want to practice?</p><div class="chips rd-chips" id="rd-nsets0"></div><p class="rd-small rd-nsnote">Tap as many as you like. Change them any time under <b>Choose the numbers</b>.</p>'); numChips(); } }

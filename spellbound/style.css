@@ -703,3 +703,7 @@ body.stkmode .stknote { font-size: 16px; padding: 12px 14px; border-width: 3px; 
 .tmsgrid { margin-bottom: 6px; } .gcard.tmscard { border: 3px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }      /* 4.460 Test My Skills */
 .tmsres { border: 3px solid var(--accent); border-radius: 16px; padding: 12px 14px; margin: 8px 0; } .tmsres.ok { border-color: var(--good, #14804D); } .tmsres h3 { margin: 0 0 4px; }
 .tmscam { text-align: center; } .tmscamw { font: 700 40px var(--display); letter-spacing: .06em; margin: 6px 0 10px; }      /* 4.462 camera questions in Test My Skills */
+/* Say it (2026-11-12): the 🎤 button while it listens */
+#p-mic.listening { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); animation: micpulse 1.1s ease-in-out infinite; }
+@keyframes micpulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 25%, transparent); } }
+#p-heard { margin: 6px 0 0; }

@@ -1149,6 +1149,7 @@ function partsOf(tokens) {
 async function signParts(tokens, o) {
   o = o || {};
   const parts = partsOf(tokens), nums = parts.filter(P => P.n !== 'D' && P.n !== '.').length, dec = tokens.indexOf('.') >= 0;
+  if ((tokens.indexOf('T') >= 0 || tokens.indexOf('M') >= 0) && !helperOn) { helper(true); for (let i = 0; i < 50 && !H2; i++) { if (o.stop && o.stop()) break; await new Promise(r => setTimeout(r, 100)); } }      /* 2026-11-12 (Colleen: "the thousand in the app never shows the second hand that the main hand lands on"): THOUSAND and MILLION always bring the left hand, in every game, before the number starts; it then waits in its corner */
   if (o.hold && tokens.indexOf('D') >= 0) { if (H2) helperMove(HELPER_LOW, 1); moveTo(DOL_R3, 1); await new Promise(r => setTimeout(r, 30)); }      /* hold: the left hand starts out of view, below, and comes up only for DOLLAR; the right hand starts relaxed and closed, not held up palm out */
   for (let k = 0; k < parts.length; k++) {
     if (o.stop && o.stop()) break;
