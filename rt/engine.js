@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.488';
+var VERSION = '4.489';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1423,20 +1423,22 @@ function appLog_(email, via) {
    finished rounds it sent (Spellbound / NumberWise), and when it was last opened from the Home Screen (the app reports display-mode standalone; a browser
    cannot tell us whether an app is installed). Written at most once an hour per student and app unless a round finished. Teachers and staff: never. ── */
 var APP_IDS = { studyhall: 'ASL Study Hall', spellbound: 'ASL Spellbound', numberwise: 'ASL NumberWise' };
-var APPUSE_TAB = 'App Use', APPUSE_HEAD = ['Email', 'Name', 'Class', 'App', 'First used', 'Last used', 'Rounds', 'Last opened from Home Screen', 'Rounds from Home Screen'];
-function appUse_(key, app, home, round) {
+var APPUSE_TAB = 'App Use', APPUSE_HEAD = ['Email', 'Name', 'Class', 'App', 'First used', 'Last used', 'Rounds', 'Last opened from Home Screen', 'Rounds from Home Screen', 'Says it is on Home Screen'];      // 4.489 the last column: the student tapped "I added this app to my Home Screen"
+function appUse_(key, app, home, round, says) {
   try {
     key = str_(key).toLowerCase(); if (!key || !APP_IDS[app] || teacherEmails_()[key]) return;
     var ca = CacheService.getScriptCache(), ck = 'appuse:' + key + ':' + app + (home ? ':h' : '');
-    if (!round && ca.get(ck)) return;
+    if (!round && !says && ca.get(ck)) return;
     var stu = stuSheet_(), srow = findRow_(stu, key); if (!srow) return;      // only students on the roster
     var o = readStu_(stu, srow);
     lock_(function () {
       var ss = ss_(), sh = ss.getSheetByName(APPUSE_TAB);
       if (!sh) { sh = ss.insertSheet(APPUSE_TAB); sh.appendRow(APPUSE_HEAD); sh.setFrozenRows(1); }
+      else if (sh.getLastColumn() < APPUSE_HEAD.length) sh.getRange(1, 1, 1, APPUSE_HEAD.length).setValues([APPUSE_HEAD]);      // 4.489 an older tab gets the new column
       var now = new Date(), last = sh.getLastRow(), vals = last > 1 ? sh.getRange(2, 1, last - 1, APPUSE_HEAD.length).getValues() : [], at = -1;
       for (var i = 0; i < vals.length; i++) if (str_(vals[i][0]).toLowerCase() === key && str_(vals[i][3]) === APP_IDS[app]) { at = i; break; }
-      var row = at >= 0 ? vals[at] : [key, '', '', APP_IDS[app], now, now, 0, '', 0];
+      var row = at >= 0 ? vals[at] : [key, '', '', APP_IDS[app], now, now, 0, '', 0, ''];
+      if (says) row[9] = now;
       row[1] = o.Name; row[2] = o.Class; row[5] = now;
       if (round) { row[6] = (Number(row[6]) || 0) + 1; if (home) row[8] = (Number(row[8]) || 0) + 1; }
       if (home) row[7] = now;
@@ -1444,6 +1446,31 @@ function appUse_(key, app, home, round) {
     }, 10000);
     ca.put(ck, '1', 3600);
   } catch (e) { /* a record only: never stops the app */ }
+}
+/** 4.489 Student, through the app door: "I added this app to my Home Screen" (written on App Use; the app can't check it, so it is reported as the student's word). */
+function api_appSays(auth) {
+  if (!APP_REQ) throw new Error('Open the app from its icon.');
+  appUse_(APP_REQ.key, APP_REQ.app, APP_REQ.home, false, true);
+  return { ok: 1 };
+}
+/** 4.489 Teacher > Phone apps: for each student in a class, each app's use (App Use) and their last app sign-in (App Sign-ins). Only what was recorded:
+    "used" = signed in and opened it; rounds = finished rounds (Spellbound / NumberWise); home = opened from the Home Screen; says = the student says it is there. */
+function api_appUse(auth, cls) {
+  requireTeacher_();
+  var st = static_(), classes = st.classes.map(function (c) { return c.name; }), tch = teacherEmails_() || {};
+  cls = str_(cls); if (cls !== '*' && classes.indexOf(cls) < 0) cls = classes[0] || '*';
+  var sh = stuSheet_(), H = stuHead_(sh), stu = {}, rows = [];
+  rows_(sh, 2, H.n).forEach(function (v, i) { var o = stuObj_(H, v, i + 2), e = str_(o.Email).toLowerCase(); if (e && o.Name && (cls === '*' || o.Class === cls) && !tch[e]) stu[e] = { name: o.Name, cls: o.Class, signin: '', apps: {} }; });
+  var day = function (d) { return cellDay_(d) || ''; };
+  var au = ss_().getSheetByName(APPUSE_TAB), ids = {}; Object.keys(APP_IDS).forEach(function (k) { ids[APP_IDS[k]] = k; });
+  if (au && au.getLastRow() > 1) au.getRange(2, 1, au.getLastRow() - 1, Math.max(APPUSE_HEAD.length, 1)).getValues().forEach(function (r) {
+    var s = stu[str_(r[0]).toLowerCase()], k = ids[str_(r[3])]; if (!s || !k) return;
+    s.apps[k] = { first: day(r[4]), last: day(r[5]), rounds: num_(r[6]), home: r[7] ? day(r[7]) : '', homeRounds: num_(r[8]), says: r[9] ? day(r[9]) : '' }; });
+  var si = ss_().getSheetByName('App Sign-ins');
+  if (si && si.getLastRow() > 1) si.getRange(2, 1, si.getLastRow() - 1, 2).getValues().forEach(function (r) { var s = stu[str_(r[1]).toLowerCase()]; if (s) { var d = day(r[0]); if (d > s.signin) s.signin = d; } });
+  Object.keys(stu).forEach(function (e) { rows.push(stu[e]); });
+  rows.sort(function (a, b) { return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1; });
+  return wire_({ classes: classes, cls: cls, rows: rows, apps: APP_IDS });
 }
 /** The app door: { fn, args } in, { r } or { e } out (JSON). */
 function doPost(e) {
@@ -15448,4 +15475,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appClaim, api_appSettings, api_appSettingsSave, api_appSignIn, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appClaim, api_appSays, api_appSettings, api_appSettingsSave, api_appSignIn, api_appUse, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };

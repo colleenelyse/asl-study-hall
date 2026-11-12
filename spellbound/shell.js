@@ -69,6 +69,7 @@
       var k = el.getAttribute('data-pa'), err = function (m) { var e = document.getElementById(id + '-err'); if (e) { e.hidden = !m; e.textContent = m || ''; } };
       if (k === 'google') el.onclick = function () { window.paLink.google(); };
       if (k === 'out') el.onclick = function () { window.paLink.signOut(); };
+      if (k === 'says') el.onclick = function () { el.disabled = true; window.paLink.says().catch(function (x) { el.disabled = false; alert(String(x.message || x)); }); };
       if (k === 'later') el.onclick = function () { try { localStorage.setItem('pa-link-later', '1'); } catch (e) {} paintAcct(); };
       if (k === 'email' || k === 'code') el.onsubmit = function (e) { e.preventDefault(); var v = el.querySelector('input').value.trim(); if (!v) return; err('');
         var b = el.querySelector('button'); b.disabled = true;
@@ -81,7 +82,7 @@
     var inn = window.paLink.signedIn(), later = false; try { later = localStorage.getItem('pa-link-later') === '1'; } catch (e) {}
     acct.hidden = false;
     var staff = inn && /^[a-z][a-z.'\-]*@d204\.lths\.net$/i.test(window.paLink.email());      /* 4.485 an LT teacher (letters only before the @, like Colleen; students have digits) */
-    acct.innerHTML = '<h3>ASL Study Hall</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study Hall.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
+    acct.innerHTML = '<h3>ASL Study Hall</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study Hall.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>' + (!staff ? (window.paLink.said() ? '<p class="pa-note" style="text-align:left">✓ You told your teacher this app is on your Home Screen.</p>' : '<button class="pa-btn ghost" type="button" data-pa="says">✋ I added this app to my Home Screen</button>') : '')
       : '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study Hall.</p>' + signForm('pa-acct') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>');      /* the same words as the card on Games (Colleen, 2026-11-12) */
     wire(acct, 'pa-acct');
     var games = document.querySelector('[data-screen="games"]');

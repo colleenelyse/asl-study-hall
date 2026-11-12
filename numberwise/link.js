@@ -65,7 +65,9 @@
     email: email, signedIn: function () { return !!tok(); },
     google: function () { location.href = C.main + '?app=signin&back=' + encodeURIComponent(C.back || ''); },
     signIn: function (o) { return (o.claim ? call('api_appClaim', [o.claim]) : call('api_appSignIn', [o])).then(function (r) { put(TK, r.tok); changed(); toast('✓ Signed in. Your practice now counts in ASL Study Hall.'); flush(); return r; }); },
-    signOut: function () { put(TK, null); changed(); toast('Signed out. Practice stays on this phone only.'); }
+    signOut: function () { put(TK, null); changed(); toast('Signed out. Practice stays on this phone only.'); },
+    says: function () { return call('api_appSays', [tok()]).then(function () { put('pa-says-' + (C.back || ''), '1'); changed(); toast('✓ Thanks! Your teacher can see it.'); }); },      /* 4.489 "I added this app to my Home Screen" */
+    said: function () { return get('pa-says-' + (C.back || ''), '') === '1'; }
   };
   if (window.__paClaim) { var c = window.__paClaim; window.__paClaim = ''; window.paLink.signIn({ claim: c }).catch(function (e) { toast(String(e.message || e)); }); }      /* back from the Google sign-in */
   addEventListener('online', flush); setTimeout(flush, 1500);
