@@ -2108,8 +2108,8 @@ const LESSONS_FS = [
     ['V, W, X', 'V spreads two fingers, W three. X hooks the pointer finger.', LS('V W X')],
     ['Y, Z', 'Y holds out the thumb and pinky. Z draws a Z with the pointer finger.', LS('Y Z')]], pool: 'STUVWXYZ'.split(''), kind: 'l' },
   { id: 'fmove', name: 'Letters that move', icon: '〰️', about: 'J and Z draw their letter in the air.', intro: 'Every letter holds still except two.', parts: [
-    ['J', 'Start with I (the pinky up) and draw a J.', LS('J I')],
-    ['Z', 'Point and draw a Z.', LS('Z')]], pool: ['J', 'Z', 'I', 'D'], kind: 'l' },
+    ['J', 'Start with the pinky up and draw a J.', LS('J')],
+    ['Z', 'Point and draw a Z.', LS('Z')]], pool: ['J', 'Z', 'D'], kind: 'l' },      // 2026-11-12 (Colleen: "i don't want I to be on the letters that move page"): no I example or I in the check
   { id: 'flook', name: 'Look-alike letters', icon: '👀', about: 'Letters that look alike, side by side.', intro: 'These groups are easy to mix up. Watch for the small difference.', parts: Object.keys(window.LOOK_GROUPS || { 'M N S T': 1, 'A E O': 1, 'R U V W K': 1, 'K P G H': 1, 'I Y J': 1 }).map(k => [k, { 'M N S T': 'Watch where the thumb is: under three fingers, under two, across the front, or between two.', 'A E O': 'All three close the hand. Watch the thumb and the fingertips.', 'R U V W K': 'Count the fingers and watch if they cross, touch or spread.', 'K P G H': 'K and P are the same shape pointing up and down; G and H point sideways.', 'I Y J': 'The pinky is up in all three. Y adds the thumb; J moves.' }[k] || 'Watch closely.', LS(k)]),
     pool: 'MNSTAEORUVWKPGHIYJ'.split(''), kind: 'l' },
   { id: 'fwords', name: 'Spelling words', icon: '📝', about: 'Spelling a whole word smoothly.', intro: 'Spell a word in one smooth flow. Keep your hand still; only the handshapes change.', parts: [

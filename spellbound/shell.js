@@ -9,6 +9,17 @@
   if (brand) brand.innerHTML = '<img class="pa-ic" src="icon-180.png" alt=""> <span>' + P.name + '</span>';
   if (brand) brand.setAttribute('href', '#/games');      // mark() sends it to the student's group
   if (top) top.insertAdjacentHTML('beforeend', '<button id="pa-gear" type="button" aria-label="Settings">⚙️</button>');
+  /* 2026-11-12 (Colleen: "all pages on the app need a back button. put it at the top left"): goes back one screen inside the app; with nowhere to go back to, to the games */
+  var trail = [], goingBack = false, hashOf = function (u) { var i = String(u || '').indexOf('#'); return i < 0 ? '' : String(u).slice(i); };
+  window.addEventListener('hashchange', function (e) {
+    var from = hashOf(e.oldURL), to = location.hash;
+    if (goingBack) { goingBack = false; return; }
+    if (!from || from === '#' || from === '#/' || from === '#/games' || from === to || /^#claim=/.test(from)) return;      // the quick redirects are not screens
+    if (/^#\/play/.test(to) && /^#\/setup\//.test(from) && trail[trail.length - 1] === from) return;
+    trail.push(from); if (trail.length > 50) trail.shift();
+  });
+  if (top) top.insertAdjacentHTML('afterbegin', '<button id="pa-back" type="button" aria-label="Back">←</button>');
+  $('#pa-back').onclick = function () { var t = trail.pop() || '#/games'; if (t === location.hash) return; goingBack = true; location.hash = t; };
 
   var tabs = document.createElement('nav'); tabs.id = 'pa-tabs'; tabs.setAttribute('aria-label', P.name);
   tabs.innerHTML = P.tabs.map(function (t) { return '<a href="' + t[0] + '"><span class="i" aria-hidden="true">' + t[1] + '</span>' + t[2] + '</a>'; }).join('');

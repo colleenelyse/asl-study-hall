@@ -9,6 +9,7 @@ html.papp header.top nav, html.papp header.top #look, html.papp .foot { display:
 html.papp header.top .brand { color: #fff; font-size: 20px; gap: 10px; min-width: 0; }
 html.papp header.top .brand img.pa-ic { width: 32px; height: 32px; border-radius: 8px; flex: none; }
 html.papp header.top .brand .logo { display: none; }
+#pa-back { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font: 800 24px/1 system-ui, sans-serif; cursor: pointer; display: grid; place-items: center; margin-right: 6px; }      /* top left on every screen */
 #pa-gear { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 20px; cursor: pointer; display: grid; place-items: center; }
 #pa-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; justify-content: space-around; background: var(--surface, #fff);
   border-top: 1px solid var(--line, #E3D9CC); padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
