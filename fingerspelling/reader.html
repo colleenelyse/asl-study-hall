@@ -118,6 +118,77 @@
   .rd-matchlab { margin: 0; font: 700 44px/1 var(--display); color: var(--accent); min-height: 44px; }
   body.act-match #rd-teachbtn, body.act-match #rd-forget { display: none; }
   body.tmscam #rd-checkgo, body.tmscam #rd-checkset .rd-row { display: none !important; }      /* 4.462 the test tab sends each question */
+
+  /* Phones (Colleen 2026-11-11: "it was not possible to see the camera screen, the word ... and the sample hand all at the same time. and the text over the camera
+     window was huge ... make the camera as full screen as possible and lay text and handshapes over it"). body.fs is set by the script at the bottom (phone width,
+     camera on, not picking a game, not turned off with Menu). The camera fills the screen; the word, the sample hand and the buttons sit on top of it. */
+  body.fs { overflow: hidden; }
+  body.fs .rd-grid { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; background: #000;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) max(10px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 10px) max(10px, env(safe-area-inset-left, 0px));
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); --ink: #fff; --muted: #e3e6ff; --surface: rgba(16,18,42,.66); --surface2: rgba(255,255,255,.2); --line: rgba(255,255,255,.4); }
+  body.fs .rd-grid > div:first-child, body.fs .rd-target { display: contents; }
+  body.fs .rd-grid > *, body.fs .rd-grid > div:first-child > *, body.fs .rd-target > * { position: relative; z-index: 1; margin-left: 0; margin-right: 0; }
+  body.fs .rd-cam { position: fixed !important; inset: 0; z-index: 0 !important; border-radius: 0; aspect-ratio: auto; }
+  body.fs .rd-cam::after { display: none; }
+  body.fs #rd-kind, body.fs #rd-mode, body.fs #rd-mlevel, body.fs .rd-teach, body.fs .rd-test, body.fs #rd-pacerow, body.fs #rd-maxrow, body.fs #rd-wordset, body.fs #rd-numset,
+  body.fs label:has(#rd-hint), body.fs p:has(#rd-switch), body.fs #rd-checkabout, body.fs #rd-tlwrap, body.fs #sp .safe { display: none !important; }
+  /* top: what to sign */
+  body.fs #rd-prompt { order: 1; margin: 0 56px 0 52px; padding: 4px 10px; gap: 8px; background: var(--surface); box-shadow: none; }
+  body.fs #rd-prompt .rd-word, body.fs .rd-word { font-size: clamp(30px, 10vw, 46px); }
+  body.fs #rd-gamebar, body.fs #rd-checkset, body.fs #rd-ckbar, body.fs #rd-results { order: 2; }
+  body.fs #rd-results { background: var(--surface); border-radius: 14px; padding: 10px 12px; }
+  body.fs #rd-ask { order: 3; margin: 0 56px 0 52px; text-align: center; font-size: 13px; color: var(--muted); }
+  body.fs #rd-word, body.fs #rd-letter { order: 4; }
+  body.fs .rd-letter { font-size: 76px; } body.fs .rd-letter.long { font-size: 34px; padding: 4px 0; }
+  body.fs .rd-letter, body.fs .rd-word, body.fs #sp, body.fs .rd-ghead b, body.fs .rd-math, body.fs .lab { color: #fff; }
+  body.fs .rd-word .d { color: #9fe0b4; } body.fs .rd-word .c { color: #FFD25E; } body.fs .rd-word .n { color: #fff; opacity: .7; }
+  body.fs .rd-letter.ok { color: #5BE08A; }
+  body.fs #rd-oops, body.fs #rd-def { order: 5; max-width: 92%; margin: 0 auto; font-size: 15px; }
+  body.fs #rd-oops { background: rgba(199,54,46,.85); color: #fff; border-color: #fff; }
+  body.fs .rd-bar:has(#rd-hold) { order: 6; height: 10px; margin: 0 20%; background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; } body.fs .rd-bar i { background: #5BE08A; }
+  /* readable on a light or a dark camera picture (Colleen): white letters with a black outline. The stroke is painted under the letter so it stays thick
+     and clean; the shadow ring is a backup for older browsers */
+  body.fs .rd-letter, body.fs .rd-word, body.fs #sp .big, body.fs #sp .cnt, body.fs .rd-flash { -webkit-text-stroke: 7px #000; paint-order: stroke fill; text-shadow: 0 0 2px #000, 0 2px 6px rgba(0,0,0,.6); }
+  body.fs #rd-ask, body.fs #sp > p, body.fs #rd-ghead, body.fs .lab { -webkit-text-stroke: 3.5px #000; paint-order: stroke fill; text-shadow: 0 0 2px #000; font-weight: 800; }
+  body.fs #sp > p.msg { -webkit-text-stroke: 0; text-shadow: none; } body.fs #sp > p.msg:not(:empty) { background: rgba(10,12,30,.8); border-radius: 10px; padding: 4px 10px; }
+  /* bottom: the buttons */
+  body.fs #rd-prompt > .lab { display: none; }
+  body.fs #rd-status { display: none; }
+  body.fs .rd-row { order: 21; margin-top: 0; }
+  body.fs .rd-grid::after { content: ''; order: 10; flex: 1 0 0; }      /* the space between the top and the buttons */
+  body.fs .rd-row:has(#rd-skip) { order: 22; }
+  body.fs .rd-grid .btn { background: rgba(16,18,42,.72); color: #fff; border: 1px solid rgba(255,255,255,.45); text-shadow: none; padding: 9px 16px; }
+  body.fs .rd-grid .btn.big { font-size: 17px; padding: 10px 20px; }
+  body.fs #rd-calc { background: var(--surface); }
+  /* the sample hand: a small picture in the lower right corner, above the buttons */
+  body.fs #rd-showbox, body.fs #rd-modelbox, body.fs #rd-gmodel { position: fixed; z-index: 2; right: max(10px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); margin: 0; }
+  body.fs .rd-ref, body.fs #rd-modelbox #rd-model, body.fs .rd-gmodel #rd-model { width: 118px !important; height: 118px !important; background: rgba(255,255,255,.85) !important; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  /* what was over the camera: smaller and out of the way */
+  body.fs .rd-tip { top: auto; left: max(10px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); max-width: calc(100% - 160px); font-size: 15px; padding: 7px 12px; text-shadow: none; }
+  body.fs .rd-pct { top: calc(env(safe-area-inset-top, 0px) + 8px); right: max(10px, env(safe-area-inset-right, 0px)); width: 46px; height: 46px; font-size: 14px; }
+  body.fs .rd-pct::before { inset: 5px; }
+  body.fs .rd-flash { font-size: 90px; }
+  /* Teach the Camera's panel */
+  body.fs #sp { order: 4; gap: 6px; flex: 1 0 auto; } body.fs #sp .msg { margin-top: auto; } body.fs.samp .rd-grid::after { display: none; } body.fs #sp > p:not([class]) { font-size: 14px; max-width: 30ch; } body.fs #sp .big { font-size: 64px; } body.fs #sp .how { font-size: 16px; } body.fs #sp .cnt { font-size: 56px; }
+  body.fs #sp > p:first-child, body.fs #sp > .bar:nth-child(2) { max-width: 70%; margin: 0 auto; font-size: 13px; }
+  body.fs #sp .bar { background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+  body.fs #sp details { background: var(--surface); border-radius: 12px; padding: 6px 8px; text-align: left; }
+  /* phones held sideways: the words and buttons in a column on the left, the camera fills the rest */
+  @media (orientation: landscape) {
+    body.fs .rd-grid { padding-right: 58%; }
+    body.fs .rd-grid::before { content: ''; position: fixed; left: 0; top: 0; bottom: 0; width: 42%; background: linear-gradient(90deg, rgba(10,12,30,.62), rgba(10,12,30,.35) 85%, transparent); z-index: 0; pointer-events: none; }
+    body.fs #rd-prompt, body.fs #rd-ask { margin: 0 0 0 52px; }
+    body.fs .rd-letter { font-size: 64px; } body.fs .rd-bar:has(#rd-hold) { margin: 0 10%; }
+    body.fs #rd-showbox, body.fs #rd-modelbox, body.fs #rd-gmodel { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+    body.fs .rd-ref, body.fs #rd-modelbox #rd-model, body.fs .rd-gmodel #rd-model { width: 104px !important; height: 104px !important; }
+    body.fs .rd-tip { left: auto; right: 132px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: 34%; }
+    body.fs #sp .big { font-size: 52px; }
+  }
+  /* the Menu button (back to the normal page, for settings) and the button to come back to the full camera */
+  #rd-fsbtn { display: none; }
+  body.fs #rd-fsbtn, body.fsable #rd-fsbtn { display: block; position: fixed; z-index: 60; border: 1px solid rgba(255,255,255,.5); border-radius: 999px; font: 800 14px var(--display); cursor: pointer; }
+  body.fs #rd-fsbtn { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(env(safe-area-inset-top, 0px) + 8px); width: 42px; height: 42px; padding: 0; font-size: 20px; background: rgba(16,18,42,.72); color: #fff; }
+  body.fsable:not(.fs) #rd-fsbtn { right: 14px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); padding: 12px 18px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 3px 12px rgba(0,0,0,.3); }
 </style>
 </head>
 <body>
@@ -187,6 +258,26 @@
 /* Colleen 2026-11-11: "add a note permanently in this app that thanks the ASL classes from the 2026-27 school year for helping to train these hands/signs
    to help all future asl students". Her classes only: hidden in the TpT editions she sells (their folders end in -tpt). */
 (function () { if (/-tpt\//.test(location.pathname)) { var t = document.getElementById('rd-thanks'); if (t) t.remove(); } })();
+</script>
+<button id="rd-fsbtn" type="button"></button>
+<script>
+/* Phones: the camera full screen with everything on top of it (see body.fs in the style). Menu goes back to the normal page (to change Letters / Words,
+   Practice / Check, hands ...); "Full screen camera" comes back. Bigger screens never change. */
+(function () {
+  var wasG = false, mq = matchMedia('(max-width: 760px) and (pointer: coarse), (max-height: 520px) and (pointer: coarse)')      /* phones and tablets held sideways only: a small camera window on a computer stays as it was */, off = false, b = document.getElementById('rd-fsbtn'), msg = document.getElementById('rd-camsg'), B = document.body;
+  function upd() {
+    var g = B.classList.contains('gaming'); if (g && !wasG) off = false; wasG = g;      /* a game starting goes back to the full camera */
+    var camOn = msg && msg.hidden, picking = B.classList.contains('gamestab') && !B.classList.contains('gaming');
+    var able = mq.matches && camOn && !picking, fs = able && !off;
+    if (B.classList.contains('fs') !== fs) B.classList.toggle('fs', fs);
+    if (B.classList.contains('fsable') !== able) B.classList.toggle('fsable', able);
+    var t = fs ? '☰' : '📷 Full screen camera'; if (b.textContent !== t) { b.textContent = t; b.setAttribute('aria-label', fs ? 'Menu: back to the full page' : 'Full screen camera'); b.title = fs ? 'Menu' : ''; }
+  }
+  b.onclick = function () { off = !off; if (!off) scrollTo(0, 0); upd(); };
+  new MutationObserver(upd).observe(B, { attributes: true, attributeFilter: ['class'] });
+  if (msg) new MutationObserver(upd).observe(msg, { attributes: true, attributeFilter: ['hidden'] });
+  (mq.addEventListener ? mq.addEventListener('change', upd) : mq.addListener(upd)); upd();
+})();
 </script>
 <canvas id="rd-model" width="320" height="320"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
