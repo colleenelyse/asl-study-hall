@@ -838,9 +838,18 @@ function sayNumber(t) {      /* "twenty-five", "one hundred two", "nineteen eigh
 function micReset(g) {
   micStop(false);
   const b = $('#p-mic'), h = $('#p-heard'); if (!b) return;
-  b.hidden = !SAY_OK || g === 'fill'; b.disabled = false; b.textContent = '🎤 Say it'; h.hidden = true; h.textContent = '';
+  b.hidden = !SAY_OK || g === 'fill' || micBroken(); b.disabled = false; b.textContent = '🎤 Say it'; h.hidden = true; h.textContent = '';
 }
-function micStop(hide) { if (micRec) { try { micRec.abort(); } catch (e) {} micRec = null; } const b = $('#p-mic'); if (b) { b.classList.remove('listening'); b.textContent = '🎤 Say it'; if (hide) b.hidden = true; } }
+function micStop(hide) {      /* 2026-11-12 (Colleen: "it said listening ... nothing came up and then it wouldn't let me tap to stop"): the button is put back FIRST, then the listener is stopped, so a phone whose speech service never answers can't leave it stuck */
+  const r = micRec; micRec = null; clearTimeout(micStop.t1); clearTimeout(micStop.t2);
+  const b = $('#p-mic'); if (b) { b.classList.remove('listening'); b.textContent = '🎤 Say it'; b.hidden = !!hide || micBroken(); }
+  if (r) { r.onresult = r.onerror = r.onend = r.onstart = r.onaudiostart = null; setTimeout(() => { try { r.abort(); } catch (e) {} }, 0); }
+}
+/* on some phones (an iPhone home-screen app especially) the browser has speech recognition but it never starts: after that happens the 🎤 hides there and points to the keyboard's own 🎤 */
+const MIC_APP = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+const MIC_KEY = 'fs-mic-fails-' + (MIC_APP ? 'app' : 'web');      // two failed starts in a row hide it (one could be the student taking a while on the "allow the microphone" question)
+function micFails(n) { try { if (n === undefined) return +localStorage.getItem(MIC_KEY) || 0; localStorage.setItem(MIC_KEY, String(n)); } catch (e) {} return 0; }
+function micBroken() { return micFails() >= 2; }
 function micHeard(list) {
   if (!R || R.answered === R.i) return;
   const it = R.list[R.i], num = isNumGame(R.game), flash = R.game === 'flash', target = answerKey(it.w, num);
@@ -866,8 +875,16 @@ if ($('#p-mic')) $('#p-mic').onclick = () => {
   rec.onerror = e => { micStop(false); h.hidden = false;
     h.textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? '🎤 The microphone is blocked. Allow it for this site (or use your keyboard’s 🎤), then try again.'
       : e.error === 'no-speech' ? 'I didn’t hear anything. Tap 🎤 and try again.' : e.error === 'network' ? 'Saying answers needs the internet. Type your answer instead.' : 'That didn’t work. Tap 🎤 and try again, or type your answer.'; };
-  rec.onend = () => { if (micRec === rec) micStop(false); };
-  try { rec.start(); } catch (e) { micStop(false); }
+  rec.onend = () => { if (micRec !== rec) return; micStop(false); h.hidden = false; h.textContent = heardSound ? 'I didn’t catch that. Tap 🎤 and try again.' : 'I didn’t hear anything. Tap 🎤 and try again.'; };
+  let started = false, heardSound = false;
+  rec.onstart = rec.onaudiostart = () => { if (!started) micFails(0); started = true; };
+  rec.onsoundstart = rec.onspeechstart = () => { if (!started) micFails(0); started = heardSound = true; };
+  micStop.t1 = setTimeout(() => { if (micRec !== rec || started) return;      // the microphone never came on
+    micStop(false); micFails(micFails() + 1); h.hidden = false;
+    h.textContent = micBroken() ? '🎤 Saying answers doesn’t work on this device. Tap the box and use the 🎤 on your keyboard instead, or type.' : 'The microphone didn’t turn on. Tap 🎤 to try once more, or use the 🎤 on your keyboard.'; b.hidden = micBroken(); }, 6000);
+  micStop.t2 = setTimeout(() => { if (micRec !== rec) return; try { rec.stop(); } catch (e) {}      // 10 seconds is plenty for one answer: stop and use what was heard
+    setTimeout(() => { if (micRec === rec) { micStop(false); h.hidden = false; h.textContent = 'I didn’t catch that. Tap 🎤 and try again.'; } }, 2500); }, 10000);
+  try { rec.start(); } catch (e) { micStop(false); h.hidden = false; h.textContent = 'That didn’t work. Tap 🎤 and try again, or type your answer.'; }
 };
 
 /* ---------- ASL Study (Colleen): opened inside the ASL Study app (?embed=aslstudy), each finished round is sent to the app, which saves

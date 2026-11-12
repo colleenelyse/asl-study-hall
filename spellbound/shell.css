@@ -41,5 +41,7 @@ html.papp.pa-play body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 html.papp #pa-linkcard { margin-left: 14px; margin-right: 14px; } @media (min-width: 600px) { html.papp #pa-linkcard { margin-left: auto; margin-right: auto; } }
 .pa-row { display: flex; gap: 8px; } .pa-row input { flex: 1; min-width: 0; font: inherit; padding: 9px 12px; border-radius: 12px; border: 1.5px solid var(--line, #E3D9CC); background: var(--bg, #fff); color: var(--ink, #1B1E3C); }
 .pa-btn { font: 800 15px var(--body, system-ui); padding: 9px 14px; border-radius: 999px; border: 0; background: var(--accent, #2F6BFF); color: var(--accent-ink, #fff); cursor: pointer; white-space: nowrap; }
-.pa-btn.ghost { background: var(--surface2, #EFE8DC); color: var(--ink, #1B1E3C); } .pa-btn.pa-g { align-self: stretch; padding: 11px 14px; }
+.pa-btn.ghost { background: var(--surface2, #EFE8DC); color: var(--ink, #1B1E3C); }
+.pa-btn.pa-g { align-self: stretch; padding: 10px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: #1F1F1F; border: 1px solid #747775; font-family: Roboto, system-ui, sans-serif; font-weight: 600; }      /* Google's own button look: white, gray outline, the G */
+.pa-glogo { flex: none; }
 .pa-btn:disabled { opacity: .6; } .pa-err { color: var(--bad, #C7362E); font-weight: 700; } .pa-link { align-self: center; background: none; border: 0; color: var(--muted, #5A6185); text-decoration: underline; font: inherit; cursor: pointer; }

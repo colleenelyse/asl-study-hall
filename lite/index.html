@@ -502,8 +502,12 @@ function sayit() {
     if (canCheck) $('#check').onclick = () => {
       const r = new SR(); r.lang = META.la; r.maxAlternatives = 5; r.interimResults = false; $('#said').innerHTML = '<span class="mut">Listening…</span>';
       r.onresult = e => { const alts = [...e.results[0]].map(a => a.transcript), ok = alts.some(a => heardOk(a, c[0])); if (ok) good++; $('#said').innerHTML = ok ? `<span class="good">✓ Sounds right!</span>` : `<span style="color:var(--bad)">I heard:</span> ${esc(alts[0] || '…')} <span class="small mut">(try again, or tap Hear it)</span>`; };
-      r.onerror = e => { $('#said').innerHTML = `<span class="mut">${e.error === 'not-allowed' ? 'The microphone is not allowed on this page.' : 'I did not catch that. Try again.'}</span>`; };
-      try { r.start(); } catch (e) {}
+      r.onerror = e => { done = true; clearTimeout(t); $('#said').innerHTML = `<span class="mut">${e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'The microphone is not allowed on this page.' : 'I did not catch that. Try again.'}</span>`; };
+      /* 2026-11-12 (Colleen: a 🎤 said "listening" forever and heard nothing): never stuck on Listening… */
+      let done = false; const t = setTimeout(() => { if (done) return; try { r.abort(); } catch (e) {} $('#said').innerHTML = '<span class="mut">I did not hear anything. Tap Check me to try again.</span>'; done = true; }, 10000);
+      const r0 = r.onresult; r.onresult = e => { done = true; clearTimeout(t); r0(e); };
+      r.onend = () => { if (done) return; done = true; clearTimeout(t); $('#said').innerHTML = '<span class="mut">I did not catch that. Try again.</span>'; };
+      try { r.start(); } catch (e) { done = true; clearTimeout(t); $('#said').innerHTML = '<span class="mut">The microphone did not start. Try again.</span>'; }
     };
     later(() => {}, 0);
   };
