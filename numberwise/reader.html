@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ASL Numberwise"><meta name="application-name" content="ASL Numberwise">
+<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#012052">
+<link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="manifest" href="manifest.json">
+
+<meta charset="utf-8">
+<title>Fingerspell to the Camera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="style.css?v=127">
+<style>
+  /* Fingerspell to the Camera (2026-10-17): the student fingerspells; the camera reads the hand. Nothing leaves the computer. */
+  body { padding: 0 0 40px; }
+  .rd-wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .rd-grid { grid-template-columns: 1fr; } }
+  .rd-cam { position: relative; border-radius: 18px; overflow: hidden; background: #1b1e3c; aspect-ratio: 4 / 3; }
+  .rd-cam video, .rd-cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }      /* shown like a mirror */
+  .rd-cam video { filter: saturate(.7) brightness(.85); }      /* our own look: natural color, softly dimmed (not black and white) */
+  .rd-cam::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(27,30,60,.45)); }      /* a soft frame around the edges */
+  .rd-pct { position: absolute; right: 12px; top: 12px; width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink); font: 700 20px var(--display); background: conic-gradient(var(--good) calc(var(--p, 0) * 1%), var(--surface2) 0); pointer-events: none; }
+  .rd-pct::before { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: var(--surface); } .rd-pct span { position: relative; }      /* a match ring in the corner */
+  .rd-tip { position: absolute; left: 14px; top: 14px; max-width: calc(100% - 120px); background: var(--surface); color: var(--ink); font: 700 clamp(20px, 2.6vw, 28px)/1.2 var(--display); padding: 12px 20px; border-radius: 14px 14px 14px 4px; box-shadow: 0 3px 10px rgba(0,0,0,.25); pointer-events: none; } .rd-tip:empty { display: none; }      /* a speech bubble with the tip */
+  .rd-word { text-align: center; font: 700 clamp(36px, 6vw, 56px)/1.1 var(--display); letter-spacing: .04em; margin: 4px 0; }
+  .rd-word .d { color: color-mix(in srgb, var(--accent) 35%, var(--surface)); } .rd-word .c { color: var(--accent); text-decoration: underline; text-underline-offset: 8px; } .rd-word .n { color: var(--muted); opacity: .55; }
+  .rd-cam .rd-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: #fff; font: 700 18px var(--display); }
+  .rd-target { text-align: center; }
+  .rd-letter { font: 700 clamp(90px, 16vw, 150px)/1 var(--display); color: var(--ink); transition: color .2s; }
+  .rd-letter.ok { color: var(--good); }
+  .rd-letter.long { font-size: clamp(44px, 7vw, 72px); padding: 20px 0; }      /* big numbers like 1,250,000 */
+  .rd-ref { width: 150px; height: 150px; margin: 0 auto; display: block; border-radius: 14px; background: var(--surface2); }
+  .rd-guess { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 10px 0; min-height: 40px; }
+  .rd-guess span { padding: 6px 12px; border-radius: 999px; background: var(--surface2); font: 700 17px var(--display); }
+  .rd-guess span.top { background: var(--accent); color: var(--accent-ink); } .rd-guess small { display: block; font: 600 11px var(--body, inherit); opacity: .75; }
+  body.lefty .rd-ref { transform: scaleX(-1); }
+  .rd-bar { height: 10px; border-radius: 999px; background: var(--surface2); overflow: hidden; } .rd-bar i { display: block; height: 100%; width: 0; background: var(--good); transition: width .1s; }
+  .rd-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .rd-small { font-size: 14px; color: var(--muted); }
+  .rd-teach { margin-top: 12px; padding: 12px; border-radius: 14px; background: var(--surface2); }
+  .rd-teach h3 { margin: 0 0 4px; font-size: 17px; }
+  .rd-alpha { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .rd-alpha button { width: 30px; height: 30px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); font: 700 14px var(--display); cursor: pointer; color: var(--ink); }
+  #rd-model { position: absolute; left: -9999px; top: 0; width: 220px; height: 220px; } .rd-model #rd-model { position: static; display: block; margin: 8px auto 0; border-radius: 14px; background: var(--surface2); }
+  .rd-oops { margin: 8px auto; padding: 10px 14px; border-radius: 12px; background: var(--bad-soft, #FBE3E1); border: 2px solid var(--bad, #C7362E); color: var(--ink); font: 700 17px var(--display); max-width: 320px; }
+  .rd-mix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--sun, #FFC83D) 18%, var(--surface)); text-align: left; font-size: 14px; }
+  .rd-mix b { font-family: var(--display); } .rd-chips { justify-content: center; } .rd-test { margin-top: 8px; }
+  .rd-prompt { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; padding: 8px 16px; border-radius: 16px; background: var(--surface); box-shadow: 0 2px 8px rgba(27,30,60,.06); }
+  .rd-prompt .rd-word { margin: 0; font-size: clamp(40px, 7vw, 72px); } .rd-word.alldone span { color: var(--good) !important; text-decoration: none; }
+  .rd-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 clamp(70px, 14vw, 140px) var(--display); color: #fff; text-shadow: 0 4px 18px rgba(0,0,0,.4); opacity: 0; pointer-events: none; }
+  .rd-flash.go { animation: rdflash .8s ease-out; } @keyframes rdflash { 0% { opacity: 0; transform: scale(.6); background: rgba(20,128,77,0); } 25% { opacity: 1; transform: scale(1.05); background: rgba(20,128,77,.45); } 100% { opacity: 0; transform: scale(1); background: rgba(20,128,77,0); } }
+  .rd-word span { display: inline-block; transition: transform .2s; } .rd-word .c { transform: scale(1.25); animation: rdpop .35s ease-out; } @keyframes rdpop { 0% { transform: scale(.7); } 70% { transform: scale(1.35); } 100% { transform: scale(1.25); } }      /* the letter you're on is bigger and pops in */
+  .rd-results { text-align: left; margin-top: 8px; } .rd-results h3 { margin: 0 0 6px; } .rd-results .big { font: 700 34px var(--display); color: var(--good); }
+  .rd-results ul { margin: 4px 0 10px; padding-left: 20px; } .rd-results .lets { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px; }
+  .rd-results .lets span { min-width: 30px; padding: 2px 6px; text-align: center; border-radius: 8px; font: 700 15px var(--display); background: var(--surface2); }
+  .rd-results .lets .ok { background: var(--good-soft, #DCF4E7); } .rd-results .lets .slow { background: color-mix(in srgb, var(--sun, #FFC83D) 30%, var(--surface)); } .rd-results .lets .no { background: var(--bad-soft, #FBE3E1); }
+  .rd-ckbar { margin: 6px 0; font: 700 14px var(--display); color: var(--muted); }
+  body.checking #rd-hint, body.checking label:has(#rd-hint), body.checking #rd-skip, body.checking #rd-prev, body.checking #rd-rand, body.checking .rd-teach, body.checking .rd-test, body.checking #rd-after, body.checking #rd-showbox, body.checking #rd-mix { display: none !important; }      /* no hints or helps during a check */
+  .rd-safe { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; background: var(--good-soft, #DCF4E7); border: 2px solid var(--good, #14804D); font-size: 15px; } .rd-safe > span { font-size: 22px; line-height: 1; }      /* the camera promise, on every camera page (Colleen) */
+  .rd-def { margin: 8px auto; padding: 10px 14px; border-radius: 12px; background: var(--surface2); text-align: left; font-size: 16px; max-width: 360px; }
+  .rd-prompt .rd-def { flex-basis: 100%; max-width: 640px; margin: 0 auto 4px; padding: 8px 16px; text-align: center; font: 600 clamp(17px, 2vw, 20px)/1.35 var(--body, inherit); background: color-mix(in srgb, var(--sun, #FFC83D) 22%, var(--surface)); }      /* right under the word (Colleen) */
+  .rd-alpha button.has { border-color: var(--good); } .rd-alpha button.cur { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  /* camera games (2026-10-17) */
+  .rd-gamelist { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; margin: 6px 0; } @media (max-width: 420px) { .rd-gamelist { grid-template-columns: 1fr; } }
+  .rd-gcard { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: start; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; font: inherit; }
+  .rd-gcard span { font-size: 26px; grid-row: span 2; } .rd-gcard b { font: 700 16px var(--display); } .rd-gcard small { color: var(--muted); font-size: 13px; } .rd-gcard:hover { border-color: var(--accent); }
+  .rd-prompt.numgame .lab { display: none; } .rd-gmodel #rd-model { position: static; display: block; width: 180px; height: 180px; border-radius: 14px; background: var(--surface2); }      /* the math hand beside the problem */
+  .rd-prompt.numgame .rd-ghead { flex-basis: auto; } .rd-ghead { flex-basis: 100%; text-align: center; font: 700 18px var(--display); color: var(--muted); } .rd-ghead b { color: var(--ink); } .rd-math { font-size: clamp(30px, 5vw, 48px); color: var(--ink); }
+  .rd-wordle { display: inline-grid; gap: 4px; } .rd-wordle div { display: flex; gap: 4px; } .rd-wordle i { width: 1.15em; height: 1.2em; display: inline-flex; align-items: center; justify-content: center; font-style: normal; border-radius: 8px; border: 2px solid var(--line); font-size: 34px; }
+  .rd-wordle .y { background: var(--good); color: #fff; border-color: var(--good); } .rd-wordle .m { background: var(--sun, #FFC83D); border-color: var(--sun, #FFC83D); color: #1b1e3c; } .rd-wordle .n { background: var(--surface2); color: var(--muted); } .rd-wordle .t { background: var(--surface); }
+  .rd-calc { margin: 10px auto 0; max-width: 260px; padding: 10px; border-radius: 14px; background: var(--surface2); } .rd-calcd { font: 700 26px var(--display); text-align: right; padding: 6px 10px; border-radius: 10px; background: var(--surface); margin-bottom: 8px; overflow-x: auto; white-space: nowrap; }
+  .rd-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .rd-keys button { padding: 10px 0; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: 700 18px var(--display); cursor: pointer; } .rd-keys .eq { grid-column: span 2; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  body.gaming #rd-mode, body.gaming #rd-hint, body.gaming label:has(#rd-hint), body.gaming #rd-skip, body.gaming #rd-prev, body.gaming #rd-rand, body.gaming .rd-teach, body.gaming #rd-showbox, body.gaming #rd-mix, body.gaming #rd-numset, body.gaming #rd-wordset, body.gaming #rd-shownum, body.gaming #rd-after { display: none !important; }      /* no helps during a game */
+  body.gamestab:not(.gaming) .rd-letter, body.gamestab:not(.gaming) #rd-ask, body.gamestab:not(.gaming) .rd-bar, body.gamestab:not(.gaming) label:has(#rd-hint), body.gamestab:not(.gaming) #rd-skip, body.gamestab:not(.gaming) #rd-prev, body.gamestab:not(.gaming) #rd-rand, body.gamestab:not(.gaming) #rd-showbox, body.gamestab:not(.gaming) .rd-teach { display: none !important; }      /* the game list on its own */
+  /* choose, then sign (2026-10-17): the picture and the answer choices sit above the camera */
+  .rd-gpic { flex-basis: 100%; display: flex; justify-content: center; } .rd-gpic .rd-pic { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .rd-gpic .rd-pic img, .rd-gpic .rd-pic svg { max-height: 220px; max-width: min(320px, 80vw); border-radius: 16px; display: block; } .rd-gpic .rd-pic b { font: 700 20px var(--display); text-align: center; }
+  .rd-hilo { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 700 26px var(--display); } .rd-hilo small { font: 600 15px var(--body, inherit); color: var(--muted); }
+  .rd-gchoose { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; } .rd-gpicks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .rd-gpicks .btn { font-size: 22px; min-width: 120px; } .rd-gtype { font: 700 18px var(--display); display: flex; align-items: center; gap: 8px; } .rd-gtype input { font: 700 24px var(--display); width: 130px; padding: 6px 10px; border-radius: 12px; border: 2px solid var(--line, #ccc); }
+  .rd-cases { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 460px; }      /* Cash or Crash: the board */
+  .rd-case { position: relative; aspect-ratio: 4 / 3; margin-top: 7px; border-radius: 10px; border: 3px solid #6B4A1F; background: linear-gradient(#D19A45, #A8742C); color: #fff; font: 700 clamp(18px, 4vw, 26px) var(--display); text-shadow: 0 1px 2px rgba(0,0,0,.4); cursor: pointer; padding: 0; }
+  .rd-cases.many { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-width: 520px; } .rd-cases.many .rd-case { font-size: 13px; border-width: 2px; margin-top: 4px; border-radius: 6px; } .rd-cases.many .rd-case::before { display: none; }      /* 50 and 100 cases: smaller cases, 10 across */
+  .rd-case::before { content: ''; position: absolute; left: 34%; right: 34%; top: -9px; height: 7px; border: 3px solid #6B4A1F; border-bottom: 0; border-radius: 6px 6px 0 0; }      /* the handle */
+  .rd-case:hover:not([disabled]) { filter: brightness(1.1); } .rd-case.pick { outline: 4px solid var(--accent); outline-offset: 2px; }
+  .rd-case.open { background: var(--surface2); color: var(--ink); border-color: var(--line); text-shadow: none; font-size: clamp(13px, 2.6vw, 16px); cursor: default; } .rd-case.open::before { border-color: var(--line); } .rd-case.ink { font-size: 26px; }
+  .rd-gsay { font: 700 22px var(--display); text-align: center; padding: 6px 10px; } .rd-gchoose .rd-small { flex-basis: 100%; text-align: center; margin: 0; }
+  /* the letter games (2026-10-17) */
+  .rd-scram { display: flex; gap: 8px; } .rd-scram i { font: 700 40px var(--display); font-style: normal; width: 56px; height: 64px; display: grid; place-items: center; border-radius: 12px; background: var(--surface2, #eef); box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  .rd-chain { font: 700 24px var(--display); text-align: center; } .rd-chain .last { color: var(--accent); }
+  .rd-rain { position: relative; width: min(560px, 90vw); height: 240px; border-radius: 16px; overflow: hidden; background: linear-gradient(#cfe6ff, #eef6ff); }
+  .rd-rain i { position: absolute; top: 0; transform: translateX(-50%); font: 700 34px var(--display); font-style: normal; color: #1b3a6b; background: #fff; border-radius: 50%; width: 52px; height: 52px; display: grid; place-items: center; box-shadow: 0 3px 8px rgba(0,0,0,.18); transition: transform .25s, opacity .3s; }
+  .rd-rain i.pop { transform: translateX(-50%) scale(1.6); opacity: 0; } .rd-rain i.splat { background: #ffd6d6; opacity: 0; }
+  .rd-whack { display: grid; grid-template-columns: repeat(3, 96px); gap: 10px; } .rd-whack .hole { height: 84px; border-radius: 50% 50% 18px 18px; background: #7a5a3a; position: relative; overflow: hidden; }
+  .rd-whack .hole span { position: absolute; left: 50%; bottom: -70px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; background: #b98b5e; color: #fff; font: 700 32px var(--display); display: grid; place-items: center; transition: bottom .18s; }
+  .rd-whack .hole.up span { bottom: 8px; } .rd-whack .hole.bonk span { background: #f5b400; }
+  .rd-race { position: relative; width: min(560px, 90vw); display: flex; flex-direction: column; gap: 8px; padding-right: 40px; } .rd-race .lane { position: relative; height: 46px; border-radius: 12px; background: #3b3f4a; }
+  .rd-race .lane.ghost { opacity: .55; } .rd-race .car { position: absolute; left: 0; top: 4px; font-size: 34px; transition: left .25s; transform: scaleX(-1); } .rd-race .finish { position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 34px; }
+  .rd-boss { display: flex; flex-direction: column; align-items: center; gap: 6px; } .rd-boss .b { font-size: 96px; line-height: 1; } .rd-boss.hurt .b { animation: rdshake .4s; }
+  .rd-boss .hp { width: 260px; height: 16px; border-radius: 999px; background: #ddd; overflow: hidden; } .rd-boss .hp i { display: block; height: 100%; background: #e5484d; transition: width .3s; } .rd-boss small { color: var(--muted); font-weight: 700; }
+  @keyframes rdshake { 25% { transform: translateX(-10px) rotate(-6deg); } 75% { transform: translateX(10px) rotate(6deg); } }
+  .rd-party { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-radius: 12px; background: var(--surface2, #f2f2f7); } .rd-party.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  .rd-board { font: 700 20px var(--display); padding-left: 24px; } .rd-board li { margin: 4px 0; }
+  .rd-bee { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .rd-bee span { padding: 6px 12px; border-radius: 999px; background: var(--surface2, #eee); font: 700 17px var(--display); }
+  .rd-bee .now { background: var(--sun, #FFC83D); color: #1B1E2E; transform: scale(1.12); } .rd-bee .out { opacity: .45; text-decoration: line-through; }
+  .rd-word .ph { color: var(--good, #14804D); } .rd-word .pm { color: var(--bad, #C7362E); text-decoration: line-through; }      /* Speed Pacer: got it / missed */
+  .rd-livebar { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: var(--sun, #FFC83D); color: #1B1E2E; font: 700 17px var(--display); text-align: center; }
+  .jars { display: flex; gap: 14px; justify-content: center; } .jar { display: flex; flex-direction: column; align-items: center; gap: 4px; } .jar .glass { position: relative; width: 110px; height: 150px; border: 4px solid rgba(120,160,200,.9); border-top-width: 10px; border-radius: 18px 18px 30px 30px; overflow: hidden; background: rgba(230,245,255,.5); }
+  .jar .fill { position: absolute; left: 0; right: 0; bottom: 0; background: repeating-radial-gradient(circle at 8px 8px, #3D7BE0 0 6px, transparent 7px) 0 0 / 16px 16px, #d7e7fb; transition: height .4s; } .jar b { font: 700 26px var(--display); }
+  .camtrack { width: min(420px, 80vw); height: 20px; border-radius: 999px; background: var(--surface2, #eee); overflow: hidden; } .camtrack i { display: block; height: 100%; background: linear-gradient(90deg, #3D7BE0, #2EC27E); transition: width .3s; }
+  .rd-pacerow { margin: 8px 0; } body.gamestab .rd-pacerow, body.gaming .rd-pacerow, body.nums .rd-pacerow { display: none; }
+  /* ONE ACTIVITY PER LINK (2026-11-10): reader.html?act=... shows only that activity */
+  body.act #rd-kind, body.act #rd-gamelist, body.act:not(.act-check) #rd-mode, body.act:not(.act-teach) .rd-teach, body.act #rd-pacerow { display: none !important; }
+  /* MATCH THE HAND: the 3D hand beside the camera, on the signing side (a right-handed student: on the left, in front of the face; left-handed: on the right, mirrored into a left hand) */
+  body.act-match .rd-grid { grid-template-columns: 1fr; } body.act-match .rd-target { max-width: 620px; margin: 0 auto; width: 100%; }
+  .rd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+  body.act-match #rd-modelbox { display: flex !important; flex-direction: column; align-items: center; gap: 6px; margin: 0; background: var(--surface2); border-radius: 18px; padding: 8px; }
+  body.act-match .rd-pair #rd-model { position: static; display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; margin: 0; background: transparent; }
+  body.act-match.lefty #rd-modelbox { order: 2; } body.act-match.lefty .rd-pair #rd-model { transform: scaleX(-1); }
+  .rd-matchlab { margin: 0; font: 700 44px/1 var(--display); color: var(--accent); min-height: 44px; }
+  body.act-match #rd-teachbtn, body.act-match #rd-forget { display: none; }
+  .rd-tonebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; }      /* Colleen 2026-11-11: choose the complexion; Mix (the default) deals every tone evenly */
+  body.tmscam #rd-checkgo, body.tmscam #rd-checkset .rd-row { display: none !important; }      /* 4.462 the test tab sends each question */
+
+  /* Phones (Colleen 2026-11-11: "it was not possible to see the camera screen, the word ... and the sample hand all at the same time. and the text over the camera
+     window was huge ... make the camera as full screen as possible and lay text and handshapes over it"). body.fs is set by the script at the bottom (phone width,
+     camera on, not picking a game, not turned off with Menu). The camera fills the screen; the word, the sample hand and the buttons sit on top of it. */
+  body.fs { overflow: hidden; }
+  body.fs .rd-grid { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; background: #000;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) max(10px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 10px) max(10px, env(safe-area-inset-left, 0px));
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); --ink: #fff; --muted: #e3e6ff; --surface: rgba(16,18,42,.66); --surface2: rgba(255,255,255,.2); --line: rgba(255,255,255,.4); }
+  body.fs .rd-grid > div:first-child, body.fs .rd-target { display: contents; }
+  body.fs .rd-grid > *, body.fs .rd-grid > div:first-child > *, body.fs .rd-target > * { position: relative; z-index: 1; margin-left: 0; margin-right: 0; }
+  body.fs .rd-cam { position: fixed !important; inset: 0; z-index: 0 !important; border-radius: 0; aspect-ratio: auto; }
+  body.fs .rd-cam::after { display: none; }
+  body.fs #rd-kind, body.fs #rd-mode, body.fs #rd-mlevel, body.fs .rd-teach, body.fs .rd-test, body.fs #rd-pacerow, body.fs #rd-maxrow, body.fs #rd-wordset, body.fs #rd-numset,
+  body.fs label:has(#rd-hint), body.fs p:has(#rd-switch), body.fs #rd-checkabout, body.fs #rd-tlwrap, body.fs #sp .safe { display: none !important; }
+  /* top: what to sign */
+  body.fs #rd-prompt { order: 1; margin: 0 56px 0 52px; padding: 4px 10px; gap: 8px; background: var(--surface); box-shadow: none; }
+  body.fs #rd-prompt .rd-word, body.fs .rd-word { font-size: clamp(30px, 10vw, 46px); }
+  body.fs #rd-gamebar, body.fs #rd-checkset, body.fs #rd-ckbar, body.fs #rd-results { order: 2; }
+  body.fs #rd-results { background: var(--surface); border-radius: 14px; padding: 10px 12px; }
+  body.fs #rd-ask { order: 3; margin: 0 56px 0 52px; text-align: center; font-size: 13px; color: var(--muted); }
+  body.fs #rd-word, body.fs #rd-letter { order: 4; }
+  body.fs .rd-letter { font-size: 76px; } body.fs .rd-letter.long { font-size: 34px; padding: 4px 0; }
+  body.fs .rd-letter, body.fs .rd-word, body.fs #sp, body.fs .rd-ghead b, body.fs .rd-math, body.fs .lab { color: #fff; }
+  body.fs .rd-word .d { color: #9fe0b4; } body.fs .rd-word .c { color: #FFD25E; } body.fs .rd-word .n { color: #fff; opacity: .7; }
+  body.fs .rd-letter.ok { color: #5BE08A; }
+  body.fs #rd-oops, body.fs #rd-def { order: 5; max-width: 92%; margin: 0 auto; font-size: 15px; }
+  body.fs #rd-oops { background: rgba(199,54,46,.85); color: #fff; border-color: #fff; }
+  body.fs .rd-bar:has(#rd-hold) { order: 6; height: 10px; margin: 0 20%; background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; } body.fs .rd-bar i { background: #5BE08A; }
+  /* readable on a light or a dark camera picture (Colleen): white letters with a black outline. The stroke is painted under the letter so it stays thick
+     and clean; the shadow ring is a backup for older browsers */
+  body.fs .rd-letter, body.fs .rd-word, body.fs #sp .big, body.fs #sp .cnt, body.fs .rd-flash { -webkit-text-stroke: 7px #000; paint-order: stroke fill; text-shadow: 0 0 2px #000, 0 2px 6px rgba(0,0,0,.6); }
+  body.fs #rd-ask, body.fs #sp > p, body.fs #rd-ghead, body.fs .lab { -webkit-text-stroke: 3.5px #000; paint-order: stroke fill; text-shadow: 0 0 2px #000; font-weight: 800; }
+  body.fs #sp > p.msg { -webkit-text-stroke: 0; text-shadow: none; } body.fs #sp > p.msg:not(:empty) { background: rgba(10,12,30,.8); border-radius: 10px; padding: 4px 10px; }
+  /* bottom: the buttons */
+  body.fs #rd-prompt > .lab { display: none; }
+  body.fs #rd-status { display: none; }
+  body.fs .rd-row { order: 21; margin-top: 0; }
+  body.fs .rd-grid::after { content: ''; order: 10; flex: 1 0 0; }      /* the space between the top and the buttons */
+  body.fs .rd-row:has(#rd-skip) { order: 22; }
+  body.fs .rd-grid .btn { background: rgba(16,18,42,.72); color: #fff; border: 1px solid rgba(255,255,255,.45); text-shadow: none; padding: 9px 16px; }
+  body.fs .rd-grid .btn.big { font-size: 17px; padding: 10px 20px; }
+  body.fs #rd-calc { background: var(--surface); }
+  /* the sample hand: a small picture in the lower right corner, above the buttons */
+  body.fs #rd-showbox, body.fs #rd-modelbox, body.fs #rd-gmodel { position: fixed; z-index: 2; right: max(10px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); margin: 0; }
+  body.fs .rd-ref, body.fs #rd-modelbox #rd-model, body.fs .rd-gmodel #rd-model { width: 118px !important; height: 118px !important; background: rgba(255,255,255,.85) !important; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  /* Match the Hand (opened from ASL Study with act=match): the moving hand in the corner, its two buttons small under it; the letter shows once, at the top */
+  body.fs .rd-pair { display: contents; }
+  body.fs #rd-matchlab { display: none; }
+  body.fs.act-match #rd-modelbox { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; width: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+  body.fs.act-match .rd-pair #rd-model { width: 150px !important; height: 150px !important; aspect-ratio: auto; }
+  body.fs.act-match #rd-modelbox .rd-row { flex-direction: column; align-items: stretch; gap: 6px; width: 150px; }
+  body.fs.act-match #rd-modelbox .btn { font-size: 14px; padding: 7px 10px; }
+  body.fs.act-match .rd-tip { max-width: calc(100% - 180px); }
+  body.fs.act-pacer #rd-pacerow { display: block !important; order: 2; text-align: center; margin: 0; } body.fs.act-pacer #rd-pacerow .rd-small { display: none; }      /* Speed Pacer needs its button */
+  /* what was over the camera: smaller and out of the way */
+  body.fs .rd-tip { top: auto; left: max(10px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); max-width: calc(100% - 160px); font-size: 15px; padding: 7px 12px; text-shadow: none; }
+  body.fs .rd-pct { top: calc(env(safe-area-inset-top, 0px) + 8px); right: max(10px, env(safe-area-inset-right, 0px)); width: 46px; height: 46px; font-size: 14px; }
+  body.fs .rd-pct::before { inset: 5px; }
+  body.fs .rd-flash { font-size: 90px; }
+  /* Teach the Camera's panel */
+  body.fs #sp { order: 4; gap: 6px; flex: 1 0 auto; } body.fs #sp .msg { margin-top: auto; } body.fs.samp .rd-grid::after { display: none; } body.fs #sp > p:not([class]) { font-size: 14px; max-width: 30ch; } body.fs #sp .big { font-size: 64px; } body.fs #sp .how { font-size: 16px; } body.fs #sp .cnt { font-size: 56px; }
+  body.fs #sp > p:first-child, body.fs #sp > .bar:nth-child(2) { max-width: 70%; margin: 0 auto; font-size: 13px; }
+  body.fs #sp .bar { background: rgba(0,0,0,.55); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+  body.fs #sp details { background: var(--surface); border-radius: 12px; padding: 6px 8px; text-align: left; }
+  /* phones held sideways: the words and buttons in a column on the left, the camera fills the rest */
+  @media (orientation: landscape) {
+    body.fs .rd-grid { padding-right: 58%; }
+    body.fs .rd-grid::before { content: ''; position: fixed; left: 0; top: 0; bottom: 0; width: 42%; background: linear-gradient(90deg, rgba(10,12,30,.62), rgba(10,12,30,.35) 85%, transparent); z-index: 0; pointer-events: none; }
+    body.fs #rd-prompt, body.fs #rd-ask { margin: 0 0 0 52px; }
+    body.fs .rd-letter { font-size: 64px; } body.fs .rd-bar:has(#rd-hold) { margin: 0 10%; }
+    body.fs #rd-showbox, body.fs #rd-modelbox, body.fs #rd-gmodel { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+    body.fs .rd-ref, body.fs #rd-modelbox #rd-model, body.fs .rd-gmodel #rd-model { width: 104px !important; height: 104px !important; }
+    body.fs .rd-tip { left: auto; right: 132px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: 34%; }
+    body.fs #sp .big { font-size: 52px; }
+  }
+  /* the Menu button (back to the normal page, for settings) and the button to come back to the full camera */
+  #rd-fsbtn { display: none; }
+  body.fs #rd-fsbtn, body.fsable #rd-fsbtn { display: block; position: fixed; z-index: 60; border: 1px solid rgba(255,255,255,.5); border-radius: 999px; font: 800 14px var(--display); cursor: pointer; }
+  body.fs #rd-fsbtn { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(env(safe-area-inset-top, 0px) + 8px); width: 42px; height: 42px; padding: 0; font-size: 20px; background: rgba(16,18,42,.72); color: #fff; }
+  body.fsable:not(.fs) #rd-fsbtn { right: 14px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); padding: 12px 18px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 3px 12px rgba(0,0,0,.3); }
+</style>
+</head>
+<body>
+<div class="rd-wrap">
+  <p style="margin:0"><a href="./#/games" id="rd-back" style="color:var(--accent);font-weight:700;text-decoration:none">← All activities</a></p>
+  <h1 style="font-size:32px;margin:6px 0 4px">Fingerspell to the Camera</h1>
+  <p class="hint" style="margin:0 0 8px" id="rd-intro">Sign the letter to your camera. When the camera reads it, the letter turns green.</p>
+  <div class="rd-tonebar"><span class="rd-small"><b>Hand skin tone:</b></span><div class="tones" id="rd-tones" role="group" aria-label="Skin tone of the hand"></div></div>
+  <div class="rd-safe" role="note"><span aria-hidden="true">🔒</span><div><b>Your camera is private.</b> The camera only watches your hand while you practice. <b>Nothing is recorded.</b> No videos or pictures are saved or sent anywhere, and nobody else can see your camera. <span id="rd-safe-more">The only thing kept is your score: which letters you signed.</span></div></div>
+  <div class="rd-grid">
+    <div>
+      <div class="rd-prompt" id="rd-prompt" hidden><div class="rd-ghead" id="rd-ghead" hidden></div><div class="rd-gmodel" id="rd-gmodel" hidden></div><div class="rd-gpic" id="rd-gpic" hidden></div><div class="rd-gchoose" id="rd-gchoose" hidden></div><span class="lab">Spell this word</span></div>
+      <div class="rd-cam"><video id="rd-video" playsinline muted></video><canvas id="rd-draw"></canvas><div class="rd-pct" id="rd-pct" hidden></div><div class="rd-tip" id="rd-tip"></div><div class="rd-flash" id="rd-flash"></div><div class="rd-msg" id="rd-camsg"><div><p>Which hand do you sign with?</p><div class="rd-row"><button class="btn big" data-hand="left">My left hand</button><button class="btn big" data-hand="right">My right hand</button></div><p class="rd-small" style="color:#cfd6ff">Then the camera turns on. It only watches your hand. Nothing is recorded or saved.</p></div></div></div>
+      <p class="rd-small" id="rd-status"></p>
+    </div>
+    <div class="card rd-target">
+      <div class="seg sm" id="rd-kind" style="margin:0 auto 6px;display:inline-flex"><button data-v="practice" class="on">Practice</button><button data-v="check">Check</button><button data-v="games">Games</button></div>
+      <div class="seg sm" id="rd-mode" style="margin:0 auto 8px;display:inline-flex"><button data-v="letters" class="on">Letters</button><button data-v="words">Words</button><button data-v="numbers">Numbers</button></div>
+      <div class="seg sm" id="rd-mlevel" hidden style="margin:0 auto 8px;display:inline-flex"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div>
+      <div class="rd-gamelist" id="rd-gamelist" hidden></div>
+      <div id="rd-gamebar" hidden><p class="lab" id="rd-gtitle" style="margin:4px 0"></p><div class="rd-row" id="rd-gbtns"></div>
+        <div class="rd-calc" id="rd-calc" hidden><div class="rd-calcd" id="rd-calcd">0</div>
+          <div class="rd-keys"><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="÷">÷</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="×">×</button><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="−">−</button><button data-k="0">0</button><button data-k="(">(</button><button data-k=")">)</button><button data-k="+">+</button><button data-k="C">C</button><button data-k="⌫">⌫</button><button data-k="=" class="eq">=</button></div></div>
+      </div>
+      <div id="rd-checkset" hidden>
+        <p class="rd-small" style="margin:2px 0" id="rd-checkabout">All 26 letters, in a mixed order. No hints. The time only runs while your hand is in view.</p>
+        <label class="rd-small" id="rd-tlwrap">Time per <span id="rd-tlunit">letter</span>: <select id="rd-tl"><option value="4">4 seconds</option><option value="6">6 seconds</option><option value="8" selected>8 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option><option value="20">20 seconds</option><option value="0">No limit</option></select></label>
+        <div class="rd-row"><button class="btn big" id="rd-checkgo">Start the check</button></div>
+        <div class="rd-ckbar" id="rd-ckbar" hidden><span id="rd-ckpos"></span><div class="rd-bar"><i id="rd-cktime" style="background:var(--accent)"></i></div></div>
+      </div>
+      <div class="rd-results" id="rd-results" hidden></div>
+      <details id="rd-numset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the numbers</b></summary>
+        <div class="chips rd-chips" id="rd-nsets"></div>
+        <p class="rd-small" style="margin:4px 0 0">1 to 5 on their own face you; 6 to 9 face out. Moving numbers count every way you sign them: both 23s and 25s, 16 to 19 either way, hundreds into a C or a curl. The palm has to face the right way.</p>
+      </details>
+      <p class="rd-pacerow" id="rd-pacerow"><button class="btn ghost" id="rd-pacebtn" type="button">🎵 Speed Pacer (training)</button> <span class="rd-small">Pick a speed; the words move on at that pace, ready or not. More forgiving than the games.</span></p>
+      <p class="rd-small" id="rd-maxrow" hidden style="margin:8px 0 4px"><label for="rd-max"><b>Longest word:</b></label> <select id="rd-max" style="font:inherit;padding:4px 8px;border-radius:8px"></select> <span id="rd-count"></span></p>
+      <details id="rd-wordset" hidden><summary class="rd-small" style="cursor:pointer"><b>Choose the word lists</b></summary>
+        <div class="chips rd-chips" id="rd-cats"></div>
+      </details>
+      <p class="lab" style="margin:6px 0 0" id="rd-ask">Sign this letter</p>
+      <div class="rd-word" id="rd-word" hidden></div>
+      <div class="rd-letter" id="rd-letter">A</div>
+      <div class="rd-show" id="rd-showbox" hidden><img class="rd-ref" id="rd-ref" alt="How the letter looks"></div>
+      <div class="rd-oops" id="rd-oops" role="alert" hidden></div>
+      <div class="rd-bar" aria-hidden="true"><i id="rd-hold"></i></div>
+      <div class="rd-row"><button class="btn" id="rd-shownum" hidden>▶ Show me</button></div>
+      <div class="rd-row" id="rd-after" hidden><button class="btn" id="rd-showme">▶ Show me</button></div>
+      <p class="rd-def" id="rd-def" hidden></p>
+      <div class="rd-model" id="rd-modelbox" hidden></div>
+      <label class="rd-small" style="display:block;margin-top:10px"><input type="checkbox" id="rd-hint"> Show the handshape (for beginners)</label>
+      <div class="rd-row"><button class="btn ghost" id="rd-prev">←</button><button class="btn ghost" id="rd-skip">Skip →</button><button class="btn ghost" id="rd-rand">Random</button></div>
+      <div class="rd-mix" id="rd-mix" hidden></div>
+      <details class="rd-test"><summary class="rd-small">What the camera sees (for testing)</summary><div class="rd-guess" id="rd-guess" aria-live="polite"></div><label class="rd-small" style="display:block;margin-top:4px"><input type="checkbox" id="rd-agebox" autocomplete="off"> Show the age area (ages: the space just under the chin)</label></details>
+      <p class="rd-small" style="margin-top:10px">Signing with your <b id="rd-handname">right</b> hand. <button class="link" id="rd-switch" style="background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;text-decoration:underline">Switch hands</button></p>
+      <div class="rd-teach">
+        <h3>Teach it my hand</h3>
+        <p class="rd-small" style="margin:0">Hands are all a little different. Make the sign, hold it steady and tap Teach: the camera remembers your way of making it (on this computer only). It only learns a sign that already looks close to the right handshape, so it can’t learn a mistake.</p>
+        <div class="rd-row"><button class="btn" id="rd-teachbtn">Teach this letter</button><button class="btn ghost" id="rd-forget">Forget this letter</button></div>
+        <div class="rd-alpha" id="rd-alpha"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/* Colleen 2026-11-11: "add a note permanently in this app that thanks the ASL classes from the 2026-27 school year for helping to train these hands/signs
+   to help all future asl students". Her classes only: hidden in the TpT editions she sells (their folders end in -tpt). */
+(function () { if (/-tpt\//.test(location.pathname)) { var t = document.getElementById('rd-thanks'); if (t) t.remove(); } })();
+</script>
+<button id="rd-fsbtn" type="button"></button>
+<script>
+/* Phones: the camera full screen with everything on top of it (see body.fs in the style). Menu goes back to the normal page (to change Letters / Words,
+   Practice / Check, hands ...); "Full screen camera" comes back. Bigger screens never change. */
+(function () {
+  var wasG = false, mq = matchMedia('(max-width: 760px) and (pointer: coarse), (max-height: 520px) and (pointer: coarse)')      /* phones and tablets held sideways only: a small camera window on a computer stays as it was */, off = false, b = document.getElementById('rd-fsbtn'), msg = document.getElementById('rd-camsg'), B = document.body;
+  function upd() {
+    var g = B.classList.contains('gaming'); if (g && !wasG) off = false; wasG = g;      /* a game starting goes back to the full camera */
+    var camOn = msg && msg.hidden, picking = B.classList.contains('gamestab') && !B.classList.contains('gaming');
+    var able = mq.matches && camOn && !picking, fs = able && !off;
+    if (B.classList.contains('fs') !== fs) B.classList.toggle('fs', fs);
+    if (B.classList.contains('fsable') !== able) B.classList.toggle('fsable', able);
+    var t = fs ? '☰' : '📷 Full screen camera'; if (b.textContent !== t) { b.textContent = t; b.setAttribute('aria-label', fs ? 'Menu: back to the full page' : 'Full screen camera'); b.title = fs ? 'Menu' : ''; }
+  }
+  b.onclick = function () { off = !off; if (!off) scrollTo(0, 0); upd(); };
+  new MutationObserver(upd).observe(B, { attributes: true, attributeFilter: ['class'] });
+  if (msg) new MutationObserver(upd).observe(msg, { attributes: true, attributeFilter: ['hidden'] });
+  (mq.addEventListener ? mq.addEventListener('change', upd) : mq.addListener(upd)); upd();
+})();
+</script>
+<canvas id="rd-model" width="320" height="320"></canvas>
+<script src="lib/three.min.js"></script>
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/RoomEnvironment.js"></script>
+<script src="words.js?v=40"></script>
+<script src="defs.js?v=2"></script>
+<script src="hand.js?v=153"></script>
+<script src="people.js?v=4"></script>
+<script src="themes.js?v=43"></script>
+<script src="samples.js?v=11"></script>
+<script src="wordsamp.js?v=7"></script>
+<script type="module" src="reader.js?v=78"></script>
+<script>if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register('sw.js').catch(function () {});</script>
+</body>
+</html>
