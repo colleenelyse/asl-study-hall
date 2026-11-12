@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#012052">
 <link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="manifest" href="manifest.json">
 <script>document.documentElement.classList.add('papp'); { const m = /^#claim=(\d{6})$/.exec(location.hash); if (m) { window.__paClaim = m[1]; history.replaceState(null, '', '#/games'); } } if (!location.hash || location.hash === '#' || location.hash === '#/') history.replaceState(null, '', '#/games');</script>
-<style>:root{--app-navy:#012052}</style><link rel="stylesheet" href="shell.css?v=fd72f740">
+<style>:root{--app-navy:#012052}</style><link rel="stylesheet" href="shell.css?v=717aeb6e">
 <meta charset="utf-8">
 <meta name="robots" content="noindex"><title>ASL Numberwise</title>
 <meta name="description" content="Read ASL numbers from a 3D hand, then sign numbers to your camera.">
@@ -822,9 +822,10 @@
       <li><span>Open this page in <b class="k">Safari</b>.</span></li>
       <li><span>Tap <b class="k">Share</b> <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. Don’t see it? Tap <span class="ic">•••</span> first.</span></li>
       <li><span>Tap <b class="k">Add to Home Screen</b>. Don’t see it? Scroll down, or tap <b class="k">More</b> <span class="ic">•••</span>.</span></li>
+      <li><span>If you see <b class="k">Open as Web App</b>, leave it turned on.</span></li>
       <li><span>Tap <b class="k">Add</b>. The ASL Numberwise icon is now on your home screen.</span></li>
     </ol></div>
-    <div data-for="android" hidden><ol>
+    <div data-for="android" hidden><button class="go" type="button" id="appstepsinst" hidden style="margin-bottom:12px" onclick="var e = window.__bip; if (!e) return; e.prompt(); e.userChoice.then(function () { window.__bip = null; document.getElementById('appstepsinst').hidden = true; });">📲 Install now</button><ol>
       <li><span>Open this page in <b class="k">Chrome</b>.</span></li>
       <li><span>Tap the menu <span class="ic" aria-label="menu">⋮</span> at the top right.</span></li>
       <li><span>Tap <b class="k">Install app</b> (it may say <b class="k">Add to Home screen</b>).</span></li>
@@ -835,6 +836,11 @@
   <button class="go" type="button" id="appstepsgo">Start practicing</button>
   <div class="stripes" aria-hidden="true"><i style="background:#F2766A"></i><i style="background:#F6C24B"></i><i style="background:#6FCB9F"></i><i style="background:#A884E0"></i><i style="background:#5DB6F2"></i></div>
 </main></div>
+<script>      /* 2026-11-12 (Colleen's ecosystem plan: "show an installation button only when installation can actually be initiated"): Chrome on Android says when it can install; then the steps get an Install now button */
+window.__bip = null;
+addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__bip = e; var b = document.getElementById('appstepsinst'); if (b) b.hidden = false; });
+addEventListener('appinstalled', function () { window.__bip = null; var b = document.getElementById('appstepsinst'); if (b) b.hidden = true; });
+</script>
 <script>
 window.paSteps = function (force) {
   var ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
@@ -853,7 +859,7 @@ paSteps(false);
 </script>
 <script>window.PALINK = {"door": "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", "main": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", "back": "numberwise"};</script>
 <script src="link.js?v=99bf014d"></script>
-<script>window.PAPP = {"name": "ASL Numberwise", "tabs": [["#/games/learn", "📘", "Learn"], ["#/games/practice", "🔁", "Practice"], ["#/games/games", "🎮", "Games"], ["#/games/check", "🎯", "Check"], ["#/progress", "📈", "Progress"]], "ver": "version fd72f740"};</script>
-<script src="shell.js?v=fd72f740"></script>
+<script>window.PAPP = {"name": "ASL Numberwise", "tabs": [["#/games/learn", "📘", "Learn"], ["#/games/practice", "🔁", "Practice"], ["#/games/games", "🎮", "Games"], ["#/games/check", "🎯", "Check"], ["#/progress", "📈", "Progress"]], "ver": "version 717aeb6e"};</script>
+<script src="shell.js?v=717aeb6e"></script>
 </body>
 </html>
