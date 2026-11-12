@@ -33,7 +33,7 @@
     '<section id="pa-acct" hidden></section>' +
     '<div id="pa-look-slot"></div>' +
     '<div class="links"><button type="button" id="pa-help">📲 How to put this app on your home screen</button><a href="privacy.html">🔒 Privacy</a></div>' +
-    '<p class="ver">' + P.name + ' · your progress is saved on this phone only.' + (P.ver ? ' · ' + P.ver : '') + '</p></div>';
+    '<p class="ver">' + P.name + ' · your progress is saved on this phone' + (window.paLinkOn && window.paLinkOn() ? ', and in ASL Study when you are signed in' : '') + '.' + (P.ver ? ' · ' + P.ver : '') + '</p></div>';      /* buyers' copies have no sign-in: just "on this phone" */
   document.body.appendChild(sheet);
   var look = $('#look'); if (look) $('#pa-look-slot').appendChild(look);
   function close() { sheet.hidden = true; }
@@ -70,7 +70,7 @@
     acct.hidden = false;
     var staff = inn && /^[a-z][a-z.'\-]*@d204\.lths\.net$/i.test(window.paLink.email());      /* 4.485 an LT teacher (letters only before the @, like Colleen; students have digits) */
     acct.innerHTML = '<h3>ASL Study</h3>' + (inn ? '<p>✓ Signed in as <b>' + esc(window.paLink.email()) + '</b>. ' + (staff ? 'Teacher preview: your practice is not saved.' : 'Your practice here counts in ASL Study.') + '</p><button class="pa-btn ghost" type="button" data-pa="out">Sign out</button>'
-      : '<p>In an ASL class that uses ASL Study? Sign in so your practice here counts toward your ASL Study progress.</p>' + signForm('pa-acct'));
+      : '<p><b>Are you an ASL student in the app creator\'s class?</b> Sign in so this practice counts in ASL Study.</p>' + signForm('pa-acct') + '<p class="pa-note">LT teachers: use Sign in with Google to try it as a teacher.</p>');      /* the same words as the card on Games (Colleen, 2026-11-12) */
     wire(acct, 'pa-acct');
     var games = document.querySelector('[data-screen="games"]');
     if (inn || later) { if (card) card.remove(); return; }
