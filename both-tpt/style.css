@@ -723,3 +723,6 @@ html.papp body[data-grp="games"] .grp:not(#grp-games), html.papp body[data-grp="
 html.papp body:not([data-grp="games"]) .sec-tools { display: none !important; }      /* the teacher tools sit under the Games tab in the phone apps */
 .grpstep { display: inline-block; font: 800 13px var(--body, inherit); text-transform: uppercase; letter-spacing: .06em; padding: 3px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-ink, #fff); vertical-align: middle; margin-right: 4px; }
 #grp-check .modehead { border: 2px solid var(--accent); }      /* the final challenge */
+.grpnext { margin: 14px 0 6px; padding: 14px 16px; border-radius: 16px; border: 2px dashed var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface, #fff)); display: flex; flex-direction: column; gap: 10px; }
+.grpnext p { margin: 0; font-size: 17px; } .grpnext .row { display: flex; gap: 10px; flex-wrap: wrap; }
+.grpnext .grpgo { text-decoration: none; padding: 10px 16px; border-radius: 999px; background: var(--accent); color: var(--accent-ink, #fff); font-weight: 800; }

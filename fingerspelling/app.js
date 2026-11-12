@@ -329,8 +329,10 @@ function gamesInit() {
     + camSub('Camera games', 'Fingerspell to play.');
   const camGames = (kind, L) => L.map(([g, em, t, d]) => '<a class="gcard" data-cam' + (kind ? ' data-camnum' : '') + ' href="reader.html?' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '" data-q="' + (kind ? 'kind=numbers&' : '') + 'g=' + g + '"><span class="gi" aria-hidden="true">' + em + '</span><b>' + t + '</b><span>' + d + '</span>' + ((!kind && STK_CAM.indexOf(g) >= 0) || (kind && /^(math|count|clock)$/.test(g)) ? stkBadge() : '') + '</a>').join('');      /* each camera game has its own card (Colleen, 2026-10-17) */
   $('#g-exprfs').innerHTML += camGames('', [['def', '📖', 'Definition to Word', 'Read what it means, then fingerspell the word.'], ['echo', '🔁', 'Echo', 'The hand spells a word. Spell it back.'], ['speed', '⏱️', 'Speed Spell', 'How many words can you spell in 60 seconds?'], ['ladder', '🪜', 'Spelling Ladder', 'Every word you spell, the next one is longer.'], ['hang', '🎯', 'Camera Hangman', 'Sign letters to find the hidden word.'], ['wordle', '🟩', 'ASL Wordle', 'Fingerspell five-letter guesses. Six tries.'], ['names', '🙋', 'Name Game', 'Fingerspell names. In your class app: your classmates\u2019 names.']]);
-  $('#g-exprfs').innerHTML += camSub('Pronouns', 'Point or flat hand, toward you or toward them.');
-  $('#g-exprfs').innerHTML += '<a class="gcard" data-cam href="pronouns.html" data-page="pronouns.html"><span class="gi" aria-hidden="true">👉</span><b>Pronoun Signs: ME, MY, YOU, YOUR</b><span>Sign the right pronoun at the right word: point or flat hand, toward you or toward them.</span></a>';      /* the pronoun drills (Colleen, 2026-10-17) */
+  if (!document.documentElement.classList.contains('papp')) {      /* 2026-11-12 (Colleen: "take pronouns off of these apps"): not in ASL Spellbound / ASL Numberwise */
+    $('#g-exprfs').innerHTML += camSub('Pronouns', 'Point or flat hand, toward you or toward them.');
+    $('#g-exprfs').innerHTML += '<a class="gcard" data-cam href="pronouns.html" data-page="pronouns.html"><span class="gi" aria-hidden="true">👉</span><b>Pronoun Signs: ME, MY, YOU, YOUR</b><span>Sign the right pronoun at the right word: point or flat hand, toward you or toward them.</span></a>';      /* the pronoun drills (Colleen, 2026-10-17) */
+  }
   $$('#g-exprfs .gcard').forEach(a => { a.onclick = openCamera; });
   $('#g-exprnum').innerHTML = camSub('Beginners: copy the hand', 'The hand shows each number beside your camera.') + camAct(true, [['match', '🤝', 'Match the Hand: Numbers', 'Beginners: the hand shows each number beside your camera. Copy it with your hand.', 1]])
     + camSub('Practice', 'Sign at your own pace. The camera helps you fix your hand.') + camAct(true, [['number', '🔢', 'Sign the Number', 'See a number, sign it to your camera: 0 to 9, moving numbers, rocking numbers, hundreds.', 1]])
@@ -371,6 +373,13 @@ const GRPS = [      /* in order: start at the top; the checks are the final chal
   ['games', '🎮', 'Games', 'Points, speed and challenges.', 3],
   ['check', '🎯', 'Check yourself', 'The final challenge. Do Learn and Practice first, then come back here to see if you are ready. No hints.', 4]
 ];
+/* 2026-11-12 (Colleen: "at the bottom of the learn page, draw students' attention to the fact that if they feel they've learned it, they should move on to practice and or games"): a next-step box at the end of each group */
+const grpBtn = (g, t) => '<a class="btn grpgo" href="#/games/' + g + '">' + t + ' →</a>';
+const GRP_NEXT = {
+  learn: '<div class="grpnext"><p><b>Feel like you\u2019ve learned it?</b> Don\u2019t stay here. Move on and use it.</p><div class="row">' + grpBtn('practice', '🔁 Step 2: Practice') + grpBtn('games', '🎮 Step 3: Games') + '</div></div>',
+  practice: '<div class="grpnext"><p><b>Getting most of them right?</b> Try the games, then check yourself.</p><div class="row">' + grpBtn('games', '🎮 Step 3: Games') + grpBtn('check', '🎯 Step 4: Check yourself') + '</div></div>',
+  games: '<div class="grpnext"><p><b>Think you\u2019re ready?</b> Take the final challenge.</p><div class="row">' + grpBtn('check', '🎯 Step 4: Check yourself') + '</div></div>'
+};
 function grpOf(a) {
   const h = a.getAttribute('href') || '', q = a.dataset.q || '';
   if (/^#\/tms\//.test(h) || /(^|&)act=check\b/.test(q)) return 'check';
@@ -387,7 +396,7 @@ function sortGames() {
     (g === 'learn' ? kinds.map(k => '<div class="grplearn" id="gl-learn-' + k[0] + '"></div>').join('') : '') +
     (g === 'check' ? '<div class="panels"><div class="pcol">' + kinds.map(k => blk(g, false, k)).join('') + '</div></div></section>'      /* the checks mix watching and signing: one list */
       : '<div class="panels"><div class="pcol"><h3 class="grpsub">👁️ Watch the hand</h3>' + kinds.map(k => blk(g, false, k)).join('') + '</div>' +
-      '<div class="pcol" data-cam><h3 class="grpsub">📷 Sign to your camera</h3>' + kinds.map(k => blk(g, true, k)).join('') + '</div></div></section>')).join('');
+      '<div class="pcol" data-cam><h3 class="grpsub">📷 Sign to your camera</h3>' + kinds.map(k => blk(g, true, k)).join('') + '</div></div>' + (GRP_NEXT[g] || '') + '</section>')).join('');
   kinds.forEach(k => {      /* the tutorial buttons go on top of Learn */
     const into = $('#gl-learn-' + k[0]), bar = $(k[0] === 'letters' ? '#g-learnfs' : '#g-learngrid'), intro = bar && bar.previousElementSibling;
     if (into && bar) { if (both) into.insertAdjacentHTML('beforeend', '<h4 class="grpk pad">' + k[1] + '</h4>'); if (intro && intro.classList.contains('learn-intro')) into.appendChild(intro); into.appendChild(bar); }
@@ -411,6 +420,7 @@ function sortGames() {
     const m = location.hash.match(/^#\/games\/(learn|practice|games|check)$/), g = m && m[1];
     document.body.dataset.grp = g || '';
     $$('#grpnav a').forEach(x => x.classList.toggle('on', x.dataset.g === g));
+    if (!quiet && g && document.documentElement.classList.contains('papp')) window.scrollTo(0, 0);      /* the phone apps: a new tab starts at its top */
     if (!quiet && g && !document.documentElement.classList.contains('papp')) { const s = $('#grp-' + g); if (s) setTimeout(() => s.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); }
   };
   fit(); setTimeout(fit, 0); setTimeout(fit, 1500); addEventListener('message', () => setTimeout(fit, 0));      /* the tutorial buttons are drawn a moment later; ASL Study's hello can turn the camera off */
