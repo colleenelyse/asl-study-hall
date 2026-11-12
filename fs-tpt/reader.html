@@ -163,6 +163,15 @@
   /* the sample hand: a small picture in the lower right corner, above the buttons */
   body.fs #rd-showbox, body.fs #rd-modelbox, body.fs #rd-gmodel { position: fixed; z-index: 2; right: max(10px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); margin: 0; }
   body.fs .rd-ref, body.fs #rd-modelbox #rd-model, body.fs .rd-gmodel #rd-model { width: 118px !important; height: 118px !important; background: rgba(255,255,255,.85) !important; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  /* Match the Hand (opened from ASL Study with act=match): the moving hand in the corner, its two buttons small under it; the letter shows once, at the top */
+  body.fs .rd-pair { display: contents; }
+  body.fs #rd-matchlab { display: none; }
+  body.fs.act-match #rd-modelbox { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; width: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+  body.fs.act-match .rd-pair #rd-model { width: 150px !important; height: 150px !important; aspect-ratio: auto; }
+  body.fs.act-match #rd-modelbox .rd-row { flex-direction: column; align-items: stretch; gap: 6px; width: 150px; }
+  body.fs.act-match #rd-modelbox .btn { font-size: 14px; padding: 7px 10px; }
+  body.fs.act-match .rd-tip { max-width: calc(100% - 180px); }
+  body.fs.act-pacer #rd-pacerow { display: block !important; order: 2; text-align: center; margin: 0; } body.fs.act-pacer #rd-pacerow .rd-small { display: none; }      /* Speed Pacer needs its button */
   /* what was over the camera: smaller and out of the way */
   body.fs .rd-tip { top: auto; left: max(10px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); max-width: calc(100% - 160px); font-size: 15px; padding: 7px 12px; text-shadow: none; }
   body.fs .rd-pct { top: calc(env(safe-area-inset-top, 0px) + 8px); right: max(10px, env(safe-area-inset-right, 0px)); width: 46px; height: 46px; font-size: 14px; }
