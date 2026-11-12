@@ -9,7 +9,8 @@ html.papp header.top nav, html.papp header.top #look, html.papp .foot { display:
 html.papp header.top .brand { color: #fff; font-size: 20px; gap: 10px; min-width: 0; }
 html.papp header.top .brand img.pa-ic { width: 32px; height: 32px; border-radius: 8px; flex: none; }
 html.papp header.top .brand .logo { display: none; }
-#pa-back { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font: 800 24px/1 system-ui, sans-serif; cursor: pointer; display: grid; place-items: center; margin-right: 6px; }      /* top left on every screen */
+#pa-back { flex: none; height: 42px; padding: 0 16px 0 12px; border-radius: 999px; border: 0; background: #fff; color: var(--pa-navy); font: 800 17px/1 var(--body, system-ui), sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }      /* top left on every screen; 2026-11-12 (Colleen: "very small on a laptop. difficult to find"): a white "← Back" pill */
+#pa-back span { font-size: 22px; } @media (min-width: 900px) { #pa-back { height: 48px; font-size: 19px; padding: 0 20px 0 14px; } }
 #pa-gear { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 20px; cursor: pointer; display: grid; place-items: center; }
 #pa-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; justify-content: space-around; background: var(--surface, #fff);
   border-top: 1px solid var(--line, #E3D9CC); padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
@@ -47,3 +48,4 @@ html.papp #pa-linkcard { margin-left: 14px; margin-right: 14px; } @media (min-wi
 .pa-glogo { flex: none; }
 .pa-btn:disabled { opacity: .6; } .pa-err { color: var(--bad, #C7362E); font-weight: 700; } .pa-link { align-self: center; background: none; border: 0; color: var(--muted, #5A6185); text-decoration: underline; font: inherit; cursor: pointer; }
 .pa-note { margin: 0; font-size: 14px; color: var(--muted, #5A6185); text-align: center; }
+@media (max-width: 420px) { html.papp header.top .brand { font-size: 17px; white-space: nowrap; } html.papp header.top .brand img.pa-ic { width: 28px; height: 28px; } }      /* the name stays on one line next to the Back button */

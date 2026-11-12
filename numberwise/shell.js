@@ -18,7 +18,7 @@
     if (/^#\/play/.test(to) && /^#\/setup\//.test(from) && trail[trail.length - 1] === from) return;
     trail.push(from); if (trail.length > 50) trail.shift();
   });
-  if (top) top.insertAdjacentHTML('afterbegin', '<button id="pa-back" type="button" aria-label="Back">←</button>');
+  if (top) top.insertAdjacentHTML('afterbegin', '<button id="pa-back" type="button" aria-label="Back"><span aria-hidden="true">←</span> Back</button>');
   $('#pa-back').onclick = function () { var t = trail.pop() || '#/games'; if (t === location.hash) return; goingBack = true; location.hash = t; };
 
   var tabs = document.createElement('nav'); tabs.id = 'pa-tabs'; tabs.setAttribute('aria-label', P.name);

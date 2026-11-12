@@ -585,7 +585,8 @@ function showDef(w) {      /* what the word means, right under the word, from th
 const FROM_STUDY_CHECK = () => ACT === 'check';      /* never in the Check */
 const POSS_WORDS = ['MOMS', 'DADS', 'TOMS', 'KIMS', 'BOBS', 'AMYS', 'SAMS', 'JENS', 'MAXS', 'SUES'];
 let POSS = -1;
-function newWord() { const P = pool(); POSS = -1; if (!GAME && !(CK && CK.on) && !LIVEON && !FROM_STUDY_CHECK() && Math.random() < 0.15) { WORD = POSS_WORDS[Math.floor(Math.random() * POSS_WORDS.length)]; POSS = WORD.length - 1; } else WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
+const POSS_ON = false;      /* 2026-11-12 (Colleen: "you're using some of the words with 's ... remove these ... 's is not the correct way to actually show possession in asl"): no more MOM'S in Spell the Word */
+function newWord() { const P = pool(); POSS = -1; if (POSS_ON && !GAME && !(CK && CK.on) && !LIVEON && !FROM_STUDY_CHECK() && Math.random() < 0.15) { WORD = POSS_WORDS[Math.floor(Math.random() * POSS_WORDS.length)]; POSS = WORD.length - 1; } else WORD = P.length ? P[Math.floor(Math.random() * P.length)] : 'CAT'; wi = 0; showWord(); }
 const wordText = w => POSS >= 0 && w === WORD ? w.slice(0, POSS) + '\u2019' + w.slice(POSS) : w;      /* MOMS -> MOM'S, for showing and for Show me */
 let LAST = '';
 function wordDone() {      /* all green, then straight on to the next word (Colleen); "Show me" stays for the word just spelled */
