@@ -582,11 +582,11 @@ function wordDone() {      /* all green, then straight on to the next word (Coll
 }
 async function showMe() {      /* the hand spells the word back, for clarity (Colleen) */
   if (!refHand || !LAST) return; const box = $('#rd-modelbox'), cv = $('#rd-model'); box.appendChild(cv); box.hidden = false; $('#rd-showme').disabled = true;
-  try { await refHand.ready; await refHand.spell(LAST, { speed: () => 0.15 }); } finally { $('#rd-showme').disabled = false; }
+  try { await refHand.ready; toneOn('w' + LAST); await refHand.spell(LAST, { speed: () => 0.15 }); } finally { $('#rd-showme').disabled = false; }
 }
 function showRef(c) {      /* the handshape picture: only when "Show the handshape" is on (beginners); most of the time it just asks for the letter */
   const on = $('#rd-hint').checked; $('#rd-showbox').hidden = !on;
-  if (on && refHand && refHand.chartImage) { try { $('#rd-ref').src = NUMS ? refHand.numberImage(+c) : refHand.chartImage(c); } catch (e) {} }
+  if (on && refHand && refHand.chartImage) { try { toneOn((NUMS ? 'n' : 'l') + c); $('#rd-ref').src = NUMS ? refHand.numberImage(+c) : refHand.chartImage(c); } catch (e) {} }
 }
 $('#rd-mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#rd-mode button').forEach(x => x.classList.toggle('on', x === b));
   setNums(b.dataset.v === 'numbers'); const words = b.dataset.v === 'words'; if (!words) $('#rd-def').hidden = true; $('#rd-prompt').hidden = !words; (words ? $('#rd-prompt') : $('.rd-target')).insertBefore($('#rd-word'), words ? null : $('#rd-letter')); $('#rd-letter').hidden = words; $('#rd-ask').hidden = words; $('#rd-word').hidden = !words;      /* the word sits right above the camera (Colleen) */ $('#rd-wordset').hidden = !words; $('#rd-maxrow').hidden = !words; document.querySelector('.rd-teach').hidden = words; $('#rd-after').hidden = true; $('#rd-modelbox').hidden = true;
@@ -1253,6 +1253,26 @@ $('#rd-alpha').onclick = e => { const b = e.target.closest('button'); if (b) go(
 $('#rd-teachbtn').onclick = () => { if (!landmarker) return; if (NUMS && SET[cur].length > 1) { $('#rd-status').textContent = 'Teaching works for 0 to 9. Moving numbers are read from the movement.'; return; } if (!NUMS && MOVING[SET[cur]]) { $('#rd-status').textContent = 'J and Z are read from the motion, so they don\u2019t need teaching.'; return; } teachBuf = []; teaching = 30; $('#rd-teachbtn').disabled = true; $('#rd-teachbtn').textContent = 'Hold still…'; };
 $('#rd-forget').onclick = () => { delete MINE[SET[cur]]; saveMine(); drawAlpha(); };
 refHand = window.FSHand.create($('#rd-model'), {});
+/* SKIN TONE (Colleen 2026-11-11: "i want people to be able to select the complexion at the top of the page and if they don't select, see an even assortment").
+   The swatches at the top pick one tone for the sample hand; Mix (the default) deals all 7 tones evenly (hand.js dealTone: each tone once in every 7),
+   a new one for each new letter, number or word, never while the hand is moving. */
+const TONE_K = 'fsp-reader-tone';
+let TONE_PICK = 'mix', toneFor = null;
+try { const v = localStorage.getItem(TONE_K); if (v === 'mix' || /^[0-6]$/.test(v || '')) TONE_PICK = v; } catch (e) {}
+function toneOn(key) {
+  if (!refHand || !refHand.setTone || !refHand.TONES) return;
+  if (TONE_PICK !== 'mix') { refHand.setTone(refHand.TONES[+TONE_PICK]); toneFor = null; return; }
+  if (key != null && key === toneFor) return; toneFor = key; refHand.setTone(refHand.dealTone());
+}
+function toneBar() {
+  const box = $('#rd-tones'); if (!box || !refHand || !refHand.TONES) return;
+  box.innerHTML = refHand.TONES.map((t, i) => '<button type="button" class="sw" data-t="' + i + '" aria-label="Skin tone ' + (i + 1) + '" style="background:#' + t.toString(16).padStart(6, '0') + '"></button>').join('') + '<button type="button" class="rnd" data-t="mix" title="Every skin tone, taking turns">Mix</button>';
+  const mark = () => box.querySelectorAll('button').forEach(b => { const on = b.dataset.t === TONE_PICK; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  box.onclick = e => { const b = e.target.closest('button'); if (!b) return; TONE_PICK = b.dataset.t; try { localStorage.setItem(TONE_K, TONE_PICK); } catch (x) {} mark(); toneFor = null; toneOn('pick'); const c = SET && SET[cur]; if (c != null && !$('#rd-showbox').hidden) showRef(c); };
+  mark();
+}
+refHand.ready.then(() => { toneBar(); toneOn('start'); });
+
 refHand.ready.then(() => { STILL.forEach(c => { const P = refHand.poseJoints(c); if (P) TPL[c] = feat(P); if (P && (c === 'G' || c === 'H')) SWING[c] = SWING_DEG.map(d => feat(swingJoints(P, d))); if (P && c === 'Q') SWING.Q = [TPL.Q].concat(...Q_DIRS.map(d => [-60, -30, 0, 30, 60].map(r => feat(rollJoints(turnJoints(P, d), r)))));      /* and the palm turned up to 60° either way (the model's faces almost straight back at the signer) */ });
   STILL.filter(c => !'WFOC'.includes(c)).forEach(c => { if (TPL[c]) NOTNUM[c] = TPL[c]; }); { const P = refHand.numberJoints(10, false); if (P) NOTNUM['thumbs up'] = feat(P); }      /* W = 6, F = 9, O and C = 0: those stay out */
   DIGITS.forEach(c => { const n = +c, P = refHand.numberJoints(n, false); if (P) TPL[c] = feat(P); if (n >= 1 && n <= 5) { const Q = refHand.numberJoints(n, true); if (Q) ALT[c] = feat(Q); } });      /* 1-5: palm toward you (counting) or palm out (inside a bigger number); both count */
@@ -1266,6 +1286,7 @@ if (WANT_GAME) { const gb = document.querySelector('#rd-kind [data-v="games"]');
 let MSEQ = 0;
 async function matchShow(c, again, whole, slow) {      /* 4.462 slow: the slow-motion button (half speed or slower) */
   const my = ++MSEQ, t = String(c); if (!refHand) return; await refHand.ready; if (my !== MSEQ) return;
+  toneOn(whole ? 'w' + whole : WORD ? 'w' + wordText(WORD) : (NUMS ? 'n' : 'l') + t);      /* Mix: one tone per letter, number or word */
   const lab = $('#rd-matchlab'), stop = () => my !== MSEQ, spd = () => slow ? -0.6 : 0.1, per = slow ? 1100 : 500;
   try {
     if (whole) { if (lab) lab.textContent = whole; await refHand.spell(whole, { speed: spd, stop }); if (stop()) return; }      /* 4.461 words: watch the whole word, then copy it letter by letter */

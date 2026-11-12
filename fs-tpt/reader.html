@@ -117,6 +117,7 @@
   body.act-match.lefty #rd-modelbox { order: 2; } body.act-match.lefty .rd-pair #rd-model { transform: scaleX(-1); }
   .rd-matchlab { margin: 0; font: 700 44px/1 var(--display); color: var(--accent); min-height: 44px; }
   body.act-match #rd-teachbtn, body.act-match #rd-forget { display: none; }
+  .rd-tonebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; }      /* Colleen 2026-11-11: choose the complexion; Mix (the default) deals every tone evenly */
   body.tmscam #rd-checkgo, body.tmscam #rd-checkset .rd-row { display: none !important; }      /* 4.462 the test tab sends each question */
 
   /* Phones (Colleen 2026-11-11: "it was not possible to see the camera screen, the word ... and the sample hand all at the same time. and the text over the camera
@@ -205,6 +206,7 @@
   <p style="margin:0"><a href="./#/games" id="rd-back" style="color:var(--accent);font-weight:700;text-decoration:none">← All activities</a></p>
   <h1 style="font-size:32px;margin:6px 0 4px">Fingerspell to the Camera</h1>
   <p class="hint" style="margin:0 0 8px" id="rd-intro">Sign the letter to your camera. When the camera reads it, the letter turns green.</p>
+  <div class="rd-tonebar"><span class="rd-small"><b>Hand skin tone:</b></span><div class="tones" id="rd-tones" role="group" aria-label="Skin tone of the hand"></div></div>
   <div class="rd-safe" role="note"><span aria-hidden="true">🔒</span><div><b>Your camera is private.</b> The camera only watches your hand while you practice. <b>Nothing is recorded.</b> No videos or pictures are saved or sent anywhere, and nobody else can see your camera. <span id="rd-safe-more">The only thing kept is your score: which letters you signed.</span></div></div>
   <div class="rd-grid">
     <div>
@@ -297,6 +299,6 @@
 <script src="themes.js?v=43"></script>
 <script src="samples.js?v=11"></script>
 <script src="wordsamp.js?v=7"></script>
-<script type="module" src="reader.js?v=77"></script>
+<script type="module" src="reader.js?v=78"></script>
 </body>
 </html>

@@ -214,6 +214,7 @@ S.fcats = (S.fcats || []).map(c => FCAT_RENAMED[c] || c);
 if (!GAMES[S.game]) S.game = 'type';
 if (!S.bankV2) { S.banks = { type: 'everyday', pick: 'everyday', ladder: 'everyday', pairs: 'everyday', fill: 'everyday', sound: 'everyday' }; S.bankV2 = 1; }      /* once: everyone starts on everyday words (Colleen); a later choice of names sticks */
 const saveS = () => store.set('settings', S);
+if (!S.tonePicked) S.tone = 'random';      /* Colleen 2026-11-11: "if they don't select, see an even assortment": Mix until someone picks a tone */
 saveS();
 
 /* ---------- the hand ---------- */
@@ -448,9 +449,9 @@ function setupInit() {
   $('#s-fold').onclick = () => { S.fold = !S.fold; saveS(); fold(); }; fold();
   segInit('s-mode', 'mode'); segInit('s-assist', 'assist', () => drawPool()); segInit('s-paper', 'paper'); segInit('s-pairkind', 'pairkind');
   const tones = $('#s-tones');
-  tones.innerHTML = hand.TONES.map((t, i) => '<button class="sw" data-t="' + i + '" aria-label="Skin tone ' + (i + 1) + '" style="background:#' + t.toString(16).padStart(6, '0') + '"></button>').join('') + '<button class="rnd" data-t="random">Random</button>';
+  tones.innerHTML = hand.TONES.map((t, i) => '<button class="sw" data-t="' + i + '" aria-label="Skin tone ' + (i + 1) + '" style="background:#' + t.toString(16).padStart(6, '0') + '"></button>').join('') + '<button class="rnd" data-t="random" title="Every skin tone, taking turns">Mix</button>';
   const markT = () => tones.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === S.tone));
-  tones.onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tone = b.dataset.t; saveS(); markT(); if (S.tone !== 'random') hand.ready.then(() => hand.setTone(toneHex())); };
+  tones.onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tone = b.dataset.t; S.tonePicked = true; saveS(); markT(); if (S.tone !== 'random') hand.ready.then(() => hand.setTone(toneHex())); };
   markT();
   $('#s-go').onclick = () => startRound(null);
 }
@@ -1360,9 +1361,9 @@ function showInit() {
   $('#sh-speed').oninput = e => { S.speed = +e.target.value / 100; saveS(); };
   segInit('sh-assist', 'showLetters', () => { assist.className = 'assist' + (S.showLetters === 'off' ? '' : ' ' + S.showLetters); });
   const tones = $('#sh-tones');
-  tones.innerHTML = hand.TONES.map((t, i) => '<button class="sw" data-t="' + i + '" aria-label="Skin tone ' + (i + 1) + '" style="background:#' + t.toString(16).padStart(6, '0') + '"></button>').join('') + '<button class="rnd" data-t="random">Random</button>';
+  tones.innerHTML = hand.TONES.map((t, i) => '<button class="sw" data-t="' + i + '" aria-label="Skin tone ' + (i + 1) + '" style="background:#' + t.toString(16).padStart(6, '0') + '"></button>').join('') + '<button class="rnd" data-t="random" title="Every skin tone, taking turns">Mix</button>';
   const markT = () => tones.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === S.tone));
-  tones.onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tone = b.dataset.t; saveS(); markT(); if (S.tone !== 'random') hand.ready.then(() => hand.setTone(toneHex())); };
+  tones.onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tone = b.dataset.t; S.tonePicked = true; saveS(); markT(); if (S.tone !== 'random') hand.ready.then(() => hand.setTone(toneHex())); };
   showInit.markT = markT; markT();
 }
 function showShow() {
