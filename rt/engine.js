@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.481';
+var VERSION = '4.482';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1451,7 +1451,9 @@ function api_appClaim(code) {
   return { tok: appToken_(em, 'google') };
 }
 /* ?app=signin on the usual link: Google already knows who this is, so make a one-time code and send them back to the app */
-function appSigninPage_() {
+var APP_BACK = { spellbound: ['https:' + '/' + '/asl.cool/spellbound/', 'ASL Spellbound'], numberwise: ['https:' + '/' + '/asl.cool/numberwise/', 'ASL Numberwise'] };      /* 4.482 the small phone apps sign in the same way */
+function appSigninPage_(back) {
+  var dest = APP_BACK[str_(back)] || [APP_URL, 'ASL Study Hall'];
   var em = ''; try { em = str_(Session.getActiveUser().getEmail()).toLowerCase(); } catch (e) {}
   var body;
   if (!em) body = '<h1>Sign in with your school Google account first.</h1>';
@@ -1460,7 +1462,7 @@ function appSigninPage_() {
     for (var i = 0; i < 5 && !c; i++) { var t = String(100000 + Math.floor(Math.random() * 900000)); if (!ca.get('appclaim:' + t)) c = t; }
     ca.put('appclaim:' + c, em, 600);
     body = '<p style="margin:0 0 6px;color:#C9D6EA">Signed in as ' + em.replace(/[<>&"']/g, '') + '</p><h1>Back to the app</h1>' +
-      '<a class="go" href="' + APP_URL + '#claim=' + c + '" target="_top">Open ASL Study Hall</a>' +
+      '<a class="go" href="' + dest[0] + '#claim=' + c + '" target="_top">Open ' + dest[1] + '</a>' +
       '<p style="color:#C9D6EA;margin-top:22px">If the app asks for a code, type:</p><p class="code">' + c + '</p><p style="color:#C9D6EA">It works for 10 minutes.</p>';
   }
   return HtmlService.createHtmlOutput('<style>body{margin:0;background:#0B2A4E;color:#fff;font:600 18px/1.4 system-ui,sans-serif;text-align:center;padding:48px 18px}h1{font-size:26px;margin:0 0 22px}.go{display:inline-block;background:#5DB6F2;color:#0B2A4E;text-decoration:none;font-weight:800;font-size:21px;padding:15px 28px;border-radius:999px}.code{font-size:44px;letter-spacing:.12em;font-weight:800;margin:4px 0}</style>' + body)
@@ -1855,7 +1857,7 @@ function writeProgress_(key, row, data) {
 /* ───────────────────────── web app ───────────────────────── */
 
 function doGet(e) {
-  if (e && e.parameter && e.parameter.app === 'signin') return appSigninPage_();      /* 4.477 the phone app's Google sign-in */
+  if (e && e.parameter && e.parameter.app === 'signin') return appSigninPage_(e.parameter.back);      /* 4.477 the phone app's Google sign-in; 4.482 back = spellbound / numberwise */
   var name = 'ASL Study';      /* 4.69 (Colleen: slow first load): only the remembered app name, so the page starts loading at once instead of waiting for every unit tab to be read */
   try { name = CacheService.getScriptCache().get('appName') || PropertiesService.getScriptProperties().getProperty('appName') || name; } catch (e) {}
   return HtmlService.createHtmlOutputFromFile('Index')

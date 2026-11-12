@@ -878,7 +878,8 @@ function stkSay() { if (!STK || !STKT || isNumGame(S.game || '')) return; let el
   if (!el) { el = document.createElement('div'); el.id = 'p-stkx'; el.className = 'small'; el.style.cssText = 'margin-top:6px;font-weight:800'; f.appendChild(el); }
   const l = lps(S.speed), w = Math.round(stkW(l) * 10) / 10; el.innerHTML = '⚡ ' + l + ' letters a second: each word counts <b>' + w + '×</b> for your Stacker' + (w < 2 ? ' (faster = more, up to 2×)' : ' (the most!)'); }
 function sendToStudy(res, round) {
-  if (!EMBED || !res.items.length) return;
+  const linked = !EMBED && typeof window.paLinked === 'function' && window.paLinked();      /* ASL Study 4.482: the phone apps (ASL Spellbound / Numberwise) send rounds straight to ASL Study when the student signed in */
+  if ((!EMBED && !linked) || !res.items.length) return;
   const num = isNumGame(res.game), k = res.speed;      // k: the speed slider, 0 Beginner .. 1 Deaf
   const scale = Math.round((1 + 9 * Math.max(0, Math.min(1, k))) * 10) / 10;      // speed on a 1-10 scale (Colleen)
   const msg = { type: 'fsp-round', v: 1, kind: num ? 'numbers' : 'letters', game: res.game, name: GAMES[res.game] ? GAMES[res.game].name : res.game,
@@ -891,6 +892,7 @@ function sendToStudy(res, round) {
   else { msg.lens = res.items.slice(0, 300).map(x => letters(String(x.w || '')).length);      // 4.443 each word's length, for the Fingerspelling Stacker's mix rule
     msg.mix = mixList(res.items).slice(0, 30).map(x => [x.right, x.saw, x.times]);      // 3.90: the round's letter mix-ups [right, saw, times]
     const ord = orderList(res.items); msg.orderN = ord.length; msg.order = ord.slice(0, 20).map(x => [String(x.w).slice(0, 40), String(x.typed).slice(0, 40)]); }      // 3.90: letter order slips
+  if (linked) { window.paRound(msg); return; }
   try { window.parent.postMessage(msg, '*'); } catch (e) {}
 }
 /* Fingerspell to the Camera inside ASL Study / the TpT sheet: the camera can't run inside the sheet's frame, so it opens in its own tab

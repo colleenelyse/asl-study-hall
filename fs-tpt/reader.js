@@ -431,7 +431,10 @@ const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') 
 /* ASL Study 4.89 (Colleen: a whole class's camera practice never reached the sheet): every round is kept on this device (fsp-cam-pending) and
    sent both to the page that opened this tab and to the ASL Study page around it; it is forgotten once ASL Study says it is saved. Anything still
    waiting is sent the next time the games open inside ASL Study. The app never counts the same round (rid) twice. */
+const LINKED = () => !FROM_STUDY && typeof window.paLinked === 'function' && window.paLinked();      /* ASL Study 4.482: the phone apps, signed in, send to ASL Study themselves */
+const TO_STUDY = () => FROM_STUDY || LINKED();
 function camPost(round) {
+  if (LINKED()) { round.at = Date.now(); window.paRound(round); return; }
   if (!FROM_STUDY) return; round.at = Date.now();
   let list = []; try { list = JSON.parse(localStorage.getItem('fsp-cam-pending') || '[]'); } catch (e) {} if (!Array.isArray(list)) list = [];
   list = list.filter(m => m && m.rid !== round.rid && m.at > Date.now() - 7 * 864e5).concat([round]).slice(-40);
@@ -444,7 +447,7 @@ function camSaved(rid) { if (!rid) return; try { const list = JSON.parse(localSt
 /* 4.89: letters and words signed in practice and in the camera games (not the Check, Speed Pacer or the free-letter games, which save their own).
    Counted, with the time each letter took to form while a hand was in view; sent every 25 letters and when the tab is left. */
 let XP = { letters: 0, words: 0, secs: 0 }, XT = { key: '', t: 0, lastT: 0 };
-const xOn = () => FROM_STUDY && !NUMS && !(CK && CK.on) && !(GAME && (GAME.free || GAME.pace));
+const xOn = () => TO_STUDY() && !NUMS && !(CK && CK.on) && !(GAME && (GAME.free || GAME.pace));
 function xTick(nowT) { if (!xOn()) { XT.lastT = 0; return; } const key = (WORD ? WORD + ':' + wi : 'L:' + SET[cur]); if (key !== XT.key) { XT.key = key; XT.t = 0; } if (XT.lastT) XT.t += Math.min(200, nowT - XT.lastT); XT.lastT = nowT; }
 function xLetter() { if (!xOn()) return; XP.letters++; XP.secs += Math.min(30, XT.t / 1000); XT.t = 0; XT.key = ''; if (XP.letters >= 25) xFlush(); }
 function xWord() { if (xOn()) XP.words++; }
@@ -457,7 +460,7 @@ function xFlush() {
    (Math Answer, Count Up, Beat the Clock) are sent as practice too, every 10 numbers and when the tab is left or the game ends, so they count toward
    a Numbers Stacker's practice day. Before this only the Check was sent. */
 let NX = { n: 0, t0: 0 };
-const nxOn = () => FROM_STUDY && NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.test(GAME.k));      /* 4.447 (Colleen: "i always want camera questions to count toward practice"): plain number practice too */
+const nxOn = () => TO_STUDY() && NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.test(GAME.k));      /* 4.447 (Colleen: "i always want camera questions to count toward practice"): plain number practice too */
 function nxCount() { if (!nxOn()) return; if (!NX.n) NX.t0 = Date.now(); NX.n++; if (NX.n >= 10) nxFlush(); }
 function nxFlush() {
   if (!NX.n) return; const x = NX; NX = { n: 0, t0: 0 };
@@ -520,16 +523,16 @@ function ckFinish() {
     '<div class="lets">' + Object.keys(per).sort((a, b) => NUMS ? a - b : a < b ? -1 : 1).map(c => '<span class="' + cls(c) + '">' + c + '</span>').join('') + '</div><p class="rd-small">Green: signed. Yellow: signed, but slow. Red: not yet.</p>' +
     (quick.length ? '<p><b>Quick mix-ups</b> (signed fast and sure, but a different ' + U + '):</p><ul>' + quick.map(x => '<li>' + an(x.quick).replace(/^an? /, '') + ' when asked for ' + x.c + '</li>').join('') + '</ul>' : '') +
     (notYet.length ? '<p><b>Not yet:</b> ' + [...new Set(notYet.map(x => x.c))].join(', ') + '. The camera can misread a hand, so ask your teacher to check these.</p>' : '<p><b>Every ' + U + ' signed!</b></p>') +
-    (FROM_STUDY ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
+    (TO_STUDY() ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
   $('#rd-results').hidden = false;
-  if (FROM_STUDY) ckSend(C, it, signed, quick);
+  if (TO_STUDY()) ckSend(C, it, signed, quick);
   CK = null; WORD = null; if (!C.words) go(0); else { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x.dataset.v === 'words')); newWord(); }
 }
 function ckSend(C, it, signed, quick) {      /* to the games page that opened this tab, which passes it to ASL Study / the TpT sheet */
   const round = { type: 'fsp-cam-round', v: 1, kind: NUMS ? 'numbers' : 'letters', game: NUMS ? 'camera-num' : 'camera', name: NUMS ? 'Sign Numbers to the Camera' : 'Fingerspell to the Camera', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: it.length, right: signed.length, secs: Math.round((Date.now() - C.start) / 1000), speed: 1, lps: null, top: null, letters: NUMS ? 0 : signed.length, items: [],
     exp: { words: C.words ? 1 : 0, hand: LEFT ? 'left' : 'right', limit: tlNow(), items: it.slice(0, 200).map(x => [x.c, x.ok ? 1 : 0, x.secs, x.quick || '']) } };
-  try { camPost(round);      /* the games page that opened it, or ASL Study's Practice page (another origin); only the score goes */ $('#rd-sent').textContent = IN_SHEET ? 'Sending to your class…' : 'Kept on this device: it goes to your class the next time you open the fingerspelling games in ASL Study.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
+  try { camPost(round);      /* the games page that opened it, or ASL Study's Practice page (another origin); only the score goes */ $('#rd-sent').textContent = IN_SHEET ? 'Sending to your class…' : LINKED() ? 'Sending to ASL Study…' : 'Kept on this device: it goes to your class the next time you open the fingerspelling games in ASL Study.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
 }
 $('#rd-kind').onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; if (GAME) quitGame(); $$('#rd-kind button').forEach(x => x.classList.toggle('on', x === b)); const ck = b.dataset.v === 'check', gm = b.dataset.v === 'games';
   $('#rd-gamelist').hidden = !gm; document.body.classList.toggle('gamestab', gm); if (gm) { drawGames(); $('#rd-checkset').hidden = true; $('#rd-results').hidden = true; return; } else if (!WORD && !NUMS) go(cur);
