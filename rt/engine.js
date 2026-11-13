@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.493';
+var VERSION = '4.494';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -10501,14 +10501,20 @@ var ASST_EV = [
   ['lunch', '🥪', 'Lunch', ['lunch', 'eat lunch']], ['dinner', '🍽️', 'Dinner', ['dinner', 'supper', 'eat dinner']], ['breakfast', '🥞', 'Breakfast', ['breakfast', 'eat breakfast']], ['meeting', '💼', 'Meeting', ['meeting', 'meet']],
   ['class', '🏫', 'Class', ['class', 'go to class', 'school']], ['test', '📝', 'Test', ['test', 'exam', 'quiz']], ['game', '🏈', 'Ball game', ['game', 'ball game', 'football game', 'basketball game']], ['practice', '🏃', 'Practice', ['practice', 'team practice']],
   ['gym', '🏋️', 'Gym', ['gym', 'work out', 'workout', 'exercise']], ['work', '👔', 'Work', ['work', 'go to work', 'job']], ['babysit', '👶', 'Babysit', ['babysit', 'babysitting']], ['church', '⛪', 'Church', ['church', 'go to church']],
-  ['volunteer', '🤝', 'Volunteer', ['volunteer']], ['dog', '🐕', 'Walk the dog', ['walk the dog', 'walk dog', 'dog']], ['cook', '🍳', 'Cook', ['cook', 'cooking']], ['clean', '🧹', 'Clean the house', ['clean the house', 'clean up', 'clean']],
+  ['volunteer', '🤝', 'Volunteer', ['volunteer']], ['dog', '🐕', 'Walk the dog', ['walk the dog', 'walk dog', 'dog']], ['cook', '🍳', 'Cook', ['cook', 'cooking']], ['clean', '🧹', 'Clean the house', ['clean the house', 'clean up', 'clean', 'cleaning']],
   ['homework', '📖', 'Homework', ['homework', 'do homework']], ['car', '🚗', 'Wash the car', ['wash the car', 'car wash', 'wash car']], ['concert', '🎤', 'Concert', ['concert']], ['interview', '🎙️', 'Interview', ['interview']],
-  ['photo', '📸', 'Photo shoot', ['photo shoot', 'take pictures', 'photograph', 'picture']], ['flight', '✈️', 'Flight', ['flight', 'airplane', 'airport', 'fly']], ['nap', '😴', 'Nap', ['nap', 'take a nap']], ['bed', '🛏️', 'Go to bed', ['go to bed', 'bed', 'bedtime']]];
+  ['photo', '📸', 'Photo shoot', ['photo shoot', 'take pictures', 'photograph', 'picture']], ['flight', '✈️', 'Flight', ['flight', 'airplane', 'airport', 'fly']], ['nap', '😴', 'Nap', ['nap', 'take a nap']], ['bed', '🛏️', 'Go to bed', ['go to bed', 'bed', 'bedtime']],
+  ['post', '📮', 'Post office', ['post office', 'mail', 'mailbox']], ['bills', '💵', 'Pay bills', ['pay bills', 'pay the bills', 'bills']], ['deposit', '🏧', 'Deposit money', ['deposit', 'deposit money']], ['withdraw', '💸', 'Withdraw money', ['withdraw', 'withdraw money']],
+  ['dryclean', '🧥', 'Dry cleaning', ['dry clean', 'dry cleaning', 'dry cleaner']], ['dye', '🎨', 'Dye hair', ['dye hair', 'hair dye']], ['vet', '🐾', 'Vet', ['vet', 'veterinarian']], ['specialist', '🩻', 'Specialist', ['specialist']],
+  ['court', '⚖️', 'Court', ['court', 'go to court']], ['housesit', '🏠', 'House sitting', ['house sitting', 'house sit', 'housesitting']], ['clothes', '👕', 'Clothes shopping', ['clothes shopping']], ['medicine', '💊', 'Pick up medicine', ['medicine', 'pharmacy']],
+  ['call', '📞', 'Make a call', ['make a call', 'making calls', 'phone call']], ['errands', '🛍️', 'Errands', ['errands', 'run errands']]];      /* 4.494 Colleen's Unit 5.3 errands and appointments */
 var ASST_EX = [
   ['sick', '🤒', 'I am sick.', ['sick', 'i am sick']], ['busy', '📅', 'I am busy.', ['busy', 'i am busy']], ['work', '👔', 'I have to work.', ['have to work', 'must work', 'work']], ['homework', '📖', 'I have homework.', ['homework', 'have homework']],
   ['tired', '🥱', 'I am too tired.', ['tired', 'exhausted']], ['family', '👨‍👩‍👧', 'My family is visiting.', ['family visiting', 'family', 'visit']], ['away', '🧳', 'I will be out of town.', ['out of town', 'travel', 'trip', 'leave town']],
   ['car', '🚗', 'My car broke down.', ['car broke down', 'broke down', 'car broken']], ['babysit', '👶', 'I have to babysit.', ['babysit', 'babysitting']], ['appt', '📋', 'I have an appointment.', ['appointment', 'have an appointment']],
-  ['plans', '🗓️', 'I already have plans.', ['already have plans', 'have plans', 'plans', 'plan']], ['forgot', '🤦', 'I forgot.', ['forgot', 'forget']], ['late', '⏰', 'I will be late.', ['late', 'running late']]];
+  ['plans', '🗓️', 'I already have plans.', ['already have plans', 'have plans', 'plans', 'plan']], ['forgot', '🤦', 'I forgot.', ['forgot', 'forget']], ['late', '⏰', 'I will be late.', ['late', 'running late']],
+  ['court', '⚖️', 'I have to go to court.', ['court', 'go to court']], ['ticket', '🚓', 'I got a speeding ticket.', ['speeding ticket', 'parking ticket', 'ticket']], ['change', '🔀', 'My plans changed.', ['change of plans', 'plans changed']],
+  ['double', '📆', 'I double-booked.', ['double book', 'double booked']], ['conflict', '⚠️', 'I have a conflict.', ['conflict', 'have a conflict']]];      /* 4.494 more Unit 5.3 excuses */
 var ASST_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 var ASST_FREQ = [['once', 'Just this once', []], ['week', 'Every week', ['every week', 'weekly']], ['daily', 'Every day', ['every day', 'daily', 'everyday']], ['wkdy', 'Monday to Friday', ['monday through friday', 'monday to friday', 'every weekday', 'weekdays']], ['wknd', 'Every weekend', ['every weekend', 'weekends', 'weekend']]];
 var ASST_PART = [['am', 'Morning', ['morning', 'every morning']], ['noon', 'Noon', ['noon']], ['pm', 'Afternoon', ['afternoon', 'every afternoon']], ['night', 'Night', ['night', 'evening', 'tonight', 'every night']]];
@@ -10533,19 +10539,20 @@ function asstIdeas_() { var o = [];
   for (var h = 1; h <= 12; h++) o.push(['h:' + h, [h + ' o clock', h + ' oclock', 'time ' + h, h + ' 00']]);      // numeral incorporation (TIME-3), when her tab has it
   return o; }
 /** Her signs for the ideas: a GIF from the unit tabs first, then from any other tab. Returns { sg: { idea: GIF }, su: { idea: 1 } (from the unit), n, nu, of }. */
-function asstSigns_(cards, units) { var inU = {}, any = {}; units = units || [];
-  (cards || []).forEach(function (c) { var g = str_(c && c[5]); if (!g) return; var u = units.indexOf(c[1]) >= 0;
-    str_(c[3]).split(/[\/;,]/).concat(str_(c[4]).split(/[,;]/)).map(asstNorm_).filter(String).forEach(function (k) { if (u) { if (!inU[k]) inU[k] = g; } else if (!any[k]) any[k] = g; }); });
-  var sg = {}, su = {}, n = 0, nu = 0, ideas = asstIdeas_();
-  ideas.forEach(function (x) { var hit = '', fromU = false; x[1].some(function (a) { var k = asstNorm_(a); if (inU[k]) { hit = inU[k]; fromU = true; return true; } return false; });
+function asstSigns_(cards, units, sub) { var inU = {}, any = {}, inS = {}; units = units || []; sub = str_(sub);
+  (cards || []).forEach(function (c) { var g = str_(c && c[5]); if (!g) return; var u = units.indexOf(c[1]) >= 0, s = u && sub && str_(c[2]).split(/\s*,\s*/).indexOf(sub) >= 0;
+    str_(c[3]).split(/[\/;,]/).concat(str_(c[4]).split(/[,;]/)).map(asstNorm_).filter(String).forEach(function (k) { if (s && !inS[k]) inS[k] = g; if (u) { if (!inU[k]) inU[k] = g; } else if (!any[k]) any[k] = g; }); });
+  var sg = {}, su = {}, ss = {}, n = 0, nu = 0, ns = 0, ideas = asstIdeas_();
+  ideas.forEach(function (x) { var hit = '', fromU = false; x[1].some(function (a) { var k = asstNorm_(a); if (inS[k]) { hit = inS[k]; fromU = true; ss[x[0]] = 1; ns++; return true; } return false; });      /* 4.494 the focus subunit's GIF first */
+    if (!hit) x[1].some(function (a) { var k = asstNorm_(a); if (inU[k]) { hit = inU[k]; fromU = true; return true; } return false; });
     if (!hit) x[1].some(function (a) { var k = asstNorm_(a); if (any[k]) { hit = any[k]; return true; } return false; });
     if (hit) { sg[x[0]] = hit; n++; if (fromU) { su[x[0]] = 1; nu++; } } });
-  return { sg: sg, su: su, n: n, nu: nu, of: ideas.length }; }
+  return { sg: sg, su: su, ss: ss, n: n, nu: nu, ns: ns, of: ideas.length }; }
 /** The lobby: the plan, the unit's signs and the event deck for this game (events with her unit signs first). */
-function asstNew_(opt, st, maxM) { opt = opt || {}; var P = asstPlan_(opt, maxM || 45), units = asstUnits_(st, opt.asstUnit), S = asstSigns_(st && st.cards, units), a = [], b = [], c = [];
-  ASST_EV.forEach(function (e) { var k = 'e:' + e[0]; (S.su[k] ? a : S.sg[k] ? b : c).push(e[0]); });
-  var deck = shuffle_(a).concat(shuffle_(b), shuffle_(c)).slice(0, ASST.deck), stars = []; for (var i = 0; i < ASST_STARS.length; i++) stars.push(i);
-  return { units: units, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false, sup: opt.asstHelp === 'sup',
+function asstNew_(opt, st, maxM) { opt = opt || {}; var P = asstPlan_(opt, maxM || 45), units = asstUnits_(st, opt.asstUnit), sub = str_(opt.asstSub).replace(/[^0-9.]/g, ''), S = asstSigns_(st && st.cards, units, sub), a0 = [], a = [], b = [], c = [];
+  ASST_EV.forEach(function (e) { var k = 'e:' + e[0]; (S.ss[k] ? a0 : S.su[k] ? a : S.sg[k] ? b : c).push(e[0]); });      /* 4.494 Focus: the subunit's events first (Colleen: Unit 5.3) */
+  var deck = shuffle_(a0).concat(shuffle_(a), shuffle_(b), shuffle_(c)).slice(0, Math.max(ASST.deck, Math.min(a0.length, 20))), stars = []; for (var i = 0; i < ASST_STARS.length; i++) stars.push(i);
+  return { units: units, sub: sub, nsub: a0.length, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false, sup: opt.asstHelp === 'sup',
     ph: { k: 'wait', n: 0 }, r: 0, T: [], was: {}, last: [], tot: [], me: {}, hist: [], stars: shuffle_(stars), paused: 0, started: 0, final: false }; }
 function asstMe_(A, e) { return A.me[e] || (A.me[e] = { pts: 0, n: 0 }); }
 /** The calendar cells an event fills (day * 48 + half hour). */
@@ -10675,7 +10682,7 @@ function asstEntOut_(e) { return [e.id, e.ev, e.f, e.d, e.t]; }
     The client: the requests, the conflict's excuse choices (never which one is right until they pick). An assistant: their own calendar, the booked events,
     the excuse to sign back; the requests only in the Week review. First names only, never emails. */
 function asstView_(g, myTeam, key) { var A = g.asst; if (!A) return null; var now = A.paused || Date.now(), j = liveJoined_(g.id), P = A.ph, over = livePhase_(g) === 'over' || P.k === 'done', ans = over || P.k === 'review';
-  var v = { ph: { k: over ? 'done' : P.k, n: P.n || 0, of: A.rounds, left: P.ends ? Math.max(0, P.ends - now) : 0, mins: A.mins }, paused: !!A.paused, nreq: A.nreq, deck: A.deck, sg: A.sg, lex: asstLex_(), found: A.found, tot: A.tot.slice(), hist: A.hist, clash: A.clash, mind: A.mind };
+  var v = { ph: { k: over ? 'done' : P.k, n: P.n || 0, of: A.rounds, left: P.ends ? Math.max(0, P.ends - now) : 0, mins: A.mins }, paused: !!A.paused, nreq: A.nreq, deck: A.deck, sg: A.sg, lex: asstLex_(), found: A.found, sub: A.sub || '', nsub: A.nsub || 0, tot: A.tot.slice(), hist: A.hist, clash: A.clash, mind: A.mind };
   v.teams = A.T.map(function (T, t) { var mates = seaMates_(j, t), asst = mates.filter(function (e) { return e !== T.cli; });
     var o = { cli: T.cli ? seaFirst_(j, T.cli) : '', star: T.star, n: mates.length, nreq: T.reqs.length, busy: T.busy.map(function (b) { return [b.ev, b.d, b.t]; }), cf: T.cf ? T.cf.ph : '', mind: !!(T.mind && T.mind.i >= 0),
       asst: asst.map(function (e) { return [seaFirst_(j, e), (T.ent[e] || []).length, T.done[e] ? 1 : 0]; }) };
