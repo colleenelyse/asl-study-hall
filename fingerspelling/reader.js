@@ -459,7 +459,7 @@ function xLetter() { if (!xOn()) return; XP.letters++; XP.secs += Math.min(30, X
 function xWord() { if (xOn()) XP.words++; }
 function xFlush() {
   if (!XP.letters) return; const x = XP; XP = { letters: 0, words: 0, secs: 0 };
-  camPost({ type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-practice', name: 'Camera practice and games', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+  camPost({ type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-practice', name: 'Expressive practice: fingerspelling', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: x.letters, right: x.letters, secs: Math.max(1, Math.round(x.secs)), speed: 1, lps: null, top: null, letters: x.letters, items: [], xprac: { letters: x.letters, words: Math.min(x.words, x.letters), secs: Math.round(x.secs * 10) / 10 } });
 }
 /* ASL Study 4.423 (Colleen: "natalie has done 50 problems twice now and it's not saving her progress"): numbers signed right in the number camera games
@@ -470,7 +470,7 @@ const nxOn = () => NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.te
 function nxCount() { if (!nxOn()) return; if (!NX.n) NX.t0 = Date.now(); NX.n++; if (NX.n >= 10) nxFlush(); }
 function nxFlush() {
   if (!NX.n) return; const x = NX; NX = { n: 0, t0: 0 };
-  camPost({ type: 'fsp-cam-round', v: 1, kind: 'numbers', game: 'camera-num-games', name: 'Number camera games', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+  camPost({ type: 'fsp-cam-round', v: 1, kind: 'numbers', game: 'camera-num-games', name: 'Expressive practice: numbers', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: x.n, right: x.n, secs: Math.max(1, Math.round((Date.now() - x.t0) / 1000)), speed: 1, lps: null, top: null, letters: 0, items: [] });
 }
 addEventListener('visibilitychange', () => { if (document.hidden) { xFlush(); nxFlush(); } });

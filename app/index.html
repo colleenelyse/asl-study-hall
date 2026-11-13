@@ -1300,8 +1300,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.500) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.500" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.501) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.501" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -4523,7 +4523,7 @@ function fsrSpeed(d, name, num) {
   out += row(num ? 'Reading numbers (receptive)' : 'Reading fingerspelling (receptive)', sp.read, sp.readLv, Object.keys(rBy).length, `No ${num ? 'number' : 'word'} games played since speeds were recorded (version 4.89).`, 'needs at least 8 answers at the same speed, with 8 out of 10 right the first time (without Watch again)');
   if (!num) out += row('Fingerspelling to the camera (expressive)', sp.sign, sp.signLv, Object.keys(pBy).length, 'Measured with Speed Pacer on the camera page: no Speed Pacer runs yet.', 'needs at least 10 letters at the same Speed Pacer speed, with 8 out of 10 on time');
   if (steps.length) out += `<div class="rs-wrap"><table class="rs-cmp"><thead><tr><th>Speed</th><th>${num ? 'Reading numbers' : 'Reading'}: right first time</th>${num ? '' : '<th>Signing (Speed Pacer): on time</th>'}</tr></thead><tbody>${steps.map(k => `<tr${k === sp.read || k === sp.sign ? ' class="sp-on"' : ''}><td>${esc(spLps(k))}${SP_NAMES[k] ? ` <small>${SP_NAMES[k]}</small>` : ''}</td><td class="num">${cell(rBy[k])}</td>${num ? '' : `<td class="num">${cell(pBy[k])}</td>`}</tr>`).join('')}</tbody></table></div><p class="rs-small" style="margin-top:4px">Each box shows the % right at that speed, and in parentheses how many were tried. The highlighted row is the comfortable speed.</p>`;
-  if (!num && (sp.camLetters || sp.checks)) out += `<p class="rs-sets"><b>Camera practice:</b> ${sp.camLetters ? `${n(sp.camLetters)} letters${sp.camWords ? ` and ${n(sp.camWords)} words` : ''} signed in practice and camera games${sp.camSecs ? `, about ${sp.camSecs} seconds to form each letter` : ''}` : ''}${sp.camLetters && sp.checks ? '; ' : ''}${sp.checks ? `${sp.checks} camera check${sp.checks === 1 ? '' : 's'}${sp.checkPct !== null && sp.checkPct !== undefined ? `, ${Math.round(100 * sp.checkPct)}% of letters signed in time` : ''}` : ''}. Practice is counted but not timed for speed: the camera waits between letters.</p>`;
+  if (!num && (sp.camLetters || sp.checks)) out += `<p class="rs-sets"><b>Expressive practice (camera):</b> ${sp.camLetters ? `${n(sp.camLetters)} letters${sp.camWords ? ` and ${n(sp.camWords)} words` : ''} signed in practice and camera games${sp.camSecs ? `, about ${sp.camSecs} seconds to form each letter` : ''}` : ''}${sp.camLetters && sp.checks ? '; ' : ''}${sp.checks ? `${sp.checks} camera check${sp.checks === 1 ? '' : 's'}${sp.checkPct !== null && sp.checkPct !== undefined ? `, ${Math.round(100 * sp.checkPct)}% of letters signed in time` : ''}` : ''}. Practice is counted but not timed for speed: the camera waits between letters.</p>`;
   return out + '</div>';
 }
 function fsrPart(d, kind, name, withTime) {
