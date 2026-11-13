@@ -216,6 +216,12 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     </section>
   </div>
 
+  <section class="card" id="rtcard">
+    <h2><span class="step">4</span>🔁 I’m doing a retake</h2>
+    <p class="small muted">At LTHS a retake replaces your old score on a summative (Assessments, 90%). The old score is thrown out and the test keeps the same points possible.</p>
+    <div id="rt" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
   <p class="small muted">An estimate from your numbers, using the 90% / 10% weights and nothing else changing. Letter grades use A 89.5, B 79.5, C 69.5, D 59.5. Infinite Campus is your official grade. Not signed in: your numbers stay on this device only. Signed in: they are saved with your school Google account, in a file in Ms. Gibbons’s LTHS Google Drive, so you can open them on any device. They are only used to show them back to you.</p>
 </main>
 
@@ -404,6 +410,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
       var p = pickCats(x.cats);
       if (p.a) { c.ae = String(round2(p.a.e)); c.ap = String(round2(p.a.q)); }
       if (p.c) { c.ce = String(round2(p.c.e)); c.cp = String(round2(p.c.q)); } else { c.ce = '0'; c.cp = '0'; }
+      c.tests = x.items.filter(function (it) { return p.a && it.cat === p.a.name && it.score !== null && it.possible > 0 && it.flags.indexOf('exempt') < 0 && it.flags.indexOf('dropped') < 0; }).map(function (it) { return { n: it.name, s: it.score, p: it.possible, due: it.due }; });      // 4.505 for retakes
       c.missing = x.items.filter(function (it) { return it.flags.indexOf('missing') >= 0 && it.possible > 0; }).map(function (it) { return { n: it.name, due: it.due, s: it.score || 0, p: it.possible, k: p.a && it.cat === p.a.name ? 'a' : 'c' }; });
       c.pasted = today(); c.pastes = (c.pastes || 0) + 1;
     }
@@ -595,7 +602,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   function paintSeg() { [].forEach.call($('ncat').children, function (b) { b.classList.toggle('on', b.dataset.c === cls().ncat); }); }
 
   function out() {
-    var c = cls(), B = baseOf(c);
+    var c = cls(), B = baseOf(c); rtOut();
     if (B.msg) {
       $('now').innerHTML = '<p class="small muted">' + B.msg + '</p>';
       $('wout').innerHTML = $('nout').innerHTML = '<p class="small muted">Fill in your numbers in step 1 first (or paste the class page above).</p>';
@@ -653,11 +660,56 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     $('nout').innerHTML = html;
   }
 
+  /* 4.505 retakes (Colleen: "a students previous test score gets removed and replaced with a new test score. this only applies to summatives in the 90%
+     category ... a dropdown menu of all the summative names in that category ... remove that point total from the overall totals ... recalculate with the same
+     possible points for that test ... tell them the same information"). c.tests comes from the class's pasted page; c.rt = { i (which test), e (the retake score typed) }. */
+  function paintRt() {
+    var c = cls(), el = $('rt'), T = c.tests || [];
+    if (!T.length) { el.innerHTML = '<p class="small">' + (c.pasted ? 'No graded summatives were found on ' + esc(c.name) + '’s page.' : 'Paste ' + esc(c.name) + '’s page from Infinite Campus first (at the top), so the calculator knows your summatives and their scores.') + '</p>'; return; }
+    c.rt = c.rt || { i: '', e: '' };
+    el.innerHTML = '<label class="wrow"><span><b>Which one are you retaking?</b></span><select id="rti" style="max-width:100%"><option value="">Pick the test…</option>' +
+      T.map(function (t, i) { return '<option value="' + i + '"' + (String(c.rt.i) === String(i) ? ' selected' : '') + '>' + esc(t.n) + ' (' + round2(t.s) + ' / ' + t.p + ', ' + f2(t.s / t.p * 100) + '%)</option>'; }).join('') + '</select></label>' +
+      '<div class="wrow" id="rtw"><span><b>If I get</b></span><input id="rte" inputmode="decimal" autocomplete="off" value="' + esc(c.rt.e) + '"><span><b>out of <span id="rtp"></span> on the retake</b></span><span class="small" id="rtpct"></span></div>' +
+      '<div id="rtout" style="display:flex;flex-direction:column;gap:10px"></div>';
+    $('rti').onchange = function () { c.rt.i = this.value; save(); paintRt(); };
+    $('rte').oninput = function () { c.rt.e = this.value; save(); rtOut(); };
+    rtOut();
+  }
+  function rtOut() {
+    var c = cls(), o = $('rtout'); if (!o || !c.rt) return; var T = c.tests || [], t = T[+c.rt.i];
+    $('rtw').hidden = !t || c.rt.i === '';
+    if (!t || c.rt.i === '') { o.innerHTML = ''; return; }
+    $('rtp').textContent = t.p;
+    var B = baseOf(c);
+    if (B.msg) { o.innerHTML = '<p class="small muted">' + B.msg + '</p>'; return; }
+    var a0 = B.a - t.s, gx = function (x) { return grade(a0 + x, B.b, B.c, B.d); }, P = t.p, old = t.s / P * 100;
+    var html = '<p class="small">Your old score, <b>' + round2(t.s) + ' / ' + P + ' (' + f2(old) + '%)</b>, is taken out. Without it your Assessments are ' + f2(a0) + ' / ' + f2(B.b - P) + ' plus the retake.</p>';
+    var e = num(c.rt.e);
+    $('rtpct').innerHTML = e !== null && !isNaN(e) && e >= 0 ? '= <b>' + f2(e / P * 100) + '%</b> on the retake (' + letter(e / P * 100) + ')' : '';
+    if (e !== null && !isNaN(e) && e >= 0) {
+      var g2 = gx(e), diff = g2 - B.g, L1 = letter(B.g), L2 = letter(g2), sign = diff > 0.004 ? '+' : diff < -0.004 ? '−' : '';
+      html += '<div class="tiles">' + tile(f2(e / P * 100) + '%', 'On the retake', '', letter(e / P * 100) + ' · ' + e + ' / ' + P) + tile(f2(old) + '%', 'Old score', '', round2(t.s) + ' / ' + P) +
+        tile(f2(g2) + '%', 'New class grade', 'c', L2) + tile(sign + f2(Math.abs(diff)), 'Change', 'c', 'percentage points') + '</div>' +
+        '<div class="verdict ' + (Math.abs(diff) < 0.005 ? '' : diff > 0 ? 'up' : 'down') + '"><b>' + (Math.abs(diff) < 0.005 ? '➡️ Your grade would stay about the same.' : diff > 0 ? '✅ Your grade would go up' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '!' : '.') : '⚠️ Your grade would go down' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '.' : '.') + ' The retake score replaces your old one even if it is lower.') + '</b><p class="small" style="margin-top:4px">' + f2(B.g) + '% now → ' + f2(g2) + '% after the retake.</p></div>';
+    }
+    var need = function (tg) {
+      if (gx(0) >= tg) return { safe: true }; if (gx(P) < tg) return { no: true, best: gx(P) };
+      var lo = 0, hi = P; for (var i = 0; i < 60; i++) { var m = (lo + hi) / 2; if (gx(m) >= tg) hi = m; else lo = m; }
+      return { x: Math.ceil(hi * 100 - 1e-6) / 100 };
+    };
+    var say = function (r) { return r.safe ? 'Any score (even 0)' : r.no ? 'Not possible' : r.x + ' / ' + P + ' <span class="small muted">(' + f2(r.x / P * 100) + '%)</span>'; };
+    var Tg = num(c.nt), rows = CUT.slice(); if (Tg !== null && !isNaN(Tg) && !CUT.some(function (k) { return k[1] === Tg; })) rows.push(['Your goal', Tg]);
+    html += '<h3 style="margin-top:4px">🎯 What do I need on the retake?</h3><table><thead><tr><th>To have at least</th><th>You need on the retake</th></tr></thead><tbody>' + rows.map(function (k) {
+      return '<tr' + (Tg === k[1] ? ' class="pick"' : '') + '><td>' + k[0] + ' (' + k[1] + '%)</td><td class="big">' + say(need(k[1])) + '</td></tr>';
+    }).join('') + '</tbody></table><p class="small muted">Best you can do with this retake: ' + f2(gx(P)) + '% (' + letter(gx(P)) + '). The highlighted row is the goal you picked in step 3.</p>';
+    o.innerHTML = html;
+  }
+
   function paintAll() {
     st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
     var c = cls();
     ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
-    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
+    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out(); paintRt();
   }
 
   /* back from the Google sign-in page with a one-time code */
