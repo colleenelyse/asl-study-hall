@@ -2884,7 +2884,51 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'p' && /^#\/bingo/.test(location.hash) && BG.who === 'live') { const w = BG.called[BG.called.length - 1]; $('#bg-reveal').textContent = BG.shown && w ? w : ''; $('#bg-reveal').classList.remove('peek'); } });
 
 /* ---------- screens ---------- */
-const SHOW = { home: null, games: null, card: null, mail: mailShow, clawq: clawqShow, show: showShow, build: buildShow, shownum: snShow, showtime: stShow, signer: signerShow, clocks: clocksShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+const SHOW = { home: null, games: null, proof: null, card: null, mail: mailShow, clawq: clawqShow, show: showShow, build: buildShow, shownum: snShow, showtime: stShow, signer: signerShow, clocks: clocksShow, signnum: sgShow, timeline: tlShowScreen, agepics: apShow, eventyear: eyShow, math: mtShow, learn: lnShow, setup: null, play: playShow, results: resultsShow, review: reviewShow, report: reportShow, view: viewShow, progress: progressShow, chart: chartShow, class: classShow, bingo: bingoShow };
+
+/* ---------- 📸 Proof for my teacher (Colleen 2026-11-13: "students who are NOT part of my class take a screenshot to send to their teacher with as many quick
+   easy clicks as possible so teachers can assign this to students and students can prove that they actually did it"). Every round already saved on
+   this device (store 'sessions'): today (or the last 7 days), the totals, each round, the date and a live clock, and a check code made from all of it.
+   💾 Save as a picture = one tap (a phone shares it to Photos or a message; a computer downloads a PNG). Not inside ASL Study (it records everything itself). */
+const PF = { span: 'today', t: 0 };
+const pfDay = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+const pfCode = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).toUpperCase().padStart(6, '0').slice(-6); };
+function pfRounds() { const now = Date.now(), today = pfDay(now);
+  const num = s => s.kind ? s.kind === 'numbers' : isNumGame(s.game);
+  return store.get('sessions', []).concat(store.get('camrounds', [])).filter(s => s && s.at && !s.review && s.n).filter(s => PF.span === 'week' ? now - new Date(s.at).getTime() < 7 * 864e5 : pfDay(s.at) === today)
+    .filter(s => ONLY === 'numbers' ? num(s) : ONLY === 'letters' ? !num(s) : true).sort((a, b) => String(a.at).localeCompare(String(b.at))); }      /* + camera rounds (reader.js camLocal) */
+function pfSheet() {
+  const name = ($('#pf-name').value || '').trim(), L = pfRounds(), now = new Date(), esc2 = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const n = L.reduce((a, s) => a + s.n, 0), right = L.reduce((a, s) => a + s.right, 0), secs = L.reduce((a, s) => a + (s.secs || 0), 0), pct = n ? Math.round(100 * right / n) : 0;
+  const what = ONLY === 'numbers' ? 'ASL Numbers Practice' : ONLY === 'letters' ? 'ASL Fingerspelling Practice' : 'ASL Fingerspelling & Numbers Practice';
+  const tm = d => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), dy = d => new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const code = pfCode([name, pfDay(now), PF.span, n, right, secs].concat(L.map(s => s.at + s.game + s.n + s.right)).join('|'));
+  const rows = L.map(s => `<tr><td>${PF.span === 'week' ? esc2(dy(s.at)) + ', ' : ''}${esc2(tm(s.at))}</td><td>${s.cam ? '📷 ' : ''}${esc2(GAMES[s.game] ? GAMES[s.game].name : s.name || s.game)}</td><td>${s.right} / ${s.n}</td><td>${Math.max(1, Math.round((s.secs || 0) / 60))} min</td><td>${esc2(s.cam ? 'camera' : s.game === 'ladder' && s.topName ? 'top ' + s.topName : s.speedName || '')}</td></tr>`).join('');
+  return `<div class="pf-top"><span class="pf-brand">🤟 ${what}</span><span class="pf-site">${esc2(location.host || 'asl.cool')}</span></div>
+    <div class="pf-name${name ? '' : ' empty'}">${name ? esc2(name) : 'Type your name above'}</div>
+    <div class="pf-when"><b>${esc2(now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))}</b> · <span id="pf-clock">${esc2(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }))}</span>${PF.span === 'week' ? ' · the last 7 days' : ' · today'}</div>
+    ${L.length ? `<div class="pf-tot"><div><b>${L.length}</b><span>${L.length === 1 ? 'round' : 'rounds'}</span></div><div><b>${n}</b><span>answered</span></div><div><b>${pct}%</b><span>right (${right})</span></div><div><b>${Math.max(1, Math.round(secs / 60))}</b><span>minutes</span></div></div>
+      <table class="pf-tab"><thead><tr><th>Time</th><th>Activity</th><th>Right</th><th>Time spent</th><th>Speed</th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<p class="pf-none">No practice ${PF.span === 'week' ? 'in the last 7 days' : 'yet today'} on this device. Play a round, then come back here.</p>`}
+    <div class="pf-foot"><span>Check code <b>${code}</b></span><span>Rounds saved on this device only.</span></div>`; }
+function proofShow() {
+  $('#pf-name').value = store.get('name', ''); const draw = () => { $('#pf-sheet').innerHTML = pfSheet(); };
+  $('#pf-name').oninput = () => { store.set('name', $('#pf-name').value.trim()); draw(); };
+  $$('#pf-span button').forEach(b => { b.classList.toggle('on', b.dataset.v === PF.span); b.onclick = () => { PF.span = b.dataset.v; $$('#pf-span button').forEach(x => x.classList.toggle('on', x === b)); draw(); }; });
+  draw(); clearInterval(PF.t); PF.t = setInterval(() => { const c = $('#pf-clock'); if (!c || !$('.screen.on[data-screen="proof"]')) { clearInterval(PF.t); return; } c.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }); }, 1000);
+  if (!$('#pf-name').value) setTimeout(() => $('#pf-name').focus(), 50);
+  $('#pf-save').onclick = async () => { const m = $('#pf-msg'), name = $('#pf-name').value.trim();
+    if (!name) { m.hidden = false; m.className = 'alert bad'; m.textContent = 'Type your name first, so your teacher knows it is yours.'; $('#pf-name').focus(); return; }
+    m.hidden = false; m.className = 'alert'; m.textContent = 'Making your picture…';
+    try { await snapLoad(); const cv = await window.html2canvas($('#pf-sheet'), { scale: 2, backgroundColor: '#ffffff', logging: false });
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png')), file = new File([blob], 'practice-proof-' + pfDay(Date.now()) + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'My ASL practice' }); m.textContent = '✅ Done! Send the picture to your teacher.'; return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+      m.textContent = '✅ Saved to your Downloads as ' + file.name + '. Upload it where your teacher asked (Canvas, Google Classroom, or an email).';
+    } catch (e) { m.className = 'alert bad'; m.textContent = 'The picture could not be made here. Take a screenshot instead (steps below).'; const d = $('#pf-ctl details, .pf-ctl details'); if (d) d.open = true; } };
+}
+if (EMBED) $$('[data-proof]').forEach(el => { el.hidden = true; el.style.display = 'none'; });
+
 function route() {
   const h = location.hash.replace(/^#\/?/, ''), parts = h.split('/'), name = parts[0] || 'home';
   if (offPage(name, parts[1])) { location.replace('#/games'); return; }
@@ -2906,6 +2950,7 @@ function route() {
   if (NOPICK && h !== TONE_PAGE) hand.ready.then(() => hand.setTone(hand.dealTone()));      /* one new tone per visit (a new lesson counts as a new visit) */
   TONE_PAGE = NOPICK ? h : '';
   showScreen(name === 'play' ? 'setup' : name);
+  if (name === 'proof') proofShow();
   if (name === 'play' && R) setupShow(R.game);
   if (!/^(play|review|class|bingo|show|build|shownum|showtime|signer|clocks|signnum|learn|mail|clawq)$/.test(name)) parkStage();
   if (name !== 'signer') document.body.classList.remove('signer-only');

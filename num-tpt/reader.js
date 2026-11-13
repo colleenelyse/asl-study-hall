@@ -435,7 +435,11 @@ const ACT = /^(match|letter|word|number|check|pacer|teach)$/.test(QS.get('act') 
    waiting is sent the next time the games open inside ASL Study. The app never counts the same round (rid) twice. */
 const LINKED = () => !FROM_STUDY && typeof window.paLinked === 'function' && window.paLinked();      /* ASL Study 4.482: the phone apps, signed in, send to ASL Study themselves */
 const TO_STUDY = () => FROM_STUDY || LINKED();
+/* 2026-11-13 (Colleen: "add the camera rounds now"): every camera round is also kept on this device for 📸 Proof for my teacher (fsp.camrounds), class or not */
+function camLocal(round) { try { if (!round || !round.n) return; let L = JSON.parse(localStorage.getItem('fsp.camrounds') || '[]'); if (!Array.isArray(L)) L = [];
+  L.push({ at: new Date().toISOString(), game: round.game, name: round.name, kind: round.kind, n: round.n, right: round.right, secs: round.secs || 0, cam: 1 }); localStorage.setItem('fsp.camrounds', JSON.stringify(L.slice(-300))); } catch (e) {} }
 function camPost(round) {
+  camLocal(round);
   if (LINKED()) { round.at = Date.now(); window.paRound(round); return; }
   if (!FROM_STUDY) return; round.at = Date.now();
   let list = []; try { list = JSON.parse(localStorage.getItem('fsp-cam-pending') || '[]'); } catch (e) {} if (!Array.isArray(list)) list = [];
@@ -449,7 +453,7 @@ function camSaved(rid) { if (!rid) return; try { const list = JSON.parse(localSt
 /* 4.89: letters and words signed in practice and in the camera games (not the Check, Speed Pacer or the free-letter games, which save their own).
    Counted, with the time each letter took to form while a hand was in view; sent every 25 letters and when the tab is left. */
 let XP = { letters: 0, words: 0, secs: 0 }, XT = { key: '', t: 0, lastT: 0 };
-const xOn = () => TO_STUDY() && !NUMS && !(CK && CK.on) && !(GAME && (GAME.free || GAME.pace));
+const xOn = () => !NUMS && !(CK && CK.on) && !(GAME && (GAME.free || GAME.pace));
 function xTick(nowT) { if (!xOn()) { XT.lastT = 0; return; } const key = (WORD ? WORD + ':' + wi : 'L:' + SET[cur]); if (key !== XT.key) { XT.key = key; XT.t = 0; } if (XT.lastT) XT.t += Math.min(200, nowT - XT.lastT); XT.lastT = nowT; }
 function xLetter() { if (!xOn()) return; XP.letters++; XP.secs += Math.min(30, XT.t / 1000); XT.t = 0; XT.key = ''; if (XP.letters >= 25) xFlush(); }
 function xWord() { if (xOn()) XP.words++; }
@@ -462,7 +466,7 @@ function xFlush() {
    (Math Answer, Count Up, Beat the Clock) are sent as practice too, every 10 numbers and when the tab is left or the game ends, so they count toward
    a Numbers Stacker's practice day. Before this only the Check was sent. */
 let NX = { n: 0, t0: 0 };
-const nxOn = () => TO_STUDY() && NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.test(GAME.k));      /* 4.447 (Colleen: "i always want camera questions to count toward practice"): plain number practice too */
+const nxOn = () => NUMS && !(CK && CK.on) && (!GAME || /^(math|count|clock)$/.test(GAME.k));      /* 4.447 (Colleen: "i always want camera questions to count toward practice"): plain number practice too */
 function nxCount() { if (!nxOn()) return; if (!NX.n) NX.t0 = Date.now(); NX.n++; if (NX.n >= 10) nxFlush(); }
 function nxFlush() {
   if (!NX.n) return; const x = NX; NX = { n: 0, t0: 0 };
@@ -527,13 +531,14 @@ function ckFinish() {
     (notYet.length ? '<p><b>Not yet:</b> ' + [...new Set(notYet.map(x => x.c))].join(', ') + '. The camera can misread a hand, so ask your teacher to check these.</p>' : '<p><b>Every ' + U + ' signed!</b></p>') +
     (TO_STUDY() ? '<p class="rd-small" id="rd-sent">Saving to your class…</p>' : '');
   $('#rd-results').hidden = false;
-  if (TO_STUDY()) ckSend(C, it, signed, quick);
+  ckSend(C, it, signed, quick);      /* camPost keeps it for the proof page, and sends it only to ASL Study or a class sheet */
   CK = null; WORD = null; if (!C.words) go(0); else { $$('#rd-mode button').forEach(x => x.classList.toggle('on', x.dataset.v === 'words')); newWord(); }
 }
 function ckSend(C, it, signed, quick) {      /* to the games page that opened this tab, which passes it to ASL Study / the TpT sheet */
   const round = { type: 'fsp-cam-round', v: 1, kind: NUMS ? 'numbers' : 'letters', game: NUMS ? 'camera-num' : 'camera', name: NUMS ? 'Sign Numbers to the Camera' : 'Fingerspell to the Camera', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     n: it.length, right: signed.length, secs: Math.round((Date.now() - C.start) / 1000), speed: 1, lps: null, top: null, letters: NUMS ? 0 : signed.length, items: [],
     exp: { words: C.words ? 1 : 0, hand: LEFT ? 'left' : 'right', limit: tlNow(), items: it.slice(0, 200).map(x => [x.c, x.ok ? 1 : 0, x.secs, x.quick || '']) } };
+  if (!TO_STUDY()) { camLocal(round); return; }      /* not in a class: kept for 📸 Proof for my teacher only */
   try { camPost(round);      /* the games page that opened it, or ASL Study's Practice page (another origin); only the score goes */ $('#rd-sent').textContent = IN_SHEET ? 'Sending to your class…' : LINKED() ? (TO_STUDY() && !LINKED() ? 'Sending to ASL Study…' : 'Sending to ASL Study Hall…') : 'Kept on this device: it goes to your class the next time you open the fingerspelling games in ASL Study.'; } catch (e) { $('#rd-sent').textContent = 'Could not save: keep the ASL Study tab open and try again.'; }
 }
 $('#rd-kind').onclick = e => { const b = e.target.closest('button'); if (!b || (CK && CK.on)) return; if (GAME) quitGame(); $$('#rd-kind button').forEach(x => x.classList.toggle('on', x === b)); const ck = b.dataset.v === 'check', gm = b.dataset.v === 'games';
@@ -1035,7 +1040,7 @@ const PACE_ALIKE = { J: ['J', 'I'], Z: ['Z', 'D', 'G'] };
 /* 4.61 (Colleen: "will I get a report?"): opened from ASL Study, a finished Speed Pacer run is saved to the student's Fingerspelling Stats:
    the speed, the % of letters signed in time, and the word lengths chosen. */
 function paceSend(P, lps, pct) {
-  if (!FROM_STUDY) return; const lens = 'up to ' + WS.maxLen + ' letter';
+  const lens = 'up to ' + WS.maxLen + ' letter';
   const round = { type: 'fsp-cam-round', v: 1, kind: 'letters', game: 'camera-pacer', name: 'Speed Pacer', rid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), n: P.n, right: P.full, secs: Math.round((Date.now() - P.t0) / 1000), speed: 1, lps: null, top: null, letters: P.hits, items: [],
     pacer: { lps, pct, hits: P.hits, total: P.total, len: lens, hand: LEFT ? 'left' : 'right' } };
   camPost(round);      /* 4.89 */

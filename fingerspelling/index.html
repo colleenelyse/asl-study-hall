@@ -7,7 +7,7 @@
 <meta name="description" content="Practice reading ASL fingerspelling from a realistic 3D hand, at real speeds. Games, a speed ladder, and classroom Bingo. Free, no sign-in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@500;700&family=Patrick+Hand&family=Merriweather:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=134">
+<link rel="stylesheet" href="style.css?v=135">
 </head>
 <body>
 <header class="top">
@@ -61,6 +61,7 @@
     <!-- 2026-11-12 (Colleen: "it's not clear what's a learning mode and what's a practice mode/game mode"): sorted by what the student does:
          Learn, Practice, Games, Check yourself; inside each, 👁️ watch the hand and 📷 sign to the camera. gamesInit builds the cards in the
          hidden #g-stage below (as before), then sortGames (app.js) moves each card into its group. -->
+    <a class="proofbar" href="#/proof" data-proof><span>📸</span><span><b>Practicing for a class?</b> Show your teacher what you did today: <u>Proof for my teacher</u></span></a>
     <nav class="grpnav pad" id="grpnav" aria-label="Kinds of activities"></nav>
     <div id="g-groups"></div>
     <div id="g-stage" hidden>
@@ -577,6 +578,7 @@
       <div class="row">
         <a class="btn" href="#/setup" id="r-again">Play again</a>
         <a class="btn ghost" href="#/review" id="r-review">Review missed words</a>
+        <a class="btn proofbtn" href="#/proof" data-proof>📸 Proof for my teacher</a>
         <a class="btn ghost" href="#/report">Make my report</a>
         <a class="btn ghost" href="#/games">Other games</a>
       </div>
@@ -602,6 +604,32 @@
         <div class="row"><button class="btn" id="v-again">Practice these again</button><a class="btn ghost" href="#/results" id="v-back">Back to results</a></div>
       </div>
     </div>
+  </section>
+
+  <!-- Proof for my teacher (Colleen 2026-11-13: students who are NOT in her class take a screenshot for their own teacher, in as few clicks as possible) -->
+  <section data-screen="proof" class="screen">
+    <div class="card noprint pf-ctl">
+      <h2>📸 Proof for My Teacher</h2>
+      <div class="pf-row">
+        <label class="field"><span class="lab">Your Name</span><input id="pf-name" autocomplete="name" placeholder="First and last name"></label>
+        <div class="pf-seg" id="pf-span" role="group" aria-label="Which days"><button data-v="today" class="on">Today</button><button data-v="week">Last 7 days</button></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="pf-save">💾 Save as a picture</button>
+        <a class="btn ghost" href="#/games">Practice more</a>
+      </div>
+      <p class="alert" id="pf-msg" hidden aria-live="polite"></p>
+      <details class="shot"><summary>Or take a screenshot</summary>
+        <ul>
+          <li><b>Chromebook:</b> press Ctrl + Show windows (the key with boxes).</li>
+          <li><b>Windows:</b> press Windows key + Shift + S, then drag over the card.</li>
+          <li><b>Mac:</b> press Command + Shift + 4, then drag over the card.</li>
+          <li><b>iPhone or iPad:</b> press the side (top) button and volume up at the same time.</li>
+          <li><b>Android:</b> press power and volume down at the same time.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="pf-sheet" id="pf-sheet"></div>
   </section>
 
   <!-- Report -->
@@ -786,6 +814,6 @@
 <script src="people.js?v=4"></script>
 <script src="hand.js?v=155"></script>
 <script src="look.js?v=4"></script>
-<script src="app.js?v=217"></script>
+<script src="app.js?v=220"></script>
 </body>
 </html>
