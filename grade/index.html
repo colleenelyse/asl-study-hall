@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Grade Calculator</title>
+<link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700;800&display=swap">
+<!-- asl.cool/grade (ASL Study 4.498): a grade calculator for any class on the 90 / 10 system (Assessments 90%, Coursework 10%).
+     Built from the Summative Stacker's Grade Impact Calculator (chunk_chal.html chCalcPaint / chCalcOut). Nothing is sent anywhere:
+     the numbers stay in this browser (localStorage 'gradecalc'). -->
+<style>
+:root {
+  --bg: #F1F4FA; --surface: #FFFFFF; --ink: #1B1E3C; --muted: #5A6185; --line: #D5DCEB;
+  --accent: #2563eb; --purple: #6d3fd1; --green: #14804D;
+  --a-soft: rgba(169,139,255,.16); --a-line: rgba(169,139,255,.5); --c-soft: rgba(63,214,176,.14); --c-line: rgba(63,214,176,.5);
+  --up: rgba(46,157,99,.18); --up-line: rgba(46,157,99,.55); --down: rgba(229,72,77,.15); --down-line: rgba(229,72,77,.5);
+  --shadow: 0 1px 2px rgba(27,30,60,.06), 0 8px 22px rgba(27,30,60,.07);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11132A; --surface: #1B1E3E; --ink: #F0F2FF; --muted: #A6ACCD; --line: #343A6B; --accent: #4C7DFF; --purple: #b9a2ff; --green: #5AD79A;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.28); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11132A; --surface: #1B1E3E; --ink: #F0F2FF; --muted: #A6ACCD; --line: #343A6B; --accent: #4C7DFF; --purple: #b9a2ff; --green: #5AD79A;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.28); color-scheme: dark }
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 500 16px/1.45 "Nunito", "Segoe UI", system-ui, sans-serif }
+main { max-width: 980px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 16px }
+h1, h2, h3 { font-family: "Fredoka", "Trebuchet MS", sans-serif; font-weight: 600; margin: 0 }
+h1 { font-size: 1.9rem } h2 { font-size: 1.35rem } h3 { font-size: 1.1rem }
+p { margin: 0 }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px }
+.small { font-size: .9rem } .muted { color: var(--muted) }
+.head { display: flex; align-items: center; gap: 14px }
+.ic { flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 18px; background: rgba(169,139,255,.18) }
+.step { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; margin-right: 6px; font-family: "Fredoka", sans-serif }
+.classes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.chip { border: 2px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 700; cursor: pointer }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #fff }
+.chip.add { border-style: dashed; color: var(--muted) }
+.link { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px }
+.panel { border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px }
+.pa { background: var(--a-soft); border: 2px solid var(--a-line) } .pc { background: var(--c-soft); border: 2px solid var(--c-line) }
+.row { display: flex; align-items: center; gap: 10px; justify-content: space-between }
+.row > span { font-weight: 700 }
+input[type=text], input[type=number], input:not([type]), select { font: inherit; font-size: 1.1rem; padding: 8px 10px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); min-width: 0 }
+.row input { width: min(55%, 200px) }
+.pic { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #fff; cursor: zoom-in }
+.pic img { display: block; width: 100%; margin-top: -12.3% }      /* hides the picture's "Summative Stacker" banner (172 of its 1400 px width) */
+.pic.big { overflow-x: auto; cursor: zoom-out } .pic.big img { width: 200% }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
+.tile { border-radius: 16px; padding: 12px; text-align: center; display: flex; flex-direction: column; gap: 2px; background: var(--a-soft) }
+.tile.c { background: var(--c-soft) }
+.tile b { font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums }
+.verdict { border-radius: 16px; padding: 14px 16px; background: rgba(150,150,150,.15); font-size: 1.05rem }
+.verdict.up { background: var(--up); border: 2px solid var(--up-line) } .verdict.down { background: var(--down); border: 2px solid var(--down-line) }
+.what { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center }
+.wrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
+.wrow input { width: 90px }
+.seg { display: inline-flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden }
+.seg button { border: 0; background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; padding: 7px 12px; cursor: pointer }
+.seg button.on.a { background: #6d3fd1; color: #fff } .seg button.on.c { background: #14804D; color: #fff }
+tbody tr { cursor: pointer }
+.x { border: 0; background: none; color: var(--muted); font-size: 1.2rem; cursor: pointer }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line) }
+td.big { font-size: 1.15rem; font-weight: 800 }
+tr.pick td { background: var(--a-soft) }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
+@media (max-width: 520px) { .row { flex-direction: column; align-items: stretch } .row input { width: 100% } h1 { font-size: 1.5rem } .ic { width: 56px; height: 56px } }
+</style>
+</head>
+<body>
+<main>
+  <section class="card">
+    <div class="head"><span class="ic"><svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true"><path d="M32 40 8 30v6l24 10 24-10v-6z" fill="#f2b705"/><path d="M8 30l24 10 24-10-24-10z" fill="#ffd34d"/><path d="M32 30 8 20v6l24 10 24-10v-6z" fill="#1fa88a"/><path d="M8 20l24 10 24-10L32 10z" fill="#3fd6b0"/><path d="M32 20 8 10v6l24 10 24-10v-6z" fill="#6d3fd1"/><path d="M8 10l24 10 24-10L32 0z" fill="#a98bff"/></svg></span>
+      <div><h1>Grade Calculator</h1><p class="small muted">For any class on the 90 / 10 system: Assessments count 90%, Coursework 10%.</p></div></div>
+    <p>Type your numbers from Infinite Campus once. Then try a score (<b>What if I get…?</b>) or work backwards (<b>What do I need?</b>).</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">1</span>Your numbers from Infinite Campus</h2>
+    <div class="classes" id="classes"></div>
+    <div class="pic" id="pic" title="Tap to zoom"><img src="ic-help.jpg" alt="Infinite Campus grades page. Under the class, the Assessments row shows points earned and possible (300/305) and the Coursework row shows points earned and possible (2928.61/3230)."></div>
+    <p class="small muted">In Infinite Campus: <b>Grades</b> › pick the class › find the <b>Assessments</b> and <b>Coursework</b> rows. Each shows <b>earned / possible</b>, like 300/305. Tap the picture to zoom.</p>
+    <div class="panels">
+      <div class="panel pa"><h3>Assessments (90%)</h3>
+        <label class="row"><span>Points earned</span><input id="ae" inputmode="decimal" autocomplete="off"></label>
+        <label class="row"><span>Points possible</span><input id="ap" inputmode="decimal" autocomplete="off"></label></div>
+      <div class="panel pc"><h3>Coursework (10%)</h3>
+        <label class="row"><span>Points earned</span><input id="ce" inputmode="decimal" autocomplete="off"></label>
+        <label class="row"><span>Points possible</span><input id="cp" inputmode="decimal" autocomplete="off"></label></div>
+    </div>
+    <div id="now"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2><span class="step">2</span>What if I get…?</h2>
+      <p class="small muted">Type a score you might get. Add more than one if you have several things coming up.</p>
+      <div id="wlist" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="link" id="wadd" style="align-self:flex-start">+ Add another assignment</button>
+      <div id="wout" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="step">3</span>What do I need?</h2>
+      <p class="small muted">Tell it about the test that's coming. It works out the lowest score that keeps each grade.</p>
+      <div class="wrow"><span><b>The test is out of</b></span><input id="np" inputmode="decimal" autocomplete="off" placeholder="100"><span><b>points</b></span></div>
+      <div class="wrow"><span><b>It counts in</b></span><span class="seg" id="ncat"><button data-c="a" class="a">Assessments</button><button data-c="c" class="c">Coursework</button></span></div>
+      <div class="wrow"><span><b>I want at least</b></span><input id="nt" inputmode="decimal" autocomplete="off" style="width:90px"><span><b>%</b></span>
+        <span class="small muted" id="ntq"></span></div>
+      <div id="nout" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+  </div>
+
+  <p class="small muted">An estimate from the numbers you typed, using the 90% / 10% weights and nothing else changing. Letter grades use A 89.5, B 79.5, C 69.5, D 59.5. Infinite Campus is your official grade. Your numbers stay on this device; they are not sent to anyone.</p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = 'gradecalc';
+  var CUT = [['A', 89.5], ['B', 79.5], ['C', 69.5], ['D', 59.5]];
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+
+  /* saved state: several classes, each with its own numbers */
+  var st = null;
+  try { st = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (!st || !st.classes || !st.classes.length) st = { cur: 0, classes: [{ name: 'Class 1' }] };
+  st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+  function cls() { var c = st.classes[st.cur]; if (!c.what || !c.what.length) c.what = [{ e: '', p: '', cat: 'a' }]; if (!c.ncat) c.ncat = 'a'; if (c.nt == null || c.nt === '') c.nt = '79.5'; return c; }
+
+  function num(s) { s = String(s == null ? '' : s).replace(/,/g, '').replace(/%/g, '').trim(); if (s === '') return null; var n = Number(s); return isFinite(n) ? n : NaN; }
+  function f2(n) { return n.toFixed(2); }
+  function letter(g) { for (var i = 0; i < CUT.length; i++) if (g >= CUT[i][1]) return CUT[i][0]; return 'F'; }
+  /* the overall grade; a category with nothing in it yet doesn't count (Infinite Campus leaves it out) */
+  function grade(a, b, c, d) {
+    if (b > 0 && d > 0) return (a / b * 0.9 + c / d * 0.1) * 100;
+    if (b > 0) return a / b * 100;
+    if (d > 0) return c / d * 100;
+    return null;
+  }
+  function base() {
+    var a = num($('ae').value), b = num($('ap').value), c = num($('ce').value), d = num($('cp').value);
+    var missing = [];
+    if (a === null) missing.push('Assessments points earned'); if (b === null) missing.push('Assessments points possible');
+    if (c === null) missing.push('Coursework points earned'); if (d === null) missing.push('Coursework points possible');
+    if (missing.length) return { msg: 'Fill in: ' + missing.join(', ') + '.' };
+    if ([a, b, c, d].some(function (n) { return isNaN(n) || n < 0; })) return { msg: '⚠️ Use numbers only, like 300 or 2928.61 (no negatives).' };
+    if (b <= 0 && d <= 0) return { msg: '⚠️ Points possible has to be more than 0.' };
+    return { a: a, b: b, c: c, d: d, g: grade(a, b, c, d) };
+  }
+  function tile(n, label, k, sub) { return '<div class="tile ' + (k || '') + '"><span>' + label + '</span><b>' + n + '</b>' + (sub ? '<span class="small">' + sub + '</span>' : '') + '</div>'; }
+
+  /* class chips */
+  function paintClasses() {
+    $('classes').innerHTML = '<span class="small muted"><b>Class:</b></span>' + st.classes.map(function (c, i) {
+      return '<button class="chip' + (i === st.cur ? ' on' : '') + '" data-i="' + i + '">' + esc(c.name || ('Class ' + (i + 1))) + '</button>';
+    }).join('') + '<button class="chip add" id="cadd">+ Add a class</button>' +
+      '<button class="link small" id="cren">Rename</button>' + (st.classes.length > 1 ? '<button class="link small" id="cdel">Remove</button>' : '');
+  }
+  $('classes').addEventListener('click', function (ev) {
+    var t = ev.target.closest('button'); if (!t) return;
+    if (t.dataset.i != null) { st.cur = +t.dataset.i; }
+    else if (t.id === 'cadd') { var n = prompt('Name this class (like Biology or Algebra 2):', ''); if (n === null) return; st.classes.push({ name: n.trim() || ('Class ' + (st.classes.length + 1)) }); st.cur = st.classes.length - 1; }
+    else if (t.id === 'cren') { var r = prompt('Rename this class:', cls().name || ''); if (r === null) return; cls().name = r.trim() || cls().name; }
+    else if (t.id === 'cdel') { if (!confirm('Remove "' + (cls().name || 'this class') + '" and its numbers from this calculator?')) return; st.classes.splice(st.cur, 1); st.cur = 0; }
+    save(); load();
+  });
+
+  /* step 1 */
+  ['ae', 'ap', 'ce', 'cp'].forEach(function (k) { $(k).addEventListener('input', function () { cls()[k] = $(k).value; save(); out(); }); });
+  $('pic').addEventListener('click', function () { this.classList.toggle('big'); });
+
+  /* step 2: what-if rows */
+  function paintWhat() {
+    var c = cls();
+    $('wlist').innerHTML = c.what.map(function (w, i) {
+      return '<div class="wrow" data-i="' + i + '"><span><b>I get</b></span><input data-f="e" inputmode="decimal" autocomplete="off" placeholder="45" value="' + esc(w.e) + '"><span><b>out of</b></span><input data-f="p" inputmode="decimal" autocomplete="off" placeholder="50" value="' + esc(w.p) + '">' +
+        '<span class="seg"><button data-c="a" class="a' + (w.cat !== 'c' ? ' on' : '') + '">Assessments</button><button data-c="c" class="c' + (w.cat === 'c' ? ' on' : '') + '">Coursework</button></span>' +
+        (c.what.length > 1 ? '<button class="x" data-x="1" title="Remove">✕</button>' : '') + '</div>';
+    }).join('');
+  }
+  $('wlist').addEventListener('input', function (ev) { var r = ev.target.closest('[data-i]'), f = ev.target.dataset.f; if (!r || !f) return; cls().what[+r.dataset.i][f] = ev.target.value; save(); out(); });
+  $('wlist').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'), r = ev.target.closest('[data-i]'); if (!b || !r) return; var i = +r.dataset.i;
+    if (b.dataset.x) cls().what.splice(i, 1); else if (b.dataset.c) cls().what[i].cat = b.dataset.c;
+    save(); paintWhat(); out();
+  });
+  $('wadd').addEventListener('click', function () { cls().what.push({ e: '', p: '', cat: 'a' }); save(); paintWhat(); out(); });
+
+  /* step 3: what do I need */
+  $('np').addEventListener('input', function () { cls().np = $('np').value; save(); out(); });
+  $('nt').addEventListener('input', function () { cls().nt = $('nt').value; save(); out(); });
+  $('ncat').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (!b) return; cls().ncat = b.dataset.c; save(); paintSeg(); out(); });
+  $('nout').addEventListener('click', function (ev) { var r = ev.target.closest('tr[data-t]'); if (!r) return; cls().nt = r.dataset.t; $('nt').value = r.dataset.t; save(); out(); });
+  function paintSeg() { [].forEach.call($('ncat').children, function (b) { b.classList.toggle('on', b.dataset.c === cls().ncat); }); }
+
+  function out() {
+    var B = base(), c = cls();
+    if (B.msg) {
+      $('now').innerHTML = '<p class="small muted">' + B.msg + '</p>';
+      $('wout').innerHTML = $('nout').innerHTML = '<p class="small muted">Fill in your numbers in step 1 first.</p>';
+      $('ntq').textContent = '';
+      return;
+    }
+    var onlyOne = !(B.b > 0 && B.d > 0) ? '<p class="small muted">Only ' + (B.b > 0 ? 'Assessments' : 'Coursework') + ' has points so far, so your grade is that category alone for now.</p>' : '';
+    $('now').innerHTML = '<div class="tiles">' + tile(f2(B.g) + '%', 'Your grade now', '', letter(B.g)) +
+      (B.b > 0 ? tile(f2(B.a / B.b * 100) + '%', 'Assessments', '', B.a + ' / ' + B.b) : '') +
+      (B.d > 0 ? tile(f2(B.c / B.d * 100) + '%', 'Coursework', 'c', B.c + ' / ' + B.d) : '') + '</div>' + onlyOne;
+
+    /* what if */
+    var a = B.a, b = B.b, cc = B.c, d = B.d, used = 0, bad = false;
+    c.what.forEach(function (w) {
+      var e = num(w.e), p = num(w.p); if (e === null && p === null) return;
+      if (e === null || p === null || isNaN(e) || isNaN(p) || e < 0 || p <= 0) { bad = true; return; }
+      used++; if (w.cat === 'c') { cc += e; d += p; } else { a += e; b += p; }
+    });
+    if (bad) $('wout').innerHTML = '<p class="small">⚠️ Each line needs a score and an “out of” (more than 0).</p>';
+    else if (!used) $('wout').innerHTML = '<p class="small muted">Type a score above, like 45 out of 50.</p>';
+    else {
+      var g2 = grade(a, b, cc, d), diff = g2 - B.g, sign = diff > 0.004 ? '+' : diff < -0.004 ? '−' : '';
+      var L1 = letter(B.g), L2 = letter(g2);
+      var v = Math.abs(diff) < 0.005 ? ['', '➡️ Your grade would stay about the same.']
+        : diff > 0 ? ['up', '✅ Your grade would go up' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '!' : '.')]
+        : ['down', '⚠️ Your grade would go down' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '.' : '.')];
+      $('wout').innerHTML = '<div class="tiles">' + tile(f2(g2) + '%', 'New grade', 'c', L2) + tile(sign + f2(Math.abs(diff)), 'Change', 'c', 'percentage points') + '</div>' +
+        '<div class="verdict ' + v[0] + '"><b>' + v[1] + '</b><p class="small" style="margin-top:4px">' + f2(B.g) + '% now → ' + f2(g2) + '% after.</p></div>';
+    }
+
+    /* what do I need */
+    var P = num(c.np), T = num(c.nt), cat = c.ncat;
+    $('ntq').innerHTML = (T !== null && !isNaN(T)) ? 'that’s ' + (T >= 59.5 ? 'a' + (letter(T) === 'A' ? 'n' : '') + ' ' + letter(T) : 'an F') : '';
+    if (P === null) { $('nout').innerHTML = '<p class="small muted">How many points is the test out of?</p>'; return; }
+    if (isNaN(P) || P <= 0) { $('nout').innerHTML = '<p class="small">⚠️ “Out of” has to be a number more than 0.</p>'; return; }
+    var gx = function (x) { return cat === 'c' ? grade(B.a, B.b, B.c + x, B.d + P) : grade(B.a + x, B.b + P, B.c, B.d); };
+    var need = function (t) {      /* the lowest score that keeps the grade at t or more (to 0.01 of a point) */
+      if (gx(0) >= t) return { safe: true };
+      if (gx(P) < t) return { no: true, best: gx(P) };
+      var lo = 0, hi = P; for (var i = 0; i < 60; i++) { var m = (lo + hi) / 2; if (gx(m) >= t) hi = m; else lo = m; }
+      return { x: Math.ceil(hi * 100 - 1e-6) / 100 };
+    };
+    var say = function (r) {
+      if (r.safe) return 'Any score (even 0)';
+      if (r.no) return 'Not possible';
+      return r.x + ' / ' + P + ' <span class="small muted">(' + f2(r.x / P * 100) + '%)</span>';
+    };
+    var html = '';
+    if (T === null || isNaN(T)) html += '<p class="small muted">Type the percent you want to keep, like 79.5 for a B.</p>';
+    else {
+      var r = need(T);
+      html += '<div class="verdict ' + (r.no ? 'down' : 'up') + '"><b>' + (r.safe ? '🎉 You keep ' + f2(T) + '% or better even with a 0 on this test.'
+        : r.no ? '😬 Even ' + P + ' / ' + P + ' would only bring you to ' + f2(r.best) + '%, not ' + f2(T) + '%.'
+        : '🎯 You need at least ' + r.x + ' out of ' + P + ' (' + f2(r.x / P * 100) + '%) to keep ' + f2(T) + '% or better.') + '</b>' +
+        (!r.safe && !r.no && r.x % 1 ? '<p class="small" style="margin-top:4px">If the test is scored in whole points, that’s ' + Math.ceil(r.x) + '.</p>' : '') + '</div>';
+    }
+    html += '<table><thead><tr><th>To keep <span class="small muted">(tap one)</span></th><th>You need at least</th></tr></thead><tbody>' + CUT.map(function (k) {
+      return '<tr data-t="' + k[1] + '"' + (T === k[1] ? ' class="pick"' : '') + '><td>' + k[0] + ' (' + k[1] + '%)</td><td class="big">' + say(need(k[1])) + '</td></tr>';
+    }).join('') + '</tbody></table>' +
+      '<p class="small muted">Best you can do on this test: ' + f2(gx(P)) + '% (' + letter(gx(P)) + '). With a 0: ' + f2(gx(0)) + '% (' + letter(gx(0)) + ').</p>';
+    $('nout').innerHTML = html;
+  }
+
+  function load() {
+    var c = cls();
+    ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
+    paintClasses(); paintWhat(); paintSeg(); out();
+  }
+  load();
+})();
+</script>
+</body>
+</html>
