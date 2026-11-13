@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.495';
+var VERSION = '4.496';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -10492,7 +10492,7 @@ function breachRtFinish_(g) { var R = g.breach && g.breach.rt; if (!R) return; t
    taken away), plus the excuse bonus. Then the Week review (30 seconds: the right week next to each assistant's), a new client and a new week.
    The winning team gets bonus Tokens at Save and close (asstPay_; Settings: The Assistants winning team Tokens). Screens get first names and numbers
    only. It runs in the asl.cool engine room like the other live games (RTE_NEED: api_asstPlace). ── */
-var ASST = { roundsDef: 4, roundsMin: 2, roundsMax: 6, minsDef: 4, minsMin: 2, minsMax: 8, reqDef: 5, reqMin: 3, reqMax: 7, reviewMs: 30000, deck: 14, clashP: 0.8, excusePts: 2, maxEnt: 14, first: 14, last: 41 };
+var ASST = { roundsDef: 4, roundsMin: 2, roundsMax: 6, minsDef: 4, minsMin: 2, minsMax: 8, reqDef: 5, reqMin: 3, reqMax: 7, reviewMs: 30000, voteMs: 45000, deck: 14, clashP: 0.8, excusePts: 2, maxEnt: 14, first: 14, last: 41 };
 /* [key, picture, words, the English the unit tab may use for its sign] */
 var ASST_EV = [
   ['dentist', '🦷', 'Dentist', ['dentist', 'dentist appointment']], ['doctor', '🩺', 'Doctor', ['doctor', 'doctor appointment', 'doctor s appointment']], ['haircut', '💇', 'Haircut', ['haircut', 'hair cut', 'get a haircut']],
@@ -10552,7 +10552,7 @@ function asstSigns_(cards, units, sub) { var inU = {}, any = {}, inS = {}; units
 function asstNew_(opt, st, maxM) { opt = opt || {}; var P = asstPlan_(opt, maxM || 45), units = asstUnits_(st, opt.asstUnit), sub = str_(opt.asstSub).replace(/[^0-9.]/g, ''), S = asstSigns_(st && st.cards, units, sub), a0 = [], a = [], b = [], c = [];
   ASST_EV.forEach(function (e) { var k = 'e:' + e[0]; (S.ss[k] ? a0 : S.su[k] ? a : S.sg[k] ? b : c).push(e[0]); });      /* 4.494 Focus: the subunit's events first (Colleen: Unit 5.3) */
   var deck = shuffle_(a0).concat(shuffle_(a), shuffle_(b), shuffle_(c)).slice(0, Math.max(ASST.deck, Math.min(a0.length, 20))), stars = []; for (var i = 0; i < ASST_STARS.length; i++) stars.push(i);
-  return { units: units, sub: sub, nsub: a0.length, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false, sup: opt.asstHelp === 'sup',
+  return { units: units, sub: sub, nsub: a0.length, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false, sup: opt.asstHelp === 'sup', pick: opt.asstPick === 'turns' ? 'turns' : 'vote', fixed: {}, votes: {},      /* 4.496 Colleen: one celebrity all game; each team votes who plays the client */
     ph: { k: 'wait', n: 0 }, r: 0, T: [], was: {}, last: [], tot: [], me: {}, hist: [], stars: shuffle_(stars), paused: 0, started: 0, final: false }; }
 function asstMe_(A, e) { return A.me[e] || (A.me[e] = { pts: 0, n: 0 }); }
 /** The calendar cells an event fills (day * 48 + half hour). */
@@ -10574,13 +10574,21 @@ function asstWeek_(A, cli, star) { var deck = shuffle_(A.deck.slice()), occ = {}
     if (can.length) { var k = can[Math.floor(Math.random() * can.length)]; T.reqs[k].d = T.busy[0].d; T.reqs[k].t = T.busy[0].t; T.reqs[k].clash = 1; } }      // never the first request: the assistants get going first
   return T; }
 /** The next client: whoever has been the client the fewest times, then the next teammate in order after the last client. */
-function asstPickCli_(A, t, mates) { if (!mates.length) return ''; var n = mates.length, li = mates.indexOf(A.last[t] || ''), rank = function (e) { return (A.was[e] || 0) * 100 + ((mates.indexOf(e) - li - 1 + n) % n); };
+function asstPickCli_(A, t, mates) { if (!mates.length) return ''; if (A.fixed && A.fixed[t] && mates.indexOf(A.fixed[t]) >= 0) return A.fixed[t];      /* 4.496 the team's vote */ var n = mates.length, li = mates.indexOf(A.last[t] || ''), rank = function (e) { return (A.was[e] || 0) * 100 + ((mates.indexOf(e) - li - 1 + n) % n); };
   return mates.slice().sort(function (a, b) { return rank(a) - rank(b); })[0]; }
 function asstRound_(g, now) { var A = g.asst, j = liveJoined_(g.id); A.ph = { k: 'play', n: A.r, ends: now + A.mins * 60000, at: now }; A.T = [];
-  for (var t = 0; t < (g.teams || 1); t++) { var mates = seaMates_(j, t), cli = asstPickCli_(A, t, mates), T = asstWeek_(A, cli, A.stars[(A.r * (g.teams || 1) + t) % A.stars.length]);
+  for (var t = 0; t < (g.teams || 1); t++) { var mates = seaMates_(j, t), cli = asstPickCli_(A, t, mates), T = asstWeek_(A, cli, A.stars[t % A.stars.length]);      /* 4.496 the same celebrity all game */
     T.mind = A.mind ? { at: now + Math.round(A.mins * 60000 * (0.35 + Math.random() * 0.3)), i: -1 } : null;
     if (cli) { A.was[cli] = (A.was[cli] || 0) + 1; A.last[t] = cli; asstMe_(A, cli).n++; } A.T.push(T); } }
-function asstStart_(g) { var A = g.asst, now = Date.now(); if (!A || A.started) return; A.started = now; A.tot = []; for (var t = 0; t < (g.teams || 1); t++) A.tot.push(0); A.r = 0; asstRound_(g, now); }
+function asstStart_(g) { var A = g.asst, now = Date.now(); if (!A || A.started) return; A.started = now; A.tot = []; for (var t = 0; t < (g.teams || 1); t++) A.tot.push(0); A.r = 0;
+  if (A.pick === 'vote') { A.fixed = {}; A.votes = {}; A.ph = { k: 'vote', n: 0, ends: now + ASST.voteMs, at: now }; A.T = []; return; }      /* 4.496 first the teams vote */
+  asstRound_(g, now); }
+/** 4.496 The vote: each player taps a teammate (themselves too) to play the celebrity all game. Most votes wins; a tie or no votes = picked at random among them. */
+function asstVoteAll_(g) { var A = g.asst, j = liveJoined_(g.id), any = false; for (var t = 0; t < (g.teams || 1); t++) { var m = seaMates_(j, t); if (m.length) any = true; if (!m.every(function (e) { return A.votes[e]; })) return false; } return any; }
+function asstTally_(g) { var A = g.asst, j = liveJoined_(g.id); A.fixed = {};
+  for (var t = 0; t < (g.teams || 1); t++) { var m = seaMates_(j, t), c = {}, best = 0; if (!m.length) continue;
+    m.forEach(function (e) { var v = A.votes[e]; if (v && m.indexOf(v) >= 0) c[v] = (c[v] || 0) + 1; }); m.forEach(function (e) { best = Math.max(best, c[e] || 0); });
+    var top = m.filter(function (e) { return (c[e] || 0) === best; }); A.fixed[t] = top[Math.floor(Math.random() * top.length)]; } }
 /** "The client changed their mind!": one request (never the clashing one) moves to another free time. */
 function asstMind_(T, now) { var can = []; T.reqs.forEach(function (r, i) { if (!r.clash) can.push(i); }); if (!can.length) { T.mind.no = 1; return false; }
   var i = can[Math.floor(Math.random() * can.length)], r = T.reqs[i], occ = asstOcc_(T, i), s = null;
@@ -10608,19 +10616,20 @@ function asstAllDone_(g) { var A = g.asst, j = liveJoined_(g.id), any = false;
 function asstFinal_(g, now) { var A = g.asst; if (!A || A.final) return; if (A.ph.k === 'play') asstScoreRound_(g, now); A.ph = { k: 'done', n: A.r }; A.final = true; g.ends = Math.min(g.ends || now, now); }
 /** Time moves the game along: the mind-change cards, the end of a week (or everyone pressed Done), the Week review, the next week, the end. */
 function asstTick_(g, now) { var A = g.asst; if (!A || !A.started || A.paused || A.final || livePhase_(g) !== 'on') return false; now = now || Date.now(); var ch = false, P = A.ph;
+  if (P.k === 'vote') { if (now >= P.ends || asstVoteAll_(g)) { asstTally_(g); asstRound_(g, now); ch = true; } return ch; }
   if (P.k === 'play') { A.T.forEach(function (T) { if (T.mind && T.mind.i < 0 && !T.mind.no && now >= T.mind.at) { asstMind_(T, now); ch = true; } });
     if (now >= P.ends || asstAllDone_(g)) { asstScoreRound_(g, now); A.ph = { k: 'review', n: A.r, ends: now + ASST.reviewMs, at: now }; ch = true; } }
   else if (P.k === 'review' && now >= P.ends) { if (A.r + 1 < A.rounds) { A.r++; asstRound_(g, now); } else asstFinal_(g, now); ch = true; }
   return ch; }
 function asstDue_(g) { var A = g.asst; if (!A || !A.started || A.paused || A.final || livePhase_(g) !== 'on') return false; var now = Date.now();
-  return now >= (A.ph.ends || 0) || (A.ph.k === 'play' && (A.T.some(function (T) { return T.mind && T.mind.i < 0 && !T.mind.no && now >= T.mind.at; }) || asstAllDone_(g))); }
+  return now >= (A.ph.ends || 0) || (A.ph.k === 'vote' && asstVoteAll_(g)) || (A.ph.k === 'play' && (A.T.some(function (T) { return T.mind && T.mind.i < 0 && !T.mind.no && now >= T.mind.at; }) || asstAllDone_(g))); }
 /** The teacher's buttons: Pause / Resume, Next (end the week now, or skip the review), and a new client for a team whose client is away. */
 function asstControl_(g, action) { var A = g.asst, now = Date.now(); if (!A || !A.started || A.final) return;
   if (action === 'asstpause') { if (!A.paused) A.paused = now; else { var dt = now - A.paused; if (A.ph.ends) A.ph.ends += dt; A.T.forEach(function (T) { if (T.mind && T.mind.i < 0) T.mind.at += dt; }); g.ends += dt; A.paused = 0; } return; }
   if (A.paused) return;
   if (action === 'asstnext') { A.ph.ends = now; asstTick_(g, now); return; }
   var t = Number(action.split(':')[1]), T = A.T[t]; if (!T || A.ph.k !== 'play') return; var mates = seaMates_(liveJoined_(g.id), t); if (mates.length < 2) return;
-  var nx = mates[(mates.indexOf(T.cli) + 1) % mates.length]; T.cli = nx; delete T.ent[nx]; delete T.done[nx]; A.was[nx] = (A.was[nx] || 0) + 1; A.last[t] = nx; asstMe_(A, nx).n++; }
+  var nx = mates[(mates.indexOf(T.cli) + 1) % mates.length]; T.cli = nx; if (A.fixed) A.fixed[t] = nx;      /* 4.496 the new client stays */ delete T.ent[nx]; delete T.done[nx]; A.was[nx] = (A.was[nx] || 0) + 1; A.last[t] = nx; asstMe_(A, nx).n++; }
 function asstClashIdx_(T) { for (var i = 0; i < T.reqs.length; i++) if (T.reqs[i].clash) return i; return -1; }
 function asstExPick_(A) { var w = ASST_EX.filter(function (x) { return A.sg['x:' + x[0]]; }); if (w.length < 4) w = ASST_EX; return w[Math.floor(Math.random() * w.length)][0]; }
 function asstExOpts_(ex) { return shuffle_([ex].concat(shuffle_(ASST_EX.map(function (x) { return x[0]; }).filter(function (k) { return k !== ex; })).slice(0, 3))); }
@@ -10652,6 +10661,15 @@ function api_asstPlace(auth, code, e, id) {
       return { none: true, booked: true, why: 'That time is already booked.' }; }
     var ent = { id: old >= 0 ? mine[old].id : (T.eid = (T.eid || 0) + 1), ev: x.ev, f: x.f, d: x.d, t: x.t }; if (old >= 0) mine[old] = ent; else mine.push(ent);
     delete T.done[key]; asstMe_(A, key).n++; return { ok: true, id: ent.id }; }); }
+/** 4.496 The vote: who plays our celebrity (i = the place in my team's list; me too). Changing the vote is fine until the vote ends. */
+function api_asstVote(auth, code, i) {
+  { var rr = rteRedirect_(auth, code); if (rr) return rr; }
+  var me = who_(auth); if (!me) throw new Error('Your sign-in ran out. Reload the page.');
+  return lock_(function () { var g = liveGet_(code); if (!g || !g.asst || livePhase_(g) !== 'on') return { none: true, why: 'The game is not on.' };
+    var A = g.asst, now = Date.now(), t = wallMe_(g, me.key), out; if (t < 0) { out = { none: true, why: 'You are not on a team yet.' }; }
+    else if (A.ph.k !== 'vote') out = { none: true, why: 'The vote is over.' };
+    else { var m = seaMates_(liveJoined_(g.id), t), e = m[Math.floor(num_(i))]; if (!e) out = { none: true, why: 'Tap one of your teammates.' }; else { A.votes[me.key] = e; out = { ok: true }; asstTick_(g, now); } }
+    livePut_(g); out.asst = asstView_(g, t, me.key); return out; }); }
 /** Assistant: take one of my events off my calendar. */
 function api_asstRemove(auth, code, id) {
   { var rr = rteRedirect_(auth, code); if (rr) return rr; }
@@ -10683,6 +10701,10 @@ function asstEntOut_(e) { return [e.id, e.ev, e.f, e.d, e.t]; }
     the excuse to sign back; the requests only in the Week review. First names only, never emails. */
 function asstView_(g, myTeam, key) { var A = g.asst; if (!A) return null; var now = A.paused || Date.now(), j = liveJoined_(g.id), P = A.ph, over = livePhase_(g) === 'over' || P.k === 'done', ans = over || P.k === 'review';
   var v = { ph: { k: over ? 'done' : P.k, n: P.n || 0, of: A.rounds, left: P.ends ? Math.max(0, P.ends - now) : 0, mins: A.mins }, paused: !!A.paused, nreq: A.nreq, deck: A.deck, sg: A.sg, lex: asstLex_(), found: A.found, sub: A.sub || '', nsub: A.nsub || 0, tot: A.tot.slice(), hist: A.hist, clash: A.clash, mind: A.mind };
+  v.pick = A.pick || 'turns';
+  if (P.k === 'vote') { v.teams = []; for (var vt = 0; vt < (g.teams || 1); vt++) { var vm = seaMates_(j, vt); v.teams.push({ star: A.stars[vt % A.stars.length], n: vm.length, voted: vm.filter(function (e) { return A.votes[e]; }).length, asst: [], busy: [] }); }
+    if (myTeam >= 0) { var mm = seaMates_(j, myTeam); v.me = { role: 'vote', team: myTeam, star: A.stars[myTeam % A.stars.length], mates: mm.map(function (e) { return seaFirst_(j, e); }), mine: mm.indexOf(A.votes[key] || ''), self: mm.indexOf(key), voted: mm.filter(function (e) { return A.votes[e]; }).length }; }
+    return v; }      /* 4.496 the vote: first names only, never who voted for whom */
   v.teams = A.T.map(function (T, t) { var mates = seaMates_(j, t), asst = mates.filter(function (e) { return e !== T.cli; });
     var o = { cli: T.cli ? seaFirst_(j, T.cli) : '', star: T.star, n: mates.length, nreq: T.reqs.length, busy: T.busy.map(function (b) { return [b.ev, b.d, b.t]; }), cf: T.cf ? T.cf.ph : '', mind: !!(T.mind && T.mind.i >= 0),
       asst: asst.map(function (e) { return [seaFirst_(j, e), (T.ent[e] || []).length, T.done[e] ? 1 : 0]; }) };
@@ -15499,4 +15521,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appClaim, api_appSays, api_appSettings, api_appSettingsSave, api_appSignIn, api_appUse, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appClaim, api_appSays, api_appSettings, api_appSettingsSave, api_appSignIn, api_appUse, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_asstVote, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
