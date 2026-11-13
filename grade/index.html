@@ -219,6 +219,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   <section class="card" id="rtcard">
     <h2><span class="step">4</span>🔁 I’m doing a retake</h2>
     <p class="small muted">At LTHS a retake replaces your old score on a summative (Assessments, 90%). The old score is thrown out and the test keeps the same points possible.</p>
+    <div class="verdict warn small"><b>📋 To use this, paste your whole class page from Infinite Campus</b> into the paste box at the top. Typing your numbers in step 1 isn’t enough: the retake calculator needs each test’s score, and those only come from the pasted page.</div>
     <div id="rt" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
 
@@ -665,7 +666,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
      possible points for that test ... tell them the same information"). c.tests comes from the class's pasted page; c.rt = { i (which test), e (the retake score typed) }. */
   function paintRt() {
     var c = cls(), el = $('rt'), T = c.tests || [];
-    if (!T.length) { el.innerHTML = '<p class="small">' + (c.pasted ? 'No graded summatives were found on ' + esc(c.name) + '’s page.' : 'Paste ' + esc(c.name) + '’s page from Infinite Campus first (at the top), so the calculator knows your summatives and their scores.') + '</p>'; return; }
+    if (!T.length) { el.innerHTML = '<p class="small">' + (c.pasted ? 'No graded summatives were found on ' + esc(c.name) + '’s page.' : 'Nothing to pick from yet. In Infinite Campus Grades, click ' + esc(c.name) + ' so every assignment is listed, press Ctrl + A, Ctrl + C, and paste it into the box at the top. Then your summatives show up here.') + '</p>'; return; }
     c.rt = c.rt || { i: '', e: '' };
     el.innerHTML = '<label class="wrow"><span><b>Which one are you retaking?</b></span><select id="rti" style="max-width:100%"><option value="">Pick the test…</option>' +
       T.map(function (t, i) { return '<option value="' + i + '"' + (String(c.rt.i) === String(i) ? ' selected' : '') + '>' + esc(t.n) + ' (' + round2(t.s) + ' / ' + t.p + ', ' + f2(t.s / t.p * 100) + '%)</option>'; }).join('') + '</select></label>' +
