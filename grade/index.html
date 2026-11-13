@@ -7,7 +7,7 @@
 <title>Grade Calculator</title>
 <link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700;800&display=swap">
-<!-- asl.cool/grade (ASL Study 4.498): a grade calculator for any class on the 90 / 10 system (Assessments 90%, Coursework 10%).
+<!-- asl.cool/grade (ASL Study 4.498; saving, Infinite Campus paste and wins 4.499): a grade calculator for any class on the 90 / 10 system (Assessments 90%, Coursework 10%).
      Built from the Summative Stacker's Grade Impact Calculator (chunk_chal.html chCalcPaint / chCalcOut). Nothing is sent anywhere:
      the numbers stay in this browser (localStorage 'gradecalc'). -->
 <style>
@@ -71,6 +71,30 @@ td.big { font-size: 1.15rem; font-weight: 800 }
 tr.pick td { background: var(--a-soft) }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
 @media (max-width: 520px) { .row { flex-direction: column; align-items: stretch } .row input { width: 100% } h1 { font-size: 1.5rem } .ic { width: 56px; height: 56px } }
+.btn { border: 0; border-radius: 12px; padding: 10px 16px; font: inherit; font-weight: 800; cursor: pointer; background: var(--accent); color: #fff }
+.btn.alt { background: var(--surface); color: var(--ink); border: 2px solid var(--line) }
+.btn.g { background: #fff; color: #1f1f1f; border: 2px solid #dadce0; display: inline-flex; align-items: center; gap: 10px }
+.acct { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between }
+.save { font-size: .85rem; color: var(--muted) }
+textarea { width: 100%; min-height: 90px; font: inherit; font-size: .95rem; padding: 10px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--ink) }
+.how { margin: 0; padding-left: 22px } .how li { margin: 3px 0 }
+kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; font: 700 .85rem/1.3 system-ui, sans-serif; text-align: center; background: var(--surface) }
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px }
+.way { border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px }
+.wins { border: 2px solid var(--up-line); background: var(--up) }
+.wins ul { margin: 0; padding-left: 22px } .wins li { margin: 4px 0; font-weight: 700 }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px }
+.ccard { text-align: left; border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px }
+.ccard.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent) }
+.ccard .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ccard .gr { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums }
+.up { color: var(--green) } .dn { color: #d9454b }
+.spark { width: 100%; height: 34px; display: block }
+.miss li { margin: 4px 0 }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1B1E3C; color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; z-index: 50; max-width: 92vw; text-align: center }
+.confetti { position: fixed; top: -12px; width: 10px; height: 14px; z-index: 60; pointer-events: none; animation: fall 2.6s ease-in forwards }
+@keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: .8 } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none } }
 </style>
 </head>
 <body>
@@ -78,12 +102,31 @@ tr.pick td { background: var(--a-soft) }
   <section class="card">
     <div class="head"><span class="ic"><svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true"><path d="M32 40 8 30v6l24 10 24-10v-6z" fill="#f2b705"/><path d="M8 30l24 10 24-10-24-10z" fill="#ffd34d"/><path d="M32 30 8 20v6l24 10 24-10v-6z" fill="#1fa88a"/><path d="M8 20l24 10 24-10L32 10z" fill="#3fd6b0"/><path d="M32 20 8 10v6l24 10 24-10v-6z" fill="#6d3fd1"/><path d="M8 10l24 10 24-10L32 0z" fill="#a98bff"/></svg></span>
       <div><h1>Grade Calculator</h1><p class="small muted">For any class on the 90 / 10 system: Assessments count 90%, Coursework 10%.</p></div></div>
-    <p>Type your numbers from Infinite Campus once. Then try a score (<b>What if I get…?</b>) or work backwards (<b>What do I need?</b>).</p>
+    <p>Paste or type your numbers from Infinite Campus. Then try a score (<b>What if I get…?</b>) or work backwards (<b>What do I need?</b>). Paste again every week or two to see how you’re doing.</p>
+    <div class="acct" id="acct"></div>
+  </section>
+
+  <section class="card wins" id="wins" hidden></section>
+
+  <section class="card">
+    <h2>📋 Paste from Infinite Campus</h2>
+    <div class="ways">
+      <div class="way"><b>All my classes at once</b><ol class="how small"><li>In Infinite Campus, open <b>Grades</b> (the page with every class).</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li></ol><p class="small muted">Adds your classes and their grades.</p></div>
+      <div class="way"><b>One class, with exact points</b><ol class="how small"><li>In <b>Grades</b>, <b>click the class</b> so its assignments show.</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li></ol><p class="small muted">Fills in the points below and finds missing work. Do it for each class.</p></div>
+    </div>
+    <textarea id="paste" placeholder="Paste here (Ctrl + V)"></textarea>
+    <p class="small muted">On a phone? Type the numbers in step 1 instead.</p>
   </section>
 
   <section class="card">
-    <h2><span class="step">1</span>Your numbers from Infinite Campus</h2>
+    <h2>📚 My classes</h2>
+    <div class="cgrid" id="cgrid"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">1</span><span id="cname">Your numbers</span></h2>
     <div class="classes" id="classes"></div>
+    <div id="pasted"></div>
     <h3 style="text-align:center">Where to find your numbers in Infinite Campus</h3>
     <div class="pic" id="pic" title="Tap to zoom"><svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif" fill="#1f2333" role="img" aria-label="Infinite Campus grades page. The Assessments row shows 300/305: 300 is points earned and 305 is points possible. The Coursework row shows 2928.61/3230: 2928.61 is points earned and 3230 is points possible.">
 <defs><marker id="ma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10z" fill="#6d3fd1"/></marker>
@@ -140,6 +183,8 @@ tr.pick td { background: var(--a-soft) }
     <div id="now"></div>
   </section>
 
+  <section class="card" id="prog" hidden></section>
+
   <div class="grid2">
     <section class="card">
       <h2><span class="step">2</span>What if I get…?</h2>
@@ -154,80 +199,304 @@ tr.pick td { background: var(--a-soft) }
       <p class="small muted">Tell it about the test that's coming. It works out the lowest score that keeps each grade.</p>
       <div class="wrow"><span><b>The test is out of</b></span><input id="np" inputmode="decimal" autocomplete="off" placeholder="100"><span><b>points</b></span></div>
       <div class="wrow"><span><b>It counts in</b></span><span class="seg" id="ncat"><button data-c="a" class="a">Assessments</button><button data-c="c" class="c">Coursework</button></span></div>
-      <div class="wrow"><span><b>I want at least</b></span><input id="nt" inputmode="decimal" autocomplete="off" style="width:90px"><span><b>%</b></span>
-        <span class="small muted" id="ntq"></span></div>
+      <div class="wrow"><span><b>I want at least</b></span><select id="nl" aria-label="Pick a letter grade"><option value="89.5">A</option><option value="79.5">B</option><option value="69.5">C</option><option value="59.5">D</option><option value="">Other</option></select>
+        <input id="nt" inputmode="decimal" autocomplete="off" style="width:90px" aria-label="Percent"><span><b>%</b></span></div>
       <div id="nout" style="display:flex;flex-direction:column;gap:10px"></div>
     </section>
   </div>
 
-  <p class="small muted">An estimate from the numbers you typed, using the 90% / 10% weights and nothing else changing. Letter grades use A 89.5, B 79.5, C 69.5, D 59.5. Infinite Campus is your official grade. Your numbers stay on this device; they are not sent to anyone.</p>
+  <p class="small muted">An estimate from your numbers, using the 90% / 10% weights and nothing else changing. Letter grades use A 89.5, B 79.5, C 69.5, D 59.5. Infinite Campus is your official grade. Not signed in: your numbers stay on this device only. Signed in: they are saved with your school Google account, in a file in Ms. Gibbons’s LTHS Google Drive, so you can open them on any device. They are only used to show them back to you.</p>
 </main>
 
 <script>
 (function () {
   'use strict';
-  var KEY = 'gradecalc';
+  var DOOR = 'https:' + '/' + '/script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec';
+  var MAIN = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec';
+  var KEY = 'gradecalc', TK = 'asl-app-tok', SEEN = 'gradecalc-seen';
   var CUT = [['A', 89.5], ['B', 79.5], ['C', 69.5], ['D', 59.5]];
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var get = function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  var put = function (k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function day(s) { var p = String(s).split('-'); return p.length === 3 ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+p[1] - 1] + ' ' + (+p[2]) : s; }
+  function toast(t) { var el = $('toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); } el.textContent = t; el.hidden = false; clearTimeout(el._t); el._t = setTimeout(function () { el.hidden = true; }, 3500); }
 
-  /* saved state: several classes, each with its own numbers */
-  var st = null;
-  try { st = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-  if (!st || !st.classes || !st.classes.length) st = { cur: 0, classes: [{ name: 'Class 1' }] };
+  /* ───── saved state: { owner, classes: [{ id, name, code, teacher, ae, ap, ce, cp, icPct, missing, pastes, pasted, what, ncat, nt, np, hist, t }], cur } ───── */
+  function blank(name) { return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name || 'Class 1', t: Date.now() }; }
+  var st = null; try { st = JSON.parse(get(KEY, 'null')); } catch (e) {}
+  if (!st || !Array.isArray(st.classes) || !st.classes.length) st = { classes: [blank()], cur: 0 };
+  st.classes.forEach(function (c) { if (!c.id) c.id = blank().id; });
   st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
-  function cls() { var c = st.classes[st.cur]; if (!c.what || !c.what.length) c.what = [{ e: '', p: '', cat: 'a' }]; if (!c.ncat) c.ncat = 'a'; if (c.nt == null || c.nt === '') c.nt = '79.5'; return c; }
+  function cls() { var c = st.classes[st.cur]; if (!c.what || !c.what.length) c.what = [{ e: '', p: '', cat: 'a' }]; if (!c.ncat) c.ncat = 'a'; if (c.nt == null || c.nt === '') c.nt = '79.5'; if (!c.hist) c.hist = []; return c; }
+  function touch(c) { c.t = Date.now(); }
+  function save() { put(KEY, JSON.stringify(st)); sync(); }
 
+  /* ───── sign-in and saving to the school account (the same Google door as ASL Spellbound) ───── */
+  function tok() { var t = get(TK, ''); return t.split('~')[1] === 'g' ? t : ''; }      // only a Google sign-in can save grades
+  function me() { var p = tok().split('~'); return p.length >= 4 ? p[2] : ''; }
+  function call(fn, args) {
+    return fetch(DOOR, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args, app: 'grade' }) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j && 'e' in j) throw new Error(j.e); return j ? j.r : null; });
+  }
+  var SV = { state: '', msg: '', timer: 0, busy: false, again: false };
+  function sync() { if (!tok()) return; clearTimeout(SV.timer); SV.state = 'wait'; paintAcct(); SV.timer = setTimeout(push, 2000); }
+  function push() {
+    if (!tok()) return; if (SV.busy) { SV.again = true; return; }
+    SV.busy = true; SV.state = 'saving'; paintAcct();
+    call('api_gcSave', [tok(), st]).then(function () { SV.busy = false; SV.state = 'saved'; paintAcct(); if (SV.again) { SV.again = false; push(); } })
+      .catch(function (e) { SV.busy = false; fail(e); });
+  }
+  function fail(e) {
+    var m = String((e && e.message) || e);
+    if (/APPSIGNIN/.test(m)) { put(TK, null); SV.state = 'out'; SV.msg = m.replace(/^APPSIGNIN:\s*/, ''); }
+    else if (/fetch|network|Load failed/i.test(m)) { SV.state = 'off'; SV.msg = 'No internet right now. Your numbers are kept on this device and saved when you’re back online.'; setTimeout(push, 30000); }
+    else { SV.state = 'err'; SV.msg = m; }
+    paintAcct();
+  }
+  function key(c) { return String(c.code || c.name || '').toLowerCase().trim(); }
+  function hasData(c) { return !!(c.ae || c.ap || c.ce || c.cp || c.icPct != null || (c.hist && c.hist.length)); }
+  function load() {      // after sign-in: the account's classes, plus anything typed here before signing in
+    SV.state = 'loading'; paintAcct();
+    return call('api_gcLoad', [tok()]).then(function (r) {
+      var mine = me(), srv = r && r.data && Array.isArray(r.data.classes) ? r.data.classes : [], local = st.classes.filter(hasData);
+      if (st.owner && st.owner !== mine) local = [];      // someone else's numbers on this device are never added to this account
+      var out = srv.slice();
+      local.forEach(function (c) {
+        var i = out.findIndex(function (x) { return key(x) && key(x) === key(c); });
+        if (i < 0) out.push(c); else if ((c.t || 0) > (out[i].t || 0)) out[i] = c;
+      });
+      st = { owner: mine, classes: out.length ? out : [blank()], cur: 0 };
+      put(KEY, JSON.stringify(st)); SV.state = 'saved'; paintAll();
+      if (local.length || !srv.length) push();
+    }).catch(fail);
+  }
+  function paintAcct() {
+    var el = $('acct'), e = me();
+    if (!e) {
+      el.innerHTML = '<div><b>☁️ Save your classes</b><p class="small muted">' + (SV.state === 'out' && SV.msg ? esc(SV.msg) + ' ' : '') + 'Sign in with your school Google account to keep your classes and see your progress on any device.</p></div>' +
+        '<button class="btn g" id="gsign"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>';
+      $('gsign').onclick = function () { location.href = MAIN + '?app=signin&back=grade'; };
+      return;
+    }
+    var s = { wait: 'Saving soon…', saving: 'Saving…', saved: '✓ Saved', loading: 'Loading your classes…', off: '⚠️ ' + SV.msg, err: '⚠️ Not saved: ' + SV.msg }[SV.state] || '✓ Saved';
+    el.innerHTML = '<div><b>☁️ Signed in as ' + esc(e) + '</b><p class="save">' + esc(s) + '</p></div><button class="link" id="gout">Sign out</button>';
+    $('gout').onclick = function () {
+      if (!confirm('Sign out? Your classes stay saved in your account, and they are removed from this device.')) return;
+      put(TK, null); st = { classes: [blank()], cur: 0 }; put(KEY, JSON.stringify(st)); SV.state = ''; paintAll(); toast('Signed out.');
+    };
+  }
+
+  /* ───── reading Infinite Campus pastes (from Resource Check-In's parseIC / parseClassGrades) ───── */
+  function teacherOf(line) { return line.slice(1).split('/').map(function (n) { var p = n.split(','); return (((p[1] || '').trim().split(/\s+/)[0] || '') + ' ' + p[0].trim()).trim(); }).join(' / '); }
+  function parseDetail(block) {      // one class's page → { code, name, teacher, pct, cats: [{ name, weight, e, q }], items: [{ cat, name, due, flags, score, possible }] }
+    var L = block.split(/\r?\n/).map(function (l) { return l.trim().replace(/^\*\s*/, ''); }).filter(String), m, cat = null, it = null;
+    var o = { code: '', name: '', teacher: '', pct: null, cats: [], items: [] };
+    for (var i = 0; i < L.length; i++) {
+      var l = L[i];
+      if (!o.code && (m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+?)(\s+L[IVX]+)?$/.exec(l))) { o.code = m[1]; o.name = m[2]; continue; }
+      if (l.charAt(0) === '|' && !o.teacher) { o.teacher = teacherOf(l); continue; }
+      if (/semester grade$|term grade$|^\(.*\)\s*.*grade$/i.test(l) && !/mid/i.test(l)) { for (var j = i + 1; j < Math.min(i + 4, L.length); j++) if ((m = /^\((\d+(?:\.\d+)?)%\)$/.exec(L[j]))) { o.pct = Number(m[1]); break; } continue; }
+      if (L[i + 1] && (m = /^Weight:\s*([\d.]+)/i.exec(L[i + 1]))) {
+        cat = { name: l, weight: Number(m[1]), e: null, q: null }; o.cats.push(cat); it = null; i++;
+        if ((m = /^([\d.]+)\s*\/\s*([\d.]+)$/.exec(L[i + 1] || ''))) { cat.e = Number(m[1]); cat.q = Number(m[2]); i++; }
+        continue;
+      }
+      if (/^Assignment$/i.test(l) && cat) { it = { cat: cat.name, name: L[i + 1] || '', due: '', flags: [], score: null, possible: null }; o.items.push(it); i++; continue; }
+      if (!it) continue;
+      if ((m = /^Due:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(l))) { it.due = m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2); continue; }
+      if (/^Score$/i.test(l)) { if ((m = /^(-|[\d.]+)\s*\/\s*([\d.]+)$/.exec(L[i + 1] || ''))) { it.score = m[1] === '-' ? null : Number(m[1]); it.possible = Number(m[2]); i++; } continue; }
+      if (/^\(.*%\)$/.test(l) || /^[A-F][+-]?$/.test(l)) continue;
+      if (l.length <= 20 && /^[A-Za-z ]+$/.test(l)) it.flags.push(l.toLowerCase());
+    }
+    o.cats.forEach(function (c) {      // no total line: add up the assignments
+      if (c.q !== null) return; c.e = 0; c.q = 0;
+      o.items.forEach(function (x) { if (x.cat === c.name && x.score !== null && x.possible > 0 && x.flags.indexOf('exempt') < 0 && x.flags.indexOf('dropped') < 0) { c.e += x.score; c.q += x.possible; } });
+    });
+    return o;
+  }
+  function parseSummary(block) {      // the Grades page with every class → { code, name, teacher, pct }
+    var o = null, label = '', m;
+    block.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim(); if (!line) return;
+      if ((m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+)$/.exec(line))) { if (!o) o = { code: m[1], name: m[2].replace(/\s+L[IVX]+$/, '').trim(), teacher: '', pct: null, picked: '' }; return; }
+      if (!o) return;
+      if (line.charAt(0) === '|') { if (!o.teacher) o.teacher = teacherOf(line); return; }
+      if (/grade$/i.test(line)) { label = line; return; }
+      if ((m = /(\d{1,3}(?:\.\d+)?)\s*%/.exec(line))) { var sem = /^semester grade$/i.test(label); if (sem || o.picked !== 'sem') { o.pct = Number(m[1]); o.picked = sem ? 'sem' : 'other'; } }
+    });
+    return o;
+  }
+  function parsePaste(text) {
+    var lines = String(text || '').split(/\r?\n/), starts = [];
+    lines.forEach(function (l, i) { if (/^\s*\*?\s*[A-Z]{2,4}\d{3,5}-\d+\s+\S/.test(l)) starts.push(i); });
+    var all = starts.map(function (s0, k) {
+      var block = lines.slice(s0, k + 1 < starts.length ? starts[k + 1] : lines.length).join('\n');
+      if (/^\s*Weight:/m.test(block)) { var d = parseDetail(block); if (d.cats.length) { d.detail = true; return d; } }
+      return parseSummary(block);
+    }).filter(function (x) { return x && (x.detail || x.pct !== null); });
+    return all.filter(function (x, i) { return !all.some(function (y, j) { return j !== i && y.code === x.code && (y.detail && !x.detail || (!!y.detail === !!x.detail && j < i)); }); });
+  }
+  function pickCats(cats) {      // Assessments (90) and Coursework (10), by name, else by weight
+    var a = cats.filter(function (c) { return /assess|summative|test|exam/i.test(c.name); })[0], c = cats.filter(function (x) { return /course|formative|homework|classwork|practice/i.test(x.name); })[0];
+    var by = cats.slice().sort(function (x, y) { return y.weight - x.weight; });
+    a = a || by[0]; c = c || by.filter(function (x) { return x !== a; })[0];
+    return { a: a, c: c };
+  }
+  $('paste').addEventListener('input', function () {
+    var t = this.value; if (!t.trim()) return;
+    var list = parsePaste(t);
+    if (!list.length) { toast(/Weight:/i.test(t) ? 'Start your copy at the very top of the class page, then paste again.' : 'No classes found. Copy the Grades page in Infinite Campus (Ctrl + A, Ctrl + C) and paste it here.'); return; }
+    var first = -1, detail = 0;
+    list.forEach(function (x) {
+      var i = st.classes.findIndex(function (c) { return (c.code && c.code === x.code) || key(c) === x.name.toLowerCase(); });
+      if (i < 0) { i = st.classes.findIndex(function (c) { return !hasData(c) && /^Class \d+$/.test(c.name); }); if (i >= 0) st.classes[i].name = x.name; }
+      if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; }
+      var c = st.classes[i]; c.code = x.code; c.name = x.name; if (x.teacher) c.teacher = x.teacher; if (x.pct !== null) c.icPct = x.pct;
+      if (x.detail) {
+        var p = pickCats(x.cats);
+        if (p.a) { c.ae = String(round2(p.a.e)); c.ap = String(round2(p.a.q)); }
+        if (p.c) { c.ce = String(round2(p.c.e)); c.cp = String(round2(p.c.q)); } else { c.ce = '0'; c.cp = '0'; }
+        c.missing = x.items.filter(function (it) { return it.flags.indexOf('missing') >= 0 && it.possible > 0; }).map(function (it) { return { n: it.name, due: it.due, s: it.score || 0, p: it.possible, k: p.a && it.cat === p.a.name ? 'a' : 'c' }; });
+        c.pasted = today(); c.pastes = (c.pastes || 0) + 1; detail++;
+      }
+      touch(c); record(c); if (first < 0) first = i;
+    });
+    st.cur = first; this.value = ''; save(); paintAll();
+    toast(detail ? '✓ Read ' + list[0].name + (detail > 1 ? ' and ' + (detail - 1) + ' more' : '') + ': points filled in.' : '✓ Read ' + list.length + ' class' + (list.length === 1 ? '' : 'es') + '. For exact points, paste each class’s own page too.');
+  });
+  function round2(n) { return Math.round(n * 100) / 100; }
+
+  /* ───── math ───── */
   function num(s) { s = String(s == null ? '' : s).replace(/,/g, '').replace(/%/g, '').trim(); if (s === '') return null; var n = Number(s); return isFinite(n) ? n : NaN; }
   function f2(n) { return n.toFixed(2); }
   function letter(g) { for (var i = 0; i < CUT.length; i++) if (g >= CUT[i][1]) return CUT[i][0]; return 'F'; }
-  /* the overall grade; a category with nothing in it yet doesn't count (Infinite Campus leaves it out) */
-  function grade(a, b, c, d) {
+  function an(L) { return (L === 'A' || L === 'F' ? 'an ' : 'a ') + L; }
+  function grade(a, b, c, d) {      // a category with nothing in it yet doesn't count (Infinite Campus leaves it out)
     if (b > 0 && d > 0) return (a / b * 0.9 + c / d * 0.1) * 100;
-    if (b > 0) return a / b * 100;
-    if (d > 0) return c / d * 100;
-    return null;
+    if (b > 0) return a / b * 100; if (d > 0) return c / d * 100; return null;
   }
-  function base() {
-    var a = num($('ae').value), b = num($('ap').value), c = num($('ce').value), d = num($('cp').value);
-    var missing = [];
-    if (a === null) missing.push('Assessments points earned'); if (b === null) missing.push('Assessments points possible');
-    if (c === null) missing.push('Coursework points earned'); if (d === null) missing.push('Coursework points possible');
-    if (missing.length) return { msg: 'Fill in: ' + missing.join(', ') + '.' };
-    if ([a, b, c, d].some(function (n) { return isNaN(n) || n < 0; })) return { msg: '⚠️ Use numbers only, like 300 or 2928.61 (no negatives).' };
+  function baseOf(c) {
+    var a = num(c.ae), b = num(c.ap), x = num(c.ce), d = num(c.cp), miss = [];
+    if (a === null) miss.push('Assessments points earned'); if (b === null) miss.push('Assessments points possible');
+    if (x === null) miss.push('Coursework points earned'); if (d === null) miss.push('Coursework points possible');
+    if (miss.length) return { msg: 'Fill in: ' + miss.join(', ') + '.' };
+    if ([a, b, x, d].some(function (n) { return isNaN(n) || n < 0; })) return { msg: '⚠️ Use numbers only, like 300 or 2928.61 (no negatives).' };
     if (b <= 0 && d <= 0) return { msg: '⚠️ Points possible has to be more than 0.' };
-    return { a: a, b: b, c: c, d: d, g: grade(a, b, c, d) };
+    return { a: a, b: b, c: x, d: d, g: grade(a, b, x, d) };
   }
-  function tile(n, label, k, sub) { return '<div class="tile ' + (k || '') + '"><span>' + label + '</span><b>' + n + '</b>' + (sub ? '<span class="small">' + sub + '</span>' : '') + '</div>'; }
+  function gradeOf(c) { var B = baseOf(c); return B.msg ? (c.icPct != null ? c.icPct : null) : B.g; }
 
-  /* class chips */
+  /* ───── history: one point a day per class, only when the grade or missing work changed ───── */
+  function record(c) {
+    var g = gradeOf(c); if (g === null) return; c.hist = c.hist || [];
+    var B = baseOf(c), pt = { d: today(), g: round2(g), m: c.missing ? c.missing.length : null, a: B.msg ? null : round2(B.a / B.b * 100) };
+    var last = c.hist[c.hist.length - 1];
+    if (last && last.d === pt.d) c.hist[c.hist.length - 1] = pt;
+    else if (!last || last.g !== pt.g || last.m !== pt.m) c.hist.push(pt);
+    if (c.hist.length > 80) c.hist = c.hist.slice(-80);
+  }
+  function prevPt(c) { var h = c.hist || [], last = h[h.length - 1]; if (!last) return null; for (var i = h.length - 2; i >= 0; i--) if (h[i].d < last.d) return h[i]; return null; }
+  function daysAgo(d) { return Math.round((new Date(today()) - new Date(d)) / 864e5); }
+  function winsOf(c) {
+    var h = c.hist || [], last = h[h.length - 1], prev = prevPt(c), w = [], nm = c.name;
+    if (!last || daysAgo(last.d) > 14) return w;
+    if (prev) {
+      var diff = last.g - prev.g, L1 = letter(prev.g), L2 = letter(last.g);
+      if (L2 < L1) w.push('🎉 ' + nm + ' is ' + an(L2) + ' now! (It was ' + an(L1) + ' on ' + day(prev.d) + '.)');
+      else if (diff >= 0.5) w.push('📈 ' + nm + ' went up ' + f2(diff) + ' points since ' + day(prev.d) + ', to ' + f2(last.g) + '%.');
+      if (prev.m > 0 && last.m === 0) w.push('✅ No more missing work in ' + nm + '!');
+      else if (prev.m > 0 && last.m !== null && last.m < prev.m) w.push('✅ ' + (prev.m - last.m) + ' fewer missing assignment' + (prev.m - last.m === 1 ? '' : 's') + ' in ' + nm + '.');
+      if (prev.a !== null && last.a !== null && last.a - prev.a >= 1) w.push('📝 Your ' + nm + ' test average went up to ' + f2(last.a) + '%.');
+    }
+    if (h.length >= 3 && h.slice(0, -1).every(function (p) { return last.g > p.g + 0.004; })) w.push('⭐ Your best ' + nm + ' grade yet: ' + f2(last.g) + '%.');
+    if (last.g >= 99.995) w.push('💯 100% in ' + nm + '!');
+    return w;
+  }
+  function spark(h, wide) {
+    if (!h || h.length < 2) return '';
+    var gs = h.map(function (p) { return p.g; }), lo = Math.min.apply(null, gs), hi = Math.max.apply(null, gs); if (hi - lo < 2) { lo -= 1; hi += 1; }
+    var W = wide ? 600 : 160, H = wide ? 80 : 34, pts = gs.map(function (g, i) { return (i / (gs.length - 1) * (W - 8) + 4).toFixed(1) + ',' + (H - 4 - (g - lo) / (hi - lo) * (H - 8)).toFixed(1); });
+    var up = gs[gs.length - 1] >= gs[0], col = up ? '#1fa86a' : '#d9454b';
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true" style="height:' + H + 'px"><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + (wide ? 3 : 2.5) + '" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="' + pts[pts.length - 1].split(',')[0] + '" cy="' + pts[pts.length - 1].split(',')[1] + '" r="' + (wide ? 5 : 3.5) + '" fill="' + col + '"/></svg>';
+  }
+
+  /* ───── painting ───── */
+  function tile(n, label, k, sub) { return '<div class="tile ' + (k || '') + '"><span>' + label + '</span><b>' + n + '</b>' + (sub ? '<span class="small">' + sub + '</span>' : '') + '</div>'; }
+  function confetti() {
+    var cols = ['#6d3fd1', '#3fd6b0', '#ffd34d', '#2563eb', '#ff6b8b'];
+    for (var i = 0; i < 70; i++) { var p = document.createElement('i'); p.className = 'confetti'; p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length]; p.style.animationDelay = Math.random() * .8 + 's'; p.style.borderRadius = i % 3 ? '2px' : '50%'; document.body.appendChild(p); setTimeout(p.remove.bind(p), 4000); }
+  }
+  function paintWins() {
+    var all = []; st.classes.forEach(function (c) { all = all.concat(winsOf(c)); });
+    var el = $('wins'); el.hidden = !all.length; if (!all.length) return;
+    el.innerHTML = '<h2>🎉 Your wins</h2><ul>' + all.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+    var seen = {}; try { seen = JSON.parse(get(SEEN, '{}')) || {}; } catch (e) {}
+    var fresh = all.filter(function (w) { return !seen[w]; });
+    if (fresh.length) { fresh.forEach(function (w) { seen[w] = today(); }); put(SEEN, JSON.stringify(seen)); confetti(); }
+  }
+  function paintGrid() {
+    $('cgrid').innerHTML = st.classes.map(function (c, i) {
+      var g = gradeOf(c), p = prevPt(c), h = c.hist || [], last = h[h.length - 1], ch = '';
+      if (p && last) { var d = last.g - p.g; ch = Math.abs(d) < 0.005 ? '<span class="small muted">no change since ' + day(p.d) + '</span>' : '<span class="small ' + (d > 0 ? 'up' : 'dn') + '"><b>' + (d > 0 ? '▲ +' : '▼ −') + f2(Math.abs(d)) + '</b> since ' + day(p.d) + '</span>'; }
+      return '<button class="ccard' + (i === st.cur ? ' on' : '') + '" data-i="' + i + '"><span class="nm">' + esc(c.name) + '</span>' +
+        (g === null ? '<span class="small muted">No grade yet</span>' : '<span class="gr">' + f2(g) + '% <span class="small">' + letter(g) + '</span></span>') + ch +
+        (c.missing && c.missing.length ? '<span class="small dn">' + c.missing.length + ' missing</span>' : '') + spark(h) + '</button>';
+    }).join('') + '<button class="ccard" id="cadd2" style="border-style:dashed;align-items:center;justify-content:center;color:var(--muted)"><b>+ Add a class</b></button>';
+  }
+  $('cgrid').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'cadd2') return addClass();
+    st.cur = +b.dataset.i; save(); paintAll(); $('cname').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  function addClass() { var n = prompt('Name this class (like Biology or Algebra 2):', ''); if (n === null) return; st.classes.push(blank(n.trim() || ('Class ' + (st.classes.length + 1)))); st.cur = st.classes.length - 1; save(); paintAll(); }
   function paintClasses() {
-    $('classes').innerHTML = '<span class="small muted"><b>Class:</b></span>' + st.classes.map(function (c, i) {
-      return '<button class="chip' + (i === st.cur ? ' on' : '') + '" data-i="' + i + '">' + esc(c.name || ('Class ' + (i + 1))) + '</button>';
-    }).join('') + '<button class="chip add" id="cadd">+ Add a class</button>' +
-      '<button class="link small" id="cren">Rename</button>' + (st.classes.length > 1 ? '<button class="link small" id="cdel">Remove</button>' : '');
+    var c = cls();
+    $('cname').textContent = c.name + ': your numbers';
+    $('classes').innerHTML = (c.teacher ? '<span class="small muted">' + esc(c.teacher) + '</span>' : '') + '<button class="link small" id="cren">Rename</button>' + (st.classes.length > 1 ? '<button class="link small" id="cdel">Remove this class</button>' : '');
+    var miss = c.missing || [], B = baseOf(c);
+    $('pasted').innerHTML = (c.pasted ? '<p class="small">📋 Pasted from Infinite Campus on <b>' + day(c.pasted) + '</b>' + (daysAgo(c.pasted) > 7 ? '. Paste again for your newest scores.' : '.') + '</p>' : '') +
+      (!c.pasted && c.icPct != null ? '<p class="small">Infinite Campus says <b>' + f2(c.icPct) + '%</b>. For the exact points, click this class in Infinite Campus and paste its page above.</p>' : '') +
+      (miss.length ? '<div class="verdict down"><b>📌 ' + miss.length + ' missing assignment' + (miss.length === 1 ? '' : 's') + '</b><ul class="miss small" style="margin:6px 0 0;padding-left:20px">' + miss.map(function (m) {
+        var after = null; if (!B.msg) after = m.k === 'a' ? grade(B.a - m.s + m.p, B.b, B.c, B.d) : grade(B.a, B.b, B.c - m.s + m.p, B.d);
+        return '<li><b>' + esc(m.n) + '</b>' + (m.due ? ' (due ' + day(m.due) + ')' : '') + (after !== null ? ': turned in for full points, your grade would be <b>' + f2(after) + '%</b>' + (after - B.g >= 0.005 ? ' (+' + f2(after - B.g) + ')' : '') : '') + '</li>';
+      }).join('') + '</ul><p class="small" style="margin-top:6px">Ask your teacher if you can still turn these in.</p></div>' : '');
   }
   $('classes').addEventListener('click', function (ev) {
     var t = ev.target.closest('button'); if (!t) return;
-    if (t.dataset.i != null) { st.cur = +t.dataset.i; }
-    else if (t.id === 'cadd') { var n = prompt('Name this class (like Biology or Algebra 2):', ''); if (n === null) return; st.classes.push({ name: n.trim() || ('Class ' + (st.classes.length + 1)) }); st.cur = st.classes.length - 1; }
-    else if (t.id === 'cren') { var r = prompt('Rename this class:', cls().name || ''); if (r === null) return; cls().name = r.trim() || cls().name; }
-    else if (t.id === 'cdel') { if (!confirm('Remove "' + (cls().name || 'this class') + '" and its numbers from this calculator?')) return; st.classes.splice(st.cur, 1); st.cur = 0; }
-    save(); load();
+    if (t.id === 'cren') { var r = prompt('Rename this class:', cls().name || ''); if (r === null) return; cls().name = r.trim() || cls().name; touch(cls()); }
+    else if (t.id === 'cdel') { if (!confirm('Remove "' + (cls().name || 'this class') + '" and its numbers?')) return; st.classes.splice(st.cur, 1); st.cur = 0; }
+    save(); paintAll();
   });
+  function paintProg() {
+    var c = cls(), h = c.hist || [], el = $('prog');
+    if (h.length < 2) { el.hidden = true; return; }
+    el.hidden = false;
+    var last = h[h.length - 1], first = h[0], prev = prevPt(c), best = h.reduce(function (m, p) { return p.g > m.g ? p : m; }, h[0]);
+    var dd = function (x, y) { var d = x - y; return (d > 0.004 ? '+' : d < -0.004 ? '−' : '') + f2(Math.abs(d)); };
+    el.innerHTML = '<h2>📊 How ' + esc(c.name) + ' is going</h2>' + spark(h, true) +
+      '<div class="tiles">' + tile(f2(last.g) + '%', 'Now (' + day(last.d) + ')', '', letter(last.g)) +
+      (prev ? tile(dd(last.g, prev.g), 'Since ' + day(prev.d), 'c', 'points') : '') + tile(dd(last.g, first.g), 'Since ' + day(first.d), 'c', 'points') +
+      tile(f2(best.g) + '%', 'Best', '', day(best.d)) + '</div>' +
+      '<details><summary class="small"><b>Every check (' + h.length + ')</b></summary><table class="small"><thead><tr><th>Date</th><th>Grade</th><th>Tests</th><th>Missing</th></tr></thead><tbody>' +
+      h.slice().reverse().map(function (p) { return '<tr><td>' + day(p.d) + '</td><td><b>' + f2(p.g) + '%</b> ' + letter(p.g) + '</td><td>' + (p.a != null ? f2(p.a) + '%' : '') + '</td><td>' + (p.m != null ? p.m : '') + '</td></tr>'; }).join('') + '</tbody></table></details>';
+  }
 
   /* step 1 */
-  ['ae', 'ap', 'ce', 'cp'].forEach(function (k) { $(k).addEventListener('input', function () { cls()[k] = $(k).value; save(); out(); }); });
+  ['ae', 'ap', 'ce', 'cp'].forEach(function (k) {
+    $(k).addEventListener('input', function () { var c = cls(); c[k] = $(k).value; touch(c); out(); put(KEY, JSON.stringify(st)); });
+    $(k).addEventListener('change', function () { record(cls()); save(); paintGrid(); paintProg(); paintWins(); });
+  });
   $('pic').addEventListener('click', function () { this.classList.toggle('big'); });
 
-  /* step 2: what-if rows */
+  /* step 2 */
   function paintWhat() {
     var c = cls();
     $('wlist').innerHTML = c.what.map(function (w, i) {
       return '<div class="wrow" data-i="' + i + '"><span><b>I get</b></span><input data-f="e" inputmode="decimal" autocomplete="off" placeholder="45" value="' + esc(w.e) + '"><span><b>out of</b></span><input data-f="p" inputmode="decimal" autocomplete="off" placeholder="50" value="' + esc(w.p) + '">' +
         '<span class="seg"><button data-c="a" class="a' + (w.cat !== 'c' ? ' on' : '') + '">Assessments</button><button data-c="c" class="c' + (w.cat === 'c' ? ' on' : '') + '">Coursework</button></span>' +
-        (c.what.length > 1 ? '<button class="x" data-x="1" title="Remove">✕</button>' : '') + '</div>';
+        (c.what.length > 1 ? '<button class="x" data-x="1" title="Remove">✕</button>' : '') + '<span class="small" data-pct="' + i + '"></span></div>';
     }).join('');
   }
   $('wlist').addEventListener('input', function (ev) { var r = ev.target.closest('[data-i]'), f = ev.target.dataset.f; if (!r || !f) return; cls().what[+r.dataset.i][f] = ev.target.value; save(); out(); });
@@ -238,62 +507,58 @@ tr.pick td { background: var(--a-soft) }
   });
   $('wadd').addEventListener('click', function () { cls().what.push({ e: '', p: '', cat: 'a' }); save(); paintWhat(); out(); });
 
-  /* step 3: what do I need */
+  /* step 3 */
   $('np').addEventListener('input', function () { cls().np = $('np').value; save(); out(); });
   $('nt').addEventListener('input', function () { cls().nt = $('nt').value; save(); out(); });
+  $('nl').addEventListener('change', function () { if (this.value) { cls().nt = this.value; $('nt').value = this.value; save(); out(); } else $('nt').focus(); });
   $('ncat').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (!b) return; cls().ncat = b.dataset.c; save(); paintSeg(); out(); });
   $('nout').addEventListener('click', function (ev) { var r = ev.target.closest('tr[data-t]'); if (!r) return; cls().nt = r.dataset.t; $('nt').value = r.dataset.t; save(); out(); });
   function paintSeg() { [].forEach.call($('ncat').children, function (b) { b.classList.toggle('on', b.dataset.c === cls().ncat); }); }
 
   function out() {
-    var B = base(), c = cls();
+    var c = cls(), B = baseOf(c);
     if (B.msg) {
       $('now').innerHTML = '<p class="small muted">' + B.msg + '</p>';
-      $('wout').innerHTML = $('nout').innerHTML = '<p class="small muted">Fill in your numbers in step 1 first.</p>';
-      $('ntq').textContent = '';
+      $('wout').innerHTML = $('nout').innerHTML = '<p class="small muted">Fill in your numbers in step 1 first (or paste the class page above).</p>';
       return;
     }
-    var onlyOne = !(B.b > 0 && B.d > 0) ? '<p class="small muted">Only ' + (B.b > 0 ? 'Assessments' : 'Coursework') + ' has points so far, so your grade is that category alone for now.</p>' : '';
+    var only = !(B.b > 0 && B.d > 0) ? '<p class="small muted">Only ' + (B.b > 0 ? 'Assessments' : 'Coursework') + ' has points so far, so your grade is that category alone for now.</p>' : '';
+    var icNote = c.icPct != null && c.pasted && Math.abs(c.icPct - B.g) >= 0.05 ? '<p class="small muted">Infinite Campus showed ' + f2(c.icPct) + '% when you pasted. Small differences come from rounding or from something your teacher set up differently.</p>' : '';
     $('now').innerHTML = '<div class="tiles">' + tile(f2(B.g) + '%', 'Your grade now', '', letter(B.g)) +
       (B.b > 0 ? tile(f2(B.a / B.b * 100) + '%', 'Assessments', '', B.a + ' / ' + B.b) : '') +
-      (B.d > 0 ? tile(f2(B.c / B.d * 100) + '%', 'Coursework', 'c', B.c + ' / ' + B.d) : '') + '</div>' + onlyOne;
+      (B.d > 0 ? tile(f2(B.c / B.d * 100) + '%', 'Coursework', 'c', B.c + ' / ' + B.d) : '') + '</div>' + only + icNote;
 
-    /* what if */
-    var a = B.a, b = B.b, cc = B.c, d = B.d, used = 0, bad = false;
-    c.what.forEach(function (w) {
-      var e = num(w.e), p = num(w.p); if (e === null && p === null) return;
+    var a = B.a, b = B.b, cc = B.c, d = B.d, used = 0, bad = false, tests = [];
+    c.what.forEach(function (w, i) {
+      var e = num(w.e), p = num(w.p), sp = document.querySelector('[data-pct="' + i + '"]'); if (sp) sp.innerHTML = '';
+      if (e === null && p === null) return;
       if (e === null || p === null || isNaN(e) || isNaN(p) || e < 0 || p <= 0) { bad = true; return; }
+      var tp = e / p * 100; if (sp) sp.innerHTML = '= <b>' + f2(tp) + '%</b> on this one (' + letter(tp) + ')';
+      tests.push({ e: e, p: p, pct: tp });
       used++; if (w.cat === 'c') { cc += e; d += p; } else { a += e; b += p; }
     });
     if (bad) $('wout').innerHTML = '<p class="small">⚠️ Each line needs a score and an “out of” (more than 0).</p>';
     else if (!used) $('wout').innerHTML = '<p class="small muted">Type a score above, like 45 out of 50.</p>';
     else {
-      var g2 = grade(a, b, cc, d), diff = g2 - B.g, sign = diff > 0.004 ? '+' : diff < -0.004 ? '−' : '';
-      var L1 = letter(B.g), L2 = letter(g2);
+      var g2 = grade(a, b, cc, d), diff = g2 - B.g, sign = diff > 0.004 ? '+' : diff < -0.004 ? '−' : '', L1 = letter(B.g), L2 = letter(g2);
       var v = Math.abs(diff) < 0.005 ? ['', '➡️ Your grade would stay about the same.']
         : diff > 0 ? ['up', '✅ Your grade would go up' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '!' : '.')]
         : ['down', '⚠️ Your grade would go down' + (L2 !== L1 ? ', from ' + L1 + ' to ' + L2 + '.' : '.')];
-      $('wout').innerHTML = '<div class="tiles">' + tile(f2(g2) + '%', 'New grade', 'c', L2) + tile(sign + f2(Math.abs(diff)), 'Change', 'c', 'percentage points') + '</div>' +
+      $('wout').innerHTML = '<div class="tiles">' + (tests.length === 1 ? tile(f2(tests[0].pct) + '%', 'On this test', '', letter(tests[0].pct) + ' · ' + tests[0].e + ' / ' + tests[0].p) : '') + tile(f2(g2) + '%', 'New class grade', 'c', L2) + tile(sign + f2(Math.abs(diff)), 'Change', 'c', 'percentage points') + '</div>' +
         '<div class="verdict ' + v[0] + '"><b>' + v[1] + '</b><p class="small" style="margin-top:4px">' + f2(B.g) + '% now → ' + f2(g2) + '% after.</p></div>';
     }
 
-    /* what do I need */
     var P = num(c.np), T = num(c.nt), cat = c.ncat;
-    $('ntq').innerHTML = (T !== null && !isNaN(T)) ? 'that’s ' + (T >= 59.5 ? 'a' + (letter(T) === 'A' ? 'n' : '') + ' ' + letter(T) : 'an F') : '';
+    var lv = CUT.filter(function (k) { return k[1] === T; })[0]; $('nl').value = lv ? String(lv[1]) : '';
     if (P === null) { $('nout').innerHTML = '<p class="small muted">How many points is the test out of?</p>'; return; }
     if (isNaN(P) || P <= 0) { $('nout').innerHTML = '<p class="small">⚠️ “Out of” has to be a number more than 0.</p>'; return; }
     var gx = function (x) { return cat === 'c' ? grade(B.a, B.b, B.c + x, B.d + P) : grade(B.a + x, B.b + P, B.c, B.d); };
-    var need = function (t) {      /* the lowest score that keeps the grade at t or more (to 0.01 of a point) */
-      if (gx(0) >= t) return { safe: true };
-      if (gx(P) < t) return { no: true, best: gx(P) };
+    var need = function (t) {
+      if (gx(0) >= t) return { safe: true }; if (gx(P) < t) return { no: true, best: gx(P) };
       var lo = 0, hi = P; for (var i = 0; i < 60; i++) { var m = (lo + hi) / 2; if (gx(m) >= t) hi = m; else lo = m; }
       return { x: Math.ceil(hi * 100 - 1e-6) / 100 };
     };
-    var say = function (r) {
-      if (r.safe) return 'Any score (even 0)';
-      if (r.no) return 'Not possible';
-      return r.x + ' / ' + P + ' <span class="small muted">(' + f2(r.x / P * 100) + '%)</span>';
-    };
+    var say = function (r) { return r.safe ? 'Any score (even 0)' : r.no ? 'Not possible' : r.x + ' / ' + P + ' <span class="small muted">(' + f2(r.x / P * 100) + '%)</span>'; };
     var html = '';
     if (T === null || isNaN(T)) html += '<p class="small muted">Type the percent you want to keep, like 79.5 for a B.</p>';
     else {
@@ -305,17 +570,25 @@ tr.pick td { background: var(--a-soft) }
     }
     html += '<table><thead><tr><th>To keep <span class="small muted">(tap one)</span></th><th>You need at least</th></tr></thead><tbody>' + CUT.map(function (k) {
       return '<tr data-t="' + k[1] + '"' + (T === k[1] ? ' class="pick"' : '') + '><td>' + k[0] + ' (' + k[1] + '%)</td><td class="big">' + say(need(k[1])) + '</td></tr>';
-    }).join('') + '</tbody></table>' +
-      '<p class="small muted">Best you can do on this test: ' + f2(gx(P)) + '% (' + letter(gx(P)) + '). With a 0: ' + f2(gx(0)) + '% (' + letter(gx(0)) + ').</p>';
+    }).join('') + '</tbody></table><p class="small muted">Best you can do on this test: ' + f2(gx(P)) + '% (' + letter(gx(P)) + '). With a 0: ' + f2(gx(0)) + '% (' + letter(gx(0)) + ').</p>';
     $('nout').innerHTML = html;
   }
 
-  function load() {
+  function paintAll() {
+    st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
     var c = cls();
     ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
-    paintClasses(); paintWhat(); paintSeg(); out();
+    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
   }
-  load();
+
+  /* back from the Google sign-in page with a one-time code */
+  var claim = /^#claim=(\d{6})$/.exec(location.hash);
+  paintAll();
+  if (claim) {
+    history.replaceState(null, '', location.pathname);
+    SV.state = 'loading'; paintAcct();
+    call('api_appClaim', [claim[1]]).then(function (r) { put(TK, r.tok); if (!tok()) throw new Error('Use Sign in with Google to save your grades.'); toast('✓ Signed in'); return load(); }).catch(function (e) { put(TK, null); SV.state = 'out'; SV.msg = String((e && e.message) || e).replace(/^APPSIGNIN:\s*/, ''); paintAcct(); });
+  } else if (tok()) load();
 })();
 </script>
 </body>
