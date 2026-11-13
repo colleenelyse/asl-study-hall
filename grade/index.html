@@ -301,13 +301,13 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 
   /* ───── reading Infinite Campus pastes (from Resource Check-In's parseIC / parseClassGrades) ───── */
   function teacherOf(line) { return line.slice(1).split('/').map(function (n) { var p = n.split(','); return (((p[1] || '').trim().split(/\s+/)[0] || '') + ' ' + p[0].trim()).trim(); }).join(' / '); }
-  function parseDetail(block) {      // one class's page → { code, name, teacher, pct, cats: [{ name, weight, e, q }], items: [{ cat, name, due, flags, score, possible }] }
+  function parseDetail(block, t) {      // one class's page → { code, name, teacher, pct, cats: [{ name, weight, e, q }], items: [{ cat, name, due, flags, score, possible }] }
     // 4.500: reads both layouts: every value on its own line (Resource Check-In's samples) or several on one line ("Assessments Weight: 90 300/305 (98.36%)")
     var L = block.split(/\r?\n/).map(function (l) { return l.replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\*\s*/, ''); }).filter(String), m, cat = null, it = null;
-    var o = { code: '', name: '', teacher: '', pct: null, cats: [], items: [] }, FR = /^(-|[\d.]+)\s*\/\s*([\d.]+)\b/;
+    var o = { code: t ? t.code : '', name: t ? t.name : '', teacher: t ? t.teacher : '', pct: null, cats: [], items: [] }, FR = /^(-|[\d.]+)\s*\/\s*([\d.]+)\b/;
     for (var i = 0; i < L.length; i++) {
       var l = L[i];
-      if (!o.code && (m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+?)(\s+L[IVX]+)?(\s*\|\s*(.+))?$/.exec(l))) { o.code = m[1]; o.name = m[2].replace(/\s*\|.*$/, ''); if (m[5]) o.teacher = teacherOf('|' + m[5]); continue; }
+      if (!o.name && (m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+?)(\s+L[IVX]+)?(\s*\|\s*(.+))?$/.exec(l))) { o.code = m[1]; o.name = m[2].replace(/\s*\|.*$/, ''); if (m[5]) o.teacher = teacherOf('|' + m[5]); continue; }
       if (l.charAt(0) === '|' && !o.teacher) { o.teacher = teacherOf(l); continue; }
       if (/(semester|term) grade\b/i.test(l) && !/mid/i.test(l)) {
         if ((m = /\((\d+(?:\.\d+)?)%\)/.exec(l))) { o.pct = Number(m[1]); continue; }
@@ -348,10 +348,11 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     });
     return o;
   }
-  function parseSummary(block) {      // the Grades page with every class → { code, name, teacher, pct }
-    var o = null, label = '', m;
+  function parseSummary(block, t) {      // the Grades page with every class → { code, name, teacher, pct }
+    var o = t ? { code: t.code, name: t.name, teacher: t.teacher, pct: null, picked: '' } : null, label = '', m, first = true;
     block.split(/\r?\n/).forEach(function (raw) {
       var line = raw.trim(); if (!line) return;
+      if (first && t) { first = false; return; }      // the title line
       if ((m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+)$/.exec(line))) { if (!o) o = { code: m[1], name: m[2].replace(/\s+L[IVX]+$/, '').trim(), teacher: '', pct: null, picked: '' }; return; }
       if (!o) return;
       if (line.charAt(0) === '|') { if (!o.teacher) o.teacher = teacherOf(line); return; }
@@ -360,15 +361,32 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     });
     return o;
   }
+  /* 4.504 (Colleen: "students ... don't see course codes on their page like i do. remove that requirement"): a class starts at its title line, found by its
+     course number (teachers' pages), or as the line just before the teacher line ("|Gibbons, Colleen E") or before the term line ("Term SEM1…" / "SEM1"),
+     or with the teacher on the same line ("Name | Teacher"). Classes are matched by course number when there is one, else by name. */
+  var DATA_RE = /%|\d+(\.\d+)?\s*\/\s*\d|^Weight|^Due\b|^Score\b|^Assignment\b|^Settings$|^\(.*\)$|^[A-F][+-]?$|^(Late|Missing|Exempt|Dropped|Incomplete|Turned In|In-progress|Has Assignments)$|Grade$|\bGPA\b|^\|/i;
+  function titleOf(l) {
+    l = l.replace(/^\*\s*/, ''); var m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+)$/.exec(l), code = m ? m[1] : '', rest = m ? m[2] : l, tm = /\s*\|\s*(.+)$/.exec(rest);
+    return { code: code, name: rest.replace(/\s*\|.*$/, '').replace(/\s+L[IVX]+$/, '').trim(), teacher: tm ? teacherOf('|' + tm[1]) : '' };
+  }
   function parsePaste(text) {
-    var lines = String(text || '').split(/\r?\n/), starts = [];
-    lines.forEach(function (l, i) { if (/^\s*\*?\s*[A-Z]{2,4}\d{3,5}-\d+\s+\S/.test(l)) starts.push(i); });
+    var L = String(text || '').split(/\r?\n/).map(function (l) { return l.replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\*\s*/, ''); }).filter(String), starts = [];
+    L.forEach(function (l, i) {
+      var nx = L[i + 1] || '';
+      if (/^[A-Z]{2,4}\d{3,5}-\d+\s+\S/.test(l)) return starts.push(i);
+      if (DATA_RE.test(l) || l.length > 90) return;
+      if (nx.charAt(0) === '|' || /\S\s\|\s?\S/.test(l) || /^(Term\b|(SEM|S|Q|T)\d+$)/i.test(nx)) starts.push(i);
+    });
     var all = starts.map(function (s0, k) {
-      var block = lines.slice(s0, k + 1 < starts.length ? starts[k + 1] : lines.length).join('\n');
-      if (/\bWeight:?\s*\d/i.test(block)) { var d = parseDetail(block); if (d.cats.length) { d.detail = true; return d; } }
-      return parseSummary(block);
-    }).filter(function (x) { return x && (x.detail || x.pct !== null); });
-    return all.filter(function (x, i) { return !all.some(function (y, j) { return j !== i && y.code === x.code && (y.detail && !x.detail || (!!y.detail === !!x.detail && j < i)); }); });
+      var block = L.slice(s0, k + 1 < starts.length ? starts[k + 1] : L.length).join('\n'), t = titleOf(L[s0]);
+      if (/\bWeight:?\s*\d/i.test(block)) { var d = parseDetail(block, t); if (d.cats.length) { d.detail = true; return d; } }
+      return parseSummary(block, t);
+    }).filter(function (x) { return x && x.name && (x.detail || x.pct !== null); });
+    if (!all.length && /\bWeight:?\s*\d/i.test(L.join('\n'))) {      // a class page with no title we could find: it goes with the class that's open
+      var d = parseDetail(L.join('\n'), { code: '', name: '', teacher: '' }); if (d.cats.length) { d.detail = true; d.untitled = true; all = [d]; }
+    }
+    var id = function (x) { return x.code || String(x.name).toLowerCase(); };
+    return all.filter(function (x, i) { return !all.some(function (y, j) { return j !== i && id(y) === id(x) && (y.detail && !x.detail || (!!y.detail === !!x.detail && j < i)); }); });
   }
   function pickCats(cats) {      // Assessments (90) and Coursework (10), by name, else by weight
     var a = cats.filter(function (c) { return /assess|summative|test|exam/i.test(c.name); })[0], c = cats.filter(function (x) { return /course|formative|homework|classwork|practice/i.test(x.name); })[0];
@@ -392,7 +410,8 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     touch(c); record(c); return c;
   }
   function findClass(x) {
-    var i = st.classes.findIndex(function (c) { return (c.code && c.code === x.code) || key(c) === x.name.toLowerCase(); });
+    var nm = function (n) { return String(n || '').replace(/\s+L[IVX]+$/, '').toLowerCase().trim(); };
+    var i = st.classes.findIndex(function (c) { return (c.code && x.code && c.code === x.code) || ((!c.code || !x.code) && nm(c.name) === nm(x.name)); });
     if (i < 0) { i = st.classes.findIndex(function (c) { return !hasData(c) && !c.code && /^Class \d+$/.test(c.name); }); if (i >= 0) st.classes[i].name = x.name; }
     return i;
   }
@@ -404,15 +423,16 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   function howOne(name) { return 'In Infinite Campus, open <b>Grades</b> and <b>click ' + esc(name) + '</b> so it opens and <b>every assignment is listed</b>. Then press <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd>, and paste it here with <kbd>Ctrl</kbd> + <kbd>V</kbd>.'; }
   function applyPaste(t, ti) {      // ti = the class whose box it was pasted in (or undefined for box A); returns the message to show
     var list = parsePaste(t), tc = ti == null ? null : st.classes[ti];
-    if (!list.length) return '<div class="verdict down"><b>⚠️ No classes found in that paste.</b><p class="small" style="margin-top:4px">' + (/Weight/i.test(t) ? 'It looks like a class page, but the class title (the line with the course number, like WL7816-2 American Sign Language I) wasn’t copied. On the class page, press Ctrl + A so everything is copied, then Ctrl + C, and paste again.' : 'Copy a page from Infinite Campus Grades: press Ctrl + A, then Ctrl + C, and paste here with Ctrl + V.') + '</p></div>';
+    if (!list.length) return '<div class="verdict down"><b>⚠️ No classes found in that paste.</b><p class="small" style="margin-top:4px">' + (/Weight/i.test(t) ? 'It looks like a class page, but we couldn’t read the points. On the class page, press Ctrl + A so everything is copied, then Ctrl + C, and paste again.' : 'Copy a page from Infinite Campus Grades: press Ctrl + A, then Ctrl + C, and paste here with Ctrl + V.') + '</p></div>';
     var det = list.filter(function (x) { return x.detail; }), sum = list.filter(function (x) { return !x.detail; }), added = 0, msg = '', firstI = -1;
     sum.forEach(function (x) { var i = findClass(x); if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; added++; } setClass(x, i); });
     det.forEach(function (x) {
+      if (x.untitled) { x.name = cls().name; x.code = cls().code || ''; }
       var i = findClass(x);
       if (i < 0 && tc && det.length === 1 && !tc.code) i = ti;      // a class typed by hand: its own page fills it
       if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; added++; }
       var c = setClass(x, i); if (firstI < 0) firstI = i;
-      msg += '<p class="small" style="margin:4px 0 0">' + gotHtml(c) + (tc && c !== tc ? ' <b>That was ' + esc(c.name) + '’s page, not ' + esc(tc.name) + '’s, so it went with ' + esc(c.name) + '.</b>' : '') + '</p>';
+      msg += '<p class="small" style="margin:4px 0 0">' + gotHtml(c) + (x.untitled ? ' <b>We couldn’t find the class name on that page, so it went with ' + esc(c.name) + ' (the class that’s open). Wrong class? Click the right class under My classes, then paste again.</b>' : '') + (tc && c !== tc ? ' <b>That was ' + esc(c.name) + '’s page, not ' + esc(tc.name) + '’s, so it went with ' + esc(c.name) + '.</b>' : '') + '</p>';
     });
     if (firstI >= 0) st.cur = firstI;
     save(); paintAll();
