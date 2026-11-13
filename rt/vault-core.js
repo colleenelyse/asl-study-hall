@@ -16,7 +16,7 @@ var VAULT_MEET_MS = 60000;
 var VAULT_SURNAMES = ['ADAMS', 'ALLEN', 'ALVAREZ', 'BAKER', 'BELL', 'BENNETT', 'BROOKS', 'BROWN', 'BURKE', 'CARTER', 'CASTRO', 'CHEN', 'CLARK', 'COHEN', 'COLE', 'COOK', 'COOPER', 'CRUZ', 'DAVIS', 'DAY', 'DIAZ', 'DUNN', 'EDWARDS', 'ELLIS', 'EVANS', 'FISHER', 'FLORES', 'FORD', 'FOSTER', 'FOX', 'GARCIA', 'GOMEZ', 'GRAY', 'GREEN', 'GRIFFIN', 'HALL', 'HAYES', 'HILL', 'HOLT', 'HUGHES', 'JAMES', 'JENSEN', 'JOHNSON', 'JONES', 'KANE', 'KELLY', 'KHAN', 'KIM', 'KING', 'LANE', 'LEE', 'LEWIS', 'LONG', 'LOPEZ', 'LUNA', 'MARSH', 'MARTIN', 'MASON', 'MEYER', 'MILLER', 'MOORE', 'MORALES', 'MORGAN', 'MURPHY', 'NASH', 'NGUYEN', 'NOVAK', 'OKAFOR', 'OLSEN', 'ORTIZ', 'OWENS', 'PARK', 'PATEL', 'PERRY', 'PRICE', 'QUINN', 'REED', 'REYES', 'RIVERA', 'ROSS', 'RUIZ', 'RYAN', 'SANTOS', 'SCOTT', 'SHAW', 'SILVA', 'SMITH', 'STONE', 'SULLIVAN', 'TATE', 'TAYLOR', 'TORRES', 'TRAN', 'TURNER', 'VARGAS', 'WALSH', 'WARD', 'WEBB', 'WEST', 'WHITE', 'WOOD', 'WRIGHT', 'YANG', 'YOUNG', 'ZHANG', 'ABBOTT', 'ACOSTA', 'AKERS', 'BARNES', 'BLAIR', 'BOYD', 'BYRNE', 'CAIN', 'CHASE', 'CROSS', 'DALE', 'DEAN', 'DOYLE', 'DUKE', 'ESTES', 'FINCH', 'FROST', 'GATES', 'GILL', 'GRANT', 'HART', 'HICKS', 'HOOD', 'IRWIN', 'JORDAN', 'KNOX', 'LAMB', 'LOWE', 'MACK', 'MAYS', 'MOSS', 'NOLAN', 'NOBLE', 'OCHOA', 'PAGE', 'PENA', 'POPE', 'RICH', 'ROSE', 'SAGE', 'SHARP', 'SNOW', 'TODD', 'VANCE', 'VEGA', 'WADE', 'WOLF', 'YATES', 'AYERS', 'BOOTH', 'CHO', 'DORSEY', 'EATON', 'FAIRLY', 'GOODE', 'HUNT', 'INGRAM', 'JUAREZ', 'KEMP', 'LYONS', 'MERCER', 'NUNEZ', 'OAKES', 'PIERCE', 'RAMOS', 'SPARKS', 'THORNE', 'UPTON'];      /* 4.131: 173 owners (5 sections x 33 boxes) */
 var VAULT_LOOT_IN = ['📜', '💍', '💎', '🗝️', '💵', '⌚', '🪙', '📿'];
 var VAULT_COLORS = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'BLACK', 'WHITE'], VAULT_PLACES = ['LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'MIDDLE'];
-var VAULT_STRIKE_S = 15, VAULT_HINT_S = 30, VAULT_SYNC_MS = 2500, VAULT_SKIP_S = 60, VAULT_STUCK_MS = 60000;      // 4.146 (Colleen): Stuck? after 1 minute (was 3)
+var VAULT_STRIKE_S = 15, VAULT_HINT_S = 30, VAULT_SYNC_MS = 2500, VAULT_SKIP_S = 60, VAULT_STUCK_MS = 60000, VAULT_HELP_MS = 45000;      // 4.491 Supported: the answer line lights up after 2 wrong tries or 45 seconds      // 4.146 (Colleen): Stuck? after 1 minute (was 3)
 /** 4.140 stuck: 1 minute (4.146) on the same lock (the lock started when the last one opened, or when the pair's clock started) */
 function vaultStuck_(P, now) { return !!P.t0 && !P.done && (now || Date.now()) - (P.at || P.t0) >= VAULT_STUCK_MS; }
 function vaultRnd_(seed) { var x = seed % 2147483647; if (x <= 0) x += 2147483646; return function () { x = x * 16807 % 2147483647; return (x - 1) / 2147483646; }; }
@@ -93,7 +93,7 @@ function vaultNew_(opt) { opt = opt || {}; var seed = Math.floor(Math.random() *
   list.forEach(function (x) { if (VAULT_KNOWER_FIXED[x.type]) cnt[VAULT_KNOWER_FIXED[x.type]]++; });
   var sc = list.map(function (x) { var k = VAULT_KNOWER_FIXED[x.type]; if (!k) { k = cnt['in'] < cnt.out ? 'in' : cnt.out < cnt['in'] ? 'out' : (prev === 'in' ? 'out' : 'in'); cnt[k]++; } prev = k; return x.practice ? { type: x.type, area: x.area, knower: k, practice: 1 } : { type: x.type, area: x.area, knower: k }; });
   var gm = Math.floor(num_(opt.vGuard)); gm = [6, 8, 10, 12, 15, 20].indexOf(gm) >= 0 ? gm : len === 'short' ? 8 : 12;
-  return { hold: !!opt.vPrac, seed: seed, guided: opt.vMode !== 'own', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
+  return { hold: !!opt.vPrac, seed: seed, guided: opt.vMode !== 'own', sup: opt.vMode === 'sup', duo: !!opt.vDuo, cam: !!opt.vCam, len: len, loot: !!opt.vLoot, guardMs: gm * 60000, scenario: sc, pairs: [], byE: {} }; }      /* 4.132 loot: the loot run; guardMs: how long until the guards arrive */
 function vaultAreaName_(a, side) { for (var i = 0; i < VAULT_STAGES.length; i++) if (VAULT_STAGES[i][0] === a) return VAULT_STAGES[i][side === 'out' ? 2 : 1]; return ''; }
 /** At Start: partners, sides, each pair's own details. */
 function vaultPairOf_(g, e) { var V = g.vault, i = V && V.byE[e]; return i == null ? null : V.pairs[i]; }
@@ -145,6 +145,15 @@ function vaultViewCore_(V, e) {
   if (sc.type === 'lasers') { if (knower) v.lines = L.lines; else v.beams = L.beams; }
   if (sc.type === 'feelings') { if (knower) v.lines = L.lines; else { v.faces = L.faces; v.target = L.target; v.digits = 3; } }
   if (sc.type === 'count') { if (knower) v.lines = L.lines; else { v.seen = L.seen; v.digits = 4; } }
+  /* 4.491 SUPPORTED mode (Colleen: students "struggled to know how to share that information with their partner"): the doer picks the answer from the
+     values on the partner's list (all of them, in an order fixed for the lock, so wrong picks can't be cross-checked); after 2 wrong tries or 45 seconds
+     the partner with the clue sees which line is the answer (hl), so the pair always gets moving again. The "Sign this" card is drawn on the device. */
+  if (V.sup && !P.bot) { v.sup = true; v.help = P.strikes >= 2 || Date.now() - (P.at || P.t0) >= VAULT_HELP_MS;
+    if (!knower && L.lines && { door: 1, clock: 1, nameplate: 1, feelings: 1, count: 1 }[sc.type] && !(sc.type === 'door' && V.cam)) {      /* the camera door is still signed */ var seenV = {}, vals = []; L.lines.forEach(function (l) { var x = String(l[1]); if (!seenV[x]) { seenV[x] = 1; vals.push(x); } }); v.opts = vaultShuf_(vaultRnd_(P.rs + 31 * (P.k + 1) + (cur.extra ? 977 * (P.x.done + 1) : 0)), vals); }
+    if (knower && v.help) { var hl = -1, LL = L.lines || [];
+      for (var hi = 0; hi < LL.length; hi++) { var l = LL[hi]; if ((sc.type === 'door' || sc.type === 'clock') ? l[0] === L.color && l[2] === L.place : sc.type === 'nameplate' ? l[0] === L.name : sc.type === 'feelings' ? l[0] === L.faces[L.target] : sc.type === 'count' ? String(l[1]) === String(L.ans) : false) { hl = hi; break; } }
+      if (sc.type === 'keys' && !L.picked) hl = (L.uses || []).indexOf('BOX');
+      if (hl >= 0) v.hl = hl; } }
   if (P.bot) { v.radio = L; v.rivals = V.pairs.filter(function (q) { return q !== P; }).map(function (q) { return { k: q.k, n: V.scenario.length, done: !!q.done }; }); }      /* 4.151 versus: what the radio partner knows, and how far the other player is */
   return v;
 }
