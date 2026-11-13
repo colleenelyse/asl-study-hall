@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.497';
+var VERSION = '4.499';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1483,7 +1483,7 @@ function doPost(e) {
     if (!APP_REQ && APP_OPEN.indexOf(fn) < 0) throw new Error('APPSIGNIN: Please sign in again.');
     if (APP_REQ) { APP_REQ.app = APP_IDS[str_(body.app)] ? str_(body.app) : 'studyhall'; APP_REQ.home = !!body.home; }      /* 4.487 which app, and whether it was opened from the Home Screen */
     out = { r: f.apply(null, args) };
-    if (APP_REQ) appUse_(APP_REQ.key, APP_REQ.app, APP_REQ.home, false);
+    if (APP_REQ && str_(body.app) !== 'grade') appUse_(APP_REQ.key, APP_REQ.app, APP_REQ.home, false);      /* 4.499 the Grade Calculator keeps its own Grade Calculator Use tab (GradeCalc.gs) */
   } catch (err) { out = { e: String((err && err.message) || err) }; }
   APP_REQ = null;      // one request only
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
@@ -1508,7 +1508,7 @@ function api_appClaim(code) {
   return { tok: appToken_(em, 'google') };
 }
 /* ?app=signin on the usual link: Google already knows who this is, so make a one-time code and send them back to the app */
-var APP_BACK = { spellbound: ['https:' + '/' + '/asl.cool/spellbound/', 'ASL Spellbound'], numberwise: ['https:' + '/' + '/asl.cool/numberwise/', 'ASL NumberWise']      /* 2026-11-12 renamed (Colleen: "rename it to NumberWise") */ };      /* 4.482 the small phone apps sign in the same way */
+var APP_BACK = { grade: ['https:' + '/' + '/asl.cool/grade/', 'the Grade Calculator'], spellbound: ['https:' + '/' + '/asl.cool/spellbound/', 'ASL Spellbound'], numberwise: ['https:' + '/' + '/asl.cool/numberwise/', 'ASL NumberWise']      /* 2026-11-12 renamed (Colleen: "rename it to NumberWise") */ };      /* 4.482 the small phone apps sign in the same way */
 function appSigninPage_(back) {
   var dest = APP_BACK[str_(back)] || [APP_URL, 'ASL Study Hall'];
   var em = ''; try { em = str_(Session.getActiveUser().getEmail()).toLowerCase(); } catch (e) {}

@@ -1227,6 +1227,7 @@ div.sts { cursor: default }
 .qk-chip b { color: var(--ink); } .qk-chip small { color: var(--muted); font-size: .82rem; } .qk-chip.on { border-color: var(--good); background: var(--good-soft); }
 .qk-chip.on b::before { content: '✓ '; color: var(--good); }
 .games.fsstk .game.stkyes { box-shadow: 0 0 0 4px #FFC83D, 0 6px 18px rgba(255,200,61,.35); border-color: #FFC83D } .games.fsstk .game:not(.stkyes) { opacity: .5 } .game.stkyes { position: relative } .game .stkb { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap; background: #FFC83D; color: #2A1A00; font-size: .8rem; font-weight: 800; border-radius: 999px; padding: 3px 10px; box-shadow: 0 2px 6px rgba(0,0,0,.3) }      /* 4.497 */
+.fsstkbar { display: grid; gap: 4px; padding: 10px 14px; border-radius: 14px; border: 3px solid #FFC83D; background: rgba(255,200,61,.12) } .fsstkbar > b { font-size: 1.05rem } .fsstkbar > i { display: block; height: 12px; border-radius: 99px; background: linear-gradient(90deg, #FFC83D var(--p), rgba(127,127,127,.25) var(--p)) } .fsstkbar small { opacity: .8 } .fsstkbar.done { border-color: #1F9D55; background: rgba(31,157,85,.12) }      /* 4.498 */
 </style>
 </head>
 <body>
@@ -1299,8 +1300,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.497) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.497" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.499) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.499" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -2259,12 +2260,16 @@ ACT.tmsgo = el => { S.chPracGo = el.dataset.k === 'num' ? 'num' : 'fs'; ACT.tab(
 function studyTop() { const rq = partOn('review') ? reviewQueue() : [], hard = hardList(HARD.list), done = S.me.flags.indexOf('R') >= 0;
   if (!rq.length && !hard.length && !chRev()) return '';
   return `<div class="row" style="flex-wrap:wrap">${chRev() && partOn('review') ? chPracBtn('grow') : ''}${rq.length ? `<button class="btn ${done || chRev() ? 'alt' : 'sun'} grow" data-a="review">${done ? '✅ Daily Review done · go again' : '✅ Daily Review · ' + rq.length + ' signs'}</button>` : ''}${hard.length ? `<button class="btn alt grow" data-a="hardgo">🎯 My ${hard.length === 1 ? 'hardest sign' : hard.length + ' hardest signs'}</button>` : ''}</div>`; }
+/* 4.498 Colleen ("both": show the count everywhere): the Fingerspelling and Numbers Stackers' live count at the top of this page */
+function fsStkBar() { if (!(partOn('chal') && S.d && S.d.chal)) return ''; const L = (S.d.chal.items || []).filter(x => x.skill && x.live && !x.final); if (!L.length) return '';
+  return `<div class="stack" style="gap:8px">${L.map(x => { const done = x.dayN >= x.need, n = Math.min(x.today || 0, x.daySigns || 0), pct = done ? 100 : Math.round(100 * n / Math.max(1, x.daySigns));
+    return `<div class="fsstkbar${done ? ' done' : ''}"><b>🏆 ${esc(/stacker/i.test(x.title) ? x.title : x.title + ' Stacker')}</b><span>${done ? '✅ Practice done! Take the test on the Summative Stacker page.' : x.need > 1 ? `Practice day ${x.dayN + 1} of ${x.need}: <b>${n} of ${x.daySigns}</b> answers so far` : `<b>${n} of ${x.daySigns}</b> answers so far`}</span><i style="--p:${pct}%"></i><small>${done ? '' : 'Play the games with the gold frame. Answers add up across days.'}</small></div>`; }).join('')}</div>`; }
 function doorPage(k) { if (k === 'num') k = 'fs'; const d = doorList().find(x => x[0] === k), unit = `<div class="row"><span class="small muted grow">Studying: <b>${esc(selLabel())}</b> · ${selected().length} signs</span><button class="btn alt sm" data-a="pick">Change unit</button></div>`;
   const rep = '<p style="margin:0"><button class="btn sm" data-a="fsopen" data-h="#/report/now">📊 My report: how I compare</button></p>';
   const nums = FS_ACTS.filter(a => a[4] === 'n');
   const body = k === 'study' ? unit + studyTop() + distHtml() + gameGrid(studyList(), true)
     : k === 'games' ? gamesPage(unit)
-    : k === 'fs' ? rep + '<p class="small muted" style="margin:0">Start with 📘 Learn, then 🔁 Practice and 🎮 Games. 🎯 Test My Skills, at the bottom, is the final challenge.</p>' + '<p class="fssub">Fingerspelling</p>' + fsGroups(FS_ACTS.filter(a => a[4] === 'l' || a[4] === 'p')) + '<p class="fssub">Numbers</p>' + fsGroups(nums) + (tmsHtml() ? '<p class="fssub">🎯 Final challenge</p>' + tmsHtml() : '')
+    : k === 'fs' ? fsStkBar() + rep + '<p class="small muted" style="margin:0">Start with 📘 Learn, then 🔁 Practice and 🎮 Games. 🎯 Test My Skills, at the bottom, is the final challenge.</p>' + '<p class="fssub">Fingerspelling</p>' + fsGroups(FS_ACTS.filter(a => a[4] === 'l' || a[4] === 'p')) + '<p class="fssub">Numbers</p>' + fsGroups(nums) + (tmsHtml() ? '<p class="fssub">🎯 Final challenge</p>' + tmsHtml() : '')
     : classBits() + `<div id="homefeed">${feedHtml()}</div>` + (S.set.boards ? '<button class="btn alt wide" data-a="tab" data-t="ranks">🏆 See the ranks</button>' : '') + (!classBits() && !(S.feed && S.feed.n) ? '<p class="muted">Nothing here yet this week. Check back after your class practices!</p>' : '');
   return `<div class="stack doorpage"><div class="row"><button class="btn alt sm" data-a="doorback">← Home</button></div><h1>${d[1]} ${esc(d[2])}</h1>${body}</div>`; }
 ACT.hdoor = el => { if (el.dataset.d === 'paw') return startGame('pawtopia'); if (el.dataset.d === 'stack') return ACT.tab({ dataset: { t: 'chal' } }); S.door = el.dataset.d; go('home'); };
@@ -6358,7 +6363,7 @@ function chHomeCard(items) { const k = Math.min(items.length - 1, Math.max(0, +(
    say what it added and what is left, from the server's fresh Stacker card */
 function chSavedSay(skill, opp) { const items = (S.d && S.d.chal && S.d.chal.items) || [], x = items.find(y => opp ? y.id === opp : skill && y.skill === skill && y.live); if (!x || x.final) return;
   const what = /stacker/i.test(x.title) ? x.title : x.title + ' Stacker', next = (x.left || [])[0];
-  const msg = x.dayN >= x.need ? `🏆 All ${x.need} practice ${x.need === 1 ? 'day' : 'days'} done for your ${what}!` : x.today >= x.daySigns ? `✓ Practice day saved for your ${what}: ${x.dayN} of ${x.need} ${x.need === 1 ? 'day' : 'days'}.` : `✓ Saved for your ${what}: ${Math.min(x.today, x.daySigns)} of ${x.daySigns} answers today.`;
+  const msg = x.dayN >= x.need ? `🏆 All ${x.need} practice ${x.need === 1 ? 'day' : 'days'} done for your ${what}!` : x.today >= x.daySigns ? `✓ Practice day saved for your ${what}: ${x.dayN} of ${x.need} ${x.need === 1 ? 'day' : 'days'}.` : `✓ Saved for your ${what}: ${Math.min(x.today, x.daySigns)} of ${x.daySigns} answers ${x.carry ? 'so far (they add up across days)' : 'today'}.`;
   const bx = S.chBoost; S.chBoost = 0; setTimeout(() => toast((bx ? '⚡ Fast practice: counted ' + bx + '×! ' : '') + msg + (next ? ' Next: ' + next + '.' : '')), 2600); }
 function chHomeFresh() { S.chStale = false; call('api_chHome', AUTH).then(c => { if (!S.d) return; S.d.chal = c; if (S.view === 'home' && !S.door) go('home'); }).catch(() => {}); }      /* 4.431 */
 /* 4.436 two Stacker messages on Home (students only):
