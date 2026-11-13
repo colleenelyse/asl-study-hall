@@ -346,6 +346,14 @@
    ]
   },
   {
+   "icon": "🎥",
+   "title": "Recorder",
+   "desc": "The video-only recorder window (ASL Study opens it for Conversation Studio and test recordings). No sound; nothing saved on the page.",
+   "href": "/record/",
+   "group": "ASL apps",
+   "aud": []
+  },
+  {
    "icon": "🎭",
    "title": "Theatre app",
    "desc": "Your theatre class app.",
