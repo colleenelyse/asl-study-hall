@@ -25,6 +25,10 @@
   --bg: #11132A; --surface: #1B1E3E; --ink: #F0F2FF; --muted: #A6ACCD; --line: #343A6B; --accent: #4C7DFF; --purple: #b9a2ff; --green: #5AD79A;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.28); color-scheme: dark }
 * { box-sizing: border-box }
+[hidden] { display: none !important }
+.s1 { display: grid; gap: 14px; align-items: start }
+.s1pic { display: flex; flex-direction: column; gap: 8px }
+@media (min-width: 760px) { .s1 { grid-template-columns: 1.35fr 1fr } .s1p { grid-template-columns: 1fr } }
 html, body { margin: 0 }
 body { background: var(--bg); color: var(--ink); font: 500 16px/1.45 "Nunito", "Segoe UI", system-ui, sans-serif }
 main { max-width: 980px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 16px }
@@ -85,13 +89,15 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 .way { border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px }
 .wins { border: 2px solid var(--up-line); background: var(--up) }
 .wins ul { margin: 0; padding-left: 22px } .wins li { margin: 4px 0; font-weight: 700 }
-.cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px }
 .ccard { text-align: left; border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px }
 .ccard.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent) }
 .ccard .nm { font-weight: 800; overflow-wrap: anywhere }
-.ccard .gr { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums }
+.ccard .gr { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums }
 .up { color: var(--green) } .dn { color: #d9454b }
 .spark { width: 100%; height: 34px; display: block }
+.ccard .spark { height: 22px !important }
+.ccard span.dn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
 .miss li { margin: 4px 0 }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1B1E3C; color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; z-index: 50; max-width: 92vw; text-align: center }
 .confetti { position: fixed; top: -12px; width: 10px; height: 14px; z-index: 60; pointer-events: none; animation: fall 2.6s ease-in forwards }
@@ -112,12 +118,9 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 
   <section class="card">
     <h2>📋 Paste from Infinite Campus</h2>
-    <div class="way"><b>One class at a time</b><ol class="how small"><li>In Infinite Campus, open <b>Grades</b> and <b>click one class</b> so it opens and <b>every assignment is listed</b>.</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li><li>Go back to Grades and do the same for your next class.</li></ol>
-      <p class="small muted" style="margin-top:4px">Not the Grades page with all your classes: it only has percents. The points and any missing work are on each class’s own page.</p></div>
-    <textarea id="paste" placeholder="Paste one class’s page here (Ctrl + V)"></textarea>
+    <p class="small">In Infinite Campus <b>Grades</b>, <b>click a class</b> so every assignment is listed, press <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd>, and paste it here with <kbd>Ctrl</kbd> + <kbd>V</kbd>. Then do your next class. Each one goes with its own class.</p>
+    <textarea id="paste" placeholder="Paste one class’s page here (Ctrl + V)" style="min-height:54px"></textarea>
     <div id="pres" style="display:flex;flex-direction:column;gap:8px"></div>
-    <div id="per" style="display:flex;flex-direction:column;gap:10px"></div>
-    <p class="small muted">On a phone? Type the numbers in step 1 instead.</p>
   </section>
 
   <section class="card">
@@ -129,6 +132,8 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     <h2><span class="step">1</span><span id="cname">Your numbers</span></h2>
     <div class="classes" id="classes"></div>
     <div id="pasted"></div>
+    <div class="s1">
+    <div class="s1pic">
     <h3 style="text-align:center">Where to find your numbers in Infinite Campus</h3>
     <div class="pic" id="pic" title="Tap to zoom"><svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif" fill="#1f2333" role="img" aria-label="Infinite Campus grades page. The Assessments row shows 300/305: 300 is points earned and 305 is points possible. The Coursework row shows 2928.61/3230: 2928.61 is points earned and 3230 is points possible.">
 <defs><marker id="ma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10z" fill="#6d3fd1"/></marker>
@@ -174,13 +179,17 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 <text x="724" y="470" font-size="13" fill="#555" text-anchor="middle">(the first number)</text><text x="910" y="470" font-size="13" fill="#555" text-anchor="middle">(after the slash)</text>
 </svg></div>
     <p class="small muted">In Infinite Campus: <b>Grades</b> › pick the class › find the <b>Assessments</b> and <b>Coursework</b> rows. Each shows <b>earned / possible</b>, like 300/305. Tap the picture to zoom.</p>
-    <div class="panels">
+    </div>
+    <div class="s1nums">
+    <div class="panels s1p">
       <div class="panel pa"><h3>Assessments (90%)</h3>
         <label class="row"><span>Points earned</span><input id="ae" inputmode="decimal" autocomplete="off"></label>
         <label class="row"><span>Points possible</span><input id="ap" inputmode="decimal" autocomplete="off"></label></div>
       <div class="panel pc"><h3>Coursework (10%)</h3>
         <label class="row"><span>Points earned</span><input id="ce" inputmode="decimal" autocomplete="off"></label>
         <label class="row"><span>Points possible</span><input id="cp" inputmode="decimal" autocomplete="off"></label></div>
+    </div>
+    </div>
     </div>
     <div id="now"></div>
   </section>
@@ -368,7 +377,8 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     return { a: a, c: c };
   }
   /* 4.501 (Colleen: "i assume many will paste the main grades page that shows percentages and not points ... populate their list of classes ...
-     they need to paste in each class separately ... give them boxes for their classes"): 4.502 she took the class-list step away ("i don't want them to copy in the grades page ... i want them to see that error message if they do"): the box asks for one class's page; a pasted Grades page is an error that still lists the classes, each with its own box. */
+     they need to paste in each class separately ... give them boxes for their classes"): 4.502 she took the class-list step away ("i don't want them to copy in the grades page ... i want them to see that error message if they do"); 4.503 one box only
+     ("i don't want student to see a box for each class ... just one box ... the classes get labeled accordingly ... takes up too much space at the top"): each pasted page goes with its own class (course number); a pasted Grades page is an error that still lists the classes. */
   var PM = {};      // a message under each class's box, by class id (until the page is reloaded)
   function setClass(x, i) {
     var c = st.classes[i]; c.code = x.code; c.name = x.name; if (x.teacher) c.teacher = x.teacher; if (x.pct !== null) c.icPct = x.pct;
@@ -406,35 +416,13 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     });
     if (firstI >= 0) st.cur = firstI;
     save(); paintAll();
-    if (det.length) return tc && st.classes[firstI] !== tc ? '<div class="verdict warn"><b>↪️ That was a different class’s page.</b>' + msg + '<p class="small" style="margin-top:4px">For this box: ' + howOne(tc.name) + '</p></div>' : '<div class="verdict up"><b>✓ Got it!</b>' + msg + '</div>';
+    if (det.length) { var left = st.classes.filter(function (c) { return (c.code || c.icPct != null) && !c.pasted; }); return '<div class="verdict up"><b>✓ Got it!</b>' + msg + (left.length ? '<p class="small" style="margin-top:4px">Still to paste: ' + left.map(function (c) { return esc(c.name); }).join(', ') + '.</p>' : '') + '</div>'; }
     if (tc) return '<div class="verdict down"><b>⚠️ That’s the Grades page with every class.</b> It only has percents. This box needs <b>' + esc(tc.name) + '’s own page</b>: ' + howOne(tc.name) + '</div>';
-    return '<div class="verdict down"><b>⚠️ That’s the Grades page with all your classes. It shows percentages, not points.</b><p style="margin-top:6px">✓ We used it to list your <b>' + sum.length + ' class' + (sum.length === 1 ? '' : 'es') + '</b>' + (added ? '' : ' (already here)') + ' just below, but your grades still need the points.</p><p style="margin-top:6px"><b>Next:</b> paste each class’s own page into its box, one class at a time. In Infinite Campus <b>Grades</b>, click the class so it opens and every assignment is listed, then <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd>, and paste it into that class’s box.</p></div>';
+    return '<div class="verdict down"><b>⚠️ That’s the Grades page with all your classes. It shows percentages, not points.</b><p style="margin-top:6px">✓ We used it to list your <b>' + sum.length + ' class' + (sum.length === 1 ? '' : 'es') + '</b>' + (added ? '' : ' (already here)') + ' under My classes, but your grades still need the points.</p><p style="margin-top:6px"><b>Next:</b> in Infinite Campus <b>Grades</b>, click one class so every assignment is listed, then <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd>, and paste it here. Do that for each class.</p></div>';
   }
   $('paste').addEventListener('input', function () {
     var t = this.value; if (!t.trim()) return; this.value = '';
     $('pres').innerHTML = applyPaste(t);
-  });
-  function listed() { return st.classes.map(function (c, i) { return { c: c, i: i }; }).filter(function (o) { return o.c.code || o.c.icPct != null || hasData(o.c) || !/^Class \d+$/.test(o.c.name); }); }
-  function paintPer() {
-    var l = listed(), el = $('per');
-    if (!l.length) { el.innerHTML = ''; return; }
-    var done = l.filter(function (o) { return o.c.pasted; }).length;
-    el.innerHTML = '<p style="margin:4px 0 0"><b>Your classes (' + done + ' of ' + l.length + ' pasted)</b> <span class="small muted">Paste each class’s own page into its box, or into the box above.</span></p>' +
-      l.map(function (o) {
-        var c = o.c, ok = !!c.pasted, mi = c.missing || [];
-        return '<div class="pcrow' + (ok ? ' done' : '') + '"><div class="row" style="flex-direction:row;align-items:baseline;flex-wrap:wrap"><b>' + esc(c.name) + '</b><span class="small ' + (ok ? 'up' : 'muted') + '">' +
-          (ok ? '✓ Points in (' + day(c.pasted) + ')' + (mi.length ? ' · <span class="dn">' + mi.length + ' missing</span>' : '') : c.icPct != null ? f2(c.icPct) + '% · needs its own page' : 'needs its own page') + '</span></div>' +
-          (ok ? '<details><summary class="small">Paste a newer page</summary><textarea data-ci="' + o.i + '" placeholder="Paste ' + esc(c.name) + '’s own page here (Ctrl + V)"></textarea></details>'
-              : '<textarea data-ci="' + o.i + '" placeholder="Paste ' + esc(c.name) + '’s own page here (Ctrl + V)"></textarea>') +
-          '<div class="pcmsg">' + (PM[c.id] || '') + '</div></div>';
-      }).join('');
-  }
-  $('per').addEventListener('input', function (ev) {
-    var ta = ev.target; if (!ta.dataset || ta.dataset.ci == null) return;
-    var t = ta.value; if (!t.trim()) return; var c = st.classes[+ta.dataset.ci], id = c && c.id; ta.value = '';
-    var m = applyPaste(t, +ta.dataset.ci); PM[id] = m; $('pres').innerHTML = '';
-    var box = document.querySelector('#per .pcmsg') && [].filter.call(document.querySelectorAll('#per textarea'), function (x) { return st.classes[+x.dataset.ci] && st.classes[+x.dataset.ci].id === id; })[0];
-    if (box) box.closest('.pcrow').querySelector('.pcmsg').innerHTML = m;
   });
   function round2(n) { return Math.round(n * 100) / 100; }
 
@@ -512,9 +500,8 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
       if (p && last) { var d = last.g - p.g; ch = Math.abs(d) < 0.005 ? '<span class="small muted">no change since ' + day(p.d) + '</span>' : '<span class="small ' + (d > 0 ? 'up' : 'dn') + '"><b>' + (d > 0 ? '▲ +' : '▼ −') + f2(Math.abs(d)) + '</b> since ' + day(p.d) + '</span>'; }
       return '<button class="ccard' + (i === st.cur ? ' on' : '') + '" data-i="' + i + '"><span class="nm">' + esc(c.name) + '</span>' +
         (g === null ? '<span class="small muted">No grade yet</span>' : '<span class="gr">' + f2(g) + '% <span class="small">' + letter(g) + '</span></span>') + ch +
-        (c.ap || c.cp ? '<span class="small muted">Assessments ' + esc(c.ae || 0) + ' / ' + esc(c.ap || 0) + '<br>Coursework ' + esc(c.ce || 0) + ' / ' + esc(c.cp || 0) + '</span>' : '') +
-        (c.missing && c.missing.length ? '<span class="small dn"><b>' + c.missing.length + ' missing:</b></span><ul class="small dn" style="margin:0;padding-left:18px">' + c.missing.map(function (m) { return '<li>' + esc(m.n) + '</li>'; }).join('') + '</ul>'
-          : c.pasted ? '<span class="small up">✅ No missing work</span>' : c.icPct != null && !c.ap ? '<span class="small muted">Paste this class’s page for points and missing work</span>' : '') + spark(h) + '</button>';
+        (c.missing && c.missing.length ? '<span class="small dn" title="' + esc(c.missing.map(function (m) { return m.n; }).join(', ')) + '"><b>' + c.missing.length + ' missing:</b> ' + esc(c.missing.map(function (m) { return m.n; }).join(', ')) + '</span>'
+          : c.pasted ? '<span class="small up">✅ No missing work</span>' : c.icPct != null && !c.ap ? '<span class="small muted">Paste its page for points</span>' : '') + spark(h) + '</button>';
     }).join('') + '<button class="ccard" id="cadd2" style="border-style:dashed;align-items:center;justify-content:center;color:var(--muted)"><b>+ Add a class</b></button>';
   }
   $('cgrid').addEventListener('click', function (ev) {
@@ -650,7 +637,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
     var c = cls();
     ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
-    paintAcct(); paintWins(); paintPer(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
+    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
   }
 
   /* back from the Google sign-in page with a one-time code */
