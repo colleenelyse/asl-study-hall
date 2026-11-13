@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.491';
+var VERSION = '4.493';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -10125,7 +10125,7 @@ function breachNew_(teams, opt) {
      screens add captions under the hand and a step-by-step coach; it is untimed and nothing counts toward points or records. */
   var practice = !!opt.brPractice, boxes0 = maps.map(function (m, t) { var b = {}; if (practice) for (var c = 0; c < n; c++) if (c !== t) for (var s0 = 2; s0 < 5; s0++) b[c + ':' + s0] = { v: pw[c][s0], at: 0, ok: true, given: 1 }; return b; });
   var colors = shuffle_([0, 1, 2, 3, 4, 5]).slice(0, n);      /* 4.98 (Colleen: "use random colors"): crew t plays as color colors[t] */
-  return { n: n, pat: pat, practice: practice, colors: colors, phase: 'wait', phaseEnds: 0, voteBy: opt.brVoteBy === 'char' ? 'char' : 'name', endMode: opt.brPractice ? 'first' : ['podium', 'most'].indexOf(opt.brEnd) >= 0 ? opt.brEnd : 'first', score: maps.map(function () { return 0; }), firstOn: {}, cam: opt.brCam !== false,
+  return { n: n, pat: pat, practice: practice, colors: colors, phase: 'wait', phaseEnds: 0, voteBy: opt.brVoteBy === 'char' ? 'char' : 'name', sup: opt.brHelp === 'sup', endMode: opt.brPractice ? 'first' : ['podium', 'most'].indexOf(opt.brEnd) >= 0 ? opt.brEnd : 'first', score: maps.map(function () { return 0; }), firstOn: {}, cam: opt.brCam !== false,
     votes: maps.map(function () { return {}; }), decoders: maps.map(function () { return ''; }), pw: pw, maps: maps, boxes: boxes0,
     spent: {}, bonus: {}, found: {}, log: [], attempt: null, ranks: [], paused: false, stats: {}, exposed: maps.map(function () { return [[], [], [], [], []]; }) };      // 4.68 (Colleen): which rival crews have seen each section
 }
@@ -10545,7 +10545,7 @@ function asstSigns_(cards, units) { var inU = {}, any = {}; units = units || [];
 function asstNew_(opt, st, maxM) { opt = opt || {}; var P = asstPlan_(opt, maxM || 45), units = asstUnits_(st, opt.asstUnit), S = asstSigns_(st && st.cards, units), a = [], b = [], c = [];
   ASST_EV.forEach(function (e) { var k = 'e:' + e[0]; (S.su[k] ? a : S.sg[k] ? b : c).push(e[0]); });
   var deck = shuffle_(a).concat(shuffle_(b), shuffle_(c)).slice(0, ASST.deck), stars = []; for (var i = 0; i < ASST_STARS.length; i++) stars.push(i);
-  return { units: units, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false,
+  return { units: units, found: [S.n, S.nu, S.of], sg: S.sg, deck: deck, rounds: P.rounds, mins: P.mins, nreq: P.nreq, clash: opt.asstClash !== false, mind: opt.asstMind !== false, sup: opt.asstHelp === 'sup',
     ph: { k: 'wait', n: 0 }, r: 0, T: [], was: {}, last: [], tot: [], me: {}, hist: [], stars: shuffle_(stars), paused: 0, started: 0, final: false }; }
 function asstMe_(A, e) { return A.me[e] || (A.me[e] = { pts: 0, n: 0 }); }
 /** The calendar cells an event fills (day * 48 + half hour). */
@@ -10684,6 +10684,10 @@ function asstView_(g, myTeam, key) { var A = g.asst; if (!A) return null; var no
   if (myTeam >= 0 && A.T[myTeam]) { var T = A.T[myTeam], cli = T.cli === key, C = T.cf, me = { role: cli ? 'client' : 'asst', team: myTeam, cliName: T.cli ? seaFirst_(j, T.cli) : '', star: T.star, busy: T.busy.map(function (b) { return [b.ev, b.d, b.t]; }), mine: asstR1_((A.me[key] || {}).pts || 0) };
     if (C) me.cf = { ph: C.ph, by: C.by === key ? '' : seaFirst_(j, C.by), mineBy: C.by === key, b: C.b, opts: cli || C.ph !== 'sign' ? C.opts : null, ex: !cli || C.ph !== 'sign' ? C.ex : '', pick: C.pick || '', ok: C.ph !== 'sign' ? !!C.ok : null,
       slots: cli && C.ph === 'move' ? C.slots : null, nw: cli || ans ? C.nw || null : null, ev: cli || ans ? T.reqs[C.i].ev : '' };
+    /* 4.493 SUPPORTED (Colleen: "do breach, then assistants"): the client sees, live, which requests each assistant already has (0-3 stars each), so they
+       know what to sign again and to whom; assistants pick from a short deck (this week's events + 3 others). Assistants never see their own stars. */
+    if (A.sup) { v.sup = true; if (cli) me.need = seaMates_(j, myTeam).filter(function (e) { return e !== T.cli; }).map(function (e) { return [seaFirst_(j, e), asstMatch_(T.reqs, T.ent[e] || []).per]; });
+      else { var dk = [], add = function (k) { if (dk.indexOf(k) < 0) dk.push(k); }; T.reqs.forEach(function (r) { add(r.ev); }); (T.ent[key] || []).forEach(function (e) { add(e.ev); }); A.deck.filter(function (k) { return dk.indexOf(k) < 0; }).slice(0, 3).forEach(add); me.deck = dk; } }
     if (cli) { me.reqs = T.reqs.map(asstReqOut_); me.asst = v.teams[myTeam].asst; if (T.mind && T.mind.i >= 0) me.mindC = { i: T.mind.i, old: T.mind.old, ago: now - T.mind.when }; }
     else { me.ent = (T.ent[key] || []).map(asstEntOut_); me.done = !!T.done[key]; if (T.mind && T.mind.i >= 0) me.mindC = { ago: now - T.mind.when }; }
     if (ans) { me.reqs = T.reqs.map(asstReqOut_); if (!cli) { var m = asstMatch_(T.reqs, T.ent[key] || []); me.score = { tot: m.tot, per: m.per, ent: m.ent }; } else me.per = T.res ? Object.keys(T.res.per).map(function (e) { return [seaFirst_(j, e), T.res.per[e]]; }) : []; }
@@ -11481,6 +11485,10 @@ function breachView_(g, myTeam, e) {
     v.map = { w: m.w, h: m.h, cells: m.cells.map(function (c, i) { return c.open ? (c.k === 'cache' || c.k === 'decoy' ? 'x' : c.k ? c.k + '_' : '.') : m.seen[i] === 4 ? 'fake' : m.seen[i] === 3 ? 'ping' : (c.k === 'cache' || c.k === 'decoy') && glow ? 'cache:' + c.c : c.k === 'decoy' ? 'cache' : c.k || '.'; }),      // no fog (Colleen): everything shows; a decoy looks like a cache until scanned
       pos: Object.keys(m.pos).map(function (x) { return [m.pos[x], brLabel_(br, j, x), x === me ? 1 : 0]; }), mine: m.pos[me] != null ? m.pos[me] : brStart_(m), start: brStart_(m) };
     v.found = (br.found[me] || []).map(function (f) { return [f[0], f[1], f[2], f[4] || null, f[5] ? 1 : 0]; });      /* only my own pieces, to re-watch; [4] 4.91: that section was changed since */
+    /* 4.492 SUPPORTED (Colleen: Breach "could use a mode like this"): the Decoder sees WHICH boxes the crew's Agents have found pieces for (never the sets),
+       and every box for a found piece is checked for free (✓ / ✖ ask your Agent again); boxes nobody has found are never checked, so nothing can be guessed */
+    if (br.sup) { v.sup = true; if (dec) { var cf = {}; mates[myTeam].forEach(function (x) { (br.found[x] || []).forEach(function (f) { if (!f[5]) cf[f[0] + ':' + f[1]] = 1; }); });
+      v.crewFound = Object.keys(cf); v.chk = {}; v.crewFound.forEach(function (k2) { var b2 = br.boxes[myTeam][k2]; if (b2 && b2.v && !b2.stale) v.chk[k2] = b2.v === br.pw[+k2.split(':')[0]][+k2.split(':')[1]] ? 1 : 0; }); } }
     if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; v.chg = { cost: brChgCost_(br, myTeam), wait: brChgWait_(br, myTeam) }; }      /* 4.170 what a change costs now, and the wait */      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
   }
   if (myTeam === -1) { v.maps = br.maps.map(function (m, t) { return { w: m.w, h: m.h, open: m.cells.filter(function (c) { return c.open; }).length, total: m.cells.length, pos: Object.keys(m.pos).map(function (x) { return m.pos[x]; }) }; }); }

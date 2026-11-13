@@ -71,7 +71,7 @@ function breachNew_(teams, opt) {
      screens add captions under the hand and a step-by-step coach; it is untimed and nothing counts toward points or records. */
   var practice = !!opt.brPractice, boxes0 = maps.map(function (m, t) { var b = {}; if (practice) for (var c = 0; c < n; c++) if (c !== t) for (var s0 = 2; s0 < 5; s0++) b[c + ':' + s0] = { v: pw[c][s0], at: 0, ok: true, given: 1 }; return b; });
   var colors = shuffle_([0, 1, 2, 3, 4, 5]).slice(0, n);      /* 4.98 (Colleen: "use random colors"): crew t plays as color colors[t] */
-  return { n: n, pat: pat, practice: practice, colors: colors, phase: 'wait', phaseEnds: 0, voteBy: opt.brVoteBy === 'char' ? 'char' : 'name', endMode: opt.brPractice ? 'first' : ['podium', 'most'].indexOf(opt.brEnd) >= 0 ? opt.brEnd : 'first', score: maps.map(function () { return 0; }), firstOn: {}, cam: opt.brCam !== false,
+  return { n: n, pat: pat, practice: practice, colors: colors, phase: 'wait', phaseEnds: 0, voteBy: opt.brVoteBy === 'char' ? 'char' : 'name', sup: opt.brHelp === 'sup', endMode: opt.brPractice ? 'first' : ['podium', 'most'].indexOf(opt.brEnd) >= 0 ? opt.brEnd : 'first', score: maps.map(function () { return 0; }), firstOn: {}, cam: opt.brCam !== false,
     votes: maps.map(function () { return {}; }), decoders: maps.map(function () { return ''; }), pw: pw, maps: maps, boxes: boxes0,
     spent: {}, bonus: {}, found: {}, log: [], attempt: null, ranks: [], paused: false, stats: {}, exposed: maps.map(function () { return [[], [], [], [], []]; }) };      // 4.68 (Colleen): which rival crews have seen each section
 }
@@ -214,6 +214,10 @@ function breachView_(g, myTeam, e) {
     v.map = { w: m.w, h: m.h, cells: m.cells.map(function (c, i) { return c.open ? (c.k === 'cache' || c.k === 'decoy' ? 'x' : c.k ? c.k + '_' : '.') : m.seen[i] === 4 ? 'fake' : m.seen[i] === 3 ? 'ping' : (c.k === 'cache' || c.k === 'decoy') && glow ? 'cache:' + c.c : c.k === 'decoy' ? 'cache' : c.k || '.'; }),      // no fog (Colleen): everything shows; a decoy looks like a cache until scanned
       pos: Object.keys(m.pos).map(function (x) { return [m.pos[x], brLabel_(br, j, x), x === me ? 1 : 0]; }), mine: m.pos[me] != null ? m.pos[me] : brStart_(m), start: brStart_(m) };
     v.found = (br.found[me] || []).map(function (f) { return [f[0], f[1], f[2], f[4] || null, f[5] ? 1 : 0]; });      /* only my own pieces, to re-watch; [4] 4.91: that section was changed since */
+    /* 4.492 SUPPORTED (Colleen: Breach "could use a mode like this"): the Decoder sees WHICH boxes the crew's Agents have found pieces for (never the sets),
+       and every box for a found piece is checked for free (✓ / ✖ ask your Agent again); boxes nobody has found are never checked, so nothing can be guessed */
+    if (br.sup) { v.sup = true; if (dec) { var cf = {}; mates[myTeam].forEach(function (x) { (br.found[x] || []).forEach(function (f) { if (!f[5]) cf[f[0] + ':' + f[1]] = 1; }); });
+      v.crewFound = Object.keys(cf); v.chk = {}; v.crewFound.forEach(function (k2) { var b2 = br.boxes[myTeam][k2]; if (b2 && b2.v && !b2.stale) v.chk[k2] = b2.v === br.pw[+k2.split(':')[0]][+k2.split(':')[1]] ? 1 : 0; }); } }
     if (dec) { v.boxes = br.boxes[myTeam]; v.exposed = br.exposed ? br.exposed[myTeam] : [[], [], [], [], []]; v.myPw = br.pw[myTeam]; v.chg = { cost: brChgCost_(br, myTeam), wait: brChgWait_(br, myTeam) }; }      /* 4.170 what a change costs now, and the wait */      // 4.71 (Colleen): the Decoder sees their own password      // how vulnerable each of our sections is
   }
   if (myTeam === -1) { v.maps = br.maps.map(function (m, t) { return { w: m.w, h: m.h, open: m.cells.filter(function (c) { return c.open; }).length, total: m.cells.length, pos: Object.keys(m.pos).map(function (x) { return m.pos[x]; }) }; }); }
