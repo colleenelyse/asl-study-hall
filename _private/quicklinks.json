@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-01",
+ "updated": "2026-11-13",
  "links": [
   {
    "icon": "🤟",
@@ -182,6 +182,16 @@
    "title": "Random number",
    "desc": "",
    "href": "/tools/?tool=rnum",
+   "group": "Class tools",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🧮",
+   "title": "Grade Calculator",
+   "desc": "For any class on the 90 / 10 system: what if I get…, and what do I need.",
+   "href": "/grade/",
    "group": "Class tools",
    "aud": [
     "students"
@@ -437,6 +447,66 @@
    "title": "ASL Study family tour",
    "desc": "What families see about ASL Study.",
    "href": "/tour/",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎬",
+   "title": "ASL Study demo",
+   "desc": "For your boss and other teachers: teacher view and student view with five sample classes. Nothing is saved.",
+   "href": "/demo/",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🧑‍🏫",
+   "title": "ASL Study demo: teacher view",
+   "desc": "Every teacher page opens; hosted class games are played by the sample students.",
+   "href": "/demo/app.html?as=teacher",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "💬",
+   "title": "ASL Study demo: feedback and visits",
+   "desc": "This week, visits by day (no names), your “You asked, I built it” list, and the feedback.",
+   "href": "/colleen/demo-feedback.html",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎒",
+   "title": "ASL Study demo: student view",
+   "desc": "Zack M., a sample student.",
+   "href": "/demo/app.html?as=student",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔑",
+   "title": "ASL Study Guest (real accounts for LT staff)",
+   "desc": "Any LT staff email signs in as a teacher with the five sample classes; progress is saved. No real students.",
+   "href": "https://script.google.com/a/macros/d204.lths.net/s/AKfycbyQEgeyx-OlrHI9CYSyvYr-Oaj6YNzvFldfDNa7rM6zj2oJX7RhG0Z8NdC6Xp_Nwz91bA/exec",
+   "group": "Demo sites",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "📗",
+   "title": "ASL Study Guest sheet",
+   "desc": "The guest copy’s Google Sheet (only the sample classes).",
+   "href": "https://docs.google.com/spreadsheets/d/1z6iO-C_RfcYDw7Q6i8fZ_2ukvdB1caZ3IBTHzSdEQ-I/edit",
    "group": "Demo sites",
    "aud": [
     "students"
