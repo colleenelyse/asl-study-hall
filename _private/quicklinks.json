@@ -286,6 +286,74 @@
    ]
   },
   {
+   "icon": "📱",
+   "title": "ASL Apps",
+   "desc": "All three phone apps, and how to add them to a Home Screen.",
+   "href": "/apps/",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎓",
+   "title": "ASL Study Hall phone app",
+   "desc": "The class app on a phone (students sign in).",
+   "href": "/app/",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "✋",
+   "title": "ASL Spellbound",
+   "desc": "The fingerspelling practice app.",
+   "href": "/spellbound/",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🔟",
+   "title": "ASL NumberWise",
+   "desc": "The numbers practice app.",
+   "href": "/numberwise/",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "⚡",
+   "title": "Study Hall Lite",
+   "desc": "Paste any word list: 11 games and a game guide.",
+   "href": "/lite/",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "📸",
+   "title": "Proof for my teacher",
+   "desc": "Students outside your class save a picture of what they practiced today.",
+   "href": "/fingerspelling/#/proof",
+   "group": "ASL apps",
+   "aud": [
+    "students"
+   ]
+  },
+  {
+   "icon": "🎭",
+   "title": "Theatre app",
+   "desc": "Your theatre class app.",
+   "href": "/theatre/",
+   "group": "Theatre",
+   "aud": []
+  },
+  {
    "icon": "🔊",
    "title": "Breach sounds",
    "desc": "Listen to and change the music and sound effects for each moment of Breach.",
