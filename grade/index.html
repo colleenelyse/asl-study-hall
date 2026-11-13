@@ -56,7 +56,9 @@ input[type=text], input[type=number], input:not([type]), select { font: inherit;
 .tile.c { background: var(--c-soft) }
 .tile b { font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums }
 .verdict { border-radius: 16px; padding: 14px 16px; background: rgba(150,150,150,.15); font-size: 1.05rem }
-.verdict.up { background: var(--up); border: 2px solid var(--up-line) } .verdict.down { background: var(--down); border: 2px solid var(--down-line) }
+.verdict.up { background: var(--up); border: 2px solid var(--up-line) } .verdict.warn { background: rgba(242,183,5,.18); border: 2px solid rgba(242,183,5,.65) }
+.pcrow { border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px }
+.pcrow.done { border-color: var(--up-line) } .pcrow textarea { min-height: 54px } .verdict.down { background: var(--down); border: 2px solid var(--down-line) }
 .what { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center }
 .wrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
 .wrow input { width: 90px }
@@ -86,7 +88,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 .cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px }
 .ccard { text-align: left; border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px }
 .ccard.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent) }
-.ccard .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ccard .nm { font-weight: 800; overflow-wrap: anywhere }
 .ccard .gr { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums }
 .up { color: var(--green) } .dn { color: #d9454b }
 .spark { width: 100%; height: 34px; display: block }
@@ -110,11 +112,11 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 
   <section class="card">
     <h2>📋 Paste from Infinite Campus</h2>
-    <div class="ways">
-      <div class="way"><b>All my classes at once</b><ol class="how small"><li>In Infinite Campus, open <b>Grades</b> (the page with every class).</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li></ol><p class="small muted">Adds your classes and their grades.</p></div>
-      <div class="way"><b>One class, with exact points</b><ol class="how small"><li>In <b>Grades</b>, <b>click the class</b> so its assignments show.</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li></ol><p class="small muted">Fills in the points below and finds missing work. Do it for each class.</p></div>
-    </div>
-    <textarea id="paste" placeholder="Paste here (Ctrl + V)"></textarea>
+    <p class="small">Two parts: <b>A</b> gets your list of classes, <b>B</b> gets the points for each class.</p>
+    <div class="way"><b><span class="step">A</span>Your list of classes</b><ol class="how small"><li>In Infinite Campus, open <b>Grades</b>. It shows every class with a percent.</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Click in the box below and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li></ol></div>
+    <textarea id="paste" placeholder="Paste your Grades page here (Ctrl + V)"></textarea>
+    <div id="pres" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="per" style="display:flex;flex-direction:column;gap:10px"></div>
     <p class="small muted">On a phone? Type the numbers in step 1 instead.</p>
   </section>
 
@@ -291,24 +293,45 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   /* ───── reading Infinite Campus pastes (from Resource Check-In's parseIC / parseClassGrades) ───── */
   function teacherOf(line) { return line.slice(1).split('/').map(function (n) { var p = n.split(','); return (((p[1] || '').trim().split(/\s+/)[0] || '') + ' ' + p[0].trim()).trim(); }).join(' / '); }
   function parseDetail(block) {      // one class's page → { code, name, teacher, pct, cats: [{ name, weight, e, q }], items: [{ cat, name, due, flags, score, possible }] }
-    var L = block.split(/\r?\n/).map(function (l) { return l.trim().replace(/^\*\s*/, ''); }).filter(String), m, cat = null, it = null;
-    var o = { code: '', name: '', teacher: '', pct: null, cats: [], items: [] };
+    // 4.500: reads both layouts: every value on its own line (Resource Check-In's samples) or several on one line ("Assessments Weight: 90 300/305 (98.36%)")
+    var L = block.split(/\r?\n/).map(function (l) { return l.replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\*\s*/, ''); }).filter(String), m, cat = null, it = null;
+    var o = { code: '', name: '', teacher: '', pct: null, cats: [], items: [] }, FR = /^(-|[\d.]+)\s*\/\s*([\d.]+)\b/;
     for (var i = 0; i < L.length; i++) {
       var l = L[i];
-      if (!o.code && (m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+?)(\s+L[IVX]+)?$/.exec(l))) { o.code = m[1]; o.name = m[2]; continue; }
+      if (!o.code && (m = /^([A-Z]{2,4}\d{3,5}-\d+)\s+(.+?)(\s+L[IVX]+)?(\s*\|\s*(.+))?$/.exec(l))) { o.code = m[1]; o.name = m[2].replace(/\s*\|.*$/, ''); if (m[5]) o.teacher = teacherOf('|' + m[5]); continue; }
       if (l.charAt(0) === '|' && !o.teacher) { o.teacher = teacherOf(l); continue; }
-      if (/semester grade$|term grade$|^\(.*\)\s*.*grade$/i.test(l) && !/mid/i.test(l)) { for (var j = i + 1; j < Math.min(i + 4, L.length); j++) if ((m = /^\((\d+(?:\.\d+)?)%\)$/.exec(L[j]))) { o.pct = Number(m[1]); break; } continue; }
-      if (L[i + 1] && (m = /^Weight:\s*([\d.]+)/i.exec(L[i + 1]))) {
-        cat = { name: l, weight: Number(m[1]), e: null, q: null }; o.cats.push(cat); it = null; i++;
-        if ((m = /^([\d.]+)\s*\/\s*([\d.]+)$/.exec(L[i + 1] || ''))) { cat.e = Number(m[1]); cat.q = Number(m[2]); i++; }
+      if (/(semester|term) grade\b/i.test(l) && !/mid/i.test(l)) {
+        if ((m = /\((\d+(?:\.\d+)?)%\)/.exec(l))) { o.pct = Number(m[1]); continue; }
+        for (var j = i + 1; j < Math.min(i + 4, L.length); j++) if ((m = /^\((\d+(?:\.\d+)?)%\)$/.exec(L[j]))) { o.pct = Number(m[1]); break; }
         continue;
       }
-      if (/^Assignment$/i.test(l) && cat) { it = { cat: cat.name, name: L[i + 1] || '', due: '', flags: [], score: null, possible: null }; o.items.push(it); i++; continue; }
+      var wl = /^Weight:?\s*([\d.]+)/i.exec(L[i + 1] || ''), ws = /^(.*?)\s*\(?\bWeight:?\s*([\d.]+)\)?\s*(.*)$/i.exec(l);
+      if (wl || (ws && ws[1])) {          // a category: "Assessments" then "Weight: 90", or both on one line
+        var nm = wl ? l : ws[1], rest = wl ? L[i + 1].replace(/^Weight:?\s*[\d.]+\)?\s*/i, '') : ws[3];
+        cat = { name: nm, weight: Number(wl ? wl[1] : ws[2]), e: null, q: null }; o.cats.push(cat); it = null; if (wl) i++;
+        if ((m = FR.exec(rest))) { cat.e = Number(m[1]); cat.q = Number(m[2]); }
+        else if ((m = /^([\d.]+)\s*\/\s*([\d.]+)\b/.exec(L[i + 1] || ''))) { cat.e = Number(m[1]); cat.q = Number(m[2]); i++; }
+        continue;
+      }
+      if (/^Assignment\b/i.test(l) && cat) {
+        var an0 = l.replace(/^Assignment:?\s*/i, ''), nm0 = an0.split(/\s+(?=Due:|Missing\b|Late\b|Score\b|Exempt\b)/i)[0];
+        it = { cat: cat.name, name: nm0 || L[i + 1] || '', due: '', flags: [], score: null, possible: null }; o.items.push(it);
+        if (!an0) { i++; continue; }
+        l = an0.slice(nm0.length).trim(); if (!l) continue;          // the rest of a one-line assignment: due date, Missing, Score
+        if (/\bMissing\b/i.test(l)) it.flags.push('missing'); if (/\bLate\b/i.test(l)) it.flags.push('late'); if (/\bExempt\b/i.test(l)) it.flags.push('exempt');
+        l = l.replace(/^.*?(?=Score)/i, function (x) { var d = /Due:?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(x); if (d) it.due = d[3] + '-' + ('0' + d[1]).slice(-2) + '-' + ('0' + d[2]).slice(-2); return ''; });
+        if ((m = /^Score:?\s*(-|[\d.]+)\s*\/\s*([\d.]+)/i.exec(l))) { it.score = m[1] === '-' ? null : Number(m[1]); it.possible = Number(m[2]); }
+        continue;
+      }
       if (!it) continue;
-      if ((m = /^Due:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(l))) { it.due = m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2); continue; }
-      if (/^Score$/i.test(l)) { if ((m = /^(-|[\d.]+)\s*\/\s*([\d.]+)$/.exec(L[i + 1] || ''))) { it.score = m[1] === '-' ? null : Number(m[1]); it.possible = Number(m[2]); i++; } continue; }
-      if (/^\(.*%\)$/.test(l) || /^[A-F][+-]?$/.test(l)) continue;
-      if (l.length <= 20 && /^[A-Za-z ]+$/.test(l)) it.flags.push(l.toLowerCase());
+      if ((m = /Due:?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(l))) { it.due = m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2); }
+      if (/\bMissing\b/i.test(l) && l.length <= 60 && it.flags.indexOf('missing') < 0) it.flags.push('missing');
+      if (/^(Late|Exempt|Dropped|Incomplete|Turned In)\b/i.test(l)) it.flags.push(l.toLowerCase().split(' ')[0]);
+      if ((m = /^Score:?\s*(.*)$/i.exec(l))) {
+        var sv = FR.exec(m[1]) || FR.exec(L[i + 1] || '');
+        if (sv) { it.score = sv[1] === '-' ? null : Number(sv[1]); it.possible = Number(sv[2]); if (!FR.exec(m[1])) i++; }
+        continue;
+      }
     }
     o.cats.forEach(function (c) {      // no total line: add up the assignments
       if (c.q !== null) return; c.e = 0; c.q = 0;
@@ -333,7 +356,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     lines.forEach(function (l, i) { if (/^\s*\*?\s*[A-Z]{2,4}\d{3,5}-\d+\s+\S/.test(l)) starts.push(i); });
     var all = starts.map(function (s0, k) {
       var block = lines.slice(s0, k + 1 < starts.length ? starts[k + 1] : lines.length).join('\n');
-      if (/^\s*Weight:/m.test(block)) { var d = parseDetail(block); if (d.cats.length) { d.detail = true; return d; } }
+      if (/\bWeight:?\s*\d/i.test(block)) { var d = parseDetail(block); if (d.cats.length) { d.detail = true; return d; } }
       return parseSummary(block);
     }).filter(function (x) { return x && (x.detail || x.pct !== null); });
     return all.filter(function (x, i) { return !all.some(function (y, j) { return j !== i && y.code === x.code && (y.detail && !x.detail || (!!y.detail === !!x.detail && j < i)); }); });
@@ -344,27 +367,77 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     a = a || by[0]; c = c || by.filter(function (x) { return x !== a; })[0];
     return { a: a, c: c };
   }
-  $('paste').addEventListener('input', function () {
-    var t = this.value; if (!t.trim()) return;
-    var list = parsePaste(t);
-    if (!list.length) { toast(/Weight:/i.test(t) ? 'Start your copy at the very top of the class page, then paste again.' : 'No classes found. Copy the Grades page in Infinite Campus (Ctrl + A, Ctrl + C) and paste it here.'); return; }
-    var first = -1, detail = 0;
-    list.forEach(function (x) {
-      var i = st.classes.findIndex(function (c) { return (c.code && c.code === x.code) || key(c) === x.name.toLowerCase(); });
-      if (i < 0) { i = st.classes.findIndex(function (c) { return !hasData(c) && /^Class \d+$/.test(c.name); }); if (i >= 0) st.classes[i].name = x.name; }
-      if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; }
-      var c = st.classes[i]; c.code = x.code; c.name = x.name; if (x.teacher) c.teacher = x.teacher; if (x.pct !== null) c.icPct = x.pct;
-      if (x.detail) {
-        var p = pickCats(x.cats);
-        if (p.a) { c.ae = String(round2(p.a.e)); c.ap = String(round2(p.a.q)); }
-        if (p.c) { c.ce = String(round2(p.c.e)); c.cp = String(round2(p.c.q)); } else { c.ce = '0'; c.cp = '0'; }
-        c.missing = x.items.filter(function (it) { return it.flags.indexOf('missing') >= 0 && it.possible > 0; }).map(function (it) { return { n: it.name, due: it.due, s: it.score || 0, p: it.possible, k: p.a && it.cat === p.a.name ? 'a' : 'c' }; });
-        c.pasted = today(); c.pastes = (c.pastes || 0) + 1; detail++;
-      }
-      touch(c); record(c); if (first < 0) first = i;
+  /* 4.501 two parts (Colleen: "i assume many will paste the main grades page that shows percentages and not points ... populate their list of classes ...
+     they need to paste in each class separately ... give them boxes for their classes"): the Grades page gives the list (A); each class's own page, pasted in
+     that class's box, gives the points and missing work (B). Any box takes either page. */
+  var PM = {};      // a message under each class's box, by class id (until the page is reloaded)
+  function setClass(x, i) {
+    var c = st.classes[i]; c.code = x.code; c.name = x.name; if (x.teacher) c.teacher = x.teacher; if (x.pct !== null) c.icPct = x.pct;
+    if (x.detail) {
+      var p = pickCats(x.cats);
+      if (p.a) { c.ae = String(round2(p.a.e)); c.ap = String(round2(p.a.q)); }
+      if (p.c) { c.ce = String(round2(p.c.e)); c.cp = String(round2(p.c.q)); } else { c.ce = '0'; c.cp = '0'; }
+      c.missing = x.items.filter(function (it) { return it.flags.indexOf('missing') >= 0 && it.possible > 0; }).map(function (it) { return { n: it.name, due: it.due, s: it.score || 0, p: it.possible, k: p.a && it.cat === p.a.name ? 'a' : 'c' }; });
+      c.pasted = today(); c.pastes = (c.pastes || 0) + 1;
+    }
+    touch(c); record(c); return c;
+  }
+  function findClass(x) {
+    var i = st.classes.findIndex(function (c) { return (c.code && c.code === x.code) || key(c) === x.name.toLowerCase(); });
+    if (i < 0) { i = st.classes.findIndex(function (c) { return !hasData(c) && !c.code && /^Class \d+$/.test(c.name); }); if (i >= 0) st.classes[i].name = x.name; }
+    return i;
+  }
+  function gotHtml(c) {
+    var mi = c.missing || [];
+    return '✓ <b>' + esc(c.name) + '</b>: points filled in (Assessments ' + esc(c.ae) + ' / ' + esc(c.ap) + ', Coursework ' + esc(c.ce) + ' / ' + esc(c.cp) + (c.icPct != null ? '; Infinite Campus says ' + f2(c.icPct) + '%' : '') + '). ' +
+      (mi.length ? '<b class="dn">' + mi.length + ' missing:</b> ' + mi.map(function (m) { return esc(m.n); }).join(', ') : '✅ No missing work.');
+  }
+  function howOne(name) { return 'In Infinite Campus, open <b>Grades</b> and <b>click ' + esc(name) + '</b> so it opens and <b>every assignment is listed</b>. Then press <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd>, and paste it here with <kbd>Ctrl</kbd> + <kbd>V</kbd>.'; }
+  function applyPaste(t, ti) {      // ti = the class whose box it was pasted in (or undefined for box A); returns the message to show
+    var list = parsePaste(t), tc = ti == null ? null : st.classes[ti];
+    if (!list.length) return '<div class="verdict down"><b>⚠️ No classes found in that paste.</b><p class="small" style="margin-top:4px">' + (/Weight/i.test(t) ? 'It looks like a class page, but the class title (the line with the course number, like WL7816-2 American Sign Language I) wasn’t copied. On the class page, press Ctrl + A so everything is copied, then Ctrl + C, and paste again.' : 'Copy a page from Infinite Campus Grades: press Ctrl + A, then Ctrl + C, and paste here with Ctrl + V.') + '</p></div>';
+    var det = list.filter(function (x) { return x.detail; }), sum = list.filter(function (x) { return !x.detail; }), added = 0, msg = '', firstI = -1;
+    sum.forEach(function (x) { var i = findClass(x); if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; added++; } setClass(x, i); });
+    det.forEach(function (x) {
+      var i = findClass(x);
+      if (i < 0 && tc && det.length === 1 && !tc.code) i = ti;      // a class typed by hand: its own page fills it
+      if (i < 0) { st.classes.push(blank(x.name)); i = st.classes.length - 1; added++; }
+      var c = setClass(x, i); if (firstI < 0) firstI = i;
+      msg += '<p class="small" style="margin:4px 0 0">' + gotHtml(c) + (tc && c !== tc ? ' <b>That was ' + esc(c.name) + '’s page, not ' + esc(tc.name) + '’s, so it went with ' + esc(c.name) + '.</b>' : '') + '</p>';
     });
-    st.cur = first; this.value = ''; save(); paintAll();
-    toast(detail ? '✓ Read ' + list[0].name + (detail > 1 ? ' and ' + (detail - 1) + ' more' : '') + ': points filled in.' : '✓ Read ' + list.length + ' class' + (list.length === 1 ? '' : 'es') + '. For exact points, paste each class’s own page too.');
+    if (firstI >= 0) st.cur = firstI;
+    save(); paintAll();
+    if (det.length) return tc && st.classes[firstI] !== tc ? '<div class="verdict warn"><b>↪️ That was a different class’s page.</b>' + msg + '<p class="small" style="margin-top:4px">For this box: ' + howOne(tc.name) + '</p></div>' : '<div class="verdict up"><b>✓ Got it!</b>' + msg + '</div>';
+    if (tc) return '<div class="verdict warn"><b>⚠️ That’s the Grades page with every class.</b> It only has percents. This box needs <b>' + esc(tc.name) + '’s own page</b>: ' + howOne(tc.name) + '</div>';
+    return '<div class="verdict warn"><b>⚠️ Almost there! That page shows percentages, not points.</b><p style="margin-top:6px">✓ We now have your <b>' + sum.length + ' class' + (sum.length === 1 ? '' : 'es') + '</b>' + (added ? '' : ' (already here)') + '. They’re listed in <b>B</b> just below.</p><p style="margin-top:6px"><b>Next:</b> paste each class’s own page into its box, one class at a time. That’s where the points and any missing assignments are.</p></div>';
+  }
+  $('paste').addEventListener('input', function () {
+    var t = this.value; if (!t.trim()) return; this.value = '';
+    $('pres').innerHTML = applyPaste(t);
+  });
+  function listed() { return st.classes.map(function (c, i) { return { c: c, i: i }; }).filter(function (o) { return o.c.code || o.c.icPct != null || hasData(o.c) || !/^Class \d+$/.test(o.c.name); }); }
+  function paintPer() {
+    var l = listed(), el = $('per');
+    if (!l.length) { el.innerHTML = ''; return; }
+    var done = l.filter(function (o) { return o.c.pasted; }).length;
+    el.innerHTML = '<div class="way"><b><span class="step">B</span>The points for each class (' + done + ' of ' + l.length + ' done)</b>' +
+      '<p class="small" style="margin-top:4px">The Grades page only shows percents. The points (and any missing work) are on each class’s own page. For each class below:</p>' +
+      '<ol class="how small"><li>In Infinite Campus <b>Grades</b>, <b>click the class</b> so it opens and every assignment is listed.</li><li>Press <kbd>Ctrl</kbd> + <kbd>A</kbd>, then <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li><li>Paste it into <b>that class’s box</b> with <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li><li>Go back to Grades and do the next class.</li></ol></div>' +
+      l.map(function (o) {
+        var c = o.c, ok = !!c.pasted, mi = c.missing || [];
+        return '<div class="pcrow' + (ok ? ' done' : '') + '"><div class="row" style="flex-direction:row;align-items:baseline;flex-wrap:wrap"><b>' + esc(c.name) + '</b><span class="small ' + (ok ? 'up' : 'muted') + '">' +
+          (ok ? '✓ Points in (' + day(c.pasted) + ')' + (mi.length ? ' · <span class="dn">' + mi.length + ' missing</span>' : '') : c.icPct != null ? f2(c.icPct) + '% · needs its own page' : 'needs its own page') + '</span></div>' +
+          (ok ? '<details><summary class="small">Paste a newer page</summary><textarea data-ci="' + o.i + '" placeholder="Paste ' + esc(c.name) + '’s own page here (Ctrl + V)"></textarea></details>'
+              : '<textarea data-ci="' + o.i + '" placeholder="Paste ' + esc(c.name) + '’s own page here (Ctrl + V)"></textarea>') +
+          '<div class="pcmsg">' + (PM[c.id] || '') + '</div></div>';
+      }).join('');
+  }
+  $('per').addEventListener('input', function (ev) {
+    var ta = ev.target; if (!ta.dataset || ta.dataset.ci == null) return;
+    var t = ta.value; if (!t.trim()) return; var c = st.classes[+ta.dataset.ci], id = c && c.id; ta.value = '';
+    var m = applyPaste(t, +ta.dataset.ci); PM[id] = m; $('pres').innerHTML = '';
+    var box = document.querySelector('#per .pcmsg') && [].filter.call(document.querySelectorAll('#per textarea'), function (x) { return st.classes[+x.dataset.ci] && st.classes[+x.dataset.ci].id === id; })[0];
+    if (box) box.closest('.pcrow').querySelector('.pcmsg').innerHTML = m;
   });
   function round2(n) { return Math.round(n * 100) / 100; }
 
@@ -442,7 +515,9 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
       if (p && last) { var d = last.g - p.g; ch = Math.abs(d) < 0.005 ? '<span class="small muted">no change since ' + day(p.d) + '</span>' : '<span class="small ' + (d > 0 ? 'up' : 'dn') + '"><b>' + (d > 0 ? '▲ +' : '▼ −') + f2(Math.abs(d)) + '</b> since ' + day(p.d) + '</span>'; }
       return '<button class="ccard' + (i === st.cur ? ' on' : '') + '" data-i="' + i + '"><span class="nm">' + esc(c.name) + '</span>' +
         (g === null ? '<span class="small muted">No grade yet</span>' : '<span class="gr">' + f2(g) + '% <span class="small">' + letter(g) + '</span></span>') + ch +
-        (c.missing && c.missing.length ? '<span class="small dn">' + c.missing.length + ' missing</span>' : '') + spark(h) + '</button>';
+        (c.ap || c.cp ? '<span class="small muted">Assessments ' + esc(c.ae || 0) + ' / ' + esc(c.ap || 0) + '<br>Coursework ' + esc(c.ce || 0) + ' / ' + esc(c.cp || 0) + '</span>' : '') +
+        (c.missing && c.missing.length ? '<span class="small dn"><b>' + c.missing.length + ' missing:</b></span><ul class="small dn" style="margin:0;padding-left:18px">' + c.missing.map(function (m) { return '<li>' + esc(m.n) + '</li>'; }).join('') + '</ul>'
+          : c.pasted ? '<span class="small up">✅ No missing work</span>' : c.icPct != null && !c.ap ? '<span class="small muted">Paste this class’s page for points and missing work</span>' : '') + spark(h) + '</button>';
     }).join('') + '<button class="ccard" id="cadd2" style="border-style:dashed;align-items:center;justify-content:center;color:var(--muted)"><b>+ Add a class</b></button>';
   }
   $('cgrid').addEventListener('click', function (ev) {
@@ -578,7 +653,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
     var c = cls();
     ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
-    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
+    paintAcct(); paintWins(); paintPer(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out();
   }
 
   /* back from the Google sign-in page with a one-time code */
