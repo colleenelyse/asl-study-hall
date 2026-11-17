@@ -320,7 +320,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.93';
+var VERSION = '0.100';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -344,6 +344,7 @@ var TABLES = {
   'Grading Sets': [['id', 'ID'], ['tid', 'Staff ID'], ['secid', 'Section ID'], ['course', 'Course'], ['period', 'Period'], ['aid', 'Assessment ID'], ['test', 'Test'], ['created', 'Made'], ['by', 'Made by'], ['status', 'Status'], ['students', 'Students (IDs)'], ['part2', 'Part 2 (questions done in class)'], ['nums', 'Class numbers'], ['share', 'Shown to students'], ['viewed', 'Opened by students'], ['mode', 'Kind (questions or essay)'], ['pages', 'Page sizes'], ['kept', 'Downloaded'], ['cleared', 'Scans deleted']],          // 0.75; part2 0.79
   'Grading Pages': [['set', 'Grading set'], ['sid', 'Student ID'], ['page', 'Page'], ['file', 'Scan file'], ['at', 'Scanned'], ['part', 'Part'], ['words', 'Word positions (typed essays)']],          // 0.77: one scanned page, straightened
   'Essay Rubrics': [['aid', 'Assessment ID'], ['rows', 'Rubric rows'], ['at', 'Saved'], ['by', 'Saved by']],          // 0.86: a test's essay rubric grid
+  'Comment Banks': [['tid', 'Staff ID'], ['good', 'Did well'], ['fix', 'Needs work'], ['at', 'Saved']],          // 0.94: each teacher's comment banks
   'Grading Stamps': [['id', 'ID'], ['tid', 'Staff ID'], ['name', 'Says'], ['ink', 'Handwriting'], ['at', 'Made']],          // 0.84: a teacher's own handwritten comment stamps
   'Grading Marks': [['set', 'Grading set'], ['sid', 'Student ID'], ['q', 'Question'], ['pts', 'Points'], ['max', 'Out of'], ['ink', 'Ink'], ['note', 'Note'], ['by', 'Graded by'], ['at', 'Graded'], ['rub', 'Rubric parts earned'], ['anno', 'Highlights and notes']],          // 0.77; rub 0.85
   'Test Days': [['id', 'ID'], ['date', 'Date'], ['tid', 'Staff ID'], ['secid', 'Section ID'], ['course', 'Course'], ['aid', 'Assessment ID'], ['test', 'Test'], ['results', 'Students (finished / didn’t finish / absent, plans)'], ['at', 'Saved'], ['by', 'Saved by'], ['status', 'Status']],          // 0.72
@@ -377,7 +378,7 @@ var DEFAULTS = [
   ['Send emails', 'Off', 'Off', 'Off: the app never sends an email. Emails it would have sent wait in Emails as “Held”, and stay unsent when you turn this On. On: emails go out. One switch for the whole app (the South column).'],
   ['Student booking in this app', 'Off', 'Off', 'Off while students still sign up in SignUpGenius (import those appointments instead). On: students book here.'],
   ['Days ahead students can book', '14', '14', 'How far ahead the calendar goes.'],
-  ['Book at least this many hours ahead', '0', '0', '0: students can book until the period starts, by that day’s bell schedule. A number of hours makes an earlier cutoff. Coordinators can always book.'],
+  ['Booking closes', 'Until the period starts', 'Until the period starts', 'When students can no longer book a period (each campus its own): until the period starts, a number of hours before it, or a time (6:00 AM that morning, midnight the night before…). Coordinators can always book.'],
   ['No walk-ins during periods', '4, 5', '4, 5', 'Coordinators get a warning when adding a walk-in during these periods.'],
   ['Most upcoming appointments per student', '', '', 'Empty: no limit.'],
   ['Booking purposes', 'Makeup test, Retake, Finish a test I started', 'Makeup test, Retake, Finish a test I started', 'The choices students see (comma list). Add "Other" to allow other purposes.'],
@@ -486,6 +487,12 @@ function sheet_(name) {
 // so a write always uses the real row numbers. Lookups by a column are built once per request (find_ → index).
 var CACHED_ = { Students: 1, Teachers: 1, Sections: 1, 'Section Teachers': 1, Enrollments: 1, Settings: 1, 'Testing Periods': 1, 'Bell Schedules': 1, Calendar: 1, Rooms: 1, 'Teacher Schedule': 1, Resources: 1, 'Teacher Defaults': 1, Assessments: 1, Staff: 1, 'Student Schedules': 1, 'Date Changes': 1, 'Testing Rooms': 1 };
 var NOCACHE_ = false;
+// 0.96: cached tabs come from the cache even inside locked_() (reading 28,800 enrollment rows from the sheet made Book, Save
+// Test day and Check out take seconds). Safe because locked_ starts with a fresh memo, so each tab's version is read again after
+// the lock is taken, and every write bumps it; update_ checks the row number first (rowCheck_), in case the tab was sorted by hand.
+// Imports (icLocked_) still read the sheet itself.
+var LOCKED_ = false;
+function cacheOk_(name) { return !!CACHED_[name] && (!NOCACHE_ || LOCKED_); }
 function cols_(name) {          // key → column number, by header text (so someone moving a column doesn't break anything)
   var mk = 'cols:' + name; if (MEMO_[mk]) return MEMO_[mk];
   var sh = sheet_(name), w = Math.max(sh.getLastColumn(), 1), head = sh.getRange(1, 1, 1, w).getValues()[0].map(str_), out = {};
@@ -494,11 +501,12 @@ function cols_(name) {          // key → column number, by header text (so som
 }
 function tver_(name) {          // the tab's cache version; every tab's version comes in ONE cache call per request (0.36)
   var c = CacheService.getScriptCache(), tv = MEMO_._tv;
-  if (!tv) { var ks = Object.keys(CACHED_).map(function (k) { return 'tv:' + k; }), got = {}; try { got = c.getAll(ks) || {}; } catch (e) {} tv = MEMO_._tv = {}; Object.keys(CACHED_).forEach(function (k) { if (got['tv:' + k]) tv[k] = got['tv:' + k]; }); }
-  var v = tv[name]; if (!v) { v = tv[name] = Utilities.getUuid().slice(0, 8); c.put('tv:' + name, v, 21600); }
+  if (!tv) { var names = Object.keys(TABLES), ks = names.map(function (k) { return 'tv:' + k; }), got = {}; try { got = c.getAll(ks) || {}; } catch (e) {} tv = MEMO_._tv = {}; names.forEach(function (k) { if (got['tv:' + k]) tv[k] = got['tv:' + k]; }); }          // 0.94: every tab's version in one call
+  var v = tv[name];
+  if (!v) { v = tv[name] = Utilities.getUuid().slice(0, 8); c.put('tv:' + name, v, 21600); }
   return v;
 }
-function bump_(name) { if (CACHED_[name]) try { var v = Utilities.getUuid().slice(0, 8); CacheService.getScriptCache().put('tv:' + name, v, 21600); if (MEMO_._tv) MEMO_._tv[name] = v; } catch (e) {} }
+function bump_(name) { try { var v = Utilities.getUuid().slice(0, 8); CacheService.getScriptCache().put('tv:' + name, v, 21600); if (MEMO_._tv) MEMO_._tv[name] = v; } catch (e) {} }
 function bumpAll_() { Object.keys(CACHED_).forEach(bump_); }
 // 0.67: a data version that changes on every write to the sheet (not the logs), so slow results can be saved and reused until
 // something changes (cached_). Within a request that has written, nothing is reused.
@@ -507,6 +515,14 @@ function dataVer_() { if (!MEMO_._dv) { try { MEMO_._dv = CacheService.getScript
 function cached_(key, ttl, fn) {
   if (NOCACHE_ || MEMO_._dvB) return fn();
   var c = CacheService.getScriptCache(), k = 'cx:' + key + ':' + dataVer_();
+  try { var hit = c.get(k); if (hit) return JSON.parse(hit); } catch (e) {}
+  var v = fn();
+  try { var str = JSON.stringify(v); if (str.length < 95000 && !MEMO_._dvB) c.put(k, str, ttl); } catch (e) {}
+  return v;
+}
+function cachedT_(key, tables, ttl, fn) {          // 0.94: like cached_, but only the tabs it reads can make it stale (not every write in the sheet)
+  if (NOCACHE_ || MEMO_._dvB) return fn();
+  var c = CacheService.getScriptCache(), k = 'ct:' + key + ':' + tables.map(function (t) { return tver_(t) || '0'; }).join('.');
   try { var hit = c.get(k); if (hit) return JSON.parse(hit); } catch (e) {}
   var v = fn();
   try { var str = JSON.stringify(v); if (str.length < 95000 && !MEMO_._dvB) c.put(k, str, ttl); } catch (e) {}
@@ -531,10 +547,25 @@ function tblPut_(name, rows) {
     parts[key] = String(n); CacheService.getScriptCache().putAll(parts, 21600);
   } catch (e) {}
 }
+function bigGet_(key) {          // a long string kept as packed pieces (null if any piece is missing)
+  try {
+    var c = CacheService.getScriptCache(), n = +c.get(key); if (!n) return null;
+    var ks = []; for (var i = 0; i < n; i++) ks.push(key + ':' + i);
+    var got = c.getAll(ks); if (ks.some(function (k) { return got[k] === undefined || got[k] === null; })) return null;
+    return unpack_(ks.map(function (k) { return got[k]; }).join(''));
+  } catch (e) { return null; }
+}
+function bigPut_(key, str) {
+  try {
+    var s = pack_(str); if (s.length > 2500000) return;
+    var parts = {}, n = 0; for (var at = 0; at < s.length; at += 90000) parts[key + ':' + (n++)] = s.slice(at, at + 90000);
+    parts[key] = String(n); CacheService.getScriptCache().putAll(parts, 21600);
+  } catch (e) {}
+}
 function rows_(name) {          // every row as an object (with _r = its sheet row)
   if (MEMO_[name]) return MEMO_[name];
-  var cached = CACHED_[name] && !NOCACHE_ ? tblGet_(name) : null;
-  if (cached) return (MEMO_[name] = cached);
+  var cached = cacheOk_(name) ? tblGet_(name) : null;
+  if (cached) { if (NOCACHE_) MEMO_['cr:' + name] = 1; return (MEMO_[name] = cached); }
   var sh = sheet_(name), last = sh.getLastRow(), cols = cols_(name), keys = Object.keys(cols), out = [];
   if (last >= 2) {
     var w = Math.max.apply(null, keys.map(function (k) { return cols[k]; }));
@@ -545,6 +576,7 @@ function rows_(name) {          // every row as an object (with _r = its sheet r
     });
   }
   if (CACHED_[name]) tblPut_(name, out);
+  delete MEMO_['cr:' + name];
   return (MEMO_[name] = out);
 }
 function asRow_(name, o) { var cols = cols_(name), w = Math.max.apply(null, Object.keys(cols).map(function (k) { return cols[k]; })), r = new Array(w).fill(''); Object.keys(cols).forEach(function (k) { if (o[k] !== undefined) r[cols[k] - 1] = cellVal_(o[k]); }); return r; }
@@ -565,8 +597,22 @@ function insertMany_(name, list) {
 }
 function update_(name, r, patch) {          // r = a row object from rows_() (or a row number)
   var sh = sheet_(name), cols = cols_(name), n = typeof r === 'number' ? r : r._r;
+  if (typeof r === 'object' && MEMO_['cr:' + name]) n = rowCheck_(name, sh, cols, r);
   Object.keys(patch).forEach(function (k) { if (cols[k]) sh.getRange(n, cols[k]).setValue(cellVal_(patch[k])); if (typeof r === 'object') r[k] = patch[k]; });
   clearMemo_(name);
+}
+// a row that came from the cache inside locked_(): make sure the sheet still has it at that row (someone may have sorted the tab)
+function rowCheck_(name, sh, cols, r) {
+  var keys = TABLES[name].slice(0, 3).map(function (c) { return c[0]; }).filter(function (k) { return cols[k]; }), w = Math.max.apply(null, keys.map(function (k) { return cols[k]; }));
+  var same = function (v) { return keys.every(function (k) { return str_(v[cols[k] - 1]) === str_(r[k]); }); };
+  if (r._r >= 2 && r._r <= sh.getLastRow() && same(sh.getRange(r._r, 1, 1, w).getValues()[0])) return r._r;
+  var all = sh.getLastRow() >= 2 ? sh.getRange(2, 1, sh.getLastRow() - 1, w).getValues() : [];
+  for (var i = 0; i < all.length; i++) if (same(all[i])) return (r._r = i + 2);
+  throw new Error('That row moved in the ' + name + ' tab. Try again.');
+}
+function deleteRow_(name, r) {          // 0.96: deletes go through the table layer too, so the tab's cached copy is dropped (it wasn't for Date Changes)
+  var sh = sheet_(name), n = typeof r === 'number' ? r : (MEMO_['cr:' + name] ? rowCheck_(name, sh, cols_(name), r) : r._r);
+  sh.deleteRow(n); clearMemo_(name);
 }
 function replaceAll_(name, list) {          // rewrites a whole table (roster import, rollback)
   var sh = sheet_(name), cols = cols_(name), w = Math.max(sh.getLastColumn(), Math.max.apply(null, Object.keys(cols).map(function (k) { return cols[k]; })));
@@ -596,7 +642,7 @@ function slices_(name, key, vals) {
     if (!gx) { gx = {}; rows_(name).forEach(function (o) { var v = low_(o[key]); (gx[v] = gx[v] || []).push(o); }); MEMO_[xk] = gx; }
     want.forEach(function (v) { out[v] = gx[v] || []; }); return out;
   };
-  if (NOCACHE_ || MEMO_[name] || !CACHED_[name]) return full();
+  if (!cacheOk_(name) || MEMO_[name]) return full();
   var mk = 'sm:' + name + ':' + key, have = MEMO_[mk] || (MEMO_[mk] = {}), miss = want.filter(function (v) { return v && !(v in have); });
   if (miss.length) {
     var nk = 'sn:' + mk; MEMO_[nk] = (MEMO_[nk] || 0) + 1; if (MEMO_[nk] > SLICE_CALLS_) return full();
@@ -618,15 +664,22 @@ function slicesPut_(name, key, pre) {
 }
 function withField_(name, field, keep) {          // just the rows with something in one column (case managers…), a few columns each
   var full = function () { return rows_(name).filter(function (o) { return str_(o[field]); }); };
-  if (NOCACHE_ || MEMO_[name] || !CACHED_[name]) return full();
+  if (!cacheOk_(name)) return full();
   var mk = 'wf:' + name + ':' + field; if (MEMO_[mk]) return MEMO_[mk];
   try {
-    var c = CacheService.getScriptCache(), key = mk + ':' + tver_(name), x = c.get(key);
-    if (x && x !== 'X') return (MEMO_[mk] = JSON.parse(x));
-    if (x === 'X') return full();
-    var l = full().map(function (o) { var r = {}; keep.forEach(function (k) { r[k] = o[k]; }); return r; }), j = JSON.stringify(l);
-    c.put(key, j.length > 90000 ? 'X' : j, 21600); return l;
+    var key = mk + ':' + tver_(name), x = bigGet_(key);          // 0.96: in pieces, so a whole school's case-manager list fits (one piece was too small)
+    if (x) return (MEMO_[mk] = JSON.parse(x));
+    var l = full().map(function (o) { var r = {}; keep.forEach(function (k) { r[k] = o[k]; }); return r; });
+    bigPut_(key, JSON.stringify(l)); return (MEMO_[mk] = l);
   } catch (e) { return full(); }
+}
+// 0.96: the 10-minute timer builds the roster look-ups ahead (they expire after 6 hours and after every import), so the first
+// person to open the app in the morning doesn't wait for them
+var WARM_ = [['Students', 'sid'], ['Students', 'email'], ['Enrollments', 'secid'], ['Enrollments', 'sid']];
+function warm_() {
+  var c = CacheService.getScriptCache(), pre = WARM_.map(function (x) { return 'sl:' + x[0] + ':' + x[1] + ':' + tver_(x[0]) + ':'; }), got = c.getAll(pre.map(function (p) { return p + '*'; })) || {};
+  WARM_.forEach(function (x, i) { if (!got[pre[i] + '*']) slicesPut_(x[0], x[1], pre[i]); });
+  withField_('Students', 'cmgr', ['sid', 'cmgr', 'status']);
 }
 function studentsLoad_(sids) { if (sids.length) slices_('Students', 'sid', sids); }          // one cache call for a list of students
 // an edit typed straight into the sheet (Settings, Testing Periods, Bell Schedules, Calendar…) clears that tab's cached copy
@@ -634,8 +687,9 @@ function onEdit(e) { try { var n = e && e.range && e.range.getSheet().getName();
 function audit_(action, target, details) { insert_('Audit', { at: iso_(), who: myEmail_(), action: action, target: target, details: typeof details === 'string' ? details : JSON.stringify(details || '') }); }
 function locked_(f) {          // every write that has to see a stable sheet (seats, offers, imports) runs inside this; not reentrant
   var l = LockService.getScriptLock(); l.waitLock(30000);
-  var nc = NOCACHE_; NOCACHE_ = true;          // writes always work from the sheet itself (real row numbers)
-  try { MEMO_ = {}; return f(); } finally { NOCACHE_ = nc; l.releaseLock(); }
+  var nc = NOCACHE_, lk = LOCKED_; NOCACHE_ = true; LOCKED_ = true;          // writes always work from the sheet itself (real row numbers), except LOCK_CACHE_
+  var hd = {}; Object.keys(MEMO_).forEach(function (k) { if (k.indexOf('cols:') === 0) hd[k] = MEMO_[k]; });          // column names don't change in a request
+  try { MEMO_ = hd; return f(); } finally { NOCACHE_ = nc; LOCKED_ = lk; l.releaseLock(); }
 }
 
 // ---------- settings
@@ -644,7 +698,7 @@ function setting_(key, campus) { var r = settingRows_().filter(function (s) { re
 function settingNum_(key, campus, dflt) { var v = parseFloat(setting_(key, campus)); return isNaN(v) ? dflt : v; }
 function campusConf_(c) {
   return { code: c, name: campusName_(c), where: setting_('Testing Center location', c), booking: yes_(setting_('Student booking in this app', c)),
-    daysAhead: settingNum_('Days ahead students can book', c, 14), cutoffH: settingNum_('Book at least this many hours ahead', c, 0),
+    daysAhead: settingNum_('Days ahead students can book', c, 14), cutoff: cutoffParse_(setting_('Booking closes', c)),
     noWalkins: noWalkins_(c), maxUpcoming: settingNum_('Most upcoming appointments per student', c, 0),
     purposes: list_(setting_('Booking purposes', c)), waitlist: yes_(setting_('Waitlist', c)), offerMode: /approve/i.test(setting_('Waitlist offers', c)) ? 'approve' : 'auto',
     offerHours: settingNum_('Hours to answer a waitlist offer', c, 1), quiet: setting_('Quiet hours', c), insideCutoff: /allow/i.test(setting_('Offers inside the booking cutoff', c)) ? 'allow' : 'ask',
@@ -661,8 +715,13 @@ function domain_() { return setting_('School email domain', 'S') || 'd204.lths.n
 function myEmail_() { return low_(Session.getActiveUser().getEmail()); }
 function owner_() { return low_(Session.getEffectiveUser().getEmail()); }
 function sharedAdmin_(email) { var a = low_(setting_('Shared administrator account', 'S')); return !!email && !!a && low_(email) === a; }          // 0.50 a substitute coordinator signs in to this account for full access
-function who_() {
+function who_() {          // 0.94: remembered between visits until the staff, teacher, student, room or settings tabs change
   if (MEMO_._who) return MEMO_._who;
+  var email = myEmail_(); if (!email) return whoCompute_();
+  var open = hubUnlocked_(email) ? 1 : 0;
+  return (MEMO_._who = cachedT_('who:' + email + ':' + open + ':' + today_(), ['Staff', 'Teachers', 'Students', 'Settings', 'Testing Rooms'], 1800, whoCompute_));
+}
+function whoCompute_() {
   var email = myEmail_(), w = { email: email, roles: [], campuses: {}, sid: '', tid: '', name: '' };
   if (!email) return w;
   var st = rows_('Staff').filter(function (r) { return low_(r.email) === email && !/^(no|n|false)$/i.test(str_(r.active)); })[0];
@@ -681,7 +740,7 @@ function who_() {
   var s = slices_('Students', 'email', [email])[email].filter(function (r) { return /^active$/i.test(str_(r.status) || 'active'); })[0] || studentByPattern_(email);
   if (!t && !s && troomRows_().some(function (r) { return troomActive_(r) && list_(r.emails).concat(list_(r.paras)).map(low_).indexOf(email) >= 0; })) w.roles.push('room');          // 0.50: or a para the room's teacher added          // runs RIR / Tapestry… without teaching
   if (s) { w.roles.push('student'); w.sid = str_(s.sid); w.name = w.name || studentName_(s); w.campus = str_(s.campus) === 'N' ? 'N' : 'S'; }
-  return (MEMO_._who = w);
+  return w;
 }
 // Student accounts are the first 3 letters of the last name + the student ID (smi513421@…); teachers are first initial + last name
 // (jsmith@…). Used only to recognize who signed in when the sheet has no email for them (never to send email). Google has already
@@ -773,7 +832,10 @@ function doGet(e) {
   if (view === 'seating' && isStaff_(who_())) return seatingPage_();          // the room editor (Room.gs)
   if (view === 'sim') return simPage_();          // the simulator (Sim.html, made-up data) for the administrator and coordinators
   // Index.html pulls in Student / Teacher / Coord.html with include() (HtmlService strips HTML comments, so no comment markers)
-  return HtmlService.createTemplateFromFile('Index').evaluate().setTitle('LTHS Testing Center').setFaviconUrl(LOGO_URL).addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  // 0.96: a student's Chromebook gets only the student page (about 450 KB less to download); everyone else gets every page
+  var t = HtmlService.createTemplateFromFile('Index'); t.studentOnly = false;
+  try { var w = who_(); t.studentOnly = (w.roles || []).join(',') === 'student' && !w.hubEligible; } catch (x) {}
+  return t.evaluate().setTitle('LTHS Testing Center').setFaviconUrl(LOGO_URL).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 // ---------- the simulator: the real pages on made-up data, with "Suggest a change" (suggestions go to the Suggestions tab)
 function simPage_() {
@@ -822,6 +884,15 @@ function ensureSetup_() {          // a sheet that skipped Set up, lost its star
       }); });
     });
   }
+  if (!dp.getProperty('cutoff2')) {          // 0.100, once: "Book at least this many hours ahead" (a number) becomes "Booking closes" (hours or a time)
+    dp.setProperty('cutoff2', '1');
+    locked_(function () {
+      var old = rows_('Settings').filter(function (x) { return str_(x.key) === 'Book at least this many hours ahead'; })[0]; if (!old) return;
+      var nw = rows_('Settings').filter(function (x) { return str_(x.key) === 'Booking closes'; })[0], d = DEFAULTS.filter(function (x) { return x[0] === 'Booking closes'; })[0];
+      var word = function (v) { var n = parseFloat(v); return n > 0 ? cutoffChoice_(n) : 'Until the period starts'; }, v = { S: word(old.S), N: word(old.N), help: d[3] };
+      if (nw) { update_('Settings', nw, v); deleteRow_('Settings', old); } else update_('Settings', old, Object.assign({ key: 'Booking closes' }, v));
+    });
+  }
   if (!dp.getProperty('drops1')) {          // 0.90, once (Colleen): the drop boxes she knows: South's mail room, North's main office (only if nothing is typed yet)
     dp.setProperty('drops1', '1');
     locked_(function () { var r = rows_('Settings').filter(function (x) { return str_(x.key) === 'Paper test drop-off locations'; })[0]; if (!r) return; var ch = {}; if (!str_(r.S)) ch.S = 'Mail room'; if (!str_(r.N)) ch.N = 'Main office'; if (Object.keys(ch).length) update_('Settings', r, ch); });
@@ -831,6 +902,76 @@ function ensureSetup_() {          // a sheet that skipped Set up, lost its star
     try { var had = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'afternoon'; }); if (had.length) { had.forEach(function (t) { ScriptApp.deleteTrigger(t); }); ScriptApp.newTrigger('afternoon').timeBased().everyDays(1).atHour(15).nearMinute(0).create(); } } catch (e) { logError_('3:00 job', e.message); }
     locked_(function () { rows_('Settings').forEach(function (r) { var ch = {}; ['S', 'N'].forEach(function (k) { if (/^at 3:30$/i.test(str_(r[k]))) ch[k] = 'At 3:00'; }); if (/3:30/.test(str_(r.help))) ch.help = str_(r.help).replace(/3:30/g, '3:00'); if (Object.keys(ch).length) update_('Settings', r, ch); }); });
   }          // after an update: only new tabs, columns and Settings rows (fast); the full repair is in the sheet menu
+  pilotOnce_(); calOnce_();
+}
+function pilotOnce_() {          // (calOnce_ runs beside it)
+  calOnce_(); var dp = PropertiesService.getDocumentProperties(); if (dp.getProperty('pilot1119')) return; dp.setProperty('pilot1119', '1'); try { dp.setProperty('pilotNote', pilotSetup_()); } catch (e) { logError_('first real use set-up', e.message); } }          // also from the timer, in case Colleen doesn't open the app first
+// 0.98, once (Colleen 2026-11-17): LT's official 2026-27 calendar (lths.net "LTHS D204 26-27 FINAL CAL"). Days with no students
+// (holidays, institute days, not-in-attendance days, conferences, winter and spring break, summer after the last day, May 28) are
+// closed; the three 11:30-dismissal School Improvement Days have no bell schedule here yet, so they're closed too; every other
+// Wednesday is a Late Start day (the Wednesday schedule setting). Dec 16-18 (first semester finals): no appointments (Colleen).
+var CAL2627_OFF_ = [['2026-09-07', 'Labor Day'], ['2026-10-09', 'Teacher institute'], ['2026-10-12', 'Indigenous Peoples’ Day'], ['2026-10-29', 'Parent-teacher conferences'], ['2026-10-30', 'No school'],
+  ['2026-11-03', 'Election Day'], ['2026-11-25', 'Thanksgiving break'], ['2026-11-26', 'Thanksgiving break'], ['2026-11-27', 'Thanksgiving break'],
+  ['2026-12-21', 'Winter break'], ['2026-12-22', 'Winter break'], ['2026-12-23', 'Winter break'], ['2026-12-24', 'Winter break'], ['2026-12-25', 'Winter break'],
+  ['2026-12-28', 'Winter break'], ['2026-12-29', 'Winter break'], ['2026-12-30', 'Winter break'], ['2026-12-31', 'Winter break'], ['2027-01-01', 'Winter break'],
+  ['2027-01-04', 'Teacher institute'], ['2027-01-18', 'Martin Luther King Jr. Day'], ['2027-02-11', 'Parent-teacher conferences'], ['2027-02-12', 'No school'],
+  ['2027-02-15', 'Presidents’ Day'], ['2027-02-26', 'Teacher institute'], ['2027-03-19', 'Teacher institute'], ['2027-03-26', 'No school'],
+  ['2027-03-29', 'Spring break'], ['2027-03-30', 'Spring break'], ['2027-03-31', 'Spring break'], ['2027-04-01', 'Spring break'], ['2027-04-02', 'Spring break']];
+var CAL2627_SIP_ = ['2026-11-18', '2027-01-27', '2027-03-03'];
+var CAL2627_CLOSED_ = [['2026-12-16', 'First semester final exams: no Testing Center appointments'], ['2026-12-17', 'First semester final exams: no Testing Center appointments'], ['2026-12-18', 'First semester final exams: no Testing Center appointments'],
+  ['2027-05-26', 'Second semester final exams: no Testing Center appointments'], ['2027-05-27', 'Second semester final exams: no Testing Center appointments'], ['2027-05-28', 'Second semester final exams: no Testing Center appointments']];          // 0.99: May finals too (Colleen)
+function calOnce_() {
+  var dp = PropertiesService.getDocumentProperties(); if (dp.getProperty('cal2627b')) return; dp.setProperty('cal2627b', '1'); dp.setProperty('cal2627', '1');          // 0.99: b = with the May finals (it skips what's already there)
+  try {
+    var off = CAL2627_OFF_.slice(), d = '2027-05-31';          // the last day of school is Friday May 28: summer after it
+    while (d <= '2027-07-31') { if (!/^(Sat|Sun)$/.test(wkday_(d))) off.push([d, d === '2027-05-31' ? 'Memorial Day' : 'Summer']); d = addDays_(d, 1); }
+    locked_(function () {
+      var have = {}; rows_('Calendar').forEach(function (r) { have[day_(r.date)] = 1; });
+      var add = off.filter(function (x) { return !have[x[0]]; }).map(function (x) { return { date: x[0], campus: 'Both', sched: '', school: 'No', note: x[1] }; })
+        .concat(CAL2627_SIP_.filter(function (x) { return !have[x]; }).map(function (x) { return { date: x, campus: 'Both', sched: 'School Improvement Day', school: 'Yes', note: '11:30 dismissal: no Testing Center appointments (no bell schedule for it yet)' }; }));
+      if (add.length) insertMany_('Calendar', add);
+      var dc = rows_('Date Changes'), uid = 0;
+      CAL2627_CLOSED_.forEach(function (x) { CAMPUSES.forEach(function (c) {
+        if (dc.some(function (r) { return str_(r.campus) === c && day_(r.date) === x[0] && /^all$/i.test(str_(r.period)) && /close/i.test(r.change); })) return;
+        insert_('Date Changes', { id: uid_('dc'), campus: c, date: x[0], period: 'All', change: 'Closed', cap: '', note: x[1], by: 'LT calendar' });
+      }); });
+      audit_('LT 2026-27 calendar added', 'Calendar', { days: add.length });
+    });
+  } catch (e) { logError_('LT calendar', e.message); }
+}
+// 0.96, once (Colleen 2026-11-17): ready for her ASL 1 test on Thursday 11/19, the first real use. Her students book here on her campus;
+// emails go out; no case-manager or counselor emails yet; LT is closed Nov 25-27 (Thanksgiving); the timers are running.
+// Returns what it did, shown to her once (boot's notice).
+function pilotSetup_() {
+  var done = [], me = owner_(), t = rows_('Teachers').filter(function (x) { return low_(x.email) === me; })[0], camp = t && /^[SN]/i.test(str_(t.campus)) ? str_(t.campus).charAt(0).toUpperCase() : '';
+  var cs = camp ? [camp] : CAMPUSES, cname = camp ? campusName_(camp) : 'both campuses';
+  var ups = rows_('Appointments').filter(function (a) { return day_(a.date) >= today_() && /^(scheduled|awaiting|ready)/i.test(a.status) && !/@practice\.invalid$/i.test(str_((student_(a.sid) || {}).email)); }).length;
+  locked_(function () {
+    var set = function (key, ch) { var r = rows_('Settings').filter(function (x) { return str_(x.key) === key; })[0]; if (r) update_('Settings', r, ch); };
+    set('Weekly email to case managers', { S: 'Off', N: 'Off' });
+    set('Counselor heads-up: this many makeups in one class, or no-shows, in 30 days', { S: '0', N: '0' });
+    var on = {}; cs.forEach(function (c) { on[c] = 'On'; });
+    set('Student booking in this app', on); set('Student confirmation emails', on);
+    if (!ups) set('Send emails', { S: 'On' });
+    ['2026-11-25', '2026-11-26', '2026-11-27'].forEach(function (d) {
+      if (!rows_('Calendar').some(function (r) { return day_(r.date) === d; })) insert_('Calendar', { date: d, campus: 'Both', sched: '', school: 'No', note: 'Thanksgiving break' });
+    });
+    audit_('First real use set-up', cname, { appointmentsAlready: ups });
+  });
+  done.push('Student booking is On for ' + cname + ', with confirmation emails to students.');
+  done.push(ups ? 'Send emails is still Off: the sheet already has ' + ups + ' upcoming appointment' + (ups === 1 ? '' : 's') + ' from before, and turning emails on would send them reminders. Look at them on Today, then turn it on in Settings › Emails.' : 'Send emails is On.');
+  done.push('Weekly email to case managers: Off. Counselor heads-up: 0 (off).');
+  done.push('November 25, 26 and 27 are closed for Thanksgiving on both campuses (Calendar tab).');
+  var have = {}; try { ScriptApp.getProjectTriggers().forEach(function (x) { have[x.getHandlerFunction()] = 1; }); } catch (e) {}
+  var made = [];
+  try {
+    if (!have.tick) { ScriptApp.newTrigger('tick').timeBased().everyMinutes(10).create(); made.push('every 10 minutes'); }
+    if (!have.morning) { ScriptApp.newTrigger('morning').timeBased().everyDays(1).atHour(6).create(); made.push('6 AM'); }
+    if (!have.afternoon) { ScriptApp.newTrigger('afternoon').timeBased().everyDays(1).atHour(15).nearMinute(0).create(); made.push('3:00'); }
+    done.push(made.length ? 'The timers were missing and are now on (' + made.join(', ') + ').' : 'The timers (every 10 minutes, 6 AM, 3:00) were already running.');
+  } catch (e) { done.push('I couldn’t check the timers (' + e.message + '). Run Testing Center › Set up or repair this sheet in the sheet’s menu.'); }
+  if (!camp) done.push('I couldn’t find your campus in the Teachers tab, so booking is On for both campuses (only your students have the link).');
+  return done.join('\n');
 }
 function api_boot() { speedStart_('open the app'); try { return boot_({}); } finally { speedEnd_(); } }
 function boot_(opt) {
@@ -846,7 +987,7 @@ function boot_(opt) {
   var out = { email: w.email, name: w.name, roles: w.roles, campuses: w.campuses, version: VERSION, today: today_(), url: appUrl_(), names: { S: campusName_('S'), N: campusName_('N') } };
   if (w.roles.indexOf('student') >= 0) { out.student = studentHome_(w); if (out.student.booking) try { out.student.slots = slotsFor_(w); } catch (e) {} }          // the open periods come with the page: one trip, not two (0.36)
   speedStep_('student page');
-  if (w.roles.indexOf('teacher') >= 0) { out.teacher = opt.lite ? { lite: true } : teacherHome_(w); out.setup = opt.lite ? false : needSetup_(w); }          // 0.64: logging in to the coordinator tools skips the teacher page (it loads if you switch to it)
+  if (w.roles.indexOf('teacher') >= 0) { out.teacher = opt.lite ? { lite: true } : teacherHomeFast_(w); out.setup = opt.lite ? false : needSetup_(w); }          // 0.64: logging in to the coordinator tools skips the teacher page (it loads if you switch to it)
   speedStep_('teacher page');
   if (w.roles.indexOf('teacher') >= 0 || w.roles.indexOf('room') >= 0) {
     out.rooms = myRooms_(w).map(function (r) { return { id: str_(r.id), name: str_(r.name) }; });
@@ -855,6 +996,7 @@ function boot_(opt) {
   if (w.roles.indexOf('teacher') < 0 && w.hubEligible) out.tlist = rows_('Teachers').filter(function (t) { return !/@practice\.invalid$/i.test(str_(t.email)); }).length;          // why there's no teacher dashboard
   out.bell = bellUrl_(w.campus || (w.roles.indexOf('teacher') >= 0 ? str_((find_('Teachers', 'tid', w.tid) || {}).campus) : '') || 'S');
   out.sim = !!w.hubEligible;          // the simulator link
+  if (myEmail_() === owner_()) { var dpn = PropertiesService.getDocumentProperties(), note = dpn.getProperty('pilotNote'); if (note) { out.notice = note; dpn.deleteProperty('pilotNote'); } }          // 0.96: shown once
   out.hub = { eligible: !!w.hubEligible, unlocked: isStaff_(w), hasPassword: !!hubPw_(), owner: w.email === owner_(), noPw: hubNoPw_(w.email) || sharedAdmin_(w.email) };
   if (isStaff_(w)) out.staff = { home: Object.keys(w.campuses).filter(function (c) { return w.campuses[c] === 'edit'; })[0] || Object.keys(w.campuses)[0] };
   speedStep_('the rest');
@@ -947,12 +1089,13 @@ function setupTabs_() {
     PropertiesService.getDocumentProperties().setProperty('teachMail1', '1');
   }
   if (!PropertiesService.getDocumentProperties().getProperty('cutoff0')) {          // 0.10: no 24-hour rule; booking is open until the period starts
-    rows_('Settings').forEach(function (r) { if (r.key === 'Book at least this many hours ahead') { var d = DEFAULTS.filter(function (x) { return x[0] === r.key; })[0]; update_('Settings', r, { S: str_(r.S) === '24' ? '0' : r.S, N: str_(r.N) === '24' ? '0' : r.N, help: d[3] }); } });
+    rows_('Settings').forEach(function (r) { if (r.key === 'Book at least this many hours ahead') { var d = DEFAULTS.filter(function (x) { return x[0] === r.key; })[0]; update_('Settings', r, { S: str_(r.S) === '24' ? '0' : r.S, N: str_(r.N) === '24' ? '0' : r.N, help: d ? d[3] : r.help }); } });          // (0.100: that row is renamed by cutoff2)
     PropertiesService.getDocumentProperties().setProperty('cutoff0', '1');
   }
 }
 // Protect the sheet: dropdowns where a setting has fixed choices; technical tabs hidden, with a warning before anyone edits them.
-var SETTING_CHOICES = { 'Send emails': ['Off', 'On'], 'Student booking in this app': ['On', 'Off'], 'Waitlist': ['On', 'Off'], 'Waitlist offers': ['Automatic', 'Coordinator approves first'], 'Offers inside the booking cutoff': ['Ask coordinator', 'Allow'],
+var CUTOFF_CHOICES_ = ['Until the period starts', '1 hour before', '2 hours before', '4 hours before', '12 hours before', '24 hours before', '48 hours before', '6:00 AM that morning', 'Midnight the night before', '8:00 PM the night before', '3:00 PM the day before'];
+var SETTING_CHOICES = { 'Booking closes': CUTOFF_CHOICES_, 'Send emails': ['Off', 'On'], 'Student booking in this app': ['On', 'Off'], 'Waitlist': ['On', 'Off'], 'Waitlist offers': ['Automatic', 'Coordinator approves first'], 'Offers inside the booking cutoff': ['Ask coordinator', 'Allow'],
   'Missing-material emails': ['Off', 'Review first', 'Automatic'], 'Missing-material reminder': ['School day before', '2 school days before'], 'Teacher emails for co-taught classes': ['Primary teacher', 'All teachers', 'Testing contact'],
   'Completion emails to teachers': ['On', 'Off'], 'Student confirmation emails': ['On', 'Off'], 'Securly export': ['Email list', 'CSV'], 'Email teachers when a student books': ['On', 'Off'], 'Email teachers about no-shows': ['On', 'Off'],
   'Email teachers when an appointment is canceled': ['On', 'Off'], 'Start the test clock when a student arrives': ['Yes', 'No'], 'Mark students who never arrived as no-shows': ['At 3:00', 'When the period ends', 'Off'], 'No-show email to students': ['On', 'Off'],
@@ -1134,7 +1277,7 @@ function schedule_(sid, d) {          // what booking uses (on date d): the stud
   return { rows: officialSchedule_(sid, d), source: 'district', at: lastImport_() };
 }
 function lastImport_() { var r = rows_('Imports').filter(function (i) { return (i.kind === 'roster' || i.kind === 'ic') && /^applied/i.test(i.status); }).sort(function (a, b) { return ms_(b.at) - ms_(a.at); })[0]; return r ? str_(r.at) : ''; }
-function student_(sid) { if (NOCACHE_ || MEMO_.Students) return find_('Students', 'sid', sid); return slices_('Students', 'sid', [str_(sid)])[low_(sid)][0] || null; }
+function student_(sid) { if (!cacheOk_('Students') || MEMO_.Students) return find_('Students', 'sid', sid); return slices_('Students', 'sid', [str_(sid)])[low_(sid)][0] || null; }
 function fullName_(first, alias, last) { first = str_(first); alias = str_(alias); return first + (alias && low_(alias) !== low_(first) ? ' (' + alias + ')' : '') + ' ' + str_(last); }          // First (Nickname) Last
 function studentName_(s) { return s ? fullName_(s.first, s.alias, s.last) : ''; }
 
@@ -1298,7 +1441,7 @@ function api_saveMapping(kind, name, fields) {
   });
   return profiles_(kind).map(function (p) { return { name: p.name, updated: p.updated }; });
 }
-function api_deleteMapping(kind, name) { anyStaff_(); locked_(function () { var r = rows_('Mappings').filter(function (x) { return str_(x.kind) === kind && str_(x.name) === name; })[0]; if (r) { sheet_('Mappings').deleteRow(r._r); MEMO_ = {}; } }); return 'ok'; }
+function api_deleteMapping(kind, name) { anyStaff_(); locked_(function () { var r = rows_('Mappings').filter(function (x) { return str_(x.kind) === kind && str_(x.name) === name; })[0]; if (r) { deleteRow_('Mappings', r); MEMO_ = {}; } }); return 'ok'; }
 function api_importMap(kind, headers, sample) { var m = api_importMapping(kind, headers, sample, ''); return { map: m.map, fields: m.fields }; }          // the short form (practice data, tests)
 
 // ---------- big files arrive in pieces: the page sends 10,000 rows at a time (only the matched columns); they wait in the script
@@ -1800,7 +1943,26 @@ function slot_(campus, d, period) {
 function slotIndex_() { var mk = 'ix:Appointments:slot'; if (MEMO_[mk]) return MEMO_[mk]; var ix = {}; rows_('Appointments').forEach(function (a) { if (str_(a.loc)) return; var k = str_(a.campus) + '|' + day_(a.date) + '|' + str_(a.period); (ix[k] = ix[k] || []).push(a); }); return (MEMO_[mk] = ix); }
 function fits_(s, half) { if (!s.open) return false; if (!s.ab) return s.free.all > 0; if (half === 'A') return s.free.A > 0; if (half === 'B') return s.free.B > 0; return s.free.A > 0 && s.free.B > 0; }
 function normHalf_(s, half) { return s.ab ? (/^(A|B)$/.test(half) ? half : 'AB') : ''; }
-function tooSoon_(s, campus) { return !!s.startMs && s.startMs - now_().getTime() < campusConf_(campus).cutoffH * 3600000; }
+function tooSoon_(s, campus) { return !!s.startMs && now_().getTime() > cutoffMs_(s, campusConf_(campus).cutoff); }
+// 0.100 (Colleen): each campus says when booking closes: until the period starts, some hours before, or a clock time (that morning,
+// or the day/night before). "Midnight the night before" = 12:00 AM on the day. → null (until it starts) or { h } or { t: 'HH:mm', prev }
+function cutoffParse_(v) {
+  v = str_(v); if (!v || /^0+(\.0+)?$/.test(v) || /until/i.test(v)) return null;
+  var prev = /(night|day)\s+before/i.test(v);
+  if (/midnight/i.test(v)) return { t: '00:00', prev: false, text: 'at midnight the night before' };
+  var m = /(\d{1,2})(?::(\d\d))?\s*([ap])\.?\s*m\b/i.exec(v) || (/noon/i.test(v) ? [0, '12', '00', 'p'] : null);
+  if (m) {
+    var h = (+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0), t = ('0' + h).slice(-2) + ':' + (m[2] || '00');
+    return { t: t, prev: prev, text: 'at ' + ((h % 12) || 12) + ':' + t.slice(3) + (h < 12 ? ' AM' : ' PM') + (prev ? (h >= 17 ? ' the night before' : ' the day before') : (h < 12 ? ' that morning' : ' that day')) };
+  }
+  var n = parseFloat(v); return n > 0 ? { h: n, text: cutoffChoice_(n).replace('before', 'before it starts') } : null;
+}
+function cutoffChoice_(n) { return n + ' hour' + (n === 1 ? '' : 's') + ' before'; }
+function cutoffMs_(s, cut) {          // when booking this period closes
+  if (!cut) return s.startMs;
+  if (cut.h) return s.startMs - cut.h * 3600000;
+  return Math.min(s.startMs, stamp_(cut.prev ? addDays_(s.date, -1) : s.date, cut.t));
+}
 
 // ---------- class conflicts: an academic class during the booked period (study hall, lunch and support don't count)
 function conflictFor_(sid, period, half, d) {
@@ -1863,7 +2025,7 @@ function book_(w, sid, req, staff) {
     var s = slot_(campus, d, period), half = normHalf_(s, req.half);
     if (!s.open) throw new Error('The Testing Center is closed then' + (s.why ? ' (' + s.why + ')' : '') + '.');
     if (d < today_() || (s.startMs && s.startMs < now_().getTime() && !staff)) throw new Error('That period has already started.');
-    if (!staff && tooSoon_(s, campus)) throw new Error(conf.cutoffH ? 'Appointments have to be made at least ' + conf.cutoffH + ' hours ahead. Ask the Testing Center if they can fit you in.' : 'That period has already started. Pick a later one.');
+    if (!staff && tooSoon_(s, campus)) throw new Error(conf.cutoff ? 'Booking for that period closed ' + conf.cutoff.text + '. Ask the Testing Center if they can fit you in.' : 'That period has already started. Pick a later one.');
     if (!fits_(s, half)) return { full: true, slot: slotBrief_(s) };
     var mine = rows_('Appointments').filter(function (a) { return str_(a.sid) === sid && ACTIVE_APPT.test(a.status); });
     if (mine.some(function (a) { return day_(a.date) === d && str_(a.period) === period; })) throw new Error('You already have an appointment then.');
@@ -2092,7 +2254,7 @@ function expireOffers_() {          // inside locked_(): every offer past its ti
   rows_('Waitlist').forEach(function (x) { if (/^waiting/i.test(x.status) && day_(x.date) < today_()) update_('Waitlist', x, { status: 'Closed', changed: iso_() }); });
   Object.keys(touched).forEach(function (k) { var p = k.split('|'); offerOpenSeats_(p[0], p[1], p[2]); });
 }
-function tick() { jobRun_('tick', tickRun_); }
+function tick() { try { pilotOnce_(); } catch (e) {} jobRun_('tick', tickRun_); try { MEMO_ = {}; warm_(); } catch (e) {} CAMPUSES.forEach(function (c) { try { MEMO_ = {}; attentionFast_(c); } catch (e) {} }); }          // 0.94: then Needs attention is made ahead for each campus
 // 0.87: each tick also sends the staff period heads-ups and the 'test missing for next period' alerts
 function tickRun_() { try { calSync_(); } catch (e) { logError_('calendar', e.message); } CAMPUSES.forEach(function (c) { try { staffHeadsUps_(c); staffMissingSoon_(c); } catch (e) { logError_('staff emails', e.message); errorAlert_('staff emails', e.message); } }); locked_(function () { expireOffers_(); CAMPUSES.forEach(function (c) { if (campusConf_(c).autoNoShow === 'period') markNoShows_(c, today_()); try { nextTeacherNotes_(c); } catch (e) { logError_('next-period note', e.message); } }); }); }          // every 10 minutes
 function calSync_() {          // create, move or delete events so the calendar matches the appointments (at most 60 per run)
@@ -2169,7 +2331,7 @@ function studentHome_(w) {
     tests[key] = list.slice(0, 6);
   });
   return {
-    sid: sid, first: str_(stu && (stu.alias || stu.first)), me: { name: studentName_(stu), sid: sid, grade: str_(stu && stu.grade), email: low_(stu && stu.email), campus: conf.name, updated: day_(stu && stu.updated) }, campus: w.campus, campusName: conf.name, where: conf.where, booking: conf.booking, waitlist: conf.waitlist, purposes: conf.purposes, cutoffH: conf.cutoffH,
+    sid: sid, first: str_(stu && (stu.alias || stu.first)), me: { name: studentName_(stu), sid: sid, grade: str_(stu && stu.grade), email: low_(stu && stu.email), campus: conf.name, updated: day_(stu && stu.updated) }, campus: w.campus, campusName: conf.name, where: conf.where, booking: conf.booking, waitlist: conf.waitlist, purposes: conf.purposes, cutoffText: conf.cutoff ? conf.cutoff.text : '',
     upcoming: mine.filter(function (a) { return day_(a.date) >= t && ACTIVE_APPT.test(a.status); }).map(brief),
     recent: mine.filter(function (a) { return /^(completed|partial|no-show)/i.test(a.status) && day_(a.date) >= addDays_(t, -30); }).map(brief).reverse(),
     canceled: mine.filter(function (a) { return /^canceled/i.test(a.status) && day_(a.date) >= t; }).map(brief),
@@ -2266,6 +2428,10 @@ function readiness_(a) {
 }
 
 // ---------- the teacher's page
+var TEACHER_TABS_ = ['Appointments', 'Assessments', 'Test Requests', 'Resources', 'Teachers', 'Teacher Defaults', 'Sections', 'Section Teachers', 'Enrollments', 'Settings', 'Students', 'Sessions', 'Test Days', 'Testing Rooms', 'Teacher Rules', 'Bell Schedules', 'Calendar'];
+function teacherHomeFast_(w) {          // 0.94: the teacher page, reused until one of the tabs it reads changes (or 10 minutes)
+  return cachedT_('th:' + w.email + ':' + today_() + ':' + Math.floor(now_().getTime() / 600000), Object.keys(TABLES).filter(function (t) { return !/^(Audit|Errors|Outbox|Grading Pages|Grading Marks)$/.test(t); }), 600, function () { return teacherHome_(w); });          // every tab it could read (safer than a list)
+}
 function teacherHome_(w) {
   var appts = rows_('Appointments').filter(function (a) { return teachesAppt_(w, a) && day_(a.date) >= addDays_(today_(), -14) && !/^canceled/i.test(a.status); })
     .sort(function (a, b) { return (day_(a.date) + perNum_(a.period)).localeCompare(day_(b.date) + perNum_(b.period)); });
@@ -3083,8 +3249,9 @@ function apptRow_(a, withRes) {
 }
 
 // 0.67: "needs attention" is reused until the sheet changes (or 5 minutes)
-function api_dashMore(campus) { speedStart_('dashboard: needs attention'); try { needCampus_(campus); var a = cached_('att:' + campus + ':' + today_() + ':' + Math.floor(now_().getTime() / 300000), 600, function () { return attention_(campus); }); speedStep_('needs attention'); var wl = waitlistView_(campus); speedStep_('waitlist'); var h = health_(); speedStep_('health check'); return { attention: a, waitlist: wl, health: h }; } finally { speedEnd_(); } }
-function api_dash(campus, d, lite) { speedStart_('dashboard: today'); try { var w = needCampus_(campus); return cached_('dash:' + w.email + ':' + campus + ':' + (day_(d) || today_()) + ':' + (lite ? 1 : 0) + ':' + Math.floor(now_().getTime() / 120000), 300, function () { return dash_(campus, d, lite); }); } finally { speedEnd_(); } }          // 0.67: reused until the sheet changes (or 2 minutes)
+function api_dashMore(campus) { speedStart_('dashboard: needs attention'); try { needCampus_(campus); var a = attentionFast_(campus); speedStep_('needs attention'); var wl = waitlistView_(campus); speedStep_('waitlist'); var h = health_(); speedStep_('health check'); return { attention: a, waitlist: wl, health: h }; } finally { speedEnd_(); } }
+function api_dash(campus, d, lite) { speedStart_('dashboard: today'); try { var w = needCampus_(campus); return dashPrefs_(w, cached_('dash:' + w.email + ':' + campus + ':' + (day_(d) || today_()) + ':' + (lite ? 1 : 0) + ':' + Math.floor(now_().getTime() / 120000), 300, function () { return dash_(campus, d, lite); })); } finally { speedEnd_(); } }
+function dashPrefs_(w, d) { if (d && typeof d === 'object') d.prefs = prefs_(w.email); return d; }          // 0.95: each person's choices are always fresh (the day itself is reused)          // 0.67: reused until the sheet changes (or 2 minutes)
 function dash_(campus, d, lite) {
   var w = needCampus_(campus);
   d = day_(d) || today_();
@@ -3279,7 +3446,7 @@ function api_dateChange(campus, d, period, change, cap, note) {
   });
 }
 function api_dateChanges(campus) { needCampus_(campus); return rows_('Date Changes').filter(function (r) { return str_(r.campus) === campus && day_(r.date) >= today_(); }).map(function (r) { return { id: str_(r.id), date: day_(r.date), period: str_(r.period), change: str_(r.change), cap: str_(r.cap), note: str_(r.note), by: str_(r.by) }; }); }
-function api_removeDateChange(id) { var r = find_('Date Changes', 'id', id); if (!r) return 'ok'; needCampus_(str_(r.campus), true); locked_(function () { var x = find_('Date Changes', 'id', id); sheet_('Date Changes').deleteRow(x._r); MEMO_ = {}; audit_('Date change removed', id, ''); }); return 'ok'; }
+function api_removeDateChange(id) { var r = find_('Date Changes', 'id', id); if (!r) return 'ok'; needCampus_(str_(r.campus), true); locked_(function () { var x = find_('Date Changes', 'id', id); deleteRow_('Date Changes', x); MEMO_ = {}; audit_('Date change removed', id, ''); }); return 'ok'; }
 
 // ---------- the waitlist, by hand
 function api_offerTo(wid) {
@@ -3465,8 +3632,8 @@ function api_setPeriods(campus, d, periods, open, cancel, reason) {
     dateChanges_(campus, d).filter(function (c) { return /^all$/i.test(str_(c.period)); }).forEach(function (c) {
       all.forEach(function (p) { insert_('Date Changes', { id: uid_('dc'), campus: campus, date: d, period: p, change: str_(c.change), cap: str_(c.cap), note: str_(c.note), by: str_(c.by) }); });
     });
-    var drop = dateChanges_(campus, d).filter(function (c) { return /^all$/i.test(str_(c.period)) || (periods.indexOf(str_(c.period)) >= 0 && /close|open/i.test(c.change)); }).map(function (c) { return c._r; }).sort(function (a, b) { return b - a; });
-    drop.forEach(function (r) { sh.deleteRow(r); }); MEMO_ = {};
+    var drop = dateChanges_(campus, d).filter(function (c) { return /^all$/i.test(str_(c.period)) || (periods.indexOf(str_(c.period)) >= 0 && /close|open/i.test(c.change)); }).sort(function (a, b) { return b._r - a._r; });
+    drop.forEach(function (r) { deleteRow_('Date Changes', r); }); MEMO_ = {};
     var canceled = 0, waitClosed = 0;
     periods.forEach(function (p) {
       var base = slot_(campus, d, p);          // what the usual week (and seat changes) says, with this period's open/close changes removed
@@ -3486,7 +3653,7 @@ function api_setPeriods(campus, d, periods, open, cancel, reason) {
 // ---------- Settings in the app: plain switches for the everyday settings (the sheet's Settings tab stays the store)
 var SETTING_GROUPS = [
   ['Emails (whole app)', ['Send emails']],
-  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Booking purposes']],
+  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Booking closes', 'Most upcoming appointments per student', 'Booking purposes']],
   ['Waitlist', ['Waitlist', 'Waitlist offers', 'Hours to answer a waitlist offer', 'Quiet hours']],
   ['Arriving and no-shows', ['Start the test clock when a student arrives', 'Mark students who never arrived as no-shows', 'Email the counselor at this many no-shows']],
   ['Emails to students', ['Student confirmation emails', 'Student reminder the school day before', 'Student reminder the morning of', 'No-show email to students']],
@@ -3495,7 +3662,7 @@ var SETTING_GROUPS = [
   ['Hub access and health (administrators)', ['Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well']]
 ];
 var SETTING_ADMIN = ['Send emails', 'Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well'];
-var SETTING_NUM = ['Email the counselor at this many no-shows', 'Days ahead students can book', 'Book at least this many hours ahead', 'Most upcoming appointments per student', 'Hours to answer a waitlist offer'];
+var SETTING_NUM = ['Email the counselor at this many no-shows', 'Days ahead students can book', 'Most upcoming appointments per student', 'Hours to answer a waitlist offer'];
 function api_settingsGet() {
   var w = need_('staff'), by = {}; rows_('Settings').forEach(function (r) { by[r.key] = r; });
   var help = {}; DEFAULTS.forEach(function (d) { help[d[0]] = d[3]; });
@@ -3534,6 +3701,10 @@ function api_periodsSave(campus, list) {
   });
   return api_settingsGet();
 }
+
+// 0.94: Needs attention is made ahead by the 10-minute timer and reused until a tab it reads changes, so the coordinator rarely waits for it
+var ATTENTION_TABS_ = ['Appointments', 'Assessments', 'Offers', 'Waitlist', 'Student Schedules', 'Outbox', 'Settings', 'Resources', 'Teachers', 'Sections', 'Testing Periods', 'Students', 'Imports'];
+function attentionFast_(campus) { return cachedT_('att:' + campus + ':' + today_() + ':' + Math.floor(now_().getTime() / 600000), Object.keys(TABLES).filter(function (t) { return !/^(Audit|Errors|Grading Pages|Grading Marks|Grading Sets|Grading Stamps|Essay Rubrics)$/.test(t); }), 1200, function () { return attention_(campus); }); }          // every tab it could read; and at most 10 minutes old (the clock matters: next period)
 
 // The Testing Center room: one seating chart per campus, drawn in Colleen's seating chart tool (Seating.html, ?view=seating,
 // built by dev/build-seating.py), with numbered desks like restaurant tables: front row first, left to right ("Don't use" desks
@@ -3614,7 +3785,7 @@ function saveSeatingLayout(name, chart) {
   locked_(function () { var r = find_('Seating Layouts', 'name', name), v = { name: name, chart: JSON.stringify(c), updated: iso_() }; if (r) update_('Seating Layouts', r, v); else insert_('Seating Layouts', v); });
   return listSeatingLayouts();
 }
-function deleteSeatingLayout(name) { roomRooms_(); locked_(function () { var r = find_('Seating Layouts', 'name', name); if (r) { sheet_('Seating Layouts').deleteRow(r._r); MEMO_ = {}; } }); return listSeatingLayouts(); }
+function deleteSeatingLayout(name) { roomRooms_(); locked_(function () { var r = find_('Seating Layouts', 'name', name); if (r) { deleteRow_('Seating Layouts', r); MEMO_ = {}; } }); return listSeatingLayouts(); }
 function api_seatLayouts() { return { layouts: listSeatingLayouts() }; }
 function api_seatLayoutSave(auth, cls, name, chart) { return { layouts: saveSeatingLayout(name, chart) }; }
 function api_seatLayoutDel(auth, cls, name) { return { layouts: deleteSeatingLayout(name) }; }
@@ -3719,7 +3890,7 @@ function api_icStart() {
   var w = anyStaff_();
   return icLocked_(function () {
     var j = icJob_();
-    if (icRunning_(j) && ms_(j.updated) > Date.now() - 10 * 60000) throw new Error('An Infinite Campus import is already running (' + j.label + '). Continue it or cancel it first.');
+    if (icRunning_(j) && ms_(j.updated) > now_().getTime() - 10 * 60000) throw new Error('An Infinite Campus import is already running (' + j.label + '). Continue it or cancel it first.');
     if (j && j.id) icDrop_(j);
     j = { id: uid_('ic'), status: 'validating', by: w.email, started: iso_(), done: 0, chunk: 0, counts: {}, problems: [] };
     icSave_(j);
@@ -3759,7 +3930,7 @@ function api_icStart() {
 
 // ---------- one step of work (the page calls this again and again; a 1-minute trigger keeps going if the page is closed)
 function api_icStep() { anyStaff_(); return icLocked_(function () { return icWork_(); }); }
-function icContinue() { var j = icJob_(); if (!icRunning_(j) || j.status === 'applying') { icTrigger_(false); return; } if (ms_(j.updated) > Date.now() - 90000) return; icLocked_(function () { icWork_(); }); }
+function icContinue() { var j = icJob_(); if (!icRunning_(j) || j.status === 'applying') { icTrigger_(false); return; } if (ms_(j.updated) > now_().getTime() - 90000) return; icLocked_(function () { icWork_(); }); }
 function icWork_() {
   var j = icJob_(), t0 = Date.now();
   if (!j || !icRunning_(j) || j.status === 'applying') return j;
@@ -4599,9 +4770,12 @@ function api_watch() {
 var REQ_OPEN = /^(open|booked)/i;
 function reqRows_() { return rows_('Test Requests'); }
 function req_(id) { return find_('Test Requests', 'id', id); }
-function myStudent_(sid) {
-  var w = need_('teacher'); if (!myStudents_(w)[str_(sid)]) throw new Error('That student isn’t in one of your classes.');
-  return student_(sid);
+function myStudent_(sid) {          // 0.96: checks this one student's classes (not every student the teacher has: that took seconds per request)
+  var w = need_('teacher'), secs = {}, t = today_(); mySections_(w).forEach(function (x) { secs[str_(x.secid)] = 1; });
+  var inMine = (slices_('Enrollments', 'sid', [str_(sid)])[low_(sid)] || []).some(function (e) { return secs[str_(e.secid)] && !/drop/i.test(e.status) && enrActive_(e, t); });
+  var st = inMine ? student_(sid) : null;
+  if (!st || !/^active$/i.test(str_(st.status) || 'active')) throw new Error('That student isn’t in one of your classes.');
+  return st;
 }
 function reqCanSee_(w, r) {          // who made it, the class's teachers, the testing location's teachers
   if (str_(r.by) === w.email) return true;
@@ -4748,7 +4922,7 @@ function whoName_(email) {
   email = low_(email); if (!email || email === 'automatic') return '';
   if (!MEMO_._whoN) { var m = {}; rows_('Staff').forEach(function (s) { if (str_(s.email)) m[low_(s.email)] = str_(s.name) || low_(s.email).split('@')[0]; }); rows_('Teachers').forEach(function (t) { if (str_(t.email) && !m[low_(t.email)]) m[low_(t.email)] = lastName_(str_(t.name)); }); MEMO_._whoN = m; }
   if (MEMO_._whoN[email]) return MEMO_._whoN[email];
-  var st = rows_('Students').filter(function (s) { return low_(s.email) === email; })[0];
+  var st = slices_('Students', 'email', [email])[email][0];          // 0.96: not the whole student list
   return st ? str_(st.alias || st.first) || 'the student' : email.split('@')[0];
 }
 function lastName_(nm) { nm = str_(nm); return /,/.test(nm) ? nm.split(',')[0].trim() : nm.split(/\s+/).pop(); }
@@ -5055,6 +5229,7 @@ function api_testDayPrep(secid) {
   var w = need_('teacher'), sec = sectionsById_()[String(secid)]; if (!sec || !secTeachers_(secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; })) throw new Error('That isn’t one of your classes.');
   autoRooms_();
   var roster = api_classRoster(secid), campus = str_(sec.campus).charAt(0).toUpperCase() === 'N' ? 'N' : 'S';
+  var rsids = roster.map(function (x) { return str_(x.sid); }); studentsLoad_(rsids); if (rsids.length) slices_('Enrollments', 'sid', rsids);          // 0.96: the whole class in one cache call each
   var tests = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && myTids_(w).indexOf(str_(A.tid)) >= 0 && low_(A.course) === low_(sec.course); }).map(function (A) { var f = testFile_(A); return { id: str_(A.id), name: str_(A.name), pdf: !!(f && f.id), qs: f && f.id && f.qmap ? qLabels_(f.qmap) : [] }; });
   var dr = tdRow_(w, secid);          // 0.72: today's unfinished tracking for this class comes back
   var info = dayInfo_(campus, today_()), bell = info.school ? (bells_(campus, info.sched)[str_(sec.period)] || {}) : {};          // 0.82: for late arrivals
@@ -5245,7 +5420,7 @@ function api_gradeName(id, paper, sid) {          // 0.79: the teacher says whos
     mine.map(function (r) { return str_(r.file); }).forEach(function (file) {          // row numbers change after a delete, so each row is looked up again
       var r = rows_('Grading Pages').filter(function (o) { return str_(o.set) === String(id) && str_(o.file) === file; })[0]; if (!r) return;
       var old = rows_('Grading Pages').filter(function (o) { return str_(o.set) === String(id) && str_(o.sid) === sid && +o.page === +r.page && (+o.part === 2 ? 2 : 1) === (+r.part === 2 ? 2 : 1); })[0];
-      if (old) { try { DriveApp.getFileById(str_(old.file)).setTrashed(true); } catch (e) {} sheet_('Grading Pages').deleteRow(old._r); clearMemo_('Grading Pages'); r = rows_('Grading Pages').filter(function (o) { return str_(o.set) === String(id) && str_(o.file) === file; })[0]; }
+      if (old) { try { DriveApp.getFileById(str_(old.file)).setTrashed(true); } catch (e) {} deleteRow_('Grading Pages', old); r = rows_('Grading Pages').filter(function (o) { return str_(o.set) === String(id) && str_(o.file) === file; })[0]; }
       update_('Grading Pages', r, { sid: sid });
     });
     audit_('Scan & Score paper named', id, { by: g.w.email });
@@ -5329,7 +5504,7 @@ function api_stampSave(o) {
 }
 function api_stampDelete(id) {
   var w = need_('teacher');
-  locked_(function () { var r = rows_('Grading Stamps').filter(function (x) { return str_(x.id) === String(id) && str_(x.tid) === str_(w.tid); })[0]; if (!r) throw new Error('That stamp isn’t yours.'); sheet_('Grading Stamps').deleteRow(r._r); clearMemo_('Grading Stamps'); });
+  locked_(function () { var r = rows_('Grading Stamps').filter(function (x) { return str_(x.id) === String(id) && str_(x.tid) === str_(w.tid); })[0]; if (!r) throw new Error('That stamp isn’t yours.'); deleteRow_('Grading Stamps', r); });
   return api_stamps();
 }
 
@@ -5370,7 +5545,7 @@ function api_gradeDropPages(id, sid) {          // before an essay is uploaded a
   var g = gradeSet_(id); sid = str_(sid);
   return locked_(function () {
     var mine = rows_('Grading Pages').filter(function (r) { return str_(r.set) === String(id) && str_(r.sid) === sid; }).sort(function (a, b) { return b._r - a._r; });
-    mine.forEach(function (r) { try { DriveApp.getFileById(str_(r.file)).setTrashed(true); } catch (e) {} sheet_('Grading Pages').deleteRow(r._r); });
+    mine.forEach(function (r) { try { DriveApp.getFileById(str_(r.file)).setTrashed(true); } catch (e) {} deleteRow_('Grading Pages', r); });
     if (mine.length) clearMemo_('Grading Pages');
     return mine.length;
   });
@@ -5387,8 +5562,9 @@ function annoIn_(a) {          // highlights {p, x, y, w, h, r} and notes {p, x,
       if (Array.isArray(h.rects)) o.rects = h.rects.slice(0, 60).map(function (b) { return [r1(b[0]), r1(b[1]), r1(b[2]), r1(b[3])]; });          // typed essay: the lines of words it covers
       if (Array.isArray(h.path)) o.path = h.path.slice(0, 2000).map(r1);          // handwritten essay: a marker stroke
       if (h.shape === 'oval') o.shape = 'oval';
+      if (h.k === 'good' || h.k === 'fix') o.k = h.k;          // 0.94: from the comment bank (did well / needs work)
       return o; }),          // t: the margin comment tied to this highlight (a line joins them)
-    notes: (a.notes || []).slice(0, 100).map(function (n) { return { p: Math.max(0, Math.floor(+n.p || 0)), x: r1(n.x), y: r1(n.y), t: clean_(n.t, 500), r: Math.floor(+n.r) >= 0 ? Math.floor(+n.r) : -1 }; }).filter(function (n) { return n.t; }) };
+    notes: (a.notes || []).slice(0, 100).map(function (n) { var o = { p: Math.max(0, Math.floor(+n.p || 0)), x: r1(n.x), y: r1(n.y), t: clean_(n.t, 500), r: Math.floor(+n.r) >= 0 ? Math.floor(+n.r) : -1 }; if (n.k === 'good' || n.k === 'fix') o.k = n.k; return o; }).filter(function (n) { return n.t; }) };
 }
 function api_essaySave(id, m) {          // saved on every Next: a level per rubric row (each row's points), the marks, highlights, notes and the overall comment
   var g = gradeSet_(id), Q = gradeQs_(g.S); m = m || {}; var sid = str_(m.sid);
@@ -5522,7 +5698,7 @@ function api_gradeClearScans(id) {          // the scanned pages go (they're the
 function clearScans_(id, by) {
   return locked_(function () {
     var mine = rows_('Grading Pages').filter(function (r) { return str_(r.set) === String(id); }).sort(function (a, b) { return b._r - a._r; });
-    mine.forEach(function (r) { try { DriveApp.getFileById(str_(r.file)).setTrashed(true); } catch (e) {} sheet_('Grading Pages').deleteRow(r._r); });
+    mine.forEach(function (r) { try { DriveApp.getFileById(str_(r.file)).setTrashed(true); } catch (e) {} deleteRow_('Grading Pages', r); });
     if (mine.length) clearMemo_('Grading Pages');
     update_('Grading Sets', find_('Grading Sets', 'id', id), { cleared: iso_(), status: 'Scans deleted (scores kept)' });
     audit_('Scan & Score scans deleted', id, { pages: mine.length, by: by });
@@ -5589,6 +5765,41 @@ function api_driveFinish(id, folder) {          // hand the subfolder and its fi
   api_gradeKept(id);
   audit_('Scan & Score saved to the teacher’s Drive', id, { by: email, owned: moved });
   return { url: x.sub.getUrl(), owned: moved };
+}
+
+// ---------- 0.94 (Colleen): comment banks. "Did well" labels the parts a student showed (a strong thesis, good quote use); "Needs work"
+// starts with the usual ones (spelling, subject-verb agreement, punctuation…). Each teacher changes both lists; tap one, then highlight.
+var BANK_GOOD_ = ['Strong thesis statement', 'Good use of a quote', 'Quote explained well', 'Clear topic sentence', 'Strong evidence', 'Smooth transition', 'Vivid detail', 'Good word choice', 'Clear organization', 'Strong conclusion'];
+var BANK_FIX_ = ['Spelling', 'Subject-verb agreement', 'Punctuation', 'Comma splice', 'Run-on sentence', 'Sentence fragment', 'Capitalization', 'Verb tense', 'Explain this quote', 'Cite your source', 'Needs more evidence', 'Unclear wording', 'Start a new paragraph', 'Word choice'];
+function bankIn_(list) { var seen = {}; return (list || []).map(function (t) { return clean_(t, 120).trim(); }).filter(function (t) { if (!t || seen[low_(t)]) return false; seen[low_(t)] = 1; return true; }).slice(0, 60); }
+function api_commentBank() {
+  var w = need_('teacher'), r = rows_('Comment Banks').filter(function (x) { return str_(x.tid) === str_(w.tid); })[0];
+  return { good: r ? json_(r.good, BANK_GOOD_) : BANK_GOOD_.slice(), fix: r ? json_(r.fix, BANK_FIX_) : BANK_FIX_.slice(), starter: !r };
+}
+function api_commentBankSave(b) {
+  var w = need_('teacher'); b = b || {}; var good = bankIn_(b.good), fix = bankIn_(b.fix);
+  if (b.reset) { good = BANK_GOOD_.slice(); fix = BANK_FIX_.slice(); }
+  locked_(function () { var r = rows_('Comment Banks').filter(function (x) { return str_(x.tid) === str_(w.tid); })[0], v = { tid: w.tid, good: JSON.stringify(good), fix: JSON.stringify(fix), at: iso_() }; if (r) update_('Comment Banks', r, v); else insert_('Comment Banks', v); });
+  return api_commentBank();
+}
+
+// ---------- 0.95 (Colleen): the Staff tab, edited in the app (Settings › Staff). Coordinators and administrators add and change
+// coordinators and proctors; only an administrator adds or changes administrators. Nobody is deleted: "No longer here" turns them off.
+function staffEditor_() { var w = need_('staff'); if (w.roles.indexOf('admin') < 0 && w.roles.indexOf('coordinator') < 0) throw new Error('Only coordinators and administrators can change the staff list.'); return w; }
+function staffOut_(r) { return { email: low_(r.email), name: str_(r.name), role: /admin/i.test(r.role) ? 'Administrator' : /proctor/i.test(r.role) ? 'Proctor' : 'Coordinator', campus: /^n/i.test(str_(r.campus)) ? 'N' : 'S', other: /edit/i.test(str_(r.other)) ? 'Edit' : /view/i.test(str_(r.other)) ? 'View' : '', active: !/^(no|n|false)$/i.test(str_(r.active)), notes: str_(r.notes) }; }
+function api_staffList() { var w = staffEditor_(); return { me: low_(w.email), admin: w.roles.indexOf('admin') >= 0, staff: rows_('Staff').filter(function (r) { return str_(r.email); }).map(staffOut_).sort(function (a, b) { return (b.active - a.active) || a.campus.localeCompare(b.campus) || a.name.localeCompare(b.name); }) }; }
+function api_staffSave(o, was) {
+  var w = staffEditor_(), admin = w.roles.indexOf('admin') >= 0; o = o || {};
+  var email = low_(clean_(o.email, 120)).trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Type their school email.');
+  if (domain_() && email.split('@')[1] !== domain_()) throw new Error('Use a school email (@' + domain_() + ').');
+  var role = /admin/i.test(o.role) ? 'Administrator' : /proctor/i.test(o.role) ? 'Proctor' : 'Coordinator';
+  var old = rows_('Staff').filter(function (r) { return low_(r.email) === low_(was || email); })[0];
+  if (!admin && (role === 'Administrator' || (old && /admin/i.test(old.role)))) throw new Error('Only an administrator can add or change administrators.');
+  if (!was && rows_('Staff').some(function (r) { return low_(r.email) === email; })) throw new Error('They’re already on the staff list.');
+  var v = { email: email, name: clean_(o.name, 80), role: role, campus: o.campus === 'N' ? 'N' : 'S', other: /edit/i.test(o.other) ? 'Edit' : /view/i.test(o.other) ? 'View' : '', active: o.active === false ? 'No' : 'Yes', notes: clean_(o.notes, 200) };
+  if (low_(email) === low_(w.email) && v.active === 'No') throw new Error('You can’t turn yourself off.');
+  locked_(function () { var r = old ? find_('Staff', 'email', old.email) || old : null; if (r) update_('Staff', r, v); else insert_('Staff', v); audit_('Staff ' + (old ? 'changed' : 'added'), email, { role: role, by: w.email }); });
+  return api_staffList();
 }
 
 // Practice data: made-up students, teachers and classes for both campuses, loaded THROUGH the real roster importer (so the
@@ -5748,6 +5959,7 @@ function api_clearPractice() {
   var g = installGas({ owner: 'admin@d204.lths.net', active: 'admin@d204.lths.net', tz: 'America/Chicago' });
   window.__g = g;
   setupSheet();
+  ['pilot1119', 'cal2627', 'cal2627b'].forEach(function (k) { PropertiesService.getDocumentProperties().setProperty(k, '1'); });          // the real sheet's one-time set-ups don't belong in the demo
   makeDemo_({ perCampus: 60 });
   MEMO_ = {};
   var firstStu = rows_('Students').filter(function (s) { return s.campus === 'S' && rows_('Appointments').some(function (a) { return a.sid === s.sid && a.date > today_(); }); })[0];
@@ -5956,6 +6168,7 @@ function jsQrLib() {          // 0.77: reads the codes on scanned grading copies
 // manager's script: the page, a wide margin beside it, highlights in the rubric row's color, and margin comments joined to
 // what they're about by a line. Everything is in the copy's page points; the margin is ESSAY_M points wide.
 var ESSAY_M = 230, ESSAY_COLORS = ['#f4c430', '#5dade2', '#58d68d', '#f1948a', '#bb8fce', '#f5b041', '#48c9b0', '#ec7063', '#85929e', '#a569bd', '#45b39d', '#dc7633'];
+function essayKindColor(h) { return h && h.k === 'good' ? '#4cc777' : h && h.k === 'fix' ? '#ef6b6b' : essayColor(h ? h.r : -1); }          // 0.94: comment bank: green did well, red needs work
 function essayColor(r) { return r >= 0 ? ESSAY_COLORS[r % ESSAY_COLORS.length] : '#f4d03f'; }
 function essayWrap(ctx, text, w) {          // words → lines that fit w (canvas units)
   var out = [], line = ''; String(text || '').split(/\s+/).forEach(function (wd) { var t = line ? line + ' ' + wd : wd; if (ctx.measureText(t).width > w && line) { out.push(line); line = wd; } else line = t; }); if (line) out.push(line); return out;
@@ -5967,7 +6180,7 @@ function essayPaint(cv, im, P, page, ink, anno, rows, k, opt) {          // draw
   x.fillStyle = '#fbfaf5'; x.fillRect(W * k, 0, ESSAY_M * k, H * k); x.strokeStyle = '#d9d4c3'; x.lineWidth = 1; x.beginPath(); x.moveTo(W * k + 0.5, 0); x.lineTo(W * k + 0.5, H * k); x.stroke();
   var hl = (anno && anno.hl || []).filter(function (h) { return h.p === page; }), notes = (anno && anno.notes || []).filter(function (n) { return n.p === page; });
   hl.forEach(function (h) {          // typed essay: the lines of words · handwritten: a marker stroke · a photo: an outlined area
-    var c = essayColor(h.r);
+    var c = essayKindColor(h);
     if (h.rects) { x.globalAlpha = 0.35; x.fillStyle = c; h.rects.forEach(function (b) { x.fillRect(b[0] * k, b[1] * k, b[2] * k, b[3] * k); }); x.globalAlpha = 1; }
     else if (h.path) { x.globalAlpha = 0.35; x.strokeStyle = c; x.lineWidth = 13 * k; x.lineCap = x.lineJoin = 'round'; inkPath(x, { p: h.path }, function (v) { return v * k; }, function (v) { return v * k; }); x.globalAlpha = 1; }
     else if (opt.mode === 'project') { x.globalAlpha = 0.12; x.fillStyle = c; x.fillRect(h.x * k, h.y * k, h.w * k, h.h * k); x.globalAlpha = 1; x.strokeStyle = c; x.lineWidth = 2.5 * k; x.strokeRect(h.x * k, h.y * k, h.w * k, h.h * k); }
@@ -5981,18 +6194,30 @@ function essayPaint(cv, im, P, page, ink, anno, rows, k, opt) {          // draw
     .concat(notes.map(function (n) { return { y: n.y, ax: n.x, ay: n.y, t: n.t, r: n.r, src: n, pin: true }; })).sort(function (a, b) { return a.y - b.y; });
   var fs = 9.5, pad = 5, bw = ESSAY_M - 16, top = 6; x.font = fs * k + 'px system-ui, sans-serif';
   items.forEach(function (it, i) {
-    var lines = essayWrap(x, it.t, (bw - pad * 2) * k), bh = lines.length * (fs + 2.5) + pad * 2 + (rows && it.r >= 0 ? fs + 2 : 0), by = Math.max(top, Math.min(it.y - bh / 2, H - bh - 4)); top = by + bh + 6;
-    var bx = W + 8, c = essayColor(it.r);
+    var lines = essayWrap(x, it.t, (bw - pad * 2) * k), bh = lines.length * (fs + 2.5) + pad * 2 + ((rows && it.r >= 0) || it.src.k ? fs + 2 : 0), by = Math.max(top, Math.min(it.y - bh / 2, H - bh - 4)); top = by + bh + 6;
+    var bx = W + 8, c = essayKindColor(it.src);
     x.strokeStyle = c; x.lineWidth = 1.4 * k / 2 + 0.6; x.beginPath(); x.moveTo(it.ax * k, it.ay * k); x.lineTo(bx * k, (by + Math.min(bh / 2, 12)) * k); x.stroke();
     if (it.pin) { x.fillStyle = c; x.beginPath(); x.arc(it.ax * k, it.ay * k, 3.5 * k, 0, 7); x.fill(); }
     x.fillStyle = '#fff'; x.fillRect(bx * k, by * k, bw * k, bh * k); x.strokeStyle = c; x.lineWidth = Math.max(1, 1.2 * k); x.strokeRect(bx * k, by * k, bw * k, bh * k); x.fillStyle = c; x.fillRect(bx * k, by * k, 3 * k, bh * k);
     x.fillStyle = '#222'; var ty = by + pad + fs;
-    if (rows && it.r >= 0 && rows[it.r]) { x.font = 'bold ' + (fs - 1) * k + 'px system-ui, sans-serif'; x.fillStyle = '#555'; x.fillText(rows[it.r].t, (bx + pad + 2) * k, ty * k); ty += fs + 2; x.font = fs * k + 'px system-ui, sans-serif'; x.fillStyle = '#222'; }
+    var head = (it.src.k === 'good' ? '✓ Did well' : it.src.k === 'fix' ? '✎ Needs work' : '') + (rows && it.r >= 0 && rows[it.r] ? (it.src.k ? ' · ' : '') + rows[it.r].t : '');
+    if (head) { x.font = 'bold ' + (fs - 1) * k + 'px system-ui, sans-serif'; x.fillStyle = it.src.k === 'good' ? '#1a7f4b' : it.src.k === 'fix' ? '#b3261e' : '#555'; x.fillText(head, (bx + pad + 2) * k, ty * k); ty += fs + 2; x.font = fs * k + 'px system-ui, sans-serif'; x.fillStyle = '#222'; }
     lines.forEach(function (ln) { x.fillText(ln, (bx + pad + 2) * k, ty * k); ty += fs + 2.5; });
     it.src.__box = { x: bx, y: by, w: bw, h: bh };          // so a tap on the box can open it
   });
 }
 var GRADE_K = 0.93, GRADE_QR = 44;
+// 0.96: shared with the student page (graded tests), which no longer loads Teacher.html
+var GRADE_Z = 2;
+function gradeBoxOn(b, P) {          // a question box on the original page → where it is on the student's copy (points from the top left), with a little room
+  var K = GRADE_K, pad = 6, x = P.w * (1 - K) / 2 + K * b.x - pad, y = P.h * (1 - K) + K * b.y - pad;
+  return { x: Math.max(0, x), y: Math.max(0, y), w: Math.min(P.w - Math.max(0, x), K * b.w + 2 * pad), h: Math.min(P.h - Math.max(0, y), K * b.h + 2 * pad) };
+}
+function gradeFile(D, sid, qn, page) {          // 0.79: which scan shows this question: a question left for Part 2 comes from the Testing Center copy, the rest from the classroom copy
+  var s1 = (D.scans || {})[sid] || {}, s2 = (D.scans2 || {})[sid], done = (D.part2 || {})[sid];
+  if (s2 && s2[page] && (done ? done.indexOf(String(qn)) < 0 : !s1[page])) return s2[page];
+  return s1[page] || (s2 && s2[page]) || null;
+}
 function inkN(s) {          // 0.84: a pen mark → {b: which box, c: color, w: width (points), p: [x, y, x, y…]}; the old form was [box, x, y, …] in red
   return Array.isArray(s) ? { b: s[0], c: '#d0021b', w: 1.6, p: s.slice(1) } : { b: +s.b || 0, c: /^#[0-9a-f]{6}$/i.test(s.c || '') ? s.c : '#d0021b', w: +s.w || 1.6, p: s.p || [] };
 }
@@ -6130,7 +6355,7 @@ function feedbackOpen() {
   $('fbGo').onclick = function () { var b = this, k = (document.querySelector('input[name=fbK]:checked') || {}).value; busy(b, true); call('api_feedback', { kind: k, text: $('fbT').value, view: MODE, screen: (MODE === 'staff' && window.CO ? 'Coordinator › ' + CO.view : MODE) + ' · v' + ((B && B.version) || '') }).then(function () { closeModal(); toast('Thanks! The Testing Center will read it.'); }).catch(function (e) { busy(b, false); fail(e); }); };
 }
 function boot() {
-  call('api_boot').then(function (b) { B = b; bellMini(); if ($('fbBtn') && !b.error) $('fbBtn').hidden = false; drawModes(START.hub ? 'staff' : ''); }).catch(function (e) { $('main').innerHTML = '<div class="wrap narrow"><div class="card bad"><h2>Something went wrong</h2><p>' + esc(e.message || e) + '</p></div></div>'; });
+  call('api_boot').then(function (b) { B = b; bellMini(); if ($('fbBtn') && !b.error) $('fbBtn').hidden = false; drawModes(START.hub ? 'staff' : ''); if (b.notice) modal('<h2>✅ Ready for Thursday</h2><ul>' + b.notice.split('\n').map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul><button class="btn pri" onclick="closeModal()">OK</button>'); }).catch(function (e) { $('main').innerHTML = '<div class="wrap narrow"><div class="card bad"><h2>Something went wrong</h2><p>' + esc(e.message || e) + '</p></div></div>'; });
 }
 // Which views this account gets: teachers open "My classes" (with a Student view), students their dashboard, coordinators the hub (password).
 function drawModes(want) {
@@ -6363,7 +6588,7 @@ function availDraw() {
 function bkSlot(day, p) {
   if (!p.open) return '<div class="slot closed"><b style="min-width:80px">' + esc(p.label) + '</b><span class="small">' + esc(p.why || 'Closed') + '</span></div>';
   var time = '<div style="min-width:120px"><b>' + esc(p.label) + '</b><div class="small mute">' + hm(p.start) + '–' + hm(p.end) + '</div></div>';
-  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">' + (SH.cutoffH ? 'Too soon to book (' + SH.cutoffH + ' hours ahead)' : 'Already started') + '</span></div>';
+  if (p.soon) return '<div class="slot closed">' + time + '<span class="small">' + (SH.cutoffText ? 'Booking closed (' + SH.cutoffText + ')' : 'Already started') + '</span></div>';
   var hint = p.conflict ? '<div class="small" style="color:var(--warn)">⚠ You have ' + esc(p.conflict) + '</div>' : (p.open ? '<span class="chip ok" title="You don’t miss a class this period">⭐ Recommended</span> ' : '') + (p.have.length ? '<div class="small mute" style="display:inline">You have ' + p.have.map(function (x) { return esc(x.course) + (x.half ? ' (' + x.half + ')' : ''); }).join(' / ') + '</div>' : '');          // 0.68: no class missed → recommended
   var btns = '';
   if (p.ab) {
@@ -6814,11 +7039,6 @@ function gradeNumbers(id) {          // the class numbers to post or project: by
 }
 // 0.77 grading, step 2: the scanned stack. Each page is read here on the teacher's computer: its code says whose page it is,
 // the code's corners say how the page sits in the scan, and the page is straightened to match the copy before it's saved.
-var GRADE_Z = 2;
-function gradeBoxOn(b, P) {          // a question box on the original page → where it is on the student's copy (points from the top left), with a little room
-  var K = GRADE_K, pad = 6, x = P.w * (1 - K) / 2 + K * b.x - pad, y = P.h * (1 - K) + K * b.y - pad;
-  return { x: Math.max(0, x), y: Math.max(0, y), w: Math.min(P.w - Math.max(0, x), K * b.w + 2 * pad), h: Math.min(P.h - Math.max(0, y), K * b.h + 2 * pad) };
-}
 function gradeStraighten(cv, R, L2, W, H) {          // R = the right code's corners, L2 = the left one's (or null)
   var S = GRADE_QR, mid = function (l) { return { x: (l.topLeftCorner.x + l.topRightCorner.x + l.bottomLeftCorner.x + l.bottomRightCorner.x) / 4, y: (l.topLeftCorner.y + l.topRightCorner.y + l.bottomLeftCorner.y + l.bottomRightCorner.y) / 4 }; };
   var ax, ay, px, py, th, s;
@@ -6978,7 +7198,7 @@ function gradeStartWith(D) {
     if (!who.length) { modal('<h2>✍️ Grade</h2><p>No scans yet. Scan the stack to one PDF, then use <b>📤 Upload the scans</b>.</p><button class="btn" onclick="closeModal()">Close</button>'); return gradeFromTc(id); }
     GR = { D: D, who: who, qi: 0, si: 0, img: {}, queue: [], saving: false, dirty: false, cur: null, pen: false };
     GR.tc = true; GR.color = '#d0021b'; GR.size = 1; GR.stamp = null; GR.stamps = [];
-    call('api_stamps').then(function (list) { if (!GR) return; GR.stamps = list; gradeToolsDraw(); }).catch(function () {});
+    call('api_stamps').then(function (list) { if (!GR) return; GR.stamps = stampsWith(list); gradeToolsDraw(); }).catch(function () {});
     var first = -1; D.qs.some(function (q, qi) { return who.some(function (s, si) { if (!D.marks[s.sid + '|' + q.n]) { GR.qi = qi; GR.si = si; first = 1; return true; } }); });
     gradeDraw();
   })();
@@ -7022,8 +7242,9 @@ function gradeDraw() {
     '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center"><label class="f" style="margin:0">Points</label><input id="grPts" type="number" min="0" step="0.5" style="width:90px;font-size:20px" value="' + esc(GR.cur.pts) + '" oninput="gradeSet(\'pts\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();gradeGo(GR.qi,GR.si+1)}"><b>/ ' + q.pts + '</b>' +
     '<button class="btn" onclick="gradeQuick(1)">✓ Full credit</button><button class="btn" onclick="gradeQuick(0.5)">½ Half credit</button><button class="btn" onclick="gradeQuick(0)">✕ No credit</button></div>' +
     '<input id="grNote" type="text" placeholder="Note on this answer (optional)" style="margin-top:8px" value="' + esc(GR.cur.note) + '" oninput="gradeSet(\'note\',this.value)">' +
+    '<div id="grBank"></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn" onclick="gradeGo(GR.qi,GR.si-1)"' + (GR.si || GR.qi ? '' : ' disabled') + '>◀ Back</button><span class="grow"></span><button class="btn pri big" onclick="gradeGo(GR.qi,GR.si+1)">Next ▶</button></div>', true);
-  gradeSaved(); gradeToolsDraw(); gradeRubDraw();
+  gradeSaved(); gradeToolsDraw(); gradeRubDraw(); if (GR.bank) gradeBankDraw(); else bankLoad(gradeBankDraw);
   if (GR.tc) { GR.tc = false; gradeFromTc(D.id); }
   var tok = GR.tok = {};
   var parts = q.boxes.map(function (b) { var f = gradeFile(D, st.sid, q.n, b.p + 1); return f ? gradeImg(f) : Promise.resolve(null); });
@@ -7042,11 +7263,6 @@ function gradeDraw() {
     gradeAhead();
   }).catch(function (e) { if ($('grWork')) $('grWork').innerHTML = '<div class="small">' + esc(e.message || e) + '</div>'; });
   setTimeout(function () { var p = $('grPts'); if (p && !('ontouchstart' in window)) p.focus(); }, 50);
-}
-function gradeFile(D, sid, qn, page) {          // 0.79: which scan shows this question: a question left for Part 2 comes from the Testing Center copy, the rest from the classroom copy
-  var s1 = (D.scans || {})[sid] || {}, s2 = (D.scans2 || {})[sid], done = (D.part2 || {})[sid];
-  if (s2 && s2[page] && (done ? done.indexOf(String(qn)) < 0 : !s1[page])) return s2[page];
-  return s1[page] || (s2 && s2[page]) || null;
 }
 function gradeAhead() {          // load the next two students' pages while the teacher grades this one
   var q = GR.D.qs[GR.qi];
@@ -7107,6 +7323,38 @@ function gradeRubEdit() {          // write or change the parts (saved with the 
   };
   document.body.appendChild(ov); draw();
 }
+// 0.94: ready-made proofreading stamps (no handwriting needed): a big comma, a caret for "insert", ¶ for a new paragraph, ✓ and ✗
+var BUILTIN_STAMPS = [
+  { id: 'b:comma', name: 'Comma', ink: { w: 60, h: 90, lw: 2.2, s: [[41.0, 24.0, 39.8, 28.5, 36.5, 31.8, 32.0, 33.0, 27.5, 31.8, 24.2, 28.5, 23.0, 24.0, 24.2, 19.5, 27.5, 16.2, 32.0, 15.0, 36.5, 16.2, 39.8, 19.5, 41.0, 24.0], [38.0, 24.0, 37.2, 27.0, 35.0, 29.2, 32.0, 30.0, 29.0, 29.2, 26.8, 27.0, 26.0, 24.0, 26.8, 21.0, 29.0, 18.8, 32.0, 18.0, 35.0, 18.8, 37.2, 21.0, 38.0, 24.0], [35.5, 24.0, 35.0, 25.8, 33.8, 27.0, 32.0, 27.5, 30.2, 27.0, 29.0, 25.8, 28.5, 24.0, 29.0, 22.2, 30.2, 21.0, 32.0, 20.5, 33.8, 21.0, 35.0, 22.2, 35.5, 24.0], [33.2, 24.0, 33.0, 24.6, 32.6, 25.0, 32.0, 25.2, 31.4, 25.0, 31.0, 24.6, 30.8, 24.0, 31.0, 23.4, 31.4, 23.0, 32.0, 22.8, 32.6, 23.0, 33.0, 23.4, 33.2, 24.0], [40, 24, 41, 36, 38, 50, 31, 64, 22, 78], [36, 30, 37, 40, 34, 52]] } },
+  { id: 'b:caret', name: 'Insert here (^)', ink: { w: 60, h: 50, lw: 1.6, s: [[6, 44, 30, 6, 54, 44]] } },
+  { id: 'b:para', name: 'New paragraph (¶)', ink: { w: 52, h: 84, lw: 1.5, s: [[28, 6, 28, 80], [40, 6, 40, 80], [44, 6, 22, 6, 10, 14, 8, 24, 12, 34, 22, 40, 28, 40]] } },
+  { id: 'b:check', name: 'Check', ink: { w: 66, h: 64, lw: 1.8, s: [[6, 36, 24, 58, 62, 8]] } },
+  { id: 'b:x', name: 'X', ink: { w: 60, h: 60, lw: 1.8, s: [[8, 8, 52, 52], [52, 8, 8, 52]] } }
+];
+function stampsWith(list) { return BUILTIN_STAMPS.concat(list || []); }
+// 0.94: comment banks: ✓ Did well (parts the student showed) and ✎ Needs work (starts with spelling, subject-verb agreement, punctuation…)
+function bankLoad(done) { call('api_commentBank').then(function (b) { if (!GR) return; GR.bank = b; if (done) done(); }).catch(function () {}); }
+function bankChips(onPick, selected) {          // the two lists as tappable chips
+  var b = GR && GR.bank; if (!b) return '<span class="tiny mute">Loading the comment bank…</span>';
+  var chip = function (t, k) { var on = selected && selected.t === t && selected.k === k; return '<button type="button" class="chip" style="cursor:pointer;border:' + (on ? '2px solid #111' : '1px solid transparent') + ';background:' + (k === 'good' ? '#e3f4e8' : '#fde8e6') + ';color:' + (k === 'good' ? '#14532d' : '#7f1d1d') + '" onclick="' + onPick + '(' + JSON.stringify(t).replace(/"/g, '&quot;') + ',\'' + k + '\')">' + esc(t) + '</button>'; };
+  return '<div class="row" style="gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"><b class="tiny" style="color:#1a7f4b">✓ Did well</b>' + b.good.map(function (t) { return chip(t, 'good'); }).join('') + '</div>' +
+    '<div class="row" style="gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px"><b class="tiny" style="color:#b3261e">✎ Needs work</b>' + b.fix.map(function (t) { return chip(t, 'fix'); }).join('') + '<button type="button" class="btn sm" onclick="bankEdit()">✎ Edit my comment bank</button></div>';
+}
+function bankEdit() {          // change both lists (one comment per line)
+  var b = GR.bank || { good: [], fix: [] }, ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div style="background:#fff;color:#111;border-radius:12px;padding:16px;max-width:720px;width:100%"><h3 style="margin:0 0 4px">✎ My comment bank</h3><p class="small" style="margin:0 0 10px;color:#555">One comment per line. Tap one while grading, then highlight or tap the spot: it goes in the margin. Saved for all your tests.</p>' +
+    '<div class="row" style="gap:12px;align-items:stretch;flex-wrap:wrap"><label style="flex:1;min-width:240px"><b style="color:#1a7f4b">✓ Did well</b><textarea id="bkGood" rows="12" style="width:100%">' + esc(b.good.join('\n')) + '</textarea></label><label style="flex:1;min-width:240px"><b style="color:#b3261e">✎ Needs work</b><textarea id="bkFix" rows="12" style="width:100%">' + esc(b.fix.join('\n')) + '</textarea></label></div>' +
+    '<div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn" id="bkReset">Start over with the starter lists</button><span class="grow"></span><button type="button" class="btn" id="bkNo">Cancel</button><button type="button" class="btn pri" id="bkOk">Save</button></div></div>';
+  document.body.appendChild(ov);
+  var save = function (o, b0) { busy(b0, true); call('api_commentBankSave', o).then(function (nb) { GR.bank = nb; ov.remove(); if ($('egBank')) essayBankDraw(); if ($('grBank')) gradeBankDraw(); toast('Comment bank saved.'); }).catch(function (e) { busy(b0, false); fail(e); }); };
+  $('bkNo').onclick = function () { ov.remove(); };
+  $('bkOk').onclick = function () { save({ good: $('bkGood').value.split('\n'), fix: $('bkFix').value.split('\n') }, this); };
+  $('bkReset').onclick = function () { if (confirm('Replace both lists with the starter comments?')) save({ reset: true }, this); };
+}
+function essayBankDraw() { var el = $('egBank'); if (el) el.innerHTML = bankChips('essayBankPick', GR.bankSel); }
+function essayBankPick(t, k) { GR.bankSel = GR.bankSel && GR.bankSel.t === t && GR.bankSel.k === k ? null : { t: t, k: k }; if (GR.bankSel && GR.tool === 'pen') GR.tool = 'hl'; GR.stamp = null; essayBankDraw(); essayDraw0(); }
+function gradeBankDraw() { var el = $('grBank'); if (el) el.innerHTML = bankChips('gradeBankPick', null); }
+function gradeBankPick(t) { var n = $('grNote'); if (!n) return; n.value = n.value ? n.value.replace(/\s*$/, '') + (/[.!?]$/.test(n.value.trim()) ? ' ' : '. ') + t : t; gradeSet('note', n.value); }
 // 0.84 stamps: comments in the teacher's own handwriting, in any color and size, tapped onto any answer
 var GRADE_COLORS = [['#d0021b', 'Red'], ['#1a8f3c', 'Green'], ['#1f5fbf', 'Blue'], ['#7b2cbf', 'Purple'], ['#111111', 'Black']];
 function gradeToolsDraw() {
@@ -7115,22 +7363,22 @@ function gradeToolsDraw() {
     GRADE_COLORS.map(function (c) { return '<button type="button" title="' + c[1] + '" onclick="gradeColor(\'' + c[0] + '\')" style="width:26px;height:26px;border-radius:50%;cursor:pointer;background:' + c[0] + ';border:' + (GR.color === c[0] ? '3px solid #ffd23f;box-shadow:0 0 0 2px #333' : '2px solid #fff;box-shadow:0 0 0 1px #999') + '"></button>'; }).join('') +
     '<span class="tiny mute" style="margin-left:8px">Stamp size</span><select style="width:auto" onchange="GR.size=+this.value;gradeToolsDraw()">' + [[0.6, 'Small'], [1, 'Medium'], [1.5, 'Large'], [2.2, 'Extra large']].map(function (z) { return '<option value="' + z[0] + '"' + (GR.size === z[0] ? ' selected' : '') + '>' + z[1] + '</option>'; }).join('') + '</select></div>' +
     '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><span class="tiny mute">🖋 Stamps</span>' +
-    GR.stamps.map(function (st) { return '<span style="position:relative;display:inline-block"><button type="button" class="btn sm' + (GR.stamp === st.id ? ' pri' : '') + '" title="' + esc(st.name || 'Stamp') + '" onclick="gradePickStamp(\'' + st.id + '\')" style="padding:2px 6px;background:' + (GR.stamp === st.id ? '#fff8d6' : '#fff') + ';border:' + (GR.stamp === st.id ? '2px solid ' + GR.color : '1px solid #ccd') + '"><canvas class="grStampPv" data-id="' + st.id + '" width="120" height="36" style="display:block;width:120px;height:36px"></canvas></button><button type="button" title="Delete this stamp" onclick="gradeStampDel(\'' + st.id + '\')" style="position:absolute;top:-6px;right:-6px;border:0;background:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;box-shadow:0 0 0 1px #999">✕</button></span>'; }).join('') +
+    GR.stamps.map(function (st) { return '<span style="position:relative;display:inline-block"><button type="button" class="btn sm' + (GR.stamp === st.id ? ' pri' : '') + '" title="' + esc(st.name || 'Stamp') + '" onclick="gradePickStamp(\'' + st.id + '\')" style="padding:2px 6px;background:' + (GR.stamp === st.id ? '#fff8d6' : '#fff') + ';border:' + (GR.stamp === st.id ? '2px solid ' + GR.color : '1px solid #ccd') + '"><canvas class="grStampPv" data-id="' + st.id + '" width="120" height="36" style="display:block;width:120px;height:36px"></canvas></button>' + (/^b:/.test(st.id) ? '' : '<button type="button" title="Delete this stamp" onclick="gradeStampDel(\'' + st.id + '\')" style="position:absolute;top:-6px;right:-6px;border:0;background:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;box-shadow:0 0 0 1px #999">✕</button>') + '</span>'; }).join('') +
     '<button type="button" class="btn sm" onclick="gradeStampNew()">＋ New stamp</button>' + (GR.stamp ? '<button type="button" class="btn sm" onclick="gradePickStamp(GR.stamp)">✏️ Back to the pen</button>' : '') + '</div>';
   [].forEach.call(el.querySelectorAll('.grStampPv'), function (cv) { var st = GR.stamps.filter(function (x) { return x.id === cv.dataset.id; })[0]; if (st) gradeStampPaint(cv, st.ink, GR.color); });
   var h = $('grHint'); if (h) h.textContent = GR.stamp ? 'Tap the answer where the stamp goes (tap it again for another). ✏️ Back to the pen to write.' : 'Write on the answer with the stylus or mouse.';
 }
 function gradeStampPaint(cv, ink, color) {          // a stamp drawn to fit a canvas (previews)
   var x = cv.getContext('2d'), k = Math.min((cv.width - 6) / ink.w, (cv.height - 6) / ink.h), ox = (cv.width - ink.w * k) / 2, oy = (cv.height - ink.h * k) / 2;
-  x.clearRect(0, 0, cv.width, cv.height); x.strokeStyle = color; x.lineWidth = Math.max(1, 2.5 * k); x.lineCap = x.lineJoin = 'round';
+  x.clearRect(0, 0, cv.width, cv.height); x.strokeStyle = color; x.lineWidth = Math.max(1, 2.5 * k * (ink.lw || 1)); x.lineCap = x.lineJoin = 'round';
   ink.s.forEach(function (p) { inkPath(x, { p: p }, function (v) { return ox + v * k; }, function (v) { return oy + v * k; }); });
 }
 function gradeColor(c) { GR.color = c; gradeToolsDraw(); }
-function gradePickStamp(id) { GR.stamp = GR.stamp === id ? null : id; gradeToolsDraw(); }
+function gradePickStamp(id) { GR.stamp = GR.stamp === id ? null : id; if (GR.stamp && GR.bankSel) { GR.bankSel = null; if ($('egBank')) essayBankDraw(); } gradeToolsDraw(); if (GR.essay) essayHint(); }
 function gradeStampAt(bi, pt) {          // the stamp's handwriting, scaled to the size picked and centered where the teacher tapped (kept as pen marks)
   var st = GR.stamps.filter(function (x) { return x.id === GR.stamp; })[0]; if (!st) return;
   var ink = st.ink, z = GR.size || 1, k = Math.min(120 * z / ink.w, 45 * z / ink.h), ox = pt[0] - ink.w * k / 2, oy = pt[1] - ink.h * k / 2;
-  ink.s.forEach(function (p) { GR.cur.ink.push({ b: bi, c: GR.color, w: Math.max(0.8, Math.round(2.5 * k * 10) / 10), p: p.map(function (v, i) { return Math.round(((i % 2 ? oy : ox) + v * k) * 10) / 10; }) }); });
+  ink.s.forEach(function (p) { GR.cur.ink.push({ b: bi, c: GR.color, w: Math.max(0.8, Math.round(2.5 * k * (ink.lw || 1) * 10) / 10), p: p.map(function (v, i) { return Math.round(((i % 2 ? oy : ox) + v * k) * 10) / 10; }) }); });
   gradeSet('ink');
 }
 function gradeStampNew() {          // a pad to write the comment once with the stylus
@@ -7153,12 +7401,12 @@ function gradeStampNew() {          // a pad to write the comment once with the 
     var xs = [], ys = []; strokes.forEach(function (p) { for (var i = 0; i + 1 < p.length; i += 2) { xs.push(p[i]); ys.push(p[i + 1]); } });
     var x0 = Math.min.apply(null, xs) - 6, y0 = Math.min.apply(null, ys) - 6, w = Math.max.apply(null, xs) - x0 + 6, h = Math.max.apply(null, ys) - y0 + 6;          // trimmed to the writing
     var ink = { w: Math.round(w), h: Math.round(h), s: strokes.map(function (p) { return p.map(function (v, i) { return Math.round((v - (i % 2 ? y0 : x0)) * 10) / 10; }); }) }, b = this;
-    busy(b, true); call('api_stampSave', { name: $('padName').value, ink: ink }).then(function (list) { GR.stamps = list; GR.stamp = list.length ? list[list.length - 1].id : null; ov.remove(); gradeToolsDraw(); toast('Stamp saved. Tap the answer to place it.'); }).catch(function (e) { busy(b, false); fail(e); });
+    busy(b, true); call('api_stampSave', { name: $('padName').value, ink: ink }).then(function (list) { GR.stamps = stampsWith(list); GR.stamp = list.length ? list[list.length - 1].id : null; ov.remove(); gradeToolsDraw(); toast('Stamp saved. Tap the answer to place it.'); }).catch(function (e) { busy(b, false); fail(e); });
   };
 }
 function gradeStampDel(id) {
   if (!confirm('Delete this stamp? Marks you already placed with it stay.')) return;
-  call('api_stampDelete', id).then(function (list) { GR.stamps = list; if (GR.stamp === id) GR.stamp = null; gradeToolsDraw(); }).catch(fail);
+  call('api_stampDelete', id).then(function (list) { GR.stamps = stampsWith(list); if (GR.stamp === id) GR.stamp = null; gradeToolsDraw(); }).catch(fail);
 }
 function gradeCanvases() { return [].slice.call(document.querySelectorAll('#grWork canvas')); }
 function gradeUndo() { if (!GR.cur.ink.length) return; GR.cur.ink.pop(); gradeSet('ink'); gradeCanvases().forEach(gradeRedraw); }
@@ -7486,7 +7734,7 @@ function gradeEssayStart(D) {
   if (!who.length) { modal('<h2>✍️ Grade</h2><p>No scans yet. Scan the stack to one PDF, then use <b>📤 Upload the scans</b>.</p><button class="btn" onclick="closeModal()">Close</button>'); return; }
   GR = { D: D, who: who, si: 0, img: {}, queue: [], saving: false, dirty: false, essay: true, color: '#d0021b', size: 1, stamp: null, stamps: [], tool: 'hl', row: -1, hist: [], tc: true };
   who.some(function (s, i) { if (!D.marks[s.sid + '|essay']) { GR.si = i; return true; } });
-  call('api_stamps').then(function (list) { if (!GR) return; GR.stamps = list; gradeToolsDraw(); }).catch(function () {});
+  call('api_stamps').then(function (list) { if (!GR) return; GR.stamps = stampsWith(list); gradeToolsDraw(); }).catch(function () {});
   if (!D.qs.length) { essayRubricEdit(D.aid, [], function (rows) { call('api_gradeData', D.id).then(gradeEssayStart).catch(fail); }, D.mode); return; }
   essayDraw();
 }
@@ -7502,11 +7750,12 @@ function essayDraw() {
     '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:#fff;z-index:2;padding:6px 0">' + (D.mode === 'project' ? tool('hl', '▭ Mark an area') + tool('note', '📍 Pin a note') : tool('hl', '🖍 Highlight + comment') + tool('note', '💬 Margin note')) + tool('pen', '✏️ Pen') + '<button type="button" class="btn sm" onclick="essayUndo()">↶ Undo</button>' +
     '<span class="tiny mute" style="margin-left:6px">Ties to</span><select id="egRow" style="width:auto" onchange="GR.row=+this.value"><option value="-1">No rubric row</option>' + rows.map(function (r, i) { return '<option value="' + i + '"' + (GR.row === i ? ' selected' : '') + '>● ' + esc(r.t) + '</option>'; }).join('') + '</select><span class="tiny mute grow" id="grHint"></span></div>' +
     '<div id="grTools"></div>' +
+    '<div id="egBank"></div>' +
     '<div id="egPages" style="margin-top:8px"><div class="spin">Loading the essay…</div></div>' +
     '<div id="egRub" style="margin-top:12px"></div>' +
     '<label class="f">Overall comment</label><textarea id="egCom" rows="4" style="width:100%" placeholder="What they did well, and the one thing to work on next" oninput="GR.cur.comment=this.value;gradeSet(\'comment\',this.value)">' + esc(GR.cur.comment) + '</textarea>' +
     '<div class="row" style="margin-top:12px"><button class="btn" onclick="essayGo(GR.si-1)"' + (GR.si ? '' : ' disabled') + '>◀ Back</button><span class="grow"></span><button class="btn pri big" onclick="essayGo(GR.si+1)">Next ▶</button></div>', true);
-  gradeSaved(); gradeToolsDraw(); essayRubDraw(); essayHint();
+  gradeSaved(); gradeToolsDraw(); essayRubDraw(); essayHint(); if (GR.bank) essayBankDraw(); else bankLoad(essayBankDraw);
   if (GR.tc) { GR.tc = false; gradeFromTc(D.id); }
   var tok = GR.tok = {}, pages = D.scans[st.sid] || {}, nums = Object.keys(pages).map(Number).sort(function (a, b) { return a - b; });
   Promise.all(nums.map(function (n) { return gradeImg(pages[n]); })).then(function (ims) {
@@ -7522,8 +7771,8 @@ function essayDraw() {
   }).catch(function (er) { if ($('egPages')) $('egPages').innerHTML = '<div class="small">' + esc(er.message || er) + '</div>'; });
 }
 function essayRubricChanged(rows) { essayKeep(); call('api_gradeData', GR.D.id).then(function (D) { var si = GR.si; GR.D = D; GR.si = si; essayDraw(); }).catch(fail); }
-function essayHint() { var h = $('grHint'); if (!h) return; var pj = GR.D.mode === 'project'; h.textContent = GR.stamp ? 'Tap where the stamp goes.' : GR.tool === 'hl' ? (pj ? 'Drag a box around part of the work, then type a comment.' : 'Drag across the words (like a highlighter), then type a margin comment or leave it blank.') : GR.tool === 'note' ? 'Tap a spot to pin a typed note; it shows in the margin with a line to the spot.' : 'Write anywhere, margin too.'; }
-function essayTool(k) { GR.tool = k; GR.stamp = null; essayDraw0(); }
+function essayHint() { var h = $('grHint'); if (!h) return; var pj = GR.D.mode === 'project'; h.textContent = GR.bankSel ? '“' + GR.bankSel.t + '”: ' + (GR.tool === 'note' ? 'tap the spot.' : 'highlight the words (or switch to 💬 to tap a spot). Tap the comment again to stop.') : GR.stamp ? 'Tap where the stamp goes.' : GR.tool === 'hl' ? (pj ? 'Drag a box around part of the work, then type a comment.' : 'Drag across the words (like a highlighter), then type a margin comment or leave it blank.') : GR.tool === 'note' ? 'Tap a spot to pin a typed note; it shows in the margin with a line to the spot.' : 'Write anywhere, margin too.'; }
+function essayTool(k) { GR.tool = k; GR.stamp = null; if (k === 'pen') { GR.bankSel = null; essayBankDraw(); } essayDraw0(); }
 function essayDraw0() {          // redraw the tool buttons only (keeps the pages)
   [].forEach.call(document.querySelectorAll('.modal .btn.sm'), function (b) { var m = (b.getAttribute('onclick') || '').match(/essayTool\('(\w+)'\)/); if (m) b.classList.toggle('pri', m[1] === GR.tool && !GR.stamp); });
   gradeToolsDraw(); essayHint();
@@ -7552,7 +7801,7 @@ function essayInk(cv) {
       if (GR.D.mode !== 'project') { if (E.words && E.words.length) { temp.rects = []; temp.w0 = essayNearest(E.words, pt); } else temp.path = pt.slice(); }          // typed: snap to words · handwritten: a marker stroke
       GR.cur.anno.hl.push(temp);
     }
-    else if (GR.tool === 'note') { var n = { p: E.page, x: Math.min(pt[0], E.P.w - 2), y: pt[1], t: '', r: GR.row }; GR.cur.anno.notes.push(n); essayEdit(n, true, cv); }
+    else if (GR.tool === 'note') { var n = { p: E.page, x: Math.min(pt[0], E.P.w - 2), y: pt[1], t: '', r: GR.row }; GR.cur.anno.notes.push(n); if (GR.bankSel) { n.t = GR.bankSel.t; n.k = GR.bankSel.k; GR.hist.push({ k: 'note', o: n }); gradeSet('ink'); essayRepaint(cv); } else essayEdit(n, true, cv); }
   });
   cv.addEventListener('pointermove', function (e) {
     var pt = at(e);
@@ -7565,7 +7814,7 @@ function essayInk(cv) {
     }
   });
   var end = function () {
-    if (temp) { var t = temp; temp = null; delete t.w0; if (t.rects && !t.rects.length) t.w = 0; t.x = Math.max(0, t.x); t.w = Math.min(t.w, E.P.w - t.x); if (t.w < 4 || t.h < 3) { GR.cur.anno.hl.splice(GR.cur.anno.hl.indexOf(t), 1); essayRepaint(cv); } else { GR.hist.push({ k: 'hl', o: t }); gradeSet('ink'); essayRepaint(cv); essayEdit(t, true, cv); } }
+    if (temp) { var t = temp; temp = null; delete t.w0; if (t.rects && !t.rects.length) t.w = 0; t.x = Math.max(0, t.x); t.w = Math.min(t.w, E.P.w - t.x); if (t.w < 4 || t.h < 3) { GR.cur.anno.hl.splice(GR.cur.anno.hl.indexOf(t), 1); essayRepaint(cv); } else { GR.hist.push({ k: 'hl', o: t }); if (GR.bankSel) { t.t = GR.bankSel.t; t.k = GR.bankSel.k; gradeSet('ink'); essayRepaint(cv); } else { gradeSet('ink'); essayRepaint(cv); essayEdit(t, true, cv); } } }
     live = null;
   };
   cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
@@ -7816,7 +8065,7 @@ function tdaySave(btn) {
   if (!jobs.length) return toast('Mark the students first.');
   var noTest = jobs.filter(function (j) { return !j.G.aid && !String(j.G.test || '').trim(); })[0]; if (noTest) return toast('Pick or type the name of the test' + (TDS.length > 1 ? ' for ' + noTest.G.p.course : '') + ' first.');
   var out = 0; jobs.forEach(function (j) { out += j.list.filter(function (x) { return x.status === 'unfinished' || x.status === 'absent'; }).length; });
-  if (!confirm('Save the test day? ' + out + ' student' + (out === 1 ? '' : 's') + ' who didn’t finish or were absent get their plan' + (out ? ' (Testing Center and support-room requests go out now)' : '') + '.')) return;
+  if (!confirm('Save the test day? ' + (out ? out + ' student' + (out === 1 ? ' who didn’t finish or was absent gets' : 's who didn’t finish or were absent get') + ' their plan (Testing Center and support-room requests go out now).' : 'Everyone finished, so no requests go out.'))) return;
   busy(btn, true);
   var tot = { finished: 0, unfinished: 0, absent: 0, sent: 0, skipped: [] }, chain = Promise.resolve();
   jobs.forEach(function (j) { chain = chain.then(function () { return call('api_testDaySave', { secid: j.G.p.secid, aid: j.G.aid, test: j.G.test, students: j.list, reqId: uid() }); }).then(function (r) { ['finished', 'unfinished', 'absent'].forEach(function (k) { tot[k] += r.counts[k]; }); tot.sent += r.sent; tot.skipped = tot.skipped.concat(r.skipped); }); });
@@ -8379,7 +8628,7 @@ function rmOptOut(id) { if (!confirm('Remove your room from the list? Your stude
 var CO = { campus: '', date: '', view: 'today', dash: null, prefs: null };
 // Five tabs (Colleen, 0.13). CO.view is the page inside a tab; each tab has its pages (sub-tabs).
 var CO_VIEWS = [['today', 'Today'], ['schedule', 'Schedule'], ['people', 'People'], ['emails', 'Emails'], ['settings', 'Settings']];
-var CO_SUBS = { today: [['today', 'List'], ['room', 'Room'], ['board', 'Board']], schedule: [['periods', 'Open periods'], ['busy', 'Busy days'], ['waitlist', 'Waitlist']], people: [['people', 'Students & teachers'], ['resources', 'Teacher resources']], emails: [['comms', 'Emails']], settings: [['health', 'Health check'], ['mymail', 'My emails'], ['switches', 'Switches'], ['seats', 'Seats & periods'], ['rooms', 'Testing locations'], ['tidy', 'Tidy up'], ['admin', 'Student list & imports'], ['reports', 'Reports'], ['planning', 'Year planning'], ['guides', 'How to give tests'], ['suggest', 'Suggestions']] };
+var CO_SUBS = { today: [['today', 'List'], ['room', 'Room'], ['board', 'Board']], schedule: [['periods', 'Open periods'], ['busy', 'Busy days'], ['waitlist', 'Waitlist']], people: [['people', 'Students & teachers'], ['resources', 'Teacher resources']], emails: [['comms', 'Emails']], settings: [['health', 'Health check'], ['mymail', 'My emails'], ['staff', 'Staff'], ['switches', 'Switches'], ['seats', 'Seats & periods'], ['rooms', 'Testing locations'], ['tidy', 'Tidy up'], ['admin', 'Student list & imports'], ['reports', 'Reports'], ['planning', 'Year planning'], ['guides', 'How to give tests'], ['suggest', 'Suggestions']] };
 var CO_TOP = {}; Object.keys(CO_SUBS).forEach(function (t) { CO_SUBS[t].forEach(function (x) { CO_TOP[x[0]] = t; }); }); CO_TOP.attention = 'today';
 function coStart() { CO.campus = CO.campus || B.staff.home; CO.date = CO.date || B.today; coLoad(true); }
 function coLoad(first) {
@@ -8403,9 +8652,10 @@ function coDraw() {
     (subs.length > 1 ? '<div class="row" style="margin:0 0 12px"><div class="seg">' + subs.map(function (x) { return '<button class="' + (CO.view === x[0] ? 'on' : '') + '" onclick="coView(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>' : '');
   nav = nav.replace('<div class="tabs grow">', '<div class="tabs grow">') + (B.hub && !B.hub.noPw ? '<div style="text-align:right;margin:-6px 0 8px"><button class="btn sm" onclick="hubLock()">🔒 Lock the hub</button></div>' : '');
   if (!d.edit) nav += '<div class="banner info small">You can view ' + esc(d.names[CO.campus]) + ' but not make changes.</div>';
-  var body = { mymail: coMyMail, today: coTodayWrap, room: coTodayWrap, periods: coPeriods, busy: coBusy, board: coBoard, planning: coPlanning, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin, rooms: coRooms, tidy: coTidy, health: coHealth, suggest: coSuggest, guides: coGuides, switches: coSwitches, seats: coSeats }[CO.view]();
+  var body = { staff: coStaffList, mymail: coMyMail, today: coTodayWrap, room: coTodayWrap, periods: coPeriods, busy: coBusy, board: coBoard, planning: coPlanning, waitlist: coWaitlist, resources: coResources, comms: coComms, people: coPeople, reports: coReports, admin: coAdmin, rooms: coRooms, tidy: coTidy, health: coHealth, suggest: coSuggest, guides: coGuides, switches: coSwitches, seats: coSeats }[CO.view]();
   $('main').innerHTML = '<div class="wrap">' + nav + '<div id="coBody">' + (typeof body === 'string' ? body : '<div class="spin">Loading…</div>') + '</div></div>';
   coBell();
+  setTimeout(coTimerTick, 0);
 }
 function coCampus(c) { CO.campus = c; coLoad(true); }
 function coView(v) { CO.view = v; coDraw(); }
@@ -8461,7 +8711,7 @@ function coCheckInId() {
 // ---------- A. Today's testing
 function coToday() {
   var d = CO.dash, c = d.counts;
-  var out = '<div class="row" style="margin-bottom:10px"><button class="btn sm" onclick="coDay(-1)">‹</button><input type="date" style="width:auto" value="' + d.date + '" onchange="CO.date=this.value;coLoad()"><button class="btn sm" onclick="coDay(1)">›</button>' + (d.date !== B.today ? '<button class="btn sm" onclick="CO.date=B.today;coLoad()">Today</button>' : '') + '<h2 style="margin:0 0 0 6px" class="grow">' + esc(longD(d.date)) + '</h2>' + (d.edit ? '<button class="btn sm" onclick="coPrintPile()" title="Every attached test for the next school day in one PDF, with a day sheet">🖨️ Print tomorrow’s tests</button> <button class="btn sm" onclick="coSubPacket()" title="How to run the Testing Center, plus this day’s sheet">📄 Sub packet</button>' + (function () { var n = 0; (d.periods || []).forEach(function (p) { p.appts.forEach(function (a) { if (a.bus) n++; }); }); return n ? ' <button class="btn sm" onclick="coBusList()">🚌 Late bus passes (' + n + ')</button>' : ''; })() + ' <button class="btn sm" onclick="coPickup()">📥 Pick up</button> <button class="btn sm" onclick="coWalkIn()">＋ Walk-in</button>' : '') + '</div>';
+  var out = '<div class="row" style="margin-bottom:10px"><button class="btn sm" onclick="coDay(-1)">‹</button><input type="date" style="width:auto" value="' + d.date + '" onchange="CO.date=this.value;coLoad()"><button class="btn sm" onclick="coDay(1)">›</button>' + (d.date !== B.today ? '<button class="btn sm" onclick="CO.date=B.today;coLoad()">Today</button>' : '') + '<h2 style="margin:0 0 0 6px" class="grow">' + esc(longD(d.date)) + '</h2>' + (d.edit ? '<button class="btn sm" onclick="coPrintPile()" title="Every attached test for the next school day in one PDF, with a day sheet">🖨️ Print tomorrow’s tests</button> <button class="btn sm" onclick="coSubPacket()" title="How to run the Testing Center, plus this day’s sheet">📄 Sub packet</button>' + (function () { var n = 0; (d.periods || []).forEach(function (p) { p.appts.forEach(function (a) { if (a.bus) n++; }); }); return n ? ' <button class="btn sm" onclick="coBusList()">🚌 Late bus passes (' + n + ')</button>' : ''; })() + ' <button class="btn sm" onclick="coCols()" title="Choose which columns show">⚙ Columns</button> <button class="btn sm" onclick="coPickup()">📥 Pick up</button> <button class="btn sm" onclick="coWalkIn()">＋ Walk-in</button>' : '') + '</div>';
   if (!d.info.school) return out + '<div class="card empty">No school' + (d.info.note ? ': ' + esc(d.info.note) : '') + '.</div>';
   out += COLOR_KEY;
   out += '<div class="tiles"><div class="tile"><b>' + c.booked + '</b><span>Scheduled</span></div><div class="tile"><b>' + c.inRoom + '</b><span>In the room</span></div><div class="tile"><b>' + c.done + '</b><span>Finished</span></div><div class="tile"><b>' + c.noShow + '</b><span>No-shows</span></div><div class="tile"><b style="color:' + (c.needs ? 'var(--bad)' : 'inherit') + '">' + c.needs + '</b><span>Need test info</span></div></div>';
@@ -8470,7 +8720,7 @@ function coToday() {
     out += '<div class="card' + (p.open || p.appts.length ? '' : ' dim') + '" style="padding:12px 14px"><div class="period-h"><h3 style="margin:0">' + esc(p.label) + '</h3><span class="seats">' + (p.start ? hm(p.start) + '–' + hm(p.end) : '') + '</span><span class="seats">' + (p.open ? seats : esc(p.why || 'Closed') + ' · <b>No walk-ins</b>') + '</span>' + (p.waiting ? '<span class="chip warn">' + p.waiting + ' waiting</span>' : '') + '<div class="grow"></div>' + (p.appts.length ? '<button class="btn sm" onclick="coSecurly(\'' + p.period + '\')">Export for Securly</button>' : '') + (d.edit ? '<button class="btn sm" onclick="coChange(\'' + p.period + '\')">Seats / close</button>' : '') + '</div>';
     var waitingOn = p.appts.filter(function (a) { return /^(scheduled|awaiting|ready)/i.test(a.status) && !a.unmatched; }).length, ended = p.end && (d.date < B.today || (d.date === B.today && new Date().toTimeString().slice(0, 5) > p.end));
     if (d.edit && ended && waitingOn) out += '<div class="banner warn small" style="margin:6px 0">' + waitingOn + ' student' + (waitingOn > 1 ? 's never' : ' never') + ' arrived. <button class="btn sm bad" onclick="coNoShows(\'' + p.period + '\', ' + waitingOn + ')">Mark ' + (waitingOn > 1 ? 'them' : 'as') + ' no-show' + (waitingOn > 1 ? 's' : '') + '</button></div>';
-    if (p.appts.length) out += '<table class="t"><tr><th>Student</th><th class="hide-sm">Course · Teacher</th><th>Test</th><th>Half</th><th>Format</th><th>Ready?</th><th>Status</th><th></th></tr>' + p.appts.map(coRow).join('') + '</table>';
+    if (p.appts.length) out += '<table class="t"><tr><th>Student</th>' + coCol('course', '<th class="hide-sm">Course · Teacher</th>') + coCol('test', '<th>Test</th>') + coCol('half', '<th>Half</th>') + coCol('format', '<th>Format</th>') + coCol('ready', '<th>Ready?</th>') + '<th>Status</th><th></th></tr>' + p.appts.map(coRow).join('') + '</table>';
     else if (p.open) out += '<div class="small mute">No one scheduled.</div>';
     out += '</div>';
   });
@@ -8488,8 +8738,33 @@ function coRow(a) {
     if (/^(checked|testing|paused)/i.test(s)) act = '<button class="btn sm" title="Phone bag or cubby number" onclick="event.stopPropagation();coBag(\'' + a.id + '\',\'' + esc(a.bag || '') + '\')">👜' + (a.bag ? ' ' + esc(a.bag) : '') + '</button>' + act;          // 0.68
   }
   var flags = (a.conflict && !a.conflict.verified ? ' <span class="chip warn" title="Will miss ' + esc(a.conflict.course) + '">pass?</span>' : '') + (a.unmatched ? ' <span class="chip bad">not matched</span>' : '') + (a.accom ? ' <span class="chip info" title="Accommodations: ' + esc(a.accom) + '">⏱ ' + esc(a.accom.split(' · ')[0]) + '</span>' : '') + (a.timing ? ' ' + timingChip(a.timing) : '') + (a.bus ? ' <span class="chip ' + (a.bus === 'Ready' ? 'ok' : 'warn') + '" title="Late bus pass: click to mark it ' + (a.bus === 'Ready' ? 'not ready' : 'ready') + '" onclick="event.stopPropagation();coBus(\'' + a.id + '\',\'' + a.bus + '\')" style="cursor:pointer">🚌 ' + (a.bus === 'Ready' ? 'pass ready' : 'bus pass') + '</span>' : '') + (a.noTest ? ' <span class="chip warn" title="The student typed a test the teacher hasn’t added, so the app couldn’t check its last day. The teacher is asked on My classes.">no deadline on file</span>' : '') + (a.resources && a.resources.length ? ' <span class="chip info" title="Standing resource">doc</span>' : '');
-  return '<tr class="click' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(s) ? ' needs' : '') + '" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.bag ? ' · 👜 ' + esc(a.bag) : '') + (a.start ? ' · started ' + timeOf(a.start) + (a.timing && /^(testing|paused)/i.test(a.status) ? ' · <b>ends ' + endsAt(a.start, +a.timing) + '</b>' : '') : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td><td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td><td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td><td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td><td>' + fmtChip(a.ready) + '</td><td>' + readyChip(a.ready) + '</td><td>' + statusChip(s) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
+  return '<tr class="click' + (a.ready && a.ready.state === 'Needs info' && /^(scheduled|awaiting|ready|checked|testing)/i.test(s) ? ' needs' : '') + '" onclick="coAppt(\'' + a.id + '\')"><td><b>' + esc(a.student) + '</b>' + flags + '<div class="tiny mute">' + esc(a.sid) + (a.bag ? ' · 👜 ' + esc(a.bag) : '') + (a.start ? ' · started ' + timeOf(a.start) + (a.timing && /^(testing|paused)/i.test(a.status) ? ' · <b>ends ' + endsAt(a.start, +a.timing) + '</b>' : '') : a.inAt ? ' · in ' + timeOf(a.inAt) : '') + '</div></td>' + coCol('course', '<td class="hide-sm">' + esc(a.course) + '<div class="tiny mute">' + esc(a.teacher) + '</div></td>') + coCol('test', '<td>' + esc(a.test) + '<div class="tiny mute">' + esc(a.purpose) + '</div></td>') + coCol('half', '<td>' + (a.half ? '<span class="chip">' + esc(a.half === 'AB' ? 'A+B' : a.half) + '</span>' : '') + '</td>') + coCol('format', '<td>' + fmtChip(a.ready) + '</td>') + coCol('ready', '<td>' + readyChip(a.ready) + '</td>') + '<td>' + statusChip(s) + coTimer(a) + (a.desk && /^(checked|testing|paused)/i.test(s) ? ' <span class="chip blue">Desk ' + esc(a.desk) + '</span>' : '') + '</td><td>' + act + '</td></tr>';
 }
+// 0.95: each coordinator chooses which columns the Today table shows (saved with their dashboard choices)
+var CO_COLS = [['course', 'Course · Teacher'], ['test', 'Test'], ['half', 'Half (A/B)'], ['format', 'Format (paper / online)'], ['ready', 'Ready?']];
+function coCol(k, html) { return (CO.prefs && (CO.prefs.cols || []).indexOf(k) >= 0) ? '' : html; }          // prefs.cols = the columns this person hides
+function coCols() {
+  var hid = (CO.prefs && CO.prefs.cols) || [];
+  modal('<h2>⚙ Columns on Today</h2><p class="small mute" style="margin-top:0">Untick what you don’t use. Student, Status and the buttons always show. Just for you.</p>' + CO_COLS.map(function (c) { return '<label style="display:block;padding:6px 0"><input type="checkbox" class="coColK" value="' + c[0] + '"' + (hid.indexOf(c[0]) >= 0 ? '' : ' checked') + '> ' + c[1] + '</label>'; }).join('') +
+    '<div class="row" style="margin-top:10px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" id="ccOk">Save</button></div>');
+  $('ccOk').onclick = function () { var off = [].slice.call(document.querySelectorAll('.coColK')).filter(function (x) { return !x.checked; }).map(function (x) { return x.value; }); closeModal(); coPref('cols', off); };
+}
+// 0.95: a live countdown for each student testing: to the teacher's time limit, or the end of the period; orange in the last 10 minutes, red in the last 5
+function coTimerEnd(a) {
+  if (!a.start || !/^testing/i.test(a.status || '')) return 0;
+  if (+a.timing) return new Date(a.start).getTime() + (+a.timing) * 60000;
+  var p = ((CO.dash && CO.dash.periods) || []).filter(function (x) { return String(x.period) === String(a.period); })[0], d = (CO.dash && CO.dash.date) || '';
+  if (!p || !p.end || !d) return 0; var hm = String(p.end).split(':'); var t = new Date(d + 'T00:00:00'); t.setHours(+hm[0], +hm[1], 0, 0); return t.getTime();
+}
+function coTimer(a) { var e = coTimerEnd(a); if (!e) return /^paused/i.test(a.status || '') ? ' <span class="chip">⏸ paused</span>' : ''; return ' <span class="chip coTimer" data-end="' + e + '" data-timed="' + (+a.timing ? 1 : 0) + '"></span>'; }
+function coTimerTick() {
+  [].forEach.call(document.querySelectorAll('.coTimer'), function (el) {
+    var left = Math.round((+el.dataset.end - Date.now()) / 60000), up = left <= 0;
+    el.textContent = up ? '⏰ Time’s up' : '⏱ ' + left + ' min left' + (el.dataset.timed === '1' ? '' : ' (period)');
+    el.style.background = up ? '#c0392b' : left <= 5 ? '#e74c3c' : left <= 10 ? '#e67e22' : ''; el.style.color = up || left <= 10 ? '#fff' : ''; el.style.fontWeight = left <= 10 ? '700' : '';
+  });
+}
+setInterval(coTimerTick, 15000);
 function coStep(id, step, data) { return call('api_status', id, step, data || {}).then(function () { toast({ in: 'Arrived', start: 'Started', done: 'Checked out', noshow: 'Marked no-show', undo: 'Back to scheduled', verify: 'Pass noted', noremind: 'No reminders for this one', mailbox: 'Marked: back in the teacher’s mailbox', unmailbox: 'Not in the mailbox after all' }[step] || 'Saved'); closeDrawer(); return coLoad(); }).catch(fail); }
 function coDone(id) {
   var ap = null; (CO.dash.periods || []).forEach(function (p) { p.appts.forEach(function (x) { if (x.id === id) ap = x; }); });
@@ -9022,7 +9297,7 @@ function coDraft(id, send) { call(send ? 'api_sendDraft' : 'api_skipDraft', id).
 // ---------- D. Waitlist
 function coWaitlist() {
   var w = CO.dash.waitlist, ed = CO.dash.edit; if (!w) return '<div class="spin">Loading the waitlist…</div>';
-  var out = '<div class="banner info small">Waitlist offers: <b>' + (CO.dash.conf.offerMode === 'auto' ? 'automatic' : 'coordinator approves first') + '</b> · ' + CO.dash.conf.offerHours + ' hour(s) to answer' + (CO.dash.conf.cutoffH ? ' · inside the ' + CO.dash.conf.cutoffH + '-hour cutoff: ' + (CO.dash.conf.insideCutoff === 'ask' ? 'ask a coordinator' : 'offer anyway') : ' · open seats are offered until the period starts') + '. Change these on the Settings tab.</div>';
+  var out = '<div class="banner info small">Waitlist offers: <b>' + (CO.dash.conf.offerMode === 'auto' ? 'automatic' : 'coordinator approves first') + '</b> · ' + CO.dash.conf.offerHours + ' hour(s) to answer' + (CO.dash.conf.cutoff ? ' · after booking closes (' + CO.dash.conf.cutoff.text + '): ' + (CO.dash.conf.insideCutoff === 'ask' ? 'ask a coordinator' : 'offer anyway') : ' · open seats are offered until the period starts') + '. Change these on the Settings tab.</div>';
   if (!w.length) return out + '<div class="card empty">No one is waiting.</div>';
   w.forEach(function (g) {
     var free = g.ab ? 'Open: A ' + Math.max(0, g.free.A) + ' · B ' + Math.max(0, g.free.B) : 'Open seats: ' + Math.max(0, g.free.all);
@@ -9170,6 +9445,23 @@ function counsDraw() {
 // ---------- H. Administration: roster import, SignUpGenius import, import history, date changes, my dashboard
 var IMP = null;
 // 0.87: each coordinator / proctor picks the Testing Center emails they get, and for which campus
+// 0.95: the Staff tab in the app: coordinators and proctors (administrators only by an administrator); "No longer here" turns someone off
+function coStaffList() { setTimeout(function () { call('api_staffList').then(coStaffDraw).catch(function (e) { var el = $('stList'); if (el) el.innerHTML = '<p class="small">' + esc(e.message || e) + '</p>'; }); }, 0); return '<div class="card" id="stList"><div class="spin">Loading…</div></div>'; }
+function coStaffDraw(d) {
+  window.__staff = d; var el = $('stList'); if (!el) return; var nm = { S: 'South', N: 'North' };
+  el.innerHTML = '<div class="row" style="align-items:center"><h2 class="grow" style="margin:0">👥 Testing Center staff</h2><button class="btn pri" onclick="coStaffEdit(-1)">＋ Add someone</button></div><p class="small mute">Who can open the coordinator tools and gets the staff emails. Coordinators run the day; proctors check students in and out.' + (d.admin ? '' : ' Only an administrator can add or change administrators.') + '</p>' +
+    '<table class="t small"><tr><th>Name</th><th>Email</th><th>Role</th><th>Campus</th><th>Other campus</th><th></th></tr>' + d.staff.map(function (x, i) { return '<tr' + (x.active ? '' : ' class="mute"') + '><td><b>' + esc(x.name || '—') + '</b>' + (x.active ? '' : ' <span class="chip">no longer here</span>') + '</td><td>' + esc(x.email) + '</td><td>' + esc(x.role) + '</td><td>' + nm[x.campus] + '</td><td>' + (x.other ? esc(x.other) : '—') + '</td><td>' + (x.role !== 'Administrator' || d.admin ? '<button class="btn sm" onclick="coStaffEdit(' + i + ')">Edit</button>' : '') + '</td></tr>'; }).join('') + '</table>';
+}
+function coStaffEdit(i) {
+  var d = window.__staff, x = i >= 0 ? d.staff[i] : { email: '', name: '', role: 'Proctor', campus: (CO.campus || 'S'), other: '', active: true, notes: '' }, opt = function (v, cur, label) { return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + (label || v) + '</option>'; };
+  modal('<h2>' + (i >= 0 ? 'Edit ' + esc(x.name || x.email) : '＋ Add someone') + '</h2><label class="f">School email</label><input id="sfE" value="' + esc(x.email) + '"><label class="f">Name</label><input id="sfN" value="' + esc(x.name) + '">' +
+    '<label class="f">Role</label><select id="sfR">' + opt('Proctor', x.role, 'Proctor (checks students in and out)') + opt('Coordinator', x.role, 'Coordinator (runs the day, settings)') + (d.admin ? opt('Administrator', x.role, 'Administrator (everything, both campuses)') : '') + '</select>' +
+    '<label class="f">Home campus</label><select id="sfC">' + opt('S', x.campus, 'South Campus') + opt('N', x.campus, 'North Campus') + '</select>' +
+    '<label class="f">The other campus</label><select id="sfO">' + opt('', x.other, 'No access') + opt('View', x.other, 'Can look') + opt('Edit', x.other, 'Can change') + '</select>' +
+    '<label class="f">Notes (optional)</label><input id="sfT" value="' + esc(x.notes) + '">' + (i >= 0 ? '<label style="display:block;margin-top:10px"><input type="checkbox" id="sfA"' + (x.active ? '' : ' checked') + '> No longer here (turns them off; nothing is deleted)</label>' : '') +
+    '<div class="row" style="margin-top:12px"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn pri" id="sfGo">Save</button></div>');
+  $('sfGo').onclick = function () { var b = this; busy(b, true); call('api_staffSave', { email: $('sfE').value, name: $('sfN').value, role: $('sfR').value, campus: $('sfC').value, other: $('sfO').value, notes: $('sfT').value, active: !($('sfA') && $('sfA').checked) }, i >= 0 ? x.email : '').then(function (nd) { closeModal(); coStaffDraw(nd); toast('Saved. They see the coordinator tools the next time they open the app.'); }).catch(function (e) { busy(b, false); fail(e); }); };
+}
 function coMyMail() {
   setTimeout(function () { call('api_staffMail').then(coMyMailDraw).catch(fail); }, 0);
   return '<div class="card" id="myMail"><div class="spin">Loading…</div></div>';
