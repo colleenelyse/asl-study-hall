@@ -721,6 +721,7 @@
       background:transparent;
     }
     .font-asl .cell, .bank.font-asl { font-family:'CGasl',sans-serif; font-weight:400; }
+    .cute-pic { position:absolute; left:0; top:0; z-index:-1; pointer-events:none; max-width:none; }      /* ASL - Cute: the grid picture from asl.cool, under the (empty) squares */
     .font-braille-full .cell, .bank.font-braille-full { font-family:'BrailleFull',sans-serif; font-weight:400; }
     .font-braille-dots .cell, .bank.font-braille-dots { font-family:'Segoe UI Symbol','Arial Unicode MS',sans-serif; font-weight:400; }
     .word-bank-box {
@@ -1409,7 +1410,7 @@
           <label>Puzzle Letter Style</label>
           <div class="control-help">Changes the characters shown inside the puzzle grid.</div>
           <select id="gridDisplay">
-            <option>UPPERCASE</option><option>lowercase</option><option>ASL Fingerspelling</option>
+            <option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option><option value="ASL Cute">ASL - Cute</option>
             <option>Braille — Full Cell</option><option>Braille — Dots Only</option>
           </select>
         </div>
@@ -1417,7 +1418,7 @@
           <label>Word Bank Text Style</label>
           <div class="control-help">Changes how the words-to-find list is displayed under the puzzle.</div>
           <select id="bankDisplay">
-            <option>As Entered</option><option>UPPERCASE</option><option>lowercase</option><option>ASL Fingerspelling</option>
+            <option>As Entered</option><option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option>
             <option>Braille — Full Cell</option><option>Braille — Dots Only</option>
           </select>
         </div>
@@ -2786,7 +2787,7 @@ function renderPuzzlePage(targetId, key) {
 
   let cells='';
   for(let r=0;r<p.rows;r++) for(let c=0;c<p.cols;c++) {
-    cells+=`<div class="cell" style="width:${cellPx}px;height:${cellPx}px;font-size:${Math.max(12,Math.floor(cellPx*.62))}px">${escapeHtml(displayLetter(p.grid[r][c],cfg.gridDisplay))}</div>`;
+    cells+=`<div class="cell" style="width:${cellPx}px;height:${cellPx}px;font-size:${Math.max(12,Math.floor(cellPx*.62))}px">${escapeHtml(gridLetter(p,p.grid[r][c]))}</div>`;
   }
 
   const sorted=p.words.slice().sort((a,b)=>a.displayText.localeCompare(b.displayText,undefined,{sensitivity:'base'}));
@@ -2794,6 +2795,7 @@ function renderPuzzlePage(targetId, key) {
   const heading=escapeHtml(cfg.bankHeading || 'Word Bank');
 
   const overlay = key ? buildAnswerOverlay(p.placements, p.rows, p.cols, cellPx) : '';
+  if (cfg.gridDisplay === 'ASL Cute' && !p.cutePic && !p.cuteTried) cuteLoad(p);
 
   paper.innerHTML=`
     ${title?`<h1 class="paper-title">${escapeHtml(title)}</h1>`:''}
@@ -2801,7 +2803,7 @@ function renderPuzzlePage(targetId, key) {
     <div class="student-fields">${fields.join('')}</div>
     <div class="word-grid-wrap">
       ${overlay}
-      <div class="word-grid ${gridClass}" style="grid-template-columns:repeat(${p.cols},${cellPx}px)">${cells}</div>
+      <div class="word-grid ${gridClass}" style="grid-template-columns:repeat(${p.cols},${cellPx}px)">${cutePicHtml(p,cellPx)}${cells}</div>
     </div>
     <div class="word-bank-box">
       <div class="word-bank-heading">${heading}</div>
@@ -3332,6 +3334,49 @@ function fitWordBank(paper, mode) {
   bank.dataset.fontSize = String(best.fontSize);
 }
 
+/* ASL - Cute (2026-11-17): Colleen's ASL Handcrafted hands, regular style in black. The font is paid, so the page never gets it:
+   asl.cool sends only the puzzle's hands as one small strip (/wordsearch/hands.png, wordsearchgrid.js in the site); the page
+   lays them out into one see-through picture of the grid under its empty squares, so the answer key, Play on Screen, Print and Download PDF work as before.
+   Only asl.cool can draw it (not the github.io copy or a saved file); then the plain capital letters stay. */
+const CUTE_OK = /^[A-Za-z0-9]$/;
+function gridLetter(p, ch) {
+  if (p.config.gridDisplay !== 'ASL Cute') return displayLetter(ch, p.config.gridDisplay);
+  return p.cutePic && CUTE_OK.test(ch) ? '' : ch.toLocaleUpperCase();      // a letter without a hand (an accent) stays a letter
+}
+function cutePicHtml(p, cell) {
+  if (p.config.gridDisplay !== 'ASL Cute' || !p.cutePic) return '';
+  return '<img class="cute-pic" alt="" src="' + p.cutePic + '" style="width:' + (p.cols * cell) + 'px;height:' + (p.rows * cell) + 'px">';
+}
+async function cuteLoad(p) {
+  p.cuteTried = true;
+  const letters = [...new Set(p.grid.flat().filter(ch => CUTE_OK.test(ch)).map(ch => ch.toLowerCase()))].sort().join('');
+  try {
+    if (!letters) throw new Error('no');
+    const r = await fetch('/wordsearch/hands.png?l=' + letters, { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status === 429 ? 'slow' : 'no');
+    const blob = await r.blob(); if (!/^image\//.test(blob.type)) throw new Error('no');
+    const strip = await createImageBitmap(blob), S = strip.height;      // one square per letter, in the order asked
+    const cv = document.createElement('canvas'); cv.width = p.cols * S; cv.height = p.rows * S;
+    const cx = cv.getContext('2d');
+    for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
+      const i = letters.indexOf(String(p.grid[r][c]).toLowerCase());
+      if (i >= 0 && CUTE_OK.test(p.grid[r][c])) cx.drawImage(strip, i * S, 0, S, S, c * S, r * S, S, S);
+    }
+    p.cutePic = cv.toDataURL('image/png');
+  } catch (e) {
+    showWarning(e.message === 'slow' ? 'ASL - Cute: that was a lot of puzzles in a short time. Wait a minute, then click Generate Puzzle again.'
+      : 'ASL - Cute letters can only be drawn at asl.cool/wordsearch. This copy shows plain capital letters instead.');
+    return;
+  }
+  if (state.lastPuzzle !== p) return;
+  renderPuzzle();
+  if (document.getElementById('playView')?.classList.contains('on') && PLAY.p === p) {
+    const pg = document.getElementById('playGrid');
+    pg.querySelectorAll('.pc').forEach(el => { el.textContent = gridLetter(p, p.grid[+el.dataset.r][+el.dataset.c]); });
+    pg.insertAdjacentHTML('afterbegin', cutePicHtml(p, PLAY.cell));
+  }
+}
+
 function displayClass(mode) {
   if(mode==='ASL Fingerspelling')return 'font-asl';
   if(mode==='Braille — Full Cell')return 'font-braille-full';
@@ -3787,8 +3832,8 @@ function playStart() {
   g.className = 'play-grid ' + displayClass(cfg.gridDisplay);
   g.style.gridTemplateColumns = 'repeat(' + p.cols + ',' + cell + 'px)';
   let h = '';
-  for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) h += '<div class="pc" data-r="' + r + '" data-c="' + c + '" style="width:' + cell + 'px;height:' + cell + 'px;font-size:' + Math.floor(cell * .58) + 'px">' + escapeHtml(displayLetter(p.grid[r][c], cfg.gridDisplay)) + '</div>';
-  g.innerHTML = h;
+  for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) h += '<div class="pc" data-r="' + r + '" data-c="' + c + '" style="width:' + cell + 'px;height:' + cell + 'px;font-size:' + Math.floor(cell * .58) + 'px">' + escapeHtml(gridLetter(p, p.grid[r][c])) + '</div>';
+  g.innerHTML = cutePicHtml(p, cell) + h;
   const svg = document.getElementById('playSvg'); svg.setAttribute('width', p.cols * cell); svg.setAttribute('height', p.rows * cell); svg.innerHTML = '<g id="playLocked"></g><line id="playLive" stroke="rgba(245,158,11,.45)" stroke-width="' + (cell * .78) + '" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/>';
   PLAY.words = p.placements.map((pl, i) => ({ i, text: pl.displayText, cells: pl.cells, key: pl.cells.map(x => x.join(',')).join('|') }));
   document.getElementById('playBank').innerHTML = PLAY.words.slice().sort((a, b) => a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }))
