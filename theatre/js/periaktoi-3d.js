@@ -1,0 +1,325 @@
+/* asl.cool/theatre: the realistic 3D audience and backstage views of the set planner (Colleen 2026-10-25: "i want the 3d artwork to look as
+   realistic as possible"). three.js r128 (loaded from cdnjs the first time it is needed). Solid triangular towers with her face art, real
+   pieces (img/set/overlays.json: her transparent overlays, placed exactly as drawn, standing out from the face by their depth), the 18″ rim and
+   net as a real hoop, the cafeteria tables and benches, a wood floor, the grand drape, the proscenium, front-of-house light with shadows.
+   Three.js axes: x = stage x (toward stage left), y = up, z = −stage y (toward the audience). All in feet. PK3D.draw(host, ctx). */
+(function () {
+  'use strict';
+  var BASE = 'https:' + '//cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  var loading = null, three = null, ready = false;
+  function load() {
+    if (loading) return loading;
+    loading = new Promise(function (ok, no) {
+      var s = document.createElement('script'); s.src = BASE; s.onload = function () { three = window.THREE; ready = true; ok(); }; s.onerror = function () { no(new Error('3D library did not load')); };
+      document.head.appendChild(s);
+    });
+    return loading;
+  }
+  var W = {};      // world: scene, objects, textures (shared by both views)
+  var views = [];  // { host, canvas, renderer, camera, crew, drag }
+  var overlays = null, ovTex = {}, faceTex = {}, faceSrc = {};
+
+  function canvasTex(w, h, paint) { var c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h); var t = new three.CanvasTexture(c); t.encoding = three.sRGBEncoding; t.anisotropy = 8; return t; }
+  function woodTex() {
+    return canvasTex(1024, 1024, function (g, w, h) {
+      for (var i = 0; i < 16; i++) { var y = i * h / 16, hue = 26 + (i * 7 % 5), l = 22 + (i * 13 % 7); g.fillStyle = 'hsl(' + hue + ',38%,' + l + '%)'; g.fillRect(0, y, w, h / 16);
+        for (var k = 0; k < 40; k++) { g.strokeStyle = 'rgba(0,0,0,' + (0.04 + (k % 3) * 0.02) + ')'; g.beginPath(); var yy = y + (k * 37 % 61) / 61 * h / 16; g.moveTo(0, yy); g.bezierCurveTo(w * 0.3, yy + 3, w * 0.6, yy - 3, w, yy + 1); g.stroke(); }
+        g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, y, w, 2); var j = (i * 389) % w; g.fillRect(j, y, 2, h / 16); }
+    });
+  }
+  function velvetTex() {
+    return canvasTex(1024, 512, function (g, w, h) {
+      for (var x = 0; x < w; x++) { var f = 0.55 + 0.45 * Math.sin(x / w * Math.PI * 2 * 26) * Math.sin(x / w * Math.PI * 2 * 3.3 + 1); var r = Math.round(8 + 14 * f), gg = Math.round(14 + 22 * f), b = Math.round(40 + 70 * f); g.fillStyle = 'rgb(' + r + ',' + gg + ',' + b + ')'; g.fillRect(x, 0, 1, h); }      // dark blue velvet (the Reber grand)
+      var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.3, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    });
+  }
+  function brickTex() {      // tan brick (the Reber's walls facing the house): one tile is 2′ 8″ square, 4 bricks across, 12 courses
+    return canvasTex(512, 512, function (g, w, h) {
+      g.fillStyle = '#b7a68a'; g.fillRect(0, 0, w, h);
+      var bw = w / 4, bh = h / 12;
+      for (var r = 0; r < 12; r++) for (var k = -1; k < 5; k++) { var x = k * bw + (r % 2 ? bw / 2 : 0), tone = 0.86 + ((r * 7 + k * 13) % 9) / 50;
+        g.fillStyle = 'rgb(' + Math.round(196 * tone) + ',' + Math.round(170 * tone) + ',' + Math.round(128 * tone) + ')'; g.fillRect(x + 3, r * bh + 3, bw - 6, bh - 6); }
+    });
+  }
+  var shadowT = null;
+  function shadowTex() { if (shadowT) return shadowT; shadowT = canvasTex(128, 128, function (g, w, h) { var gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(0.55, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }); return shadowT; }
+  function shimmerTex() { return canvasTex(256, 512, function (g, w, h) { for (var x = 0; x < w; x += 2) { var v = 150 + Math.round(Math.random() * 105); g.fillStyle = 'rgb(' + v + ',' + v + ',' + (v + 10 > 255 ? 255 : v + 10) + ')'; g.fillRect(x, 0, 2, h); } }); }
+
+  function build(ctx) {
+    var T3 = three, P = ctx.P, s = P.stage, c = s.prosc / 2;
+    var scene = new T3.Scene(); scene.background = new T3.Color(0x050407); scene.fog = new T3.Fog(0x050407, 70, 140);
+    W = { scene: scene, towers: {}, tables: {}, items: {}, key: JSON.stringify(s) };
+    // the floor: the curved apron in front of the drape, and the side decks
+    var shape = new T3.Shape(); shape.moveTo(-c, s.curtain);      // in stage x, y: laid flat it lands on three's x, −z
+    for (var i = 0; i <= 60; i++) { var x = -c + 2 * c * i / 60; shape.lineTo(x, ctx.PK.frontY(s, x)); }
+    shape.lineTo(c, s.curtain); shape.lineTo(-c, s.curtain);
+    var wood = woodTex(); wood.wrapS = wood.wrapT = T3.RepeatWrapping; wood.repeat.set(0.08, 0.08);
+    var deck = canvasTex(512, 512, function (g, w, h) { g.fillStyle = '#121212'; g.fillRect(0, 0, w, h); for (var i = 0; i < 2600; i++) { var v = 18 + Math.round(Math.random() * 14); g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.5)'; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1); } g.strokeStyle = 'rgba(0,0,0,.6)'; for (var j = 0; j <= 4; j++) { g.beginPath(); g.moveTo(0, j * h / 4); g.lineTo(w, j * h / 4); g.stroke(); } });      // the black stage deck (painted, a little scuffed; 4×8 sheet seams)
+    deck.wrapS = deck.wrapT = T3.RepeatWrapping; deck.repeat.set(1 / 8, 1 / 8);
+    var floorMat = new T3.MeshStandardMaterial({ map: deck, roughness: 0.38, metalness: 0.08 });
+    var floorMat2 = floorMat.clone(); floorMat2.side = T3.DoubleSide; var floor = new T3.Mesh(new T3.ShapeGeometry(shape), floorMat2); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+    // the front edge: a wooden bullnose about 12″ thick all the way around the curve, then a dark fascia down to the house floor
+    var edgePts = []; for (var e = 0; e <= 80; e++) { var ex = -c + 2 * c * e / 80; edgePts.push(new T3.Vector3(ex, -0.5, -ctx.PK.frontY(s, ex))); }
+    var edgeCurve = new T3.CatmullRomCurve3(edgePts), nose = new T3.Mesh(new T3.TubeGeometry(edgeCurve, 240, 0.5, 14, false), new T3.MeshStandardMaterial({ map: wood, color: 0xffe2bd, emissive: 0x2a1a0c, roughness: 0.35, metalness: 0.05 }));
+    nose.castShadow = nose.receiveShadow = true; scene.add(nose);
+    var fasc = []; edgePts.forEach(function (p) { fasc.push(p.x, -0.6, p.z + 0.02, p.x, -3.2, p.z + 0.02); });
+    var fg = new T3.BufferGeometry(); fg.setAttribute('position', new T3.Float32BufferAttribute(fasc, 3)); var idx = []; for (var q = 0; q < edgePts.length - 1; q++) { var a = q * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } fg.setIndex(idx); fg.computeVertexNormals();
+    scene.add(new T3.Mesh(fg, new T3.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 1, side: T3.DoubleSide })));
+    var house = new T3.Mesh(new T3.PlaneGeometry(200, 120), new T3.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 1 })); house.rotation.x = -Math.PI / 2; house.position.set(0, -3.2, 60); scene.add(house);
+    [-1, 1].forEach(function (k) {      // side decks (Horticulture HQ stage right, NYE karaoke stage left)
+      var g = new T3.PlaneGeometry(s.sideDeck, s.edgeSide), m = new T3.Mesh(g, floorMat); m.rotation.x = -Math.PI / 2; m.position.set(k * (c + s.sideDeck / 2), 0, (s.wallT || 0) + s.edgeSide / 2); m.receiveShadow = true; scene.add(m);
+    });
+    // the grand drape (seen only from the house) and the proscenium
+    var vel = velvetTex(); vel.wrapS = T3.RepeatWrapping; vel.repeat.set(3, 1);
+    var ph = s.proscH || 24, dg = new T3.PlaneGeometry(2 * c, ph, 260, 1), dp = dg.attributes.position;      // real folds: the light falls across them
+    for (var di = 0; di < dp.count; di++) { var dx = dp.getX(di); dp.setZ(di, 0.32 * Math.sin(dx * 2.6) + 0.12 * Math.sin(dx * 7.1 + 1.3)); } dg.computeVertexNormals();
+    var drape = new T3.Mesh(dg, new T3.MeshStandardMaterial({ map: vel, roughness: 0.85, side: T3.FrontSide })); drape.position.set(0, ph / 2, -s.curtain); drape.receiveShadow = true; scene.add(drape); W.drape = drape;
+    var brick = brickTex(), wt = s.wallT || 1;      // the proscenium wall, about 2 ft thick, tan brick on the house side
+    var bricky = function (w, h, d) { var t = brick.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = T3.RepeatWrapping; t.repeat.set(w / 2.67, h / 2.67); return new T3.MeshStandardMaterial({ map: t, roughness: 0.95 }); };
+    var blackWall = new T3.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 1 });
+    var wallBox = function (w, h, x, y) { var b0 = bricky(w, h), m = new T3.Mesh(new T3.BoxGeometry(w, h, wt), [blackWall, blackWall, blackWall, blackWall, b0, blackWall]); m.position.set(x, y, wt / 2); m.receiveShadow = true; scene.add(m); };      // brick only on the house side
+    [-1, 1].forEach(function (k) { wallBox(14, 30, k * (c + s.sideDeck + 7), 15); wallBox(s.sideDeck, 30 - 10, k * (c + s.sideDeck / 2), 10 + (30 - 10) / 2); });      // beside the opening; the side decks' backdrops sit below 10 ft
+    wallBox(2 * c + 4, 14, 0, ph + 7);      // above the opening
+    var bd = s.borderDrop || 3.5, border = new T3.Mesh(new T3.PlaneGeometry(2 * c + 2, bd + 1), new T3.MeshStandardMaterial({ map: vel, roughness: 0.9 })); border.position.set(0, ph - bd + (bd + 1) / 2, -(s.border || 1.17)); scene.add(border); W.border = border;      // the grand border (lineset 1): its bottom edge about 3½ ft below the top of the opening
+    W.nye = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ map: shimmerTex(), roughness: 0.25, metalness: 0.8 })); W.nye.position.set(c + s.sideDeck / 2, 5, wt + 0.05); scene.add(W.nye);
+    W.hort = new T3.Mesh(new T3.PlaneGeometry(s.sideDeck - 0.6, 10), new T3.MeshStandardMaterial({ color: 0x3f7a45, roughness: 0.9 })); W.hort.position.set(-c - s.sideDeck / 2, 5, wt + 0.05); scene.add(W.hort);
+    // light: two front-of-house spots from the box booms, a warm top fill, a little ambience
+    scene.add(new T3.HemisphereLight(0x8890b0, 0x201810, 0.22));
+    var back = new T3.DirectionalLight(0x6f86ff, 0.55); W.back = back; back.position.set(0, 22, -30); back.target.position.set(0, 3, 0); scene.add(back); scene.add(back.target);      // a cool backlight: edges catch it
+    [-1, 1].forEach(function (k) {
+      var sp = new T3.SpotLight(0xffe7c4, 1.45, 0, 0.55, 0.55, 1.2); sp.position.set(k * 18, 26, 42); sp.target.position.set(0, 3, -2); sp.castShadow = true; sp.shadow.mapSize.set(2048, 2048); sp.shadow.bias = -0.0004; sp.shadow.camera.near = 20; sp.shadow.camera.far = 120;
+      scene.add(sp); scene.add(sp.target); (W.foh = W.foh || []).push(sp);
+    });
+    W.pools = {};      // her lighting areas: soft pools of light on the deck
+    var top = new T3.SpotLight(0xffe2b8, 0.5, 0, 0.9, 0.8, 1.5); top.position.set(0, 30, -6); top.target.position.set(0, 0, -2); scene.add(top); scene.add(top.target);
+    // the four towers: three faces (her art), black top and bottom caps
+    ctx.PK.TOWERS.forEach(function (t) {
+      var grp = new T3.Group(), faces = {};
+      [1, 2, 3].forEach(function (k) {
+        var id = t + k, fg = new T3.Group(), mat = new T3.MeshStandardMaterial({ roughness: 0.78, metalness: 0 });
+        var mesh = new T3.Mesh(new T3.PlaneGeometry(s.face, s.height), mat); mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.tower = t; mesh.userData.face = id; fg.add(mesh);
+        faces[id] = { group: fg, mesh: mesh, mat: mat, extras: [] }; grp.add(fg);
+      });
+      var capMat = new T3.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, side: T3.DoubleSide }), r = s.face / Math.sqrt(3), tri = new T3.Shape();
+      tri.moveTo(0, r); tri.lineTo(-s.face / 2, -r / 2); tri.lineTo(s.face / 2, -r / 2); tri.lineTo(0, r);
+      var cap = new T3.Mesh(new T3.ShapeGeometry(tri), capMat); cap.rotation.x = -Math.PI / 2; cap.position.y = s.height; cap.castShadow = true; grp.add(cap);
+      var label = makeLabel(t, ctx.COL[t]); label.position.y = s.height + 0.9; grp.add(label);
+      var trimMat = new T3.MeshStandardMaterial({ color: 0xb9bcc2, roughness: 0.3, metalness: 0.85 }), trims = [0, 1, 2].map(function () { var m = new T3.Mesh(new T3.CylinderGeometry(0.06, 0.06, s.height, 10), trimMat); m.castShadow = true; grp.add(m); return m; });      // aluminum corner trim
+      var skirt = new T3.Mesh(new T3.BufferGeometry(), new T3.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 0.7 })); grp.add(skirt);      // black base skirt over the casters
+      var blob = new T3.Mesh(new T3.CircleGeometry(r * 2.4, 40), new T3.MeshBasicMaterial({ map: shadowTex(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.01; grp.add(blob);      // soft contact shadow
+      scene.add(grp); W.towers[t] = { group: grp, faces: faces, cap: cap, label: label, trims: trims, skirt: skirt, blob: blob };
+    });
+    // the rim and net on D1 (a real 18″ hoop)
+    var rimMat = new T3.MeshStandardMaterial({ color: 0xff5a00, roughness: 0.4, metalness: 0.3 });
+    W.rim = new T3.Group();
+    var ring = new T3.Mesh(new T3.TorusGeometry(0.75, 0.035, 10, 40), rimMat); ring.rotation.x = Math.PI / 2; ring.castShadow = true; W.rim.add(ring);
+    var net = new T3.Mesh(new T3.CylinderGeometry(0.72, 0.42, 1.25, 16, 4, true), new T3.MeshStandardMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.8 })); net.position.y = -0.63; W.rim.add(net);
+    var arm = new T3.Mesh(new T3.BoxGeometry(0.25, 0.12, 0.6), new T3.MeshStandardMaterial({ color: 0x333333 })); arm.position.set(0, 0, -0.95); W.rim.add(arm);
+    scene.add(W.rim);
+    // a person for scale (5′ 9″): a plain gray figure, no color, no gender; built to ordinary adult proportions
+    var pm = new T3.MeshStandardMaterial({ color: 0x7c7c7c, roughness: 0.9 }), hgt = s.person || 5.75, k0 = hgt / 5.75; W.person = new T3.Group();
+    var part = function (geo, x, y, z, rz, sz) { var m = new T3.Mesh(geo, pm); m.position.set(x * k0, y * k0, z * k0); if (rz) m.rotation.z = rz; if (sz) m.scale.z = sz; m.castShadow = true; W.person.add(m); return m; };
+    part(new T3.SphereGeometry(0.34, 20, 16), 0, 5.37, 0, 0, 1.05);      // head
+    part(new T3.CylinderGeometry(0.13, 0.15, 0.32, 12), 0, 4.98, 0);     // neck
+    part(new T3.CylinderGeometry(0.66, 0.5, 1.95, 20), 0, 3.95, 0, 0, 0.5);      // torso, shoulders to waist
+    part(new T3.SphereGeometry(0.5, 18, 12), 0, 2.98, 0, 0, 0.55);       // hips
+    [-1, 1].forEach(function (sd) {
+      part(new T3.SphereGeometry(0.2, 14, 10), sd * 0.66, 4.82, 0);     // shoulder
+      part(new T3.CylinderGeometry(0.12, 0.09, 2.25, 12), sd * 0.74, 3.72, 0, sd * 0.05);      // arm
+      part(new T3.SphereGeometry(0.1, 12, 10), sd * 0.8, 2.56, 0);      // hand
+      part(new T3.CylinderGeometry(0.21, 0.13, 2.75, 14), sd * 0.27, 1.5, 0, -sd * 0.02);      // leg
+      part(new T3.BoxGeometry(0.3, 0.14, 0.75), sd * 0.29, 0.07, 0.15);      // foot
+    });
+    scene.add(W.person);
+  }
+  function makeLabel(text, col) {
+    var t = canvasTex(128, 128, function (g, w, h) { g.font = 'bold 96px Lexend, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(text, w / 2, h / 2); });
+    var sp = new three.Sprite(new three.SpriteMaterial({ map: t, transparent: true, depthTest: false })); sp.scale.set(1.2, 1.2, 1); return sp;
+  }
+  function texFor(img) {
+    if (!img) return null;
+    var t = img.tagName === 'CANVAS' ? new three.CanvasTexture(img) : new three.Texture(img); t.encoding = three.sRGBEncoding; t.anisotropy = 8; t.needsUpdate = true; return t;
+  }
+  function loadOverlays(ctx) {
+    if (overlays) return;
+    overlays = [];
+    fetch('img/set/overlays.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }).then(function (list) {
+      overlays = list || [];
+      overlays.forEach(function (o) { var im = new Image(); im.onload = function () { ovTex[o.key] = texFor(im); attachOverlays(ctx); ctx.redraw(); }; im.src = 'img/set/' + o.file; });
+    });
+  }
+  function attachOverlays(ctx) {      // her practical overlays, exactly where her 887 × 1774 file puts them, standing out by their depth
+    var s = ctx.P.stage;
+    overlays.forEach(function (o) {
+      var tw = W.towers[o.face[0]], f = tw && tw.faces[o.face]; if (!f || !ovTex[o.key] || f.extras.some(function (e) { return e.key === o.key; })) return;
+      var w = o.w / 887 * s.face, h = o.h / 1774 * s.height, cx = (o.x + o.w / 2) / 887 * s.face - s.face / 2, cy = s.height / 2 - (o.y + o.h / 2) / 1774 * s.height;
+      var m = new three.Mesh(new three.PlaneGeometry(w, h), new three.MeshStandardMaterial({ map: ovTex[o.key], transparent: true, alphaTest: 0.3, roughness: 0.6 }));
+      m.position.set(cx, cy, o.depth); m.castShadow = true; f.group.add(m); f.extras.push({ key: o.key, mesh: m });
+    });
+  }
+  function setFace(ctx, id, f) {      // her art on the face (re-read when a newer picture arrives)
+    var img = ctx.artImg(id); if (faceSrc[id] === img) return;
+    faceSrc[id] = img; var t = texFor(img); f.mat.map = t; f.mat.needsUpdate = true;
+  }
+  var beamT = null;
+  function beamTex() {      // her drawing: a soft oval with a pale rim
+    if (beamT) return beamT;
+    var c = document.createElement('canvas'); c.width = c.height = 256; var g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 124);
+    gr.addColorStop(0, 'rgba(255,236,190,0.30)'); gr.addColorStop(0.92, 'rgba(255,226,170,0.22)'); gr.addColorStop(1, 'rgba(255,226,170,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 124, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(225,230,255,0.85)'; g.lineWidth = 6; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.stroke();
+    beamT = new three.CanvasTexture(c); beamT.encoding = three.sRGBEncoding; return beamT;
+  }
+  var poolT = null;
+  function poolTex() {      // a warm pool, bright in the middle and soft at the edge
+    if (poolT) return poolT;
+    var c = document.createElement('canvas'); c.width = c.height = 256; var g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, 'rgba(255,226,160,0.75)'); gr.addColorStop(0.65, 'rgba(255,214,140,0.45)'); gr.addColorStop(1, 'rgba(255,200,120,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256); poolT = new three.CanvasTexture(c); poolT.encoding = three.sRGBEncoding; return poolT;
+  }
+  function update(ctx) {
+    var P = ctx.P, s = P.stage, sh = ctx.sh, T3 = three;
+    ctx.PK.TOWERS.forEach(function (t) {
+      var q = sh.towers[t], gm = ctx.PK.geom(P, t, q, s), tw = W.towers[t], dark = sh.lit(t), shade = 1 - dark * 0.88;
+      gm.faces.forEach(function (f) {
+        var F = tw.faces[f.id]; setFace(ctx, f.id, F);
+        F.group.position.set(f.c.x, s.height / 2, -f.c.y); F.group.rotation.set(0, Math.atan2(f.n.x, -f.n.y), 0);
+        F.mat.color.setScalar(shade); F.mat.emissive = new T3.Color(ctx.sel === t ? 0x1c1636 : 0x000000); F.extras.forEach(function (e) { e.mesh.material.color.setScalar(shade); e.mesh.visible = ctx.overlaysOn; });
+        var pr = P.practicals && P.practicals[f.id];
+        if (pr && pr.door) {      // a walk-through door in use: it opens INTO the tower so the tower can't tip (Colleen 2026-10-25); seen through the dark doorway (hinge on the right, inside)
+          var dd = F.door; if (!dd) { var dh = pr.h || 6.67, piv = new T3.Group(), leaf = new T3.Mesh(new T3.BoxGeometry(pr.w, dh, 0.12), new T3.MeshStandardMaterial({ color: 0x9a7650, roughness: 0.6 })), hole = new T3.Mesh(new T3.PlaneGeometry(pr.w, dh), new T3.MeshBasicMaterial({ color: 0x120d09 }));
+            var hr = pr.hinge === 'right' ? 1 : -1; leaf.position.set(-hr * pr.w / 2, 0, 0); piv.add(leaf); var x0 = (pr.u - 0.5) * s.face, yc = dh / 2 - s.height / 2;
+            hole.position.set(x0, yc, 0.16); hole.renderOrder = 4; piv.position.set(x0 + hr * pr.w / 2, yc, 0.18); piv.rotation.set(0, (pr.swing === 'out' ? -1.2 : 1.2) * -hr, 0);      // the hinge on its side; the door swings into the tower (or out) leaf.castShadow = true; if (pr.swing !== 'out') { leaf.material.depthTest = false; leaf.renderOrder = 6; }      // swung inside the tower: seen through the dark doorway
+            var frame = new T3.Group(), fm = new T3.MeshBasicMaterial({ color: 0xff9a3c }), bar = function (w, h, x, y) { var b = new T3.Mesh(new T3.BoxGeometry(w, h, 0.1), fm); b.position.set(x, y, 0); frame.add(b); };
+            bar(pr.w + 0.5, 0.25, 0, dh / 2 + 0.12); bar(0.25, dh, -pr.w / 2 - 0.12, 0); bar(0.25, dh, pr.w / 2 + 0.12, 0); frame.position.set(x0, yc, 0.2);      // a bright casing: OPEN reads from the back row
+            F.group.add(hole); F.group.add(piv); F.group.add(frame); dd = F.door = { hole: hole, piv: piv, frame: frame }; }
+          var used = (sh.doors || []).indexOf(f.id) >= 0; dd.hole.visible = dd.piv.visible = dd.frame.visible = used; dd.piv.children[0].material.color.setHex(0xd8b888).multiplyScalar(Math.max(0.45, shade) * (pr.swing === 'out' ? 1 : 0.85));
+        }
+      });
+      tw.label.position.set(q.x, s.height + 1, -q.y); tw.label.visible = !!ctx.labels || !!ctx.crew;      // backstage always shows the tower letters
+      if (t === 'D') {      // the rim follows D1
+        var d1 = gm.prot.find(function (p) { return p.rim; });
+        W.rim.visible = !!d1; if (d1) { var rc = { x: d1.mid.x + d1.n.x * (d1.d - 0.75), y: d1.mid.y + d1.n.y * (d1.d - 0.75) }; W.rim.position.set(rc.x, d1.z, -rc.y); W.rim.rotation.set(0, Math.atan2(d1.n.x, -d1.n.y), 0); }
+      }
+    });
+    // the top cap: the exact footprint (a shape in stage x, y; turned flat it lands on three's x, −z)
+    ctx.PK.TOWERS.forEach(function (t) {
+      var q = sh.towers[t], gm = ctx.PK.geom(P, t, q, s), tw = W.towers[t], shp = new T3.Shape();
+      gm.poly.forEach(function (p, i) { if (i) shp.lineTo(p.x, p.y); else shp.moveTo(p.x, p.y); });
+      tw.cap.geometry.dispose(); tw.cap.geometry = new T3.ShapeGeometry(shp); tw.cap.position.set(0, s.height + 0.002, 0); tw.cap.rotation.set(-Math.PI / 2, 0, 0);
+      gm.poly.forEach(function (p, i) { if (tw.trims[i]) tw.trims[i].position.set(p.x, s.height / 2, -p.y); });
+      tw.skirt.geometry.dispose(); tw.skirt.geometry = new T3.ExtrudeGeometry(shp, { depth: 0.22, bevelEnabled: false }); tw.skirt.rotation.set(-Math.PI / 2, 0, 0); tw.skirt.position.set(0, 0, 0);
+      tw.blob.position.set(q.x, 0.012, -q.y);
+    });
+    // tables (and their benches), other pieces
+    var seen = {};
+    ctx.PK.TABLES.forEach(function (id) {
+      var x = sh.tables[id]; if (!x || x.y > s.curtain) { if (W.tables[id]) W.tables[id].visible = false; return; }
+      var spec = P.tables[id], k = x.k, g = W.tables[id];
+      if (!g) {      // the school's Sico stool table: gray top, chrome frame, navy stools (or folded on its wheels)
+        g = W.tables[id] = new T3.Group(); var gray = new T3.MeshStandardMaterial({ color: 0x9a9da3, roughness: 0.55 }), chrome = new T3.MeshStandardMaterial({ color: 0xd8dade, roughness: 0.25, metalness: 0.9 }), navy = new T3.MeshStandardMaterial({ color: 0x1d2a55, roughness: 0.6 });
+        g.userData = { top: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), gray), frame: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), chrome), fold: new T3.Mesh(new T3.BoxGeometry(1, 1, 1), gray), stools: [], posts: [] };
+        for (var i = 0; i < 12; i++) { var st0 = new T3.Mesh(new T3.CylinderGeometry(0.5, 0.5, 0.12, 20), navy), post = new T3.Mesh(new T3.CylinderGeometry(0.04, 0.04, 1, 8), chrome); g.userData.stools.push(st0); g.userData.posts.push(post); g.add(st0); g.add(post); }
+        ['top', 'frame', 'fold'].forEach(function (n) { g.add(g.userData[n]); });
+        g.traverse(function (m) { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); W.scene.add(g); }
+      g.visible = true; seen[id] = 1;
+      var u = g.userData, open = k > 0.5, L = spec.folded.l + (spec.open.l - spec.folded.l) * k;
+      u.top.visible = u.frame.visible = open; u.fold.visible = !open;
+      var n = spec.seats || 12, sh0 = spec.seatH || 1.42, per = Math.ceil(n / 2), sr = 0.5 * Math.min(1, k + 0.001);      // 12″ stools, 6 a side
+      u.stools.forEach(function (sm, i) { var on = open && i < n, side = i < per ? -1 : 1, j = i % per, x0 = (j + 0.5) / per * L - L / 2, z0 = side * (spec.open.w / 2 + spec.bench / 2);
+        sm.visible = u.posts[i].visible = on; if (!on) return; sm.scale.set(sr * 2, 1, sr * 2); sm.position.set(x0, sh0, z0); u.posts[i].scale.set(1, sh0, 1); u.posts[i].position.set(x0, sh0 / 2, z0); });
+      if (open) { u.top.scale.set(L, 0.1, spec.open.w); u.top.position.set(0, spec.open.h, 0); u.frame.scale.set(L * 0.92, 0.12, spec.open.w + spec.bench * 2 - 0.4); u.frame.position.set(0, 0.6, 0); }
+      else { u.fold.scale.set(spec.folded.l, spec.folded.h, spec.folded.w); u.fold.position.set(0, spec.folded.h / 2, 0); }
+      g.position.set(x.x, 0, -x.y); g.rotation.set(0, (x.rot || 0) * Math.PI / 180, 0);
+    });
+    Object.keys(W.items).forEach(function (k2) { W.items[k2].visible = false; });
+    (sh.items || []).forEach(function (it) {
+      var m = W.items[it.id]; if (!m) { m = W.items[it.id] = new T3.Mesh(new T3.BoxGeometry(1, 1, 1), new T3.MeshStandardMaterial({ color: it.kind === 'plants' ? 0x3d7a3a : 0xa07a4a, roughness: 0.7 })); m.castShadow = true; W.scene.add(m); }
+      var h = it.kind === 'plants' ? 2.5 : 1.5; m.visible = true; m.scale.set(it.w, h, it.d); m.position.set(it.x, h / 2, -it.y); m.rotation.set(0, (it.rot || 0) * Math.PI / 180, 0);
+    });
+    W.nye.material.emissive = new T3.Color(sh.zones.indexOf('nye') >= 0 ? 0x333344 : 0x000000); W.nye.visible = sh.zones.indexOf('nye') >= 0;
+    W.hort.visible = sh.zones.indexOf('hort') >= 0;
+    var on = sh.areas && sh.areas.length ? sh.areas : null;      // lighting areas: the chosen pools glow, the general wash dims
+    Object.keys(W.pools).forEach(function (k3) { W.pools[k3].visible = false; });
+    var tops = sh.tops && sh.tops.length ? sh.tops : null, any = on || tops, lc = sh.lightColors || { face: '#fff1dc', top: '#b7a4ff' };
+    (W.foh || []).forEach(function (sp) { sp.intensity = any ? 0.1 : 1.45; });      // the general wash goes out when areas are chosen
+    /* her lighting areas as real lights (all made once; the ones not up sit at zero, so the picture never stalls).
+       Face light from the far catwalk: each beam runs from the front edge of the deck up to just above the towers.
+       Top light from the near catwalk, straight down. The catwalk positions are stand-ins until measured. */
+    var V3 = T3.Vector3, lt = ctx.PK.lightTop(P), yt = P.home && P.home.A ? P.home.A.y : s.curtain - 3;
+    W.area = W.area || {};
+    var spot = function (key, col) { var L = W.area[key]; if (!L) { L = W.area[key] = new T3.SpotLight(0xffffff, 0, 0, 0.3, 0.35, 1); W.scene.add(L); W.scene.add(L.target); } L.color.set(col); return L; };
+    (sh.lights || []).forEach(function (a) {
+      var F = spot('face:' + a.id, lc.face), up = !!on && on.indexOf(a.id) >= 0;
+      var S = new V3(a.cx * 0.5, 28, s.apron + 30), B = new V3(a.cx, 0, -ctx.PK.frontY(s, a.cx)), U = new V3(a.cx, lt, -yt);
+      var dB = B.clone().sub(S).normalize(), dU = U.clone().sub(S).normalize(), ax = dB.clone().add(dU).normalize(), D = S.distanceTo(U);
+      F.position.copy(S); F.target.position.copy(S.clone().add(ax.multiplyScalar(D))); F.target.updateMatrixWorld();
+      F.angle = Math.min(1.2, Math.max(dB.angleTo(dU) / 2, Math.atan(a.rx / D)) * 1.06); F.intensity = up ? 2.2 : 0;
+      var bm = W.pools['beam:' + a.id]; if (!bm) { bm = W.pools['beam:' + a.id] = new T3.Mesh(new T3.PlaneGeometry(1, 1), new T3.MeshBasicMaterial({ map: beamTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false, depthTest: false, side: T3.DoubleSide })); bm.renderOrder = 3; W.scene.add(bm); }
+      var mid = B.clone().add(U).multiplyScalar(0.5), len = B.distanceTo(U);      // the beam's face, as she drew it: from the front edge of the deck up to just above the towers
+      bm.visible = up; bm.material.color.set(lc.face); bm.scale.set(a.rx * 2, len, 1); bm.position.copy(mid); bm.rotation.set(-Math.atan2(B.z - U.z, U.y - B.y), 0, 0);
+      var Tp = spot('top:' + a.id, lc.top), upT = !!tops && tops.indexOf(a.id) >= 0, h = 24;
+      Tp.position.set(a.cx, h, -a.cy); Tp.target.position.set(a.cx, 0, -a.cy); Tp.target.updateMatrixWorld(); Tp.angle = Math.atan(Math.min(a.rx, a.ry * 1.3) / h); Tp.penumbra = 0.5; Tp.intensity = upT ? 1.3 : 0;
+      var m = W.pools['top:' + a.id]; if (!m) { m = W.pools['top:' + a.id] = new T3.Mesh(new T3.CircleGeometry(1, 64), new T3.MeshBasicMaterial({ map: poolTex(), transparent: true, blending: T3.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; W.scene.add(m); }
+      m.visible = upT; m.material.opacity = 0.35; m.material.color.set(lc.top); m.scale.set(Math.min(a.rx, a.ry * 1.3), Math.min(a.rx, a.ry * 1.3), 1); m.position.set(a.cx, 0.05, -a.cy);      // a hint of the top light on the black deck
+    });
+    W.person.visible = !!ctx.person; if (ctx.person) W.person.position.set(ctx.person.x, 0, -ctx.person.y);
+  }
+  function viewFor(host, crew) {
+    var v = views.find(function (x) { return x.host === host; });
+    if (v && v.canvas.isConnected) return v;
+    views = views.filter(function (x) { return x.canvas.isConnected; });
+    var cv = document.createElement('canvas'); cv.className = 'pk3d'; host.appendChild(cv);
+    var r = new three.WebGLRenderer({ canvas: cv, antialias: true }); r.outputEncoding = three.sRGBEncoding; r.toneMapping = three.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+    r.shadowMap.enabled = true; r.shadowMap.type = three.PCFSoftShadowMap; r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    v = { host: host, canvas: cv, renderer: r, camera: new three.PerspectiveCamera(30, 2, 0.5, 400), crew: crew, yaw: 0, pitch: 0, dist: 1 };
+    var drag = null;      // drag to look around (from the same seat); double-click to look straight at the stage again
+    var ray0 = function (e) { var r = cv.getBoundingClientRect(), m = new three.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), ray = new three.Raycaster(); ray.setFromCamera(m, v.camera); return ray; };
+    var floor = function (e, h) { var p = new three.Vector3(); return ray0(e).ray.intersectPlane(new three.Plane(new three.Vector3(0, 1, 0), -(h || 0)), p) ? { x: p.x, y: -p.z } : null; };      // the point under the pointer at height h (where she grabbed the tower), in stage feet
+    cv.addEventListener('pointerdown', function (e) {
+      drag = { x: e.clientX, y: e.clientY, yaw: v.yaw, pitch: v.pitch }; cv.setPointerCapture(e.pointerId);
+      if (v.onTowerDrag) {      // grab a tower and slide it on the deck (Colleen 2026-10-25: place towers right on the stage)
+        var hit = ray0(e).intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; }), gh = hit ? hit.point.y : 0, f = hit && floor(e, gh);
+        if (hit && f) { var c = v.onTowerDrag(hit.object.userData.tower, null); if (c) drag.tower = { t: hit.object.userData.tower, h: gh, dx: c.x - f.x, dy: c.y - f.y, moved: false }; }
+      }
+    });
+    cv.addEventListener('pointermove', function (e) { if (!drag) return;
+      if (drag.tower) { if (!drag.tower.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return; var f = floor(e, drag.tower.h); if (!f) return; drag.tower.moved = true; cv.style.cursor = 'grabbing'; v.onTowerDrag(drag.tower.t, { x: f.x + drag.tower.dx, y: f.y + drag.tower.dy }); return; }
+      v.yaw = Math.max(-0.6, Math.min(0.6, drag.yaw - (e.clientX - drag.x) * 0.004)); v.pitch = Math.max(-0.25, Math.min(0.35, drag.pitch + (e.clientY - drag.y) * 0.003)); if (v.redraw) v.redraw(); });
+    cv.addEventListener('pointerup', function (e) {      // a click (not a drag) picks the tower under the pointer
+      var d0 = drag; drag = null; cv.style.cursor = '';
+      if (d0 && d0.tower && d0.tower.moved) { v.onTowerDrag(d0.tower.t, 'end'); return; }
+      if (!d0 || Math.hypot(e.clientX - d0.x, e.clientY - d0.y) > 4 || !v.onPick) return;
+      var r = cv.getBoundingClientRect(), m = new three.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), ray = new three.Raycaster(); ray.setFromCamera(m, v.camera);
+      var hit = ray.intersectObjects(W.scene.children, true).find(function (h) { return h.object.userData && h.object.userData.tower; });
+      v.onPick(hit ? hit.object.userData.tower : null, hit ? hit.object.userData.face : null);
+    });
+    cv.addEventListener('wheel', function (e) { e.preventDefault(); v.dist = Math.max(0.55, Math.min(1.6, v.dist * Math.exp(e.deltaY * 0.001))); if (v.redraw) v.redraw(); }, { passive: false });
+    cv.addEventListener('dblclick', function () { v.yaw = 0; v.pitch = 0; v.dist = 1; if (v.redraw) v.redraw(); });
+    views.push(v); return v;
+  }
+  function draw(host, ctx) {
+    if (!ready) { load().then(function () { ctx.redraw(); }).catch(function () { ctx.fallback(); }); return false; }
+    if (!W.scene || W.key !== JSON.stringify(ctx.P.stage)) { try { build(ctx); } catch (e) { W = {}; ctx.fallback(); return false; } faceSrc = {}; overlays = null; }      // a half-built scene would fail on every frame
+    loadOverlays(ctx); attachOverlays(ctx);
+    var v = viewFor(host, ctx.crew), s = ctx.P.stage; v.redraw = ctx.redraw; v.onPick = ctx.onPick; v.onTowerDrag = ctx.onTowerDrag || null;
+    var Wd = host.clientWidth; if (!Wd) return true; var room = window.innerHeight - Math.max(0, host.getBoundingClientRect().top + window.scrollY) - 10, H = Math.round(ctx.full ? Math.max(260, room) : Math.min(Wd * 0.5, Math.max(220, room)));      // the simple stage view fills the window      // fits the room left in the window under the controls
+    if (v.canvas.width !== Math.round(Wd * v.renderer.getPixelRatio()) || v.h !== H) { v.renderer.setSize(Wd, H, false); v.canvas.style.width = '100%'; v.canvas.style.height = 'auto'; v.h = H; }
+    update(ctx);
+    W.drape.visible = W.border.visible = !ctx.crew;
+    W.back.intensity = ctx.crew ? 1.25 : 0.55; W.back.color.setHex(ctx.crew ? 0xdfe6ff : 0x6f86ff);      // backstage work light, so the crew's faces read clearly      // backstage looks out through where the drape would be
+    var line = ctx.PK.towerLine(ctx.scene), target = new three.Vector3(0, 3.6, -line), cam = v.camera, half = ctx.halfW;
+    // a seat in the middle of the house (raked: eyes about 9 ft up), or a crew member's eye line just behind the drape
+    var eye = ctx.crew ? new three.Vector3(0, 7, -(s.curtain + Math.max(14, s.crew || 0))) : new three.Vector3(0, 6.5, s.apron + s.house);      // backstage: upstage of the towers (three's z = −stage y), looking out at the house      // a seat in the middle of the house, eyes about 6½ ft above the deck
+    var off = eye.clone().sub(target), d0 = off.length();
+    off.applyAxisAngle(new three.Vector3(0, 1, 0), v.yaw); var side = new three.Vector3().crossVectors(off, new three.Vector3(0, 1, 0)).normalize(); off.applyAxisAngle(side, v.pitch);
+    cam.position.copy(target.clone().add(off.multiplyScalar(v.dist)));
+    var band = ctx.band ? ctx.band(v.canvas) : null, bh = band ? Math.max(120, band.bottom - band.top) : H;      // fit the stage into the open band between the panels
+    cam.aspect = Wd / H; var hfov = 2 * Math.atan((half * 1.05) / d0) * Math.min(1.8, Math.max(1, (H / bh) * 0.7));      // the lens stays fixed: scrolling moves the seat closer, so the whole stage grows
+    cam.fov = 2 * Math.atan(Math.tan(hfov / 2) / cam.aspect) * 180 / Math.PI; if (band) { var shift = ((band.top + band.bottom) / 2 - H / 2); cam.setViewOffset(Wd, H, 0, -shift, Wd, H); } else cam.clearViewOffset();
+    cam.updateProjectionMatrix(); cam.lookAt(target);
+    v.renderer.render(W.scene, cam);
+    return true;
+  }
+  window.PK3D = { draw: draw, load: load, _views: function () { return views; } };
+})();

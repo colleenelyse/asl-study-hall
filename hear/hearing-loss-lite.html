@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hearing Loss Simulator: Simple view</title>
+  <!-- The Lite page is now the Simple view switch on the main simulator page.
+       This page only sends old links and bookmarks there, keeping anything after the ? or the #. -->
+  <noscript><meta http-equiv="refresh" content="0; url=hearing-loss-simulator.html?lite"></noscript>
+  <script>
+    (function () {
+      const extras = new URLSearchParams(location.search);
+      extras.delete('lite');
+      const query = extras.toString();
+      location.replace('hearing-loss-simulator.html?' + (query ? query + '&' : '') + 'lite' + location.hash);
+    })();
+  </script>
+  <style>
+    body { background: #1d1930; color: #f4effa; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 40px 20px; text-align: center; }
+    a    { color: #ff6fb1; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <p>Opening the Hearing Loss Simulator in Simple view&hellip;</p>
+  <p><a href="hearing-loss-simulator.html?lite">Click here if it does not open</a></p>
+</body>
+</html>

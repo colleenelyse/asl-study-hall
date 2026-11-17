@@ -1,0 +1,8 @@
+[
+ {"key": "A1-locker", "face": "A1", "file": "overlays/A1-locker-door.png", "x": 210, "y": 740, "w": 230, "h": 469, "depth": 0.06, "name": "Sharpay's operable locker door (shown without the padlock)"},
+ {"key": "A2-clock", "face": "A2", "file": "overlays/A2-clock.png", "x": 472, "y": 139, "w": 222, "h": 76, "depth": 0.15, "name": "12-inch classroom clock"},
+ {"key": "A2-plant", "face": "A2", "file": "overlays/A2-plant.png", "x": 620, "y": 99, "w": 255, "h": 521, "depth": 0.55, "name": "Wall bracket and hanging plant"},
+ {"key": "B1-door", "face": "B1", "file": "overlays/B1-door.jpg", "x": 111, "y": 367, "w": 665, "h": 1335, "depth": 0.06, "name": "36 x 80 inch inward-opening door"},
+ {"key": "C1-corkboard", "face": "C1", "file": "overlays/C1-corkboard.png", "x": 324, "y": 605, "w": 239, "h": 443, "depth": 0.1, "name": "Framed 36 x 24 inch corkboard"},
+ {"key": "C3-hooks", "face": "C3", "file": "overlays/C3-hooks.png", "x": 80, "y": 709, "w": 150, "h": 55, "depth": 0.12, "name": "Removable brass hooks"}
+]

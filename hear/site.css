@@ -1,0 +1,58 @@
+/* SHARED STYLES for the font menu, the Troubleshooting button and the menus at the top of the page.
+   Used by every page: index.html, troubleshooting.html, save-as-pdf.html, hearing-loss-simulator.html,
+   cochlear-implant-simulator.html, ear-quiz.html (Parts of the Ear), credits.html, teachers.html and privacy.html.
+   Each page links this file just after its own <style> block, so these rules still come after the page's own rules,
+   the same order they had when every page carried its own copy. Change it here and every page changes. */
+
+/* THE FONT MENU: each choice is written in its own font */
+@font-face { font-family: 'OpenDyslexic'; font-weight: 400; font-display: swap;
+             src: url('OpenDyslexic-Regular.otf') format('opentype'), url('https://cdn.jsdelivr.net/fontsource/fonts/opendyslexic@5.3.0/latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'OpenDyslexic'; font-weight: 700; font-display: swap;
+             src: url('OpenDyslexic-Bold.otf') format('opentype'), url('https://cdn.jsdelivr.net/fontsource/fonts/opendyslexic@5.3.0/latin-700-normal.woff2') format('woff2'); }
+.fontPick { position: relative; display: inline-flex; align-items: center; gap: 5px; }
+/* Menus look the same in every browser (Safari otherwise draws its own glossy style), and match the Font button */
+select { -webkit-appearance: none; appearance: none; padding-right: 30px !important; background-repeat: no-repeat !important; background-position: right 11px center !important; background-size: 10px 6px !important;
+         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0 L5 6 L10 0 Z' fill='%23999'/%3E%3C/svg%3E") !important; }
+.pageTools select, .pageTools #fontButton { font-size: 15px; line-height: 1.25; padding-top: 7px; padding-bottom: 7px; padding-left: 14px; border-radius: 999px; box-sizing: border-box; height: 36px; }
+#fontButton { border: 1.5px solid var(--line, #999); background-color: var(--raised, #fff); color: var(--ink, #111); cursor: pointer; font-family: inherit;
+              padding-right: 30px; position: relative; min-width: 150px; text-align: left; font-weight: 400; white-space: nowrap; background-repeat: no-repeat; background-position: right 11px center; background-size: 10px 6px;
+              background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0 L5 6 L10 0 Z' fill='%23999'/%3E%3C/svg%3E"); }
+#fontMenu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 80; min-width: 270px; padding: 6px; box-sizing: border-box;
+            background: var(--card, #fff); color: var(--ink, #111); border: 1.5px solid var(--line, #999); border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+#fontMenu button { cursor: pointer; display: block; width: 100%; text-align: left; border: 0 !important; background: none; color: inherit; border-radius: 9px !important;
+                   padding: 8px 10px; margin: 0; font-size: 17px; font-weight: 400; }
+#fontMenu button:hover, #fontMenu button:focus-visible { background: var(--raised, #eee); }
+#fontMenu button[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--accent, #e6007e); }
+.contrast #fontMenu { background: #000; color: #fff; border: 2px solid #fff; }
+.contrast #fontMenu button:hover, .contrast #fontMenu button:focus-visible { background: #333; }
+body.game .fontPick { display: none; }
+
+/* The Troubleshooting button, on every page (troubleshooting.html and save-as-pdf.html have none, so these rules do nothing there) */
+a.helpButton { display: inline-flex; align-items: center; gap: 6px; height: 36px; box-sizing: border-box; padding: 0 14px; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;
+               border-radius: 999px; border: 1.5px solid var(--line, #999); background: var(--raised, #fff); color: var(--ink, #111); }
+a.helpButton:hover { border-color: var(--accent, #e6007e); }
+a.helpButton:focus-visible { outline: 3px solid var(--accent, #e6007e); outline-offset: 2px; }
+.contrast a.helpButton { border: 2px solid #fff; color: #fff; }
+body.game a.helpButton { display: none; }
+
+/* On touch screens, the menus and buttons at the top are at least 44 pixels tall, so they are easy to tap */
+@media (pointer: coarse) { .pageTools select, .pageTools button, .pageTools a.helpButton { min-height: 44px; } }
+
+/* More color schemes, the same as the ASL Study Hall games (Colleen, 2026-10-15: "give all pages all options"); the Colors menu saves them in simulatorColors like Light / Dark */
+html body.sch-neon { --page: #0D0D1A; --card: #16162B; --raised: #222240; --line: #34345C; --ink: #F2F2FF; --quiet: #A9A9D0; --accent: #FF3EA5; --onAccent: #0D0D1A; --right: #39FFB6; --pink: #FF3EA5; --mint: #39FFB6; --amber: #ffc94d; --wrong: #FF6B6B; --shadow: none; }
+html body.sch-galaxy { --page: #14102B; --card: #1F1940; --raised: #2B2356; --line: #3C3170; --ink: #EFE9FF; --quiet: #B7A9E0; --accent: #9D7CFF; --onAccent: #14102B; --right: #6FE3C1; --pink: #9D7CFF; --mint: #6FE3C1; --amber: #ffc94d; --wrong: #FF8FA3; --shadow: none; }
+html body.sch-arcade { --page: #0B0F0C; --card: #121A14; --raised: #1B271E; --line: #284232; --ink: #E8FFE9; --quiet: #9DC7A2; --accent: #3DFF6E; --onAccent: #0B0F0C; --right: #3DFF6E; --pink: #3DFF6E; --mint: #3DFF6E; --amber: #ffc94d; --wrong: #FF5A5F; --shadow: none; }
+html body.sch-matcha { --page: #EEF2E6; --card: #FBFCF7; --raised: #DDE6CF; --line: #CCD9BB; --ink: #24301E; --quiet: #5F6E55; --accent: #5E8C4A; --onAccent: #ffffff; --right: #1a7f37; --pink: #5E8C4A; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-latte { --page: #F3EBE2; --card: #FFFCF8; --raised: #E6D7C6; --line: #DCC8B3; --ink: #3B2A20; --quiet: #7A6455; --accent: #9C6644; --onAccent: #ffffff; --right: #1a7f37; --pink: #9C6644; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-sunset { --page: #FFF0E8; --card: #FFFFFF; --raised: #FFDCCB; --line: #F6C8B7; --ink: #3A1F2B; --quiet: #7D5563; --accent: #F2545B; --onAccent: #ffffff; --right: #1a7f37; --pink: #F2545B; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-ocean { --page: #E7F4F6; --card: #FFFFFF; --raised: #D0EAEF; --line: #B9DCE4; --ink: #0E2A36; --quiet: #4A6B78; --accent: #0FA3B1; --onAccent: #ffffff; --right: #1a7f37; --pink: #0FA3B1; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+html body.sch-mono { --page: #F4F4F4; --card: #FFFFFF; --raised: #E6E6E6; --line: #D4D4D4; --ink: #111111; --quiet: #5C5C5C; --accent: #111111; --onAccent: #ffffff; --right: #1a7f37; --pink: #111111; --mint: #1a7f37; --amber: #ffc94d; --wrong: #c62828; }
+/* Hearing Loss draws its colored pages with its dark-mode rules, so a scheme turns those on (class dark) and, for the light schemes (class schL),
+   these keep the few fixed dark-page colors readable on a light page */
+.schL a { color: var(--accent); }
+.schL .mysteryBox { border-color: var(--accent); }
+.schL .switch span { background: var(--line); }
+.schL .presets button.on, .schL .chartCard .presets button.on { background: var(--raised); }
+.schL .transport button:disabled { color: var(--quiet); }
+.schL .chart { box-shadow: 0 0 0 6px var(--raised), 0 8px 24px rgba(0, 0, 0, .12); }
+.schL .script { border-color: var(--line); }

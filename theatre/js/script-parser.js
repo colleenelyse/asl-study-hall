@@ -1,0 +1,675 @@
+/* Script reader for Broadway Junior style actor's scripts (MTI layout):
+   - a speaker's name sits alone on its own line, centered, in capitals (often bold)
+   - dialogue runs full width from the left margin
+   - stage directions are indented and wrapped in ( ), usually italic
+   - "SCENE 4: GYM – MONDAY, 8:30 A.M." starts a scene
+   - "#9 – GET'CHA HEAD IN THE GAME" inside a direction is a music cue
+   - pages of sheet music are skipped; a song becomes one "song" item that points to its track
+   Input is plain text positions, so it works with pdf.js in the browser and with any test harness.
+   It runs entirely on the teacher's own device; nothing is uploaded unencrypted. */
+(function (root) {
+  'use strict';
+
+  var MUSIC_GLYPH = /[œ‰Œ¿Ó∑ˆ˙»«Ä≈¬∫]/;
+  var MUSIC_GLYPH_ALL = /[œ‰Œ¿Ó∑ˆ˙»«Ä≈¬∫]/g;
+
+  /* "Some - thing new __" printed under notes -> "Something new" */
+  function cleanLyric(s) {
+    var t = s.replace(MUSIC_GLYPH_ALL, ' ').replace(/_+/g, ' ').replace(/\s+-\s*|\s*-\s+/g, '').replace(/[–—]\s*$/, '')
+      .replace(/\s+([,.!?;:])/g, '$1').replace(/(\w)\s+(n['’]t|['’](?:s|ll|re|ve|d|m))\b/g, '$1$2').replace(/\s+/g, ' ').trim();
+    return api && api.rawLyrics ? t : joinSyllables(t);
+  }
+  /* sheet music prints words cut into syllables ("sta - tus", "to - geth - er"); where the dashes are lost the pieces come apart with spaces
+     (Colleen 2026-10-24: "many of the lyrics copied from the sheet music are cut up by syllables … remove the extra spaces to make real
+     words"). Pieces are joined only when together they make a word in WORDS and at least one piece is not a word on its own, or when the
+     word is one songs often split ("some thing", "to gether"); never "we're all" or "be here". Longest join first, up to 5 pieces. */
+  var SPLIT_OK = /^(some(thing|one|body|how|times?|day|where)|any(thing|one|body|more|way|time)|every(thing|one|body|day|time|where)|no(thing|body|where)|to(gether|night|day|morrow)|in(side|to)|out(side)|a(way|long|lone|bout|round|head|fraid|gain|bove|cross|live|sleep|wake|part)|be(cause|lieve|long|fore|hind|tween|yond|side|sides|come|came|gin|neath|low|ware)|un(til|less)|with(in|out)|up(on)|on(to)|wild(cats?)|sing(along)|for(ever|get|give|got))$/;
+  var LW = root.LYRIC_WORDS || (typeof module !== 'undefined' && module.exports ? require('./lyric-words.js') : { words: '', joins: '' });      // js/lyric-words.js
+  var WORDS = new Set(LW.words.split(' ')), JOINS = new Set(LW.joins.split(' '));
+  var SONG_SPELLINGS = new Set("ev'ry ev'rybody ev'ryone ev'rywhere ev'rything fin'lly diff'rent sep'rate get'cha c'mon gotcha gonna gotta wanna wildcats wildcat hooray runnin' cuttin' tryin' goin' climbin' party's feeling's together's".split(' '));
+  var NEG = /^(don|won|can|didn|couldn|wouldn|shouldn|isn|wasn|aren|weren|hasn|haven|ain)$/;
+  var bare = function (x) { return x.toLowerCase().replace(/[’‘]/g, "'").replace(/^[^a-z']+|[^a-z']+$/g, ''); };
+  function isWord(p) {      // a piece that is a word on its own (we're, don't and it's count; "in'" from runnin' does not)
+    if (/in'$/.test(p) && p.length <= 4) return false;
+    p = p.replace(/^'+|'+$/g, ''); if (!p) return false;
+    if (p.indexOf("'") >= 0) { var q = p.split("'"); return SONG_SPELLINGS.has(p) || (q.length === 2 && /^(s|re|ve|ll|d|m|t)$/.test(q[1]) && (isWord(q[0]) || NEG.test(q[0]))); }      // we're, don't, it's (not "we'reall")
+    return WORDS.has(p);
+  }
+  function joinAt(toks, i) {
+    for (var n = Math.min(5, toks.length - i); n >= 2; n--) {
+      var parts = toks.slice(i, i + n);
+      if (parts.slice(0, -1).some(function (p) { return /[^A-Za-z’'‘]$/.test(p); }) || parts.some(function (p) { return /\d/.test(p); })) continue;
+      var k = bare(parts.join(''));
+      if ((SONG_SPELLINGS.has(k) || JOINS.has(k) || SPLIT_OK.test(k.replace(/'s$/, ''))) && (parts.map(bare).some(function (p) { return !isWord(p); }) || SPLIT_OK.test(k.replace(/'s$/, '')))) return n;
+    }
+    return 0;
+  }
+  function joinSyllables(t) {
+    var toks = t.split(' '), out = [], i = 0;
+    while (i < toks.length) {
+      var n = joinAt(toks, i);
+      if (n && isWord(bare(toks[i])) && !SPLIT_OK.test(bare(toks.slice(i, i + n).join('')).replace(/'s$/, '')) && joinAt(toks, i + 1)) n = 0;      // "in hea ven": "in" stays, "heaven" joins
+      if (n) { out.push(toks.slice(i, i + n).join('')); i += n; } else { out.push(toks[i]); i++; }
+    }
+    return out.join(' ');
+  }
+  /* words saved by the older reader, which guessed by syllable and sometimes glued the wrong pieces ("we'reall", "behere", "wereal ways"):
+     pull those apart where the glued word is not a word, then join the real pieces (songs the teacher edited keep their saved words) */
+  function fixLyricText(t) {
+    var known = function (w) { var b = bare(w); return !b || isWord(b) || JOINS.has(b) || SONG_SPELLINGS.has(b); };
+    var all = String(t || '').split(' ');
+    var toks = all.map(function (w, i) {
+      if (known(w) || SPLIT_OK.test(bare(w))) return w;
+      var nx = all[i + 1] || '', b2 = w.match(/^(be)([a-z]{2,})$/i);
+      if (b2 && nx && JOINS.has(bare(b2[2] + nx))) return b2[1] + ' ' + b2[2];      // "benum ber" → "be num ber" → "be number"
+      var m = w.match(/^(.*?)((?:we|you|they)['’]re)([a-z]{2,}.*)$/i); if (m && !m[1]) return m[2] + ' ' + m[3];
+      m = w.match(/^(be)([a-z]{2,}.*)$/i); if (m && known(m[2])) return m[1] + ' ' + m[2];
+      m = w.match(/^([a-z’']{2,}?)(er|ly|ta|na|al|y|e|ty|ry|ny|ble|tion|ing)([^a-z]*)$/i); if (m && known(m[1])) return m[1] + ' ' + m[2] + m[3];
+      m = w.match(/^(ev|un|re|pe|se|bi|hi|si|ri|de|ec|ti|pre|con|dis|ex)([a-z’']{2,}.*)$/i); if (m && known(m[2]) && !JOINS.has(bare(w))) return m[1] + ' ' + m[2];
+      return w;
+    });
+    return joinSyllables(toks.join(' '));
+  }
+  var CUE = /#\s?(\d{1,3}[A-Z]?)\s*[–—-]\s*([A-Z0-9][A-Z0-9’'!?,&\/ ()–-]*)/g;
+  var SCENE = /^SCENE\s+(\d{1,3})\s*[:.–-]\s*(.*)$/;
+
+  function isCaps(s) {
+    var letters = s.replace(/[^A-Za-z]/g, '');
+    return letters.length >= 2 && letters === letters.toUpperCase();
+  }
+  function parenDelta(s) {
+    var d = 0;
+    for (var i = 0; i < s.length; i++) { if (s[i] === '(') d++; else if (s[i] === ')') d--; }
+    return d;
+  }
+
+  /* items -> lines: one entry per printed line, left to right */
+  function toLines(page) {
+    var items = page.items.filter(function (it) { return it.str && it.str.trim(); })
+      .slice().sort(function (a, b) { return a.y - b.y || a.x - b.x; });
+    var lines = [];
+    items.forEach(function (it) {
+      var tol = Math.max(2, (it.size || 12) * 0.3);
+      var line = null;
+      for (var i = lines.length - 1; i >= 0 && i >= lines.length - 3; i--) {
+        if (Math.abs(lines[i].y - it.y) <= tol) { line = lines[i]; break; }
+      }
+      if (!line) { line = { y: it.y, parts: [] }; lines.push(line); }
+      line.parts.push(it);
+    });
+    return lines.map(function (l) {
+      l.parts.sort(function (a, b) { return a.x - b.x; });
+      // measure numbers printed small beside lyrics are not words
+      var big = Math.max.apply(null, l.parts.map(function (p) { return p.size || 12; }));
+      var kept = l.parts.filter(function (p) { return !(/^[\d\s\-–+:]+$/.test(p.str) && (p.size || 12) < big * 0.8); });
+      if (kept.length) l.parts = kept;
+      var text = '', last = null, fonts = {}, bold = 0, italic = 0, glyphs = 0, n = 0;
+      l.parts.forEach(function (p) {
+        if (last) {
+          var gap = p.x - (last.x + (last.w || 0));
+          if (gap > (p.size || 12) * 0.12 && !/\s$/.test(text) && !/^\s/.test(p.str)) text += ' ';
+        }
+        text += p.str;
+        last = p;
+        var f = (p.font || '').toLowerCase(), len = p.str.length;
+        n += len;
+        if (/bold|black|heavy|semibold/.test(f)) bold += len;
+        if (/italic|oblique/.test(f)) italic += len;
+        if (MUSIC_GLYPH.test(p.str)) glyphs++;
+      });
+      var lyricParts = l.parts.filter(function (p) { return (p.size || 12) < 14 && /[A-Za-z]/.test(p.str.replace(MUSIC_GLYPH_ALL, '')); });
+      var lyric = lyricParts.map(function (p) { return p.str; }).join(' ');
+      var first = l.parts[0], end = last.x + (last.w || 0);
+      return {
+        y: l.y, x0: first.x, x1: end, text: text.replace(/\s+/g, ' ').trim(),
+        bold: bold > n / 2, italic: italic > n / 2, glyphs: glyphs, size: first.size || 12, lyric: lyric,
+        parts: l.parts.map(function (p) { return { x: p.x, str: p.str, size: p.size || 12 }; }),
+        syl: [].concat.apply([], lyricParts.map(function (p) {      // where each sung word or syllable sits (for the bouncing ball); an item holding two words is split by its letters
+          var str = p.str.replace(MUSIC_GLYPH_ALL, ' '), w = p.w || 0, out = [], re = /[A-Za-z’'][A-Za-z’',.!?]*/g, m;
+          while ((m = re.exec(str))) out.push({ x: +(p.x + w * m.index / Math.max(1, str.length)).toFixed(1), w: +(w * m[0].length / Math.max(1, str.length)).toFixed(1), t: m[0] });
+          return out;
+        }))
+      };
+    });
+  }
+
+  function isMusicPage(lines) {
+    var g = 0;
+    lines.forEach(function (l) { g += l.glyphs; });
+    return g >= 6;
+  }
+
+  /* a printed page number from a header or footer line, e.g. "8 Disney's High School Musical JR." */
+  function pageFurniture(line, page) {
+    var nearEdge = line.y > page.height * 0.9 || line.y < page.height * 0.07;
+    if (!nearEdge || line.text.length > 90 || SCENE.test(line.text)) return null;      // a scene can start at the very top of a page
+    var m = line.text.match(/^(\d{1,3})\b/) || line.text.match(/\b(\d{1,3})$/);
+    // a running head or footer has the page number; anything else this close is only furniture right at the edge (the last line of dialogue can sit near the footer)
+    if (!m && line.y < page.height * 0.955 && line.y > page.height * 0.045) return null;
+    return { printed: m ? +m[1] : null };
+  }
+
+  function splitNames(s) {
+    return s.split(/\s*(?:,|&|\bAND\b)\s*/).map(function (x) { return x.replace(/^\+\s*/, '').trim(); }).filter(Boolean);
+  }
+
+  function parse(pages, opts) {
+    opts = opts || {};
+    var songNums = opts.songNumbers ? opts.songNumbers.map(String) : null;
+    var stop = opts.stopPatterns || [/^actor[’']?s glossary$/i, /^show glossary$/i, /^credits and copyrights$/i];
+    var scenes = [], scene = null, speaker = null, block = null, depth = 0, done = false;
+    var speakers = {}, lastSong = null, lastSongItem = null, singerNow = '', singerLabs = [], nameFrag = null, pendingHeading = null, printed = null;
+    var LAB = /^[\d\s+]*\(?([A-Z][A-Z .’',&]*?[A-Z.])(?:\s+\d+)?\)?\s?:\s*$/;      // "KELSI :" (a space before the colon) too
+    /* a lyric line, split where a singer label above it starts (Colleen: "many sung syllables were missed": a name printed partway along the staff
+       starts that singer there, so the words before it still belong to the one before) */
+    /* bracketed systems (Colleen 2026-10-23: staves joined by a bracket at the left are sung at the same time, so their lyrics go in order left to
+       right across the system, and each staff keeps its own singer): where a line sits, the system's lyrics held until the system is done */
+    var curPage = null, sysBuf = [], sysKey = null, singerByIdx = {}, labsByStaff = {};
+    var trackOn = false, spokenLyric = null;      // the song's title banner has passed: the track is playing (spoken lines join the song's sections)
+    /* spoken words in a song (Colleen 2026-10-23, "What I've Been Looking For (Reprise)": KELSI: / Now together.): the small words on a line, a
+       sentence test, and whether a name on its own is a speaker (sentence words follow before the next notes) or a singer label over a staff */
+    var smallWords = function (l) { return (l.parts || []).filter(function (p) { return p.size < 14 && p.str.trim() && !/^[\d\s+\-–#]+$/.test(p.str); }); };
+    var sentence = function (s) { return /^[A-Z“"‘']/.test(s) && /[a-z]/.test(s) && /[.!?…”"’]$/.test(s) && !/:\s*$/.test(s); };
+    var wordsBox = function (l, ws) { var a = ws[0], z = ws[ws.length - 1], sz = a.size || 11; return { n: curPage.num, x: +a.x.toFixed(1), y: +(l.y - sz * 0.95).toFixed(1), w: +(z.x + z.str.trim().length * sz * 0.48 - a.x).toFixed(1), h: +(sz * 1.25).toFixed(1) }; };
+    var tidy = function (s) { return String(s).replace(/(\s+(?:\d+x)+|\s+\d+(?:-\d+)?)+\s*$/, '').trim(); };      // measure numbers and repeat marks after spoken words
+    function lyricRow(ls, j) { for (var k = j - 1; k >= 0 && ls[k].y > ls[j].y - 30; k--) if (ls[k].glyphs) return true; return false; }      // right under the notes
+    function speechFollows(ls, i) {
+      for (var j = i + 1; j < ls.length && ls[j].y < ls[i].y + 34; j++) {
+        if (ls[j].glyphs || lyricRow(ls, j)) return false;      // notes, or lyrics under them: a singer's label
+        var ws = smallWords(ls[j]).map(function (p) { return p.str.trim(); }).join(' ');
+        if (!ws || /^\(/.test(ws) || /^[a-z]/.test(ws)) continue;      // a direction or a marking like “with confidence”
+        return sentence(ws);
+      }
+      return false;
+    }
+    function startSpeech(who, text, bx) {      // a spoken line over the music; text may come on the next line
+      speaker = who; speakers[speaker] = (speakers[speaker] || 0) + 1;
+      block = emit({ type: 'line', who: speaker, text: text, overMusic: true });
+      spokenLyric = null; block._await = !text;
+      if (text && trackOn && lastSongItem) { spokenLyric = { who: speaker, text: text, page: printed, box: bx, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); }
+    }
+    function staffAt(y, below) {      // the staff a lyric sits under (below = false: the staff a label sits over)
+      var sys = curPage && curPage.systems; if (!sys) return null;
+      for (var a = 0; a < sys.length; a++) for (var b = 0; b < sys[a].staves.length; b++) {
+        var st = sys[a].staves[b];
+        if (below ? (y > st.bottom && y - st.bottom < 75) : (y < st.top && st.top - y < 45)) {
+          var better = !below ? null : sys.some(function (x) { return x.staves.some(function (o) { return o !== st && y > o.bottom && o.bottom > st.bottom; }); });
+          if (!better) return { sys: sys[a], st: st, idx: b, key: curPage.num + ':' + sys[a].top.toFixed(1), staffKey: curPage.num + ':' + st.top.toFixed(1), many: sys[a].staves.length > 1 };
+        }
+      }
+      return null;
+    }
+    function flushSys() {
+      if (!sysBuf.length) return;
+      var song = sysBuf[0].song;
+      sysBuf.sort(function (a, b) { return a.e.box.x - b.e.box.x || a.k - b.k; }).forEach(function (x) { song.lyrics.push(x.e); });
+      sysBuf = []; sysKey = null;
+    }
+    function addLyric(e, loc, k) {
+      e._pg = curPage ? curPage.num : null; if (loc) e._sy = loc.sys.top;      // the staff row it belongs to (reading order, see readingOrder)
+      if (!loc || !loc.many) { flushSys(); lastSongItem.lyrics.push(e); return; }
+      if (sysKey !== loc.key || (sysBuf.length && sysBuf[0].song !== lastSongItem)) flushSys();
+      sysKey = loc.key; sysBuf.push({ e: e, k: sysBuf.length + k, song: lastSongItem });
+    }
+    function pushLyric(line, lyr) {
+      var loc = staffAt(line.y, true), syl = line.syl || [], labs = singerLabs; singerLabs = [];
+      if (loc) { labs = (labsByStaff[loc.staffKey] || []).concat(labs); delete labsByStaff[loc.staffKey]; }
+      var before = singerNow;
+      if (loc && loc.many && singerByIdx[loc.idx] != null) singerNow = singerByIdx[loc.idx];      // each staff of a system keeps its own singer
+      if (!labs.length || !syl.length) {
+        var parts0 = loc && loc.many ? phrases(syl) : [syl];
+        parts0.forEach(function (ps, k) { var e = entry(singerNow, ps, parts0.length > 1 ? null : lyr); if (e) addLyric(e, loc, k); });
+        if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : before; }      // after a system, the top staff's singer carries on
+        return;
+      }
+      var cur = singerNow;
+      labs.forEach(function (l) { if (l.plus && cur && splitNames(cur).indexOf(l.name) < 0) l.name = cur + ', ' + l.name; cur = l.name; });      // "+ TROY:" joins whoever is singing
+      var runs = [];
+      syl.forEach(function (x) {
+        var who = singerNow || labs[0].name;
+        labs.forEach(function (l) { if (x.x + x.w >= l.x - 4) who = l.name; });
+        var r = runs[runs.length - 1]; if (r && r.who === who) r.syl.push(x); else runs.push({ who: who, syl: [x] });
+      });
+      var k = 0;
+      runs.forEach(function (r) { (loc && loc.many ? phrases(r.syl) : [r.syl]).forEach(function (ps) { var e = entry(r.who, ps); if (e) addLyric(e, loc, k++); }); });
+      singerNow = labs[labs.length - 1].name;
+      if (loc && loc.many) { singerByIdx[loc.idx] = singerNow; singerNow = singerByIdx[0] != null ? singerByIdx[0] : singerNow; }
+    }
+    /* one lyric entry from a run of syllables (text: the line's own words when it is the whole line) */
+    function entry(who, ps, text) {
+      if (!ps.length) return text ? { who: who, text: text, page: printed, box: box, syl: [] } : null;
+      var a = ps[0], z = ps[ps.length - 1], t = text || cleanLyric(ps.map(function (x) { return x.t; }).join(' '));
+      if (!t.replace(/[^A-Za-z]/g, '').length) return null;
+      return { who: who, text: t, page: printed, box: text ? box : { n: box.n, x: +(a.x - 1).toFixed(1), y: box.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: box.h }, syl: ps.map(strip) };
+    }
+    /* in a system of several staves, a staff's words broken by rests are separate phrases (the other staff can sing in between) */
+    function phrases(ps) {
+      var out = [], cur = [];
+      ps.forEach(function (x, i) { var prev = ps[i - 1]; if (prev && x.x - (prev.x + prev.w) > 48) { out.push(cur); cur = []; } cur.push(x); });
+      if (cur.length) out.push(cur);
+      return out.length ? out : [ps];
+    }
+    var strip = function (x) { return { x: x.x, w: x.w, t: x.t }; };
+    var dialogueX = null;
+
+    /* where each item sits on the PDF page (pdf page number, x, y from the top, width, height), so the app can highlight the real pages */
+    var box = null, nameBox = null;
+    var addBox = function (it) { if (it && box) (it.boxes = it.boxes || []).push(box); };
+    function emit(item) {
+      if (!scene) return null;
+      item.page = printed != null ? printed : null;
+      if (item.type === 'line' && nameBox) { item.boxes = [nameBox]; item.named = 1; nameBox = null; }
+      addBox(item);
+      scene.items.push(item);
+      return item;
+    }
+    function cues(text, musicNext) {
+      CUE.lastIndex = 0;
+      var m;
+      while ((m = CUE.exec(text))) {
+        var num = m[1], title = m[2].replace(/\s+[A-Z]$/, '').replace(/[\s,(–-]+$/, '').trim();
+        var isSong = songNums ? songNums.indexOf(num) >= 0 : false;
+        if (isSong && lastSong !== num) {
+          flushSys();
+          lastSongItem = emit({ type: 'song', num: num, title: title, singers: [], lyrics: [] });
+          singerNow = ''; singerLabs = []; singerByIdx = {}; labsByStaff = {}; trackOn = false; spokenLyric = null;
+          lastSong = num; block = null;
+        } else if (!isSong && opts.keepCues) {
+          emit({ type: 'cue', num: num, title: title });
+        }
+      }
+    }
+
+    var pageMap = [];                // [pdf page, printed number] pairs from running heads/footers
+    var prevStave = false;
+
+    for (var pi = 0; pi < pages.length && !done; pi++) {
+      var page = pages[pi], lines = toLines(page), music = isMusicPage(lines); curPage = page;
+      // a page that is part music, part script (a song ends and the scene goes on): below the last staff and its lyrics is ordinary script
+      var lastStave = music ? Math.max.apply(null, lines.filter(function (l) { return l.glyphs; }).map(function (l) { return l.y; }).concat([0])) : 0;
+      // …and above the first song banner or staff (a scene's last lines before the song starts on the same page)
+      var firstMusic = music ? Math.min.apply(null, lines.filter(function (l) { return l.glyphs || l.size >= 16; }).map(function (l) { return l.y - l.size; }).concat([1e9])) : 0;
+      lines = lines.filter(function (l) {
+        if (stop.some(function (re) { return re.test(l.text); })) return true;      // the glossary heading sits at the top of its page
+        var f = pageFurniture(l, page);
+        if (f) {
+          if (f.printed != null && l.text.replace(/[^A-Za-z]/g, '').length >= 8) pageMap.push([page.num, f.printed]);
+          return false;
+        }
+        return true;
+      });
+      printed = page.num;              // pdf page for now; turned into printed numbers at the end
+      prevStave = false;
+      if (music) depth = 0;            // an unclosed ( on sheet music never spills onto the next page
+      /* words hidden at the bottom of a music page that are really printed at the top of the next page (Colleen 2026-10-23, "Start of
+         Something New": a hidden copy of TROY's next line got stuck onto GABRIELLA's) */
+      var nextTop = {};
+      if (music && pages[pi + 1]) toLines(pages[pi + 1]).forEach(function (l) { if (l.y < 220 && /^[A-Z][A-Z .’',&]+?:\s+\S/.test(l.text)) nextTop[l.text.trim()] = 1; });
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li], t = line.text;
+        if (music && line.y > lastStave + 45 && nextTop[String(t).trim()]) continue;
+        box = { n: page.num, x: +line.x0.toFixed(1), y: +(line.y - line.size * 0.95).toFixed(1), w: +(line.x1 - line.x0).toFixed(1), h: +(line.size * 1.25).toFixed(1) };
+        if (stop.some(function (re) { return re.test(t); })) { done = true; break; }
+
+        if (pendingHeading) {          // a scene heading that wrapped to a second line
+          if (isCaps(t) && t.length < 60 && !/^\(/.test(t)) { scene.place += ' ' + t; pendingHeading = null; continue; }
+          pendingHeading = null;
+        }
+        var sm = t.match(SCENE);
+        if (sm) {
+          scene = { num: +sm[1], heading: t, place: sm[2].trim(), page: page.num, items: [] };
+          scenes.push(scene);
+          speaker = null; block = null; depth = 0; lastSong = null;
+          if (/[–—-]\s*$/.test(t)) pendingHeading = true;
+          continue;
+        }
+        if (!scene) continue;
+
+        if (music && !(line.y > lastStave + 45 && !prevStave) && !(line.y < firstMusic - 4 && !/^[A-Z][A-Z .’',&]+:/.test(t))) {
+          if (/#\s?\d/.test(t)) cues(t);
+          var lyr = line.lyric ? cleanLyric(line.lyric) : '';
+          // the words on the line (music symbols left out): singer labels, or the first half of a label split over two lines ("SHARPAY," / "RYAN:")
+          var words = (line.parts || []).filter(function (p) { return p.size < 14 && p.str.trim() && !/^[\d\s+\-–]+$/.test(p.str); });
+          var labs = words.map(function (p) { var m = p.str.trim().match(LAB); return m ? { name: m[1].trim(), x: p.x, plus: /^[\d\s]*\+/.test(p.str) } : null; });
+          var fragLine = words.length && words.every(function (p) { return /^\+?\s*\(?[A-Z][A-Z .’'&]*[A-Z.]\)?,$/.test(p.str.trim()); });
+          var labLine = words.length && labs.every(Boolean);
+          if (words.length && !labLine) {      // one label printed in pieces ("MS." "DARBUS:")
+            var joined = words.map(function (p) { return p.str.trim(); }).join(' '), jm = joined.match(LAB);
+            if (jm) { labs = [{ name: jm[1].trim(), x: words[0].x, plus: /^[\d\s]*\+/.test(joined) }]; labLine = true; }
+          }
+          var lyricLike = !fragLine && !labLine && lyr.replace(/[^A-Za-z]/g, '').length >= 2 && !line.italic && !/^\(/.test(lyr) && !/^\(/.test(t) && !/#\s?\d+\s*[–-]/.test(t) && !/^[A-Z][A-Z .’',&]+:/.test(lyr);      // "(#22 – …" right under a staff is a stage direction
+          if (line.glyphs && !lyricLike) { prevStave = true; continue; }
+          var awaiting = block && block._await && block._n === page.num && line.y - block._y < 30;      // a speaker's name just above: these are their words
+          if (lyricLike && (prevStave || line.glyphs) && lastSongItem && !awaiting) {
+            pushLyric(line, lyr); addBox(lastSongItem);
+            prevStave = false;
+            continue;
+          }
+          var sw = smallWords(line), swText = sw.map(function (p) { return p.str.trim(); }).join(' ');
+          var tl = swText.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // "I don't think so!" and the next singer's label on one row
+          if (tl && block && block.type === 'line' && block.overMusic && block._n === page.num && line.y - block._y < 30) {
+            swText = tl[1]; var lab = { name: tl[2].replace(/[()]/g, '').trim(), x: sw[sw.length - 1].x, plus: false }, under0 = staffAt(line.y, false);
+            if (lastSongItem) splitNames(lab.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+            if (under0) labsByStaff[under0.staffKey] = (labsByStaff[under0.staffKey] || []).concat([lab]); else singerLabs = singerLabs.concat([lab]);
+            sw = sw.filter(function (p) { return p.x < lab.x; }); if (!sw.length) sw = smallWords(line);
+          }
+          if (block && block.type === 'line' && block.overMusic && block._n === page.num && block._y != null && line.y - block._y < 30 && sw.length && !lyricRow(lines, li) && !labLine && !fragLine && !line.italic && /^[A-Z“"‘'(]/.test(swText) && !/^\(/.test(swText) && !/^[\d\s+]*\(?[A-Z][A-Z .’',&]*[A-Z.]\)?\s*:/.test(swText)) {      // a new name starts a new line
+            var wb = wordsBox(line, sw);
+            swText = tidy(swText); block.text = (block.text ? block.text + ' ' : '') + swText; block.boxes = (block.boxes || []).concat([wb]); block._y = line.y; block._n = page.num;
+            if (block._await) { block._await = false; if (trackOn && lastSongItem) { spokenLyric = { who: block.who, text: swText, page: printed, box: wb, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); } }
+            else if (spokenLyric) { spokenLyric.text += ' ' + swText; spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([wb]); }
+            continue;
+          }
+          if (line.size >= 16 && !labLine && !fragLine && /[A-Za-z]{3}/.test(t) && lastSongItem) trackOn = true;      // the song's title: the track starts here
+          if (/^[\d\s+]*$/.test(t) || (line.size >= 16 && !labLine && !fragLine)) continue;          // measure numbers, the song's title banner (a label beside a big time signature still counts)
+          // singer labels over the staves: "9 TROY:" "+ GABRIELLA, TROY:"
+          // one or more labels on the line, each where it starts along the staff (a time signature or sharp on the same line doesn't matter)
+          if (fragLine) { nameFrag = { name: words.map(function (p) { return p.str.trim().replace(/^\+\s*/, '').replace(/^\(/, ''); }).join(' '), x: words[0].x, plus: /^\+/.test(words[0].str.trim()) }; continue; }
+          if (labLine && labs.length === 1 && !line.glyphs && speechFollows(lines, li)) { startSpeech(labs[0].name, '', box); block._y = line.y; block._n = page.num; continue; }
+          if (labLine) {
+            var found = labs.map(function (l) {
+              if (nameFrag && Math.abs(nameFrag.x - l.x) < 30) { l = { name: nameFrag.name + ' ' + l.name, x: Math.min(nameFrag.x, l.x), plus: nameFrag.plus || l.plus }; nameFrag = null; }
+              return l;
+            });
+            found.forEach(function (f) { if (lastSongItem) splitNames(f.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); }); });
+            var under = staffAt(line.y, false);
+            if (under) labsByStaff[under.staffKey] = (labsByStaff[under.staffKey] || []).concat(found).sort(function (a, b) { return a.x - b.x; });
+            else singerLabs = singerLabs.concat(found).sort(function (a, b) { return a.x - b.x; });
+            continue;
+          }
+          var dirLike = /^\(/.test(t) || /#\s?\d+\s*[–-]/.test(t);
+          var saidLike = /^([A-Z][A-Z .’',&]+?):\s+\S/.test(t);      // "GABRIELLA: Oh no, I have to go." under a staff with no words (Colleen 2026-10-23)
+          if (prevStave) { prevStave = false; if (!dirLike && !saidLike) continue; }        // anything else right under a stave (but a stage direction or a spoken line there counts)
+          var startsDirM = /^\(/.test(t);
+          var sp = depth === 0 && line.italic && t.match(/^([A-Z][A-Z .’',&]+?)\s?:\s*(\([^)]*\))\s*(.*)$/);      // "KELSI: (nods to GABRIELLA)" in italics, the words on the next line
+          if (sp) { startSpeech(sp[1].trim(), tidy(sp[2] + ' ' + sp[3]), box); block._y = line.y; block._n = page.num; continue; }
+          if (depth > 0 || startsDirM || line.italic) {
+            if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
+            else block = emit({ type: 'dir', text: t, _open: true });
+            depth = Math.max(0, depth + parenDelta(t));
+            if (depth === 0 && block) block._open = false;
+            cues(t);
+            continue;
+          }
+          var said = t.match(/^([A-Z][A-Z .’',&]+?):\s+(\S.*)$/);       // "TROY: words" spoken over music
+          if (said) said[2] = tidy(said[2]) || said[2];
+          var tl2 = said && said[2].match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // "ZEKE: … pandowdy. CLIQUES:" (the next singers' label on the same row)
+          if (tl2) {
+            said[2] = tl2[1]; var lab2 = { name: tl2[2].replace(/[()]/g, '').trim(), x: line.x1 - tl2[2].length * 6, plus: false }, u2 = staffAt(line.y, false);
+            if (lastSongItem) splitNames(lab2.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+            if (u2) labsByStaff[u2.staffKey] = (labsByStaff[u2.staffKey] || []).concat([lab2]); else singerLabs = singerLabs.concat([lab2]);
+          }
+          if (said) {
+            speaker = said[1].trim(); speakers[speaker] = (speakers[speaker] || 0) + 1;
+            block = emit({ type: 'line', who: speaker, text: said[2], overMusic: true });
+            // Colleen 2026-10-23: lines spoken after the song's title are over the track: they get timed and lit up with the song's sections
+            if (trackOn && lastSongItem) { spokenLyric = { who: speaker, text: said[2], page: printed, box: box, syl: [], spoken: true }; addLyric(spokenLyric, null, 0); }
+            else spokenLyric = null;
+            block._y = line.y; block._n = page.num;
+            continue;
+          }
+          if (block && block.type === 'line' && block.overMusic && !block._await && block._n === page.num && line.y - block._y < 30 && !lyricRow(lines, li) && !line.glyphs) {      // the next line of a spoken line, right under it
+            var t3 = t, tl3 = t.match(/^(.*?[.!?…”"’])\s+(\(?[A-Z][A-Z .’',&]*[A-Z.]\)?)\s?:(?:\s+\S)?\s*$/);      // the next singers' label at the end of the row
+            if (tl3) {
+              t3 = tl3[1]; var lab3 = { name: tl3[2].replace(/[()]/g, '').trim(), x: line.x1 - tl3[2].length * 6, plus: false }, u3 = staffAt(line.y, false);
+              if (lastSongItem) splitNames(lab3.name).forEach(function (nm) { if (lastSongItem.singers.indexOf(nm) < 0) lastSongItem.singers.push(nm); });
+              if (u3) labsByStaff[u3.staffKey] = (labsByStaff[u3.staffKey] || []).concat([lab3]); else singerLabs = singerLabs.concat([lab3]);
+            }
+            block.text = tidy(block.text + ' ' + t3); addBox(block); block._y = line.y;
+            if (spokenLyric) { spokenLyric.text = tidy(spokenLyric.text + ' ' + t3); spokenLyric.boxes = (spokenLyric.boxes || [spokenLyric.box]).concat([box]); }
+            continue;
+          }
+          continue;                                                          // anything else on a music page: skip
+        }
+
+        // a centered bold name always starts a new speech, even if a ( was left open
+        var midX = (line.x0 + line.x1) / 2;
+        if (depth > 0 && line.bold && isCaps(t) && t.length <= 42 && Math.abs(midX - page.width / 2) < page.width * 0.12) depth = 0;
+
+        // stage directions: anything inside ( ), or an indented italic line
+        var startsDir = /^\(/.test(t);
+        if (depth > 0 || startsDir || (line.italic && dialogueX != null && line.x0 > dialogueX + 12)) {
+          if (block && block.type === 'dir' && block._open) { block.text += ' ' + t; addBox(block); }
+          else block = emit({ type: 'dir', text: t, _open: true });
+          depth = Math.max(0, depth + parenDelta(t));
+          if (depth === 0 && block) block._open = false;
+          cues(t);
+          continue;
+        }
+
+        // a speaker: short capitals line, centered or bold
+        var center = (line.x0 + line.x1) / 2, mid = page.width / 2;
+        if (isCaps(t) && t.length <= 42 && !/[:;!?]$/.test(t) && !/#\d/.test(t) &&
+            (Math.abs(center - mid) < page.width * 0.12 || line.bold) && line.x0 > page.width * 0.2) {
+          speaker = t.replace(/\s+/g, ' '); nameBox = box;
+          speakers[speaker] = (speakers[speaker] || 0) + 1;
+          block = null;
+          continue;
+        }
+
+        // dialogue
+        if (dialogueX == null || line.x0 < dialogueX) dialogueX = line.x0;
+        if (!speaker) { block = emit({ type: 'dir', text: t }); continue; }
+        if (block && block.type === 'line' && block.who === speaker) {
+          block.text = /-$/.test(block.text) && /^[a-z]/.test(t) ? block.text.slice(0, -1) + t : block.text + ' ' + t; addBox(block);
+        } else {
+          block = emit({ type: 'line', who: speaker, text: t });
+        }
+      }
+      flushSys();      // a system never runs past the end of a page
+    }
+
+    // pdf page -> printed page: the offset most running heads agree on
+    var offs = {}, best = 0, bestN = 0;
+    pageMap.forEach(function (pr) { var o = pr[0] - pr[1]; offs[o] = (offs[o] || 0) + 1; if (offs[o] > bestN) { bestN = offs[o]; best = o; } });
+    var toPrinted = function (n) { return n == null ? null : (bestN ? n - best : n); };
+    scenes.forEach(function (s) {
+      s.page = toPrinted(s.page);
+      s.items.forEach(function (it) { it.page = toPrinted(it.page); });
+    });
+
+    // a song cued in the closing direction of a scene opens the next scene
+    for (var si = 0; si < scenes.length - 1; si++) {
+      var its = scenes[si].items;
+      for (var k = its.length - 1; k >= 0; k--) {
+        if (its[k].type === 'song') {
+          var tail = its.slice(k + 1);
+          if (tail.every(function (x) { return x.type === 'dir'; })) {
+            var song = its.splice(k, 1)[0], nx = scenes[si + 1].items;
+            nx.splice(nx.length && nx[0].type === 'dir' ? 1 : 0, 0, song);
+          }
+          break;
+        }
+        if (its[k].type === 'line') break;
+      }
+    }
+
+    scenes.forEach(function (s) {
+      s.items.forEach(function (it) { delete it._open; it.text && (it.text = it.text.replace(/\s+/g, ' ').trim()); if (it.type === 'song') { it.lyrics = poetic(readingOrder(it.lyrics, pages)); pairStarts(it.lyrics, pages); } });
+    });
+    return { scenes: scenes, speakers: speakers, pages: pages.map(function (pg) { return { n: pg.num, w: pg.width, h: pg.height }; }) };
+  }
+
+  /* pdf.js page -> the plain shape parse() expects. Call after page.getOperatorList() so font names resolve. */
+  /* the music on a page, from its drawing: staves (five evenly spaced long level lines) and systems (staves joined by a bracket or line at the
+     left: sung at the same time, read left to right; Colleen 2026-10-23). Thin rectangles count as lines; big ones are clipping, not drawing. */
+  function geometry(ops, OPS, vp) {
+    var ctm = [1, 0, 0, 1, 0, 0], stack = [], segs = [], fills = [];      // fills: filled shapes (beams: four corners; ties and slurs: curves) for the piano reader
+    var mul = function (a, b) { return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]]; };
+    var ap = function (m, x, y) { return vp.convertToViewportPoint(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]); };
+    ops.fnArray.forEach(function (f, i) {
+      var a = ops.argsArray[i];
+      if (f === OPS.save) stack.push(ctm.slice());
+      else if (f === OPS.restore) ctm = stack.pop() || ctm;
+      else if (f === OPS.transform) ctm = mul(ctm, a);
+      else if (f === OPS.constructPath) {
+        var k = 0, cur = null, args = a[1], pts = [], curved = false;
+        a[0].forEach(function (op) {
+          if (op === OPS.moveTo) { cur = ap(ctm, args[k], args[k + 1]); pts.push(cur); k += 2; }
+          else if (op === OPS.lineTo) { var p = ap(ctm, args[k], args[k + 1]); k += 2; if (cur) segs.push([cur, p]); cur = p; pts.push(p); }
+          else if (op === OPS.rectangle) {
+            var p0 = ap(ctm, args[k], args[k + 1]), p1 = ap(ctm, args[k] + args[k + 2], args[k + 1] + args[k + 3]); k += 4;
+            if (Math.abs(p1[1] - p0[1]) < 1.6) segs.push([[p0[0], (p0[1] + p1[1]) / 2], [p1[0], (p0[1] + p1[1]) / 2]]);
+            else if (Math.abs(p1[0] - p0[0]) < 1.6) segs.push([[(p0[0] + p1[0]) / 2, p0[1]], [(p0[0] + p1[0]) / 2, p1[1]]]);
+          }
+          else if (op === OPS.curveTo) { curved = true; pts.push(ap(ctm, args[k + 4], args[k + 5])); k += 6; } else if (op === OPS.curveTo2 || op === OPS.curveTo3) { curved = true; pts.push(ap(ctm, args[k + 2], args[k + 3])); k += 4; }
+        });
+        var nx = ops.fnArray[i + 1];
+        if (pts.length >= 3 && (nx === OPS.fill || nx === OPS.eoFill)) fills.push({ curved: curved, pts: pts });
+      }
+    });
+    // beams: thin filled four-cornered bars (a little slanted); ties and slurs: filled curved shapes, from one end to the other
+    var beams = [], arcs = [];
+    fills.forEach(function (f) {
+      var xs = f.pts.map(function (p) { return p[0]; }), ys = f.pts.map(function (p) { return p[1]; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+      if (!f.curved && f.pts.length <= 5 && x1 - x0 > 4) {
+        var left = f.pts.filter(function (p) { return p[0] - x0 < 0.6; }), right = f.pts.filter(function (p) { return x1 - p[0] < 0.6; });
+        if (left.length >= 2 && right.length >= 2) {
+          var th = Math.abs(left[0][1] - left[1][1]);
+          if (th > 1.2 && th < 6) beams.push({ x0: x0, x1: x1, y0: (left[0][1] + left[1][1]) / 2, y1: (right[0][1] + right[1][1]) / 2 });
+        }
+      } else if (f.curved && x1 - x0 > 5) arcs.push({ x0: x0, x1: x1, y: ys.reduce(function (a, b) { return a + b; }, 0) / ys.length });
+    });
+    var hs = segs.filter(function (s) { return Math.abs(s[0][1] - s[1][1]) < 0.5 && Math.abs(s[0][0] - s[1][0]) > 60 && s[0][1] > -5 && s[0][1] < vp.height + 5; })
+      .map(function (s) { return { y: s[0][1], x0: Math.min(s[0][0], s[1][0]), x1: Math.max(s[0][0], s[1][0]) }; }).sort(function (a, b) { return a.y - b.y; });
+    // staff lines run (nearly) the width of the music; beams and the like are shorter level lines that would break the even spacing
+    var longest = Math.max.apply(null, hs.map(function (h) { return h.x1 - h.x0; }).concat([0]));
+    hs = hs.filter(function (h) { return h.x1 - h.x0 > Math.min(160, longest * 0.45); });
+    var ys = []; hs.forEach(function (h) { var l = ys[ys.length - 1]; if (!l || h.y - l.y > 0.8) ys.push({ y: h.y, x0: h.x0, x1: h.x1 }); else { l.x0 = Math.min(l.x0, h.x0); l.x1 = Math.max(l.x1, h.x1); } });
+    var staves = [];
+    for (var i = 0; i + 4 < ys.length; i++) {
+      var g = ys.slice(i, i + 5), sp = (g[4].y - g[0].y) / 4, even = g.every(function (l, j) { return j === 0 || Math.abs(l.y - g[j - 1].y - sp) < 0.6; });
+      if (even && sp > 2 && sp < 12) { staves.push({ top: g[0].y, bottom: g[4].y, space: sp, x0: g[0].x0, x1: g[0].x1, bars: [] }); i += 4; }
+    }
+    var ups = segs.filter(function (s) { return Math.abs(s[0][0] - s[1][0]) < 0.6; }).map(function (s) { return { x: s[0][0], y0: Math.min(s[0][1], s[1][1]), y1: Math.max(s[0][1], s[1][1]) }; });
+    // barlines: an upright line across the whole staff (in a bracketed system it runs through all its staves)
+    ups.forEach(function (u) { staves.forEach(function (st) { if (u.y0 <= st.top + 1 && u.y1 >= st.bottom - 1 && u.y1 - u.y0 < 260 && u.x > st.x0 + 8 && st.bars.indexOf(u.x) < 0) st.bars.push(u.x); }); });
+    staves.forEach(function (st) { st.bars.sort(function (a, b) { return a - b; }); });
+    // systems: a tall line at the left edge of the staves joins the staves it spans
+    var systems = staves.map(function (st) { return { top: st.top, bottom: st.bottom, staves: [st] }; });
+    ups.forEach(function (u) {
+      if (u.y1 - u.y0 < 30) return;
+      var inSpan = systems.filter(function (sy) { return sy.staves.some(function (st) { return u.x < st.x0 + 6 && u.x > st.x0 - 12 && st.top >= u.y0 - 3 && st.bottom <= u.y1 + 3; }); });
+      if (inSpan.length < 2) return;
+      var merged = { top: Math.min.apply(null, inSpan.map(function (x) { return x.top; })), bottom: Math.max.apply(null, inSpan.map(function (x) { return x.bottom; })), staves: [].concat.apply([], inSpan.map(function (x) { return x.staves; })).sort(function (a, b) { return a.top - b.top; }) };
+      systems = systems.filter(function (x) { return inSpan.indexOf(x) < 0; }).concat([merged]);
+    });
+    systems.sort(function (a, b) { return a.top - b.top; });
+    var stems = ups.filter(function (u) { return u.y1 - u.y0 > 8 && u.y1 - u.y0 < 45; });
+    return { staves: staves, systems: systems, beams: beams, arcs: arcs, stems: stems };
+  }
+
+  /* a song's words as lines of a poem (Colleen 2026-10-23: "dividing the song as you would if it were written like poetry. the end word of a
+     phrase meant to complete a rhyme scheme should be the last word in a line"): the words in singing order, a line ending after a word with
+     ending punctuation (. ! ? ; :), after a comma or dash once the line has 5 syllables, when the singer changes, or after 16 syllables. A line
+     can run from one staff onto the next: it then has several boxes (lyric.boxes; lyric.box is the first), and each syllable knows its box (b). */
+  /* reading order (Colleen 2026-10-23: "always start at the far left of the line and move right, then drop to the left of the next line"): a staff
+     row with its lyrics, and words spoken over it printed just above it (ZEKE: … over the repeat bars), read left to right, row by row, page by page */
+  function readingOrder(list, pages) {
+    var byNum = {}; (pages || []).forEach(function (p) { byNum[p.num] = p; });
+    var first = function (l) { var bs = l.boxes || (l.box ? [l.box] : []); return bs[0] || null; };
+    var rowAbove = function (l) {      // the staff row whose top is just below these spoken words
+      var bs = l.boxes || (l.box ? [l.box] : []), last = bs[bs.length - 1]; if (!last) return null;
+      var bottom = last.y + last.h, pgo = byNum[last.n], best = null;
+      ((pgo && pgo.systems) || []).forEach(function (sys) { if (sys.top > bottom - 4 && sys.top - bottom < 50 && (best == null || sys.top < best)) best = sys.top; });
+      return best == null ? null : { pg: last.n, sy: best };
+    };
+    var out = list.slice(), moves = [];
+    list.forEach(function (l) { if (l.spoken && l._sy == null) { var r = rowAbove(l); if (r) moves.push({ l: l, pg: r.pg, sy: r.sy }); } });
+    moves.forEach(function (m) {
+      var row = out.filter(function (o) { return o !== m.l && !o.spoken && o._pg === m.pg && o._sy != null && Math.abs(o._sy - m.sy) < 2; });
+      if (!row.length) return;      // nothing sung on that row: it stays where it was
+      var mx = first(m.l).x, at = row.find(function (o) { var b = first(o); return b && b.x > mx; });
+      out.splice(out.indexOf(m.l), 1);
+      var k = at ? out.indexOf(at) : out.indexOf(row[row.length - 1]) + 1;
+      out.splice(k, 0, m.l);
+    });
+    out.forEach(function (l) { delete l._pg; delete l._sy; });
+    return out;
+  }
+  function poetic(list) {
+    var out = [], cur = null;
+    var close = function () { if (cur) { var e = finishLine(cur); if (e) out.push(e); } cur = null; };
+    list.forEach(function (e) {
+      if (!e.syl || !e.syl.length || e.syl.some(function (x) { return x.t == null; })) { close(); out.push(e); return; }
+      // a rest or a held note: a gap after a word much wider than this staff's usual space between words
+      var gaps = e.syl.slice(1).map(function (x, k) { return x.x - (e.syl[k].x + e.syl[k].w); }).sort(function (a, b) { return a - b; });
+      var usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0, wide = Math.max(28, usual * 2.4);
+      e.syl.forEach(function (x, k) {
+        var w = String(x.t || '');
+        if (cur && cur.who !== e.who) close();
+        if (cur && cur.n >= 3 && /^[A-Z]/.test(w) && !/^I(?![a-z])/.test(w) && !/^O(h|oh)?\b/.test(w)) close();      // a capital starts a line of the poem
+        if (!cur) cur = { who: e.who, page: e.page, parts: [], n: 0 };
+        var p = cur.parts[cur.parts.length - 1];
+        if (!p || p.src !== e) { p = { src: e, syl: [] }; cur.parts.push(p); }
+        p.syl.push(x); cur.n++;
+        var next = e.syl[k + 1], rest = next && next.x - (x.x + x.w) > wide;
+        if (/[.!?;:]["”’')]*$/.test(w) || (/[,–—]["”’')]*$/.test(w) && cur.n >= 5) || (rest && cur.n >= 3) || cur.n >= 24 || (cur.n >= 18 && rest)) close();
+      });
+    });
+    close();
+    return out;
+  }
+  /* sections that start together (Colleen 2026-10-23: in a bracket, the JOCKS sing "Woh!" at the same time TROY sings "Get-": they light up
+     together): one starting at the same spot as a section a little before it, in another staff of the same bracket, gets sync: how many
+     sections back its partner is. Timing gives a paired section its partner's start. */
+  function pairStarts(list, pages) {
+    var sysOf = function (b) {
+      var pg = pages.find(function (p) { return p.num === b.n; }), sys = pg && pg.systems; if (!sys) return null;
+      return sys.find(function (sy) { return sy.staves.length > 1 && b.y > sy.top - 8 && b.y < sy.bottom + 75; }) || null;
+    };
+    list.forEach(function (l, i) {
+      if (!l.box || l.spoken) return;
+      var sy = sysOf(l.box); if (!sy) return;
+      for (var j = i - 1; j >= Math.max(0, i - 4); j--) {
+        var o = list[j]; if (!o.box || o.spoken || o.box.n !== l.box.n) continue;
+        if (sysOf(o.box) === sy && Math.abs(o.box.y - l.box.y) > 10 && Math.abs(o.box.x - l.box.x) < 14) { l.sync = i - j; return; }
+      }
+    });
+  }
+  function finishLine(cur) {
+    var boxes = [], syl = [];
+    cur.parts.forEach(function (p) {
+      var b = p.src.box, a = p.syl[0], z = p.syl[p.syl.length - 1];
+      var bx = { n: b.n, x: +(a.x - 1).toFixed(1), y: b.y, w: +(z.x + z.w - a.x + 2).toFixed(1), h: b.h }, last = boxes[boxes.length - 1];
+      if (last && last.n === bx.n && Math.abs(last.y - bx.y) < 1) { var x1 = Math.max(last.x + last.w, bx.x + bx.w); last.x = Math.min(last.x, bx.x); last.w = +(x1 - last.x).toFixed(1); }
+      else boxes.push(bx);
+      p.syl.forEach(function (x) { syl.push({ x: x.x, w: x.w, t: x.t, b: boxes.length - 1 }); });
+    });
+    var text = cleanLyric(syl.map(function (x) { return x.t; }).join(' '));
+    if (!text.replace(/[^A-Za-z]/g, '').length) return null;
+    var e = { who: cur.who, text: text, page: cur.page, box: boxes[0], syl: syl };
+    if (boxes.length > 1) e.boxes = boxes;
+    return e;
+  }
+
+  async function fromPdfJs(pdf, onProgress) {
+    var pages = [];
+    for (var n = 1; n <= pdf.numPages; n++) {
+      var page = await pdf.getPage(n);
+      var vp = page.getViewport({ scale: 1 });
+      var geo = null;
+      try { var ops = await page.getOperatorList(); var OPS = (root.pdfjsLib && root.pdfjsLib.OPS) || null; if (OPS) geo = geometry(ops, OPS, vp); } catch (e) {}
+      var tc = await page.getTextContent();
+      var items = tc.items.filter(function (it) { return it.str !== undefined; }).map(function (it) {
+        var tr = it.transform, size = Math.hypot(tr[2], tr[3]) || Math.hypot(tr[0], tr[1]);
+        var font = '';
+        try { var fo = page.commonObjs.get(it.fontName); font = (fo && (fo.name || fo.loadedName)) || ''; } catch (e) {}
+        if (!font && tc.styles && tc.styles[it.fontName]) font = tc.styles[it.fontName].fontFamily || '';
+        var pt = vp.convertToViewportPoint(tr[4], tr[5]);      // pages can have an offset origin (this script's start 20.88 points in)
+        return { str: it.str, x: pt[0], y: pt[1], w: it.width, size: size, font: font };
+      });
+      pages.push({ num: n, width: vp.width, height: vp.height, items: items, systems: geo && geo.systems.length ? geo.systems.map(function (sy) { return { top: sy.top, bottom: sy.bottom, staves: sy.staves.map(function (st) { return { top: st.top, bottom: st.bottom, bars: st.bars.filter(function (b, i, a) { return !i || b - a[i - 1] > 4; }) }; }) }; }) : null });
+      if (onProgress) onProgress(n, pdf.numPages);
+    }
+    return pages;
+  }
+
+  /* the reader's version: change it whenever the reading changes, and teacher mode re-reads the saved PDF on its own (Colleen: "why do i
+     have to keep reimporting the pdf?") */
+  var VERSION = '2026-10-24.3';      // .3: always-split words (beside, become, until) join too      // 2026-10-24.2: lyrics joined back into words (joinSyllables) instead of guessing by syllable      // (also re-applies singer fixes with the careful matching)
+  var api = { parse: parse, fromPdfJs: fromPdfJs, splitNames: splitNames, geometry: geometry, cleanLyric: cleanLyric, fixLyricText: fixLyricText, VERSION: VERSION, _toLines: toLines };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.ScriptParser = api;
+})(typeof window !== 'undefined' ? window : this);

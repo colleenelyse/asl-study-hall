@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "section_count": 5,
+  "section_images_share_identical_geometry": true,
+  "columns": 3,
+  "rows": 12,
+  "notes": "Section art repeats deliberately to make each box position consistent. Add section-specific labels and box numbers in HTML/CSS, not raster. Visual box bounds are approximate: calibrate click targets to the actual section image before deployment.",
+  "dynamic_labels": true
+}

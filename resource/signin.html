@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resource Check-In: Sign-in Help</title><meta name="robots" content="noindex"><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;700;800&display=swap">
+<style>
+  /* How do I log into my school Google account? (Colleen, 2026-10-17): linked from ASL Study and the TpT sheets' sign-in screens */
+  :root { --ink: #1b1e3c; --muted: #5a6185; --bg: #f6f2ea; --card: #fff; --accent: #2F6BFF; --soft: #eef3ff; --good: #14804D; --sun: #fff4d6; --line: #e6e0d4; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #eef0ff; --muted: #b3b9dc; --bg: #15172e; --card: #1f2240; --accent: #7aa2ff; --soft: #262b52; --good: #5fd39a; --sun: #3a3420; --line: #343861; } }
+  :root[data-theme="dark"] { --ink: #eef0ff; --muted: #b3b9dc; --bg: #15172e; --card: #1f2240; --accent: #7aa2ff; --soft: #262b52; --good: #5fd39a; --sun: #3a3420; --line: #343861; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 500 18px/1.55 Nunito, system-ui, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1, h2 { font-family: Fredoka, system-ui, sans-serif; line-height: 1.2; }
+  h1 { font-size: clamp(28px, 6vw, 40px); margin: 0 0 8px; }
+  h2 { font-size: 24px; margin: 0 0 10px; display: flex; gap: 10px; align-items: center; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 2px solid var(--line); border-radius: 18px; padding: 18px 20px; margin: 0 0 16px; }
+  ol { margin: 0; padding-left: 26px; } li { margin: 0 0 10px; } li::marker { font-weight: 800; color: var(--accent); }
+  .see { display: block; margin-top: 4px; color: var(--muted); font-size: 16px; }
+  .tip { background: var(--sun); border-color: transparent; }
+  .help { background: var(--soft); border-color: transparent; }
+  b { font-weight: 800; }
+  .key { display: inline-block; padding: 0 8px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); font-weight: 800; font-size: 16px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+  nav a { padding: 8px 14px; border-radius: 999px; background: var(--card); border: 2px solid var(--line); color: var(--ink); font-weight: 800; text-decoration: none; font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Can’t open Resource Check-In?</h1>
+  <p class="lead">The app only opens with your <b>school</b> Google account (your <b>@d204.lths.net</b> email), not a personal one. Pick the device you are using.</p>
+  <section class="card" style="border-color:var(--accent)">
+    <h2><span aria-hidden="true">👀</span> Did you see one of these?</h2>
+    <ul style="margin:0;padding-left:24px">
+      <li><b>“You need access”</b> or <b>“You need permission”</b></li>
+      <li><b>“Sorry, unable to open the file at this time”</b></li>
+      <li>A Google sign-in page that won’t let you in</li>
+    </ul>
+    <p style="margin:10px 0 0">That means Chrome is using a <b>personal</b> Google account. Follow the steps for your device below to switch to your school account.</p>
+  </section>
+  <nav><a href="#computer">Computer</a><a href="#chromebook">School Chromebook</a><a href="#phone">Phone or iPad</a><a href="#stuck">Still stuck?</a></nav>
+
+  <section class="card" id="computer">
+    <h2><span aria-hidden="true">💻</span> On a computer (Chrome)</h2>
+    <ol>
+      <li>Look at the <b>top right corner</b> of Chrome. Click your <b>picture or letter</b> in the circle.
+        <span class="see">You see a list of the Google accounts on this computer.</span></li>
+      <li>Is your <b>school email</b> in the list? Click it.
+        <span class="see">A new Chrome window opens, signed in with your school account.</span></li>
+      <li>Not in the list? Click <b>Add</b> (or <b>Add another account</b>), then <b>Sign in</b>. Type your <b>school email</b>, click <b>Next</b>, type your school password, and click <b>Next</b>.</li>
+      <li>In that window, open your class app link again (from Google Classroom or your teacher).
+        <span class="see">The app opens and shows your name.</span></li>
+    </ol>
+  </section>
+
+  <section class="card" id="chromebook">
+    <h2><span aria-hidden="true">🏫</span> On a school Chromebook</h2>
+    <ol>
+      <li>School Chromebooks are already signed in with your school account. Open the class app link from <b>Google Classroom</b> on the Chromebook.</li>
+      <li>Still asked to sign in? Click the <b>time</b> in the bottom right corner, click <b>Sign out</b>, and sign back in with your <b>school email</b> and password.</li>
+    </ol>
+  </section>
+
+  <section class="card" id="phone">
+    <h2><span aria-hidden="true">📱</span> On a phone or iPad</h2>
+    <ol>
+      <li>Open the link in the <b>Chrome</b> app (or Safari).</li>
+      <li>If Google asks you to choose an account, tap your <b>school email</b>. If it isn't there, tap <b>Use another account</b> and sign in with your school email and password.</li>
+      <li>Already signed in with a personal account? In Chrome, tap your <b>picture</b> at the top right, then tap your school account (or <b>Add account</b>). Open the link again.</li>
+    </ol>
+  </section>
+
+  <section class="card tip">
+    <h2><span aria-hidden="true">💡</span> A quick fix that often works</h2>
+    <p style="margin:0">Open a <b>private window</b>: press <span class="key">Ctrl</span> + <span class="key">Shift</span> + <span class="key">N</span> (on a Mac: <span class="key">⌘</span> + <span class="key">Shift</span> + <span class="key">N</span>). Paste the class app link there and sign in with only your school account.</p>
+  </section>
+
+  <section class="card help" id="stuck">
+    <h2><span aria-hidden="true">🙋</span> Still stuck?</h2>
+    <p style="margin:0 0 8px">Raise your hand and show your teacher the screen you see. They can help you switch accounts.</p>
+    <p style="margin:0">Forgot your school password? Ask your school's tech team. Your teacher can't see or change it.</p>
+  </section>
+</div>
+</body>
+</html>
