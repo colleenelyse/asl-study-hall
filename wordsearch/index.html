@@ -1213,7 +1213,61 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<!-- temporary: shop links hidden until the school approves the domain --> <style>[data-shop]{display:none!important}</style><script>try{if(localStorage.getItem('aslNoShop'))document.documentElement.classList.add('noshop')}catch(e){}</script></head>
+<!-- temporary: shop links hidden until the school approves the domain --> <style>[data-shop]{display:none!important}</style><script>try{if(localStorage.getItem('aslNoShop'))document.documentElement.classList.add('noshop')}catch(e){}</script><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style id="brand-look">
+/* Colleen's brand (2026-11-17, "fit more into my existing brand"): the asl.cool look. Cream page, navy text, white rounded cards,
+   blue pill buttons, yellow accent, Fredoka headings and Nunito text. One layer over the original dark theme; the printed pages are untouched. */
+:root { --bg:#F6F2EA; --panel:#fff; --panel2:#FBF8F2; --border:#E3D9CC; --text:#1B1E3C; --muted:#5A6185; --navy:#1B1E3C; --blueb:#2F6BFF; --gold:#FFC83D;
+  --shadow:0 2px 10px rgba(60,40,20,.06); }
+body { background:#F6F2EA !important; color:#1B1E3C; font-family:Nunito, system-ui, sans-serif; font-weight:500; }
+.brand h1 { font-family:Fredoka, system-ui, sans-serif !important; font-weight:600; color:#1B1E3C !important; letter-spacing:0; }
+.brand p { letter-spacing:.04em; }
+.brand-tagline span:nth-child(8n+1) { color:#E5484D !important } .brand-tagline span:nth-child(8n+2) { color:#F08C00 !important }
+.brand-tagline span:nth-child(8n+3) { color:#D9A400 !important } .brand-tagline span:nth-child(8n+4) { color:#2F9E44 !important }
+.brand-tagline span:nth-child(8n+5) { color:#1C9BD6 !important } .brand-tagline span:nth-child(8n+6) { color:#2F6BFF !important }
+.brand-tagline span:nth-child(8n+7) { color:#7048E8 !important } .brand-tagline span:nth-child(8n+8) { color:#D6336C !important }
+.section { background:#fff !important; border:1px solid #E3D9CC !important; border-radius:18px; box-shadow:0 2px 10px rgba(60,40,20,.06) !important; }
+.section:nth-of-type(odd) { --section-accent:#2F6BFF; } .section:nth-of-type(even) { --section-accent:#FFC83D; }
+.section h2, .section:nth-of-type(n) h2 { font-family:Fredoka, system-ui, sans-serif; font-weight:600; color:#1B1E3C !important; }
+.section h3, .source-card h3, .working-list-title h3, .modal h3, .app-message-modal h3 { font-family:Fredoka, system-ui, sans-serif; font-weight:600; color:#1B1E3C !important; }
+.section-number, .source-card-number { background:#EEF3FF !important; color:#2F6BFF !important; }
+label, .section label, .field > label, .selected-source-wrap > label, .toggle label { color:#1B1E3C !important; }
+.section .hint, .control-help, .mini, .source-card p, .working-list-title p, .page-caption, .preview-tool-label { color:#5A6185 !important; }
+.section-guide { background:#FBF8F2 !important; border-left:5px solid #FFC83D !important; color:#1B1E3C !important; }
+input, textarea, select { background:#fff !important; color:#1B1E3C !important; border:1.5px solid #E3D9CC !important; }
+input:hover, textarea:hover, select:hover { background:#fff !important; border-color:#CFC2B1 !important; }
+input:focus, textarea:focus, select:focus { background:#fff !important; border-color:#2F6BFF !important; box-shadow:0 0 0 3px rgba(47,107,255,.15) !important; }
+.source-card, .working-list-card, .toggle, .student-option, details.advanced, .selected-source-wrap, .preview-tool-group, .header-sample-wrap {
+  background:#FBF8F2 !important; border-color:#E3D9CC !important; }
+.working-list-card { border-width:1.5px !important; }
+.source-card:hover { border-color:#2F6BFF !important; box-shadow:0 2px 10px rgba(60,40,20,.08) !important; }
+.source-card-header::after { background:linear-gradient(90deg,#2F6BFF,#FFC83D) !important; }
+.source-divider-label { color:#5A6185 !important; } .source-divider-label::before, .source-divider-label::after, .divider { background:#E3D9CC !important; }
+.student-option .option-name, details.advanced summary, #topicAvailability, .header-sample-label { color:#1B1E3C !important; }
+.chip { background:#EEF3FF !important; border:1px solid #CFDCFF !important; color:#1B1E3C !important; }
+.chip button { color:#C7362E !important; background:none !important; }
+button { background:#2F6BFF !important; color:#fff !important; border:0 !important; border-radius:999px !important; font-family:Nunito, system-ui, sans-serif; font-weight:800; }
+button:hover:not(:disabled) { filter:brightness(.94); box-shadow:0 2px 8px rgba(60,40,20,.18) !important; }
+button.secondary, .section-reset-button { background:#fff !important; color:#1B1E3C !important; border:1.5px solid #E3D9CC !important; }
+button.secondary:hover:not(:disabled), .section-reset-button:hover:not(:disabled) { border-color:#2F6BFF !important; filter:none; }
+button.primary-action { background:#2F6BFF !important; color:#fff !important; font-size:17px; padding:12px 24px !important; }
+.reset-all-button { background:#FFC83D !important; color:#1B1E3C !important; box-shadow:0 2px 8px rgba(60,40,20,.18) !important; }
+.danger-button { background:#fff !important; color:#C7362E !important; border:1.5px solid #F1C9C6 !important; }
+.chip button, .play-top button { border-radius:999px !important; }
+.warning { background:#FDECEA !important; border:1px solid #F1C9C6 !important; color:#8A1F17 !important; }
+.status { background:#E7F6EC !important; border:1px solid #BFE3CB !important; color:#14532D !important; }
+.source-inline-message.ok { background:#E7F6EC !important; border-color:#BFE3CB !important; color:#14532D !important; }
+.source-inline-message.error { background:#FDECEA !important; border-color:#F1C9C6 !important; color:#8A1F17 !important; }
+.preview-wrap { background:#EFE8DC !important; border-radius:18px; }
+.modal-backdrop { background:rgba(27,30,60,.45) !important; }
+.modal, .app-message-modal { background:#fff !important; border:1px solid #E3D9CC !important; color:#1B1E3C !important; box-shadow:0 24px 60px rgba(27,30,60,.25) !important; }
+.app-message-text { color:#1B1E3C !important; }
+.app-message-icon { background:#EEF3FF !important; color:#2F6BFF !important; }
+.word-count, .word-count strong, #wordCount, strong:has(#wordCount) { color:#2F6BFF !important; }
+.braille-note { color:#5A6185 !important; } .braille-note strong { color:#1B1E3C !important; }
+.brand h1 { text-shadow:none !important; }
+</style>
+</head>
 <body>
   <div class="shell">
     <a href="../" style="display:inline-block;margin:0 0 8px;color:inherit;opacity:.8;font-weight:700;text-decoration:none">&larr; ASL Study Hall</a> <a data-shop href="https://aslstudyhall.com" target="_blank" rel="noopener" style="display:inline-block;margin:0 0 8px 10px;font:800 16px/1 system-ui,sans-serif;color:#1B1E3C;background:#FFC83D;border-radius:999px;padding:10px 18px;box-shadow:0 2px 6px rgba(60,40,20,.15);text-decoration:none;white-space:nowrap">🛍️ Shop ASL Study Hall</a> <a data-shop href="https://www.teacherspayteachers.com/store/jaq-joey-boutique" target="_blank" rel="noopener" style="display:inline-block;margin:0 0 8px 6px;font:800 16px/1 system-ui,sans-serif;color:#1B1E3C;background:#FFC83D;border-radius:999px;padding:10px 18px;box-shadow:0 2px 6px rgba(60,40,20,.15);text-decoration:none;white-space:nowrap">🛒 Shop on TpT</a>
@@ -3347,35 +3401,66 @@ function cutePicHtml(p, cell) {
   if (p.config.gridDisplay !== 'ASL Cute' || !p.cutePic) return '';
   return '<img class="cute-pic" alt="" src="' + p.cutePic + '" style="width:' + (p.cols * cell) + 'px;height:' + (p.rows * cell) + 'px">';
 }
+// the hands for every letter and number, fetched once per visit (asl.cool keeps this one strip ready, so it comes back fast);
+// started as soon as ASL - Cute is picked, so it is usually here before Generate Puzzle is clicked
+const CUTE_ALL = 'abcdefghijklmnopqrstuvwxyz0123456789';
+let cuteStrip = null;
+function cuteStripLoad() {
+  if (!cuteStrip) cuteStrip = (async () => {
+    for (let k = 0; ; k++) {      // one quiet retry
+      try {
+        const r = await fetch('/wordsearch/hands.png?l=' + CUTE_ALL, { cache: 'no-store' });
+        if (r.status === 429) throw new Error('slow');
+        if (!r.ok) throw new Error('no');
+        const blob = await r.blob(); if (!/^image\//.test(blob.type)) throw new Error('no');
+        return await createImageBitmap(blob);
+      } catch (e) { if (e.message === 'slow' || k) throw e; }
+    }
+  })().catch(e => { cuteStrip = null; throw e; });
+  return cuteStrip;
+}
 async function cuteLoad(p) {
   p.cuteTried = true;
-  const letters = [...new Set(p.grid.flat().filter(ch => CUTE_OK.test(ch)).map(ch => ch.toLowerCase()))].sort().join('');
+  const st = document.getElementById('generationStatus'), before = st.textContent, shown = st.style.display;
+  showStatus('Loading the ASL - Cute hands…');
   try {
-    if (!letters) throw new Error('no');
-    const r = await fetch('/wordsearch/hands.png?l=' + letters, { cache: 'no-store' });
-    if (!r.ok) throw new Error(r.status === 429 ? 'slow' : 'no');
-    const blob = await r.blob(); if (!/^image\//.test(blob.type)) throw new Error('no');
-    const strip = await createImageBitmap(blob), S = strip.height;      // one square per letter, in the order asked
+    const strip = await cuteStripLoad(), S = strip.height;      // one square per letter, in CUTE_ALL order
     const cv = document.createElement('canvas'); cv.width = p.cols * S; cv.height = p.rows * S;
     const cx = cv.getContext('2d');
     for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) {
-      const i = letters.indexOf(String(p.grid[r][c]).toLowerCase());
-      if (i >= 0 && CUTE_OK.test(p.grid[r][c])) cx.drawImage(strip, i * S, 0, S, S, c * S, r * S, S, S);
+      const ch = String(p.grid[r][c]), i = CUTE_OK.test(ch) ? CUTE_ALL.indexOf(ch.toLowerCase()) : -1;
+      if (i >= 0) cx.drawImage(strip, i * S, 0, S, S, c * S, r * S, S, S);
     }
     p.cutePic = cv.toDataURL('image/png');
   } catch (e) {
+    st.style.display = 'none';
     showWarning(e.message === 'slow' ? 'ASL - Cute: that was a lot of puzzles in a short time. Wait a minute, then click Generate Puzzle again.'
       : 'ASL - Cute letters can only be drawn at asl.cool/wordsearch. This copy shows plain capital letters instead.');
     return;
   }
+  if (st.textContent === 'Loading the ASL - Cute hands…') { st.textContent = before; st.style.display = shown; }
   if (state.lastPuzzle !== p) return;
   renderPuzzle();
+  requestAnimationFrame(() => fitAndCheckOutput(false));
   if (document.getElementById('playView')?.classList.contains('on') && PLAY.p === p) {
     const pg = document.getElementById('playGrid');
     pg.querySelectorAll('.pc').forEach(el => { el.textContent = gridLetter(p, p.grid[+el.dataset.r][+el.dataset.c]); });
     pg.insertAdjacentHTML('afterbegin', cutePicHtml(p, PLAY.cell));
   }
 }
+// picking a Puzzle Letter Style redraws the puzzle already made (it used to wait for the next Generate Puzzle)
+(function cuteWatch() {
+  const go = () => {
+    const sel = document.getElementById('gridDisplay'); if (!sel) return;
+    if (sel.value === 'ASL Cute') cuteStripLoad().catch(() => {});
+    sel.addEventListener('change', () => {
+      if (sel.value === 'ASL Cute') cuteStripLoad().catch(() => {});
+      const p = state.lastPuzzle; if (!p || !p.config || p.config.gridDisplay === sel.value) return;
+      p.config.gridDisplay = sel.value; hideMessages(); renderPuzzle(); requestAnimationFrame(() => fitAndCheckOutput(false));
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
 
 function displayClass(mode) {
   if(mode==='ASL Fingerspelling')return 'font-asl';
