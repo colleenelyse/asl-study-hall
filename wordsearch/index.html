@@ -1360,8 +1360,9 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
 .tile-cute canvas { height:44px; width:auto; display:none; }
 .tile-cute.ready canvas { display:block; } .tile-cute.ready i { display:none; }
 .tile-cute i { font-style:normal; }
-.pg { display:inline-block; border:2px solid currentColor; border-radius:3px; }
-.pg-tall { width:13px; height:17px; } .pg-wide { width:17px; height:13px; }
+.pg { display:inline-block; border:2px solid currentColor; border-radius:3px; background:repeating-linear-gradient(currentColor 0 1.5px, transparent 1.5px 4px) 2px 3px / calc(100% - 4px) calc(100% - 6px) no-repeat; opacity:.9; }      /* a little page with lines on it */
+.pg-tall { width:15px; height:20px; } .pg-wide { width:20px; height:15px; }
+.pg { flex:none; } .seg[data-for="orientation"] button { white-space:nowrap; }
 .st-more { margin-top:4px !important; background:#FBF8F2 !important; }
 .st-more summary { font-weight:800 !important; color:#1B1E3C !important; }
 .st-rename { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; }
@@ -1495,8 +1496,9 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
       </div>
 
       <div class="st-field">
-        <div class="st-label">Paper</div>
-        <div class="seg" data-for="orientation"><button type="button" data-v="Portrait"><span class="pg pg-tall"></span>Tall</button><button type="button" data-v="Landscape"><span class="pg pg-wide"></span>Wide</button></div>
+        <div class="st-label">Which way the paper turns</div>
+        <div class="seg" data-for="orientation"><button type="button" data-v="Portrait"><span class="pg pg-tall" aria-hidden="true"></span>Tall (portrait)</button><button type="button" data-v="Landscape"><span class="pg pg-wide" aria-hidden="true"></span>Wide (landscape)</button></div>
+        <div class="st-help">Most puzzles fit best on tall paper. Wide paper gives a big grid more room side to side.</div>
         <select id="orientation" class="st-hide"><option>Portrait</option><option>Landscape</option></select>
       </div>
 
