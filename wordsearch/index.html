@@ -1266,6 +1266,30 @@ button.primary-action { background:#2F6BFF !important; color:#fff !important; fo
 .word-count, .word-count strong, #wordCount, strong:has(#wordCount) { color:#2F6BFF !important; }
 .braille-note { color:#5A6185 !important; } .braille-note strong { color:#1B1E3C !important; }
 .brand h1 { text-shadow:none !important; }
+
+/* Layout (2026-11-17, Colleen: "reconsider the layout to make it user friendly"): on a wide screen the steps are on the left and the
+   live preview stays on the right while you scroll; the pages shrink to fit (scalePreview), and print / PDF use the full-size pages. */
+.preview-wrap { overflow:hidden !important; padding:14px 0 !important; }
+#previewPages { transform-origin:top left; min-width:0 !important; width:max-content; }
+body.pv-flat #previewPages { transform:none !important; margin:0 auto !important; }
+@media print { #previewPages { transform:none !important; margin:0 !important; } }
+.ws-live .section-guide { display:none; }
+.stale-note { display:none; margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#FFF6DA; border:1px solid #F3DC8E; color:#1B1E3C; font-size:14px; font-weight:700; }
+.stale-note.on { display:block; }
+@media (min-width:1180px) {
+  .shell { max-width:1600px !important; }
+  .ws-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; align-items:start; }
+  .ws-live { position:sticky; top:12px; }
+  .ws-live .preview-section { max-height:calc(100vh - 24px); overflow:auto; margin-top:18px; }
+  .ws-steps .student-editor { grid-template-columns:1fr; }
+  .ws-steps .header-sample-wrap { display:none; }      /* the live preview on the right shows the real header */
+  .ws-steps .grid3 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ws-steps .source-methods { grid-template-columns:1fr; }
+}
+/* the preview's buttons: one tidy row (Generate first), wrapping on narrow screens */
+.ws-live .preview-toolbar { display:flex !important; flex-wrap:wrap; gap:10px; }
+.ws-live .preview-tool-group { flex:1 1 auto; }
+.ws-live .preview-tool-group .row { flex-wrap:wrap; gap:8px; }
 </style>
 </head>
 <body>
@@ -1280,6 +1304,7 @@ button.primary-action { background:#2F6BFF !important; color:#fff !important; fo
       <button class="reset-all-button" type="button" onclick="resetAllDefaults()">Reset All to Defaults</button>
     </div>
 
+    <div class="ws-layout"><div class="ws-steps">
     <section class="section">
       <div class="section-heading-row">
         <h2>1. Choose Your Words</h2>
@@ -1580,6 +1605,7 @@ button.primary-action { background:#2F6BFF !important; color:#fff !important; fo
       </div>
     </section>
 
+    </div><aside class="ws-live">
     <section class="section preview-section">
       <div class="section-heading-row">
         <h2>5. Preview, Print & Download</h2>
@@ -1614,6 +1640,7 @@ button.primary-action { background:#2F6BFF !important; color:#fff !important; fo
           </div>
         </div>
       </div>
+      <div id="staleNote" class="stale-note">You changed the words or the grid. Click <b>Generate Puzzle</b> to update the preview.</div>
       <div id="generationStatus" class="status"></div>
       <div id="generationWarning" class="warning"></div>
       <div class="preview-wrap">
@@ -1633,6 +1660,7 @@ button.primary-action { background:#2F6BFF !important; color:#fff !important; fo
         </div>
       </div>
     </section>
+    </aside></div>
 
 
     <div class="braille-note" style="margin-bottom:10px"><strong>Free version.</strong> Nothing is saved: your words and puzzle stay only until you close or reload this page, so print it or download the PDF before you leave.</div>
@@ -1829,7 +1857,7 @@ function studentFieldsHtml(defs, cls) {
   if(!items.length) return '';
   const rows = [];
   items.forEach(x => { const row = rows.find(r => r.reduce((a,y)=>a+y.w,0) + x.w <= 12); if(row) row.push(x); else rows.push([x]); });
-  return rows.map(r => '<div class="sf-row">' + r.sort((a,b)=>a.i-b.i).map(x => `<div class="${cls}" style="flex:${x.w} 1 0">${escapeHtml(x.label||'')}:</div>`).join('') + '</div>').join('');
+  return rows.map(r => '<div class="sf-row">' + r.sort((a,b)=>a.i-b.i).map(x => `<div class="${cls}" style="flex:${x.w} 1 0">${x.label && x.label.trim() ? escapeHtml(x.label) + ':' : ''}</div>`).join('') + '</div>').join('');
 }
 
 function showServerError(err) {
@@ -2801,6 +2829,8 @@ function findBlockedViolation(grid,targetMask,blocked) {
 
 function renderPuzzle() {
   if(!state.lastPuzzle)return;
+  state.lastPuzzle.cellFit = 0;      // decided again by the student page
+  document.getElementById('staleNote')?.classList.remove('on');
 
   removeSplitBankPages();
 
@@ -2819,12 +2849,12 @@ function renderPuzzle() {
   }
 }
 
-function renderPuzzlePage(targetId, key) {
+function renderPuzzlePage(targetId, key, cellFit) {
   const p=state.lastPuzzle, cfg=p.config, paper=document.getElementById(targetId);
   paper.className='paper '+(cfg.orientation==='Landscape'?'landscape':'');
   const title=key && cfg.title ? 'KEY: '+cfg.title : cfg.title;
   const maxDim=Math.max(p.rows,p.cols);
-  const cellPx=Math.max(18,Math.min(38, Math.floor((cfg.orientation==='Landscape'?820:640)/maxDim)));
+  const cellPx=cellFit || p.cellFit || Math.max(18,Math.min(38, Math.floor((cfg.orientation==='Landscape'?820:640)/maxDim)));
   const gridClass=displayClass(cfg.gridDisplay);
   const bankClass=displayClass(cfg.wordBankDisplay);
 
@@ -2868,10 +2898,39 @@ function renderPuzzlePage(targetId, key) {
   // Size and column-count are based on the actual rendered words, not a
   // fixed word-count rule. Wait for custom fonts when available, then fit.
   fitWordBank(paper, cfg.wordBankDisplay);
+  if (!key && !cellFit && !p.cellFit) {      // the student page decides: grow the squares into the empty space at the bottom
+    const grow = growCell(paper, p, cellPx);
+    if (grow > cellPx) { p.cellFit = grow; return renderPuzzlePage(targetId, key, grow); }
+    p.cellFit = cellPx;
+  }
   if (document.fonts?.ready) {
     document.fonts.ready.then(() => fitWordBank(paper, cfg.wordBankDisplay));
   }
 }
+
+// how big the grid's squares can be: fill the page's empty space (2026-11-17, Colleen: the top of the page should
+// respond to the Name / Date / ... lines; with fewer lines the puzzle now gets bigger, with more it stays smaller)
+function growCell(paper, p, cellPx) {
+  const kids = Array.from(paper.children).filter(el => getComputedStyle(el).display !== 'none'); if (!kids.length) return cellPx;
+  const k = pvScale(paper), top = paper.getBoundingClientRect().top;
+  const used = Math.max(...kids.map(el => (el.getBoundingClientRect().bottom - top) / k));
+  const free = singlePageLimit(paper) - (parseFloat(getComputedStyle(paper).paddingBottom) || 0) - used - 12;
+  const wide = paper.classList.contains('landscape') ? 940 : 700;
+  const most = Math.min(60, Math.floor(wide / p.cols));
+  return free > 8 ? Math.max(cellPx, Math.min(most, cellPx + Math.floor(free * 0.9 / p.rows))) : cellPx;
+}
+// how much the preview is shrunk (1 = full size), so page measurements stay in real page pixels
+function pvScale(el) { const w = el && el.offsetWidth; return w ? (el.getBoundingClientRect().width / w) || 1 : 1; }
+function scalePreview() {
+  const pages = document.getElementById('previewPages'), wrap = pages && pages.parentElement; if (!pages || !wrap) return;
+  if (document.body.classList.contains('pv-flat')) return;
+  pages.style.transform = ''; pages.style.marginBottom = ''; pages.style.marginLeft = '';
+  const W = pages.offsetWidth, H = pages.offsetHeight, room = wrap.clientWidth - 24, kk = Math.min(1, room / W);
+  if (kk < 1) { pages.style.transform = 'scale(' + kk + ')'; pages.style.marginBottom = (-(H * (1 - kk))) + 'px'; }
+  pages.style.marginLeft = Math.max(0, (wrap.clientWidth - W * kk) / 2) + 'px';
+}
+// print and PDF use the full-size pages
+async function pvFlat(fn) { document.body.classList.add('pv-flat'); try { return await fn(); } finally { document.body.classList.remove('pv-flat'); scalePreview(); } }
 
 
 function singlePageLimit(paper) {
@@ -2890,12 +2949,12 @@ function isPaperOverflowing(paper) {
 
   if (!visibleChildren.length) return false;
 
-  const paperRect = paper.getBoundingClientRect();
+  const paperRect = paper.getBoundingClientRect(), k = pvScale(paper);
   const style = getComputedStyle(paper);
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
 
   const lastBottom = Math.max(
-    ...visibleChildren.map(el => el.getBoundingClientRect().bottom - paperRect.top)
+    ...visibleChildren.map(el => (el.getBoundingClientRect().bottom - paperRect.top) / k)
   );
 
   const pageHeight = paper.classList.contains('landscape') ? 816 : 1056;
@@ -3213,7 +3272,7 @@ async function ensureOutputReadyForExport() {
 
 async function printPuzzle() {
   if (!(await ensureOutputReadyForExport())) return;
-  window.print();
+  await pvFlat(async () => { window.print(); });
 }
 
 function buildAnswerOverlay(placements, rows, cols, cellPx) {
@@ -3274,9 +3333,9 @@ function fitWordBank(paper, mode) {
   const texts = items.map(item => item.textContent || '');
 
   const pageLimit = paper.classList.contains('landscape') ? 816 : 1056;
-  const paperRect = paper.getBoundingClientRect();
+  const paperRect = paper.getBoundingClientRect(), pk = pvScale(paper);
   const boxRect = bankBox.getBoundingClientRect();
-  const bankBoxTop = boxRect.top - paperRect.top;
+  const bankBoxTop = (boxRect.top - paperRect.top) / pk;
   const paperStyle = getComputedStyle(paper);
   const paperPaddingBottom = parseFloat(paperStyle.paddingBottom) || 0;
 
@@ -3291,7 +3350,7 @@ function fitWordBank(paper, mode) {
     (parseFloat(boxStyle.paddingBottom) || 0);
 
   const heading = bankBox.querySelector('.word-bank-heading');
-  const headingHeight = heading ? heading.getBoundingClientRect().height : 0;
+  const headingHeight = heading ? heading.getBoundingClientRect().height / pk : 0;
 
   const availableBankHeight = Math.max(
     60,
@@ -3448,6 +3507,37 @@ async function cuteLoad(p) {
     pg.insertAdjacentHTML('afterbegin', cutePicHtml(p, PLAY.cell));
   }
 }
+const LOOK_KEYS = ['title','subtitle','gridDisplay','wordBankDisplay','bankHeading','orientation','nameField','dateField','periodField','classField','teacherField','customField',
+  'nameLabel','dateLabel','periodLabel','classLabel','teacherLabel','customFieldLabel'];
+(function liveWatch() {
+  const go = () => {
+    const steps = document.querySelectorAll('.ws-steps > .section'); if (steps.length < 4) return;
+    let t = 0;
+    const look = e => {
+      if (e.target.closest('details.advanced') || e.target.id === 'accentMode' || e.target.id === 'gridDisplay') return;      // accents change the letters; gridDisplay has its own watcher
+      clearTimeout(t); t = setTimeout(() => {
+        const p = state.lastPuzzle; if (!p || !p.config) return;
+        const c = getConfig(); LOOK_KEYS.forEach(k2 => { p.config[k2] = c[k2]; });
+        state.splitOutput = false; renderPuzzle(); requestAnimationFrame(() => { fitAndCheckOutput(false); scalePreview(); });
+      }, 250);
+    };
+    const stale = e => {
+      if (!state.lastPuzzle || e.target.closest('.ws-live')) return;
+      if (e.target.closest('.section') === steps[2] && e.target.id !== 'accentMode' && !e.target.closest('details.advanced')) return;
+      if (e.target.closest('.section') === steps[3]) return;
+      document.getElementById('staleNote')?.classList.add('on');
+    };
+    [steps[2], steps[3]].forEach(sec => { sec.addEventListener('input', look); sec.addEventListener('change', look); });
+    document.querySelector('.ws-steps').addEventListener('input', stale);
+    document.querySelector('.ws-steps').addEventListener('change', stale);
+    const pages = document.getElementById('previewPages');
+    if (window.ResizeObserver && pages) { const ro = new ResizeObserver(() => scalePreview()); ro.observe(pages.parentElement); ro.observe(pages); }
+    window.addEventListener('resize', scalePreview);
+    scalePreview();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+
 // picking a Puzzle Letter Style redraws the puzzle already made (it used to wait for the next Generate Puzzle)
 (function cuteWatch() {
   const go = () => {
@@ -3612,6 +3702,7 @@ async function downloadPreviewPdf() {
     });
 
     const pages = getOutputPaperElements();
+    document.body.classList.add('pv-flat');
 
     for (let i=0; i<pages.length; i++) {
       const canvas = await html2canvas(pages[i], {
@@ -3634,6 +3725,8 @@ async function downloadPreviewPdf() {
     showStatus('PDF downloaded.');
   } catch (err) {
     showWarning('PDF creation failed: ' + (err?.message || String(err)));
+  } finally {
+    document.body.classList.remove('pv-flat'); scalePreview();
   }
 }
 
