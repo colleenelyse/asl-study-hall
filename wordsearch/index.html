@@ -1348,15 +1348,16 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
 .pill input:checked + span::before { content:"✓"; color:#fff; }
 .pill input:focus-visible + span { outline:3px solid rgba(47,107,255,.35); outline-offset:2px; }
 .tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.tiles button { background:#fff !important; color:#1B1E3C !important; border:1.5px solid #E3D9CC !important; border-radius:14px !important; padding:10px 6px 8px !important; display:flex; flex-direction:column; align-items:center; gap:4px; box-shadow:none !important; min-height:84px; }
-.tiles button b { font:700 26px/1 Nunito, system-ui, sans-serif; min-height:34px; display:flex; align-items:center; justify-content:center; }
+.tiles button { background:#fff !important; color:#1B1E3C !important; border:1.5px solid #E3D9CC !important; border-radius:14px !important; padding:10px 6px 8px !important; display:flex; flex-direction:column; align-items:center; gap:6px; box-shadow:none !important; min-height:100px; overflow:hidden; }
+.tiles button b { font:700 26px/1 Nunito, system-ui, sans-serif; height:50px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .tiles button span { font-size:13px; font-weight:700; color:#5A6185; }
 .ws-steps .tiles button.on, .ws-steps .tiles button.on:hover { border:2px solid #2F6BFF !important; background:#EEF3FF !important; padding:9px 5px 7px !important; }
 .ws-steps .tiles button.on span { color:#2F6BFF; }
 .tiles button:hover { border-color:#2F6BFF !important; filter:none; }
-.tile-asl { font-family:'CGasl', sans-serif !important; font-weight:400 !important; font-size:30px !important; }
-.tile-braille { font-family:'BrailleFull', sans-serif !important; font-weight:400 !important; }
-.tile-cute canvas { height:34px; width:auto; display:none; }
+.tile-asl { font-family:'CGasl', sans-serif !important; font-weight:400 !important; font-size:26px !important; line-height:1 !important; padding-top:4px; }
+.tile-braille { font-family:'BrailleFull', sans-serif !important; font-weight:400 !important; font-size:34px !important; letter-spacing:.06em; }
+.tile-dots { font-family:'Segoe UI Symbol','Arial Unicode MS','Apple Symbols',sans-serif !important; font-weight:400 !important; font-size:34px !important; letter-spacing:.12em; }
+.tile-cute canvas { height:44px; width:auto; display:none; }
 .tile-cute.ready canvas { display:block; } .tile-cute.ready i { display:none; }
 .tile-cute i { font-style:normal; }
 .pg { display:inline-block; border:2px solid currentColor; border-radius:3px; }
@@ -1369,6 +1370,9 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
 @media (max-width:620px) { .st-two, .st-rename { grid-template-columns:1fr; } .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); } .st { padding:18px 16px !important; } }
 /* printed page: the student lines line up in columns (sfGrid) */
 .sf-grid { display:grid; gap:14px 26px; }
+.cute-word { white-space:nowrap; display:inline-flex; align-items:center; }
+.cute-l { width:1.08em; height:1.08em; display:inline-block; }
+.cute-sp { display:inline-block; width:.45em; }
 .sf-grid > div { min-width:0; }
 </style>
 </head>
@@ -1471,8 +1475,8 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
           <button type="button" data-v="lowercase"><b>abc</b><span>Lowercase</span></button>
           <button type="button" data-v="ASL Fingerspelling"><b class="tile-asl">ABC</b><span>ASL - Gallaudet</span></button>
           <button type="button" data-v="ASL Cute"><b class="tile-cute"><canvas width="192" height="64" aria-hidden="true"></canvas><i>🤟</i></b><span>ASL - Cute</span></button>
-          <button type="button" data-v="Braille — Full Cell"><b class="tile-braille">abc</b><span>Braille</span></button>
-          <button type="button" data-v="Braille — Dots Only"><b>⠁⠃⠉</b><span>Braille dots</span></button>
+          <button type="button" data-v="Braille — Full Cell"><b class="tile-braille">abc</b><span>Braille, full cell</span></button>
+          <button type="button" data-v="Braille — Dots Only"><b class="tile-dots">⠁⠃⠉</b><span>Braille, dots only</span></button>
         </div>
         <select id="gridDisplay" class="st-hide">
           <option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option><option value="ASL Cute">ASL - Cute</option>
@@ -1484,7 +1488,8 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
         <div class="field"><label class="st-label" for="bankDisplay">Word list under the puzzle</label>
           <select id="bankDisplay">
             <option value="As Entered">As I typed them</option><option value="UPPERCASE">CAPITALS</option><option value="lowercase">lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option>
-            <option value="Braille — Full Cell">Braille</option><option value="Braille — Dots Only">Braille dots</option>
+            <option value="ASL Cute">ASL - Cute</option>
+            <option value="Braille — Full Cell">Braille, full cell</option><option value="Braille — Dots Only">Braille, dots only</option>
           </select></div>
         <div class="field"><label class="st-label" for="bankHeading">Word list heading</label><input id="bankHeading" value="Word Bank" placeholder="Words to Find"></div>
       </div>
@@ -1500,9 +1505,9 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
         <div class="advanced-body">
           <div class="field"><label class="st-label" for="accentMode">Accented letters (ñ, é)</label>
             <select id="accentMode"><option value="Preserve">Keep the accents</option><option value="Plain">Change to plain letters (n, e)</option></select></div>
-          <div class="field" style="margin-top:12px"><label class="st-label" for="extraBlocked">Letters that must not show up by accident</label>
+          <div class="field" style="margin-top:12px"><label class="st-label" for="extraBlocked">Words that should not appear</label>
             <input id="extraBlocked" placeholder="For example, a student's name. Separate with commas.">
-            <div class="st-help">Rude words are already kept out. This only affects the filler letters, never your own words.</div></div>
+            <div class="st-help">Rude words are already kept out. Add anything else the extra letters should never spell by accident. Your own words are never changed.</div></div>
         </div>
       </details>
     </section>
@@ -2820,11 +2825,11 @@ function renderPuzzlePage(targetId, key, cellFit) {
   }
 
   const sorted=p.words.slice().sort((a,b)=>a.displayText.localeCompare(b.displayText,undefined,{sensitivity:'base'}));
-  const bankItems=sorted.map(w=>`<div>${escapeHtml(displayBankWord(w.displayText,cfg.wordBankDisplay))}</div>`).join('');
+  const bankItems=sorted.map(w=>`<div>${cfg.wordBankDisplay==='ASL Cute' && CUTE_IMGS ? cuteWordHtml(w.displayText) : escapeHtml(displayBankWord(w.displayText,cfg.wordBankDisplay))}</div>`).join('');
   const heading=escapeHtml(cfg.bankHeading || 'Word Bank');
 
   const overlay = key ? buildAnswerOverlay(p.placements, p.rows, p.cols, cellPx) : '';
-  if (cfg.gridDisplay === 'ASL Cute' && !p.cutePic && !p.cuteTried) cuteLoad(p);
+  if (!p.cuteTried && ((cfg.gridDisplay === 'ASL Cute' && !p.cutePic) || (cfg.wordBankDisplay === 'ASL Cute' && !CUTE_IMGS))) cuteLoad(p);
 
   paper.innerHTML=`
     ${title?`<h1 class="paper-title">${escapeHtml(title)}</h1>`:''}
@@ -2949,7 +2954,7 @@ function shrinkWordBankForHeight(paper) {
   if (!items.length) return;
 
   const special =
-    mode === 'ASL Fingerspelling' ||
+    mode === 'ASL Fingerspelling' || mode === 'ASL Cute' ||
     mode === 'Braille — Full Cell' ||
     mode === 'Braille — Dots Only';
 
@@ -2972,7 +2977,7 @@ function shrinkWordBankForHeight(paper) {
     const ctx = canvas.getContext('2d');
     const computed = getComputedStyle(bank);
     const fontFamily = computed.fontFamily || 'Arial, sans-serif';
-    const texts = items.map(item => item.textContent || '');
+    const texts = items.map(item => item.textContent || item.querySelector('[aria-label]')?.getAttribute('aria-label') || '');      // ASL - Cute words are pictures
     const maxColumns = Math.min(
       items.length,
       paper.classList.contains('landscape') ? 7 : 6
@@ -3259,7 +3264,7 @@ function fitWordBank(paper, mode) {
   if (!items.length) return;
 
   const special =
-    mode === 'ASL Fingerspelling' ||
+    mode === 'ASL Fingerspelling' || mode === 'ASL Cute' ||
     mode === 'Braille — Full Cell' ||
     mode === 'Braille — Dots Only';
 
@@ -3275,7 +3280,7 @@ function fitWordBank(paper, mode) {
   const computed = getComputedStyle(bank);
   const fontFamily = computed.fontFamily || 'Arial, sans-serif';
   const bankWidth = bank.clientWidth;
-  const texts = items.map(item => item.textContent || '');
+  const texts = items.map(item => item.textContent || item.querySelector('[aria-label]')?.getAttribute('aria-label') || '');      // ASL - Cute words are pictures
 
   const pageLimit = paper.classList.contains('landscape') ? 816 : 1056;
   const paperRect = paper.getBoundingClientRect(), pk = pvScale(paper);
@@ -3303,6 +3308,7 @@ function fitWordBank(paper, mode) {
   );
 
   function measure(text, fontSize) {
+    if (mode === 'ASL Cute') return [...text].length * fontSize * 1.08;      // one hand square per letter
     ctx.font = `400 ${fontSize}px ${fontFamily}`;
     return ctx.measureText(text).width;
   }
@@ -3408,7 +3414,19 @@ function cutePicHtml(p, cell) {
 // the hands for every letter and number, fetched once per visit (asl.cool keeps this one strip ready, so it comes back fast);
 // started as soon as ASL - Cute is picked, so it is usually here before Generate Puzzle is clicked
 const CUTE_ALL = 'abcdefghijklmnopqrstuvwxyz0123456789';
-let cuteStrip = null;
+var cuteStrip = null, CUTE_IMGS = null;      // var: safe even if a page draw runs before this line
+function cuteMakeImgs(strip) {      // one picture per letter, for the word list
+  const S = strip.height, out = {};
+  for (let i = 0; i < CUTE_ALL.length; i++) { const cv = document.createElement('canvas'); cv.width = cv.height = S; cv.getContext('2d').drawImage(strip, i * S, 0, S, S, 0, 0, S, S); out[CUTE_ALL[i]] = cv.toDataURL('image/png'); }
+  CUTE_IMGS = out;
+}
+function cuteWordHtml(text) {      // a word in her hands; a space stays a gap, anything without a hand stays a letter
+  return '<span class="cute-word" role="img" aria-label="' + escapeHtml(text) + '">' + [...String(text)].map(ch => {
+    const k = ch.toLowerCase();
+    if (CUTE_IMGS && CUTE_IMGS[k]) return '<img class="cute-l" alt="" src="' + CUTE_IMGS[k] + '">';
+    return ch === ' ' ? '<span class="cute-sp"></span>' : escapeHtml(ch.toLocaleUpperCase());
+  }).join('') + '</span>';
+}
 function cuteStripLoad() {
   if (!cuteStrip) cuteStrip = (async () => {
     for (let k = 0; ; k++) {      // one quiet retry
@@ -3417,7 +3435,7 @@ function cuteStripLoad() {
         if (r.status === 429) throw new Error('slow');
         if (!r.ok) throw new Error('no');
         const blob = await r.blob(); if (!/^image\//.test(blob.type)) throw new Error('no');
-        return await createImageBitmap(blob);
+        const bm = await createImageBitmap(blob); cuteMakeImgs(bm); return bm;
       } catch (e) { if (e.message === 'slow' || k) throw e; }
     }
   })().catch(e => { cuteStrip = null; throw e; });
@@ -3579,7 +3597,7 @@ function displayBankWord(text,mode) {
     return text.toLocaleLowerCase();
   }
 
-  if (mode === 'UPPERCASE' || mode === 'ASL Fingerspelling') {
+  if (mode === 'UPPERCASE' || mode === 'ASL Fingerspelling' || mode === 'ASL Cute') {
     return text.toLocaleUpperCase();
   }
 
@@ -3995,7 +4013,7 @@ function playStart() {
   const svg = document.getElementById('playSvg'); svg.setAttribute('width', p.cols * cell); svg.setAttribute('height', p.rows * cell); svg.innerHTML = '<g id="playLocked"></g><line id="playLive" stroke="rgba(245,158,11,.45)" stroke-width="' + (cell * .78) + '" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/>';
   PLAY.words = p.placements.map((pl, i) => ({ i, text: pl.displayText, cells: pl.cells, key: pl.cells.map(x => x.join(',')).join('|') }));
   document.getElementById('playBank').innerHTML = PLAY.words.slice().sort((a, b) => a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }))
-    .map(w => '<li data-i="' + w.i + '" class="' + displayClass(cfg.wordBankDisplay) + '">' + escapeHtml(displayBankWord(w.text, cfg.wordBankDisplay)) + '</li>').join('');
+    .map(w => '<li data-i="' + w.i + '" class="' + displayClass(cfg.wordBankDisplay) + '">' + (cfg.wordBankDisplay === 'ASL Cute' && CUTE_IMGS ? cuteWordHtml(w.text) : escapeHtml(displayBankWord(w.text, cfg.wordBankDisplay))) + '</li>').join('');
   document.getElementById('playWin').className = 'play-win';
   playCount(); clearInterval(PLAY.timer); PLAY.timer = setInterval(playClock, 1000); playClock();
 }
