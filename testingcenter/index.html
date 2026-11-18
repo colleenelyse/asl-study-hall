@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="description" content="LTHS Testing Center: a school-owned scheduling and operations app for the North and South Campus Testing Centers. Screenshots and a clickable demo with made-up students.">
+<meta name="description" content="LTHS Testing Center: book, check or cancel makeup tests, retakes and unfinished tests at the North and South Campus Testing Centers. Guides, the home-screen app, and a demo with made-up students.">
 <title>LTHS Testing Center</title><link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,6 +71,17 @@ figure img { border-radius: 9px; border: 1px solid var(--line); }
 .ok { color: var(--ok); font-weight: 600; }
 footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-top: 1px solid var(--line); }
 @media (max-width: 820px) { .hero, .screen, .screen.flip, .two { grid-template-columns: 1fr; } .screen.flip figure { order: 0; } }
+.brandrow { display: flex; gap: 14px; align-items: center; } .appicon { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 3px 12px rgba(0,0,0,.25); flex: none; }
+.door.big { margin-top: 20px; padding: 18px 20px; } .door.big b { font-size: 1.2rem; }
+.trydoors { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.appbox { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 28px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: clamp(18px, 3vw, 30px); }
+.appbox > img { width: 180px; height: 180px; border-radius: 40px; box-shadow: 0 6px 22px rgba(0,0,0,.28); }
+.steps3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 14px; }
+.steps3 > div { background: var(--shot-bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; } .steps3 span { color: var(--soft); font-size: .9rem; }
+b.k { font-weight: 600; background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; white-space: nowrap; color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .door.main { color: #10204a; } :root:not([data-theme="light"]) .door.main span, :root:not([data-theme="light"]) .door.main .go { color: #2a3a66; } }
+:root[data-theme="dark"] .door.main { color: #10204a; } :root[data-theme="dark"] .door.main span, :root[data-theme="dark"] .door.main .go { color: #2a3a66; }
+@media (max-width: 640px) { .appbox { grid-template-columns: 1fr; } .appbox > img { width: 120px; height: 120px; border-radius: 28px; } }
 </style>
 </head>
 <body>
@@ -78,28 +89,38 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   <div class="wrap hero">
     <div>
       <p class="eyebrow">Lyons Township High School · North and South Campus</p>
-      <h1 style="margin-top:10px">The Testing Center, in one school-owned app</h1>
-      <p class="lead">Makeup tests, retakes and unfinished tests: students book, teachers send what's needed, and Testing Center staff run the day, from <span class="mark">one place instead of SignUpGenius, paper forms and email chains</span>.</p>
+      <div class="brandrow" style="margin-top:10px"><img src="app/icon-180.png" alt="" class="appicon"><h1>LTHS Testing Center</h1></div>
+      <p class="lead">Makeup tests, retakes and finishing a test you started: book a time, check it, or cancel it. <span class="mark">Sign in with your school Google account.</span></p>
+      <a class="door main big" href="https://script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec"><div><b>Open the Testing Center</b><span>Students, teachers and Testing Center staff all use this one link</span></div><span class="go">Open →</span></a>
+      <p class="note" style="margin-top:8px">📱 Want it on your phone or Chromebook? <a href="#app">Save it like an app</a>.</p>
     </div>
     <div class="doors">
-      <a class="door main" href="trial.html"><div><b>🎬 Watch it work</b><span>Eight short stories that play the app by themselves: booking, test requests, BASE classes, paper tests, a test past its last day, the desk, no-shows, setting up the year</span></div><span class="go">Open the trial →</span></a>
-      <a class="door" href="demo.html?as=coord"><div><b>Coordinator hub</b><span>Today, the room, needs attention, waitlist</span></div><span class="go">Open →</span></a>
-      <a class="door" href="demo.html?as=teacher"><div><b>Teacher view</b><span>My students' appointments, the testing form</span></div><span class="go">Open →</span></a>
-      <a class="door" href="demo.html?as=student"><div><b>Student view</b><span>Book, cancel, waitlist, my info</span></div><span class="go">Open →</span></a>
-      <p class="note">The demo runs on made-up students and teachers. Click anything: nothing is saved, and no email is sent.</p>
-      <a class="door" href="guides/"><div><b>One-page guides</b><span>For students, teachers, coordinators and administrators (printable)</span></div><span class="go">Open →</span></a>
-    </div>
-  </div>
-  <div class="wrap">
-    <div class="facts">
-      <div class="fact" style="border-color:var(--ok)"><b>🔒 Data stays at school</b><span>Every student record lives in one Google Sheet in the school's own Google account. Nothing goes to an outside company.</span></div>
-      <div class="fact"><b>No cost</b><span>Google Sheets + Apps Script in the district's own Google Workspace. No per-user fees.</span></div>
-      <div class="fact"><b>School sign-in</b><span>Everyone uses their school Google account; the app knows who is a student, teacher or coordinator.</span></div>
-      <div class="fact"><b>Two campuses</b><span>South (Library, Room D) and North (Room 31) run separately, with their own seats, closures and staff.</span></div>
-      <div class="fact"><b>From Infinite Campus</b><span>Students, classes and teachers come from the Infinite Campus schedule export, so nobody types them in.</span></div>
+      <p class="eyebrow" style="margin-bottom:2px">How to use it</p>
+      <a class="door" href="guides/students.html"><div><b>🎒 Students</b><span>Book, cancel, the waitlist, what to bring</span></div><span class="go">Guide →</span></a>
+      <a class="door" href="guides/teachers.html"><div><b>🧑‍🏫 Teachers</b><span>Your students' appointments, the testing form, access codes</span></div><span class="go">Guide →</span></a>
+      <a class="door" href="guides/coordinators.html"><div><b>🗂️ Testing Center staff</b><span>Today, check-in, the waitlist, settings</span></div><span class="go">Guide →</span></a>
+      <a class="door" href="guides/"><div><b>All guides</b><span>Administrators, access codes, setting up the year (printable)</span></div><span class="go">Open →</span></a>
     </div>
   </div>
 </header>
+
+<section id="try">
+  <div class="wrap">
+    <div class="intro"><p class="eyebrow">See how it works</p><h2>Try it with made-up students</h2><p>The demo runs the real app on pretend students and teachers. Click anything: nothing is saved, and no email is sent.</p></div>
+    <div class="doors trydoors">
+      <a class="door main" href="trial.html"><div><b>🎬 Watch it work</b><span>Short stories that play the app by themselves: booking, test requests, BASE classes, paper tests, the desk, no-shows</span></div><span class="go">Play →</span></a>
+      <a class="door" href="demo.html?as=student"><div><b>Student view</b><span>Book, cancel, waitlist, my info</span></div><span class="go">Try →</span></a>
+      <a class="door" href="demo.html?as=teacher"><div><b>Teacher view</b><span>My students' appointments, the testing form</span></div><span class="go">Try →</span></a>
+      <a class="door" href="demo.html?as=coord"><div><b>Coordinator hub</b><span>Today, the room, needs attention, waitlist</span></div><span class="go">Try →</span></a>
+    </div>
+    <div class="facts">
+      <div class="fact" style="border-color:var(--ok)"><b>🔒 Data stays at school</b><span>Every student record lives in one Google Sheet in the school's own Google account. Nothing goes to an outside company.</span></div>
+      <div class="fact"><b>School sign-in</b><span>Everyone uses their school Google account; the app knows who is a student, teacher or coordinator.</span></div>
+      <div class="fact"><b>Two campuses</b><span>South and North run separately, with their own seats, breaks, closures and staff.</span></div>
+      <div class="fact"><b>From Infinite Campus</b><span>Students, classes and teachers come from the Infinite Campus schedule export, so nobody types them in.</span></div>
+    </div>
+  </div>
+</section>
 
 <section id="data">
   <div class="wrap data">
@@ -315,7 +336,7 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
 
 <section id="status">
   <div class="wrap">
-    <div class="intro"><p class="eyebrow">Where it stands</p><h2>Built and tested; ready for a pilot</h2></div>
+    <div class="intro"><p class="eyebrow">Where it stands</p><h2>Built and tested; first real use November 19, 2026</h2></div>
     <div class="two">
       <div class="box"><h3>Working now</h3><ul><li class="ok">Student booking, A/B seats, conflicts, cancel, waitlist offers</li><li class="ok">Teacher page, digital testing form, Access Codes doc, rules for all tests, set up my year</li><li class="ok">Test requests; support classes, RIR and Tapestry; case managers' view</li><li class="ok">Coordinator hub: today, room and desks, needs attention, emails, waitlist, reports, repeat no-shows</li><li class="ok">Infinite Campus import (68,000-row export) and SignUpGenius matching</li><li class="ok">Printing from the app: attached tests, the teacher's name, Part 2, tomorrow's print pile, scans back</li><li class="ok">Accommodations and per-student timing; paras; the student schedule fixer</li><li class="ok">Weekly teacher email, what to bring, history lines, busy days, feedback</li><li class="ok">Testing now board, phone bags, late bus passes, sub packet, year planning; works without assigned seats</li><li class="ok">Invite several students, last-day reminders, case manager and counselor emails</li><li class="ok">Test day for teachers: whole periods, late arrivals, requests in one go</li><li class="ok">Scan &amp; Score: question-by-question grading, essays and projects, rubrics, stamps, the question report, students' viewing window, Save to my Drive, Canvas and Infinite Campus files</li><li class="ok">Drop boxes with signs and a pick-up list; staff emails each person chooses; the real LTHS bell schedule</li><li class="ok">Over 600 automatic tests of the rules</li></ul></div>
       <div class="box"><h3>Next</h3><ul><li>District approval for real student data and the hosting account</li><li>A pilot alongside SignUpGenius, then turning student booking on</li><li>Coordinators try it in the simulator and send suggestions</li><li>A first-time setup guide for coordinators and teachers (drafted); full annual reports</li><li>Scan &amp; Score tried on real papers with a few teachers</li><li>Confirm Securly Classroom's import format</li></ul></div>
@@ -323,6 +344,25 @@ footer { padding-block: 40px 60px; color: var(--soft); font-size: .9rem; border-
   </div>
 </section>
 
-<footer><div class="wrap">LTHS Testing Center · built by Colleen Gibbons with Claude · demo with made-up students only. <a href="demo.html?as=coord&amp;lock=1">See the hub's password screen</a>.</div></footer>
+<section id="app">
+  <div class="wrap">
+    <div class="appbox">
+      <img src="app/icon-512.png" alt="The LTHS Testing Center app icon: the LT lion">
+      <div>
+        <p class="eyebrow">On your phone or Chromebook</p>
+        <h2>Save it like an app</h2>
+        <p style="margin-top:8px">Put an <b>LTHS Testing Center</b> icon on your home screen. One tap opens the Testing Center, signed in with your school account, whenever you need to book, check or cancel.</p>
+        <div class="steps3">
+          <div><b>📱 iPhone (Safari)</b><span>Share <b class="k">&#x2191;&#xFE0E;</b> › <b class="k">Add to Home Screen</b></span></div>
+          <div><b>📱 Android (Chrome)</b><span><b class="k">&#8942;</b> › <b class="k">Add to Home screen</b></span></div>
+          <div><b>💻 Chromebook</b><span><b class="k">&#8942;</b> › Cast, save, and share › <b class="k">Create shortcut</b></span></div>
+        </div>
+        <a class="door main" href="app/" style="margin-top:14px;max-width:420px"><div><b>Get the app</b><span>asl.cool/testingcenter/app · step-by-step for your device</span></div><span class="go">Open →</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap">LTHS Testing Center · built by Colleen Gibbons with Claude · the demo and screenshots use made-up students; the real app uses school sign-in. <a href="demo.html?as=coord&amp;lock=1">See the hub's password screen</a>.</div></footer>
 </body>
 </html>

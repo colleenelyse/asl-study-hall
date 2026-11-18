@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>LTHS Testing Center</title>
+<meta name="description" content="Book, check or cancel your LTHS Testing Center appointments.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-title" content="LTHS Testing Center">
+<meta name="application-name" content="LTHS Testing Center">
+<meta name="theme-color" content="#0b1b3d">
+<script>
+// Opened from the home-screen icon (start_url ?go=1): straight to the real app. School Google sign-in happens there, in the browser.
+var APP = 'https:' + '/' + '/script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec';
+if (/[?&]go=1/.test(location.search)) location.replace(APP);
+</script>
+<style>
+:root { --bg: #0b1b3d; --card: #13275a; --ink: #f3f6ff; --soft: #b8c4e6; --gold: #e2bd5a; --line: #2a3f7a; }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 28px 16px 40px; }
+.hero { display: flex; gap: 16px; align-items: center; }
+.hero img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+h1 { margin: 0; font-size: 1.7rem; line-height: 1.1; }
+.open { display: block; text-align: center; background: var(--gold); color: #10204a; font-weight: 700; font-size: 1.2rem; text-decoration: none; border-radius: 14px; padding: 16px; margin: 22px 0 8px; }
+.note { color: var(--soft); font-size: .9rem; text-align: center; margin: 0 0 22px; }
+h2 { font-size: 1.15rem; margin: 26px 0 8px; color: var(--gold); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin: 10px 0; }
+.card h3 { margin: 0 0 4px; font-size: 1rem; }
+ol { margin: 0; padding-left: 1.3em; } li { margin: 3px 0; }
+b.k { background: rgba(255,255,255,.12); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+.mine { outline: 2px solid var(--gold); }
+a { color: var(--gold); }
+.foot { color: var(--soft); font-size: .8rem; margin-top: 26px; }
+</style>
+</head>
+<body>
+<main>
+<div class="hero"><img src="icon-180.png" alt=""><div><h1>LTHS Testing Center</h1><div style="color:var(--soft)">Book, check or cancel your Testing Center appointments.</div></div></div>
+<a class="open" id="open" href="#">Open the Testing Center</a>
+<p class="note">Sign in with your <b>school Google account</b>.</p>
+
+<h2>Put it on your home screen</h2>
+<p style="margin:0">Save it like an app, with the LT lion as its icon. Then it&rsquo;s one tap away whenever you need to book, check or cancel.</p>
+<div class="card" id="ios"><h3>📱 iPhone or iPad (Safari)</h3><ol>
+<li>Open this page in <b>Safari</b>: <b>asl.cool/testingcenter/app</b></li>
+<li>Tap the <b>Share</b> button <b class="k">&#x2191;&#xFE0E;</b> (the square with an arrow).</li>
+<li>Scroll down and tap <b class="k">Add to Home Screen</b>, then <b class="k">Add</b>.</li>
+</ol></div>
+<div class="card" id="android"><h3>📱 Android phone (Chrome)</h3><ol>
+<li>Open this page in <b>Chrome</b>: <b>asl.cool/testingcenter/app</b></li>
+<li>Tap the <b class="k">&#8942;</b> menu in the top corner.</li>
+<li>Tap <b class="k">Add to Home screen</b> (or <b class="k">Install app</b>), then <b class="k">Add</b>.</li>
+</ol></div>
+<div class="card" id="cb"><h3>💻 Chromebook (Chrome)</h3><ol>
+<li>Open this page: <b>asl.cool/testingcenter/app</b></li>
+<li>Click the <b class="k">&#8942;</b> menu, then <b class="k">Cast, save, and share</b> &rsaquo; <b class="k">Create shortcut&hellip;</b></li>
+<li>Click <b class="k">Create</b>. The lion shows up in your launcher; right-click it there to pin it to your shelf.</li>
+</ol></div>
+<p class="foot">The icon opens the real Testing Center app, the same one as the link from your teacher. Your information stays in the school&rsquo;s Google account. <a href="../guides/students.html">How to book</a></p>
+</main>
+<script>
+document.getElementById('open').href = APP;
+var ua = navigator.userAgent, id = /iPhone|iPad|iPod|Macintosh.*Mobile/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : /Android/.test(ua) ? 'android' : /CrOS/.test(ua) ? 'cb' : '';
+if (id) { var el = document.getElementById(id); el.classList.add('mine'); el.parentNode.insertBefore(el, document.getElementById('ios')); }
+</script>
+</body>
+</html>
